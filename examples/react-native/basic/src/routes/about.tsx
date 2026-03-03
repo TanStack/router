@@ -1,19 +1,17 @@
 import * as React from 'react'
-import { View, Text, StyleSheet, ScrollView } from 'react-native'
-import { createRoute } from '@tanstack/react-native-router'
-import { Route as RootRoute } from './__root'
-import { ScreenHeader } from '../components/ScreenHeader'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { createFileRoute } from '@tanstack/react-native-router'
 
-export const Route = createRoute({
-  getParentRoute: () => RootRoute,
-  path: 'about',
+export const Route = createFileRoute('/about')({
+  native: {
+    title: 'About',
+  },
   component: AboutScreen,
 })
 
 function AboutScreen() {
   return (
     <View style={styles.container}>
-      <ScreenHeader title="About" showBack />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}

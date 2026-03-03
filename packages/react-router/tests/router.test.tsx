@@ -2178,6 +2178,90 @@ describe('history: History gives correct notifcations and state', () => {
     act(() => (router as any).back({ to: '/non-existent', ifMissing: 'noop' }))
     expect(window.location.pathname).toBe(beforeNoop)
   })
+
+  it('router.navigate should support stackBehavior reuse by entry id', async () => {
+    const { router } = createHistoryRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(() =>
+      router.navigate({
+        to: '/posts',
+        stackBehavior: 'push',
+        entryId: 'posts',
+      } as any),
+    )
+    await act(() => router.navigate({ to: '/about' }))
+    await act(() =>
+      router.navigate({
+        to: '/posts',
+        stackBehavior: 'push',
+        entryId: 'posts',
+      } as any),
+    )
+    await act(() => router.navigate({ to: '/about' }))
+
+    await act(() =>
+      router.navigate({
+        to: '/posts',
+        stackBehavior: 'reuse',
+        stackMatch: 'nearest',
+        entryId: 'posts',
+      } as any),
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    act(() => router.history.back())
+
+    expect(
+      await screen.findByRole('heading', { name: 'About' }),
+    ).toBeInTheDocument()
+  })
+
+  it('router.navigate should support stackMatch oldest', async () => {
+    const { router } = createHistoryRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(() =>
+      router.navigate({
+        to: '/posts',
+        stackBehavior: 'push',
+        entryId: 'posts',
+      } as any),
+    )
+    await act(() => router.navigate({ to: '/about' }))
+    await act(() =>
+      router.navigate({
+        to: '/posts',
+        stackBehavior: 'push',
+        entryId: 'posts',
+      } as any),
+    )
+    await act(() => router.navigate({ to: '/about' }))
+
+    await act(() =>
+      router.navigate({
+        to: '/posts',
+        stackBehavior: 'reuse',
+        stackMatch: 'oldest',
+        entryId: 'posts',
+      } as any),
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    act(() => router.history.back())
+
+    expect(
+      await screen.findByRole('heading', { name: 'Index' }),
+    ).toBeInTheDocument()
+  })
 })
 
 it('does not push to history if url and state are the same', async () => {

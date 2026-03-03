@@ -21,6 +21,16 @@ export function getFrameworkOptions(framework: string): FrameworkOptions {
         },
       }
       break
+    case 'react-native':
+      frameworkOptions = {
+        package: '@tanstack/react-native-router',
+        idents: {
+          createFileRoute: 'createFileRoute',
+          lazyFn: 'lazyFn',
+          lazyRouteComponent: 'lazyRouteComponent',
+        },
+      }
+      break
     case 'solid':
       frameworkOptions = {
         package: '@tanstack/solid-router',

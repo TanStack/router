@@ -6,6 +6,12 @@ export interface NativeHistoryOptions {
   initialIndex?: number
 }
 
+export interface NativeHistoryStackEntry {
+  index: number
+  path: string
+  state: ParsedHistoryState | undefined
+}
+
 const stateIndexKey = '__TSR_index'
 
 function createRandomKey() {
@@ -97,6 +103,10 @@ export function createNativeHistory(
      * Get current stack depth for debugging
      */
     getStackDepth: () => number
+    /**
+     * Get a snapshot of the full history stack for debugging
+     */
+    getStackSnapshot: () => Array<NativeHistoryStackEntry>
   }
 
   nativeHistory.handleNativeBack = () => {
@@ -110,6 +120,13 @@ export function createNativeHistory(
   }
 
   nativeHistory.getStackDepth = () => entries.length
+
+  nativeHistory.getStackSnapshot = () =>
+    entries.map((path, stackIndex) => ({
+      index: stackIndex,
+      path,
+      state: states[stackIndex],
+    }))
 
   return nativeHistory
 }

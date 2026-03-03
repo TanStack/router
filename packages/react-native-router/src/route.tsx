@@ -54,7 +54,7 @@ export type NotFoundRouteComponent = React.ComponentType<NotFoundRouteProps>
 /**
  * Native screen presentation options for React Native.
  */
-export interface NativeRouteOptions {
+export interface NativeRouteOptions extends NativeHeaderOptions {
   /**
    * How this route should be presented in the native navigation stack.
    * - 'push': Standard screen push with back gesture (default)
@@ -116,25 +116,91 @@ export interface NativeRouteOptions {
   statusBarTranslucent?: boolean
 
   /**
-   * Controls lifecycle behavior of this route when it is in the stack.
-   * - 'active': Rendered and effects running
-   * - 'paused': Rendered but effects paused via React Activity
-   * - 'detached': Not rendered, but still present in history
+   * Minimum lifecycle state for this route's stack entry.
+   * - 'paused': this entry will never become detached
+   * - 'active': this entry will never become paused or detached
    */
-  stackState?:
-    | NativeStackState
-    | ((ctx: NativeStackStateResolverContext) => NativeStackState)
+  minStackState?: NativeMinStackState
+
+  /**
+   * Default minimum lifecycle state for this route and all descendants.
+   * Child routes may override with `minStackState` or a nearer
+   * `defaultMinStackState`.
+   */
+  defaultMinStackState?: NativeMinStackState
+
+  /**
+   * Identity key resolver used for stack reuse matching.
+   */
+  getId?: (ctx: NativeGetIdContext) => string
+
+  /**
+   * Default match strategy when multiple stack entries share the same id.
+   * @default 'nearest'
+   */
+  stackMatch?: NativeStackMatch
 }
 
 export type NativeStackState = 'active' | 'paused' | 'detached'
+export type NativeMinStackState = 'active' | 'paused'
+export type NativeStackMatch = 'nearest' | 'oldest'
 
-export interface NativeStackStateResolverContext {
+export interface NativeHeaderContext {
   pathname: string
   params: Record<string, string>
   search: unknown
-  depth: number
-  isTop: boolean
-  navigationType: 'push' | 'pop' | 'replace' | 'none'
+  loaderData: unknown
+  context: unknown
+  canGoBack: boolean
+}
+
+export interface NativeHeaderRenderContext extends NativeHeaderContext {
+  tintColor?: string
+}
+
+export type NativeHeaderVisibilityOption =
+  | boolean
+  | ((ctx: NativeHeaderContext) => boolean)
+
+export type NativeHeaderTitleOption =
+  | string
+  | ((ctx: NativeHeaderContext) => string)
+
+export type NativeHeaderElementOption =
+  | ((ctx: NativeHeaderRenderContext) => React.ReactNode)
+  | undefined
+
+export interface NativeHeaderStyle {
+  backgroundColor?: string
+}
+
+export interface NativeGetIdContext {
+  pathname: string
+  params: Record<string, string>
+  search: unknown
+}
+
+export interface NativeOptionsContext extends NativeHeaderContext {
+  loaderData: unknown
+  context: unknown
+}
+
+export type NativeRouteOptionsInput =
+  | NativeRouteOptions
+  | ((ctx: NativeOptionsContext) => NativeRouteOptions)
+
+export interface NativeHeaderOptions {
+  headerShown?: NativeHeaderVisibilityOption
+  title?: NativeHeaderTitleOption
+  headerTitle?: string | ((ctx: NativeHeaderRenderContext) => React.ReactNode)
+  headerBackVisible?: NativeHeaderVisibilityOption
+  headerLeft?: NativeHeaderElementOption
+  headerRight?: NativeHeaderElementOption
+  headerTintColor?: string
+  headerStyle?: NativeHeaderStyle
+  headerTransparent?: boolean
+  headerLargeTitle?: boolean
+  header?: (ctx: NativeHeaderContext) => React.ReactNode
 }
 
 // Type extensions for components
@@ -144,7 +210,7 @@ declare module '@tanstack/router-core' {
     errorComponent?: false | null | undefined | ErrorRouteComponent
     notFoundComponent?: NotFoundRouteComponent
     pendingComponent?: RouteComponent
-    native?: NativeRouteOptions
+    native?: NativeRouteOptionsInput
   }
 
   export interface RootRouteOptionsExtensions {
@@ -334,8 +400,7 @@ export class Route<
   }
 
   useNavigate = (): UseNavigateResult<TFullPath> => {
-    const router = useRouter()
-    return useNavigate({ from: router.routesById[this.id as string].fullPath })
+    return useNavigate({ from: this.fullPath })
   }
 }
 

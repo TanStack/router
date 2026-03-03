@@ -1,19 +1,17 @@
 import * as React from 'react'
-import { View, Text, StyleSheet, ScrollView } from 'react-native'
-import { createRoute, Link } from '@tanstack/react-native-router'
-import { Route as RootRoute } from './__root'
-import { ScreenHeader } from '../components/ScreenHeader'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Link, createFileRoute } from '@tanstack/react-native-router'
 
-export const Route = createRoute({
-  getParentRoute: () => RootRoute,
-  path: '/',
+export const Route = createFileRoute('/')({
+  native: {
+    title: 'TanStack Router',
+  },
   component: HomeScreen,
 })
 
 function HomeScreen() {
   return (
     <View style={styles.container}>
-      <ScreenHeader title="TanStack Router" />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -40,6 +38,13 @@ function HomeScreen() {
           </Link>
           <Link to="/posts" style={styles.navLink}>
             <Text style={styles.navLinkText}>Posts →</Text>
+          </Link>
+          <Link
+            to="/posts/$postId/deep/$depth"
+            params={{ postId: '1', depth: '1' }}
+            style={styles.navLink}
+          >
+            <Text style={styles.navLinkText}>Stack Depth Lab →</Text>
           </Link>
         </View>
       </ScrollView>
@@ -97,7 +102,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   navLink: {
-    backgroundColor: '#6366f1',
+    backgroundColor: '#10b981',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',

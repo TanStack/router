@@ -1,14 +1,13 @@
 import * as React from 'react'
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
   ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native'
-import { createRoute, Link } from '@tanstack/react-native-router'
-import { Route as RootRoute } from './__root'
-import { ScreenHeader } from '../components/ScreenHeader'
+import { Link, createFileRoute } from '@tanstack/react-native-router'
+import type { NativeOptionsContext } from '@tanstack/react-native-router'
 
 type Post = {
   id: number
@@ -24,14 +23,12 @@ async function fetchPost(postId: string): Promise<Post> {
   return response.json()
 }
 
-export const Route = createRoute({
-  getParentRoute: () => RootRoute,
-  path: 'posts/$postId',
-  native: {
-    presentation: 'push',
-    gestureEnabled: true,
-    animation: 'default',
-  },
+export const Route = createFileRoute('/posts/$postId/')({
+  native: ({ params, loaderData }: NativeOptionsContext) => ({
+    title:
+      (loaderData as { post?: { title?: string } } | undefined)?.post?.title ??
+      `Post #${params.postId}`,
+  }),
   component: PostScreen,
   loader: async ({ params }) => {
     const post = await fetchPost(params.postId)
@@ -39,9 +36,8 @@ export const Route = createRoute({
   },
   pendingComponent: () => (
     <View style={styles.loadingContainer}>
-      <ScreenHeader title="Loading..." showBack />
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#6366f1" />
+        <ActivityIndicator size="large" color="#10b981" />
         <Text style={styles.loadingText}>Loading post...</Text>
       </View>
     </View>
@@ -54,7 +50,6 @@ function PostScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title={`Post #${postId}`} showBack />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -137,7 +132,7 @@ const styles = StyleSheet.create({
   deepLink: {
     marginTop: 16,
     paddingVertical: 16,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#10b981',
     borderRadius: 12,
     alignItems: 'center',
   },

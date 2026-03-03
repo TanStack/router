@@ -1,8 +1,14 @@
 import * as React from 'react'
-import { View, BackHandler, Platform } from 'react-native'
+import { View, BackHandler, Platform, Linking } from 'react-native'
 import { getRouterContext } from './routerContext'
 import { Matches, NativeScreenMatches } from './Matches'
 import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
+import { resolveNativeNavigateOptions } from './nativeNavigation'
+import {
+  parseExternalUrl,
+  type NativeLinkingMode,
+  type NativeLinkingOptions,
+} from './linking'
 
 // Lazily load GestureHandlerRootView to avoid accessing native modules at module load time
 let _GestureHandlerRootView: any = null
@@ -38,6 +44,143 @@ export interface NativeRouterProviderProps<
    * Children to render (optional, typically not used as Matches is rendered automatically)
    */
   children?: React.ReactNode
+}
+
+function defaultLinkingSubscribe(listener: (url: string) => void) {
+  const sub = Linking.addEventListener('url', ({ url }) => {
+    listener(url)
+  })
+
+  return () => sub.remove()
+}
+
+function resolveLinkingOptions(
+  linking: boolean | NativeLinkingOptions | undefined,
+): Required<
+  Pick<
+    NativeLinkingOptions,
+    'enabled' | 'initialMode' | 'initialAnimate' | 'incomingMode'
+  >
+> &
+  Omit<
+    NativeLinkingOptions,
+    'enabled' | 'initialMode' | 'initialAnimate' | 'incomingMode'
+  > {
+  if (linking === false) {
+    return {
+      enabled: false,
+      initialMode: 'push',
+      initialAnimate: false,
+      incomingMode: 'push',
+      prefixes: [],
+    }
+  }
+
+  const options = linking === true || linking == null ? {} : linking
+
+  return {
+    enabled: options.enabled ?? true,
+    prefixes: options.prefixes ?? [],
+    filter: options.filter,
+    parseUrl: options.parseUrl,
+    getInitialURL: options.getInitialURL ?? (() => Linking.getInitialURL()),
+    subscribe: options.subscribe ?? defaultLinkingSubscribe,
+    initialMode: options.initialMode ?? 'push',
+    initialAnimate: options.initialAnimate ?? false,
+    incomingMode: options.incomingMode ?? 'push',
+    onUnhandledUrl: options.onUnhandledUrl,
+    onError: options.onError,
+  }
+}
+
+function useNativeLinking(router: AnyRouter) {
+  const linking = (router.options as any).native?.linking as
+    | boolean
+    | NativeLinkingOptions
+    | undefined
+  const linkingOptions = React.useMemo(
+    () => resolveLinkingOptions(linking),
+    [linking],
+  )
+
+  const navigateToExternalUrl = React.useCallback(
+    (url: string, mode: NativeLinkingMode, isInitial = false) => {
+      if (!linkingOptions.enabled) {
+        return
+      }
+
+      try {
+        if (linkingOptions.filter && !linkingOptions.filter(url)) {
+          linkingOptions.onUnhandledUrl?.(url)
+          return
+        }
+
+        const parsedHref =
+          linkingOptions.parseUrl?.(url) ??
+          parseExternalUrl(url, linkingOptions.prefixes ?? [])
+
+        if (!parsedHref) {
+          linkingOptions.onUnhandledUrl?.(url)
+          return
+        }
+
+        if (router.history.location.href === parsedHref) {
+          return
+        }
+
+        const navigateOptions = resolveNativeNavigateOptions(
+          router as any,
+          {
+            to: parsedHref,
+            replace: mode === 'replace',
+            state:
+              isInitial && mode === 'push' && !linkingOptions.initialAnimate
+                ? (prev: Record<string, unknown> | undefined) => ({
+                    ...(prev ?? {}),
+                    __TSR_initialDeepLink: true,
+                  })
+                : undefined,
+          } as any,
+        )
+
+        router.navigate(navigateOptions as any)
+      } catch (error) {
+        linkingOptions.onError?.(error, url)
+      }
+    },
+    [router, linkingOptions],
+  )
+
+  React.useEffect(() => {
+    if (!linkingOptions.enabled) return
+
+    let isMounted = true
+    let unsubscribe: (() => void) | undefined
+
+    const run = async () => {
+      try {
+        const initialUrl = await linkingOptions.getInitialURL?.()
+        if (isMounted && initialUrl) {
+          navigateToExternalUrl(initialUrl, linkingOptions.initialMode, true)
+        }
+      } catch (error) {
+        linkingOptions.onError?.(error)
+      }
+
+      if (!isMounted) return
+
+      unsubscribe = linkingOptions.subscribe?.((url) => {
+        navigateToExternalUrl(url, linkingOptions.incomingMode)
+      })
+    }
+
+    run()
+
+    return () => {
+      isMounted = false
+      unsubscribe?.()
+    }
+  }, [linkingOptions, navigateToExternalUrl])
 }
 
 /**
@@ -125,6 +268,7 @@ export function NativeRouterProvider<
 }: NativeRouterProviderProps<TRouter>) {
   // Handle Android back button
   useAndroidBackHandler(router)
+  useNativeLinking(router)
 
   // Use NativeScreenMatches for native transitions when enabled
   // Falls back to View-based Matches if react-native-screens is not available

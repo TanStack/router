@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
+import { resolveNativeNavigateOptions } from './nativeNavigation'
 import type {
   AnyRouter,
   FromPathOption,
@@ -26,10 +27,11 @@ export function useNavigate<
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      return router.navigate({
+      const resolved = resolveNativeNavigateOptions(router, {
         ...options,
         from: options.from ?? _defaultOpts?.from,
       })
+      return router.navigate(resolved as any)
     },
     [_defaultOpts?.from, router],
   ) as UseNavigateResult<TDefaultFrom>

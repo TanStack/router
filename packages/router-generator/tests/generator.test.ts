@@ -318,6 +318,14 @@ async function postprocess(folderName: string) {
         }
       })
     }
+    case 'react-native-target-imports': {
+      const routeFile = join(makeFolderDir(folderName), 'routes', 'index.tsx')
+      const text = await fs.readFile(routeFile, 'utf-8')
+      await expect(text).toMatchFileSnapshot(
+        join('generator', folderName, 'snapshots', 'index.tsx'),
+      )
+      break
+    }
   }
 }
 

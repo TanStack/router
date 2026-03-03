@@ -10,6 +10,39 @@ export const router = createRouter({
   routeTree,
   history: createNativeHistory(),
   defaultPreload: 'intent',
+  native: {
+    linking: {
+      prefixes: [
+        'tanstackrouter://',
+        'https://tanstack-router-rn-example.local',
+      ],
+      initialMode: 'push',
+      parseUrl: (url) => {
+        if (!url) return null
+
+        if (url.startsWith('tanstackrouter://')) {
+          return `/${url.replace('tanstackrouter://', '').replace(/^\/+/, '')}`
+        }
+
+        try {
+          const parsed = new URL(url)
+
+          if (parsed.protocol === 'exp:') {
+            const path = parsed.pathname.replace(/^\/--/, '') || '/'
+            return `${path}${parsed.search}${parsed.hash}`
+          }
+
+          if (parsed.protocol === 'https:') {
+            return `${parsed.pathname}${parsed.search}${parsed.hash}`
+          }
+        } catch {
+          return null
+        }
+
+        return null
+      },
+    },
+  },
 })
 
 // Register the router for type safety

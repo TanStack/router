@@ -1,13 +1,20 @@
 import * as React from 'react'
-import { View, StyleSheet } from 'react-native'
-import { createRootRoute, Outlet } from '@tanstack/react-native-router'
+import { StyleSheet, View } from 'react-native'
+import { Outlet, createRootRoute } from '@tanstack/react-native-router'
 
 export const Route = createRootRoute({
+  native: {
+    presentation: 'push',
+    gestureEnabled: true,
+    headerTintColor: '#ffffff',
+    headerStyle: {
+      backgroundColor: '#10b981',
+    },
+  },
   component: RootComponent,
 })
 
-// Root just provides context and renders the current screen
-// No shared chrome here - each screen handles its own header
+// Root provides shared native defaults inherited by descendants.
 function RootComponent() {
   return (
     <View style={styles.container}>

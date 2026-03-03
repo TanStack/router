@@ -8,6 +8,7 @@ import {
 } from '@tanstack/router-core'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
+import { resolveNativeNavigateOptions } from './nativeNavigation'
 import type {
   AnyRouter,
   LinkOptions,
@@ -92,6 +93,7 @@ export function useNativeLinkProps<
 >(options: NativeLinkProps<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>) {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = React.useState(false)
+  const optionsAny = options as any
 
   const {
     activeProps,
@@ -104,6 +106,10 @@ export function useNativeLinkProps<
     resetScroll,
     viewTransition,
     ignoreBlocker,
+    stackBehavior,
+    stackMatch,
+    entryId,
+    native,
     params: _params,
     search: _search,
     hash: _hash,
@@ -111,7 +117,7 @@ export function useNativeLinkProps<
     mask: _mask,
     from: _from,
     ...pressableProps
-  } = options
+  } = optionsAny
 
   const from = options.from
 
@@ -179,11 +185,17 @@ export function useNativeLinkProps<
       })
 
       router.navigate({
-        ..._options,
-        replace,
-        resetScroll,
-        viewTransition,
-        ignoreBlocker,
+        ...resolveNativeNavigateOptions(router, {
+          ..._options,
+          replace,
+          resetScroll,
+          viewTransition,
+          ignoreBlocker,
+          stackBehavior,
+          stackMatch,
+          entryId,
+          native,
+        } as any),
       } as any)
     },
     [
@@ -195,6 +207,10 @@ export function useNativeLinkProps<
       resetScroll,
       viewTransition,
       ignoreBlocker,
+      stackBehavior,
+      stackMatch,
+      entryId,
+      native,
     ],
   )
 
@@ -274,7 +290,6 @@ export const Link = React.forwardRef<
       ref={ref}
       {...linkProps.pressableProps}
       onPress={(e) => {
-        console.log('Link pressed!', props.to)
         linkProps.onPress(e)
       }}
       disabled={linkProps.disabled}

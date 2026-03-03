@@ -4,6 +4,7 @@ export type { NativeHistoryOptions, NativeRouterHistory } from './history'
 
 // Router (framework-specific)
 export { createRouter, Router } from './router'
+export type { NativeRouterOptions } from './router'
 
 // Routes (framework-specific)
 export {
@@ -15,13 +16,25 @@ export {
   createRootRoute,
   createRouteMask,
 } from './route'
+export { createFileRoute, FileRoute } from './fileRoute'
 export type {
   RouteComponent,
   ErrorRouteComponent,
   NotFoundRouteComponent,
   NativeRouteOptions,
+  NativeHeaderOptions,
+  NativeHeaderContext,
+  NativeHeaderRenderContext,
+  NativeHeaderVisibilityOption,
+  NativeHeaderTitleOption,
+  NativeHeaderElementOption,
+  NativeHeaderStyle,
+  NativeStackMatch,
+  NativeGetIdContext,
   NativeStackState,
-  NativeStackStateResolverContext,
+  NativeMinStackState,
+  NativeOptionsContext,
+  NativeRouteOptionsInput,
 } from './route'
 
 // Provider
@@ -30,13 +43,21 @@ export {
   RouterContextProvider,
 } from './NativeRouterProvider'
 export type { NativeRouterProviderProps } from './NativeRouterProvider'
+export type { NativeLinkingMode, NativeLinkingOptions } from './linking'
 
 // Components
 export { Link, useNativeLinkProps } from './Link'
 export type { NativeLinkProps, ActiveLinkOptions } from './Link'
 
 export { Match, MatchInner, Outlet } from './Match'
-export { Matches, NativeScreenMatches } from './Matches'
+export {
+  Matches,
+  NativeScreenMatches,
+  getNativeStackDebugSnapshot,
+  subscribeNativeStackDebug,
+  useNativeStackDebugSnapshot,
+} from './Matches'
+export type { NativeStackDebugEntry } from './Matches'
 export { Transitioner } from './Transitioner'
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
 export type { ErrorComponentProps } from './CatchBoundary'
@@ -155,6 +176,8 @@ export type {
   TrailingSlashOption,
   // Navigation types
   NavigateOptions,
+  StackBehavior,
+  StackMatch,
   ToOptions,
   LinkOptions,
   ResolveRelativePath,
@@ -202,6 +225,10 @@ export type {
   // Validator types
   AnySchema,
   AnyValidator,
+  FileRoutesByPath,
+  FileRouteTypes,
+  CreateFileRoute,
+  CreateLazyFileRoute,
 } from '@tanstack/router-core'
 
 // Re-export history types

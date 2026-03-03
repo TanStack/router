@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start",
-    "android": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo run:android",
-    "ios": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo run:ios",
-    "web": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start --web"
+    "dev": "sh -c 'pnpm routes:watch & EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start; kill $!'",
+    "routes:generate": "tsr generate",
+    "routes:watch": "tsr watch",
+    "start": "tsr generate && EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start",
+    "android": "tsr generate && EXPO_NO_METRO_WORKSPACE_ROOT=1 expo run:android",
+    "ios": "tsr generate && EXPO_NO_METRO_WORKSPACE_ROOT=1 expo run:ios",
+    "web": "tsr generate && EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start --web"
   },
   "dependencies": {
     "@tanstack/router-core": "workspace:*",
@@ -24,6 +27,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/runtime": "^7.25.0",
+    "@tanstack/router-cli": "workspace:*",
     "@types/react": "~19.1.0",
     "typescript": "^5.9.3"
   },

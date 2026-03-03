@@ -99,7 +99,13 @@ import type {
 } from './RouterProvider'
 import type { Manifest, RouterManagedTag } from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
-import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
+import type {
+  NavigateOptions,
+  ResolveRelativePath,
+  StackBehavior,
+  StackMatch,
+  ToOptions,
+} from './link'
 import type { NotFoundError } from './not-found'
 import type {
   AnySerializationAdapter,
@@ -984,6 +990,7 @@ export class RouterCore<
   pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
   locationPathnameByIndex = new Map<number, string>()
+  locationEntryIdByIndex = new Map<number, string>()
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -1205,6 +1212,11 @@ export class RouterCore<
     const index = this.latestLocation.state.__TSR_index
     if (typeof index === 'number') {
       this.locationPathnameByIndex.set(index, this.latestLocation.pathname)
+      const entryId = (this.latestLocation.state as any).__TSR_entryId
+      this.locationEntryIdByIndex.set(
+        index,
+        typeof entryId === 'string' ? entryId : this.latestLocation.pathname,
+      )
     }
   }
 
@@ -2290,6 +2302,10 @@ export class RouterCore<
     reloadDocument,
     href,
     publicHref,
+    stackBehavior,
+    stackMatch,
+    entryId,
+    native,
     ...rest
   }) => {
     let hrefIsUrl = false
@@ -2357,6 +2373,94 @@ export class RouterCore<
         window.location.href = reloadHref
       }
       return Promise.resolve()
+    }
+
+    let effectiveStackBehavior: StackBehavior | undefined = stackBehavior
+    if (effectiveStackBehavior === 'replace') {
+      ;(rest as any).replace = true
+    } else if (effectiveStackBehavior === 'push') {
+      ;(rest as any).replace = false
+    }
+
+    if (effectiveStackBehavior === 'reuse') {
+      const targetLocation = this.buildLocation({
+        to,
+        ...rest,
+        _includeValidateSearch: true,
+      } as any)
+
+      const reuseId = entryId ?? targetLocation.pathname
+      const currentIndex = this.history.location.state.__TSR_index
+
+      const currentEntryId =
+        this.locationEntryIdByIndex.get(currentIndex) ??
+        this.history.location.pathname
+
+      if (reuseId === currentEntryId) {
+        return Promise.resolve()
+      }
+
+      const matchMode: StackMatch = stackMatch ?? 'nearest'
+
+      const indices =
+        matchMode === 'oldest'
+          ? Array.from({ length: currentIndex }, (_, i) => i)
+          : Array.from({ length: currentIndex }, (_, i) => currentIndex - 1 - i)
+
+      for (const index of indices) {
+        if (this.locationEntryIdByIndex.get(index) === reuseId) {
+          this.history.go(index - currentIndex, {
+            ignoreBlocker: rest.ignoreBlocker,
+          })
+
+          if (native?.minStackState) {
+            const locationAfterGo = this.history.location
+            if (locationAfterGo.state.__TSR_index === index) {
+              this.history.replace(
+                locationAfterGo.href,
+                {
+                  ...locationAfterGo.state,
+                  __TSR_nativeMinStackState: native.minStackState,
+                },
+                { ignoreBlocker: rest.ignoreBlocker },
+              )
+            }
+          }
+
+          if (!this.history.subscribers.size) {
+            this.load()
+          }
+
+          return Promise.resolve()
+        }
+      }
+
+      rest.state = {
+        ...(rest.state && rest.state !== true
+          ? functionalUpdate(rest.state as any, this.latestLocation.state)
+          : {}),
+        __TSR_entryId: reuseId,
+        ...(native?.minStackState
+          ? { __TSR_nativeMinStackState: native.minStackState }
+          : null),
+      }
+    } else if (typeof entryId === 'string') {
+      rest.state = {
+        ...(rest.state && rest.state !== true
+          ? functionalUpdate(rest.state as any, this.latestLocation.state)
+          : {}),
+        __TSR_entryId: entryId,
+        ...(native?.minStackState
+          ? { __TSR_nativeMinStackState: native.minStackState }
+          : null),
+      }
+    } else if (native?.minStackState) {
+      rest.state = {
+        ...(rest.state && rest.state !== true
+          ? functionalUpdate(rest.state as any, this.latestLocation.state)
+          : {}),
+        __TSR_nativeMinStackState: native.minStackState,
+      }
     }
 
     return this.buildAndCommitLocation({

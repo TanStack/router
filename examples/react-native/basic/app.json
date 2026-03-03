@@ -2,10 +2,11 @@
   "expo": {
     "name": "TanStack Router RN Example",
     "slug": "tanstack-router-rn-example",
+    "scheme": "tanstackrouter",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-        "ios": {
+    "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tannerlinsley.tanstack-router-rn-example"
     },

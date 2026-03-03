@@ -8,12 +8,22 @@ import type {
 } from '@tanstack/router-core'
 import type {
   ErrorRouteComponent,
+  NativeMinStackState,
   NotFoundRouteComponent,
   RouteComponent,
 } from './route'
+import type { NativeLinkingOptions } from './linking'
+
+export interface NativeRouterOptions {
+  pausedDepth?: number
+  detachedDepth?: number
+  defaultMinStackState?: NativeMinStackState
+  linking?: boolean | NativeLinkingOptions
+}
 
 declare module '@tanstack/router-core' {
   export interface RouterOptionsExtensions {
+    native?: NativeRouterOptions
     /**
      * The default `component` a route should use if no component is provided.
      */

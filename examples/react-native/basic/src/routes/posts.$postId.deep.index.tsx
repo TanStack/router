@@ -1,15 +1,12 @@
 import * as React from 'react'
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
   ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native'
-import { createRoute } from '@tanstack/react-native-router'
-import { Link } from '@tanstack/react-native-router'
-import { Route as RootRoute } from './__root'
-import { ScreenHeader } from '../components/ScreenHeader'
+import { createFileRoute } from '@tanstack/react-native-router'
 
 type Comment = {
   id: number
@@ -18,20 +15,17 @@ type Comment = {
   body: string
 }
 
-async function fetchComments(postId: string): Promise<Comment[]> {
+async function fetchComments(postId: string): Promise<Array<Comment>> {
   const response = await fetch(
     `https://jsonplaceholder.typicode.com/posts/${postId}/comments`,
   )
   return response.json()
 }
 
-export const Route = createRoute({
-  getParentRoute: () => RootRoute,
-  path: 'posts/$postId/deep',
+export const Route = createFileRoute('/posts/$postId/deep/')({
   native: {
-    presentation: 'push',
-    gestureEnabled: true,
     animation: 'slide_from_right',
+    title: ({ params }) => `Comments (${params.postId})`,
   },
   component: CommentsScreen,
   loader: async ({ params }) => {
@@ -40,9 +34,8 @@ export const Route = createRoute({
   },
   pendingComponent: () => (
     <View style={styles.loadingContainer}>
-      <ScreenHeader title="Comments" showBack />
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#6366f1" />
+        <ActivityIndicator size="large" color="#10b981" />
         <Text style={styles.loadingText}>Loading comments...</Text>
       </View>
     </View>
@@ -55,7 +48,6 @@ function CommentsScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title={`Comments (${comments.length})`} showBack />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -74,14 +66,6 @@ function CommentsScreen() {
             <Text style={styles.commentBody}>{comment.body}</Text>
           </View>
         ))}
-
-        <Link
-          to="/posts/$postId/deep/$depth"
-          params={{ postId, depth: '1' }}
-          style={styles.deepLink}
-        >
-          <Text style={styles.deepLinkText}>Open Stack Depth Lab →</Text>
-        </Link>
       </ScrollView>
     </View>
   )
@@ -119,18 +103,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#15803d',
     marginTop: 4,
-  },
-  deepLink: {
-    marginTop: 8,
-    backgroundColor: '#6366f1',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  deepLinkText: {
-    color: 'white',
-    fontSize: 15,
-    fontWeight: '600',
   },
   commentCard: {
     backgroundColor: 'white',

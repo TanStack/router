@@ -104,6 +104,67 @@ export function getTargetTemplate(config: Config): TargetTemplate {
           },
         },
       }
+    case 'react-native':
+      return {
+        fullPkg: '@tanstack/react-native-router',
+        subPkg: 'react-native-router',
+        rootRoute: {
+          template: () =>
+            [
+              'import * as React from "react"\n',
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
+              'function RootComponent() { return (<React.Fragment><div>Hello "%%tsrPath%%"!</div><Outlet /></React.Fragment>) };\n',
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              "import { Outlet, createRootRoute } from '@tanstack/react-native-router';",
+            tsrExportStart: () => 'export const Route = createRootRoute(',
+            tsrExportEnd: () => ');',
+          },
+        },
+        route: {
+          template: () =>
+            [
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+              'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createFileRoute } from '@tanstack/react-native-router';",
+            tsrExportStart: (routePath) =>
+              config.verboseFileRoutes === false
+                ? 'export const Route = createFileRoute('
+                : `export const Route = createFileRoute('${routePath}')(`,
+            tsrExportEnd: () => ');',
+          },
+        },
+        lazyRoute: {
+          template: () =>
+            [
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+              'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createLazyFileRoute } from '@tanstack/react-native-router';",
+            tsrExportStart: (routePath) =>
+              config.verboseFileRoutes === false
+                ? 'export const Route = createLazyFileRoute('
+                : `export const Route = createLazyFileRoute('${routePath}')(`,
+            tsrExportEnd: () => ');',
+          },
+        },
+      }
     case 'solid':
       return {
         fullPkg: '@tanstack/solid-router',
