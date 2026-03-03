@@ -218,6 +218,93 @@ describe('hydrate', () => {
     expect(ssr).toBe(true)
   })
 
+  it('should hydrate globalNotFound when dehydrated flag is present', async () => {
+    const mockMatches = [
+      {
+        id: '/',
+        routeId: '/',
+        index: 0,
+        ssr: undefined,
+        _nonReactive: {},
+      },
+    ]
+
+    const dehydratedMatches = [
+      {
+        i: '/',
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+        g: true as const,
+      },
+    ]
+
+    mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
+    mockRouter.state.matches = mockMatches
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: { routes: {} },
+        dehydratedData: {},
+        lastMatchId: '/',
+        matches: dehydratedMatches,
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(mockRouter)
+
+    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBe(true)
+  })
+
+  it('should leave globalNotFound undefined when dehydrated flag is omitted', async () => {
+    const mockMatches = [
+      {
+        id: '/',
+        routeId: '/',
+        index: 0,
+        ssr: undefined,
+        _nonReactive: {},
+      },
+    ]
+
+    const dehydratedMatches = [
+      {
+        i: '/',
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+      },
+    ]
+
+    mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
+    mockRouter.state.matches = mockMatches
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: { routes: {} },
+        dehydratedData: {},
+        lastMatchId: '/',
+        matches: dehydratedMatches,
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(mockRouter)
+
+    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBeUndefined()
+  })
+
   it('should decode dehydrated match ids before hydration lookup and SPA-mode checks', async () => {
     const loadSpy = vi.spyOn(mockRouter, 'load')
 

@@ -28,6 +28,9 @@ function hydrateMatch(
   match.ssr = deyhydratedMatch.ssr
   match.updatedAt = deyhydratedMatch.u
   match.error = deyhydratedMatch.e
+  if (deyhydratedMatch.g !== undefined) {
+    match.globalNotFound = true
+  }
 }
 
 export async function hydrate(router: AnyRouter): Promise<any> {

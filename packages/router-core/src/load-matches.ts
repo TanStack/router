@@ -81,7 +81,7 @@ const getNotFoundBoundaryIndex = (
     return undefined
   }
 
-  const requestedRouteId = err.routeId ? String(err.routeId) : undefined
+  const requestedRouteId = err.routeId
   const matchedRootIndex = inner.matches.findIndex(
     (m) => m.routeId === inner.router.routeTree.id,
   )
@@ -890,7 +890,7 @@ export async function loadMatches(arg: {
   updateMatch: UpdateMatchFn
   sync?: boolean
 }): Promise<Array<MakeRouteMatch>> {
-  const inner: InnerLoadContext = Object.assign(arg)
+  const inner: InnerLoadContext = arg
   const matchPromises: Array<Promise<AnyRouteMatch>> = []
 
   // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
@@ -941,7 +941,6 @@ export async function loadMatches(arg: {
         ? Math.min(boundaryIndex + 1, baseMaxIndexExclusive)
         : baseMaxIndexExclusive
 
-  let firstRedirect: unknown
   let firstNotFound: NotFoundError | undefined
 
   for (let i = 0; i < maxIndexExclusive; i++) {
@@ -957,17 +956,13 @@ export async function loadMatches(arg: {
       if (result.status !== 'rejected') continue
 
       const reason = result.reason
-      if (!firstRedirect && isRedirect(reason)) {
-        firstRedirect = reason
+      if (isRedirect(reason)) {
+        throw reason
       }
       if (!firstNotFound && isNotFound(reason)) {
         firstNotFound = reason
       }
     }
-  }
-
-  if (firstRedirect) {
-    throw firstRedirect
   }
 
   const notFoundToThrow =
@@ -1008,10 +1003,19 @@ export async function loadMatches(arg: {
 
     notFoundToThrow.routeId = boundaryMatch.routeId
 
+    const boundaryIsRoot = boundaryMatch.routeId === inner.router.routeTree.id
+
     inner.updateMatch(boundaryMatch.id, (prev) => ({
       ...prev,
-      status: 'notFound',
-      error: notFoundToThrow,
+      ...(boundaryIsRoot
+        ? // For root boundary, use globalNotFound so the root component's
+          // shell still renders and <Outlet> handles the not-found display.
+          // Setting status:'notFound' on root would replace the entire shell,
+          // and in Solid/Vue the status update can be lost inside startTransition.
+          { globalNotFound: true }
+        : // For non-root boundaries, set status:'notFound' so MatchInner
+          // renders the notFoundComponent directly.
+          { status: 'notFound' as const, error: notFoundToThrow }),
       isFetching: false,
     }))
 
