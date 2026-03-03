@@ -2430,7 +2430,8 @@ export class RouterCore<
                       : null
                     hookStayingMatches = mountPending
                       ? pendingMatches.filter(
-                          (match) => match.routeId in this.stores.byRouteId.state,
+                          (match) =>
+                            match.routeId in this.stores.byRouteId.state,
                         )
                       : currentMatches
 
