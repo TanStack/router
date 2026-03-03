@@ -758,3 +758,80 @@ Middleware functionality is tree-shaken based on the environment for each bundle
 
 - On the server, nothing is tree-shaken, so all code used in middleware will be included in the server bundle.
 - On the client, all server-specific code is removed from the client bundle. This means any code used in the `server` method is always removed from the client bundle. `data` validation code will also be removed.
+
+## Dynamic Middleware
+
+Static middlewares are created once and reused across routes. Dynamic middleware wraps that creation in a function, allowing it to accept parameters and behave differently depending on the caller's needs. Authorization is a common use case.
+
+**Authentication (Static Base Middleware) Example:**
+
+This middleware validates the session and injects it into `context` for downstream middlewares.
+
+```tsx
+// middleware.ts
+import { createMiddleware } from '@tanstack/react-start';
+import { auth } from './my-auth';
+
+export const authMiddleware = createMiddleware().server(
+  async ({ next, request }) => {
+    const session = await auth.getSession({ headers: request.headers });
+
+    if (!session) {
+      throw new Error('Unauthorized');
+    }
+
+    return await next({
+      context: { session },
+    });
+  },
+);
+```
+
+**Authorization (Dynamic Middleware) Example:**
+
+The middleware validates access based on the dynamic `permissions` parameter, composing with `authMiddleware` so `context.session` is already available.
+
+```tsx
+// middleware.ts
+import { createMiddleware } from '@tanstack/react-start';
+import { auth } from './my-auth';
+
+export const authMiddleware = createMiddleware().server(
+  //...
+);
+
+type Permissions = Record<string, string[]>;
+
+export function authorizationMiddleware(permissions: Permissions) {
+  return createMiddleware({ type: 'function' })
+    .middleware([authMiddleware])
+    .server(async ({ next, context }) => {
+      const granted = await auth.hasPermission(context.session, permissions);
+
+      if (!granted) {
+        throw new Error('Forbidden');
+      }
+
+      return await next();
+    });
+}
+```
+
+**Usage in a Server Function:**
+
+Access requirements are defined per server function, without duplicating any middleware logic.
+
+```tsx
+import { createServerFn } from '@tanstack/react-start';
+import { authorizationMiddleware } from './middleware';
+
+export const getClients = createServerFn()
+  .middleware([
+    authorizationMiddleware({
+      client: ['read'],
+    }),
+  ])
+  .handler(async ({ context }) => {
+    return { message: 'The user can read clients.' };
+  });
+```
