@@ -18,7 +18,7 @@ env:
 
 jobs:
   client-nav-benchmarks:
-    name: Run Client Nav Benchmarks
+    name: Run Client Nav and SSR Benchmarks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,3 +47,24 @@ jobs:
         with:
           mode: simulation
           run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/client-nav:test:perf:vue
+
+      - name: Run CodSpeed SSR benchmark for React
+        continue-on-error: true
+        uses: CodSpeedHQ/action@v4
+        with:
+          mode: simulation
+          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/ssr:test:perf:react
+
+      - name: Run CodSpeed SSR benchmark for Solid
+        continue-on-error: true
+        uses: CodSpeedHQ/action@v4
+        with:
+          mode: simulation
+          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/ssr:test:perf:solid
+
+      - name: Run CodSpeed SSR benchmark for Vue
+        continue-on-error: true
+        uses: CodSpeedHQ/action@v4
+        with:
+          mode: simulation
+          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/ssr:test:perf:vue
