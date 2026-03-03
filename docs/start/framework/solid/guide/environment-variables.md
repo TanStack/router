@@ -465,6 +465,75 @@ interface ImportMetaEnv {
 2. Validate required variables at build time
 3. Use deployment-specific `.env` files
 
+## Server Build Configuration
+
+### Static `NODE_ENV` Replacement
+
+By default, TanStack Start statically replaces `process.env.NODE_ENV` in **server builds** at build time. This enables dead code elimination (tree-shaking) for development-only code paths in your server bundle.
+
+**Why this matters:** Vite automatically replaces `process.env.NODE_ENV` in client builds, but server builds run in Node.js where `process.env` is a real runtime object. Without static replacement, code like this would remain in your production server bundle:
+
+```typescript
+if (process.env.NODE_ENV === 'development') {
+  // This code would NOT be eliminated without static replacement
+  enableDevTools()
+  logDebugInfo()
+}
+```
+
+With static replacement enabled (the default), the bundler sees `"production" === 'development'` and eliminates the entire block.
+
+### Configuring Static Replacement
+
+The replacement is controlled by the `server.build.staticNodeEnv` option:
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      server: {
+        build: {
+          // Replace process.env.NODE_ENV at build time (default: true)
+          staticNodeEnv: true,
+        },
+      },
+    }),
+  ],
+})
+```
+
+The replacement value is determined in this order:
+
+1. `process.env.NODE_ENV` at build time (if set)
+2. Vite's `mode` (e.g., from `--mode staging`)
+3. `"production"` (fallback)
+
+### When to Disable Static Replacement
+
+Set `staticNodeEnv: false` if you need `NODE_ENV` to remain dynamic at runtime:
+
+```ts
+tanstackStart({
+  server: {
+    build: {
+      staticNodeEnv: false, // Keep NODE_ENV dynamic at runtime
+    },
+  },
+})
+```
+
+Common reasons to disable:
+
+- **Same build, multiple environments**: Deploying one build artifact to staging and production
+- **Runtime environment detection**: Code that must check the actual runtime environment
+- **Testing production builds locally**: Running production builds with `NODE_ENV=development`
+
+> **Note:** Disabling static replacement means development-only code paths will remain in your production bundle and be evaluated at runtime.
+
 ## Related Resources
 
 - [Code Execution Patterns](./code-execution-patterns.md) - Learn about server vs client code execution

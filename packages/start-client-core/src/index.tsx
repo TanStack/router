@@ -59,6 +59,7 @@ export {
 export type {
   CompiledFetcherFnOptions,
   CompiledFetcherFn,
+  CustomFetch,
   Fetcher,
   RscStream,
   FetcherBaseOptions,
@@ -108,6 +109,7 @@ export type {
   AnyStartInstance,
   AnyStartInstanceOptions,
   StartInstance,
+  StartInstanceOptions,
 } from './createStart'
 export type { Register } from '@tanstack/router-core'
 

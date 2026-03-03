@@ -15,7 +15,6 @@ import { useMatches } from './Matches'
 import type {
   AnyRouter,
   Constrain,
-  LinkCurrentTargetElement,
   LinkOptions,
   RegisteredRouter,
   RoutePaths,
@@ -27,6 +26,8 @@ import type {
 } from './typePrimitives'
 
 type EventHandler<TEvent = Event> = (e: TEvent) => void
+
+const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
 
 type DataAttributes = {
   [K in `data-${string}`]?: unknown
@@ -226,6 +227,7 @@ export function useLinkProps<
           'style',
           'class',
           'onClick',
+          'onBlur',
           'onFocus',
           'onMouseEnter',
           'onMouseLeave',
@@ -251,8 +253,8 @@ export function useLinkProps<
   }
 
   if (type.value === 'external') {
-    // Block dangerous protocols like javascript:, data:, vbscript:
-    if (isDangerousProtocol(options.to as string)) {
+    // Block dangerous protocols like javascript:, blob:, data:
+    if (isDangerousProtocol(options.to as string, router.protocolAllowlist)) {
       if (process.env.NODE_ENV !== 'production') {
         console.warn(`Blocked Link with dangerous protocol: ${options.to}`)
       }
@@ -266,6 +268,7 @@ export function useLinkProps<
         style: options.style,
         class: options.class,
         onClick: options.onClick,
+        onBlur: options.onBlur,
         onFocus: options.onFocus,
         onMouseEnter: options.onMouseEnter,
         onMouseLeave: options.onMouseLeave,
@@ -281,7 +284,7 @@ export function useLinkProps<
         }
       })
 
-      return safeProps as LinkHTMLAttributes
+      return safeProps
     }
 
     // External links just have simple props
@@ -294,6 +297,7 @@ export function useLinkProps<
       style: options.style,
       class: options.class,
       onClick: options.onClick,
+      onBlur: options.onBlur,
       onFocus: options.onFocus,
       onMouseEnter: options.onMouseEnter,
       onMouseLeave: options.onMouseLeave,
@@ -309,7 +313,7 @@ export function useLinkProps<
       }
     })
 
-    return externalProps as LinkHTMLAttributes
+    return externalProps
   }
 
   // The click handler
@@ -355,50 +359,40 @@ export function useLinkProps<
     }
   }
 
-  // The focus handler
-  const handleFocus = (_: FocusEvent) => {
-    if (options.disabled) return
-    if (preload.value) {
+  const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
+    if (options.disabled || preload.value !== 'intent') return
+
+    if (!preloadDelay.value) {
       doPreload()
+      return
     }
+
+    const eventTarget = e.currentTarget || e.target
+
+    if (!eventTarget || timeoutMap.has(eventTarget)) return
+
+    timeoutMap.set(
+      eventTarget,
+      setTimeout(() => {
+        timeoutMap.delete(eventTarget)
+        doPreload()
+      }, preloadDelay.value),
+    )
   }
 
   const handleTouchStart = (_: TouchEvent) => {
-    if (options.disabled) return
-    if (preload.value) {
-      doPreload()
-    }
+    if (options.disabled || preload.value !== 'intent') return
+    doPreload()
   }
 
-  const handleEnter = (e: MouseEvent) => {
+  const handleLeave = (e: MouseEvent | FocusEvent) => {
     if (options.disabled) return
-    // Use currentTarget (the element with the handler) instead of target (which may be a child)
-    const eventTarget = (e.currentTarget ||
-      e.target ||
-      {}) as LinkCurrentTargetElement
+    const eventTarget = e.currentTarget || e.target
 
-    if (preload.value) {
-      if (eventTarget.preloadTimeout) {
-        return
-      }
-
-      eventTarget.preloadTimeout = setTimeout(() => {
-        eventTarget.preloadTimeout = null
-        doPreload()
-      }, preloadDelay.value)
-    }
-  }
-
-  const handleLeave = (e: MouseEvent) => {
-    if (options.disabled) return
-    // Use currentTarget (the element with the handler) instead of target (which may be a child)
-    const eventTarget = (e.currentTarget ||
-      e.target ||
-      {}) as LinkCurrentTargetElement
-
-    if (eventTarget.preloadTimeout) {
-      clearTimeout(eventTarget.preloadTimeout)
-      eventTarget.preloadTimeout = null
+    if (eventTarget) {
+      const id = timeoutMap.get(eventTarget)
+      clearTimeout(id)
+      timeoutMap.delete(eventTarget)
     }
   }
 
@@ -471,23 +465,19 @@ export function useLinkProps<
       return undefined
     }
     const nextLocation = next.value
-    const maskedLocation = nextLocation?.maskedLocation
+    const location = nextLocation?.maskedLocation ?? nextLocation
 
-    let hrefValue: string
-    if (maskedLocation) {
-      hrefValue = maskedLocation.url.href
-    } else {
-      hrefValue = nextLocation?.url.href
-    }
+    // Use publicHref - it contains the correct href for display
+    // When a rewrite changes the origin, publicHref is the full URL
+    // Otherwise it's the origin-stripped path
+    // This avoids constructing URL objects in the hot path
+    const publicHref = location?.publicHref
+    if (!publicHref) return undefined
 
-    // Handle origin stripping like Solid does
-    if (router.origin && hrefValue?.startsWith(router.origin)) {
-      hrefValue = router.history.createHref(
-        hrefValue.replace(router.origin, ''),
-      )
-    }
+    const external = location?.external
+    if (external) return publicHref
 
-    return hrefValue
+    return router.history.createHref(publicHref) || '/'
   })
 
   // Create static event handlers that don't change between renders
@@ -496,17 +486,21 @@ export function useLinkProps<
       options.onClick,
       handleClick,
     ]) as any,
+    onBlur: composeEventHandlers<FocusEvent>([
+      options.onBlur,
+      handleLeave,
+    ]) as any,
     onFocus: composeEventHandlers<FocusEvent>([
       options.onFocus,
-      handleFocus,
+      enqueueIntentPreload,
     ]) as any,
     onMouseenter: composeEventHandlers<MouseEvent>([
       options.onMouseEnter,
-      handleEnter,
+      enqueueIntentPreload,
     ]) as any,
     onMouseover: composeEventHandlers<MouseEvent>([
       options.onMouseOver,
-      handleEnter,
+      enqueueIntentPreload,
     ]) as any,
     onMouseleave: composeEventHandlers<MouseEvent>([
       options.onMouseLeave,
@@ -576,7 +570,7 @@ export function useLinkProps<
       }
     }
 
-    return result as LinkHTMLAttributes
+    return result
   })
 
   // Return the computed ref itself - callers should access .value
@@ -683,7 +677,7 @@ export type LinkComponent<
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
 > {
-  defaultFrom: TDefaultFrom
+  defaultFrom: TDefaultFrom;
   <
     TRouter extends AnyRouter = RegisteredRouter,
     const TTo extends string | undefined = undefined,

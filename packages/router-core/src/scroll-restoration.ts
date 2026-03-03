@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import { functionalUpdate } from './utils'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
@@ -217,7 +218,7 @@ export function restoreScroll({
 /** Setup global listeners and hooks to support scroll restoration. */
 /** Setup global listeners and hooks to support scroll restoration. */
 export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
-  if (!scrollRestorationCache && !router.isServer) {
+  if (!scrollRestorationCache && !(isServer ?? router.isServer)) {
     return
   }
   const shouldScrollRestoration =
@@ -228,7 +229,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   }
 
   if (
-    router.isServer ||
+    (isServer ?? router.isServer) ||
     router.isScrollRestorationSetup ||
     !scrollRestorationCache
   ) {

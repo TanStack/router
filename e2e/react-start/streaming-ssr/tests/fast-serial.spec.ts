@@ -1,6 +1,23 @@
 import { expect, test, testWithHydration } from './fixtures'
 
 test.describe('Fast serialization (serialization completes before render)', () => {
+  test('initial HTML contains router bootstrap + barrier', async ({ page }) => {
+    let responseHtml = ''
+    await page.route('/fast-serial', async (route) => {
+      const response = await route.fetch()
+      responseHtml = await response.text()
+      await route.fulfill({ response })
+    })
+
+    await page.goto('/fast-serial')
+    await expect(page.getByTestId('server-data')).toBeVisible()
+
+    expect(responseHtml).toContain('$_TSR')
+    expect(responseHtml).toContain('$_TSR.router')
+    expect(responseHtml).toContain('$_TSR.e()')
+    expect(responseHtml).toContain('$tsr-stream-barrier')
+  })
+
   test('all data is available immediately', async ({ page }) => {
     await page.goto('/fast-serial')
     await page.waitForLoadState('networkidle')

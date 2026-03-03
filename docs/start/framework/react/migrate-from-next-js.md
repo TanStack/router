@@ -390,7 +390,7 @@ npm i -D @fontsource-variable/dm-sans @fontsource-variable/jetbrains-mono
 Add the following to `src/app/globals.css`:
 
 ```css
-@import 'tailwindcss';
+@import 'tailwindcss' source('../');
 
 @import '@fontsource-variable/dm-sans'; /* [!code ++] */
 @import '@fontsource-variable/jetbrains-mono'; /* [!code ++] */

@@ -12,28 +12,6 @@ const whitelistErrors = [
 test.describe('CSS styles in SSR (dev mode)', () => {
   test.use({ whitelistErrors })
 
-  // Warmup: trigger Vite's dependency optimization before running tests
-  // This prevents "optimized dependencies changed. reloading" during actual tests
-  // We use a real browser context since dep optimization happens on JS load, not HTTP requests
-  test.beforeAll(async ({ browser, baseURL }) => {
-    const context = await browser.newContext()
-    const page = await context.newPage()
-    try {
-      // Load both pages to trigger dependency optimization
-      await page.goto(baseURL!)
-      await page.waitForTimeout(2000) // Wait for deps to optimize
-      await page.goto(`${baseURL}/modules`)
-      await page.waitForTimeout(2000)
-      // Load again after optimization completes
-      await page.goto(baseURL!)
-      await page.waitForTimeout(1000)
-    } catch {
-      // Ignore errors during warmup
-    } finally {
-      await context.close()
-    }
-  })
-
   // Helper to build full URL from baseURL and path
   // Playwright's goto with absolute paths (like '/modules') ignores baseURL's path portion
   // So we need to manually construct the full URL
@@ -222,7 +200,6 @@ test.describe('CSS styles in SSR (dev mode)', () => {
   }) => {
     // Start from home
     await page.goto(buildUrl(baseURL!, '/'))
-    await page.waitForTimeout(1000)
 
     // Verify initial styles
     const globalElement = page.getByTestId('global-styled')
@@ -234,7 +211,6 @@ test.describe('CSS styles in SSR (dev mode)', () => {
 
     // Navigate to modules page
     await page.getByTestId('nav-modules').click()
-    // Use glob pattern to match with or without basepath
     await page.waitForURL('**/modules')
 
     // Verify CSS modules styles
@@ -247,8 +223,6 @@ test.describe('CSS styles in SSR (dev mode)', () => {
 
     // Navigate back to home
     await page.getByTestId('nav-home').click()
-    // Match home URL with or without trailing slash and optional query string
-    // Matches: /, /?, /my-app, /my-app/, /my-app?foo=bar
     await page.waitForURL(/\/([^/]*)(\/)?($|\?)/)
 
     // Verify global styles still work

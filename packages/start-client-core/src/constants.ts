@@ -77,7 +77,7 @@ export interface ClientFnMeta {
 }
 
 /**
- * Full metadata about a server function, available to server middleware.
+ * Full metadata about a server function, available to server middleware and server functions.
  * This information is embedded at compile time by the TanStack Start compiler.
  */
 export interface ServerFnMeta extends ClientFnMeta {

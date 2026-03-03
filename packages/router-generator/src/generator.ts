@@ -43,6 +43,7 @@ import {
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
 import { transform } from './transform/transform'
+import { validateRouteParams } from './validate-route-params'
 import type { GeneratorPlugin } from './plugin/types'
 import type { TargetTemplate } from './template'
 import type {
@@ -1056,6 +1057,10 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       throw new Error(`⚠️ File ${node.fullPath} does not exist`)
     }
 
+    if (node.routePath) {
+      validateRouteParams(node.routePath, node.filePath, this.logger)
+    }
+
     const updatedCacheEntry: RouteNodeCacheEntry = {
       fileContent: existingRouteFile.fileContent,
       mtimeMs: existingRouteFile.stat.mtimeMs,
@@ -1422,21 +1427,63 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
   ) {
     let parentRoute = hasParentRoute(prefixMap, node, node.routePath)
 
-    // Fallback: check acc.routeNodesByPath for parents not in prefixMap
-    // This handles virtual routes created from lazy-only files that weren't
-    // in the initial prefixMap build
-    if (!parentRoute && node.routePath) {
+    // Check routeNodesByPath for a closer parent that may not be in prefixMap.
+    //
+    // Why: The prefixMap excludes lazy routes by design. When lazy-only routes are
+    // nested inside a pathless layout, the virtual route created from the lazy file
+    // won't be in the prefixMap, but it will be in routeNodesByPath.
+    //
+    // Example: Given files _layout/path.lazy.tsx and _layout/path.index.lazy.tsx:
+    //   - prefixMap contains: /_layout (from route.tsx)
+    //   - routeNodesByPath contains: /_layout AND /_layout/path (virtual from lazy)
+    //   - For /_layout/path/, hasParentRoute returns /_layout (wrong)
+    //   - But the correct parent is /_layout/path (the virtual route from path.lazy.tsx)
+    //
+    // We walk up the path segments to find the closest registered parent. This handles
+    // cases where multiple path segments (e.g., $a/$b) don't have intermediate routes.
+    if (node.routePath) {
       let searchPath = node.routePath
       while (searchPath.length > 0) {
         const lastSlash = searchPath.lastIndexOf('/')
         if (lastSlash <= 0) break
+
         searchPath = searchPath.substring(0, lastSlash)
         const candidate = acc.routeNodesByPath.get(searchPath)
         if (candidate && candidate.routePath !== node.routePath) {
-          parentRoute = candidate
+          // Found a parent in routeNodesByPath
+          // If it's different from what prefixMap found AND is a closer match, use it
+          if (candidate !== parentRoute) {
+            // Check if this candidate is a closer parent than what prefixMap found
+            // (longer path prefix means closer parent)
+            if (
+              !parentRoute ||
+              (candidate.routePath?.length ?? 0) >
+                (parentRoute.routePath?.length ?? 0)
+            ) {
+              parentRoute = candidate
+            }
+          }
           break
         }
       }
+    }
+
+    // Virtual routes may have an explicit parent from virtual config.
+    // If we can find that exact parent, use it to prevent auto-nesting siblings
+    // based on path prefix matching (#5822, #5431).
+    if (node._virtualParentRoutePath !== undefined) {
+      const explicitParent = acc.routeNodesByPath.get(
+        node._virtualParentRoutePath,
+      )
+      if (explicitParent) {
+        parentRoute = explicitParent
+      } else if (node._virtualParentRoutePath === `/${rootPathId}`) {
+        // The explicit parent is the root route (handled separately).
+        // Override path-based inference so this node stays at root level.
+        parentRoute = null
+      }
+      // Otherwise the explicit parent was a virtual file-less route that got
+      // filtered out. Fall back to the path-based parentRoute already computed.
     }
 
     if (parentRoute) node.parent = parentRoute

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   decodePath,
   deepEqual,
+  encodePathLikeUrl,
   escapeHtml,
   isPlainArray,
   replaceEqualDeep,
@@ -500,81 +501,12 @@ describe('deepEqual', () => {
 })
 
 describe('decodePath', () => {
-  it('should decode a path segment with no ignored items existing', () => {
-    const itemsToCheck = ['%25', '%5C']
-    const stringToCheck =
-      'https://mozilla.org/?x=%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
-    const expectedResult = 'https://mozilla.org/?x=шеллы'
-
-    const result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-  })
-
-  it('should decode a path segment with one ignored character and one ignored item existing', () => {
-    const itemsToCheck = ['%25']
-    const stringToCheck =
-      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
-    const expectedResult = 'https://mozilla.org/?x=%25ше\\ллы'
-
-    const result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-  })
-
-  it('should decode a path segment with multiple ignored characters and first ignored item existing', () => {
-    const itemsToCheck = ['%25', '%5C']
-    let stringToCheck =
-      'https://mozilla.org/?x=%25%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
-    let expectedResult = 'https://mozilla.org/?x=%25шеллы'
-
-    let result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-
-    stringToCheck = 'https://mozilla.org/?x=%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
-    expectedResult = 'https://mozilla.org/?x=ше%5Cллы'
-
-    result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-  })
-
-  it('should decode a path segment with multiple ignored characters and other ignored item existing', () => {
-    const itemsToCheck = ['%25', '%5C']
-    let stringToCheck =
-      'https://mozilla.org/?x=%5C%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
-    let expectedResult = 'https://mozilla.org/?x=%5Cшеллы'
-
-    let result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-
-    stringToCheck = 'https://mozilla.org/?x=%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
-    expectedResult = 'https://mozilla.org/?x=ше%5Cллы'
-
-    result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-  })
-
-  it('should decode a path segment with multiple ignored characters and multiple ignored items existing', () => {
-    const itemsToCheck = ['%25', '%5C']
-    const stringToCheck =
-      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
-    const expectedResult = 'https://mozilla.org/?x=%25ше%5Cллы'
-
-    const result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-  })
-
   it('should decode a path segment, ignoring `%` and `\\` by default, with multiple ignored items existing', () => {
     const stringToCheck =
       'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B%2F'
     const expectedResult = 'https://mozilla.org/?x=%25ше%5Cллы%2F'
 
-    const result = decodePath(stringToCheck)
+    const result = decodePath(stringToCheck).path
 
     expect(result).toBe(expectedResult)
   })
@@ -582,34 +514,34 @@ describe('decodePath', () => {
   it('should handle malformed percent-encodings gracefully', () => {
     const stringToCheck = 'path%ZZ%D1%88test%5C%C3%A9'
     // Malformed sequences should remain as-is, valid ones decoded
-    const result = decodePath(stringToCheck)
+    const result = decodePath(stringToCheck).path
     expect(result).toBe(`path%ZZ%D1%88test%5Cé`)
   })
 
   it('should return empty string unchanged', () => {
-    expect(decodePath('')).toBe('')
+    expect(decodePath('').path).toBe('')
   })
 
   it('should return strings without encoding unchanged', () => {
     const stringToCheck = 'plain-text-path'
-    expect(decodePath(stringToCheck)).toBe(stringToCheck)
+    expect(decodePath(stringToCheck).path).toBe(stringToCheck)
   })
 
   it('should handle consecutive ignored characters', () => {
     const stringToCheck = 'test%25%25end'
     const expectedResult = 'test%25%25end'
-    expect(decodePath(stringToCheck)).toBe(expectedResult)
+    expect(decodePath(stringToCheck).path).toBe(expectedResult)
   })
 
   it('should handle multiple ignored items of the same type with varying case', () => {
     const stringToCheck = '/params-ps/named/foo%2Fabc/c%2Fh'
     const expectedResult = '/params-ps/named/foo%2Fabc/c%2Fh'
-    expect(decodePath(stringToCheck)).toBe(expectedResult)
+    expect(decodePath(stringToCheck).path).toBe(expectedResult)
 
     const stringToCheckWithLowerCase = '/params-ps/named/foo%2Fabc/c%5C%2f%5cAh'
     const expectedResultWithLowerCase =
       '/params-ps/named/foo%2Fabc/c%5C%2f%5cAh'
-    expect(decodePath(stringToCheckWithLowerCase)).toBe(
+    expect(decodePath(stringToCheckWithLowerCase).path).toBe(
       expectedResultWithLowerCase,
     )
   })
@@ -619,49 +551,377 @@ describe('decodePath', () => {
       // /%0d/google.com/ decodes to /\r/google.com/ which becomes //google.com/
       // This must be sanitized to prevent protocol-relative URL interpretation
       const result = decodePath('/%0d/google.com/')
-      expect(result).toBe('/google.com/')
-      expect(result).not.toMatch(/^\/\//)
+      expect(result.path).toBe('/google.com/')
+      expect(result.path).not.toMatch(/^\/\//)
+      expect(result.handledProtocolRelativeURL).toBe(true)
     })
 
     it('should strip LF (%0a) to prevent open redirect', () => {
       const result = decodePath('/%0a/evil.com/')
-      expect(result).toBe('/evil.com/')
-      expect(result).not.toMatch(/^\/\//)
+      expect(result.path).toBe('/evil.com/')
+      expect(result.path).not.toMatch(/^\/\//)
+      expect(result.handledProtocolRelativeURL).toBe(true)
     })
 
     it('should strip CRLF (%0d%0a) to prevent open redirect', () => {
       const result = decodePath('/%0d%0a/evil.com/')
-      expect(result).toBe('/evil.com/')
-      expect(result).not.toMatch(/^\/\//)
+      expect(result.path).toBe('/evil.com/')
+      expect(result.path).not.toMatch(/^\/\//)
+      expect(result.handledProtocolRelativeURL).toBe(true)
     })
 
     it('should strip multiple control characters to prevent open redirect', () => {
       const result = decodePath('/%0d%0d%0d/evil.com/')
-      expect(result).toBe('/evil.com/')
-      expect(result).not.toMatch(/^\/\//)
+      expect(result.path).toBe('/evil.com/')
+      expect(result.path).not.toMatch(/^\/\//)
+      expect(result.handledProtocolRelativeURL).toBe(true)
     })
 
     it('should strip null bytes and other control characters', () => {
       const result = decodePath('/%00/test/')
-      expect(result).toBe('/test/')
+      expect(result.path).toBe('/test/')
+      expect(result.handledProtocolRelativeURL).toBe(true)
     })
 
     it('should collapse leading double slashes to prevent protocol-relative URLs', () => {
       // After stripping control chars, ensure we don't end up with //evil.com
       const result = decodePath('/%0d%0a/evil.com/path')
       // Should resolve to localhost, not evil.com
-      const url = new URL(result, 'http://localhost:3000')
+      const url = new URL(result.path, 'http://localhost:3000')
       expect(url.origin).toBe('http://localhost:3000')
+      expect(result.handledProtocolRelativeURL).toBe(true)
     })
 
     it('should handle normal paths unchanged', () => {
-      expect(decodePath('/users/profile/')).toBe('/users/profile/')
-      expect(decodePath('/api/v1/data')).toBe('/api/v1/data')
+      expect(decodePath('/users/profile/').path).toBe('/users/profile/')
+      expect(decodePath('/users/profile/').handledProtocolRelativeURL).toBe(
+        false,
+      )
+      expect(decodePath('/api/v1/data').path).toBe('/api/v1/data')
+      expect(decodePath('/api/v1/data').handledProtocolRelativeURL).toBe(false)
     })
 
     it('should handle double slash only input', () => {
       // Direct // input should also be collapsed
-      expect(decodePath('//')).toBe('/')
+      const result = decodePath('//')
+      expect(result.path).toBe('/')
+      expect(result.handledProtocolRelativeURL).toBe(true)
+    })
+  })
+})
+
+/**
+ * Tests for getEnumerableOwnKeys behavior (internal function).
+ * Tested indirectly through replaceEqualDeep since getEnumerableOwnKeys is not exported.
+ *
+ * getEnumerableOwnKeys should:
+ * 1. Return array of all enumerable own keys (strings + symbols)
+ * 2. Return false if any property is non-enumerable
+ * 3. Handle objects with no symbols efficiently (optimization target)
+ */
+describe('getEnumerableOwnKeys behavior (via replaceEqualDeep)', () => {
+  describe('plain objects with string keys only', () => {
+    it('should handle empty objects', () => {
+      const prev = {}
+      const next = {}
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should handle objects with single key', () => {
+      const prev = { a: 1 }
+      const next = { a: 1 }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should handle objects with many keys', () => {
+      const prev = {
+        a: 1,
+        b: 2,
+        c: 3,
+        d: 4,
+        e: 5,
+        f: 6,
+        g: 7,
+        h: 8,
+        i: 9,
+        j: 10,
+      }
+      const next = {
+        a: 1,
+        b: 2,
+        c: 3,
+        d: 4,
+        e: 5,
+        f: 6,
+        g: 7,
+        h: 8,
+        i: 9,
+        j: 10,
+      }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should handle objects with numeric string keys', () => {
+      const prev = { '0': 'a', '1': 'b', '2': 'c' }
+      const next = { '0': 'a', '1': 'b', '2': 'c' }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should handle objects with special string keys', () => {
+      const prev = {
+        'key-with-dash': 1,
+        'key.with.dot': 2,
+        'key with space': 3,
+      }
+      const next = {
+        'key-with-dash': 1,
+        'key.with.dot': 2,
+        'key with space': 3,
+      }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should detect differences in objects with string keys', () => {
+      const prev = { a: 1, b: 2, c: 3 }
+      const next = { a: 1, b: 99, c: 3 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).not.toBe(prev)
+      expect(result).toEqual(next)
+    })
+  })
+
+  describe('objects with symbol keys', () => {
+    it('should handle objects with single symbol key', () => {
+      const sym = Symbol('test')
+      const prev = { [sym]: 1 }
+      const next = { [sym]: 1 }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should handle objects with multiple symbol keys', () => {
+      const sym1 = Symbol('a')
+      const sym2 = Symbol('b')
+      const sym3 = Symbol('c')
+      const prev = { [sym1]: 1, [sym2]: 2, [sym3]: 3 }
+      const next = { [sym1]: 1, [sym2]: 2, [sym3]: 3 }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should detect differences in symbol values', () => {
+      const sym = Symbol('test')
+      const prev = { [sym]: 1 }
+      const next = { [sym]: 2 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).not.toBe(prev)
+      expect(result[sym]).toBe(2)
+    })
+
+    it('should handle global symbols', () => {
+      const sym = Symbol.for('global.test.key')
+      const prev = { [sym]: 'value' }
+      const next = { [sym]: 'value' }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+  })
+
+  describe('objects with mixed string and symbol keys', () => {
+    it('should handle objects with both string and symbol keys', () => {
+      const sym = Symbol('test')
+      const prev = { a: 1, b: 2, [sym]: 3 }
+      const next = { a: 1, b: 2, [sym]: 3 }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should detect differences in string keys when symbols present', () => {
+      const sym = Symbol('test')
+      const prev = { a: 1, b: 2, [sym]: 3 }
+      const next = { a: 1, b: 99, [sym]: 3 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).not.toBe(prev)
+      expect(result.b).toBe(99)
+      expect(result[sym]).toBe(3)
+    })
+
+    it('should detect differences in symbol keys when strings present', () => {
+      const sym = Symbol('test')
+      const prev = { a: 1, b: 2, [sym]: 3 }
+      const next = { a: 1, b: 2, [sym]: 99 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).not.toBe(prev)
+      expect(result.a).toBe(1)
+      expect(result[sym]).toBe(99)
+    })
+
+    it('should handle complex nested objects with symbols', () => {
+      const sym = Symbol('nested')
+      const prev = { outer: { inner: 1, [sym]: { deep: 'value' } } }
+      const next = { outer: { inner: 1, [sym]: { deep: 'value' } } }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+  })
+
+  describe('non-enumerable properties', () => {
+    it('should treat objects with non-enumerable string property as non-plain', () => {
+      const prev: Record<string, number> = { a: 1 }
+      Object.defineProperty(prev, 'hidden', { value: 2, enumerable: false })
+      const next: Record<string, number> = { a: 1 }
+      Object.defineProperty(next, 'hidden', { value: 2, enumerable: false })
+
+      // Non-plain objects should return next, not prev (no structural sharing)
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(next)
+    })
+
+    it('should treat objects with non-enumerable symbol property as non-plain', () => {
+      const sym = Symbol('hidden')
+      const prev: Record<string | symbol, number> = { a: 1 }
+      Object.defineProperty(prev, sym, { value: 2, enumerable: false })
+      const next: Record<string | symbol, number> = { a: 1 }
+      Object.defineProperty(next, sym, { value: 2, enumerable: false })
+
+      // Non-plain objects should return next, not prev
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(next)
+    })
+
+    it('should handle mix of enumerable and non-enumerable properties', () => {
+      const prev: Record<string, number> = { visible: 1 }
+      Object.defineProperty(prev, 'hidden', { value: 2, enumerable: false })
+      const next = { visible: 1 }
+
+      // prev is non-plain (has non-enumerable), next is plain
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(next)
+    })
+
+    it('should handle non-enumerable property that shadows a string key', () => {
+      const prev = Object.create(null)
+      prev.a = 1
+      Object.defineProperty(prev, 'b', { value: 2, enumerable: false })
+
+      const next = Object.create(null)
+      next.a = 1
+      next.b = 2 // enumerable version
+
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(next)
+    })
+  })
+
+  describe('edge cases for key enumeration', () => {
+    it('should handle frozen objects as non-plain (configurable is false)', () => {
+      const prev = Object.freeze({ a: 1, b: 2 })
+      const next = Object.freeze({ a: 1, b: 2 })
+
+      // Frozen objects have all properties as non-configurable but still enumerable
+      // They should still work with replaceEqualDeep
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(prev)
+    })
+
+    it('should handle sealed objects', () => {
+      const prev = Object.seal({ a: 1, b: 2 })
+      const next = Object.seal({ a: 1, b: 2 })
+
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(prev)
+    })
+
+    it('should handle objects created with Object.create(null)', () => {
+      const prev = Object.create(null)
+      prev.a = 1
+      prev.b = 2
+
+      const next = Object.create(null)
+      next.a = 1
+      next.b = 2
+
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(prev)
+    })
+
+    it('should handle objects with inherited properties (only own props checked)', () => {
+      const proto = { inherited: 'value' }
+      const prev = Object.create(proto)
+      prev.own = 1
+
+      const next = Object.create(proto)
+      next.own = 1
+
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(prev)
+    })
+
+    it('should not be confused by Object.prototype properties', () => {
+      // Ensure hasOwnProperty, toString, etc. don't interfere
+      const prev = { hasOwnProperty: 1, toString: 2, valueOf: 3 }
+      const next = { hasOwnProperty: 1, toString: 2, valueOf: 3 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(prev)
+    })
+  })
+
+  describe('performance-critical scenarios (typical router state)', () => {
+    it('should efficiently handle typical router location object', () => {
+      const prev = {
+        pathname: '/users/123',
+        search: '?tab=settings',
+        hash: '#section',
+        state: { key: 'abc123' },
+      }
+      const next = {
+        pathname: '/users/123',
+        search: '?tab=settings',
+        hash: '#section',
+        state: { key: 'abc123' },
+      }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should efficiently handle typical router match object', () => {
+      const prev = {
+        id: 'route-1',
+        routeId: '/users/$userId',
+        pathname: '/users/123',
+        params: { userId: '123' },
+        search: {},
+        fullPath: '/users/$userId',
+        loaderData: { user: { name: 'John' } },
+      }
+      const next = {
+        id: 'route-1',
+        routeId: '/users/$userId',
+        pathname: '/users/123',
+        params: { userId: '123' },
+        search: {},
+        fullPath: '/users/$userId',
+        loaderData: { user: { name: 'John' } },
+      }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should efficiently handle array of matches', () => {
+      const prev = [
+        { id: '1', routeId: '__root__', pathname: '/', params: {} },
+        { id: '2', routeId: '/users', pathname: '/users', params: {} },
+        {
+          id: '3',
+          routeId: '/users/$userId',
+          pathname: '/users/123',
+          params: { userId: '123' },
+        },
+      ]
+      const next = [
+        { id: '1', routeId: '__root__', pathname: '/', params: {} },
+        { id: '2', routeId: '/users', pathname: '/users', params: {} },
+        {
+          id: '3',
+          routeId: '/users/$userId',
+          pathname: '/users/123',
+          params: { userId: '123' },
+        },
+      ]
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
     })
   })
 })
@@ -720,6 +980,43 @@ describe('escapeHtml', () => {
   it('should handle mixed content', () => {
     expect(escapeHtml('a<b>c&d\u2028e\u2029f')).toBe(
       'a\\u003cb\\u003ec\\u0026d\\u2028e\\u2029f',
+    )
+  })
+})
+
+describe('encodePathLikeUrl', () => {
+  it('should return path unchanged if no non-ASCII characters', () => {
+    expect(encodePathLikeUrl('/foo/bar/baz')).toBe('/foo/bar/baz')
+  })
+
+  it('should encode non-ASCII characters', () => {
+    expect(encodePathLikeUrl('/path/caf\u00e9')).toBe('/path/caf%C3%A9')
+  })
+
+  it('should encode unicode characters in path segments', () => {
+    expect(encodePathLikeUrl('/users/\u4e2d\u6587/profile')).toBe(
+      '/users/%E4%B8%AD%E6%96%87/profile',
+    )
+  })
+
+  it('should encode spaces but preserve other ASCII special characters', () => {
+    // encodePathLikeUrl encodes whitespace and non-ASCII, but not other ASCII special chars
+    expect(encodePathLikeUrl('/path/file name.pdf')).toBe(
+      '/path/file%20name.pdf',
+    )
+    expect(encodePathLikeUrl('/path/file[1].pdf')).toBe('/path/file[1].pdf')
+    expect(encodePathLikeUrl('/path#section')).toBe('/path#section')
+  })
+
+  it('should handle mixed ASCII and non-ASCII characters', () => {
+    expect(encodePathLikeUrl('/path/caf\u00e9 (copy).pdf')).toBe(
+      '/path/caf%C3%A9%20(copy).pdf',
+    )
+  })
+
+  it('should handle emoji characters', () => {
+    expect(encodePathLikeUrl('/path/\u{1F600}/file')).toBe(
+      '/path/%F0%9F%98%80/file',
     )
   })
 })

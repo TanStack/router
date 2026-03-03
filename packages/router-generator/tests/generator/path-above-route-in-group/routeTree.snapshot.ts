@@ -32,7 +32,7 @@ const ABcDEIndexRoute = ABcDEIndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/a/$b': typeof ABcRouteRouteWithChildren
   '/a/$b/': typeof ABcIndexRoute
-  '/a/$b/d/e': typeof ABcDEIndexRoute
+  '/a/$b/d/e/': typeof ABcDEIndexRoute
 }
 export interface FileRoutesByTo {
   '/a/$b': typeof ABcIndexRoute
@@ -46,7 +46,7 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/a/$b' | '/a/$b/' | '/a/$b/d/e'
+  fullPaths: '/a/$b' | '/a/$b/' | '/a/$b/d/e/'
   fileRoutesByTo: FileRoutesByTo
   to: '/a/$b' | '/a/$b/d/e'
   id: '__root__' | '/a/$b/(c)' | '/a/$b/(c)/' | '/a/$b/(c)/d/e/'
@@ -75,7 +75,7 @@ declare module '@tanstack/react-router' {
     '/a/$b/(c)/d/e/': {
       id: '/a/$b/(c)/d/e/'
       path: '/d/e'
-      fullPath: '/a/$b/d/e'
+      fullPath: '/a/$b/d/e/'
       preLoaderRoute: typeof ABcDEIndexRouteImport
       parentRoute: typeof ABcRouteRoute
     }

@@ -56,6 +56,10 @@ export async function serverFnFetcher(
   const first = _first as FunctionMiddlewareClientFnOptions<any, any, any> & {
     headers?: HeadersInit
   }
+
+  // Use custom fetch if provided, otherwise fall back to the passed handler (global fetch)
+  const fetchImpl = first.fetch ?? handler
+
   const type = first.data instanceof FormData ? 'formData' : 'payload'
 
   // Arrange the headers
@@ -97,7 +101,7 @@ export async function serverFnFetcher(
   }
 
   return await getResponse(async () =>
-    handler(url, {
+    fetchImpl(url, {
       method: first.method,
       headers,
       signal: first.signal,

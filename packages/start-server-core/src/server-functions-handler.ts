@@ -44,16 +44,25 @@ export const handleServerAction = async ({
   context: any
   serverFnId: string
 }) => {
-  const controller = new AbortController()
-  const signal = controller.signal
-  const abort = () => controller.abort()
-  request.signal.addEventListener('abort', abort)
-
   const method = request.method
-  const methodLower = method.toLowerCase()
+  const methodUpper = method.toUpperCase()
   const url = new URL(request.url)
 
   const action = await getServerFnById(serverFnId, { fromClient: true })
+
+  // Early method check: reject mismatched HTTP methods before parsing
+  // the request payload (FormData, JSON, query string, etc.)
+  if (action.method && methodUpper !== action.method) {
+    return new Response(
+      `expected ${action.method} method. Got ${methodUpper}`,
+      {
+        status: 405,
+        headers: {
+          Allow: action.method,
+        },
+      },
+    )
+  }
 
   const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'
 
@@ -80,7 +89,7 @@ export const handleServerAction = async ({
         ) {
           // We don't support GET requests with FormData payloads... that seems impossible
           invariant(
-            methodLower !== 'get',
+            methodUpper !== 'GET',
             'GET requests with FormData payloads are not supported',
           )
           const formData = await request.formData()
@@ -90,6 +99,7 @@ export const handleServerAction = async ({
           const params = {
             context,
             data: formData,
+            method: methodUpper,
           }
           if (typeof serializedContext === 'string') {
             try {
@@ -114,11 +124,11 @@ export const handleServerAction = async ({
             }
           }
 
-          return await action(params, signal)
+          return await action(params)
         }
 
         // Get requests use the query string
-        if (methodLower === 'get') {
+        if (methodUpper === 'GET') {
           // Get payload directly from searchParams
           const payloadParam = url.searchParams.get('payload')
           // Reject oversized payloads to prevent DoS
@@ -130,12 +140,9 @@ export const handleServerAction = async ({
             ? parsePayload(JSON.parse(payloadParam))
             : {}
           payload.context = safeObjectMerge(context, payload.context)
+          payload.method = methodUpper
           // Send it through!
-          return await action(payload, signal)
-        }
-
-        if (methodLower !== 'post') {
-          throw new Error('expected POST method')
+          return await action(payload)
         }
 
         let jsonPayload
@@ -145,7 +152,8 @@ export const handleServerAction = async ({
 
         const payload = jsonPayload ? parsePayload(jsonPayload) : {}
         payload.context = safeObjectMerge(payload.context, context)
-        return await action(payload, signal)
+        payload.method = methodUpper
+        return await action(payload)
       })()
 
       const unwrapped = res.result || res.error
@@ -351,8 +359,6 @@ export const handleServerAction = async ({
       })
     }
   })()
-
-  request.signal.removeEventListener('abort', abort)
 
   return response
 }

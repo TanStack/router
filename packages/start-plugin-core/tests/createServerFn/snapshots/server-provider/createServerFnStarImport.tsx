@@ -5,7 +5,7 @@ const withUseServer_createServerFn_handler = createServerRpc({
   id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
   name: "withUseServer",
   filename: "src/test.ts"
-}, (opts, signal) => withUseServer.__executeServer(opts, signal));
+}, opts => withUseServer.__executeServer(opts));
 const withUseServer = TanStackStart.createServerFn({
   method: 'GET'
 }).handler(withUseServer_createServerFn_handler, async function () {
@@ -19,7 +19,7 @@ const withoutUseServer_createServerFn_handler = createServerRpc({
   id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRob3V0VXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
   name: "withoutUseServer",
   filename: "src/test.ts"
-}, (opts, signal) => withoutUseServer.__executeServer(opts, signal));
+}, opts => withoutUseServer.__executeServer(opts));
 const withoutUseServer = TanStackStart.createServerFn({
   method: 'GET'
 }).handler(withoutUseServer_createServerFn_handler, async () => {
@@ -31,7 +31,7 @@ const withVariable_createServerFn_handler = createServerRpc({
   id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVmFyaWFibGVfY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9",
   name: "withVariable",
   filename: "src/test.ts"
-}, (opts, signal) => withVariable.__executeServer(opts, signal));
+}, opts => withVariable.__executeServer(opts));
 const withVariable = TanStackStart.createServerFn({
   method: 'GET'
 }).handler(withVariable_createServerFn_handler, abstractedFunction);
@@ -49,7 +49,7 @@ const withZodValidator_createServerFn_handler = createServerRpc({
   id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoWm9kVmFsaWRhdG9yX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
   name: "withZodValidator",
   filename: "src/test.ts"
-}, (opts, signal) => withZodValidator.__executeServer(opts, signal));
+}, opts => withZodValidator.__executeServer(opts));
 const withZodValidator = TanStackStart.createServerFn({
   method: 'GET'
 }).handler(withZodValidator_createServerFn_handler, zodValidator(z.number(), input => {

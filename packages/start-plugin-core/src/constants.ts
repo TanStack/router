@@ -19,6 +19,8 @@ export const ENTRY_POINTS = {
   router: '#tanstack-router-entry',
 } as const
 
+export const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
+
 // matches
 // .ts, .tsx, .cts, .mts, .js, .jsx, .cjs, .mjs
 // with optional query params after

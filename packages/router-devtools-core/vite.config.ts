@@ -1,10 +1,9 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/config/vite'
 import solid from 'vite-plugin-solid'
-import type { UserConfig } from 'vitest/config'
 
 const config = defineConfig({
-  plugins: [solid()] as UserConfig['plugins'],
+  plugins: [solid()],
 })
 
 const merged = mergeConfig(
@@ -16,7 +15,7 @@ const merged = mergeConfig(
   }),
 )
 
-merged.build.rollupOptions.output.manualChunks = false
+merged.build.rollupOptions.output.manualChunks = undefined
 merged.build.rollupOptions.output.preserveModules = false
 
 export default merged

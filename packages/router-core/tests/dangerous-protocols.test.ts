@@ -1,258 +1,229 @@
 import { describe, expect, it } from 'vitest'
-import { isDangerousProtocol } from '../src/utils'
+import { DEFAULT_PROTOCOL_ALLOWLIST, isDangerousProtocol } from '../src/utils'
 import { redirect } from '../src/redirect'
+import { BaseRootRoute, RouterCore } from '../src'
+
+const defaultAllowlistSet = new Set(DEFAULT_PROTOCOL_ALLOWLIST)
 
 describe('isDangerousProtocol', () => {
-  describe('dangerous protocols (not whitelisted)', () => {
+  describe('blocked protocols (not in default allowlist)', () => {
     it('should detect javascript: protocol', () => {
-      expect(isDangerousProtocol('javascript:alert(1)')).toBe(true)
-    })
-
-    it('should detect javascript: with newlines', () => {
-      expect(isDangerousProtocol('java\nscript:alert(1)')).toBe(true)
-      expect(isDangerousProtocol('java\rscript:alert(1)')).toBe(true)
-      expect(isDangerousProtocol('java\tscript:alert(1)')).toBe(true)
-    })
-
-    it('should detect javascript: with mixed case', () => {
-      expect(isDangerousProtocol('JavaScript:alert(1)')).toBe(true)
-      expect(isDangerousProtocol('JAVASCRIPT:alert(1)')).toBe(true)
-      expect(isDangerousProtocol('jAvAsCrIpT:alert(1)')).toBe(true)
-    })
-
-    it('should detect javascript: with leading whitespace', () => {
-      expect(isDangerousProtocol(' javascript:alert(1)')).toBe(true)
-      expect(isDangerousProtocol('\tjavascript:alert(1)')).toBe(true)
-      expect(isDangerousProtocol('\njavascript:alert(1)')).toBe(true)
-    })
-
-    it('should detect data: protocol', () => {
       expect(
-        isDangerousProtocol('data:text/html,<script>alert(1)</script>'),
+        isDangerousProtocol('javascript:alert(1)', defaultAllowlistSet),
       ).toBe(true)
     })
 
-    it('should detect vbscript: protocol', () => {
-      expect(isDangerousProtocol('vbscript:msgbox(1)')).toBe(true)
+    it('should detect javascript: with mixed case and whitespace', () => {
+      expect(
+        isDangerousProtocol('JavaScript:alert(1)', defaultAllowlistSet),
+      ).toBe(true)
+      expect(
+        isDangerousProtocol('  \t\n  javascript:alert(1)', defaultAllowlistSet),
+      ).toBe(true)
+      expect(
+        isDangerousProtocol('java\nscript:alert(1)', defaultAllowlistSet),
+      ).toBe(true)
     })
 
-    it('should detect file: protocol', () => {
-      expect(isDangerousProtocol('file:///etc/passwd')).toBe(true)
+    it('should detect known unsafe schemes', () => {
+      expect(
+        isDangerousProtocol(
+          'data:text/html,<script>alert(1)</script>',
+          defaultAllowlistSet,
+        ),
+      ).toBe(true)
+      expect(
+        isDangerousProtocol(
+          'blob:https://example.com/some-uuid',
+          defaultAllowlistSet,
+        ),
+      ).toBe(true)
+      expect(
+        isDangerousProtocol('vbscript:msgbox(1)', defaultAllowlistSet),
+      ).toBe(true)
+      expect(
+        isDangerousProtocol('file:///etc/passwd', defaultAllowlistSet),
+      ).toBe(true)
+      expect(isDangerousProtocol('about:blank', defaultAllowlistSet)).toBe(true)
     })
 
-    it('should detect unknown protocols', () => {
-      expect(isDangerousProtocol('custom:something')).toBe(true)
-      expect(isDangerousProtocol('foo:bar')).toBe(true)
+    it('should block custom protocols by default', () => {
+      expect(isDangerousProtocol('custom:something', defaultAllowlistSet)).toBe(
+        true,
+      )
+      expect(isDangerousProtocol('foo:bar', defaultAllowlistSet)).toBe(true)
     })
   })
 
-  describe('safe protocols (whitelisted)', () => {
-    it('should allow http: protocol', () => {
-      expect(isDangerousProtocol('http://example.com')).toBe(false)
+  describe('allowed protocols (in default allowlist)', () => {
+    it('should allow http and https', () => {
+      expect(
+        isDangerousProtocol('http://example.com', defaultAllowlistSet),
+      ).toBe(false)
+      expect(
+        isDangerousProtocol('https://example.com', defaultAllowlistSet),
+      ).toBe(false)
     })
 
-    it('should allow https: protocol', () => {
-      expect(isDangerousProtocol('https://example.com')).toBe(false)
-    })
-
-    it('should allow mailto: protocol', () => {
-      expect(isDangerousProtocol('mailto:user@example.com')).toBe(false)
-    })
-
-    it('should allow tel: protocol', () => {
-      expect(isDangerousProtocol('tel:+1234567890')).toBe(false)
+    it('should allow mailto and tel', () => {
+      expect(
+        isDangerousProtocol('mailto:user@example.com', defaultAllowlistSet),
+      ).toBe(false)
+      expect(isDangerousProtocol('tel:+1234567890', defaultAllowlistSet)).toBe(
+        false,
+      )
     })
   })
 
   describe('relative URLs (no protocol)', () => {
-    it('should allow relative paths', () => {
-      expect(isDangerousProtocol('/path/to/page')).toBe(false)
-      expect(isDangerousProtocol('./relative')).toBe(false)
-      expect(isDangerousProtocol('../parent')).toBe(false)
-    })
-
-    it('should allow query strings', () => {
-      expect(isDangerousProtocol('?foo=bar')).toBe(false)
-    })
-
-    it('should allow hash fragments', () => {
-      expect(isDangerousProtocol('#section')).toBe(false)
+    it('should allow relative paths, query strings and hash fragments', () => {
+      expect(isDangerousProtocol('/path/to/page', defaultAllowlistSet)).toBe(
+        false,
+      )
+      expect(isDangerousProtocol('./relative', defaultAllowlistSet)).toBe(false)
+      expect(isDangerousProtocol('../parent', defaultAllowlistSet)).toBe(false)
+      expect(isDangerousProtocol('?foo=bar', defaultAllowlistSet)).toBe(false)
+      expect(isDangerousProtocol('#section', defaultAllowlistSet)).toBe(false)
     })
   })
 
   describe('edge cases', () => {
     it('should handle empty and null-ish inputs', () => {
-      expect(isDangerousProtocol('')).toBe(false)
+      expect(isDangerousProtocol('', defaultAllowlistSet)).toBe(false)
+      expect(
+        isDangerousProtocol(null as unknown as string, defaultAllowlistSet),
+      ).toBe(false)
+      expect(
+        isDangerousProtocol(
+          undefined as unknown as string,
+          defaultAllowlistSet,
+        ),
+      ).toBe(false)
     })
 
-    it('should not be fooled by javascript in pathname', () => {
-      expect(isDangerousProtocol('https://example.com/javascript:foo')).toBe(
+    it('should not be fooled by javascript in pathname or query', () => {
+      expect(
+        isDangerousProtocol(
+          'https://example.com/javascript:foo',
+          defaultAllowlistSet,
+        ),
+      ).toBe(false)
+      expect(isDangerousProtocol('/javascript:foo', defaultAllowlistSet)).toBe(
         false,
       )
-      expect(isDangerousProtocol('/javascript:foo')).toBe(false)
+      expect(isDangerousProtocol('/path?time=12:00', defaultAllowlistSet)).toBe(
+        false,
+      )
     })
 
-    it('should not be fooled by colon in query string', () => {
-      expect(isDangerousProtocol('/path?time=12:00')).toBe(false)
+    it('should return false for malformed/encoded scheme strings that URL rejects', () => {
+      expect(
+        isDangerousProtocol(
+          '%6a%61%76%61%73%63%72%69%70%74:alert(1)',
+          defaultAllowlistSet,
+        ),
+      ).toBe(false)
+      expect(isDangerousProtocol(':::', defaultAllowlistSet)).toBe(false)
+      expect(isDangerousProtocol('123:456', defaultAllowlistSet)).toBe(false)
+      expect(isDangerousProtocol('//example.com', defaultAllowlistSet)).toBe(
+        false,
+      )
+    })
+
+    it('should detect dangerous protocol with leading control characters', () => {
+      expect(
+        isDangerousProtocol('\x00javascript:alert(1)', defaultAllowlistSet),
+      ).toBe(true)
+      expect(
+        isDangerousProtocol(
+          '\x01\x02\x03javascript:alert(1)',
+          defaultAllowlistSet,
+        ),
+      ).toBe(true)
     })
   })
 
-  describe('additional edge cases', () => {
-    describe('null and undefined inputs', () => {
-      it('should return false for null', () => {
-        expect(isDangerousProtocol(null as unknown as string)).toBe(false)
-      })
+  describe('custom allowlist', () => {
+    it('should use custom allowlist when provided', () => {
+      const customAllowlist = new Set(['ftp:', 'ssh:'])
 
-      it('should return false for undefined', () => {
-        expect(isDangerousProtocol(undefined as unknown as string)).toBe(false)
-      })
+      expect(isDangerousProtocol('ftp://example.com', customAllowlist)).toBe(
+        false,
+      )
+      expect(isDangerousProtocol('ssh://example.com', customAllowlist)).toBe(
+        false,
+      )
+      expect(isDangerousProtocol('javascript:alert(1)', customAllowlist)).toBe(
+        true,
+      )
+      expect(isDangerousProtocol('https://example.com', customAllowlist)).toBe(
+        true,
+      )
     })
 
-    describe('URL-encoded schemes', () => {
-      it('should return false for URL-encoded javascript: protocol (URL constructor does not decode protocol)', () => {
-        // %6a%61%76%61%73%63%72%69%70%74 = javascript
-        // The URL constructor treats this as an invalid URL (throws), so it returns false
-        // This is safe because browsers also don't decode percent-encoding in protocols
-        expect(
-          isDangerousProtocol('%6a%61%76%61%73%63%72%69%70%74:alert(1)'),
-        ).toBe(false)
-      })
-
-      it('should return false for partially URL-encoded javascript: protocol', () => {
-        // URL constructor throws for these malformed URLs
-        expect(isDangerousProtocol('%6aavascript:alert(1)')).toBe(false)
-        expect(isDangerousProtocol('j%61vascript:alert(1)')).toBe(false)
-      })
-
-      it('should return false for URL-encoded data: protocol', () => {
-        // %64%61%74%61 = data
-        // URL constructor treats this as invalid
-        expect(
-          isDangerousProtocol(
-            '%64%61%74%61:text/html,<script>alert(1)</script>',
-          ),
-        ).toBe(false)
-      })
-
-      it('should return false for URL-encoded vbscript: protocol', () => {
-        // %76%62%73%63%72%69%70%74 = vbscript
-        // URL constructor treats this as invalid
-        expect(isDangerousProtocol('%76%62%73%63%72%69%70%74:msgbox(1)')).toBe(
-          false,
-        )
-      })
-
-      it('should return false for URL-encoded safe protocols (URL constructor does not decode)', () => {
-        // %68%74%74%70%73 = https
-        // URL constructor treats this as invalid since percent-encoding in protocol is not decoded
-        expect(isDangerousProtocol('%68%74%74%70%73://example.com')).toBe(false)
-      })
+    it('should block absolute URLs with an empty allowlist', () => {
+      const emptyAllowlist = new Set<string>()
+      expect(isDangerousProtocol('javascript:alert(1)', emptyAllowlist)).toBe(
+        true,
+      )
+      expect(isDangerousProtocol('data:text/html,test', emptyAllowlist)).toBe(
+        true,
+      )
+      expect(isDangerousProtocol('https://example.com', emptyAllowlist)).toBe(
+        true,
+      )
     })
 
-    describe('protocol-relative URLs', () => {
-      it('should return false for protocol-relative URLs', () => {
-        expect(isDangerousProtocol('//example.com')).toBe(false)
-      })
+    it('should allow extending the default allowlist', () => {
+      const extendedAllowlist = new Set([
+        ...DEFAULT_PROTOCOL_ALLOWLIST,
+        'ftp:',
+        'gopher:',
+      ])
 
-      it('should return false for protocol-relative URLs with paths', () => {
-        expect(isDangerousProtocol('//example.com/path/to/page')).toBe(false)
-      })
-
-      it('should return false for protocol-relative URLs with query strings', () => {
-        expect(isDangerousProtocol('//example.com?foo=bar')).toBe(false)
-      })
-
-      it('should return false for protocol-relative URLs with hash', () => {
-        expect(isDangerousProtocol('//example.com#section')).toBe(false)
-      })
+      expect(
+        isDangerousProtocol('javascript:alert(1)', extendedAllowlist),
+      ).toBe(true)
+      expect(isDangerousProtocol('ftp://example.com', extendedAllowlist)).toBe(
+        false,
+      )
+      expect(
+        isDangerousProtocol('gopher://example.com', extendedAllowlist),
+      ).toBe(false)
+      expect(
+        isDangerousProtocol('https://example.com', extendedAllowlist),
+      ).toBe(false)
     })
+  })
 
-    describe('malformed inputs', () => {
-      it('should return false for strings without valid protocol pattern', () => {
-        expect(isDangerousProtocol('not a url at all')).toBe(false)
-      })
-
-      it('should return false for strings with only colons', () => {
-        expect(isDangerousProtocol(':::')).toBe(false)
-      })
-
-      it('should return false for strings starting with numbers', () => {
-        expect(isDangerousProtocol('123:456')).toBe(false)
-      })
-
-      it('should handle strings with non-printable characters', () => {
-        expect(isDangerousProtocol('\x00javascript:alert(1)')).toBe(true)
-        expect(isDangerousProtocol('\x01\x02\x03javascript:alert(1)')).toBe(
-          true,
-        )
-      })
-
-      it('should return false for very long benign paths', () => {
-        const longPath = '/' + 'a'.repeat(10000)
-        expect(isDangerousProtocol(longPath)).toBe(false)
-      })
-
-      it('should return false for very long query strings', () => {
-        const longQuery = '/path?' + 'a=b&'.repeat(1000)
-        expect(isDangerousProtocol(longQuery)).toBe(false)
-      })
-
-      it('should detect dangerous protocol even with long payload', () => {
-        const longPayload = 'javascript:' + 'a'.repeat(10000)
-        expect(isDangerousProtocol(longPayload)).toBe(true)
-      })
-
-      it('should handle unicode characters in URLs', () => {
-        expect(isDangerousProtocol('/путь/к/странице')).toBe(false)
-        expect(isDangerousProtocol('https://例え.jp/path')).toBe(false)
-      })
-
-      it('should return false for full-width unicode characters (not recognized as javascript protocol)', () => {
-        // Full-width characters are not normalized by URL constructor
-        // URL constructor throws, so this is treated as safe (relative URL)
-        expect(isDangerousProtocol('ｊａｖａｓｃｒｉｐｔ:alert(1)')).toBe(false)
-      })
-    })
-
-    describe('whitespace variations', () => {
-      it('should detect javascript: with various whitespace combinations', () => {
-        expect(isDangerousProtocol('  \t\n  javascript:alert(1)')).toBe(true)
-        expect(isDangerousProtocol('\r\njavascript:alert(1)')).toBe(true)
-      })
-
-      it('should return false for non-breaking space prefix (URL constructor throws)', () => {
-        // Non-breaking space is not stripped by URL constructor, causes it to throw
-        expect(isDangerousProtocol('\u00A0javascript:alert(1)')).toBe(false)
-      })
-
-      it('should return false for javascript: with embedded null bytes (URL constructor throws)', () => {
-        // Null bytes in the protocol cause URL constructor to throw
-        expect(isDangerousProtocol('java\x00script:alert(1)')).toBe(false)
-      })
+  describe('DEFAULT_PROTOCOL_ALLOWLIST', () => {
+    it('should contain the expected default protocols', () => {
+      expect(DEFAULT_PROTOCOL_ALLOWLIST).toEqual([
+        'http:',
+        'https:',
+        'mailto:',
+        'tel:',
+      ])
     })
   })
 })
 
-describe('redirect with dangerous protocols', () => {
-  it('should throw when href uses javascript: protocol', () => {
-    expect(() => redirect({ href: 'javascript:alert(1)' })).toThrow(
-      /unsafe protocol/,
-    )
+describe('redirect creation (no protocol validation)', () => {
+  it('should allow creating redirect with javascript: protocol', () => {
+    expect(() => redirect({ href: 'javascript:alert(1)' })).not.toThrow()
   })
 
-  it('should throw when href uses javascript: with bypass attempts', () => {
-    expect(() => redirect({ href: 'java\nscript:alert(1)' })).toThrow(
-      /unsafe protocol/,
-    )
-    expect(() => redirect({ href: 'JavaScript:alert(1)' })).toThrow(
-      /unsafe protocol/,
-    )
-  })
-
-  it('should throw when href uses data: protocol', () => {
+  it('should allow creating redirect with data: protocol', () => {
     expect(() =>
       redirect({ href: 'data:text/html,<script>alert(1)</script>' }),
-    ).toThrow(/unsafe protocol/)
+    ).not.toThrow()
+  })
+
+  it('should allow creating redirect with any protocol', () => {
+    expect(() => redirect({ href: 'custom:something' })).not.toThrow()
+    expect(() =>
+      redirect({ href: 'blob:https://example.com/uuid' }),
+    ).not.toThrow()
   })
 
   it('should allow safe protocols', () => {
@@ -263,5 +234,43 @@ describe('redirect with dangerous protocols', () => {
 
   it('should allow redirects without href', () => {
     expect(() => redirect({ to: '/home' })).not.toThrow()
+  })
+})
+
+describe('integration test on Router', () => {
+  const inputs = [
+    'x-safari-https://example.com',
+    'googlechromes://example.com',
+    'intent://example.com#Intent;scheme=https;end',
+    'foo:bar',
+  ]
+  it('should accept weird protocols from the allowlist', () => {
+    const router = new RouterCore({
+      routeTree: new BaseRootRoute(),
+      protocolAllowlist: [
+        'x-safari-https:',
+        'googlechromes:',
+        'intent:',
+        'foo:',
+      ],
+    })
+    // Each protocol in the inputs should be accepted by resolveRedirect
+    for (const href of inputs) {
+      const redir = redirect({ href })
+      expect(() => router.resolveRedirect(redir)).not.toThrow()
+    }
+  })
+  it('should block weird protocols not in the allowlist', () => {
+    const router = new RouterCore({
+      routeTree: new BaseRootRoute(),
+      protocolAllowlist: [],
+    })
+    // Each protocol in the inputs should be blocked by resolveRedirect
+    for (const href of inputs) {
+      const redir = redirect({ href })
+      expect(() => router.resolveRedirect(redir)).toThrow(
+        /Redirect blocked: unsafe protocol/,
+      )
+    }
   })
 })

@@ -45,8 +45,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/03': typeof R03Route
   '/about': typeof AboutRoute
-  '/01-example': typeof R01ExampleIndexRoute
-  '/02': typeof R02IndexRoute
+  '/01-example/': typeof R01ExampleIndexRoute
+  '/02/': typeof R02IndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -65,7 +65,7 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/03' | '/about' | '/01-example' | '/02'
+  fullPaths: '/' | '/03' | '/about' | '/01-example/' | '/02/'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/03' | '/about' | '/01-example' | '/02'
   id: '__root__' | '/' | '/03' | '/about' | '/01-example/' | '/02/'
@@ -105,14 +105,14 @@ declare module '@tanstack/react-router' {
     '/02/': {
       id: '/02/'
       path: '/02'
-      fullPath: '/02'
+      fullPath: '/02/'
       preLoaderRoute: typeof R02IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/01-example/': {
       id: '/01-example/'
       path: '/01-example'
-      fullPath: '/01-example'
+      fullPath: '/01-example/'
       preLoaderRoute: typeof R01ExampleIndexRouteImport
       parentRoute: typeof rootRouteImport
     }

@@ -17,7 +17,7 @@ or
 npm create @tanstack/start@latest -- --framework solid
 ```
 
-depending on your package manage of choice. You'll be prompted to add things like Tailwind, eslint, and a ton of other options.
+depending on your package manager of choice. You'll be prompted to add things like Tailwind, eslint, and a ton of other options.
 
 You can also clone and run the [Basic](https://github.com/TanStack/router/tree/main/examples/solid/start-basic) example right away with the following commands:
 
@@ -34,7 +34,7 @@ Once you've cloned the example you want, head back to the [Routing](./guide/rout
 
 ## Examples
 
-TanStack Start has load of examples to get you started. Pick one of the examples below to get started!
+TanStack Start has loads of examples to get you started. Pick one of the examples below to get started!
 
 - [Bare](https://github.com/TanStack/router/tree/main/examples/solid/start-bare) (start-bare)
 - [Basic](https://github.com/TanStack/router/tree/main/examples/solid/start-basic) (start-basic)
@@ -60,4 +60,4 @@ npm install
 npm run dev
 ```
 
-Once you've clone or deployed an example, head back to the [Routing](./guide/routing) guide to learn how to use TanStack Start!
+Once you've cloned or deployed an example, head back to the [Routing](./guide/routing) guide to learn how to use TanStack Start!

@@ -3,34 +3,38 @@ import { createBarServerFn } from './createBarServerFn'
 import { createFooServerFn } from './createFooServerFn'
 import { createFakeFn } from './createFakeFn'
 
-export const fooFn = createFooServerFn().handler(({ context }) => {
+export const fooFn = createFooServerFn().handler(({ context, method }) => {
   return {
     name: 'fooFn',
     context,
+    method,
   }
 })
 
 export const fooFnPOST = createFooServerFn({ method: 'POST' }).handler(
-  ({ context }) => {
+  ({ context, method }) => {
     return {
       name: 'fooFnPOST',
       context,
+      method,
     }
   },
 )
 
-export const barFn = createBarServerFn().handler(({ context }) => {
+export const barFn = createBarServerFn().handler(({ context, method }) => {
   return {
     name: 'barFn',
     context,
+    method,
   }
 })
 
 export const barFnPOST = createBarServerFn({ method: 'POST' }).handler(
-  ({ context }) => {
+  ({ context, method }) => {
     return {
       name: 'barFnPOST',
       context,
+      method,
     }
   },
 )
@@ -57,19 +61,21 @@ const anotherMiddleware = createMiddleware({ type: 'function' }).server(
 
 export const localFn = localFnFactory()
   .middleware([anotherMiddleware])
-  .handler(({ context }) => {
+  .handler(({ context, method }) => {
     return {
       name: 'localFn',
       context,
+      method,
     }
   })
 
 export const localFnPOST = localFnFactory({ method: 'POST' })
   .middleware([anotherMiddleware])
-  .handler(({ context }) => {
+  .handler(({ context, method }) => {
     return {
       name: 'localFnPOST',
       context,
+      method,
     }
   })
 
@@ -85,9 +91,10 @@ export const composeFactory = createServerFn({ method: 'GET' }).middleware([
 ])
 export const composedFn = composeFactory()
   .middleware([anotherMiddleware, localFnFactory])
-  .handler(({ context }) => {
+  .handler(({ context, method }) => {
     return {
       name: 'composedFn',
       context,
+      method,
     }
   })

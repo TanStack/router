@@ -12,7 +12,7 @@ export const Route = createFileRoute('/cookies/')({
 function RouteComponent() {
   const search = Route.useSearch()
   return (
-    <Link data-testid="link-to-set" from="/cookies" to="./set" search={search}>
+    <Link data-testid="link-to-set" from="/cookies/" to="./set" search={search}>
       got to route that sets the cookies with {JSON.stringify(search)}
     </Link>
   )

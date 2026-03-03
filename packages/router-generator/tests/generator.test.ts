@@ -165,6 +165,53 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.indexToken = /[a-z]+-page/
       config.routeToken = /[a-z]+-layout/
       break
+    case 'virtual-sibling-routes':
+      {
+        // Test case for issue #5822: Virtual routes should respect explicit sibling relationships
+        // Routes /posts and /posts/$id should remain siblings under the layout,
+        // NOT auto-nested based on path matching
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          layout('_main', 'layout.tsx', [
+            route('/posts', 'posts.tsx'),
+            route('/posts/$id', 'post-detail.tsx'),
+          ]),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
+    case 'virtual-root-sibling-routes':
+      {
+        // Test case for issue #5431: Virtual routes that are siblings at the root level
+        // should NOT be auto-nested based on shared path prefix.
+        // /device/$id and /device/$id/history/$filename are both children of root,
+        // NOT parent-child of each other.
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          route('/device/$id', 'device/route.tsx'),
+          route('/device/$id/history/$filename', 'history/route.tsx'),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
+    case 'add-extensions-custom':
+      config.addExtensions = '.js'
+      break
+    case 'virtual-nested-layouts-with-virtual-route':
+      {
+        // Test case for nested layouts with a virtual file-less route in between.
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          index('home.tsx'),
+          layout('first', 'layout/first-layout.tsx', [
+            layout('layout/second-layout.tsx', [
+              route('route-without-file', [
+                route('/layout-a', 'a.tsx'),
+                route('/layout-b', 'b.tsx'),
+              ]),
+            ]),
+          ]),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
     default:
       break
   }
@@ -252,7 +299,7 @@ function shouldThrow(folderName: string) {
     return `Conflicting configuration paths were found for the following routes: "/", "/".`
   }
   if (folderName === 'virtual-physical-empty-path-conflict-root') {
-    return `Conflicting configuration paths were found for the following routes: "/__root", "/__root".`
+    return 'Invalid route path "" was found.'
   }
   if (folderName === 'virtual-physical-empty-path-conflict-virtual') {
     return `Conflicting configuration paths were found for the following routes: "/about", "/about".`

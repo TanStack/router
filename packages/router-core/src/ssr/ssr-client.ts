@@ -1,7 +1,8 @@
 import invariant from 'tiny-invariant'
-import { batch } from '@tanstack/store'
+import { batch } from '../utils/batch'
 import { isNotFound } from '../not-found'
 import { createControlledPromise } from '../utils'
+import { hydrateSsrMatchId } from './ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
 import type { DehydratedMatch, TsrSsrGlobal } from './types'
 import type { AnyRouteMatch } from '../Matches'
@@ -54,7 +55,16 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
   )
 
-  const { manifest, dehydratedData, lastMatchId } = window.$_TSR.router
+  const dehydratedRouter = window.$_TSR.router
+  dehydratedRouter.matches.forEach((dehydratedMatch) => {
+    dehydratedMatch.i = hydrateSsrMatchId(dehydratedMatch.i)
+  })
+  if (dehydratedRouter.lastMatchId) {
+    dehydratedRouter.lastMatchId = hydrateSsrMatchId(
+      dehydratedRouter.lastMatchId,
+    )
+  }
+  const { manifest, dehydratedData, lastMatchId } = dehydratedRouter
 
   router.ssr = {
     manifest,
@@ -113,7 +123,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // First step is to reyhdrate loaderData and __beforeLoadContext
   let firstNonSsrMatchIndex: number | undefined = undefined
   matches.forEach((match) => {
-    const dehydratedMatch = window.$_TSR!.router!.matches.find(
+    const dehydratedMatch = dehydratedRouter.matches.find(
       (d) => d.i === match.id,
     )
     if (!dehydratedMatch) {
@@ -160,22 +170,24 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
         // so run it again and merge route context
         if (route.options.context) {
-          const contextFnContext: RouteContextOptions<any, any, any, any> = {
-            deps: match.loaderDeps,
-            params: match.params,
-            context: parentContext ?? {},
-            location: router.state.location,
-            navigate: (opts: any) =>
-              router.navigate({
-                ...opts,
-                _fromLocation: router.state.location,
-              }),
-            buildLocation: router.buildLocation,
-            cause: match.cause,
-            abortController: match.abortController,
-            preload: false,
-            matches,
-          }
+          const contextFnContext: RouteContextOptions<any, any, any, any, any> =
+            {
+              deps: match.loaderDeps,
+              params: match.params,
+              context: parentContext ?? {},
+              location: router.state.location,
+              navigate: (opts: any) =>
+                router.navigate({
+                  ...opts,
+                  _fromLocation: router.state.location,
+                }),
+              buildLocation: router.buildLocation,
+              cause: match.cause,
+              abortController: match.abortController,
+              preload: false,
+              matches,
+              routeId: route.id,
+            }
           match.__routeContext =
             route.options.context(contextFnContext) ?? undefined
         }
@@ -187,6 +199,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         }
 
         const assetContext = {
+          ssr: router.options.ssr,
           matches: router.state.matches,
           match,
           params: match.params,

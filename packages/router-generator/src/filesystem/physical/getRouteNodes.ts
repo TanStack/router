@@ -132,6 +132,11 @@ export async function getRouteNodes(
           node.originalRoutePath = `/${dir}${node.originalRoutePath}`
         }
         node.filePath = filePath
+        // Virtual subtree nodes (from __virtual.ts) are embedded in a
+        // physical directory tree. They should use path-based parent
+        // inference, not the explicit virtual parent tracking. Clear any
+        // _virtualParentRoutePath that was set at construction time.
+        delete node._virtualParentRoutePath
       })
 
       routeNodes.push(...virtualRouteNodes)
@@ -446,7 +451,19 @@ export function getRouteMeta(
     fsRouteType = 'notFoundComponent'
   }
 
-  const variableName = routePathToVariable(routePath)
+  // Use originalRoutePath for variable name when any segment is fully
+  // bracket-wrapped (e.g. [index], [route], [_]auth) to avoid collisions
+  // with their non-escaped counterparts that get special token treatment
+  const hasFullyEscapedSegment = originalSegments.some(
+    (seg) =>
+      seg.startsWith('[') &&
+      seg.endsWith(']') &&
+      !seg.slice(1, -1).includes('[') &&
+      !seg.slice(1, -1).includes(']'),
+  )
+  const variableName = routePathToVariable(
+    hasFullyEscapedSegment ? originalRoutePath : routePath,
+  )
 
   return { fsRouteType, variableName }
 }

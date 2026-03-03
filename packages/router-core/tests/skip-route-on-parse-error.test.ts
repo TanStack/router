@@ -636,6 +636,39 @@ describe('skipRouteOnParseError', () => {
       expect(otherResult?.route.id).toBe('/files')
       expect(otherResult?.rawParams['**']).toBe('../../secret/photo.jpg')
     })
+    it('index parse failure does not block wildcard sibling', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/a/',
+            fullPath: '/a/',
+            path: 'a/',
+            options: {
+              params: {
+                parse: () => {
+                  throw new Error('Invalid index')
+                },
+              },
+              skipRouteOnParseError: { params: true },
+            },
+          },
+          {
+            id: '/a/$',
+            fullPath: '/a/$',
+            path: 'a/$',
+            options: {},
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      const result = findRouteMatch('/a', processedTree)
+      expect(result?.route.id).toBe('/a/$')
+      expect(result?.rawParams).toEqual({ '*': '', _splat: '' })
+    })
   })
 
   describe('multiple validated routes competing', () => {

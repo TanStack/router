@@ -328,16 +328,16 @@ export function handleCreateServerFn(
       // const extractedFn = createServerRpc({id, name, filename}, (opts) => varName.__executeServer(opts));
       // const varName = createServerFn().handler(extractedFn, originalHandler);
 
-      // Build the arrow function: (opts, signal) => varName.__executeServer(opts, signal)
+      // Build the arrow function: (opts) => varName.__executeServer(opts)
       // The signal parameter is passed through to allow abort signal propagation
       const executeServerArrowFn = t.arrowFunctionExpression(
-        [t.identifier('opts'), t.identifier('signal')],
+        [t.identifier('opts')],
         t.callExpression(
           t.memberExpression(
             t.identifier(existingVariableName),
             t.identifier('__executeServer'),
           ),
-          [t.identifier('opts'), t.identifier('signal')],
+          [t.identifier('opts')],
         ),
       )
 

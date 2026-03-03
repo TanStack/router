@@ -1,4 +1,5 @@
 import { TSS_SERVER_FUNCTION } from '../constants'
+import { getStartOptions } from '../getStartOptions'
 import { serverFnFetcher } from './serverFnFetcher'
 import type { ClientFnMeta } from '../constants'
 
@@ -7,7 +8,8 @@ export function createClientRpc(functionId: string) {
   const serverFnMeta: ClientFnMeta = { id: functionId }
 
   const clientFn = (...args: Array<any>) => {
-    return serverFnFetcher(url, args, fetch)
+    const startFetch = getStartOptions()?.serverFns?.fetch
+    return serverFnFetcher(url, args, startFetch ?? fetch)
   }
 
   return Object.assign(clientFn, {

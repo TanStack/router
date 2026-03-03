@@ -49,7 +49,9 @@ export interface FileRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
-> extends FileBaseRouteOptions<
+>
+  extends
+    FileBaseRouteOptions<
       TRegister,
       TParentRoute,
       TId,

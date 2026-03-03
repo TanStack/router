@@ -5,6 +5,7 @@ import {
   determineInitialRoutePath,
   hasEscapedLeadingUnderscore,
   hasEscapedTrailingUnderscore,
+  inferFullPath,
   isSegmentPathless,
   mergeImportDeclarations,
   multiSortBy,
@@ -21,6 +22,20 @@ import type { ImportDeclaration, RouteNode } from '../src/types'
 describe('cleanPath', () => {
   it('keeps path with leading slash and trailing slash', () => {
     expect(cleanPath('/test/')).toBe('/test/')
+  })
+})
+
+describe('inferFullPath', () => {
+  it('returns "/" for pathless layouts under root', () => {
+    const node = {
+      routePath: '/_layout-a1',
+      originalRoutePath: '/_layout-a1',
+      cleanedPath: '',
+      _fsRouteType: 'pathless_layout',
+    } as unknown as RouteNode
+
+    // This avoids inferred fullPath "" which breaks match.fullPath unions
+    expect(inferFullPath(node)).toBe('/')
   })
 })
 
@@ -240,6 +255,30 @@ describe('removeExt', () => {
 
   it('removes extension when in a route path', () => {
     expect(removeExt('/test/test.ts')).toBe('/test/test')
+  })
+
+  it('keeps extension when addExtensions is true', () => {
+    expect(removeExt('test.tsx', true)).toBe('test.tsx')
+  })
+
+  it('keeps extension with route path when addExtensions is true', () => {
+    expect(removeExt('/routes/__root.tsx', true)).toBe('/routes/__root.tsx')
+  })
+
+  it('replaces extension when addExtensions is a dot-prefixed string', () => {
+    expect(removeExt('test.tsx', '.js')).toBe('test.js')
+  })
+
+  it('replaces extension with route path when addExtensions is a string', () => {
+    expect(removeExt('/routes/__root.tsx', '.js')).toBe('/routes/__root.js')
+  })
+
+  it('replaces extension with multiple dots when addExtensions is a string', () => {
+    expect(removeExt('test.lazy.tsx', '.js')).toBe('test.lazy.js')
+  })
+
+  it('returns unchanged when no extension and addExtensions is a string', () => {
+    expect(removeExt('test', '.js')).toBe('test')
   })
 })
 

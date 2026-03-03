@@ -40,6 +40,7 @@ test('when creating the root with routeContext', () => {
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '__root__'
         cause: 'preload' | 'enter' | 'stay'
         context: {}
         deps: {}
@@ -63,6 +64,7 @@ test('when creating the root with beforeLoad', () => {
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '__root__'
         cause: 'preload' | 'enter' | 'stay'
         context: {}
         search: {}
@@ -110,6 +112,7 @@ test('when creating the root route with context and routeContext', () => {
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '__root__'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         deps: {}
@@ -152,6 +155,7 @@ test('when creating the root route with context and beforeLoad', () => {
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '__root__'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
@@ -236,6 +240,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '__root__'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         deps: {}
@@ -254,6 +259,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '__root__'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; env: 'env1' }
         search: {}
@@ -361,6 +367,7 @@ test('when creating a child route with routeContext from the root route with con
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         deps: {}
@@ -388,6 +395,7 @@ test('when creating a child route with beforeLoad from the root route with conte
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
@@ -717,6 +725,7 @@ test('when creating a child route with params, search with routeContext from the
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices/$invoiceId'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         deps: {}
@@ -765,6 +774,7 @@ test('when creating a child route with params, search with routeContext, beforeL
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices/$invoiceId'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         deps: {}
@@ -782,6 +792,7 @@ test('when creating a child route with params, search with routeContext, beforeL
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices/$invoiceId'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; env: string }
         search: { page: number }
@@ -893,6 +904,7 @@ test('when creating a child route with routeContext from a parent with routeCont
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         deps: {}
@@ -914,6 +926,7 @@ test('when creating a child route with routeContext from a parent with routeCont
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices/details'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; invoiceId: string }
         deps: {}
@@ -967,6 +980,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         search: {}
@@ -987,6 +1001,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices/details'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; invoiceId: string }
         search: {}
@@ -1040,6 +1055,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
         deps: {}
@@ -1055,6 +1071,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices'
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; env: string }
         search: { page: number }
@@ -1081,6 +1098,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices/$invoiceId/details'
         cause: 'preload' | 'enter' | 'stay'
         context: {
           userId: string
@@ -1100,6 +1118,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices/$invoiceId/details'
         cause: 'preload' | 'enter' | 'stay'
         context: {
           detailEnv: string
@@ -1129,6 +1148,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
+        routeId: '/invoices/$invoiceId/details/$detailId'
         cause: 'preload' | 'enter' | 'stay'
         context: {
           userId: string

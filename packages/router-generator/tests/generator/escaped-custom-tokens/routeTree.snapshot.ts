@@ -9,13 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as R1nd3xRouteImport } from './routes/[_1nd3x]'
+import { Route as Char91_1nd3xChar93RouteImport } from './routes/[_1nd3x]'
 import { Route as BlogR0ut3RouteImport } from './routes/blog._r0ut3_'
 import { Route as R1nd3xRouteImport } from './routes/_1nd3x'
-import { Route as Nested1nd3xRouteImport } from './routes/nested.[_1nd3x]'
-import { Route as PostsR0ut3RouteImport } from './routes/posts.[_r0ut3_]'
+import { Route as NestedChar91_1nd3xChar93RouteImport } from './routes/nested.[_1nd3x]'
+import { Route as PostsChar91_r0ut3_Char93RouteImport } from './routes/posts.[_r0ut3_]'
 
-const R1nd3xRoute = R1nd3xRouteImport.update({
+const Char91_1nd3xChar93Route = Char91_1nd3xChar93RouteImport.update({
   id: '/_1nd3x',
   path: '/_1nd3x',
   getParentRoute: () => rootRouteImport,
@@ -30,38 +30,40 @@ const R1nd3xRoute = R1nd3xRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Nested1nd3xRoute = Nested1nd3xRouteImport.update({
-  id: '/nested/_1nd3x',
-  path: '/nested/_1nd3x',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PostsR0ut3Route = PostsR0ut3RouteImport.update({
-  id: '/posts/_r0ut3_',
-  path: '/posts/_r0ut3_',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const NestedChar91_1nd3xChar93Route =
+  NestedChar91_1nd3xChar93RouteImport.update({
+    id: '/nested/_1nd3x',
+    path: '/nested/_1nd3x',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const PostsChar91_r0ut3_Char93Route =
+  PostsChar91_r0ut3_Char93RouteImport.update({
+    id: '/posts/_r0ut3_',
+    path: '/posts/_r0ut3_',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof R1nd3xRoute
   '/blog': typeof BlogR0ut3Route
-  '/_1nd3x': typeof R1nd3xRoute
-  '/nested/_1nd3x': typeof Nested1nd3xRoute
-  '/posts/_r0ut3_': typeof PostsR0ut3Route
+  '/_1nd3x': typeof Char91_1nd3xChar93Route
+  '/nested/_1nd3x': typeof NestedChar91_1nd3xChar93Route
+  '/posts/_r0ut3_': typeof PostsChar91_r0ut3_Char93Route
 }
 export interface FileRoutesByTo {
   '/': typeof R1nd3xRoute
   '/blog': typeof BlogR0ut3Route
-  '/_1nd3x': typeof R1nd3xRoute
-  '/nested/_1nd3x': typeof Nested1nd3xRoute
-  '/posts/_r0ut3_': typeof PostsR0ut3Route
+  '/_1nd3x': typeof Char91_1nd3xChar93Route
+  '/nested/_1nd3x': typeof NestedChar91_1nd3xChar93Route
+  '/posts/_r0ut3_': typeof PostsChar91_r0ut3_Char93Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof R1nd3xRoute
   '/blog': typeof BlogR0ut3Route
-  '/_1nd3x': typeof R1nd3xRoute
-  '/nested/_1nd3x': typeof Nested1nd3xRoute
-  '/posts/_r0ut3_': typeof PostsR0ut3Route
+  '/_1nd3x': typeof Char91_1nd3xChar93Route
+  '/nested/_1nd3x': typeof NestedChar91_1nd3xChar93Route
+  '/posts/_r0ut3_': typeof PostsChar91_r0ut3_Char93Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -80,9 +82,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   R1nd3xRoute: typeof R1nd3xRoute
   BlogR0ut3Route: typeof BlogR0ut3Route
-  R1nd3xRoute: typeof R1nd3xRoute
-  Nested1nd3xRoute: typeof Nested1nd3xRoute
-  PostsR0ut3Route: typeof PostsR0ut3Route
+  Char91_1nd3xChar93Route: typeof Char91_1nd3xChar93Route
+  NestedChar91_1nd3xChar93Route: typeof NestedChar91_1nd3xChar93Route
+  PostsChar91_r0ut3_Char93Route: typeof PostsChar91_r0ut3_Char93Route
 }
 
 declare module '@tanstack/react-router' {
@@ -91,7 +93,7 @@ declare module '@tanstack/react-router' {
       id: '/_1nd3x'
       path: '/_1nd3x'
       fullPath: '/_1nd3x'
-      preLoaderRoute: typeof R1nd3xRouteImport
+      preLoaderRoute: typeof Char91_1nd3xChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog': {
@@ -112,14 +114,14 @@ declare module '@tanstack/react-router' {
       id: '/nested/_1nd3x'
       path: '/nested/_1nd3x'
       fullPath: '/nested/_1nd3x'
-      preLoaderRoute: typeof Nested1nd3xRouteImport
+      preLoaderRoute: typeof NestedChar91_1nd3xChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts/_r0ut3_': {
       id: '/posts/_r0ut3_'
       path: '/posts/_r0ut3_'
       fullPath: '/posts/_r0ut3_'
-      preLoaderRoute: typeof PostsR0ut3RouteImport
+      preLoaderRoute: typeof PostsChar91_r0ut3_Char93RouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -128,9 +130,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   R1nd3xRoute: R1nd3xRoute,
   BlogR0ut3Route: BlogR0ut3Route,
-  R1nd3xRoute: R1nd3xRoute,
-  Nested1nd3xRoute: Nested1nd3xRoute,
-  PostsR0ut3Route: PostsR0ut3Route,
+  Char91_1nd3xChar93Route: Char91_1nd3xChar93Route,
+  NestedChar91_1nd3xChar93Route: NestedChar91_1nd3xChar93Route,
+  PostsChar91_r0ut3_Char93Route: PostsChar91_r0ut3_Char93Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

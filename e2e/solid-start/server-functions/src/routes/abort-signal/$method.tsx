@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { createServerFn } from '@tanstack/solid-start'
+import { createServerFn, createServerOnlyFn } from '@tanstack/solid-start'
+import { getRequest } from '@tanstack/solid-start/server'
 import * as Solid from 'solid-js'
 import z from 'zod'
 
@@ -10,7 +11,9 @@ export const Route = createFileRoute('/abort-signal/$method')({
   component: RouteComponent,
 })
 
-function serverFnImpl(signal: AbortSignal) {
+const serverFnImpl = createServerOnlyFn(async () => {
+  const request = getRequest()
+  const signal = request.signal
   console.log('server function started', { signal })
   return new Promise<string>((resolve, reject) => {
     if (signal.aborted) {
@@ -27,13 +30,11 @@ function serverFnImpl(signal: AbortSignal) {
     }
     signal.addEventListener('abort', onAbort, { once: true })
   })
-}
-const abortableServerFnGET = createServerFn().handler(async ({ signal }) =>
-  serverFnImpl(signal),
-)
+})
+const abortableServerFnGET = createServerFn().handler(serverFnImpl)
 
 const abortableServerFnPOST = createServerFn({ method: 'POST' }).handler(
-  async ({ signal }) => serverFnImpl(signal),
+  serverFnImpl,
 )
 
 function RouteComponent() {

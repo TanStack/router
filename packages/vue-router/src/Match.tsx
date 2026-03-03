@@ -8,6 +8,7 @@ import {
   isRedirect,
   rootRouteId,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouterState } from './useRouterState'
@@ -413,7 +414,7 @@ export const MatchInner = Vue.defineComponent({
           !routerMatch._nonReactive.minPendingPromise
         ) {
           // Create a promise that will resolve after the minPendingMs
-          if (!router.isServer) {
+          if (!(isServer ?? router.isServer)) {
             const minPendingPromise = createControlledPromise<void>()
 
             routerMatch._nonReactive.minPendingPromise = minPendingPromise

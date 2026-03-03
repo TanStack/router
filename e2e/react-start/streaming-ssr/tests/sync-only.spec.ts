@@ -64,6 +64,10 @@ test('Sync-only route has bootstrap scripts in initial HTML', async ({
   expect(responseHtml).toContain('$_TSR.router')
   // The serialization end marker should be present
   expect(responseHtml).toContain('$_TSR.e()')
+
+  // SSR should include the barrier script tag in the HTML (rendered by <Scripts />)
+  // This is the critical marker transformStreamWithRouter can scan for.
+  expect(responseHtml).toContain('$tsr-stream-barrier')
 })
 
 test('Navigating to sync-only from home page', async ({ page }) => {

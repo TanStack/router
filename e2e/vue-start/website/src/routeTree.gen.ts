@@ -76,10 +76,11 @@ const ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/$project': typeof ProjectIndexRoute
   '/': typeof LibraryIndexRoute
-  '/$project/$version/docs': typeof ProjectVersionDocsIndexRoute
-  '/$project/$version': typeof LibraryProjectVersionIndexRoute
+  '/$project': typeof LibraryProjectRouteWithChildren
+  '/$project/': typeof ProjectIndexRoute
+  '/$project/$version/docs/': typeof ProjectVersionDocsIndexRoute
+  '/$project/$version/': typeof LibraryProjectVersionIndexRoute
   '/$project/$version/docs/framework/$framework': typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
   '/$project/$version/docs/framework/$framework/$': typeof ProjectVersionDocsFrameworkFrameworkSplatRoute
   '/$project/$version/docs/framework/$framework/': typeof ProjectVersionDocsFrameworkFrameworkIndexRoute
@@ -110,10 +111,11 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/$project'
     | '/'
-    | '/$project/$version/docs'
-    | '/$project/$version'
+    | '/$project'
+    | '/$project/'
+    | '/$project/$version/docs/'
+    | '/$project/$version/'
     | '/$project/$version/docs/framework/$framework'
     | '/$project/$version/docs/framework/$framework/$'
     | '/$project/$version/docs/framework/$framework/'
@@ -153,7 +155,7 @@ declare module '@tanstack/vue-router' {
     '/_library': {
       id: '/_library'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -167,7 +169,7 @@ declare module '@tanstack/vue-router' {
     '/$project/': {
       id: '/$project/'
       path: '/$project'
-      fullPath: '/$project'
+      fullPath: '/$project/'
       preLoaderRoute: typeof ProjectIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -181,14 +183,14 @@ declare module '@tanstack/vue-router' {
     '/_library/$project/$version/': {
       id: '/_library/$project/$version/'
       path: '/$version'
-      fullPath: '/$project/$version'
+      fullPath: '/$project/$version/'
       preLoaderRoute: typeof LibraryProjectVersionIndexRouteImport
       parentRoute: typeof LibraryProjectRoute
     }
     '/$project/$version/docs/': {
       id: '/$project/$version/docs/'
       path: '/$project/$version/docs'
-      fullPath: '/$project/$version/docs'
+      fullPath: '/$project/$version/docs/'
       preLoaderRoute: typeof ProjectVersionDocsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
