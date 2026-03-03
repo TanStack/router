@@ -29,7 +29,8 @@ describe('client-nav', () => {
       return navigate({
         to: '/$id',
         params: { id: nextId },
-        search: { id: nextId },
+        // update search every 2 navigations, to still test them, but also measure the impact of granular re-rendering
+        search: { id: Math.floor(nextId / 2) },
         replace: true,
       })
     }
