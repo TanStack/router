@@ -99,7 +99,10 @@ export const Route = createRootRoute({
       const tenantConfig = await getTenantConfig()
       return { tenantConfig }
     } catch {
-      return { tenantConfig: null }
+      if (error instanceof Response && error.status === 404) {
+        return { tenantConfig: null }
+      }
+      throw error
     }
   },
 })
