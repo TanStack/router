@@ -268,7 +268,7 @@ test('beforeLoad notFound with routeId targets parent notFoundComponent', async 
     getParentRoute: () => parentRoute,
     path: '/child',
     beforeLoad: () => {
-      throw notFound({ routeId: '/parent' as never })
+      throw notFound({ routeId: parentRoute.id })
     },
     component: () => <span data-testid="child-component">Child</span>,
   })
@@ -312,7 +312,7 @@ test('beforeLoad notFound with routeId targets parent boundary and preserves par
     getParentRoute: () => parentRoute,
     path: '/child',
     beforeLoad: () => {
-      throw notFound({ routeId: '/parent' as never })
+      throw notFound({ routeId: parentRoute.id })
     },
     component: () => <span data-testid="child-component">Child</span>,
   })

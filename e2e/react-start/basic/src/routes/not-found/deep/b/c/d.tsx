@@ -1,4 +1,5 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
+import type { NotFoundRouteProps } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/not-found/deep/b/c/d')({
   loaderDeps: ({ search }) => ({
@@ -18,9 +19,10 @@ export const Route = createFileRoute('/not-found/deep/b/c/d')({
     return { ready: true }
   },
   component: RouteComponent,
-  notFoundComponent: (props: any) => (
+  notFoundComponent: (props: NotFoundRouteProps) => (
     <div data-testid="deep-d-notFound-component">
-      Not Found at /not-found/deep/b/c/d ({props?.data?.source ?? 'unknown'})
+      Not Found at /not-found/deep/b/c/d (
+      {(props.data as { source?: string })?.source ?? 'unknown'})
     </div>
   ),
 })

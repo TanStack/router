@@ -9,7 +9,7 @@ import {
   rootRouteId,
 } from '../src'
 import { loadMatches } from '../src/load-matches'
-import type { RootRouteOptions } from '../src'
+import type { AnyRouter, RootRouteOptions } from '../src'
 
 type AnyRouteOptions = RootRouteOptions<any>
 type BeforeLoad = NonNullable<AnyRouteOptions['beforeLoad']>
@@ -991,7 +991,7 @@ describe('head execution', () => {
       }
     }
 
-    const runLoadMatchesAndCapture = async (router: any) => {
+    const runLoadMatchesAndCapture = async (router: AnyRouter) => {
       const location = router.latestLocation
       const matches = router.matchRoutes(location)
 
