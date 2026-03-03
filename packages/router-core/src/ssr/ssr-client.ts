@@ -281,10 +281,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           }
           // hide the pending component once the load is finished
           router.updateMatch(match.id, (prev) => {
+            prev._nonReactive.displayPendingPromise = undefined
             return {
               ...prev,
               _displayPending: undefined,
-              displayPendingPromise: undefined,
             }
           })
         })
