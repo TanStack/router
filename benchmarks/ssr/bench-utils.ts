@@ -1,5 +1,5 @@
 export interface StartRequestHandler {
-  fetch(request: Request): Promise<Response> | Response
+  fetch: (request: Request) => Promise<Response> | Response
 }
 
 export interface RunSsrRequestLoopOptions {

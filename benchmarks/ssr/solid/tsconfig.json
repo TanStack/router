@@ -5,5 +5,10 @@
     "jsxImportSource": "solid-js",
     "types": ["node", "vite/client", "vitest/globals"]
   },
-  "include": ["speed.bench.ts", "vite.config.ts", "../bench-utils.ts"]
+  "include": [
+    "speed.bench.ts",
+    "vite.config.ts",
+    "../bench-utils.ts",
+    "./src/**/*"
+  ]
 }

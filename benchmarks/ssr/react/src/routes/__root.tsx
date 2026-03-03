@@ -7,6 +7,7 @@ import {
 
 export const Route = createRootRoute({
   component: RootComponent,
+  validateSearch: (s) => s as { q?: string },
 })
 
 function RootComponent() {
