@@ -1,8 +1,7 @@
 ---
-
-title: "Hostname-Based Multi-Tenancy"
-description: "Learn how to structure a hostname-based multi-tenant app using TanStack Start with React."
---------------------------------------------------------------------------------------------------------
+title: 'Hostname-Based Multi-Tenancy'
+description: 'Learn how to structure a hostname-based multi-tenant app using TanStack Start with React.'
+---
 
 > This tutorial assumes TanStack Start v1.132+.
 
@@ -14,21 +13,21 @@ Multi-tenant applications often need to resolve a tenant from the incoming hostn
 
 This guide demonstrates:
 
-* Hostname-based tenant resolution
-* SSR tenant detection
-* Root-level data hydration
-* Dynamic metadata handling
+- Hostname-based tenant resolution
+- SSR tenant detection
+- Root-level data hydration
+- Dynamic metadata handling
 
 Request lifecycle:
 
-```
+```txt
 Request
-  → Nitro Runtime
-  → getRequestUrl()
-  → normalizeHostname()
-  → getTenantConfigByHostname()
-  → Root Loader
-  → Hydrated Application
+  -> Nitro Runtime
+  -> getRequestUrl()
+  -> normalizeHostname()
+  -> getTenantConfigByHostname()
+  -> Root Loader
+  -> Hydrated Application
 ```
 
 ---
@@ -49,8 +48,8 @@ In production, you may have `tenant.com` or `user.saas.com`. In development, you
 // lib/normalizeHostname.ts
 export const normalizeHostname = (hostname: string): string => {
   // Handle local development subdomains like tenant.localhost:3000
-  if (hostname.includes("localhost")) {
-    return hostname.replace(".localhost", "").split(":")[0]
+  if (hostname.includes('localhost')) {
+    return hostname.replace('.localhost', '').split(':')[0]
   }
   return hostname
 }
@@ -64,10 +63,10 @@ Use `createServerOnlyFn` to ensure tenant resolution never reaches the client. `
 
 ```ts
 // serverFn/tenant.serverFn.ts
-import { getTenantConfigByHostname } from "#/lib/api"
-import { normalizeHostname } from "#/lib/normalizeHostname"
-import { createServerOnlyFn } from "@tanstack/react-start"
-import { getRequestUrl } from "@tanstack/react-start/server"
+import { getTenantConfigByHostname } from '#/lib/api'
+import { normalizeHostname } from '#/lib/normalizeHostname'
+import { createServerOnlyFn } from '@tanstack/react-start'
+import { getRequestUrl } from '@tanstack/react-start/server'
 
 export const getTenantConfig = createServerOnlyFn(async () => {
   const url = getRequestUrl()
@@ -76,7 +75,7 @@ export const getTenantConfig = createServerOnlyFn(async () => {
   const tenantConfig = await getTenantConfigByHostname({ hostname })
 
   if (!tenantConfig) {
-    throw new Response("Tenant Not Found", { status: 404 })
+    throw new Response('Tenant Not Found', { status: 404 })
   }
 
   return tenantConfig
@@ -91,8 +90,8 @@ Resolve tenant data in the `__root__` route so it is available to all child rout
 
 ```tsx
 // routes/__root.tsx
-import { createRootRoute } from "@tanstack/react-router"
-import { getTenantConfig } from "#/serverFn/tenant.serverFn"
+import { createRootRoute } from '@tanstack/react-router'
+import { getTenantConfig } from '#/serverFn/tenant.serverFn'
 
 export const Route = createRootRoute({
   loader: async () => {
@@ -120,13 +119,11 @@ export const Route = createRootRoute({
 
     return {
       meta: [
-        { title: tenant?.meta.name ?? "Default App" },
-        { name: "description", content: tenant?.meta.description },
-        { property: "og:image", content: tenant?.meta.logo },
+        { title: tenant?.meta.name ?? 'Default App' },
+        { name: 'description', content: tenant?.meta.description },
+        { property: 'og:image', content: tenant?.meta.logo },
       ],
-      links: [
-        { rel: "icon", href: tenant?.meta.favicon ?? "/favicon.ico" },
-      ],
+      links: [{ rel: 'icon', href: tenant?.meta.favicon ?? '/favicon.ico' }],
     }
   },
 })
@@ -140,14 +137,14 @@ Access root loader data using `useLoaderData`.
 
 ```tsx
 // routes/index.tsx
-import { createFileRoute, useLoaderData } from "@tanstack/react-router"
+import { createFileRoute, useLoaderData } from '@tanstack/react-router'
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute('/')({
   component: HomePage,
 })
 
 function HomePage() {
-  const { tenantConfig } = useLoaderData({ from: "__root__" })
+  const { tenantConfig } = useLoaderData({ from: '__root__' })
 
   if (!tenantConfig) return <h1>404: Tenant Not Found</h1>
 
@@ -164,10 +161,10 @@ function HomePage() {
 
 ## Production Considerations
 
-* **Caching:** Cache `getTenantConfigByHostname` (e.g., Redis or in-memory cache) to avoid repeated database lookups.
-* **Validation:** Ensure tenants are active and not suspended before returning configuration.
-* **Assets:** Use absolute URLs or correctly prefixed CDN paths for cross-domain asset loading.
-* **Security:** Avoid exposing internal tenant configuration fields to the client.
+- **Caching:** Cache `getTenantConfigByHostname` (e.g., Redis or in-memory cache) to avoid repeated database lookups.
+- **Validation:** Ensure tenants are active and not suspended before returning configuration.
+- **Assets:** Use absolute URLs or correctly prefixed CDN paths for cross-domain asset loading.
+- **Security:** Avoid exposing internal tenant configuration fields to the client.
 
 ---
 
