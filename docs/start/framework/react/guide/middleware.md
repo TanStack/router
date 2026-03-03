@@ -759,9 +759,9 @@ Middleware functionality is tree-shaken based on the environment for each bundle
 - On the server, nothing is tree-shaken, so all code used in middleware will be included in the server bundle.
 - On the client, all server-specific code is removed from the client bundle. This means any code used in the `server` method is always removed from the client bundle. `data` validation code will also be removed.
 
-## Dynamic Middleware
+## Middleware Factories
 
-Static middlewares are created once and reused across routes. Dynamic middleware wraps that creation in a function, allowing it to accept parameters and behave differently depending on the caller's needs. Authorization is a common use case.
+Static middlewares are created once and reused across routes. A middleware factory wraps that creation in a function, allowing it to accept parameters and behave differently depending on the caller's needs. Authorization is a common use case.
 
 **Authentication (Static Base Middleware) Example:**
 
@@ -787,7 +787,7 @@ export const authMiddleware = createMiddleware().server(
 );
 ```
 
-**Authorization (Dynamic Middleware) Example:**
+**Authorization (Middleware Factory) Example:**
 
 The middleware validates access based on the dynamic `permissions` parameter, composing with `authMiddleware` so `context.session` is already available.
 
