@@ -483,4 +483,4 @@ This guarantees:
 
 ## Looking for i18n with SSR/TanStack Start?
 
-Check out the guide on integrating [i18n in TanStack Start](../../../../start/framework/react/guide/internationalization-i18n).
+Check out the guide on integrating [i18n in TanStack Start](../../start/framework/react/guide/internationalization-i18n).

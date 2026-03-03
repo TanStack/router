@@ -15,7 +15,9 @@ This guide covers:
 
 # Integration with TanStack Router
 
-This guide assumes you are using TanStack Start, which builds on TanStack Router. For Router-specific i18n patterns, see the [TanStack Router i18n guide](../../../../router/framework/react/guide/internationalization-i18n).
+This guide assumes you are using TanStack Start, which builds on TanStack Router. For Router-specific i18n patterns, see the [TanStack Router i18n guide](../../../../router/guide/internationalization-i18n).
+
+This guide is most relevant when:
 
 - You are using TanStack Start
 - You need SSR or streaming support
@@ -28,7 +30,7 @@ This guide assumes you are using TanStack Start, which builds on TanStack Router
 **GitHub example:**
 [https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide)
 
-Refer to the [TanStack Router + Paraglide integration guide](../../../../router/framework/react/guide/internationalization-i18n#tanstack-router-paraglide) for Router-level configuration details.
+Refer to the [TanStack Router + Paraglide integration guide](../../../../router/guide/internationalization-i18n#tanstack-router-paraglide) for Router-level configuration details.
 
 #### Server Middleware (SSR)
 
