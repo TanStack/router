@@ -1,6 +1,5 @@
 export {
   defer,
-  TSR_DEFERRED_PROMISE,
   isMatch,
   joinPaths,
   cleanPath,
@@ -10,7 +9,6 @@ export {
   resolvePath,
   interpolatePath,
   rootRouteId,
-  defaultSerializeError,
   defaultParseSearch,
   defaultStringifySearch,
   parseSearchWith,
@@ -236,7 +234,6 @@ export {
 
 export type { UseMatchRouteOptions, MakeMatchRouteOptions } from './Matches'
 
-export { matchContext } from './matchContext'
 export { Match, Outlet } from './Match'
 
 export { useMatch } from './useMatch'
@@ -274,13 +271,7 @@ export type {
 
 export { createRouter, Router } from './router'
 
-export {
-  componentTypes,
-  lazyFn,
-  SearchParamError,
-  PathParamError,
-  getInitialRouterState,
-} from '@tanstack/router-core'
+export { lazyFn, SearchParamError } from '@tanstack/router-core'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type { RouterProps } from './RouterProvider'
@@ -298,20 +289,11 @@ export { useNavigate, Navigate } from './useNavigate'
 export { useParams } from './useParams'
 export { useSearch } from './useSearch'
 
-export {
-  getRouterContext, // SSR
-} from './routerContext'
-
 export { useRouteContext } from './useRouteContext'
 export { useRouter } from './useRouter'
 export { useRouterState } from './useRouterState'
 export { useLocation } from './useLocation'
 export { useCanGoBack } from './useCanGoBack'
-
-export {
-  useLayoutEffect, // SSR
-  useStableCallback,
-} from './utils'
 
 export { CatchNotFound, DefaultGlobalNotFound } from './not-found'
 export { notFound, isNotFound } from '@tanstack/router-core'

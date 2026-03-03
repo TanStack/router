@@ -26,25 +26,12 @@ function ensureLeadingUnderScore(id: string) {
   return `_${id}`
 }
 
-function flattenTree(
-  node: RouteNode,
-  parentRoutePath?: string,
-): Array<RouteNode> {
-  // Store the explicit parent's routePath for virtual routes.
-  // This prevents the generator from auto-nesting based on path matching (#5822).
-  //
-  // Skip when the parent is the synthetic virtual root (`/${rootPathId}`).
-  // Root-level nodes should use path-based inference to find their parent.
-  const isRootParent = parentRoutePath === `/${rootPathId}`
-  if (parentRoutePath !== undefined && !isRootParent) {
-    node._virtualParentRoutePath = parentRoutePath
-  }
-
+function flattenTree(node: RouteNode): Array<RouteNode> {
   const result = [node]
 
   if (node.children) {
     for (const child of node.children) {
-      result.push(...flattenTree(child, node.routePath))
+      result.push(...flattenTree(child))
     }
   }
   delete node.children
@@ -194,6 +181,7 @@ export async function getRouteNodesRecursive(
         return { filePath, variableName, fullPath }
       }
       const parentRoutePath = removeTrailingSlash(parent?.routePath ?? '/')
+      const virtualParentRoutePath = parent?.routePath ?? `/${rootPathId}`
 
       switch (node.type) {
         case 'index': {
@@ -205,6 +193,7 @@ export async function getRouteNodesRecursive(
             variableName,
             routePath,
             _fsRouteType: 'static',
+            _virtualParentRoutePath: virtualParentRoutePath,
           } satisfies RouteNode
         }
 
@@ -230,6 +219,7 @@ export async function getRouteNodesRecursive(
               routePath,
               originalRoutePath,
               _fsRouteType: 'static',
+              _virtualParentRoutePath: virtualParentRoutePath,
             }
           } else {
             routeNode = {
@@ -240,6 +230,7 @@ export async function getRouteNodesRecursive(
               originalRoutePath,
               isVirtual: true,
               _fsRouteType: 'static',
+              _virtualParentRoutePath: virtualParentRoutePath,
             }
           }
 
@@ -288,6 +279,7 @@ export async function getRouteNodesRecursive(
             routePath,
             originalRoutePath,
             _fsRouteType: 'pathless_layout',
+            _virtualParentRoutePath: virtualParentRoutePath,
           }
 
           if (node.children !== undefined) {

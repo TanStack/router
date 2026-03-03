@@ -1,8 +1,5 @@
 import * as Solid from 'solid-js'
 
-export const useLayoutEffect =
-  typeof window !== 'undefined' ? Solid.createRenderEffect : Solid.createEffect
-
 export const usePrevious = (fn: () => boolean) => {
   return Solid.createMemo(
     (

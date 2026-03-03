@@ -2,6 +2,7 @@ import invariant from 'tiny-invariant'
 import { batch } from '../utils/batch'
 import { isNotFound } from '../not-found'
 import { createControlledPromise } from '../utils'
+import { hydrateSsrMatchId } from './ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
 import type { DehydratedMatch, TsrSsrGlobal } from './types'
 import type { AnyRouteMatch } from '../Matches'
@@ -54,7 +55,16 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
   )
 
-  const { manifest, dehydratedData, lastMatchId } = window.$_TSR.router
+  const dehydratedRouter = window.$_TSR.router
+  dehydratedRouter.matches.forEach((dehydratedMatch) => {
+    dehydratedMatch.i = hydrateSsrMatchId(dehydratedMatch.i)
+  })
+  if (dehydratedRouter.lastMatchId) {
+    dehydratedRouter.lastMatchId = hydrateSsrMatchId(
+      dehydratedRouter.lastMatchId,
+    )
+  }
+  const { manifest, dehydratedData, lastMatchId } = dehydratedRouter
 
   router.ssr = {
     manifest,
@@ -113,7 +123,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // First step is to reyhdrate loaderData and __beforeLoadContext
   let firstNonSsrMatchIndex: number | undefined = undefined
   matches.forEach((match) => {
-    const dehydratedMatch = window.$_TSR!.router!.matches.find(
+    const dehydratedMatch = dehydratedRouter.matches.find(
       (d) => d.i === match.id,
     )
     if (!dehydratedMatch) {

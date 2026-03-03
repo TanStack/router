@@ -42,6 +42,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
+import type { Store } from '@tanstack/store'
 import type { LRUCache } from './lru-cache'
 import type {
   ProcessRouteTreeResult,
@@ -55,7 +56,6 @@ import type {
   ParsedHistoryState,
   RouterHistory,
 } from '@tanstack/history'
-import type { Store } from '@tanstack/store'
 
 import type {
   Awaitable,
@@ -1040,10 +1040,12 @@ export class RouterCore<
     TRouterHistory,
     TDehydrated
   > = (newOptions) => {
-    if (newOptions.notFoundRoute) {
-      console.warn(
-        'The notFoundRoute API is deprecated and will be removed in the next major version. See https://tanstack.com/router/v1/docs/framework/react/guide/not-found-errors#migrating-from-notfoundroute for more info.',
-      )
+    if (process.env.NODE_ENV !== 'production') {
+      if (newOptions.notFoundRoute) {
+        console.warn(
+          'The notFoundRoute API is deprecated and will be removed in the next major version. See https://tanstack.com/router/v1/docs/framework/react/guide/not-found-errors#migrating-from-notfoundroute for more info.',
+        )
+      }
     }
 
     const prevOptions = this.options
@@ -2423,9 +2425,13 @@ export class RouterCore<
 
                   // Commit the pending matches. If a previous match was
                   // removed, place it in the cachedMatches
-                  let exitingMatches: Array<AnyRouteMatch> | null = null
-                  let enteringMatches: Array<AnyRouteMatch> | null = null
-                  let stayingMatches: Array<AnyRouteMatch>
+                  //
+
+                  // Lifecycle-hook identity uses routeId only so that navigating between
+                  // different params/deps of the same route fires onStay (not onLeave+onEnter).
+                  let hookExitingMatches: Array<AnyRouteMatch> | null = null
+                  let hookEnteringMatches: Array<AnyRouteMatch> | null = null
+                  let hookStayingMatches: Array<AnyRouteMatch> | null = null
 
                   batch(() => {
                     const pendingMatches =
@@ -2433,20 +2439,38 @@ export class RouterCore<
                     const mountPending = !!pendingMatches
                     const previousMatches = this.__store.state.matches
 
+                    // exitingMatches uses match.id (routeId + params + loaderDeps) so
+                    // navigating /foo?page=1 → /foo?page=2 correctly caches the page=1 entry.
+                    let exitingMatches: Array<AnyRouteMatch> | null = null
+
                     if (mountPending) {
                       exitingMatches = previousMatches.filter(
                         (match) =>
                           !pendingMatches.some((d) => d.id === match.id),
                       )
-                      enteringMatches = pendingMatches.filter(
+
+                      // Lifecycle-hook identity: routeId only (route presence in tree)
+                      hookExitingMatches = previousMatches.filter(
                         (match) =>
-                          !previousMatches.some((d) => d.id === match.id),
+                          !pendingMatches.some(
+                            (d) => d.routeId === match.routeId,
+                          ),
                       )
-                      stayingMatches = pendingMatches.filter((match) =>
-                        previousMatches.some((d) => d.id === match.id),
-                      )
+                      hookEnteringMatches = []
+                      hookStayingMatches = []
+                      for (const match of pendingMatches) {
+                        if (
+                          previousMatches.some(
+                            (d) => d.routeId === match.routeId,
+                          )
+                        ) {
+                          hookStayingMatches.push(match)
+                        } else {
+                          hookEnteringMatches.push(match)
+                        }
+                      }
                     } else {
-                      stayingMatches = previousMatches
+                      hookStayingMatches = previousMatches
                     }
 
                     this.__store.setState((s) => {
@@ -2484,20 +2508,22 @@ export class RouterCore<
                     }
                   })
 
-                  // call lifecycle methods
-                  const cases = [
-                    [exitingMatches, 'onLeave'],
-                    [enteringMatches, 'onEnter'],
-                    [stayingMatches!, 'onStay'],
-                  ] as const
-                  for (const [matches, hook] of cases) {
-                    if (!matches) continue
-                    for (const match of matches) {
-                      this.looseRoutesById[match.routeId]!.options[hook]?.(
-                        match,
-                      )
-                    }
-                  }
+                  //
+                  ;(
+                    [
+                      [hookExitingMatches, 'onLeave'],
+                      [hookEnteringMatches, 'onEnter'],
+                      [hookStayingMatches, 'onStay'],
+                    ] as const
+                  ).forEach(([matches, hook]) => {
+                    ;(matches as Array<AnyRouteMatch> | null)?.forEach(
+                      (match) => {
+                        this.looseRoutesById[match.routeId]!.options[hook]?.(
+                          match,
+                        )
+                      },
+                    )
+                  })
                 })
               })
             },
@@ -2742,7 +2768,9 @@ export class RouterCore<
       isDangerousProtocol(redirect.options.href, this.protocolAllowlist)
     ) {
       throw new Error(
-        `Redirect blocked: unsafe protocol in href "${redirect.options.href}". Allowed protocols: ${Array.from(this.protocolAllowlist).join(', ')}.`,
+        process.env.NODE_ENV !== 'production'
+          ? `Redirect blocked: unsafe protocol in href "${redirect.options.href}". Allowed protocols: ${Array.from(this.protocolAllowlist).join(', ')}.`
+          : 'Redirect blocked: unsafe protocol',
       )
     }
 

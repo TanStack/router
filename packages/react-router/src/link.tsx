@@ -76,6 +76,7 @@ export function useLinkProps<
     style,
     className,
     onClick,
+    onBlur,
     onFocus,
     onMouseEnter,
     onMouseLeave,
@@ -651,6 +652,7 @@ export function useLinkProps<
       ...(style && { style }),
       ...(className && { className }),
       ...(onClick && { onClick }),
+      ...(onBlur && { onBlur }),
       ...(onFocus && { onFocus }),
       ...(onMouseEnter && { onMouseEnter }),
       ...(onMouseLeave && { onMouseLeave }),
@@ -658,36 +660,35 @@ export function useLinkProps<
     }
   }
 
-  const handleFocus = (_: React.MouseEvent) => {
-    if (disabled) return
-    if (preload) {
-      doPreload()
-    }
-  }
-
-  const handleTouchStart = handleFocus
-
-  const handleEnter = (e: React.MouseEvent) => {
-    if (disabled || !preload) return
+  const enqueueIntentPreload = (e: React.MouseEvent | React.FocusEvent) => {
+    if (disabled || preload !== 'intent') return
 
     if (!preloadDelay) {
       doPreload()
-    } else {
-      const eventTarget = e.target
-      if (timeoutMap.has(eventTarget)) {
-        return
-      }
-      const id = setTimeout(() => {
-        timeoutMap.delete(eventTarget)
-        doPreload()
-      }, preloadDelay)
-      timeoutMap.set(eventTarget, id)
+      return
     }
+
+    const eventTarget = e.currentTarget
+
+    if (timeoutMap.has(eventTarget)) {
+      return
+    }
+
+    const id = setTimeout(() => {
+      timeoutMap.delete(eventTarget)
+      doPreload()
+    }, preloadDelay)
+    timeoutMap.set(eventTarget, id)
   }
 
-  const handleLeave = (e: React.MouseEvent) => {
+  const handleTouchStart = (_: React.TouchEvent) => {
+    if (disabled || preload !== 'intent') return
+    doPreload()
+  }
+
+  const handleLeave = (e: React.MouseEvent | React.FocusEvent) => {
     if (disabled || !preload || !preloadDelay) return
-    const eventTarget = e.target
+    const eventTarget = e.currentTarget
     const id = timeoutMap.get(eventTarget)
     if (id) {
       clearTimeout(id)
@@ -702,8 +703,9 @@ export function useLinkProps<
     href: hrefOption?.href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
-    onFocus: composeHandlers([onFocus, handleFocus]),
-    onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
+    onBlur: composeHandlers([onBlur, handleLeave]),
+    onFocus: composeHandlers([onFocus, enqueueIntentPreload]),
+    onMouseEnter: composeHandlers([onMouseEnter, enqueueIntentPreload]),
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     disabled: !!disabled,
