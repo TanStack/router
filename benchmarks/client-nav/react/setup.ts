@@ -8,11 +8,10 @@ const { createTestRouter } = (await import(appModulePath)) as typeof App
 export function setup() {
   if (process.env.NODE_ENV !== 'production') {
     console.warn(
-      'client-nav flame benchmark is running without NODE_ENV=production; React dev overhead will dominate results.',
+      'client-nav benchmark is running without NODE_ENV=production; React dev overhead will dominate results.',
     )
   }
   let id = 0
-  const { router, component } = createTestRouter()
   let root: Root | undefined = undefined
   let container: HTMLDivElement | undefined = undefined
   let unsub = () => {}
@@ -20,6 +19,7 @@ export function setup() {
 
   async function before() {
     id = 0
+    const { router, component } = createTestRouter()
     let resolve: () => void = () => {}
     unsub = router.subscribe('onRendered', () => resolve())
 

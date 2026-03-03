@@ -8,7 +8,7 @@ const { createTestRouter } = (await import(appModulePath)) as typeof App
 export function setup() {
   if (process.env.NODE_ENV !== 'production') {
     console.warn(
-      'client-nav flame benchmark is running without NODE_ENV=production; Solid dev overhead will dominate results.',
+      'client-nav benchmark is running without NODE_ENV=production; Solid dev overhead will dominate results.',
     )
   }
 
