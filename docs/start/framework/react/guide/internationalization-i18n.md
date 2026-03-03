@@ -2,7 +2,7 @@
 title: Internationalization (i18n)
 ---
 
-TanStack Router provides flexible and highly customizable primitives that can be composed to support common internationalization (i18n) routing patterns, such as **optional path parameters**, **route rewriting**, and **type-safe params**. This enables clean, SEO-friendly URLs, flexible locale handling, and seamless integration with i18n libraries.
+TanStack Router provides routing primitives that can be composed to support common internationalization (i18n) patterns, including **optional path parameters**, **route rewriting**, and **type-safe params**. These patterns allow applications to support localized URLs while keeping routing predictable and type-safe.
 
 This guide covers:
 
@@ -15,9 +15,7 @@ This guide covers:
 
 # Integration with TanStack Router
 
-This guide assumes you are using TanStack Start, which builds on TanStack Router. For Router-specific i18n patterns, see the [TanStack Router i18n guide](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n).
-
-This guide is most relevant when:
+This guide assumes you are using TanStack Start, which builds on TanStack Router. For Router-specific i18n patterns, see the [TanStack Router i18n guide](../../../../router/framework/react/guide/internationalization-i18n).
 
 - You are using TanStack Start
 - You need SSR or streaming support
@@ -30,7 +28,7 @@ This guide is most relevant when:
 **GitHub example:**
 [https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide)
 
-Refer to the [TanStack Router + Paraglide integration guide](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n#tanstack-router-paraglide) for Router-level configuration details.
+Refer to the [TanStack Router + Paraglide integration guide](../../../../router/framework/react/guide/internationalization-i18n#tanstack-router-paraglide) for Router-level configuration details.
 
 #### Server Middleware (SSR)
 

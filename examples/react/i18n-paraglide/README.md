@@ -51,10 +51,10 @@ If you use TanStack Start and do not need offline capabilities, you don't need t
 If you use translated pathnames, you can derive them directly from the TanStack Router route tree to ensure every route has translations.
 
 ```ts
-import { Locale } from "@reland/i18n/runtime"
-import { RoutePath } from "../../types/Routes"
+import { Locale } from './paraglide/runtime'
+import { RoutePath } from '../../types/Routes'
 
-const excludedPaths = ["admin", "partner", "tests", "api"] as const
+const excludedPaths = ['admin', 'partner', 'tests', 'api'] as const
 
 type PublicRoutePath = Exclude<
   RoutePath,
@@ -70,15 +70,15 @@ function toUrlPattern(path: string) {
   return (
     path
       // explicit catch-all: "/$" → "/:path(.*)?"
-      .replace(/\/\$$/, "/:path(.*)?")
+      .replace(/\/\$$/, '/:path(.*)?')
       // optional params like {-$param} → ":param(.*)?"
-      .replace(/\{-\$([a-zA-Z0-9_]+)\}/g, ":$1(.*)?")
+      .replace(/\{-\$([a-zA-Z0-9_]+)\}/g, ':$1(.*)?')
       // normal params like $param → ":param(.*)?"
-      .replace(/\$([a-zA-Z0-9_]+)/g, ":$1(.*)?")
+      .replace(/\$([a-zA-Z0-9_]+)/g, ':$1(.*)?')
       // remove any remaining braces (safety)
-      .replace(/[{}]/g, "")
+      .replace(/[{}]/g, '')
       // remove trailing slash
-      .replace(/\/+$/, "")
+      .replace(/\/+$/, '')
   )
 }
 
@@ -98,14 +98,15 @@ function createTranslatedPathnames(
 }
 
 export const translatedPathnames = createTranslatedPathnames({
-  "/": {
-    en: "/",
-    es: "/"
+  '/': {
+    en: '/',
+    es: '/',
   },
-  "/about": {
-    en: "/about",
-    es: "/nosotros"
-  })
+  '/about': {
+    en: '/about',
+    es: '/nosotros',
+  },
+})
 ```
 
 Use in vite.config.ts:
@@ -126,4 +127,4 @@ This guarantees:
 
 ## Looking for i18n with SSR/TanStack Start?
 
-Check out the guide on integrating [i18n in TanStack Start](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n).
+Check out the guide on integrating [i18n in TanStack Start](../../../../docs/start/framework/react/guide/internationalization-i18n).

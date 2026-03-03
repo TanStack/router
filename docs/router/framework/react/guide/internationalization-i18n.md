@@ -199,17 +199,20 @@ function AdvancedLanguageSwitcher() {
 
 A common organization pattern places routes beneath an optional locale segment:
 
-```tsx
-// Route structure:
-// routes/
-//   {-$locale}/
-//     index.tsx        // /, /en, /fr
-//     about.tsx        // /about, /en/about, /fr/about
-//     blog/
-//       index.tsx      // /blog, /en/blog, /fr/blog
-//       $slug.tsx      // /blog/post, /en/blog/post, /fr/blog/post
+<!-- ::start:tabs -->
 
-// routes/{-$locale}/index.tsx
+```txt title="Route structure"
+Route structure:
+    routes/
+       {-$locale}/
+            index.tsx        // /, /en, /fr
+            about.tsx        // /about, /en/about, /fr/about
+            blog/
+                 index.tsx      // /blog, /en/blog, /fr/blog
+                $slug.tsx      // /blog/post, /en/blog/post, /fr/blog/post
+```
+
+```tsx title="routes/{-$locale}/index.tsx"
 export const Route = createFileRoute('/{-$locale}/')({
   component: HomeComponent,
 })
@@ -225,12 +228,15 @@ function HomeComponent() {
     </div>
   )
 }
+```
 
-// routes/{-$locale}/about.tsx
+```tsx title="routes/{-$locale}/about.tsx"
 export const Route = createFileRoute('/{-$locale}/about')({
   component: AboutComponent,
 })
 ```
+
+<!-- ::end:tabs -->
 
 ### SEO and Canonical URLs
 
@@ -341,13 +347,13 @@ Optional path parameters provide a flexible foundation for internationalization 
 
 ## i18n Library Integration Patterns
 
-TanStack Router is **library-agnostic**. You can integrate any i18n solution by mapping locale state to routing behavior.
+TanStack Router is **library-agnostic**. i18n libraries manage translations and locale detection, while the router manages URL structure and navigation.
 
 Below is a recommended pattern using **Paraglide**.
 
 ### TanStack Router + Paraglide
 
-Paraglide provides type-safe translations, locale detection, and URL localization that pair naturally with TanStack Router.
+Paraglide is one example of an i18n library that can integrate with TanStack Router for translations, locale detection, and URL localization.
 
 **GitHub example:**
 [https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide)
@@ -401,10 +407,10 @@ If you use TanStack Start and do not need offline capabilities, you don't need t
 If you use translated pathnames, you can derive them directly from the TanStack Router route tree to ensure every route has translations.
 
 ```ts
-import { Locale } from "@reland/i18n/runtime"
-import { RoutePath } from "../../types/Routes"
+import { Locale } from './paraglide/runtime'
+import { RoutePath } from '../../types/Routes'
 
-const excludedPaths = ["admin", "partner", "tests", "api"] as const
+const excludedPaths = ['admin', 'partner', 'tests', 'api'] as const
 
 type PublicRoutePath = Exclude<
   RoutePath,
@@ -420,15 +426,15 @@ function toUrlPattern(path: string) {
   return (
     path
       // explicit catch-all: "/$" → "/:path(.*)?"
-      .replace(/\/\$$/, "/:path(.*)?")
+      .replace(/\/\$$/, '/:path(.*)?')
       // optional params like {-$param} → ":param(.*)?"
-      .replace(/\{-\$([a-zA-Z0-9_]+)\}/g, ":$1(.*)?")
+      .replace(/\{-\$([a-zA-Z0-9_]+)\}/g, ':$1(.*)?')
       // normal params like $param → ":param(.*)?"
-      .replace(/\$([a-zA-Z0-9_]+)/g, ":$1(.*)?")
+      .replace(/\$([a-zA-Z0-9_]+)/g, ':$1(.*)?')
       // remove any remaining braces (safety)
-      .replace(/[{}]/g, "")
+      .replace(/[{}]/g, '')
       // remove trailing slash
-      .replace(/\/+$/, "")
+      .replace(/\/+$/, '')
   )
 }
 
@@ -448,14 +454,15 @@ function createTranslatedPathnames(
 }
 
 export const translatedPathnames = createTranslatedPathnames({
-  "/": {
-    en: "/",
-    de: "/"
+  '/': {
+    en: '/',
+    de: '/',
   },
-  "/about": {
-    en: "/about",
-    de: "/ueber"
-  })
+  '/about': {
+    en: '/about',
+    de: '/ueber',
+  },
+})
 ```
 
 Use in vite.config.ts:
@@ -476,4 +483,4 @@ This guarantees:
 
 ## Looking for i18n with SSR/TanStack Start?
 
-Check out the guide on integrating [i18n in TanStack Start](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n).
+Check out the guide on integrating [i18n in TanStack Start](../../../../start/framework/react/guide/internationalization-i18n).
