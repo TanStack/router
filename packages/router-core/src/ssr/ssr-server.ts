@@ -47,13 +47,15 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
     ['loaderData', 'l'],
     ['error', 'e'],
     ['ssr', 'ssr'],
-    ['globalNotFound', 'g'],
   ] as const
 
   for (const [key, shorthand] of properties) {
     if (match[key] !== undefined) {
       dehydratedMatch[shorthand] = match[key]
     }
+  }
+  if (match.globalNotFound) {
+    dehydratedMatch.g = true
   }
   return dehydratedMatch
 }
