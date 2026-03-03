@@ -1,18 +1,24 @@
-import { cleanup, render } from '@testing-library/vue'
-import { afterAll, beforeAll, bench, describe } from 'vitest'
 import type { NavigateOptions } from '@tanstack/router-core'
 import type * as App from './app'
+import type { Root } from 'react-dom/client'
 
 const appModulePath = './dist/app.js'
 const { createTestRouter } = (await import(appModulePath)) as typeof App
 
-describe('client-nav', () => {
+export function setup() {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(
+      'client-nav flame benchmark is running without NODE_ENV=production; React dev overhead will dominate results.',
+    )
+  }
   let id = 0
   const { router, component } = createTestRouter()
+  let root: Root | undefined = undefined
+  let container: HTMLDivElement | undefined = undefined
   let unsub = () => {}
   let next: () => Promise<void> = () => Promise.reject('Test not initialized')
 
-  async function setup() {
+  async function before() {
     id = 0
     let resolve: () => void = () => {}
     unsub = router.subscribe('onRendered', () => resolve())
@@ -35,40 +41,28 @@ describe('client-nav', () => {
       })
     }
 
-    render(component)
+    const { createRoot } = await import('react-dom/client')
+
+    container = document.createElement('div')
+    document.body.append(container)
+    root = createRoot(container)
+    root.render(component)
     await router.load()
   }
 
-  function teardown() {
-    cleanup()
+  function after() {
+    root?.unmount()
+    container?.remove()
     unsub()
   }
 
-  /**
-   * Running `vitest bench` ignores "suite hooks" like `beforeAll` and `afterAll`,
-   * so we use tinybench's `setup` and `teardown` options to run our setup and teardown logic.
-   *
-   * But CodSpeed calls the benchmarked function directly, bypassing `setup` and `teardown`,
-   * but it does support `beforeAll` and `afterAll`.
-   *
-   * So it looks like we're setting up in duplicate, but in reality, it's only running once per environment, as intended.
-   */
+  function tick() {
+    return next()
+  }
 
-  beforeAll(setup)
-  afterAll(teardown)
-
-  bench(
-    'client-side navigation loop (vue)',
-    async () => {
-      for (let i = 0; i < 10; i++) {
-        await next()
-      }
-    },
-    {
-      warmupIterations: 100,
-      time: 10_000,
-      setup,
-      teardown,
-    },
-  )
-})
+  return {
+    before,
+    tick,
+    after,
+  }
+}
