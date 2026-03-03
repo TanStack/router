@@ -255,37 +255,42 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // this will prevent that other pending components are rendered but hydration is not blocked
   if (isSpaMode) {
     const match = matches[1]
-    invariant(
-      match,
-      'Expected to find a match below the root match in SPA mode.',
-    )
-    setMatchForcePending(match)
+    // match can be undefined when hydrating a 404/error page in SPA mode (only root match exists)
+    // in that case, skip setting up pending state and let router.load() handle it
+    if (!match) {
+      console.warn(
+        'SPA hydration: no child match found below root match. This can happen during 404/error page hydration.',
+      )
+    } else {
+      setMatchForcePending(match)
 
-    match._displayPending = true
-    match._nonReactive.displayPendingPromise = loadPromise
+      match._displayPending = true
+      match._nonReactive.displayPendingPromise = loadPromise
 
-    loadPromise.then(() => {
-      batch(() => {
-        // ensure router is not in status 'pending' anymore
-        // this usually happens in Transitioner but if loading synchronously resolves,
-        // Transitioner won't be rendered while loading so it cannot track the change from loading:true to loading:false
-        if (router.__store.state.status === 'pending') {
-          router.__store.setState((s) => ({
-            ...s,
-            status: 'idle',
-            resolvedLocation: s.location,
-          }))
-        }
-        // hide the pending component once the load is finished
-        router.updateMatch(match.id, (prev) => {
-          return {
-            ...prev,
-            _displayPending: undefined,
-            displayPendingPromise: undefined,
+      loadPromise.then(() => {
+        batch(() => {
+          // ensure router is not in status 'pending' anymore
+          // this usually happens in Transitioner but if loading synchronously resolves,
+          // Transitioner won't be rendered while loading so it cannot track the change from loading:true to loading:false
+          if (router.__store.state.status === 'pending') {
+            router.__store.setState((s) => ({
+              ...s,
+              status: 'idle',
+              resolvedLocation: s.location,
+            }))
           }
+          // hide the pending component once the load is finished
+          router.updateMatch(match.id, (prev) => {
+            return {
+              ...prev,
+              _displayPending: undefined,
+              displayPendingPromise: undefined,
+            }
+          })
         })
       })
-    })
+    }
   }
   return routeChunkPromise
 }
+
