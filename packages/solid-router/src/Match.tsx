@@ -172,6 +172,14 @@ export const Match = (props: { matchId: string }) => {
 // allows us to fire onRendered events even after a hydration mismatch
 // error that occurred above the root layout (like bad head/link tags,
 // which is common).
+//
+// In Solid, createEffect(source, fn) fires on initial mount as well as on
+// reactive changes. OnRendered can also remount when the first child route
+// changes (e.g. navigating from / to /posts). We deduplicate by tracking
+// the last emitted resolvedLocation key per router so each unique resolved
+// location only triggers one onRendered event regardless of remounts.
+const lastOnRenderedKey = new WeakMap<object, string>()
+
 function OnRendered() {
   const router = useRouter()
 
@@ -183,6 +191,9 @@ function OnRendered() {
   Solid.createEffect(
     () => [location()] as const,
     ([location]) => {
+      if (!location) return
+      if (lastOnRenderedKey.get(router) === location) return
+      lastOnRenderedKey.set(router, location)
       router.emit({
         type: 'onRendered',
         ...getLocationChangeInfo(router.state),
