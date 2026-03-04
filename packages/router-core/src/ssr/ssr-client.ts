@@ -28,9 +28,7 @@ function hydrateMatch(
   match.ssr = deyhydratedMatch.ssr
   match.updatedAt = deyhydratedMatch.u
   match.error = deyhydratedMatch.e
-  if (deyhydratedMatch.g !== undefined) {
-    match.globalNotFound = true
-  }
+  match.globalNotFound = deyhydratedMatch.g
 }
 
 export async function hydrate(router: AnyRouter): Promise<any> {
@@ -85,10 +83,9 @@ export async function hydrate(router: AnyRouter): Promise<any> {
 
   // kick off loading the route chunks
   const routeChunkPromise = Promise.all(
-    matches.map((match) => {
-      const route = router.looseRoutesById[match.routeId]!
-      return router.loadRouteChunk(route)
-    }),
+    matches.map((match) =>
+      router.loadRouteChunk(router.looseRoutesById[match.routeId]!),
+    ),
   )
 
   function setMatchForcePending(match: AnyRouteMatch) {
@@ -149,12 +146,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }
   })
 
-  router.__store.setState((s) => {
-    return {
-      ...s,
-      matches,
-    }
-  })
+  router.__store.setState((s) => ({
+    ...s,
+    matches,
+  }))
 
   // Allow the user to handle custom hydration data
   await router.options.hydrate?.(dehydratedData)
@@ -280,13 +275,11 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           }))
         }
         // hide the pending component once the load is finished
-        router.updateMatch(match.id, (prev) => {
-          return {
-            ...prev,
-            _displayPending: undefined,
-            displayPendingPromise: undefined,
-          }
-        })
+        router.updateMatch(match.id, (prev) => ({
+          ...prev,
+          _displayPending: undefined,
+          displayPendingPromise: undefined,
+        }))
       })
     })
   }

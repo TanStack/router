@@ -754,7 +754,7 @@ describe('head execution', () => {
     expect(match?.status).toBe('notFound')
   })
 
-  test('propagates sync beforeLoad non-notFound error without running loaders/heads', async () => {
+  test('propagates sync beforeLoad non-notFound error running ancestor loaders and heads', async () => {
     const beforeLoadError = new Error('beforeLoad-sync-error')
     const rootLoader = vi.fn(() => ({ level: 0 }))
     const rootHead = vi.fn(() => ({ meta: [{ title: 'Root' }] }))
@@ -808,13 +808,15 @@ describe('head execution', () => {
       }),
     ).rejects.toBe(beforeLoadError)
 
-    expect(rootLoader).toHaveBeenCalledTimes(0)
+    expect(rootLoader).toHaveBeenCalledTimes(1)
     expect(childLoader).toHaveBeenCalledTimes(0)
-    expect(rootHead).toHaveBeenCalledTimes(0)
-    expect(childHead).toHaveBeenCalledTimes(0)
+    // Head functions still run for ancestors up to the erroring match so that
+    // SSR produces valid <head> content (e.g. charset, viewport, stylesheets).
+    expect(rootHead).toHaveBeenCalledTimes(1)
+    expect(childHead).toHaveBeenCalledTimes(1)
   })
 
-  test('propagates async beforeLoad non-notFound error without running loaders/heads', async () => {
+  test('propagates async beforeLoad non-notFound error running ancestor loaders and heads', async () => {
     const beforeLoadError = new Error('beforeLoad-async-error')
     const rootLoader = vi.fn(() => ({ level: 0 }))
     const rootHead = vi.fn(() => ({ meta: [{ title: 'Root' }] }))
@@ -869,21 +871,23 @@ describe('head execution', () => {
       }),
     ).rejects.toBe(beforeLoadError)
 
-    expect(rootLoader).toHaveBeenCalledTimes(0)
+    expect(rootLoader).toHaveBeenCalledTimes(1)
     expect(childLoader).toHaveBeenCalledTimes(0)
-    expect(rootHead).toHaveBeenCalledTimes(0)
-    expect(childHead).toHaveBeenCalledTimes(0)
+    // Head functions still run for ancestors up to the erroring match so that
+    // SSR produces valid <head> content (e.g. charset, viewport, stylesheets).
+    expect(rootHead).toHaveBeenCalledTimes(1)
+    expect(childHead).toHaveBeenCalledTimes(1)
   })
 
   describe('beforeLoad notFound parent loader outcomes', () => {
     type ThrowAtIndex = 1 | 2 | 3
-    type ParentFailure = 'notFound' | 'redirect'
+    type ParentFailure = 'notFound' | 'redirect' | 'error'
     type ParentFailureMap = Partial<Record<0 | 1 | 2, ParentFailure>>
     type Scenario = {
       name: string
       throwAtIndex: ThrowAtIndex
       parentFailures: ParentFailureMap
-      expectedErrorKind: 'notFound' | 'redirect'
+      expectedErrorKind: 'notFound' | 'redirect' | 'error'
       expectedErrorSource?: string
       expectedErrorRouteIndex?: 0 | 1 | 2 | 3
       expectedLoaderMaxIndex: number
@@ -958,6 +962,15 @@ describe('head execution', () => {
       ])
 
       const routes = [rootRoute, level1Route, level2Route, level3Route] as const
+
+      ;([0, 1, 2] as const).forEach((index) => {
+        if (parentFailures[index] === 'error') {
+          ;(routes[index].options as any).shouldReload = () => {
+            throw new Error(`loader-${index}-error`)
+          }
+        }
+      })
+
       const throwRoute = routes[throwAtIndex]!
       throwRoute.options.beforeLoad = () => {
         const beforeLoadNotFound = beforeLoadNotFoundFactory
@@ -1015,9 +1028,9 @@ describe('head execution', () => {
           matches,
           updateMatch: router.updateMatch,
         })
-        return { error: undefined }
+        return { error: undefined, matches }
       } catch (error) {
-        return { error }
+        return { error, matches }
       }
     }
 
@@ -1135,6 +1148,15 @@ describe('head execution', () => {
         expectedLoaderMaxIndex: 2,
         expectedRenderedHeadMaxIndex: -1,
       },
+      {
+        name: 'propagates regular loader error when mixed with loader notFound in settled loaders',
+        throwAtIndex: 3 as const,
+        parentFailures: { 1: 'notFound', 2: 'error' } as ParentFailureMap,
+        expectedErrorKind: 'error' as const,
+        expectedErrorSource: 'loader-2-error',
+        expectedLoaderMaxIndex: 1,
+        expectedRenderedHeadMaxIndex: -1,
+      },
     ] satisfies Array<Scenario>
 
     test.each(scenarios)('$name', async (scenario) => {
@@ -1145,7 +1167,7 @@ describe('head execution', () => {
         withDefaultNotFoundComponent: scenario.withDefaultNotFoundComponent,
       })
 
-      const { error } = await runLoadMatchesAndCapture(router)
+      const { error, matches } = await runLoadMatchesAndCapture(router)
 
       for (let i = 0; i < routes.length; i++) {
         const loader = loaders[i]!
@@ -1171,6 +1193,12 @@ describe('head execution', () => {
         return
       }
 
+      if (scenario.expectedErrorKind === 'error') {
+        expect(error).toBeInstanceOf(Error)
+        expect((error as Error).message).toBe(scenario.expectedErrorSource)
+        return
+      }
+
       expect(error).toEqual(
         expect.objectContaining({
           isNotFound: true,
@@ -1187,6 +1215,140 @@ describe('head execution', () => {
       if (scenario.expectRootNotFoundComponentAssigned) {
         expect(routes[0].options.notFoundComponent).toBeTypeOf('function')
       }
+    })
+
+    test('sets globalNotFound on root match when beforeLoad notFound targets root boundary', async () => {
+      const { router, routes } = setupScenario({
+        throwAtIndex: 3,
+        parentFailures: {},
+        beforeLoadNotFoundFactory: (innerRoutes) =>
+          notFound({
+            routeId: innerRoutes[0].id as never,
+            data: { source: 'beforeLoad-root-explicit' },
+          }),
+      })
+
+      const { error, matches } = await runLoadMatchesAndCapture(router)
+
+      expect(error).toEqual(
+        expect.objectContaining({
+          isNotFound: true,
+          data: { source: 'beforeLoad-root-explicit' },
+        }),
+      )
+
+      const rootMatch = router.state.pendingMatches!.find(
+        (m) => m.routeId === routes[0].id,
+      )
+
+      expect(rootMatch?.globalNotFound).toBe(true)
+      expect(rootMatch?.status).toBe('success')
+      expect(rootMatch?.error).toBeUndefined()
+    })
+
+    test('clears stale root globalNotFound on subsequent successful load', async () => {
+      const { router, routes } = setupScenario({
+        throwAtIndex: 3,
+        parentFailures: {},
+        beforeLoadNotFoundFactory: (innerRoutes) =>
+          notFound({
+            routeId: innerRoutes[0].id as never,
+            data: { source: 'beforeLoad-root-explicit' },
+          }),
+      })
+
+      const first = await runLoadMatchesAndCapture(router)
+      expect(first.error).toEqual(expect.objectContaining({ isNotFound: true }))
+
+      const throwingRoute = routes[3]
+      throwingRoute.options.beforeLoad = undefined
+
+      const second = await runLoadMatchesAndCapture(router)
+      expect(second.error).toBeUndefined()
+
+      const rootMatch = router.state.pendingMatches!.find(
+        (m) => m.routeId === routes[0].id,
+      )
+
+      expect(rootMatch?.globalNotFound).toBe(false)
+    })
+
+    test('clears stale root globalNotFound when root loader is skipped', async () => {
+      const rootLoader = vi.fn(() => ({ level: 0 }))
+      const rootRoute = new BaseRootRoute({
+        loader: rootLoader,
+        staleTime: Infinity,
+        shouldReload: () => false,
+      })
+
+      const childLoader = vi.fn(() => ({ level: 1 }))
+      const childRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/test',
+        loader: childLoader,
+        staleTime: Infinity,
+        shouldReload: () => false,
+      })
+
+      const routeTree = rootRoute.addChildren([childRoute])
+
+      const router = new RouterCore({
+        routeTree,
+        history: createMemoryHistory({ initialEntries: ['/test'] }),
+      })
+
+      const first = await runLoadMatchesAndCapture(router)
+      expect(first.error).toBeUndefined()
+      expect(rootLoader).toHaveBeenCalledTimes(1)
+
+      const staleRootNotFound = notFound({ data: { source: 'stale-root' } })
+      const currentRootMatchId = router.state.pendingMatches!.find(
+        (m) => m.routeId === rootRoute.id,
+      )!.id
+
+      router.updateMatch(currentRootMatchId, (prev) => ({
+        ...prev,
+        status: 'success',
+        globalNotFound: true,
+        error: staleRootNotFound,
+      }))
+
+      const location = router.latestLocation
+      const matches = router.matchRoutes(location)
+      const pendingRootMatch = matches.find((m) => m.routeId === rootRoute.id)!
+      pendingRootMatch.status = 'success'
+      pendingRootMatch.globalNotFound = false
+      pendingRootMatch.error = undefined
+      ;(
+        router as unknown as {
+          __store: {
+            setState: (
+              updater: (s: { pendingMatches?: typeof matches }) => unknown,
+            ) => void
+          }
+        }
+      ).__store.setState((s) => ({
+        ...s,
+        pendingMatches: matches,
+      }))
+
+      await expect(
+        loadMatches({
+          router,
+          location,
+          matches,
+          updateMatch: router.updateMatch,
+        }),
+      ).resolves.toBe(matches)
+
+      expect(rootLoader).toHaveBeenCalledTimes(1)
+
+      const rootMatch = router.state.pendingMatches!.find(
+        (m) => m.routeId === rootRoute.id,
+      )
+
+      expect(rootMatch?.globalNotFound).toBe(false)
+      expect(rootMatch?.error).toBeUndefined()
     })
   })
 })

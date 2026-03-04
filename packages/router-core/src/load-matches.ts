@@ -935,13 +935,14 @@ export async function loadMatches(arg: {
       : undefined
 
   const maxIndexExclusive =
-    inner.serialError || (beforeLoadNotFound && inner.preload)
+    beforeLoadNotFound && inner.preload
       ? 0
       : boundaryIndex !== undefined
         ? Math.min(boundaryIndex + 1, baseMaxIndexExclusive)
         : baseMaxIndexExclusive
 
   let firstNotFound: NotFoundError | undefined
+  let firstUnhandledRejection: unknown
 
   for (let i = 0; i < maxIndexExclusive; i++) {
     matchPromises.push(loadRouteMatch(inner, matchPromises, i))
@@ -959,9 +960,15 @@ export async function loadMatches(arg: {
       if (isRedirect(reason)) {
         throw reason
       }
-      if (!firstNotFound && isNotFound(reason)) {
-        firstNotFound = reason
+      if (isNotFound(reason)) {
+        firstNotFound ??= reason
+      } else if (firstUnhandledRejection === undefined) {
+        firstUnhandledRejection = reason
       }
+    }
+
+    if (firstUnhandledRejection !== undefined) {
+      throw firstUnhandledRejection
     }
   }
 
@@ -969,7 +976,9 @@ export async function loadMatches(arg: {
     firstNotFound ??
     (beforeLoadNotFound && !inner.preload ? beforeLoadNotFound : undefined)
 
-  let headMaxIndex = inner.serialError ? -1 : inner.matches.length - 1
+  let headMaxIndex = inner.serialError
+    ? (inner.firstBadMatchIndex ?? 0)
+    : inner.matches.length - 1
 
   if (!notFoundToThrow && beforeLoadNotFound && inner.preload) {
     return inner.matches
@@ -1009,10 +1018,9 @@ export async function loadMatches(arg: {
       ...prev,
       ...(boundaryIsRoot
         ? // For root boundary, use globalNotFound so the root component's
-          // shell still renders and <Outlet> handles the not-found display.
-          // Setting status:'notFound' on root would replace the entire shell,
-          // and in Solid/Vue the status update can be lost inside startTransition.
-          { globalNotFound: true }
+          // shell still renders and <Outlet> handles the not-found display,
+          // instead of replacing the entire root shell via status='notFound'.
+          { status: 'success' as const, globalNotFound: true, error: undefined }
         : // For non-root boundaries, set status:'notFound' so MatchInner
           // renders the notFoundComponent directly.
           { status: 'notFound' as const, error: notFoundToThrow }),
@@ -1024,6 +1032,36 @@ export async function loadMatches(arg: {
     // Ensure the rendering boundary route chunk (and its lazy components, including
     // lazy notFoundComponent) is loaded before we continue to head execution/render.
     await loadRouteChunk(boundaryRoute)
+  } else if (!inner.preload) {
+    // Clear stale root global-not-found state on normal navigations that do not
+    // throw notFound. This must live here (instead of only in runLoader success)
+    // because the root loader may be skipped when data is still fresh.
+    const rootMatch = inner.matches[0]!
+    // `rootMatch` is the next match for this navigation. If it is not global
+    // not-found, then any currently stored root global-not-found is stale.
+    if (!rootMatch.globalNotFound) {
+      // `currentRootMatch` is the current store state (from the previous
+      // navigation/load). Update only when a stale flag is actually present.
+      const currentRootMatch = inner.router.getMatch(rootMatch.id)
+      if (currentRootMatch?.globalNotFound) {
+        inner.updateMatch(rootMatch.id, (prev) => ({
+          ...prev,
+          globalNotFound: false,
+          error: undefined,
+        }))
+      }
+    }
+  }
+
+  // When a serial error occurred (e.g. beforeLoad threw a regular Error),
+  // the erroring route's lazy chunk wasn't loaded because loaders were skipped.
+  // We need to load it so the code-split errorComponent is available for rendering.
+  if (inner.serialError && inner.firstBadMatchIndex !== undefined) {
+    const errorRoute =
+      inner.router.looseRoutesById[
+        inner.matches[inner.firstBadMatchIndex]!.routeId
+      ]!
+    await loadRouteChunk(errorRoute)
   }
 
   // serially execute heads once after loaders/notFound handling, ensuring
