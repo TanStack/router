@@ -54,6 +54,9 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
       dehydratedMatch[shorthand] = match[key]
     }
   }
+  if (match.globalNotFound) {
+    dehydratedMatch.g = true
+  }
   return dehydratedMatch
 }
 

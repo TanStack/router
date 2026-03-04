@@ -176,6 +176,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             redirect
           </Link>{' '}
           <Link
+            to="/not-found"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            not-found
+          </Link>{' '}
+          <Link
             to="/client-only"
             activeProps={{
               className: 'font-bold',
