@@ -14,7 +14,7 @@
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
-    "express": "^4.21.2",
+    "express": "^5.1.0",
     "redaxios": "^0.5.1",
     "vue": "^3.5.25"
   },

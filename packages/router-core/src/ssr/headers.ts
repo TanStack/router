@@ -1,18 +1,6 @@
 import { splitSetCookieString } from 'cookie-es'
 import type { OutgoingHttpHeaders } from 'node:http2'
 
-// A utility function to turn HeadersInit into an object
-export function headersInitToObject(
-  headers: HeadersInit,
-): Record<keyof OutgoingHttpHeaders, string> {
-  const obj: Record<keyof OutgoingHttpHeaders, string> = {}
-  const headersInstance = new Headers(headers)
-  for (const [key, value] of headersInstance.entries()) {
-    obj[key] = value
-  }
-  return obj
-}
-
 export type AnyHeaders =
   | Headers
   | HeadersInit

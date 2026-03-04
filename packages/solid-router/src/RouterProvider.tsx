@@ -1,4 +1,4 @@
-import { getRouterContext } from './routerContext'
+import { routerContext } from './routerContext'
 import { SafeFragment } from './SafeFragment'
 import { Matches } from './Matches'
 import type {

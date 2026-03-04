@@ -25,7 +25,6 @@ import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   AssignAllServerFnContext,
-  FunctionMiddlewareClientFnResult,
   FunctionMiddlewareServerFnResult,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
@@ -65,7 +64,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
   }
 
   const res: ServerFnBuilder<Register, Method> = {
-    options: resolvedOptions as any,
+    options: resolvedOptions,
     middleware: (middleware) => {
       // multiple calls to `middleware()` merge the middlewares with the previously supplied ones
       // this is primarily useful for letting users create their own abstractions on top of `createServerFn`
@@ -114,6 +113,12 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       // We want to make sure the new function has the same
       // properties as the original function
 
+      // Propagate the declared HTTP method onto the extracted handler
+      // so the manifest-exported symbol (resolved by getServerFnById)
+      // carries `method`, enabling the server handler to reject
+      // mismatched HTTP methods before parsing request payloads.
+      ;(extractedFn as any).method = resolvedOptions.method
+
       return Object.assign(
         async (opts?: CompiledFetcherFnOptions) => {
           // Start by executing the client-side middleware chain
@@ -138,6 +143,9 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
         {
           // This copies over the URL, function ID
           ...extractedFn,
+          // Expose the declared HTTP method so the server handler
+          // can reject mismatched methods before parsing payloads
+          method: resolvedOptions.method,
           // The extracted function on the server-side calls
           // this function
           __executeServer: async (opts: any) => {
@@ -280,8 +288,8 @@ export async function executeMiddleware(
         // Execute the middleware
         const result = await middlewareFn({
           ...ctx,
-          next: userNext as any,
-        } as any)
+          next: userNext,
+        })
 
         // If result is NOT a ctx object, we need to return it as
         // the { result }
@@ -344,6 +352,7 @@ export type Fetcher<TMiddlewares, TInputValidator, TResponse> =
 export interface FetcherBase {
   [TSS_SERVER_FUNCTION]: true
   url: string
+  method: Method
   __executeServer: (opts: {
     method: Method
     data: unknown
@@ -782,11 +791,7 @@ function serverFnBaseToMiddleware(
         // but not before serializing the context
         const res = await options.extractedFn?.(payload)
 
-        return next(res) as unknown as FunctionMiddlewareClientFnResult<
-          any,
-          any,
-          any
-        >
+        return next(res)
       },
       server: async ({ next, ...ctx }) => {
         // Execute the server function
