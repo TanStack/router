@@ -8,7 +8,7 @@ import type {
 } from '@tanstack/router-core'
 import type * as Solid from 'solid-js'
 
-const RouterContext = getRouterContext() as unknown as Solid.Component<{
+const RouterContext = routerContext as unknown as Solid.Component<{
   value: any
   children: any
 }>
