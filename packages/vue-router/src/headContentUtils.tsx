@@ -77,7 +77,7 @@ export const useTags = () => {
     select: (state) => {
       const constructedLinks: Array<RouterManagedTag> = []
       const relsToDedupe = new Set(['canonical'])
-      const linksByRel: Record<string, true> = {}
+      const linksByRel = new Set<string>()
 
       for (let i = state.matches.length - 1; i >= 0; i--) {
         const match = state.matches[i]!
@@ -86,11 +86,14 @@ export const useTags = () => {
 
         for (let j = matchLinks.length - 1; j >= 0; j--) {
           const link = matchLinks[j]!
-          if (link.rel && relsToDedupe.has(link.rel)) {
-            if (linksByRel[link.rel]) {
-              continue
+          if (link.rel) {
+            const rel = link.rel.toLowerCase()
+            if (relsToDedupe.has(rel)) {
+              if (linksByRel.has(rel)) {
+                continue
+              }
+              linksByRel.add(rel)
             }
-            linksByRel[link.rel] = true
           }
 
           constructedLinks.push({
