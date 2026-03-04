@@ -1,12 +1,6 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
-import {
-  dummyMatchContext,
-  dummyPendingMatchContext,
-  matchContext,
-  pendingMatchContext,
-} from './matchContext'
-import { useStoreOfStoresValue } from './storeOfStores'
+import { pendingMatchContext, routeIdContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -76,33 +70,19 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
-  const nearestMatchId = Solid.useContext(
-    opts.from ? dummyMatchContext : matchContext,
-  )
-  const hasPendingNearestMatch = Solid.useContext(
-    opts.from ? dummyPendingMatchContext : pendingMatchContext,
-  )
+  const nearestRouteId: Solid.Accessor<string | undefined> = opts.from
+    ? () => undefined
+    : Solid.useContext(routeIdContext)
+  const hasPendingNearestMatch: Solid.Accessor<boolean> = opts.from
+    ? () => false
+    : Solid.useContext(pendingMatchContext)
 
-  const activeMatchStore = Solid.createMemo(() => {
-    const stores = opts.from
-      ? router.stores.byRouteId.state
-      : router.stores.byId.state
-    const key = opts.from ?? nearestMatchId()
-    return key ? stores[key] : undefined
+  const match = Solid.createMemo(() => {
+    const routeId = opts.from ?? nearestRouteId()
+    return routeId
+      ? router.stores.getMatchStoreByRouteId(routeId).state
+      : undefined
   })
-  const hasPendingRouteMatch = opts.from
-    ? Solid.createMemo(() =>
-        Boolean(router.stores.pendingByRouteId.state[opts.from as string]),
-      )
-    : undefined
-  const isTransitioning = Solid.createMemo(
-    () => router.stores.isTransitioning.state,
-  )
-
-  const match = useStoreOfStoresValue(
-    () => activeMatchStore(),
-    (value) => value,
-  )
 
   return Solid.createMemo((previous) => {
     const selectedMatch = match()
@@ -113,10 +93,12 @@ export function useMatch<
       }
 
       const hasPendingMatch = opts.from
-        ? Boolean(hasPendingRouteMatch?.())
+        ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
         : hasPendingNearestMatch()
       const shouldThrowError =
-        !hasPendingMatch && !isTransitioning() && (opts.shouldThrow ?? true)
+        !hasPendingMatch &&
+        !router.stores.isTransitioning.state &&
+        (opts.shouldThrow ?? true)
 
       invariant(
         !shouldThrowError,

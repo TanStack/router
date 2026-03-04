@@ -39,7 +39,6 @@ export type StoreConfig = {
 type MatchStore = RouterWritableStore<AnyRouteMatch> & {
   routeId?: string
 }
-type MatchStoreLookup = Record<string, MatchStore>
 type ReadableStore<TValue> = RouterReadableStore<TValue>
 
 /** SSR non-reactive createMutableStore */
@@ -84,12 +83,6 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   pendingMatchesId: RouterWritableStore<Array<string>>
   /** @internal */
   cachedMatchesId: RouterWritableStore<Array<string>>
-  /** store of stores */
-  byId: RouterReadableStore<MatchStoreLookup>
-  /** store of stores */
-  byRouteId: RouterReadableStore<MatchStoreLookup>
-  /** store of stores, solid/vue only */
-  pendingByRouteId: RouterReadableStore<MatchStoreLookup>
   activeMatchesSnapshot: ReadableStore<Array<AnyRouteMatch>>
   pendingMatchesSnapshot: ReadableStore<Array<AnyRouteMatch>>
   cachedMatchesSnapshot: ReadableStore<Array<AnyRouteMatch>>
@@ -107,6 +100,16 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   activeMatchStoresById: Map<string, MatchStore>
   pendingMatchStoresById: Map<string, MatchStore>
   cachedMatchStoresById: Map<string, MatchStore>
+
+  /**
+   * Get a computed store that resolves a routeId to its current match state.
+   * Returns the same cached store instance for repeated calls with the same key.
+   * The computed depends on matchesId + the individual match store, so
+   * subscribers are only notified when the resolved match state changes.
+   */
+  getMatchStoreByRouteId: (
+    routeId: string,
+  ) => RouterReadableStore<AnyRouteMatch | undefined>
 
   setActiveMatches: (nextMatches: Array<AnyRouteMatch>) => void
   setPendingMatches: (nextMatches: Array<AnyRouteMatch>) => void
@@ -138,15 +141,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   const cachedMatchesId = createMutableStore<Array<string>>([])
 
   // 1st order derived stores
-  const byId = createReadonlyStore(() =>
-    readPoolLookup(activeMatchStoresById, matchesId.state),
-  )
-  const byRouteId = createReadonlyStore(() =>
-    readPoolLookupByRouteId(activeMatchStoresById, matchesId.state),
-  )
-  const pendingByRouteId = createReadonlyStore(() =>
-    readPoolLookupByRouteId(pendingMatchStoresById, pendingMatchesId.state),
-  )
   const activeMatchesSnapshot = createReadonlyStore(() =>
     readPoolMatches(activeMatchStoresById, matchesId.state),
   )
@@ -183,6 +177,44 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     redirect: redirect.state,
   }))
 
+  // Per-routeId computed store cache.
+  // Each entry resolves routeId → match state through the signal graph,
+  // giving consumers a single store to subscribe to instead of the
+  // two-level byRouteId → matchStore pattern.
+  //
+  // Cache size is bounded by the route tree (routeIds are static strings
+  // defined at app init). Unwatched computed stores are inert in
+  // alien-signals — they purge dependency links and don't participate
+  // in the reactive graph until re-subscribed.
+  const matchStoreByRouteIdCache = new Map<
+    string,
+    RouterReadableStore<AnyRouteMatch | undefined>
+  >()
+
+  function getMatchStoreByRouteId(
+    routeId: string,
+  ): RouterReadableStore<AnyRouteMatch | undefined> {
+    let cached = matchStoreByRouteIdCache.get(routeId)
+    if (!cached) {
+      cached = createReadonlyStore(() => {
+        // Reading matchesId.state tracks it as a dependency.
+        // When matchesId changes (navigation), this computed re-evaluates.
+        const ids = matchesId.state
+        for (const id of ids) {
+          const matchStore = activeMatchStoresById.get(id)
+          if (matchStore && matchStore.routeId === routeId) {
+            // Reading matchStore.state tracks it as a dependency.
+            // When the match store's state changes, this re-evaluates.
+            return matchStore.state
+          }
+        }
+        return undefined
+      })
+      matchStoreByRouteIdCache.set(routeId, cached)
+    }
+    return cached
+  }
+
   const store = {
     // atoms
     status,
@@ -196,9 +228,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     matchesId,
     pendingMatchesId,
     cachedMatchesId,
-    byId,
-    byRouteId,
-    pendingByRouteId,
 
     // derived
     activeMatchesSnapshot,
@@ -216,6 +245,9 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
 
     // compatibility "big" state
     __store,
+
+    // per-key computed stores
+    getMatchStoreByRouteId,
 
     // methods
     setActiveMatches,
@@ -273,37 +305,6 @@ function readPoolMatches(
     }
   }
   return matches
-}
-
-function readPoolLookup(
-  pool: Map<string, MatchStore>,
-  ids: Array<string>,
-): MatchStoreLookup {
-  const lookup: MatchStoreLookup = {}
-  for (const id of ids) {
-    const matchStore = pool.get(id)
-    if (matchStore) {
-      lookup[id] = matchStore
-    }
-  }
-  return lookup
-}
-
-function readPoolLookupByRouteId(
-  pool: Map<string, MatchStore>,
-  ids: Array<string>,
-): MatchStoreLookup {
-  const lookup: MatchStoreLookup = {}
-  for (const id of ids) {
-    const matchStore = pool.get(id)
-    if (matchStore) {
-      const routeId = matchStore.routeId
-      if (routeId) {
-        lookup[routeId] = matchStore
-      }
-    }
-  }
-  return lookup
 }
 
 function reconcileMatchPool(

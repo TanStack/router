@@ -24,21 +24,6 @@ import type {
   RootRouteOptions,
 } from '@tanstack/router-core'
 
-function useActiveMatchStore(matchId: string, shouldThrow: boolean = true) {
-  const router = useRouter()
-
-  return useStore(router.stores.byId, (activeStores) => {
-    const store = activeStores[matchId]
-    if (shouldThrow) {
-      invariant(
-        store,
-        `Could not find match for matchId "${matchId}". Please file an issue!`,
-      )
-    }
-    return store
-  })
-}
-
 export const Match = React.memo(function MatchImpl({
   matchId,
 }: {
@@ -47,16 +32,15 @@ export const Match = React.memo(function MatchImpl({
   const router = useRouter()
 
   if (isServer ?? router.isServer) {
-    const match = router.stores.byId.state[matchId]?.state
+    const match = router.stores.activeMatchStoresById.get(matchId)?.state
     invariant(
       match,
       `Could not find match for matchId "${matchId}". Please file an issue!`,
     )
 
-    const matches = router.state.matches
-    const matchIndex = matches.findIndex((d) => d.id === matchId)
-    const parentRouteId =
-      matchIndex > 0 ? (matches[matchIndex - 1]?.routeId as string) : undefined
+    const routeId = match.routeId as string
+    const parentRouteId = (router.routesById[routeId] as AnyRoute).parentRoute
+      ?.id
 
     return (
       <MatchView
@@ -64,7 +48,7 @@ export const Match = React.memo(function MatchImpl({
         matchId={matchId}
         resetKey={router.stores.loadedAt.state}
         matchState={{
-          routeId: match.routeId as string,
+          routeId,
           ssr: match.ssr,
           _displayPending: match._displayPending,
           parentRouteId,
@@ -73,29 +57,32 @@ export const Match = React.memo(function MatchImpl({
     )
   }
 
+  // Subscribe directly to the match store from the pool.
+  // The matchId prop is stable for this component's lifetime (set by Outlet),
+  // and reconcileMatchPool reuses stores for the same matchId.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const matchStore = useActiveMatchStore(matchId)
+  const matchStore = router.stores.activeMatchStoresById.get(matchId)
+  invariant(
+    matchStore,
+    `Could not find match for matchId "${matchId}". Please file an issue!`,
+  )
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const match = useStore(matchStore, (value) => value!)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const parentMatchId = useStore(router.stores.matchesId, (ids) => {
-    return ids[ids.findIndex((id) => id === matchId) - 1]
-  })
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const matchState = React.useMemo(() => {
-    const parentRouteId = parentMatchId
-      ? router.stores.byId.state[parentMatchId]?.state.routeId
-      : undefined
+    const routeId = match.routeId as string
+    const parentRouteId = (router.routesById[routeId] as AnyRoute).parentRoute
+      ?.id
 
     return {
-      routeId: match.routeId as string,
+      routeId,
       ssr: match.ssr,
       _displayPending: match._displayPending,
       parentRouteId: parentRouteId as string | undefined,
     } satisfies MatchViewState
-  }, [parentMatchId, match, router.stores.byId.state])
+  }, [match._displayPending, match.routeId, match.ssr, router.routesById])
 
   return (
     <MatchView
@@ -258,7 +245,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   const router = useRouter()
 
   if (isServer ?? router.isServer) {
-    const match = router.stores.byId.state[matchId]?.state
+    const match = router.stores.activeMatchStoresById.get(matchId)?.state
     invariant(
       match,
       `Could not find match for matchId "${matchId}". Please file an issue!`,
@@ -321,7 +308,11 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const matchStore = useActiveMatchStore(matchId)
+  const matchStore = router.stores.activeMatchStoresById.get(matchId)
+  invariant(
+    matchStore,
+    `Could not find match for matchId "${matchId}". Please file an issue!`,
+  )
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const match = useStore(matchStore, (value) => value!)
   const routeId = match.routeId as string
@@ -459,22 +450,17 @@ export const Outlet = React.memo(function OutletImpl() {
     childMatchId =
       parentIndex >= 0 ? (matches[parentIndex + 1]?.id as string) : undefined
   } else {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const parentMatchStore = useStore(router.stores.byId, (stores) =>
-      matchId ? stores[matchId] : undefined,
-    )
+    // Subscribe directly to the match store from the pool instead of
+    // the two-level byId → matchStore pattern.
+    const parentMatchStore = matchId
+      ? router.stores.activeMatchStoresById.get(matchId)
+      : undefined
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    routeId = useStore(
-      parentMatchStore,
-      (match) => match?.routeId as string | undefined,
-    )
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    parentGlobalNotFound = useStore(
-      parentMatchStore,
-      (match) => match?.globalNotFound ?? false,
-    )
+    ;[routeId, parentGlobalNotFound] = useStore(parentMatchStore, (match) => [
+      match?.routeId as string | undefined,
+      match?.globalNotFound ?? false,
+    ])
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     childMatchId = useStore(router.stores.matchesId, (ids) => {

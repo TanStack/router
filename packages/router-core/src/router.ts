@@ -1400,7 +1400,15 @@ export class RouterCore<
       : undefined
 
     const matches = new Array<AnyRouteMatch>(matchedRoutes.length)
-    const previousActiveMatchesByRouteId = this.stores.byRouteId.state
+    // Snapshot of active match state keyed by routeId, used to stabilise
+    // params/search across navigations.  Built from the non-reactive pool
+    // so we don't pull in the byRouteId derived store.
+    const previousActiveMatchesByRouteId = new Map<string, AnyRouteMatch>()
+    for (const store of this.stores.activeMatchStoresById.values()) {
+      if (store.routeId) {
+        previousActiveMatchesByRouteId.set(store.routeId, store.state)
+      }
+    }
 
     for (let index = 0; index < matchedRoutes.length; index++) {
       const route = matchedRoutes[index]!
@@ -1485,7 +1493,7 @@ export class RouterCore<
 
       const existingMatch = this.getMatch(matchId)
 
-      const previousMatch = previousActiveMatchesByRouteId[route.id]?.state
+      const previousMatch = previousActiveMatchesByRouteId.get(route.id)
 
       const strictParams = existingMatch?._strictParams ?? usedParams
 
@@ -1601,7 +1609,7 @@ export class RouterCore<
       const existingMatch = this.getMatch(match.id)
 
       // Update the match's params
-      const previousMatch = previousActiveMatchesByRouteId[match.routeId]?.state
+      const previousMatch = previousActiveMatchesByRouteId.get(match.routeId)
       match.params = previousMatch
         ? replaceEqualDeep(previousMatch.params, routeParams)
         : routeParams
@@ -2413,25 +2421,29 @@ export class RouterCore<
                       : null
 
                     // Lifecycle-hook identity: routeId only (route presence in tree)
+                    // Build routeId sets from pools to avoid derived stores.
+                    const pendingRouteIds = new Set<string>()
+                    for (const s of this.stores.pendingMatchStoresById.values()) {
+                      if (s.routeId) pendingRouteIds.add(s.routeId)
+                    }
+                    const activeRouteIds = new Set<string>()
+                    for (const s of this.stores.activeMatchStoresById.values()) {
+                      if (s.routeId) activeRouteIds.add(s.routeId)
+                    }
+
                     hookExitingMatches = mountPending
                       ? currentMatches.filter(
-                          (match) =>
-                            !(
-                              match.routeId in
-                              this.stores.pendingByRouteId.state
-                            ),
+                          (match) => !pendingRouteIds.has(match.routeId),
                         )
                       : null
                     hookEnteringMatches = mountPending
                       ? pendingMatches.filter(
-                          (match) =>
-                            !(match.routeId in this.stores.byRouteId.state),
+                          (match) => !activeRouteIds.has(match.routeId),
                         )
                       : null
                     hookStayingMatches = mountPending
-                      ? pendingMatches.filter(
-                          (match) =>
-                            match.routeId in this.stores.byRouteId.state,
+                      ? pendingMatches.filter((match) =>
+                          activeRouteIds.has(match.routeId),
                         )
                       : currentMatches
 

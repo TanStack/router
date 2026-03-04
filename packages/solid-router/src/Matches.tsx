@@ -6,7 +6,7 @@ import { shallow } from './store'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
-import { matchContext } from './matchContext'
+import { matchContext, routeIdContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { Match } from './Match'
 import type {
@@ -68,6 +68,12 @@ export function Matches() {
 function MatchesInner() {
   const router = useRouter()
   const matchId = Solid.createMemo(() => router.stores.firstMatchId.state)
+  const routeId = Solid.createMemo(() => {
+    const id = matchId()
+    if (!id) return undefined
+    router.stores.matchesId.state
+    return router.stores.activeMatchStoresById.get(id)?.routeId
+  })
   const resetKey = Solid.createMemo(() => router.stores.loadedAt.state)
 
   const matchComponent = () => {
@@ -80,28 +86,30 @@ function MatchesInner() {
 
   return (
     <matchContext.Provider value={matchId}>
-      {router.options.disableGlobalCatchBoundary ? (
-        matchComponent()
-      ) : (
-        <CatchBoundary
-          getResetKey={() => resetKey()}
-          errorComponent={ErrorComponent}
-          onCatch={
-            process.env.NODE_ENV !== 'production'
-              ? (error) => {
-                  warning(
-                    false,
-                    `The following error wasn't caught by any route! At the very leas
+      <routeIdContext.Provider value={routeId}>
+        {router.options.disableGlobalCatchBoundary ? (
+          matchComponent()
+        ) : (
+          <CatchBoundary
+            getResetKey={() => resetKey()}
+            errorComponent={ErrorComponent}
+            onCatch={
+              process.env.NODE_ENV !== 'production'
+                ? (error) => {
+                    warning(
+                      false,
+                      `The following error wasn't caught by any route! At the very leas
     t, consider setting an 'errorComponent' in your RootRoute!`,
-                  )
-                  warning(false, error.message || error.toString())
-                }
-              : undefined
-          }
-        >
-          {matchComponent()}
-        </CatchBoundary>
-      )}
+                    )
+                    warning(false, error.message || error.toString())
+                  }
+                : undefined
+            }
+          >
+            {matchComponent()}
+          </CatchBoundary>
+        )}
+      </routeIdContext.Provider>
     </matchContext.Provider>
   )
 }
