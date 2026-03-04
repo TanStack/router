@@ -1,13 +1,6 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
-import { useStore } from '@tanstack/solid-store'
-import {
-  dummyMatchContext,
-  dummyPendingMatchContext,
-  matchContext,
-  pendingMatchContext,
-} from './matchContext'
-import { useStoreOfStoresValue } from './storeOfStores'
+import { pendingMatchContext, routeIdContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -77,47 +70,35 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
-  const nearestMatchId = Solid.useContext(
-    opts.from ? dummyMatchContext : matchContext,
-  )
-  const hasPendingNearestMatch = Solid.useContext(
-    opts.from ? dummyPendingMatchContext : pendingMatchContext,
-  )
+  const nearestRouteId: Solid.Accessor<string | undefined> = opts.from
+    ? () => undefined
+    : Solid.useContext(routeIdContext)
+  const hasPendingNearestMatch: Solid.Accessor<boolean> = opts.from
+    ? () => false
+    : Solid.useContext(pendingMatchContext)
 
-  const activeMatchStore = useStore(
-    opts.from ? router.stores.byRouteId : router.stores.byId,
-    (stores) => {
-      const key = opts.from ?? nearestMatchId()
-      return key ? stores[key] : undefined
-    },
-    { equal: Object.is },
-  )
-  const hasPendingRouteMatch = opts.from
-    ? useStore(
-        router.stores.pendingByRouteId,
-        (stores) => Boolean(stores[opts.from as string]),
-        { equal: Object.is },
-      )
-    : undefined
-  const isTransitioning = useStore(
-    router.stores.isTransitioning,
-    (value) => value,
-    { equal: Object.is },
-  )
+  const match = Solid.createMemo(() => {
+    const routeId = opts.from ?? nearestRouteId()
+    return routeId
+      ? router.stores.getMatchStoreByRouteId(routeId).state
+      : undefined
+  })
 
-  const match = useStoreOfStoresValue(
-    () => activeMatchStore(),
-    (value) => value,
-  )
-
-  return Solid.createMemo(() => {
+  return Solid.createMemo((previous) => {
     const selectedMatch = match()
     if (selectedMatch === undefined) {
+      // TODO (injectable stores) why do we return the previous here? That doesn't seem super safe, what if the `select` function reads other signals, then we wouldn't re-run it on changes to those signals.
+      if (previous !== undefined) {
+        return previous
+      }
+
       const hasPendingMatch = opts.from
-        ? Boolean(hasPendingRouteMatch?.())
+        ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
         : hasPendingNearestMatch()
       const shouldThrowError =
-        !hasPendingMatch && !isTransitioning() && (opts.shouldThrow ?? true)
+        !hasPendingMatch &&
+        !router.stores.isTransitioning.state &&
+        (opts.shouldThrow ?? true)
 
       invariant(
         !shouldThrowError,

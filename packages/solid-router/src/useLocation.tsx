@@ -1,5 +1,6 @@
-import { useStore } from '@tanstack/solid-store'
+import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
+import { shallow } from './store'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -25,8 +26,12 @@ export function useLocation<
   opts?: UseLocationBaseOptions<TRouter, TSelected>,
 ): Accessor<UseLocationResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
-  return useStore(
-    router.stores.location,
-    (location) => (opts?.select ? opts.select(location as any) : location) as any,
+  return Solid.createMemo(
+    () => {
+      const state = router.stores.location.state
+      return opts?.select ? opts.select(state) : state
+    },
+    undefined,
+    { equals: shallow },
   ) as Accessor<UseLocationResult<TRouter, TSelected>>
 }

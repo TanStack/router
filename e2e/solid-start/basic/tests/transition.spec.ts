@@ -4,11 +4,13 @@ test('transitions/count/create-resource should keep old values visible during na
   page,
 }) => {
   const burstClicks = async (count: number) => {
-    await page.getByTestId('increase-button').evaluate((element, clickCount) => {
-      for (let index = 0; index < clickCount; index++) {
-        ;(element as HTMLAnchorElement).click()
-      }
-    }, count)
+    await page
+      .getByTestId('increase-button')
+      .evaluate((element, clickCount) => {
+        for (let index = 0; index < clickCount; index++) {
+          ;(element as HTMLAnchorElement).click()
+        }
+      }, count)
   }
 
   await page.goto('/transition/count/create-resource')

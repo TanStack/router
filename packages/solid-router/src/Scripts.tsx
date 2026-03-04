@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/solid-store'
+import * as Solid from 'solid-js'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
@@ -6,7 +6,10 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const assetScripts = useStore(router.stores.activeMatchesSnapshot, (matches) => {
+  const activeMatches = Solid.createMemo(
+    () => router.stores.activeMatchesSnapshot.state,
+  )
+  const assetScripts = Solid.createMemo(() => {
     const assetScripts: Array<RouterManagedTag> = []
     const manifest = router.ssr?.manifest
 
@@ -14,7 +17,7 @@ export const Scripts = () => {
       return []
     }
 
-    matches
+    activeMatches()
       .map((match) => router.looseRoutesById[match.routeId]!)
       .forEach((route) =>
         manifest.routes[route.id]?.assets
@@ -31,9 +34,9 @@ export const Scripts = () => {
     return assetScripts
   })
 
-  const scripts = useStore(router.stores.activeMatchesSnapshot, (matches) => ({
-    scripts: (
-      matches
+  const scripts = Solid.createMemo(() =>
+    (
+      activeMatches()
         .map((match) => match.scripts!)
         .flat(1)
         .filter(Boolean) as Array<RouterManagedTag>
@@ -45,7 +48,7 @@ export const Scripts = () => {
       },
       children,
     })),
-  }))
+  )
 
   let serverBufferedScript: RouterManagedTag | undefined = undefined
 
@@ -54,7 +57,7 @@ export const Scripts = () => {
   }
 
   const allScripts = [
-    ...scripts().scripts,
+    ...scripts(),
     ...assetScripts(),
   ] as Array<RouterManagedTag>
 

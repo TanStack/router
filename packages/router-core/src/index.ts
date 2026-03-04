@@ -187,6 +187,17 @@ export type {
   FilebaseRouteOptionsInterface,
 } from './route'
 export {
+  createNonReactiveMutableStore,
+  createNonReactiveReadonlyStore,
+} from './stores'
+export type {
+  RouterBatchFn,
+  RouterReadableStore,
+  GetStoreConfig,
+  RouterStores,
+  RouterWritableStore,
+} from './stores'
+export {
   defaultSerializeError,
   getLocationChangeInfo,
   RouterCore,

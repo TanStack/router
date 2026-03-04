@@ -3,11 +3,11 @@ import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
   BaseRoute,
-  RouterCore,
   notFound,
   redirect,
   rootRouteId,
 } from '../src'
+import { createTestRouter } from './routerTestUtils'
 import type { RootRouteOptions } from '../src'
 
 type AnyRouteOptions = RootRouteOptions<any>
@@ -24,7 +24,7 @@ describe('redirect resolution', () => {
 
     const routeTree = rootRoute.addChildren([fooRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({
         initialEntries: ['https://example.com/foo'],
@@ -64,7 +64,7 @@ describe('beforeLoad skip or exec', () => {
 
     const routeTree = rootRoute.addChildren([fooRoute, barRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
@@ -266,7 +266,7 @@ describe('loader skip or exec', () => {
 
     const routeTree = rootRoute.addChildren([fooRoute, barRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
@@ -440,10 +440,10 @@ describe('loader skip or exec', () => {
     }))
 
     expect(
-      router.stores.cachedMatchesSnapshot.state.some((d) => d.id === '/foo/foo'),
-    ).toBe(
-      false,
-    )
+      router.stores.cachedMatchesSnapshot.state.some(
+        (d) => d.id === '/foo/foo',
+      ),
+    ).toBe(false)
     expect(
       router.stores.cachedMatchesSnapshot.state.some(
         (d) => d.status === 'redirected',
@@ -520,7 +520,7 @@ test('exec on stay (beforeLoad & loader)', async () => {
     layoutRoute.addChildren([fooRoute, barRoute]),
   ])
 
-  const router = new RouterCore({
+  const router = createTestRouter({
     routeTree,
     history: createMemoryHistory(),
     defaultStaleTime: 1000,
@@ -587,7 +587,7 @@ test('cancelMatches after pending timeout', async () => {
     path: '/bar',
   })
   const routeTree = rootRoute.addChildren([fooRoute, barRoute])
-  const router = new RouterCore({ routeTree, history: createMemoryHistory() })
+  const router = createTestRouter({ routeTree, history: createMemoryHistory() })
 
   await router.load()
   router.navigate({ to: '/foo' })
@@ -626,7 +626,7 @@ describe('params.parse notFound', () => {
       },
     })
     const routeTree = rootRoute.addChildren([testRoute])
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/test/invalid'] }),
     })
@@ -656,7 +656,7 @@ describe('params.parse notFound', () => {
       },
     })
     const routeTree = rootRoute.addChildren([testRoute])
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/test/123'] }),
     })
@@ -680,7 +680,7 @@ describe('routeId in context options', () => {
 
     const routeTree = rootRoute.addChildren([])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
@@ -716,7 +716,7 @@ describe('routeId in context options', () => {
 
     const routeTree = rootRoute.addChildren([fooRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
@@ -763,7 +763,7 @@ describe('routeId in context options', () => {
       parentRoute.addChildren([childRoute]),
     ])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
@@ -806,7 +806,7 @@ describe('routeId in context options', () => {
 
     const routeTree = rootRoute.addChildren([postRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
@@ -846,7 +846,7 @@ describe('routeId in context options', () => {
       layoutRoute.addChildren([indexRoute]),
     ])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })

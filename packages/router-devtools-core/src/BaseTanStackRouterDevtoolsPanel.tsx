@@ -269,7 +269,7 @@ export const BaseTanStackRouterDevtoolsPanel =
       'No router was found for the TanStack Router Devtools. Please place the devtools in the <RouterProvider> component tree or pass the router instance to the devtools manually.',
     )
 
-    // useStore(router.__store)
+    // useStore(router.stores.__store)
 
     const [currentTab, setCurrentTab] = useLocalStorage<
       'routes' | 'matches' | 'history'
@@ -281,29 +281,47 @@ export const BaseTanStackRouterDevtoolsPanel =
     )
 
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
-    const [pendingMatches, setPendingMatches] = createSignal<Array<AnyRouteMatch>>(
-      [],
-    )
-    const [cachedMatches, setCachedMatches] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
 
-    createEffect(() => {
-      const pendingMatchesStore = router().stores.pendingMatchesSnapshot
-      setPendingMatches(pendingMatchesStore.state)
-      const subscription = pendingMatchesStore.subscribe(() => {
+    let pendingMatches: Accessor<Array<AnyRouteMatch>>
+    let cachedMatches: Accessor<Array<AnyRouteMatch>>
+    // subscribable implementation
+    if ('subscribe' in router().stores.pendingMatchesSnapshot) {
+      const [_pendingMatches, setPendingMatches] = createSignal<
+        Array<AnyRouteMatch>
+      >([])
+      pendingMatches = _pendingMatches
+      const [_cachedMatches, setCachedMatches] = createSignal<
+        Array<AnyRouteMatch>
+      >([])
+      cachedMatches = _cachedMatches
+      type Subscribe = (fn: () => void) => { unsubscribe: () => void }
+      createEffect(() => {
+        const pendingMatchesStore = router().stores.pendingMatchesSnapshot
         setPendingMatches(pendingMatchesStore.state)
+        const subscription = (
+          (pendingMatchesStore as any).subscribe as Subscribe
+        )(() => {
+          setPendingMatches(pendingMatchesStore.state)
+        })
+        onCleanup(() => subscription.unsubscribe())
       })
-      onCleanup(() => subscription.unsubscribe())
-    })
-
-    createEffect(() => {
-      const cachedMatchesStore = router().stores.cachedMatchesSnapshot
-      setCachedMatches(cachedMatchesStore.state)
-      const subscription = cachedMatchesStore.subscribe(() => {
+      createEffect(() => {
+        const cachedMatchesStore = router().stores.cachedMatchesSnapshot
         setCachedMatches(cachedMatchesStore.state)
+        const subscription = (
+          (cachedMatchesStore as any).subscribe as Subscribe
+        )(() => {
+          setCachedMatches(cachedMatchesStore.state)
+        })
+        onCleanup(() => subscription.unsubscribe())
       })
-      onCleanup(() => subscription.unsubscribe())
-    })
+    }
+    // signal implementation
+    else {
+      pendingMatches = () => router().stores.pendingMatchesSnapshot.state
+      cachedMatches = () => router().stores.cachedMatchesSnapshot.state
+    }
 
     createEffect(() => {
       const matches = routerState().matches
@@ -373,7 +391,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             (d) =>
               typeof d[1] !== 'function' &&
               ![
-                '__store',
+                'stores',
                 'basepath',
                 'injectedHtml',
                 'subscribers',

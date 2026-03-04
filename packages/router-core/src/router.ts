@@ -1,7 +1,5 @@
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
-import { createRouterStores, createServerRouterStores } from './stores'
-import { batch } from './utils/batch'
 import {
   DEFAULT_PROTOCOL_ALLOWLIST,
   arraysEqual,
@@ -43,6 +41,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
+import { createRouterStores } from './stores'
 import type { LRUCache } from './lru-cache'
 import type {
   ProcessRouteTreeResult,
@@ -50,7 +49,6 @@ import type {
 } from './new-process-route-tree'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
-import type { ReadonlyStore, Store } from '@tanstack/store'
 import type {
   HistoryLocation,
   HistoryState,
@@ -104,8 +102,7 @@ import type {
   AnySerializationAdapter,
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
-import type { RouterStores } from "./stores"
-// import type { AnyRouterConfig } from './config'
+import type { GetStoreConfig, RouterStores } from './stores'
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -907,10 +904,6 @@ declare global {
     | undefined
 }
 
-type MatchStore = Store<AnyRouteMatch>
-type MatchStoreLookup = Record<string, MatchStore>
-type ReadableStore<TValue> = Pick<Store<TValue>, 'state' | 'get' | 'subscribe'>
-
 /**
  * Core, framework-agnostic router engine that powers TanStack Router.
  *
@@ -941,8 +934,9 @@ export class RouterCore<
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
-  __store!: ReadonlyStore<RouterState<TRouteTree>>
-  
+  private getStoreConfig!: GetStoreConfig
+  batch!: (fn: () => void) => void
+
   options!: PickAsRequired<
     RouterOptions<
       TRouteTree,
@@ -979,7 +973,10 @@ export class RouterCore<
       TRouterHistory,
       TDehydrated
     >,
+    getStoreConfig: GetStoreConfig,
   ) {
+    this.getStoreConfig = getStoreConfig
+
     this.update({
       defaultPreloadDelay: 50,
       defaultPendingMs: 1000,
@@ -1108,12 +1105,13 @@ export class RouterCore<
       this.setRoutes(processRouteTreeResult)
     }
 
-    if (!this.__store && this.latestLocation) {
-      const stores = (isServer ?? this.isServer)
-        ? createServerRouterStores<TRouteTree>(getInitialRouterState(this.latestLocation))
-        : createRouterStores<TRouteTree>(getInitialRouterState(this.latestLocation))
-      this.stores = stores
-      this.__store = stores.__store
+    if (!this.stores && this.latestLocation) {
+      const config = this.getStoreConfig(this)
+      this.batch = config.batch
+      this.stores = createRouterStores(
+        getInitialRouterState(this.latestLocation),
+        config,
+      )
 
       if (!(isServer ?? this.isServer)) {
         setupScrollRestoration(this)
@@ -1156,7 +1154,7 @@ export class RouterCore<
       needsLocationUpdate = true
     }
 
-    if (needsLocationUpdate && this.__store) {
+    if (needsLocationUpdate && this.stores) {
       this.stores.location.setState(() => this.latestLocation)
     }
 
@@ -1172,7 +1170,7 @@ export class RouterCore<
   }
 
   get state(): RouterState<TRouteTree> {
-    return this.__store.state
+    return this.stores.__store.state
   }
 
   updateLatestLocation = () => {
@@ -1402,7 +1400,15 @@ export class RouterCore<
       : undefined
 
     const matches = new Array<AnyRouteMatch>(matchedRoutes.length)
-    const previousActiveMatchesByRouteId = this.stores.byRouteId.state
+    // Snapshot of active match state keyed by routeId, used to stabilise
+    // params/search across navigations.  Built from the non-reactive pool
+    // so we don't pull in the byRouteId derived store.
+    const previousActiveMatchesByRouteId = new Map<string, AnyRouteMatch>()
+    for (const store of this.stores.activeMatchStoresById.values()) {
+      if (store.routeId) {
+        previousActiveMatchesByRouteId.set(store.routeId, store.state)
+      }
+    }
 
     for (let index = 0; index < matchedRoutes.length; index++) {
       const route = matchedRoutes[index]!
@@ -1487,7 +1493,7 @@ export class RouterCore<
 
       const existingMatch = this.getMatch(matchId)
 
-      const previousMatch = previousActiveMatchesByRouteId[route.id]?.state
+      const previousMatch = previousActiveMatchesByRouteId.get(route.id)
 
       const strictParams = existingMatch?._strictParams ?? usedParams
 
@@ -1603,7 +1609,7 @@ export class RouterCore<
       const existingMatch = this.getMatch(match.id)
 
       // Update the match's params
-      const previousMatch = previousActiveMatchesByRouteId[match.routeId]?.state
+      const previousMatch = previousActiveMatchesByRouteId.get(match.routeId)
       match.params = previousMatch
         ? replaceEqualDeep(previousMatch.params, routeParams)
         : routeParams
@@ -2332,7 +2338,7 @@ export class RouterCore<
     )
 
     // Ingest the new matches
-    batch(() => {
+    this.batch(() => {
       this.stores.status.setState(() => 'pending')
       this.stores.statusCode.setState(() => 200)
       this.stores.isLoading.setState(() => true)
@@ -2392,42 +2398,57 @@ export class RouterCore<
                   //
                   // exitingMatches uses match.id (routeId + params + loaderDeps) so
                   // navigating /foo?page=1 → /foo?page=2 correctly caches the page=1 entry.
-                  let exitingMatches: Array<AnyRouteMatch> = []
+                  let exitingMatches: Array<AnyRouteMatch> | null = null
 
                   // Lifecycle-hook identity uses routeId only so that navigating between
                   // different params/deps of the same route fires onStay (not onLeave+onEnter).
-                  let hookExitingMatches: Array<AnyRouteMatch> = []
-                  let hookEnteringMatches: Array<AnyRouteMatch> = []
-                  let hookStayingMatches: Array<AnyRouteMatch> = []
+                  let hookExitingMatches: Array<AnyRouteMatch> | null = null
+                  let hookEnteringMatches: Array<AnyRouteMatch> | null = null
+                  let hookStayingMatches: Array<AnyRouteMatch> | null = null
 
-                  batch(() => {
+                  this.batch(() => {
                     const pendingMatches =
                       this.stores.pendingMatchesSnapshot.state
                     const mountPending = pendingMatches.length
-                    const previousMatches =
+                    const currentMatches =
                       this.stores.activeMatchesSnapshot.state
 
-                    exitingMatches = mountPending ? previousMatches.filter(
-                      (match) => !(this.stores.pendingMatchStoresById.has(match.id)),
-                    ) : []
+                    exitingMatches = mountPending
+                      ? currentMatches.filter(
+                          (match) =>
+                            !this.stores.pendingMatchStoresById.has(match.id),
+                        )
+                      : null
 
                     // Lifecycle-hook identity: routeId only (route presence in tree)
-                    hookExitingMatches = mountPending ? previousMatches.filter(
-                      (match) =>
-                        !(match.routeId in this.stores.pendingByRouteId.state),
-                    ) : []
-                    hookEnteringMatches = mountPending ? pendingMatches.filter(
-                      (match) =>
-                        !this.stores.activeMatchStoresById.has(match.id),
-                    ) : []
-                    hookStayingMatches = mountPending ? pendingMatches.filter((match) =>
-                      this.stores.activeMatchStoresById.has(match.id),
-                    ) : previousMatches
+                    // Build routeId sets from pools to avoid derived stores.
+                    const pendingRouteIds = new Set<string>()
+                    for (const s of this.stores.pendingMatchStoresById.values()) {
+                      if (s.routeId) pendingRouteIds.add(s.routeId)
+                    }
+                    const activeRouteIds = new Set<string>()
+                    for (const s of this.stores.activeMatchStoresById.values()) {
+                      if (s.routeId) activeRouteIds.add(s.routeId)
+                    }
+
+                    hookExitingMatches = mountPending
+                      ? currentMatches.filter(
+                          (match) => !pendingRouteIds.has(match.routeId),
+                        )
+                      : null
+                    hookEnteringMatches = mountPending
+                      ? pendingMatches.filter(
+                          (match) => !activeRouteIds.has(match.routeId),
+                        )
+                      : null
+                    hookStayingMatches = mountPending
+                      ? pendingMatches.filter((match) =>
+                          activeRouteIds.has(match.routeId),
+                        )
+                      : currentMatches
 
                     this.stores.isLoading.setState(() => false)
                     this.stores.loadedAt.setState(() => Date.now())
-                    this.stores.setActiveMatches(mountPending ? pendingMatches : previousMatches)
-                    this.stores.setPendingMatches([])
                     /**
                      * When committing new matches, cache any exiting matches that are still usable.
                      * Routes that resolved with `status: 'error'` or `status: 'notFound'` are
@@ -2435,9 +2456,11 @@ export class RouterCore<
                      * or reloads re-run their loaders instead of reusing the failed/not-found data.
                      */
                     if (mountPending) {
+                      this.stores.setActiveMatches(pendingMatches)
+                      this.stores.setPendingMatches([])
                       this.stores.setCachedMatches([
                         ...this.stores.cachedMatchesSnapshot.state,
-                        ...exitingMatches.filter(
+                        ...exitingMatches!.filter(
                           (d) =>
                             d.status !== 'error' &&
                             d.status !== 'notFound' &&
@@ -2449,19 +2472,18 @@ export class RouterCore<
                   })
 
                   //
-                  ;(
-                    [
-                      [hookExitingMatches, 'onLeave'],
-                      [hookEnteringMatches, 'onEnter'],
-                      [hookStayingMatches, 'onStay'],
-                    ] as const
-                  ).forEach(([matches, hook]) => {
-                    matches.forEach((match) => {
+                  for (const [matches, hook] of [
+                    [hookExitingMatches, 'onLeave'],
+                    [hookEnteringMatches, 'onEnter'],
+                    [hookStayingMatches, 'onStay'],
+                  ] as const) {
+                    if (!matches) continue
+                    for (const match of matches as Array<AnyRouteMatch>) {
                       this.looseRoutesById[match.routeId]!.options[hook]?.(
                         match,
                       )
-                    })
-                  })
+                    }
+                  }
                 })
               })
             },
@@ -2490,7 +2512,7 @@ export class RouterCore<
                 ? 500
                 : 200
 
-          batch(() => {
+          this.batch(() => {
             this.stores.statusCode.setState(() => nextStatusCode)
             this.stores.redirect.setState(() => redirect)
           })
@@ -2658,7 +2680,7 @@ export class RouterCore<
       return d
     }
 
-    batch(() => {
+    this.batch(() => {
       this.stores.setActiveMatches(
         this.stores.activeMatchesSnapshot.state.map(invalidate),
       )

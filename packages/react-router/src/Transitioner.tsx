@@ -118,7 +118,9 @@ export function Transitioner() {
 
       batch(() => {
         router.stores.status.setState(() => 'idle')
-        router.stores.resolvedLocation.setState(() => router.stores.location.state)
+        router.stores.resolvedLocation.setState(
+          () => router.stores.location.state,
+        )
       })
 
       if (changeInfo.hrefChanged) {

@@ -1,5 +1,4 @@
 import invariant from 'tiny-invariant'
-import { batch } from '../utils/batch'
 import { isNotFound } from '../not-found'
 import { createControlledPromise } from '../utils'
 import { hydrateSsrMatchId } from './ssr-match-id'
@@ -262,14 +261,16 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     match._nonReactive.displayPendingPromise = loadPromise
 
     loadPromise.then(() => {
-      batch(() => {
+      router.batch(() => {
         // ensure router is not in status 'pending' anymore
         // this usually happens in Transitioner but if loading synchronously resolves,
         // Transitioner won't be rendered while loading so it cannot track the change from loading:true to loading:false
         if (router.stores.status.state === 'pending') {
-          batch(() => {
+          router.batch(() => {
             router.stores.status.setState(() => 'idle')
-            router.stores.resolvedLocation.setState(() => router.stores.location.state)
+            router.stores.resolvedLocation.setState(
+              () => router.stores.location.state,
+            )
           })
         }
         // hide the pending component once the load is finished
