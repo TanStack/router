@@ -111,6 +111,7 @@ export function createTestRouter() {
     }),
     scrollRestoration: true,
     routeTree: root.addChildren([route]),
+    defaultPendingMinMs: 0,
   })
 
   const component = <RouterProvider router={router} />
