@@ -455,13 +455,9 @@ export const Outlet = () => {
     () => parentMatch()?.globalNotFound ?? false,
   )
 
-  const childMatchIdByRouteId = Solid.createMemo(
-    () => router.stores.childMatchIdByRouteId.state,
-  )
-
   const childMatchId = Solid.createMemo(() => {
     const currentRouteId = routeId()
-    return currentRouteId ? childMatchIdByRouteId()[currentRouteId] : undefined
+    return currentRouteId ? router.stores.childMatchIdByRouteId.state[currentRouteId] : undefined
   })
 
   const childMatchStatus = Solid.createMemo(() => {

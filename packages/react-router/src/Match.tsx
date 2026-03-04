@@ -457,15 +457,9 @@ export const Outlet = React.memo(function OutletImpl() {
       : undefined
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    routeId = useStore(
+    ;[routeId, parentGlobalNotFound] = useStore(
       parentMatchStore,
-      (match) => match?.routeId as string | undefined,
-    )
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    parentGlobalNotFound = useStore(
-      parentMatchStore,
-      (match) => match?.globalNotFound ?? false,
+      (match) => [match?.routeId as string | undefined, match?.globalNotFound ?? false],
     )
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
