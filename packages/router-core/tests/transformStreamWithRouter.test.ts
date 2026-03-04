@@ -10,6 +10,7 @@ function createRouterMock(options?: {
   let bufferedHtml = options?.initialBufferedHtml ?? ''
   let serializationFinished = options?.serializationFinished ?? false
   let cleanedUp = false
+  let setRenderFinishedCalls = 0
 
   const router = {
     subscribe(event: string, listener: () => void) {
@@ -38,6 +39,7 @@ function createRouterMock(options?: {
         router.emit({ type: 'onInjectedHtml' })
       },
       setRenderFinished() {
+        setRenderFinishedCalls++
         serializationFinished = true
         router.emit({ type: 'onSerializationFinished' })
       },
@@ -52,6 +54,9 @@ function createRouterMock(options?: {
     router: router as any,
     wasCleanedUp() {
       return cleanedUp
+    },
+    getSetRenderFinishedCalls() {
+      return setRenderFinishedCalls
     },
   }
 }
@@ -176,6 +181,26 @@ describe('transformStreamWithRouter', () => {
 
     expect(html).toContain('hello-string')
     expect(html).toContain('</body>')
+  })
+
+  it('calls setRenderFinished in fast path when app stream completes', async () => {
+    const { router, getSetRenderFinishedCalls } = createRouterMock({
+      serializationFinished: true,
+    })
+    const encoder = new TextEncoder()
+
+    const appStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('<html><body>done</body></html>'))
+        controller.close()
+      },
+    })
+
+    const transformed = transformStreamWithRouter(router, appStream)
+    const html = await readAll(transformed)
+
+    expect(html).toContain('done')
+    expect(getSetRenderFinishedCalls()).toBe(1)
   })
 
   it('flushes pendingRouterHtml when barrier and </body> land in the same chunk', async () => {
