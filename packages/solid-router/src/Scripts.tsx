@@ -2,6 +2,7 @@ import { Asset } from './Asset'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
+import { NoHydration } from '@solidjs/web'
 
 export const Scripts = () => {
   const router = useRouter()
@@ -67,10 +68,10 @@ export const Scripts = () => {
   }
 
   return (
-    <>
+    <NoHydration>
       {allScripts.map((asset, i) => (
         <Asset {...asset} />
       ))}
-    </>
+    </NoHydration>
   )
 }
