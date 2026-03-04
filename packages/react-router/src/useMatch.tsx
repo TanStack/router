@@ -118,8 +118,8 @@ export function useMatch<
     const key = opts.from ?? nearestMatchId
     const match = key
       ? opts.from
-        ? router.stores.byRouteId.state[key]?.state
-        : router.stores.byId.state[key]?.state
+        ? router.stores.getMatchStoreByRouteId(key).state
+        : router.stores.activeMatchStoresById.get(key)?.state
       : undefined
 
     invariant(
@@ -134,25 +134,29 @@ export function useMatch<
     return (opts.select ? opts.select(match as any) : match) as any
   }
 
-  const matchStore =
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-    useStore(
-      opts.from ? router.stores.byRouteId : router.stores.byId,
-      (activeMatchStores) => {
-        const key = opts.from ?? nearestMatchId
-        const store = key ? activeMatchStores[key] : undefined
+  const key = opts.from ?? nearestMatchId
 
-        invariant(
-          !((opts.shouldThrow ?? true) && !store),
-          `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-        )
-
-        return store
-      },
-    ) ?? dummyStore
+  // Single subscription: instead of two useStore calls (one to resolve
+  // the store, one to read from it), we resolve the store at this level
+  // and subscribe to it directly.
+  //
+  // - by-routeId (opts.from): uses a per-routeId computed store from the
+  //   signal graph that resolves routeId → match state in one step.
+  // - by-matchId (matchContext): subscribes directly to the match store
+  //   from the pool — the matchId from context is stable for this component.
+  const matchStore = key
+    ? opts.from
+      ? router.stores.getMatchStoreByRouteId(key)
+      : (router.stores.activeMatchStoresById.get(key) ?? dummyStore)
+    : dummyStore
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   return useStore(matchStore, (match) => {
+    invariant(
+      !((opts.shouldThrow ?? true) && !match),
+      `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+    )
+
     if (match === undefined) {
       return undefined
     }

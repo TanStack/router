@@ -6,7 +6,6 @@ import {
   matchContext,
   pendingMatchContext,
 } from './matchContext'
-import { useStoreOfStoresValue } from './storeOfStores'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -83,25 +82,31 @@ export function useMatch<
     opts.from ? dummyPendingMatchContext : pendingMatchContext,
   )
 
-  const activeMatchStore = Solid.createMemo(() => {
-    const stores = opts.from
-      ? router.stores.byRouteId.state
-      : router.stores.byId.state
+  const match = Solid.createMemo(() => {
     const key = opts.from ?? nearestMatchId()
-    return key ? stores[key] : undefined
+    if (!key) return undefined
+    if (opts.from) {
+      // Per-routeId computed store resolves routeId → match state
+      // through the signal graph in a single step.
+      return router.stores.getMatchStoreByRouteId(key).state
+    }
+    // Track matchesId for pool changes, then read from pool directly.
+    // Both reads are reactive signals in Solid's tracking system.
+    router.stores.matchesId.state
+    return router.stores.activeMatchStoresById.get(key)?.state
   })
   const hasPendingRouteMatch = opts.from
-    ? Solid.createMemo(() =>
-        Boolean(router.stores.pendingByRouteId.state[opts.from as string]),
-      )
+    ? Solid.createMemo(() => {
+        // Track pending pool changes
+        router.stores.pendingMatchesId.state
+        for (const s of router.stores.pendingMatchStoresById.values()) {
+          if (s.routeId === opts.from) return true
+        }
+        return false
+      })
     : undefined
   const isTransitioning = Solid.createMemo(
     () => router.stores.isTransitioning.state,
-  )
-
-  const match = useStoreOfStoresValue(
-    () => activeMatchStore(),
-    (value) => value,
   )
 
   return Solid.createMemo((previous) => {

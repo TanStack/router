@@ -17,40 +17,48 @@ import { matchContext, pendingMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import { useStoreOfStoresValue } from './storeOfStores'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
-function useActiveMatchStore(matchId: Solid.Accessor<string | undefined>) {
-  const router = useRouter()
-  const byId = Solid.createMemo(() => router.stores.byId.state)
-  return Solid.createMemo(() => {
-    const id = matchId()
-    return id ? byId()[id] : undefined
-  })
-}
-
+/**
+ * Resolve the active match state for a given matchId, with fallback
+ * to routeId-based lookup during same-route transitions.
+ *
+ * Uses direct pool access instead of the byId/byRouteId derived stores,
+ * avoiding intermediate lookup object allocations.
+ */
 function useResolvedActiveMatch(matchId: Solid.Accessor<string | undefined>) {
   const router = useRouter()
-  const activeMatchStore = useActiveMatchStore(matchId)
-  const activeMatch = useStoreOfStoresValue(activeMatchStore, (value) => value)
 
   // Keep the last seen routeId to recover from transient stale matchId values
   // during same-route transitions (e.g. loaderDepsHash changes).
-  const fallbackRouteId = Solid.createMemo<string | undefined>(
-    (previousRouteId) =>
-      (activeMatch()?.routeId as string | undefined) ?? previousRouteId,
-  )
-  const byRouteId = Solid.createMemo(() => router.stores.byRouteId.state)
-  const fallbackMatchStore = Solid.createMemo(() => {
-    const routeId = fallbackRouteId()
-    return routeId ? byRouteId()[routeId] : undefined
-  })
-  const fallbackMatch = useStoreOfStoresValue(
-    fallbackMatchStore,
-    (value) => value,
+  const lastKnownRouteId = Solid.createMemo<string | undefined>(
+    (previousRouteId) => {
+      const id = matchId()
+      if (!id) return previousRouteId
+      // Track matchesId so this re-evaluates when the pool changes
+      router.stores.matchesId.state
+      const routeId = router.stores.activeMatchStoresById.get(id)?.routeId
+      return routeId ?? previousRouteId
+    },
   )
 
-  return Solid.createMemo(() => activeMatch() ?? fallbackMatch())
+  return Solid.createMemo(() => {
+    const id = matchId()
+    if (!id) return undefined
+
+    // Track matchesId for pool changes
+    router.stores.matchesId.state
+
+    // Primary: look up by matchId from the pool directly
+    const store = router.stores.activeMatchStoresById.get(id)
+    if (store) return store.state
+
+    // Fallback: matchId is stale, resolve by routeId through the signal graph
+    const routeId = lastKnownRouteId()
+    if (routeId) return router.stores.getMatchStoreByRouteId(routeId).state
+
+    return undefined
+  })
 }
 
 export const Match = (props: { matchId: string }) => {
@@ -70,7 +78,7 @@ export const Match = (props: { matchId: string }) => {
     )
     const parentMatchId = activeMatchIds()[matchIndex - 1]
     const parentRouteId = parentMatchId
-      ? router.stores.byId.state[parentMatchId]?.state.routeId
+      ? router.stores.activeMatchStoresById.get(parentMatchId)?.routeId
       : undefined
 
     return {
@@ -421,32 +429,42 @@ export const MatchInner = (props: { matchId: string }): any => {
 export const Outlet = () => {
   const router = useRouter()
   const matchId = Solid.useContext(matchContext)
-  const parentMatchStore = useActiveMatchStore(() => matchId())
-  const routeId = useStoreOfStoresValue(
-    parentMatchStore,
-    (parentMatch) => parentMatch?.routeId as string | undefined,
+
+  const matchIds = Solid.createMemo(() => router.stores.matchesId.state)
+
+  // Read parent match state directly from pool.
+  // matchesId tracks pool changes; store.state tracks match state.
+  const parentMatch = Solid.createMemo(() => {
+    const id = matchId()
+    if (!id) return undefined
+    matchIds() // track pool changes
+    return router.stores.activeMatchStoresById.get(id)?.state
+  })
+  const routeId = Solid.createMemo(
+    () => parentMatch()?.routeId as string | undefined,
   )
   const route = Solid.createMemo(() =>
     routeId() ? router.routesById[routeId()!] : undefined,
   )
 
-  const parentGlobalNotFound = useStoreOfStoresValue(
-    parentMatchStore,
-    (parentMatch) => parentMatch?.globalNotFound ?? false,
+  const parentGlobalNotFound = Solid.createMemo(
+    () => parentMatch()?.globalNotFound ?? false,
   )
 
-  const matchIds = Solid.createMemo(() => router.stores.matchesId.state)
   const childMatchId = Solid.createMemo(() => {
     const ids = matchIds()
     const index = ids.findIndex((id) => id === matchId())
     return ids[index + 1]
   })
 
-  const childMatchStore = useActiveMatchStore(childMatchId)
-  const childMatchStatus = useStoreOfStoresValue(
-    childMatchStore,
-    (childMatch) => childMatch?.status,
-  )
+  // Read child match state directly from pool.
+  const childMatch = Solid.createMemo(() => {
+    const id = childMatchId()
+    if (!id) return undefined
+    matchIds() // track pool changes
+    return router.stores.activeMatchStoresById.get(id)?.state
+  })
+  const childMatchStatus = Solid.createMemo(() => childMatch()?.status)
 
   // Only show not-found if we're not in a redirected state
   const shouldShowNotFound = () =>

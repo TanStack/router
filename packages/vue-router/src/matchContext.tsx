@@ -21,6 +21,13 @@ export const dummyPendingMatchContext = Symbol(
   'TanStackRouterDummyPendingMatch',
 ) as Vue.InjectionKey<Vue.Ref<boolean>>
 
+// Stable routeId context — a plain string (not reactive) that identifies
+// which route this component belongs to. Provided by Match, consumed by
+// MatchInner, Outlet, and useMatch for routeId-based store lookups.
+export const routeIdContext = Symbol(
+  'TanStackRouterRouteId',
+) as Vue.InjectionKey<string>
+
 /**
  * Provides a match ID to child components
  */

@@ -1,12 +1,10 @@
 import * as Vue from 'vue'
 import { useStore } from './store'
 import {
-  injectDummyMatch,
   injectDummyPendingMatch,
-  injectMatch,
   injectPendingMatch,
+  routeIdContext,
 } from './matchContext'
-import { useStoreOfStoresValue } from './storeOfStores'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -76,32 +74,53 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
-  const nearestMatchId = opts.from ? injectDummyMatch() : injectMatch()
   const hasPendingNearestMatch = opts.from
     ? injectDummyPendingMatch()
     : injectPendingMatch()
-  const activeMatchesLookup = useStore(
-    opts.from ? router.stores.byRouteId : router.stores.byId,
-    (stores) => stores,
-  )
-  const activeMatchStore = Vue.computed(() => {
-    const key = opts.from ?? nearestMatchId.value
-    return key ? activeMatchesLookup.value[key] : undefined
-  })
-  const hasPendingRouteMatch = opts.from
-    ? useStore(
-        router.stores.pendingByRouteId,
-        (stores) => Boolean(stores[opts.from as string]),
-        { equal: Object.is },
+  // Set up reactive match value based on lookup strategy.
+  let match: Readonly<Vue.Ref<any>>
+
+  if (opts.from) {
+    // routeId case: single subscription via per-routeId computed store.
+    // The store reference is stable (cached by routeId).
+    const matchStore = router.stores.getMatchStoreByRouteId(opts.from)
+    match = useStore(matchStore, (value) => value)
+  } else {
+    // matchId case: use routeId from context for stable store lookup.
+    // The routeId is provided by the nearest Match component and doesn't
+    // change for the component's lifetime, so the store is stable.
+    const nearestRouteId = Vue.inject(routeIdContext)
+    if (nearestRouteId) {
+      match = useStore(
+        router.stores.getMatchStoreByRouteId(nearestRouteId),
+        (value) => value,
       )
+    } else {
+      // No route context — will fall through to error handling below
+      match = Vue.ref(undefined) as Readonly<Vue.Ref<undefined>>
+    }
+  }
+
+  const hasPendingRouteMatch = opts.from
+    ? (() => {
+        const pendingIds = useStore(
+          router.stores.pendingMatchesId,
+          (ids) => ids,
+        )
+        return Vue.computed(() => {
+          void pendingIds.value // track pending pool changes
+          for (const s of router.stores.pendingMatchStoresById.values()) {
+            if (s.routeId === opts.from) return true
+          }
+          return false
+        })
+      })()
     : undefined
   const isTransitioning = useStore(
     router.stores.isTransitioning,
     (value) => value,
     { equal: Object.is },
   )
-
-  const match = useStoreOfStoresValue(activeMatchStore, (value) => value)
 
   const result = Vue.computed(() => {
     const selectedMatch = match.value
