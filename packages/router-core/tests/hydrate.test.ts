@@ -305,7 +305,7 @@ describe('hydrate', () => {
     expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBeUndefined()
   })
 
-  it('should clear stale globalNotFound when dehydrated flag is omitted', async () => {
+  it('should preserve existing globalNotFound when dehydrated flag is omitted', async () => {
     const mockMatches = [
       {
         id: '/',
@@ -346,7 +346,7 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
-    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBeUndefined()
+    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBe(true)
   })
 
   it('should decode dehydrated match ids before hydration lookup and SPA-mode checks', async () => {

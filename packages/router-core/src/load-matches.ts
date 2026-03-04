@@ -962,8 +962,8 @@ export async function loadMatches(arg: {
       }
       if (isNotFound(reason)) {
         firstNotFound ??= reason
-      } else if (firstUnhandledRejection === undefined) {
-        firstUnhandledRejection = reason
+      } else {
+        firstUnhandledRejection ??= reason
       }
     }
 

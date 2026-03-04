@@ -28,7 +28,14 @@ function hydrateMatch(
   match.ssr = deyhydratedMatch.ssr
   match.updatedAt = deyhydratedMatch.u
   match.error = deyhydratedMatch.e
-  match.globalNotFound = deyhydratedMatch.g
+  // Only hydrate global-not-found when a defined value is present in the
+  // dehydrated payload. If omitted, preserve the value computed from the
+  // current client location (important for SPA fallback HTML served at unknown
+  // URLs, where dehydrated matches may come from `/` but client matching marks
+  // root as globalNotFound).
+  if (deyhydratedMatch.g !== undefined) {
+    match.globalNotFound = deyhydratedMatch.g
+  }
 }
 
 export async function hydrate(router: AnyRouter): Promise<any> {
