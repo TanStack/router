@@ -102,19 +102,7 @@ export function useMatch<
   }
 
   const hasPendingRouteMatch = opts.from
-    ? (() => {
-        const pendingIds = useStore(
-          router.stores.pendingMatchesId,
-          (ids) => ids,
-        )
-        return Vue.computed(() => {
-          void pendingIds.value // track pending pool changes
-          for (const s of router.stores.pendingMatchStoresById.values()) {
-            if (s.routeId === opts.from) return true
-          }
-          return false
-        })
-      })()
+    ? useStore(router.stores.pendingRouteIds, (ids) => ids)
     : undefined
   const isTransitioning = useStore(
     router.stores.isTransitioning,
@@ -126,7 +114,7 @@ export function useMatch<
     const selectedMatch = match.value
     if (selectedMatch === undefined) {
       const hasPendingMatch = opts.from
-        ? Boolean(hasPendingRouteMatch?.value)
+        ? Boolean(hasPendingRouteMatch?.value[opts.from!])
         : hasPendingNearestMatch.value
       const shouldThrowError =
         !hasPendingMatch && !isTransitioning.value && (opts.shouldThrow ?? true)

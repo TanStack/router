@@ -9,7 +9,7 @@ import {
   rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { createVueReadonlyStore, useStore } from './store'
+import { useStore } from './store'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
@@ -46,6 +46,11 @@ export const Match = Vue.defineComponent({
       `Could not find routeId for matchId "${props.matchId}". Please file an issue!`,
     )
 
+    // Static route-tree check: is this route a direct child of the root?
+    // parentRoute is set at build time, so no reactive tracking needed.
+    const isChildOfRoot =
+      (router.routesById[routeId] as AnyRoute)?.parentRoute?.id === rootRouteId
+
     // Single stable store subscription — getMatchStoreByRouteId returns a
     // cached computed store that resolves routeId → current match state
     // through the signal graph. No bridge needed.
@@ -53,7 +58,6 @@ export const Match = Vue.defineComponent({
       router.stores.getMatchStoreByRouteId(routeId),
       (value) => value,
     )
-    const activeMatchIds = useStore(router.stores.matchesId, (ids) => ids)
     const pendingMatchIds = useStore(
       router.stores.pendingMatchesId,
       (ids) => ids,
@@ -66,18 +70,9 @@ export const Match = Vue.defineComponent({
         return null
       }
 
-      const matchIndex = activeMatchIds.value.findIndex((id) => id === match.id)
-      const parentMatchId =
-        matchIndex > 0 ? activeMatchIds.value[matchIndex - 1] : undefined
-      const parentRouteId = parentMatchId
-        ? ((router.stores.activeMatchStoresById.get(parentMatchId)
-            ?.routeId as string) ?? null)
-        : null
-
       return {
         matchId: match.id,
         routeId,
-        parentRouteId,
         loadedAt: loadedAt.value,
         ssr: match.ssr,
         _displayPending: match._displayPending,
@@ -203,8 +198,7 @@ export const Match = Vue.defineComponent({
         // Add scroll restoration if needed
         const withScrollRestoration: Array<VNode> = [
           content,
-          matchData.value?.parentRouteId === rootRouteId &&
-          router.options.scrollRestoration
+          isChildOfRoot && router.options.scrollRestoration
             ? Vue.h(Vue.Fragment, null, [
                 Vue.h(OnRendered),
                 Vue.h(ScrollRestoration),
@@ -465,24 +459,18 @@ export const Outlet = Vue.defineComponent({
       () => parentMatch.value?.globalNotFound ?? false,
     )
 
-    // Child match via inline computed store — finds the next match after
-    // the parent in the active matches array. Dependencies tracked in the
-    // signal graph: matchesId (pool changes) + child matchStore.state.
-    const childMatchStore = createVueReadonlyStore(() => {
-      const ids = router.stores.matchesId.state
-      let parentFound = false
-      for (const id of ids) {
-        const store = router.stores.activeMatchStoresById.get(id)
-        if (!store) continue
-        if (parentFound) return store.state
-        if (store.routeId === parentRouteId) parentFound = true
-      }
-      return undefined
-    })
-    const childMatch = useStore(childMatchStore, (v) => v)
+    // Child match lookup: read the child matchId from the shared derived
+    // map (one reactive node for the whole tree), then grab match state
+    // directly from the pool.
+    const childMatchIdMap = useStore(
+      router.stores.childMatchIdByRouteId,
+      (v) => v,
+    )
 
     const childMatchData = Vue.computed(() => {
-      const child = childMatch.value
+      const childId = childMatchIdMap.value[parentRouteId]
+      if (!childId) return null
+      const child = router.stores.activeMatchStoresById.get(childId)?.state
       if (!child) return null
 
       return {
