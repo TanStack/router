@@ -1,11 +1,6 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
-import {
-  dummyMatchContext,
-  dummyPendingMatchContext,
-  matchContext,
-  pendingMatchContext,
-} from './matchContext'
+import { pendingMatchContext, routeIdContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -75,39 +70,19 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
-  const nearestMatchId = Solid.useContext(
-    opts.from ? dummyMatchContext : matchContext,
-  )
-  const hasPendingNearestMatch = Solid.useContext(
-    opts.from ? dummyPendingMatchContext : pendingMatchContext,
-  )
+  const nearestRouteId: Solid.Accessor<string | undefined> = opts.from
+    ? () => undefined
+    : Solid.useContext(routeIdContext)
+  const hasPendingNearestMatch: Solid.Accessor<boolean> = opts.from
+    ? () => false
+    : Solid.useContext(pendingMatchContext)
 
   const match = Solid.createMemo(() => {
-    const key = opts.from ?? nearestMatchId()
-    if (!key) return undefined
-    if (opts.from) {
-      // Per-routeId computed store resolves routeId → match state
-      // through the signal graph in a single step.
-      return router.stores.getMatchStoreByRouteId(key).state
-    }
-    // Track matchesId for pool changes, then read from pool directly.
-    // Both reads are reactive signals in Solid's tracking system.
-    router.stores.matchesId.state
-    return router.stores.activeMatchStoresById.get(key)?.state
+    const routeId = opts.from ?? nearestRouteId()
+    return routeId
+      ? router.stores.getMatchStoreByRouteId(routeId).state
+      : undefined
   })
-  const hasPendingRouteMatch = opts.from
-    ? Solid.createMemo(() => {
-        // Track pending pool changes
-        router.stores.pendingMatchesId.state
-        for (const s of router.stores.pendingMatchStoresById.values()) {
-          if (s.routeId === opts.from) return true
-        }
-        return false
-      })
-    : undefined
-  const isTransitioning = Solid.createMemo(
-    () => router.stores.isTransitioning.state,
-  )
 
   return Solid.createMemo((previous) => {
     const selectedMatch = match()
@@ -118,10 +93,12 @@ export function useMatch<
       }
 
       const hasPendingMatch = opts.from
-        ? Boolean(hasPendingRouteMatch?.())
+        ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
         : hasPendingNearestMatch()
       const shouldThrowError =
-        !hasPendingMatch && !isTransitioning() && (opts.shouldThrow ?? true)
+        !hasPendingMatch &&
+        !router.stores.isTransitioning.state &&
+        (opts.shouldThrow ?? true)
 
       invariant(
         !shouldThrowError,
