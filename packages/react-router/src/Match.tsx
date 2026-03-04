@@ -38,10 +38,9 @@ export const Match = React.memo(function MatchImpl({
       `Could not find match for matchId "${matchId}". Please file an issue!`,
     )
 
-    const matches = router.state.matches
-    const matchIndex = matches.findIndex((d) => d.id === matchId)
-    const parentRouteId =
-      matchIndex > 0 ? (matches[matchIndex - 1]?.routeId as string) : undefined
+    const routeId = match.routeId as string
+    const parentRouteId = (router.routesById[routeId] as AnyRoute).parentRoute
+      ?.id
 
     return (
       <MatchView
@@ -49,7 +48,7 @@ export const Match = React.memo(function MatchImpl({
         matchId={matchId}
         resetKey={router.stores.loadedAt.state}
         matchState={{
-          routeId: match.routeId as string,
+          routeId,
           ssr: match.ssr,
           _displayPending: match._displayPending,
           parentRouteId,
@@ -72,22 +71,18 @@ export const Match = React.memo(function MatchImpl({
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const match = useStore(matchStore, (value) => value!)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const parentMatchId = useStore(router.stores.matchesId, (ids) => {
-    return ids[ids.findIndex((id) => id === matchId) - 1]
-  })
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const matchState = React.useMemo(() => {
-    const parentRouteId = parentMatchId
-      ? router.stores.activeMatchStoresById.get(parentMatchId)?.state.routeId
-      : undefined
+    const routeId = match.routeId as string
+    const parentRouteId = (router.routesById[routeId] as AnyRoute).parentRoute
+      ?.id
 
     return {
-      routeId: match.routeId as string,
+      routeId,
       ssr: match.ssr,
       _displayPending: match._displayPending,
       parentRouteId: parentRouteId as string | undefined,
     } satisfies MatchViewState
-  }, [parentMatchId, match, router.stores.activeMatchStoresById])
+  }, [match._displayPending, match.routeId, match.ssr, router.routesById])
 
   return (
     <MatchView
