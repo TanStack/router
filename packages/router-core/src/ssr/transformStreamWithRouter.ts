@@ -21,7 +21,7 @@ export function transformPipeableStreamWithRouter(
 
 // Use string constants for simple indexOf matching
 const BODY_END_TAG = '</body>'
-const HTML_END_TAG = '</html>'
+const SCRIPT_END_TAG = '</script>'
 
 // Minimum length of a valid closing tag: </a> = 4 characters
 const MIN_CLOSING_TAG_LENGTH = 4
@@ -122,10 +122,21 @@ export function transformStreamWithRouter(
     let controller: ReadableStreamDefaultController<Uint8Array> | undefined
     let isStreamClosed = false
     let lifetimeTimeoutHandle: ReturnType<typeof setTimeout> | undefined
+    let appReader: ReadableStreamDefaultReader | undefined
+
+    const cancelActiveReader = (reason?: unknown) => {
+      const activeReader = appReader
+      appReader = undefined
+      void activeReader?.cancel(reason).catch(() => {
+        // ignore
+      })
+    }
 
     const cleanup = () => {
       if (cleanedUp) return
       cleanedUp = true
+
+      cancelActiveReader()
 
       if (lifetimeTimeoutHandle !== undefined) {
         clearTimeout(lifetimeTimeoutHandle)
@@ -170,20 +181,27 @@ export function transformStreamWithRouter(
       start(c) {
         controller = c
       },
-      cancel() {
+      cancel(reason) {
         isStreamClosed = true
+        cancelActiveReader(reason)
         cleanup()
       },
     })
 
     ;(async () => {
       const reader = appStream.getReader()
+      appReader = reader
       try {
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
           if (cleanedUp || isStreamClosed) return
-          controller?.enqueue(value as unknown as Uint8Array)
+
+          if (typeof value === 'string') {
+            controller?.enqueue(textEncoder.encode(value))
+          } else {
+            controller?.enqueue(value as Uint8Array)
+          }
         }
 
         if (cleanedUp || isStreamClosed) return
@@ -198,6 +216,7 @@ export function transformStreamWithRouter(
         safeError(error)
         cleanup()
       } finally {
+        appReader = undefined
         reader.releaseLock()
       }
     })().catch((error) => {
@@ -216,8 +235,17 @@ export function transformStreamWithRouter(
   let lifetimeTimeoutHandle: ReturnType<typeof setTimeout> | undefined
   let cleanedUp = false
 
-  let controller: ReadableStreamDefaultController<any>
+  let controller: ReadableStreamDefaultController<Uint8Array>
   let isStreamClosed = false
+  let appReader: ReadableStreamDefaultReader | undefined
+
+  const cancelActiveReader = (reason?: unknown) => {
+    const activeReader = appReader
+    appReader = undefined
+    void activeReader?.cancel(reason).catch(() => {
+      // ignore
+    })
+  }
 
   const textDecoder = new TextDecoder()
 
@@ -227,7 +255,7 @@ export function transformStreamWithRouter(
   // between-chunk text buffer; keep bounded to avoid unbounded memory
   let leftover = ''
 
-  // captured closing tags from </body> onward
+  // captured closing tags and trailing tail from </body> onward
   let pendingClosingTags = ''
 
   // conservative cap: enough to hold any partial closing tag + a bit
@@ -273,6 +301,8 @@ export function transformStreamWithRouter(
     if (cleanedUp) return
     cleanedUp = true
 
+    cancelActiveReader()
+
     try {
       stopListeningToInjectedHtml?.()
       stopListeningToSerializationFinished?.()
@@ -294,7 +324,6 @@ export function transformStreamWithRouter(
     pendingRouterHtml = ''
     leftover = ''
     pendingClosingTags = ''
-
     router.serverSsr?.cleanup()
   }
 
@@ -302,14 +331,16 @@ export function transformStreamWithRouter(
     start(c) {
       controller = c
     },
-    cancel() {
+    cancel(reason) {
       isStreamClosed = true
+      cancelActiveReader(reason)
       cleanup()
     },
   })
 
-  function flushPendingRouterHtml() {
+  function flushPendingRouterHtml({ force = false }: { force?: boolean } = {}) {
     if (!pendingRouterHtml) return
+    if (!force && !streamBarrierLifted) return
     safeEnqueue(pendingRouterHtml)
     pendingRouterHtml = ''
   }
@@ -336,9 +367,8 @@ export function transformStreamWithRouter(
 
     if (leftover) safeEnqueue(leftover)
     if (decoderRemainder) safeEnqueue(decoderRemainder)
-    flushPendingRouterHtml()
+    flushPendingRouterHtml({ force: true })
     if (pendingClosingTags) safeEnqueue(pendingClosingTags)
-
     safeClose()
     cleanup()
   }
@@ -361,9 +391,7 @@ export function transformStreamWithRouter(
       const html = router.serverSsr?.takeBufferedHtml()
       if (!html) return
 
-      // If we've already captured </body> (pendingClosingTags), we must keep appending
-      // so injection stays before the stored closing tags.
-      if (isAppRendering || leftover || pendingClosingTags) {
+      if (!streamBarrierLifted || isAppRendering || leftover || pendingClosingTags) {
         appendRouterHtml(html)
       } else {
         safeEnqueue(html)
@@ -382,6 +410,7 @@ export function transformStreamWithRouter(
   // Transform the appStream
   ;(async () => {
     const reader = appStream.getReader()
+    appReader = reader
     try {
       while (true) {
         const { done, value } = await reader.read()
@@ -390,21 +419,43 @@ export function transformStreamWithRouter(
         if (cleanedUp || isStreamClosed) return
 
         const text =
-          value instanceof Uint8Array
-            ? textDecoder.decode(value, { stream: true })
-            : String(value)
+          typeof value === 'string'
+            ? value
+            : ArrayBuffer.isView(value)
+              ? textDecoder.decode(value as Uint8Array, { stream: true })
+              : String(value)
 
         // Fast path: most chunks have no pending left-over.
         const chunkString = leftover ? leftover + text : text
 
-        if (!streamBarrierLifted) {
-          if (chunkString.includes(TSR_SCRIPT_BARRIER_ID)) {
-            streamBarrierLifted = true
-            router.serverSsr?.liftScriptBarrier()
+        const barrierFoundInChunk =
+          !streamBarrierLifted && chunkString.includes(TSR_SCRIPT_BARRIER_ID)
+
+        if (barrierFoundInChunk) {
+          const barrierMarkerIndex = chunkString.indexOf(TSR_SCRIPT_BARRIER_ID)
+          const barrierScriptClosedInChunk =
+            barrierMarkerIndex !== -1 &&
+            chunkString.indexOf(SCRIPT_END_TAG, barrierMarkerIndex) !== -1
+
+          streamBarrierLifted = true
+          router.serverSsr?.liftScriptBarrier()
+
+          const barrierChunkBodyEndIndex = chunkString.indexOf(BODY_END_TAG)
+          if (barrierChunkBodyEndIndex !== -1) {
+            safeEnqueue(chunkString.slice(0, barrierChunkBodyEndIndex))
+            pendingClosingTags = chunkString.slice(barrierChunkBodyEndIndex)
+          } else {
+            safeEnqueue(chunkString)
           }
+
+          if (barrierScriptClosedInChunk) {
+            flushPendingRouterHtml()
+          }
+
+          leftover = ''
+          continue
         }
 
-        // If we already saw </body>, everything else is part of tail; buffer it.
         if (pendingClosingTags) {
           pendingClosingTags += chunkString
           leftover = ''
@@ -412,15 +463,10 @@ export function transformStreamWithRouter(
         }
 
         const bodyEndIndex = chunkString.indexOf(BODY_END_TAG)
-        const htmlEndIndex = chunkString.indexOf(HTML_END_TAG)
 
-        if (
-          bodyEndIndex !== -1 &&
-          htmlEndIndex !== -1 &&
-          bodyEndIndex < htmlEndIndex
-        ) {
-          pendingClosingTags = chunkString.slice(bodyEndIndex)
+        if (bodyEndIndex !== -1) {
           safeEnqueue(chunkString.slice(0, bodyEndIndex))
+          pendingClosingTags = chunkString.slice(bodyEndIndex)
           flushPendingRouterHtml()
           leftover = ''
           continue
@@ -480,6 +526,7 @@ export function transformStreamWithRouter(
       safeError(error)
       cleanup()
     } finally {
+      appReader = undefined
       reader.releaseLock()
     }
   })().catch((error) => {
