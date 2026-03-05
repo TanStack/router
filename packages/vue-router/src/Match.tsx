@@ -38,8 +38,9 @@ export const Match = Vue.defineComponent({
     // Derive routeId from initial props.matchId — stable for this component's
     // lifetime. The routeId never changes for a given route position in the
     // tree, even when matchId changes (loaderDepsHash, etc).
-    const routeId = router.stores.activeMatchStoresById.get(props.matchId)
-      ?.routeId as string | undefined
+    const routeId = router.stores.activeMatchStoresById.get(
+      props.matchId,
+    )?.routeId
 
     invariant(
       routeId,

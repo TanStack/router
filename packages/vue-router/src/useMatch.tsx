@@ -1,5 +1,7 @@
 import * as Vue from 'vue'
 import { useStore } from '@tanstack/vue-store'
+import { isServer } from '@tanstack/router-core/isServer'
+import invariant from 'tiny-invariant'
 import {
   injectDummyPendingMatch,
   injectPendingMatch,
@@ -52,8 +54,8 @@ export type UseMatchResult<
   TSelected,
 > = unknown extends TSelected
   ? TStrict extends true
-    ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
-    : MakeRouteMatchUnion<TRouter>
+  ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
+  : MakeRouteMatchUnion<TRouter>
   : TSelected
 
 export function useMatch<
@@ -74,6 +76,29 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
+
+  // During SSR we render exactly once and do not need reactivity.
+  // Avoid store subscriptions and pending/transition bookkeeping on the server.
+  if (isServer ?? router.isServer) {
+    const nearestRouteId = opts.from ? undefined : Vue.inject(routeIdContext)
+    const matchStore =
+      (opts.from ?? nearestRouteId)
+        ? router.stores.getMatchStoreByRouteId(opts.from ?? nearestRouteId!)
+        : undefined
+    const match = matchStore?.state
+
+    invariant(
+      !((opts.shouldThrow ?? true) && !match),
+      `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+    )
+
+    if (match === undefined) {
+      return Vue.ref(undefined) as any
+    }
+
+    return Vue.ref(opts.select ? opts.select(match as any) : match) as any
+  }
+
   const hasPendingNearestMatch = opts.from
     ? injectDummyPendingMatch()
     : injectPendingMatch()
@@ -116,17 +141,15 @@ export function useMatch<
       const hasPendingMatch = opts.from
         ? Boolean(hasPendingRouteMatch?.value[opts.from!])
         : hasPendingNearestMatch.value
-      const shouldThrowError =
-        !hasPendingMatch && !isTransitioning.value && (opts.shouldThrow ?? true)
-      if (shouldThrowError) {
-        throw new Error(
-          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-        )
-      }
+      invariant(
+        !(!hasPendingMatch && !isTransitioning.value && (opts.shouldThrow ?? true)),
+        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+      )
+
       return undefined
     }
 
-    return opts.select ? opts.select(selectedMatch as any) : selectedMatch
+    return opts.select ? opts.select(selectedMatch) : selectedMatch
   }) as any
 
   // Keep eager throw behavior for setups that call useMatch for side effects only.
