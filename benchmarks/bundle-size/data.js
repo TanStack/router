@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772656614193,
+  "lastUpdate": 1772736547270,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -3133,6 +3133,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/9c81d5ac571e4c2d3441f9ed7cd2eca9375b4d29"
         },
         "date": 1772656612704,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 88925,
+            "unit": "bytes",
+            "extra": "raw=279895; brotli=77249"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92039,
+            "unit": "bytes",
+            "extra": "raw=290478; brotli=80059"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 37041,
+            "unit": "bytes",
+            "extra": "raw=111044; brotli=33269"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41472,
+            "unit": "bytes",
+            "extra": "raw=124407; brotli=37269"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 53283,
+            "unit": "bytes",
+            "extra": "raw=151981; brotli=47830"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 58210,
+            "unit": "bytes",
+            "extra": "raw=167943; brotli=52265"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 101787,
+            "unit": "bytes",
+            "extra": "raw=319982; brotli=88042"
+          },
+          {
+            "name": "react-start.full",
+            "value": 105249,
+            "unit": "bytes",
+            "extra": "raw=330026; brotli=90948"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49656,
+            "unit": "bytes",
+            "extra": "raw=149537; brotli=43874"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 55257,
+            "unit": "bytes",
+            "extra": "raw=165865; brotli=48649"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "vitorbarbosahilario@gmail.com",
+            "name": "Vitor Hilário",
+            "username": "ovitorhilario"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "64dee75088e3b6587bf886725f2bdc7e30b9275a",
+          "message": "docs(start): add dynamic middleware section with authorization example (#6815)\n\n* docs(start): add dynamic middleware section with authorization example\n\n* docs(start): rename dynamic middleware to middleware factories\n\n* ci: apply automated fixes\n\n* docs(start): fix authMiddleware snippet in authorization example under middleware factories\n\n* ci: apply automated fixes\n\n---------\n\nCo-authored-by: autofix-ci[bot] <114827586+autofix-ci[bot]@users.noreply.github.com>",
+          "timestamp": "2026-03-05T19:46:46+01:00",
+          "tree_id": "7b68889f8f3a21180737b54e293c2210f5104d4e",
+          "url": "https://github.com/TanStack/router/commit/64dee75088e3b6587bf886725f2bdc7e30b9275a"
+        },
+        "date": 1772736546237,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
