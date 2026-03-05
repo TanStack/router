@@ -18,6 +18,7 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
+import { useHydrated } from './ClientOnly'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
 export const Match = (props: { matchId: string }) => {
@@ -127,19 +128,14 @@ export const Match = (props: { matchId: string }) => {
                 )
               }}
             >
-              <Solid.Switch>
-                <Solid.Match when={resolvedNoSsr}>
-                  <Solid.Show
-                    when={!(isServer ?? router.isServer)}
-                    fallback={<Dynamic component={resolvePendingComponent()} />}
-                  >
-                    <MatchInner matchId={props.matchId} />
-                  </Solid.Show>
-                </Solid.Match>
-                <Solid.Match when={!resolvedNoSsr}>
-                  <MatchInner matchId={props.matchId} />
-                </Solid.Match>
-              </Solid.Switch>
+              {resolvedNoSsr ? (
+                <MatchNoSsr
+                  matchId={props.matchId}
+                  pendingComponent={resolvePendingComponent}
+                />
+              ) : (
+                <MatchInner matchId={props.matchId} />
+              )}
             </Dynamic>
           </Dynamic>
         </Dynamic>
@@ -152,6 +148,36 @@ export const Match = (props: { matchId: string }) => {
         </>
       ) : null}
     </ShellComponent>
+  )
+}
+
+/**
+ * Handles rendering for routes with `ssr: false` or `ssr: 'data-only'`.
+ *
+ * Uses `useHydrated()` so that both server and client start with
+ * `when=false`, avoiding a hydration mismatch. The `pendingComponent`
+ * is shown as the `<Show>` fallback. After `onMount` fires on the client,
+ * `hydrated()` flips to `true` and `<Show>` performs a normal (non-hydration)
+ * transition from fallback to children.
+ *
+ * The previous implementation used `<Show when={!isServer}>` which caused
+ * a hydration mismatch (`when` was `false` on server but `true` on client),
+ * and SolidJS's `<Show>` failed to remove the server-rendered fallback DOM
+ * during hydration, leaving the pending component permanently visible.
+ */
+const MatchNoSsr = (props: {
+  matchId: string
+  pendingComponent: () => Solid.Component | undefined
+}) => {
+  const hydrated = useHydrated()
+
+  return (
+    <Solid.Show
+      when={hydrated()}
+      fallback={<Dynamic component={props.pendingComponent()} />}
+    >
+      <MatchInner matchId={props.matchId} />
+    </Solid.Show>
   )
 }
 
