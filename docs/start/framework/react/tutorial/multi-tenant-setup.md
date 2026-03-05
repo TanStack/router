@@ -59,16 +59,16 @@ export const normalizeHostname = (hostname: string): string => {
 
 ## 2. Identify the Tenant (Server Function)
 
-Use `createServerOnlyFn` to ensure tenant resolution never reaches the client. `getRequestUrl()` retrieves the incoming request during SSR.
+Use `createServerFn` to ensure tenant resolution never reaches the client. `getRequestUrl()` retrieves the incoming request during SSR.
 
 ```ts
 // serverFn/tenant.serverFn.ts
 import { getTenantConfigByHostname } from '#/lib/api'
 import { normalizeHostname } from '#/lib/normalizeHostname'
-import { createServerOnlyFn } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/react-start'
 import { getRequestUrl } from '@tanstack/react-start/server'
 
-export const getTenantConfig = createServerOnlyFn(async () => {
+export const getTenantConfig = createServerFn().handler(async () => {
   const url = getRequestUrl()
   const hostname = normalizeHostname(url.hostname)
 
