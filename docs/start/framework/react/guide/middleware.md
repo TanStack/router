@@ -796,10 +796,11 @@ The middleware validates access based on the dynamic `permissions` parameter, co
 import { createMiddleware } from '@tanstack/react-start'
 import { auth } from './my-auth'
 
-export const authMiddleware = createMiddleware()
-  .server(async ({ next, request }) => {
+export const authMiddleware = createMiddleware().server(
+  async ({ next, request }) => {
     // ... (implementation from authentication example above)
-  })
+  },
+)
 
 type Permissions = Record<string, string[]>
 
