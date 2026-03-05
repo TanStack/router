@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772736547270,
+  "lastUpdate": 1772752367128,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -3217,6 +3217,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/64dee75088e3b6587bf886725f2bdc7e30b9275a"
         },
         "date": 1772736546237,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 88925,
+            "unit": "bytes",
+            "extra": "raw=279895; brotli=77249"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92039,
+            "unit": "bytes",
+            "extra": "raw=290478; brotli=80059"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 37041,
+            "unit": "bytes",
+            "extra": "raw=111044; brotli=33269"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41472,
+            "unit": "bytes",
+            "extra": "raw=124407; brotli=37269"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 53283,
+            "unit": "bytes",
+            "extra": "raw=151981; brotli=47830"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 58210,
+            "unit": "bytes",
+            "extra": "raw=167943; brotli=52265"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 101787,
+            "unit": "bytes",
+            "extra": "raw=319982; brotli=88042"
+          },
+          {
+            "name": "react-start.full",
+            "value": 105249,
+            "unit": "bytes",
+            "extra": "raw=330026; brotli=90948"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49656,
+            "unit": "bytes",
+            "extra": "raw=149537; brotli=43874"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 55257,
+            "unit": "bytes",
+            "extra": "raw=165865; brotli=48649"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "fpellet@ensc.fr",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc12980e166701878f0d3f164d1ccf411a3ef018",
+          "message": "test: fix vue viewTransition e2e flakiness (#6830)",
+          "timestamp": "2026-03-06T00:06:20+01:00",
+          "tree_id": "2a04cb253c27bfda531f72d977115b02907c684e",
+          "url": "https://github.com/TanStack/router/commit/cc12980e166701878f0d3f164d1ccf411a3ef018"
+        },
+        "date": 1772752365498,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
