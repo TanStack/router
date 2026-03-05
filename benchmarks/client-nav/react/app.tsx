@@ -6,6 +6,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useMatch,
   useParams,
   useSearch,
 } from '@tanstack/react-router'
@@ -13,7 +14,7 @@ import {
 function runPerfSelectorComputation(seed: number) {
   let value = Math.trunc(seed) | 0
 
-  for (let index = 0; index < 100; index++) {
+  for (let index = 0; index < 50; index++) {
     value = (value * 1664525 + 1013904223 + index) >>> 0
   }
 
@@ -23,21 +24,27 @@ function runPerfSelectorComputation(seed: number) {
 const selectors = Array.from({ length: 20 }, (_, index) => index)
 
 function Params() {
-  const params = useParams({
+  const number = useParams({
     strict: false,
     select: (params) => runPerfSelectorComputation(Number(params.id ?? 0)),
   })
-  void params
-  return null
+  return runPerfSelectorComputation(number)
 }
 
 function Search() {
-  const search = useSearch({
+  const number = useSearch({
     strict: false,
     select: (search) => runPerfSelectorComputation(Number(search.id ?? 0)),
   })
-  void search
-  return null
+  return runPerfSelectorComputation(number)
+}
+
+function Match() {
+  const number = useMatch({
+    strict: false,
+    select: (match) => runPerfSelectorComputation(Number(match.params.id ?? 0)),
+  })
+  return runPerfSelectorComputation(number)
 }
 
 function Links() {
@@ -60,6 +67,9 @@ function Root() {
       {selectors.map((selector) => (
         <Links key={selector} />
       ))}
+      {selectors.map((selector) => (
+        <Match key={selector} />
+      ))}
       <Outlet />
     </>
   )
@@ -72,7 +82,11 @@ const root = createRootRoute({
 const route = createRoute({
   getParentRoute: () => root,
   path: '/$id',
+  validateSearch: (search) => ({ id: search.id }),
   component: () => <div />,
+  beforeLoad: () => Promise.resolve(),
+  loaderDeps: ({ search }) => ({ id: search.id }),
+  loader: () => Promise.resolve(),
 })
 
 export function createTestRouter() {
@@ -82,6 +96,7 @@ export function createTestRouter() {
     }),
     scrollRestoration: true,
     routeTree: root.addChildren([route]),
+    defaultPendingMinMs: 0,
   })
 
   const component = <RouterProvider router={router} />
