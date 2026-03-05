@@ -89,6 +89,7 @@ export function TanStackStartVitePluginCore(
     return bundle
   }
 
+  const extraEnvironmentNames: Array<string> = []
   const environments: Array<{ name: string; type: 'client' | 'server' }> = [
     { name: VITE_ENVIRONMENT_NAMES.client, type: 'client' },
     { name: VITE_ENVIRONMENT_NAMES.server, type: 'server' },
@@ -102,6 +103,11 @@ export function TanStackStartVitePluginCore(
       type: 'server',
     })
   }
+  if (Array.isArray(startPluginOpts?.extraEnvironments)) {
+    environments.push(...startPluginOpts.extraEnvironments)
+    extraEnvironmentNames.push(...startPluginOpts.extraEnvironments.map(e => e.name))
+  }
+
   return [
     {
       name: 'tanstack-start-core:config',
@@ -322,6 +328,13 @@ export function TanStackStartVitePluginCore(
             async buildApp(builder) {
               const client = builder.environments[VITE_ENVIRONMENT_NAMES.client]
               const server = builder.environments[VITE_ENVIRONMENT_NAMES.server]
+              const extraEnvironments = extraEnvironmentNames.map(environmentName => {
+                const environment = builder.environments[environmentName];
+                if (!environment) {
+                  throw new Error(`Environment ${environmentName} not found`);
+                }
+                return environment
+              })
 
               if (!client) {
                 throw new Error('Client environment not found')
@@ -335,6 +348,12 @@ export function TanStackStartVitePluginCore(
                 // Build the client bundle first
                 await builder.build(client)
               }
+
+              // Build extra environments
+              for(const extraEnvironment of extraEnvironments) {
+                await builder.build(extraEnvironment)
+              }
+
               if (!server.isBuilt) {
                 // Build the SSR bundle
                 await builder.build(server)

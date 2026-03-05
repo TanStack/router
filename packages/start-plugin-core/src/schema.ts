@@ -268,6 +268,14 @@ const tanstackStartOptionsSchema = z
       .object({ installDevServerMiddleware: z.boolean().optional() })
       .optional(),
     importProtection: importProtectionOptionsSchema,
+    extraEnvironments: z
+      .array(
+        z.object({
+          name: z.string(),
+          type: z.enum(['client', 'server']),
+        }),
+      )
+      .optional(),
   })
   .optional()
   .default({})
