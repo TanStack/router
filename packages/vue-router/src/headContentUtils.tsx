@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { escapeHtml } from '@tanstack/router-core'
-import { useStore } from './store'
+import { useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 

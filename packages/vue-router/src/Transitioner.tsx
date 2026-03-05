@@ -5,7 +5,7 @@ import {
   trimPathRight,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { batch, useStore } from './store'
+import { batch, useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
 import { usePrevious } from './utils'
 
