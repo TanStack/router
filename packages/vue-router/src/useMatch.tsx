@@ -54,8 +54,8 @@ export type UseMatchResult<
   TSelected,
 > = unknown extends TSelected
   ? TStrict extends true
-  ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
-  : MakeRouteMatchUnion<TRouter>
+    ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
+    : MakeRouteMatchUnion<TRouter>
   : TSelected
 
 export function useMatch<
@@ -142,7 +142,11 @@ export function useMatch<
         ? Boolean(hasPendingRouteMatch?.value[opts.from!])
         : hasPendingNearestMatch.value
       invariant(
-        !(!hasPendingMatch && !isTransitioning.value && (opts.shouldThrow ?? true)),
+        !(
+          !hasPendingMatch &&
+          !isTransitioning.value &&
+          (opts.shouldThrow ?? true)
+        ),
         `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
       )
 

@@ -58,11 +58,11 @@ interface StyledProps {
 type PropsOfComponent<TComp> =
   // Functional components
   TComp extends (props: infer P, ...args: Array<unknown>) => any
-  ? P
-  : // Vue components (defineComponent, class components, etc)
-  TComp extends Vue.Component<infer P>
-  ? P
-  : Record<string, unknown>
+    ? P
+    : // Vue components (defineComponent, class components, etc)
+      TComp extends Vue.Component<infer P>
+      ? P
+      : Record<string, unknown>
 
 type AnyLinkPropsOptions = UseLinkPropsOptions<any, any, any, any, any>
 
@@ -179,7 +179,12 @@ export function useLinkProps<
       router,
     })
 
-    const { resolvedActiveProps, resolvedInactiveProps, resolvedClassName, resolvedStyle } = resolveStyleProps({
+    const {
+      resolvedActiveProps,
+      resolvedInactiveProps,
+      resolvedClassName,
+      resolvedStyle,
+    } = resolveStyleProps({
       options: options as AnyLinkPropsOptions,
       isActive,
     })
@@ -235,12 +240,14 @@ export function useLinkProps<
     () => options.preloadDelay ?? router.options.defaultPreloadDelay ?? 0,
   )
 
-  const isActive = Vue.computed(() => getIsActive({
-    activeOptions: options.activeOptions,
-    loc: currentLocation.value,
-    nextLoc: next.value,
-    router,
-  }))
+  const isActive = Vue.computed(() =>
+    getIsActive({
+      activeOptions: options.activeOptions,
+      loc: currentLocation.value,
+      nextLoc: next.value,
+      router,
+    }),
+  )
 
   const doPreload = () =>
     router.preloadRoute(_options.value as any).catch((err: any) => {
@@ -272,10 +279,6 @@ export function useLinkProps<
       hasRenderFetched = true
     }
   })
-
-
-
-
 
   // The click handler
   const handleClick = (e: PointerEvent): void => {
@@ -371,16 +374,20 @@ export function useLinkProps<
   }
 
   // Get the active and inactive props
-  const resolvedStyleProps = Vue.computed(() => resolveStyleProps({
-    options: options as AnyLinkPropsOptions,
-    isActive: isActive.value,
-  }))
+  const resolvedStyleProps = Vue.computed(() =>
+    resolveStyleProps({
+      options: options as AnyLinkPropsOptions,
+      isActive: isActive.value,
+    }),
+  )
 
-  const href = Vue.computed(() => getHref({
-    options: options as AnyLinkPropsOptions,
-    router,
-    nextLocation: next.value,
-  }))
+  const href = Vue.computed(() =>
+    getHref({
+      options: options as AnyLinkPropsOptions,
+      router,
+      nextLocation: next.value,
+    }),
+  )
 
   // Create static event handlers that don't change between renders
   const staticEventHandlers = {
@@ -421,7 +428,12 @@ export function useLinkProps<
   // Compute all props synchronously to avoid hydration mismatches
   // Using Vue.computed ensures props are calculated at render time, not after
   const computedProps = Vue.computed<LinkHTMLAttributes>(() => {
-    const { resolvedActiveProps, resolvedInactiveProps, resolvedClassName, resolvedStyle } = resolvedStyleProps.value
+    const {
+      resolvedActiveProps,
+      resolvedInactiveProps,
+      resolvedClassName,
+      resolvedStyle,
+    } = resolvedStyleProps.value
     return combineResultProps({
       href: href.value,
       options: options as AnyLinkPropsOptions,
@@ -605,9 +617,7 @@ const propsUnsafeToSpread = new Set([
 const getPropsSafeToSpread = (options: AnyLinkPropsOptions) => {
   const result: Record<string, unknown> = {}
   for (const key in options) {
-    if (
-      !propsUnsafeToSpread.has(key)
-    ) {
+    if (!propsUnsafeToSpread.has(key)) {
       result[key] = (options as Record<string, unknown>)[key]
     }
   }
@@ -615,7 +625,12 @@ const getPropsSafeToSpread = (options: AnyLinkPropsOptions) => {
   return result
 }
 
-function getIsActive({ activeOptions, loc, nextLoc, router }: {
+function getIsActive({
+  activeOptions,
+  loc,
+  nextLoc,
+  router,
+}: {
   activeOptions: LinkOptions['activeOptions']
   loc: {
     pathname: string
@@ -639,10 +654,7 @@ function getIsActive({ activeOptions, loc, nextLoc, router }: {
       return false
     }
   } else {
-    const currentPath = removeTrailingSlash(
-      loc.pathname,
-      router.basepath,
-    )
+    const currentPath = removeTrailingSlash(loc.pathname, router.basepath)
     const nextPath = removeTrailingSlash(nextLoc.pathname, router.basepath)
 
     const pathIsFuzzyEqual =
@@ -655,14 +667,10 @@ function getIsActive({ activeOptions, loc, nextLoc, router }: {
   }
 
   if (activeOptions?.includeSearch ?? true) {
-    const searchTest = deepEqual(
-      loc.search,
-      nextLoc.search,
-      {
-        partial: !activeOptions?.exact,
-        ignoreUndefined: !activeOptions?.explicitUndefined,
-      },
-    )
+    const searchTest = deepEqual(loc.search, nextLoc.search, {
+      partial: !activeOptions?.exact,
+      ignoreUndefined: !activeOptions?.explicitUndefined,
+    })
     if (!searchTest) {
       return false
     }
@@ -725,8 +733,8 @@ type ActiveLinkProps<TComp> = Partial<
   (TComp extends keyof HTMLElementTagNameMap
     ? LinkHTMLAttributes
     : PropsOfComponent<TComp>) & {
-      [key: `data-${string}`]: unknown
-    }
+    [key: `data-${string}`]: unknown
+  }
 >
 
 export interface ActiveLinkOptionProps<TComp = 'a'> {
@@ -755,11 +763,11 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-  | Vue.VNodeChild
-  | ((state: {
-    isActive: boolean
-    isTransitioning: boolean
-  }) => Vue.VNodeChild)
+    | Vue.VNodeChild
+    | ((state: {
+        isActive: boolean
+        isTransitioning: boolean
+      }) => Vue.VNodeChild)
 }
 
 type LinkComponentVueProps<TComp> = TComp extends keyof HTMLElementTagNameMap
@@ -801,7 +809,7 @@ export type LinkComponent<
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
 > {
-  defaultFrom: TDefaultFrom
+  defaultFrom: TDefaultFrom;
   <
     TRouter extends AnyRouter = RegisteredRouter,
     const TTo extends string | undefined = undefined,
@@ -879,9 +887,9 @@ const LinkImpl = Vue.defineComponent({
       // Create the slot content or empty array if no default slot
       const slotContent = slots.default
         ? slots.default({
-          isActive,
-          isTransitioning,
-        })
+            isActive,
+            isTransitioning,
+          })
         : []
 
       // Special handling for SVG links - wrap an <a> inside the SVG
@@ -925,8 +933,8 @@ export type LinkOptionsFnOptions<
   TRouter extends AnyRouter = RegisteredRouter,
 > =
   TOptions extends ReadonlyArray<any>
-  ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
-  : ValidateLinkOptions<TRouter, TOptions, string, TComp>
+    ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
+    : ValidateLinkOptions<TRouter, TOptions, string, TComp>
 
 export type LinkOptionsFn<TComp> = <
   const TOptions,
