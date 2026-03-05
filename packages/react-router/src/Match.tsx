@@ -69,7 +69,7 @@ export const Match = React.memo(function MatchImpl({
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useStore(matchStore, (value) => value!)
+  const match = useStore(matchStore, (value) => value)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const matchState = React.useMemo(() => {
     const routeId = match.routeId as string
@@ -314,7 +314,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     `Could not find match for matchId "${matchId}". Please file an issue!`,
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useStore(matchStore, (value) => value!)
+  const match = useStore(matchStore, (value) => value)
   const routeId = match.routeId as string
   const route = router.routesById[routeId] as AnyRoute
   // eslint-disable-next-line react-hooks/rules-of-hooks
