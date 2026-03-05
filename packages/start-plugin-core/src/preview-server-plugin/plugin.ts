@@ -20,6 +20,7 @@ export function previewServerPlugin(): Plugin {
           let serverBuild: any = null
 
           server.middlewares.use(async (req, res, next) => {
+            res.setHeader('content-encoding', 'identity')
             try {
               // Lazy load server build on first request
               if (!serverBuild) {
