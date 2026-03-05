@@ -9,7 +9,7 @@ import {
   rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from './store'
+import { useStore } from '@tanstack/vue-store'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'

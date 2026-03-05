@@ -1,12 +1,13 @@
-import { batch, createVueMutableStore, createVueReadonlyStore } from './store'
+import { batch, createStore } from '@tanstack/vue-store'
 import type {
   AnyRoute,
   GetStoreConfig,
-  RouterReadableStore,
   RouterStores,
 } from '@tanstack/router-core'
+import type { Readable } from '@tanstack/vue-store'
 
 declare module '@tanstack/router-core' {
+  export interface RouterReadableStore<TValue> extends Readable<TValue> {}
   export interface RouterStores<in out TRouteTree extends AnyRoute> {
     lastMatchRouteFullPath: RouterReadableStore<string | undefined>
     /** Maps each active routeId to the matchId of its child in the match tree. */
@@ -18,11 +19,11 @@ declare module '@tanstack/router-core' {
 
 export const getStoreFactory: GetStoreConfig = (_opts) => {
   return {
-    createMutableStore: createVueMutableStore,
-    createReadonlyStore: createVueReadonlyStore,
+    createMutableStore: createStore,
+    createReadonlyStore: createStore,
     batch,
     init: (stores: RouterStores<AnyRoute>) => {
-      stores.lastMatchRouteFullPath = createVueReadonlyStore(() => {
+      stores.lastMatchRouteFullPath = createStore(() => {
         const id = stores.lastMatchId.state
         if (!id) {
           return undefined
@@ -34,7 +35,7 @@ export const getStoreFactory: GetStoreConfig = (_opts) => {
       // routeId to its child's matchId. Depends only on matchesId +
       // the pool's routeId tags (which are set during reconciliation).
       // Outlet reads the map and then does a direct pool lookup.
-      stores.childMatchIdByRouteId = createVueReadonlyStore(() => {
+      stores.childMatchIdByRouteId = createStore(() => {
         const ids = stores.matchesId.state
         const obj: Record<string, string> = {}
         for (let i = 0; i < ids.length - 1; i++) {
@@ -46,7 +47,7 @@ export const getStoreFactory: GetStoreConfig = (_opts) => {
         return obj
       })
 
-      stores.pendingRouteIds = createVueReadonlyStore(() => {
+      stores.pendingRouteIds = createStore(() => {
         const ids = stores.pendingMatchesId.state
         const obj: Record<string, boolean> = {}
         for (const id of ids) {

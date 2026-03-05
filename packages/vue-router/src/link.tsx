@@ -7,7 +7,7 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 
-import { useStore } from './store'
+import { useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
 import { useIntersectionObserver } from './utils'
 
