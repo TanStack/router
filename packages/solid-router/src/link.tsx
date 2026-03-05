@@ -137,8 +137,9 @@ export function useLinkProps<
   }
 
   const next = Solid.createMemo(() => {
+    // rebuild location when search changes
     currentSearch()
-    // TODO (injectable stores) why do we need to untrack here? It wasn't here before
+    // untrack because router-core will also access stores, which are signals in solid
     return Solid.untrack(() => router.buildLocation(_options() as any))
   })
 
