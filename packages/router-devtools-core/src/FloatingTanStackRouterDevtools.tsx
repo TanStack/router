@@ -239,7 +239,7 @@ export function FloatingTanStackRouterDevtools({
       ref={setRootEl}
       class="TanStackRouterDevtools"
     >
-      <DevtoolsOnCloseContext.Provider
+      <DevtoolsOnCloseContext
         value={{
           onCloseClick: onCloseClick ?? (() => {}),
         }}
@@ -260,7 +260,7 @@ export function FloatingTanStackRouterDevtools({
         {/* ) : (
           <p>No router</p>
         )} */}
-      </DevtoolsOnCloseContext.Provider>
+      </DevtoolsOnCloseContext>
 
       <button
         type="button"

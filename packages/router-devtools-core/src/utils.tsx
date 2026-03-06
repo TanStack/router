@@ -129,7 +129,8 @@ export const displayValue = (value: unknown) => {
  */
 export function useSafeState<T>(initialState: T): [T, (value: T) => void] {
   const isMounted = useIsMounted()
-  const [state, setState] = createSignal(initialState)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [state, setState] = createSignal(initialState as any)
 
   const safeSetState = (value: T) => {
     scheduleMicrotask(() => {
