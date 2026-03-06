@@ -6,9 +6,9 @@ import {
   Match,
   Show,
   Switch,
-  createEffect,
   createMemo,
   createSignal,
+  createTrackedEffect,
   onCleanup,
   untrack,
 } from 'solid-js'
@@ -280,7 +280,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
 
-    createEffect(() => {
+    createTrackedEffect(() => {
       const matches = routerState().matches
       const currentMatch = matches[matches.length - 1]
       if (!currentMatch) {
@@ -566,7 +566,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                         {(match, index) => (
                           <li
                             class={cx(
-                              styles().matchRow(match === activeMatch()),
+                              styles().matchRow(match() === activeMatch()),
                             )}
                           >
                             <div
@@ -579,18 +579,18 @@ export const BaseTanStackRouterDevtoolsPanel =
                             <NavigateLink
                               left={
                                 <NavigateButton
-                                  to={match.pathname}
-                                  params={match.params}
-                                  search={match.search}
+                                  to={match().pathname}
+                                  params={match().params}
+                                  search={match().search}
                                   router={router}
                                 />
                               }
                               right={
-                                <AgeTicker match={match} router={router} />
+                                <AgeTicker match={match()} router={router} />
                               }
                             >
                               <code class={styles().matchID}>
-                                {`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}
+                                {`${match().routeId === rootRouteId ? rootRouteId : match().pathname}`}
                               </code>
                             </NavigateLink>
                           </li>

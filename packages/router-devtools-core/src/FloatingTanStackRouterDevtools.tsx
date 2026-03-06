@@ -1,7 +1,7 @@
 import { clsx as cx } from 'clsx'
 
-import { createEffect, createMemo, createSignal } from 'solid-js'
-import { Dynamic } from 'solid-js/web'
+import { createMemo, createSignal, createTrackedEffect } from 'solid-js'
+import { Dynamic } from '@solidjs/web'
 
 import { DevtoolsOnCloseContext } from './context'
 import { useIsMounted } from './utils'
@@ -126,11 +126,11 @@ export function FloatingTanStackRouterDevtools({
 
   const isButtonClosed = isOpen() ?? false
 
-  createEffect(() => {
+  createTrackedEffect(() => {
     setIsResolvedOpen(isOpen() ?? false)
   })
 
-  createEffect(() => {
+  createTrackedEffect(() => {
     if (isResolvedOpen()) {
       const previousValue = rootEl()?.parentElement?.style.paddingBottom
 
@@ -175,7 +175,7 @@ export function FloatingTanStackRouterDevtools({
     return
   })
 
-  createEffect(() => {
+  createTrackedEffect(() => {
     if (rootEl()) {
       const el = rootEl()
       const fontSize = getComputedStyle(el!).fontSize

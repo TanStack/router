@@ -1,4 +1,4 @@
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { createSignal, lazy } from 'solid-js'
 import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
 import type { JSX } from 'solid-js'
