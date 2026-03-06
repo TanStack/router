@@ -17,9 +17,6 @@ export default defineConfig({
       formats: ['es'],
       fileName: 'app',
     },
-    rollupOptions: {
-      external: ['vue', 'vue/jsx-runtime'],
-    },
   },
   test: {
     name: '@benchmarks/client-nav (vue)',

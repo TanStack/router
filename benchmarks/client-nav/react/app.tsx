@@ -9,6 +9,7 @@ import {
   useParams,
   useSearch,
 } from '@tanstack/react-router'
+import { createRoot } from 'react-dom/client'
 
 function runPerfSelectorComputation(seed: number) {
   let value = Math.trunc(seed) | 0
@@ -75,7 +76,7 @@ const route = createRoute({
   component: () => <div />,
 })
 
-export function createTestRouter() {
+export function mountTestApp(container: Element) {
   const router = createRouter({
     history: createMemoryHistory({
       initialEntries: ['/0'],
@@ -84,7 +85,13 @@ export function createTestRouter() {
     routeTree: root.addChildren([route]),
   })
 
-  const component = <RouterProvider router={router} />
+  const root = createRoot(container)
+  root.render(<RouterProvider router={router} />)
 
-  return { router, component }
+  return {
+    router,
+    unmount() {
+      root.unmount()
+    },
+  }
 }
