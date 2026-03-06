@@ -2,16 +2,16 @@ import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
 import { pendingMatchContext, routeIdContext } from './matchContext'
 import { useRouter } from './useRouter'
-import {
-  type AnyRouter,
-  type MakeRouteMatch,
-  type MakeRouteMatchUnion,
-  type RegisteredRouter,
-  type StrictOrFrom,
-  type ThrowConstraint,
-  type ThrowOrOptional,
-} from '@tanstack/router-core'
 import { shallow } from './store'
+import type {
+  AnyRouter,
+  MakeRouteMatch,
+  MakeRouteMatchUnion,
+  RegisteredRouter,
+  StrictOrFrom,
+  ThrowConstraint,
+  ThrowOrOptional,
+} from '@tanstack/router-core'
 
 export interface UseMatchBaseOptions<
   TRouter extends AnyRouter,
