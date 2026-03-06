@@ -19,7 +19,7 @@ env:
 
 jobs:
   client-nav-benchmarks:
-    name: Run Client Nav and SSR Benchmarks
+    name: Run Client Navigation Benchmarks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,44 +28,24 @@ jobs:
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
 
-      - name: Run CodSpeed benchmark for React
-        continue-on-error: true
+      - name: Run CodSpeed client navigation benchmarks
         uses: CodSpeedHQ/action@v4
         with:
           mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/client-nav:test:perf:react
+          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/client-nav:test:perf
 
-      - name: Run CodSpeed benchmark for Solid
-        continue-on-error: true
-        uses: CodSpeedHQ/action@v4
-        with:
-          mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/client-nav:test:perf:solid
+  ssr-benchmarks:
+    name: Run SSR Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
 
-      - name: Run CodSpeed benchmark for Vue
-        continue-on-error: true
-        uses: CodSpeedHQ/action@v4
-        with:
-          mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/client-nav:test:perf:vue
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
 
-      - name: Run CodSpeed SSR benchmark for React
-        continue-on-error: true
+      - name: Run CodSpeed SSR benchmarks
         uses: CodSpeedHQ/action@v4
         with:
           mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/ssr:test:perf:react
-
-      - name: Run CodSpeed SSR benchmark for Solid
-        continue-on-error: true
-        uses: CodSpeedHQ/action@v4
-        with:
-          mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/ssr:test:perf:solid
-
-      - name: Run CodSpeed SSR benchmark for Vue
-        continue-on-error: true
-        uses: CodSpeedHQ/action@v4
-        with:
-          mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/ssr:test:perf:vue
+          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/ssr:test:perf
