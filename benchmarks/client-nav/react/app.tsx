@@ -66,12 +66,12 @@ function Root() {
   )
 }
 
-const root = createRootRoute({
+const rootRoute = createRootRoute({
   component: Root,
 })
 
 const route = createRoute({
-  getParentRoute: () => root,
+  getParentRoute: () => rootRoute,
   path: '/$id',
   component: () => <div />,
 })
@@ -82,16 +82,16 @@ export function mountTestApp(container: Element) {
       initialEntries: ['/0'],
     }),
     scrollRestoration: true,
-    routeTree: root.addChildren([route]),
+    routeTree: rootRoute.addChildren([route]),
   })
 
-  const root = createRoot(container)
-  root.render(<RouterProvider router={router} />)
+  const reactRoot = createRoot(container)
+  reactRoot.render(<RouterProvider router={router} />)
 
   return {
     router,
     unmount() {
-      root.unmount()
+      reactRoot.unmount()
     },
   }
 }
