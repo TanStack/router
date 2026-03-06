@@ -1,5 +1,5 @@
 # Setup taken from https://codspeed.io/docs/benchmarks/nodejs/vitest
-name: Client Nav Benchmarks
+name: Benchmarks
 
 on:
   push:
@@ -18,8 +18,18 @@ env:
   NX_NO_CLOUD: true
 
 jobs:
-  client-nav-benchmarks:
-    name: Run Client Navigation Benchmarks
+  benchmarks:
+    name: Run CodSpeed ${{ matrix.benchmark }} ${{ matrix.framework }} benchmark
+    strategy:
+      fail-fast: false
+      matrix:
+        framework:
+          - react
+          - solid
+          - vue
+        benchmark:
+          - client-nav
+          - ssr
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,24 +38,9 @@ jobs:
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
 
-      - name: Run CodSpeed client navigation benchmarks
+      - name: Run CodSpeed ${{ matrix.benchmark }} ${{ matrix.framework }} benchmark
+        continue-on-error: true
         uses: CodSpeedHQ/action@v4
         with:
           mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/client-nav:test:perf
-
-  ssr-benchmarks:
-    name: Run SSR Benchmarks
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.1
-
-      - name: Setup Tools
-        uses: tanstack/config/.github/setup@main
-
-      - name: Run CodSpeed SSR benchmarks
-        uses: CodSpeedHQ/action@v4
-        with:
-          mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/ssr:test:perf
+          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
