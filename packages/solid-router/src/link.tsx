@@ -374,31 +374,13 @@ export function useLinkProps<
     }
   }
 
-  /** Call a JSX.EventHandlerUnion with the event. */
-  function callHandler<T, TEvent extends Event>(
-    event: TEvent & { currentTarget: T; target: Element },
-    handler: Solid.JSX.EventHandlerUnion<T, TEvent> | undefined,
-  ) {
-    if (handler) {
-      if (typeof handler === 'function') {
-        handler(event)
-      } else {
-        handler[0](handler[1], event)
-      }
-    }
-
-    return event.defaultPrevented
-  }
-
-  function composeEventHandlers<T>(
-    handlers: Array<Solid.JSX.EventHandlerUnion<T, any> | undefined>,
-  ) {
-    return (event: any) => {
-      for (const handler of handlers) {
-        callHandler(event, handler)
-      }
-    }
-  }
+  const simpleStyling = Solid.createMemo(
+    () =>
+      local.activeProps === STATIC_ACTIVE_PROPS_GET &&
+      local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
+      local.class === undefined &&
+      local.style === undefined,
+  )
 
   // Get the active props
   const resolvedActiveProps: () => Omit<Solid.ComponentProps<'a'>, 'style'> & {
@@ -426,49 +408,62 @@ export function useLinkProps<
     ...resolvedInactiveProps().style,
   })
 
-  return Solid.mergeProps(
-    propsSafeToSpread,
-    resolvedActiveProps,
-    resolvedInactiveProps,
-    () => {
-      const s = resolvedStyle()
-      const c = resolvedClassName()
+  return Solid.mergeProps(propsSafeToSpread, () => {
+    const base = {
+      href: hrefOption()?.href,
+      ref: mergeRefs(setRef, _options().ref),
+      onClick: composeEventHandlers(local.onClick, handleClick),
+      onBlur: composeEventHandlers(local.onBlur, handleLeave),
+      onFocus: composeEventHandlers(local.onFocus, enqueueIntentPreload),
+      onMouseEnter: composeEventHandlers(
+        local.onMouseEnter,
+        enqueueIntentPreload,
+      ),
+      onMouseOver: composeEventHandlers(
+        local.onMouseOver,
+        enqueueIntentPreload,
+      ),
+      onMouseLeave: composeEventHandlers(local.onMouseLeave, handleLeave),
+      onMouseOut: composeEventHandlers(local.onMouseOut, handleLeave),
+      onTouchStart: composeEventHandlers(local.onTouchStart, handleTouchStart),
+      disabled: !!local.disabled,
+      target: local.target,
+      ...(local.disabled && STATIC_DISABLED_PROPS),
+      ...(isTransitioning() && STATIC_TRANSITIONING_ATTRIBUTES),
+    }
+
+    if (simpleStyling()) {
       return {
-        href: hrefOption()?.href,
-        ref: mergeRefs(setRef, _options().ref),
-        onClick: composeEventHandlers([local.onClick, handleClick]),
-        onBlur: composeEventHandlers([local.onBlur, handleLeave]),
-        onFocus: composeEventHandlers([local.onFocus, enqueueIntentPreload]),
-        onMouseEnter: composeEventHandlers([
-          local.onMouseEnter,
-          enqueueIntentPreload,
-        ]),
-        onMouseOver: composeEventHandlers([
-          local.onMouseOver,
-          enqueueIntentPreload,
-        ]),
-        onMouseLeave: composeEventHandlers([local.onMouseLeave, handleLeave]),
-        onMouseOut: composeEventHandlers([local.onMouseOut, handleLeave]),
-        onTouchStart: composeEventHandlers([
-          local.onTouchStart,
-          handleTouchStart,
-        ]),
-        disabled: !!local.disabled,
-        target: local.target,
-        ...(Object.keys(s).length ? { style: s } : undefined),
-        ...(c ? { class: c } : undefined),
-        ...(local.disabled && STATIC_DISABLED_PROPS),
-        ...(isActive() && STATIC_ACTIVE_ATTRIBUTES),
-        ...(isTransitioning() && STATIC_TRANSITIONING_ATTRIBUTES),
+        ...base,
+        ...(isActive() && STATIC_DEFAULT_ACTIVE_ATTRIBUTES),
       }
-    },
-  ) as any
+    }
+
+    const activeProps = resolvedActiveProps()
+    const inactiveProps = resolvedInactiveProps()
+    const s = resolvedStyle()
+    const c = resolvedClassName()
+
+    return {
+      ...activeProps,
+      ...inactiveProps,
+      ...base,
+      ...(Object.keys(s).length ? { style: s } : undefined),
+      ...(c ? { class: c } : undefined),
+      ...(isActive() && STATIC_ACTIVE_ATTRIBUTES),
+    }
+  }) as any
 }
 
 const STATIC_ACTIVE_PROPS = { class: 'active' }
 const STATIC_ACTIVE_PROPS_GET = () => STATIC_ACTIVE_PROPS
 const EMPTY_OBJECT = {}
 const STATIC_INACTIVE_PROPS_GET = () => EMPTY_OBJECT
+const STATIC_DEFAULT_ACTIVE_ATTRIBUTES = {
+  class: 'active',
+  'data-status': 'active',
+  'aria-current': 'page',
+}
 const STATIC_DISABLED_PROPS = {
   role: 'link',
   'aria-disabled': true,
@@ -479,6 +474,29 @@ const STATIC_ACTIVE_ATTRIBUTES = {
 }
 const STATIC_TRANSITIONING_ATTRIBUTES = {
   'data-transitioning': 'transitioning',
+}
+
+/** Call a JSX.EventHandlerUnion with the event. */
+function callHandler<T, TEvent extends Event>(
+  event: TEvent & { currentTarget: T; target: Element },
+  handler: Solid.JSX.EventHandlerUnion<T, TEvent>,
+) {
+  if (typeof handler === 'function') {
+    handler(event)
+  } else {
+    handler[0](handler[1], event)
+  }
+  return event.defaultPrevented
+}
+
+function composeEventHandlers<T>(
+  a: Solid.JSX.EventHandlerUnion<T, any> | undefined,
+  b: (event: any) => void,
+) {
+  return (event: any) => {
+    // call b if a isn't present, or if it doesn't prevent default
+    if (!a || !callHandler(event, a)) b(event)
+  }
 }
 
 export type UseLinkPropsOptions<

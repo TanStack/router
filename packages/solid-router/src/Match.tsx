@@ -39,8 +39,6 @@ function useResolvedActiveMatch(matchId: Solid.Accessor<string | undefined>) {
     (previousRouteId) => {
       const id = matchId()
       if (!id) return previousRouteId
-      // Track matchesId so this re-evaluates when the pool changes
-      router.stores.matchesId.state
       const routeId = router.stores.activeMatchStoresById.get(id)?.routeId
       return routeId ?? previousRouteId
     },
@@ -49,9 +47,6 @@ function useResolvedActiveMatch(matchId: Solid.Accessor<string | undefined>) {
   return Solid.createMemo(() => {
     const id = matchId()
     if (!id) return undefined
-
-    // Track matchesId for pool changes
-    router.stores.matchesId.state
 
     // Primary: look up by matchId from the pool directly
     const store = router.stores.activeMatchStoresById.get(id)

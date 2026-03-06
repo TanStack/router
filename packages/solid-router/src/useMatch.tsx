@@ -1,6 +1,11 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
-import { pendingMatchContext, routeIdContext } from './matchContext'
+import {
+  matchContext,
+  pendingMatchContext,
+  routeIdContext,
+} from './matchContext'
+import { shallow } from './store'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -70,6 +75,9 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
+  const nearestMatchId: Solid.Accessor<string | undefined> = opts.from
+    ? () => undefined
+    : Solid.useContext(matchContext)
   const nearestRouteId: Solid.Accessor<string | undefined> = opts.from
     ? () => undefined
     : Solid.useContext(routeIdContext)
@@ -78,35 +86,60 @@ export function useMatch<
     : Solid.useContext(pendingMatchContext)
 
   const match = Solid.createMemo(() => {
-    const routeId = opts.from ?? nearestRouteId()
+    if (opts.from) {
+      return router.stores.getMatchStoreByRouteId(opts.from).state
+    }
+
+    const matchId = nearestMatchId()
+    if (matchId) {
+      const matchStore = router.stores.activeMatchStoresById.get(matchId)
+      if (matchStore) {
+        return matchStore.state
+      }
+    }
+
+    const routeId = nearestRouteId()
     return routeId
       ? router.stores.getMatchStoreByRouteId(routeId).state
       : undefined
   })
 
-  return Solid.createMemo((previous) => {
-    const selectedMatch = match()
-    if (selectedMatch === undefined) {
-      // TODO (injectable stores) why do we return the previous here? That doesn't seem super safe, what if the `select` function reads other signals, then we wouldn't re-run it on changes to those signals.
-      if (previous !== undefined) {
-        return previous
-      }
-
-      const hasPendingMatch = opts.from
-        ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
-        : hasPendingNearestMatch()
-      const shouldThrowError =
-        !hasPendingMatch &&
-        !router.stores.isTransitioning.state &&
-        (opts.shouldThrow ?? true)
-
-      invariant(
-        !shouldThrowError,
-        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-      )
-      return undefined
+  const shouldThrow = Solid.createMemo(() => {
+    if (match() !== undefined) {
+      return false
     }
 
-    return opts.select ? opts.select(selectedMatch as any) : selectedMatch
-  }) as any
+    const hasPendingMatch = opts.from
+      ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
+      : hasPendingNearestMatch()
+
+    return (
+      !hasPendingMatch &&
+      !router.stores.isTransitioning.state &&
+      (opts.shouldThrow ?? true)
+    )
+  })
+
+  Solid.createEffect(() => {
+    if (shouldThrow()) {
+      invariant(
+        false,
+        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+      )
+    }
+  })
+
+  return Solid.createMemo(
+    () => {
+      const selectedMatch = match()
+
+      if (selectedMatch === undefined) {
+        return undefined
+      }
+
+      return opts.select ? opts.select(selectedMatch as any) : selectedMatch
+    },
+    undefined,
+    { equals: shallow },
+  ) as any
 }
