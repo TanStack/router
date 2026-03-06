@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import { useMatch } from './useMatch'
+import { shallow } from "./store"
 import type { Accessor } from 'solid-js'
 import type {
   AnyRouter,
@@ -65,7 +66,7 @@ export function useSearch<
     from: opts.from!,
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
-    select: (match) => match.search,
+    __pick: 'search',
   }) as Accessor<any>
 
   if (!opts.select) {
@@ -81,5 +82,5 @@ export function useSearch<
     }
 
     return select(selectedSearch)
-  }) as any
+  }, undefined, { equals: shallow }) as any
 }
