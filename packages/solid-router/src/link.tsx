@@ -51,8 +51,8 @@ export function useLinkProps<
   const [local, rest] = Solid.splitProps(
     Solid.mergeProps(
       {
-        activeProps: () => ({ class: 'active' }),
-        inactiveProps: () => ({}),
+        activeProps: STATIC_ACTIVE_PROPS_GET,
+        inactiveProps: STATIC_INACTIVE_PROPS_GET,
       },
       options,
     ),
@@ -127,20 +127,14 @@ export function useLinkProps<
     () => router.stores.location.state.searchStr,
   )
 
-  const from = options.from
-
-  const _options = () => {
-    return {
-      ...options,
-      from,
-    }
-  }
+  const _options = () => options
 
   const next = Solid.createMemo(() => {
     // rebuild location when search changes
     currentSearch()
+    const options = _options() as any
     // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(_options() as any))
+    return Solid.untrack(() => router.buildLocation(options))
   })
 
   const hrefOption = Solid.createMemo(() => {
@@ -176,11 +170,9 @@ export function useLinkProps<
       return _href.href
     }
     const to = _options().to
-    const isSafeInternal =
-      typeof to === 'string' &&
-      to.charCodeAt(0) === 47 && // '/'
-      to.charCodeAt(1) !== 47 // but not '//'
-    if (isSafeInternal) return undefined
+    const safeInternal = isSafeInternal(to)
+    if (safeInternal) return undefined
+    if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
     try {
       new URL(to as any)
       // Block dangerous protocols like javascript:, blob:, data:
@@ -216,18 +208,16 @@ export function useLinkProps<
         return false
       }
     } else {
-      const currentPathSplit = removeTrailingSlash(
+      const currentPath = removeTrailingSlash(
         currentLocation().pathname,
         router.basepath,
-      ).split('/')
-      const nextPathSplit = removeTrailingSlash(
-        next()?.pathname,
-        router.basepath,
-      )?.split('/')
-
-      const pathIsFuzzyEqual = nextPathSplit?.every(
-        (d, i) => d === currentPathSplit[i],
       )
+      const nextPath = removeTrailingSlash(next().pathname, router.basepath)
+
+      const pathIsFuzzyEqual =
+        currentPath.startsWith(nextPath) &&
+        (currentPath.length === nextPath.length ||
+          currentPath[nextPath.length] === '/')
       if (!pathIsFuzzyEqual) {
         return false
       }
@@ -414,14 +404,16 @@ export function useLinkProps<
   const resolvedActiveProps: () => Omit<Solid.ComponentProps<'a'>, 'style'> & {
     style?: Solid.JSX.CSSProperties
   } = () =>
-    isActive() ? (functionalUpdate(local.activeProps as any, {}) ?? {}) : {}
+    isActive()
+      ? (functionalUpdate(local.activeProps as any, {}) ?? EMPTY_OBJECT)
+      : EMPTY_OBJECT
 
   // Get the inactive props
   const resolvedInactiveProps: () => Omit<
     Solid.ComponentProps<'a'>,
     'style'
   > & { style?: Solid.JSX.CSSProperties } = () =>
-    isActive() ? {} : functionalUpdate(local.inactiveProps, {})
+    isActive() ? EMPTY_OBJECT : functionalUpdate(local.inactiveProps, {})
 
   const resolvedClassName = () =>
     [local.class, resolvedActiveProps().class, resolvedInactiveProps().class]
@@ -439,6 +431,8 @@ export function useLinkProps<
     resolvedActiveProps,
     resolvedInactiveProps,
     () => {
+      const s = resolvedStyle()
+      const c = resolvedClassName()
       return {
         href: hrefOption()?.href,
         ref: mergeRefs(setRef, _options().ref),
@@ -461,23 +455,30 @@ export function useLinkProps<
         ]),
         disabled: !!local.disabled,
         target: local.target,
-        ...(() => {
-          const s = resolvedStyle()
-          return Object.keys(s).length ? { style: s } : {}
-        })(),
-        ...(() => {
-          const c = resolvedClassName()
-          return c ? { class: c } : {}
-        })(),
-        ...(local.disabled && {
-          role: 'link',
-          'aria-disabled': true,
-        }),
-        ...(isActive() && { 'data-status': 'active', 'aria-current': 'page' }),
-        ...(isTransitioning() && { 'data-transitioning': 'transitioning' }),
+        ...(Object.keys(s).length ? { style: s } : undefined),
+        ...(c ? { class: c } : undefined),
+        ...(local.disabled && STATIC_DISABLED_PROPS),
+        ...(isActive() && STATIC_ACTIVE_ATTRIBUTES),
+        ...(isTransitioning() && STATIC_TRANSITIONING_ATTRIBUTES),
       }
     },
   ) as any
+}
+
+const STATIC_ACTIVE_PROPS = { class: 'active' }
+const STATIC_ACTIVE_PROPS_GET = () => STATIC_ACTIVE_PROPS
+const EMPTY_OBJECT = {}
+const STATIC_INACTIVE_PROPS_GET = () => EMPTY_OBJECT
+const STATIC_DISABLED_PROPS = {
+  role: 'link',
+  'aria-disabled': true,
+}
+const STATIC_ACTIVE_ATTRIBUTES = {
+  'data-status': 'active',
+  'aria-current': 'page',
+}
+const STATIC_TRANSITIONING_ATTRIBUTES = {
+  'data-transitioning': 'transitioning',
 }
 
 export type UseLinkPropsOptions<
@@ -645,6 +646,13 @@ export const Link: LinkComponent<'a'> = (props) => {
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
+
+function isSafeInternal(to: unknown) {
+  if (typeof to !== 'string') return false
+  const zero = to.charCodeAt(0)
+  if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
+  return zero === 46 // '.', '..', './', '../'
 }
 
 export type LinkOptionsFnOptions<
