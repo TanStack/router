@@ -19,7 +19,7 @@ env:
 
 jobs:
   benchmarks:
-    name: Run CodSpeed ${{ matrix.benchmark }} ${{ matrix.framework }} benchmark
+    name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
     strategy:
       fail-fast: false
       matrix:
@@ -38,7 +38,7 @@ jobs:
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
 
-      - name: Run CodSpeed ${{ matrix.benchmark }} ${{ matrix.framework }} benchmark
+      - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
         continue-on-error: true
         uses: CodSpeedHQ/action@v4
         with:
