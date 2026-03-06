@@ -1,4 +1,5 @@
 import { Outlet, createFileRoute } from '@tanstack/solid-router'
+import { createSignal, onMount, Show } from 'solid-js'
 import z from 'zod'
 import { ssrSchema } from '~/search'
 
@@ -50,38 +51,48 @@ export const Route = createFileRoute('/posts')({
     <div data-testid="posts-pending">Loading posts...</div>
   ),
   component: () => {
-    const search = Route.useSearch()
-    const loaderData = Route.useLoaderData()
-    const context = Route.useRouteContext()
-    if (
-      typeof window === 'undefined' &&
-      search().posts?.expected?.render === 'client-only'
-    ) {
-      const error = `Expected component for ${Route.id} to be executed on the client, but it is running on the server`
-      console.error(error)
-      throw new Error(error)
-    }
+    const [hydrated, setHydrated] = createSignal(false)
+    onMount(() => setHydrated(true))
     return (
-      <div data-testid="posts-container">
-        <h3 data-testid="posts-heading">posts</h3>
-        <div>
-          ssr: <b>{JSON.stringify(search().posts?.ssr ?? 'undefined')}</b>
-        </div>
-        <div>
-          expected data location execution:{' '}
-          <b data-testid="posts-data-expected">
-            {search().posts?.expected?.data}
-          </b>
-        </div>
-        <div>
-          loader: <b data-testid="posts-loader">{loaderData().posts}</b>
-        </div>
-        <div>
-          context: <b data-testid="posts-context">{context().posts}</b>
-        </div>
-        <hr />
-        <Outlet />
-      </div>
+      <Show when={hydrated()}>
+        <PostsContent />
+      </Show>
     )
   },
 })
+
+function PostsContent() {
+  const search = Route.useSearch()
+  const loaderData = Route.useLoaderData()
+  const context = Route.useRouteContext()
+  if (
+    typeof window === 'undefined' &&
+    search().posts?.expected?.render === 'client-only'
+  ) {
+    const error = `Expected component for ${Route.id} to be executed on the client, but it is running on the server`
+    console.error(error)
+    throw new Error(error)
+  }
+  return (
+    <div data-testid="posts-container">
+      <h3 data-testid="posts-heading">posts</h3>
+      <div>
+        ssr: <b>{JSON.stringify(search().posts?.ssr ?? 'undefined')}</b>
+      </div>
+      <div>
+        expected data location execution:{' '}
+        <b data-testid="posts-data-expected">
+          {search().posts?.expected?.data}
+        </b>
+      </div>
+      <div>
+        loader: <b data-testid="posts-loader">{loaderData().posts}</b>
+      </div>
+      <div>
+        context: <b data-testid="posts-context">{context().posts}</b>
+      </div>
+      <hr />
+      <Outlet />
+    </div>
+  )
+}
