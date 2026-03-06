@@ -2,6 +2,7 @@ import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
 import { pendingMatchContext, routeIdContext } from './matchContext'
 import { useRouter } from './useRouter'
+import { shallow } from './store'
 import type {
   AnyRouter,
   MakeRouteMatch,
@@ -84,29 +85,41 @@ export function useMatch<
       : undefined
   })
 
-  return Solid.createMemo((previous) => {
+  const matchState = Solid.createMemo(() => {
     const selectedMatch = match()
-    if (selectedMatch === undefined) {
-      // TODO (injectable stores) why do we return the previous here? That doesn't seem super safe, what if the `select` function reads other signals, then we wouldn't re-run it on changes to those signals.
-      if (previous !== undefined) {
-        return previous
-      }
 
+    if (selectedMatch === undefined) {
       const hasPendingMatch = opts.from
         ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
         : hasPendingNearestMatch()
-      const shouldThrowError =
+
+      const error =
         !hasPendingMatch &&
         !router.stores.isTransitioning.state &&
         (opts.shouldThrow ?? true)
 
+      return { match: undefined, error }
+    }
+    const result: any = opts.select
+      ? opts.select(selectedMatch as any)
+      : selectedMatch
+    return { match: result }
+  })
+
+  // Use createEffect to throw errors outside the reactive selector context
+  // This allows error boundaries to properly catch the errors
+  Solid.createEffect(() => {
+    const state = matchState()
+    if (state.error) {
       invariant(
-        !shouldThrowError,
+        false,
         `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
       )
-      return undefined
     }
+  })
 
-    return opts.select ? opts.select(selectedMatch as any) : selectedMatch
+  // Return an accessor that extracts just the match value
+  return Solid.createMemo(() => matchState().match, undefined, {
+    equals: shallow,
   }) as any
 }
