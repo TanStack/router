@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tanstack/react-devtools": "^0.7.0",
+    "@tanstack/react-devtools": "^0.9.0",
     "@tanstack/react-router": "^1.166.2",
     "@tanstack/react-router-devtools": "^1.166.2",
     "@tanstack/react-start": "^1.166.2",
