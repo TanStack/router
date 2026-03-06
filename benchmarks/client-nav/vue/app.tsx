@@ -99,8 +99,9 @@ export function mountTestApp(container: Element) {
     routeTree: root.addChildren([route]),
   })
 
+  const component = <RouterProvider router={router} />
   const app = Vue.createApp({
-    render: () => <RouterProvider router={router} />,
+    render: () => component,
   })
 
   app.mount(container)
