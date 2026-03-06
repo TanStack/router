@@ -98,8 +98,7 @@ function MatchesInner() {
                 ? (error) => {
                     warning(
                       false,
-                      `The following error wasn't caught by any route! At the very leas
-    t, consider setting an 'errorComponent' in your RootRoute!`,
+                      `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
                     )
                     warning(false, error.message || error.toString())
                   }
