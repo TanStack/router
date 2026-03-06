@@ -69,9 +69,7 @@ export function FloatingTanStackRouterDevtools({
   shadowDOMTarget,
 }: FloatingDevtoolsOptions): JSX.Element | null {
   const [rootEl, setRootEl] = createSignal<HTMLDivElement>()
-
-  // eslint-disable-next-line prefer-const
-  let panelRef: HTMLDivElement | undefined = undefined
+  const [panelRef, setPanelRef] = createSignal<HTMLDivElement>()
 
   const [isOpen, setIsOpen] = useLocalStorage(
     'tanstackRouterDevtoolsOpen',
@@ -105,6 +103,11 @@ export function FloatingTanStackRouterDevtools({
       const delta = dragInfo.pageY - moveEvent.pageY
       const newHeight = dragInfo.originalHeight + delta
 
+      // Directly manipulate DOM for immediate visual feedback during drag
+      if (panelElement) {
+        panelElement.style.height = `${newHeight}px`
+      }
+
       setDevtoolsHeight(newHeight)
 
       if (newHeight < 70) {
@@ -117,7 +120,7 @@ export function FloatingTanStackRouterDevtools({
     const unsub = () => {
       setIsResizing(false)
       document.removeEventListener('mousemove', run)
-      document.removeEventListener('mouseUp', unsub)
+      document.removeEventListener('mouseup', unsub)
     }
 
     document.addEventListener('mousemove', run)
@@ -135,7 +138,7 @@ export function FloatingTanStackRouterDevtools({
       const previousValue = rootEl()?.parentElement?.style.paddingBottom
 
       const run = () => {
-        const containerHeight = panelRef!.getBoundingClientRect().height
+        const containerHeight = panelRef()?.getBoundingClientRect().height ?? 0
         if (rootEl()?.parentElement) {
           setRootEl((prev) => {
             if (prev?.parentElement) {
@@ -246,7 +249,7 @@ export function FloatingTanStackRouterDevtools({
       >
         {/* {router() ? ( */}
         <BaseTanStackRouterDevtoolsPanel
-          ref={panelRef}
+          ref={setPanelRef}
           {...otherPanelProps}
           router={router}
           routerState={routerState}
@@ -254,7 +257,7 @@ export function FloatingTanStackRouterDevtools({
           style={basePanelStyle}
           isOpen={isResolvedOpen()}
           setIsOpen={setIsOpen}
-          handleDragStart={(e) => handleDragStart(panelRef, e)}
+          handleDragStart={(e) => handleDragStart(panelRef(), e)}
           shadowDOMTarget={shadowDOMTarget}
         />
         {/* ) : (
