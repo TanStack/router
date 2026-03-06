@@ -105,7 +105,7 @@ export class TanStackRouterDevtoolsCore {
       }
 
       return (
-        <ShadowDomTargetContext value={shadowDOMTarget}>
+        <ShadowDomTargetContext value={shadowDOMTarget ?? null}>
           <Devtools
             position={position}
             initialIsOpen={initialIsOpen}

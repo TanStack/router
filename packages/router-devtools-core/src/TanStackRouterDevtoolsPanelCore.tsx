@@ -91,7 +91,7 @@ export class TanStackRouterDevtoolsPanelCore {
       }
 
       return (
-        <ShadowDomTargetContext value={shadowDOMTarget}>
+        <ShadowDomTargetContext value={shadowDOMTarget ?? null}>
           <DevtoolsOnCloseContext
             value={{
               onCloseClick: () => {},
