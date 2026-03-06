@@ -71,7 +71,7 @@ function createSolidReadonlyStore<TValue>(
   /**
    * This is a detached root, without an owner. So it can never be disposed.
    * However it's only used on the client, where the router exists for the entire lifetime of the app, so this is fine.
-   * 
+   *
    * On the server we use non-reactive stores, and they don't use Solid at all.
    */
   const memo = Solid.createRoot(() => {
