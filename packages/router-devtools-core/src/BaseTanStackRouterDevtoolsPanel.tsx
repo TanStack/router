@@ -378,7 +378,7 @@ export const BaseTanStackRouterDevtoolsPanel =
         {...otherPanelProps}
       >
         {handleDragStart ? (
-          <div class={styles().dragHandle} onMouseDown={handleDragStart}></div>
+          <div class={styles().dragHandle} on:mousedown={handleDragStart}></div>
         ) : null}
         <button
           class={styles().panelCloseBtn}
