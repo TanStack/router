@@ -49,27 +49,36 @@ import { Route as RawStreamSsrBinaryHintRouteImport } from './routes/raw-stream/
 import { Route as RawStreamClientCallRouteImport } from './routes/raw-stream/client-call'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
+import { Route as NotFoundViaBeforeLoadTargetRootRouteImport } from './routes/not-found/via-beforeLoad-target-root'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
 import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
 import { Route as ApiUsersRouteImport } from './routes/api.users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as SpecialCharsMalformedRouteRouteImport } from './routes/specialChars/malformed/route'
 import { Route as CanonicalDeepRouteRouteImport } from './routes/canonical/deep/route'
+import { Route as NotFoundParentBoundaryRouteRouteImport } from './routes/not-found/parent-boundary/route'
+import { Route as NotFoundDeepRouteRouteImport } from './routes/not-found/deep/route'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
+import { Route as NotFoundParentBoundaryIndexRouteImport } from './routes/not-found/parent-boundary/index'
+import { Route as NotFoundDeepIndexRouteImport } from './routes/not-found/deep/index'
 import { Route as SpecialCharsMalformedSearchRouteImport } from './routes/specialChars/malformed/search'
 import { Route as SpecialCharsMalformedParamRouteImport } from './routes/specialChars/malformed/$param'
 import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
 import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
+import { Route as NotFoundParentBoundaryViaBeforeLoadRouteImport } from './routes/not-found/parent-boundary/via-beforeLoad'
 import { Route as ApiUsersIdRouteImport } from './routes/api/users.$id'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as NotFoundDeepBRouteRouteImport } from './routes/not-found/deep/b/route'
 import { Route as RedirectTargetServerFnIndexRouteImport } from './routes/redirect/$target/serverFn/index'
 import { Route as RedirectTargetServerFnViaUseServerFnRouteImport } from './routes/redirect/$target/serverFn/via-useServerFn'
 import { Route as RedirectTargetServerFnViaLoaderRouteImport } from './routes/redirect/$target/serverFn/via-loader'
 import { Route as RedirectTargetServerFnViaBeforeLoadRouteImport } from './routes/redirect/$target/serverFn/via-beforeLoad'
 import { Route as FooBarQuxHereRouteImport } from './routes/foo/$bar/$qux/_here'
+import { Route as NotFoundDeepBCRouteRouteImport } from './routes/not-found/deep/b/c/route'
 import { Route as FooBarQuxHereIndexRouteImport } from './routes/foo/$bar/$qux/_here/index'
+import { Route as NotFoundDeepBCDRouteImport } from './routes/not-found/deep/b/c/d'
 
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
@@ -273,6 +282,12 @@ const NotFoundViaLoaderRoute = NotFoundViaLoaderRouteImport.update({
   path: '/via-loader',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
+const NotFoundViaBeforeLoadTargetRootRoute =
+  NotFoundViaBeforeLoadTargetRootRouteImport.update({
+    id: '/via-beforeLoad-target-root',
+    path: '/via-beforeLoad-target-root',
+    getParentRoute: () => NotFoundRouteRoute,
+  } as any)
 const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
   id: '/via-beforeLoad',
   path: '/via-beforeLoad',
@@ -304,10 +319,32 @@ const CanonicalDeepRouteRoute = CanonicalDeepRouteRouteImport.update({
   path: '/deep',
   getParentRoute: () => CanonicalRouteRoute,
 } as any)
+const NotFoundParentBoundaryRouteRoute =
+  NotFoundParentBoundaryRouteRouteImport.update({
+    id: '/parent-boundary',
+    path: '/parent-boundary',
+    getParentRoute: () => NotFoundRouteRoute,
+  } as any)
+const NotFoundDeepRouteRoute = NotFoundDeepRouteRouteImport.update({
+  id: '/deep',
+  path: '/deep',
+  getParentRoute: () => NotFoundRouteRoute,
+} as any)
 const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => RedirectTargetRoute,
+} as any)
+const NotFoundParentBoundaryIndexRoute =
+  NotFoundParentBoundaryIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => NotFoundParentBoundaryRouteRoute,
+  } as any)
+const NotFoundDeepIndexRoute = NotFoundDeepIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NotFoundDeepRouteRoute,
 } as any)
 const SpecialCharsMalformedSearchRoute =
   SpecialCharsMalformedSearchRouteImport.update({
@@ -337,6 +374,12 @@ const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
   path: '/posts/$postId/deep',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotFoundParentBoundaryViaBeforeLoadRoute =
+  NotFoundParentBoundaryViaBeforeLoadRouteImport.update({
+    id: '/via-beforeLoad',
+    path: '/via-beforeLoad',
+    getParentRoute: () => NotFoundParentBoundaryRouteRoute,
+  } as any)
 const ApiUsersIdRoute = ApiUsersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -351,6 +394,11 @@ const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
   id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
+} as any)
+const NotFoundDeepBRouteRoute = NotFoundDeepBRouteRouteImport.update({
+  id: '/b',
+  path: '/b',
+  getParentRoute: () => NotFoundDeepRouteRoute,
 } as any)
 const RedirectTargetServerFnIndexRoute =
   RedirectTargetServerFnIndexRouteImport.update({
@@ -381,10 +429,20 @@ const FooBarQuxHereRoute = FooBarQuxHereRouteImport.update({
   path: '/foo/$bar/$qux',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotFoundDeepBCRouteRoute = NotFoundDeepBCRouteRouteImport.update({
+  id: '/c',
+  path: '/c',
+  getParentRoute: () => NotFoundDeepBRouteRoute,
+} as any)
 const FooBarQuxHereIndexRoute = FooBarQuxHereIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => FooBarQuxHereRoute,
+} as any)
+const NotFoundDeepBCDRoute = NotFoundDeepBCDRouteImport.update({
+  id: '/d',
+  path: '/d',
+  getParentRoute: () => NotFoundDeepBCRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -405,10 +463,13 @@ export interface FileRoutesByFullPath {
   '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
   '/canonical/deep': typeof CanonicalDeepRouteRoute
+  '/not-found/deep': typeof NotFoundDeepRouteRouteWithChildren
+  '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
@@ -432,20 +493,26 @@ export interface FileRoutesByFullPath {
   '/redirect/': typeof RedirectIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
   '/users/': typeof UsersIndexRoute
+  '/not-found/deep/b': typeof NotFoundDeepBRouteRouteWithChildren
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
+  '/not-found/parent-boundary/via-beforeLoad': typeof NotFoundParentBoundaryViaBeforeLoadRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
   '/specialChars/malformed/$param': typeof SpecialCharsMalformedParamRoute
   '/specialChars/malformed/search': typeof SpecialCharsMalformedSearchRoute
+  '/not-found/deep/': typeof NotFoundDeepIndexRoute
+  '/not-found/parent-boundary/': typeof NotFoundParentBoundaryIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/not-found/deep/b/c': typeof NotFoundDeepBCRouteRouteWithChildren
   '/foo/$bar/$qux': typeof FooBarQuxHereRouteWithChildren
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
   '/redirect/$target/serverFn/': typeof RedirectTargetServerFnIndexRoute
+  '/not-found/deep/b/c/d': typeof NotFoundDeepBCDRoute
   '/foo/$bar/$qux/': typeof FooBarQuxHereIndexRoute
 }
 export interface FileRoutesByTo {
@@ -465,6 +532,7 @@ export interface FileRoutesByTo {
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
@@ -487,19 +555,25 @@ export interface FileRoutesByTo {
   '/redirect': typeof RedirectIndexRoute
   '/search-params': typeof SearchParamsIndexRoute
   '/users': typeof UsersIndexRoute
+  '/not-found/deep/b': typeof NotFoundDeepBRouteRouteWithChildren
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
+  '/not-found/parent-boundary/via-beforeLoad': typeof NotFoundParentBoundaryViaBeforeLoadRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
   '/specialChars/malformed/$param': typeof SpecialCharsMalformedParamRoute
   '/specialChars/malformed/search': typeof SpecialCharsMalformedSearchRoute
+  '/not-found/deep': typeof NotFoundDeepIndexRoute
+  '/not-found/parent-boundary': typeof NotFoundParentBoundaryIndexRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
+  '/not-found/deep/b/c': typeof NotFoundDeepBCRouteRouteWithChildren
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
   '/redirect/$target/serverFn': typeof RedirectTargetServerFnIndexRoute
+  '/not-found/deep/b/c/d': typeof NotFoundDeepBCDRoute
   '/foo/$bar/$qux': typeof FooBarQuxHereIndexRoute
 }
 export interface FileRoutesById {
@@ -522,11 +596,14 @@ export interface FileRoutesById {
   '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
   '/canonical/deep': typeof CanonicalDeepRouteRoute
+  '/not-found/deep': typeof NotFoundDeepRouteRouteWithChildren
+  '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
@@ -550,20 +627,26 @@ export interface FileRoutesById {
   '/redirect/': typeof RedirectIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
   '/users/': typeof UsersIndexRoute
+  '/not-found/deep/b': typeof NotFoundDeepBRouteRouteWithChildren
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
+  '/not-found/parent-boundary/via-beforeLoad': typeof NotFoundParentBoundaryViaBeforeLoadRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
   '/specialChars/malformed/$param': typeof SpecialCharsMalformedParamRoute
   '/specialChars/malformed/search': typeof SpecialCharsMalformedSearchRoute
+  '/not-found/deep/': typeof NotFoundDeepIndexRoute
+  '/not-found/parent-boundary/': typeof NotFoundParentBoundaryIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/not-found/deep/b/c': typeof NotFoundDeepBCRouteRouteWithChildren
   '/foo/$bar/$qux/_here': typeof FooBarQuxHereRouteWithChildren
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
   '/redirect/$target/serverFn/': typeof RedirectTargetServerFnIndexRoute
+  '/not-found/deep/b/c/d': typeof NotFoundDeepBCDRoute
   '/foo/$bar/$qux/_here/': typeof FooBarQuxHereIndexRoute
 }
 export interface FileRouteTypes {
@@ -586,10 +669,13 @@ export interface FileRouteTypes {
     | '/type-only-reexport'
     | '/users'
     | '/canonical/deep'
+    | '/not-found/deep'
+    | '/not-found/parent-boundary'
     | '/specialChars/malformed'
     | '/api/users'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
+    | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/raw-stream/client-call'
@@ -613,20 +699,26 @@ export interface FileRouteTypes {
     | '/redirect/'
     | '/search-params/'
     | '/users/'
+    | '/not-found/deep/b'
     | '/layout-a'
     | '/layout-b'
     | '/api/users/$id'
+    | '/not-found/parent-boundary/via-beforeLoad'
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
     | '/specialChars/malformed/$param'
     | '/specialChars/malformed/search'
+    | '/not-found/deep/'
+    | '/not-found/parent-boundary/'
     | '/redirect/$target/'
+    | '/not-found/deep/b/c'
     | '/foo/$bar/$qux'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
     | '/redirect/$target/serverFn/'
+    | '/not-found/deep/b/c/d'
     | '/foo/$bar/$qux/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -646,6 +738,7 @@ export interface FileRouteTypes {
     | '/api/users'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
+    | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/raw-stream/client-call'
@@ -668,19 +761,25 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/search-params'
     | '/users'
+    | '/not-found/deep/b'
     | '/layout-a'
     | '/layout-b'
     | '/api/users/$id'
+    | '/not-found/parent-boundary/via-beforeLoad'
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
     | '/specialChars/malformed/$param'
     | '/specialChars/malformed/search'
+    | '/not-found/deep'
+    | '/not-found/parent-boundary'
     | '/redirect/$target'
+    | '/not-found/deep/b/c'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
     | '/redirect/$target/serverFn'
+    | '/not-found/deep/b/c/d'
     | '/foo/$bar/$qux'
   id:
     | '__root__'
@@ -702,11 +801,14 @@ export interface FileRouteTypes {
     | '/type-only-reexport'
     | '/users'
     | '/canonical/deep'
+    | '/not-found/deep'
+    | '/not-found/parent-boundary'
     | '/specialChars/malformed'
     | '/_layout/_layout-2'
     | '/api/users'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
+    | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/raw-stream/client-call'
@@ -730,20 +832,26 @@ export interface FileRouteTypes {
     | '/redirect/'
     | '/search-params/'
     | '/users/'
+    | '/not-found/deep/b'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
     | '/api/users/$id'
+    | '/not-found/parent-boundary/via-beforeLoad'
     | '/posts_/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
     | '/specialChars/malformed/$param'
     | '/specialChars/malformed/search'
+    | '/not-found/deep/'
+    | '/not-found/parent-boundary/'
     | '/redirect/$target/'
+    | '/not-found/deep/b/c'
     | '/foo/$bar/$qux/_here'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
     | '/redirect/$target/serverFn/'
+    | '/not-found/deep/b/c/d'
     | '/foo/$bar/$qux/_here/'
   fileRoutesById: FileRoutesById
 }
@@ -1056,6 +1164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotFoundViaLoaderRouteImport
       parentRoute: typeof NotFoundRouteRoute
     }
+    '/not-found/via-beforeLoad-target-root': {
+      id: '/not-found/via-beforeLoad-target-root'
+      path: '/via-beforeLoad-target-root'
+      fullPath: '/not-found/via-beforeLoad-target-root'
+      preLoaderRoute: typeof NotFoundViaBeforeLoadTargetRootRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
     '/not-found/via-beforeLoad': {
       id: '/not-found/via-beforeLoad'
       path: '/via-beforeLoad'
@@ -1098,12 +1213,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CanonicalDeepRouteRouteImport
       parentRoute: typeof CanonicalRouteRoute
     }
+    '/not-found/parent-boundary': {
+      id: '/not-found/parent-boundary'
+      path: '/parent-boundary'
+      fullPath: '/not-found/parent-boundary'
+      preLoaderRoute: typeof NotFoundParentBoundaryRouteRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
+    '/not-found/deep': {
+      id: '/not-found/deep'
+      path: '/deep'
+      fullPath: '/not-found/deep'
+      preLoaderRoute: typeof NotFoundDeepRouteRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
     '/redirect/$target/': {
       id: '/redirect/$target/'
       path: '/'
       fullPath: '/redirect/$target/'
       preLoaderRoute: typeof RedirectTargetIndexRouteImport
       parentRoute: typeof RedirectTargetRoute
+    }
+    '/not-found/parent-boundary/': {
+      id: '/not-found/parent-boundary/'
+      path: '/'
+      fullPath: '/not-found/parent-boundary/'
+      preLoaderRoute: typeof NotFoundParentBoundaryIndexRouteImport
+      parentRoute: typeof NotFoundParentBoundaryRouteRoute
+    }
+    '/not-found/deep/': {
+      id: '/not-found/deep/'
+      path: '/'
+      fullPath: '/not-found/deep/'
+      preLoaderRoute: typeof NotFoundDeepIndexRouteImport
+      parentRoute: typeof NotFoundDeepRouteRoute
     }
     '/specialChars/malformed/search': {
       id: '/specialChars/malformed/search'
@@ -1140,6 +1283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsPostIdDeepRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/not-found/parent-boundary/via-beforeLoad': {
+      id: '/not-found/parent-boundary/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/not-found/parent-boundary/via-beforeLoad'
+      preLoaderRoute: typeof NotFoundParentBoundaryViaBeforeLoadRouteImport
+      parentRoute: typeof NotFoundParentBoundaryRouteRoute
+    }
     '/api/users/$id': {
       id: '/api/users/$id'
       path: '/$id'
@@ -1160,6 +1310,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/layout-a'
       preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
       parentRoute: typeof LayoutLayout2Route
+    }
+    '/not-found/deep/b': {
+      id: '/not-found/deep/b'
+      path: '/b'
+      fullPath: '/not-found/deep/b'
+      preLoaderRoute: typeof NotFoundDeepBRouteRouteImport
+      parentRoute: typeof NotFoundDeepRouteRoute
     }
     '/redirect/$target/serverFn/': {
       id: '/redirect/$target/serverFn/'
@@ -1196,12 +1353,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FooBarQuxHereRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/not-found/deep/b/c': {
+      id: '/not-found/deep/b/c'
+      path: '/c'
+      fullPath: '/not-found/deep/b/c'
+      preLoaderRoute: typeof NotFoundDeepBCRouteRouteImport
+      parentRoute: typeof NotFoundDeepBRouteRoute
+    }
     '/foo/$bar/$qux/_here/': {
       id: '/foo/$bar/$qux/_here/'
       path: '/'
       fullPath: '/foo/$bar/$qux/'
       preLoaderRoute: typeof FooBarQuxHereIndexRouteImport
       parentRoute: typeof FooBarQuxHereRoute
+    }
+    '/not-found/deep/b/c/d': {
+      id: '/not-found/deep/b/c/d'
+      path: '/d'
+      fullPath: '/not-found/deep/b/c/d'
+      preLoaderRoute: typeof NotFoundDeepBCDRouteImport
+      parentRoute: typeof NotFoundDeepBCRouteRoute
     }
   }
 }
@@ -1217,15 +1388,73 @@ const CanonicalRouteRouteChildren: CanonicalRouteRouteChildren = {
 const CanonicalRouteRouteWithChildren = CanonicalRouteRoute._addFileChildren(
   CanonicalRouteRouteChildren,
 )
+interface NotFoundDeepBCRouteRouteChildren {
+  NotFoundDeepBCDRoute: typeof NotFoundDeepBCDRoute
+}
+
+const NotFoundDeepBCRouteRouteChildren: NotFoundDeepBCRouteRouteChildren = {
+  NotFoundDeepBCDRoute: NotFoundDeepBCDRoute,
+}
+
+const NotFoundDeepBCRouteRouteWithChildren =
+  NotFoundDeepBCRouteRoute._addFileChildren(NotFoundDeepBCRouteRouteChildren)
+
+interface NotFoundDeepBRouteRouteChildren {
+  NotFoundDeepBCRouteRoute: typeof NotFoundDeepBCRouteRouteWithChildren
+}
+
+const NotFoundDeepBRouteRouteChildren: NotFoundDeepBRouteRouteChildren = {
+  NotFoundDeepBCRouteRoute: NotFoundDeepBCRouteRouteWithChildren,
+}
+
+const NotFoundDeepBRouteRouteWithChildren =
+  NotFoundDeepBRouteRoute._addFileChildren(NotFoundDeepBRouteRouteChildren)
+
+interface NotFoundDeepRouteRouteChildren {
+  NotFoundDeepBRouteRoute: typeof NotFoundDeepBRouteRouteWithChildren
+  NotFoundDeepIndexRoute: typeof NotFoundDeepIndexRoute
+}
+
+const NotFoundDeepRouteRouteChildren: NotFoundDeepRouteRouteChildren = {
+  NotFoundDeepBRouteRoute: NotFoundDeepBRouteRouteWithChildren,
+  NotFoundDeepIndexRoute: NotFoundDeepIndexRoute,
+}
+
+const NotFoundDeepRouteRouteWithChildren =
+  NotFoundDeepRouteRoute._addFileChildren(NotFoundDeepRouteRouteChildren)
+
+interface NotFoundParentBoundaryRouteRouteChildren {
+  NotFoundParentBoundaryViaBeforeLoadRoute: typeof NotFoundParentBoundaryViaBeforeLoadRoute
+  NotFoundParentBoundaryIndexRoute: typeof NotFoundParentBoundaryIndexRoute
+}
+
+const NotFoundParentBoundaryRouteRouteChildren: NotFoundParentBoundaryRouteRouteChildren =
+  {
+    NotFoundParentBoundaryViaBeforeLoadRoute:
+      NotFoundParentBoundaryViaBeforeLoadRoute,
+    NotFoundParentBoundaryIndexRoute: NotFoundParentBoundaryIndexRoute,
+  }
+
+const NotFoundParentBoundaryRouteRouteWithChildren =
+  NotFoundParentBoundaryRouteRoute._addFileChildren(
+    NotFoundParentBoundaryRouteRouteChildren,
+  )
 
 interface NotFoundRouteRouteChildren {
+  NotFoundDeepRouteRoute: typeof NotFoundDeepRouteRouteWithChildren
+  NotFoundParentBoundaryRouteRoute: typeof NotFoundParentBoundaryRouteRouteWithChildren
   NotFoundViaBeforeLoadRoute: typeof NotFoundViaBeforeLoadRoute
+  NotFoundViaBeforeLoadTargetRootRoute: typeof NotFoundViaBeforeLoadTargetRootRoute
   NotFoundViaLoaderRoute: typeof NotFoundViaLoaderRoute
   NotFoundIndexRoute: typeof NotFoundIndexRoute
 }
 
 const NotFoundRouteRouteChildren: NotFoundRouteRouteChildren = {
+  NotFoundDeepRouteRoute: NotFoundDeepRouteRouteWithChildren,
+  NotFoundParentBoundaryRouteRoute:
+    NotFoundParentBoundaryRouteRouteWithChildren,
   NotFoundViaBeforeLoadRoute: NotFoundViaBeforeLoadRoute,
+  NotFoundViaBeforeLoadTargetRootRoute: NotFoundViaBeforeLoadTargetRootRoute,
   NotFoundViaLoaderRoute: NotFoundViaLoaderRoute,
   NotFoundIndexRoute: NotFoundIndexRoute,
 }

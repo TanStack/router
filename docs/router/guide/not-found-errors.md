@@ -166,7 +166,13 @@ The not-found error above will be handled by the same route or nearest parent ro
 
 If neither the route nor any suitable parent route is found to handle the error, the root route will handle it using TanStack Router's **extremely basic (and purposefully undesirable)** default not-found component that simply renders `<p>Not Found</p>`. It's highly recommended to either attach at least one `notFoundComponent` to the root route or configure a router-wide `defaultNotFoundComponent` to handle not-found errors.
 
-> ⚠️ Throwing a notFound error in a beforeLoad method will always trigger the \_\_root notFoundComponent. Since beforeLoad methods are run prior to the route loader methods, there is no guarantee that any required data for layouts have successfully loaded before the error is thrown.
+> ⚠️ When you throw `notFound()` in `beforeLoad`, TanStack Router resolves it the same way as other not-found errors:
+>
+> - If you pass `routeId`, that route (or the nearest valid ancestor boundary) handles it.
+> - If you don't pass `routeId`, the nearest route/ancestor with a `notFoundComponent` handles it (based on the router's mode and matching rules).
+> - If no suitable boundary is found, handling falls back to the root/default not-found behavior.
+>
+> For `beforeLoad`-thrown not-found errors, TanStack Router still runs required parent loaders so the selected not-found boundary can render with the loader data it depends on.
 
 ## Specifying Which Routes Handle Not Found Errors
 
