@@ -1,9 +1,8 @@
 import type { NavigateOptions } from '@tanstack/router-core'
 import type * as App from './app'
-import type { Root } from 'react-dom/client'
 
 const appModulePath = './dist/app.js'
-const { createTestRouter } = (await import(appModulePath)) as typeof App
+const { mountTestApp } = (await import(appModulePath)) as typeof App
 
 export function setup() {
   if (process.env.NODE_ENV !== 'production') {
@@ -12,14 +11,18 @@ export function setup() {
     )
   }
   let id = 0
-  let root: Root | undefined = undefined
+  let unmount: (() => void) | undefined = undefined
   let container: HTMLDivElement | undefined = undefined
   let unsub = () => {}
   let next: () => Promise<void> = () => Promise.reject('Test not initialized')
 
   async function before() {
     id = 0
-    const { router, component } = createTestRouter()
+    container = document.createElement('div')
+    document.body.append(container)
+
+    const { router, unmount: dispose } = mountTestApp(container)
+    unmount = dispose
     let resolve: () => void = () => {}
     unsub = router.subscribe('onRendered', () => resolve())
 
@@ -40,18 +43,11 @@ export function setup() {
         replace: true,
       })
     }
-
-    const { createRoot } = await import('react-dom/client')
-
-    container = document.createElement('div')
-    document.body.append(container)
-    root = createRoot(container)
-    root.render(component)
     await router.load()
   }
 
   function after() {
-    root?.unmount()
+    unmount?.()
     container?.remove()
     unsub()
   }
