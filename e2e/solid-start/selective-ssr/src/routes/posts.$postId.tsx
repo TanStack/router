@@ -46,6 +46,9 @@ export const Route = createFileRoute('/posts/$postId')({
     }
     return { postId: typeof window === 'undefined' ? 'server' : 'client' }
   },
+  pendingComponent: () => (
+    <div data-testid="postId-pending">Loading postId...</div>
+  ),
   component: () => {
     const search = Route.useSearch()
     const loaderData = Route.useLoaderData()

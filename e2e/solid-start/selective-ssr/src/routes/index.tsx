@@ -150,6 +150,44 @@ const testCases = [
       },
     }),
   },
+  {
+    link: linkOptions({
+      ...baseTestCase,
+      search: {
+        root: {
+          ssr: true,
+          expected: { data: 'server', render: 'server-and-client' },
+        },
+        posts: {
+          ssr: 'data-only',
+          expected: { data: 'server', render: 'client-only' },
+        },
+        postId: {
+          ssr: 'data-only',
+          expected: { data: 'server', render: 'client-only' },
+        },
+      },
+    }),
+  },
+  {
+    link: linkOptions({
+      ...baseTestCase,
+      search: {
+        root: {
+          ssr: true,
+          expected: { data: 'server', render: 'server-and-client' },
+        },
+        posts: {
+          ssr: false,
+          expected: { data: 'client', render: 'client-only' },
+        },
+        postId: {
+          ssr: false,
+          expected: { data: 'client', render: 'client-only' },
+        },
+      },
+    }),
+  },
 ]
 
 function Home() {
