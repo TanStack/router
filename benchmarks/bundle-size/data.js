@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772800165881,
+  "lastUpdate": 1772817150976,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -3385,6 +3385,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/023fdfd152702d910c15d0cbdcd54cf26a08e130"
         },
         "date": 1772800164812,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 88925,
+            "unit": "bytes",
+            "extra": "raw=279895; brotli=77249"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92039,
+            "unit": "bytes",
+            "extra": "raw=290478; brotli=80059"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 37041,
+            "unit": "bytes",
+            "extra": "raw=111044; brotli=33269"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41472,
+            "unit": "bytes",
+            "extra": "raw=124407; brotli=37269"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 53283,
+            "unit": "bytes",
+            "extra": "raw=151981; brotli=47830"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 58210,
+            "unit": "bytes",
+            "extra": "raw=167943; brotli=52265"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 101787,
+            "unit": "bytes",
+            "extra": "raw=319982; brotli=88042"
+          },
+          {
+            "name": "react-start.full",
+            "value": 105249,
+            "unit": "bytes",
+            "extra": "raw=330026; brotli=90948"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49656,
+            "unit": "bytes",
+            "extra": "raw=149537; brotli=43874"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 55257,
+            "unit": "bytes",
+            "extra": "raw=165865; brotli=48649"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "fpellet@ensc.fr",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b46b2eef6763c6d73789c8b0e8b5883e6c94d783",
+          "message": "test: faster benchmark ci (#6834)",
+          "timestamp": "2026-03-06T18:10:09+01:00",
+          "tree_id": "bb58285e046d9e2690e6bc08ab43a5f0d7034cc0",
+          "url": "https://github.com/TanStack/router/commit/b46b2eef6763c6d73789c8b0e8b5883e6c94d783"
+        },
+        "date": 1772817150052,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
