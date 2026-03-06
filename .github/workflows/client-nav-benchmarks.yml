@@ -1,5 +1,5 @@
 # Setup taken from https://codspeed.io/docs/benchmarks/nodejs/vitest
-name: Client Nav Benchmarks
+name: Benchmarks
 
 on:
   push:
@@ -18,8 +18,18 @@ env:
   NX_NO_CLOUD: true
 
 jobs:
-  client-nav-benchmarks:
-    name: Run Client Nav and SSR Benchmarks
+  benchmarks:
+    name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
+    strategy:
+      fail-fast: false
+      matrix:
+        framework:
+          - react
+          - solid
+          - vue
+        benchmark:
+          - client-nav
+          - ssr
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,44 +38,9 @@ jobs:
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
 
-      - name: Run CodSpeed benchmark for React
+      - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
         continue-on-error: true
         uses: CodSpeedHQ/action@v4
         with:
           mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/client-nav:test:perf:react
-
-      - name: Run CodSpeed benchmark for Solid
-        continue-on-error: true
-        uses: CodSpeedHQ/action@v4
-        with:
-          mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/client-nav:test:perf:solid
-
-      - name: Run CodSpeed benchmark for Vue
-        continue-on-error: true
-        uses: CodSpeedHQ/action@v4
-        with:
-          mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/client-nav:test:perf:vue
-
-      - name: Run CodSpeed SSR benchmark for React
-        continue-on-error: true
-        uses: CodSpeedHQ/action@v4
-        with:
-          mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/ssr:test:perf:react
-
-      - name: Run CodSpeed SSR benchmark for Solid
-        continue-on-error: true
-        uses: CodSpeedHQ/action@v4
-        with:
-          mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/ssr:test:perf:solid
-
-      - name: Run CodSpeed SSR benchmark for Vue
-        continue-on-error: true
-        uses: CodSpeedHQ/action@v4
-        with:
-          mode: simulation
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/ssr:test:perf:vue
+          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
