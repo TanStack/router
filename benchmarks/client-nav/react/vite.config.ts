@@ -17,9 +17,6 @@ export default defineConfig({
       formats: ['es'],
       fileName: 'app',
     },
-    rollupOptions: {
-      external: ['react'],
-    },
   },
   test: {
     name: '@benchmarks/client-nav (react)',

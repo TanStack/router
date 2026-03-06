@@ -1,9 +1,8 @@
 import type { NavigateOptions } from '@tanstack/router-core'
-import type { App as VueApp } from 'vue'
 import type * as App from './app'
 
 const appModulePath = './dist/app.js'
-const { createTestRouter } = (await import(appModulePath)) as typeof App
+const { mountTestApp } = (await import(appModulePath)) as typeof App
 
 export function setup() {
   if (process.env.NODE_ENV !== 'production') {
@@ -13,14 +12,18 @@ export function setup() {
   }
 
   let id = 0
-  let app: VueApp | undefined = undefined
+  let unmount: (() => void) | undefined = undefined
   let container: HTMLDivElement | undefined = undefined
   let unsub = () => {}
   let next: () => Promise<void> = () => Promise.reject('Test not initialized')
 
   async function before() {
     id = 0
-    const { router, component } = createTestRouter()
+    container = document.createElement('div')
+    document.body.append(container)
+
+    const { router, unmount: dispose } = mountTestApp(container)
+    unmount = dispose
     let resolveRendered: () => void = () => {}
     unsub = router.subscribe('onRendered', () => {
       resolveRendered()
@@ -43,20 +46,11 @@ export function setup() {
         replace: true,
       })
     }
-
-    const { createApp } = await import('vue')
-
-    container = document.createElement('div')
-    document.body.append(container)
-    app = createApp({
-      render: () => component,
-    })
-    app.mount(container)
     await router.load()
   }
 
   function after() {
-    app?.unmount()
+    unmount?.()
     container?.remove()
     unsub()
   }
