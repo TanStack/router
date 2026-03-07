@@ -8696,8 +8696,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-devtools':
-        specifier: ^0.8.1
-        version: 0.8.6(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@2.0.0-beta.1)
+        specifier: ^0.7.0
+        version: 0.7.11(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@2.0.0-beta.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -8952,8 +8952,8 @@ importers:
   examples/react/start-i18n-paraglide:
     dependencies:
       '@tanstack/react-devtools':
-        specifier: ^0.8.1
-        version: 0.8.6(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@2.0.0-beta.1)
+        specifier: ^0.7.0
+        version: 0.7.11(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@2.0.0-beta.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -17588,18 +17588,8 @@ packages:
     peerDependencies:
       solid-js: 2.0.0-beta.1
 
-  '@solid-primitives/event-listener@2.4.0':
-    resolution: {integrity: sha512-TSfR1PNTfojFEYGSxSMCnUhXsaYWBo4p+cm73QmWODa9YnaQAk6PB7VjzG2bOT2D817VlvuOqTj0Qdq+MZrdGg==}
-    peerDependencies:
-      solid-js: 2.0.0-beta.1
-
   '@solid-primitives/event-listener@2.4.3':
     resolution: {integrity: sha512-h4VqkYFv6Gf+L7SQj+Y6puigL/5DIi7x5q07VZET7AWcS+9/G3WfIE9WheniHWJs51OEkRB43w6lDys5YeFceg==}
-    peerDependencies:
-      solid-js: 2.0.0-beta.1
-
-  '@solid-primitives/keyboard@1.3.0':
-    resolution: {integrity: sha512-0QX9O3eUaQorNNmXZn8a4efSByayIScVq+iGSwheD7m3SL/ACLM5oZlCNpTPLcemnVVfUPAHFiViEj86XpN5qw==}
     peerDependencies:
       solid-js: 2.0.0-beta.1
 
@@ -17925,12 +17915,12 @@ packages:
     resolution: {integrity: sha512-7Wwfw6wBv2Kc+OBNIJQzBSJ6q7GABtwVT+VOQ/7/Gl7z8z1rtEYUZrxUrNvbbrHY+J5/WNZNZjJjTWDf8nTUBw==}
     engines: {node: '>=18'}
 
-  '@tanstack/devtools-client@0.0.4':
-    resolution: {integrity: sha512-LefnH9KE9uRDEWifc3QDcooskA8ikfs41bybDTgpYQpyTUspZnaEdUdya9Hry0KYxZ8nos0S3nNbsP79KHqr6Q==}
+  '@tanstack/devtools-client@0.0.3':
+    resolution: {integrity: sha512-kl0r6N5iIL3t9gGDRAv55VRM3UIyMKVH83esRGq7xBjYsRLe/BeCIN2HqrlJkObUXQMKhy7i8ejuGOn+bDqDBw==}
     engines: {node: '>=18'}
 
-  '@tanstack/devtools-client@0.0.5':
-    resolution: {integrity: sha512-hsNDE3iu4frt9cC2ppn1mNRnLKo2uc1/1hXAyY9z4UYb+o40M2clFAhiFoo4HngjfGJDV3x18KVVIq7W4Un+zA==}
+  '@tanstack/devtools-client@0.0.4':
+    resolution: {integrity: sha512-LefnH9KE9uRDEWifc3QDcooskA8ikfs41bybDTgpYQpyTUspZnaEdUdya9Hry0KYxZ8nos0S3nNbsP79KHqr6Q==}
     engines: {node: '>=18'}
 
   '@tanstack/devtools-event-bus@0.3.3':
@@ -17941,18 +17931,14 @@ packages:
     resolution: {integrity: sha512-eq+PpuutUyubXu+ycC1GIiVwBs86NF/8yYJJAKSpPcJLWl6R/761F1H4F/9ziX6zKezltFUH1ah3Cz8Ah+KJrw==}
     engines: {node: '>=18'}
 
-  '@tanstack/devtools-event-client@0.4.0':
-    resolution: {integrity: sha512-RPfGuk2bDZgcu9bAJodvO2lnZeHuz4/71HjZ0bGb/SPg8+lyTA+RLSKQvo7fSmPSi8/vcH3aKQ8EM9ywf1olaw==}
-    engines: {node: '>=18'}
-
   '@tanstack/devtools-ui@0.4.4':
     resolution: {integrity: sha512-5xHXFyX3nom0UaNfiOM92o6ziaHjGo3mcSGe2HD5Xs8dWRZNpdZ0Smd0B9ddEhy0oB+gXyMzZgUJb9DmrZV0Mg==}
     engines: {node: '>=18'}
     peerDependencies:
       solid-js: 2.0.0-beta.1
 
-  '@tanstack/devtools@0.10.0':
-    resolution: {integrity: sha512-UVN6wMntMMfMXk3Ozn7Ytr+SNhhzICqzOqVxmd4P2Kw+WzLkkEtmrBOZICII64eEIOPpRWgs9EG8uWVPQBt4IA==}
+  '@tanstack/devtools@0.7.0':
+    resolution: {integrity: sha512-AlAoCqJhWLg9GBEaoV1g/j+X/WA1aJSWOsekxeuZpYeS2hdVuKAjj04KQLUMJhtLfNl2s2E+TCj7ZRtWyY3U4w==}
     engines: {node: '>=18'}
     peerDependencies:
       solid-js: 2.0.0-beta.1
@@ -17987,8 +17973,8 @@ packages:
   '@tanstack/query-devtools@5.91.1':
     resolution: {integrity: sha512-l8bxjk6BMsCaVQH6NzQEE/bEgFy1hAs5qbgXl0xhzezlaQbPk6Mgz9BqEg2vTLPOHD8N4k+w/gdgCbEzecGyNg==}
 
-  '@tanstack/react-devtools@0.8.6':
-    resolution: {integrity: sha512-NUvbOlldLDzeL2qMONfLs5Ahb1bmygqyKMqYlNRl/UwAVW+ugIUGgDlXOa+kGt+ksCHO6CUopwEE9973z5tITg==}
+  '@tanstack/react-devtools@0.7.11':
+    resolution: {integrity: sha512-a2Lmz8x+JoDrsU6f7uKRcyyY+k8mA/n5mb9h7XJ3Fz/y3+sPV9t7vAW1s5lyNkQyyDt6V1Oim99faLthoJSxMw==}
     engines: {node: '>=18'}
     peerDependencies:
       '@types/react': ^19.2.8
@@ -30092,8 +30078,8 @@ snapshots:
       '@solid-devtools/shared': 0.19.0(solid-js@2.0.0-beta.1)
       '@solid-primitives/bounds': 0.0.122(solid-js@2.0.0-beta.1)
       '@solid-primitives/cursor': 0.0.115(solid-js@2.0.0-beta.1)
-      '@solid-primitives/event-listener': 2.4.0(solid-js@2.0.0-beta.1)
-      '@solid-primitives/keyboard': 1.3.0(solid-js@2.0.0-beta.1)
+      '@solid-primitives/event-listener': 2.4.3(solid-js@2.0.0-beta.1)
+      '@solid-primitives/keyboard': 1.3.3(solid-js@2.0.0-beta.1)
       '@solid-primitives/platform': 0.1.2(solid-js@2.0.0-beta.1)
       '@solid-primitives/rootless': 1.5.0(solid-js@2.0.0-beta.1)
       '@solid-primitives/scheduled': 1.5.0(solid-js@2.0.0-beta.1)
@@ -30112,7 +30098,7 @@ snapshots:
   '@solid-devtools/shared@0.19.0(solid-js@2.0.0-beta.1)':
     dependencies:
       '@nothing-but/utils': 0.17.0
-      '@solid-primitives/event-listener': 2.4.0(solid-js@2.0.0-beta.1)
+      '@solid-primitives/event-listener': 2.4.3(solid-js@2.0.0-beta.1)
       '@solid-primitives/media': 2.3.0(solid-js@2.0.0-beta.1)
       '@solid-primitives/refs': 1.1.0(solid-js@2.0.0-beta.1)
       '@solid-primitives/rootless': 1.5.0(solid-js@2.0.0-beta.1)
@@ -30139,20 +30125,8 @@ snapshots:
       '@solid-primitives/utils': 6.3.2(solid-js@2.0.0-beta.1)
       solid-js: 2.0.0-beta.1
 
-  '@solid-primitives/event-listener@2.4.0(solid-js@2.0.0-beta.1)':
-    dependencies:
-      '@solid-primitives/utils': 6.3.2(solid-js@2.0.0-beta.1)
-      solid-js: 2.0.0-beta.1
-
   '@solid-primitives/event-listener@2.4.3(solid-js@2.0.0-beta.1)':
     dependencies:
-      '@solid-primitives/utils': 6.3.2(solid-js@2.0.0-beta.1)
-      solid-js: 2.0.0-beta.1
-
-  '@solid-primitives/keyboard@1.3.0(solid-js@2.0.0-beta.1)':
-    dependencies:
-      '@solid-primitives/event-listener': 2.4.3(solid-js@2.0.0-beta.1)
-      '@solid-primitives/rootless': 1.5.2(solid-js@2.0.0-beta.1)
       '@solid-primitives/utils': 6.3.2(solid-js@2.0.0-beta.1)
       solid-js: 2.0.0-beta.1
 
@@ -30469,13 +30443,13 @@ snapshots:
       - typescript
       - vite
 
-  '@tanstack/devtools-client@0.0.4':
+  '@tanstack/devtools-client@0.0.3':
     dependencies:
       '@tanstack/devtools-event-client': 0.3.4
 
-  '@tanstack/devtools-client@0.0.5':
+  '@tanstack/devtools-client@0.0.4':
     dependencies:
-      '@tanstack/devtools-event-client': 0.4.0
+      '@tanstack/devtools-event-client': 0.3.4
 
   '@tanstack/devtools-event-bus@0.3.3':
     dependencies:
@@ -30486,8 +30460,6 @@ snapshots:
 
   '@tanstack/devtools-event-client@0.3.4': {}
 
-  '@tanstack/devtools-event-client@0.4.0': {}
-
   '@tanstack/devtools-ui@0.4.4(csstype@3.2.3)(solid-js@2.0.0-beta.1)':
     dependencies:
       clsx: 2.1.1
@@ -30496,12 +30468,12 @@ snapshots:
     transitivePeerDependencies:
       - csstype
 
-  '@tanstack/devtools@0.10.0(csstype@3.2.3)(solid-js@2.0.0-beta.1)':
+  '@tanstack/devtools@0.7.0(csstype@3.2.3)(solid-js@2.0.0-beta.1)':
     dependencies:
       '@solid-primitives/event-listener': 2.4.3(solid-js@2.0.0-beta.1)
       '@solid-primitives/keyboard': 1.3.3(solid-js@2.0.0-beta.1)
       '@solid-primitives/resize-observer': 2.1.3(solid-js@2.0.0-beta.1)
-      '@tanstack/devtools-client': 0.0.5
+      '@tanstack/devtools-client': 0.0.3
       '@tanstack/devtools-event-bus': 0.3.3
       '@tanstack/devtools-ui': 0.4.4(csstype@3.2.3)(solid-js@2.0.0-beta.1)
       clsx: 2.1.1
@@ -30581,9 +30553,9 @@ snapshots:
 
   '@tanstack/query-devtools@5.91.1': {}
 
-  '@tanstack/react-devtools@0.8.6(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@2.0.0-beta.1)':
+  '@tanstack/react-devtools@0.7.11(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@2.0.0-beta.1)':
     dependencies:
-      '@tanstack/devtools': 0.10.0(csstype@3.2.3)(solid-js@2.0.0-beta.1)
+      '@tanstack/devtools': 0.7.0(csstype@3.2.3)(solid-js@2.0.0-beta.1)
       '@types/react': 19.2.8
       '@types/react-dom': 19.2.3(@types/react@19.2.8)
       react: 19.2.3
