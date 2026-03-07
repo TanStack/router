@@ -30,4 +30,18 @@ describe('load config tests', () => {
       )
     },
   )
+
+  it('accepts routeTreeFileFooter as a function', () => {
+    const routeTreeFileFooter = () => ['// append']
+    const resolvedConfig = getConfig({ routeTreeFileFooter })
+
+    expect(resolvedConfig.routeTreeFileFooter).toBe(routeTreeFileFooter)
+  })
+
+  it('accepts routeTreeFileFooter as an array', () => {
+    const routeTreeFileFooter = ['// append']
+    const resolvedConfig = getConfig({ routeTreeFileFooter })
+
+    expect(resolvedConfig.routeTreeFileFooter).toEqual(routeTreeFileFooter)
+  })
 })
