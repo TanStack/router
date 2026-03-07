@@ -1,7 +1,7 @@
 import { clsx as cx } from 'clsx'
 
 import { createEffect, createMemo, createSignal } from 'solid-js'
-import { Dynamic } from 'solid-js/web'
+import { Dynamic } from '@solidjs/web'
 
 import { DevtoolsOnCloseContext } from './context'
 import { useIsMounted } from './utils'
@@ -69,9 +69,7 @@ export function FloatingTanStackRouterDevtools({
   shadowDOMTarget,
 }: FloatingDevtoolsOptions): JSX.Element | null {
   const [rootEl, setRootEl] = createSignal<HTMLDivElement>()
-
-  // eslint-disable-next-line prefer-const
-  let panelRef: HTMLDivElement | undefined = undefined
+  const [panelRef, setPanelRef] = createSignal<HTMLDivElement>()
 
   const [isOpen, setIsOpen] = useLocalStorage(
     'tanstackRouterDevtoolsOpen',
@@ -105,6 +103,11 @@ export function FloatingTanStackRouterDevtools({
       const delta = dragInfo.pageY - moveEvent.pageY
       const newHeight = dragInfo.originalHeight + delta
 
+      // Directly manipulate DOM for immediate visual feedback during drag
+      if (panelElement) {
+        panelElement.style.height = `${newHeight}px`
+      }
+
       setDevtoolsHeight(newHeight)
 
       if (newHeight < 70) {
@@ -117,7 +120,7 @@ export function FloatingTanStackRouterDevtools({
     const unsub = () => {
       setIsResizing(false)
       document.removeEventListener('mousemove', run)
-      document.removeEventListener('mouseUp', unsub)
+      document.removeEventListener('mouseup', unsub)
     }
 
     document.addEventListener('mousemove', run)
@@ -126,62 +129,61 @@ export function FloatingTanStackRouterDevtools({
 
   const isButtonClosed = isOpen() ?? false
 
-  createEffect(() => {
-    setIsResolvedOpen(isOpen() ?? false)
-  })
+  createEffect(
+    () => isOpen(),
+    (val) => {
+      setIsResolvedOpen(val ?? false)
+    },
+  )
 
-  createEffect(() => {
-    if (isResolvedOpen()) {
-      const previousValue = rootEl()?.parentElement?.style.paddingBottom
+  createEffect(
+    () => ({
+      open: isResolvedOpen(),
+      root: rootEl(),
+      panel: panelRef(),
+    }),
+    ({ open, root, panel }) => {
+      if (open) {
+        const previousValue = root?.parentElement?.style.paddingBottom
 
-      const run = () => {
-        const containerHeight = panelRef!.getBoundingClientRect().height
-        if (rootEl()?.parentElement) {
-          setRootEl((prev) => {
-            if (prev?.parentElement) {
-              prev.parentElement.style.paddingBottom = `${containerHeight}px`
+        const run = () => {
+          const containerHeight = panel?.getBoundingClientRect().height ?? 0
+          if (root?.parentElement) {
+            root.parentElement.style.paddingBottom = `${containerHeight}px`
+          }
+        }
+
+        run()
+
+        if (typeof window !== 'undefined') {
+          window.addEventListener('resize', run)
+
+          return () => {
+            window.removeEventListener('resize', run)
+            if (root?.parentElement && typeof previousValue === 'string') {
+              root.parentElement.style.paddingBottom = previousValue
             }
-            return prev
-          })
-        }
-      }
-
-      run()
-
-      if (typeof window !== 'undefined') {
-        window.addEventListener('resize', run)
-
-        return () => {
-          window.removeEventListener('resize', run)
-          if (rootEl()?.parentElement && typeof previousValue === 'string') {
-            setRootEl((prev) => {
-              prev!.parentElement!.style.paddingBottom = previousValue
-              return prev
-            })
           }
         }
+      } else {
+        // Reset padding when devtools are closed
+        if (root?.parentElement) {
+          root.parentElement.removeAttribute('style')
+        }
       }
-    } else {
-      // Reset padding when devtools are closed
-      if (rootEl()?.parentElement) {
-        setRootEl((prev) => {
-          if (prev?.parentElement) {
-            prev.parentElement.removeAttribute('style')
-          }
-          return prev
-        })
-      }
-    }
-    return
-  })
+      return
+    },
+  )
 
-  createEffect(() => {
-    if (rootEl()) {
-      const el = rootEl()
-      const fontSize = getComputedStyle(el!).fontSize
-      el?.style.setProperty('--tsrd-font-size', fontSize)
-    }
-  })
+  createEffect(
+    () => rootEl(),
+    (el) => {
+      if (el) {
+        const fontSize = getComputedStyle(el).fontSize
+        el.style.setProperty('--tsrd-font-size', fontSize)
+      }
+    },
+  )
 
   const { style: panelStyle = {}, ...otherPanelProps } = panelProps as {
     style?: Record<string, any>
@@ -239,14 +241,14 @@ export function FloatingTanStackRouterDevtools({
       ref={setRootEl}
       class="TanStackRouterDevtools"
     >
-      <DevtoolsOnCloseContext.Provider
+      <DevtoolsOnCloseContext
         value={{
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
         {/* {router() ? ( */}
         <BaseTanStackRouterDevtoolsPanel
-          ref={panelRef}
+          ref={setPanelRef}
           {...otherPanelProps}
           router={router}
           routerState={routerState}
@@ -254,13 +256,13 @@ export function FloatingTanStackRouterDevtools({
           style={basePanelStyle}
           isOpen={isResolvedOpen()}
           setIsOpen={setIsOpen}
-          handleDragStart={(e) => handleDragStart(panelRef, e)}
+          handleDragStart={(e) => handleDragStart(panelRef(), e)}
           shadowDOMTarget={shadowDOMTarget}
         />
         {/* ) : (
           <p>No router</p>
         )} */}
-      </DevtoolsOnCloseContext.Provider>
+      </DevtoolsOnCloseContext>
 
       <button
         type="button"

@@ -4,7 +4,7 @@ import { tokens } from './tokens'
 import { ShadowDomTargetContext } from './context'
 import type { Accessor } from 'solid-js'
 
-const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
+const stylesFactory = (shadowDOMTarget?: ShadowRoot | null) => {
   const { colors, font, size, alpha, shadow, border } = tokens
   const { fontFamily, lineHeight, size: fontSize } = font
   const css = shadowDOMTarget

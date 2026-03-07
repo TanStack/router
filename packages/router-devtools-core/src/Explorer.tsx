@@ -249,7 +249,7 @@ export function Explorer({
   )
 }
 
-const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
+const stylesFactory = (shadowDOMTarget?: ShadowRoot | null) => {
   const { colors, font, size, alpha, shadow, border } = tokens
   const { fontFamily, lineHeight, size: fontSize } = font
   const css = shadowDOMTarget
