@@ -26,7 +26,7 @@ const decoder = new TextDecoder('utf-8')
 function Home() {
   const loaderData = Route.useLoaderData()
   const [streamData, setStreamData] = createSignal<Array<string>>([])
-  const promiseData = createMemo(() => loaderData().promise);
+  const promiseData = createMemo(() => loaderData().promise)
 
   createEffect(loaderData, (loaderDataValue) => {
     async function fetchStream() {

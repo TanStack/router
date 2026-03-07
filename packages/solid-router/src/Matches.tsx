@@ -51,8 +51,8 @@ export function Matches() {
   // prevents errors from propagating to an external Errored boundary.
   const ResolvedSuspense =
     router.options.disableGlobalCatchBoundary ||
-      (isServer ?? router.isServer) ||
-      (typeof document !== 'undefined' && router.ssr)
+    (isServer ?? router.isServer) ||
+    (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : Solid.Loading
 
@@ -105,17 +105,17 @@ function MatchesInner() {
         getResetKey={() => resetKey()}
         errorComponent={ErrorComponent}
         onCatch={
-            process.env.NODE_ENV !== 'production'
-              ? (error) => {
-                  warning(
-                    false,
-                    `The following error wasn't caught by any route! At the very leas
+          process.env.NODE_ENV !== 'production'
+            ? (error) => {
+                warning(
+                  false,
+                  `The following error wasn't caught by any route! At the very leas
     t, consider setting an 'errorComponent' in your RootRoute!`,
-                  )
-                  warning(false, error.message || error.toString())
-                }
-              : undefined
-          }
+                )
+                warning(false, error.message || error.toString())
+              }
+            : undefined
+        }
       >
         {matchContent()}
       </CatchBoundary>
@@ -177,13 +177,13 @@ export type MakeMatchRouteOptions<
 > = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-  | ((
-    params?: RouteByPath<
-      TRouter['routeTree'],
-      ResolveRelativePath<TFrom, NoInfer<TTo>>
-    >['types']['allParams'],
-  ) => Solid.JSX.Element)
-  | Solid.JSX.Element
+    | ((
+        params?: RouteByPath<
+          TRouter['routeTree'],
+          ResolveRelativePath<TFrom, NoInfer<TTo>>
+        >['types']['allParams'],
+      ) => Solid.JSX.Element)
+    | Solid.JSX.Element
 }
 
 export function MatchRoute<

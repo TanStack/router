@@ -14,7 +14,7 @@ function Home() {
   const navigate = Route.useNavigate()
 
   const asyncResult = createMemo(async () => {
-    const query = searchQuery().query;
+    const query = searchQuery().query
     await new Promise((r) => setTimeout(r, 1000))
     return query
   })

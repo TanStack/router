@@ -6,8 +6,7 @@ export const Route = createFileRoute('/redirect/$target/serverFn/')({
     return (
       <div>
         <h1 class="mb-4 text-4xl font-extrabold lmd:text-5xl lg:text-6xl ">
-          redirect test with server functions (target {params().target}
-          )
+          redirect test with server functions (target {params().target})
         </h1>
         <div class="mb-2">
           <Link
@@ -87,5 +86,4 @@ export const Route = createFileRoute('/redirect/$target/serverFn/')({
       </div>
     )
   },
-
 })
