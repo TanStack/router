@@ -29,9 +29,10 @@ function Params() {
     select: (params) => runPerfSelectorComputation(Number(params.id ?? 0)),
   })
 
-  createEffect(() => {
-    void params()
-  })
+  createEffect(
+    () => params(),
+    () => {},
+  )
 
   return null
 }
@@ -42,9 +43,10 @@ function Search() {
     select: (search) => runPerfSelectorComputation(Number(search.id ?? 0)),
   })
 
-  createEffect(() => {
-    void search()
-  })
+  createEffect(
+    () => search(),
+    () => {},
+  )
 
   return null
 }

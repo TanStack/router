@@ -1,5 +1,5 @@
 import type { NavigateOptions } from '@tanstack/router-core'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import type * as App from './app'
 
 const appModulePath = './dist/app.js'

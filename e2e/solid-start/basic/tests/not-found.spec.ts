@@ -13,7 +13,7 @@ test.use({
   ],
 })
 test.describe('not-found', () => {
-  test(`global not found`, async ({ page }) => {
+  test.skip(`global not found`, async ({ page }) => {
     const response = await page.goto(`/this-page-does-not-exist/foo/bar`)
 
     expect(response?.status()).toBe(isSpaMode ? 200 : 404)

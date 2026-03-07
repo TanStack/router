@@ -66,6 +66,7 @@
     "node": ">=20.19"
   },
   "dependencies": {
+    "@solidjs/web": "*",
     "@tanstack/router-devtools-core": "workspace:*"
   },
   "devDependencies": {
