@@ -19,47 +19,14 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
-/**
- * Resolve the active match state for a given matchId, with fallback
- * to routeId-based lookup during same-route transitions.
- *
- * Uses direct pool access instead of the byId/byRouteId derived stores,
- * avoiding intermediate lookup object allocations.
- */
-function useResolvedActiveMatch(matchId: Solid.Accessor<string | undefined>) {
-  const router = useRouter()
-
-  // Keep the last seen routeId to recover from transient stale matchId values
-  // during same-route transitions (e.g. loaderDepsHash changes).
-  const lastKnownRouteId = Solid.createMemo<string | undefined>(
-    (previousRouteId) => {
-      const id = matchId()
-      if (!id) return previousRouteId
-      const routeId = router.stores.activeMatchStoresById.get(id)?.routeId
-      return routeId ?? previousRouteId
-    },
-  )
-
-  return Solid.createMemo(() => {
-    const id = matchId()
-    if (!id) return undefined
-
-    // Primary: look up by matchId from the pool directly
-    const store = router.stores.activeMatchStoresById.get(id)
-    if (store) return store.state
-
-    // Fallback: matchId is stale, resolve by routeId through the signal graph
-    const routeId = lastKnownRouteId()
-    if (routeId) return router.stores.getMatchStoreByRouteId(routeId).state
-
-    return undefined
-  })
-}
-
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
-  const match = useResolvedActiveMatch(() => props.matchId)
-  const resetKey = Solid.createMemo(() => router.stores.loadedAt.state)
+
+  const match = Solid.createMemo(() => {
+    const id = props.matchId
+    if (!id) return undefined
+    return router.stores.activeMatchStoresById.get(id)?.state
+  })
 
   const rawMatchState = Solid.createMemo(() => {
     const currentMatch = match()
@@ -80,27 +47,21 @@ export const Match = (props: { matchId: string }) => {
     }
   })
 
-  const matchState: typeof rawMatchState = Solid.createMemo(
-    (previous) => rawMatchState() ?? previous ?? null,
-    null,
-  )
-
-  const pendingRouteIds = Solid.createMemo(
-    () => router.stores.pendingRouteIds.state,
-  )
   const hasPendingMatch = Solid.createMemo(() => {
-    const currentRouteId = matchState()?.routeId
-    return currentRouteId ? Boolean(pendingRouteIds()[currentRouteId]) : false
+    const currentRouteId = rawMatchState()?.routeId
+    return currentRouteId
+      ? Boolean(router.stores.pendingRouteIds.state[currentRouteId])
+      : false
   })
   const nearestMatch = {
-    matchId: () => matchState()?.matchId,
-    routeId: () => matchState()?.routeId,
+    matchId: () => rawMatchState()?.matchId,
+    routeId: () => rawMatchState()?.routeId,
     match,
     hasPending: hasPendingMatch,
   }
 
   return (
-    <Solid.Show when={matchState()}>
+    <Solid.Show when={rawMatchState()}>
       {(currentMatchState) => {
         const route: () => AnyRoute = () =>
           router.routesById[currentMatchState().routeId]
@@ -153,7 +114,7 @@ export const Match = (props: { matchId: string }) => {
               >
                 <Dynamic
                   component={ResolvedCatchBoundary()}
-                  getResetKey={() => resetKey()}
+                  getResetKey={() => router.stores.loadedAt.state}
                   errorComponent={routeErrorComponent() || ErrorComponent}
                   onCatch={(error: Error) => {
                     // Forward not found errors (we don't want to show the error component for these)
@@ -194,11 +155,11 @@ export const Match = (props: { matchId: string }) => {
                             <Dynamic component={resolvePendingComponent()} />
                           }
                         >
-                          <MatchInner matchId={currentMatchState().matchId} />
+                          <MatchInner />
                         </Solid.Show>
                       </Solid.Match>
                       <Solid.Match when={!resolvedNoSsr}>
-                        <MatchInner matchId={currentMatchState().matchId} />
+                        <MatchInner />
                       </Solid.Match>
                     </Solid.Switch>
                   </Dynamic>
@@ -243,9 +204,9 @@ function OnRendered() {
   return null
 }
 
-export const MatchInner = (props: { matchId: string }): any => {
+export const MatchInner = (): any => {
   const router = useRouter()
-  const match = useResolvedActiveMatch(() => props.matchId)
+  const match = Solid.useContext(nearestMatchContext).match
 
   const rawMatchState = Solid.createMemo(() => {
     const currentMatch = match()
@@ -279,13 +240,8 @@ export const MatchInner = (props: { matchId: string }): any => {
     }
   })
 
-  const matchState: typeof rawMatchState = Solid.createMemo(
-    (previous) => rawMatchState() ?? previous ?? null,
-    null,
-  )
-
   return (
-    <Solid.Show when={matchState()}>
+    <Solid.Show when={rawMatchState()}>
       {(currentMatchState) => {
         const route = () => router.routesById[currentMatchState().routeId]!
 
