@@ -13,8 +13,6 @@ import type {
   ThrowOrOptional,
 } from '@tanstack/router-core'
 
-type MatchPick = 'search' | 'params' | '_strictParams'
-
 export interface UseMatchBaseOptions<
   TRouter extends AnyRouter,
   TFrom,
@@ -27,7 +25,9 @@ export interface UseMatchBaseOptions<
   ) => TSelected
   shouldThrow?: TThrow
   /** @internal */
-  __pick?: MatchPick
+  equals?:
+    | false
+    | ((prev: TSelected | undefined, next: TSelected | undefined) => boolean)
 }
 
 export type UseMatchRoute<out TFrom> = <
@@ -114,13 +114,11 @@ export function useMatch<
         return undefined
       }
 
-      if (opts.__pick) {
-        return selectedMatch[opts.__pick]
-      }
-
-      return opts.select ? opts.select(selectedMatch as any) : selectedMatch
+      return (
+        opts.select ? opts.select(selectedMatch as any) : selectedMatch
+      ) as any
     },
     undefined,
-    { equals: opts.__pick ? Object.is : shallow },
+    { equals: opts.equals ?? shallow },
   ) as any
 }
