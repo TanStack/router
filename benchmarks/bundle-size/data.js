@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772817150976,
+  "lastUpdate": 1772850100622,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -3469,6 +3469,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/b46b2eef6763c6d73789c8b0e8b5883e6c94d783"
         },
         "date": 1772817150052,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 88925,
+            "unit": "bytes",
+            "extra": "raw=279895; brotli=77249"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92039,
+            "unit": "bytes",
+            "extra": "raw=290478; brotli=80059"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 37041,
+            "unit": "bytes",
+            "extra": "raw=111044; brotli=33269"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41472,
+            "unit": "bytes",
+            "extra": "raw=124407; brotli=37269"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 53283,
+            "unit": "bytes",
+            "extra": "raw=151981; brotli=47830"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 58210,
+            "unit": "bytes",
+            "extra": "raw=167943; brotli=52265"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 101787,
+            "unit": "bytes",
+            "extra": "raw=319982; brotli=88042"
+          },
+          {
+            "name": "react-start.full",
+            "value": 105249,
+            "unit": "bytes",
+            "extra": "raw=330026; brotli=90948"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49656,
+            "unit": "bytes",
+            "extra": "raw=149537; brotli=43874"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 55257,
+            "unit": "bytes",
+            "extra": "raw=165865; brotli=48649"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "45029601+chapman-cc@users.noreply.github.com",
+            "name": "Chapman Cheng",
+            "username": "chapman-cc"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4ea2a62787d0b7c562a4d13ecdca45c4ffb27092",
+          "message": "docs: Update route file name in routing concepts (#6807)\n\nfix: Update route file name in routing concepts\n\nThe code block title `src/routes/posts.tsx` does not match against the line above `posts.$postId.tsx`\r\n\r\nThis pr fixes this typo",
+          "timestamp": "2026-03-07T03:19:13+01:00",
+          "tree_id": "36f708bd5fe20dab75a45a90b1aad54f42e8f4e2",
+          "url": "https://github.com/TanStack/router/commit/4ea2a62787d0b7c562a4d13ecdca45c4ffb27092"
+        },
+        "date": 1772850099253,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
