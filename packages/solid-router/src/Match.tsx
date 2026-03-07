@@ -388,6 +388,11 @@ export const Outlet = () => {
   const shouldShowNotFound = () =>
     childMatchStatus() !== 'redirected' && parentGlobalNotFound()
 
+  const rootErrorComponent = () =>
+    router.routesById[rootRouteId]?.options.errorComponent ??
+    router.options.defaultErrorComponent
+  const rootResetKey = useRouterState({ select: (s) => s.loadedAt })
+
   return (
     <Solid.Show
       when={!shouldShowNotFound() && childMatchId()}
@@ -398,20 +403,33 @@ export const Outlet = () => {
       }
     >
       {(matchIdAccessor) => {
-        // Use a memo to avoid stale accessor errors while keeping reactivity
         const currentMatchId = Solid.createMemo(() => matchIdAccessor())
+
+        const childMatch = () => <Match matchId={currentMatchId()} />
 
         return (
           <Solid.Show
             when={routeId() === rootRouteId}
-            fallback={<Match matchId={currentMatchId()} />}
+            fallback={childMatch()}
           >
             <Solid.Suspense
               fallback={
                 <Dynamic component={router.options.defaultPendingComponent} />
               }
             >
-              <Match matchId={currentMatchId()} />
+              {rootErrorComponent() ? (
+                <CatchBoundary
+                  getResetKey={() => rootResetKey()}
+                  errorComponent={rootErrorComponent()!}
+                  onCatch={(error) => {
+                    if (isNotFound(error)) throw error
+                  }}
+                >
+                  {childMatch()}
+                </CatchBoundary>
+              ) : (
+                childMatch()
+              )}
             </Solid.Suspense>
           </Solid.Show>
         )
