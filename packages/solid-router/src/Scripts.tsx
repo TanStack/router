@@ -56,18 +56,22 @@ export const Scripts = () => {
     serverBufferedScript = router.serverSsr.takeBufferedScripts()
   }
 
-  const allScripts = [
-    ...scripts(),
-    ...assetScripts(),
-  ] as Array<RouterManagedTag>
+  const allScripts = Solid.createMemo(() => {
+    const resolvedScripts = [
+      ...scripts(),
+      ...assetScripts(),
+    ] as Array<RouterManagedTag>
 
-  if (serverBufferedScript) {
-    allScripts.unshift(serverBufferedScript)
-  }
+    if (serverBufferedScript) {
+      resolvedScripts.unshift(serverBufferedScript)
+    }
+
+    return resolvedScripts
+  })
 
   return (
     <>
-      {allScripts.map((asset, i) => (
+      {allScripts().map((asset) => (
         <Asset {...asset} />
       ))}
     </>
