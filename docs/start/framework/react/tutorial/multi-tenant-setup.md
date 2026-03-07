@@ -3,66 +3,178 @@ title: 'Hostname-Based Multi-Tenancy'
 description: 'Learn how to structure a hostname-based multi-tenant app using TanStack Start with React.'
 ---
 
-> This tutorial assumes TanStack Start v1.132+.
+> This tutorial assumes @tanstack/react-router: v1.132+.
 
-Multi-tenant applications often need to resolve a tenant from the incoming hostname or subdomain during SSR (Server-Side Rendering). This guide demonstrates how to implement hostname-based multi-tenancy using TanStack Start.
+# Multi-Tenant Applications
+
+In many SaaS applications, a **single codebase serves multiple tenants**. Each tenant may have its own branding, metadata, and configuration.
+
+In this tutorial, we will build a **hostname-based multi-tenant application** using **TanStack Start** and **TanStack Router**.
+
+The goal is to identify tenants using the incoming request hostname and provide tenant configuration to the application during **SSR**.
+
+The complete code for this tutorial is available on [https://github.com/harshG775/tanstack-start-multi-tenant-example](https://github.com/harshG775/tanstack-start-multi-tenant-example).
 
 ---
 
-## Architecture Overview
+# What We'll Build
 
-This guide demonstrates:
+Two tenants running from the same application:
 
-- Hostname-based tenant resolution
-- SSR tenant detection
-- Root-level data hydration
-- Dynamic metadata handling
+```text
+tenant-1.com → Tenant One branding
+tenant-2.com → Tenant Two branding
+```
 
-Request lifecycle:
+Tenant 1 with custom branding and logo.
 
-```txt
+![Tenant 1](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/ijod78slb3ceq7rmokwd.png)
+
+Tenant 2 with custom branding and logo.
+
+![Tenant 1](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/diuxzwj9rx6twd3c6oyw.png)
+
+Each tenant will have:
+
+- custom name
+- description
+- logo
+- favicon
+
+All resolved automatically during the **request lifecycle**.
+
+---
+
+# Architecture Overview
+
+Tenant resolution happens during SSR before the router renders.
+
+```text
 Request
-  -> Nitro Runtime
-  -> getRequestUrl()
-  -> normalizeHostname()
-  -> getTenantConfigByHostname()
-  -> Root Loader
-  -> Hydrated Application
+   ↓
+Nitro Runtime
+   ↓
+getRequestUrl()
+   ↓
+normalizeHostname()
+   ↓
+getTenantConfigByHostname()
+   ↓
+Router Context
+   ↓
+Hydrated Application
+```
+
+The tenant configuration is loaded once and injected into the **router context**.
+
+---
+
+# Project Structure
+
+```text
+src
+├─ functions
+│  └─ tenant.serverFn.ts
+├─ lib
+│  ├─ api.ts
+│  └─ normalizeHostname.ts
+├─ routes
+│  ├─ __root.tsx
+│  └─ index.tsx
+└─ router.tsx
 ```
 
 ---
 
-## Full Source Code
+# Step 1: Create a Tenant Data Source
 
-View the complete repository on GitHub:
+First we create a simple tenant lookup function.
 
-[https://github.com/harshG775/tanstack-start-multi-tenant-example](https://github.com/harshG775/tanstack-start-multi-tenant-example)
+`src/lib/api.ts`
+
+```ts
+export type TenantType = {
+  id: string
+  hostname: string
+  meta: {
+    name: string
+    description: string
+    logo: string
+    favicon: string
+  }
+}
+
+const tenantsDB = [
+  {
+    id: 'tenant-1',
+    hostname: 'tenant-1.com',
+    meta: {
+      name: 'Tenant One',
+      description: 'Tenant One is a modern SaaS platform.',
+      logo: 'https://picsum.photos/seed/tenant1/200/200',
+      favicon: 'https://picsum.photos/seed/tenant1/32/32',
+    },
+  },
+  {
+    id: 'tenant-2',
+    hostname: 'tenant-2.com',
+    meta: {
+      name: 'Tenant Two',
+      description: 'Tenant Two helps businesses scale fast.',
+      logo: 'https://picsum.photos/seed/tenant2/200/200',
+      favicon: 'https://picsum.photos/seed/tenant2/32/32',
+    },
+  },
+]
+
+export const getTenantConfigByHostname = ({
+  hostname,
+}: {
+  hostname: string
+}) => {
+  return tenantsDB.find((tenant) => tenant.hostname === hostname) ?? null
+}
+```
+
+In production this would typically query a **database**.
 
 ---
 
-## 1. Normalize the Hostname
+# Step 2: Normalize the Hostname
 
-In production, you may have `tenant.com` or `user.saas.com`. In development, you typically use `localhost:3000`. This utility keeps behavior consistent across environments.
+During development the hostname might look like:
+
+```text
+tenant-1.com.localhost:3000
+```
+
+We normalize it before resolving the tenant.
+
+`src/lib/normalizeHostname.ts`
 
 ```ts
-// lib/normalizeHostname.ts
 export const normalizeHostname = (hostname: string): string => {
-  // Handle local development subdomains like tenant.localhost:3000
+  let finalHostname = hostname
+
   if (hostname.includes('localhost')) {
-    return hostname.replace('.localhost', '').split(':')[0]
+    const cleaned = hostname.replace('.localhost', '').replace(':3000', '')
+
+    finalHostname = cleaned
   }
-  return hostname
+
+  return finalHostname
 }
 ```
 
 ---
 
-## 2. Identify the Tenant (Server Function)
+# Step 3: Create a Server Function
 
-Use `createServerFn` to ensure tenant resolution never reaches the client. `getRequestUrl()` retrieves the incoming request during SSR.
+We resolve the tenant during SSR using a server function.
+
+`src/functions/tenant.serverFn.ts`
 
 ```ts
-// serverFn/tenant.serverFn.ts
 import { getTenantConfigByHostname } from '#/lib/api'
 import { normalizeHostname } from '#/lib/normalizeHostname'
 import { createServerFn } from '@tanstack/react-start'
@@ -70,9 +182,10 @@ import { getRequestUrl } from '@tanstack/react-start/server'
 
 export const getTenantConfig = createServerFn().handler(async () => {
   const url = getRequestUrl()
+
   const hostname = normalizeHostname(url.hostname)
 
-  const tenantConfig = await getTenantConfigByHostname({ hostname })
+  const tenantConfig = getTenantConfigByHostname({ hostname })
 
   if (!tenantConfig) {
     throw new Response('Tenant Not Found', { status: 404 })
@@ -84,81 +197,120 @@ export const getTenantConfig = createServerFn().handler(async () => {
 
 ---
 
-## 3. Register in the Root Loader
+# Step 4: Inject Tenant Into Router Context
 
-Resolve tenant data in the `__root__` route so it is available to all child routes and the HTML `<head>`.
+Next we load the tenant configuration when the router is created.
+
+`src/router.tsx`
+
+```ts
+import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+import { getTenantConfig } from './functions/tenant.serverFn'
+
+export async function getRouter() {
+  const tenantConfig = await getTenantConfig() // <--
+
+  const router = createTanStackRouter({
+    routeTree,
+    scrollRestoration: true,
+
+    context: {
+      tenantConfig, // <--
+    },
+  })
+
+  return router
+}
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: ReturnType<typeof getRouter>
+  }
+}
+```
+
+Now the tenant configuration is available throughout the application.
+
+---
+
+# Step 5: Apply Tenant Branding in the Root Route
+
+The root route can now dynamically set metadata and assets.
+
+`src/routes/__root.tsx`
 
 ```tsx
-// routes/__root.tsx
-import { createRootRoute } from '@tanstack/react-router'
-import { getTenantConfig } from '#/serverFn/tenant.serverFn'
+import type { TenantType } from '#/lib/api'
+export const Route = createRootRouteWithContext<{ tenantConfig: TenantType }>()(
+  {
+    head: ({ match }) => {
+      const tenant = match.context.tenantConfig // <--
 
-export const Route = createRootRoute({
-  loader: async () => {
-    try {
-      const tenantConfig = await getTenantConfig()
-      return { tenantConfig }
-    } catch(error) {
-      if (error instanceof Response && error.status === 404) {
-        return { tenantConfig: null }
+      return {
+        meta: [
+          { title: tenant.meta.name },
+          { name: 'description', content: tenant.meta.description },
+        ],
+        links: [{ rel: 'icon', href: tenant.meta.favicon }],
       }
-      throw error
-    }
+    },
   },
-})
+)
 ```
 
 ---
 
-## 4. Dynamic Metadata
+# Step 6: Access Tenant Data in Routes
 
-Tenant data can be used to dynamically update metadata for SEO.
+Tenant data can be accessed using `useRouteContext`.
 
-```tsx
-// routes/__root.tsx
-export const Route = createRootRoute({
-  head: (ctx) => {
-    const tenant = ctx.loaderData?.tenantConfig
-
-    return {
-      meta: [
-        { title: tenant?.meta.name ?? 'Default App' },
-        { name: 'description', content: tenant?.meta.description },
-        { property: 'og:image', content: tenant?.meta.logo },
-      ],
-      links: [{ rel: 'icon', href: tenant?.meta.favicon ?? '/favicon.ico' }],
-    }
-  },
-})
-```
-
----
-
-## 5. Using Tenant Data in Components
-
-Access root loader data using `useLoaderData`.
+`src/routes/index.tsx`
 
 ```tsx
-// routes/index.tsx
-import { createFileRoute, useLoaderData } from '@tanstack/react-router'
+import { createFileRoute, useRouteContext } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
 })
 
 function HomePage() {
-  const { tenantConfig } = useLoaderData({ from: '__root__' })
-
-  if (!tenantConfig) return <h1>404: Tenant Not Found</h1>
+  const { tenantConfig } = useRouteContext({ from: '__root__' }) // <--
 
   return (
-    <main className="p-6">
-      <img src={tenantConfig.meta.logo} alt="Logo" width={100} />
-      <h1>Welcome to {tenantConfig.meta.name}</h1>
+    <main>
+      <img
+        src={tenantConfig.meta.logo}
+        alt={tenantConfig.meta.name}
+        width={100}
+        height={100}
+        style={{ borderRadius: '50%' }}
+      />
+      <h1>{tenantConfig.meta.name}</h1>
+      <p>{tenantConfig.meta.description}</p>
     </main>
   )
 }
 ```
+
+---
+
+# Result
+
+The same application now serves different tenants depending on the hostname:
+
+```
+tenant-1.com → Tenant One
+tenant-2.com → Tenant Two
+```
+
+Each tenant receives its own:
+
+- metadata
+- branding
+- configuration
+
+All resolved during **server-side rendering**.
 
 ---
 
@@ -168,7 +320,3 @@ function HomePage() {
 - **Validation:** Ensure tenants are active and not suspended before returning configuration.
 - **Assets:** Use absolute URLs or correctly prefixed CDN paths for cross-domain asset loading.
 - **Security:** Avoid exposing internal tenant configuration fields to the client.
-
----
-
-This approach provides a clean, SSR-first architecture for hostname-based multi-tenancy in TanStack Start while keeping sensitive logic server-only.
