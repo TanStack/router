@@ -58,24 +58,10 @@ export function injectDummyMatch(): Vue.Ref<string | undefined> {
 }
 
 /**
- * Provides nearest pending-match state to child components
- */
-export function providePendingMatch(isPending: boolean) {
-  Vue.provide(pendingMatchContext, Vue.ref(isPending))
-}
-
-/**
  * Retrieves nearest pending-match state from the component tree
  */
 export function injectPendingMatch(): Vue.Ref<boolean> {
   return Vue.inject(pendingMatchContext, Vue.ref(false))
-}
-
-/**
- * Provides a dummy pending-match state for explicit 'from' lookups
- */
-export function provideDummyPendingMatch(isPending: boolean) {
-  Vue.provide(dummyPendingMatchContext, Vue.ref(isPending))
 }
 
 /**

@@ -93,10 +93,20 @@ export function useMatch<
     )
 
     if (match === undefined) {
-      return Vue.ref(undefined) as any
+      return Vue.ref(undefined) as Vue.Ref<
+        ThrowOrOptional<
+          UseMatchResult<TRouter, TFrom, TStrict, TSelected>,
+          TThrow
+        >
+      >
     }
 
-    return Vue.ref(opts.select ? opts.select(match as any) : match) as any
+    return Vue.ref(opts.select ? opts.select(match) : match) as Vue.Ref<
+      ThrowOrOptional<
+        UseMatchResult<TRouter, TFrom, TStrict, TSelected>,
+        TThrow
+      >
+    >
   }
 
   const hasPendingNearestMatch = opts.from
@@ -154,7 +164,7 @@ export function useMatch<
     }
 
     return opts.select ? opts.select(selectedMatch) : selectedMatch
-  }) as any
+  })
 
   // Keep eager throw behavior for setups that call useMatch for side effects only.
   result.value

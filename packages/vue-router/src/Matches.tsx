@@ -308,7 +308,7 @@ export function useMatches<
     return opts?.select
       ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
       : (matches as any)
-  }) as Vue.Ref<UseMatchesResult<TRouter, TSelected>>
+  })
 }
 
 export function useParentMatches<
