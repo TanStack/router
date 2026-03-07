@@ -278,7 +278,7 @@ const _resolvePromptBlockerArgs = (
     if (shouldBlock() && props.blockerFn !== undefined) {
       return await props.blockerFn()
     }
-    return shouldBlock
+    return shouldBlock()
   }
 
   return {
