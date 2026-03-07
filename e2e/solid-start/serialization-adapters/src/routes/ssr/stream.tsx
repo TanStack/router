@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import { RenderData, makeData } from '~/data'
 
 export const Route = createFileRoute('/ssr/stream')({
@@ -23,11 +23,11 @@ function RouteComponent() {
     <div>
       <h3 data-testid="stream-heading">Stream</h3>
       <div data-testid="some-data">{loaderData().someString}</div>
-      <Suspense fallback={<div>Loading...</div>}>
+      <Loading fallback={<div>Loading...</div>}>
         <Await promise={loaderData().dataPromise}>
           {(data) => <RenderData id="stream" data={data} />}
         </Await>
-      </Suspense>
+      </Loading>
     </div>
   )
 }

@@ -1,8 +1,7 @@
-import { createFileRoute } from '@tanstack/solid-router'
+import { createFileRoute, redirect } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 
 import { hashPassword, prismaClient } from '~/utils/prisma'
-import { Login } from '~/components/Login'
 import { useAppSession } from '~/utils/session'
 
 export const loginFn = createServerFn({
@@ -48,14 +47,7 @@ export const loginFn = createServerFn({
 export const Route = createFileRoute('/_authed')({
   beforeLoad: ({ context }) => {
     if (!context.user) {
-      throw new Error('Not authenticated')
+      throw redirect({ to: '/login' })
     }
-  },
-  errorComponent: ({ error }) => {
-    if (error.message === 'Not authenticated') {
-      return <Login />
-    }
-
-    throw error
   },
 })
