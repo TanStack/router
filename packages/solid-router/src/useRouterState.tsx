@@ -69,17 +69,22 @@ export function useRouterState<
     >
   }
 
+  if (!opts?.select) {
+    return (() => router.stores.__store.state) as Accessor<
+      UseRouterStateResult<TRouter, TSelected>
+    >
+  }
+
+  const select = opts.select
+
   return Solid.createMemo(
-    () => {
-      const state = router.stores.__store.state
-      if (opts?.select) return opts.select(state)
-      return state
-    },
+    () => select(router.stores.__store.state),
+    undefined,
     {
       // Use deep equality to match behavior of solid-store 0.7.0 which used
       // reconcile(). This ensures updates work correctly when selectors
       // return new object references but with the same values.
-      equal: deepEqual,
+      equals: deepEqual,
     },
   ) as Accessor<UseRouterStateResult<TRouter, TSelected>>
 }

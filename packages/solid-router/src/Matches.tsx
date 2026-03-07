@@ -6,7 +6,7 @@ import { shallow } from './store'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
-import { matchContext, routeIdContext } from './matchContext'
+import { nearestMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { Match } from './Match'
 import type {
@@ -68,13 +68,26 @@ export function Matches() {
 function MatchesInner() {
   const router = useRouter()
   const matchId = Solid.createMemo(() => router.stores.firstMatchId.state)
-  const routeId = Solid.createMemo(() => {
-    const id = matchId()
-    if (!id) return undefined
-    router.stores.matchesId.state
-    return router.stores.activeMatchStoresById.get(id)?.routeId
+  const routeId = Solid.createMemo(() => (matchId() ? rootRouteId : undefined))
+  const match = Solid.createMemo(() => {
+    const currentRouteId = routeId()
+    return currentRouteId
+      ? router.stores.getMatchStoreByRouteId(currentRouteId).state
+      : undefined
+  })
+  const hasPendingMatch = Solid.createMemo(() => {
+    const currentRouteId = routeId()
+    return currentRouteId
+      ? Boolean(router.stores.pendingRouteIds.state[currentRouteId])
+      : false
   })
   const resetKey = Solid.createMemo(() => router.stores.loadedAt.state)
+  const nearestMatch = {
+    matchId,
+    routeId,
+    match,
+    hasPending: hasPendingMatch,
+  }
 
   const matchComponent = () => {
     return (
@@ -85,31 +98,29 @@ function MatchesInner() {
   }
 
   return (
-    <matchContext.Provider value={matchId}>
-      <routeIdContext.Provider value={routeId}>
-        {router.options.disableGlobalCatchBoundary ? (
-          matchComponent()
-        ) : (
-          <CatchBoundary
-            getResetKey={() => resetKey()}
-            errorComponent={ErrorComponent}
-            onCatch={
-              process.env.NODE_ENV !== 'production'
-                ? (error) => {
-                    warning(
-                      false,
-                      `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
-                    )
-                    warning(false, error.message || error.toString())
-                  }
-                : undefined
-            }
-          >
-            {matchComponent()}
-          </CatchBoundary>
-        )}
-      </routeIdContext.Provider>
-    </matchContext.Provider>
+    <nearestMatchContext.Provider value={nearestMatch}>
+      {router.options.disableGlobalCatchBoundary ? (
+        matchComponent()
+      ) : (
+        <CatchBoundary
+          getResetKey={() => resetKey()}
+          errorComponent={ErrorComponent}
+          onCatch={
+            process.env.NODE_ENV !== 'production'
+              ? (error) => {
+                  warning(
+                    false,
+                    `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+                  )
+                  warning(false, error.message || error.toString())
+                }
+              : undefined
+          }
+        >
+          {matchComponent()}
+        </CatchBoundary>
+      )}
+    </nearestMatchContext.Provider>
   )
 }
 
@@ -238,7 +249,7 @@ export function useParentMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
-  const contextMatchId = Solid.useContext(matchContext)
+  const contextMatchId = Solid.useContext(nearestMatchContext).matchId
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
@@ -257,7 +268,7 @@ export function useChildMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
-  const contextMatchId = Solid.useContext(matchContext)
+  const contextMatchId = Solid.useContext(nearestMatchContext).matchId
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {

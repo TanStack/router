@@ -13,11 +13,7 @@ import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
-import {
-  matchContext,
-  pendingMatchContext,
-  routeIdContext,
-} from './matchContext'
+import { nearestMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
@@ -96,121 +92,130 @@ export const Match = (props: { matchId: string }) => {
     const currentRouteId = matchState()?.routeId
     return currentRouteId ? Boolean(pendingRouteIds()[currentRouteId]) : false
   })
-
-  // If match doesn't exist yet, return null (component is being unmounted or not ready)
-  if (!matchState()) return null
-
-  const route: () => AnyRoute = () => router.routesById[matchState()!.routeId]
-
-  const resolvePendingComponent = () =>
-    route().options.pendingComponent ?? router.options.defaultPendingComponent
-
-  const routeErrorComponent = () =>
-    route().options.errorComponent ?? router.options.defaultErrorComponent
-
-  const routeOnCatch = () =>
-    route().options.onCatch ?? router.options.defaultOnCatch
-
-  const routeNotFoundComponent = () =>
-    route().isRoot
-      ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
-        (route().options.notFoundComponent ??
-        router.options.notFoundRoute?.options.component)
-      : route().options.notFoundComponent
-
-  const resolvedNoSsr =
-    matchState()!.ssr === false || matchState()!.ssr === 'data-only'
-
-  const ResolvedSuspenseBoundary = () => Solid.Suspense
-
-  const ResolvedCatchBoundary = () =>
-    routeErrorComponent() ? CatchBoundary : SafeFragment
-
-  const ResolvedNotFoundBoundary = () =>
-    routeNotFoundComponent() ? CatchNotFound : SafeFragment
-
-  const ShellComponent = route().isRoot
-    ? ((route().options as RootRouteOptions).shellComponent ?? SafeFragment)
-    : SafeFragment
+  const nearestMatch = {
+    matchId: () => matchState()?.matchId,
+    routeId: () => matchState()?.routeId,
+    match,
+    hasPending: hasPendingMatch,
+  }
 
   return (
-    <ShellComponent>
-      <matchContext.Provider value={() => matchState()!.matchId}>
-        <routeIdContext.Provider value={() => matchState()!.routeId}>
-          <pendingMatchContext.Provider value={hasPendingMatch}>
-            <Dynamic
-              component={ResolvedSuspenseBoundary()}
-              fallback={
-                // Don't show fallback on server when using no-ssr mode to avoid hydration mismatch
-                (isServer ?? router.isServer) && resolvedNoSsr ? undefined : (
-                  <Dynamic component={resolvePendingComponent()} />
-                )
-              }
-            >
+    <Solid.Show when={matchState()}>
+      {(currentMatchState) => {
+        const route: () => AnyRoute = () =>
+          router.routesById[currentMatchState().routeId]
+
+        const resolvePendingComponent = () =>
+          route().options.pendingComponent ??
+          router.options.defaultPendingComponent
+
+        const routeErrorComponent = () =>
+          route().options.errorComponent ?? router.options.defaultErrorComponent
+
+        const routeOnCatch = () =>
+          route().options.onCatch ?? router.options.defaultOnCatch
+
+        const routeNotFoundComponent = () =>
+          route().isRoot
+            ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
+              (route().options.notFoundComponent ??
+              router.options.notFoundRoute?.options.component)
+            : route().options.notFoundComponent
+
+        const resolvedNoSsr =
+          currentMatchState().ssr === false ||
+          currentMatchState().ssr === 'data-only'
+
+        const ResolvedSuspenseBoundary = () => Solid.Suspense
+
+        const ResolvedCatchBoundary = () =>
+          routeErrorComponent() ? CatchBoundary : SafeFragment
+
+        const ResolvedNotFoundBoundary = () =>
+          routeNotFoundComponent() ? CatchNotFound : SafeFragment
+
+        const ShellComponent = route().isRoot
+          ? ((route().options as RootRouteOptions).shellComponent ??
+            SafeFragment)
+          : SafeFragment
+
+        return (
+          <ShellComponent>
+            <nearestMatchContext.Provider value={nearestMatch}>
               <Dynamic
-                component={ResolvedCatchBoundary()}
-                getResetKey={() => resetKey()}
-                errorComponent={routeErrorComponent() || ErrorComponent}
-                onCatch={(error: Error) => {
-                  // Forward not found errors (we don't want to show the error component for these)
-                  if (isNotFound(error)) throw error
-                  warning(
-                    false,
-                    `Error in route match: ${matchState()!.routeId}`,
+                component={ResolvedSuspenseBoundary()}
+                fallback={
+                  // Don't show fallback on server when using no-ssr mode to avoid hydration mismatch
+                  (isServer ?? router.isServer) && resolvedNoSsr ? undefined : (
+                    <Dynamic component={resolvePendingComponent()} />
                   )
-                  routeOnCatch()?.(error)
-                }}
+                }
               >
                 <Dynamic
-                  component={ResolvedNotFoundBoundary()}
-                  fallback={(error: any) => {
-                    // If the current not found handler doesn't exist or it has a
-                    // route ID which doesn't match the current route, rethrow the error
-                    if (
-                      !routeNotFoundComponent() ||
-                      (error.routeId &&
-                        error.routeId !== matchState()!.routeId) ||
-                      (!error.routeId && !route().isRoot)
+                  component={ResolvedCatchBoundary()}
+                  getResetKey={() => resetKey()}
+                  errorComponent={routeErrorComponent() || ErrorComponent}
+                  onCatch={(error: Error) => {
+                    // Forward not found errors (we don't want to show the error component for these)
+                    if (isNotFound(error)) throw error
+                    warning(
+                      false,
+                      `Error in route match: ${currentMatchState().routeId}`,
                     )
-                      throw error
-
-                    return (
-                      <Dynamic
-                        component={routeNotFoundComponent()}
-                        {...error}
-                      />
-                    )
+                    routeOnCatch()?.(error)
                   }}
                 >
-                  <Solid.Switch>
-                    <Solid.Match when={resolvedNoSsr}>
-                      <Solid.Show
-                        when={!(isServer ?? router.isServer)}
-                        fallback={
-                          <Dynamic component={resolvePendingComponent()} />
-                        }
-                      >
-                        <MatchInner matchId={matchState()!.matchId} />
-                      </Solid.Show>
-                    </Solid.Match>
-                    <Solid.Match when={!resolvedNoSsr}>
-                      <MatchInner matchId={matchState()!.matchId} />
-                    </Solid.Match>
-                  </Solid.Switch>
+                  <Dynamic
+                    component={ResolvedNotFoundBoundary()}
+                    fallback={(error: any) => {
+                      // If the current not found handler doesn't exist or it has a
+                      // route ID which doesn't match the current route, rethrow the error
+                      if (
+                        !routeNotFoundComponent() ||
+                        (error.routeId &&
+                          error.routeId !== currentMatchState().routeId) ||
+                        (!error.routeId && !route().isRoot)
+                      )
+                        throw error
+
+                      return (
+                        <Dynamic
+                          component={routeNotFoundComponent()}
+                          {...error}
+                        />
+                      )
+                    }}
+                  >
+                    <Solid.Switch>
+                      <Solid.Match when={resolvedNoSsr}>
+                        <Solid.Show
+                          when={!(isServer ?? router.isServer)}
+                          fallback={
+                            <Dynamic component={resolvePendingComponent()} />
+                          }
+                        >
+                          <MatchInner matchId={currentMatchState().matchId} />
+                        </Solid.Show>
+                      </Solid.Match>
+                      <Solid.Match when={!resolvedNoSsr}>
+                        <MatchInner matchId={currentMatchState().matchId} />
+                      </Solid.Match>
+                    </Solid.Switch>
+                  </Dynamic>
                 </Dynamic>
               </Dynamic>
-            </Dynamic>
-          </pendingMatchContext.Provider>
-        </routeIdContext.Provider>
-      </matchContext.Provider>
+            </nearestMatchContext.Provider>
 
-      {matchState()?.parentRouteId === rootRouteId ? (
-        <>
-          <OnRendered />
-          <ScrollRestoration />
-        </>
-      ) : null}
-    </ShellComponent>
+            {currentMatchState().parentRouteId === rootRouteId ? (
+              <>
+                <OnRendered />
+                <ScrollRestoration />
+              </>
+            ) : null}
+          </ShellComponent>
+        )
+      }}
+    </Solid.Show>
   )
 }
 
@@ -279,169 +284,172 @@ export const MatchInner = (props: { matchId: string }): any => {
     null,
   )
 
-  // If match doesn't exist yet, return null (component is being unmounted or not ready)
-  if (!matchState()) return null
-
-  const route = () => router.routesById[matchState()!.routeId]!
-
-  const currentMatch = () => matchState()!.match
-
-  const componentKey = () => matchState()!.key ?? matchState()!.match.id
-
-  const out = () => {
-    const Comp = route().options.component ?? router.options.defaultComponent
-    if (Comp) {
-      return <Comp />
-    }
-    return <Outlet />
-  }
-
-  const keyedOut = () => (
-    <Solid.Show when={componentKey()} keyed>
-      {(_key) => out()}
-    </Solid.Show>
-  )
-
   return (
-    <Solid.Switch>
-      <Solid.Match when={currentMatch()._displayPending}>
-        {(_) => {
-          const [displayPendingResult] = Solid.createResource(
-            () =>
-              router.getMatch(currentMatch().id)?._nonReactive
-                .displayPendingPromise,
-          )
+    <Solid.Show when={matchState()}>
+      {(currentMatchState) => {
+        const route = () => router.routesById[currentMatchState().routeId]!
 
-          return <>{displayPendingResult()}</>
-        }}
-      </Solid.Match>
-      <Solid.Match when={currentMatch()._forcePending}>
-        {(_) => {
-          const [minPendingResult] = Solid.createResource(
-            () =>
-              router.getMatch(currentMatch().id)?._nonReactive
-                .minPendingPromise,
-          )
+        const currentMatch = () => currentMatchState().match
 
-          return <>{minPendingResult()}</>
-        }}
-      </Solid.Match>
-      <Solid.Match when={currentMatch().status === 'pending'}>
-        {(_) => {
-          const pendingMinMs =
-            route().options.pendingMinMs ?? router.options.defaultPendingMinMs
+        const componentKey = () =>
+          currentMatchState().key ?? currentMatchState().match.id
 
-          if (pendingMinMs) {
-            const routerMatch = router.getMatch(currentMatch().id)
-            if (routerMatch && !routerMatch._nonReactive.minPendingPromise) {
-              // Create a promise that will resolve after the minPendingMs
-              if (!(isServer ?? router.isServer)) {
-                const minPendingPromise = createControlledPromise<void>()
-
-                routerMatch._nonReactive.minPendingPromise = minPendingPromise
-
-                setTimeout(() => {
-                  minPendingPromise.resolve()
-                  // We've handled the minPendingPromise, so we can delete it
-                  routerMatch._nonReactive.minPendingPromise = undefined
-                }, pendingMinMs)
-              }
-            }
+        const out = () => {
+          const Comp =
+            route().options.component ?? router.options.defaultComponent
+          if (Comp) {
+            return <Comp />
           }
+          return <Outlet />
+        }
 
-          const [loaderResult] = Solid.createResource(async () => {
-            await new Promise((r) => setTimeout(r, 0))
-            return router.getMatch(currentMatch().id)?._nonReactive.loadPromise
-          })
+        const keyedOut = () => (
+          <Solid.Show when={componentKey()} keyed>
+            {(_key) => out()}
+          </Solid.Show>
+        )
 
-          const FallbackComponent =
-            route().options.pendingComponent ??
-            router.options.defaultPendingComponent
+        return (
+          <Solid.Switch>
+            <Solid.Match when={currentMatch()._displayPending}>
+              {(_) => {
+                const [displayPendingResult] = Solid.createResource(
+                  () =>
+                    router.getMatch(currentMatch().id)?._nonReactive
+                      .displayPendingPromise,
+                )
 
-          return (
-            <>
-              {FallbackComponent && pendingMinMs > 0 ? (
-                <Dynamic component={FallbackComponent} />
-              ) : null}
-              {loaderResult()}
-            </>
-          )
-        }}
-      </Solid.Match>
-      <Solid.Match when={currentMatch().status === 'notFound'}>
-        {(_) => {
-          invariant(
-            isNotFound(currentMatch().error),
-            'Expected a notFound error',
-          )
+                return <>{displayPendingResult()}</>
+              }}
+            </Solid.Match>
+            <Solid.Match when={currentMatch()._forcePending}>
+              {(_) => {
+                const [minPendingResult] = Solid.createResource(
+                  () =>
+                    router.getMatch(currentMatch().id)?._nonReactive
+                      .minPendingPromise,
+                )
 
-          // Use Show with keyed to ensure re-render when routeId changes
-          return (
-            <Solid.Show when={matchState()!.routeId} keyed>
-              {(_routeId) =>
-                renderRouteNotFound(router, route(), currentMatch().error)
-              }
-            </Solid.Show>
-          )
-        }}
-      </Solid.Match>
-      <Solid.Match when={currentMatch().status === 'redirected'}>
-        {(_) => {
-          invariant(
-            isRedirect(currentMatch().error),
-            'Expected a redirect error',
-          )
+                return <>{minPendingResult()}</>
+              }}
+            </Solid.Match>
+            <Solid.Match when={currentMatch().status === 'pending'}>
+              {(_) => {
+                const pendingMinMs =
+                  route().options.pendingMinMs ??
+                  router.options.defaultPendingMinMs
 
-          const [loaderResult] = Solid.createResource(async () => {
-            await new Promise((r) => setTimeout(r, 0))
-            return router.getMatch(currentMatch().id)?._nonReactive.loadPromise
-          })
+                if (pendingMinMs) {
+                  const routerMatch = router.getMatch(currentMatch().id)
+                  if (
+                    routerMatch &&
+                    !routerMatch._nonReactive.minPendingPromise
+                  ) {
+                    // Create a promise that will resolve after the minPendingMs
+                    if (!(isServer ?? router.isServer)) {
+                      const minPendingPromise = createControlledPromise<void>()
 
-          return <>{loaderResult()}</>
-        }}
-      </Solid.Match>
-      <Solid.Match when={currentMatch().status === 'error'}>
-        {(_) => {
-          if (isServer ?? router.isServer) {
-            const RouteErrorComponent =
-              (route().options.errorComponent ??
-                router.options.defaultErrorComponent) ||
-              ErrorComponent
+                      routerMatch._nonReactive.minPendingPromise =
+                        minPendingPromise
 
-            return (
-              <RouteErrorComponent
-                error={currentMatch().error}
-                info={{
-                  componentStack: '',
-                }}
-              />
-            )
-          }
+                      setTimeout(() => {
+                        minPendingPromise.resolve()
+                        // We've handled the minPendingPromise, so we can delete it
+                        routerMatch._nonReactive.minPendingPromise = undefined
+                      }, pendingMinMs)
+                    }
+                  }
+                }
 
-          throw currentMatch().error
-        }}
-      </Solid.Match>
-      <Solid.Match when={currentMatch().status === 'success'}>
-        {keyedOut()}
-      </Solid.Match>
-    </Solid.Switch>
+                const [loaderResult] = Solid.createResource(async () => {
+                  await new Promise((r) => setTimeout(r, 0))
+                  return router.getMatch(currentMatch().id)?._nonReactive
+                    .loadPromise
+                })
+
+                const FallbackComponent =
+                  route().options.pendingComponent ??
+                  router.options.defaultPendingComponent
+
+                return (
+                  <>
+                    {FallbackComponent && pendingMinMs > 0 ? (
+                      <Dynamic component={FallbackComponent} />
+                    ) : null}
+                    {loaderResult()}
+                  </>
+                )
+              }}
+            </Solid.Match>
+            <Solid.Match when={currentMatch().status === 'notFound'}>
+              {(_) => {
+                invariant(
+                  isNotFound(currentMatch().error),
+                  'Expected a notFound error',
+                )
+
+                // Use Show with keyed to ensure re-render when routeId changes
+                return (
+                  <Solid.Show when={currentMatchState().routeId} keyed>
+                    {(_routeId) =>
+                      renderRouteNotFound(router, route(), currentMatch().error)
+                    }
+                  </Solid.Show>
+                )
+              }}
+            </Solid.Match>
+            <Solid.Match when={currentMatch().status === 'redirected'}>
+              {(_) => {
+                invariant(
+                  isRedirect(currentMatch().error),
+                  'Expected a redirect error',
+                )
+
+                const [loaderResult] = Solid.createResource(async () => {
+                  await new Promise((r) => setTimeout(r, 0))
+                  return router.getMatch(currentMatch().id)?._nonReactive
+                    .loadPromise
+                })
+
+                return <>{loaderResult()}</>
+              }}
+            </Solid.Match>
+            <Solid.Match when={currentMatch().status === 'error'}>
+              {(_) => {
+                if (isServer ?? router.isServer) {
+                  const RouteErrorComponent =
+                    (route().options.errorComponent ??
+                      router.options.defaultErrorComponent) ||
+                    ErrorComponent
+
+                  return (
+                    <RouteErrorComponent
+                      error={currentMatch().error}
+                      info={{
+                        componentStack: '',
+                      }}
+                    />
+                  )
+                }
+
+                throw currentMatch().error
+              }}
+            </Solid.Match>
+            <Solid.Match when={currentMatch().status === 'success'}>
+              {keyedOut()}
+            </Solid.Match>
+          </Solid.Switch>
+        )
+      }}
+    </Solid.Show>
   )
 }
 
 export const Outlet = () => {
   const router = useRouter()
-  const parentRouteIdContext = Solid.useContext(routeIdContext)
-
-  const parentMatch = Solid.createMemo(() => {
-    const routeId = parentRouteIdContext()
-    return routeId
-      ? router.stores.getMatchStoreByRouteId(routeId).state
-      : undefined
-  })
-
-  const routeId = Solid.createMemo(
-    () => parentMatch()?.routeId as string | undefined,
-  )
+  const nearestParentMatch = Solid.useContext(nearestMatchContext)
+  const parentMatch = nearestParentMatch.match
+  const routeId = nearestParentMatch.routeId
   const route = Solid.createMemo(() =>
     routeId() ? router.routesById[routeId()!] : undefined,
   )

@@ -26,11 +26,17 @@ export function useLocation<
   opts?: UseLocationBaseOptions<TRouter, TSelected>,
 ): Accessor<UseLocationResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
+
+  if (!opts?.select) {
+    return (() => router.stores.location.state) as Accessor<
+      UseLocationResult<TRouter, TSelected>
+    >
+  }
+
+  const select = opts.select
+
   return Solid.createMemo(
-    () => {
-      const state = router.stores.location.state
-      return opts?.select ? opts.select(state) : state
-    },
+    () => select(router.stores.location.state),
     undefined,
     { equals: shallow },
   ) as Accessor<UseLocationResult<TRouter, TSelected>>

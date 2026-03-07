@@ -1,10 +1,6 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
-import {
-  matchContext,
-  pendingMatchContext,
-  routeIdContext,
-} from './matchContext'
+import { nearestMatchContext } from './matchContext'
 import { shallow } from './store'
 import { useRouter } from './useRouter'
 import type {
@@ -79,33 +75,16 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
-  const nearestMatchId: Solid.Accessor<string | undefined> = opts.from
-    ? () => undefined
-    : Solid.useContext(matchContext)
-  const nearestRouteId: Solid.Accessor<string | undefined> = opts.from
-    ? () => undefined
-    : Solid.useContext(routeIdContext)
-  const hasPendingNearestMatch: Solid.Accessor<boolean> = opts.from
-    ? () => false
-    : Solid.useContext(pendingMatchContext)
+  const nearestMatch = opts.from
+    ? undefined
+    : Solid.useContext(nearestMatchContext)
 
   const match = Solid.createMemo(() => {
     if (opts.from) {
       return router.stores.getMatchStoreByRouteId(opts.from).state
     }
 
-    const matchId = nearestMatchId()
-    if (matchId) {
-      const matchStore = router.stores.activeMatchStoresById.get(matchId)
-      if (matchStore) {
-        return matchStore.state
-      }
-    }
-
-    const routeId = nearestRouteId()
-    return routeId
-      ? router.stores.getMatchStoreByRouteId(routeId).state
-      : undefined
+    return nearestMatch?.match()
   })
 
   const shouldThrow = Solid.createMemo(() => {
@@ -115,7 +94,7 @@ export function useMatch<
 
     const hasPendingMatch = opts.from
       ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
-      : hasPendingNearestMatch()
+      : (nearestMatch?.hasPending() ?? false)
 
     return (
       !hasPendingMatch &&

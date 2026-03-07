@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { useMatch } from './useMatch'
-import { shallow } from "./store"
+import { shallow } from './store'
 import type { Accessor } from 'solid-js'
 import type {
   AnyRouter,
@@ -75,12 +75,16 @@ export function useSearch<
 
   const select = opts.select
 
-  return Solid.createMemo(() => {
-    const selectedSearch = search()
-    if (selectedSearch === undefined) {
-      return undefined
-    }
+  return Solid.createMemo(
+    () => {
+      const selectedSearch = search()
+      if (selectedSearch === undefined) {
+        return undefined
+      }
 
-    return select(selectedSearch)
-  }, undefined, { equals: shallow }) as any
+      return select(selectedSearch)
+    },
+    undefined,
+    { equals: shallow },
+  ) as any
 }
