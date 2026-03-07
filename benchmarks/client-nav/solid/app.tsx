@@ -1,5 +1,5 @@
 import { For, createEffect } from 'solid-js'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web';
 import {
   Link,
   Outlet,
@@ -32,7 +32,7 @@ function Params() {
 
   createEffect(
     () => params(),
-    () => {},
+    () => { },
   )
 
   return null
@@ -46,7 +46,7 @@ function Search() {
 
   createEffect(
     () => search(),
-    () => {},
+    () => { },
   )
 
   return null
