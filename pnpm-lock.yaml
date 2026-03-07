@@ -169,6 +169,9 @@ importers:
 
   benchmarks/bundle-size:
     dependencies:
+      '@solidjs/web':
+        specifier: 2.0.0-beta.1
+        version: 2.0.0-beta.1(solid-js@2.0.0-beta.1)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../packages/react-router
