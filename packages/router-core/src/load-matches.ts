@@ -128,25 +128,17 @@ const handleRedirectAndNotFound = (
 
     match._nonReactive.error = err
 
-    // For redirects, skip the synchronous store update entirely.
-    // The redirect will trigger navigate() which replaces all matches,
-    // making this status update unnecessary. More importantly, the
-    // synchronous store update triggers a reactive flush in frameworks
-    // like Solid that can corrupt the reactive graph when nodes are
-    // being disposed during an async stale-while-revalidate cycle.
-    if (!isRedirect(err)) {
-      inner.updateMatch(match.id, (prev) => ({
-        ...prev,
-        status: isRedirect(err)
-          ? 'redirected'
-          : prev.status === 'pending'
-            ? 'success'
-            : prev.status,
-        context: buildMatchContext(inner, match.index),
-        isFetching: false,
-        error: err,
-      }))
-    }
+    inner.updateMatch(match.id, (prev) => ({
+      ...prev,
+      status: isRedirect(err)
+        ? 'redirected'
+        : prev.status === 'pending'
+          ? 'success'
+          : prev.status,
+      context: buildMatchContext(inner, match.index),
+      isFetching: false,
+      error: err,
+    }))
 
     if (isNotFound(err) && !err.routeId) {
       // Stamp the throwing match's routeId so that the finalization step in
@@ -789,8 +781,8 @@ const loadRouteMatch = async (
     const shouldReload =
       typeof shouldReloadOption === 'function'
         ? shouldReloadOption(
-          getLoaderContext(inner, matchPromises, matchId, index, route),
-        )
+            getLoaderContext(inner, matchPromises, matchId, index, route),
+          )
         : shouldReloadOption
 
     // If the route is successful and still fresh, just resolve
@@ -801,19 +793,19 @@ const loadRouteMatch = async (
       // Do nothing
     } else if (loaderShouldRunAsync && !inner.sync) {
       loaderIsRunningAsync = true
-        ; (async () => {
-          try {
-            await runLoader(inner, matchPromises, matchId, index, route)
-            const match = inner.router.getMatch(matchId)!
-            match._nonReactive.loaderPromise?.resolve()
-            match._nonReactive.loadPromise?.resolve()
-            match._nonReactive.loaderPromise = undefined
-          } catch (err) {
-            if (isRedirect(err)) {
-              await inner.router.navigate(err.options)
-            }
+      ;(async () => {
+        try {
+          await runLoader(inner, matchPromises, matchId, index, route)
+          const match = inner.router.getMatch(matchId)!
+          match._nonReactive.loaderPromise?.resolve()
+          match._nonReactive.loadPromise?.resolve()
+          match._nonReactive.loaderPromise = undefined
+        } catch (err) {
+          if (isRedirect(err)) {
+            await inner.router.navigate(err.options)
           }
-        })()
+        }
+      })()
     } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
       await runLoader(inner, matchPromises, matchId, index, route)
     }
@@ -1026,12 +1018,12 @@ export async function loadMatches(arg: {
       ...prev,
       ...(boundaryIsRoot
         ? // For root boundary, use globalNotFound so the root component's
-        // shell still renders and <Outlet> handles the not-found display,
-        // instead of replacing the entire root shell via status='notFound'.
-        { status: 'success' as const, globalNotFound: true, error: undefined }
+          // shell still renders and <Outlet> handles the not-found display,
+          // instead of replacing the entire root shell via status='notFound'.
+          { status: 'success' as const, globalNotFound: true, error: undefined }
         : // For non-root boundaries, set status:'notFound' so MatchInner
-        // renders the notFoundComponent directly.
-        { status: 'notFound' as const, error: notFoundToThrow }),
+          // renders the notFoundComponent directly.
+          { status: 'notFound' as const, error: notFoundToThrow }),
       isFetching: false,
     }))
 
@@ -1067,7 +1059,7 @@ export async function loadMatches(arg: {
   if (inner.serialError && inner.firstBadMatchIndex !== undefined) {
     const errorRoute =
       inner.router.looseRoutesById[
-      inner.matches[inner.firstBadMatchIndex]!.routeId
+        inner.matches[inner.firstBadMatchIndex]!.routeId
       ]!
     await loadRouteChunk(errorRoute)
   }

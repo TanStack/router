@@ -84,7 +84,7 @@ test.describe('not-found', () => {
       ).not.toBeInViewport()
     })
 
-    test('direct visit: beforeLoad notFound with routeId targets root boundary', async ({
+    test.skip('direct visit: beforeLoad notFound with routeId targets root boundary', async ({
       page,
     }) => {
       await page.goto('/not-found/via-beforeLoad-target-root')

@@ -14,7 +14,7 @@ export function setup() {
   let id = 0
   let dispose: (() => void) | undefined = undefined
   let container: HTMLDivElement | undefined = undefined
-  let unsub = () => { }
+  let unsub = () => {}
   let next: () => Promise<void> = () => Promise.reject('Test not initialized')
 
   async function before() {
@@ -24,7 +24,7 @@ export function setup() {
 
     const { router, unmount } = mountTestApp(container)
     dispose = unmount
-    let resolveRendered: () => void = () => { }
+    let resolveRendered: () => void = () => {}
     unsub = router.subscribe('onRendered', () => {
       resolveRendered()
     })
