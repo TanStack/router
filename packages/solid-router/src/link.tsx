@@ -41,12 +41,12 @@ function mergeRefs<T>(
   }
 }
 
-function splitProps<T extends Record<string, any>, K extends keyof T>(
+function splitProps<T extends Record<string, any>, TKey extends keyof T>(
   props: T,
-  keys: ReadonlyArray<K>,
-): [Pick<T, K>, Omit<T, K>] {
-  const local = {} as Pick<T, K>
-  const rest = {} as Omit<T, K>
+  keys: ReadonlyArray<TKey>,
+): [Pick<T, TKey>, Omit<T, TKey>] {
+  const local = {} as Pick<T, TKey>
+  const rest = {} as Omit<T, TKey>
 
   // A safe way to polyfill splitProps if native getter copy is too complex
   // is just to return [props, Solid.omit(props, keys)] but it modifies typing.

@@ -308,9 +308,7 @@ export function Block(opts: PromptProps | LegacyPromptProps): SolidNode {
       return opts.children
     },
   }
-  const args = _resolvePromptBlockerArgs(
-    opts as PromptProps | LegacyPromptProps,
-  )
+  const args = _resolvePromptBlockerArgs(opts)
 
   const resolver = useBlocker(args)
   const children = Solid.createMemo(() => {

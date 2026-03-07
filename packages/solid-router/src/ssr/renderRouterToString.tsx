@@ -3,7 +3,7 @@ import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
 
-export const renderRouterToString = async ({
+export const renderRouterToString = ({
   router,
   responseHeaders,
   children,

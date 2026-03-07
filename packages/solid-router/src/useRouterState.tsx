@@ -1,12 +1,13 @@
 import { useStore } from '@tanstack/solid-store'
 import { isServer } from '@tanstack/router-core/isServer'
+import { createMemo } from 'solid-js'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
   RegisteredRouter,
   RouterState,
 } from '@tanstack/router-core'
-import { createMemo, type Accessor } from 'solid-js'
+import type { Accessor } from 'solid-js'
 
 // Deep equality check to match behavior of solid-store 0.7.0's reconcile()
 function deepEqual(a: any, b: any): boolean {
