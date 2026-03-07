@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/solid-router'
 import { fallback, zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'
 import { Content } from '../../components/Content'
@@ -21,9 +21,9 @@ const Zod = () => {
           search={search()}
           onChange={(search) => navigate({ search: { search }, replace: true })}
         />
-        <Suspense>
+        <Loading>
           <Users search={search()} />
-        </Suspense>
+        </Loading>
       </Content>
     </>
   )

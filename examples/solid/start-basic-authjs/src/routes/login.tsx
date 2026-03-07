@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/solid-router'
-import { createResource, Suspense } from 'solid-js'
+import { createMemo, Loading } from 'solid-js'
 
 export const Route = createFileRoute('/login')({
   beforeLoad: ({ context }) => {
@@ -18,14 +18,14 @@ async function getCsrfToken(): Promise<string> {
 }
 
 function Login() {
-  const [csrfToken] = createResource(getCsrfToken)
+  const csrfToken = createMemo(getCsrfToken)
 
   return (
     <div class="max-w-md mx-auto mt-10">
       <h1 class="text-2xl font-bold mb-6 text-center">Sign In</h1>
 
       <div class="space-y-4">
-        <Suspense fallback={<div class="text-center">Loading...</div>}>
+        <Loading fallback={<div class="text-center">Loading...</div>}>
           <form action="/api/auth/signin/auth0" method="POST">
             <input type="hidden" name="csrfToken" value={csrfToken() ?? ''} />
             <input type="hidden" name="callbackUrl" value="/" />
@@ -39,7 +39,7 @@ function Login() {
               Continue with Auth0
             </button>
           </form>
-        </Suspense>
+        </Loading>
 
         <p class="text-center text-sm text-gray-500 mt-4">
           You'll be redirected to Auth0 to complete the sign-in process.

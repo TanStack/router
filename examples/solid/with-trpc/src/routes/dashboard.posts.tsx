@@ -26,18 +26,18 @@ function DashboardPostsComponent() {
                 <Link
                   to="/dashboard/posts/$postId"
                   params={{
-                    postId: post.id,
+                    postId: post().id,
                   }}
                   preload="intent"
                   class="block py-2 px-3 text-blue-700"
                   activeProps={{ class: `font-bold` }}
                 >
                   <pre class="text-sm">
-                    #{post.id} - {post.title.slice(0, 10)}{' '}
+                    #{post().id} - {post().title.slice(0, 10)}{' '}
                     <MatchRoute
                       to="/dashboard/posts/$postId"
                       params={{
-                        postId: post.id,
+                        postId: post().id,
                       }}
                       pending
                     >

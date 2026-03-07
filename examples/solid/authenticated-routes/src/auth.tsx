@@ -43,14 +43,17 @@ export function AuthProvider(props: { children: Solid.JSX.Element }) {
     setUser(username)
   }
 
-  Solid.createEffect(() => {
-    setUser(getStoredUser())
-  })
+  Solid.createEffect(
+    () => getStoredUser(),
+    (storedUser) => {
+      setUser(storedUser)
+    },
+  )
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext value={{ isAuthenticated, user, login, logout }}>
       {props.children}
-    </AuthContext.Provider>
+    </AuthContext>
   )
 }
 

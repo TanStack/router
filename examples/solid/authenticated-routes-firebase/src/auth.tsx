@@ -1,7 +1,6 @@
 import * as Solid from 'solid-js'
 
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
-import { flushSync } from 'react-dom'
 import { auth } from './firebase/config'
 import type { AuthProvider, User } from 'firebase/auth'
 
@@ -20,15 +19,16 @@ export function AuthContextProvider(props: { children: Solid.JSX.Element }) {
   const [isInitialLoading, setIsInitialLoading] = Solid.createSignal(true)
   const isAuthenticated = () => !!user()
 
-  Solid.createEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      flushSync(() => {
+  Solid.createEffect(
+    () => undefined,
+    () => {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
         setUser(user)
         setIsInitialLoading(false)
       })
-    })
-    return () => unsubscribe()
-  })
+      return () => unsubscribe()
+    },
+  )
 
   const logout = async () => {
     console.log('Logging out...')
@@ -39,18 +39,16 @@ export function AuthContextProvider(props: { children: Solid.JSX.Element }) {
 
   const login = async (provider: AuthProvider) => {
     const result = await signInWithPopup(auth, provider)
-    flushSync(() => {
-      setUser(result.user)
-      setIsInitialLoading(false)
-    })
+    setUser(result.user)
+    setIsInitialLoading(false)
   }
 
   return (
-    <AuthContext.Provider
+    <AuthContext
       value={{ isInitialLoading, isAuthenticated, user, login, logout }}
     >
       {props.children}
-    </AuthContext.Provider>
+    </AuthContext>
   )
 }
 

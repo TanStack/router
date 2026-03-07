@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/solid-router'
 import { type } from 'arktype'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'
 import { Content } from '../../components/Content'
@@ -18,9 +18,9 @@ const ArkType = () => {
           search={search().search}
           onChange={(search) => navigate({ search: { search }, replace: true })}
         />
-        <Suspense>
+        <Loading>
           <Users search={search().search} />
-        </Suspense>
+        </Loading>
       </Content>
     </>
   )

@@ -22,15 +22,13 @@ function DashboardPostsPostIdComponent() {
 
   const [notes, setNotes] = Solid.createSignal(search().notes ?? ``)
 
-  Solid.createEffect(
-    Solid.on(notes, () => {
-      navigate({
-        search: (old) => ({ ...old, notes: notes() ? notes() : undefined }),
-        replace: true,
-        params: true,
-      })
-    }),
-  )
+  Solid.createEffect(notes, () => {
+    navigate({
+      search: (old) => ({ ...old, notes: notes() ? notes() : undefined }),
+      replace: true,
+      params: true,
+    })
+  })
 
   if (!post()) {
     return <div>Post not found</div>

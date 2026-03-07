@@ -23,7 +23,6 @@ import {
   createMemo,
   createRenderEffect,
   createSignal,
-  on,
 } from 'solid-js'
 import { z } from 'zod'
 import {
@@ -346,18 +345,16 @@ function InvoiceComponent() {
     onSuccess: () => router.invalidate(),
   })
   const [notes, setNotes] = createSignal(search().notes ?? '')
-  createEffect(
-    on(notes, () => {
-      navigate({
-        search: (old) => ({
-          ...old,
-          notes: notes() ? notes() : undefined,
-        }),
-        params: true,
-        replace: true,
-      })
-    }),
-  )
+  createEffect(notes, () => {
+    navigate({
+      search: (old) => ({
+        ...old,
+        notes: notes() ? notes() : undefined,
+      }),
+      params: true,
+      replace: true,
+    })
+  })
 
   return (
     <form
@@ -468,12 +465,10 @@ function UsersLayoutComponent() {
   const [filterDraft, setFilterDraft] = createSignal(filterBy ?? '')
 
   createEffect(
-    on(
-      () => filterBy,
-      () => {
-        setFilterDraft(filterBy ?? '')
-      },
-    ),
+    () => filterBy,
+    () => {
+      setFilterDraft(filterBy ?? '')
+    },
   )
 
   const sortedUsers = createMemo(() => {
@@ -508,22 +503,20 @@ function UsersLayoutComponent() {
       replace: true,
     })
 
-  createEffect(
-    on(filterDraft, () => {
-      navigate({
-        search: (old) => {
-          return {
-            ...old,
-            usersView: {
-              ...old.usersView,
-              filterBy: filterDraft() || undefined,
-            },
-          }
-        },
-        replace: true,
-      })
-    }),
-  )
+  createEffect(filterDraft, () => {
+    navigate({
+      search: (old) => {
+        return {
+          ...old,
+          usersView: {
+            ...old.usersView,
+            filterBy: filterDraft() || undefined,
+          },
+        }
+      },
+      replace: true,
+    })
+  })
 
   return (
     <div class="flex-1 flex">
@@ -727,12 +720,13 @@ function LoginComponent() {
 
   // Ah, the subtle nuances of client side auth. 🙄
   createRenderEffect(
-    on([() => routeContext().status, () => search().redirect], () => {
+    () => [routeContext().status, search().redirect],
+    () => {
       const redirect = search().redirect
       if (routeContext().status === 'loggedIn' && redirect) {
         router.history.push(redirect)
       }
-    }),
+    },
   )
 
   return routeContext().status === 'loggedIn' ? (
@@ -1021,11 +1015,9 @@ function useSessionStorage<T>(key: string, initialValue: T) {
     })(),
   )
 
-  createEffect(
-    on(state, () => {
-      sessionStorage.setItem(key, JSON.stringify(state()))
-    }),
-  )
+  createEffect(state, () => {
+    sessionStorage.setItem(key, JSON.stringify(state()))
+  })
 
   return [state, setState] as const
 }
