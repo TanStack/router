@@ -1,6 +1,5 @@
-import { createSignal, onCleanup } from 'solid-js'
+import { createMemo, createSignal, onCleanup, } from 'solid-js'
 import { isServer } from '@tanstack/router-core/isServer'
-import { createMemo } from 'solid-js'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
