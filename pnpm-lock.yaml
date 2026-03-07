@@ -12234,8 +12234,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.0
-        version: 3.0.0-next.0(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.1)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.2
+        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.1)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   packages/router-generator:
     dependencies:
@@ -24913,11 +24913,11 @@ packages:
       '@testing-library/jest-dom':
         optional: true
 
-  vite-plugin-solid@3.0.0-next.0:
-    resolution: {integrity: sha512-HJweb0jFPd8RKJxlXmy6xjcMCwMpCCHJmWgfHUJmEnXLn9eD+quAuyoCxVqUAx0FCWHQvfDWrxlAkXuFex0Hsw==}
+  vite-plugin-solid@3.0.0-next.2:
+    resolution: {integrity: sha512-13AjTjjvrit4QfLtygAEC2pnYWgawowniqBHBtjNnpltnjIzYd8YhPbBv1NEBf3jcFQtQZEQib1tFiIRAxba6w==}
     peerDependencies:
       '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
-      solid-js: ^2.0.0-beta
+      solid-js: '>=2.0.0-beta.0 <2.0.0'
       vite: ^7.3.1
     peerDependenciesMeta:
       '@testing-library/jest-dom':
@@ -25601,7 +25601,7 @@ snapshots:
   '@babel/helper-member-expression-to-functions@7.27.1':
     dependencies:
       '@babel/traverse': 7.28.5
-      '@babel/types': 7.28.5
+      '@babel/types': 7.29.0
     transitivePeerDependencies:
       - supports-color
 
@@ -34668,13 +34668,6 @@ snapshots:
     optionalDependencies:
       crossws: 0.4.3(srvx@0.10.1)
 
-  h3@2.0.1-rc.14(crossws@0.4.3(srvx@0.10.1)):
-    dependencies:
-      rou3: 0.7.12
-      srvx: 0.11.7
-    optionalDependencies:
-      crossws: 0.4.3(srvx@0.10.1)
-
   h3@2.0.1-rc.14(crossws@0.4.3(srvx@0.11.7)):
     dependencies:
       rou3: 0.7.12
@@ -36085,7 +36078,7 @@ snapshots:
       consola: 3.4.2
       crossws: 0.4.3(srvx@0.10.1)
       db0: 0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3)
-      h3: 2.0.1-rc.14(crossws@0.4.3(srvx@0.10.1))
+      h3: 2.0.1-rc.14(crossws@0.4.3(srvx@0.11.7))
       jiti: 2.6.1
       nf3: 0.3.6
       ofetch: 2.0.0-alpha.3
@@ -36274,7 +36267,7 @@ snapshots:
 
   node-source-walk@7.0.1:
     dependencies:
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.0
 
   node-stream-zip@1.15.0: {}
 
@@ -38909,7 +38902,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-solid@3.0.0-next.0(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.1)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
+  vite-plugin-solid@3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.1)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
     dependencies:
       '@babel/core': 7.28.5
       '@types/babel__core': 7.20.5
