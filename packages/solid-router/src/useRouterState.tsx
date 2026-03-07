@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/solid-store'
+import { createSignal, onCleanup } from 'solid-js'
 import { isServer } from '@tanstack/router-core/isServer'
 import { createMemo } from 'solid-js'
 import { useRouter } from './useRouter'
@@ -9,7 +9,6 @@ import type {
 } from '@tanstack/router-core'
 import type { Accessor } from 'solid-js'
 
-// Deep equality check to match behavior of solid-store 0.7.0's reconcile()
 function deepEqual(a: any, b: any): boolean {
   if (Object.is(a, b)) return true
 
@@ -68,18 +67,25 @@ export function useRouterState<
     return selected
   }
 
-  return useStore(
-    router.__store,
-    (state) => {
-      if (opts?.select) return opts.select(state)
+  const selector = (state: any) => {
+    if (opts?.select) return opts.select(state)
 
-      return state
-    },
-    {
-      // Use deep equality to match behavior of solid-store 0.7.0 which used
-      // reconcile(). This ensures updates work correctly when selectors
-      // return new object references but with the same values.
-      equal: deepEqual,
-    },
-  ) as Accessor<UseRouterStateResult<TRouter, TSelected>>
+    return state
+  };
+
+  const [signal, setSignal] = createSignal(() => selector(router.__store.get()))
+
+  const unsub = router.__store.subscribe((s) => {
+    const data = selector(s)
+    if (deepEqual(signal(), data)) {
+      return
+    }
+    setSignal(data)
+  }).unsubscribe
+
+  onCleanup(() => {
+    unsub()
+  })
+
+  return signal as Accessor<UseRouterStateResult<TRouter, TSelected>>
 }

@@ -12436,9 +12436,6 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-      '@tanstack/solid-store':
-        specifier: https://pkg.pr.new/@tanstack/solid-store@283
-        version: https://pkg.pr.new/@tanstack/solid-store@283(solid-js@2.0.0-beta.1)
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
@@ -18028,12 +18025,6 @@ packages:
     peerDependencies:
       solid-js: 2.0.0-beta.1
 
-  '@tanstack/solid-store@https://pkg.pr.new/@tanstack/solid-store@283':
-    resolution: {integrity: sha512-1uUDlEwCtVkVXOIlCqauYBhg6PQBHYiE9lEMFryOby+KDm01Eq726i2zYZxqdzAzGX3jzixXzqxuo3BLMSQYRg==, tarball: https://pkg.pr.new/@tanstack/solid-store@283}
-    version: 0.9.1
-    peerDependencies:
-      solid-js: 2.0.0-beta.1
-
   '@tanstack/solid-virtual@3.13.12':
     resolution: {integrity: sha512-0dS8GkBTmbuM9cUR6Jni0a45eJbd32CAEbZj8HrZMWIj3lu974NpGz5ywcomOGJ9GdeHuDaRzlwtonBbKV1ihQ==}
     peerDependencies:
@@ -18041,10 +18032,6 @@ packages:
 
   '@tanstack/store@0.9.1':
     resolution: {integrity: sha512-+qcNkOy0N1qSGsP7omVCW0SDrXtaDcycPqBDE726yryiA5eTDFpjBReaYjghVJwNf1pcPMyzIwTGlYjCSQR0Fg==}
-
-  '@tanstack/store@https://pkg.pr.new/TanStack/store/@tanstack/store@c6b51d2':
-    resolution: {tarball: https://pkg.pr.new/TanStack/store/@tanstack/store@c6b51d2}
-    version: 0.9.1
 
   '@tanstack/typedoc-config@0.3.0':
     resolution: {integrity: sha512-g7sfxscIq0wYUGtOLegnTbiMTsNiAz6r28CDgdZqIIjI1naWZoIlABpWH2qdI3IIJUDWvhOaVwAo6sfqzm6GsQ==}
@@ -30616,19 +30603,12 @@ snapshots:
       '@tanstack/query-core': 5.90.19
       solid-js: 2.0.0-beta.1
 
-  '@tanstack/solid-store@https://pkg.pr.new/@tanstack/solid-store@283(solid-js@2.0.0-beta.1)':
-    dependencies:
-      '@tanstack/store': https://pkg.pr.new/TanStack/store/@tanstack/store@c6b51d2
-      solid-js: 2.0.0-beta.1
-
   '@tanstack/solid-virtual@3.13.12(solid-js@2.0.0-beta.1)':
     dependencies:
       '@tanstack/virtual-core': 3.13.12
       solid-js: 2.0.0-beta.1
 
   '@tanstack/store@0.9.1': {}
-
-  '@tanstack/store@https://pkg.pr.new/TanStack/store/@tanstack/store@c6b51d2': {}
 
   '@tanstack/typedoc-config@0.3.0(typescript@5.9.3)':
     dependencies:
