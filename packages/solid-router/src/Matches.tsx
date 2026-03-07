@@ -67,21 +67,17 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = Solid.createMemo(() => router.stores.firstMatchId.state)
-  const routeId = Solid.createMemo(() => (matchId() ? rootRouteId : undefined))
-  const match = Solid.createMemo(() => {
-    const currentRouteId = routeId()
-    return currentRouteId
-      ? router.stores.getMatchStoreByRouteId(currentRouteId).state
+  const matchId = () => router.stores.firstMatchId.state
+  const routeId = () => (matchId() ? rootRouteId : undefined)
+  const match = () =>
+    routeId()
+      ? router.stores.getMatchStoreByRouteId(rootRouteId).state
       : undefined
-  })
-  const hasPendingMatch = Solid.createMemo(() => {
-    const currentRouteId = routeId()
-    return currentRouteId
-      ? Boolean(router.stores.pendingRouteIds.state[currentRouteId])
+  const hasPendingMatch = () =>
+    routeId()
+      ? Boolean(router.stores.pendingRouteIds.state[rootRouteId])
       : false
-  })
-  const resetKey = Solid.createMemo(() => router.stores.loadedAt.state)
+  const resetKey = () => router.stores.loadedAt.state
   const nearestMatch = {
     matchId,
     routeId,
@@ -139,10 +135,6 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  const reactivity = Solid.createMemo(
-    () => router.stores.matchRouteReactivity.state,
-  )
-
   return <
     const TFrom extends string = string,
     const TTo extends string | undefined = undefined,
@@ -155,8 +147,8 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   > => {
     const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-    const matchRoute = Solid.createMemo(() => {
-      reactivity()
+    return Solid.createMemo(() => {
+      router.stores.matchRouteReactivity.state
       return router.matchRoute(rest as any, {
         pending,
         caseSensitive,
@@ -164,8 +156,6 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
         includeSearch,
       })
     })
-
-    return matchRoute
   }
 }
 
@@ -194,25 +184,21 @@ export function MatchRoute<
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
-  const router = useRouter()
-  const reactivity = Solid.createMemo(
-    () => router.stores.matchRouteReactivity.state,
-  )
+  const matchRoute = useMatchRoute()
+  const params = matchRoute(props as any)
+  const child = props.children
 
-  return (
-    <Solid.Show when={reactivity().status} keyed>
-      {(_) => {
-        const matchRoute = useMatchRoute()
-        const params = matchRoute(props as any)() as boolean
-        const child = props.children
-        if (typeof child === 'function') {
-          return (child as any)(params)
-        }
+  const renderedChild = () => {
+    const matchedParams = params()
 
-        return params ? child : null
-      }}
-    </Solid.Show>
-  )
+    if (typeof child === 'function') {
+      return (child as any)(matchedParams)
+    }
+
+    return matchedParams ? child : null
+  }
+
+  return renderedChild()
 }
 
 export interface UseMatchesBaseOptions<TRouter extends AnyRouter, TSelected> {
