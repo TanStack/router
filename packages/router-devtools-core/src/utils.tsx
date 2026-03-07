@@ -1,5 +1,5 @@
 import { Dynamic } from '@solidjs/web'
-import { createRenderEffect, createSignal, createTrackedEffect } from 'solid-js'
+import { createEffect, createRenderEffect, createSignal } from 'solid-js'
 import { useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'
 import type { AnyRoute, AnyRouteMatch } from '@tanstack/router-core'
@@ -96,9 +96,12 @@ export function useIsMounted() {
   const [isMounted, setIsMounted] = createSignal(false)
 
   if (isServer) {
-    createTrackedEffect(() => {
-      setIsMounted(true)
-    })
+    createEffect(
+      () => undefined,
+      () => {
+        setIsMounted(true)
+      },
+    )
   } else {
     createRenderEffect(() => undefined, () => {
       setIsMounted(true)

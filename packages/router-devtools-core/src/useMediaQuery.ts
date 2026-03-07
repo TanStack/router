@@ -1,4 +1,4 @@
-import { createSignal, createTrackedEffect, onCleanup } from 'solid-js'
+import { createEffect, createSignal } from 'solid-js'
 import type { Accessor } from 'solid-js'
 
 export default function useMediaQuery(
@@ -13,29 +13,33 @@ export default function useMediaQuery(
   )
 
   // Watch for changes
-  createTrackedEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!window.matchMedia) {
-      return
-    }
+  createEffect(
+    () => undefined,
+    () => {
+      if (typeof window === 'undefined') {
+        return
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (!window.matchMedia) {
+        return
+      }
 
-    // Create a matcher
-    const matcher = window.matchMedia(query)
+      // Create a matcher
+      const matcher = window.matchMedia(query)
 
-    // Create our handler
-    const onChange = ({ matches }: { matches: boolean }) => setIsMatch(matches)
+      // Create our handler
+      const onChange = ({ matches }: { matches: boolean }) =>
+        setIsMatch(matches)
 
-    // Listen for changes
-    matcher.addListener(onChange)
+      // Listen for changes
+      matcher.addListener(onChange)
 
-    onCleanup(() => {
-      // Stop listening for changes
-      matcher.removeListener(onChange)
-    })
-  })
+      return () => {
+        // Stop listening for changes
+        matcher.removeListener(onChange)
+      }
+    },
+  )
 
   return isMatch
 }

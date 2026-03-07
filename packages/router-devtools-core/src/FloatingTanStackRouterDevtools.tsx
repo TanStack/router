@@ -1,6 +1,6 @@
 import { clsx as cx } from 'clsx'
 
-import { createMemo, createSignal, createTrackedEffect } from 'solid-js'
+import { createEffect, createMemo, createSignal } from 'solid-js'
 import { Dynamic } from '@solidjs/web'
 
 import { DevtoolsOnCloseContext } from './context'
@@ -129,62 +129,61 @@ export function FloatingTanStackRouterDevtools({
 
   const isButtonClosed = isOpen() ?? false
 
-  createTrackedEffect(() => {
-    setIsResolvedOpen(isOpen() ?? false)
-  })
+  createEffect(
+    () => isOpen(),
+    (val) => {
+      setIsResolvedOpen(val ?? false)
+    },
+  )
 
-  createTrackedEffect(() => {
-    if (isResolvedOpen()) {
-      const previousValue = rootEl()?.parentElement?.style.paddingBottom
+  createEffect(
+    () => ({
+      open: isResolvedOpen(),
+      root: rootEl(),
+      panel: panelRef(),
+    }),
+    ({ open, root, panel }) => {
+      if (open) {
+        const previousValue = root?.parentElement?.style.paddingBottom
 
-      const run = () => {
-        const containerHeight = panelRef()?.getBoundingClientRect().height ?? 0
-        if (rootEl()?.parentElement) {
-          setRootEl((prev) => {
-            if (prev?.parentElement) {
-              prev.parentElement.style.paddingBottom = `${containerHeight}px`
+        const run = () => {
+          const containerHeight = panel?.getBoundingClientRect().height ?? 0
+          if (root?.parentElement) {
+            root.parentElement.style.paddingBottom = `${containerHeight}px`
+          }
+        }
+
+        run()
+
+        if (typeof window !== 'undefined') {
+          window.addEventListener('resize', run)
+
+          return () => {
+            window.removeEventListener('resize', run)
+            if (root?.parentElement && typeof previousValue === 'string') {
+              root.parentElement.style.paddingBottom = previousValue
             }
-            return prev
-          })
-        }
-      }
-
-      run()
-
-      if (typeof window !== 'undefined') {
-        window.addEventListener('resize', run)
-
-        return () => {
-          window.removeEventListener('resize', run)
-          if (rootEl()?.parentElement && typeof previousValue === 'string') {
-            setRootEl((prev) => {
-              prev!.parentElement!.style.paddingBottom = previousValue
-              return prev
-            })
           }
         }
+      } else {
+        // Reset padding when devtools are closed
+        if (root?.parentElement) {
+          root.parentElement.removeAttribute('style')
+        }
       }
-    } else {
-      // Reset padding when devtools are closed
-      if (rootEl()?.parentElement) {
-        setRootEl((prev) => {
-          if (prev?.parentElement) {
-            prev.parentElement.removeAttribute('style')
-          }
-          return prev
-        })
-      }
-    }
-    return
-  })
+      return
+    },
+  )
 
-  createTrackedEffect(() => {
-    if (rootEl()) {
-      const el = rootEl()
-      const fontSize = getComputedStyle(el!).fontSize
-      el?.style.setProperty('--tsrd-font-size', fontSize)
-    }
-  })
+  createEffect(
+    () => rootEl(),
+    (el) => {
+      if (el) {
+        const fontSize = getComputedStyle(el).fontSize
+        el.style.setProperty('--tsrd-font-size', fontSize)
+      }
+    },
+  )
 
   const { style: panelStyle = {}, ...otherPanelProps } = panelProps as {
     style?: Record<string, any>

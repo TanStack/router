@@ -1,4 +1,4 @@
-import { createSignal, createTrackedEffect } from 'solid-js'
+import { createEffect, createSignal } from 'solid-js'
 import type { Accessor } from 'solid-js'
 
 const getItem = (key: string): unknown => {
@@ -19,19 +19,22 @@ export default function useLocalStorage<T>(
 ): [Accessor<T | undefined>, (newVal: T | ((prevVal: T) => T)) => void] {
   const [value, setValue] = createSignal<T>()
 
-  createTrackedEffect(() => {
-    const initialValue = getItem(key) as T | undefined
+  createEffect(
+    () => undefined,
+    () => {
+      const initialValue = getItem(key) as T | undefined
 
-    if (typeof initialValue === 'undefined' || initialValue === null) {
-      setValue(
-        typeof defaultValue === 'function' ? defaultValue() : defaultValue,
-      )
-    } else {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      setValue(initialValue)
-    }
-  })
+      if (typeof initialValue === 'undefined' || initialValue === null) {
+        setValue(
+          typeof defaultValue === 'function' ? defaultValue() : defaultValue,
+        )
+      } else {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        setValue(initialValue)
+      }
+    },
+  )
 
   const setter = (updater: any) => {
     setValue((old) => {
