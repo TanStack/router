@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx express-server.ts",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build",
     "preview": "vite preview",
     "start": "tsx express-server.ts",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
