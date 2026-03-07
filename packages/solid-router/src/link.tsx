@@ -45,6 +45,7 @@ export function useLinkProps<
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
   const shouldHydrateHash = !isServer && !!router.options.ssr
   const hasHydrated = useHydrated()
+  const currentLocation = () => router.stores.location.state
 
   let hasRenderFetched = false
 
@@ -122,28 +123,23 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  const currentLocation = Solid.createMemo(() => router.stores.location.state)
-  const currentSearch = Solid.createMemo(
-    () => router.stores.location.state.searchStr,
-  )
-
-  const _options = () => options
+  const currentSearch = Solid.createMemo(() => currentLocation().searchStr)
 
   const next = Solid.createMemo(() => {
-    // rebuild location when search changes
     currentSearch()
-    const options = _options() as any
+
     // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(options))
+    return Solid.untrack(() => router.buildLocation(options as any))
   })
 
   const hrefOption = Solid.createMemo(() => {
-    if (_options().disabled) return undefined
+    if (options.disabled) return undefined
     // Use publicHref - it contains the correct href for display
     // When a rewrite changes the origin, publicHref is the full URL
     // Otherwise it's the origin-stripped path
     // This avoids constructing URL objects in the hot path
-    const location = next().maskedLocation ?? next()
+    const nextLocation = next()
+    const location = nextLocation.maskedLocation ?? nextLocation
     const publicHref = location.publicHref
     const external = location.external
 
@@ -169,7 +165,7 @@ export function useLinkProps<
       }
       return _href.href
     }
-    const to = _options().to
+    const to = options.to
     const safeInternal = isSafeInternal(to)
     if (safeInternal) return undefined
     if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
@@ -188,7 +184,7 @@ export function useLinkProps<
   })
 
   const preload = Solid.createMemo(() => {
-    if (_options().reloadDocument || externalLink()) {
+    if (options.reloadDocument || externalLink()) {
       return false
     }
     return local.preload ?? router.options.defaultPreload
@@ -246,7 +242,7 @@ export function useLinkProps<
   })
 
   const doPreload = () =>
-    router.preloadRoute(_options() as any).catch((err: any) => {
+    router.preloadRoute(options as any).catch((err: any) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
@@ -260,12 +256,13 @@ export function useLinkProps<
   }
 
   const [ref, setRef] = Solid.createSignal<Element | null>(null)
+  const mergedRef = Solid.createMemo(() => mergeRefs(setRef, options.ref))
 
   useIntersectionObserver(
     ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!local.disabled || !(preload() === 'viewport') },
+    { disabled: () => !!local.disabled || preload() !== 'viewport' },
   )
 
   Solid.createEffect(() => {
@@ -277,30 +274,6 @@ export function useLinkProps<
       hasRenderFetched = true
     }
   })
-
-  if (externalLink()) {
-    return Solid.mergeProps(
-      propsSafeToSpread,
-      {
-        ref: mergeRefs(setRef, _options().ref),
-        href: externalLink(),
-      },
-      Solid.splitProps(local, [
-        'target',
-        'disabled',
-        'style',
-        'class',
-        'onClick',
-        'onBlur',
-        'onFocus',
-        'onMouseEnter',
-        'onMouseLeave',
-        'onMouseOut',
-        'onMouseOver',
-        'onTouchStart',
-      ])[0],
-    ) as any
-  }
 
   // The click handler
   const handleClick = (e: MouseEvent) => {
@@ -330,7 +303,7 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
-        ..._options(),
+        ...(options as any),
         replace: local.replace,
         resetScroll: local.resetScroll,
         hashScrollIntoView: local.hashScrollIntoView,
@@ -344,7 +317,9 @@ export function useLinkProps<
   const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
     if (local.disabled || preload() !== 'intent') return
 
-    if (!preloadDelay()) {
+    const delay = preloadDelay()
+
+    if (!delay) {
       doPreload()
       return
     }
@@ -358,7 +333,7 @@ export function useLinkProps<
       setTimeout(() => {
         timeoutMap.delete(eventTarget)
         doPreload()
-      }, preloadDelay()),
+      }, delay),
     )
   }
 
@@ -415,11 +390,32 @@ export function useLinkProps<
   }
 
   const resolvedProps = Solid.createMemo(() => {
+    const href = externalLink()
+
+    if (href) {
+      return {
+        ref: mergedRef(),
+        href,
+        target: local.target,
+        disabled: local.disabled,
+        style: local.style,
+        class: local.class,
+        onClick: local.onClick,
+        onBlur: local.onBlur,
+        onFocus: local.onFocus,
+        onMouseEnter: local.onMouseEnter,
+        onMouseLeave: local.onMouseLeave,
+        onMouseOut: local.onMouseOut,
+        onMouseOver: local.onMouseOver,
+        onTouchStart: local.onTouchStart,
+      }
+    }
+
     const active = isActive()
 
     const base = {
       href: hrefOption()?.href,
-      ref: mergeRefs(setRef, _options().ref),
+      ref: mergedRef(),
       onClick,
       onBlur,
       onFocus,
@@ -669,12 +665,8 @@ export const Link: LinkComponent<'a'> = (props) => {
     )
   }
 
-  if (!local._asChild) {
-    return <a {...linkProps}>{children()}</a>
-  }
-
   return (
-    <Dynamic component={local._asChild as Solid.ValidComponent} {...linkProps}>
+    <Dynamic component={local._asChild ? local._asChild : 'a'} {...linkProps}>
       {children()}
     </Dynamic>
   )

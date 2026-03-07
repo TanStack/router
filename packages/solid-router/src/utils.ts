@@ -28,8 +28,8 @@ import * as Solid from 'solid-js'
 export function useIntersectionObserver<T extends Element>(
   ref: Solid.Accessor<T | null>,
   callback: (entry: IntersectionObserverEntry | undefined) => void,
-  intersectionObserverOptions: IntersectionObserverInit = {},
-  options: { disabled?: boolean } = {},
+  intersectionObserverOptions: IntersectionObserverInit,
+  options: { disabled: Solid.Accessor<boolean> },
 ): Solid.Accessor<IntersectionObserver | null> {
   const isIntersectionObserverAvailable =
     typeof IntersectionObserver === 'function'
@@ -37,18 +37,25 @@ export function useIntersectionObserver<T extends Element>(
 
   Solid.createEffect(() => {
     const r = ref()
-    if (!r || !isIntersectionObserverAvailable || options.disabled) {
+    const disabled = options.disabled()
+
+    if (!r || !isIntersectionObserverAvailable || disabled) {
       return
     }
 
-    observerRef = new IntersectionObserver(([entry]) => {
+    const observer = new IntersectionObserver(([entry]) => {
       callback(entry)
     }, intersectionObserverOptions)
 
-    observerRef.observe(r)
+    observerRef = observer
+
+    observer.observe(r)
 
     Solid.onCleanup(() => {
-      observerRef?.disconnect()
+      observer.disconnect()
+      if (observerRef === observer) {
+        observerRef = null
+      }
     })
   })
 
