@@ -70,7 +70,7 @@ export function useParams<
   }) as Accessor<any>
 
   if (!opts.select) {
-    return params as Accessor<any>
+    return params
   }
 
   const select = opts.select
