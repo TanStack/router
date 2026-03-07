@@ -4,7 +4,6 @@ import { createEffect, createMemo, createSignal } from 'solid-js'
 import { Dynamic } from '@solidjs/web'
 
 import { DevtoolsOnCloseContext } from './context'
-import { useIsMounted } from './utils'
 import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
 import useLocalStorage from './useLocalStorage'
 import { TanStackLogo } from './logo'
@@ -85,7 +84,6 @@ export function FloatingTanStackRouterDevtools({
 
   const [isResolvedOpen, setIsResolvedOpen] = createSignal(false)
   const [isResizing, setIsResizing] = createSignal(false)
-  const isMounted = useIsMounted()
   const styles = useStyles()
 
   const handleDragStart = (
@@ -207,9 +205,6 @@ export function FloatingTanStackRouterDevtools({
     ...otherToggleButtonProps
   } = toggleButtonProps
 
-  // Do not render on the server
-  if (!isMounted()) return null
-
   const resolvedHeight = createMemo(() => devtoolsHeight() ?? 500)
 
   const basePanelClass = createMemo(() => {
@@ -252,7 +247,6 @@ export function FloatingTanStackRouterDevtools({
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
-        {/* {router() ? ( */}
         <BaseTanStackRouterDevtoolsPanel
           ref={panelRef}
           {...otherPanelProps}
@@ -265,9 +259,6 @@ export function FloatingTanStackRouterDevtools({
           handleDragStart={(e) => handleDragStart(panelRef, e)}
           shadowDOMTarget={shadowDOMTarget}
         />
-        {/* ) : (
-          <p>No router</p>
-        )} */}
       </DevtoolsOnCloseContext>
 
       <button

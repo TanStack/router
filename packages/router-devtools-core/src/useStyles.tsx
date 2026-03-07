@@ -1,7 +1,7 @@
 import * as goober from 'goober'
-import { createSignal, useContext } from 'solid-js'
+import { createSignal } from 'solid-js'
 import { tokens } from './tokens'
-import { ShadowDomTargetContext } from './context'
+import { useOptionalShadowDomTarget } from './context'
 import type { Accessor } from 'solid-js'
 
 const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
@@ -618,7 +618,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
 }
 
 export function useStyles() {
-  const shadowDomTarget = useContext(ShadowDomTargetContext)
+  const shadowDomTarget = useOptionalShadowDomTarget()
   const [_styles] = createSignal(stylesFactory(shadowDomTarget))
   return _styles
 }

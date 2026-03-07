@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { clsx as cx } from 'clsx'
 import * as goober from 'goober'
-import { createMemo, createSignal, useContext } from 'solid-js'
+import { createMemo, createSignal } from 'solid-js'
 import { tokens } from './tokens'
 import { displayValue } from './utils'
-import { ShadowDomTargetContext } from './context'
+import { useOptionalShadowDomTarget } from './context'
 import type { Accessor, JSX } from 'solid-js'
 
 type ExpanderProps = {
@@ -333,7 +333,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
 }
 
 function useStyles() {
-  const shadowDomTarget = useContext(ShadowDomTargetContext)
+  const shadowDomTarget = useOptionalShadowDomTarget()
   const [_styles] = createSignal(stylesFactory(shadowDomTarget))
   return _styles
 }

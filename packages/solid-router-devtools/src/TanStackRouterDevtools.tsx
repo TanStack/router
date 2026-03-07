@@ -54,7 +54,7 @@ export const TanStackRouterDevtools: Component<
     routerState: activeRouterState,
   }
 
-  let devToolRef: HTMLDivElement | undefined
+  const [devToolRef, setDevToolRef] = createSignal<HTMLDivElement>()
   const [devtools] = createSignal(new TanStackRouterDevtoolsCore(usedProps))
 
   // Update devtools when props change
@@ -78,19 +78,26 @@ export const TanStackRouterDevtools: Component<
     })
   })
 
-  createEffect(devtools, (d) => {
-    if (devToolRef) {
-      d.mount(devToolRef)
+  createEffect(
+    () => ({ d: devtools(), el: devToolRef() }),
+    ({ d, el }) => {
+      if (el) {
+        d.mount(el)
 
-      onCleanup(() => {
-        d.unmount()
-      })
-    }
-  })
+        onCleanup(() => {
+          d.unmount()
+        })
+      }
+    },
+  )
 
   return (
     <>
-      <div ref={devToolRef} />
+      <div
+        ref={(el) => {
+          setDevToolRef(el)
+        }}
+      />
     </>
   )
 }
