@@ -389,19 +389,16 @@ export function useLinkProps<
   // computation when the leaf route/params context changes.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const currentLeafMatchId = useStore(router.stores.lastMatchId, (id) => id)
-  const from = options.from
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
-    () => {
-      return { ...options, from }
-    },
+    () => options,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
       currentLeafMatchId,
       currentLocation.hash,
-      from,
+      options.from,
       options._fromLocation,
       options.hash,
       options.to,

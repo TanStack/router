@@ -1,13 +1,19 @@
 import * as Solid from 'solid-js'
+import type { AnyRouteMatch } from '@tanstack/router-core'
 
-export const matchContext = Solid.createContext<
-  Solid.Accessor<string | undefined>
->(() => undefined)
+export type NearestMatchContextValue = {
+  matchId: Solid.Accessor<string | undefined>
+  routeId: Solid.Accessor<string | undefined>
+  match: Solid.Accessor<AnyRouteMatch | undefined>
+  hasPending: Solid.Accessor<boolean>
+}
 
-export const routeIdContext = Solid.createContext<
-  Solid.Accessor<string | undefined>
->(() => undefined)
+const defaultNearestMatchContext: NearestMatchContextValue = {
+  matchId: () => undefined,
+  routeId: () => undefined,
+  match: () => undefined,
+  hasPending: () => false,
+}
 
-export const pendingMatchContext = Solid.createContext<Solid.Accessor<boolean>>(
-  () => false,
-)
+export const nearestMatchContext =
+  Solid.createContext<NearestMatchContextValue>(defaultNearestMatchContext)
