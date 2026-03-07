@@ -1,4 +1,5 @@
 import { For, createEffect } from 'solid-js'
+import { render } from 'solid-js/web'
 import {
   Link,
   Outlet,
@@ -82,7 +83,7 @@ const route = createRoute({
   },
 })
 
-export function createTestRouter() {
+export function mountTestApp(container: Element) {
   const router = createRouter({
     history: createMemoryHistory({
       initialEntries: ['/0'],
@@ -91,7 +92,7 @@ export function createTestRouter() {
     routeTree: root.addChildren([route]),
   })
 
-  const component = () => <RouterProvider router={router} />
+  const unmount = render(() => <RouterProvider router={router} />, container)
 
-  return { router, component }
+  return { router, unmount }
 }
