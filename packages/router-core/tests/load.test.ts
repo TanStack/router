@@ -600,6 +600,57 @@ describe('stale loader reload triggers', () => {
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
+  test('reloads stale loader when the same route stays matched but its match id changes', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const rootLoader = vi.fn(() => ({ ok: true }))
+    const childLoader = vi.fn(() => ({ ok: true }))
+
+    const rootChildRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      loader: rootLoader,
+      staleTime: 0,
+      gcTime: 0,
+      loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+        page: search['page'],
+      }),
+    })
+
+    const leafRoute = new BaseRoute({
+      getParentRoute: () => rootChildRoute,
+      path: '/$postId',
+      loader: childLoader,
+      staleTime: 0,
+      gcTime: 0,
+    })
+
+    const routeTree = rootRoute.addChildren([
+      rootChildRoute.addChildren([leafRoute]),
+    ])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({
+      to: '/posts/$postId',
+      params: { postId: '1' },
+      search: { page: '1' },
+    })
+
+    expect(rootLoader).toHaveBeenCalledTimes(1)
+    expect(childLoader).toHaveBeenCalledTimes(1)
+
+    await router.navigate({
+      to: '/posts/$postId',
+      params: { postId: '2' },
+      search: { page: '2' },
+    })
+
+    expect(rootLoader).toHaveBeenCalledTimes(2)
+    expect(childLoader).toHaveBeenCalledTimes(2)
+  })
+
   test('skips stale ancestor loader when only a child path param changes', async () => {
     const rootRoute = new BaseRootRoute({})
     const parentLoader = vi.fn(() => ({ ok: true }))
