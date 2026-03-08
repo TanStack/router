@@ -50,8 +50,6 @@ export function useLocation<
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseLocationResult<TRouter, TSelected> {
   const router = useRouter<TRouter>()
-  const previousResult =
-    useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
 
   if (isServer ?? router.isServer) {
     const location = router.stores.location.state
@@ -59,6 +57,9 @@ export function useLocation<
       opts?.select ? opts.select(location as any) : location
     ) as UseLocationResult<TRouter, TSelected>
   }
+
+  const previousResult =
+    useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
 
   return useStore(router.stores.location, (location) => {
     const selected = (
