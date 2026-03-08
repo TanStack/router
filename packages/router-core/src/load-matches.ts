@@ -185,6 +185,7 @@ const shouldSkipLoader = (
 
 const shouldReloadStaleMatch = (
   inner: InnerLoadContext,
+  prevMatch: AnyRouteMatch,
   match: AnyRouteMatch,
 ): boolean => {
   if (inner.forceStaleReload) {
@@ -195,7 +196,7 @@ const shouldReloadStaleMatch = (
     return true
   }
 
-  return !!match._nonReactive.loaderKeyChanged
+  return prevMatch.id !== match.id
 }
 
 const syncMatchContext = (
@@ -820,7 +821,7 @@ const loadRouteMatch = async (
     // If the route is successful and still fresh, just resolve
     const { status, invalid } = match
     const staleMatchShouldReload =
-      age > staleAge && shouldReloadStaleMatch(inner, match)
+      age > staleAge && shouldReloadStaleMatch(inner, prevMatch, match)
     loaderShouldRunAsync =
       status === 'success' &&
       (invalid || (shouldReload ?? staleMatchShouldReload))

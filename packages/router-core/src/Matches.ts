@@ -143,8 +143,6 @@ export interface RouteMatch<
     /** @internal */
     loaderPromise?: ControlledPromise<void>
     /** @internal */
-    loaderKeyChanged?: boolean
-    /** @internal */
     pendingTimeout?: ReturnType<typeof setTimeout>
     loadPromise?: ControlledPromise<void>
     displayPendingPromise?: Promise<void>

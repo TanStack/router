@@ -1513,9 +1513,6 @@ export class RouterCore<
       const existingMatch = this.getMatch(matchId)
 
       const previousMatch = previousMatchesByRouteId.get(route.id)
-      const loaderKeyChanged = previousMatch
-        ? previousMatch.id !== matchId
-        : false
 
       const strictParams = existingMatch?._strictParams ?? usedParams
 
@@ -1548,10 +1545,6 @@ export class RouterCore<
       if (existingMatch) {
         match = {
           ...existingMatch,
-          _nonReactive: {
-            ...existingMatch._nonReactive,
-            loaderKeyChanged,
-          },
           cause,
           params: previousMatch?.params ?? routeParams,
           _strictParams: strictParams,
@@ -1590,7 +1583,6 @@ export class RouterCore<
           __routeContext: undefined,
           _nonReactive: {
             loadPromise: createControlledPromise(),
-            loaderKeyChanged,
           },
           __beforeLoadContext: undefined,
           context: {},
