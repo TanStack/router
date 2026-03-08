@@ -193,6 +193,7 @@ export function useLinkProps<
       href,
       options: options as AnyLinkPropsOptions,
       isActive,
+      isTransitioning: false,
       resolvedActiveProps,
       resolvedInactiveProps,
       resolvedClassName,
@@ -440,6 +441,7 @@ export function useLinkProps<
       ref,
       staticEventHandlers,
       isActive: isActive.value,
+      isTransitioning: isTransitioning.value,
       resolvedActiveProps,
       resolvedInactiveProps,
       resolvedClassName,
@@ -508,6 +510,7 @@ function combineResultProps({
   href,
   options,
   isActive,
+  isTransitioning,
   resolvedActiveProps,
   resolvedInactiveProps,
   resolvedClassName,
@@ -519,6 +522,7 @@ function combineResultProps({
   href: string | undefined
   options: AnyLinkPropsOptions
   isActive: boolean
+  isTransitioning: boolean
   resolvedActiveProps: StyledProps
   resolvedInactiveProps: StyledProps
   resolvedClassName?: string
@@ -560,6 +564,10 @@ function combineResultProps({
   if (isActive) {
     result['data-status'] = 'active'
     result['aria-current'] = 'page'
+  }
+
+  if (isTransitioning) {
+    result['data-transitioning'] = 'transitioning'
   }
 
   for (const key of Object.keys(resolvedActiveProps)) {

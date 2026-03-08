@@ -1,4 +1,6 @@
 import { useStore } from '@tanstack/react-store'
+import { useRef } from 'react'
+import { replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type {
@@ -56,8 +58,20 @@ export function useLocation<
     ) as UseLocationResult<TRouter, TSelected>
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  return useStore(router.stores.location, (location) =>
-    opts?.select ? opts.select(location as any) : location,
-  ) as UseLocationResult<TRouter, TSelected>
+  const previousResult =
+    useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
+
+  return useStore(router.stores.location, (location) => {
+    const selected = (
+      opts?.select ? opts.select(location as any) : location
+    ) as ValidateSelected<TRouter, TSelected, TStructuralSharing>
+
+    if (opts?.structuralSharing ?? router.options.defaultStructuralSharing) {
+      const shared = replaceEqualDeep(previousResult.current, selected)
+      previousResult.current = shared
+      return shared
+    }
+
+    return selected
+  }) as UseLocationResult<TRouter, TSelected>
 }
