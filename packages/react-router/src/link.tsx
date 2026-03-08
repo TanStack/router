@@ -195,7 +195,7 @@ export function useLinkProps<
             return undefined
           }
           return to
-        } catch {}
+        } catch { }
       }
 
       return undefined
@@ -385,14 +385,14 @@ export function useLinkProps<
       pathname: location.pathname,
       search: location.search,
       hash: location.hash,
+      str: location.pathname + '?' + location.searchStr + '#' + location.hash
     }),
-    shallow,
+    // we need custom equality because `location` changes a lot, it can destroy perf
+    (prev, next) => prev.str === next.str,
   )
-  // Subscribe to current leaf match identity for relative-link resolution.
-  // This avoids broad match-array subscriptions while still invalidating href
-  // computation when the leaf route/params context changes.
+  // Subscribe to resolvedLocation for relative-link resolution.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLeafMatchId = useStore(router.stores.lastMatchId, (id) => id)
+  const buildLocationKey = useStore(router.stores.resolvedLocation, (l) => l)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
@@ -400,8 +400,6 @@ export function useLinkProps<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
-      currentLeafMatchId,
-      currentLocation.hash,
       options.from,
       options._fromLocation,
       options.hash,
@@ -417,7 +415,7 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const next = React.useMemo(
     () => router.buildLocation({ ..._options } as any),
-    [router, _options],
+    [router, _options, buildLocationKey],
   )
 
   // Use publicHref - it contains the correct href for display
@@ -469,7 +467,7 @@ export function useLinkProps<
         return undefined
       }
       return to
-    } catch {}
+    } catch { }
     return undefined
   }, [to, hrefOption, router.protocolAllowlist])
 
@@ -739,13 +737,13 @@ const intersectionObserverOptions: IntersectionObserverInit = {
 
 const composeHandlers =
   (handlers: Array<undefined | React.EventHandler<any>>) =>
-  (e: React.SyntheticEvent) => {
-    for (const handler of handlers) {
-      if (!handler) continue
-      if (e.defaultPrevented) return
-      handler(e)
+    (e: React.SyntheticEvent) => {
+      for (const handler of handlers) {
+        if (!handler) continue
+        if (e.defaultPrevented) return
+        handler(e)
+      }
     }
-  }
 
 function getHrefOption(
   publicHref: string,
@@ -774,9 +772,9 @@ function isSafeInternal(to: unknown) {
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
   ? React.JSX.IntrinsicElements[TComp]
   : TComp extends React.ComponentType<any>
-    ? React.ComponentPropsWithoutRef<TComp> &
-        React.RefAttributes<React.ComponentRef<TComp>>
-    : never
+  ? React.ComponentPropsWithoutRef<TComp> &
+  React.RefAttributes<React.ComponentRef<TComp>>
+  : never
 
 export type UseLinkPropsOptions<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -829,11 +827,11 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    | React.ReactNode
-    | ((state: {
-        isActive: boolean
-        isTransitioning: boolean
-      }) => React.ReactNode)
+  | React.ReactNode
+  | ((state: {
+    isActive: boolean
+    isTransitioning: boolean
+  }) => React.ReactNode)
 }
 
 type LinkComponentReactProps<TComp> = Omit<
@@ -876,7 +874,7 @@ export type LinkComponent<
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
 > {
-  defaultFrom: TDefaultFrom;
+  defaultFrom: TDefaultFrom
   <
     TRouter extends AnyRouter = RegisteredRouter,
     const TTo extends string | undefined = undefined,
@@ -937,8 +935,8 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
     const children =
       typeof rest.children === 'function'
         ? rest.children({
-            isActive: (linkProps as any)['data-status'] === 'active',
-          })
+          isActive: (linkProps as any)['data-status'] === 'active',
+        })
         : rest.children
 
     if (!_asChild) {
@@ -961,8 +959,8 @@ export type LinkOptionsFnOptions<
   TRouter extends AnyRouter = RegisteredRouter,
 > =
   TOptions extends ReadonlyArray<any>
-    ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
-    : ValidateLinkOptions<TRouter, TOptions, string, TComp>
+  ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
+  : ValidateLinkOptions<TRouter, TOptions, string, TComp>
 
 export type LinkOptionsFn<TComp> = <
   const TOptions,
