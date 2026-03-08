@@ -92,8 +92,15 @@ export function useLinkProps<
     }
   })
 
-  const currentSearch = useRouterState({
-    select: (s) => s.location.searchStr,
+   const buildLocationKey = useRouterState({
+    select: (s) => {
+      const leaf = s.matches[s.matches.length - 1]
+      return {
+        search: leaf?.search,
+        hash: s.location.hash,
+        path: leaf?.pathname, // path + params
+      }
+    },
   })
 
   // when `from` is not supplied, use the leaf route of the current matches as the `from` location
@@ -108,7 +115,7 @@ export function useLinkProps<
 
   const next = Vue.computed(() => {
     // Depend on search to rebuild when search changes
-    currentSearch.value
+    buildLocationKey.value
     return router.buildLocation(_options.value as any)
   })
 
