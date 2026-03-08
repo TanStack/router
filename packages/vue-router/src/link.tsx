@@ -92,7 +92,7 @@ export function useLinkProps<
     }
   })
 
-   const buildLocationKey = useRouterState({
+  const buildLocationKey = useRouterState({
     select: (s) => {
       const leaf = s.matches[s.matches.length - 1]
       return {
