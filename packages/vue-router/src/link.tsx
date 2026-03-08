@@ -49,6 +49,14 @@ type LinkHTMLAttributes = AnchorHTMLAttributes &
     disabled?: boolean
   }
 
+type VueStyleLinkEventHandlers = {
+  onMouseenter?: EventHandler<MouseEvent>
+  onMouseleave?: EventHandler<MouseEvent>
+  onMouseover?: EventHandler<MouseEvent>
+  onMouseout?: EventHandler<MouseEvent>
+  onTouchstart?: EventHandler<TouchEvent>
+}
+
 interface StyledProps {
   class?: LinkHTMLAttributes['class']
   style?: LinkHTMLAttributes['style']
@@ -65,6 +73,7 @@ type PropsOfComponent<TComp> =
       : Record<string, unknown>
 
 type AnyLinkPropsOptions = UseLinkPropsOptions<any, any, any, any, any>
+type LinkEventOptions = AnyLinkPropsOptions & Partial<VueStyleLinkEventHandlers>
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -96,6 +105,7 @@ export function useLinkProps<
   })
 
   const ref = Vue.ref<Element | null>(null)
+  const eventHandlers = getLinkEventHandlers(options as LinkEventOptions)
 
   if (type.value === 'external') {
     // Block dangerous protocols like javascript:, blob:, data:
@@ -115,11 +125,11 @@ export function useLinkProps<
         onClick: options.onClick,
         onBlur: options.onBlur,
         onFocus: options.onFocus,
-        onMouseEnter: options.onMouseEnter,
-        onMouseLeave: options.onMouseLeave,
-        onMouseOver: options.onMouseOver,
-        onMouseOut: options.onMouseOut,
-        onTouchStart: options.onTouchStart,
+        onMouseenter: eventHandlers.onMouseenter,
+        onMouseleave: eventHandlers.onMouseleave,
+        onMouseover: eventHandlers.onMouseover,
+        onMouseout: eventHandlers.onMouseout,
+        onTouchstart: eventHandlers.onTouchstart,
       }
 
       // Remove undefined values
@@ -144,11 +154,11 @@ export function useLinkProps<
       onClick: options.onClick,
       onBlur: options.onBlur,
       onFocus: options.onFocus,
-      onMouseEnter: options.onMouseEnter,
-      onMouseLeave: options.onMouseLeave,
-      onMouseOver: options.onMouseOver,
-      onMouseOut: options.onMouseOut,
-      onTouchStart: options.onTouchStart,
+      onMouseenter: eventHandlers.onMouseenter,
+      onMouseleave: eventHandlers.onMouseleave,
+      onMouseover: eventHandlers.onMouseover,
+      onMouseout: eventHandlers.onMouseout,
+      onTouchstart: eventHandlers.onTouchstart,
     }
 
     // Remove undefined values
@@ -404,23 +414,23 @@ export function useLinkProps<
       enqueueIntentPreload,
     ]) as any,
     onMouseenter: composeEventHandlers<MouseEvent>([
-      options.onMouseEnter,
+      eventHandlers.onMouseenter,
       enqueueIntentPreload,
     ]) as any,
     onMouseover: composeEventHandlers<MouseEvent>([
-      options.onMouseOver,
+      eventHandlers.onMouseover,
       enqueueIntentPreload,
     ]) as any,
     onMouseleave: composeEventHandlers<MouseEvent>([
-      options.onMouseLeave,
+      eventHandlers.onMouseleave,
       handleLeave,
     ]) as any,
     onMouseout: composeEventHandlers<MouseEvent>([
-      options.onMouseOut,
+      eventHandlers.onMouseout,
       handleLeave,
     ]) as any,
     onTouchstart: composeEventHandlers<TouchEvent>([
-      options.onTouchStart,
+      eventHandlers.onTouchstart,
       handleTouchStart,
     ]) as any,
   }
@@ -576,6 +586,18 @@ function combineResultProps({
   return result
 }
 
+function getLinkEventHandlers(
+  options: LinkEventOptions,
+): VueStyleLinkEventHandlers {
+  return {
+    onMouseenter: options.onMouseEnter ?? options.onMouseenter,
+    onMouseleave: options.onMouseLeave ?? options.onMouseleave,
+    onMouseover: options.onMouseOver ?? options.onMouseover,
+    onMouseout: options.onMouseOut ?? options.onMouseout,
+    onTouchstart: options.onTouchStart ?? options.onTouchstart,
+  }
+}
+
 const propsUnsafeToSpread = new Set([
   'activeProps',
   'inactiveProps',
@@ -597,10 +619,15 @@ const propsUnsafeToSpread = new Set([
   'onBlur',
   'onFocus',
   'onMouseEnter',
+  'onMouseenter',
   'onMouseLeave',
+  'onMouseleave',
   'onMouseOver',
+  'onMouseover',
   'onMouseOut',
+  'onMouseout',
   'onTouchStart',
+  'onTouchstart',
   'ignoreBlocker',
   'params',
   'search',
@@ -868,17 +895,15 @@ const LinkImpl = Vue.defineComponent({
   ],
   setup(props, { attrs, slots }) {
     // Call useLinkProps ONCE during setup with combined props and attrs
-    // The returned object is a computed ref that updates reactively
     const allProps = { ...props, ...attrs }
-    const linkPropsComputed = useLinkProps(
-      allProps as any,
-    ) as unknown as Vue.ComputedRef<LinkHTMLAttributes>
+    const linkPropsSource = useLinkProps(allProps as any) as
+      | LinkHTMLAttributes
+      | Vue.ComputedRef<LinkHTMLAttributes>
 
     return () => {
       const Component = props._asChild || 'a'
 
-      // Access the computed value to get fresh props each render
-      const linkProps = linkPropsComputed.value
+      const linkProps = Vue.unref(linkPropsSource)
 
       const isActive = linkProps['data-status'] === 'active'
       const isTransitioning =
