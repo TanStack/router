@@ -4668,6 +4668,79 @@ describe('Link', () => {
     expect(window.location.pathname).toBe('/posts')
   })
 
+  test('Link slot receives isTransitioning during pending navigation', async () => {
+    let resolvePostsLoader: (() => void) | undefined
+
+    const postsLoaderPromise = new Promise<void>((resolve) => {
+      resolvePostsLoader = resolve
+    })
+
+    const rootRoute = createRootRoute({
+      component: () =>
+        Vue.h(Vue.Fragment, null, [
+          Vue.h(
+            Link,
+            { to: '/posts', 'data-testid': 'posts-link' },
+            {
+              default: ({ isTransitioning }: { isTransitioning: boolean }) => (
+                <>
+                  <span data-testid="slot-transition-state">
+                    {isTransitioning ? 'transitioning' : 'idle'}
+                  </span>
+                  <span>Posts</span>
+                </>
+              ),
+            },
+          ),
+          Vue.h(Outlet),
+        ]),
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <h1>Index page</h1>,
+    })
+
+    const postsRoute = createRoute({
+      ssr: false,
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      loader: () => postsLoaderPromise,
+      component: () => <h1>Posts page</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await screen.findByRole('heading', { name: 'Index page' })
+
+    const postsLink = await screen.findByTestId('posts-link')
+    const transitionState = await screen.findByTestId('slot-transition-state')
+
+    expect(transitionState).toHaveTextContent('idle')
+    expect(postsLink).not.toHaveAttribute('data-transitioning')
+
+    fireEvent.click(postsLink)
+
+    await waitFor(() => expect(resolvePostsLoader).toBeDefined())
+    await waitFor(() =>
+      expect(transitionState).toHaveTextContent('transitioning'),
+    )
+    expect(postsLink).toHaveAttribute('data-transitioning', 'transitioning')
+
+    resolvePostsLoader?.()
+
+    await screen.findByRole('heading', { name: 'Posts page' })
+
+    await waitFor(() => expect(transitionState).toHaveTextContent('idle'))
+    expect(postsLink).not.toHaveAttribute('data-transitioning')
+  })
+
   describe('when preloading a link, `preload` should be', () => {
     async function runTest({
       expectedPreload,
