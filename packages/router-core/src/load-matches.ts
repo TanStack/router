@@ -852,7 +852,7 @@ const loadRouteMatch = async (
     syncMatchContext(inner, matchId, index)
 
     if (isServer ?? inner.router.isServer) {
-      return match
+      return inner.router.getMatch(matchId)!
     }
   } else {
     const prevMatch = inner.router.getMatch(matchId)! // This is where all of the stale-while-revalidate magic happens
