@@ -212,7 +212,6 @@ export function useLinkProps<
     { equal: (prev, next) => prev.href === next.href },
   )
   // Subscribe to resolvedLocation for relative-link resolution.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const buildLocationKey = useStore(
     router.stores.buildLocationReactivity,
     (l) => l,
