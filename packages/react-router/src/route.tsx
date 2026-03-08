@@ -115,7 +115,7 @@ export class RouteApi<
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts) => {
-    return useRouteContext({ from: this.id as any, ...(opts as any) }) as any
+    return useRouteContext({ from: this.id as any, ...(opts as any) })
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
@@ -270,7 +270,7 @@ export class Route<
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
-    return useRouteContext({ from: this.id, ...(opts as any) }) as any
+    return useRouteContext({ from: this.id, ...(opts as any) })
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
@@ -542,7 +542,7 @@ export class RootRoute<
   }
 
   useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
-    return useRouteContext({ from: this.id, ...(opts as any) }) as any
+    return useRouteContext({ from: this.id, ...(opts as any) })
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {

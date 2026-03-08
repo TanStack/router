@@ -230,7 +230,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
-    return useRouteContext({ from: this.options.id, ...(opts as any) }) as any
+    return useRouteContext({ from: this.options.id, ...(opts as any) })
   }
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
