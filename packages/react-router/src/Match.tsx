@@ -440,15 +440,14 @@ export const Outlet = React.memo(function OutletImpl() {
   let childMatchId: string | undefined
 
   if (isServer ?? router.isServer) {
-    const matches = router.state.matches
-    const parentIndex = matchId
-      ? matches.findIndex((match) => match.id === matchId)
-      : -1
-    const parentMatch = parentIndex >= 0 ? matches[parentIndex] : undefined
+    const parentMatch = matchId
+      ? router.stores.activeMatchStoresById.get(matchId)?.state
+      : undefined
     routeId = parentMatch?.routeId as string | undefined
     parentGlobalNotFound = parentMatch?.globalNotFound ?? false
-    childMatchId =
-      parentIndex >= 0 ? (matches[parentIndex + 1]?.id as string) : undefined
+    childMatchId = routeId
+      ? router.stores.childMatchIdByRouteId.state[routeId]
+      : undefined
   } else {
     // Subscribe directly to the match store from the pool instead of
     // the two-level byId → matchStore pattern.
@@ -463,10 +462,9 @@ export const Outlet = React.memo(function OutletImpl() {
     ])
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    childMatchId = useStore(router.stores.matchesId, (ids) => {
-      const index = ids.findIndex((id) => id === matchId)
-      return ids[index + 1]
-    })
+    childMatchId = useStore(router.stores.childMatchIdByRouteId, (ids) =>
+      routeId ? ids[routeId] : undefined,
+    )
   }
 
   const route = routeId ? router.routesById[routeId] : undefined
