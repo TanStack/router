@@ -93,7 +93,10 @@ export function Transitioner() {
     if (previousIsLoading && !isLoading) {
       router.emit({
         type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
-        ...getLocationChangeInfo(router.state),
+        ...getLocationChangeInfo(
+          router.stores.location.state,
+          router.stores.resolvedLocation.state,
+        ),
       })
     }
   }, [previousIsLoading, router, isLoading])
@@ -103,14 +106,20 @@ export function Transitioner() {
     if (previousIsPagePending && !isPagePending) {
       router.emit({
         type: 'onBeforeRouteMount',
-        ...getLocationChangeInfo(router.state),
+        ...getLocationChangeInfo(
+          router.stores.location.state,
+          router.stores.resolvedLocation.state,
+        ),
       })
     }
   }, [isPagePending, previousIsPagePending, router])
 
   useLayoutEffect(() => {
     if (previousIsAnyPending && !isAnyPending) {
-      const changeInfo = getLocationChangeInfo(router.state)
+      const changeInfo = getLocationChangeInfo(
+        router.stores.location.state,
+        router.stores.resolvedLocation.state,
+      )
       router.emit({
         type: 'onResolved',
         ...changeInfo,

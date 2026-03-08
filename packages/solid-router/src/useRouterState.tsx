@@ -35,7 +35,9 @@ export function useRouterState<
   // implementation does not provide subscribe() semantics.
   const _isServer = isServer ?? router.isServer
   if (_isServer) {
-    const state = router.state as RouterState<TRouter['routeTree']>
+    const state = router.stores.__store.state as RouterState<
+      TRouter['routeTree']
+    >
     const selected = (
       opts?.select ? opts.select(state) : state
     ) as UseRouterStateResult<TRouter, TSelected>

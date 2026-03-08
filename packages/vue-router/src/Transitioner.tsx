@@ -187,7 +187,10 @@ export function useTransitionerSetup() {
         if (previousIsLoading.value.previous && !newValue) {
           router.emit({
             type: 'onLoad',
-            ...getLocationChangeInfo(router.state),
+            ...getLocationChangeInfo(
+              router.stores.location.state,
+              router.stores.resolvedLocation.state,
+            ),
           })
         }
       } catch {
@@ -203,7 +206,10 @@ export function useTransitionerSetup() {
       if (previousIsPagePending.value.previous && !newValue) {
         router.emit({
           type: 'onBeforeRouteMount',
-          ...getLocationChangeInfo(router.state),
+          ...getLocationChangeInfo(
+            router.stores.location.state,
+            router.stores.resolvedLocation.state,
+          ),
         })
       }
     } catch {
@@ -214,7 +220,7 @@ export function useTransitionerSetup() {
   Vue.watch(isAnyPending, (newValue) => {
     if (!isMounted.value) return
     try {
-      if (!newValue && router.state.status === 'pending') {
+      if (!newValue && router.stores.status.state === 'pending') {
         batch(() => {
           router.stores.status.setState(() => 'idle')
           router.stores.resolvedLocation.setState(
@@ -225,7 +231,10 @@ export function useTransitionerSetup() {
 
       // The router was pending and now it's not
       if (previousIsAnyPending.value.previous && !newValue) {
-        const changeInfo = getLocationChangeInfo(router.state)
+        const changeInfo = getLocationChangeInfo(
+          router.stores.location.state,
+          router.stores.resolvedLocation.state,
+        )
         router.emit({
           type: 'onResolved',
           ...changeInfo,

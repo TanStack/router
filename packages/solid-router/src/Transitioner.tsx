@@ -94,7 +94,10 @@ export function Transitioner() {
     if (previousIsLoading && !currentIsLoading) {
       router.emit({
         type: 'onLoad',
-        ...getLocationChangeInfo(router.state),
+        ...getLocationChangeInfo(
+          router.stores.location.state,
+          router.stores.resolvedLocation.state,
+        ),
       })
     }
 
@@ -107,7 +110,10 @@ export function Transitioner() {
     if (previousIsPagePending && !currentIsPagePending) {
       router.emit({
         type: 'onBeforeRouteMount',
-        ...getLocationChangeInfo(router.state),
+        ...getLocationChangeInfo(
+          router.stores.location.state,
+          router.stores.resolvedLocation.state,
+        ),
       })
     }
 
@@ -118,7 +124,10 @@ export function Transitioner() {
     const currentIsAnyPending = isAnyPending()
 
     if (previousIsAnyPending && !currentIsAnyPending) {
-      const changeInfo = getLocationChangeInfo(router.state)
+      const changeInfo = getLocationChangeInfo(
+        router.stores.location.state,
+        router.stores.resolvedLocation.state,
+      )
       router.emit({
         type: 'onResolved',
         ...changeInfo,

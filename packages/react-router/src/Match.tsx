@@ -228,7 +228,10 @@ function OnRendered() {
         ) {
           router.emit({
             type: 'onRendered',
-            ...getLocationChangeInfo(router.state),
+            ...getLocationChangeInfo(
+              router.stores.location.state,
+              router.stores.resolvedLocation.state,
+            ),
           })
           prevLocationRef.current = router.latestLocation
         }
@@ -440,7 +443,7 @@ export const Outlet = React.memo(function OutletImpl() {
   let childMatchId: string | undefined
 
   if (isServer ?? router.isServer) {
-    const matches = router.state.matches
+    const matches = router.stores.activeMatchesSnapshot.state
     const parentIndex = matchId
       ? matches.findIndex((match) => match.id === matchId)
       : -1

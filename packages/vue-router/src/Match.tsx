@@ -253,7 +253,10 @@ const OnRendered = Vue.defineComponent({
           if (prevHref === undefined || prevHref !== currentHref) {
             router.emit({
               type: 'onRendered',
-              ...getLocationChangeInfo(router.state),
+              ...getLocationChangeInfo(
+                router.stores.location.state,
+                router.stores.resolvedLocation.state,
+              ),
             })
             prevHref = currentHref
           }
