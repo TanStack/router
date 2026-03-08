@@ -39,7 +39,6 @@ export function useLoaderDeps<
 ): Accessor<UseLoaderDepsResult<TRouter, TFrom, TSelected>> {
   return useMatch({
     ...opts,
-    equals: opts.select ? undefined : Object.is,
     select: (s) => {
       return opts.select ? opts.select(s.loaderDeps) : s.loaderDeps
     },

@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
+import { replaceEqualDeep } from '@tanstack/router-core'
 import { nearestMatchContext } from './matchContext'
-import { shallow } from './store'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -24,10 +24,6 @@ export interface UseMatchBaseOptions<
     match: MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>,
   ) => TSelected
   shouldThrow?: TThrow
-  /** @internal */
-  equals?:
-    | false
-    | ((prev: TSelected | undefined, next: TSelected | undefined) => boolean)
 }
 
 export type UseMatchRoute<out TFrom> = <
@@ -106,19 +102,12 @@ export function useMatch<
     )
   })
 
-  return Solid.createMemo(
-    () => {
-      const selectedMatch = match()
+  return Solid.createMemo((prev: TSelected | undefined) => {
+    const selectedMatch = match()
 
-      if (selectedMatch === undefined) {
-        return undefined
-      }
-
-      return (
-        opts.select ? opts.select(selectedMatch as any) : selectedMatch
-      ) as any
-    },
-    undefined,
-    { equals: opts.equals ?? shallow },
-  ) as any
+    if (selectedMatch === undefined) return undefined
+    const res = opts.select ? opts.select(selectedMatch as any) : selectedMatch
+    if (prev === undefined) return res as TSelected
+    return replaceEqualDeep(prev, res) as TSelected
+  }) as any
 }
