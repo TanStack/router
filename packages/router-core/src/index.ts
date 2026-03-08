@@ -192,6 +192,7 @@ export {
 } from './stores'
 export type {
   RouterBatchFn,
+  LinkBuildContext,
   RouterReadableStore,
   GetStoreConfig,
   RouterStores,

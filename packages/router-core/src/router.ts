@@ -102,7 +102,7 @@ import type {
   AnySerializationAdapter,
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
-import type { GetStoreConfig, RouterStores } from './stores'
+import type { GetStoreConfig, LinkBuildContext, RouterStores } from './stores'
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -556,6 +556,16 @@ export interface BuildNextOptions {
   _fromLocation?: ParsedLocation
   unsafeRelative?: 'path'
   _isNavigate?: boolean
+}
+
+interface InternalBuildNextOptions extends BuildNextOptions {
+  _includeValidateSearch?: boolean
+  _buildLocationMode?: 'full' | 'active'
+  _activeOptions?: {
+    includeSearch?: boolean
+    includeHash?: boolean
+  }
+  _linkContext?: LinkBuildContext<any>
 }
 
 type NavigationEventInfo = {
@@ -1111,6 +1121,13 @@ export class RouterCore<
       this.stores = createRouterStores(
         getInitialRouterState(this.latestLocation),
         config,
+        {
+          getCurrentLinkContext: (location) =>
+            this.getCurrentLinkContext(location, {
+              reuseCurrentMatchParams: false,
+              parseParams: false,
+            }),
+        },
       )
 
       if (!(isServer ?? this.isServer)) {
@@ -1665,7 +1682,13 @@ export class RouterCore<
    * Only computes fullPath, accumulated search, and params - skipping expensive
    * operations like AbortController, ControlledPromise, loaderDeps, and full match objects.
    */
-  private matchRoutesLightweight(location: ParsedLocation): {
+  private matchRoutesLightweight(
+    location: ParsedLocation,
+    opts?: {
+      reuseCurrentMatchParams?: boolean
+      parseParams?: boolean
+    },
+  ): {
     matchedRoutes: ReadonlyArray<AnyRoute>
     fullPath: string
     search: Record<string, unknown>
@@ -1699,10 +1722,15 @@ export class RouterCore<
     }
 
     // Determine params: reuse from state if possible, otherwise parse
-    const lastStateMatchId = this.stores.lastMatchId.state
+    const lastStateMatchId =
+      opts?.reuseCurrentMatchParams === false
+        ? undefined
+        : this.stores.lastMatchId.state
     const lastStateMatch =
-      lastStateMatchId &&
-      this.stores.activeMatchStoresById.get(lastStateMatchId)?.state
+      opts?.reuseCurrentMatchParams === false
+        ? undefined
+        : lastStateMatchId &&
+          this.stores.activeMatchStoresById.get(lastStateMatchId)?.state
     const canReuseParams =
       lastStateMatch &&
       lastStateMatch.routeId === lastRoute.id &&
@@ -1711,6 +1739,8 @@ export class RouterCore<
     let params: Record<string, unknown>
     if (canReuseParams) {
       params = lastStateMatch.params
+    } else if (opts?.parseParams === false) {
+      params = routeParams
     } else {
       // Parse params through the route chain
       const strictParams: Record<string, unknown> = { ...routeParams }
@@ -1734,6 +1764,30 @@ export class RouterCore<
       fullPath: lastRoute.fullPath,
       search: accumulatedSearch,
       params,
+    }
+  }
+
+  private getCurrentLinkContext = (
+    location: ParsedLocation<FullSearchSchema<TRouteTree>>,
+    opts?: {
+      reuseCurrentMatchParams?: boolean
+      parseParams?: boolean
+    },
+  ): LinkBuildContext<FullSearchSchema<TRouteTree>> => {
+    const lightweightResult = this.matchRoutesLightweight(location, {
+      reuseCurrentMatchParams: opts?.reuseCurrentMatchParams,
+      parseParams: opts?.parseParams,
+    })
+    const lastRoute = last(lightweightResult.matchedRoutes)
+
+    return {
+      routeId: lastRoute?.id,
+      fullPath: lightweightResult.fullPath,
+      pathname: location.pathname,
+      params: lightweightResult.params,
+      search: lightweightResult.search as FullSearchSchema<TRouteTree>,
+      hash: location.hash,
+      location,
     }
   }
 
@@ -1776,18 +1830,30 @@ export class RouterCore<
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
   buildLocation: BuildLocationFn = (opts) => {
+    const buildOpts = opts as InternalBuildNextOptions
+    const buildMode = buildOpts._buildLocationMode ?? 'full'
+    const defaultLinkContext = buildOpts._linkContext
+    const defaultActiveOptions = buildOpts._activeOptions
+
     const build = (
-      dest: BuildNextOptions & {
+      dest: InternalBuildNextOptions & {
         unmaskOnReload?: boolean
       } = {},
     ): ParsedLocation => {
       // We allow the caller to override the current location
       const currentLocation =
-        dest._fromLocation || this.pendingBuiltLocation || this.latestLocation
+        dest._fromLocation ||
+        dest._linkContext?.location ||
+        defaultLinkContext?.location ||
+        this.pendingBuiltLocation ||
+        this.latestLocation
 
-      // Use lightweight matching - only computes what buildLocation needs
-      // (fullPath, search, params) without creating full match objects
-      const lightweightResult = this.matchRoutesLightweight(currentLocation)
+      const currentLinkContext =
+        dest._linkContext ??
+        defaultLinkContext ??
+        this.getCurrentLinkContext(
+          currentLocation as ParsedLocation<FullSearchSchema<TRouteTree>>,
+        )
 
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development
@@ -1797,13 +1863,16 @@ export class RouterCore<
         dest._isNavigate
       ) {
         const allFromMatches = this.getMatchedRoutes(dest.from).matchedRoutes
+        const currentMatches = this.getMatchedRoutes(
+          currentLocation.pathname,
+        ).matchedRoutes
 
-        const matchedFrom = findLast(lightweightResult.matchedRoutes, (d) => {
+        const matchedFrom = findLast(currentMatches, (d) => {
           return comparePaths(d.fullPath, dest.from!)
         })
 
         const matchedCurrent = findLast(allFromMatches, (d) => {
-          return comparePaths(d.fullPath, lightweightResult.fullPath)
+          return comparePaths(d.fullPath, currentLinkContext.fullPath)
         })
 
         // for from to be invalid it shouldn't just be unmatched to currentLocation
@@ -1816,15 +1885,15 @@ export class RouterCore<
       const defaultedFromPath =
         dest.unsafeRelative === 'path'
           ? currentLocation.pathname
-          : (dest.from ?? lightweightResult.fullPath)
+          : (dest.from ?? currentLinkContext.fullPath)
 
       // ensure this includes the basePath if set
       const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
 
       // From search should always use the current location
-      const fromSearch = lightweightResult.search
+      const fromSearch = currentLinkContext.search
       // Same with params. It can't hurt to provide as many as possible
-      const fromParams = { ...lightweightResult.params }
+      const fromParams = { ...currentLinkContext.params }
 
       // Resolve the next to
       // ensure this includes the basePath if set
@@ -1893,46 +1962,61 @@ export class RouterCore<
 
       // Resolve the next search
       let nextSearch = fromSearch
-      if (opts._includeValidateSearch && this.options.search?.strict) {
-        const validatedSearch = {}
-        destRoutes.forEach((route) => {
-          if (route.options.validateSearch) {
-            try {
-              Object.assign(
-                validatedSearch,
-                validateSearch(route.options.validateSearch, {
-                  ...validatedSearch,
-                  ...nextSearch,
-                }),
-              )
-            } catch {
-              // ignore errors here because they are already handled in matchRoutes
+      const activeOptions = dest._activeOptions ?? defaultActiveOptions
+      const includeValidateSearch =
+        dest._includeValidateSearch ?? buildOpts._includeValidateSearch
+      const shouldResolveSearch =
+        buildMode !== 'active' ||
+        !!this.rewrite ||
+        (activeOptions?.includeSearch ?? true)
+
+      if (shouldResolveSearch) {
+        if (includeValidateSearch && this.options.search?.strict) {
+          const validatedSearch = {}
+          destRoutes.forEach((route) => {
+            if (route.options.validateSearch) {
+              try {
+                Object.assign(
+                  validatedSearch,
+                  validateSearch(route.options.validateSearch, {
+                    ...validatedSearch,
+                    ...nextSearch,
+                  }),
+                )
+              } catch {
+                // ignore errors here because they are already handled in matchRoutes
+              }
             }
-          }
+          })
+          nextSearch = validatedSearch
+        }
+
+        nextSearch = applySearchMiddleware({
+          search: nextSearch,
+          dest,
+          destRoutes,
+          _includeValidateSearch: includeValidateSearch,
         })
-        nextSearch = validatedSearch
+
+        // Replace the equal deep
+        nextSearch = replaceEqualDeep(fromSearch, nextSearch)
       }
 
-      nextSearch = applySearchMiddleware({
-        search: nextSearch,
-        dest,
-        destRoutes,
-        _includeValidateSearch: opts._includeValidateSearch,
-      })
-
-      // Replace the equal deep
-      nextSearch = replaceEqualDeep(fromSearch, nextSearch)
-
       // Stringify the next search
-      const searchStr = this.options.stringifySearch(nextSearch)
+      const searchStr = shouldResolveSearch
+        ? this.options.stringifySearch(nextSearch)
+        : ''
 
       // Resolve the next hash
-      const hash =
-        dest.hash === true
+      const shouldResolveHash =
+        buildMode !== 'active' || !!this.rewrite || !!activeOptions?.includeHash
+      const hash = shouldResolveHash
+        ? dest.hash === true
           ? currentLocation.hash
           : dest.hash
             ? functionalUpdate(dest.hash, currentLocation.hash)
             : undefined
+        : undefined
 
       // Resolve the next hash string
       const hashStr = hash ? `#${hash}` : ''
@@ -1993,8 +2077,8 @@ export class RouterCore<
     }
 
     const buildWithMatches = (
-      dest: BuildNextOptions = {},
-      maskedDest?: BuildNextOptions,
+      dest: InternalBuildNextOptions = {},
+      maskedDest?: InternalBuildNextOptions,
     ) => {
       const next = build(dest)
 
@@ -2026,7 +2110,7 @@ export class RouterCore<
                   : Object.assign(params, functionalUpdate(maskParams, params))
 
             maskedDest = {
-              from: opts.from,
+              from: buildOpts.from,
               ...maskProps,
               params: nextParams,
             }
@@ -2042,14 +2126,18 @@ export class RouterCore<
       return next
     }
 
-    if (opts.mask) {
-      return buildWithMatches(opts, {
-        from: opts.from,
-        ...opts.mask,
+    if (buildMode === 'active') {
+      return build(buildOpts)
+    }
+
+    if (buildOpts.mask) {
+      return buildWithMatches(buildOpts, {
+        from: buildOpts.from,
+        ...buildOpts.mask,
       })
     }
 
-    return buildWithMatches(opts)
+    return buildWithMatches(buildOpts)
   }
 
   commitLocationPromise: undefined | ControlledPromise<void>
@@ -2384,6 +2472,7 @@ export class RouterCore<
             onReady: async () => {
               // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
               this.startTransition(() => {
+                // eslint-disable-next-line @typescript-eslint/require-await
                 this.startViewTransition(async () => {
                   // this.viewTransitionPromise = createControlledPromise<true>()
 

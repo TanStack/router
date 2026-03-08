@@ -126,15 +126,39 @@ export function useLinkProps<
   const currentSearch = Solid.createMemo(
     () => router.stores.location.state.searchStr,
   )
+  const currentLinkContext = Solid.createMemo(
+    () => router.stores.currentLinkContext.state,
+  )
+  const renderedLinkContext = Solid.createMemo(
+    () => router.stores.renderedLinkContext.state,
+  )
 
   const _options = () => options
 
   const next = Solid.createMemo(() => {
-    // rebuild location when search changes
-    currentSearch()
     const options = _options() as any
+    const linkContext = renderedLinkContext()
     // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(options))
+    return Solid.untrack(() =>
+      router.buildLocation({
+        ...options,
+        _linkContext: linkContext,
+      }),
+    )
+  })
+
+  const activeTarget = Solid.createMemo(() => {
+    const options = _options() as any
+    const linkContext = currentLinkContext()
+    // untrack because router-core will also access stores, which are signals in solid
+    return Solid.untrack(() =>
+      router.buildLocation({
+        ...options,
+        _linkContext: linkContext,
+        _buildLocationMode: 'active',
+        _activeOptions: local.activeOptions,
+      }),
+    )
   })
 
   const hrefOption = Solid.createMemo(() => {
@@ -157,18 +181,7 @@ export function useLinkProps<
     }
   })
 
-  const externalLink = Solid.createMemo(() => {
-    const _href = hrefOption()
-    if (_href?.external) {
-      // Block dangerous protocols for external links
-      if (isDangerousProtocol(_href.href, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
-        }
-        return undefined
-      }
-      return _href.href
-    }
+  const explicitExternalLink = Solid.createMemo(() => {
     const to = _options().to
     const safeInternal = isSafeInternal(to)
     if (safeInternal) return undefined
@@ -187,6 +200,22 @@ export function useLinkProps<
     return undefined
   })
 
+  const externalLink = Solid.createMemo(() => {
+    const _href = hrefOption()
+    if (_href?.external) {
+      // Block dangerous protocols for external links
+      if (isDangerousProtocol(_href.href, router.protocolAllowlist)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
+        }
+        return undefined
+      }
+      return _href.href
+    }
+
+    return explicitExternalLink()
+  })
+
   const preload = Solid.createMemo(() => {
     if (_options().reloadDocument || externalLink()) {
       return false
@@ -197,10 +226,10 @@ export function useLinkProps<
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   const isActive = Solid.createMemo(() => {
-    if (externalLink()) return false
+    if (explicitExternalLink() || activeTarget().external) return false
     const activeOptions = local.activeOptions
     const current = currentLocation()
-    const nextLocation = next()
+    const nextLocation = activeTarget()
 
     if (activeOptions?.exact) {
       const testExact = exactPathTest(

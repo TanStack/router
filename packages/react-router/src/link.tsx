@@ -381,27 +381,25 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const currentLocation = useStore(
     router.stores.location,
-    (location) => ({
-      pathname: location.pathname,
-      search: location.search,
-      hash: location.hash,
-    }),
-    shallow,
+    (l) => l,
+    (prev, next) => prev.href === next.href,
   )
-  // Subscribe to current leaf match identity for relative-link resolution.
-  // This avoids broad match-array subscriptions while still invalidating href
-  // computation when the leaf route/params context changes.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLeafMatchId = useStore(router.stores.lastMatchId, (id) => id)
+  const currentLinkContext = useStore(
+    router.stores.currentLinkContext,
+    (l) => l,
+  )
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const renderedLinkContext = useStore(
+    router.stores.renderedLinkContext,
+    (l) => l,
+  )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
     () => options,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      router,
-      currentLeafMatchId,
-      currentLocation.hash,
       options.from,
       options._fromLocation,
       options.hash,
@@ -416,8 +414,31 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const next = React.useMemo(
-    () => router.buildLocation({ ..._options } as any),
-    [router, _options],
+    () =>
+      router.buildLocation({
+        ..._options,
+        _linkContext: renderedLinkContext,
+      } as any),
+    [router, _options, renderedLinkContext],
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const activeTarget = React.useMemo(
+    () =>
+      router.buildLocation({
+        ..._options,
+        _linkContext: currentLinkContext,
+        _buildLocationMode: 'active',
+        _activeOptions: activeOptions,
+      } as any),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      router,
+      _options,
+      currentLinkContext,
+      activeOptions?.includeHash,
+      activeOptions?.includeSearch,
+    ],
   )
 
   // Use publicHref - it contains the correct href for display
@@ -443,19 +464,7 @@ export function useLinkProps<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const externalLink = React.useMemo(() => {
-    if (hrefOption?.external) {
-      // Block dangerous protocols for external links
-      if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(
-            `Blocked Link with dangerous protocol: ${hrefOption.href}`,
-          )
-        }
-        return undefined
-      }
-      return hrefOption.href
-    }
+  const explicitExternalLink = React.useMemo(() => {
     const safeInternal = isSafeInternal(to)
     if (safeInternal) return undefined
     if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
@@ -471,15 +480,33 @@ export function useLinkProps<
       return to
     } catch {}
     return undefined
-  }, [to, hrefOption, router.protocolAllowlist])
+  }, [to, router.protocolAllowlist])
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const externalLink = React.useMemo(() => {
+    if (hrefOption?.external) {
+      // Block dangerous protocols for external links
+      if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `Blocked Link with dangerous protocol: ${hrefOption.href}`,
+          )
+        }
+        return undefined
+      }
+      return hrefOption.href
+    }
+
+    return explicitExternalLink
+  }, [explicitExternalLink, hrefOption, router.protocolAllowlist])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isActive = React.useMemo(() => {
-    if (externalLink) return false
+    if (explicitExternalLink || activeTarget.external) return false
     if (activeOptions?.exact) {
       const testExact = exactPathTest(
         currentLocation.pathname,
-        next.pathname,
+        activeTarget.pathname,
         router.basepath,
       )
       if (!testExact) {
@@ -490,7 +517,10 @@ export function useLinkProps<
         currentLocation.pathname,
         router.basepath,
       )
-      const nextPathSplit = removeTrailingSlash(next.pathname, router.basepath)
+      const nextPathSplit = removeTrailingSlash(
+        activeTarget.pathname,
+        router.basepath,
+      )
 
       const pathIsFuzzyEqual =
         currentPathSplit.startsWith(nextPathSplit) &&
@@ -503,17 +533,21 @@ export function useLinkProps<
     }
 
     if (activeOptions?.includeSearch ?? true) {
-      const searchTest = deepEqual(currentLocation.search, next.search, {
-        partial: !activeOptions?.exact,
-        ignoreUndefined: !activeOptions?.explicitUndefined,
-      })
+      const searchTest = deepEqual(
+        currentLocation.search,
+        activeTarget.search,
+        {
+          partial: !activeOptions?.exact,
+          ignoreUndefined: !activeOptions?.explicitUndefined,
+        },
+      )
       if (!searchTest) {
         return false
       }
     }
 
     if (activeOptions?.includeHash) {
-      return isHydrated && currentLocation.hash === next.hash
+      return isHydrated && currentLocation.hash === activeTarget.hash
     }
     return true
   }, [
@@ -521,12 +555,13 @@ export function useLinkProps<
     activeOptions?.explicitUndefined,
     activeOptions?.includeHash,
     activeOptions?.includeSearch,
+    activeTarget.external,
+    activeTarget.hash,
+    activeTarget.pathname,
+    activeTarget.search,
     currentLocation,
-    externalLink,
+    explicitExternalLink,
     isHydrated,
-    next.hash,
-    next.pathname,
-    next.search,
     router.basepath,
   ])
 
@@ -571,13 +606,11 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const doPreload = React.useCallback(() => {
-    router
-      .preloadRoute({ ..._options, _builtLocation: next } as any)
-      .catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
-  }, [router, _options, next])
+    router.preloadRoute({ ..._options } as any).catch((err) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
+  }, [router, _options])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const preloadViewportIoCallback = React.useCallback(

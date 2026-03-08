@@ -210,25 +210,32 @@ export function useLinkProps<
     search: location.search,
     hash: location.hash,
   }))
-  const currentSearch = useStore(
-    router.stores.location,
-    (location) => location.searchStr,
-    { equal: Object.is },
+  const currentLinkContext = useStore(
+    router.stores.currentLinkContext,
+    (l) => l,
   )
-  const from = options.from
-    ? Vue.computed(() => options.from)
-    : useStore(router.stores.lastMatchRouteFullPath, (fullPath) => fullPath)
+  const renderedLinkContext = useStore(
+    router.stores.renderedLinkContext,
+    (l) => l,
+  )
 
-  const _options = Vue.computed(() => ({
-    ...options,
-    from: from.value,
-  }))
+  const _options = Vue.computed(() => options)
 
-  const next = Vue.computed(() => {
-    // Depend on search to rebuild when search changes
-    currentSearch.value
-    return router.buildLocation(_options.value as any)
-  })
+  const next = Vue.computed(() =>
+    router.buildLocation({
+      ..._options.value,
+      _linkContext: renderedLinkContext.value,
+    } as any),
+  )
+
+  const activeTarget = Vue.computed(() =>
+    router.buildLocation({
+      ..._options.value,
+      _linkContext: currentLinkContext.value,
+      _buildLocationMode: 'active',
+      _activeOptions: options.activeOptions,
+    } as any),
+  )
 
   const preload = Vue.computed(() => {
     if (_options.value.reloadDocument) {
@@ -241,14 +248,18 @@ export function useLinkProps<
     () => options.preloadDelay ?? router.options.defaultPreloadDelay ?? 0,
   )
 
-  const isActive = Vue.computed(() =>
-    getIsActive({
+  const isActive = Vue.computed(() => {
+    if (activeTarget.value.external) {
+      return false
+    }
+
+    return getIsActive({
       activeOptions: options.activeOptions,
       loc: currentLocation.value,
-      nextLoc: next.value,
+      nextLoc: activeTarget.value,
       router,
-    }),
-  )
+    })
+  })
 
   const doPreload = () =>
     router.preloadRoute(_options.value as any).catch((err: any) => {

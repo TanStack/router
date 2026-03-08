@@ -6,6 +6,7 @@ import type { FullSearchSchema } from './routeInfo'
 import type { ParsedLocation } from './location'
 import type { AnyRedirect } from './redirect'
 import type { AnyRouteMatch } from './Matches'
+import type { AnySchema } from './validators'
 
 export interface RouterReadableStore<TValue> {
   readonly state: TValue
@@ -40,6 +41,22 @@ type MatchStore = RouterWritableStore<AnyRouteMatch> & {
   routeId?: string
 }
 type ReadableStore<TValue> = RouterReadableStore<TValue>
+
+export interface LinkBuildContext<TSearchObj extends AnySchema = AnySchema> {
+  routeId: string | undefined
+  fullPath: string
+  pathname: string
+  params: Record<string, unknown>
+  search: TSearchObj
+  hash: string
+  location: ParsedLocation<TSearchObj>
+}
+
+type LinkContextFactory<TRouteTree extends AnyRoute> = {
+  getCurrentLinkContext: (
+    location: ParsedLocation<FullSearchSchema<TRouteTree>>,
+  ) => LinkBuildContext<FullSearchSchema<TRouteTree>>
+}
 
 /** SSR non-reactive createMutableStore */
 export function createNonReactiveMutableStore<TValue>(
@@ -95,6 +112,13 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
     resolvedLocationHref: string | undefined
     status: RouterState<TRouteTree>['status']
   }>
+  currentLinkContext: ReadableStore<
+    LinkBuildContext<FullSearchSchema<TRouteTree>>
+  >
+  renderedLinkContext: ReadableStore<
+    LinkBuildContext<FullSearchSchema<TRouteTree>>
+  >
+  buildLocationReactivity: ReadableStore<string>
   __store: RouterReadableStore<RouterState<TRouteTree>>
 
   activeMatchStoresById: Map<string, MatchStore>
@@ -119,6 +143,7 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
 export function createRouterStores<TRouteTree extends AnyRoute>(
   initialState: RouterState<TRouteTree>,
   config: StoreConfig,
+  linkContextFactory: LinkContextFactory<TRouteTree>,
 ): RouterStores<TRouteTree> {
   const { createMutableStore, createReadonlyStore, batch, init } = config
 
@@ -163,6 +188,38 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     resolvedLocationHref: resolvedLocation.state?.href,
     status: status.state,
   }))
+  const currentLinkContext = createReadonlyStore(() =>
+    linkContextFactory.getCurrentLinkContext(location.state),
+  )
+  const renderedLinkContext = createReadonlyStore(() => {
+    const renderedLocation = resolvedLocation.state || location.state
+    const id = lastMatchId.state
+    const match = id ? activeMatchStoresById.get(id)?.state : undefined
+
+    if (!match) {
+      return linkContextFactory.getCurrentLinkContext(renderedLocation)
+    }
+
+    return {
+      routeId: match.routeId,
+      fullPath: match.fullPath,
+      pathname: match.pathname,
+      params: match.params,
+      search: match.search,
+      hash: renderedLocation.hash,
+      location: renderedLocation,
+    }
+  })
+  const buildLocationReactivity = createReadonlyStore(() => {
+    const context = renderedLinkContext.state
+    return [
+      context.routeId ?? '',
+      context.fullPath,
+      JSON.stringify(context.params),
+      JSON.stringify(context.search),
+      context.hash,
+    ].join('\0')
+  })
 
   // compatibility "big" state store
   const __store = createReadonlyStore(() => ({
@@ -237,6 +294,9 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     lastMatchId,
     hasPendingMatches,
     matchRouteReactivity,
+    currentLinkContext,
+    renderedLinkContext,
+    buildLocationReactivity,
 
     // non-reactive state
     activeMatchStoresById,

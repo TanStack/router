@@ -1635,6 +1635,98 @@ describe('Link', () => {
     expect(screen.getByTestId('step2-link')).toHaveClass('active')
   })
 
+  test('updates active state before rebuilding href when inherited params change', async () => {
+    const rootRoute = createRootRoute()
+    let step1LoadCount = 0
+    let resolvePendingStep1Load: (() => void) | undefined
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/post/$postId',
+      component: () => <Outlet />,
+    })
+
+    function Step1Component() {
+      const { postId } = useParams({ strict: false })
+      const otherPostId = postId === '1' ? '2' : '1'
+
+      return (
+        <>
+          <Link
+            data-testid="self-link"
+            from="/post/$postId/step1"
+            to="."
+            params={(prev: any) => prev}
+            activeProps={{ className: 'active' }}
+          >
+            Current step
+          </Link>
+          <Link
+            data-testid="switch-post-link"
+            from="/post/$postId/step1"
+            to="."
+            params={{ postId: otherPostId }}
+          >{`Go to post ${otherPostId}`}</Link>
+          <span>{`Post ${postId} step1`}</span>
+        </>
+      )
+    }
+
+    const step1Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step1',
+      loader: async () => {
+        if (step1LoadCount++ === 0) {
+          return
+        }
+
+        await new Promise<void>((resolve) => {
+          resolvePendingStep1Load = resolve
+        })
+      },
+      component: Step1Component,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([postRoute.addChildren([step1Route])]),
+      history: createMemoryHistory({
+        initialEntries: ['/post/1/step1'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const selfLink = await screen.findByTestId('self-link')
+
+    expect(await screen.findByText('Post 1 step1')).toBeInTheDocument()
+    expect(selfLink).toHaveClass('active')
+    expect(selfLink).toHaveAttribute('href', '/post/1/step1')
+
+    await act(() => fireEvent.click(screen.getByTestId('switch-post-link')))
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/post/2/step1')
+    })
+
+    expect(resolvePendingStep1Load).toBeDefined()
+    expect(screen.getByTestId('self-link')).toHaveClass('active')
+    expect(screen.getByTestId('self-link')).toHaveAttribute(
+      'href',
+      '/post/1/step1',
+    )
+
+    await act(async () => {
+      resolvePendingStep1Load?.()
+    })
+
+    expect(await screen.findByText('Post 2 step1')).toBeInTheDocument()
+    expect(screen.getByTestId('self-link')).toHaveClass('active')
+    expect(screen.getByTestId('self-link')).toHaveAttribute(
+      'href',
+      '/post/2/step1',
+    )
+  })
+
   test('when navigating from /posts to ./$postId', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
