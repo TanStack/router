@@ -33,6 +33,7 @@ type InnerLoadContext = {
   updateMatch: UpdateMatchFn
   matches: Array<AnyRouteMatch>
   preload?: boolean
+  forceStaleReload?: boolean
   onReady?: () => Promise<void>
   sync?: boolean
 }
@@ -166,7 +167,10 @@ const shouldSkipLoader = (
   inner: InnerLoadContext,
   matchId: string,
 ): boolean => {
-  const match = inner.router.getMatch(matchId)!
+  const match = inner.router.getMatch(matchId)
+  if (!match) {
+    return true
+  }
   // upon hydration, we skip the loader if the match has been dehydrated on the server
   if (!(isServer ?? inner.router.isServer) && match._nonReactive.dehydrated) {
     return true
@@ -177,6 +181,36 @@ const shouldSkipLoader = (
   }
 
   return false
+}
+
+const shouldReloadStaleMatch = (
+  inner: InnerLoadContext,
+  match: AnyRouteMatch,
+): boolean => {
+  if (inner.forceStaleReload) {
+    return true
+  }
+
+  if (match.cause === 'enter') {
+    return true
+  }
+
+  return !!match._nonReactive.loaderKeyChanged
+}
+
+const syncMatchContext = (
+  inner: InnerLoadContext,
+  matchId: string,
+  index: number,
+): void => {
+  const nextContext = buildMatchContext(inner, index)
+
+  inner.updateMatch(matchId, (prev) => {
+    return {
+      ...prev,
+      context: nextContext,
+    }
+  })
 }
 
 const handleSerialError = (
@@ -479,8 +513,6 @@ const executeBeforeLoad = (
 
     batch(() => {
       pending()
-      // Only store __beforeLoadContext here, don't update context yet
-      // Context will be updated in loadRouteMatch after loader completes
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
         __beforeLoadContext: beforeLoadContext,
@@ -787,8 +819,11 @@ const loadRouteMatch = async (
 
     // If the route is successful and still fresh, just resolve
     const { status, invalid } = match
+    const staleMatchShouldReload =
+      age > staleAge && shouldReloadStaleMatch(inner, match)
     loaderShouldRunAsync =
-      status === 'success' && (invalid || (shouldReload ?? age > staleAge))
+      status === 'success' &&
+      (invalid || (shouldReload ?? staleMatchShouldReload))
     if (preload && route.options.preload === false) {
       // Do nothing
     } else if (loaderShouldRunAsync && !inner.sync) {
@@ -808,6 +843,8 @@ const loadRouteMatch = async (
       })()
     } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
       await runLoader(inner, matchPromises, matchId, index, route)
+    } else {
+      syncMatchContext(inner, matchId, index)
     }
   }
 
@@ -817,8 +854,15 @@ const loadRouteMatch = async (
   const route = inner.router.looseRoutesById[routeId]!
 
   if (shouldSkipLoader(inner, matchId)) {
+    const match = inner.router.getMatch(matchId)
+    if (!match) {
+      return inner.matches[index]!
+    }
+
+    syncMatchContext(inner, matchId, index)
+
     if (isServer ?? inner.router.isServer) {
-      return inner.router.getMatch(matchId)!
+      return match
     }
   } else {
     const prevMatch = inner.router.getMatch(matchId)! // This is where all of the stale-while-revalidate magic happens
@@ -886,6 +930,7 @@ export async function loadMatches(arg: {
   location: ParsedLocation
   matches: Array<AnyRouteMatch>
   preload?: boolean
+  forceStaleReload?: boolean
   onReady?: () => Promise<void>
   updateMatch: UpdateMatchFn
   sync?: boolean

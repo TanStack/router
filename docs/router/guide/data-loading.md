@@ -154,7 +154,7 @@ To control router dependencies and "freshness", TanStack Router provides a pleth
 
 ### ⚠️ Some Important Defaults
 
-- By default, the `staleTime` is set to `0`, meaning that the route's data will always be considered stale and will always be reloaded in the background when the route is rematched.
+- By default, the `staleTime` is set to `0`, meaning that the route's data is immediately considered stale. Stale matches are reloaded in the background when the route is entered again, when its loader key changes (path params used by the route or `loaderDeps`), or when `router.load()` is called explicitly.
 - By default, a previously preloaded route is considered fresh for **30 seconds**. This means if a route is preloaded, then preloaded again within 30 seconds, the second preload will be ignored. This prevents unnecessary preloads from happening too frequently. **When a route is loaded normally, the standard `staleTime` is used.**
 - By default, the `gcTime` is set to **30 minutes**, meaning that any route data that has not been accessed in 30 minutes will be garbage collected and removed from the cache.
 - `router.invalidate()` will force all active routes to reload their loaders immediately and mark every cached route's data as stale.
@@ -201,7 +201,7 @@ export const Route = createFileRoute('/posts')({
 
 ### Using `staleTime` to control how long data is considered fresh
 
-By default, `staleTime` for navigations is set to `0`ms (and 30 seconds for preloads) which means that the route's data will always be considered stale and will always be reloaded in the background when the route is matched and navigated to.
+By default, `staleTime` for navigations is set to `0`ms (and 30 seconds for preloads) which means that the route's data will always be considered stale. When a stale route is entered again, its loader key changes, or `router.load()` is called explicitly, the route will reload in the background.
 
 **This is a good default for most use cases, but you may find that some route data is more static or potentially expensive to load.** In these cases, you can use the `staleTime` option to control how long the route's data is considered fresh for navigations. Let's take a look at an example:
 

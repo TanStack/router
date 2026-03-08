@@ -1513,6 +1513,9 @@ export class RouterCore<
       const existingMatch = this.getMatch(matchId)
 
       const previousMatch = previousMatchesByRouteId.get(route.id)
+      const loaderKeyChanged = previousMatch
+        ? previousMatch.id !== matchId
+        : false
 
       const strictParams = existingMatch?._strictParams ?? usedParams
 
@@ -1545,6 +1548,10 @@ export class RouterCore<
       if (existingMatch) {
         match = {
           ...existingMatch,
+          _nonReactive: {
+            ...existingMatch._nonReactive,
+            loaderKeyChanged,
+          },
           cause,
           params: previousMatch?.params ?? routeParams,
           _strictParams: strictParams,
@@ -1583,6 +1590,7 @@ export class RouterCore<
           __routeContext: undefined,
           _nonReactive: {
             loadPromise: createControlledPromise(),
+            loaderKeyChanged,
           },
           __beforeLoadContext: undefined,
           context: {},
@@ -2364,6 +2372,7 @@ export class RouterCore<
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
     let loadPromise: Promise<void>
+    const previousLocation = this.state.resolvedLocation ?? this.state.location
 
     // eslint-disable-next-line prefer-const
     loadPromise = new Promise<void>((resolve) => {
@@ -2394,6 +2403,7 @@ export class RouterCore<
           await loadMatches({
             router: this,
             sync: opts?.sync,
+            forceStaleReload: previousLocation.href === next.href,
             matches: this.state.pendingMatches as Array<AnyRouteMatch>,
             location: next,
             updateMatch: this.updateMatch,
