@@ -205,28 +205,24 @@ export function useLinkProps<
     ) as unknown as LinkHTMLAttributes
   }
 
-  const currentLocation = useStore(router.stores.location, (location) => ({
-    pathname: location.pathname,
-    search: location.search,
-    hash: location.hash,
-  }))
-  const currentSearch = useStore(
+  const currentLocation = useStore(
     router.stores.location,
-    (location) => location.searchStr,
-    { equal: Object.is },
+    (l) => l,
+    // we need custom equality because `location` changes a lot, it can destroy perf
+    { equal: (prev, next) => prev.href === next.href },
   )
-  const from = options.from
-    ? Vue.computed(() => options.from)
-    : useStore(router.stores.lastMatchRouteFullPath, (fullPath) => fullPath)
+  // Subscribe to resolvedLocation for relative-link resolution.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const buildLocationKey = useStore(
+    router.stores.buildLocationReactivity,
+    (l) => l,
+  )
 
-  const _options = Vue.computed(() => ({
-    ...options,
-    from: from.value,
-  }))
+  const _options = Vue.computed(() => options)
 
   const next = Vue.computed(() => {
     // Depend on search to rebuild when search changes
-    currentSearch.value
+    buildLocationKey.value
     return router.buildLocation(_options.value as any)
   })
 

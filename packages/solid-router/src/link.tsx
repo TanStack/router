@@ -122,16 +122,17 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  const currentLocation = Solid.createMemo(() => router.stores.location.state)
-  const currentSearch = Solid.createMemo(
-    () => router.stores.location.state.searchStr,
+  const currentLocation = Solid.createMemo(
+    () => router.stores.location.state,
+    undefined,
+    { equals: (prev, next) => prev.href === next.href },
   )
 
   const _options = () => options
 
   const next = Solid.createMemo(() => {
-    // rebuild location when search changes
-    currentSearch()
+    // rebuild location when relevant state
+    router.stores.buildLocationReactivity.state
     const options = _options() as any
     // untrack because router-core will also access stores, which are signals in solid
     return Solid.untrack(() => router.buildLocation(options))

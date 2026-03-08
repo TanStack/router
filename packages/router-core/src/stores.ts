@@ -95,6 +95,7 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
     resolvedLocationHref: string | undefined
     status: RouterState<TRouteTree>['status']
   }>
+  buildLocationReactivity: ReadableStore<string>
   __store: RouterReadableStore<RouterState<TRouteTree>>
 
   activeMatchStoresById: Map<string, MatchStore>
@@ -163,6 +164,14 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     resolvedLocationHref: resolvedLocation.state?.href,
     status: status.state,
   }))
+  const buildLocationReactivity = createReadonlyStore(() => {
+    const id = lastMatchId.state
+    if (!id) return ''
+    const store = activeMatchStoresById.get(id)
+    if (!store) return ''
+    const { pathname, search } = store.state
+    return pathname + '\0' + JSON.stringify(search) + '\0' + location.state.hash
+  })
 
   // compatibility "big" state store
   const __store = createReadonlyStore(() => ({
@@ -237,6 +246,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     lastMatchId,
     hasPendingMatches,
     matchRouteReactivity,
+    buildLocationReactivity,
 
     // non-reactive state
     activeMatchStoresById,

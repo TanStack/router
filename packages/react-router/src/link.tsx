@@ -381,22 +381,16 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const currentLocation = useStore(
     router.stores.location,
-    (location) => ({
-      pathname: location.pathname,
-      search: location.search,
-      hash: location.hash,
-      href: location.href,
-    }),
+    (l) => l,
     // we need custom equality because `location` changes a lot, it can destroy perf
     // href is the full path of the location, including pathname, search, and hash. Perfect for a key.
     (prev, next) => prev.href === next.href,
   )
   // Subscribe to resolvedLocation for relative-link resolution.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLeafMatchId = useStore(router.stores.lastMatchId, (id) => id)
   const buildLocationKey = useStore(
-    router.stores.activeMatchStoresById.get(currentLeafMatchId!),
-    (m) => m?.pathname + JSON.stringify(m?.search),
+    router.stores.buildLocationReactivity,
+    (l) => l,
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -419,7 +413,8 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const next = React.useMemo(
     () => router.buildLocation({ ..._options } as any),
-    [router, _options, buildLocationKey, currentLocation.hash],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [router, _options, buildLocationKey],
   )
 
   // Use publicHref - it contains the correct href for display
