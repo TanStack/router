@@ -11950,6 +11950,9 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3
     devDependencies:
+      '@tanstack/intent':
+        specifier: ^0.0.14
+        version: 0.0.14
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -12066,6 +12069,10 @@ importers:
       vite:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+    devDependencies:
+      '@tanstack/intent':
+        specifier: ^0.0.14
+        version: 0.0.14
 
   packages/react-start-client:
     dependencies:
@@ -12178,6 +12185,9 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3
     devDependencies:
+      '@tanstack/intent':
+        specifier: ^0.0.14
+        version: 0.0.14
       esbuild:
         specifier: ^0.25.0
         version: 0.25.4
@@ -12335,6 +12345,9 @@ importers:
         specifier: ^3.24.2
         version: 3.25.57
     devDependencies:
+      '@tanstack/intent':
+        specifier: ^0.0.14
+        version: 0.0.14
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
@@ -12443,6 +12456,9 @@ importers:
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(solid-js@1.9.10)
+      '@tanstack/intent':
+        specifier: ^0.0.14
+        version: 0.0.14
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -12542,6 +12558,9 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
     devDependencies:
+      '@tanstack/intent':
+        specifier: ^0.0.14
+        version: 0.0.14
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
@@ -12638,6 +12657,9 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3
     devDependencies:
+      '@tanstack/intent':
+        specifier: ^0.0.14
+        version: 0.0.14
       vite:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -12754,6 +12776,9 @@ importers:
       '@standard-schema/spec':
         specifier: ^1.0.0
         version: 1.0.0
+      '@tanstack/intent':
+        specifier: ^0.0.14
+        version: 0.0.14
       cookie-es:
         specifier: ^2.0.0
         version: 2.0.0
@@ -12819,6 +12844,9 @@ importers:
 
   packages/virtual-file-routes:
     devDependencies:
+      '@tanstack/intent':
+        specifier: ^0.0.14
+        version: 0.0.14
       vite:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -12850,6 +12878,9 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3
     devDependencies:
+      '@tanstack/intent':
+        specifier: ^0.0.14
+        version: 0.0.14
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -12949,6 +12980,9 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
     devDependencies:
+      '@tanstack/intent':
+        specifier: ^0.0.14
+        version: 0.0.14
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
@@ -18038,6 +18072,10 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       eslint: ^9.22.0
+
+  '@tanstack/intent@0.0.14':
+    resolution: {integrity: sha512-83cjen+tYll6z0MIN0JC9GuMljUkfYfHFDOLhmROz4XMmbD/0ZjvKNOsFgpO7eq957XHB/qyK+hCO+3OS/D6HQ==}
+    hasBin: true
 
   '@tanstack/match-sorter-utils@8.19.4':
     resolution: {integrity: sha512-Wo1iKt2b9OT7d+YGhvEPD3DXvPv2etTusIMhMUoG7fbhmxcXCtIjJDEygy91Y2JFlwGyjqiBPRozme7UD8hoqg==}
@@ -30979,6 +31017,10 @@ snapshots:
       - eslint-import-resolver-node
       - supports-color
       - typescript
+
+  '@tanstack/intent@0.0.14':
+    dependencies:
+      yaml: 2.8.1
 
   '@tanstack/match-sorter-utils@8.19.4':
     dependencies:
