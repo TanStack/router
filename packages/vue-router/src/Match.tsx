@@ -229,7 +229,7 @@ export const Match = Vue.defineComponent({
 // On Rendered can't happen above the root layout because it actually
 // renders a dummy dom element to track the rendered state of the app.
 // We render a script tag with a key that changes based on the current
-// location state.key. Also, because it's below the root layout, it
+// location state.__TSR_key. Also, because it's below the root layout, it
 // allows us to fire onRendered events even after a hydration mismatch
 // error that occurred above the root layout (like bad head/link tags,
 // which is common).
@@ -240,17 +240,23 @@ const OnRendered = Vue.defineComponent({
 
     const location = useStore(
       router.stores.resolvedLocation,
-      (resolvedLocation) => resolvedLocation?.state.key,
+      (resolvedLocation) => resolvedLocation?.state.__TSR_key,
     )
+
+    let prevHref: string | undefined
 
     Vue.watch(
       location,
       () => {
         if (location.value) {
-          router.emit({
-            type: 'onRendered',
-            ...getLocationChangeInfo(router.state),
-          })
+          const currentHref = router.latestLocation.href
+          if (prevHref === undefined || prevHref !== currentHref) {
+            router.emit({
+              type: 'onRendered',
+              ...getLocationChangeInfo(router.state),
+            })
+            prevHref = currentHref
+          }
         }
       },
       { immediate: true },
