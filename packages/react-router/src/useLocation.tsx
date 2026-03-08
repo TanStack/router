@@ -59,8 +59,10 @@ export function useLocation<
   }
 
   const previousResult =
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
     useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   return useStore(router.stores.location, (location) => {
     const selected = (
       opts?.select ? opts.select(location as any) : location
