@@ -52,7 +52,7 @@ export const renderRouterToStream = async ({
     readable as unknown as ReadableStream,
   )
   return new Response(responseStream as any, {
-    status: router.state.statusCode,
+    status: router.stores.statusCode.state,
     headers: responseHeaders,
   })
 }

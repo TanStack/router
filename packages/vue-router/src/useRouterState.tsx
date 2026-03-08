@@ -42,7 +42,9 @@ export function useRouterState<
   const _isServer = isServer ?? router.isServer
 
   if (_isServer) {
-    const state = router.state as RouterState<TRouter['routeTree']>
+    const state = router.stores.__store.state as RouterState<
+      TRouter['routeTree']
+    >
     return Vue.ref(opts?.select ? opts.select(state) : state) as Vue.Ref<
       UseRouterStateResult<TRouter, TSelected>
     >

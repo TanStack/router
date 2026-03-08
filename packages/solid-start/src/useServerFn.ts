@@ -16,7 +16,7 @@ export function useServerFn<T extends (...deps: Array<any>) => Promise<any>>(
       return res
     } catch (err) {
       if (isRedirect(err)) {
-        err.options._fromLocation = router.state.location
+        err.options._fromLocation = router.stores.location.state
         return router.navigate(router.resolveRedirect(err).options)
       }
 

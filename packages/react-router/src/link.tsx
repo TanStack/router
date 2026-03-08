@@ -102,7 +102,7 @@ export function useLinkProps<
   //
   // For SSR parity (to avoid hydration errors), we still compute the link's
   // active status on the server, but we avoid creating any router-state
-  // subscriptions by reading from `router.state` directly.
+  // subscriptions by reading from the location store directly.
   //
   // Note: `location.hash` is not available on the server.
   // ==========================================================================
@@ -204,7 +204,7 @@ export function useLinkProps<
     const isActive = (() => {
       if (externalLink) return false
 
-      const currentLocation = router.state.location
+      const currentLocation = router.stores.location.state
 
       const exact = activeOptions?.exact ?? false
 

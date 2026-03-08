@@ -197,7 +197,10 @@ function OnRendered() {
     Solid.on([location], () => {
       router.emit({
         type: 'onRendered',
-        ...getLocationChangeInfo(router.state),
+        ...getLocationChangeInfo(
+          router.stores.location.state,
+          router.stores.resolvedLocation.state,
+        ),
       })
     }),
   )

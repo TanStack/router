@@ -855,14 +855,14 @@ export type TrailingSlashOption =
 
 /**
  * Compute whether path, href or hash changed between previous and current
- * resolved locations in router state.
+ * resolved locations.
  */
-export function getLocationChangeInfo(routerState: {
-  resolvedLocation?: ParsedLocation
-  location: ParsedLocation
-}) {
-  const fromLocation = routerState.resolvedLocation
-  const toLocation = routerState.location
+export function getLocationChangeInfo(
+  location: ParsedLocation,
+  resolvedLocation?: ParsedLocation,
+) {
+  const fromLocation = resolvedLocation
+  const toLocation = location
   const pathChanged = fromLocation?.pathname !== toLocation.pathname
   const hrefChanged = fromLocation?.href !== toLocation.href
   const hashChanged = fromLocation?.hash !== toLocation.hash
@@ -2365,19 +2365,13 @@ export class RouterCore<
           if (!this.stores.redirect.state) {
             this.emit({
               type: 'onBeforeNavigate',
-              ...getLocationChangeInfo({
-                resolvedLocation: prevLocation,
-                location: next,
-              }),
+              ...getLocationChangeInfo(next, prevLocation),
             })
           }
 
           this.emit({
             type: 'onBeforeLoad',
-            ...getLocationChangeInfo({
-              resolvedLocation: prevLocation,
-              location: next,
-            }),
+            ...getLocationChangeInfo(next, prevLocation),
           })
 
           await loadMatches({
@@ -2582,10 +2576,7 @@ export class RouterCore<
         const resolvedViewTransitionTypes =
           typeof shouldViewTransition.types === 'function'
             ? shouldViewTransition.types(
-                getLocationChangeInfo({
-                  resolvedLocation: prevLocation,
-                  location: next,
-                }),
+                getLocationChangeInfo(next, prevLocation),
               )
             : shouldViewTransition.types
 
