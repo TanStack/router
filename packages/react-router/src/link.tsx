@@ -392,7 +392,9 @@ export function useLinkProps<
   )
   // Subscribe to resolvedLocation for relative-link resolution.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const buildLocationKey = useStore(router.stores.resolvedLocation, (l) => l)
+  const buildLocationKey = useStore(router.stores.resolvedLocation, (l) =>
+    l ? l.pathname + '?' + l.searchStr + '#' + l.hash : currentLocation.str,
+  )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
