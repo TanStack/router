@@ -291,10 +291,12 @@ export const BaseTanStackRouterDevtoolsPanel =
         Array<AnyRouteMatch>
       >([])
       pendingMatches = _pendingMatches
+
       const [_cachedMatches, setCachedMatches] = createSignal<
         Array<AnyRouteMatch>
       >([])
       cachedMatches = _cachedMatches
+
       type Subscribe = (fn: () => void) => { unsubscribe: () => void }
       createEffect(() => {
         const pendingMatchesStore = router().stores.pendingMatchesSnapshot
@@ -306,6 +308,7 @@ export const BaseTanStackRouterDevtoolsPanel =
         })
         onCleanup(() => subscription.unsubscribe())
       })
+
       createEffect(() => {
         const cachedMatchesStore = router().stores.cachedMatchesSnapshot
         setCachedMatches(cachedMatchesStore.state)
