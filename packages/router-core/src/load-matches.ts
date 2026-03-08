@@ -779,6 +779,7 @@ const loadRouteMatch = async (
   async function handleLoader(
     preload: boolean,
     prevMatch: AnyRouteMatch,
+    previousRouteMatchId: string | undefined,
     match: AnyRouteMatch,
     route: AnyRoute,
   ) {
@@ -808,7 +809,8 @@ const loadRouteMatch = async (
       age > staleAge &&
       (!!inner.forceStaleReload ||
         match.cause === 'enter' ||
-        prevMatch.id !== match.id)
+        (previousRouteMatchId !== undefined &&
+          previousRouteMatchId !== match.id))
     loaderShouldRunAsync =
       status === 'success' &&
       (invalid || (shouldReload ?? staleMatchShouldReload))
@@ -854,6 +856,10 @@ const loadRouteMatch = async (
     }
   } else {
     const prevMatch = inner.router.getMatch(matchId)! // This is where all of the stale-while-revalidate magic happens
+    const previousRouteMatchId =
+      inner.router.state.matches[index]?.routeId === routeId
+        ? inner.router.state.matches[index]!.id
+        : inner.router.state.matches.find((d) => d.routeId === routeId)?.id
     const preload = resolvePreload(inner, matchId)
 
     // there is a loaderPromise, so we are in the middle of a load
@@ -872,7 +878,13 @@ const loadRouteMatch = async (
       }
 
       if (match.status === 'pending') {
-        await handleLoader(preload, prevMatch, match, route)
+        await handleLoader(
+          preload,
+          prevMatch,
+          previousRouteMatchId,
+          match,
+          route,
+        )
       }
     } else {
       const nextPreload =
@@ -886,7 +898,7 @@ const loadRouteMatch = async (
         }))
       }
 
-      await handleLoader(preload, prevMatch, match, route)
+      await handleLoader(preload, prevMatch, previousRouteMatchId, match, route)
     }
   }
   const match = inner.router.getMatch(matchId)!
