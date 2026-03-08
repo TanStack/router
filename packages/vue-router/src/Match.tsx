@@ -243,16 +243,14 @@ const OnRendered = Vue.defineComponent({
       (resolvedLocation) => resolvedLocation?.state.key,
     )
 
-    Vue.watchEffect(
-      () => {
-        if (location.value) {
-          router.emit({
-            type: 'onRendered',
-            ...getLocationChangeInfo(router.state),
-          })
-        }
-      },
-    )
+    Vue.watchEffect(() => {
+      if (location.value) {
+        router.emit({
+          type: 'onRendered',
+          ...getLocationChangeInfo(router.state),
+        })
+      }
+    })
 
     return () => null
   },
