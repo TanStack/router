@@ -1,11 +1,11 @@
 import { isServer } from '@tanstack/router-core/isServer'
 import * as Solid from 'solid-js'
+import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import {
-  replaceEqualDeep,
-  type AnyRouter,
-  type RegisteredRouter,
-  type RouterState,
+import type {
+  AnyRouter,
+  RegisteredRouter,
+  RouterState,
 } from '@tanstack/router-core'
 import type { Accessor } from 'solid-js'
 

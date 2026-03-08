@@ -1,16 +1,16 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
+import { replaceEqualDeep } from '@tanstack/router-core'
 import { nearestMatchContext } from './matchContext'
 import { useRouter } from './useRouter'
-import {
-  replaceEqualDeep,
-  type AnyRouter,
-  type MakeRouteMatch,
-  type MakeRouteMatchUnion,
-  type RegisteredRouter,
-  type StrictOrFrom,
-  type ThrowConstraint,
-  type ThrowOrOptional,
+import type {
+  AnyRouter,
+  MakeRouteMatch,
+  MakeRouteMatchUnion,
+  RegisteredRouter,
+  StrictOrFrom,
+  ThrowConstraint,
+  ThrowOrOptional,
 } from '@tanstack/router-core'
 
 export interface UseMatchBaseOptions<
