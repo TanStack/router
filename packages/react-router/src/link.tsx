@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { shallow, useStore } from '@tanstack/react-store'
+import { useStore } from '@tanstack/react-store'
 import { flushSync } from 'react-dom'
 import {
   deepEqual,
@@ -385,15 +385,18 @@ export function useLinkProps<
       pathname: location.pathname,
       search: location.search,
       hash: location.hash,
-      str: location.pathname + '?' + location.searchStr + '#' + location.hash,
+      href: location.href,
     }),
     // we need custom equality because `location` changes a lot, it can destroy perf
-    (prev, next) => prev.str === next.str,
+    // href is the full path of the location, including pathname, search, and hash. Perfect for a key.
+    (prev, next) => prev.href === next.href,
   )
   // Subscribe to resolvedLocation for relative-link resolution.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const buildLocationKey = useStore(router.stores.resolvedLocation, (l) =>
-    l ? l.pathname + '?' + l.searchStr + '#' + l.hash : currentLocation.str,
+  const currentLeafMatchId = useStore(router.stores.lastMatchId, (id) => id)
+  const buildLocationKey = useStore(
+    router.stores.activeMatchStoresById.get(currentLeafMatchId!),
+    (m) => m?.pathname + JSON.stringify(m?.search),
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -401,7 +404,6 @@ export function useLinkProps<
     () => options,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      router,
       options.from,
       options._fromLocation,
       options.hash,
@@ -417,7 +419,7 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const next = React.useMemo(
     () => router.buildLocation({ ..._options } as any),
-    [router, _options, buildLocationKey],
+    [router, _options, buildLocationKey, currentLocation.hash],
   )
 
   // Use publicHref - it contains the correct href for display
