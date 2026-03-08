@@ -243,23 +243,15 @@ const OnRendered = Vue.defineComponent({
       (resolvedLocation) => resolvedLocation?.state.key,
     )
 
-    let prevHref: string | undefined
-
-    Vue.watch(
-      location,
+    Vue.watchEffect(
       () => {
         if (location.value) {
-          const currentHref = router.latestLocation.href
-          if (prevHref === undefined || prevHref !== currentHref) {
-            router.emit({
-              type: 'onRendered',
-              ...getLocationChangeInfo(router.state),
-            })
-            prevHref = currentHref
-          }
+          router.emit({
+            type: 'onRendered',
+            ...getLocationChangeInfo(router.state),
+          })
         }
       },
-      { immediate: true },
     )
 
     return () => null
