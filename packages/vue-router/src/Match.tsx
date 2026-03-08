@@ -59,9 +59,10 @@ export const Match = Vue.defineComponent({
       router.stores.getMatchStoreByRouteId(routeId),
       (value) => value,
     )
-    const pendingMatchIds = useStore(
-      router.stores.pendingMatchesId,
-      (ids) => ids,
+    const isPendingMatchRef = useStore(
+      router.stores.pendingRouteIds,
+      (pendingRouteIds) => Boolean(pendingRouteIds[routeId]),
+      { equal: Object.is },
     )
     const loadedAt = useStore(router.stores.loadedAt, (value) => value)
 
@@ -127,16 +128,13 @@ export const Match = Vue.defineComponent({
     // MatchInner, Outlet, and useMatch all consume this.
     Vue.provide(routeIdContext, routeId)
 
-    // Provide matchId ref for backward compat and pending check.
+    // Provide matchId ref for backward compat.
     // Derived from the reactive match state — always reflects the current matchId.
     const matchIdRef = Vue.computed(
       () => activeMatch.value?.id ?? props.matchId,
     )
     Vue.provide(matchContext, matchIdRef)
 
-    const isPendingMatchRef = Vue.computed(() =>
-      pendingMatchIds.value.includes(matchIdRef.value),
-    )
     Vue.provide(pendingMatchContext, isPendingMatchRef)
 
     return (): VNode => {
