@@ -128,8 +128,8 @@ export const Match = Vue.defineComponent({
     // MatchInner, Outlet, and useMatch all consume this.
     Vue.provide(routeIdContext, routeId)
 
-    // Provide matchId ref for backward compat.
-    // Derived from the reactive match state — always reflects the current matchId.
+    // Provide reactive nearest-match context for hooks that slice the active
+    // matches array relative to the current match.
     const matchIdRef = Vue.computed(
       () => activeMatch.value?.id ?? props.matchId,
     )
