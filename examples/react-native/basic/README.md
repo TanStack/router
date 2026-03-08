@@ -1,18 +1,45 @@
-# React Native Basic Example
+# TanStack Router for React Native — Basic Example
 
-This example exercises TanStack Router with `react-native-screens` and native stack transitions.
+> **`@tanstack/react-native-router` is currently in alpha.**
 
-## Run
+## Quick Start
 
 ```bash
-pnpm install
-pnpm exec expo start --ios --clear
+# Clone this example
+npx degit TanStack/router/examples/react-native/basic tanstack-rn-router-example
+cd tanstack-rn-router-example
+
+# Install deps
+npm install
+
+# Generate routes
+npx @tanstack/router-cli generate
+
+# Run on iOS
+npx expo run:ios
+
+# Or Android
+npx expo run:android
 ```
 
-Or run route watching + Expo together:
+## Development
+
+Route generation + Expo dev server together:
 
 ```bash
-pnpm dev
+npm run dev
+```
+
+Generate routes manually:
+
+```bash
+npm run routes:generate
+```
+
+Watch for route changes:
+
+```bash
+npm run routes:watch
 ```
 
 ## Deep Link Testing (Simulator)
@@ -44,18 +71,6 @@ Expected behavior:
 - initial launch deep-link push is non-animated by default
 - links received while app is open use `push`
 - router path/search/hash reflect the incoming URL
-
-Route tree generation now uses TanStack Router file-based routing via `tsr`.
-
-```bash
-pnpm routes:generate
-```
-
-For local route authoring with regeneration:
-
-```bash
-pnpm routes:watch
-```
 
 ## Native Route Options
 

@@ -3,17 +3,16 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "sh -c 'pnpm routes:watch & EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start; kill $!'",
-    "routes:generate": "tsr generate",
-    "routes:watch": "tsr watch",
-    "start": "tsr generate && EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start",
-    "android": "tsr generate && EXPO_NO_METRO_WORKSPACE_ROOT=1 expo run:android",
-    "ios": "tsr generate && EXPO_NO_METRO_WORKSPACE_ROOT=1 expo run:ios",
-    "web": "tsr generate && EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start --web"
+    "dev": "sh -c 'npx @tanstack/router-cli watch & expo start; kill $!'",
+    "routes:generate": "npx @tanstack/router-cli generate",
+    "routes:watch": "npx @tanstack/router-cli watch",
+    "start": "npx @tanstack/router-cli generate && expo start",
+    "android": "npx @tanstack/router-cli generate && expo run:android",
+    "ios": "npx @tanstack/router-cli generate && expo run:ios",
+    "web": "npx @tanstack/router-cli generate && expo start --web"
   },
   "dependencies": {
-    "@tanstack/router-core": "workspace:*",
-    "@tanstack/react-native-router": "workspace:*",
+    "@tanstack/react-native-router": "^0.0.1",
     "expo": "~54.0.0",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
@@ -27,7 +26,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/runtime": "^7.25.0",
-    "@tanstack/router-cli": "workspace:*",
+    "@tanstack/router-cli": "^1.163.3",
     "@types/react": "~19.1.0",
     "typescript": "^5.9.3"
   },

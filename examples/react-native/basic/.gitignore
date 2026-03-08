@@ -8,7 +8,9 @@ node_modules/
 dist/
 web-build/
 
-# Native
+# Native build artifacts
+ios/
+android/
 *.orig.*
 *.jks
 *.p8
@@ -33,3 +35,8 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# Lock files (use your own package manager)
+pnpm-lock.yaml
+yarn.lock
+package-lock.json

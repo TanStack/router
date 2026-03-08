@@ -731,6 +731,18 @@ export function NativeScreenMatches() {
               stackAnimation={stackAnimation}
               gestureEnabled={getGestureEnabled(screen)}
               freezeOnBlur
+              sheetAllowedDetents={native?.sheetAllowedDetents}
+              sheetInitialDetentIndex={native?.sheetInitialDetentIndex}
+              sheetGrabberVisible={native?.sheetGrabberVisible}
+              sheetCornerRadius={native?.sheetCornerRadius}
+              sheetLargestUndimmedDetentIndex={
+                native?.sheetLargestUndimmedDetentIndex
+              }
+              sheetExpandsWhenScrolledToEdge={
+                native?.sheetExpandsWhenScrolledToEdge
+              }
+              sheetElevation={native?.sheetElevation}
+              onSheetDetentChanged={native?.onSheetDetentChanged}
               onDismissed={() => {
                 if (!isTop) {
                   return

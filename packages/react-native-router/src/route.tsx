@@ -139,6 +139,66 @@ export interface NativeRouteOptions extends NativeHeaderOptions {
    * @default 'nearest'
    */
   stackMatch?: NativeStackMatch
+
+  // -- Form sheet / bottom sheet detent options --
+  // These only take effect when presentation is 'formSheet'.
+
+  /**
+   * Heights at which the sheet can rest, as fractions of screen height (0–1).
+   * Must be in ascending order. Android supports a maximum of 3 detents.
+   * Use 'fitToContents' to auto-size the sheet to its content.
+   * @default [1.0]
+   */
+  sheetAllowedDetents?: Array<number> | 'fitToContents'
+
+  /**
+   * Index into sheetAllowedDetents for the initial snap position.
+   * Use 'last' to start at the tallest detent.
+   * @default 0
+   */
+  sheetInitialDetentIndex?: number | 'last'
+
+  /**
+   * Show a grabber handle at the top of the sheet.
+   * @platform ios
+   * @default false
+   */
+  sheetGrabberVisible?: boolean
+
+  /**
+   * Corner radius of the sheet in points.
+   * @platform ios
+   */
+  sheetCornerRadius?: number
+
+  /**
+   * Largest detent index that keeps the background undimmed.
+   * Use 'none' to always dim, 'last' to never dim.
+   * @default 'none'
+   */
+  sheetLargestUndimmedDetentIndex?: number | 'none' | 'last'
+
+  /**
+   * Whether scrolling to the edge of a scroll view expands the sheet
+   * to the next larger detent.
+   * @platform ios
+   * @default true
+   */
+  sheetExpandsWhenScrolledToEdge?: boolean
+
+  /**
+   * Shadow elevation for the sheet.
+   * @platform android
+   * @default 24
+   */
+  sheetElevation?: number
+
+  /**
+   * Callback fired when the active detent changes.
+   */
+  onSheetDetentChanged?: (event: {
+    nativeEvent: { index: number; isStable: boolean }
+  }) => void
 }
 
 export type NativeStackState = 'active' | 'paused' | 'detached'
