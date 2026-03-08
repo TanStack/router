@@ -174,6 +174,42 @@ function Home() {
       <div>
         test count: <b data-testid="test-count">{links.length}</b>
       </div>
+      <div>
+        <Link
+          data-testid="nested-inherit-ssr-false-link"
+          to="/posts/pending-inherit"
+          search={{
+            root: {
+              ssr: true,
+              expected: { data: 'server', render: 'server-and-client' },
+            },
+            posts: {
+              ssr: false,
+              expected: { data: 'client', render: 'client-only' },
+            },
+          }}
+        >
+          nested inherit ssr false
+        </Link>
+      </div>
+      <div>
+        <Link
+          data-testid="nested-inherit-data-only-link"
+          to="/posts/pending-data-only-component"
+          search={{
+            root: {
+              ssr: true,
+              expected: { data: 'server', render: 'server-and-client' },
+            },
+            posts: {
+              ssr: 'data-only',
+              expected: { data: 'server', render: 'client-only' },
+            },
+          }}
+        >
+          nested inherit data only
+        </Link>
+      </div>
       <div>{links}</div>
     </>
   )
