@@ -753,6 +753,10 @@ const runLoader = async (
           onErrorError,
         )
       }
+      if (!isRedirect(error) && !isNotFound(error)) {
+        await loadRouteChunk(route, ['errorComponent'])
+      }
+
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
         error,
@@ -1076,7 +1080,7 @@ export async function loadMatches(arg: {
 
     // Ensure the rendering boundary route chunk (and its lazy components, including
     // lazy notFoundComponent) is loaded before we continue to head execution/render.
-    await loadRouteChunk(boundaryRoute)
+    await loadRouteChunk(boundaryRoute, ['notFoundComponent'])
   } else if (!inner.preload) {
     // Clear stale root global-not-found state on normal navigations that do not
     // throw notFound. This must live here (instead of only in runLoader success)
@@ -1106,7 +1110,7 @@ export async function loadMatches(arg: {
       inner.router.looseRoutesById[
         inner.matches[inner.firstBadMatchIndex]!.routeId
       ]!
-    await loadRouteChunk(errorRoute)
+    await loadRouteChunk(errorRoute, ['errorComponent'])
   }
 
   // serially execute heads once after loaders/notFound handling, ensuring
@@ -1145,7 +1149,27 @@ export async function loadMatches(arg: {
   return inner.matches
 }
 
-export async function loadRouteChunk(route: AnyRoute) {
+export type RouteComponentType =
+  | 'component'
+  | 'errorComponent'
+  | 'pendingComponent'
+  | 'notFoundComponent'
+
+async function preloadRouteComponents(
+  route: AnyRoute,
+  componentTypesToLoad: Array<RouteComponentType>,
+) {
+  await Promise.all(
+    componentTypesToLoad.map((type) =>
+      (route.options[type] as any)?.preload?.(),
+    ),
+  )
+}
+
+export function loadRouteChunk(
+  route: AnyRoute,
+  componentTypesToLoad: Array<RouteComponentType> = componentTypes,
+) {
   if (!route._lazyLoaded && route._lazyPromise === undefined) {
     if (route.lazyFn) {
       route._lazyPromise = route.lazyFn().then((lazyRoute) => {
@@ -1160,30 +1184,22 @@ export async function loadRouteChunk(route: AnyRoute) {
     }
   }
 
-  // If for some reason lazy resolves more lazy components...
-  // We'll wait for that before we attempt to preload the
-  // components themselves.
-  if (!route._componentsLoaded && route._componentsPromise === undefined) {
-    const loadComponents = () => {
-      const preloads = []
-      for (const type of componentTypes) {
-        const preload = (route.options[type] as any)?.preload
-        if (preload) preloads.push(preload())
-      }
-      if (preloads.length)
-        return Promise.all(preloads).then(() => {
-          route._componentsLoaded = true
-          route._componentsPromise = undefined // gc promise, we won't need it anymore
-        })
-      route._componentsLoaded = true
-      route._componentsPromise = undefined // gc promise, we won't need it anymore
-      return
-    }
-    route._componentsPromise = route._lazyPromise
-      ? route._lazyPromise.then(loadComponents)
-      : loadComponents()
-  }
-  return route._componentsPromise
+  const runAfterLazy = () =>
+    route._componentsLoaded
+      ? undefined
+      : componentTypesToLoad === componentTypes
+        ? (route._componentsPromise ??= preloadRouteComponents(
+            route,
+            componentTypes,
+          ).then(() => {
+            route._componentsLoaded = true
+            route._componentsPromise = undefined // gc promise, we won't need it anymore
+          }))
+        : preloadRouteComponents(route, componentTypesToLoad)
+
+  return route._lazyPromise
+    ? route._lazyPromise.then(runAfterLazy)
+    : runAfterLazy()
 }
 
 function makeMaybe<TValue, TError>(
@@ -1205,7 +1221,7 @@ export function routeNeedsPreload(route: AnyRoute) {
   return false
 }
 
-export const componentTypes = [
+export const componentTypes: Array<RouteComponentType> = [
   'component',
   'errorComponent',
   'pendingComponent',
