@@ -14,6 +14,7 @@ const config = defineConfig(({ mode }) => {
         watch: false,
         environment: 'node',
         typecheck: { enabled: true },
+        exclude: ['**/errorComponent*'],
         resolve: {
           alias: {
             'solid-js/web': '@solidjs/web',
