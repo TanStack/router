@@ -165,12 +165,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     status: status.state,
   }))
   const buildLocationReactivity = createReadonlyStore(() => {
-    const id = lastMatchId.state
-    if (!id) return ''
-    const store = activeMatchStoresById.get(id)
-    if (!store) return ''
-    const { pathname, search } = store.state
-    return pathname + '\0' + JSON.stringify(search) + '\0' + location.state.hash
+    return location.state.href
   })
 
   // compatibility "big" state store
