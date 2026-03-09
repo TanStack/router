@@ -556,36 +556,38 @@ describe('Link', () => {
       let postLoadCount = 0
 
       const rootRoute = createRootRoute({
-        component: () => {
-          const { postId } = useParams({ strict: false })
-          const nextPostId = postId === '1' ? '2' : '1'
-
-          return (
-            <>
-              <Link
-                data-testid="current-post"
-                from="/posts/$postId"
-                to="."
-                params={true}
-                activeOptions={{ exact: true }}
-                activeProps={{ className: 'active' }}
-                inactiveProps={{ className: 'inactive' }}
-              >
-                Current post
-              </Link>
-              <Link
-                data-testid="switch-post"
-                from="/posts/$postId"
-                to="."
-                params={{ postId: nextPostId }}
-              >
-                Switch post
-              </Link>
-              <Outlet />
-            </>
-          )
-        },
+        component: CurrentPostLinks,
       })
+
+      function CurrentPostLinks() {
+        const { postId } = useParams({ strict: false })
+        const nextPostId = postId === '1' ? '2' : '1'
+
+        return (
+          <>
+            <Link
+              data-testid="current-post"
+              from="/posts/$postId"
+              to="."
+              params={true}
+              activeOptions={{ exact: true }}
+              activeProps={{ className: 'active' }}
+              inactiveProps={{ className: 'inactive' }}
+            >
+              Current post
+            </Link>
+            <Link
+              data-testid="switch-post"
+              from="/posts/$postId"
+              to="."
+              params={{ postId: nextPostId }}
+            >
+              Switch post
+            </Link>
+            <Outlet />
+          </>
+        )
+      }
 
       const postRoute = createRoute({
         getParentRoute: () => rootRoute,
@@ -594,11 +596,13 @@ describe('Link', () => {
           postLoadCount += 1
           return postLoadCount === 1 ? Promise.resolve() : postLoader.promise
         },
-        component: () => {
-          const { postId } = useParams({ strict: false })
-          return <h1>{`Post ${postId}`}</h1>
-        },
+        component: PostPage,
       })
+
+      function PostPage() {
+        const { postId } = useParams({ strict: false })
+        return <h1>{`Post ${postId}`}</h1>
+      }
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postRoute]),
@@ -635,45 +639,47 @@ describe('Link', () => {
       let postsLoadCount = 0
 
       const rootRoute = createRootRoute({
-        component: () => {
-          const search = useSearch({ strict: false })
-          const nextPage = Number(search.page ?? 1) === 1 ? 2 : 1
-
-          return (
-            <>
-              <Link
-                data-testid="static-search"
-                to="/posts"
-                search={{ page: 1 }}
-                activeOptions={{ exact: true, includeSearch: true }}
-                activeProps={{ className: 'active' }}
-                inactiveProps={{ className: 'inactive' }}
-              >
-                Static search
-              </Link>
-              <Link
-                data-testid="current-search"
-                to="/posts"
-                search={true}
-                activeOptions={{ exact: true, includeSearch: true }}
-                activeProps={{ className: 'active' }}
-                inactiveProps={{ className: 'inactive' }}
-              >
-                Current search
-              </Link>
-              <Link
-                data-testid="switch-search"
-                from="/posts"
-                to="."
-                search={{ page: nextPage }}
-              >
-                Switch search
-              </Link>
-              <Outlet />
-            </>
-          )
-        },
+        component: CurrentSearchLinks,
       })
+
+      function CurrentSearchLinks() {
+        const search = useSearch({ strict: false })
+        const nextPage = Number(search.page ?? 1) === 1 ? 2 : 1
+
+        return (
+          <>
+            <Link
+              data-testid="static-search"
+              to="/posts"
+              search={{ page: 1 }}
+              activeOptions={{ exact: true, includeSearch: true }}
+              activeProps={{ className: 'active' }}
+              inactiveProps={{ className: 'inactive' }}
+            >
+              Static search
+            </Link>
+            <Link
+              data-testid="current-search"
+              to="/posts"
+              search={true}
+              activeOptions={{ exact: true, includeSearch: true }}
+              activeProps={{ className: 'active' }}
+              inactiveProps={{ className: 'inactive' }}
+            >
+              Current search
+            </Link>
+            <Link
+              data-testid="switch-search"
+              from="/posts"
+              to="."
+              search={{ page: nextPage }}
+            >
+              Switch search
+            </Link>
+            <Outlet />
+          </>
+        )
+      }
 
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
@@ -686,11 +692,13 @@ describe('Link', () => {
           postsLoadCount += 1
           return postsLoadCount === 1 ? Promise.resolve() : postsLoader.promise
         },
-        component: () => {
-          const search = useSearch({ strict: false })
-          return <h1>{`Posts ${search.page}`}</h1>
-        },
+        component: PostsPage,
       })
+
+      function PostsPage() {
+        const search = useSearch({ strict: false })
+        return <h1>{`Posts ${search.page}`}</h1>
+      }
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
