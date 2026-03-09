@@ -1,4 +1,4 @@
-import { createMemo, createSignal, onCleanup, } from 'solid-js'
+import { createMemo, createSignal, onCleanup } from 'solid-js'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type {
@@ -70,7 +70,7 @@ export function useRouterState<
     if (opts?.select) return opts.select(state)
 
     return state
-  };
+  }
 
   const [signal, setSignal] = createSignal(() => selector(router.__store.get()))
 
