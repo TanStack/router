@@ -130,13 +130,17 @@ export function useLinkProps<
 
   const _options = () => options
 
-  const next = Solid.createMemo(() => {
-    // rebuild location when relevant state
-    router.stores.buildLocationReactivity.state
+  const getNext = () => {
+    const fromLocation = router.pendingBuiltLocation ?? currentLocation()
     const options = _options() as any
     // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(options))
-  })
+    return Solid.untrack(() =>
+      router.buildLocation({
+        ...options,
+        _fromLocation: options._fromLocation ?? fromLocation,
+      }),
+    )
+  }
 
   const hrefOption = Solid.createMemo(() => {
     if (_options().disabled) return undefined
@@ -144,7 +148,8 @@ export function useLinkProps<
     // When a rewrite changes the origin, publicHref is the full URL
     // Otherwise it's the origin-stripped path
     // This avoids constructing URL objects in the hot path
-    const location = next().maskedLocation ?? next()
+    const nextLocation = getNext()
+    const location = nextLocation.maskedLocation ?? nextLocation
     const publicHref = location.publicHref
     const external = location.external
 
@@ -201,7 +206,7 @@ export function useLinkProps<
     if (externalLink()) return false
     const activeOptions = local.activeOptions
     const current = currentLocation()
-    const nextLocation = next()
+    const nextLocation = getNext()
 
     if (activeOptions?.exact) {
       const testExact = exactPathTest(

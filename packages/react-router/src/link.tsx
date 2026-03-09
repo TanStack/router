@@ -386,13 +386,6 @@ export function useLinkProps<
     // href is the full path of the location, including pathname, search, and hash. Perfect for a key.
     (prev, next) => prev.href === next.href,
   )
-  // Subscribe to resolvedLocation for relative-link resolution.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const buildLocationKey = useStore(
-    router.stores.buildLocationReactivity,
-    (l) => l,
-  )
-
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
     () => options,
@@ -410,12 +403,13 @@ export function useLinkProps<
     ],
   )
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const next = React.useMemo(
-    () => router.buildLocation({ ..._options } as any),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [router, _options, buildLocationKey],
-  )
+  const next = router.buildLocation({
+    ...(_options as any),
+    _fromLocation:
+      (_options as any)._fromLocation ??
+      router.pendingBuiltLocation ??
+      currentLocation,
+  } as any)
 
   // Use publicHref - it contains the correct href for display
   // When a rewrite changes the origin, publicHref is the full URL

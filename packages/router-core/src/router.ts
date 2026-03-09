@@ -1706,7 +1706,8 @@ export class RouterCore<
     const canReuseParams =
       lastStateMatch &&
       lastStateMatch.routeId === lastRoute.id &&
-      location.pathname === this.stores.location.state.pathname
+      lastStateMatch.pathname === location.pathname &&
+      deepEqual(lastStateMatch._strictParams, parsedParams ?? routeParams)
 
     let params: Record<string, unknown>
     if (canReuseParams) {

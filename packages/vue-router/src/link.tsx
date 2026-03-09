@@ -211,19 +211,16 @@ export function useLinkProps<
     // we need custom equality because `location` changes a lot, it can destroy perf
     { equal: (prev, next) => prev.href === next.href },
   )
-  // Subscribe to resolvedLocation for relative-link resolution.
-  const buildLocationKey = useStore(
-    router.stores.buildLocationReactivity,
-    (l) => l,
-  )
-
   const _options = Vue.computed(() => options)
 
-  const next = Vue.computed(() => {
-    // Depend on search to rebuild when search changes
-    buildLocationKey.value
-    return router.buildLocation(_options.value as any)
-  })
+  const getNext = () => {
+    const fromLocation = router.pendingBuiltLocation ?? currentLocation.value
+    const options = _options.value as any
+    return router.buildLocation({
+      ...options,
+      _fromLocation: options._fromLocation ?? fromLocation,
+    } as any)
+  }
 
   const preload = Vue.computed(() => {
     if (_options.value.reloadDocument) {
@@ -240,7 +237,7 @@ export function useLinkProps<
     getIsActive({
       activeOptions: options.activeOptions,
       loc: currentLocation.value,
-      nextLoc: next.value,
+      nextLoc: getNext(),
       router,
     }),
   )
@@ -381,7 +378,7 @@ export function useLinkProps<
     getHref({
       options: options as AnyLinkPropsOptions,
       router,
-      nextLocation: next.value,
+      nextLocation: getNext(),
     }),
   )
 
@@ -873,15 +870,15 @@ const LinkImpl = Vue.defineComponent({
     // Call useLinkProps ONCE during setup with combined props and attrs
     // The returned object is a computed ref that updates reactively
     const allProps = { ...props, ...attrs }
-    const linkPropsComputed = useLinkProps(
-      allProps as any,
-    ) as unknown as Vue.ComputedRef<LinkHTMLAttributes>
+    const linkPropsComputed = useLinkProps(allProps as any) as unknown as
+      | LinkHTMLAttributes
+      | Vue.ComputedRef<LinkHTMLAttributes>
 
     return () => {
       const Component = props._asChild || 'a'
 
       // Access the computed value to get fresh props each render
-      const linkProps = linkPropsComputed.value
+      const linkProps = Vue.unref(linkPropsComputed) ?? {}
 
       const isActive = linkProps['data-status'] === 'active'
       const isTransitioning =
