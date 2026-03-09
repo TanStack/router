@@ -20,7 +20,6 @@ sources:
 Server functions are type-safe RPCs created with `createServerFn`. They run exclusively on the server but can be called from anywhere — loaders, components, hooks, event handlers, or other server functions.
 
 > **CRITICAL**: Loaders are ISOMORPHIC — they run on BOTH client and server. Database queries, file system access, and secret API keys MUST go inside `createServerFn`, NOT in loaders directly.
-
 > **CRITICAL**: Do not use `"use server"` directives, `getServerSideProps`, or any Next.js/Remix server patterns. TanStack Start uses `createServerFn` exclusively.
 
 ## Basic Usage
@@ -225,7 +224,7 @@ Available utilities:
 
 ## File Organization
 
-```
+```text
 src/utils/
 ├── users.functions.ts   # createServerFn wrappers (safe to import anywhere)
 ├── users.server.ts      # Server-only helpers (DB queries, internal logic)

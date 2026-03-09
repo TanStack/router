@@ -1,16 +1,15 @@
-# skills/_artifacts/start_skill_tree.yaml
+# packages/start-client-core/skills/_artifacts/skill_tree.yaml
 library:
-  name: '@tanstack/react-start'
+  name: '@tanstack/start-client-core'
   version: '1.166.2'
   repository: 'https://github.com/TanStack/router'
   description: >-
-    Full-stack React framework built on TanStack Router and Vite.
-    Adds SSR, streaming, server functions (type-safe RPCs), middleware,
-    server routes, and universal deployment. Isomorphic by default —
-    all code runs in both environments unless explicitly constrained.
+    Framework-agnostic client-side core for TanStack Start.
+    Provides server functions, middleware, execution model,
+    server routes, and deployment configuration.
 generated_from:
-  domain_map: '_artifacts/start_domain_map.yaml'
-generated_at: '2026-03-07'
+  domain_map: 'skills/_artifacts/domain_map.yaml'
+generated_at: '2026-03-08'
 
 skills:
   # ── Start Core Skills ───────────────────────────────────────────
@@ -119,40 +118,3 @@ skills:
       - 'TanStack/router:docs/start/framework/react/guide/selective-ssr.md'
       - 'TanStack/router:docs/start/framework/react/guide/static-prerendering.md'
       - 'TanStack/router:docs/start/framework/react/guide/full-stack-seo.md'
-
-  # ── React Start Skills ──────────────────────────────────────────
-  - name: 'React Start'
-    slug: 'react-start'
-    type: 'framework'
-    domain: 'project-setup'
-    path: 'skills/react-start/SKILL.md'
-    package: 'packages/react-start'
-    description: >-
-      React bindings for TanStack Start: createStart, StartClient,
-      StartServer, React-specific imports, re-exports from
-      @tanstack/react-router, full project setup with React.
-    requires:
-      - 'start-core'
-    sources:
-      - 'TanStack/router:packages/react-start/src'
-      - 'TanStack/router:docs/start/framework/react/build-from-scratch.md'
-
-  # ── Lifecycle Skills ────────────────────────────────────────────
-  - name: 'Migrate from Next.js'
-    slug: 'lifecycle/migrate-from-nextjs'
-    type: 'lifecycle'
-    domain: 'project-setup'
-    path: 'skills/lifecycle/migrate-from-nextjs/SKILL.md'
-    package: 'packages/react-start'
-    description: >-
-      Step-by-step migration from Next.js App Router to TanStack
-      Start: route definition conversion, API mapping, server
-      function conversion from Server Actions, middleware conversion,
-      data fetching pattern changes.
-    requires:
-      - 'start-core'
-      - 'react-start'
-    sources:
-      - 'TanStack/router:docs/start/framework/react/guide/server-functions.md'
-      - 'TanStack/router:docs/start/framework/react/guide/middleware.md'
-      - 'TanStack/router:docs/start/framework/react/guide/execution-model.md'

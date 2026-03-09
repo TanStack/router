@@ -52,9 +52,10 @@ skills:
 
       - mistake: 'Using React Router APIs instead of Solid equivalents'
         mechanism: >-
-          Solid Router uses createLink instead of Link component
-          patterns and Solid primitives instead of React hooks.
-          Mixing React patterns causes runtime errors.
+          Solid Router provides a Link component plus createLink
+          for custom wrappers, and uses Solid-specific primitives
+          instead of React hooks. Mixing React or React Router
+          patterns into Solid Router causes type/runtime errors.
         priority: MEDIUM
         status: active
 

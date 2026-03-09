@@ -24,7 +24,6 @@ sources:
 TanStack Router treats search params as JSON-first application state. They are automatically parsed from the URL into structured objects (numbers, booleans, arrays, nested objects) and validated via `validateSearch` on each route.
 
 > **CRITICAL**: Use `fallback()` from `@tanstack/zod-adapter`, NOT zod's `.catch()`. Using `.catch()` makes the output type `unknown`, destroying type safety.
-
 > **CRITICAL**: Types are fully inferred. Never annotate the return of `useSearch()`.
 
 ## Setup: Zod Adapter (Recommended)

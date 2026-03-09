@@ -46,18 +46,20 @@ skills:
       - 'Mix virtual and physical routes'
       - 'Create virtual subtree configs'
     failure_modes:
-      - mistake: 'Forgetting rootRoute wrapper'
+      - mistake: 'Omitting rootRoute() in a top-level virtual route config'
         mechanism: >-
-          All virtual route configs must be wrapped in rootRoute().
-          Without it, routes are not properly nested under the root.
+          Top-level virtual route trees should be wrapped in rootRoute().
+          defineVirtualSubtreeConfig() in __virtual.ts files is the
+          exception and should export an array of child nodes instead.
         priority: HIGH
         status: active
 
-      - mistake: 'Using physical() path outside routesDirectory'
+      - mistake: 'Passing a physical() directory outside routesDirectory'
         mechanism: >-
-          physical() paths are relative to routesDirectory. Using
-          absolute or wrong-relative paths causes routes to not
-          be found.
+          Only the directory argument of physical() is relative to
+          routesDirectory; the first argument is a URL prefix. Using
+          an absolute or wrong-relative directory causes routes to
+          not be found.
         priority: MEDIUM
         status: active
 

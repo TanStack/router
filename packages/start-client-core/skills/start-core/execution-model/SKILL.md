@@ -21,9 +21,7 @@ sources:
 Understanding where code runs is fundamental to TanStack Start. This skill covers the isomorphic execution model and how to control environment boundaries.
 
 > **CRITICAL**: ALL code in TanStack Start is isomorphic by default — it runs in BOTH server and client bundles. Route loaders run on BOTH server (during SSR) AND client (during navigation). Server-only operations MUST use `createServerFn`.
-
 > **CRITICAL**: Module-level `process.env` access runs in both environments. Secret values leak into the client bundle. Access secrets ONLY inside `createServerFn` or `createServerOnlyFn`.
-
 > **CRITICAL**: `VITE_` prefixed environment variables are exposed to the client bundle. Server secrets must NOT have the `VITE_` prefix.
 
 ## Execution Control APIs
@@ -44,6 +42,7 @@ Understanding where code runs is fundamental to TanStack Start. This skill cover
 The primary way to run server-only code. On the client, calls become fetch requests:
 
 ```tsx
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { createServerFn } from '@tanstack/react-start'
 
 const fetchUser = createServerFn().handler(async () => {
@@ -60,6 +59,7 @@ const user = await fetchUser()
 For utility functions that must never run on client:
 
 ```tsx
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { createServerOnlyFn } from '@tanstack/react-start'
 
 const getSecret = createServerOnlyFn(() => process.env.DATABASE_URL)
@@ -73,6 +73,7 @@ const getSecret = createServerOnlyFn(() => process.env.DATABASE_URL)
 ### createClientOnlyFn
 
 ```tsx
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { createClientOnlyFn } from '@tanstack/react-start'
 
 const saveToStorage = createClientOnlyFn((key: string, value: string) => {
@@ -83,6 +84,7 @@ const saveToStorage = createClientOnlyFn((key: string, value: string) => {
 ### ClientOnly Component
 
 ```tsx
+// Use @tanstack/<framework>-router for your framework (react, solid, vue)
 import { ClientOnly } from '@tanstack/react-router'
 
 function Analytics() {
@@ -97,6 +99,7 @@ function Analytics() {
 ### useHydrated Hook
 
 ```tsx
+// Use @tanstack/<framework>-router for your framework (react, solid, vue)
 import { useHydrated } from '@tanstack/react-router'
 
 function TimeZoneDisplay() {
@@ -114,6 +117,7 @@ Behavior: SSR → `false`, first client render → `false`, after hydration → 
 ## Environment-Specific Implementations
 
 ```tsx
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { createIsomorphicFn } from '@tanstack/react-start'
 
 const getDeviceInfo = createIsomorphicFn()
@@ -139,6 +143,7 @@ const connectDb = createServerFn().handler(async () => {
 Only `VITE_` prefixed variables are available:
 
 ```tsx
+// Framework-specific component type (React.ReactNode, JSX.Element, etc.)
 function ApiProvider({ children }: { children: React.ReactNode }) {
   const apiUrl = import.meta.env.VITE_API_URL // available
   // import.meta.env.DATABASE_URL → undefined (security)
