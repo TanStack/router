@@ -8,6 +8,9 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
+  "fixed": [],
+  "linked": [],
+  "ignore": [],
   "experimentalOptions": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true
   }
