@@ -1321,8 +1321,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -1531,8 +1531,8 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -1626,8 +1626,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.8)
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -1727,8 +1727,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.8)
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -1776,8 +1776,8 @@ importers:
         specifier: ^1.97.2
         version: 1.97.2
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -1843,8 +1843,8 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -1898,8 +1898,8 @@ importers:
         specifier: 3.0.1-alpha.2
         version: 3.0.1-alpha.2(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(chokidar@5.0.0)(ioredis@5.9.2)(lru-cache@11.2.2)(mysql2@3.15.3)(rollup@4.55.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -1928,8 +1928,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
     devDependencies:
       '@platformatic/flame':
         specifier: latest
@@ -2048,8 +2048,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.8)
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -2088,8 +2088,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.8)
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -2219,8 +2219,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -2277,8 +2277,8 @@ importers:
         specifier: ^4.3.4
         version: 4.6.0(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -2332,8 +2332,8 @@ importers:
         specifier: ^4.3.4
         version: 4.6.0(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -2408,8 +2408,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -2460,8 +2460,8 @@ importers:
         specifier: ^4.3.4
         version: 4.7.0(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -2539,8 +2539,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -2591,8 +2591,8 @@ importers:
         specifier: ^4.3.4
         version: 4.7.0(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -2686,8 +2686,8 @@ importers:
         specifier: ^4.3.4
         version: 4.7.0(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -2738,8 +2738,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.8)
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -2781,8 +2781,8 @@ importers:
         specifier: ^4.3.4
         version: 4.7.0(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -2851,8 +2851,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -2912,8 +2912,8 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -3671,8 +3671,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -3738,8 +3738,8 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.8)(magicast@0.3.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.2)
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -3851,8 +3851,8 @@ importers:
         specifier: 25.0.9
         version: 25.0.9
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -3891,8 +3891,8 @@ importers:
         specifier: 25.0.9
         version: 25.0.9
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -3928,8 +3928,8 @@ importers:
         specifier: 25.0.9
         version: 25.0.9
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -3962,8 +3962,8 @@ importers:
         specifier: ^1.97.2
         version: 1.97.2
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -4017,8 +4017,8 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -4142,8 +4142,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -4179,8 +4179,8 @@ importers:
         specifier: workspace:^
         version: link:../../e2e-utils
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -4231,8 +4231,8 @@ importers:
         specifier: 25.0.9
         version: 25.0.9
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -4298,8 +4298,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -4368,8 +4368,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -4469,8 +4469,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -4524,8 +4524,8 @@ importers:
         specifier: 25.0.9
         version: 25.0.9
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -5487,8 +5487,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -5557,8 +5557,8 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.8)(magicast@0.3.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.2)
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -5652,8 +5652,8 @@ importers:
         specifier: ^5.1.2
         version: 5.1.2(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -5716,8 +5716,8 @@ importers:
         specifier: ^5.1.2
         version: 5.1.2(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -5756,8 +5756,8 @@ importers:
         specifier: ^1.97.2
         version: 1.97.2
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -5814,8 +5814,8 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -5945,8 +5945,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -5985,8 +5985,8 @@ importers:
         specifier: ^5.1.2
         version: 5.1.2(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -6034,8 +6034,8 @@ importers:
         specifier: ^5.1.2
         version: 5.1.2(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -6113,8 +6113,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -6186,8 +6186,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -6293,8 +6293,8 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -6351,8 +6351,8 @@ importers:
         specifier: ^5.1.2
         version: 5.1.2(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -8781,8 +8781,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -12687,8 +12687,8 @@ importers:
         specifier: ^0.7.6
         version: 0.7.6
       srvx:
-        specifier: ^0.11.7
-        version: 0.11.7
+        specifier: ^0.11.9
+        version: 0.11.9
       tinyglobby:
         specifier: ^0.2.15
         version: 0.2.15
@@ -12733,8 +12733,8 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       h3-v2:
-        specifier: npm:h3@2.0.1-rc.14
-        version: h3@2.0.1-rc.14(crossws@0.4.3(srvx@0.11.7))
+        specifier: npm:h3@2.0.1-rc.16
+        version: h3@2.0.1-rc.16(crossws@0.4.3(srvx@0.11.9))
       seroval:
         specifier: ^1.4.2
         version: 1.4.2
@@ -21094,6 +21094,16 @@ packages:
       crossws:
         optional: true
 
+  h3@2.0.1-rc.16:
+    resolution: {integrity: sha512-h+pjvyujdo9way8qj6FUbhaQcHlR8FEq65EhTX9ViT5pK8aLj68uFl4hBkF+hsTJAH+H1END2Yv6hTIsabGfag==}
+    engines: {node: '>=20.11.1'}
+    hasBin: true
+    peerDependencies:
+      crossws: ^0.4.1
+    peerDependenciesMeta:
+      crossws:
+        optional: true
+
   handle-thing@2.0.1:
     resolution: {integrity: sha512-9Qn4yBxelxoh2Ow62nP+Ka/kMnOXRi8BXnRaUwezLNhqelnN49xKz4F/dPP8OYLxLxq6JDtZb2i9XznUQbNPTg==}
 
@@ -23458,6 +23468,9 @@ packages:
   rou3@0.7.12:
     resolution: {integrity: sha512-iFE4hLDuloSWcD7mjdCDhx2bKcIsYbtOTpfH5MHHLSKMOUyjqQXTeZVa289uuwEGEKFoE/BAPbhaU4B774nceg==}
 
+  rou3@0.8.1:
+    resolution: {integrity: sha512-ePa+XGk00/3HuCqrEnK3LxJW7I0SdNg6EFzKUJG73hMAdDcOUC/i/aSz7LSDwLrGr33kal/rqOGydzwl6U7zBA==}
+
   router@2.2.0:
     resolution: {integrity: sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ==}
     engines: {node: '>= 18'}
@@ -23922,8 +23935,8 @@ packages:
     engines: {node: '>=20.16.0'}
     hasBin: true
 
-  srvx@0.11.7:
-    resolution: {integrity: sha512-p9qj9wkv/MqG1VoJpOsqXv1QcaVcYRk7ifsC6i3TEwDXFyugdhJN4J3KzQPZq2IJJ2ZCt7ASOB++85pEK38jRw==}
+  srvx@0.11.9:
+    resolution: {integrity: sha512-97wWJS6F0KTKAhDlHVmBzMvlBOp5FiNp3XrLoodIgYJpXxgG5tE9rX4Pg7s46n2shI4wtEsMATTS1+rI3/ubzA==}
     engines: {node: '>=20.16.0'}
     hasBin: true
 
@@ -32992,9 +33005,9 @@ snapshots:
     optionalDependencies:
       srvx: 0.10.1
 
-  crossws@0.4.3(srvx@0.11.7):
+  crossws@0.4.3(srvx@0.11.9):
     optionalDependencies:
-      srvx: 0.11.7
+      srvx: 0.11.9
     optional: true
 
   css-loader@7.1.2(@rspack/core@1.2.2(@swc/helpers@0.5.15))(webpack@5.97.1):
@@ -34549,12 +34562,19 @@ snapshots:
     optionalDependencies:
       crossws: 0.4.3(srvx@0.10.1)
 
-  h3@2.0.1-rc.14(crossws@0.4.3(srvx@0.11.7)):
+  h3@2.0.1-rc.14(crossws@0.4.3(srvx@0.10.1)):
     dependencies:
       rou3: 0.7.12
-      srvx: 0.11.7
+      srvx: 0.11.9
     optionalDependencies:
-      crossws: 0.4.3(srvx@0.11.7)
+      crossws: 0.4.3(srvx@0.10.1)
+
+  h3@2.0.1-rc.16(crossws@0.4.3(srvx@0.11.9)):
+    dependencies:
+      rou3: 0.8.1
+      srvx: 0.11.9
+    optionalDependencies:
+      crossws: 0.4.3(srvx@0.11.9)
 
   handle-thing@2.0.1: {}
 
@@ -35959,7 +35979,7 @@ snapshots:
       consola: 3.4.2
       crossws: 0.4.3(srvx@0.10.1)
       db0: 0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3)
-      h3: 2.0.1-rc.14(crossws@0.4.3(srvx@0.11.7))
+      h3: 2.0.1-rc.14(crossws@0.4.3(srvx@0.10.1))
       jiti: 2.6.1
       nf3: 0.3.6
       ofetch: 2.0.0-alpha.3
@@ -37303,6 +37323,8 @@ snapshots:
 
   rou3@0.7.12: {}
 
+  rou3@0.8.1: {}
+
   router@2.2.0:
     dependencies:
       debug: 4.4.3
@@ -37857,7 +37879,7 @@ snapshots:
 
   srvx@0.10.1: {}
 
-  srvx@0.11.7: {}
+  srvx@0.11.9: {}
 
   stable-hash-x@0.2.0: {}
 
