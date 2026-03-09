@@ -72,10 +72,6 @@ export function useLinkProps<
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): LinkHTMLAttributes {
-  const createStaticLinkProps = (props: LinkHTMLAttributes) => {
-    return Vue.computed(() => props) as unknown as LinkHTMLAttributes
-  }
-
   const router = useRouter()
   const isTransitioning = Vue.ref(false)
   let hasRenderFetched = false
@@ -83,7 +79,7 @@ export function useLinkProps<
   // Ensure router is defined before proceeding
   if (!router) {
     console.warn('useRouter must be used inside a <RouterProvider> component!')
-    return createStaticLinkProps({})
+    return Vue.computed(() => ({})) as unknown as LinkHTMLAttributes
   }
 
   // Determine if the link is external or internal
@@ -295,7 +291,9 @@ export function useLinkProps<
         }
       })
 
-      return createStaticLinkProps(safeProps as LinkHTMLAttributes)
+      return Vue.computed(
+        () => safeProps as LinkHTMLAttributes,
+      ) as unknown as LinkHTMLAttributes
     }
 
     // External links just have simple props
@@ -324,7 +322,9 @@ export function useLinkProps<
       }
     })
 
-    return createStaticLinkProps(externalProps as LinkHTMLAttributes)
+    return Vue.computed(
+      () => externalProps as LinkHTMLAttributes,
+    ) as unknown as LinkHTMLAttributes
   }
 
   // The click handler
