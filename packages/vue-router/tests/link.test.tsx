@@ -469,7 +469,7 @@ describe('Link', () => {
         getParentRoute: () => rootRoute,
         path: '/',
         component: () => (
-          <Link to="https://example.com">
+          <Link data-testid="external-link" to="https://example.com">
             {({ isActive }: { isActive: boolean }) => (
               <span data-testid="external-link-active">{String(isActive)}</span>
             )}
@@ -484,6 +484,10 @@ describe('Link', () => {
 
       render(<RouterProvider router={router} />)
 
+      expect(await screen.findByTestId('external-link')).toHaveAttribute(
+        'href',
+        'https://example.com',
+      )
       expect(
         await screen.findByTestId('external-link-active'),
       ).toHaveTextContent('false')
