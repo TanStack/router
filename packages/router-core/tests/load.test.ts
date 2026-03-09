@@ -541,6 +541,250 @@ test('exec on stay (beforeLoad & loader)', async () => {
   expect(layoutBeforeLoadResolved).toBe(true)
 })
 
+describe('stale loader reload triggers', () => {
+  test('skips stale loader when only unrelated search params change', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const loader = vi.fn(() => ({ ok: true }))
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader,
+      staleTime: 0,
+      gcTime: 0,
+      loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+        page: search['page'],
+      }),
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/foo', search: { page: '1', filter: 'a' } })
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    await router.navigate({ to: '/foo', search: { page: '1', filter: 'b' } })
+
+    expect(loader).toHaveBeenCalledTimes(1)
+  })
+
+  test('reloads stale loader when loader deps change', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const loader = vi.fn(() => ({ ok: true }))
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader,
+      staleTime: 0,
+      gcTime: 0,
+      loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+        page: search['page'],
+      }),
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/foo', search: { page: '1' } })
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    await router.navigate({ to: '/foo', search: { page: '2' } })
+
+    expect(loader).toHaveBeenCalledTimes(2)
+  })
+
+  test('reloads a stale preloaded loader when switching to a different match id of the same route', async () => {
+    vi.useFakeTimers()
+
+    try {
+      const rootRoute = new BaseRootRoute({})
+      const rootLoader = vi.fn(() => ({ ok: true }))
+      const childLoader = vi.fn(() => ({ ok: true }))
+
+      const rootChildRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+        loader: rootLoader,
+        staleTime: 0,
+        gcTime: 0,
+        loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+          page: search['page'],
+        }),
+      })
+
+      const leafRoute = new BaseRoute({
+        getParentRoute: () => rootChildRoute,
+        path: '/$postId',
+        loader: childLoader,
+        staleTime: 0,
+        gcTime: 0,
+      })
+
+      const routeTree = rootRoute.addChildren([
+        rootChildRoute.addChildren([leafRoute]),
+      ])
+      const router = new RouterCore({
+        routeTree,
+        history: createMemoryHistory(),
+      })
+
+      await router.navigate({
+        to: '/posts/$postId',
+        params: { postId: '1' },
+        search: { page: '1' },
+      })
+
+      expect(rootLoader).toHaveBeenCalledTimes(1)
+      expect(childLoader).toHaveBeenCalledTimes(1)
+
+      await router.preloadRoute({
+        to: '/posts/$postId',
+        params: { postId: '2' },
+        search: { page: '2' },
+      })
+
+      expect(rootLoader).toHaveBeenCalledTimes(2)
+      expect(childLoader).toHaveBeenCalledTimes(2)
+
+      vi.advanceTimersByTime(1)
+
+      await router.navigate({
+        to: '/posts/$postId',
+        params: { postId: '2' },
+        search: { page: '2' },
+      })
+
+      expect(rootLoader).toHaveBeenCalledTimes(3)
+      expect(childLoader).toHaveBeenCalledTimes(3)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  test('skips stale ancestor loader when only a child path param changes', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const parentLoader = vi.fn(() => ({ ok: true }))
+    const childLoader = vi.fn(() => ({ ok: true }))
+
+    const orgRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/orgs/$orgId',
+      loader: parentLoader,
+      staleTime: 0,
+      gcTime: 0,
+    })
+
+    const userRoute = new BaseRoute({
+      getParentRoute: () => orgRoute,
+      path: '/users/$userId',
+      loader: childLoader,
+      staleTime: 0,
+      gcTime: 0,
+    })
+
+    const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({
+      to: '/orgs/$orgId/users/$userId',
+      params: { orgId: 'acme', userId: 'u1' },
+    })
+    expect(parentLoader).toHaveBeenCalledTimes(1)
+    expect(childLoader).toHaveBeenCalledTimes(1)
+
+    await router.navigate({
+      to: '/orgs/$orgId/users/$userId',
+      params: { orgId: 'acme', userId: 'u2' },
+    })
+
+    expect(parentLoader).toHaveBeenCalledTimes(1)
+    expect(childLoader).toHaveBeenCalledTimes(2)
+  })
+
+  test('reloads stale ancestor loader when its own path param changes', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const parentLoader = vi.fn(() => ({ ok: true }))
+    const childLoader = vi.fn(() => ({ ok: true }))
+
+    const orgRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/orgs/$orgId',
+      loader: parentLoader,
+      staleTime: 0,
+      gcTime: 0,
+    })
+
+    const userRoute = new BaseRoute({
+      getParentRoute: () => orgRoute,
+      path: '/users/$userId',
+      loader: childLoader,
+      staleTime: 0,
+      gcTime: 0,
+    })
+
+    const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({
+      to: '/orgs/$orgId/users/$userId',
+      params: { orgId: 'acme', userId: 'u1' },
+    })
+    expect(parentLoader).toHaveBeenCalledTimes(1)
+    expect(childLoader).toHaveBeenCalledTimes(1)
+
+    await router.navigate({
+      to: '/orgs/$orgId/users/$userId',
+      params: { orgId: 'beta', userId: 'u2' },
+    })
+
+    expect(parentLoader).toHaveBeenCalledTimes(2)
+    expect(childLoader).toHaveBeenCalledTimes(2)
+  })
+
+  test('revalidates stale loaders on explicit same-location router.load()', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const loader = vi.fn(() => ({ ok: true }))
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader,
+      staleTime: 0,
+      gcTime: 0,
+      loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+        page: search['page'],
+      }),
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/foo', search: { page: '1', filter: 'a' } })
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    await sleep(1)
+    await router.load()
+
+    expect(loader).toHaveBeenCalledTimes(2)
+  })
+})
+
 test('cancelMatches after pending timeout', async () => {
   const WAIT_TIME = 5
   const onAbortMock = vi.fn()
