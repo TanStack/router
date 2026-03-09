@@ -470,7 +470,7 @@ describe('Link', () => {
         path: '/',
         component: () => (
           <Link to="https://example.com">
-            {({ isActive }) => (
+            {({ isActive }: { isActive: boolean }) => (
               <span data-testid="external-link-active">{String(isActive)}</span>
             )}
           </Link>
