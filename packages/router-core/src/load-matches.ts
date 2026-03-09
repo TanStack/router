@@ -1163,11 +1163,9 @@ function preloadRouteComponents(
     .map((type) => (route.options[type] as any)?.preload?.())
     .filter(Boolean)
 
-  if (preloads.length) {
-    return Promise.all(preloads).then(() => {})
-  }
+  if (preloads.length === 0) return undefined
 
-  return undefined
+  return Promise.all(preloads) as any as Promise<void>
 }
 
 export function loadRouteChunk(
