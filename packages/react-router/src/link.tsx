@@ -385,17 +385,6 @@ export function useLinkProps<
     (prev, next) => prev.href === next.href,
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLinkContext = useStore(
-    router.stores.currentLinkContext,
-    (l) => l,
-  )
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const renderedLinkContext = useStore(
-    router.stores.renderedLinkContext,
-    (l) => l,
-  )
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
     () => options,
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -413,11 +402,34 @@ export function useLinkProps<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
+  const needsRenderedLinkContext = React.useMemo(
+    () => router.isBuildLocationContextDependent(_options, 'full'),
+    [router, _options],
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const needsCurrentLinkContext = React.useMemo(
+    () =>
+      router.isBuildLocationContextDependent(_options, 'active', activeOptions),
+    [router, _options, activeOptions],
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const currentLinkContext = useStore(router.stores.currentLinkContext, (l) =>
+    needsCurrentLinkContext ? l : undefined,
+  )
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const renderedLinkContext = useStore(
+    router.stores.renderedLinkContext,
+    (l) => (needsRenderedLinkContext ? l : undefined),
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const next = React.useMemo(
     () =>
       router.buildLocation({
         ..._options,
-        _linkContext: renderedLinkContext,
+        ...(renderedLinkContext ? { _linkContext: renderedLinkContext } : {}),
       } as any),
     [router, _options, renderedLinkContext],
   )
@@ -427,7 +439,7 @@ export function useLinkProps<
     () =>
       router.buildLocation({
         ..._options,
-        _linkContext: currentLinkContext,
+        ...(currentLinkContext ? { _linkContext: currentLinkContext } : {}),
         _buildLocationMode: 'active',
         _activeOptions: activeOptions,
       } as any),

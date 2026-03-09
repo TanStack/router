@@ -210,28 +210,40 @@ export function useLinkProps<
     search: location.search,
     hash: location.hash,
   }))
-  const currentLinkContext = useStore(
-    router.stores.currentLinkContext,
-    (l) => l,
+  const _options = Vue.computed(() => options)
+  const needsCurrentLinkContext = Vue.computed(() =>
+    router.isBuildLocationContextDependent(
+      _options.value as any,
+      'active',
+      options.activeOptions,
+    ),
+  )
+  const needsRenderedLinkContext = Vue.computed(() =>
+    router.isBuildLocationContextDependent(_options.value as any, 'full'),
+  )
+  const currentLinkContext = useStore(router.stores.currentLinkContext, (l) =>
+    needsCurrentLinkContext.value ? l : undefined,
   )
   const renderedLinkContext = useStore(
     router.stores.renderedLinkContext,
-    (l) => l,
+    (l) => (needsRenderedLinkContext.value ? l : undefined),
   )
-
-  const _options = Vue.computed(() => options)
 
   const next = Vue.computed(() =>
     router.buildLocation({
       ..._options.value,
-      _linkContext: renderedLinkContext.value,
+      ...(renderedLinkContext.value
+        ? { _linkContext: renderedLinkContext.value }
+        : {}),
     } as any),
   )
 
   const activeTarget = Vue.computed(() =>
     router.buildLocation({
       ..._options.value,
-      _linkContext: currentLinkContext.value,
+      ...(currentLinkContext.value
+        ? { _linkContext: currentLinkContext.value }
+        : {}),
       _buildLocationMode: 'active',
       _activeOptions: options.activeOptions,
     } as any),

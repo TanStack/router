@@ -1791,6 +1791,184 @@ export class RouterCore<
     }
   }
 
+  isBuildLocationContextDependent = (
+    opts: BuildNextOptions,
+    mode: 'full' | 'active' = 'full',
+    activeOptions?: {
+      includeSearch?: boolean
+      includeHash?: boolean
+    },
+  ): boolean => {
+    const buildOpts = opts as InternalBuildNextOptions
+
+    if (buildOpts._linkContext || buildOpts._fromLocation || buildOpts.mask) {
+      return true
+    }
+
+    const nextTo = this.getContextIndependentBuildLocationTo(buildOpts)
+
+    if (!nextTo) {
+      return true
+    }
+
+    const destRoutes = this.getBuildLocationDestRoutes(nextTo)
+
+    if (
+      this.doesBuildLocationNeedContextForParams(buildOpts, nextTo, destRoutes)
+    ) {
+      return true
+    }
+
+    if (
+      this.doesBuildLocationNeedContextForSearch(
+        buildOpts,
+        mode,
+        activeOptions,
+        destRoutes,
+      )
+    ) {
+      return true
+    }
+
+    if (
+      this.doesBuildLocationNeedContextForHash(buildOpts, mode, activeOptions)
+    ) {
+      return true
+    }
+
+    return false
+  }
+
+  private getContextIndependentBuildLocationTo(
+    dest: InternalBuildNextOptions,
+  ): string | undefined {
+    if (dest.unsafeRelative === 'path') {
+      return undefined
+    }
+
+    if (typeof dest.to === 'number') {
+      return undefined
+    }
+
+    if (dest.to == null) {
+      return dest.from ? this.resolvePathWithBase(dest.from, '.') : undefined
+    }
+
+    const to = `${dest.to}`
+
+    if (!to.startsWith('/')) {
+      return undefined
+    }
+
+    return this.resolvePathWithBase('/', to)
+  }
+
+  private getBuildLocationDestRoutes(nextTo: string) {
+    const destMatchResult = this.getMatchedRoutes(nextTo)
+    let destRoutes = destMatchResult.matchedRoutes
+
+    const isGlobalNotFound =
+      !destMatchResult.foundRoute ||
+      (destMatchResult.foundRoute.path !== '/' &&
+        destMatchResult.routeParams['**'])
+
+    if (isGlobalNotFound && this.options.notFoundRoute) {
+      destRoutes = [...destRoutes, this.options.notFoundRoute]
+    }
+
+    return destRoutes
+  }
+
+  private doesBuildLocationNeedContextForParams(
+    dest: InternalBuildNextOptions,
+    nextTo: string,
+    destRoutes: ReadonlyArray<AnyRoute>,
+  ) {
+    if (dest.params === false || dest.params === null) {
+      return false
+    }
+
+    if (dest.params === undefined || dest.params === true) {
+      return true
+    }
+
+    if (typeof dest.params === 'function') {
+      return true
+    }
+
+    if (
+      destRoutes.some(
+        (route) =>
+          route.options.params?.stringify || route.options.stringifyParams,
+      )
+    ) {
+      return true
+    }
+
+    return interpolatePath({
+      path: nextTo,
+      params: dest.params as Record<string, unknown>,
+      decoder: this.pathParamsDecoder,
+      server: this.isServer,
+    }).isMissingParams
+  }
+
+  private doesBuildLocationNeedContextForSearch(
+    dest: InternalBuildNextOptions,
+    mode: 'full' | 'active',
+    activeOptions:
+      | {
+          includeSearch?: boolean
+          includeHash?: boolean
+        }
+      | undefined,
+    destRoutes: ReadonlyArray<AnyRoute>,
+  ) {
+    const shouldResolveSearch =
+      mode !== 'active' ||
+      !!this.rewrite ||
+      (activeOptions?.includeSearch ?? true)
+
+    if (!shouldResolveSearch) {
+      return false
+    }
+
+    if (
+      destRoutes.some(
+        (route) =>
+          route.options.search?.middlewares?.length ||
+          route.options.preSearchFilters?.length ||
+          route.options.postSearchFilters?.length,
+      )
+    ) {
+      return true
+    }
+
+    return (
+      dest.search === undefined ||
+      dest.search === true ||
+      typeof dest.search === 'function'
+    )
+  }
+
+  private doesBuildLocationNeedContextForHash(
+    dest: InternalBuildNextOptions,
+    mode: 'full' | 'active',
+    activeOptions?: {
+      includeSearch?: boolean
+      includeHash?: boolean
+    },
+  ) {
+    const shouldResolveHash =
+      mode !== 'active' || !!this.rewrite || !!activeOptions?.includeHash
+
+    if (!shouldResolveHash) {
+      return false
+    }
+
+    return dest.hash === true || typeof dest.hash === 'function'
+  }
+
   cancelMatch = (id: string) => {
     const match = this.getMatch(id)
 

@@ -118,7 +118,6 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   renderedLinkContext: ReadableStore<
     LinkBuildContext<FullSearchSchema<TRouteTree>>
   >
-  buildLocationReactivity: ReadableStore<string>
   __store: RouterReadableStore<RouterState<TRouteTree>>
 
   activeMatchStoresById: Map<string, MatchStore>
@@ -210,17 +209,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
       location: renderedLocation,
     }
   })
-  const buildLocationReactivity = createReadonlyStore(() => {
-    const context = renderedLinkContext.state
-    return [
-      context.routeId ?? '',
-      context.fullPath,
-      JSON.stringify(context.params),
-      JSON.stringify(context.search),
-      context.hash,
-    ].join('\0')
-  })
-
   // compatibility "big" state store
   const __store = createReadonlyStore(() => ({
     status: status.state,
@@ -296,7 +284,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     matchRouteReactivity,
     currentLinkContext,
     renderedLinkContext,
-    buildLocationReactivity,
 
     // non-reactive state
     activeMatchStoresById,

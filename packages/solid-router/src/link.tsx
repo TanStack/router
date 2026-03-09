@@ -123,17 +123,27 @@ export function useLinkProps<
   ])
 
   const currentLocation = Solid.createMemo(() => router.stores.location.state)
-  const currentSearch = Solid.createMemo(
-    () => router.stores.location.state.searchStr,
-  )
-  const currentLinkContext = Solid.createMemo(
-    () => router.stores.currentLinkContext.state,
-  )
-  const renderedLinkContext = Solid.createMemo(
-    () => router.stores.renderedLinkContext.state,
-  )
-
   const _options = () => options
+  const needsCurrentLinkContext = Solid.createMemo(() =>
+    router.isBuildLocationContextDependent(
+      _options() as any,
+      'active',
+      local.activeOptions,
+    ),
+  )
+  const needsRenderedLinkContext = Solid.createMemo(() =>
+    router.isBuildLocationContextDependent(_options() as any, 'full'),
+  )
+  const currentLinkContext = Solid.createMemo(() =>
+    needsCurrentLinkContext()
+      ? router.stores.currentLinkContext.state
+      : undefined,
+  )
+  const renderedLinkContext = Solid.createMemo(() =>
+    needsRenderedLinkContext()
+      ? router.stores.renderedLinkContext.state
+      : undefined,
+  )
 
   const next = Solid.createMemo(() => {
     const options = _options() as any
@@ -142,7 +152,7 @@ export function useLinkProps<
     return Solid.untrack(() =>
       router.buildLocation({
         ...options,
-        _linkContext: linkContext,
+        ...(linkContext ? { _linkContext: linkContext } : {}),
       }),
     )
   })
@@ -154,7 +164,7 @@ export function useLinkProps<
     return Solid.untrack(() =>
       router.buildLocation({
         ...options,
-        _linkContext: linkContext,
+        ...(linkContext ? { _linkContext: linkContext } : {}),
         _buildLocationMode: 'active',
         _activeOptions: local.activeOptions,
       }),
