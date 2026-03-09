@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773057185189,
+  "lastUpdate": 1773083097901,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -4034,6 +4034,90 @@ window.BENCHMARK_DATA = {
             "value": 55257,
             "unit": "bytes",
             "extra": "raw=165865; brotli=48649"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "manuel.schiller@caligano.de",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "31ed0a96489fed5b3ce63e6498094a2583e1180f",
+          "message": "fix: don't re-execute stale loaders on unrelated location changes (#6867)\n\n* fix: don't re-execute stale loaders on unrelated location changes\n\n* lint\n\n* remove loaderKeyChanged\n\n* from last\n\n* inline staleMatchShouldReload\n\n* update tests\n\n* add test\n\n* fix\n\n* revert",
+          "timestamp": "2026-03-09T20:02:35+01:00",
+          "tree_id": "ec26072759d63aabec3808f124f16cdf346255fd",
+          "url": "https://github.com/TanStack/router/commit/31ed0a96489fed5b3ce63e6498094a2583e1180f"
+        },
+        "date": 1773083097072,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89095,
+            "unit": "bytes",
+            "extra": "raw=280273; brotli=77364"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92163,
+            "unit": "bytes",
+            "extra": "raw=290773; brotli=80247"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 37187,
+            "unit": "bytes",
+            "extra": "raw=111425; brotli=33417"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41582,
+            "unit": "bytes",
+            "extra": "raw=124708; brotli=37340"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 53418,
+            "unit": "bytes",
+            "extra": "raw=152407; brotli=48049"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 58329,
+            "unit": "bytes",
+            "extra": "raw=168287; brotli=52336"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 101930,
+            "unit": "bytes",
+            "extra": "raw=320363; brotli=88174"
+          },
+          {
+            "name": "react-start.full",
+            "value": 105365,
+            "unit": "bytes",
+            "extra": "raw=330325; brotli=91117"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49797,
+            "unit": "bytes",
+            "extra": "raw=149918; brotli=44107"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 55390,
+            "unit": "bytes",
+            "extra": "raw=166164; brotli=48811"
           }
         ]
       }
