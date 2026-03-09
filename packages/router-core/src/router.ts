@@ -2353,6 +2353,7 @@ export class RouterCore<
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
     let loadPromise: Promise<void>
+    const previousLocation = this.state.resolvedLocation ?? this.state.location
 
     // eslint-disable-next-line prefer-const
     loadPromise = new Promise<void>((resolve) => {
@@ -2377,6 +2378,7 @@ export class RouterCore<
           await loadMatches({
             router: this,
             sync: opts?.sync,
+            forceStaleReload: previousLocation.href === next.href,
             matches: this.stores.pendingMatchesSnapshot.state,
             location: next,
             updateMatch: this.updateMatch,

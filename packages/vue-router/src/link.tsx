@@ -82,7 +82,7 @@ export function useLinkProps<
   // Ensure router is defined before proceeding
   if (!router) {
     console.warn('useRouter must be used inside a <RouterProvider> component!')
-    return {}
+    return Vue.computed(() => ({})) as unknown as LinkHTMLAttributes
   }
 
   // Determine if the link is external or internal
@@ -129,7 +129,9 @@ export function useLinkProps<
         }
       })
 
-      return safeProps
+      return Vue.computed(
+        () => safeProps as LinkHTMLAttributes,
+      ) as unknown as LinkHTMLAttributes
     }
 
     // External links just have simple props
@@ -158,7 +160,9 @@ export function useLinkProps<
       }
     })
 
-    return externalProps
+    return Vue.computed(
+      () => externalProps as LinkHTMLAttributes,
+    ) as unknown as LinkHTMLAttributes
   }
 
   // During SSR we render exactly once and do not need reactivity.
