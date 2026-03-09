@@ -100,4 +100,29 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
     const lazyRoute = router.routesByPath['/heavy']
     expect(lazyRoute.options.component).toBeDefined()
   })
+
+  it('should render a lazy route errorComponent when the loader throws on first load', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/lazy-error'] })
+
+    const rootRoute = createRootRoute()
+    const lazyErrorRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/lazy-error',
+      loader: () => {
+        throw new Error('lazy error')
+      },
+    }).lazy(() => import('./lazy/error').then((d) => d.Route('/lazy-error')))
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([lazyErrorRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(
+      await screen.findByText('Lazy Error: lazy error'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('About route content')).not.toBeInTheDocument()
+  })
 })
