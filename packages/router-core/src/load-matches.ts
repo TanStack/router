@@ -1155,15 +1155,19 @@ export type RouteComponentType =
   | 'pendingComponent'
   | 'notFoundComponent'
 
-async function preloadRouteComponents(
+function preloadRouteComponents(
   route: AnyRoute,
   componentTypesToLoad: Array<RouteComponentType>,
-) {
-  await Promise.all(
-    componentTypesToLoad.map((type) =>
-      (route.options[type] as any)?.preload?.(),
-    ),
-  )
+): Promise<void> | undefined {
+  const preloads = componentTypesToLoad
+    .map((type) => (route.options[type] as any)?.preload?.())
+    .filter(Boolean)
+
+  if (preloads.length) {
+    return Promise.all(preloads).then(() => {})
+  }
+
+  return undefined
 }
 
 export function loadRouteChunk(
@@ -1188,13 +1192,25 @@ export function loadRouteChunk(
     route._componentsLoaded
       ? undefined
       : componentTypesToLoad === componentTypes
-        ? (route._componentsPromise ??= preloadRouteComponents(
-            route,
-            componentTypes,
-          ).then(() => {
-            route._componentsLoaded = true
-            route._componentsPromise = undefined // gc promise, we won't need it anymore
-          }))
+        ? (() => {
+            if (route._componentsPromise === undefined) {
+              const componentsPromise = preloadRouteComponents(
+                route,
+                componentTypes,
+              )
+
+              if (componentsPromise) {
+                route._componentsPromise = componentsPromise.then(() => {
+                  route._componentsLoaded = true
+                  route._componentsPromise = undefined // gc promise, we won't need it anymore
+                })
+              } else {
+                route._componentsLoaded = true
+              }
+            }
+
+            return route._componentsPromise
+          })()
         : preloadRouteComponents(route, componentTypesToLoad)
 
   return route._lazyPromise
