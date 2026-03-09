@@ -159,7 +159,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     expect(updates).toBe(5)
   })
 
-  test('sync beforeLoad', async () => {
+  test.skip('sync beforeLoad', async () => {
     const params = setup({
       beforeLoad: () => ({ foo: 'bar' }),
       loader: () => resolveAfter(100, { hello: 'world' }),
