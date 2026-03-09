@@ -21,7 +21,6 @@ sources:
 This is a step-by-step migration checklist. Each check covers one conversion task. Complete them in order.
 
 > **CRITICAL**: If your UI is blank after migration, open the console. Errors like "cannot use useNavigate outside of context" mean React Router imports remain alongside TanStack Router imports. Uninstall `react-router` to surface them as TypeScript errors.
-
 > **CRITICAL**: TanStack Router uses `to` + `params` for navigation, NOT template literal paths. Never interpolate params into the `to` string.
 
 ## Pre-Migration
@@ -459,7 +458,7 @@ const { page } = Route.useSearch()
 
 ### 4. MEDIUM: Using `:param` syntax instead of `$param`
 
-```
+```text
 React Router: /posts/:postId
 TanStack Router: /posts/$postId
 ```

@@ -6,7 +6,7 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 
 | Domain                   | Description                                                   | Skills           |
 | ------------------------ | ------------------------------------------------------------- | ---------------- |
-| Project Setup            | Scaffolding, Vite plugin, router factory, root route, entries | start-setup      |
+| Project Setup            | Scaffolding, Vite plugin, router factory, root route, entries | start-core       |
 | Server Functions         | Type-safe RPCs with createServerFn, validation, streaming     | server-functions |
 | Middleware and Context   | Request/function middleware, context, global middleware       | middleware       |
 | Execution Model          | Isomorphic defaults, environment boundaries, env vars         | execution-model  |
@@ -17,7 +17,7 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 
 | Skill               | Type      | Domain                   | What it covers                                          | Failure modes |
 | ------------------- | --------- | ------------------------ | ------------------------------------------------------- | ------------- |
-| start-setup         | core      | project-setup            | tanstackStart(), getRouter(), root route, entries       | 3             |
+| start-core          | core      | project-setup            | tanstackStart(), getRouter(), root route, entries       | 3             |
 | server-functions    | core      | server-functions         | createServerFn, validation, useServerFn, streaming      | 4             |
 | middleware          | core      | middleware-and-context   | createMiddleware, context, global middleware, factories | 3             |
 | execution-model     | core      | execution-model          | Isomorphic defaults, environment functions, env vars    | 4             |
@@ -28,7 +28,7 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 
 ## Failure Mode Inventory
 
-### start-setup (3 failure modes)
+### start-core (3 failure modes)
 
 | #   | Mistake                                         | Priority | Source                  |
 | --- | ----------------------------------------------- | -------- | ----------------------- |

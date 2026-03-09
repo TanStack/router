@@ -177,8 +177,8 @@ const session = await useSession<{ userId: string }>(config)
 
 session.id // Session ID (string | undefined)
 session.data // Session data (typed)
-session.update() // Update and return new session manager
-session.clear() // Clear session data
+await session.update({ userId: '123' }) // Persist session data
+await session.clear() // Clear session data
 ```
 
 ## Query Validation

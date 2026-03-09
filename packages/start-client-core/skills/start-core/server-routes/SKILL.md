@@ -253,7 +253,7 @@ export const Route = createFileRoute('/api/posts')({
 
 ### 1. MEDIUM: Duplicate route paths
 
-```
+```text
 # WRONG — both resolve to /users, causes error
 routes/users.ts
 routes/users/index.ts

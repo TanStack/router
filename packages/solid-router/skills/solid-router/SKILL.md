@@ -25,11 +25,8 @@ This skill builds on router-core. Read [router-core](../../../router-core/skills
 This skill covers the Solid-specific bindings, components, hooks, and setup for TanStack Router.
 
 > **CRITICAL**: TanStack Router types are FULLY INFERRED. Never cast, never annotate inferred values.
-
 > **CRITICAL**: TanStack Router is CLIENT-FIRST. Loaders run on the client by default, not on the server.
-
 > **CRITICAL**: Most hooks return `Accessor<T>` — you MUST call the accessor (`value()`) to read the reactive value. This is the #1 difference from the React version.
-
 > **CRITICAL**: Do not confuse `@tanstack/solid-router` with `@solidjs/router`. They are completely different libraries with different APIs.
 
 ## Full Setup: File-Based Routing with Vite
@@ -318,7 +315,6 @@ Error boundary wrapping `Solid.ErrorBoundary`:
 
 ```tsx
 import { CatchBoundary } from '@tanstack/solid-router'
-
 ;<CatchBoundary
   getResetKey={() => 'widget'}
   onCatch={(error) => console.error(error)}
@@ -334,7 +330,6 @@ Renders children only after hydration:
 
 ```tsx
 import { ClientOnly } from '@tanstack/solid-router'
-
 ;<ClientOnly fallback={<div>Loading...</div>}>
   <BrowserOnlyWidget />
 </ClientOnly>

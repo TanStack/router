@@ -21,7 +21,6 @@ sources:
 Middleware customizes the behavior of server functions and server routes. It is composable — middleware can depend on other middleware to form a chain.
 
 > **CRITICAL**: TypeScript enforces method order: `middleware()` → `inputValidator()` → `client()` → `server()`. Wrong order causes type errors.
-
 > **CRITICAL**: Client context sent via `sendContext` is NOT validated by default. If you send dynamic user-generated data, validate it in server-side middleware before use.
 
 ## Two Types of Middleware
@@ -41,6 +40,7 @@ Request middleware cannot depend on server function middleware. Server function 
 Runs on ALL server requests (SSR, server routes, server functions):
 
 ```tsx
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { createMiddleware } from '@tanstack/react-start'
 
 const loggingMiddleware = createMiddleware().server(
@@ -57,6 +57,7 @@ const loggingMiddleware = createMiddleware().server(
 Has both client and server phases:
 
 ```tsx
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { createMiddleware } from '@tanstack/react-start'
 
 const authMiddleware = createMiddleware({ type: 'function' })
@@ -77,6 +78,7 @@ const authMiddleware = createMiddleware({ type: 'function' })
 ## Attaching Middleware to Server Functions
 
 ```tsx
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { createServerFn } from '@tanstack/react-start'
 
 const fn = createServerFn()
@@ -171,6 +173,7 @@ Create `src/start.ts` to configure global middleware:
 
 ```tsx
 // src/start.ts
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { createStart, createMiddleware } from '@tanstack/react-start'
 
 const requestLogger = createMiddleware().server(async ({ next, request }) => {
@@ -278,6 +281,7 @@ Headers merge across middleware. Later middleware overrides earlier. Call-site h
 ### Custom fetch
 
 ```tsx
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import type { CustomFetch } from '@tanstack/react-start'
 
 const loggingMiddleware = createMiddleware({ type: 'function' }).client(

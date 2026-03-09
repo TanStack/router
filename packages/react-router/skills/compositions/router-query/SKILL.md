@@ -341,7 +341,7 @@ A module-level singleton `QueryClient` is shared across all server requests, lea
 // WRONG — shared across SSR requests
 const queryClient = new QueryClient()
 export function createRouter() {
-  return createTanstackRouter({
+  return createRouter({
     routeTree,
     context: { queryClient },
   })
@@ -350,7 +350,7 @@ export function createRouter() {
 // CORRECT — new QueryClient per createRouter call
 export function createRouter() {
   const queryClient = new QueryClient()
-  return createTanstackRouter({
+  return createRouter({
     routeTree,
     context: { queryClient },
   })

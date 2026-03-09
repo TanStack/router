@@ -317,7 +317,9 @@ export async function render({
   req: express.Request
   res: express.Response
 }) {
-  const url = new URL(req.originalUrl || req.url, 'https://localhost:3000').href
+  const protocol = req.get('x-forwarded-proto') ?? req.protocol
+  const host = req.get('x-forwarded-host') ?? req.get('host')
+  const url = new URL(req.originalUrl || req.url, `${protocol}://${host}`).href
 
   const request = new Request(url, {
     method: req.method,

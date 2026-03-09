@@ -19,9 +19,7 @@ sources:
 TanStack Start is a full-stack React framework built on TanStack Router and Vite. It adds SSR, streaming, server functions (type-safe RPCs), middleware, server routes, and universal deployment.
 
 > **CRITICAL**: All code in TanStack Start is ISOMORPHIC by default — it runs in BOTH server and client environments. Loaders run on both server AND client. To run code exclusively on the server, use `createServerFn`. This is the #1 AI agent mistake.
-
 > **CRITICAL**: TanStack Start is NOT Next.js. Do not generate `getServerSideProps`, `"use server"` directives, `app/layout.tsx`, or any Next.js/Remix patterns. Use `createServerFn` for server-only code.
-
 > **CRITICAL**: Types are FULLY INFERRED. Never cast, never annotate inferred values.
 
 ## Sub-Skills
@@ -36,7 +34,7 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 
 ## Quick Decision Tree
 
-```
+```text
 Need to run code exclusively on the server (DB, secrets)?
   → start-core/server-functions
 

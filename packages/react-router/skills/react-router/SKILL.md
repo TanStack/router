@@ -27,9 +27,7 @@ This skill builds on router-core. Read [router-core](../../../router-core/skills
 This skill covers the React-specific bindings, components, hooks, and setup for TanStack Router.
 
 > **CRITICAL**: TanStack Router types are FULLY INFERRED. Never cast, never annotate inferred values.
-
 > **CRITICAL**: TanStack Router is CLIENT-FIRST. Loaders run on the client by default, not on the server.
-
 > **CRITICAL**: Do not confuse `@tanstack/react-router` with `react-router-dom`/`react-router`. They are completely different libraries with different APIs.
 
 ## Full Setup: File-Based Routing with Vite
@@ -362,11 +360,11 @@ Wrap `Link` in a custom component while preserving type safety:
 
 ```tsx
 import { createLink } from '@tanstack/react-router'
-import { forwardRef } from 'react'
+import { forwardRef, type ComponentPropsWithoutRef } from 'react'
 
 const StyledLinkComponent = forwardRef<
   HTMLAnchorElement,
-  React.ComponentPropsWithoutRef<'a'>
+  ComponentPropsWithoutRef<'a'>
 >((props, ref) => (
   <a ref={ref} {...props} className={`styled-link ${props.className ?? ''}`} />
 ))

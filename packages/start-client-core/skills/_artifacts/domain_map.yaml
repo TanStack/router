@@ -61,8 +61,8 @@ domains:
 
 skills:
   # ── Project Setup ────────────────────────────────────────────────
-  - name: 'Start Setup'
-    slug: 'start-setup'
+  - name: 'Start Core'
+    slug: 'start-core'
     domain: 'project-setup'
     description: >-
       Scaffold a TanStack Start project, configure Vite plugin with

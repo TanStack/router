@@ -45,11 +45,12 @@ skills:
       - 'Create components with defineComponent and h()'
       - 'Use provide/inject for router context'
     failure_modes:
-      - mistake: 'Not unwrapping Ref values in templates'
+      - mistake: 'Forgetting .value when reading Ref values in script'
         mechanism: >-
-          Vue Router returns Ref<T> from composables. Forgetting
-          .value in script or using incorrectly in templates
-          causes rendering of Ref objects instead of values.
+          Vue Router returns Ref<T> from composables. The common
+          mistake is reading them like plain values in script/setup
+          code. Templates auto-unwrap refs, but script logic still
+          needs .value.
         priority: HIGH
         status: active
 

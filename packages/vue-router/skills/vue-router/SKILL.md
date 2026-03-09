@@ -221,12 +221,12 @@ import { RouterProvider } from '@tanstack/vue-router'
 
 Type-safe navigation link with scoped slot for active state:
 
-```tsx
+```vue
 <Link to="/posts/$postId" :params="{ postId: '42' }">
   View Post
 </Link>
 
-{/* Scoped slot for active state */}
+<!-- Scoped slot for active state -->
 <Link to="/about">
   <template #default="{ isActive }">
     <span :class="{ active: isActive }">About</span>
@@ -301,9 +301,8 @@ const StyledLink = createLink(StyledLinkComponent)
 
 All components in `@tanstack/vue-router` use `h()` render functions internally. Route components can use either SFC templates or render functions:
 
-```tsx
-// SFC template (most common for user code)
-// MyRoute.component.vue
+```vue
+// SFC template (most common for user code) // MyRoute.component.vue
 <template>
   <div>{{ data.title }}</div>
 </template>

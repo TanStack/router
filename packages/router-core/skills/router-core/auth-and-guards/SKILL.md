@@ -151,7 +151,7 @@ export const Route = createFileRoute('/_authenticated')({
 ```tsx
 // src/routes/login.tsx
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search) => ({
@@ -173,7 +173,7 @@ function LoginComponent() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     try {
       await auth.login(username, password)

@@ -20,7 +20,6 @@ sources:
 TanStack Router handles two categories of "not found": unmatched URL paths (automatic) and missing resources like a post that doesn't exist (manual via `notFound()`). Error boundaries are configured per-route via `errorComponent`.
 
 > **CRITICAL**: Do NOT use the deprecated `NotFoundRoute`. When present, `notFound()` and `notFoundComponent` will NOT work. Remove it and use `notFoundComponent` instead.
-
 > **CRITICAL**: `useLoaderData` may be undefined inside `notFoundComponent`. Use `useParams`, `useSearch`, or `useRouteContext` instead.
 
 ## Not Found Handling
