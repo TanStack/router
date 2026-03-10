@@ -247,7 +247,7 @@ export function useLinkProps<
   })
 
   const doPreload = () =>
-    router.preloadRoute(_options() as any).catch((err: any) => {
+    router.preloadRoute({..._options(), _builtLocation: next()} as any).catch((err: any) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
