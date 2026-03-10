@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: [main, '*-pre']
+    branches: [main, '*-pre', '*-maint']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
