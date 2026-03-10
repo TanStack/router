@@ -122,22 +122,20 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  const currentLocation = Solid.createMemo(() => router.stores.location.state)
-  const currentSearch = Solid.createMemo(
-    () => router.stores.location.state.searchStr,
-  )
-  const currentHash = Solid.createMemo(() => router.stores.location.state.hash)
-  const currentLeafMatchId = Solid.createMemo(
-    () => router.stores.lastMatchId.state,
+  const buildLocationKey = Solid.createMemo(
+    () =>
+      router.stores.lastMatchId.state +
+      '\0' +
+      router.stores.location.state.hash +
+      '\0' +
+      router.stores.location.state.searchStr,
   )
 
   const _options = () => options
 
   const next = Solid.createMemo(() => {
     // Rebuild when inherited search/hash or the current route context changes.
-    currentSearch()
-    currentHash()
-    currentLeafMatchId()
+    buildLocationKey()
     const options = _options() as any
     // untrack because router-core will also access stores, which are signals in solid
     return Solid.untrack(() => router.buildLocation(options))
@@ -205,7 +203,7 @@ export function useLinkProps<
   const isActive = Solid.createMemo(() => {
     if (externalLink()) return false
     const activeOptions = local.activeOptions
-    const current = currentLocation()
+    const current = router.stores.location.state
     const nextLocation = next()
 
     if (activeOptions?.exact) {
