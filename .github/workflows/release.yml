@@ -5,8 +5,8 @@ on:
     branches: [main, '*-pre', '*-maint']
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
@@ -20,7 +20,7 @@ permissions:
 jobs:
   release:
     name: Release
-    if: github.repository_owner == 'TanStack'
+    if: github.repository_owner == 'TanStack' && !contains(github.event.head_commit.message, 'ci: release')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
