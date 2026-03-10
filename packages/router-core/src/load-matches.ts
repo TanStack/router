@@ -32,6 +32,7 @@ type InnerLoadContext = {
   updateMatch: UpdateMatchFn
   matches: Array<AnyRouteMatch>
   preload?: boolean
+  forceStaleReload?: boolean
   onReady?: () => Promise<void>
   sync?: boolean
 }
@@ -171,7 +172,10 @@ const shouldSkipLoader = (
   inner: InnerLoadContext,
   matchId: string,
 ): boolean => {
-  const match = inner.router.getMatch(matchId)!
+  const match = inner.router.getMatch(matchId)
+  if (!match) {
+    return true
+  }
   // upon hydration, we skip the loader if the match has been dehydrated on the server
   if (!(isServer ?? inner.router.isServer) && match._nonReactive.dehydrated) {
     return true
@@ -182,6 +186,21 @@ const shouldSkipLoader = (
   }
 
   return false
+}
+
+const syncMatchContext = (
+  inner: InnerLoadContext,
+  matchId: string,
+  index: number,
+): void => {
+  const nextContext = buildMatchContext(inner, index)
+
+  inner.updateMatch(matchId, (prev) => {
+    return {
+      ...prev,
+      context: nextContext,
+    }
+  })
 }
 
 const handleSerialError = (
@@ -484,8 +503,6 @@ const executeBeforeLoad = (
 
     inner.router.batch(() => {
       pending()
-      // Only store __beforeLoadContext here, don't update context yet
-      // Context will be updated in loadRouteMatch after loader completes
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
         __beforeLoadContext: beforeLoadContext,
@@ -767,6 +784,7 @@ const loadRouteMatch = async (
   async function handleLoader(
     preload: boolean,
     prevMatch: AnyRouteMatch,
+    previousRouteMatchId: string | undefined,
     match: AnyRouteMatch,
     route: AnyRoute,
   ) {
@@ -792,8 +810,15 @@ const loadRouteMatch = async (
 
     // If the route is successful and still fresh, just resolve
     const { status, invalid } = match
+    const staleMatchShouldReload =
+      age >= staleAge &&
+      (!!inner.forceStaleReload ||
+        match.cause === 'enter' ||
+        (previousRouteMatchId !== undefined &&
+          previousRouteMatchId !== match.id))
     loaderShouldRunAsync =
-      status === 'success' && (invalid || (shouldReload ?? age > staleAge))
+      status === 'success' &&
+      (invalid || (shouldReload ?? staleMatchShouldReload))
     if (preload && route.options.preload === false) {
       // Do nothing
     } else if (loaderShouldRunAsync && !inner.sync) {
@@ -813,6 +838,8 @@ const loadRouteMatch = async (
       })()
     } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
       await runLoader(inner, matchPromises, matchId, index, route)
+    } else {
+      syncMatchContext(inner, matchId, index)
     }
   }
 
@@ -822,11 +849,29 @@ const loadRouteMatch = async (
   const route = inner.router.looseRoutesById[routeId]!
 
   if (shouldSkipLoader(inner, matchId)) {
+    const match = inner.router.getMatch(matchId)
+    if (!match) {
+      return inner.matches[index]!
+    }
+
+    syncMatchContext(inner, matchId, index)
+
     if (isServer ?? inner.router.isServer) {
       return inner.router.getMatch(matchId)!
     }
   } else {
     const prevMatch = inner.router.getMatch(matchId)! // This is where all of the stale-while-revalidate magic happens
+    const activeIdAtIndex = inner.router.stores.matchesId.state[index]
+    const activeAtIndex =
+      (activeIdAtIndex &&
+        inner.router.stores.activeMatchStoresById.get(activeIdAtIndex)) ||
+      null
+    const previousRouteMatchId =
+      activeAtIndex?.routeId === routeId
+        ? activeIdAtIndex
+        : inner.router.stores.activeMatchesSnapshot.state.find(
+            (d) => d.routeId === routeId,
+          )?.id
     const preload = resolvePreload(inner, matchId)
 
     // there is a loaderPromise, so we are in the middle of a load
@@ -845,7 +890,13 @@ const loadRouteMatch = async (
       }
 
       if (match.status === 'pending') {
-        await handleLoader(preload, prevMatch, match, route)
+        await handleLoader(
+          preload,
+          prevMatch,
+          previousRouteMatchId,
+          match,
+          route,
+        )
       }
     } else {
       const nextPreload =
@@ -859,7 +910,7 @@ const loadRouteMatch = async (
         }))
       }
 
-      await handleLoader(preload, prevMatch, match, route)
+      await handleLoader(preload, prevMatch, previousRouteMatchId, match, route)
     }
   }
   const match = inner.router.getMatch(matchId)!
@@ -891,6 +942,7 @@ export async function loadMatches(arg: {
   location: ParsedLocation
   matches: Array<AnyRouteMatch>
   preload?: boolean
+  forceStaleReload?: boolean
   onReady?: () => Promise<void>
   updateMatch: UpdateMatchFn
   sync?: boolean

@@ -1,3 +1,4 @@
+import { createLRUCache } from './lru-cache'
 import { arraysEqual, last } from './utils'
 
 import type { AnyRoute } from './route'
@@ -227,14 +228,13 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   // giving consumers a single store to subscribe to instead of the
   // two-level byRouteId → matchStore pattern.
   //
-  // Cache size is bounded by the route tree (routeIds are static strings
-  // defined at app init). Unwatched computed stores are inert in
-  // alien-signals — they purge dependency links and don't participate
-  // in the reactive graph until re-subscribed.
-  const matchStoreByRouteIdCache = new Map<
+  // 64 max size is arbitrary, this is only for active matches anyway so
+  // it should be plenty. And we already have a 32 limit due to route
+  // matching bitmask anyway.
+  const matchStoreByRouteIdCache = createLRUCache<
     string,
     RouterReadableStore<AnyRouteMatch | undefined>
-  >()
+  >(64)
 
   function getMatchStoreByRouteId(
     routeId: string,
