@@ -861,10 +861,17 @@ const loadRouteMatch = async (
     }
   } else {
     const prevMatch = inner.router.getMatch(matchId)! // This is where all of the stale-while-revalidate magic happens
+    const activeIdAtIndex = inner.router.stores.matchesId.state[index]
+    const activeAtIndex =
+      (activeIdAtIndex &&
+        inner.router.stores.activeMatchStoresById.get(activeIdAtIndex)) ||
+      null
     const previousRouteMatchId =
-      inner.router.state.matches[index]?.routeId === routeId
-        ? inner.router.state.matches[index]!.id
-        : inner.router.state.matches.find((d) => d.routeId === routeId)?.id
+      activeAtIndex?.routeId === routeId
+        ? activeIdAtIndex
+        : inner.router.stores.activeMatchesSnapshot.state.find(
+            (d) => d.routeId === routeId,
+          )?.id
     const preload = resolvePreload(inner, matchId)
 
     // there is a loaderPromise, so we are in the middle of a load
