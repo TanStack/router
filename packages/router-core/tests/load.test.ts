@@ -58,7 +58,7 @@ describe('redirect resolution', () => {
 
       const routeTree = rootRoute.addChildren([slugRoute])
 
-      const router = new RouterCore({
+      const router = createTestRouter({
         routeTree,
         history: createMemoryHistory({ initialEntries: [initialPath] }),
         isServer: true,
