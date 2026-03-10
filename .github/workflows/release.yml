@@ -36,18 +36,22 @@ jobs:
       - name: Stop Nx Agents
         if: ${{ always() }}
         run: npx nx-cloud stop-all-agents
-      - name: Run Changesets (version or publish)
-        id: changesets
-        uses: changesets/action@v1.5.3
-        with:
-          version: pnpm run changeset:version
-          publish: pnpm run changeset:publish
-          commit: 'ci: Version Packages'
-          title: 'ci: Version Packages'
+      - name: Version Packages
+        run: pnpm run changeset:version
+      - name: Publish Packages
+        id: publish
+        run: |
+          pnpm run changeset:publish 2>&1 | tee publish-output.txt
+          if grep -q "published" publish-output.txt; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Commit and Push Version Changes
+        if: steps.publish.outputs.published == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "ci: release" || echo "No changes to commit"
+          git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Comment on PRs about release
-        if: steps.changesets.outputs.published == 'true'
-        uses: tanstack/config/.github/comment-on-release@main
-        with:
-          published-packages: ${{ steps.changesets.outputs.publishedPackages }}
