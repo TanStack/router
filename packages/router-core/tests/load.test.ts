@@ -46,6 +46,34 @@ describe('redirect resolution', () => {
     expect(resolved.headers.get('Location')).toBe('/foo')
     expect(resolved.options.href).toBe('/foo')
   })
+
+  test.each(['/$a', '/$toString', '/$__proto__'])(
+    'server startup redirects initial path %s to /undefined',
+    async (initialPath) => {
+      const rootRoute = new BaseRootRoute({})
+      const slugRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/$slug',
+      })
+
+      const routeTree = rootRoute.addChildren([slugRoute])
+
+      const router = new RouterCore({
+        routeTree,
+        history: createMemoryHistory({ initialEntries: [initialPath] }),
+        isServer: true,
+      })
+
+      await router.load()
+
+      expect(router.state.redirect).toEqual(
+        expect.objectContaining({
+          options: expect.objectContaining({ href: '/undefined' }),
+        }),
+      )
+      expect(router.state.redirect?.headers.get('Location')).toBe('/undefined')
+    },
+  )
 })
 
 describe('beforeLoad skip or exec', () => {

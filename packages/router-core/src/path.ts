@@ -279,7 +279,7 @@ export function interpolatePath({
   // Tracking if any params are missing in the `params` object
   // when interpolating the path
   let isMissingParams = false
-  const usedParams: Record<string, unknown> = {}
+  const usedParams: Record<string, unknown> = Object.create(null)
 
   if (!path || path === '/')
     return { interpolatedPath: '/', usedParams, isMissingParams }
