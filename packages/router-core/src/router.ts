@@ -1734,7 +1734,10 @@ export class RouterCore<
       params = lastStateMatch.params
     } else {
       // Parse params through the route chain
-      const strictParams: Record<string, unknown> = Object.assign(Object.create(null), routeParams)
+      const strictParams: Record<string, unknown> = Object.assign(
+        Object.create(null),
+        routeParams,
+      )
       for (const route of matchedRoutes) {
         try {
           extractStrictParams(
@@ -1841,7 +1844,10 @@ export class RouterCore<
       // From search should always use the current location
       const fromSearch = lightweightResult.search
       // Same with params. It can't hurt to provide as many as possible
-      const fromParams = Object.assign(Object.create(null), lightweightResult.params)
+      const fromParams = Object.assign(
+        Object.create(null),
+        lightweightResult.params,
+      )
 
       // Resolve the next to
       // ensure this includes the basePath if set
