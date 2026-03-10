@@ -578,7 +578,7 @@ describe('stale loader reload triggers', () => {
     })
 
     const routeTree = rootRoute.addChildren([fooRoute])
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
@@ -607,7 +607,7 @@ describe('stale loader reload triggers', () => {
     })
 
     const routeTree = rootRoute.addChildren([fooRoute])
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
@@ -650,7 +650,7 @@ describe('stale loader reload triggers', () => {
       const routeTree = rootRoute.addChildren([
         rootChildRoute.addChildren([leafRoute]),
       ])
-      const router = new RouterCore({
+      const router = createTestRouter({
         routeTree,
         history: createMemoryHistory(),
       })
@@ -710,7 +710,7 @@ describe('stale loader reload triggers', () => {
     })
 
     const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
@@ -753,7 +753,7 @@ describe('stale loader reload triggers', () => {
     })
 
     const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
@@ -790,7 +790,7 @@ describe('stale loader reload triggers', () => {
     })
 
     const routeTree = rootRoute.addChildren([fooRoute])
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })
