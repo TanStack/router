@@ -20,7 +20,7 @@ permissions:
 jobs:
   release:
     name: Release
-    if: "!contains(github.event.head_commit.message, 'ci: release')"
+    if: "!contains(github.event.head_commit.message, 'ci: changeset release')"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,7 +44,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          if git commit -m "ci: release"; then
+          if git commit -m "ci: changeset release"; then
             git push
             echo "committed=true" >> "$GITHUB_OUTPUT"
           fi
