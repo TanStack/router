@@ -38,20 +38,18 @@ jobs:
         run: npx nx-cloud stop-all-agents
       - name: Version Packages
         run: pnpm run changeset:version
-      - name: Publish Packages
-        id: publish
-        run: |
-          pnpm run changeset:publish 2>&1 | tee publish-output.txt
-          if grep -q "published" publish-output.txt; then
-            echo "published=true" >> "$GITHUB_OUTPUT"
-          fi
       - name: Commit and Push Version Changes
-        if: steps.publish.outputs.published == 'true'
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "ci: release" || echo "No changes to commit"
-          git push
+          if git commit -m "ci: release"; then
+            git push
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Packages
+        if: steps.commit.outputs.committed == 'true'
+        run: pnpm run changeset:publish
