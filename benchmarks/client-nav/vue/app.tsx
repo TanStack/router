@@ -90,7 +90,7 @@ const route = createRoute({
   component: () => <div />,
 })
 
-export function createTestRouter() {
+export function mountTestApp(container: Element) {
   const router = createRouter({
     history: createMemoryHistory({
       initialEntries: ['/0'],
@@ -100,6 +100,16 @@ export function createTestRouter() {
   })
 
   const component = <RouterProvider router={router} />
+  const app = Vue.createApp({
+    render: () => component,
+  })
 
-  return { router, component }
+  app.mount(container)
+
+  return {
+    router,
+    unmount() {
+      app.unmount()
+    },
+  }
 }

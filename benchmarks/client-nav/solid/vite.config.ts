@@ -17,9 +17,6 @@ export default defineConfig({
       formats: ['es'],
       fileName: 'app',
     },
-    rollupOptions: {
-      external: [/^solid-js($|\/)/],
-    },
   },
   resolve: {
     conditions: ['solid', 'browser'],

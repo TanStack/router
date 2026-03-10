@@ -11,6 +11,7 @@ import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
+import { useRouteContext } from './useRouteContext'
 import { useRouter } from './useRouter'
 import type {
   AnyContext,
@@ -104,10 +105,7 @@ export class RouteApi<
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts) => {
-    return useMatch({
-      from: this.id as any,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id as any }) as any
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
@@ -255,11 +253,7 @@ export class Route<
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id }) as any
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
@@ -497,11 +491,7 @@ export class RootRoute<
   }
 
   useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id }) as any
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {

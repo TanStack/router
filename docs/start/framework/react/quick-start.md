@@ -14,7 +14,7 @@ pnpm create @tanstack/start@latest
 or
 
 ```
-npm create @tanstack/start@latest
+npx @tanstack/cli create
 ```
 
 depending on your package manager of choice. You'll be prompted to add things like Tailwind, eslint, and a ton of other options.

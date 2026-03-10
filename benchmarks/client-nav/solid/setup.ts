@@ -1,9 +1,8 @@
 import type { NavigateOptions } from '@tanstack/router-core'
-import { render } from 'solid-js/web'
 import type * as App from './app'
 
 const appModulePath = './dist/app.js'
-const { createTestRouter } = (await import(appModulePath)) as typeof App
+const { mountTestApp } = (await import(appModulePath)) as typeof App
 
 export function setup() {
   if (process.env.NODE_ENV !== 'production') {
@@ -20,7 +19,11 @@ export function setup() {
 
   async function before() {
     id = 0
-    const { router, component } = createTestRouter()
+    container = document.createElement('div')
+    document.body.append(container)
+
+    const { router, unmount } = mountTestApp(container)
+    dispose = unmount
     let resolveRendered: () => void = () => {}
     unsub = router.subscribe('onRendered', () => {
       resolveRendered()
@@ -43,10 +46,6 @@ export function setup() {
         replace: true,
       })
     }
-
-    container = document.createElement('div')
-    document.body.append(container)
-    dispose = render(() => component() as any, container)
     await router.load()
   }
 

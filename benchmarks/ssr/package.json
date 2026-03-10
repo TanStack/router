@@ -41,25 +41,39 @@
       "build:react": {
         "cache": false,
         "dependsOn": [
-          "^build"
+          {
+            "projects": [
+              "@tanstack/react-start"
+            ],
+            "target": "build"
+          }
         ]
       },
       "build:solid": {
         "cache": false,
         "dependsOn": [
-          "^build"
+          {
+            "projects": [
+              "@tanstack/solid-start"
+            ],
+            "target": "build"
+          }
         ]
       },
       "build:vue": {
         "cache": false,
         "dependsOn": [
-          "^build"
+          {
+            "projects": [
+              "@tanstack/vue-start"
+            ],
+            "target": "build"
+          }
         ]
       },
       "test:perf": {
         "cache": false,
         "dependsOn": [
-          "^build",
           "build:react",
           "build:solid",
           "build:vue"

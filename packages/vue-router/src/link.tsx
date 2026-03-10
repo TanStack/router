@@ -79,7 +79,7 @@ export function useLinkProps<
   // Ensure router is defined before proceeding
   if (!router) {
     console.warn('useRouter must be used inside a <RouterProvider> component!')
-    return {}
+    return Vue.computed(() => ({})) as unknown as LinkHTMLAttributes
   }
 
   // Determine if the link is external or internal
@@ -92,8 +92,15 @@ export function useLinkProps<
     }
   })
 
-  const currentSearch = useRouterState({
-    select: (s) => s.location.searchStr,
+  const buildLocationKey = useRouterState({
+    select: (s) => {
+      const leaf = s.matches[s.matches.length - 1]
+      return {
+        search: leaf?.search,
+        hash: s.location.hash,
+        path: leaf?.pathname, // path + params
+      }
+    },
   })
 
   // when `from` is not supplied, use the leaf route of the current matches as the `from` location
@@ -108,7 +115,7 @@ export function useLinkProps<
 
   const next = Vue.computed(() => {
     // Depend on search to rebuild when search changes
-    currentSearch.value
+    buildLocationKey.value
     return router.buildLocation(_options.value as any)
   })
 
@@ -284,7 +291,9 @@ export function useLinkProps<
         }
       })
 
-      return safeProps
+      return Vue.computed(
+        () => safeProps as LinkHTMLAttributes,
+      ) as unknown as LinkHTMLAttributes
     }
 
     // External links just have simple props
@@ -313,7 +322,9 @@ export function useLinkProps<
       }
     })
 
-    return externalProps
+    return Vue.computed(
+      () => externalProps as LinkHTMLAttributes,
+    ) as unknown as LinkHTMLAttributes
   }
 
   // The click handler
