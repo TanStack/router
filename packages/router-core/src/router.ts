@@ -12,6 +12,7 @@ import {
   functionalUpdate,
   isDangerousProtocol,
   last,
+  nullReplaceEqualDeep,
   replaceEqualDeep,
 } from './utils'
 import {
@@ -1295,7 +1296,7 @@ export class RouterCore<
           pathname: decodePath(pathname).path,
           external: false,
           searchStr,
-          search: replaceEqualDeep(
+          search: nullReplaceEqualDeep(
             previousLocation?.search,
             parsedSearch,
           ) as any,
@@ -1324,7 +1325,7 @@ export class RouterCore<
         pathname: decodePath(url.pathname).path,
         external: !!this.rewrite && url.origin !== this.origin,
         searchStr,
-        search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
+        search: nullReplaceEqualDeep(previousLocation?.search, parsedSearch) as any,
         hash: decodePath(url.hash.slice(1)).path,
         state: replaceEqualDeep(previousLocation?.state, state),
       }
@@ -1549,8 +1550,8 @@ export class RouterCore<
           params: previousMatch?.params ?? routeParams,
           _strictParams: strictParams,
           search: previousMatch
-            ? replaceEqualDeep(previousMatch.search, preMatchSearch)
-            : replaceEqualDeep(existingMatch.search, preMatchSearch),
+            ? nullReplaceEqualDeep(previousMatch.search, preMatchSearch)
+            : nullReplaceEqualDeep(existingMatch.search, preMatchSearch),
           _strictSearch: strictMatchSearch,
         }
       } else {
@@ -1572,7 +1573,7 @@ export class RouterCore<
           pathname: interpolatedPath,
           updatedAt: Date.now(),
           search: previousMatch
-            ? replaceEqualDeep(previousMatch.search, preMatchSearch)
+            ? nullReplaceEqualDeep(previousMatch.search, preMatchSearch)
             : preMatchSearch,
           _strictSearch: strictMatchSearch,
           searchError: undefined,
@@ -1629,14 +1630,9 @@ export class RouterCore<
 
       // Update the match's params
       const previousMatch = previousMatchesByRouteId.get(match.routeId)
-      if (!previousMatch) {
-        match.params = routeParams
-      } else {
-        const prevParams = previousMatch.params
-        const nextParams = replaceEqualDeep(prevParams, routeParams)
-        if (nextParams === prevParams) match.params = prevParams
-        else match.params = Object.assign(Object.create(null), nextParams)
-      }
+       match.params = previousMatch
+        ? nullReplaceEqualDeep(previousMatch.params, routeParams)
+        : routeParams
 
       if (!existingMatch) {
         const parentMatch = matches[index - 1]
@@ -1944,7 +1940,7 @@ export class RouterCore<
       })
 
       // Replace the equal deep
-      nextSearch = replaceEqualDeep(fromSearch, nextSearch)
+      nextSearch = nullReplaceEqualDeep(fromSearch, nextSearch)
 
       // Stringify the next search
       const searchStr = this.options.stringifySearch(nextSearch)
