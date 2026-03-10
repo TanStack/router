@@ -16,6 +16,7 @@ const importProtectionBehaviorSchema = z.enum(['error', 'mock'])
 const importProtectionEnvRulesSchema = z.object({
   specifiers: z.array(patternSchema).optional(),
   files: z.array(patternSchema).optional(),
+  excludeFiles: z.array(patternSchema).optional(),
 })
 
 const importProtectionOptionsSchema = z
@@ -250,6 +251,18 @@ const tanstackStartOptionsSchema = z
       })
       .and(pagePrerenderOptionsSchema.optional())
       .optional(),
+    dev: z
+      .object({
+        ssrStyles: z
+          .object({
+            enabled: z.boolean().optional().default(true),
+            basepath: z.string().optional(),
+          })
+          .optional()
+          .default({}),
+      })
+      .optional()
+      .default({}),
     spa: spaSchema.optional(),
     vite: z
       .object({ installDevServerMiddleware: z.boolean().optional() })

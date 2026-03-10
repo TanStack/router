@@ -144,8 +144,9 @@ async function captureDev(cwd: string): Promise<void> {
       for (const route of routes) {
         try {
           await page.goto(`${baseURL}${route}`, {
-            waitUntil: 'networkidle',
-            timeout: 15_000,
+            // Vite dev keeps long-lived connections; 'networkidle' can hang.
+            waitUntil: 'load',
+            timeout: 30_000,
           })
         } catch {
           // expected — modules fail with 500 in error mode

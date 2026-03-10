@@ -2,6 +2,7 @@ import {
   createRootRoute,
   HeadContent,
   Link,
+  linkOptions,
   Outlet,
   Scripts,
 } from '@tanstack/react-router'
@@ -17,6 +18,20 @@ export const Route = createRootRoute({
   component: RootComponent,
 })
 
+const navLinks = linkOptions([
+  { to: '/', label: 'Home' },
+  { to: '/leaky-server-import', label: 'Leaky Import' },
+  { to: '/alias-path-namespace-leak', label: 'Alias path namespace leak' },
+  { to: '/client-only-violations', label: 'Client-Only Violations' },
+  { to: '/client-only-jsx', label: 'Client-Only JSX' },
+  { to: '/beforeload-leak', label: 'Beforeload Leak' },
+  { to: '/component-server-leak', label: 'Component Server Leak' },
+  { to: '/barrel-false-positive', label: 'Barrel False Positive' },
+  { to: '/noexternal-client-pkg', label: 'noExternal Client Pkg' },
+  { to: '/alias-path-leak', label: 'Alias Path Leak' },
+  { to: '/non-alias-namespace-leak', label: 'Non-Alias Namespace Leak' },
+])
+
 function RootComponent() {
   return (
     <html>
@@ -25,19 +40,12 @@ function RootComponent() {
       </head>
       <body>
         <nav>
-          <Link to="/">Home</Link>
-          {' | '}
-          <Link to="/leaky-server-import">Leaky Import</Link>
-          {' | '}
-          <Link to="/client-only-violations">Client-Only Violations</Link>
-          {' | '}
-          <Link to="/client-only-jsx">Client-Only JSX</Link>
-          {' | '}
-          <Link to="/beforeload-leak">Beforeload Leak</Link>
-          {' | '}
-          <Link to="/component-server-leak">Component Server Leak</Link>
-          {' | '}
-          <Link to="/barrel-false-positive">Barrel False Positive</Link>
+          {navLinks.map((link, index) => (
+            <span key={link.to}>
+              {index > 0 ? ' | ' : null}
+              <Link to={link.to}>{link.label}</Link>
+            </span>
+          ))}
         </nav>
         <Outlet />
         <Scripts />

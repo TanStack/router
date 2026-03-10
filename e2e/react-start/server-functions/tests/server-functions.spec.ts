@@ -6,17 +6,22 @@ import type { Page } from '@playwright/test'
 
 const PORT = await getTestServerPort(packageJson.name)
 
-test('Server function URLs correctly include constant ids', async ({
+test('Server function URLs correctly include explicit ids', async ({
   page,
 }) => {
-  for (const currentPage of ['/submit-post-formdata', '/formdata-redirect']) {
+  const expectedIds: Record<string, string> = {
+    '/submit-post-formdata': 'submit-post-formdata-greetUser',
+    '/formdata-redirect': 'formdata-redirect-greetUser',
+  }
+
+  for (const [currentPage, expectedId] of Object.entries(expectedIds)) {
     await page.goto(currentPage)
     await page.waitForLoadState('networkidle')
 
     const form = page.locator('form')
     const actionUrl = await form.getAttribute('action')
 
-    expect(actionUrl).toMatch(/^\/_serverFn\/constant_id/)
+    expect(actionUrl).toMatch(`/_serverFn/${expectedId}`)
   }
 })
 
@@ -1192,4 +1197,46 @@ test('direct fetch overrides global serverFnFetch from createStart', async ({
   expect(result).toContain('x-direct-override-global')
   // Global fetch header should NOT be present (overridden by direct fetch)
   expect(result).not.toContain('x-global-fetch')
+})
+
+test.describe('server function returns 405 when method is not allowed', () => {
+  // Whitelist the expected 405 error since this test verifies method mismatch handling
+  test.use({ whitelistErrors: ['405'] })
+
+  async function runMethodNotAllowedTest(
+    page: Page,
+    methodParam: string,
+    allowedMethod: string,
+  ) {
+    await page.goto(`/method-not-allowed/${methodParam}`)
+    await page.waitForLoadState('networkidle')
+
+    for (const testMethod of ['GET', 'POST', 'PUT', 'OPTIONS']) {
+      const lower = testMethod.toLowerCase()
+      await page.getByTestId(`${lower}-button`).click()
+      await page.waitForLoadState('networkidle')
+
+      if (testMethod === allowedMethod) {
+        await expect(page.getByTestId(`${lower}-fetch-result`)).toContainText(
+          '[200,"Hello, World!"]',
+        )
+      } else {
+        await expect(page.getByTestId(`${lower}-fetch-result`)).toContainText(
+          `[405,"expected ${allowedMethod} method. Got ${testMethod}"]`,
+        )
+      }
+    }
+  }
+
+  test('serverFn defined with GET method', async ({ page }) => {
+    await runMethodNotAllowedTest(page, 'get', 'GET')
+  })
+
+  test('serverFn without explicit method', async ({ page }) => {
+    await runMethodNotAllowedTest(page, 'undefined', 'GET')
+  })
+
+  test('serverFn defined with POST method', async ({ page }) => {
+    await runMethodNotAllowedTest(page, 'post', 'POST')
+  })
 })

@@ -1,0 +1,46 @@
+# Setup taken from https://codspeed.io/docs/benchmarks/nodejs/vitest
+name: Benchmarks
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read # required for actions/checkout
+  id-token: write # required for OIDC authentication with CodSpeed
+
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+  SERVER_PRESET: 'node-server'
+  NX_NO_CLOUD: true
+
+jobs:
+  benchmarks:
+    name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
+    strategy:
+      fail-fast: false
+      matrix:
+        framework:
+          - react
+          - solid
+          - vue
+        benchmark:
+          - client-nav
+          - ssr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
+
+      - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
+        continue-on-error: true
+        uses: CodSpeedHQ/action@v4
+        with:
+          mode: simulation
+          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}

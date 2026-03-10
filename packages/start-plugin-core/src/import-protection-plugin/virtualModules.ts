@@ -2,11 +2,12 @@ import { resolveViteId } from '../utils'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { isValidExportName } from './rewriteDeniedImports'
 import { CLIENT_ENV_SUGGESTIONS } from './trace'
+import { VITE_BROWSER_VIRTUAL_PREFIX } from './constants'
 import { relativizePath } from './utils'
 import type { ViolationInfo } from './trace'
 
 export const MOCK_MODULE_ID = 'tanstack-start-import-protection:mock'
-export const RESOLVED_MOCK_MODULE_ID = resolveViteId(MOCK_MODULE_ID)
+const RESOLVED_MOCK_MODULE_ID = resolveViteId(MOCK_MODULE_ID)
 
 /**
  * Per-violation mock prefix used in build+error mode.
@@ -14,17 +15,85 @@ export const RESOLVED_MOCK_MODULE_ID = resolveViteId(MOCK_MODULE_ID)
  * survived tree-shaking in `generateBundle`.
  */
 export const MOCK_BUILD_PREFIX = 'tanstack-start-import-protection:mock:build:'
-export const RESOLVED_MOCK_BUILD_PREFIX = resolveViteId(MOCK_BUILD_PREFIX)
+const RESOLVED_MOCK_BUILD_PREFIX = resolveViteId(MOCK_BUILD_PREFIX)
 
 export const MOCK_EDGE_PREFIX = 'tanstack-start-import-protection:mock-edge:'
-export const RESOLVED_MOCK_EDGE_PREFIX = resolveViteId(MOCK_EDGE_PREFIX)
+const RESOLVED_MOCK_EDGE_PREFIX = resolveViteId(MOCK_EDGE_PREFIX)
 
 export const MOCK_RUNTIME_PREFIX =
   'tanstack-start-import-protection:mock-runtime:'
-export const RESOLVED_MOCK_RUNTIME_PREFIX = resolveViteId(MOCK_RUNTIME_PREFIX)
+const RESOLVED_MOCK_RUNTIME_PREFIX = resolveViteId(MOCK_RUNTIME_PREFIX)
 
-export const MARKER_PREFIX = 'tanstack-start-import-protection:marker:'
-export const RESOLVED_MARKER_PREFIX = resolveViteId(MARKER_PREFIX)
+const MARKER_PREFIX = 'tanstack-start-import-protection:marker:'
+const RESOLVED_MARKER_PREFIX = resolveViteId(MARKER_PREFIX)
+
+const RESOLVED_MARKER_SERVER_ONLY = resolveViteId(`${MARKER_PREFIX}server-only`)
+const RESOLVED_MARKER_CLIENT_ONLY = resolveViteId(`${MARKER_PREFIX}client-only`)
+
+export function resolvedMarkerVirtualModuleId(
+  kind: 'server' | 'client',
+): string {
+  return kind === 'server'
+    ? RESOLVED_MARKER_SERVER_ONLY
+    : RESOLVED_MARKER_CLIENT_ONLY
+}
+
+/**
+ * Convenience list for plugin `load` filters/handlers.
+ *
+ * Vite/Rollup call `load(id)` with the *resolved* virtual id (prefixed by `\0`).
+ * `resolveId(source)` sees the *unresolved* id/prefix (without `\0`).
+ */
+export function getResolvedVirtualModuleMatchers(): ReadonlyArray<string> {
+  return RESOLVED_VIRTUAL_MODULE_MATCHERS
+}
+
+const RESOLVED_VIRTUAL_MODULE_MATCHERS = [
+  RESOLVED_MOCK_MODULE_ID,
+  RESOLVED_MOCK_BUILD_PREFIX,
+  RESOLVED_MOCK_EDGE_PREFIX,
+  RESOLVED_MOCK_RUNTIME_PREFIX,
+  RESOLVED_MARKER_PREFIX,
+] as const
+
+const RESOLVE_PREFIX_PAIRS = [
+  [MOCK_EDGE_PREFIX, RESOLVED_MOCK_EDGE_PREFIX],
+  [MOCK_RUNTIME_PREFIX, RESOLVED_MOCK_RUNTIME_PREFIX],
+  [MOCK_BUILD_PREFIX, RESOLVED_MOCK_BUILD_PREFIX],
+  [MARKER_PREFIX, RESOLVED_MARKER_PREFIX],
+] as const
+
+/**
+ * Resolve import-protection's internal virtual module IDs.
+ *
+ * `resolveId(source)` sees *unresolved* ids/prefixes (no `\0`).
+ * Returning a resolved id (with `\0`) ensures Vite/Rollup route it to `load`.
+ */
+export function resolveInternalVirtualModuleId(
+  source: string,
+): string | undefined {
+  if (source.startsWith(VITE_BROWSER_VIRTUAL_PREFIX)) {
+    return resolveInternalVirtualModuleId(
+      `\0${source.slice(VITE_BROWSER_VIRTUAL_PREFIX.length)}`,
+    )
+  }
+
+  if (source === MOCK_MODULE_ID || source === RESOLVED_MOCK_MODULE_ID) {
+    return RESOLVED_MOCK_MODULE_ID
+  }
+
+  for (const [unresolvedPrefix, resolvedPrefix] of RESOLVE_PREFIX_PAIRS) {
+    if (source.startsWith(unresolvedPrefix)) {
+      return resolveViteId(source)
+    }
+
+    if (source.startsWith(resolvedPrefix)) {
+      return source
+    }
+  }
+
+  return undefined
+}
 
 function toBase64Url(input: string): string {
   return Buffer.from(input, 'utf8').toString('base64url')
@@ -72,10 +141,9 @@ export function mockRuntimeModuleIdFromViolation(
 
 export function makeMockEdgeModuleId(
   exports: Array<string>,
-  source: string,
   runtimeId: string,
 ): string {
-  const payload = { source, exports, runtimeId }
+  const payload = { exports, runtimeId }
   return `${MOCK_EDGE_PREFIX}${toBase64Url(JSON.stringify(payload))}`
 }
 
@@ -87,7 +155,8 @@ export function makeMockEdgeModuleId(
  * (property access for primitive coercion, calls, construction, sets).
  *
  * When `diagnostics` is omitted, the mock is completely silent — suitable
- * for the shared `MOCK_MODULE_ID` that uses `syntheticNamedExports`.
+ * for base mock modules (e.g. `MOCK_MODULE_ID` or per-violation build mocks)
+ * that are consumed by mock-edge modules providing explicit named exports.
  */
 function generateMockCode(diagnostics?: {
   meta: {
@@ -170,7 +239,8 @@ function __report(action, accessPath) {
     : ''
 
   return `
-${preamble}function ${fnName}(name) {
+${preamble}/* @__NO_SIDE_EFFECTS__ */
+function ${fnName}(name) {
   const fn = function () {};
   fn.prototype.name = name;
   const children = Object.create(null);
@@ -197,16 +267,102 @@ ${preamble}function ${fnName}(name) {
   });
   return proxy;
 }
-const mock = ${fnName}('mock');
+const mock = /* @__PURE__ */ ${fnName}('mock');
 export default mock;
 `
 }
 
-export function loadSilentMockModule(): {
-  syntheticNamedExports: boolean
+export function loadSilentMockModule(): { code: string } {
+  return { code: generateMockCode() }
+}
+
+/**
+ * Filter export names to valid, non-default names.
+ */
+function filterExportNames(exports: ReadonlyArray<string>): Array<string> {
+  return exports.filter((n) => n.length > 0 && n !== 'default')
+}
+
+/**
+ * Generate ESM export lines that re-export named properties from `mock`.
+ *
+ * Produces `export const foo = mock.foo;` for valid identifiers and
+ * string-keyed re-exports for non-identifier names.
+ */
+function generateExportLines(names: ReadonlyArray<string>): Array<string> {
+  const lines: Array<string> = []
+  const stringExports: Array<{ alias: string; name: string }> = []
+
+  for (let i = 0; i < names.length; i++) {
+    const n = names[i]!
+    if (isValidExportName(n)) {
+      lines.push(`export const ${n} = mock.${n};`)
+    } else {
+      const alias = `__tss_str_${i}`
+      lines.push(`const ${alias} = mock[${JSON.stringify(n)}];`)
+      stringExports.push({ alias, name: n })
+    }
+  }
+
+  if (stringExports.length > 0) {
+    const reexports = stringExports
+      .map((s) => `${s.alias} as ${JSON.stringify(s.name)}`)
+      .join(', ')
+    lines.push(`export { ${reexports} };`)
+  }
+
+  return lines
+}
+
+/**
+ * Generate a self-contained mock module with explicit named exports.
+ *
+ * Used by the transform hook's "self-denial" check: when a denied file
+ * (e.g. `.server.ts` in the client environment) is transformed, its entire
+ * content is replaced with this mock module.  This avoids returning virtual
+ * module IDs from `resolveId`, which prevents cross-environment cache
+ * contamination from third-party resolver plugins.
+ *
+ * The generated code is side-effect-free and tree-shakeable.
+ */
+export function generateSelfContainedMockModule(exportNames: Array<string>): {
   code: string
 } {
-  return { syntheticNamedExports: true, code: generateMockCode() }
+  const mockCode = generateMockCode()
+  const exportLines = generateExportLines(filterExportNames(exportNames))
+
+  return {
+    code: `${mockCode}
+${exportLines.join('\n')}
+`,
+  }
+}
+
+/**
+ * Generate a dev-mode mock module for self-denial transforms.
+ *
+ * Similar to `loadMockEdgeModule` but takes export names and a runtime ID
+ * directly (instead of parsing them from a base64url-encoded payload).
+ * Used by the transform hook when a denied file (e.g. `.server.ts` in
+ * the client environment) is replaced in dev mode.
+ *
+ * The generated module imports mock-runtime for runtime diagnostics
+ * (error/warn on property access) and re-exports explicit named exports
+ * so that `import { foo } from './denied.server'` works.
+ */
+export function generateDevSelfDenialModule(
+  exportNames: Array<string>,
+  runtimeId: string,
+): { code: string } {
+  const names = filterExportNames(exportNames)
+  const exportLines = generateExportLines(names)
+
+  return {
+    code: `import mock from ${JSON.stringify(runtimeId)};
+${exportLines.join('\n')}
+export default mock;
+`,
+  }
 }
 
 export function loadMockEdgeModule(encodedPayload: string): { code: string } {
@@ -216,39 +372,14 @@ export function loadMockEdgeModule(encodedPayload: string): { code: string } {
   } catch {
     payload = { exports: [] }
   }
-  const names: Array<string> = Array.isArray(payload.exports)
-    ? payload.exports.filter(
-        (n): n is string =>
-          typeof n === 'string' && n.length > 0 && n !== 'default',
-      )
-    : []
+  const names = filterExportNames(payload.exports ?? [])
 
   const runtimeId: string =
     typeof payload.runtimeId === 'string' && payload.runtimeId.length > 0
       ? payload.runtimeId
       : MOCK_MODULE_ID
 
-  const exportLines: Array<string> = []
-  const stringExports: Array<{ alias: string; name: string }> = []
-
-  for (let i = 0; i < names.length; i++) {
-    const n = names[i]!
-    if (isValidExportName(n)) {
-      exportLines.push(`export const ${n} = mock.${n};`)
-    } else {
-      // ES2022 string-keyed export: use a temp var + re-export with string literal
-      const alias = `__tss_str_${i}`
-      exportLines.push(`const ${alias} = mock[${JSON.stringify(n)}];`)
-      stringExports.push({ alias, name: n })
-    }
-  }
-
-  if (stringExports.length > 0) {
-    const reexports = stringExports
-      .map((s) => `${s.alias} as ${JSON.stringify(s.name)}`)
-      .join(', ')
-    exportLines.push(`export { ${reexports} };`)
-  }
+  const exportLines = generateExportLines(names)
 
   return {
     code: `import mock from ${JSON.stringify(runtimeId)};
@@ -291,4 +422,31 @@ const MARKER_MODULE_RESULT = { code: 'export {}' } as const
 
 export function loadMarkerModule(): { code: string } {
   return MARKER_MODULE_RESULT
+}
+
+export function loadResolvedVirtualModule(
+  id: string,
+): { code: string } | undefined {
+  if (id === RESOLVED_MOCK_MODULE_ID) {
+    return loadSilentMockModule()
+  }
+
+  // Per-violation build mock modules — same silent mock code
+  if (id.startsWith(RESOLVED_MOCK_BUILD_PREFIX)) {
+    return loadSilentMockModule()
+  }
+
+  if (id.startsWith(RESOLVED_MOCK_EDGE_PREFIX)) {
+    return loadMockEdgeModule(id.slice(RESOLVED_MOCK_EDGE_PREFIX.length))
+  }
+
+  if (id.startsWith(RESOLVED_MOCK_RUNTIME_PREFIX)) {
+    return loadMockRuntimeModule(id.slice(RESOLVED_MOCK_RUNTIME_PREFIX.length))
+  }
+
+  if (id.startsWith(RESOLVED_MARKER_PREFIX)) {
+    return loadMarkerModule()
+  }
+
+  return undefined
 }

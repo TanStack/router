@@ -14,7 +14,7 @@
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
-    "express": "^4.21.2",
+    "express": "^5.1.0",
     "redaxios": "^0.5.1",
     "vue": "^3.5.25"
   },
@@ -25,7 +25,7 @@
     "@types/express": "^5.0.3",
     "@types/node": "^22.10.2",
     "cross-env": "^10.0.0",
-    "srvx": "^0.11.7",
+    "srvx": "^0.11.9",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.20.3",
     "typescript": "^5.7.2",

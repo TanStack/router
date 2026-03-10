@@ -2,47 +2,55 @@ import { normalizePath } from 'vite'
 
 import { resolveViteId } from '../utils'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
-import { SERVER_FN_LOOKUP } from '../start-compiler-plugin/plugin'
 import { ImportGraph, buildTrace, formatViolation } from './trace'
 import {
   getDefaultImportProtectionRules,
   getMarkerSpecifiers,
 } from './defaults'
-import { findPostCompileUsagePos } from './postCompileUsage'
 import { compileMatchers, matchesAny } from './matchers'
 import {
+  buildResolutionCandidates,
+  buildSourceCandidates,
+  canonicalizeResolvedId,
   clearNormalizeFilePathCache,
+  debugLog,
   dedupePatterns,
   escapeRegExp,
   extractImportSources,
   getOrCreate,
+  isInsideDirectory,
+  matchesDebugFilter,
   normalizeFilePath,
   relativizePath,
+  shouldDeferViolation,
 } from './utils'
-import { collectMockExportNamesBySource } from './rewriteDeniedImports'
 import {
-  MARKER_PREFIX,
-  MOCK_EDGE_PREFIX,
-  MOCK_MODULE_ID,
-  MOCK_RUNTIME_PREFIX,
-  RESOLVED_MARKER_PREFIX,
-  RESOLVED_MOCK_BUILD_PREFIX,
-  RESOLVED_MOCK_EDGE_PREFIX,
-  RESOLVED_MOCK_MODULE_ID,
-  RESOLVED_MOCK_RUNTIME_PREFIX,
-  loadMarkerModule,
-  loadMockEdgeModule,
-  loadMockRuntimeModule,
-  loadSilentMockModule,
+  collectMockExportNamesBySource,
+  collectNamedExports,
+  rewriteDeniedImports,
+} from './rewriteDeniedImports'
+import {
+  MOCK_BUILD_PREFIX,
+  generateDevSelfDenialModule,
+  generateSelfContainedMockModule,
+  getResolvedVirtualModuleMatchers,
+  loadResolvedVirtualModule,
   makeMockEdgeModuleId,
   mockRuntimeModuleIdFromViolation,
+  resolveInternalVirtualModuleId,
+  resolvedMarkerVirtualModuleId,
 } from './virtualModules'
+import { ExtensionlessAbsoluteIdResolver } from './extensionlessAbsoluteIdResolver'
+import {
+  IMPORT_PROTECTION_DEBUG,
+  SERVER_FN_LOOKUP_QUERY,
+  VITE_BROWSER_VIRTUAL_PREFIX,
+} from './constants'
 import {
   ImportLocCache,
   addTraceImportLocations,
   buildCodeSnippet,
   buildLineIndex,
-  clearImportPatternCache,
   findImportStatementLocationFromTransformed,
   findPostCompileUsageLocation,
   pickOriginalCodeFromSourcesContent,
@@ -55,193 +63,52 @@ import type {
   TransformResult,
   TransformResultProvider,
 } from './sourceLocation'
+import type { ImportProtectionOptions } from '../schema'
 import type {
-  ImportProtectionBehavior,
-  ImportProtectionOptions,
-} from '../schema'
-import type { CompileStartFrameworkOptions, GetConfigFn } from '../types'
+  EnvRules,
+  EnvState,
+  HandleViolationResult,
+  ImportProtectionPluginOptions,
+  ModuleGraphNode,
+  PendingViolation,
+  PluginConfig,
+  SharedState,
+  ViolationReporter,
+} from './types'
 
-const SERVER_FN_LOOKUP_QUERY = '?' + SERVER_FN_LOOKUP
-const RESOLVED_MARKER_SERVER_ONLY = resolveViteId(`${MARKER_PREFIX}server-only`)
-const RESOLVED_MARKER_CLIENT_ONLY = resolveViteId(`${MARKER_PREFIX}client-only`)
-
-const IMPORT_PROTECTION_DEBUG =
-  process.env.TSR_IMPORT_PROTECTION_DEBUG === '1' ||
-  process.env.TSR_IMPORT_PROTECTION_DEBUG === 'true'
-const IMPORT_PROTECTION_DEBUG_FILTER =
-  process.env.TSR_IMPORT_PROTECTION_DEBUG_FILTER
-
-function debugLog(...args: Array<unknown>) {
-  if (!IMPORT_PROTECTION_DEBUG) return
-  console.warn('[import-protection:debug]', ...args)
-}
-
-/** Check if a value matches the debug filter (when set). */
-function matchesDebugFilter(...values: Array<string>): boolean {
-  if (!IMPORT_PROTECTION_DEBUG_FILTER) return true
-  return values.some((v) => v.includes(IMPORT_PROTECTION_DEBUG_FILTER))
-}
-
-export { RESOLVED_MOCK_MODULE_ID } from './virtualModules'
-export { rewriteDeniedImports } from './rewriteDeniedImports'
-export { dedupePatterns, extractImportSources } from './utils'
-export type { Pattern } from './utils'
-
-/**
- * Immutable plugin configuration — set once in `configResolved`, never mutated
- * per-env or per-request afterward.
- */
-interface PluginConfig {
-  enabled: boolean
-  root: string
-  command: 'build' | 'serve'
-  srcDirectory: string
-  framework: CompileStartFrameworkOptions
-
-  /** Absolute, query-free entry file ids used for trace roots. */
-  entryFiles: Array<string>
-
-  effectiveBehavior: ImportProtectionBehavior
-  mockAccess: 'error' | 'warn' | 'off'
-  logMode: 'once' | 'always'
-  maxTraceDepth: number
-
-  compiledRules: {
-    client: {
-      specifiers: Array<CompiledMatcher>
-      files: Array<CompiledMatcher>
-    }
-    server: {
-      specifiers: Array<CompiledMatcher>
-      files: Array<CompiledMatcher>
-    }
-  }
-  includeMatchers: Array<CompiledMatcher>
-  excludeMatchers: Array<CompiledMatcher>
-  ignoreImporterMatchers: Array<CompiledMatcher>
-
-  markerSpecifiers: { serverOnly: Set<string>; clientOnly: Set<string> }
-  envTypeMap: Map<string, 'client' | 'server'>
-
-  onViolation?: (
-    info: ViolationInfo,
-  ) => boolean | void | Promise<boolean | void>
-}
-
-/**
- * Per-Vite-environment mutable state.  One instance per environment name,
- * stored in `envStates: Map<string, EnvState>`.
- *
- * All caches that previously lived on `PluginState` with `${envName}:` key
- * prefixes now live here without any prefix.
- */
-interface EnvState {
-  graph: ImportGraph
-  /** Specifiers that resolved to the mock module (for transform-time rewriting). */
-  deniedSources: Set<string>
-  /** Per-importer denied edges (for dev ESM mock modules). */
-  deniedEdges: Map<string, Set<string>>
-  /**
-   * During `vite dev` in mock mode, we generate a per-importer mock module that
-   * exports the names the importer expects.
-   * Populated in the transform hook (no disk reads).
-   */
-  mockExportsByImporter: Map<string, Map<string, Array<string>>>
-
-  /** Resolve cache.  Key: `${normalizedImporter}:${source}` (no env prefix). */
-  resolveCache: Map<string, string | null>
-  /** Reverse index: file path → Set of resolveCache keys involving that file. */
-  resolveCacheByFile: Map<string, Set<string>>
-
-  /** Import location cache.  Key: `${importerFile}::${source}`. */
-  importLocCache: ImportLocCache
-
-  /** Deduplication of logged violations (no env prefix in key). */
-  seenViolations: Set<string>
-
-  /**
-   * Modules transitively loaded during a `fetchModule(?SERVER_FN_LOOKUP)` call.
-   * In dev mode the compiler calls `fetchModule(id + '?' + SERVER_FN_LOOKUP)` to
-   * analyse a module's exports.  The direct target carries the query parameter so
-   * `isPreTransformResolve` is `true`.  But Vite also resolves the target's own
-   * imports (and their imports, etc.) with the plain file path as the importer —
-   * those would otherwise fire false-positive violations.
-   *
-   * We record every module resolved while walking a SERVER_FN_LOOKUP chain so
-   * that their child imports are also treated as pre-transform resolves.
-   */
-  serverFnLookupModules: Set<string>
-
-  /** Transform result cache (code + composed sourcemap + original source). */
-  transformResultCache: Map<string, TransformResult>
-  /** Reverse index: physical file path → Set of transformResultCache keys. */
-  transformResultKeysByFile: Map<string, Set<string>>
-
-  /** Cached provider that reads from {@link transformResultCache}. */
-  transformResultProvider: TransformResultProvider
-
-  /**
-   * Post-transform resolved imports.  Populated by the transform-cache hook
-   * after resolving every import source found in the transformed code.
-   * Key: transform cache key (normalised module ID incl. query params).
-   * Value: set of resolved child file paths.
-   */
-  postTransformImports: Map<string, Set<string>>
-
-  /**
-   * Violations deferred in dev mock mode.  Keyed by the violating importer's
-   * normalized file path.  Violations are confirmed or discarded by the
-   * transform-cache hook once enough post-transform data is available to
-   * determine whether the importer is still reachable from an entry point.
-   */
-  pendingViolations: Map<string, Array<PendingViolation>>
-
-  /**
-   * Violations deferred in build mode (both mock and error).  Each gets a
-   * unique mock module ID so we can check which ones survived tree-shaking
-   * in `generateBundle`.
-   */
-  deferredBuildViolations: Array<DeferredBuildViolation>
-}
-
-interface PendingViolation {
-  info: ViolationInfo
-  /** The mock module ID that resolveId already returned for this violation. */
-  mockReturnValue: string
-}
-
-interface DeferredBuildViolation {
-  info: ViolationInfo
-  /** Unique mock module ID assigned to this violation. */
-  mockModuleId: string
-}
-
-/**
- * Intentionally cross-env shared mutable state.
- *
- * A file's `'use server'`/`'use client'` directive is inherent to the file
- * content, not the environment that happens to discover it first.
- */
-interface SharedState {
-  fileMarkerKind: Map<string, 'server' | 'client'>
-}
-
-export interface ImportProtectionPluginOptions {
-  getConfig: GetConfigFn
-  framework: CompileStartFrameworkOptions
-  environments: Array<{ name: string; type: 'client' | 'server' }>
-  providerEnvName: string
-}
+export type { ImportProtectionPluginOptions } from './types'
 
 export function importProtectionPlugin(
   opts: ImportProtectionPluginOptions,
 ): PluginOption {
   let devServer: ViteDevServer | null = null
+  const extensionlessIdResolver = new ExtensionlessAbsoluteIdResolver()
+  const resolveExtensionlessAbsoluteId = (id: string) =>
+    extensionlessIdResolver.resolve(id)
 
-  type ModuleGraphNode = {
-    id?: string | null
-    url?: string
-    importers: Set<ModuleGraphNode>
+  const importPatternCache = new Map<string, Array<RegExp>>()
+
+  function findFirstImportSpecifierIndex(code: string, source: string): number {
+    let patterns = importPatternCache.get(source)
+    if (!patterns) {
+      const escaped = escapeRegExp(source)
+      patterns = [
+        new RegExp(`\\bimport\\s+(['"])${escaped}\\1`),
+        new RegExp(`\\bfrom\\s+(['"])${escaped}\\1`),
+        new RegExp(`\\bimport\\s*\\(\\s*(['"])${escaped}\\1\\s*\\)`),
+      ]
+      importPatternCache.set(source, patterns)
+    }
+
+    let best = -1
+    for (const re of patterns) {
+      const m = re.exec(code)
+      if (!m) continue
+      const idx = m.index + m[0].indexOf(source)
+      if (idx === -1) continue
+      if (best === -1 || idx < best) best = idx
+    }
+    return best
   }
 
   /**
@@ -344,14 +211,13 @@ export function importProtectionPlugin(
     command: 'build',
     srcDirectory: '',
     framework: opts.framework,
-    entryFiles: [],
     effectiveBehavior: 'error',
     mockAccess: 'error',
     logMode: 'once',
     maxTraceDepth: 20,
     compiledRules: {
-      client: { specifiers: [], files: [] },
-      server: { specifiers: [], files: [] },
+      client: { specifiers: [], files: [], excludeFiles: [] },
+      server: { specifiers: [], files: [], excludeFiles: [] },
     },
     includeMatchers: [],
     excludeMatchers: [],
@@ -363,18 +229,6 @@ export function importProtectionPlugin(
 
   const envStates = new Map<string, EnvState>()
   const shared: SharedState = { fileMarkerKind: new Map() }
-
-  function getMarkerKindForFile(
-    fileId: string,
-  ): 'server' | 'client' | undefined {
-    const file = normalizeFilePath(fileId)
-    return shared.fileMarkerKind.get(file)
-  }
-
-  type ViolationReporter = {
-    warn: (msg: string) => void
-    error: (msg: string) => never
-  }
 
   /**
    * Build the best available trace for a module and enrich each step with
@@ -407,7 +261,12 @@ export function importProtectionPlugin(
         trace = mgTrace
       }
     }
-    await addTraceImportLocations(provider, trace, env.importLocCache)
+    await addTraceImportLocations(
+      provider,
+      trace,
+      env.importLocCache,
+      findFirstImportSpecifierIndex,
+    )
 
     if (trace.length > 0) {
       const last = trace[trace.length - 1]!
@@ -448,19 +307,20 @@ export function importProtectionPlugin(
     >,
     traceOverride?: Array<TraceStep>,
   ): Promise<ViolationInfo> {
-    const loc =
-      (await findPostCompileUsageLocation(
-        provider,
-        importer,
-        source,
-        findPostCompileUsagePos,
-      )) ||
-      (await findImportStatementLocationFromTransformed(
-        provider,
-        importer,
-        source,
-        env.importLocCache,
-      ))
+    const sourceCandidates = buildSourceCandidates(
+      source,
+      'resolved' in overrides && typeof overrides.resolved === 'string'
+        ? overrides.resolved
+        : undefined,
+      config.root,
+    )
+
+    const loc = await resolveImporterLocation(
+      provider,
+      env,
+      importer,
+      sourceCandidates,
+    )
 
     const trace = await rebuildAndAnnotateTrace(
       provider,
@@ -487,6 +347,27 @@ export function importProtectionPlugin(
     }
   }
 
+  async function resolveImporterLocation(
+    provider: TransformResultProvider,
+    env: EnvState,
+    importer: string,
+    sourceCandidates: Iterable<string>,
+  ): Promise<Loc | undefined> {
+    for (const candidate of sourceCandidates) {
+      const loc =
+        (await findPostCompileUsageLocation(provider, importer, candidate)) ||
+        (await findImportStatementLocationFromTransformed(
+          provider,
+          importer,
+          candidate,
+          env.importLocCache,
+          findFirstImportSpecifierIndex,
+        ))
+      if (loc) return loc
+    }
+    return undefined
+  }
+
   /**
    * Check if a resolved import violates marker restrictions (e.g. importing
    * a server-only module in the client env).  If so, build and return the
@@ -505,7 +386,8 @@ export function importProtectionPlugin(
     relativePath: string,
     traceOverride?: Array<TraceStep>,
   ): Promise<ViolationInfo | undefined> {
-    const markerKind = getMarkerKindForFile(resolvedId)
+    const normalizedResolvedId = normalizeFilePath(resolvedId)
+    const markerKind = shared.fileMarkerKind.get(normalizedResolvedId)
     const violates =
       (envType === 'client' && markerKind === 'server') ||
       (envType === 'server' && markerKind === 'client')
@@ -523,11 +405,49 @@ export function importProtectionPlugin(
       source,
       {
         type: 'marker',
-        resolved: normalizeFilePath(resolvedId),
-        message:
-          markerKind === 'server'
-            ? `Module "${relativePath}" is marked server-only but is imported in the client environment`
-            : `Module "${relativePath}" is marked client-only but is imported in the server environment`,
+        resolved: normalizedResolvedId,
+        message: buildMarkerViolationMessage(relativePath, markerKind),
+      },
+      traceOverride,
+    )
+  }
+
+  function buildMarkerViolationMessage(
+    relativePath: string,
+    markerKind: 'server' | 'client' | undefined,
+  ): string {
+    return markerKind === 'server'
+      ? `Module "${relativePath}" is marked server-only but is imported in the client environment`
+      : `Module "${relativePath}" is marked client-only but is imported in the server environment`
+  }
+
+  async function buildFileViolationInfo(
+    provider: TransformResultProvider,
+    env: EnvState,
+    envName: string,
+    envType: 'client' | 'server',
+    importer: string,
+    normalizedImporter: string,
+    source: string,
+    resolvedPath: string,
+    pattern: string | RegExp,
+    traceOverride?: Array<TraceStep>,
+  ): Promise<ViolationInfo> {
+    const relativePath = getRelativePath(resolvedPath)
+
+    return buildViolationInfo(
+      provider,
+      env,
+      envName,
+      envType,
+      importer,
+      normalizedImporter,
+      source,
+      {
+        type: 'file',
+        pattern,
+        resolved: resolvedPath,
+        message: `Import "${source}" (resolved to "${relativePath}") is denied in the ${envType} environment`,
       },
       traceOverride,
     )
@@ -537,14 +457,34 @@ export function importProtectionPlugin(
     return config.envTypeMap.get(envName) ?? 'server'
   }
 
-  function getRulesForEnvironment(envName: string): {
-    specifiers: Array<CompiledMatcher>
-    files: Array<CompiledMatcher>
-  } {
+  function getRulesForEnvironment(envName: string): EnvRules {
     const type = getEnvType(envName)
     return type === 'client'
       ? config.compiledRules.client
       : config.compiledRules.server
+  }
+
+  /**
+   * Check if a relative path matches any denied file pattern for the given
+   * environment, respecting `excludeFiles`.  Returns the matching pattern
+   * or `undefined` if the file is not denied.
+   */
+  function checkFileDenial(
+    relativePath: string,
+    matchers: {
+      files: Array<CompiledMatcher>
+      excludeFiles: Array<CompiledMatcher>
+    },
+  ): CompiledMatcher | undefined {
+    if (
+      matchers.excludeFiles.length > 0 &&
+      matchesAny(relativePath, matchers.excludeFiles)
+    ) {
+      return undefined
+    }
+    return matchers.files.length > 0
+      ? matchesAny(relativePath, matchers.files)
+      : undefined
   }
 
   const environmentNames = new Set<string>([
@@ -562,8 +502,6 @@ export function importProtectionPlugin(
       const transformResultCache = new Map<string, TransformResult>()
       envState = {
         graph: new ImportGraph(),
-        deniedSources: new Set(),
-        deniedEdges: new Map(),
         mockExportsByImporter: new Map(),
         resolveCache: new Map(),
         resolveCacheByFile: new Map(),
@@ -592,6 +530,186 @@ export function importProtectionPlugin(
     return envState
   }
 
+  /**
+   * Search a parsed export-names map for an entry matching any of the
+   * specifier candidates.  Returns matching names or empty array.
+   */
+  function findExportsInMap(
+    exportMap: Map<string, Array<string>>,
+    candidates: Array<string>,
+  ): Array<string> {
+    for (const candidate of candidates) {
+      const hit = exportMap.get(candidate)
+      if (hit && hit.length > 0) return hit
+    }
+    return []
+  }
+
+  /**
+   * Build deduped resolution candidates for a module ID, including the
+   * extensionless absolute path when the ID looks like a file path.
+   */
+  function buildIdCandidates(id: string, extra?: string): Array<string> {
+    const set = new Set(buildResolutionCandidates(id))
+    if (extra) {
+      for (const c of buildResolutionCandidates(extra)) set.add(c)
+      set.add(resolveExtensionlessAbsoluteId(extra))
+    }
+    return Array.from(set)
+  }
+
+  /**
+   * Resolve which named exports the importer needs from a denied specifier,
+   * so mock-edge modules can provide explicit ESM named exports.
+   *
+   * Tries multiple strategies: cached export maps, AST parsing, and
+   * resolver-based comparison.
+   */
+  async function resolveExportsForDeniedSpecifier(
+    env: EnvState,
+    ctx: ViolationReporter,
+    info: ViolationInfo,
+    importerIdHint?: string,
+  ): Promise<Array<string>> {
+    const importerFile = normalizeFilePath(info.importer)
+    const specifierCandidates = buildIdCandidates(info.specifier, info.resolved)
+
+    // Only parse AST when a violation occurs (this function is only called
+    // while handling a violation). Cache per-importer to avoid repeated parses
+    // across multiple violations.
+    let parsedBySource = env.mockExportsByImporter.get(importerFile)
+    if (!parsedBySource) {
+      // Try transform-cache result first, then moduleInfo fallback.
+      const importerCode =
+        env.transformResultProvider.getTransformResult(importerFile)?.code ??
+        (importerIdHint && ctx.getModuleInfo
+          ? (ctx.getModuleInfo(importerIdHint)?.code ?? undefined)
+          : undefined)
+      if (typeof importerCode !== 'string' || importerCode.length === 0)
+        return []
+
+      try {
+        parsedBySource = collectMockExportNamesBySource(importerCode)
+
+        // Also index by resolved physical IDs so later lookups match.
+        await recordMockExportsForImporter(
+          env,
+          importerFile,
+          parsedBySource,
+          async (src) => {
+            const cacheKey = `${importerFile}:${src}`
+            if (env.resolveCache.has(cacheKey)) {
+              return env.resolveCache.get(cacheKey) ?? undefined
+            }
+            if (!ctx.resolve) return undefined
+            const resolved = await ctx.resolve(src, info.importer, {
+              skipSelf: true,
+            })
+            if (!resolved || resolved.external) return undefined
+            return resolved.id
+          },
+        )
+
+        // Keep the parsed-by-source map for direct lookups.
+        parsedBySource =
+          env.mockExportsByImporter.get(importerFile) ?? parsedBySource
+      } catch {
+        return []
+      }
+    }
+
+    // 1. Direct candidate match
+    const direct = findExportsInMap(parsedBySource, specifierCandidates)
+    if (direct.length > 0) return direct
+
+    // 2. Resolve each source key and compare candidates.
+    const candidateSet = new Set(specifierCandidates)
+    for (const [sourceKey, names] of parsedBySource) {
+      if (!names.length) continue
+
+      const resolvedId = await resolveSourceKey(
+        env,
+        ctx,
+        importerFile,
+        sourceKey,
+        info.importer,
+      )
+      if (!resolvedId) continue
+
+      const resolvedCandidates = buildIdCandidates(resolvedId)
+      resolvedCandidates.push(resolveExtensionlessAbsoluteId(resolvedId))
+      if (resolvedCandidates.some((v) => candidateSet.has(v))) {
+        return names
+      }
+    }
+
+    return []
+  }
+
+  /** Best-effort resolve a source key using the cache or ctx.resolve. */
+  async function resolveSourceKey(
+    env: EnvState,
+    ctx: ViolationReporter,
+    importerFile: string,
+    sourceKey: string,
+    importerId: string,
+  ): Promise<string | undefined> {
+    const cacheKey = `${importerFile}:${sourceKey}`
+    if (env.resolveCache.has(cacheKey)) {
+      return env.resolveCache.get(cacheKey) ?? undefined
+    }
+    if (!ctx.resolve) return undefined
+    try {
+      const resolved = await ctx.resolve(sourceKey, importerId, {
+        skipSelf: true,
+      })
+      if (!resolved || resolved.external) return undefined
+      return resolved.id
+    } catch {
+      return undefined
+    }
+  }
+
+  async function recordMockExportsForImporter(
+    env: EnvState,
+    importerId: string,
+    namesBySource: Map<string, Array<string>>,
+    resolveSource: (source: string) => Promise<string | undefined>,
+  ): Promise<void> {
+    const importerFile = normalizeFilePath(importerId)
+
+    if (namesBySource.size === 0) return
+
+    for (const [source, names] of namesBySource) {
+      try {
+        const resolvedId = await resolveSource(source)
+        if (!resolvedId) continue
+
+        namesBySource.set(normalizeFilePath(resolvedId), names)
+        namesBySource.set(resolveExtensionlessAbsoluteId(resolvedId), names)
+      } catch {
+        // Best-effort only
+      }
+    }
+
+    const existing = env.mockExportsByImporter.get(importerFile)
+    if (!existing) {
+      env.mockExportsByImporter.set(importerFile, namesBySource)
+      return
+    }
+
+    for (const [source, names] of namesBySource) {
+      const prev = existing.get(source)
+      if (!prev) {
+        existing.set(source, names)
+        continue
+      }
+
+      const union = new Set([...prev, ...names])
+      existing.set(source, Array.from(union).sort())
+    }
+  }
+
   const shouldCheckImporterCache = new Map<string, boolean>()
   function shouldCheckImporter(importer: string): boolean {
     let result = shouldCheckImporterCache.get(importer)
@@ -599,20 +717,19 @@ export function importProtectionPlugin(
 
     const relativePath = relativizePath(importer, config.root)
 
-    if (
-      config.excludeMatchers.length > 0 &&
-      matchesAny(relativePath, config.excludeMatchers)
-    ) {
-      result = false
-    } else if (
-      config.ignoreImporterMatchers.length > 0 &&
-      matchesAny(relativePath, config.ignoreImporterMatchers)
-    ) {
+    // Excluded or ignored importers are never checked.
+    const excluded =
+      (config.excludeMatchers.length > 0 &&
+        matchesAny(relativePath, config.excludeMatchers)) ||
+      (config.ignoreImporterMatchers.length > 0 &&
+        matchesAny(relativePath, config.ignoreImporterMatchers))
+
+    if (excluded) {
       result = false
     } else if (config.includeMatchers.length > 0) {
       result = !!matchesAny(relativePath, config.includeMatchers)
     } else if (config.srcDirectory) {
-      result = importer.startsWith(config.srcDirectory)
+      result = isInsideDirectory(importer, config.srcDirectory)
     } else {
       result = true
     }
@@ -621,13 +738,8 @@ export function importProtectionPlugin(
     return result
   }
 
-  function dedupeKey(
-    type: string,
-    importer: string,
-    specifier: string,
-    resolved?: string,
-  ): string {
-    return `${type}:${importer}:${specifier}:${resolved ?? ''}`
+  function dedupeKey(info: ViolationInfo): string {
+    return `${info.type}:${info.importer}:${info.specifier}:${info.resolved ?? ''}`
   }
 
   function hasSeen(env: EnvState, key: string): boolean {
@@ -639,6 +751,72 @@ export function importProtectionPlugin(
 
   function getRelativePath(absolutePath: string): string {
     return relativizePath(normalizePath(absolutePath), config.root)
+  }
+
+  /** Reset all caches on an EnvState (called from buildStart). */
+  function clearEnvState(envState: EnvState): void {
+    envState.resolveCache.clear()
+    envState.resolveCacheByFile.clear()
+    envState.importLocCache.clear()
+    envState.seenViolations.clear()
+    envState.transformResultCache.clear()
+    envState.transformResultKeysByFile.clear()
+    envState.postTransformImports.clear()
+    envState.serverFnLookupModules.clear()
+    envState.pendingViolations.clear()
+    envState.deferredBuildViolations.length = 0
+    envState.graph.clear()
+    envState.mockExportsByImporter.clear()
+  }
+
+  /** Invalidate all env-level caches that reference a specific file. */
+  function invalidateFileFromEnv(envState: EnvState, file: string): void {
+    envState.importLocCache.deleteByFile(file)
+
+    // Resolve cache (keyed "importer:source")
+    const resolveKeys = envState.resolveCacheByFile.get(file)
+    if (resolveKeys) {
+      for (const key of resolveKeys) envState.resolveCache.delete(key)
+      envState.resolveCacheByFile.delete(file)
+    }
+
+    envState.graph.invalidate(file)
+    envState.mockExportsByImporter.delete(file)
+    envState.serverFnLookupModules.delete(file)
+    envState.pendingViolations.delete(file)
+
+    // Transform result cache + post-transform imports
+    const transformKeys = envState.transformResultKeysByFile.get(file)
+    if (transformKeys) {
+      for (const key of transformKeys) {
+        envState.transformResultCache.delete(key)
+        envState.postTransformImports.delete(key)
+      }
+      envState.transformResultKeysByFile.delete(file)
+    } else {
+      envState.transformResultCache.delete(file)
+      envState.postTransformImports.delete(file)
+    }
+  }
+
+  /** Store a transform result under both the cacheKey and physical file path. */
+  function cacheTransformResult(
+    envState: EnvState,
+    file: string,
+    cacheKey: string,
+    result: TransformResult,
+  ): void {
+    envState.transformResultCache.set(cacheKey, result)
+    const keySet = getOrCreate(
+      envState.transformResultKeysByFile,
+      file,
+      () => new Set<string>(),
+    )
+    keySet.add(cacheKey)
+    if (cacheKey !== file) {
+      envState.transformResultCache.set(file, result)
+      keySet.add(file)
+    }
   }
 
   /** Register known Start entrypoints as trace roots for all environments. */
@@ -659,6 +837,82 @@ export function importProtectionPlugin(
     }
   }
 
+  /**
+   * Get the merged set of post-transform imports for a file, checking all
+   * code-split variants.  Returns `null` if no post-transform data exists
+   * yet (transform hasn't run).
+   *
+   * Skips `SERVER_FN_LOOKUP` variants because they contain untransformed
+   * code — the Start compiler excludes them.
+   */
+  function getPostTransformImports(
+    env: EnvState,
+    file: string,
+  ): Set<string> | null {
+    const keySet = env.transformResultKeysByFile.get(file)
+    let merged: Set<string> | null = null
+
+    if (keySet) {
+      for (const k of keySet) {
+        if (k.includes(SERVER_FN_LOOKUP_QUERY)) continue
+        const imports = env.postTransformImports.get(k)
+        if (imports) {
+          if (!merged) merged = new Set(imports)
+          else for (const v of imports) merged.add(v)
+        }
+      }
+    }
+
+    // Fallback: direct file-path key
+    if (!merged) {
+      const imports = env.postTransformImports.get(file)
+      if (imports) merged = new Set(imports)
+    }
+
+    return merged
+  }
+
+  /**
+   * Check whether an import edge from `parent` to `target` survived
+   * post-transform compilation.
+   *
+   * Returns:
+   *   - `'live'`    — target appears in a non-lookup variant's post-transform imports
+   *   - `'dead'`    — post-transform data exists but target is absent (compiler stripped it)
+   *   - `'pending'` — transform ran but import data not yet posted
+   *   - `'no-data'` — transform never ran (warm-start cached module)
+   */
+  function checkEdgeLiveness(
+    env: EnvState,
+    parent: string,
+    target: string,
+  ): 'live' | 'dead' | 'pending' | 'no-data' {
+    const keySet = env.transformResultKeysByFile.get(parent)
+    let anyVariantCached = false
+
+    if (keySet) {
+      for (const k of keySet) {
+        if (k.includes(SERVER_FN_LOOKUP_QUERY)) continue
+        const imports = env.postTransformImports.get(k)
+        if (imports) {
+          anyVariantCached = true
+          if (imports.has(target)) return 'live'
+        }
+      }
+    }
+
+    if (!anyVariantCached) {
+      const imports = env.postTransformImports.get(parent)
+      if (imports) return imports.has(target) ? 'live' : 'dead'
+      const hasTransformResult =
+        env.transformResultCache.has(parent) ||
+        (keySet ? keySet.size > 0 : false)
+      return hasTransformResult ? 'pending' : 'no-data'
+    }
+
+    return 'dead'
+  }
+
   function checkPostTransformReachability(
     env: EnvState,
     file: string,
@@ -677,71 +931,58 @@ export function importProtectionPlugin(
         return 'reachable'
       }
 
-      // Walk reverse edges
       const importers = env.graph.reverseEdges.get(current)
       if (!importers) continue
 
       for (const [parent] of importers) {
         if (visited.has(parent)) continue
-
-        // Check all code-split variants for this parent. The edge is
-        // live if ANY variant's resolved imports include `current`.
-        // Skip SERVER_FN_LOOKUP variants — they contain untransformed
-        // code (the compiler excludes them), so their import lists
-        // include imports that the compiler would normally strip.
-        const keySet = env.transformResultKeysByFile.get(parent)
-        let anyVariantCached = false
-        let edgeLive = false
-
-        if (keySet) {
-          for (const k of keySet) {
-            if (k.includes(SERVER_FN_LOOKUP_QUERY)) continue
-            const resolvedImports = env.postTransformImports.get(k)
-            if (resolvedImports) {
-              anyVariantCached = true
-              if (resolvedImports.has(current)) {
-                edgeLive = true
-                break
-              }
-            }
-          }
-        }
-
-        // Fallback: direct file-path key
-        if (!anyVariantCached) {
-          const resolvedImports = env.postTransformImports.get(parent)
-          if (resolvedImports) {
-            anyVariantCached = true
-            if (resolvedImports.has(current)) {
-              edgeLive = true
-            }
-          }
-        }
-
-        if (!anyVariantCached) {
-          const hasTransformResult =
-            env.transformResultCache.has(parent) ||
-            (keySet ? keySet.size > 0 : false)
-
-          if (hasTransformResult) {
-            // Transform ran but postTransformImports not yet populated
-            hasUnknownEdge = true
-            continue
-          }
-
-          // Transform never ran — Vite served from cache (warm start).
-          // Conservatively treat edge as live.
+        const liveness = checkEdgeLiveness(env, parent, current)
+        if (liveness === 'live' || liveness === 'no-data') {
+          // Live edge or warm-start (no transform data) — follow it
           queue.push(parent)
-          continue
+        } else if (liveness === 'pending') {
+          hasUnknownEdge = true
         }
-
-        if (edgeLive) {
-          queue.push(parent)
-        }
+        // 'dead' — edge was stripped by compiler, skip
       }
     }
 
     return hasUnknownEdge ? 'unknown' : 'unreachable'
+  }
+
+  /**
+   * Filter pending violations using edge-survival data.  Returns the subset
+   * of violations whose resolved import survived the Start compiler (or all
+   * violations when no post-transform data is available yet).
+   *
+   * Returns `undefined` when all violations were stripped or when we must wait
+   * for post-transform data before proceeding.
+   */
+  function filterEdgeSurvival(
+    env: EnvState,
+    file: string,
+    violations: Array<PendingViolation>,
+  ):
+    | { active: Array<PendingViolation>; edgeSurvivalApplied: boolean }
+    | 'all-stripped'
+    | 'await-transform' {
+    const postTransform = getPostTransformImports(env, file)
+
+    if (postTransform) {
+      const surviving = violations.filter(
+        (pv) => !pv.info.resolved || postTransform.has(pv.info.resolved),
+      )
+      if (surviving.length === 0) return 'all-stripped'
+      env.pendingViolations.set(file, surviving)
+      return { active: surviving, edgeSurvivalApplied: true }
+    }
+
+    // Pre-transform violations need edge-survival verification first.
+    if (violations.some((pv) => pv.fromPreTransformResolve)) {
+      return 'await-transform'
+    }
+
+    return { active: violations, edgeSurvivalApplied: false }
   }
 
   /**
@@ -760,6 +1001,16 @@ export function importProtectionPlugin(
     const toDelete: Array<string> = []
 
     for (const [file, violations] of env.pendingViolations) {
+      const filtered = filterEdgeSurvival(env, file, violations)
+
+      if (filtered === 'all-stripped') {
+        toDelete.push(file)
+        continue
+      }
+      if (filtered === 'await-transform') continue
+
+      const { active, edgeSurvivalApplied } = filtered
+
       // Wait for entries before running reachability.  registerEntries()
       // populates entries at buildStart; resolveId(!importer) may add more.
       const status =
@@ -768,36 +1019,35 @@ export function importProtectionPlugin(
           : 'unknown'
 
       if (status === 'reachable') {
-        for (const pv of violations) {
-          const key = dedupeKey(
-            pv.info.type,
-            pv.info.importer,
-            pv.info.specifier,
-            pv.info.resolved,
-          )
-          if (!hasSeen(env, key)) {
-            const freshTrace = await rebuildAndAnnotateTrace(
-              env.transformResultProvider,
-              env,
-              pv.info.env,
-              pv.info.importer,
-              pv.info.specifier,
-              pv.info.importerLoc,
-            )
-            if (freshTrace.length > pv.info.trace.length) {
-              pv.info.trace = freshTrace
-            }
-
-            if (config.onViolation) {
-              const result = await config.onViolation(pv.info)
-              if (result === false) continue
-            }
-            warnFn(formatViolation(pv.info, config.root))
-          }
+        for (const pv of active) {
+          await emitPendingViolation(env, warnFn, pv)
         }
         toDelete.push(file)
       } else if (status === 'unreachable') {
         toDelete.push(file)
+      } else if (config.command === 'serve') {
+        // 'unknown' reachability — some graph edges lack transform data.
+        // When edge-survival was applied, surviving violations are confirmed
+        // real.  Without it (warm start), emit conservatively.
+        let emittedAny = false
+        for (const pv of active) {
+          if (pv.fromPreTransformResolve) continue
+
+          const shouldEmit =
+            edgeSurvivalApplied ||
+            (pv.info.type === 'file' &&
+              !!pv.info.resolved &&
+              isInsideDirectory(pv.info.resolved, config.srcDirectory))
+
+          if (shouldEmit) {
+            emittedAny =
+              (await emitPendingViolation(env, warnFn, pv)) || emittedAny
+          }
+        }
+
+        if (emittedAny) {
+          toDelete.push(file)
+        }
       }
       // 'unknown' — keep pending for next transform-cache invocation.
     }
@@ -805,6 +1055,59 @@ export function importProtectionPlugin(
     for (const file of toDelete) {
       env.pendingViolations.delete(file)
     }
+  }
+
+  async function emitPendingViolation(
+    env: EnvState,
+    warnFn: (msg: string) => void,
+    pv: PendingViolation,
+  ): Promise<boolean> {
+    if (!pv.info.importerLoc) {
+      const sourceCandidates = buildSourceCandidates(
+        pv.info.specifier,
+        pv.info.resolved,
+        config.root,
+      )
+      const loc = await resolveImporterLocation(
+        env.transformResultProvider,
+        env,
+        pv.info.importer,
+        sourceCandidates,
+      )
+
+      if (loc) {
+        pv.info.importerLoc = loc
+        pv.info.snippet = buildCodeSnippet(
+          env.transformResultProvider,
+          pv.info.importer,
+          loc,
+        )
+      }
+    }
+
+    if (hasSeen(env, dedupeKey(pv.info))) {
+      return false
+    }
+
+    const freshTrace = await rebuildAndAnnotateTrace(
+      env.transformResultProvider,
+      env,
+      pv.info.env,
+      pv.info.importer,
+      pv.info.specifier,
+      pv.info.importerLoc,
+    )
+    if (freshTrace.length > pv.info.trace.length) {
+      pv.info.trace = freshTrace
+    }
+
+    if (config.onViolation) {
+      const result = await config.onViolation(pv.info)
+      if (result === false) return false
+    }
+
+    warnFn(formatViolation(pv.info, config.root))
+    return true
   }
 
   /**
@@ -815,47 +1118,28 @@ export function importProtectionPlugin(
     env: EnvState,
     importerFile: string,
     info: ViolationInfo,
-    mockReturnValue:
-      | { id: string; syntheticNamedExports: boolean }
-      | string
-      | undefined,
+    isPreTransformResolve?: boolean,
   ): void {
     getOrCreate(env.pendingViolations, importerFile, () => []).push({
       info,
-      mockReturnValue:
-        typeof mockReturnValue === 'string'
-          ? mockReturnValue
-          : (mockReturnValue?.id ?? ''),
+      fromPreTransformResolve: isPreTransformResolve,
     })
   }
 
   /** Counter for generating unique per-violation mock module IDs in build mode. */
   let buildViolationCounter = 0
 
-  type HandleViolationResult =
-    | { id: string; syntheticNamedExports: boolean }
-    | string
-    | undefined
-
   async function handleViolation(
     ctx: ViolationReporter,
     env: EnvState,
     info: ViolationInfo,
+    importerIdHint?: string,
     violationOpts?: { silent?: boolean },
   ): Promise<HandleViolationResult> {
-    const key = dedupeKey(
-      info.type,
-      info.importer,
-      info.specifier,
-      info.resolved,
-    )
-
     if (!violationOpts?.silent) {
       if (config.onViolation) {
         const result = await config.onViolation(info)
-        if (result === false) {
-          return undefined
-        }
+        if (result === false) return undefined
       }
 
       if (config.effectiveBehavior === 'error') {
@@ -870,57 +1154,56 @@ export function importProtectionPlugin(
         //
         // Build mode never reaches here — all build violations are
         // deferred via shouldDefer and handled silently.
-
         return ctx.error(formatViolation(info, config.root))
       }
 
-      const seen = hasSeen(env, key)
-
-      if (!seen) {
+      if (!hasSeen(env, dedupeKey(info))) {
         ctx.warn(formatViolation(info, config.root))
       }
-    } else {
-      if (config.effectiveBehavior === 'error' && config.command !== 'build') {
-        return undefined
-      }
+    } else if (
+      config.effectiveBehavior === 'error' &&
+      config.command !== 'build'
+    ) {
+      return undefined
     }
 
-    env.deniedSources.add(info.specifier)
-    getOrCreate(env.deniedEdges, info.importer, () => new Set<string>()).add(
-      info.specifier,
+    // File violations: return resolved path — the self-denial transform
+    // will replace the file's content with a mock module.  This avoids
+    // virtual module IDs that could leak across environments via
+    // third-party resolver caches.
+    if (info.type === 'file') return info.resolved
+
+    // Non-file violations (specifier/marker): create mock-edge module.
+    // Dev mode uses a runtime diagnostics ID; build mode uses a unique
+    // per-violation ID so generateBundle can check tree-shaking survival.
+    const exports = await resolveExportsForDeniedSpecifier(
+      env,
+      ctx,
+      info,
+      importerIdHint,
     )
-
-    if (config.command === 'serve') {
-      const runtimeId = mockRuntimeModuleIdFromViolation(
-        info,
-        config.mockAccess,
-        config.root,
-      )
-      const importerFile = normalizeFilePath(info.importer)
-      const exports =
-        env.mockExportsByImporter.get(importerFile)?.get(info.specifier) ?? []
-      return resolveViteId(
-        makeMockEdgeModuleId(exports, info.specifier, runtimeId),
-      )
-    }
-
-    // Build: unique per-violation mock IDs so generateBundle can check
-    // which violations survived tree-shaking (both mock and error mode).
-    const mockId = `${RESOLVED_MOCK_BUILD_PREFIX}${buildViolationCounter++}`
-    return { id: mockId, syntheticNamedExports: true }
+    const baseMockId =
+      config.command === 'serve'
+        ? mockRuntimeModuleIdFromViolation(info, config.mockAccess, config.root)
+        : `${MOCK_BUILD_PREFIX}${buildViolationCounter++}`
+    return resolveViteId(makeMockEdgeModuleId(exports, baseMockId))
   }
 
   /**
    * Unified violation dispatch: either defers or reports immediately.
    *
-   * When `shouldDefer` is true, calls `handleViolation` silently to obtain
-   * the mock module ID, then stores the violation for later verification:
-   *   - Dev mock mode: defers to `pendingViolations` for graph-reachability
-   *     checking via `processPendingViolations`.
+   * When `shouldDefer` is true (dev mock + build modes), calls
+   * `handleViolation` silently to obtain the mock module ID, then stores
+   * the violation for later verification:
+   *   - Dev mock mode: all violations are deferred to `pendingViolations`
+   *     for edge-survival and graph-reachability checking via
+   *     `processPendingViolations`.
    *   - Build mode (mock + error): defers to `deferredBuildViolations` for
    *     tree-shaking verification in `generateBundle`.
    *
-   * Otherwise reports (or silences for pre-transform resolves) immediately.
+   * Otherwise reports immediately (dev error mode).  Pre-transform
+   * resolves are silenced in error mode because they fire before the
+   * compiler runs and there is no deferred verification path.
    *
    * Returns the mock module ID / resolve result from `handleViolation`.
    */
@@ -928,27 +1211,40 @@ export function importProtectionPlugin(
     ctx: ViolationReporter,
     env: EnvState,
     importerFile: string,
+    importerIdHint: string | undefined,
     info: ViolationInfo,
     shouldDefer: boolean,
     isPreTransformResolve: boolean,
   ): Promise<HandleViolationResult> {
     if (shouldDefer) {
-      const result = await handleViolation(ctx, env, info, { silent: true })
+      const result = await handleViolation(ctx, env, info, importerIdHint, {
+        silent: true,
+      })
 
       if (config.command === 'build') {
         // Build mode: store for generateBundle tree-shaking check.
-        // The unique mock ID is inside `result`.
-        const mockId = typeof result === 'string' ? result : (result?.id ?? '')
-        env.deferredBuildViolations.push({ info, mockModuleId: mockId })
+        // The mock-edge module ID is returned as a plain string.
+        const mockId = result ?? ''
+        env.deferredBuildViolations.push({
+          info,
+          mockModuleId: mockId,
+          // For marker violations, check importer survival instead of mock.
+          checkModuleId: info.type === 'marker' ? info.importer : undefined,
+        })
       } else {
         // Dev mock: store for graph-reachability check.
-        deferViolation(env, importerFile, info, result)
+        deferViolation(env, importerFile, info, isPreTransformResolve)
         await processPendingViolations(env, ctx.warn.bind(ctx))
       }
 
       return result
     }
-    return await handleViolation(ctx, env, info, {
+
+    // Non-deferred path: dev error mode only.
+    // Pre-transform resolves are silenced because they fire before the
+    // compiler runs — imports inside `.server()` callbacks haven't been
+    // stripped yet and error mode has no deferred verification.
+    return handleViolation(ctx, env, info, importerIdHint, {
       silent: isPreTransformResolve,
     })
   }
@@ -972,11 +1268,6 @@ export function importProtectionPlugin(
         const { startConfig, resolvedStartConfig } = opts.getConfig()
         config.srcDirectory = resolvedStartConfig.srcDirectory
 
-        config.entryFiles = [
-          resolvedStartConfig.routerFilePath,
-          resolvedStartConfig.startFilePath,
-        ].filter((f): f is string => Boolean(f))
-
         const userOpts: ImportProtectionOptions | undefined =
           startConfig.importProtection
 
@@ -987,18 +1278,14 @@ export function importProtectionPlugin(
 
         config.enabled = true
 
-        if (userOpts?.behavior) {
-          if (typeof userOpts.behavior === 'string') {
-            config.effectiveBehavior = userOpts.behavior
-          } else {
-            config.effectiveBehavior =
-              viteConfig.command === 'serve'
-                ? (userOpts.behavior.dev ?? 'mock')
-                : (userOpts.behavior.build ?? 'error')
-          }
+        const behavior = userOpts?.behavior
+        if (typeof behavior === 'string') {
+          config.effectiveBehavior = behavior
         } else {
           config.effectiveBehavior =
-            viteConfig.command === 'serve' ? 'mock' : 'error'
+            viteConfig.command === 'serve'
+              ? (behavior?.dev ?? 'mock')
+              : (behavior?.build ?? 'error')
         }
 
         config.logMode = userOpts?.log ?? 'once'
@@ -1010,6 +1297,9 @@ export function importProtectionPlugin(
         }
 
         const defaults = getDefaultImportProtectionRules()
+        // Use user-provided patterns when available, otherwise defaults.
+        const pick = <T>(user: Array<T> | undefined, fallback: Array<T>) =>
+          user ? [...user] : [...fallback]
 
         // Client specifier denies always include framework defaults even
         // when the user provides a custom list.
@@ -1018,37 +1308,34 @@ export function importProtectionPlugin(
           ...(userOpts?.client?.specifiers ?? []),
         ])
 
-        const clientFiles = userOpts?.client?.files
-          ? [...userOpts.client.files]
-          : [...defaults.client.files]
-        const serverSpecifiers = userOpts?.server?.specifiers
-          ? dedupePatterns([...userOpts.server.specifiers])
-          : dedupePatterns([...defaults.server.specifiers])
-        const serverFiles = userOpts?.server?.files
-          ? [...userOpts.server.files]
-          : [...defaults.server.files]
-
         config.compiledRules.client = {
           specifiers: compileMatchers(clientSpecifiers),
-          files: compileMatchers(clientFiles),
+          files: compileMatchers(
+            pick(userOpts?.client?.files, defaults.client.files),
+          ),
+          excludeFiles: compileMatchers(
+            pick(userOpts?.client?.excludeFiles, defaults.client.excludeFiles),
+          ),
         }
         config.compiledRules.server = {
-          specifiers: compileMatchers(serverSpecifiers),
-          files: compileMatchers(serverFiles),
+          specifiers: compileMatchers(
+            dedupePatterns(
+              pick(userOpts?.server?.specifiers, defaults.server.specifiers),
+            ),
+          ),
+          files: compileMatchers(
+            pick(userOpts?.server?.files, defaults.server.files),
+          ),
+          excludeFiles: compileMatchers(
+            pick(userOpts?.server?.excludeFiles, defaults.server.excludeFiles),
+          ),
         }
 
-        // Include/exclude
-        if (userOpts?.include) {
-          config.includeMatchers = compileMatchers(userOpts.include)
-        }
-        if (userOpts?.exclude) {
-          config.excludeMatchers = compileMatchers(userOpts.exclude)
-        }
-        if (userOpts?.ignoreImporters) {
-          config.ignoreImporterMatchers = compileMatchers(
-            userOpts.ignoreImporters,
-          )
-        }
+        config.includeMatchers = compileMatchers(userOpts?.include ?? [])
+        config.excludeMatchers = compileMatchers(userOpts?.exclude ?? [])
+        config.ignoreImporterMatchers = compileMatchers(
+          userOpts?.ignoreImporters ?? [],
+        )
 
         // Marker specifiers
         const markers = getMarkerSpecifiers()
@@ -1066,25 +1353,13 @@ export function importProtectionPlugin(
         if (!config.enabled) return
         // Clear memoization caches that grow unboundedly across builds
         clearNormalizeFilePathCache()
-        clearImportPatternCache()
+        extensionlessIdResolver.clear()
+        importPatternCache.clear()
         shouldCheckImporterCache.clear()
 
         // Clear per-env caches
         for (const envState of envStates.values()) {
-          envState.resolveCache.clear()
-          envState.resolveCacheByFile.clear()
-          envState.importLocCache.clear()
-          envState.seenViolations.clear()
-          envState.transformResultCache.clear()
-          envState.transformResultKeysByFile.clear()
-          envState.postTransformImports.clear()
-          envState.serverFnLookupModules.clear()
-          envState.pendingViolations.clear()
-          envState.deferredBuildViolations.length = 0
-          envState.graph.clear()
-          envState.deniedSources.clear()
-          envState.deniedEdges.clear()
-          envState.mockExportsByImporter.clear()
+          clearEnvState(envState)
         }
 
         // Clear shared state
@@ -1100,42 +1375,14 @@ export function importProtectionPlugin(
           if (mod.id) {
             const id = mod.id
             const importerFile = normalizeFilePath(id)
+
+            // Invalidate extensionless-resolution cache entries affected by this file.
+            extensionlessIdResolver.invalidateByFile(importerFile)
             shared.fileMarkerKind.delete(importerFile)
 
             // Invalidate per-env caches
             for (const envState of envStates.values()) {
-              envState.importLocCache.deleteByFile(importerFile)
-
-              // Invalidate resolve cache using reverse index
-              const resolveKeys = envState.resolveCacheByFile.get(importerFile)
-              if (resolveKeys) {
-                for (const key of resolveKeys) {
-                  envState.resolveCache.delete(key)
-                }
-                envState.resolveCacheByFile.delete(importerFile)
-              }
-
-              // Invalidate graph edges
-              envState.graph.invalidate(importerFile)
-              envState.deniedEdges.delete(importerFile)
-              envState.mockExportsByImporter.delete(importerFile)
-              envState.serverFnLookupModules.delete(importerFile)
-              envState.pendingViolations.delete(importerFile)
-
-              // Invalidate transform result cache for this file.
-              const transformKeys =
-                envState.transformResultKeysByFile.get(importerFile)
-              if (transformKeys) {
-                for (const key of transformKeys) {
-                  envState.transformResultCache.delete(key)
-                  envState.postTransformImports.delete(key)
-                }
-                envState.transformResultKeysByFile.delete(importerFile)
-              } else {
-                // Fallback: at least clear the physical-file entry.
-                envState.transformResultCache.delete(importerFile)
-                envState.postTransformImports.delete(importerFile)
-              }
+              invalidateFileFromEnv(envState, importerFile)
             }
           }
         }
@@ -1154,7 +1401,7 @@ export function importProtectionPlugin(
             : '(entry)'
           const isEntryResolve = !importer
           const filtered =
-            IMPORT_PROTECTION_DEBUG_FILTER === 'entry'
+            process.env.TSR_IMPORT_PROTECTION_DEBUG_FILTER === 'entry'
               ? isEntryResolve
               : matchesDebugFilter(source, importerPath)
           if (filtered) {
@@ -1165,24 +1412,13 @@ export function importProtectionPlugin(
               importer: importerPath,
               isEntryResolve,
               command: config.command,
-              behavior: config.effectiveBehavior,
             })
           }
         }
 
-        // Internal virtual modules
-        if (source === MOCK_MODULE_ID) {
-          return RESOLVED_MOCK_MODULE_ID
-        }
-        if (source.startsWith(MOCK_EDGE_PREFIX)) {
-          return resolveViteId(source)
-        }
-        if (source.startsWith(MOCK_RUNTIME_PREFIX)) {
-          return resolveViteId(source)
-        }
-        if (source.startsWith(MARKER_PREFIX)) {
-          return resolveViteId(source)
-        }
+        // Internal virtual modules (mock:build:N, mock-edge, mock-runtime, marker)
+        const internalVirtualId = resolveInternalVirtualModuleId(source)
+        if (internalVirtualId) return internalVirtualId
 
         if (!importer) {
           env.graph.addEntry(source)
@@ -1208,15 +1444,30 @@ export function importProtectionPlugin(
           env.serverFnLookupModules.has(normalizedImporter) ||
           isScanResolve
 
-        // Dev mock mode: defer violations until post-transform data is
-        // available, then confirm/discard via graph reachability.
+        // Dev mock mode: defer all violations (including pre-transform
+        // resolves) until post-transform data is available, then
+        // confirm/discard via graph reachability.
         // Build mode (both mock and error): defer violations until
         // generateBundle so tree-shaking can eliminate false positives.
         const isDevMock =
           config.command === 'serve' && config.effectiveBehavior === 'mock'
         const isBuild = config.command === 'build'
+        const shouldDefer = shouldDeferViolation({ isBuild, isDevMock })
 
-        const shouldDefer = (isDevMock && !isPreTransformResolve) || isBuild
+        const resolveAgainstImporter = async (): Promise<string | null> => {
+          const primary = await this.resolve(source, importer, {
+            skipSelf: true,
+          })
+          if (primary) {
+            return canonicalizeResolvedId(
+              primary.id,
+              config.root,
+              resolveExtensionlessAbsoluteId,
+            )
+          }
+
+          return null
+        }
 
         // Check if this is a marker import
         const markerKind = config.markerSpecifiers.serverOnly.has(source)
@@ -1249,16 +1500,17 @@ export function importProtectionPlugin(
               source,
               {
                 type: 'marker',
-                message:
-                  markerKind === 'server'
-                    ? `Module "${getRelativePath(normalizedImporter)}" is marked server-only but is imported in the client environment`
-                    : `Module "${getRelativePath(normalizedImporter)}" is marked client-only but is imported in the server environment`,
+                message: buildMarkerViolationMessage(
+                  getRelativePath(normalizedImporter),
+                  markerKind,
+                ),
               },
             )
             const markerResult = await reportOrDeferViolation(
               this,
               env,
               normalizedImporter,
+              importer,
               info,
               shouldDefer,
               isPreTransformResolve,
@@ -1275,9 +1527,63 @@ export function importProtectionPlugin(
             }
           }
 
+          // Retroactive marker violation detection: on cold starts, module
+          // A may import module B before B's marker is set (because B hasn't
+          // been processed yet).  When B's marker is set (here),
+          // retroactively check all known importers of B in the graph and
+          // create deferred marker violations for them.  Without this,
+          // cold-start ordering can miss marker violations that warm starts
+          // detect (warm starts see markers early from cached transforms).
+          //
+          // Uses lightweight `deferViolation` to avoid heavy side effects
+          // (mock module creation, export resolution).  Immediately calls
+          // `processPendingViolations` to flush the deferred violations,
+          // because the marker resolveId fires during Vite's import
+          // analysis (after our transform hook) — there may be no
+          // subsequent transform invocation to flush them.
+          //
+          // Guarded by `violatesEnv` (per-environment) plus a per-env
+          // seen-set.  The marker is shared across environments but each
+          // env's graph has its own edges; this ensures the check runs
+          // at most once per (env, module) pair.
+          const envRetroKey = `retro-marker:${normalizedImporter}`
+          if (violatesEnv && !env.seenViolations.has(envRetroKey)) {
+            env.seenViolations.add(envRetroKey)
+            let retroDeferred = false
+            const importersMap = env.graph.reverseEdges.get(normalizedImporter)
+            if (importersMap && importersMap.size > 0) {
+              for (const [importerFile, specifier] of importersMap) {
+                if (!specifier) continue
+                if (!shouldCheckImporter(importerFile)) continue
+                const markerInfo = await buildMarkerViolationFromResolvedImport(
+                  provider,
+                  env,
+                  envName,
+                  envType,
+                  importerFile,
+                  specifier,
+                  normalizedImporter,
+                  getRelativePath(normalizedImporter),
+                )
+                if (markerInfo) {
+                  deferViolation(
+                    env,
+                    importerFile,
+                    markerInfo,
+                    isPreTransformResolve,
+                  )
+                  retroDeferred = true
+                }
+              }
+            }
+            if (retroDeferred) {
+              await processPendingViolations(env, this.warn.bind(this))
+            }
+          }
+
           return markerKind === 'server'
-            ? RESOLVED_MARKER_SERVER_ONLY
-            : RESOLVED_MARKER_CLIENT_ONLY
+            ? resolvedMarkerVirtualModuleId('server')
+            : resolvedMarkerVirtualModuleId('client')
         }
 
         // Check if the importer is within our scope
@@ -1290,7 +1596,9 @@ export function importProtectionPlugin(
         // 1. Specifier-based denial
         const specifierMatch = matchesAny(source, matchers.specifiers)
         if (specifierMatch) {
-          env.graph.addEdge(source, normalizedImporter, source)
+          if (!isPreTransformResolve) {
+            env.graph.addEdge(source, normalizedImporter, source)
+          }
           const info = await buildViolationInfo(
             provider,
             env,
@@ -1305,10 +1613,24 @@ export function importProtectionPlugin(
               message: `Import "${source}" is denied in the ${envType} environment`,
             },
           )
+
+          // Resolve the specifier so edge-survival can verify whether
+          // the import survives the Start compiler transform (e.g.
+          // factory-safe pattern strips imports inside .server() callbacks).
+          if (shouldDefer && !info.resolved) {
+            try {
+              const resolvedForInfo = await resolveAgainstImporter()
+              if (resolvedForInfo) info.resolved = resolvedForInfo
+            } catch {
+              // Non-fatal: edge-survival will skip unresolved specifiers
+            }
+          }
+
           return reportOrDeferViolation(
             this,
             env,
             normalizedImporter,
+            importer,
             info,
             shouldDefer,
             isPreTransformResolve,
@@ -1322,16 +1644,19 @@ export function importProtectionPlugin(
         if (env.resolveCache.has(cacheKey)) {
           resolved = env.resolveCache.get(cacheKey) ?? null
         } else {
-          const result = await this.resolve(source, importer, {
-            skipSelf: true,
-          })
-          resolved = result ? normalizeFilePath(result.id) : null
-          env.resolveCache.set(cacheKey, resolved)
-          getOrCreate(
-            env.resolveCacheByFile,
-            normalizedImporter,
-            () => new Set(),
-          ).add(cacheKey)
+          resolved = await resolveAgainstImporter()
+
+          // Only cache successful resolves.  Null resolves can be
+          // order-dependent across importer variants (e.g. code-split
+          // `?tsr-split=...` ids) and may poison later lookups.
+          if (resolved !== null) {
+            env.resolveCache.set(cacheKey, resolved)
+            getOrCreate(
+              env.resolveCacheByFile,
+              normalizedImporter,
+              () => new Set(),
+            ).add(cacheKey)
+          }
         }
 
         if (resolved) {
@@ -1342,58 +1667,71 @@ export function importProtectionPlugin(
             env.serverFnLookupModules.add(resolved)
           }
 
-          env.graph.addEdge(resolved, normalizedImporter, source)
+          if (!isPreTransformResolve) {
+            env.graph.addEdge(resolved, normalizedImporter, source)
+          }
 
-          const fileMatch =
-            matchers.files.length > 0
-              ? matchesAny(relativePath, matchers.files)
-              : undefined
+          // Skip file-based and marker-based denial for resolved paths that
+          // match the per-environment `excludeFiles` patterns.  By default
+          // this includes `**/node_modules/**` so that third-party packages
+          // using `.client.` / `.server.` in their filenames (e.g. react-tweet
+          // exports `index.client.js`) are not treated as user-authored
+          // environment boundaries.  Users can override `excludeFiles` per
+          // environment to narrow or widen this exclusion.
+          const isExcludedFile =
+            matchers.excludeFiles.length > 0 &&
+            matchesAny(relativePath, matchers.excludeFiles)
 
-          if (fileMatch) {
-            const info = await buildViolationInfo(
+          if (!isExcludedFile) {
+            const fileMatch =
+              matchers.files.length > 0
+                ? matchesAny(relativePath, matchers.files)
+                : undefined
+
+            if (fileMatch) {
+              const info = await buildFileViolationInfo(
+                provider,
+                env,
+                envName,
+                envType,
+                importer,
+                normalizedImporter,
+                source,
+                resolved,
+                fileMatch.pattern,
+              )
+              return reportOrDeferViolation(
+                this,
+                env,
+                normalizedImporter,
+                importer,
+                info,
+                shouldDefer,
+                isPreTransformResolve,
+              )
+            }
+
+            const markerInfo = await buildMarkerViolationFromResolvedImport(
               provider,
               env,
               envName,
               envType,
               importer,
-              normalizedImporter,
               source,
-              {
-                type: 'file',
-                pattern: fileMatch.pattern,
-                resolved,
-                message: `Import "${source}" (resolved to "${relativePath}") is denied in the ${envType} environment`,
-              },
+              resolved,
+              relativePath,
             )
-            return reportOrDeferViolation(
-              this,
-              env,
-              normalizedImporter,
-              info,
-              shouldDefer,
-              isPreTransformResolve,
-            )
-          }
-
-          const markerInfo = await buildMarkerViolationFromResolvedImport(
-            provider,
-            env,
-            envName,
-            envType,
-            importer,
-            source,
-            resolved,
-            relativePath,
-          )
-          if (markerInfo) {
-            return reportOrDeferViolation(
-              this,
-              env,
-              normalizedImporter,
-              markerInfo,
-              shouldDefer,
-              isPreTransformResolve,
-            )
+            if (markerInfo) {
+              return reportOrDeferViolation(
+                this,
+                env,
+                normalizedImporter,
+                importer,
+                markerInfo,
+                shouldDefer,
+                isPreTransformResolve,
+              )
+            }
           }
         }
 
@@ -1403,15 +1741,7 @@ export function importProtectionPlugin(
       load: {
         filter: {
           id: new RegExp(
-            [
-              RESOLVED_MOCK_MODULE_ID,
-              RESOLVED_MOCK_BUILD_PREFIX,
-              RESOLVED_MARKER_PREFIX,
-              RESOLVED_MOCK_EDGE_PREFIX,
-              RESOLVED_MOCK_RUNTIME_PREFIX,
-            ]
-              .map(escapeRegExp)
-              .join('|'),
+            getResolvedVirtualModuleMatchers().map(escapeRegExp).join('|'),
           ),
         },
         handler(id) {
@@ -1424,32 +1754,7 @@ export function importProtectionPlugin(
             }
           }
 
-          if (id === RESOLVED_MOCK_MODULE_ID) {
-            return loadSilentMockModule()
-          }
-
-          // Per-violation build mock modules — same silent mock code
-          if (id.startsWith(RESOLVED_MOCK_BUILD_PREFIX)) {
-            return loadSilentMockModule()
-          }
-
-          if (id.startsWith(RESOLVED_MOCK_EDGE_PREFIX)) {
-            return loadMockEdgeModule(
-              id.slice(RESOLVED_MOCK_EDGE_PREFIX.length),
-            )
-          }
-
-          if (id.startsWith(RESOLVED_MOCK_RUNTIME_PREFIX)) {
-            return loadMockRuntimeModule(
-              id.slice(RESOLVED_MOCK_RUNTIME_PREFIX.length),
-            )
-          }
-
-          if (id.startsWith(RESOLVED_MARKER_PREFIX)) {
-            return loadMarkerModule()
-          }
-
-          return undefined
+          return loadResolvedVirtualModule(id)
         },
       },
 
@@ -1458,21 +1763,87 @@ export function importProtectionPlugin(
         const env = envStates.get(envName)
         if (!env || env.deferredBuildViolations.length === 0) return
 
+        const candidateCache = new Map<string, Array<string>>()
+        const toModuleIdCandidates = (id: string): Array<string> => {
+          let cached = candidateCache.get(id)
+          if (cached) return cached
+
+          const out = new Set<string>()
+          const normalized = normalizeFilePath(id)
+          out.add(id)
+          out.add(normalized)
+          out.add(relativizePath(normalized, config.root))
+
+          if (normalized.startsWith(VITE_BROWSER_VIRTUAL_PREFIX)) {
+            const internal = `\0${normalized.slice(VITE_BROWSER_VIRTUAL_PREFIX.length)}`
+            out.add(internal)
+            out.add(relativizePath(normalizeFilePath(internal), config.root))
+          }
+
+          if (normalized.startsWith('\0')) {
+            const browser = `${VITE_BROWSER_VIRTUAL_PREFIX}${normalized.slice(1)}`
+            out.add(browser)
+            out.add(relativizePath(normalizeFilePath(browser), config.root))
+          }
+
+          cached = Array.from(out)
+          candidateCache.set(id, cached)
+          return cached
+        }
+
         // Collect all module IDs that survived tree-shaking in this bundle.
         const survivingModules = new Set<string>()
         for (const chunk of Object.values(bundle)) {
           if (chunk.type === 'chunk') {
             for (const moduleId of Object.keys(chunk.modules)) {
-              survivingModules.add(moduleId)
+              for (const candidate of toModuleIdCandidates(moduleId)) {
+                survivingModules.add(candidate)
+              }
             }
           }
         }
 
-        // Check each deferred violation: if its unique mock module survived
+        const didModuleSurvive = (moduleId: string): boolean =>
+          toModuleIdCandidates(moduleId).some((candidate) =>
+            survivingModules.has(candidate),
+          )
+
+        // Check each deferred violation: if its check module survived
         // in the bundle, the import was NOT tree-shaken — real leak.
         const realViolations: Array<ViolationInfo> = []
-        for (const { info, mockModuleId } of env.deferredBuildViolations) {
-          if (!survivingModules.has(mockModuleId)) continue
+        for (const {
+          info,
+          mockModuleId,
+          checkModuleId,
+        } of env.deferredBuildViolations) {
+          let survived: boolean
+          if (checkModuleId != null) {
+            // Marker violation: check if the importer survived
+            // (marker is about the file's directive, not a binding).
+            // Include transform-result keys (e.g. code-split variants)
+            // to cover all bundle representations of the importer.
+            const importerVariantIds = new Set<string>([info.importer])
+            const importerKeys = env.transformResultKeysByFile.get(
+              normalizeFilePath(info.importer),
+            )
+            if (importerKeys) {
+              for (const key of importerKeys) {
+                importerVariantIds.add(key)
+              }
+            }
+            survived = false
+            for (const importerId of importerVariantIds) {
+              if (didModuleSurvive(importerId)) {
+                survived = true
+                break
+              }
+            }
+          } else {
+            // File/specifier violation: check if the mock module survived.
+            survived = didModuleSurvive(mockModuleId)
+          }
+
+          if (!survived) continue
 
           if (config.onViolation) {
             const result = await config.onViolation(info)
@@ -1491,12 +1862,7 @@ export function importProtectionPlugin(
           // Mock mode: warn for each surviving violation.
           const seen = new Set<string>()
           for (const info of realViolations) {
-            const key = dedupeKey(
-              info.type,
-              info.importer,
-              info.specifier,
-              info.resolved,
-            )
+            const key = dedupeKey(info)
             if (!seen.has(key)) {
               seen.add(key)
               this.warn(formatViolation(info, config.root))
@@ -1525,6 +1891,9 @@ export function importProtectionPlugin(
         async handler(code, id) {
           const envName = this.environment.name
           const file = normalizeFilePath(id)
+          const envType = getEnvType(envName)
+          const matchers = getRulesForEnvironment(envName)
+          const isBuild = config.command === 'build'
 
           if (IMPORT_PROTECTION_DEBUG) {
             if (matchesDebugFilter(file)) {
@@ -1538,6 +1907,58 @@ export function importProtectionPlugin(
 
           if (!shouldCheckImporter(file)) {
             return undefined
+          }
+
+          // Self-denial: if this file is denied in the current environment
+          // (e.g. a `.server` file transformed in the client environment),
+          // replace its entire content with a mock module.
+          //
+          // This is the core mechanism for preventing cross-environment
+          // cache contamination: resolveId never returns virtual module
+          // IDs for file-based violations, so there is nothing for
+          // third-party resolver caches (e.g. vite-tsconfig-paths) to
+          // leak across environments.  Each environment's transform
+          // independently decides whether the file is denied.
+          //
+          // In dev mode, this also solves the cold-start problem where
+          // the importer's AST is unavailable for export resolution:
+          // the denied file's own source code is always available here,
+          // so we parse its exports directly.
+          const selfFileMatch = checkFileDenial(getRelativePath(file), matchers)
+          if (selfFileMatch) {
+            // Parse exports once — shared by build and dev paths.
+            // Falls back to empty list on non-standard syntax.
+            let exportNames: Array<string> = []
+            try {
+              exportNames = collectNamedExports(code)
+            } catch {
+              // Parsing may fail on non-standard syntax
+            }
+
+            if (isBuild) {
+              return generateSelfContainedMockModule(exportNames)
+            }
+
+            // Dev mode: generate a mock that imports mock-runtime for
+            // runtime diagnostics (error/warn on property access).
+            const runtimeId = mockRuntimeModuleIdFromViolation(
+              {
+                type: 'file',
+                env: envType,
+                envType,
+                behavior:
+                  config.effectiveBehavior === 'error' ? 'error' : 'mock',
+                importer: file,
+                specifier: relativizePath(file, config.root),
+                resolved: file,
+                pattern: selfFileMatch.pattern,
+                message: `File "${relativizePath(file, config.root)}" is denied in the ${envType} environment`,
+                trace: [],
+              },
+              config.mockAccess,
+              config.root,
+            )
+            return generateDevSelfDenialModule(exportNames, runtimeId)
           }
 
           // getCombinedSourcemap() returns the composed sourcemap
@@ -1561,111 +1982,166 @@ export function importProtectionPlugin(
           const cacheKey = normalizePath(id)
 
           const envState = getEnv(envName)
+          const isServerFnLookup = id.includes(SERVER_FN_LOOKUP_QUERY)
 
           // Propagate SERVER_FN_LOOKUP status before import-analysis
-          if (id.includes(SERVER_FN_LOOKUP_QUERY)) {
+          if (isServerFnLookup) {
             envState.serverFnLookupModules.add(file)
           }
 
-          envState.transformResultCache.set(cacheKey, {
+          const result: TransformResult = {
             code,
             map,
             originalCode,
             lineIndex,
-          })
-
-          const keySet = getOrCreate(
-            envState.transformResultKeysByFile,
-            file,
-            () => new Set<string>(),
-          )
-          keySet.add(cacheKey)
-
-          // Also store stripped-path entry for physical-file lookups.
-          if (cacheKey !== file) {
-            envState.transformResultCache.set(file, {
-              code,
-              map,
-              originalCode,
-              lineIndex,
-            })
-            keySet.add(file)
           }
+          cacheTransformResult(envState, file, cacheKey, result)
 
-          // Resolve import sources to canonical paths for reachability checks.
+          // Build mode: only self-denial (above) and transform caching are
+          // needed.  All violations are detected and deferred in resolveId;
+          // self-denial replaces denied file content; generateBundle checks
+          // tree-shaking survival.  The import resolution loop below is
+          // dev-mode only — it resolves imports for graph reachability,
+          // catches violations missed on warm starts (where Vite caches
+          // resolveId), and rewrites denied imports to mock modules.
+          if (isBuild) return undefined
+
+          // Dev mode: resolve imports, populate graph, detect violations,
+          // and rewrite denied imports.
+          const isDevMock = config.effectiveBehavior === 'mock'
           const importSources = extractImportSources(code)
           const resolvedChildren = new Set<string>()
+          const deniedSourceReplacements = new Map<string, string>()
           for (const src of importSources) {
             try {
               const resolved = await this.resolve(src, id, { skipSelf: true })
               if (resolved && !resolved.external) {
-                const resolvedPath = normalizeFilePath(resolved.id)
+                const resolvedPath = canonicalizeResolvedId(
+                  resolved.id,
+                  config.root,
+                  resolveExtensionlessAbsoluteId,
+                )
+
                 resolvedChildren.add(resolvedPath)
+
+                // When the resolved ID is a mock-module (from our
+                // resolveId returning a mock-edge ID), postTransformImports
+                // would only contain the mock ID.  Edge-survival needs the
+                // real physical path so pending violations can be matched.
+                //
+                // For relative specifiers we can compute the physical path
+                // directly.  For bare/alias specifiers, look up the real
+                // resolved path from the pending violations that were
+                // already stored by resolveId before this transform ran.
+                if (resolved.id.includes('tanstack-start-import-protection:')) {
+                  let physicalPath: string | undefined
+                  // Look up real resolved path from pending violations
+                  const pending = envState.pendingViolations.get(file)
+                  if (pending) {
+                    const match = pending.find(
+                      (pv) => pv.info.specifier === src && pv.info.resolved,
+                    )
+                    if (match) physicalPath = match.info.resolved
+                  }
+                  if (physicalPath && physicalPath !== resolvedPath) {
+                    resolvedChildren.add(physicalPath)
+                    envState.graph.addEdge(physicalPath, file, src)
+                  }
+                }
+
                 // Populate import graph edges for warm-start trace accuracy
                 envState.graph.addEdge(resolvedPath, file, src)
+
+                if (isDevMock) {
+                  const relativePath = getRelativePath(resolvedPath)
+                  const fileMatch = checkFileDenial(relativePath, matchers)
+
+                  if (fileMatch) {
+                    const info = await buildFileViolationInfo(
+                      envState.transformResultProvider,
+                      envState,
+                      envName,
+                      envType,
+                      id,
+                      file,
+                      src,
+                      resolvedPath,
+                      fileMatch.pattern,
+                    )
+
+                    const replacement = await reportOrDeferViolation(
+                      this,
+                      envState,
+                      file,
+                      id,
+                      info,
+                      isDevMock,
+                      isServerFnLookup,
+                    )
+
+                    if (replacement) {
+                      deniedSourceReplacements.set(
+                        src,
+                        replacement.startsWith('\0')
+                          ? VITE_BROWSER_VIRTUAL_PREFIX + replacement.slice(1)
+                          : replacement,
+                      )
+                    }
+                  }
+                }
               }
             } catch {
               // Non-fatal
             }
           }
           envState.postTransformImports.set(cacheKey, resolvedChildren)
-          if (cacheKey !== file) {
+          if (cacheKey !== file && !isServerFnLookup) {
             envState.postTransformImports.set(file, resolvedChildren)
           }
 
           await processPendingViolations(envState, this.warn.bind(this))
 
-          return undefined
-        },
-      },
-    },
-    {
-      // Separate plugin so the transform can be enabled/disabled per-environment.
-      name: 'tanstack-start-core:import-protection-mock-rewrite',
-      enforce: 'pre',
+          if (deniedSourceReplacements.size > 0) {
+            try {
+              const rewritten = rewriteDeniedImports(
+                code,
+                id,
+                new Set(deniedSourceReplacements.keys()),
+                (source: string) =>
+                  deniedSourceReplacements.get(source) ?? source,
+              )
 
-      // Only needed during dev. In build, we rely on Rollup's syntheticNamedExports.
-      apply: 'serve',
+              if (!rewritten) {
+                return undefined
+              }
 
-      applyToEnvironment(env) {
-        if (!config.enabled) return false
-        // Only needed in mock mode — when not mocking, there is nothing to
-        // record.  applyToEnvironment runs after configResolved, so
-        // config.effectiveBehavior is already set.
-        if (config.effectiveBehavior !== 'mock') return false
-        // We record expected named exports per importer in all Start Vite
-        // environments during dev so mock-edge modules can provide explicit
-        // ESM named exports.
-        return environmentNames.has(env.name)
-      },
+              const normalizedMap = rewritten.map
+                ? {
+                    ...rewritten.map,
+                    version: Number(rewritten.map.version),
+                    sourcesContent:
+                      rewritten.map.sourcesContent?.map(
+                        (s: string | null) => s ?? '',
+                      ) ?? [],
+                  }
+                : {
+                    version: 3,
+                    file: id,
+                    names: [],
+                    sources: [id],
+                    sourcesContent: [code],
+                    mappings: '',
+                  }
 
-      transform: {
-        filter: {
-          id: {
-            include: [/\.[cm]?[tj]sx?($|\?)/],
-          },
-        },
-        handler(code, id) {
-          const envName = this.environment.name
-          const envState = envStates.get(envName)
-          if (!envState) return undefined
-
-          // Record export names per source for this importer so we can generate
-          // dev mock-edge modules without any disk reads.
-          try {
-            const importerFile = normalizeFilePath(id)
-            envState.mockExportsByImporter.set(
-              importerFile,
-              collectMockExportNamesBySource(code),
-            )
-          } catch {
-            // Best-effort only
+              return {
+                code: rewritten.code,
+                map: normalizedMap,
+              }
+            } catch {
+              // Non-fatal: keep original code when rewrite fails.
+            }
           }
 
-          // Note: we no longer rewrite imports here.
-          // Dev uses per-importer mock-edge modules in resolveId so native ESM
-          // has explicit named exports, and runtime diagnostics are handled by
-          // the mock runtime proxy when those mocks are actually invoked.
           return undefined
         },
       },
