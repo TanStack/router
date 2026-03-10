@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { shallow, useStore } from '@tanstack/react-store'
+import { useStore } from '@tanstack/react-store'
 import { flushSync } from 'react-dom'
 import {
   deepEqual,
@@ -395,6 +395,7 @@ export function useLinkProps<
     ],
   )
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const currentLocation = useStore(
     router.stores.fastLocation,
     (l) => l,
