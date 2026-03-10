@@ -811,7 +811,7 @@ const loadRouteMatch = async (
     // If the route is successful and still fresh, just resolve
     const { status, invalid } = match
     const staleMatchShouldReload =
-      age > staleAge &&
+      age >= staleAge &&
       (!!inner.forceStaleReload ||
         match.cause === 'enter' ||
         (previousRouteMatchId !== undefined &&
