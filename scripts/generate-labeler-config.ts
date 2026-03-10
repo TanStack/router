@@ -1,9 +1,26 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import * as prettier from 'prettier'
+import { format as formatWithOxfmt } from 'oxfmt'
+import type { FormatOptions } from 'oxfmt'
 
 /** Pairs of package labels and their corresponding paths */
 type LabelerPair = [string, string]
+
+const oxfmtConfigPath = path.resolve('.oxfmtrc.json')
+
+function readOxfmtConfig(): FormatOptions {
+  if (!fs.existsSync(oxfmtConfigPath)) {
+    throw new Error(`No Oxfmt config file found at \`${oxfmtConfigPath}\`.`)
+  }
+
+  const rawConfig = fs.readFileSync(oxfmtConfigPath, 'utf-8')
+  const parsedConfig = JSON.parse(rawConfig) as {
+    $schema?: string
+  } & FormatOptions
+  const { $schema: _schema, ...formatOptions } = parsedConfig
+
+  return formatOptions
+}
 
 function readPairsFromFs(): Array<LabelerPair> {
   const ignored = new Set(['.DS_Store'])
@@ -52,26 +69,24 @@ async function generateLabelerYaml(pairs: Array<LabelerPair>): Promise<string> {
     })
     .join('\n')
 
-  // Get the location of the Prettier config file
-  const prettierConfigPath = await prettier.resolveConfigFile()
-  if (!prettierConfigPath) {
+  const oxfmtConfig = readOxfmtConfig()
+
+  // Format the YAML string using Oxfmt
+  const formatResult = await formatWithOxfmt(
+    'labeler-config.yml',
+    formattedPairs,
+    oxfmtConfig,
+  )
+
+  if (formatResult.errors.length > 0) {
     throw new Error(
-      'No Prettier config file found. Please ensure you have a Prettier config file in your project.',
+      `Failed to format labeler config: ${formatResult.errors
+        .map((error) => error.message)
+        .join(', ')}`,
     )
   }
-  console.info('using prettier config file at:', prettierConfigPath)
 
-  // Resolve the Prettier config
-  const prettierConfig = await prettier.resolveConfig(prettierConfigPath)
-  console.info('using resolved prettier config:', prettierConfig)
-
-  // Format the YAML string using Prettier
-  const formattedStr = await prettier.format(formattedPairs, {
-    parser: 'yaml',
-    ...prettierConfig,
-  })
-
-  return formattedStr
+  return formatResult.code
 }
 
 async function run() {

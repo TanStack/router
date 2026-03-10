@@ -187,12 +187,12 @@ export type ParamsOptions<in out TPath extends string, in out TParams> = {
     stringify?: StringifyParamsFn<TPath, TParams>
   }
 
-  /** 
+  /**
   @deprecated Use params.parse instead
   */
   parseParams?: ParseParamsFn<TPath, TParams>
 
-  /** 
+  /**
   @deprecated Use params.stringify instead
   */
   stringifyParams?: StringifyParamsFn<TPath, TParams>
@@ -1267,13 +1267,13 @@ export interface UpdatableRouteOptions<
       >
     >
   }
-  /** 
+  /**
   @deprecated Use search.middlewares instead
   */
   preSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
-  /** 
+  /**
   @deprecated Use search.middlewares instead
   */
   postSearchFilters?: Array<
