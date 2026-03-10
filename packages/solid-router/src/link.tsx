@@ -126,12 +126,18 @@ export function useLinkProps<
   const currentSearch = Solid.createMemo(
     () => router.stores.location.state.searchStr,
   )
+  const currentHash = Solid.createMemo(() => router.stores.location.state.hash)
+  const currentLeafMatchId = Solid.createMemo(
+    () => router.stores.lastMatchId.state,
+  )
 
   const _options = () => options
 
   const next = Solid.createMemo(() => {
-    // rebuild location when search changes
+    // Rebuild when inherited search/hash or the current route context changes.
     currentSearch()
+    currentHash()
+    currentLeafMatchId()
     const options = _options() as any
     // untrack because router-core will also access stores, which are signals in solid
     return Solid.untrack(() => router.buildLocation(options))

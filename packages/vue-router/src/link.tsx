@@ -219,6 +219,14 @@ export function useLinkProps<
     (location) => location.searchStr,
     { equal: Object.is },
   )
+  const currentHash = useStore(
+    router.stores.location,
+    (location) => location.hash,
+    {
+      equal: Object.is,
+    },
+  )
+  const currentLeafMatchId = useStore(router.stores.lastMatchId, (id) => id)
   const from = options.from
     ? Vue.computed(() => options.from)
     : useStore(router.stores.lastMatchRouteFullPath, (fullPath) => fullPath)
@@ -229,8 +237,10 @@ export function useLinkProps<
   }))
 
   const next = Vue.computed(() => {
-    // Depend on search to rebuild when search changes
+    // Rebuild when inherited search/hash or the current route context changes.
     currentSearch.value
+    currentHash.value
+    currentLeafMatchId.value
     return router.buildLocation(_options.value as any)
   })
 
