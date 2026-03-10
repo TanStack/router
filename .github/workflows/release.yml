@@ -50,6 +50,21 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Determine dist-tag
+        if: steps.commit.outputs.committed == 'true'
+        id: dist-tag
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          if [[ "$BRANCH" == *-pre ]]; then
+            echo "tag=next" >> "$GITHUB_OUTPUT"
+          elif [[ "$BRANCH" == *-maint ]]; then
+            echo "tag=maint" >> "$GITHUB_OUTPUT"
+          fi
       - name: Publish Packages
         if: steps.commit.outputs.committed == 'true'
-        run: pnpm run changeset:publish
+        run: pnpm run changeset:publish ${{ steps.dist-tag.outputs.tag && format('--tag {0}', steps.dist-tag.outputs.tag) }}
+      - name: Push git tags
+        if: steps.commit.outputs.committed == 'true'
+        run: git push --follow-tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
