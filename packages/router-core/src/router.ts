@@ -1629,9 +1629,14 @@ export class RouterCore<
 
       // Update the match's params
       const previousMatch = previousMatchesByRouteId.get(match.routeId)
-      match.params = previousMatch
-        ? replaceEqualDeep(previousMatch.params, routeParams)
-        : routeParams
+      if (!previousMatch) {
+        match.params = routeParams
+      } else {
+        const prevParams = previousMatch.params
+        const nextParams = replaceEqualDeep(prevParams, routeParams)
+        if (nextParams === prevParams) match.params = prevParams
+        match.params = Object.assign(Object.create(null), nextParams)
+      }
 
       if (!existingMatch) {
         const parentMatch = matches[index - 1]
@@ -1729,7 +1734,7 @@ export class RouterCore<
       params = lastStateMatch.params
     } else {
       // Parse params through the route chain
-      const strictParams: Record<string, unknown> = { ...routeParams }
+      const strictParams: Record<string, unknown> = Object.assign(Object.create(null), routeParams)
       for (const route of matchedRoutes) {
         try {
           extractStrictParams(
@@ -1836,7 +1841,7 @@ export class RouterCore<
       // From search should always use the current location
       const fromSearch = lightweightResult.search
       // Same with params. It can't hurt to provide as many as possible
-      const fromParams = { ...lightweightResult.params }
+      const fromParams = Object.assign(Object.create(null), lightweightResult.params)
 
       // Resolve the next to
       // ensure this includes the basePath if set
@@ -1847,7 +1852,7 @@ export class RouterCore<
       // Resolve the next params
       const nextParams =
         dest.params === false || dest.params === null
-          ? {}
+          ? Object.create(null)
           : (dest.params ?? true) === true
             ? fromParams
             : Object.assign(
@@ -2013,7 +2018,7 @@ export class RouterCore<
       let maskedNext = maskedDest ? build(maskedDest) : undefined
 
       if (!maskedNext) {
-        const params = {}
+        const params = Object.create(null)
 
         if (this.options.routeMasks) {
           const match = findFlatMatch<RouteMask<TRouteTree>>(
@@ -2032,7 +2037,7 @@ export class RouterCore<
             // Otherwise, use the matched params or the provided params value
             const nextParams =
               maskParams === false || maskParams === null
-                ? {}
+                ? Object.create(null)
                 : (maskParams ?? true) === true
                   ? params
                   : Object.assign(params, functionalUpdate(maskParams, params))
@@ -3013,7 +3018,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesById: Record<string, TRouteLike>
   processedTree: ProcessedTree<any, any, any>
 }) {
-  const routeParams: Record<string, string> = {}
+  const routeParams: Record<string, string> = Object.create(null)
   const trimmedPath = trimPathRight(pathname)
 
   let foundRoute: TRouteLike | undefined = undefined
@@ -3022,7 +3027,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   if (match) {
     foundRoute = match.route
     Object.assign(routeParams, match.rawParams) // Copy params, because they're cached
-    parsedParams = Object.assign({}, match.parsedParams)
+    parsedParams = Object.assign(Object.create(null), match.parsedParams)
   }
 
   const matchedRoutes = match?.branch || [routesById[rootRouteId]!]
