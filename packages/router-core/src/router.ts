@@ -1635,7 +1635,7 @@ export class RouterCore<
         const prevParams = previousMatch.params
         const nextParams = replaceEqualDeep(prevParams, routeParams)
         if (nextParams === prevParams) match.params = prevParams
-        match.params = Object.assign(Object.create(null), nextParams)
+        else match.params = Object.assign(Object.create(null), nextParams)
       }
 
       if (!existingMatch) {
