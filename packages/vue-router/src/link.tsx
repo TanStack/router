@@ -209,24 +209,6 @@ export function useLinkProps<
     ) as unknown as LinkHTMLAttributes
   }
 
-  const currentLocation = useStore(router.stores.location, (location) => ({
-    pathname: location.pathname,
-    search: location.search,
-    hash: location.hash,
-  }))
-  const currentSearch = useStore(
-    router.stores.location,
-    (location) => location.searchStr,
-    { equal: Object.is },
-  )
-  const currentHash = useStore(
-    router.stores.location,
-    (location) => location.hash,
-    {
-      equal: Object.is,
-    },
-  )
-  const currentLeafMatchId = useStore(router.stores.lastMatchId, (id) => id)
   const from = options.from
     ? Vue.computed(() => options.from)
     : useStore(router.stores.lastMatchRouteFullPath, (fullPath) => fullPath)
@@ -236,12 +218,13 @@ export function useLinkProps<
     from: from.value,
   }))
 
+  const currentLocation = useStore(router.stores.fastLocation, l => l, {equal: (prev, next) => prev.href === next.href})
+
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.
-    currentSearch.value
-    currentHash.value
-    currentLeafMatchId.value
-    return router.buildLocation(_options.value as any)
+    
+    const opts = {_fromLocation: currentLocation.value, ..._options.value}
+    return router.buildLocation(opts as any)
   })
 
   const preload = Vue.computed(() => {
