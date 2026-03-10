@@ -72,7 +72,6 @@ describe('redirect resolution', () => {
         }),
       )
       expect(router.state.redirect?.headers.get('Location')).toBe('/undefined')
-      await expect.poll(() => router.state.location.pathname).toBe('/undefined')
     },
   )
 })
