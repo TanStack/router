@@ -123,7 +123,7 @@ export function useLinkProps<
   ])
 
   const buildLocationKey = Solid.createMemo(
-    () => router.stores.fastLocation.state,
+    () => router.stores.location.state,
     undefined,
     { equals: (prev, next) => prev.href === next.href },
   )

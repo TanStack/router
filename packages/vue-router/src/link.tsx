@@ -218,7 +218,7 @@ export function useLinkProps<
     from: from.value,
   }))
 
-  const currentLocation = useStore(router.stores.fastLocation, (l) => l, {
+  const currentLocation = useStore(router.stores.location, (l) => l, {
     equal: (prev, next) => prev.href === next.href,
   })
 

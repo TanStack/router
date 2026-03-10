@@ -397,7 +397,7 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const currentLocation = useStore(
-    router.stores.fastLocation,
+    router.stores.location,
     (l) => l,
     (prev, next) => prev.href === next.href,
   )
