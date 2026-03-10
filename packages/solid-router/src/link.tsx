@@ -125,7 +125,7 @@ export function useLinkProps<
   const buildLocationKey = Solid.createMemo(
     () => router.stores.fastLocation.state,
     undefined,
-    {equals: (prev, next) => prev.href === next.href}
+    { equals: (prev, next) => prev.href === next.href },
   )
 
   const _options = () => options
@@ -133,7 +133,7 @@ export function useLinkProps<
   const next = Solid.createMemo(() => {
     // Rebuild when inherited search/hash or the current route context changes.
     const _fromLocation = buildLocationKey()
-    const options = {_fromLocation, ..._options()} as any
+    const options = { _fromLocation, ..._options() } as any
     // untrack because router-core will also access stores, which are signals in solid
     return Solid.untrack(() => router.buildLocation(options))
   })

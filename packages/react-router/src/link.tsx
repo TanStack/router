@@ -395,16 +395,17 @@ export function useLinkProps<
     ],
   )
 
-  const currentLocation = useStore(router.stores.fastLocation, l => l, (prev, next) => prev.href === next.href)
+  const currentLocation = useStore(
+    router.stores.fastLocation,
+    (l) => l,
+    (prev, next) => prev.href === next.href,
+  )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const next = React.useMemo(
-    () => {
-      const opts = {_fromLocation: currentLocation, ..._options}
-      return router.buildLocation(opts as any)
-    },
-    [router, currentLocation, _options],
-  )
+  const next = React.useMemo(() => {
+    const opts = { _fromLocation: currentLocation, ..._options }
+    return router.buildLocation(opts as any)
+  }, [router, currentLocation, _options])
 
   // Use publicHref - it contains the correct href for display
   // When a rewrite changes the origin, publicHref is the full URL

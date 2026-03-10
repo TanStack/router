@@ -1782,7 +1782,9 @@ export class RouterCore<
     ): ParsedLocation => {
       // We allow the caller to override the current location
       const currentLocation =
-        dest._fromLocation || this.stores.pendingBuiltLocation.state || this.latestLocation
+        dest._fromLocation ||
+        this.stores.pendingBuiltLocation.state ||
+        this.latestLocation
 
       // Use lightweight matching - only computes what buildLocation needs
       // (fullPath, search, params) without creating full match objects
@@ -2186,9 +2188,9 @@ export class RouterCore<
       _includeValidateSearch: true,
     })
 
-    this.stores.pendingBuiltLocation.setState(() => location as ParsedLocation<
-      FullSearchSchema<TRouteTree>
-    >)
+    this.stores.pendingBuiltLocation.setState(
+      () => location as ParsedLocation<FullSearchSchema<TRouteTree>>,
+    )
 
     const commitPromise = this.commitLocation({
       ...location,

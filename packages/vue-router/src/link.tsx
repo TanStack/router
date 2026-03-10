@@ -218,12 +218,14 @@ export function useLinkProps<
     from: from.value,
   }))
 
-  const currentLocation = useStore(router.stores.fastLocation, l => l, {equal: (prev, next) => prev.href === next.href})
+  const currentLocation = useStore(router.stores.fastLocation, (l) => l, {
+    equal: (prev, next) => prev.href === next.href,
+  })
 
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.
-    
-    const opts = {_fromLocation: currentLocation.value, ..._options.value}
+
+    const opts = { _fromLocation: currentLocation.value, ..._options.value }
     return router.buildLocation(opts as any)
   })
 
