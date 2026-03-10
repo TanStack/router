@@ -75,9 +75,7 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   isLoading: RouterWritableStore<boolean>
   isTransitioning: RouterWritableStore<boolean>
   location: RouterWritableStore<ParsedLocation<FullSearchSchema<TRouteTree>>>
-  pendingBuiltLocation: RouterWritableStore<
-    undefined | ParsedLocation<FullSearchSchema<TRouteTree>>
-  >
+  pendingBuiltLocation: RouterWritableStore<undefined | ParsedLocation<FullSearchSchema<TRouteTree>>>
   fastLocation: ReadableStore<ParsedLocation<FullSearchSchema<TRouteTree>>>
   resolvedLocation: RouterWritableStore<
     ParsedLocation<FullSearchSchema<TRouteTree>> | undefined
@@ -138,9 +136,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   const isLoading = createMutableStore(initialState.isLoading)
   const isTransitioning = createMutableStore(initialState.isTransitioning)
   const location = createMutableStore(initialState.location)
-  const pendingBuiltLocation = createMutableStore(
-    undefined,
-  ) as RouterStores<TRouteTree>['pendingBuiltLocation']
+  const pendingBuiltLocation = createMutableStore(undefined) as RouterStores<TRouteTree>['pendingBuiltLocation']
   const resolvedLocation = createMutableStore(initialState.resolvedLocation)
   const statusCode = createMutableStore(initialState.statusCode)
   const redirect = createMutableStore(initialState.redirect)
@@ -149,9 +145,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   const cachedMatchesId = createMutableStore<Array<string>>([])
 
   // 1st order derived stores
-  const fastLocation = createReadonlyStore(
-    () => location.state ?? pendingBuiltLocation.state,
-  )
+  const fastLocation = createReadonlyStore(() => pendingBuiltLocation.state ?? location.state)
   const activeMatchesSnapshot = createReadonlyStore(() =>
     readPoolMatches(activeMatchStoresById, matchesId.state),
   )
