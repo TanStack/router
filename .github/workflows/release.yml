@@ -20,7 +20,7 @@ permissions:
 jobs:
   release:
     name: Release
-    if: github.repository_owner == 'TanStack' && !contains(github.event.head_commit.message, 'ci: release')
+    if: "github.repository_owner == 'TanStack' && !contains(github.event.head_commit.message, 'ci: release')"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
