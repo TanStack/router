@@ -247,10 +247,12 @@ export function useLinkProps<
   })
 
   const doPreload = () =>
-    router.preloadRoute({..._options(), _builtLocation: next()} as any).catch((err: any) => {
-      console.warn(err)
-      console.warn(preloadWarning)
-    })
+    router
+      .preloadRoute({ ..._options(), _builtLocation: next() } as any)
+      .catch((err: any) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
 
   const preloadViewportIoCallback = (
     entry: IntersectionObserverEntry | undefined,
