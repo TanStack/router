@@ -480,16 +480,21 @@ describe('router.navigate navigation using layout routes resolves correctly', ()
     await router.load()
 
     expect(router.state.location.pathname).toBe('/search')
-    expect(router.state.location.search).toStrictEqual({ 'foo=bar': 2 })
+    expect(router.state.location.search).toStrictEqual(toNullObj({ 'foo=bar': 2 }))
 
     await router.navigate({
       search: { 'foo=bar': 3 },
     } as any)
     await router.invalidate()
 
-    expect(router.state.location.search).toStrictEqual({ 'foo=bar': 3 })
+    expect(router.state.location.search).toStrictEqual(toNullObj({ 'foo=bar': 3 }))
   })
 })
+
+function toNullObj<T>(obj: T): T {
+  if (typeof obj === 'object') return Object.assign(Object.create(null), obj)
+    return obj
+}
 
 describe('relative navigation', () => {
   it('should navigate to a child route', async () => {
