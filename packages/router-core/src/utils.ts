@@ -216,7 +216,8 @@ const hasOwn = Object.prototype.hasOwnProperty
 const isEnumerable = Object.prototype.propertyIsEnumerable
 
 const createNull = () => Object.create(null)
-export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) => replaceEqualDeep(prev, next, createNull)
+export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
+  replaceEqualDeep(prev, next, createNull)
 
 /**
  * This function returns `prev` if `_next` is deeply equal.
@@ -224,7 +225,12 @@ export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) => rep
  * This can be used for structural sharing between immutable JSON values for example.
  * Do not use this with signals
  */
-export function replaceEqualDeep<T>(prev: any, _next: T, _makeObj = () => ({}), _depth = 0): T {
+export function replaceEqualDeep<T>(
+  prev: any,
+  _next: T,
+  _makeObj = () => ({}),
+  _depth = 0,
+): T {
   if (isServer) {
     return _next
   }

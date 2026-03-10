@@ -1325,7 +1325,10 @@ export class RouterCore<
         pathname: decodePath(url.pathname).path,
         external: !!this.rewrite && url.origin !== this.origin,
         searchStr,
-        search: nullReplaceEqualDeep(previousLocation?.search, parsedSearch) as any,
+        search: nullReplaceEqualDeep(
+          previousLocation?.search,
+          parsedSearch,
+        ) as any,
         hash: decodePath(url.hash.slice(1)).path,
         state: replaceEqualDeep(previousLocation?.state, state),
       }
@@ -1630,7 +1633,7 @@ export class RouterCore<
 
       // Update the match's params
       const previousMatch = previousMatchesByRouteId.get(match.routeId)
-       match.params = previousMatch
+      match.params = previousMatch
         ? nullReplaceEqualDeep(previousMatch.params, routeParams)
         : routeParams
 
