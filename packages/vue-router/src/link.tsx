@@ -209,16 +209,6 @@ export function useLinkProps<
     ) as unknown as LinkHTMLAttributes
   }
 
-  const currentLocation = useStore(router.stores.location, (location) => ({
-    pathname: location.pathname,
-    search: location.search,
-    hash: location.hash,
-  }))
-  const currentSearch = useStore(
-    router.stores.location,
-    (location) => location.searchStr,
-    { equal: Object.is },
-  )
   const from = options.from
     ? Vue.computed(() => options.from)
     : useStore(router.stores.lastMatchRouteFullPath, (fullPath) => fullPath)
@@ -228,10 +218,15 @@ export function useLinkProps<
     from: from.value,
   }))
 
+  const currentLocation = useStore(router.stores.location, (l) => l, {
+    equal: (prev, next) => prev.href === next.href,
+  })
+
   const next = Vue.computed(() => {
-    // Depend on search to rebuild when search changes
-    currentSearch.value
-    return router.buildLocation(_options.value as any)
+    // Rebuild when inherited search/hash or the current route context changes.
+
+    const opts = { _fromLocation: currentLocation.value, ..._options.value }
+    return router.buildLocation(opts as any)
   })
 
   const preload = Vue.computed(() => {
@@ -255,10 +250,12 @@ export function useLinkProps<
   )
 
   const doPreload = () =>
-    router.preloadRoute(_options.value as any).catch((err: any) => {
-      console.warn(err)
-      console.warn(preloadWarning)
-    })
+    router
+      .preloadRoute({ ..._options.value, _builtLocation: next.value } as any)
+      .catch((err: any) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
 
   const preloadViewportIoCallback = (
     entry: IntersectionObserverEntry | undefined,

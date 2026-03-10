@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { shallow, useStore } from '@tanstack/react-store'
+import { useStore } from '@tanstack/react-store'
 import { flushSync } from 'react-dom'
 import {
   deepEqual,
@@ -377,31 +377,12 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated()
 
-  // Subscribe to current location for active-state checks and relative-link resolution.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLocation = useStore(
-    router.stores.location,
-    (location) => ({
-      pathname: location.pathname,
-      search: location.search,
-      hash: location.hash,
-    }),
-    shallow,
-  )
-  // Subscribe to current leaf match identity for relative-link resolution.
-  // This avoids broad match-array subscriptions while still invalidating href
-  // computation when the leaf route/params context changes.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLeafMatchId = useStore(router.stores.lastMatchId, (id) => id)
-
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
     () => options,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
-      currentLeafMatchId,
-      currentLocation.hash,
       options.from,
       options._fromLocation,
       options.hash,
@@ -415,10 +396,17 @@ export function useLinkProps<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const next = React.useMemo(
-    () => router.buildLocation({ ..._options } as any),
-    [router, _options],
+  const currentLocation = useStore(
+    router.stores.location,
+    (l) => l,
+    (prev, next) => prev.href === next.href,
   )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const next = React.useMemo(() => {
+    const opts = { _fromLocation: currentLocation, ..._options }
+    return router.buildLocation(opts as any)
+  }, [router, currentLocation, _options])
 
   // Use publicHref - it contains the correct href for display
   // When a rewrite changes the origin, publicHref is the full URL

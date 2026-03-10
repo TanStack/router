@@ -122,17 +122,18 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  const currentLocation = Solid.createMemo(() => router.stores.location.state)
-  const currentSearch = Solid.createMemo(
-    () => router.stores.location.state.searchStr,
+  const currentLocation = Solid.createMemo(
+    () => router.stores.location.state,
+    undefined,
+    { equals: (prev, next) => prev.href === next.href },
   )
 
   const _options = () => options
 
   const next = Solid.createMemo(() => {
-    // rebuild location when search changes
-    currentSearch()
-    const options = _options() as any
+    // Rebuild when inherited search/hash or the current route context changes.
+    const _fromLocation = currentLocation()
+    const options = { _fromLocation, ..._options() } as any
     // untrack because router-core will also access stores, which are signals in solid
     return Solid.untrack(() => router.buildLocation(options))
   })
@@ -246,10 +247,12 @@ export function useLinkProps<
   })
 
   const doPreload = () =>
-    router.preloadRoute(_options() as any).catch((err: any) => {
-      console.warn(err)
-      console.warn(preloadWarning)
-    })
+    router
+      .preloadRoute({ ..._options(), _builtLocation: next() } as any)
+      .catch((err: any) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
 
   const preloadViewportIoCallback = (
     entry: IntersectionObserverEntry | undefined,
