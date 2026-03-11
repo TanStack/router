@@ -134,17 +134,20 @@ ${pkgs.map((p) => `- ${p.name}@${p.version}`).join('\n')}
 `
 
 // Create the release
-// Check if tag already exists
+// Check if tag already exists — if so, try to create the release for it
+// (handles retries where the tag was pushed but release creation failed)
+let tagExists = false
 try {
   execSync(`git rev-parse ${tagName}`, { stdio: 'ignore' })
-  console.info(`Tag ${tagName} already exists, skipping release creation.`)
-  process.exit(0)
+  tagExists = true
 } catch {
-  // Tag doesn't exist, proceed
+  // Tag doesn't exist yet
 }
 
-execSync(`git tag -a -m "${tagName}" ${tagName}`)
-execSync('git push --tags')
+if (!tagExists) {
+  execSync(`git tag -a -m "${tagName}" ${tagName}`)
+  execSync('git push --tags')
+}
 
 const prereleaseFlag = isPrerelease ? '--prerelease' : ''
 const tmpFile = path.join(tmpdir(), `release-notes-${tagName}.md`)
@@ -156,6 +159,18 @@ try {
     { stdio: 'inherit' },
   )
   console.info(`GitHub release ${tagName} created.`)
+} catch (err) {
+  // Clean up the tag if we created it but release failed
+  if (!tagExists) {
+    console.info(`Release creation failed, cleaning up tag ${tagName}...`)
+    try {
+      execSync(`git push --delete origin ${tagName}`, { stdio: 'ignore' })
+      execSync(`git tag -d ${tagName}`, { stdio: 'ignore' })
+    } catch {
+      // Best effort cleanup
+    }
+  }
+  throw err
 } finally {
   fs.unlinkSync(tmpFile)
 }
