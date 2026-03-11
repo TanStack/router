@@ -1,8 +1,20 @@
-import { redirect, createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
-import { useMutation } from '../hooks/useMutation'
+import { useMutation } from '@tanstack/react-query'
 import { Auth } from '../components/Auth'
 import { getSupabaseServerClient } from '../utils/supabase'
+
+function isSafeRedirectPath(redirectUrl: string) {
+  if (!redirectUrl.startsWith('/')) {
+    return false
+  }
+
+  if (redirectUrl.startsWith('//')) {
+    return false
+  }
+
+  return !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(redirectUrl)
+}
 
 export const signupFn = createServerFn({ method: 'POST' })
   .inputValidator(
@@ -21,19 +33,31 @@ export const signupFn = createServerFn({ method: 'POST' })
       }
     }
 
-    // Redirect to the prev page stored in the "redirect" search param
+    const redirectHref =
+      data.redirectUrl && isSafeRedirectPath(data.redirectUrl)
+        ? data.redirectUrl
+        : '/'
+
     throw redirect({
-      href: data.redirectUrl || '/',
+      href: redirectHref,
     })
   })
 
 export const Route = createFileRoute('/signup')({
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      redirect:
+        typeof search.redirect === 'string' ? search.redirect : undefined,
+    }
+  },
   component: SignupComp,
 })
 
 function SignupComp() {
+  const { redirect: redirectUrl } = Route.useSearch()
+
   const signupMutation = useMutation({
-    fn: useServerFn(signupFn),
+    mutationFn: useServerFn(signupFn),
   })
 
   return (
@@ -41,20 +65,22 @@ function SignupComp() {
       actionText="Sign Up"
       status={signupMutation.status}
       onSubmit={(e) => {
-        const formData = new FormData(e.target as HTMLFormElement)
+        e.preventDefault()
+
+        const form = e.target as HTMLFormElement
+        const formData = new FormData(form)
 
         signupMutation.mutate({
           data: {
             email: formData.get('email') as string,
             password: formData.get('password') as string,
+            redirectUrl,
           },
         })
       }}
       afterSubmit={
         signupMutation.data?.error ? (
-          <>
-            <div className="text-red-400">{signupMutation.data.message}</div>
-          </>
+          <div className="text-red-400">{signupMutation.data.message}</div>
         ) : null
       }
     />
