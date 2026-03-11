@@ -168,8 +168,7 @@ export function useLinkProps<
   // During SSR we render exactly once and do not need reactivity.
   // Avoid store subscriptions, effects and observers on the server.
   if (isServer ?? router.isServer) {
-    const from = options.from ?? router.stores.lastMatchRouteFullPath.state
-    const next = router.buildLocation({ ...options, from } as any)
+    const next = router.buildLocation(options as any)
     const href = getHref({
       options: options as AnyLinkPropsOptions,
       router,
@@ -209,15 +208,6 @@ export function useLinkProps<
     ) as unknown as LinkHTMLAttributes
   }
 
-  const from = options.from
-    ? Vue.computed(() => options.from)
-    : useStore(router.stores.lastMatchRouteFullPath, (fullPath) => fullPath)
-
-  const _options = Vue.computed(() => ({
-    ...options,
-    from: from.value,
-  }))
-
   const currentLocation = useStore(router.stores.location, (l) => l, {
     equal: (prev, next) => prev.href === next.href,
   })
@@ -225,12 +215,12 @@ export function useLinkProps<
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.
 
-    const opts = { _fromLocation: currentLocation.value, ..._options.value }
+    const opts = { _fromLocation: currentLocation.value, ...options }
     return router.buildLocation(opts as any)
   })
 
   const preload = Vue.computed(() => {
-    if (_options.value.reloadDocument) {
+    if (options.reloadDocument) {
       return false
     }
     return options.preload ?? router.options.defaultPreload
@@ -251,7 +241,7 @@ export function useLinkProps<
 
   const doPreload = () =>
     router
-      .preloadRoute({ ..._options.value, _builtLocation: next.value } as any)
+      .preloadRoute({ ...options, _builtLocation: next.value } as any)
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
@@ -299,7 +289,7 @@ export function useLinkProps<
       e.button === 0
     ) {
       // Don't prevent default or handle navigation if reloadDocument is true
-      if (_options.value.reloadDocument) {
+      if (options.reloadDocument) {
         return
       }
 
@@ -314,7 +304,7 @@ export function useLinkProps<
 
       // All is well? Navigate!
       router.navigate({
-        ..._options.value,
+        ...options,
         replace: options.replace,
         resetScroll: options.resetScroll,
         hashScrollIntoView: options.hashScrollIntoView,

@@ -1,5 +1,5 @@
 import { createLRUCache } from './lru-cache'
-import { arraysEqual, last } from './utils'
+import { arraysEqual } from './utils'
 
 import type { AnyRoute } from './route'
 import type { RouterState } from './router'
@@ -88,8 +88,6 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   pendingMatchesSnapshot: ReadableStore<Array<AnyRouteMatch>>
   cachedMatchesSnapshot: ReadableStore<Array<AnyRouteMatch>>
   firstMatchId: ReadableStore<string | undefined>
-  /** could be react/vue only, the only use inside router-core/router could easily be removed */
-  lastMatchId: ReadableStore<string | undefined>
   hasPendingMatches: ReadableStore<boolean>
   matchRouteReactivity: ReadableStore<{
     locationHref: string
@@ -152,7 +150,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     readPoolMatches(cachedMatchStoresById, cachedMatchesId.state),
   )
   const firstMatchId = createReadonlyStore(() => matchesId.state[0])
-  const lastMatchId = createReadonlyStore(() => last(matchesId.state))
   const hasPendingMatches = createReadonlyStore(() =>
     matchesId.state.some((matchId) => {
       const store = activeMatchStoresById.get(matchId)
@@ -234,7 +231,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     pendingMatchesSnapshot,
     cachedMatchesSnapshot,
     firstMatchId,
-    lastMatchId,
     hasPendingMatches,
     matchRouteReactivity,
 
