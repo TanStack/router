@@ -65,8 +65,30 @@ function createSolidMutableStore<TValue>(
   }
 }
 
-export const getStoreFactory: GetStoreConfig = (router) => {
-  if (isServer ?? router.isServer) {
+let finalizationRegistry: FinalizationRegistry<() => void> | null = null
+if (typeof globalThis !== 'undefined' && 'FinalizationRegistry' in globalThis) {
+  finalizationRegistry = new FinalizationRegistry((cb) => cb())
+}
+
+function createSolidReadonlyStore<TValue>(
+  read: () => TValue,
+): RouterReadableStore<TValue> {
+  let dispose!: () => void
+  const memo = Solid.createRoot((d) => {
+    dispose = d
+    return Solid.createMemo(read)
+  })
+  const store = {
+    get state() {
+      return memo()
+    },
+  }
+  finalizationRegistry?.register(store, dispose)
+  return store
+}
+
+export const getStoreFactory: GetStoreConfig = (opts) => {
+  if (isServer ?? opts.isServer) {
     return {
       createMutableStore: createNonReactiveMutableStore,
       createReadonlyStore: createNonReactiveReadonlyStore,
@@ -74,34 +96,12 @@ export const getStoreFactory: GetStoreConfig = (router) => {
       init: (stores) =>
         initRouterStores(stores, createNonReactiveReadonlyStore),
     }
-  } else {
-    const disposers = new Set<() => void>()
-    function createSolidReadonlyStore<TValue>(
-      read: () => TValue,
-    ): RouterReadableStore<TValue> {
-      const memo = Solid.createRoot((dispose) => {
-        disposers.add(dispose)
-        const computed = Solid.createMemo(read)
-        return () => computed()
-      })
+  }
 
-      return {
-        get state() {
-          return memo()
-        },
-      }
-    }
-    if (typeof window !== 'undefined' && 'FinalizationRegistry' in window) {
-      const finalizationRegistry = new FinalizationRegistry(() => {
-        for (const dispose of disposers) dispose()
-      })
-      finalizationRegistry.register(router, disposers)
-    }
-    return {
-      createMutableStore: createSolidMutableStore,
-      createReadonlyStore: createSolidReadonlyStore,
-      batch: Solid.batch,
-      init: (stores) => initRouterStores(stores, createSolidReadonlyStore),
-    }
+  return {
+    createMutableStore: createSolidMutableStore,
+    createReadonlyStore: createSolidReadonlyStore,
+    batch: Solid.batch,
+    init: (stores) => initRouterStores(stores, createSolidReadonlyStore),
   }
 }
