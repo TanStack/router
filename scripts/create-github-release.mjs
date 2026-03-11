@@ -84,8 +84,12 @@ const typeOrder = [
   'Ci',
   'Other',
 ]
+const typeIndex = (t) => {
+  const i = typeOrder.indexOf(t)
+  return i === -1 ? 99 : i
+}
 const sortedTypes = Object.keys(groups).sort(
-  (a, b) => (typeOrder.indexOf(a) ?? 99) - (typeOrder.indexOf(b) ?? 99),
+  (a, b) => typeIndex(a) - typeIndex(b),
 )
 
 let changelogMd = ''
