@@ -65,25 +65,26 @@ function createSolidMutableStore<TValue>(
   }
 }
 
+let finalizationRegistry: FinalizationRegistry<() => void> | null = null
+if (typeof globalThis !== 'undefined' && 'FinalizationRegistry' in globalThis) {
+  finalizationRegistry = new FinalizationRegistry((cb) => cb())
+}
+
 function createSolidReadonlyStore<TValue>(
   read: () => TValue,
 ): RouterReadableStore<TValue> {
-  /**
-   * This is a detached root, without an owner. So it can never be disposed.
-   * However it's only used on the client, where the router exists for the entire lifetime of the app, so this is fine.
-   *
-   * On the server we use non-reactive stores, and they don't use Solid at all.
-   */
-  const memo = Solid.createRoot(() => {
-    const computed = Solid.createMemo(read)
-    return () => computed()
+  let dispose!: () => void
+  const memo = Solid.createRoot((d) => {
+    dispose = d
+    return Solid.createMemo(read)
   })
-
-  return {
+  const store = {
     get state() {
       return memo()
     },
   }
+  finalizationRegistry?.register(store, dispose)
+  return store
 }
 
 export const getStoreFactory: GetStoreConfig = (opts) => {
