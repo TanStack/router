@@ -29,7 +29,7 @@
     "format": "prettier --experimental-cli --ignore-unknown '**/*' --write",
     "changeset": "changeset",
     "changeset:publish": "changeset publish",
-    "changeset:version": "changeset version && pnpm install --no-frozen-lockfile && pnpm format",
+    "changeset:version": "changeset version && node scripts/update-example-deps.mjs && pnpm install --no-frozen-lockfile && pnpm format",
     "gpt-generate": "node gpt/generate.js",
     "set-ts-version": "node scripts/set-ts-version.js",
     "labeler-generate": "node scripts/generate-labeler-config.ts",
