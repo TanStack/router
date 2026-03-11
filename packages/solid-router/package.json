@@ -103,7 +103,7 @@
   "dependencies": {
     "@solid-devtools/logger": "^0.9.4",
     "@solidjs/meta": "^0.29.4",
-    "@solidjs/web": "*",
+    "@solidjs/web": "2.0.0-beta.2",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
     "isbot": "^5.1.22",

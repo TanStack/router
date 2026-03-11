@@ -12670,8 +12670,8 @@ importers:
         specifier: ^0.29.4
         version: 0.29.4(solid-js@2.0.0-beta.2)
       '@solidjs/web':
-        specifier: '*'
-        version: 2.0.0-experimental.0(solid-js@2.0.0-beta.2)
+        specifier: 2.0.0-beta.2
+        version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
@@ -12716,8 +12716,8 @@ importers:
   packages/solid-router-devtools:
     dependencies:
       '@solidjs/web':
-        specifier: '*'
-        version: 2.0.0-experimental.0(solid-js@2.0.0-beta.2)
+        specifier: 2.0.0-beta.2
+        version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -17942,11 +17942,6 @@ packages:
     peerDependencies:
       '@solidjs/signals': ^0.12.0
       solid-js: ^2.0.0-beta.2
-
-  '@solidjs/web@2.0.0-experimental.0':
-    resolution: {integrity: sha512-bGtCTQr0mHxK11c+g/XmdSIIoHYagdRxK6yzbOoURblTsKiBrFGPtoqR7lDJ+dWcvP96KzW8R/r4k3nVNgLdpQ==}
-    peerDependencies:
-      solid-js: ^2.0.0-experimental.0
 
   '@speed-highlight/core@1.2.14':
     resolution: {integrity: sha512-G4ewlBNhUtlLvrJTb88d2mdy2KRijzs4UhnlrOSRT4bmjh/IqNElZa3zkrZ+TC47TwtlDWzVLFADljF1Ijp5hA==}
@@ -30506,12 +30501,6 @@ snapshots:
   '@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)':
     dependencies:
       '@solidjs/signals': 0.12.0
-      seroval: 1.5.0
-      seroval-plugins: 1.5.0(seroval@1.5.0)
-      solid-js: 2.0.0-beta.2
-
-  '@solidjs/web@2.0.0-experimental.0(solid-js@2.0.0-beta.2)':
-    dependencies:
       seroval: 1.5.0
       seroval-plugins: 1.5.0(seroval@1.5.0)
       solid-js: 2.0.0-beta.2
