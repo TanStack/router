@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773262677243,
+  "lastUpdate": 1773262972455,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -4897,6 +4897,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/bb291c68aaf63cd57406f14d382abc4d1c5456f3"
         },
         "date": 1773262676199,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89180,
+            "unit": "bytes",
+            "extra": "raw=280686; brotli=77499"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92238,
+            "unit": "bytes",
+            "extra": "raw=291186; brotli=80199"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 37299,
+            "unit": "bytes",
+            "extra": "raw=111917; brotli=33523"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41724,
+            "unit": "bytes",
+            "extra": "raw=125200; brotli=37454"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 53541,
+            "unit": "bytes",
+            "extra": "raw=152925; brotli=48142"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 58446,
+            "unit": "bytes",
+            "extra": "raw=168805; brotli=52504"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 102052,
+            "unit": "bytes",
+            "extra": "raw=320776; brotli=88290"
+          },
+          {
+            "name": "react-start.full",
+            "value": 105442,
+            "unit": "bytes",
+            "extra": "raw=330738; brotli=91203"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49923,
+            "unit": "bytes",
+            "extra": "raw=150412; brotli=44175"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 55515,
+            "unit": "bytes",
+            "extra": "raw=166658; brotli=49024"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "74932975+birkskyum@users.noreply.github.com",
+            "name": "Birk Skyum",
+            "username": "birkskyum"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f2795a779aa080fc52ae3557530346e05562198",
+          "message": "fix: resolve author from PR links in GitHub release changelog (#6898)",
+          "timestamp": "2026-03-11T22:00:24+01:00",
+          "tree_id": "3901e180d2156bf6d66c7f95362d0de2628e5c87",
+          "url": "https://github.com/TanStack/router/commit/9f2795a779aa080fc52ae3557530346e05562198"
+        },
+        "date": 1773262971210,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
