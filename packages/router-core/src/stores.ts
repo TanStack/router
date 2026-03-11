@@ -1,5 +1,5 @@
 import { createLRUCache } from './lru-cache'
-import { arraysEqual, last } from './utils'
+import { arraysEqual } from './utils'
 
 import type { AnyRoute } from './route'
 import type { RouterState } from './router'
