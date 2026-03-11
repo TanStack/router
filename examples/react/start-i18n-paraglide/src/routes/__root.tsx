@@ -4,8 +4,8 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
-// import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-// import { TanStackDevtools } from '@tanstack/react-devtools'
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
+import { TanStackDevtools } from '@tanstack/react-devtools'
 import styles from '../styles.css?url'
 import { getLocale, locales, setLocale } from '@/paraglide/runtime'
 import { m } from '@/paraglide/messages'
@@ -77,7 +77,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
         <div className="p-2">{children}</div>
 
-        {/* TODO: Re-enable when @tanstack/react-devtools supports Solid 2.0
         <TanStackDevtools
           config={{
             position: 'bottom-left',
@@ -89,7 +88,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             },
           ]}
         />
-        */}
         <Scripts />
       </body>
     </html>
