@@ -1,4 +1,5 @@
 import { useStore } from '@tanstack/react-store'
+import { deepEqual } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -68,9 +69,14 @@ export const Scripts = () => {
   const assetScripts = useStore(
     router.stores.activeMatchesSnapshot,
     getAssetScripts,
+    deepEqual,
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const scripts = useStore(router.stores.activeMatchesSnapshot, getScripts)
+  const scripts = useStore(
+    router.stores.activeMatchesSnapshot,
+    getScripts,
+    deepEqual,
+  )
 
   return renderScripts(router, scripts, assetScripts)
 }
