@@ -1,4 +1,3 @@
-
 import * as Devtools from './SolidStartDevtools'
 import * as plugin from './plugin'
 

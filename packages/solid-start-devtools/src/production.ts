@@ -1,4 +1,3 @@
-
 export { StartDevtoolsPanel } from './SolidStartDevtools'
 
 export type { StartDevtoolsSolidInit } from './SolidStartDevtools'

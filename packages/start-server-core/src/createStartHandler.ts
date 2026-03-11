@@ -426,9 +426,9 @@ export function createStartHandler<TRegister = Register>(
     request,
     requestOpts,
   ) => {
-    startEventClient.emit("request-received", {
+    startEventClient.emit('request-received', {
       headers: request.headers,
-      url: request.url.split("--")[0]!,
+      url: request.url.split('--')[0]!,
       method: request.method,
     })
 
