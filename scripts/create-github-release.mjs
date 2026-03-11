@@ -10,8 +10,7 @@ const ghToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN
 
 // Get the previous release commit to diff against.
 // This script runs right after the "ci: changeset release" commit is pushed,
-// so HEAD is the release commit. We want commits between the previous release
-// and this one (exclusive of both release commits).
+// so HEAD is the release commit.
 const releaseLogs = execSync(
   'git log --oneline --grep="ci: changeset release" --format=%H',
 )
@@ -20,106 +19,89 @@ const releaseLogs = execSync(
   .split('\n')
   .filter(Boolean)
 
-// Current release commit is releaseLogs[0] (HEAD), previous is releaseLogs[1]
 const currentRelease = releaseLogs[0] || 'HEAD'
 const previousRelease = releaseLogs[1]
-const rangeFrom = previousRelease || `${currentRelease}~1`
 
-// Get commits between previous release and current release (exclude both)
-const rawLog = execSync(
-  `git log ${rangeFrom}..${currentRelease} --pretty=format:"%h %ae %s" --no-merges`,
-)
-  .toString()
-  .trim()
+// Find packages that were actually bumped by comparing versions
+const packagesDir = path.join(rootDir, 'packages')
+const allPkgJsonPaths = globSync('*/package.json', { cwd: packagesDir })
 
-const commits = rawLog
-  .split('\n')
-  .filter(Boolean)
-  .filter((line) => !line.includes('ci: changeset release'))
+const bumpedPackages = []
+for (const relPath of allPkgJsonPaths) {
+  const fullPath = path.join(packagesDir, relPath)
+  const currentPkg = JSON.parse(fs.readFileSync(fullPath, 'utf-8'))
+  if (currentPkg.private) continue
 
-// Resolve GitHub usernames from commit author emails
-const usernameCache = {}
-async function resolveUsername(email) {
-  if (!ghToken || !email) return null
-  if (usernameCache[email] !== undefined) return usernameCache[email]
-
-  try {
-    const res = await fetch(`https://api.github.com/search/users?q=${email}`, {
-      headers: { Authorization: `token ${ghToken}` },
-    })
-    const data = await res.json()
-    const login = data?.items?.[0]?.login || null
-    usernameCache[email] = login
-    return login
-  } catch {
-    usernameCache[email] = null
-    return null
-  }
-}
-
-// Group commits by conventional commit type
-const groups = {}
-for (const line of commits) {
-  // Format: "<hash> <email> <type>(<scope>): <subject>" or "<hash> <email> <type>: <subject>"
-  const match = line.match(/^(\w+)\s+(\S+)\s+(\w+)(?:\(([^)]+)\))?:\s*(.+)$/)
-  if (match) {
-    const [, hash, email, type, scope, subject] = match
-    const key = type.charAt(0).toUpperCase() + type.slice(1)
-    if (!groups[key]) groups[key] = []
-    groups[key].push({ hash, email, scope, subject })
+  // Get the version from the previous release commit
+  if (previousRelease) {
+    try {
+      const prevContent = execSync(
+        `git show ${previousRelease}:packages/${relPath}`,
+        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] },
+      )
+      const prevPkg = JSON.parse(prevContent)
+      if (prevPkg.version !== currentPkg.version) {
+        bumpedPackages.push({
+          name: currentPkg.name,
+          version: currentPkg.version,
+          prevVersion: prevPkg.version,
+          dir: path.dirname(relPath),
+        })
+      }
+    } catch {
+      // Package didn't exist in previous release — it's new
+      bumpedPackages.push({
+        name: currentPkg.name,
+        version: currentPkg.version,
+        prevVersion: null,
+        dir: path.dirname(relPath),
+      })
+    }
   } else {
-    // Non-conventional commits (merge commits, etc.) go to Other
-    if (!groups['Other']) groups['Other'] = []
-    const parts = line.split(' ')
-    const hash = parts[0]
-    const email = parts[1]
-    const subject = parts.slice(2).join(' ')
-    groups['Other'].push({ hash, email, scope: null, subject })
+    // No previous release — include all non-private packages
+    bumpedPackages.push({
+      name: currentPkg.name,
+      version: currentPkg.version,
+      prevVersion: null,
+      dir: path.dirname(relPath),
+    })
   }
 }
 
-// Build changelog markdown
-const typeOrder = [
-  'Feat',
-  'Fix',
-  'Refactor',
-  'Perf',
-  'Test',
-  'Docs',
-  'Chore',
-  'Ci',
-  'Other',
-]
-const typeIndex = (t) => {
-  const i = typeOrder.indexOf(t)
-  return i === -1 ? 99 : i
-}
-const sortedTypes = Object.keys(groups).sort(
-  (a, b) => typeIndex(a) - typeIndex(b),
-)
+bumpedPackages.sort((a, b) => a.name.localeCompare(b.name))
 
+// Extract changelog entries from changeset-generated CHANGELOG.md files.
+// Changesets writes entries under "## <version>" headers. We extract the
+// content under the current version header for each bumped package.
 let changelogMd = ''
-for (const type of sortedTypes) {
-  changelogMd += `### ${type}\n\n`
-  for (const { hash, email, scope, subject } of groups[type]) {
-    const scopeStr = scope ? `${scope}: ` : ''
-    const username = await resolveUsername(email)
-    const authorStr = username ? ` by @${username}` : ''
-    changelogMd += `- ${scopeStr}${subject} (${hash})${authorStr}\n`
+for (const pkg of bumpedPackages) {
+  const changelogPath = path.join(packagesDir, pkg.dir, 'CHANGELOG.md')
+  if (!fs.existsSync(changelogPath)) continue
+
+  const changelog = fs.readFileSync(changelogPath, 'utf-8')
+
+  // Find the section for the current version: starts with "## <version>"
+  // and ends at the next "## " or end of file
+  const versionHeader = `## ${pkg.version}`
+  const startIdx = changelog.indexOf(versionHeader)
+  if (startIdx === -1) continue
+
+  const afterHeader = startIdx + versionHeader.length
+  const nextSection = changelog.indexOf('\n## ', afterHeader)
+  const section =
+    nextSection === -1
+      ? changelog.slice(afterHeader)
+      : changelog.slice(afterHeader, nextSection)
+
+  const content = section.trim()
+  if (content) {
+    changelogMd += `#### ${pkg.name}\n\n${content}\n\n`
   }
-  changelogMd += '\n'
 }
 
 if (!changelogMd) {
-  changelogMd = '- None\n\n'
+  changelogMd = '- No changelog entries\n\n'
 }
-
-// Collect all publishable package versions
-const packagesDir = path.join(rootDir, 'packages')
-const pkgs = globSync('*/package.json', { cwd: packagesDir })
-  .map((p) => JSON.parse(fs.readFileSync(path.join(packagesDir, p), 'utf-8')))
-  .filter((p) => !p.private)
-  .sort((a, b) => a.name.localeCompare(b.name))
 
 const now = new Date()
 const date = now.toISOString().slice(0, 10)
@@ -136,7 +118,7 @@ const body = `Release ${titleDate}
 ${changelogMd}
 ## Packages
 
-${pkgs.map((p) => `- ${p.name}@${p.version}`).join('\n')}
+${bumpedPackages.map((p) => `- ${p.name}@${p.version}`).join('\n')}
 `
 
 // Create the release
