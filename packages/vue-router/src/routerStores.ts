@@ -9,7 +9,6 @@ import type { Readable } from '@tanstack/vue-store'
 declare module '@tanstack/router-core' {
   export interface RouterReadableStore<TValue> extends Readable<TValue> {}
   export interface RouterStores<in out TRouteTree extends AnyRoute> {
-    lastMatchRouteFullPath: RouterReadableStore<string | undefined>
     /** Maps each active routeId to the matchId of its child in the match tree. */
     childMatchIdByRouteId: RouterReadableStore<Record<string, string>>
     /** Maps each pending routeId to true for quick lookup. */
@@ -23,14 +22,6 @@ export const getStoreFactory: GetStoreConfig = (_opts) => {
     createReadonlyStore: createStore,
     batch,
     init: (stores: RouterStores<AnyRoute>) => {
-      stores.lastMatchRouteFullPath = createStore(() => {
-        const id = stores.lastMatchId.state
-        if (!id) {
-          return undefined
-        }
-        return stores.activeMatchStoresById.get(id)?.state.fullPath
-      })
-
       // Single derived store: one reactive node that maps every active
       // routeId to its child's matchId. Depends only on matchesId +
       // the pool's routeId tags (which are set during reconciliation).

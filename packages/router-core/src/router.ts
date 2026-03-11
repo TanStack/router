@@ -1703,7 +1703,7 @@ export class RouterCore<
     }
 
     // Determine params: reuse from state if possible, otherwise parse
-    const lastStateMatchId = this.stores.lastMatchId.state
+    const lastStateMatchId = last(this.stores.matchesId.state)
     const lastStateMatch =
       lastStateMatchId &&
       this.stores.activeMatchStoresById.get(lastStateMatchId)?.state
