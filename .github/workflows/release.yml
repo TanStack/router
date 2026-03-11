@@ -63,8 +63,9 @@ jobs:
       - name: Publish Packages
         if: steps.commit.outputs.committed == 'true'
         run: pnpm run changeset:publish ${{ steps.dist-tag.outputs.tag && format('--tag {0}', steps.dist-tag.outputs.tag) }}
-      - name: Push git tags
+      - name: Create GitHub Release
         if: steps.commit.outputs.committed == 'true'
-        run: git push --follow-tags
+        run: node scripts/create-github-release.mjs ${{ steps.dist-tag.outputs.tag && '--prerelease' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
