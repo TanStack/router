@@ -8,6 +8,66 @@ import { tmpdir } from 'node:os'
 const rootDir = path.join(import.meta.dirname, '..')
 const ghToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN
 
+// Resolve GitHub usernames from commit author emails
+const usernameCache = {}
+async function resolveUsername(email) {
+  if (!ghToken || !email) return null
+  if (usernameCache[email] !== undefined) return usernameCache[email]
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/search/users?q=${email}`,
+      { headers: { Authorization: `token ${ghToken}` } },
+    )
+    const data = await res.json()
+    const login = data?.items?.[0]?.login || null
+    usernameCache[email] = login
+    return login
+  } catch {
+    usernameCache[email] = null
+    return null
+  }
+}
+
+// Resolve a commit hash to a "by @username" string
+const authorCache = {}
+async function resolveAuthorForCommit(hash) {
+  if (authorCache[hash] !== undefined) return authorCache[hash]
+
+  try {
+    const email = execSync(`git log -1 --format=%ae ${hash}`, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim()
+    const username = await resolveUsername(email)
+    const result = username ? ` by @${username}` : ''
+    authorCache[hash] = result
+    return result
+  } catch {
+    authorCache[hash] = ''
+    return ''
+  }
+}
+
+// Append author info to changelog lines that contain commit hashes
+async function appendAuthors(content) {
+  const lines = content.split('\n')
+  const result = []
+
+  for (const line of lines) {
+    // Match commit hash links like [`9a4d924`](url)
+    const commitMatch = line.match(/\[`([a-f0-9]{7,})`\]/)
+    if (commitMatch && line.startsWith('- ')) {
+      const author = await resolveAuthorForCommit(commitMatch[1])
+      result.push(author ? `${line}${author}` : line)
+    } else {
+      result.push(line)
+    }
+  }
+
+  return result.join('\n')
+}
+
 // Get the previous release commit to diff against.
 // This script runs right after the "ci: changeset release" commit is pushed,
 // so HEAD is the release commit.
@@ -95,7 +155,8 @@ for (const pkg of bumpedPackages) {
 
   const content = section.trim()
   if (content) {
-    changelogMd += `#### ${pkg.name}\n\n${content}\n\n`
+    const withAuthors = await appendAuthors(content)
+    changelogMd += `#### ${pkg.name}\n\n${withAuthors}\n\n`
   }
 }
 
