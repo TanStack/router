@@ -2,7 +2,7 @@ import { useStore } from '@tanstack/react-store'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import { deepEqual, type RouterManagedTag } from '@tanstack/router-core'
 
 /**
  * Render body script tags collected from route matches and SSR manifests.
@@ -68,9 +68,14 @@ export const Scripts = () => {
   const assetScripts = useStore(
     router.stores.activeMatchesSnapshot,
     getAssetScripts,
+    deepEqual,
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const scripts = useStore(router.stores.activeMatchesSnapshot, getScripts)
+  const scripts = useStore(
+    router.stores.activeMatchesSnapshot,
+    getScripts,
+    deepEqual,
+  )
 
   return renderScripts(router, scripts, assetScripts)
 }
