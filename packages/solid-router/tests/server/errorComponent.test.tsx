@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { renderToStringAsync } from 'solid-js/web'
 import {
   RouterProvider,
@@ -11,6 +11,7 @@ import {
 describe('errorComponent (server)', () => {
   it('renders the route error component when a loader throws during SSR', async () => {
     const rootRoute = createRootRoute()
+    const onCatch = vi.fn()
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -19,8 +20,11 @@ describe('errorComponent (server)', () => {
         throw new Error('loader boom')
       },
       component: () => <div>Index route</div>,
-      errorComponent: ({ error }) => (
-        <div data-testid="error-component">Route error: {error.message}</div>
+      onCatch,
+      errorComponent: ({ error, reset }) => (
+        <div data-testid="error-component">
+          Route error: {error.message} reset:{typeof reset}
+        </div>
       ),
     })
 
@@ -40,8 +44,10 @@ describe('errorComponent (server)', () => {
     ))
 
     expect(router.state.statusCode).toBe(500)
+    expect(onCatch).toHaveBeenCalledTimes(1)
     expect(html).toContain('data-testid="error-component"')
     expect(html).toContain('loader boom')
+    expect(html).toContain('reset:function')
     expect(html).not.toContain('Index route')
   })
 })
