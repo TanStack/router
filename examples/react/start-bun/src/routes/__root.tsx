@@ -1,6 +1,6 @@
-// import { TanStackDevtools } from '@tanstack/react-devtools'
+import { TanStackDevtools } from '@tanstack/react-devtools'
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-// import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 
 import Header from '../components/Header'
 
@@ -40,7 +40,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <Header />
         {children}
-        {/* TODO: Re-enable when @tanstack/react-devtools supports Solid 2.0
         <TanStackDevtools
           config={{
             position: 'bottom-left',
@@ -52,7 +51,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             },
           ]}
         />
-        */}
         <Scripts />
       </body>
     </html>
