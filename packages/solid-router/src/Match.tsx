@@ -90,12 +90,14 @@ export const Match = (props: { matchId: string }) => {
     },
   })
 
-  const ShellComponent = route().isRoot
-    ? ((route().options as RootRouteOptions).shellComponent ?? SafeFragment)
-    : SafeFragment
+  const ShellComponent = Solid.createMemo(() =>
+    route().isRoot
+      ? ((route().options as RootRouteOptions).shellComponent ?? SafeFragment)
+      : SafeFragment,
+  )
 
   return (
-    <ShellComponent>
+    <Dynamic component={ShellComponent()}>
       <MatchContext value={() => props.matchId}>
         <Dynamic
           component={ResolvedSuspenseBoundary()}
@@ -161,7 +163,7 @@ export const Match = (props: { matchId: string }) => {
           <ScrollRestoration />
         </>
       ) : null}
-    </ShellComponent>
+    </Dynamic>
   )
 }
 

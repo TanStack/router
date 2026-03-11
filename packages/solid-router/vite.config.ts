@@ -20,6 +20,7 @@ const config = defineConfig(({ mode }) => {
         resolve: {
           alias: {
             'solid-js/web': '@solidjs/web',
+            '@solidjs/signals': 'solid-js',
           },
         },
         server: {
@@ -40,6 +41,7 @@ const config = defineConfig(({ mode }) => {
         conditions: ['development'],
         alias: {
           'solid-js/web': '@solidjs/web',
+          '@solidjs/signals': 'solid-js',
         },
       },
     }),

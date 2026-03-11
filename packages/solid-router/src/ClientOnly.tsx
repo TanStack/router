@@ -59,7 +59,7 @@ export function ClientOnly(props: ClientOnlyProps) {
 export function useHydrated(): Solid.Accessor<boolean> {
   const [hydrated, setHydrated] = Solid.createSignal(false)
 
-  Solid.createRenderEffect(
+  Solid.createEffect(
     () => true,
     () => {
       setHydrated(true)
