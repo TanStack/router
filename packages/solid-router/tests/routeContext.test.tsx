@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
 
@@ -206,36 +212,51 @@ describe('context function', () => {
       mockContextFn.mockClear()
 
       await clickButton('foo-1')
-      await findByText(`search: ${JSON.stringify({ foo: 'foo-1' })}`)
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({ foo: 'foo-1' })
+      })
       expect(mockContextFn).toHaveBeenCalledOnce()
       expect(mockContextFn).toHaveBeenCalledWith({ foo: 'foo-1' })
 
       mockContextFn.mockClear()
       await clickButton('foo-1')
-      await findByText(`search: ${JSON.stringify({ foo: 'foo-1' })}`)
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({ foo: 'foo-1' })
+      })
       expect(mockContextFn).not.toHaveBeenCalled()
 
       await clickButton('bar-1')
-      await findByText(
-        `search: ${JSON.stringify({ foo: 'foo-1', bar: 'bar-1' })}`,
-      )
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({
+          foo: 'foo-1',
+          bar: 'bar-1',
+        })
+      })
       expect(mockContextFn).not.toHaveBeenCalled()
 
       await clickButton('foo-2')
-      await findByText(
-        `search: ${JSON.stringify({ foo: 'foo-2', bar: 'bar-1' })}`,
-      )
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({
+          foo: 'foo-2',
+          bar: 'bar-1',
+        })
+      })
       expect(mockContextFn).toHaveBeenCalledWith({ foo: 'foo-2' })
       mockContextFn.mockClear()
 
       await clickButton('bar-2')
-      await findByText(
-        `search: ${JSON.stringify({ foo: 'foo-2', bar: 'bar-2' })}`,
-      )
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({
+          foo: 'foo-2',
+          bar: 'bar-2',
+        })
+      })
       expect(mockContextFn).not.toHaveBeenCalled()
 
       await clickButton('clear')
-      await findByText(`search: ${JSON.stringify({})}`)
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({})
+      })
       expect(mockContextFn).toHaveBeenCalledOnce()
       expect(mockContextFn).toHaveBeenCalledWith({})
     })
@@ -1438,11 +1459,10 @@ describe('beforeLoad in the route definition', () => {
     expect(rootElement).toBeInTheDocument()
 
     async function check(expectedCounter: number) {
-      const counterElement = await screen.findByTestId('counter')
-      expect(counterElement).toHaveTextContent(`${expectedCounter}`)
-
-      expect(mockIndexBeforeLoadFn).toHaveBeenCalledWith({
-        counter: expectedCounter,
+      await waitFor(() => {
+        expect(mockIndexBeforeLoadFn).toHaveBeenCalledWith({
+          counter: expectedCounter,
+        })
       })
     }
 

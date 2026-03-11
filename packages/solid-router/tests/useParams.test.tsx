@@ -1,5 +1,5 @@
-import { expect, test, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import {
   Link,
   Outlet,
@@ -9,6 +9,16 @@ import {
   createRouter,
   useParams,
 } from '../src'
+
+beforeEach(() => {
+  window.scrollTo = vi.fn()
+})
+
+afterEach(() => {
+  window.history.replaceState(null, 'root', '/')
+  vi.resetAllMocks()
+  cleanup()
+})
 
 test('useParams must return parsed result if applicable.', async () => {
   const posts = [
@@ -173,8 +183,6 @@ test('useParams must return parsed result if applicable.', async () => {
 
   render(() => <RouterProvider router={router} />)
 
-  await waitFor(() => router.load())
-
   expect(await screen.findByTestId('posts-heading')).toBeInTheDocument()
 
   const firstCategoryLink = await screen.findByTestId('first-category-link')
@@ -182,16 +190,24 @@ test('useParams must return parsed result if applicable.', async () => {
   expect(firstCategoryLink).toBeInTheDocument()
 
   mockedfn.mockClear()
-  await waitFor(() => fireEvent.click(firstCategoryLink))
+  await router.navigate({
+    to: postCategoryRoute.fullPath,
+    params: { category: 'first' },
+  })
 
   const firstPostLink = await screen.findByTestId('post-one-link')
 
   expect(window.location.pathname).toBe('/posts/category_first')
+  expect(router.state.location.pathname).toBe('/posts/category_first')
   expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
   expect(mockedfn).not.toHaveBeenCalled()
 
   mockedfn.mockClear()
-  await waitFor(() => fireEvent.click(firstPostLink))
+  await router.navigate({
+    from: postCategoryRoute.fullPath,
+    to: './$postId',
+    params: { postId: 'one' },
+  })
 
   const allCategoryLink = await screen.findByTestId('all-category-link')
   let paramCategoryValue = await screen.findByTestId('param_category_value')
@@ -206,6 +222,7 @@ test('useParams must return parsed result if applicable.', async () => {
   }
 
   expect(window.location.pathname).toBe('/posts/category_first/one')
+  expect(router.state.location.pathname).toBe('/posts/category_first/one')
   expect(await screen.findByTestId('post-heading')).toBeInTheDocument()
   expect(renderedPost).toEqual(posts[0])
   expect(renderedPost.category).toBe('one')
@@ -215,17 +232,25 @@ test('useParams must return parsed result if applicable.', async () => {
   expect(allCategoryLink).toBeInTheDocument()
 
   mockedfn.mockClear()
-  await waitFor(() => fireEvent.click(allCategoryLink))
+  await router.navigate({
+    to: postCategoryRoute.fullPath,
+    params: { category: 'all' },
+  })
 
   const secondPostLink = await screen.findByTestId('post-two-link')
 
   expect(window.location.pathname).toBe('/posts/category_all')
+  expect(router.state.location.pathname).toBe('/posts/category_all')
   expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
   expect(secondPostLink).toBeInTheDocument()
   expect(mockedfn).not.toHaveBeenCalled()
 
   mockedfn.mockClear()
-  await waitFor(() => fireEvent.click(secondPostLink))
+  await router.navigate({
+    from: postCategoryRoute.fullPath,
+    to: './$postId',
+    params: { postId: 'two' },
+  })
 
   paramCategoryValue = await screen.findByTestId('param_category_value')
   paramPostIdValue = await screen.findByTestId('param_postId_value')
@@ -239,6 +264,7 @@ test('useParams must return parsed result if applicable.', async () => {
   }
 
   expect(window.location.pathname).toBe('/posts/category_all/two')
+  expect(router.state.location.pathname).toBe('/posts/category_all/two')
   expect(await screen.findByTestId('post-heading')).toBeInTheDocument()
   expect(renderedPost).toEqual(posts[1])
   expect(renderedPost.category).toBe('two')

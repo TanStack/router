@@ -1,24 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import {
+  Link,
   RouterProvider,
-  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
 import { ClientOnly } from '../src/ClientOnly'
-import type { RouterHistory } from '../src'
 
 afterEach(() => {
   vi.resetAllMocks()
+  window.history.replaceState(null, 'root', '/')
   cleanup()
 })
 
-function createTestRouter(initialHistory?: RouterHistory) {
-  const history =
-    initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
-
+function createTestRouter() {
   const rootRoute = createRootRoute({})
 
   const indexRoute = createRoute({
@@ -27,6 +24,9 @@ function createTestRouter(initialHistory?: RouterHistory) {
     component: () => (
       <div>
         <p>Index Route</p>
+        <Link data-testid="other-link" to="/other">
+          Go to Other
+        </Link>
         <ClientOnly fallback={<div data-testid="loading">Loading...</div>}>
           <div data-testid="client-only-content">Client Only Content</div>
         </ClientOnly>
@@ -34,8 +34,21 @@ function createTestRouter(initialHistory?: RouterHistory) {
     ),
   })
 
-  const routeTree = rootRoute.addChildren([indexRoute])
-  const router = createRouter({ routeTree, history })
+  const otherRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+    component: () => (
+      <div>
+        <p data-testid="other-route">Other Route</p>
+        <Link data-testid="index-link" to="/">
+          Go to Index
+        </Link>
+      </div>
+    ),
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute, otherRoute])
+  const router = createRouter({ routeTree })
 
   return {
     router,
@@ -48,19 +61,24 @@ describe('ClientOnly', () => {
     window.scrollTo = vi.fn()
   })
 
-  // Clear mocks after each test to prevent interference
   afterEach(() => {
     vi.clearAllMocks()
   })
 
   it('should render client content after hydration', async () => {
     const { router } = createTestRouter()
-    await router.load()
-
-    // Mock useSyncExternalStore to simulate hydration
-    // vi.spyOn(Solid, 'createEffect').mockImplementation(() => true)
 
     render(() => <RouterProvider router={router} />)
+
+    // Navigate away and back to trigger client-side re-mount
+    const otherLink = await screen.findByTestId('other-link')
+    fireEvent.click(otherLink)
+
+    const otherRoute = await screen.findByTestId('other-route')
+    expect(otherRoute).toBeInTheDocument()
+
+    const indexLink = await screen.findByTestId('index-link')
+    fireEvent.click(indexLink)
 
     expect(await screen.findByTestId('client-only-content')).toBeInTheDocument()
     expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
@@ -68,20 +86,22 @@ describe('ClientOnly', () => {
 
   it('should handle navigation with client-only content', async () => {
     const { router } = createTestRouter()
-    await router.load()
 
-    // Simulate hydration
-    // vi.spyOn(Solid, 'createEffect').mockImplementation(() => true)
-
-    // Re-render after hydration
     render(() => <RouterProvider router={router} />)
 
-    // Content should be visible before navigation
-    expect(await screen.findByTestId('client-only-content')).toBeInTheDocument()
+    // Content should be visible after initial render
+    expect(
+      await screen.findByTestId('client-only-content', {}, { timeout: 2000 }),
+    ).toBeInTheDocument()
 
     // Navigate to a different route and back
-    await router.navigate({ to: '/other' })
-    await router.navigate({ to: '/' })
+    const otherLink = await screen.findByTestId('other-link')
+    fireEvent.click(otherLink)
+
+    expect(await screen.findByTestId('other-route')).toBeInTheDocument()
+
+    const indexLink = await screen.findByTestId('index-link')
+    fireEvent.click(indexLink)
 
     // Content should still be visible after navigation
     expect(await screen.findByTestId('client-only-content')).toBeInTheDocument()

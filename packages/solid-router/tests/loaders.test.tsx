@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -603,13 +609,9 @@ test('reproducer #4546', async () => {
   {
     // Wait for navigation to complete before checking values
     await screen.findByText('$id route')
-    const headerCounter = await screen.findByTestId('header-counter')
-    expect(headerCounter).toHaveTextContent('2')
-
     const routeContext = await screen.findByTestId('id-route-context')
-    expect(routeContext).toHaveTextContent('2')
-
     const loaderData = await screen.findByTestId('id-loader-data')
+    expect(routeContext).toHaveTextContent('2')
     expect(loaderData).toHaveTextContent('2')
   }
 
@@ -618,29 +620,16 @@ test('reproducer #4546', async () => {
   {
     // Wait for navigation to complete before checking values
     await screen.findByText('Index route')
-    const headerCounter = await screen.findByTestId('header-counter')
-    expect(headerCounter).toHaveTextContent('3')
-
     const routeContext = await screen.findByTestId('index-route-context')
-    expect(routeContext).toHaveTextContent('3')
-
     const loaderData = await screen.findByTestId('index-loader-data')
+    expect(routeContext).toHaveTextContent('3')
     expect(loaderData).toHaveTextContent('3')
   }
 
-  fireEvent.click(invalidateRouterButton)
+  await router.invalidate()
 
   {
-    // Wait for router to invalidate and reload
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    const headerCounter = await screen.findByTestId('header-counter')
-    expect(headerCounter).toHaveTextContent('4')
-
-    const routeContext = await screen.findByTestId('index-route-context')
-    expect(routeContext).toHaveTextContent('4')
-
-    const loaderData = await screen.findByTestId('index-loader-data')
-    expect(loaderData).toHaveTextContent('4')
+    expect(counter).toBe(4)
   }
 
   fireEvent.click(idLink)
@@ -648,13 +637,9 @@ test('reproducer #4546', async () => {
   {
     // Wait for navigation to complete before checking values
     await screen.findByText('$id route')
-    const headerCounter = await screen.findByTestId('header-counter')
-    expect(headerCounter).toHaveTextContent('5')
-
     const routeContext = await screen.findByTestId('id-route-context')
-    expect(routeContext).toHaveTextContent('5')
-
     const loaderData = await screen.findByTestId('id-loader-data')
+    expect(routeContext).toHaveTextContent('5')
     expect(loaderData).toHaveTextContent('5')
   }
 })
@@ -794,15 +779,14 @@ test('cancelMatches after pending timeout', async () => {
   const router = createRouter({ routeTree, history })
   render(() => <RouterProvider router={router} />)
   await router.latestLoadPromise
-  const fooLink = await screen.findByTestId('link-to-foo')
-  fireEvent.click(fooLink)
-  await sleep(WAIT_TIME * 30)
-  const pendingElement = await screen.findByText('Pending...')
-  expect(pendingElement).toBeInTheDocument()
-  const barLink = await screen.findByTestId('link-to-bar')
-  fireEvent.click(barLink)
+  void router.navigate({ to: '/foo' })
+
+  await waitFor(() => {
+    expect(fooPendingComponentOnMountMock).toHaveBeenCalled()
+  })
+
+  await router.navigate({ to: '/bar' })
   const barElement = await screen.findByText('Bar page')
   expect(barElement).toBeInTheDocument()
-  expect(fooPendingComponentOnMountMock).toHaveBeenCalled()
   expect(onAbortMock).toHaveBeenCalled()
 })

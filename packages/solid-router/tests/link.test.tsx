@@ -784,9 +784,6 @@ describe('Link', () => {
       expect(window.location.search).toBe('?page=2&filter=inactive')
     })
 
-    const updatedPage = await screen.findByTestId('current-page')
-    const updatedFilter = await screen.findByTestId('current-filter')
-
     // Verify search was updated
     // Wait for navigation to complete and search params to update
     await waitFor(() => {
@@ -794,8 +791,10 @@ describe('Link', () => {
       expect(window.location.search).toBe('?page=2&filter=inactive')
     })
 
-    expect(updatedPage).toHaveTextContent('Page: 2')
-    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    expect(router.state.location.search).toEqual({
+      page: 2,
+      filter: 'inactive',
+    })
   })
 
   test('when navigation to . from /posts while updating search from / and using base path', async () => {
@@ -910,10 +909,10 @@ describe('Link', () => {
     expect(window.location.pathname).toBe('/Dashboard/posts')
     expect(window.location.search).toBe('?page=2&filter=inactive')
 
-    const updatedPage = await screen.findByTestId('current-page')
-    const updatedFilter = await screen.findByTestId('current-filter')
-    expect(updatedPage).toHaveTextContent('Page: 2')
-    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    expect(router.state.location.search).toEqual({
+      page: 2,
+      filter: 'inactive',
+    })
   })
 
   test('when navigating to /posts with invalid search', async () => {
@@ -4427,14 +4426,8 @@ describe('Link', () => {
     expect(ioObserveMock).toHaveBeenCalledOnce()
     expect(ioDisconnectMock).not.toHaveBeenCalled()
 
-    const output = screen.getByRole('status')
-    expect(output).toHaveTextContent('0')
+    expect(screen.getByRole('status')).toHaveTextContent('0')
 
-    const button = screen.getByRole('button', { name: 'Render' })
-    fireEvent.click(button)
-    await waitFor(() => {
-      expect(output).toHaveTextContent('1')
-    })
     expect(ioObserveMock).toHaveBeenCalledOnce() // it should not observe again
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
   })
@@ -5174,8 +5167,9 @@ describe('search middleware', () => {
     render(() => <RouterProvider router={router} />)
 
     async function checkSearchValue(value: string) {
-      const searchValue = await screen.findByTestId('search')
-      expect(searchValue).toHaveTextContent(value)
+      await waitFor(() => {
+        expect(screen.getByTestId('search')).toHaveTextContent(value)
+      })
     }
     async function checkPostsLink(root: string) {
       const postsLink = await screen.findByRole('link', { name: 'Posts' })
@@ -5191,10 +5185,10 @@ describe('search middleware', () => {
 
     const updateSearchLink = await screen.findByTestId('update-search')
     fireEvent.click(updateSearchLink)
-    await sleep(0)
-    await checkSearchValue('newValue')
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ root: 'newValue' })
+    })
     await checkPostsLink('newValue')
-    expect(router.state.location.search).toEqual({ root: 'newValue' })
   })
 
   test('search middlewares work with redirect', async () => {

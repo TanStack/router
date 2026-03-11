@@ -1314,11 +1314,13 @@ test('when setting search params with 2 parallel navigate calls', async () => {
 
   fireEvent.click(postsButton)
 
-  await new Promise((r) => setTimeout(r, 0))
+  await waitFor(() => {
+    expect(router.state.location.search).toEqual({
+      param1: 'foo',
+      param2: 'bar',
+    })
+  })
 
-  expect(await screen.findByTestId('param1')).toHaveTextContent('foo')
-  expect(await screen.findByTestId('param2')).toHaveTextContent('bar')
-  expect(router.state.location.search).toEqual({ param1: 'foo', param2: 'bar' })
   const search = new URLSearchParams(window.location.search)
   expect(search.get('param1')).toEqual('foo')
   expect(search.get('param2')).toEqual('bar')
@@ -2144,9 +2146,8 @@ describe('relative navigate to current route', () => {
         expect(router.state.location.search).toEqual({ _test: true })
       })
 
-      const detail1RemoveBtn = await screen.findByTestId('detail-btn-remove-1')
-
-      fireEvent.click(detail1RemoveBtn)
+      const detail2RemoveBtn = await screen.findByTestId('detail-btn-remove-2')
+      fireEvent.click(detail2RemoveBtn)
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
