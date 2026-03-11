@@ -15,10 +15,9 @@ async function resolveUsername(email) {
   if (usernameCache[email] !== undefined) return usernameCache[email]
 
   try {
-    const res = await fetch(
-      `https://api.github.com/search/users?q=${email}`,
-      { headers: { Authorization: `token ${ghToken}` } },
-    )
+    const res = await fetch(`https://api.github.com/search/users?q=${email}`, {
+      headers: { Authorization: `token ${ghToken}` },
+    })
     const data = await res.json()
     const login = data?.items?.[0]?.login || null
     usernameCache[email] = login
