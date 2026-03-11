@@ -5,8 +5,8 @@ import { tsrSplit } from '@tanstack/router-plugin'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { Rollup } from 'vite'
 
-const STATIC_IMPORT_MODE = 1
-const DYNAMIC_IMPORT_MODE = 2
+const ROUTER_MANAGED_MODE = 1
+const NON_ROUTE_DYNAMIC_MODE = 2
 const VISITING_CHUNK = 1
 
 type RouteTreeRoute = {
@@ -135,14 +135,14 @@ export function buildStartManifest(options: {
   basePath: string
 }) {
   const scannedChunks = scanClientChunks(options.clientBundle)
-  const dynamicCssFiles = collectDynamicImportCss(
+  const hashedCssFiles = collectDynamicImportCss(
     scannedChunks.routeEntryChunks,
     scannedChunks.chunksByFileName,
     scannedChunks.entryChunk,
   )
   const assetResolvers = createManifestAssetResolvers({
     basePath: options.basePath,
-    dynamicCssFiles,
+    hashedCssFiles,
   })
 
   const routes = buildRouteManifestRoutes({
@@ -271,19 +271,21 @@ export function collectDynamicImportCss(
   chunksByFileName: Map<string, Rollup.OutputChunk>,
   entryChunk?: Rollup.OutputChunk,
 ) {
-  const dynamicCssFiles = new Set<string>()
+  const routerManagedCssFiles = new Set<string>()
+  const nonRouteDynamicCssFiles = new Set<string>()
+  const hashedCssFiles = new Set<string>()
   const visitedByChunk = new Map<Rollup.OutputChunk, number>()
   const chunkStack: Array<Rollup.OutputChunk> = []
   const modeStack: Array<number> = []
 
   for (const routeEntryChunk of routeEntryChunks) {
     chunkStack.push(routeEntryChunk)
-    modeStack.push(STATIC_IMPORT_MODE)
+    modeStack.push(ROUTER_MANAGED_MODE)
   }
 
   if (entryChunk) {
     chunkStack.push(entryChunk)
-    modeStack.push(STATIC_IMPORT_MODE)
+    modeStack.push(ROUTER_MANAGED_MODE)
   }
 
   while (chunkStack.length > 0) {
@@ -297,9 +299,15 @@ export function collectDynamicImportCss(
 
     visitedByChunk.set(chunk, previousMode | mode)
 
-    if ((mode & DYNAMIC_IMPORT_MODE) !== 0) {
+    if ((mode & ROUTER_MANAGED_MODE) !== 0) {
       for (const cssFile of chunk.viteMetadata?.importedCss ?? []) {
-        dynamicCssFiles.add(cssFile)
+        routerManagedCssFiles.add(cssFile)
+      }
+    }
+
+    if ((mode & NON_ROUTE_DYNAMIC_MODE) !== 0) {
+      for (const cssFile of chunk.viteMetadata?.importedCss ?? []) {
+        nonRouteDynamicCssFiles.add(cssFile)
       }
     }
 
@@ -317,17 +325,28 @@ export function collectDynamicImportCss(
       )
       if (dynamicImportedChunk) {
         chunkStack.push(dynamicImportedChunk)
-        modeStack.push(DYNAMIC_IMPORT_MODE)
+        modeStack.push(
+          (mode & NON_ROUTE_DYNAMIC_MODE) !== 0 ||
+            !routeEntryChunks.has(dynamicImportedChunk)
+            ? NON_ROUTE_DYNAMIC_MODE
+            : ROUTER_MANAGED_MODE,
+        )
       }
     }
   }
 
-  return dynamicCssFiles
+  for (const cssFile of routerManagedCssFiles) {
+    if (nonRouteDynamicCssFiles.has(cssFile)) {
+      hashedCssFiles.add(cssFile)
+    }
+  }
+
+  return hashedCssFiles
 }
 
 export function createManifestAssetResolvers(options: {
   basePath: string
-  dynamicCssFiles: Set<string>
+  hashedCssFiles?: Set<string>
 }): ManifestAssetResolvers {
   const assetPathByFileName = new Map<string, string>()
   const stylesheetAssetByFileName = new Map<string, RouterManagedTag>()
@@ -355,7 +374,7 @@ export function createManifestAssetResolvers(options: {
       tag: 'link',
       attrs: {
         rel: 'stylesheet',
-        href: options.dynamicCssFiles.has(cssFile) ? `${href}#` : href,
+        href: options.hashedCssFiles?.has(cssFile) ? `${href}#` : href,
         type: 'text/css',
       },
     } satisfies RouterManagedTag
@@ -462,9 +481,8 @@ export function buildRouteManifestRoutes(options: {
       continue
     }
 
-    const targetRoute = (routes[routeId] = routes[routeId]
-      ? routes[routeId]
-      : { ...route })
+    const existing = routes[routeId]
+    const targetRoute = (routes[routeId] = existing ? existing : { ...route })
 
     for (const chunk of chunks) {
       mergeRouteChunkData({

@@ -139,7 +139,7 @@ describe('appendUniqueAssets', () => {
   test('returns original target array when nothing new is appended', () => {
     const target = [
       {
-        tag: 'link',
+        tag: 'link' as const,
         attrs: {
           rel: 'stylesheet',
           href: '/assets/a.css',
@@ -151,7 +151,7 @@ describe('appendUniqueAssets', () => {
     expect(
       appendUniqueAssets(target, [
         {
-          tag: 'link',
+          tag: 'link' as const,
           attrs: {
             rel: 'stylesheet',
             href: '/assets/a.css',
@@ -221,12 +221,10 @@ describe('collectDynamicImportCss', () => {
       ]),
     )
 
-    expect(Array.from(dynamicCss).sort()).toEqual(['lazy.css', 'shared.css'])
-    expect(dynamicCss.has('route.css')).toBe(false)
+    expect(Array.from(dynamicCss)).toEqual([])
   })
 
-  test('collects css reachable both statically and dynamically from different entry points', () => {
-    // shared.css is statically imported by routeA, and dynamically imported by routeB
+  test('ignores CSS shared only across router-managed routes', () => {
     const routeA = makeChunk({
       fileName: 'routeA.js',
       imports: ['shared.js'],
@@ -234,7 +232,7 @@ describe('collectDynamicImportCss', () => {
     })
     const routeB = makeChunk({
       fileName: 'routeB.js',
-      dynamicImports: ['shared.js'],
+      imports: ['shared.js'],
       moduleIds: ['/routes/b.tsx?tsr-split=component'],
     })
     const sharedChunk = makeChunk({
@@ -251,7 +249,40 @@ describe('collectDynamicImportCss', () => {
       ]),
     )
 
-    // shared.css is reachable via dynamic import from routeB, so it should be in the set
+    expect(dynamicCss.has('shared.css')).toBe(false)
+  })
+
+  test('collects css reachable through both router-managed and non-route dynamic imports', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      dynamicImports: ['lazy.js'],
+    })
+    const routeChunk = makeChunk({
+      fileName: 'route.js',
+      imports: ['shared.js'],
+      moduleIds: ['/routes/home.tsx?tsr-split=component'],
+    })
+    const lazyChunk = makeChunk({
+      fileName: 'lazy.js',
+      imports: ['shared.js'],
+    })
+    const sharedChunk = makeChunk({
+      fileName: 'shared.js',
+      importedCss: ['shared.css'],
+    })
+
+    const dynamicCss = collectDynamicImportCss(
+      new Set([routeChunk]),
+      new Map([
+        ['entry.js', entryChunk],
+        ['route.js', routeChunk],
+        ['lazy.js', lazyChunk],
+        ['shared.js', sharedChunk],
+      ]),
+      entryChunk,
+    )
+
     expect(dynamicCss.has('shared.css')).toBe(true)
   })
 })
@@ -274,7 +305,7 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
 
     const resolvers = createManifestAssetResolvers({
       basePath: '/assets',
-      dynamicCssFiles: new Set(['shared.css']),
+      hashedCssFiles: new Set(['shared.css']),
     })
     const cssAssetCollector = createChunkCssAssetCollector({
       chunksByFileName,
@@ -343,7 +374,7 @@ describe('createChunkCssAssetCollector', () => {
 })
 
 describe('buildStartManifest', () => {
-  test('builds route and root assets with dynamic css hash handling', () => {
+  test('hashes css shared by route chunks and nested non-route dynamic imports', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
       isEntry: true,
@@ -408,6 +439,114 @@ describe('buildStartManifest', () => {
     ])
     expect(manifest.routes['/lazy']!.preloads).toEqual([
       '/assets/route-lazy.js',
+    ])
+  })
+
+  test('keeps entry-owned css unsuffixed when shared only with route chunks', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      imports: ['shared.js'],
+      dynamicImports: ['about.js'],
+    })
+    const sharedChunk = makeChunk({
+      fileName: 'shared.js',
+      importedCss: ['main.css'],
+    })
+    const aboutChunk = makeChunk({
+      fileName: 'about.js',
+      imports: ['shared.js'],
+      importedCss: ['about.css'],
+      moduleIds: ['/routes/about.tsx?tsr-split=component'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBundle: {
+        'entry.js': entryChunk,
+        'shared.js': sharedChunk,
+        'about.js': aboutChunk,
+      },
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes.__root__!.assets).toEqual([
+      {
+        tag: 'link',
+        attrs: {
+          rel: 'stylesheet',
+          href: '/assets/main.css',
+          type: 'text/css',
+        },
+      },
+    ])
+
+    expect(manifest.routes['/about']!.assets).toEqual([
+      {
+        tag: 'link',
+        attrs: {
+          rel: 'stylesheet',
+          href: '/assets/about.css',
+          type: 'text/css',
+        },
+      },
+      {
+        tag: 'link',
+        attrs: {
+          rel: 'stylesheet',
+          href: '/assets/main.css',
+          type: 'text/css',
+        },
+      },
+    ])
+  })
+
+  test('adds hash only when css is shared by router-managed and non-route dynamic imports', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      dynamicImports: ['global-lazy.js'],
+    })
+    const routeChunk = makeChunk({
+      fileName: 'route.js',
+      imports: ['shared.js'],
+      moduleIds: ['/routes/about.tsx?tsr-split=component'],
+    })
+    const sharedChunk = makeChunk({
+      fileName: 'shared.js',
+      importedCss: ['shared.css'],
+    })
+    const globalLazyChunk = makeChunk({
+      fileName: 'global-lazy.js',
+      imports: ['shared.js'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBundle: {
+        'entry.js': entryChunk,
+        'route.js': routeChunk,
+        'shared.js': sharedChunk,
+        'global-lazy.js': globalLazyChunk,
+      },
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes['/about']!.assets).toEqual([
+      {
+        tag: 'link',
+        attrs: {
+          rel: 'stylesheet',
+          href: '/assets/shared.css#',
+          type: 'text/css',
+        },
+      },
     ])
   })
 })
@@ -642,8 +781,8 @@ describe('entry chunk dynamic imports must be scanned for dynamic CSS', () => {
       basePath: '/assets',
     })
 
-    // global-lazy.css is reachable via dynamic import from entry chunk,
-    // so the route's reference to it should have the # suffix
+    // global-lazy.css is reachable through both the router-managed route
+    // and the entry chunk's non-route dynamic import, so it should have #
     const homeAssets = manifest.routes['/home']!.assets!
     const globalLazyCss = homeAssets.find((a: any) =>
       a.attrs.href.includes('global-lazy.css'),
