@@ -222,7 +222,7 @@ For more details, see [Railway's documentation](https://docs.railway.com).
 1. Install `nitro`:
 
 ```bash
-npm install -D nitro
+npm install nitro
 ```
 
 2. Add the `nitro/vite` plugin to your `vite.config.ts` file:
