@@ -21,9 +21,9 @@ const releaseLogs = execSync(
   .filter(Boolean)
 
 // Current release commit is releaseLogs[0] (HEAD), previous is releaseLogs[1]
-const currentRelease = releaseLogs[0]
+const currentRelease = releaseLogs[0] || 'HEAD'
 const previousRelease = releaseLogs[1]
-const rangeFrom = previousRelease || currentRelease + '~1'
+const rangeFrom = previousRelease || `${currentRelease}~1`
 
 // Get commits between previous release and current release (exclude both)
 const rawLog = execSync(
