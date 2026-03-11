@@ -1,9 +1,10 @@
 import { clsx as cx } from 'clsx'
 
 import { createEffect, createMemo, createSignal } from 'solid-js'
-import { Dynamic } from '@solidjs/web'
+import { Dynamic } from 'solid-js/web'
 
 import { DevtoolsOnCloseContext } from './context'
+import { useIsMounted } from './utils'
 import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
 import useLocalStorage from './useLocalStorage'
 import { TanStackLogo } from './logo'
@@ -84,6 +85,7 @@ export function FloatingTanStackRouterDevtools({
 
   const [isResolvedOpen, setIsResolvedOpen] = createSignal(false)
   const [isResizing, setIsResizing] = createSignal(false)
+  const isMounted = useIsMounted()
   const styles = useStyles()
 
   const handleDragStart = (
@@ -124,70 +126,62 @@ export function FloatingTanStackRouterDevtools({
 
   const isButtonClosed = isOpen() ?? false
 
-  createEffect(
-    () => isOpen() ?? false,
-    (isOpenValue) => {
-      setIsResolvedOpen(isOpenValue)
-    },
-  )
+  createEffect(() => {
+    setIsResolvedOpen(isOpen() ?? false)
+  })
 
-  createEffect(
-    () => ({ isOpen: isResolvedOpen(), el: rootEl() }),
-    ({ isOpen: isOpenValue, el }) => {
-      if (isOpenValue) {
-        const previousValue = el?.parentElement?.style.paddingBottom
+  createEffect(() => {
+    if (isResolvedOpen()) {
+      const previousValue = rootEl()?.parentElement?.style.paddingBottom
 
-        const run = () => {
-          const containerHeight = panelRef!.getBoundingClientRect().height
-          if (el?.parentElement) {
-            setRootEl((prev) => {
-              if (prev?.parentElement) {
-                prev.parentElement.style.paddingBottom = `${containerHeight}px`
-              }
-              return prev
-            })
-          }
-        }
-
-        run()
-
-        if (typeof window !== 'undefined') {
-          window.addEventListener('resize', run)
-
-          return () => {
-            window.removeEventListener('resize', run)
-            if (el?.parentElement && typeof previousValue === 'string') {
-              setRootEl((prev) => {
-                prev!.parentElement!.style.paddingBottom = previousValue
-                return prev
-              })
-            }
-          }
-        }
-      } else {
-        // Reset padding when devtools are closed
-        if (el?.parentElement) {
+      const run = () => {
+        const containerHeight = panelRef!.getBoundingClientRect().height
+        if (rootEl()?.parentElement) {
           setRootEl((prev) => {
             if (prev?.parentElement) {
-              prev.parentElement.removeAttribute('style')
+              prev.parentElement.style.paddingBottom = `${containerHeight}px`
             }
             return prev
           })
         }
       }
-      return
-    },
-  )
 
-  createEffect(
-    () => rootEl(),
-    (el) => {
-      if (el) {
-        const fontSize = getComputedStyle(el).fontSize
-        el.style.setProperty('--tsrd-font-size', fontSize)
+      run()
+
+      if (typeof window !== 'undefined') {
+        window.addEventListener('resize', run)
+
+        return () => {
+          window.removeEventListener('resize', run)
+          if (rootEl()?.parentElement && typeof previousValue === 'string') {
+            setRootEl((prev) => {
+              prev!.parentElement!.style.paddingBottom = previousValue
+              return prev
+            })
+          }
+        }
       }
-    },
-  )
+    } else {
+      // Reset padding when devtools are closed
+      if (rootEl()?.parentElement) {
+        setRootEl((prev) => {
+          if (prev?.parentElement) {
+            prev.parentElement.removeAttribute('style')
+          }
+          return prev
+        })
+      }
+    }
+    return
+  })
+
+  createEffect(() => {
+    if (rootEl()) {
+      const el = rootEl()
+      const fontSize = getComputedStyle(el!).fontSize
+      el?.style.setProperty('--tsrd-font-size', fontSize)
+    }
+  })
 
   const { style: panelStyle = {}, ...otherPanelProps } = panelProps as {
     style?: Record<string, any>
@@ -204,6 +198,9 @@ export function FloatingTanStackRouterDevtools({
     class: toggleButtonClassName,
     ...otherToggleButtonProps
   } = toggleButtonProps
+
+  // Do not render on the server
+  if (!isMounted()) return null
 
   const resolvedHeight = createMemo(() => devtoolsHeight() ?? 500)
 
@@ -242,11 +239,12 @@ export function FloatingTanStackRouterDevtools({
       ref={setRootEl}
       class="TanStackRouterDevtools"
     >
-      <DevtoolsOnCloseContext
+      <DevtoolsOnCloseContext.Provider
         value={{
           onCloseClick: onCloseClick ?? (() => {}),
         }}
       >
+        {/* {router() ? ( */}
         <BaseTanStackRouterDevtoolsPanel
           ref={panelRef}
           {...otherPanelProps}
@@ -259,7 +257,10 @@ export function FloatingTanStackRouterDevtools({
           handleDragStart={(e) => handleDragStart(panelRef, e)}
           shadowDOMTarget={shadowDOMTarget}
         />
-      </DevtoolsOnCloseContext>
+        {/* ) : (
+          <p>No router</p>
+        )} */}
+      </DevtoolsOnCloseContext.Provider>
 
       <button
         type="button"

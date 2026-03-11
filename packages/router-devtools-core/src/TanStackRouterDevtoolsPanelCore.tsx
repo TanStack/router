@@ -1,4 +1,4 @@
-import { render } from '@solidjs/web'
+import { render } from 'solid-js/web'
 import { createSignal, lazy } from 'solid-js'
 import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
 import type { JSX } from 'solid-js'
@@ -91,8 +91,8 @@ export class TanStackRouterDevtoolsPanelCore {
       }
 
       return (
-        <ShadowDomTargetContext value={shadowDOMTarget}>
-          <DevtoolsOnCloseContext
+        <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
+          <DevtoolsOnCloseContext.Provider
             value={{
               onCloseClick: () => {},
             }}
@@ -105,8 +105,8 @@ export class TanStackRouterDevtoolsPanelCore {
               style={style}
               className={className}
             />
-          </DevtoolsOnCloseContext>
-        </ShadowDomTargetContext>
+          </DevtoolsOnCloseContext.Provider>
+        </ShadowDomTargetContext.Provider>
       )
     }, el)
 

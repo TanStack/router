@@ -25,9 +25,9 @@ const ThemeContext = createContext(defaultTheme)
 
 export function ThemeProvider({ children, theme, ...rest }: ProviderProps) {
   return (
-    <ThemeContext value={theme} {...rest}>
+    <ThemeContext.Provider value={theme} {...rest}>
       {children}
-    </ThemeContext>
+    </ThemeContext.Provider>
   )
 }
 

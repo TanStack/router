@@ -16,7 +16,8 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
-    "solid-js": "^1.9.10"
+    "solid-js": "2.0.0-beta.1",
+    "@solidjs/web": "2.0.0-beta.1"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.15.1",
@@ -27,7 +28,7 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",
-    "vite-plugin-solid": "^2.11.10",
+    "vite-plugin-solid": "3.0.0-next.2",
     "vite-tsconfig-paths": "^5.1.4",
     "wrangler": "^4.49.1"
   }

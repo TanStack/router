@@ -22,11 +22,3 @@ export const useDevtoolsOnClose = () => {
   }
   return context
 }
-
-export const useOptionalShadowDomTarget = () => {
-  try {
-    return useContext(ShadowDomTargetContext)
-  } catch {
-    return undefined
-  }
-}

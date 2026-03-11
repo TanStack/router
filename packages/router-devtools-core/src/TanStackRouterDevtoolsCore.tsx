@@ -1,5 +1,5 @@
 import { createSignal, lazy } from 'solid-js'
-import { render } from '@solidjs/web'
+import { render } from 'solid-js/web'
 import { ShadowDomTargetContext } from './context'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Signal } from 'solid-js'
@@ -105,7 +105,7 @@ export class TanStackRouterDevtoolsCore {
       }
 
       return (
-        <ShadowDomTargetContext value={shadowDOMTarget}>
+        <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
           <Devtools
             position={position}
             initialIsOpen={initialIsOpen}
@@ -117,7 +117,7 @@ export class TanStackRouterDevtoolsCore {
             toggleButtonProps={toggleButtonProps}
             containerElement={containerElement}
           />
-        </ShadowDomTargetContext>
+        </ShadowDomTargetContext.Provider>
       )
     }, el)
 

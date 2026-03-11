@@ -20,7 +20,8 @@
     "@tanstack/solid-router-ssr-query": "^1.166.2",
     "@tanstack/solid-start": "^1.166.2",
     "@tanstack/router-plugin": "^1.166.2",
-    "solid-js": "^1.9.10",
+    "solid-js": "2.0.0-beta.1",
+    "@solidjs/web": "2.0.0-beta.1",
     "tailwindcss": "^4.1.18",
     "vite-tsconfig-paths": "^5.1.4"
   },
@@ -30,7 +31,7 @@
     "@solidjs/testing-library": "^0.8.10",
     "@types/bun": "^1.2.22",
     "@types/node": "22.10.2",
-    "vite-plugin-solid": "^2.11.10",
+    "vite-plugin-solid": "3.0.0-next.2",
     "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",

@@ -66,7 +66,6 @@
     "react-dom": "^19.2.3",
     "redaxios": "^0.5.1",
     "rimraf": "^6.1.2",
-    "solid-js": "2.0.0-beta.1",
     "tinyglobby": "^0.2.15",
     "typescript": "^5.9.3",
     "typescript54": "npm:typescript@5.4",
@@ -75,23 +74,18 @@
     "typescript57": "npm:typescript@5.7",
     "typescript58": "npm:typescript@5.8",
     "vite": "^7.3.1",
-    "vitest": "^4.0.17",
-    "@solidjs/web": "2.0.0-beta.1"
+    "vitest": "^4.0.17"
   },
   "pnpm": {
     "overrides": {
       "@types/babel__traverse": "^7.28.0",
       "vite-plugin-dts": "4.0.3",
-      "solid-js": "2.0.0-beta.1",
-      "@solidjs/web": "2.0.0-beta.1",
-      "babel-preset-solid": "2.0.0-beta.1",
       "react": "$react",
       "react-dom": "$react-dom",
       "@types/react": "$@types/react",
       "@types/react-dom": "$@types/react-dom",
       "eslint": "$eslint",
       "vite": "$vite",
-      "vite-plugin-solid": "3.0.0-next.2",
       "@types/node": "$@types/node",
       "@playwright/test": "$@playwright/test",
       "@tanstack/react-query": "$@tanstack/react-query",

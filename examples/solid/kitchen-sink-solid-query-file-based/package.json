@@ -17,13 +17,14 @@
     "@tanstack/solid-router-devtools": "^1.166.2",
     "immer": "^10.1.1",
     "redaxios": "^0.5.1",
-    "solid-js": "^1.9.10",
+    "solid-js": "2.0.0-beta.1",
+    "@solidjs/web": "2.0.0-beta.1",
     "tailwindcss": "^4.1.18",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
     "vite": "^6.1.0",
-    "vite-plugin-solid": "^2.11.10"
+    "vite-plugin-solid": "3.0.0-next.2"
   }
 }

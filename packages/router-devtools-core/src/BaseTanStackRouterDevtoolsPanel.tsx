@@ -280,34 +280,32 @@ export const BaseTanStackRouterDevtoolsPanel =
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
 
-    createEffect(
-      () => routerState().matches,
-      (matches) => {
-        const currentMatch = matches[matches.length - 1]
-        if (!currentMatch) {
-          return
+    createEffect(() => {
+      const matches = routerState().matches
+      const currentMatch = matches[matches.length - 1]
+      if (!currentMatch) {
+        return
+      }
+      // Read history WITHOUT tracking it to avoid infinite loops
+      const historyUntracked = untrack(() => history())
+      const lastMatch = historyUntracked[0]
+      const sameLocation =
+        lastMatch &&
+        lastMatch.pathname === currentMatch.pathname &&
+        JSON.stringify(lastMatch.search ?? {}) ===
+          JSON.stringify(currentMatch.search ?? {})
+      if (!lastMatch || !sameLocation) {
+        if (historyUntracked.length >= HISTORY_LIMIT) {
+          setHasHistoryOverflowed(true)
         }
-        // Read history WITHOUT tracking it to avoid infinite loops
-        const historyUntracked = untrack(() => history())
-        const lastMatch = historyUntracked[0]
-        const sameLocation =
-          lastMatch &&
-          lastMatch.pathname === currentMatch.pathname &&
-          JSON.stringify(lastMatch.search ?? {}) ===
-            JSON.stringify(currentMatch.search ?? {})
-        if (!lastMatch || !sameLocation) {
-          if (historyUntracked.length >= HISTORY_LIMIT) {
-            setHasHistoryOverflowed(true)
-          }
-          setHistory((prev) => {
-            const newHistory = [currentMatch, ...prev]
-            // truncate to ensure we don't overflow too much the ui
-            newHistory.splice(HISTORY_LIMIT)
-            return newHistory
-          })
-        }
-      },
-    )
+        setHistory((prev) => {
+          const newHistory = [currentMatch, ...prev]
+          // truncate to ensure we don't overflow too much the ui
+          newHistory.splice(HISTORY_LIMIT)
+          return newHistory
+        })
+      }
+    })
 
     const activeMatch = createMemo(() => {
       const matches = [
@@ -568,7 +566,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                         {(match, index) => (
                           <li
                             class={cx(
-                              styles().matchRow(match() === activeMatch()),
+                              styles().matchRow(match === activeMatch()),
                             )}
                           >
                             <div
@@ -581,18 +579,18 @@ export const BaseTanStackRouterDevtoolsPanel =
                             <NavigateLink
                               left={
                                 <NavigateButton
-                                  to={match().pathname}
-                                  params={match().params}
-                                  search={match().search}
+                                  to={match.pathname}
+                                  params={match.params}
+                                  search={match.search}
                                   router={router}
                                 />
                               }
                               right={
-                                <AgeTicker match={match()} router={router} />
+                                <AgeTicker match={match} router={router} />
                               }
                             >
                               <code class={styles().matchID}>
-                                {`${match().routeId === rootRouteId ? rootRouteId : match().pathname}`}
+                                {`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}
                               </code>
                             </NavigateLink>
                           </li>

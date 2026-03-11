@@ -14,7 +14,8 @@
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
-    "solid-js": "^1.9.10",
+    "solid-js": "2.0.0-beta.1",
+    "@solidjs/web": "2.0.0-beta.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -24,7 +25,7 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",
-    "vite-plugin-solid": "^2.11.10",
+    "vite-plugin-solid": "3.0.0-next.2",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }
