@@ -11,6 +11,7 @@ import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
+import { useRouteContext } from './useRouteContext'
 import { useRouter } from './useRouter'
 import { Link } from './link'
 import type {
@@ -78,6 +79,15 @@ declare module '@tanstack/router-core' {
   }
 }
 
+/**
+ * Returns a route-specific API that exposes type-safe hooks pre-bound
+ * to a single route ID. Useful for consuming a route's APIs from files
+ * where the route object isn't directly imported (e.g. code-split files).
+ *
+ * @param id Route ID string literal for the target route.
+ * @returns A `RouteApi` instance bound to the given route ID.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/getRouteApiFunction
+ */
 export function getRouteApi<
   const TId,
   TRouter extends AnyRouter = RegisteredRouter,
@@ -105,10 +115,7 @@ export class RouteApi<
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts) => {
-    return useMatch({
-      from: this.id as any,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id as any })
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
@@ -159,32 +166,32 @@ export class RouteApi<
 }
 
 export class Route<
-    in out TRegister = unknown,
-    in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
-    in out TPath extends RouteConstraints['TPath'] = '/',
-    in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
-      TParentRoute,
-      TPath
-    >,
-    in out TCustomId extends RouteConstraints['TCustomId'] = string,
-    in out TId extends RouteConstraints['TId'] = ResolveId<
-      TParentRoute,
-      TCustomId,
-      TPath
-    >,
-    in out TSearchValidator = undefined,
-    in out TParams = ResolveParams<TPath>,
-    in out TRouterContext = AnyContext,
-    in out TRouteContextFn = AnyContext,
-    in out TBeforeLoadFn = AnyContext,
-    in out TLoaderDeps extends Record<string, any> = {},
-    in out TLoaderFn = undefined,
-    in out TChildren = unknown,
-    in out TFileRouteTypes = unknown,
-    in out TSSR = unknown,
-    in out TServerMiddlewares = unknown,
-    in out THandlers = undefined,
-  >
+  in out TRegister = unknown,
+  in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
+  in out TPath extends RouteConstraints['TPath'] = '/',
+  in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
+    TParentRoute,
+    TPath
+  >,
+  in out TCustomId extends RouteConstraints['TCustomId'] = string,
+  in out TId extends RouteConstraints['TId'] = ResolveId<
+    TParentRoute,
+    TCustomId,
+    TPath
+  >,
+  in out TSearchValidator = undefined,
+  in out TParams = ResolveParams<TPath>,
+  in out TRouterContext = AnyContext,
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+  in out TSSR = unknown,
+  in out TServerMiddlewares = unknown,
+  in out THandlers = undefined,
+>
   extends BaseRoute<
     TRegister,
     TParentRoute,
@@ -263,11 +270,7 @@ export class Route<
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
@@ -307,6 +310,17 @@ export class Route<
   ) as unknown as LinkComponentRoute<TFullPath>
 }
 
+/**
+ * Creates a non-root Route instance for code-based routing.
+ *
+ * Use this to define a route that will be composed into a route tree
+ * (typically via a parent route's `addChildren`). If you're using file-based
+ * routing, prefer `createFileRoute`.
+ *
+ * @param options Route options (path, component, loader, context, etc.).
+ * @returns A Route instance to be attached to the route tree.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouteFunction
+ */
 export function createRoute<
   TRegister = unknown,
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
@@ -403,6 +417,15 @@ export type AnyRootRoute = RootRoute<
   any
 >
 
+/**
+ * Creates a root route factory that requires a router context type.
+ *
+ * Use when your root route expects `context` to be provided to `createRouter`.
+ * The returned function behaves like `createRootRoute` but enforces a context type.
+ *
+ * @returns A factory function to configure and return a root route.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRootRouteWithContextFunction
+ */
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
     TRegister = Register,
@@ -436,7 +459,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TLoaderFn,
       TSSR,
       TServerMiddlewares
-    >(options as any)
+    >(options)
   }
 }
 
@@ -446,19 +469,19 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-    in out TRegister = unknown,
-    in out TSearchValidator = undefined,
-    in out TRouterContext = {},
-    in out TRouteContextFn = AnyContext,
-    in out TBeforeLoadFn = AnyContext,
-    in out TLoaderDeps extends Record<string, any> = {},
-    in out TLoaderFn = undefined,
-    in out TChildren = unknown,
-    in out TFileRouteTypes = unknown,
-    in out TSSR = unknown,
-    in out TServerMiddlewares = unknown,
-    in out THandlers = undefined,
-  >
+  in out TRegister = unknown,
+  in out TSearchValidator = undefined,
+  in out TRouterContext = {},
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+  in out TSSR = unknown,
+  in out TServerMiddlewares = unknown,
+  in out THandlers = undefined,
+>
   extends BaseRootRoute<
     TRegister,
     TSearchValidator,
@@ -519,11 +542,7 @@ export class RootRoute<
   }
 
   useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {
@@ -563,6 +582,16 @@ export class RootRoute<
   ) as unknown as LinkComponentRoute<'/'>
 }
 
+/**
+ * Creates a root Route instance used to build your route tree.
+ *
+ * Typically paired with `createRouter({ routeTree })`. If you need to require
+ * a typed router context, use `createRootRouteWithContext` instead.
+ *
+ * @param options Root route options (component, error, pending, etc.).
+ * @returns A root route instance.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRootRouteFunction
+ */
 export function createRootRoute<
   TRegister = Register,
   TSearchValidator = undefined,

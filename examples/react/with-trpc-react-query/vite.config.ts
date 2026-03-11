@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import type { BuildEnvironmentOptions } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
 
 const __filename = url.fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -36,6 +37,7 @@ const serverBuildConfig: BuildEnvironmentOptions = {
 export default defineConfig((configEnv) => {
   return {
     plugins: [
+      tailwindcss(),
       tanstackRouter({
         target: 'react',
         autoCodeSplitting: true,

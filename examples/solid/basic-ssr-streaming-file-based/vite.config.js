@@ -3,6 +3,7 @@ import path from 'node:path'
 import { defineConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import tailwindcss from '@tailwindcss/vite'
 
 const __filename = url.fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -44,6 +45,7 @@ const clientBuildConfig = {
 export default defineConfig((configEnv) => {
   return {
     plugins: [
+      tailwindcss(),
       tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
       solid({ ssr: true }),
     ],

@@ -52,6 +52,15 @@ function RootComponent() {
           without-loader
         </Link>{' '}
         <Link
+          to="/shared-singleton"
+          activeProps={{
+            className: 'font-bold',
+          }}
+          data-testid="shared-singleton-link"
+        >
+          shared-singleton
+        </Link>{' '}
+        <Link
           // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{

@@ -9,13 +9,13 @@ export function NotFound({ children }: { children?: any }) {
       <p class="flex items-center gap-2 flex-wrap">
         <button
           onClick={() => window.history.back()}
-          class="bg-emerald-500 text-white px-2 py-1 rounded uppercase font-black text-sm"
+          class="bg-emerald-500 text-white px-2 py-1 rounded-sm uppercase font-black text-sm"
         >
           Go back
         </button>
         <Link
           to="/"
-          class="bg-cyan-600 text-white px-2 py-1 rounded uppercase font-black text-sm"
+          class="bg-cyan-600 text-white px-2 py-1 rounded-sm uppercase font-black text-sm"
         >
           Start Over
         </Link>

@@ -1,12 +1,12 @@
 {
   "name": "@tanstack/router-ssr-query-core",
-  "version": "1.132.7",
+  "version": "1.166.7",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TanStack/router.git",
+    "url": "git+https://github.com/TanStack/router.git",
     "directory": "packages/router-ssr-query-core"
   },
   "homepage": "https://tanstack.com/router",
@@ -61,14 +61,15 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "devDependencies": {
     "@tanstack/router-core": ">=1.127.0",
-    "@tanstack/query-core": ">=5.66.0"
+    "@tanstack/query-core": ">=5.90.0",
+    "vite": "*"
   },
   "peerDependencies": {
     "@tanstack/router-core": ">=1.127.0",
-    "@tanstack/query-core": ">=5.66.0"
+    "@tanstack/query-core": ">=5.90.0"
   }
 }

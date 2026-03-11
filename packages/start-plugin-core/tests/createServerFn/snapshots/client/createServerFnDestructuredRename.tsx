@@ -1,29 +1,14 @@
+import { createClientRpc } from '@tanstack/react-start/client-rpc';
 import { createServerFn as serverFn } from '@tanstack/react-start';
 export const withUseServer = serverFn({
   method: 'GET'
-}).handler((opts, signal) => {
-  "use server";
-
-  return withUseServer.__executeServer(opts, signal);
-});
+}).handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ"));
 export const withoutUseServer = serverFn({
   method: 'GET'
-}).handler((opts, signal) => {
-  "use server";
-
-  return withoutUseServer.__executeServer(opts, signal);
-});
+}).handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRob3V0VXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ"));
 export const withVariable = serverFn({
   method: 'GET'
-}).handler((opts, signal) => {
-  "use server";
-
-  return withVariable.__executeServer(opts, signal);
-});
+}).handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVmFyaWFibGVfY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9"));
 export const withZodValidator = serverFn({
   method: 'GET'
-}).handler((opts, signal) => {
-  "use server";
-
-  return withZodValidator.__executeServer(opts, signal);
-});
+}).handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoWm9kVmFsaWRhdG9yX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ"));

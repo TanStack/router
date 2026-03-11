@@ -87,7 +87,7 @@ function InvoiceComponent() {
                   setNotes(e.target.value)
                 }}
                 rows={5}
-                className="shadow w-full p-2 rounded"
+                className="shadow-sm w-full p-2 rounded-sm"
                 placeholder="Write some notes here..."
               />
               <div className="italic text-xs">
@@ -99,7 +99,7 @@ function InvoiceComponent() {
       </div>
       <div>
         <button
-          className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
+          className="bg-blue-500 rounded-sm p-2 uppercase text-white font-black disabled:opacity-50"
           disabled={updateInvoiceMutation.status === 'pending'}
         >
           Save
@@ -108,11 +108,11 @@ function InvoiceComponent() {
       {updateInvoiceMutation.variables?.id === invoice.id ? (
         <div key={updateInvoiceMutation.submittedAt}>
           {updateInvoiceMutation.status === 'success' ? (
-            <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+            <div className="inline-block px-2 py-1 rounded-sm bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Saved!
             </div>
           ) : updateInvoiceMutation.status === 'error' ? (
-            <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+            <div className="inline-block px-2 py-1 rounded-sm bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to save.
             </div>
           ) : null}

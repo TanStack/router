@@ -1,18 +1,23 @@
-import { expect, test } from 'vitest'
-import { fireEvent, render, screen } from '@solidjs/testing-library'
-import { createContext, useContext } from 'solid-js'
+import { afterEach, describe, expect, test } from 'vitest'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
+import { createMemoryHistory } from '@tanstack/history'
 import {
   Link,
   Outlet,
   RouterProvider,
-  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
   isMatch,
+  useMatchRoute,
   useMatches,
 } from '../src'
-import { sleep } from './utils'
 
 const rootRoute = createRootRoute()
 
@@ -33,7 +38,6 @@ const invoicesRoute = createRoute({
 
 const InvoicesIndex = () => {
   const matches = useMatches<DefaultRouter>()
-  console.log('Matchse', matches())
 
   const loaderDataMatches = matches().filter((match) =>
     isMatch(match, 'loaderData.0.id'),
@@ -126,98 +130,234 @@ test('when filtering useMatches by loaderData', async () => {
   expect(await screen.findByText('Incorrect Matches -')).toBeInTheDocument()
 })
 
-test('Matches provides InnerWrap context to route components', async () => {
-  const rootRoute = createRootRoute({
-    component: () => {
-      const contextValue = useContext(ctx)
-      expect(contextValue, 'Context is not provided').not.toBeUndefined()
-
-      return <div>{contextValue}</div>
+test('should show pendingComponent of root route', async () => {
+  const root = createRootRoute({
+    pendingComponent: () => <div data-testId="root-pending" />,
+    loader: async () => {
+      await new Promise((r) => setTimeout(r, 50))
     },
+    component: () => <div data-testId="root-content" />,
   })
-
-  const routeTree = rootRoute.addChildren([])
   const router = createRouter({
-    routeTree,
+    routeTree: root,
+    defaultPendingMs: 0,
+    defaultPendingComponent: () => <div>default pending...</div>,
   })
 
-  const ctx = createContext<string>()
+  const rendered = render(() => <RouterProvider router={router} />)
 
-  const app = render(() => (
-    <RouterProvider
-      router={router}
-      InnerWrap={(props) => {
-        return (
-          <ctx.Provider value={'context-for-children'}>
-            {props.children}
-          </ctx.Provider>
-        )
-      }}
-    />
-  ))
-
-  const indexElem = await app.findByText('context-for-children')
-  expect(indexElem).toBeInTheDocument()
+  expect(await rendered.findByTestId('root-pending')).toBeInTheDocument()
+  expect(await rendered.findByTestId('root-content')).toBeInTheDocument()
 })
 
-test('Matches provides InnerWrap context to defaultPendingComponent', async () => {
-  const rootRoute = createRootRoute({})
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    component: () => {
-      return (
-        <div>
-          <Link to="/home">link to home</Link>
-        </div>
-      )
+describe('matching on different param types', () => {
+  const testCases = [
+    {
+      name: 'param with braces',
+      path: '/$id',
+      nav: '/1',
+      params: { id: '1' },
+      matchParams: { id: '1' },
     },
-  })
+    {
+      name: 'param without braces',
+      path: '/{$id}',
+      nav: '/2',
+      params: { id: '2' },
+      matchParams: { id: '2' },
+    },
+    {
+      name: 'param with prefix',
+      path: '/prefix-{$id}',
+      nav: '/prefix-3',
+      params: { id: '3' },
+      matchParams: { id: '3' },
+    },
+    {
+      name: 'param with suffix',
+      path: '/{$id}-suffix',
+      nav: '/4-suffix',
+      params: { id: '4' },
+      matchParams: { id: '4' },
+    },
+    {
+      name: 'param with prefix and suffix',
+      path: '/prefix-{$id}-suffix',
+      nav: '/prefix-5-suffix',
+      params: { id: '5' },
+      matchParams: { id: '5' },
+    },
+    {
+      name: 'wildcard with no braces',
+      path: '/abc/$',
+      nav: '/abc/6',
+      params: { '*': '6', _splat: '6' },
+      matchParams: { '*': '6', _splat: '6' },
+    },
+    {
+      name: 'wildcard with braces',
+      path: '/abc/{$}',
+      nav: '/abc/7',
+      params: { '*': '7', _splat: '7' },
+      matchParams: { '*': '7', _splat: '7' },
+    },
+    {
+      name: 'wildcard with prefix',
+      path: '/abc/prefix{$}',
+      nav: '/abc/prefix/8',
+      params: { '*': '/8', _splat: '/8' },
+      matchParams: { '*': '/8', _splat: '/8' },
+    },
+    {
+      name: 'wildcard with suffix',
+      path: '/abc/{$}suffix',
+      nav: '/abc/9/suffix',
+      params: { _splat: '9/', '*': '9/' },
+      matchParams: { _splat: '9/', '*': '9/' },
+    },
+    {
+      name: 'optional param with no prefix/suffix and value',
+      path: '/abc/{-$id}/def',
+      nav: '/abc/10/def',
+      params: { id: '10' },
+      matchParams: { id: '10' },
+    },
+    {
+      name: 'optional param with no prefix/suffix and requiredParam and no value',
+      path: '/abc/{-$id}/$foo/def',
+      nav: '/abc/bar/def',
+      params: { foo: 'bar' },
+      matchParams: { foo: 'bar' },
+    },
+    {
+      name: 'optional param with no prefix/suffix and requiredParam and value',
+      path: '/abc/{-$id}/$foo/def',
+      nav: '/abc/10/bar/def',
+      params: { id: '10', foo: 'bar' },
+      matchParams: { id: '10', foo: 'bar' },
+    },
+    {
+      name: 'optional param with no prefix/suffix and no value',
+      path: '/abc/{-$id}/def',
+      nav: '/abc/def',
+      params: {},
+      matchParams: {},
+    },
+    {
+      name: 'multiple optional params with no prefix/suffix and no value',
+      path: '/{-$a}/{-$b}/{-$c}',
+      nav: '/',
+      params: {},
+      matchParams: {},
+    },
+    {
+      name: 'multiple optional params with no prefix/suffix and values',
+      path: '/{-$a}/{-$b}/{-$c}',
+      nav: '/foo/bar/qux',
+      params: { a: 'foo', b: 'bar', c: 'qux' },
+      matchParams: { a: 'foo', b: 'bar', c: 'qux' },
+    },
+    {
+      name: 'multiple optional params with no prefix/suffix and mixed values',
+      path: '/{-$a}/{-$b}/{-$c}',
+      nav: '/foo/qux',
+      params: { a: 'foo', b: 'qux' },
+      matchParams: { a: 'foo', b: 'qux' },
+    },
+    {
+      name: 'optional param with prefix and value',
+      path: '/optional-{-$id}',
+      nav: '/optional-12',
+      params: { id: '12' },
+      matchParams: { id: '12' },
+    },
+    {
+      name: 'optional param with prefix and no value',
+      path: '/optional-{-$id}',
+      nav: '/optional-',
+      params: {},
+      matchParams: {},
+    },
+    {
+      name: 'optional param with suffix and value',
+      path: '/{-$id}-optional',
+      nav: '/13-optional',
+      params: { id: '13' },
+      matchParams: { id: '13' },
+    },
+    {
+      name: 'optional param with suffix and no value',
+      path: '/{-$id}-optional',
+      nav: '/-optional',
+      params: {},
+      matchParams: {},
+    },
+    {
+      name: 'optional param with required param, prefix, suffix, wildcard and no value',
+      path: `/$foo/a{-$id}-optional/$`,
+      nav: '/bar/a-optional/qux',
+      params: { foo: 'bar', _splat: 'qux', '*': 'qux' },
+      matchParams: { foo: 'bar', _splat: 'qux', '*': 'qux' },
+    },
+    {
+      name: 'optional param with required param, prefix, suffix, wildcard and value',
+      path: `/$foo/a{-$id}-optional/$`,
+      nav: '/bar/a14-optional/qux',
+      params: { foo: 'bar', id: '14', _splat: 'qux', '*': 'qux' },
+      matchParams: { foo: 'bar', id: '14', _splat: 'qux', '*': 'qux' },
+    },
+  ]
 
-  const homeRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/home',
-    loader: () => sleep(300),
-    component: () => <div>Home page</div>,
-  })
+  afterEach(() => cleanup())
+  test.each(testCases)(
+    '$name',
+    async ({ name, path, params, matchParams, nav }) => {
+      const rootRoute = createRootRoute()
 
-  const routeTree = rootRoute.addChildren([homeRoute, indexRoute])
-  const router = createRouter({
-    routeTree,
-    history: createMemoryHistory({
-      initialEntries: ['/'],
-    }),
-  })
+      const Route = createRoute({
+        getParentRoute: () => rootRoute,
+        path,
+        component: RouteComponent,
+      })
 
-  const ctx = createContext<string>()
+      function RouteComponent() {
+        const routeParams = Route.useParams()
+        const matchRoute = useMatchRoute()
+        const matchRouteMatch = matchRoute({
+          to: path,
+        })
 
-  const app = render(() => (
-    <RouterProvider
-      router={router}
-      defaultPendingMs={200}
-      defaultPendingComponent={() => {
-        const contextValue = useContext(ctx)
-        expect(contextValue, 'Context is not provided').not.toBeUndefined()
-
-        return <div>{contextValue}</div>
-      }}
-      InnerWrap={(props) => {
         return (
-          <ctx.Provider value={'context-for-default-pending'}>
-            {props.children}
-          </ctx.Provider>
+          <div>
+            <h1 data-testid="heading">{name}</h1>
+            <div>
+              Params{' '}
+              <span data-testid="params">{JSON.stringify(routeParams())}</span>
+              Matches{' '}
+              <span data-testid="matches">
+                {JSON.stringify(matchRouteMatch())}
+              </span>
+            </div>
+          </div>
         )
-      }}
-    />
-  ))
+      }
 
-  const linkToHome = await app.findByRole('link', {
-    name: 'link to home',
-  })
-  expect(linkToHome).toBeInTheDocument()
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([Route]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
 
-  fireEvent.click(linkToHome)
+      render(() => <RouterProvider router={router} />)
 
-  const indexElem = await app.findByText('context-for-default-pending')
-  expect(indexElem).toBeInTheDocument()
+      router.history.push(nav)
+
+      await waitFor(async () => {
+        const paramsToCheck = await screen.findByTestId('params')
+        const matchesToCheck = await screen.findByTestId('matches')
+
+        expect(JSON.parse(paramsToCheck.textContent)).toEqual(params)
+        expect(JSON.parse(matchesToCheck.textContent)).toEqual(matchParams)
+      })
+    },
+  )
 })

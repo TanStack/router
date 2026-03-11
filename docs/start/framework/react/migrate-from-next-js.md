@@ -129,7 +129,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router"
-import "./globals.css"
+import appCss from "./globals.css?url"
 
 - export const metadata: Metadata = { // [!code --]
 -   title: "Create Next App", // [!code --]
@@ -144,6 +144,12 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       { title: "TanStack Start Starter" }
+    ],
+    links: [
+      {
+        rel: 'stylesheet',
+        href: appCss,
+      },
     ],
   }),
   component: RootLayout,
@@ -182,6 +188,8 @@ Instead of `page.tsx`, create an `index.tsx` file for the `/` route.
 - `src/app/page.tsx` to `src/app/index.tsx`
 
 ```tsx
++ import { createFileRoute } from '@tanstack/react-router' // [!code ++]
+
 - export default function Home() { // [!code --]
 + export const Route = createFileRoute('/')({ // [!code ++]
 +   component: Home, // [!code ++]
@@ -192,7 +200,7 @@ Instead of `page.tsx`, create an `index.tsx` file for the `/` route.
     <main className="min-h-dvh w-screen flex items-center justify-center flex-col gap-y-4 p-4">
       <img
         className="max-w-sm w-full"
-        src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/splash-dark.png"
+        src="https://raw.githubusercontent.com/TanStack/tanstack.com/main/public/images/logos/splash-dark.png"
         alt="TanStack Logo"
       />
       <h1>
@@ -304,6 +312,28 @@ function Component() {
 
 Learn more about the [Links](/router/latest/docs/framework/react/guide/navigation#link-component).
 
+### Images
+
+Next.js uses the `next/image` component for optimized images. In TanStack Start, you can use the package called [Unpic](https://unpic.pics/) for similar functionality
+and almost a drop-in replacement.
+
+```tsx
+import Image from 'next/image' // [!code --]
+import { Image } from '@unpic/react' // [!code ++]
+function Component() {
+  return (
+    <Image
+      src="/path/to/image.jpg"
+      alt="Description"
+      width="600" // [!code --]
+      height="400" // [!code --]
+      width={600} // [!code ++]
+      height={400} // [!code ++]
+    />
+  )
+}
+```
+
 ### Server ~Actions~ Functions
 
 ```tsx
@@ -317,7 +347,7 @@ Learn more about the [Links](/router/latest/docs/framework/react/guide/navigatio
 + }) // [!code ++]
 ```
 
-Learn more about the [Server Functions](../server-functions.md).
+Learn more about the [Server Functions](./guide/server-functions).
 
 ### Server Routes ~Handlers~
 
@@ -334,7 +364,7 @@ Learn more about the [Server Functions](../server-functions.md).
 + }) // [!code ++]
 ```
 
-Learn more about the [Server Routes](../server-routes.md).
+Learn more about the [Server Routes](./guide/server-routes).
 
 ### Fonts
 
@@ -360,7 +390,7 @@ npm i -D @fontsource-variable/dm-sans @fontsource-variable/jetbrains-mono
 Add the following to `src/app/globals.css`:
 
 ```css
-@import 'tailwindcss';
+@import 'tailwindcss' source('../');
 
 @import '@fontsource-variable/dm-sans'; /* [!code ++] */
 @import '@fontsource-variable/jetbrains-mono'; /* [!code ++] */

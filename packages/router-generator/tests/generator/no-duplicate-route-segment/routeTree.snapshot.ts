@@ -8,22 +8,14 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as FooLayoutRouteRouteImport } from './routes/foo/_layout/route'
 import { Route as FooLayoutIndexRouteImport } from './routes/foo/_layout/index'
 
-const FooRouteImport = createFileRoute('/foo')()
-
-const FooRoute = FooRouteImport.update({
-  id: '/foo',
+const FooLayoutRouteRoute = FooLayoutRouteRouteImport.update({
+  id: '/foo/_layout',
   path: '/foo',
   getParentRoute: () => rootRouteImport,
-} as any)
-const FooLayoutRouteRoute = FooLayoutRouteRouteImport.update({
-  id: '/_layout',
-  getParentRoute: () => FooRoute,
 } as any)
 const FooLayoutIndexRoute = FooLayoutIndexRouteImport.update({
   id: '/',
@@ -40,7 +32,6 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/foo': typeof FooRouteWithChildren
   '/foo/_layout': typeof FooLayoutRouteRouteWithChildren
   '/foo/_layout/': typeof FooLayoutIndexRoute
 }
@@ -49,28 +40,21 @@ export interface FileRouteTypes {
   fullPaths: '/foo' | '/foo/'
   fileRoutesByTo: FileRoutesByTo
   to: '/foo'
-  id: '__root__' | '/foo' | '/foo/_layout' | '/foo/_layout/'
+  id: '__root__' | '/foo/_layout' | '/foo/_layout/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  FooRoute: typeof FooRouteWithChildren
+  FooLayoutRouteRoute: typeof FooLayoutRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/foo': {
-      id: '/foo'
-      path: '/foo'
-      fullPath: '/foo'
-      preLoaderRoute: typeof FooRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/foo/_layout': {
       id: '/foo/_layout'
       path: '/foo'
       fullPath: '/foo'
       preLoaderRoute: typeof FooLayoutRouteRouteImport
-      parentRoute: typeof FooRoute
+      parentRoute: typeof rootRouteImport
     }
     '/foo/_layout/': {
       id: '/foo/_layout/'
@@ -94,18 +78,8 @@ const FooLayoutRouteRouteWithChildren = FooLayoutRouteRoute._addFileChildren(
   FooLayoutRouteRouteChildren,
 )
 
-interface FooRouteChildren {
-  FooLayoutRouteRoute: typeof FooLayoutRouteRouteWithChildren
-}
-
-const FooRouteChildren: FooRouteChildren = {
-  FooLayoutRouteRoute: FooLayoutRouteRouteWithChildren,
-}
-
-const FooRouteWithChildren = FooRoute._addFileChildren(FooRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
-  FooRoute: FooRouteWithChildren,
+  FooLayoutRouteRoute: FooLayoutRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

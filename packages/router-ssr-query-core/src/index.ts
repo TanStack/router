@@ -3,6 +3,7 @@ import {
   hydrate as queryHydrate,
 } from '@tanstack/query-core'
 import { isRedirect } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import type { AnyRouter } from '@tanstack/router-core'
 import type {
   QueryClient,
@@ -35,13 +36,17 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   const ogHydrate = router.options.hydrate
   const ogDehydrate = router.options.dehydrate
 
-  if (router.isServer) {
+  if (isServer ?? router.isServer) {
     const sentQueries = new Set<string>()
     const queryStream = createPushableStream()
-
+    let unsubscribe: (() => void) | undefined = undefined
     router.options.dehydrate =
       async (): Promise<DehydratedRouterQueryState> => {
-        router.serverSsr!.onRenderFinished(() => queryStream.close())
+        router.serverSsr!.onRenderFinished(() => {
+          queryStream.close()
+          unsubscribe?.()
+          unsubscribe = undefined
+        })
         const ogDehydrated = await ogDehydrate?.()
 
         const dehydratedRouter = {
@@ -70,7 +75,7 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       },
     })
 
-    queryClient.getQueryCache().subscribe((event) => {
+    unsubscribe = queryClient.getQueryCache().subscribe((event) => {
       // before rendering starts, we do not stream individual queries
       // instead we dehydrate the entire query client in router's dehydrate()
       // if attachRouterServerSsrUtils() has not been called yet, `router.serverSsr` will be undefined and we also do not stream
@@ -80,14 +85,14 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       if (sentQueries.has(event.query.queryHash)) {
         return
       }
+      // promise not yet set on the query, so we cannot stream it yet
+      if (!event.query.promise) {
+        return
+      }
       if (queryStream.isClosed()) {
         console.warn(
           `tried to stream query ${event.query.queryHash} after stream was already closed`,
         )
-        return
-      }
-      // promise not yet set on the query, so we cannot stream it yet
-      if (!event.query.promise) {
         return
       }
       sentQueries.add(event.query.queryHash)
@@ -133,31 +138,26 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       const ogMutationCacheConfig = queryClient.getMutationCache().config
       queryClient.getMutationCache().config = {
         ...ogMutationCacheConfig,
-        onError: (error, _variables, _context, _mutation) => {
+        onError: (error, ...rest) => {
           if (isRedirect(error)) {
             error.options._fromLocation = router.state.location
             return router.navigate(router.resolveRedirect(error).options)
           }
 
-          return ogMutationCacheConfig.onError?.(
-            error,
-            _variables,
-            _context,
-            _mutation,
-          )
+          return ogMutationCacheConfig.onError?.(error, ...rest)
         },
       }
 
       const ogQueryCacheConfig = queryClient.getQueryCache().config
       queryClient.getQueryCache().config = {
         ...ogQueryCacheConfig,
-        onError: (error, _query) => {
+        onError: (error, ...rest) => {
           if (isRedirect(error)) {
             error.options._fromLocation = router.state.location
             return router.navigate(router.resolveRedirect(error).options)
           }
 
-          return ogQueryCacheConfig.onError?.(error, _query)
+          return ogQueryCacheConfig.onError?.(error, ...rest)
         },
       }
     }

@@ -78,15 +78,15 @@ const dbInvoicesIndexRoute = dbInvoicesIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof indexRoute
-  '/$lang': typeof pagesRoute
+  '/$lang/': typeof pagesRoute
   '/dashboard': typeof dbDashboardRouteWithChildren
   '/dashboard/': typeof dbDashboardIndexRoute
   '/dashboard/invoices': typeof dbDashboardInvoicesRouteWithChildren
-  '/hello': typeof HelloIndexRoute
+  '/hello/': typeof HelloIndexRoute
   '/dashboard/invoices/': typeof dbInvoicesIndexRoute
   '/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
   '/hello/foo/$id': typeof HelloFooIdRoute
-  '/hello/foo': typeof HelloFooIndexRoute
+  '/hello/foo/': typeof HelloFooIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof indexRoute
@@ -116,15 +116,15 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/$lang'
+    | '/$lang/'
     | '/dashboard'
     | '/dashboard/'
     | '/dashboard/invoices'
-    | '/hello'
+    | '/hello/'
     | '/dashboard/invoices/'
     | '/dashboard/invoices/$id'
     | '/hello/foo/$id'
-    | '/hello/foo'
+    | '/hello/foo/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -161,7 +161,7 @@ declare module '@tanstack/react-router' {
     '/_layout': {
       id: '/_layout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof layoutRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -182,14 +182,14 @@ declare module '@tanstack/react-router' {
     '/$lang/': {
       id: '/$lang/'
       path: '/$lang'
-      fullPath: '/$lang'
+      fullPath: '/$lang/'
       preLoaderRoute: typeof pagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/hello/': {
       id: '/_layout/hello/'
       path: '/hello'
-      fullPath: '/hello'
+      fullPath: '/hello/'
       preLoaderRoute: typeof HelloIndexRouteImport
       parentRoute: typeof layoutRoute
     }
@@ -210,7 +210,7 @@ declare module '@tanstack/react-router' {
     '/_layout/hello/foo/': {
       id: '/_layout/hello/foo/'
       path: '/hello/foo'
-      fullPath: '/hello/foo'
+      fullPath: '/hello/foo/'
       preLoaderRoute: typeof HelloFooIndexRouteImport
       parentRoute: typeof layoutRoute
     }

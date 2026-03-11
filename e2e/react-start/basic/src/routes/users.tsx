@@ -1,13 +1,14 @@
-import { Link, Outlet } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
+import { getRouterInstance } from '@tanstack/react-start'
 import axios from 'redaxios'
 
 import type { User } from '~/utils/users'
-import { DEPLOY_URL } from '~/utils/users'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users')({
   loader: async () => {
+    const router = await getRouterInstance()
     return await axios
-      .get<Array<User>>('/api/users')
+      .get<Array<User>>('/api/users', { baseURL: router.options.origin })
       .then((r) => r.data)
       .catch(() => {
         throw new Error('Failed to fetch users')

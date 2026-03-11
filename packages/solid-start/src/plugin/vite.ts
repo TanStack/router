@@ -36,7 +36,11 @@ export function tanstackStart(
               options.optimizeDeps?.noDiscovery === false)
               ? {
                   // As `@tanstack/solid-start` depends on `@tanstack/solid-router`, we should exclude both.
-                  exclude: ['@tanstack/solid-start', '@tanstack/solid-router'],
+                  exclude: [
+                    '@tanstack/solid-start',
+                    '@tanstack/solid-router',
+                    '@tanstack/start-static-server-functions',
+                  ],
                 }
               : undefined,
         }

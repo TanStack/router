@@ -10,7 +10,7 @@ export const Route = createFileRoute('/useQuery')({
 })
 
 function RouteComponent() {
-  const query = useQuery(qOptions)
+  const query = useQuery({ ...qOptions, gcTime: 0 })
   return (
     <div>
       <div>

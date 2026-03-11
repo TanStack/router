@@ -14,7 +14,6 @@ export type {
   ResolveCurrentPath,
   ResolveParentPath,
   ResolveRelativePath,
-  LinkCurrentTargetElement,
   FindDescendantToPaths,
   InferDescendantToPaths,
   RelativeToPath,
@@ -38,8 +37,6 @@ export type {
   ToSubOptionsProps,
   RequiredToOptions,
 } from './link'
-
-export { componentTypes } from './load-matches'
 
 export type {
   RouteToPath,
@@ -100,12 +97,8 @@ export {
   removeTrailingSlash,
   exactPathTest,
   resolvePath,
-  parsePathname,
   interpolatePath,
-  matchPathname,
-  matchByPath,
 } from './path'
-export type { Segment } from './path'
 export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
@@ -193,8 +186,6 @@ export type {
   RootRoute,
   FilebaseRouteOptionsInterface,
 } from './route'
-export { processRouteTree } from './process-route-tree'
-export type { ProcessRouteTreeResult } from './process-route-tree'
 export {
   defaultSerializeError,
   getLocationChangeInfo,
@@ -204,7 +195,9 @@ export {
   PathParamError,
   getInitialRouterState,
   getMatchedRoutes,
+  trailingSlashOptions,
 } from './router'
+
 export type {
   ViewTransitionOptions,
   TrailingSlashOption,
@@ -268,7 +261,6 @@ export type { SearchSerializer, SearchParser } from './searchParams'
 export type { OptionalStructuralSharing } from './structuralSharing'
 
 export {
-  last,
   functionalUpdate,
   replaceEqualDeep,
   isPlainObject,
@@ -276,6 +268,10 @@ export {
   deepEqual,
   createControlledPromise,
   isModuleNotFoundError,
+  DEFAULT_PROTOCOL_ALLOWLIST,
+  escapeHtml,
+  isDangerousProtocol,
+  buildDevStylesUrl,
 } from './utils'
 export type {
   NoInfer,
@@ -362,6 +358,8 @@ export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 export type {
   Redirect,
   RedirectOptions,
+  RedirectOptionsRoute,
+  RedirectFnRoute,
   ResolvedRedirect,
   AnyRedirect,
 } from './redirect'
@@ -420,6 +418,11 @@ export type {
   SerializerExtensions,
   ValidateSerializable,
   RegisteredSerializableInput,
+  SerializableExtensions,
+  DefaultSerializable,
+  Serializable,
+  TSR_SERIALIZABLE,
+  TsrSerializable,
 } from './ssr/serializer/transformer'
 
 export {
@@ -431,9 +434,15 @@ export {
 export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
 
 export {
-  rewriteBasepath,
-  composeRewrites,
-  executeRewriteInput,
-  executeRewriteOutput,
-} from './rewrite'
+  RawStream,
+  createRawStreamRPCPlugin,
+  createRawStreamDeserializePlugin,
+} from './ssr/serializer/RawStream'
+export type {
+  OnRawStreamCallback,
+  RawStreamHint,
+  RawStreamOptions,
+} from './ssr/serializer/RawStream'
+
+export { composeRewrites, executeRewriteInput } from './rewrite'
 export type { LocationRewrite, LocationRewriteFunction } from './router'

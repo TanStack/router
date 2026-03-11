@@ -4,7 +4,7 @@ import { createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 import type { AnyRouter } from '@tanstack/solid-router'
 import type { Component, JSX } from 'solid-js'
 
-interface DevtoolsOptions {
+export interface TanStackRouterDevtoolsOptions {
   /**
    * Set this true if you want the dev tools to default to being open
    */
@@ -42,9 +42,9 @@ interface DevtoolsOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-export const TanStackRouterDevtools: Component<DevtoolsOptions> = (
-  props,
-): JSX.Element | null => {
+export const TanStackRouterDevtools: Component<
+  TanStackRouterDevtoolsOptions
+> = (props): JSX.Element | null => {
   const activeRouter = props.router ?? useRouter()
   const activeRouterState = useRouterState({ router: activeRouter })
 

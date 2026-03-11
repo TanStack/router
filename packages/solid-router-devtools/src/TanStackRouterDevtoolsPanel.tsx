@@ -4,7 +4,7 @@ import { createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 import type { AnyRouter } from '@tanstack/solid-router'
 import type { Component, JSX } from 'solid-js'
 
-export interface DevtoolsPanelOptions {
+export interface TanStackRouterDevtoolsPanelOptions {
   /**
    * The standard React style object used to style a component with inline styles
    */
@@ -35,9 +35,9 @@ export interface DevtoolsPanelOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-export const TanStackRouterDevtoolsPanel: Component<DevtoolsPanelOptions> = (
-  props,
-): JSX.Element | null => {
+export const TanStackRouterDevtoolsPanel: Component<
+  TanStackRouterDevtoolsPanelOptions
+> = (props): JSX.Element | null => {
   const activeRouter = props.router ?? useRouter()
   const activeRouterState = useRouterState({ router: activeRouter })
 

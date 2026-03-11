@@ -1,5 +1,10 @@
 import { defaultSerializeError } from './router'
 
+/**
+ * Well-known symbol used by {@link defer} to tag a promise with
+ * its deferred state. Consumers can read `promise[TSR_DEFERRED_PROMISE]`
+ * to access `status`, `data`, or `error`.
+ */
 export const TSR_DEFERRED_PROMISE = Symbol.for('TSR_DEFERRED_PROMISE')
 
 export type DeferredPromiseState<T> =
@@ -22,6 +27,18 @@ export type DeferredPromise<T> = Promise<T> & {
   [TSR_DEFERRED_PROMISE]: DeferredPromiseState<T>
 }
 
+/**
+ * Wrap a promise with a deferred state for use with `<Await>` and `useAwaited`.
+ *
+ * The returned promise is augmented with internal state (status/data/error)
+ * so UI can read progress or suspend until it settles.
+ *
+ * @param _promise The promise to wrap.
+ * @param options Optional config. Provide `serializeError` to customize how
+ * errors are serialized for transfer.
+ * @returns The same promise with attached deferred metadata.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/deferFunction
+ */
 export function defer<T>(
   _promise: Promise<T>,
   options?: {

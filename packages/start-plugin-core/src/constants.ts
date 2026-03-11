@@ -12,9 +12,17 @@ export type ViteEnvironmentNames =
 // if a user has a custom server/client entry point file, resolve.alias will point to this
 // otherwise it will be aliased to the default entry point in the respective framework plugin
 export const ENTRY_POINTS = {
-  client: '__tanstack-start-client-entry__',
-  server: '__tanstack-start-server-entry__',
+  client: 'virtual:tanstack-start-client-entry',
+  server: 'virtual:tanstack-start-server-entry',
   // the start entry point must always be provided by the user
   start: '#tanstack-start-entry',
   router: '#tanstack-router-entry',
 } as const
+
+export const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
+
+// matches
+// .ts, .tsx, .cts, .mts, .js, .jsx, .cjs, .mjs
+// with optional query params after
+// but not .json
+export const TRANSFORM_ID_REGEX = [/\.[cm]?[tj]sx?($|\?)/]

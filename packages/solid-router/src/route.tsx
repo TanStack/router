@@ -11,6 +11,7 @@ import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
+import { useRouteContext } from './useRouteContext'
 import { useRouter } from './useRouter'
 import type {
   AnyContext,
@@ -104,10 +105,7 @@ export class RouteApi<
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts) => {
-    return useMatch({
-      from: this.id as any,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id as any }) as any
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
@@ -153,32 +151,32 @@ export class RouteApi<
 }
 
 export class Route<
-    in out TRegister = unknown,
-    in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
-    in out TPath extends RouteConstraints['TPath'] = '/',
-    in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
-      TParentRoute,
-      TPath
-    >,
-    in out TCustomId extends RouteConstraints['TCustomId'] = string,
-    in out TId extends RouteConstraints['TId'] = ResolveId<
-      TParentRoute,
-      TCustomId,
-      TPath
-    >,
-    in out TSearchValidator = undefined,
-    in out TParams = ResolveParams<TPath>,
-    in out TRouterContext = AnyContext,
-    in out TRouteContextFn = AnyContext,
-    in out TBeforeLoadFn = AnyContext,
-    in out TLoaderDeps extends Record<string, any> = {},
-    in out TLoaderFn = undefined,
-    in out TChildren = unknown,
-    in out TFileRouteTypes = unknown,
-    in out TSSR = unknown,
-    in out TMiddlewares = unknown,
-    in out THandlers = undefined,
-  >
+  in out TRegister = unknown,
+  in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
+  in out TPath extends RouteConstraints['TPath'] = '/',
+  in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
+    TParentRoute,
+    TPath
+  >,
+  in out TCustomId extends RouteConstraints['TCustomId'] = string,
+  in out TId extends RouteConstraints['TId'] = ResolveId<
+    TParentRoute,
+    TCustomId,
+    TPath
+  >,
+  in out TSearchValidator = undefined,
+  in out TParams = ResolveParams<TPath>,
+  in out TRouterContext = AnyContext,
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+  in out TSSR = unknown,
+  in out TMiddlewares = unknown,
+  in out THandlers = undefined,
+>
   extends BaseRoute<
     TRegister,
     TParentRoute,
@@ -255,11 +253,7 @@ export class Route<
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id }) as any
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
@@ -420,7 +414,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TLoaderFn,
       TSSR,
       THandlers
-    >(options as any)
+    >(options)
   }
 }
 
@@ -430,18 +424,18 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-    in out TRegister = Register,
-    in out TSearchValidator = undefined,
-    in out TRouterContext = {},
-    in out TRouteContextFn = AnyContext,
-    in out TBeforeLoadFn = AnyContext,
-    in out TLoaderDeps extends Record<string, any> = {},
-    in out TLoaderFn = undefined,
-    in out TChildren = unknown,
-    in out TFileRouteTypes = unknown,
-    in out TSSR = unknown,
-    in out THandlers = undefined,
-  >
+  in out TRegister = Register,
+  in out TSearchValidator = undefined,
+  in out TRouterContext = {},
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+  in out TSSR = unknown,
+  in out THandlers = undefined,
+>
   extends BaseRootRoute<
     TRegister,
     TSearchValidator,
@@ -497,11 +491,7 @@ export class RootRoute<
   }
 
   useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id }) as any
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {

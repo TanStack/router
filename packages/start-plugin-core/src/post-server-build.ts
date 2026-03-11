@@ -3,16 +3,14 @@ import { buildSitemap } from './build-sitemap'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { prerender } from './prerender'
 import type { TanStackStartOutputConfig } from './schema'
-import type { Rollup, ViteBuilder } from 'vite'
+import type { ViteBuilder } from 'vite'
 
 export async function postServerBuild({
   builder,
   startConfig,
-  serverBundle,
 }: {
   builder: ViteBuilder
   startConfig: TanStackStartOutputConfig
-  serverBundle: Rollup.OutputBundle
 }) {
   // If the user has not set a prerender option, we need to set it to true
   // if the pages array is not empty and has sub options requiring for prerendering
@@ -36,6 +34,9 @@ export async function postServerBuild({
     }
 
     const maskUrl = new URL(startConfig.spa.maskPath, 'http://localhost')
+    if (maskUrl.origin !== 'http://localhost') {
+      throw new Error('spa.maskPath must be a path (no protocol/host)')
+    }
 
     startConfig.pages.push({
       path: maskUrl.toString().replace('http://localhost', ''),
@@ -57,12 +58,11 @@ export async function postServerBuild({
     await prerender({
       startConfig,
       builder,
-      serverBundle,
     })
   }
 
   // Run the sitemap build process
-  if (startConfig.pages.length) {
+  if (startConfig.sitemap?.enabled) {
     buildSitemap({
       startConfig,
       publicDir:

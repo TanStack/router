@@ -8,428 +8,258 @@
   "sections": [
     {
       "label": "Getting Started",
-      "children": [],
+      "children": [
+        {
+          "label": "Overview",
+          "to": "overview"
+        },
+        {
+          "label": "Quick Start",
+          "to": "quick-start"
+        },
+        {
+          "label": "Devtools",
+          "to": "devtools"
+        },
+        {
+          "label": "Decisions on DX",
+          "to": "decisions-on-dx"
+        },
+        {
+          "label": "LLM Assistance Support",
+          "to": "llm-support"
+        },
+        {
+          "label": "Comparison",
+          "to": "comparison"
+        },
+        {
+          "label": "Frequently Asked Questions",
+          "to": "faq"
+        }
+      ],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": []
+        },
+        {
+          "label": "solid",
+          "children": []
+        }
+      ]
+    },
+    {
+      "label": "Installation Guides",
+      "children": [
+        {
+          "label": "Manual Setup",
+          "to": "installation/manual"
+        },
+        {
+          "label": "Vite",
+          "to": "installation/with-vite"
+        },
+        {
+          "label": "Rspack/Rsbuild",
+          "to": "installation/with-rspack"
+        },
+        {
+          "label": "Webpack",
+          "to": "installation/with-webpack"
+        },
+        {
+          "label": "Esbuild",
+          "to": "installation/with-esbuild"
+        },
+        {
+          "label": "Router CLI",
+          "to": "installation/with-router-cli"
+        }
+      ],
       "frameworks": [
         {
           "label": "react",
           "children": [
             {
-              "label": "Overview",
-              "to": "framework/react/overview"
-            },
-            {
-              "label": "Installation",
-              "to": "framework/react/installation"
-            },
-            {
-              "label": "Quick Start",
-              "to": "framework/react/quick-start"
-            },
-            {
-              "label": "Devtools",
-              "to": "framework/react/devtools"
-            },
-            {
-              "label": "Comparison",
-              "to": "framework/react/comparison"
-            },
-            {
               "label": "Migrate from React Router",
-              "to": "framework/react/migrate-from-react-router"
+              "to": "installation/migrate-from-react-router"
             },
             {
               "label": "Migrate from React Location",
-              "to": "framework/react/migrate-from-react-location"
-            },
-            {
-              "label": "Decisions on DX",
-              "to": "framework/react/decisions-on-dx"
-            },
-            {
-              "label": "Frequently Asked Questions",
-              "to": "framework/react/faq"
+              "to": "installation/migrate-from-react-location"
             }
           ]
         },
         {
           "label": "solid",
-          "children": [
-            {
-              "label": "Overview",
-              "to": "framework/solid/overview"
-            },
-            {
-              "label": "Installation",
-              "to": "framework/solid/installation"
-            },
-            {
-              "label": "Quick Start",
-              "to": "framework/solid/quick-start"
-            },
-            {
-              "label": "Devtools",
-              "to": "framework/solid/devtools"
-            },
-            {
-              "label": "Decisions on DX",
-              "to": "framework/solid/decisions-on-dx"
-            },
-            {
-              "label": "Frequently Asked Questions",
-              "to": "framework/solid/faq"
-            }
-          ]
+          "children": []
         }
       ]
     },
     {
       "label": "Routing",
-      "children": [],
+      "children": [
+        {
+          "label": "Routing Concepts",
+          "to": "routing/routing-concepts"
+        },
+        {
+          "label": "Route Trees",
+          "to": "routing/route-trees"
+        },
+        {
+          "label": "Route Matching",
+          "to": "routing/route-matching"
+        },
+        {
+          "label": "File-Based Routing",
+          "to": "routing/file-based-routing"
+        },
+        {
+          "label": "Virtual File Routes",
+          "to": "routing/virtual-file-routes"
+        },
+        {
+          "label": "Code-Based Routing",
+          "to": "routing/code-based-routing"
+        },
+        {
+          "label": "File Naming Conventions",
+          "to": "routing/file-naming-conventions"
+        }
+      ],
       "frameworks": [
         {
           "label": "react",
-          "children": [
-            {
-              "label": "Routing Concepts",
-              "to": "framework/react/routing/routing-concepts"
-            },
-            {
-              "label": "Route Trees",
-              "to": "framework/react/routing/route-trees"
-            },
-            {
-              "label": "Route Matching",
-              "to": "framework/react/routing/route-matching"
-            },
-            {
-              "label": "File-Based Routing",
-              "to": "framework/react/routing/file-based-routing"
-            },
-            {
-              "label": "Virtual File Routes",
-              "to": "framework/react/routing/virtual-file-routes"
-            },
-            {
-              "label": "Code-Based Routing",
-              "to": "framework/react/routing/code-based-routing"
-            },
-            {
-              "label": "Installation with Vite",
-              "to": "framework/react/routing/installation-with-vite"
-            },
-            {
-              "label": "Installation with Rspack/Rsbuild",
-              "to": "framework/react/routing/installation-with-rspack"
-            },
-            {
-              "label": "Installation with Webpack",
-              "to": "framework/react/routing/installation-with-webpack"
-            },
-            {
-              "label": "Installation with Esbuild",
-              "to": "framework/react/routing/installation-with-esbuild"
-            },
-            {
-              "label": "Installation with the Router CLI",
-              "to": "framework/react/routing/installation-with-router-cli"
-            },
-            {
-              "label": "File Naming Conventions",
-              "to": "framework/react/routing/file-naming-conventions"
-            }
-          ]
+          "children": []
         },
         {
           "label": "solid",
-          "children": [
-            {
-              "label": "Routing Concepts",
-              "to": "framework/solid/routing/routing-concepts"
-            },
-            {
-              "label": "Route Trees",
-              "to": "framework/solid/routing/route-trees"
-            },
-            {
-              "label": "Route Matching",
-              "to": "framework/solid/routing/route-matching"
-            },
-            {
-              "label": "File-Based Routing",
-              "to": "framework/solid/routing/file-based-routing"
-            },
-            {
-              "label": "Virtual File Routes",
-              "to": "framework/solid/routing/virtual-file-routes"
-            },
-            {
-              "label": "Code-Based Routing",
-              "to": "framework/solid/routing/code-based-routing"
-            },
-            {
-              "label": "Installation with Vite",
-              "to": "framework/solid/routing/installation-with-vite"
-            },
-            {
-              "label": "Installation with the Router CLI",
-              "to": "framework/solid/routing/installation-with-router-cli"
-            },
-            {
-              "label": "File Naming Conventions",
-              "to": "framework/solid/routing/file-naming-conventions"
-            }
-          ]
+          "children": []
         }
       ]
     },
     {
       "label": "Guides",
-      "children": [],
-      "frameworks": [
+      "children": [
         {
-          "label": "react",
-          "children": [
-            {
-              "label": "Code Splitting",
-              "to": "framework/react/guide/code-splitting"
-            },
-            {
-              "label": "Automatic Code Splitting",
-              "to": "framework/react/guide/automatic-code-splitting"
-            },
-            {
-              "label": "Creating a Router",
-              "to": "framework/react/guide/creating-a-router"
-            },
-            {
-              "label": "Outlets",
-              "to": "framework/react/guide/outlets"
-            },
-            {
-              "label": "Navigation",
-              "to": "framework/react/guide/navigation"
-            },
-            {
-              "label": "Path Params",
-              "to": "framework/react/guide/path-params"
-            },
-            {
-              "label": "Search Params",
-              "to": "framework/react/guide/search-params"
-            },
-            {
-              "label": "Link Options",
-              "to": "framework/react/guide/link-options"
-            },
-            {
-              "label": "Custom Links",
-              "to": "framework/react/guide/custom-link"
-            },
-            {
-              "label": "Data Loading",
-              "to": "framework/react/guide/data-loading"
-            },
-            {
-              "label": "Deferred Data Loading",
-              "to": "framework/react/guide/deferred-data-loading"
-            },
-            {
-              "label": "External Data Loading",
-              "to": "framework/react/guide/external-data-loading"
-            },
-            {
-              "label": "Data Mutations",
-              "to": "framework/react/guide/data-mutations"
-            },
-            {
-              "label": "Type Safety",
-              "to": "framework/react/guide/type-safety"
-            },
-            {
-              "label": "Type Utilities",
-              "to": "framework/react/guide/type-utilities"
-            },
-            {
-              "label": "Preloading",
-              "to": "framework/react/guide/preloading"
-            },
-            {
-              "label": "Document Head Management",
-              "to": "framework/react/guide/document-head-management"
-            },
-            {
-              "label": "Route Masking",
-              "to": "framework/react/guide/route-masking"
-            },
-            {
-              "label": "Navigation Blocking",
-              "to": "framework/react/guide/navigation-blocking"
-            },
-            {
-              "label": "Custom Search Param Serialization",
-              "to": "framework/react/guide/custom-search-param-serialization"
-            },
-            {
-              "label": "History Types",
-              "to": "framework/react/guide/history-types"
-            },
-            {
-              "label": "Router Context",
-              "to": "framework/react/guide/router-context"
-            },
-            {
-              "label": "Not Found Errors",
-              "to": "framework/react/guide/not-found-errors"
-            },
-            {
-              "label": "Authenticated Routes",
-              "to": "framework/react/guide/authenticated-routes"
-            },
-            {
-              "label": "Scroll Restoration",
-              "to": "framework/react/guide/scroll-restoration"
-            },
-            {
-              "label": "Static Route Data",
-              "to": "framework/react/guide/static-route-data"
-            },
-            {
-              "label": "SSR",
-              "to": "framework/react/guide/ssr"
-            },
-            {
-              "label": "Render Optimizations",
-              "to": "framework/react/guide/render-optimizations"
-            }
-          ]
+          "label": "Code Splitting",
+          "to": "guide/code-splitting"
         },
         {
-          "label": "solid",
-          "children": [
-            {
-              "label": "Code Splitting",
-              "to": "framework/solid/guide/code-splitting"
-            },
-            {
-              "label": "Automatic Code Splitting",
-              "to": "framework/solid/guide/automatic-code-splitting"
-            },
-            {
-              "label": "Creating a Router",
-              "to": "framework/solid/guide/creating-a-router"
-            },
-            {
-              "label": "Outlets",
-              "to": "framework/solid/guide/outlets"
-            },
-            {
-              "label": "Navigation",
-              "to": "framework/solid/guide/navigation"
-            },
-            {
-              "label": "Path Params",
-              "to": "framework/solid/guide/path-params"
-            },
-            {
-              "label": "Search Params",
-              "to": "framework/solid/guide/search-params"
-            },
-            {
-              "label": "Link Options",
-              "to": "framework/solid/guide/link-options"
-            },
-            {
-              "label": "Custom Links",
-              "to": "framework/solid/guide/custom-link"
-            },
-            {
-              "label": "Data Loading",
-              "to": "framework/solid/guide/data-loading"
-            },
-            {
-              "label": "Deferred Data Loading",
-              "to": "framework/solid/guide/deferred-data-loading"
-            },
-            {
-              "label": "External Data Loading",
-              "to": "framework/solid/guide/external-data-loading"
-            },
-            {
-              "label": "Data Mutations",
-              "to": "framework/solid/guide/data-mutations"
-            },
-            {
-              "label": "Type Safety",
-              "to": "framework/solid/guide/type-safety"
-            },
-            {
-              "label": "Type Utilities",
-              "to": "framework/solid/guide/type-utilities"
-            },
-            {
-              "label": "Preloading",
-              "to": "framework/solid/guide/preloading"
-            },
-            {
-              "label": "Document Head Management",
-              "to": "framework/solid/guide/document-head-management"
-            },
-            {
-              "label": "Route Masking",
-              "to": "framework/solid/guide/route-masking"
-            },
-            {
-              "label": "Navigation Blocking",
-              "to": "framework/solid/guide/navigation-blocking"
-            },
-            {
-              "label": "Custom Search Param Serialization",
-              "to": "framework/solid/guide/custom-search-param-serialization"
-            },
-            {
-              "label": "History Types",
-              "to": "framework/solid/guide/history-types"
-            },
-            {
-              "label": "Router Context",
-              "to": "framework/solid/guide/router-context"
-            },
-            {
-              "label": "Not Found Errors",
-              "to": "framework/solid/guide/not-found-errors"
-            },
-            {
-              "label": "Authenticated Routes",
-              "to": "framework/solid/guide/authenticated-routes"
-            },
-            {
-              "label": "Scroll Restoration",
-              "to": "framework/solid/guide/scroll-restoration"
-            },
-            {
-              "label": "Static Route Data",
-              "to": "framework/solid/guide/static-route-data"
-            },
-            {
-              "label": "SSR",
-              "to": "framework/solid/guide/ssr"
-            }
-          ]
+          "label": "Automatic Code Splitting",
+          "to": "guide/automatic-code-splitting"
+        },
+        {
+          "label": "Creating a Router",
+          "to": "guide/creating-a-router"
+        },
+        {
+          "label": "Outlets",
+          "to": "guide/outlets"
+        },
+        {
+          "label": "Navigation",
+          "to": "guide/navigation"
+        },
+        {
+          "label": "Path Params",
+          "to": "guide/path-params"
+        },
+        {
+          "label": "Search Params",
+          "to": "guide/search-params"
+        },
+        {
+          "label": "Link Options",
+          "to": "guide/link-options"
+        },
+        {
+          "label": "Custom Links",
+          "to": "guide/custom-link"
+        },
+        {
+          "label": "Data Loading",
+          "to": "guide/data-loading"
+        },
+        {
+          "label": "Deferred Data Loading",
+          "to": "guide/deferred-data-loading"
+        },
+        {
+          "label": "External Data Loading",
+          "to": "guide/external-data-loading"
+        },
+        {
+          "label": "Data Mutations",
+          "to": "guide/data-mutations"
+        },
+        {
+          "label": "Type Safety",
+          "to": "guide/type-safety"
+        },
+        {
+          "label": "Type Utilities",
+          "to": "guide/type-utilities"
+        },
+        {
+          "label": "Preloading",
+          "to": "guide/preloading"
+        },
+        {
+          "label": "Document Head Management",
+          "to": "guide/document-head-management"
+        },
+        {
+          "label": "Route Masking",
+          "to": "guide/route-masking"
+        },
+        {
+          "label": "Navigation Blocking",
+          "to": "guide/navigation-blocking"
+        },
+        {
+          "label": "Custom Search Param Serialization",
+          "to": "guide/custom-search-param-serialization"
+        },
+        {
+          "label": "History Types",
+          "to": "guide/history-types"
+        },
+        {
+          "label": "Router Context",
+          "to": "guide/router-context"
+        },
+        {
+          "label": "Not Found Errors",
+          "to": "guide/not-found-errors"
+        },
+        {
+          "label": "Authenticated Routes",
+          "to": "guide/authenticated-routes"
+        },
+        {
+          "label": "Scroll Restoration",
+          "to": "guide/scroll-restoration"
+        },
+        {
+          "label": "Static Route Data",
+          "to": "guide/static-route-data"
+        },
+        {
+          "label": "SSR",
+          "to": "guide/ssr"
+        },
+        {
+          "label": "Render Optimizations",
+          "to": "guide/render-optimizations"
         }
-      ]
-    },
-    {
-      "label": "How-To",
-      "children": [],
+      ],
       "frameworks": [
         {
           "label": "react",
-          "children": [
-            {
-              "label": "Install TanStack Router",
-              "to": "framework/react/how-to/install"
-            }
-          ]
+          "children": []
         },
         {
           "label": "solid",
@@ -441,6 +271,10 @@
       "label": "API",
       "children": [
         {
+          "label": "Router",
+          "to": "api/router"
+        },
+        {
           "label": "File-Based Routing",
           "to": "api/file-based-routing"
         }
@@ -448,12 +282,7 @@
       "frameworks": [
         {
           "label": "react",
-          "children": [
-            {
-              "label": "Router",
-              "to": "framework/react/api/router"
-            }
-          ]
+          "children": []
         },
         {
           "label": "solid",
@@ -463,16 +292,16 @@
     },
     {
       "label": "Integrations",
-      "children": [],
+      "children": [
+        {
+          "label": "TanStack Query",
+          "to": "integrations/query"
+        }
+      ],
       "frameworks": [
         {
           "label": "react",
-          "children": [
-            {
-              "label": "TanStack Query",
-              "to": "integrations/query"
-            }
-          ]
+          "children": []
         },
         {
           "label": "solid",
@@ -573,6 +402,10 @@
               "to": "framework/react/examples/view-transitions"
             },
             {
+              "label": "Framer Motion",
+              "to": "framework/react/examples/with-framer-motion"
+            },
+            {
               "label": "With tRPC",
               "to": "framework/react/examples/with-trpc"
             },
@@ -602,6 +435,10 @@
               "to": "framework/solid/examples/quickstart-file-based"
             },
             {
+              "label": "Quickstart (code-based)",
+              "to": "framework/solid/examples/quickstart"
+            },
+            {
               "label": "Basic (file-based)",
               "to": "framework/solid/examples/basic-file-based"
             },
@@ -614,8 +451,72 @@
               "to": "framework/solid/examples/basic-solid-query"
             },
             {
+              "label": "Basic + SSR (file-based)",
+              "to": "framework/solid/examples/basic-ssr-file-based"
+            },
+            {
+              "label": "Basic + SSR Streaming (file-based)",
+              "to": "framework/solid/examples/basic-ssr-streaming-file-based"
+            },
+            {
+              "label": "Kitchen Sink (code-based)",
+              "to": "framework/solid/examples/kitchen-sink"
+            },
+            {
               "label": "Kitchen Sink (file-based)",
               "to": "framework/solid/examples/kitchen-sink-file-based"
+            },
+            {
+              "label": "Kitchen Sink + Solid Query (file-based)",
+              "to": "framework/solid/examples/kitchen-sink-solid-query-file-based"
+            },
+            {
+              "label": "Kitchen Sink + Solid Query (code-based)",
+              "to": "framework/solid/examples/kitchen-sink-solid-query"
+            },
+            {
+              "label": "Location Masking",
+              "to": "framework/solid/examples/location-masking"
+            },
+            {
+              "label": "Authenticated Routes",
+              "to": "framework/solid/examples/authenticated-routes"
+            },
+            {
+              "label": "Scroll Restoration",
+              "to": "framework/solid/examples/scroll-restoration"
+            },
+            {
+              "label": "Deferred Data",
+              "to": "framework/solid/examples/deferred-data"
+            },
+            {
+              "label": "Navigation Blocking",
+              "to": "framework/solid/examples/navigation-blocking"
+            },
+            {
+              "label": "View Transitions",
+              "to": "framework/solid/examples/view-transitions"
+            },
+            {
+              "label": "Framer Motion",
+              "to": "framework/solid/examples/with-framer-motion"
+            },
+            {
+              "label": "With tRPC",
+              "to": "framework/solid/examples/with-trpc"
+            },
+            {
+              "label": "Monorepo basic",
+              "to": "framework/solid/examples/router-monorepo-simple"
+            },
+            {
+              "label": "Monorepo basic (with lazy loading)",
+              "to": "framework/solid/examples/router-monorepo-simple-lazy"
+            },
+            {
+              "label": "Monorepo with Solid Query",
+              "to": "framework/solid/examples/router-monorepo-solid-query"
             }
           ]
         }

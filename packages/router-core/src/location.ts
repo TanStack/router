@@ -25,7 +25,8 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
    */
   state: ParsedHistoryState
   /**
-   * The hash of the location, including the leading hash character.
+   * The hash of the location, excluding the leading hash character.
+   * (e.g., '123' instead of '#123')
    */
   hash: string
   /**
@@ -38,14 +39,13 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
   unmaskOnReload?: boolean
   /**
    * @private
-   * @description The public href of the location, including the origin before any rewrites.
+   * @description The public href of the location.
    * If a rewrite is applied, the `href` property will be the rewritten URL.
    */
   publicHref: string
   /**
    * @private
-   * @description The full URL of the location, including the origin.
-   * @private
+   * @description Whether the publicHref is external (different origin from rewrite).
    */
-  url: string
+  external: boolean
 }

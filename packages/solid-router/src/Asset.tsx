@@ -1,5 +1,6 @@
-import { Meta, Style, Title } from '@solidjs/meta'
+import { Link, Meta, Style, Title } from '@solidjs/meta'
 import { onCleanup, onMount } from 'solid-js'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { JSX } from 'solid-js'
@@ -15,9 +16,9 @@ export function Asset({
     case 'meta':
       return <Meta {...attrs} />
     case 'link':
-      return <link {...attrs} />
+      return <Link {...attrs} />
     case 'style':
-      return <Style {...attrs} innerHTML={children} />
+      return <Style {...attrs}>{children}</Style>
     case 'script':
       return <Script attrs={attrs}>{children}</Script>
     default:
@@ -38,8 +39,15 @@ function Script({
   children?: string
 }): JSX.Element | null {
   const router = useRouter()
+  const dataScript =
+    typeof attrs?.type === 'string' &&
+    attrs.type !== '' &&
+    attrs.type !== 'text/javascript' &&
+    attrs.type !== 'module'
 
   onMount(() => {
+    if (dataScript) return
+
     if (attrs?.src) {
       const normSrc = (() => {
         try {
@@ -123,7 +131,12 @@ function Script({
     }
   })
 
-  if (router && !router.isServer) {
+  if (!(isServer ?? router.isServer)) {
+    if (dataScript && typeof children === 'string') {
+      return <script {...attrs} innerHTML={children} />
+    }
+
+    // render an empty script on the client just to avoid hydration errors
     return null
   }
 

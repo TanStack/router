@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '../src'
 
 describe('createMemoryHistory', () => {
@@ -75,5 +75,60 @@ describe('createMemoryHistory', () => {
     expect((history.location.state as any).i).toBeUndefined()
     history.push('/c', { i: 3 })
     expect((history.location.state as any).i).toBe(3)
+  })
+
+  test('block prevents navigation', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const blockerFn = vi.fn(() => true) // Always block
+
+    const unblock = history.block({
+      blockerFn,
+      enableBeforeUnload: false,
+    })
+
+    await history.push('/a')
+
+    // Navigation should be blocked
+    expect(history.location.pathname).toBe('/')
+    expect(blockerFn).toHaveBeenCalled()
+
+    unblock()
+  })
+
+  test('block allows navigation when blockerFn returns false', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const blockerFn = vi.fn(() => false) // Never block
+
+    const unblock = history.block({
+      blockerFn,
+      enableBeforeUnload: false,
+    })
+
+    await history.push('/a')
+
+    // Navigation should proceed
+    expect(history.location.pathname).toBe('/a')
+    expect(blockerFn).toHaveBeenCalled()
+
+    unblock()
+  })
+
+  test('unblock removes blocker', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const blockerFn = vi.fn(() => true) // Always block
+
+    const unblock = history.block({
+      blockerFn,
+      enableBeforeUnload: false,
+    })
+
+    // Unblock immediately
+    unblock()
+
+    await history.push('/a')
+
+    // Navigation should proceed since blocker was removed
+    expect(history.location.pathname).toBe('/a')
+    expect(blockerFn).not.toHaveBeenCalled()
   })
 })

@@ -353,6 +353,8 @@ export interface NavigateOptionProps {
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#href)
    */
   href?: string
+  /** @internal */
+  publicHref?: string
 }
 
 export type ToOptions<
@@ -698,9 +700,5 @@ export type LinkOptions<
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
 > = NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & LinkOptionsProps
-
-export type LinkCurrentTargetElement = {
-  preloadTimeout?: null | ReturnType<typeof setTimeout>
-}
 
 export const preloadWarning = 'Error preloading route! ☝️'

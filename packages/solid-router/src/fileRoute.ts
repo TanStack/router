@@ -8,6 +8,7 @@ import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
 import { useRouter } from './useRouter'
+import { useRouteContext } from './useRouteContext'
 import type { UseParamsRoute } from './useParams'
 import type { UseMatchRoute } from './useMatch'
 import type { UseSearchRoute } from './useSearch'
@@ -40,8 +41,8 @@ export function createFileRoute<
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
   TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
   TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
-  TFullPath extends
-    RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
+  TFullPath extends RouteConstraints['TFullPath'] =
+    FileRoutesByPath[TFilePath]['fullPath'],
 >(
   path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
@@ -64,8 +65,8 @@ export class FileRoute<
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
   TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
   TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
-  TFullPath extends
-    RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
+  TFullPath extends RouteConstraints['TFullPath'] =
+    FileRoutesByPath[TFilePath]['fullPath'],
 > {
   silent?: boolean
 
@@ -138,10 +139,12 @@ export class FileRoute<
     TMiddlewares,
     THandlers
   > => {
-    warning(
-      this.silent,
-      'FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.',
-    )
+    if (process.env.NODE_ENV !== 'production') {
+      warning(
+        this.silent,
+        'FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.',
+      )
+    }
     const route = createRoute(options as any)
     ;(route as any).isRoot = false
     return route as any
@@ -173,10 +176,12 @@ export function FileRouteLoader<
     >
   >,
 ) => TLoaderFn {
-  warning(
-    false,
-    `FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
-  )
+  if (process.env.NODE_ENV !== 'production') {
+    warning(
+      false,
+      `FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
+    )
+  }
   return (loaderFn) => loaderFn as any
 }
 
@@ -213,10 +218,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
-    return useMatch({
-      from: this.options.id,
-      select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.options.id }) as any
   }
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {

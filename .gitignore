@@ -23,7 +23,12 @@ coverage
 # tests
 packages/router-generator/tests/**/*.gen.ts
 packages/router-generator/tests/**/*.gen.js
-e2e/**/port*.txt
+**/port*.txt
+**/test-results/
+
+# Playwright artifacts
+**/playwright-report/
+**/blob-report/
 
 # misc
 .DS_Store

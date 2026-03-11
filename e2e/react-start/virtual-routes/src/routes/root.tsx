@@ -77,6 +77,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Subtree
           </Link>{' '}
           <Link
+            data-testid="special-pipe-link"
+            to="/special|pipe"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Pipe
+          </Link>{' '}
+          <Link
             // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{

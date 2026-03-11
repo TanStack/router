@@ -1,0 +1,31 @@
+{
+  "name": "tanstack-vue-start-e2e-spa-mode",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 3000",
+    "dev:e2e": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview",
+    "start": "npx serve dist/client",
+    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@tanstack/vue-router": "workspace:^",
+    "@tanstack/vue-router-devtools": "workspace:^",
+    "@tanstack/vue-start": "workspace:^",
+    "vue": "^3.5.25",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.7.2",
+    "vite": "^7.3.1",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vitejs/plugin-vue-jsx": "^5.1.2",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

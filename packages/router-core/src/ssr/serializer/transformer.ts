@@ -8,29 +8,67 @@ import type {
 } from '../../router'
 import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
+import type { RawStream } from './RawStream'
 
-export type Serializable =
-  | number
-  | string
-  | boolean
-  | null
-  | undefined
-  | bigint
-  | Date
+declare const TSR_SERIALIZABLE: unique symbol
+export type TSR_SERIALIZABLE = typeof TSR_SERIALIZABLE
 
-export function createSerializationAdapter<
-  TInput = unknown,
-  TOutput = unknown /* we need to check that this type is actually serializable taking into account all seroval native types and any custom plugin WE=router/start add!!! */,
->(
-  opts: CreateSerializationAdapterOptions<TInput, TOutput>,
-): SerializationAdapter<TInput, TOutput> {
-  return opts as unknown as SerializationAdapter<TInput, TOutput>
+export type TsrSerializable = { [TSR_SERIALIZABLE]: true }
+export interface DefaultSerializable {
+  number: number
+  string: string
+  boolean: boolean
+  null: null
+  undefined: undefined
+  bigint: bigint
+  Date: Date
+  Uint8Array: Uint8Array
+  RawStream: RawStream
+  TsrSerializable: TsrSerializable
 }
 
-export interface CreateSerializationAdapterOptions<TInput, TOutput> {
+export interface SerializableExtensions extends DefaultSerializable {}
+
+export type Serializable = SerializableExtensions[keyof SerializableExtensions]
+
+export type UnionizeSerializationAdaptersInput<
+  TAdapters extends ReadonlyArray<AnySerializationAdapter>,
+> = TAdapters[number]['~types']['input']
+
+/**
+ * Create a strongly-typed serialization adapter for SSR hydration.
+ * Use to register custom types with the router serializer.
+ */
+export function createSerializationAdapter<
+  TInput = unknown,
+  TOutput = unknown,
+  const TExtendsAdapters extends
+    | ReadonlyArray<AnySerializationAdapter>
+    | never = never,
+>(
+  opts: CreateSerializationAdapterOptions<TInput, TOutput, TExtendsAdapters>,
+): SerializationAdapter<TInput, TOutput, TExtendsAdapters> {
+  return opts as unknown as SerializationAdapter<
+    TInput,
+    TOutput,
+    TExtendsAdapters
+  >
+}
+
+export interface CreateSerializationAdapterOptions<
+  TInput,
+  TOutput,
+  TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter> | never,
+> {
   key: string
+  extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
-  toSerializable: (value: TInput) => ValidateSerializable<TOutput, Serializable>
+  toSerializable: (
+    value: TInput,
+  ) => ValidateSerializable<
+    TOutput,
+    Serializable | UnionizeSerializationAdaptersInput<TExtendsAdapters>
+  >
   fromSerializable: (value: TOutput) => TInput
 }
 
@@ -49,7 +87,20 @@ export type ValidateSerializable<T, TSerializable> =
               ? ValidateSerializableSet<T, TSerializable>
               : T extends Map<any, any>
                 ? ValidateSerializableMap<T, TSerializable>
-                : { [K in keyof T]: ValidateSerializable<T[K], TSerializable> }
+                : T extends AsyncGenerator<any, any>
+                  ? ValidateSerializableAsyncGenerator<T, TSerializable>
+                  : {
+                      [K in keyof T]: ValidateSerializable<T[K], TSerializable>
+                    }
+
+export type ValidateSerializableAsyncGenerator<T, TSerializable> =
+  T extends AsyncGenerator<infer T, infer TReturn, infer TNext>
+    ? AsyncGenerator<
+        ValidateSerializable<T, TSerializable>,
+        ValidateSerializable<TReturn, TSerializable>,
+        TNext
+      >
+    : never
 
 export type ValidateSerializablePromise<T, TSerializable> =
   T extends Promise<infer TAwaited>
@@ -85,27 +136,37 @@ export interface DefaultSerializerExtensions {
 
 export interface SerializerExtensions extends DefaultSerializerExtensions {}
 
-export interface SerializationAdapter<TInput, TOutput> {
-  '~types': SerializationAdapterTypes<TInput, TOutput>
+export interface SerializationAdapter<
+  TInput,
+  TOutput,
+  TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter>,
+> {
+  '~types': SerializationAdapterTypes<TInput, TOutput, TExtendsAdapters>
   key: string
+  extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
   toSerializable: (value: TInput) => TOutput
   fromSerializable: (value: TOutput) => TInput
-  makePlugin: (options: { didRun: boolean }) => Plugin<TInput, SerovalNode>
 }
 
-export interface SerializationAdapterTypes<TInput, TOutput> {
-  input: TInput
+export interface SerializationAdapterTypes<
+  TInput,
+  TOutput,
+  TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter>,
+> {
+  input: TInput | UnionizeSerializationAdaptersInput<TExtendsAdapters>
   output: TOutput
+  extends: TExtendsAdapters
 }
 
-export type AnySerializationAdapter = SerializationAdapter<any, any>
+export type AnySerializationAdapter = SerializationAdapter<any, any, any>
 
-export function makeSsrSerovalPlugin<TInput, TOutput>(
-  serializationAdapter: SerializationAdapter<TInput, TOutput>,
+/** Create a Seroval plugin for server-side serialization only. */
+export function makeSsrSerovalPlugin(
+  serializationAdapter: AnySerializationAdapter,
   options: { didRun: boolean },
-) {
-  return createPlugin<TInput, SerovalNode>({
+): Plugin<any, SerovalNode> {
+  return createPlugin<any, SerovalNode>({
     tag: '$TSR/t/' + serializationAdapter.key,
     test: serializationAdapter.test,
     parse: {
@@ -129,10 +190,11 @@ export function makeSsrSerovalPlugin<TInput, TOutput>(
   })
 }
 
-export function makeSerovalPlugin<TInput, TOutput>(
-  serializationAdapter: SerializationAdapter<TInput, TOutput>,
-) {
-  return createPlugin<TInput, SerovalNode>({
+/** Create a Seroval plugin for client/server symmetric (de)serialization. */
+export function makeSerovalPlugin(
+  serializationAdapter: AnySerializationAdapter,
+): Plugin<any, SerovalNode> {
+  return createPlugin<any, SerovalNode>({
     tag: '$TSR/t/' + serializationAdapter.key,
     test: serializationAdapter.test,
     parse: {
@@ -149,9 +211,7 @@ export function makeSerovalPlugin<TInput, TOutput>(
     // we don't generate JS code outside of SSR (for now)
     serialize: undefined as never,
     deserialize(node, ctx) {
-      return serializationAdapter.fromSerializable(
-        ctx.deserialize(node) as TOutput,
-      )
+      return serializationAdapter.fromSerializable(ctx.deserialize(node))
     },
   })
 }

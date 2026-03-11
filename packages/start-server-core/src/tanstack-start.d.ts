@@ -10,18 +10,14 @@ declare module 'tanstack-start-route-tree:v' {
   export const routeTree: AnyRoute | undefined
 }
 
-declare module 'tanstack-start-server-fn-manifest:v' {
-  const serverFnManifest: Record<
-    string,
-    {
-      importer: () => Promise<
-        Record<string, (...args: Array<any>) => Promise<any>> | undefined
-      >
-      functionName: string
-    }
-  >
-
-  export default serverFnManifest
+declare module '#tanstack-start-server-fn-resolver' {
+  export type ServerFn = ((...args: Array<any>) => Promise<any>) & {
+    method?: 'GET' | 'POST'
+  }
+  export function getServerFnById(
+    id: string,
+    opts?: { fromClient?: boolean },
+  ): Promise<ServerFn>
 }
 
 declare module 'tanstack-start-injected-head-scripts:v' {

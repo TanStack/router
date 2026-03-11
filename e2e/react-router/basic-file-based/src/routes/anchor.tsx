@@ -124,7 +124,7 @@ function AnchorComponent() {
             <label>
               <span>Target Anchor</span>
               <select
-                className="border border-opacity-50 rounded p-2 w-full"
+                className="border border-opacity-50 rounded-sm p-2 w-full"
                 data-testid="hash-select"
                 defaultValue={location.hash || anchors[0].id}
                 name="hash"
@@ -154,7 +154,7 @@ function AnchorComponent() {
                 <label>
                   <span>Behavior</span>
                   <select
-                    className="border border-opacity-50 rounded p-2 w-full"
+                    className="border border-opacity-50 rounded-sm p-2 w-full"
                     data-testid="behavior-select"
                     defaultValue="instant"
                     name="scrollBehavior"
@@ -170,7 +170,7 @@ function AnchorComponent() {
                 <label>
                   <span>Block</span>
                   <select
-                    className="border border-opacity-50 rounded p-2 w-full"
+                    className="border border-opacity-50 rounded-sm p-2 w-full"
                     data-testid="block-select"
                     defaultValue="start"
                     name="scrollBlock"
@@ -187,7 +187,7 @@ function AnchorComponent() {
                 <label>
                   <span>Inline</span>
                   <select
-                    className="border border-opacity-50 rounded p-2 w-full"
+                    className="border border-opacity-50 rounded-sm p-2 w-full"
                     data-testid="inline-select"
                     defaultValue="nearest"
                     name="scrollInline"
@@ -203,7 +203,7 @@ function AnchorComponent() {
           ) : null}
           <div>
             <button
-              className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
+              className="bg-blue-500 rounded-sm p-2 uppercase text-white font-black disabled:opacity-50"
               data-testid="navigate-button"
             >
               Navigate

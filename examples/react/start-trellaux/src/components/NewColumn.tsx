@@ -22,7 +22,7 @@ export function NewColumn({
 
   return editing ? (
     <form
-      className="ml-2 p-2 flex-shrink-0 flex flex-col gap-5 overflow-hidden max-h-full w-80 border rounded-xl shadow bg-slate-100"
+      className="ml-2 p-2 shrink-0 flex flex-col gap-5 overflow-hidden max-h-full w-80 border rounded-xl shadow-sm bg-slate-100"
       onSubmit={(event) => {
         event.preventDefault()
         invariant(inputRef.current, 'missing input ref')
@@ -64,7 +64,7 @@ export function NewColumn({
         setEditing(true)
       }}
       aria-label="Add new column"
-      className="ml-2 flex-shrink-0 flex justify-center h-16 w-16 bg-black hover:bg-white bg-opacity-10 hover:bg-opacity-5 rounded-xl"
+      className="ml-2 shrink-0 flex justify-center h-16 w-16 bg-black hover:bg-white bg-opacity-10 hover:bg-opacity-5 rounded-xl"
     >
       <Icon name="plus" size="xl" />
     </button>

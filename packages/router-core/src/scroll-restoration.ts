@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import { functionalUpdate } from './utils'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
@@ -33,6 +34,9 @@ function getSafeSessionStorage() {
   return undefined
 }
 
+/** SessionStorage key used to persist scroll restoration state. */
+/** SessionStorage key used to store scroll positions across navigations. */
+/** SessionStorage key used to store scroll positions across navigations. */
 export const storageKey = 'tsr-scroll-restoration-v1_3'
 
 const throttle = (fn: (...args: Array<any>) => void, wait: number) => {
@@ -63,13 +67,20 @@ function createScrollRestorationCache(): ScrollRestorationCache | null {
     // This setter is simply to make sure that we set the sessionStorage right
     // after the state is updated. It doesn't necessarily need to be a functional
     // update.
-    set: (updater) => (
-      (state = functionalUpdate(updater, state) || state),
-      safeSessionStorage.setItem(storageKey, JSON.stringify(state))
-    ),
+    set: (updater) => {
+      state = functionalUpdate(updater, state) || state
+      try {
+        safeSessionStorage.setItem(storageKey, JSON.stringify(state))
+      } catch {
+        console.warn(
+          '[ts-router] Could not persist scroll restoration state to sessionStorage.',
+        )
+      }
+    },
   }
 }
 
+/** In-memory handle to the persisted scroll restoration cache. */
 export const scrollRestorationCache = createScrollRestorationCache()
 
 /**
@@ -79,10 +90,14 @@ export const scrollRestorationCache = createScrollRestorationCache()
  * The `location.href` is used as a fallback to support the use case where the location state is not available like the initial render.
  */
 
+/**
+ * Default scroll restoration cache key: location state key or full href.
+ */
 export const defaultGetScrollRestorationKey = (location: ParsedLocation) => {
   return location.state.__TSR_key! || location.href
 }
 
+/** Best-effort nth-child CSS selector for a given element. */
 export function getCssSelector(el: any): string {
   const path = []
   let parent: HTMLElement
@@ -200,8 +215,10 @@ export function restoreScroll({
   ignoreScroll = false
 }
 
+/** Setup global listeners and hooks to support scroll restoration. */
+/** Setup global listeners and hooks to support scroll restoration. */
 export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
-  if (!scrollRestorationCache && !router.isServer) {
+  if (!scrollRestorationCache && !(isServer ?? router.isServer)) {
     return
   }
   const shouldScrollRestoration =
@@ -212,7 +229,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   }
 
   if (
-    router.isServer ||
+    (isServer ?? router.isServer) ||
     router.isScrollRestorationSetup ||
     !scrollRestorationCache
   ) {
@@ -364,6 +381,11 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
  *
  * Provides hash scrolling for programmatic navigation when default browser handling is prevented.
  * @param router The router instance containing current location and state
+ */
+/**
+ * @private
+ * Handles hash-based scrolling after navigation completes.
+ * To be used in framework-specific Transitioners.
  */
 export function handleHashScroll(router: AnyRouter) {
   if (typeof document !== 'undefined' && (document as any).querySelector) {

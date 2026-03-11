@@ -4,7 +4,7 @@ import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
 import type { JSX } from 'solid-js'
 import type { AnyRouter } from '@tanstack/router-core'
 
-interface TanStackRouterDevtoolsPanelCoreOptions {
+export interface TanStackRouterDevtoolsPanelCoreOptions {
   /**
    * The standard React style object used to style a component with inline styles
    */
@@ -37,7 +37,7 @@ interface TanStackRouterDevtoolsPanelCoreOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-class TanStackRouterDevtoolsPanelCore {
+export class TanStackRouterDevtoolsPanelCore {
   #router: any
   #routerState: any
   #style: any
@@ -158,5 +158,3 @@ class TanStackRouterDevtoolsPanelCore {
     }
   }
 }
-
-export { TanStackRouterDevtoolsPanelCore }

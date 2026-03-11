@@ -6,6 +6,7 @@ import { NotFound } from './components/NotFound'
 export function getRouter() {
   const router = createRouter({
     routeTree,
+    basepath: '/test/',
     defaultPreload: 'intent',
     defaultErrorComponent: DefaultCatchBoundary,
     defaultNotFoundComponent: () => <NotFound />,

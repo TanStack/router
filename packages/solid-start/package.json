@@ -1,12 +1,12 @@
 {
   "name": "@tanstack/solid-start",
-  "version": "1.132.9",
+  "version": "1.166.7",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TanStack/router.git",
+    "url": "git+https://github.com/TanStack/router.git",
     "directory": "packages/solid-start"
   },
   "homepage": "https://tanstack.com/start",
@@ -44,6 +44,24 @@
         "default": "./dist/esm/client.js"
       }
     },
+    "./client-rpc": {
+      "import": {
+        "types": "./dist/esm/client-rpc.d.ts",
+        "default": "./dist/esm/client-rpc.js"
+      }
+    },
+    "./server-rpc": {
+      "import": {
+        "types": "./dist/esm/server-rpc.d.ts",
+        "default": "./dist/esm/server-rpc.js"
+      }
+    },
+    "./ssr-rpc": {
+      "import": {
+        "types": "./dist/esm/ssr-rpc.d.ts",
+        "default": "./dist/esm/ssr-rpc.js"
+      }
+    },
     "./server": {
       "import": {
         "types": "./dist/esm/server.d.ts",
@@ -62,6 +80,18 @@
         "default": "./dist/default-entry/esm/server.js"
       }
     },
+    "./server-only": {
+      "import": {
+        "types": "./dist/esm/server-only.d.ts",
+        "default": "./dist/esm/server-only.js"
+      }
+    },
+    "./client-only": {
+      "import": {
+        "types": "./dist/esm/client-only.d.ts",
+        "default": "./dist/esm/client-only.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -78,11 +108,12 @@
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/solid-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
+    "@tanstack/start-server-core": "workspace:*",
     "pathe": "^2.0.3"
   },
   "devDependencies": {
     "@tanstack/router-utils": "workspace:*",
-    "vite": "^7.1.1"
+    "vite": "*"
   },
   "peerDependencies": {
     "solid-js": ">=1.0.0",

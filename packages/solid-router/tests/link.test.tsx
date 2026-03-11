@@ -10,11 +10,13 @@ import {
 
 import { z } from 'zod'
 
+import { trailingSlashOptions } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
   RouterProvider,
   createBrowserHistory,
+  createHashHistory,
   createLink,
   createMemoryHistory,
   createRootRoute,
@@ -22,6 +24,7 @@ import {
   createRoute,
   createRouteMask,
   createRouter,
+  getRouteApi,
   redirect,
   retainSearchParams,
   stripSearchParams,
@@ -390,6 +393,10 @@ describe('Link', () => {
       // navigate to /?foo=bar
       fireEvent.click(indexFooBarLink)
 
+      await waitFor(() => {
+        expect(indexFooBarLink).toHaveClass('active')
+      })
+
       expect(indexExactLink).toHaveClass('inactive')
       expect(indexExactLink).not.toHaveClass('active')
       expect(indexExactLink).toHaveAttribute('href', '/')
@@ -444,6 +451,440 @@ describe('Link', () => {
 
     test('activeOptions.explicitUndefined=true', async () => {
       await runTest({ explicitUndefined: true })
+    })
+  })
+
+  describe('active and href updates', () => {
+    const createControlledPromise = () => {
+      let resolve!: () => void
+      const promise = new Promise<void>((r) => {
+        resolve = r
+      })
+
+      return { promise, resolve }
+    }
+
+    test('always reports external links as inactive', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <Link to="https://example.com">
+            {({ isActive }) => (
+              <span data-testid="external-link-active">{String(isActive)}</span>
+            )}
+          </Link>
+        ),
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        history,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      expect(
+        await screen.findByTestId('external-link-active'),
+      ).toHaveTextContent('false')
+    })
+
+    test('updates exact and fuzzy active state before the next route renders', async () => {
+      const postLoader = createControlledPromise()
+
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <Link
+              data-testid="posts-exact"
+              to="/posts"
+              activeOptions={{ exact: true }}
+              activeProps={{ class: 'active' }}
+              inactiveProps={{ class: 'inactive' }}
+            >
+              Posts exact
+            </Link>
+            <Link
+              data-testid="posts-fuzzy"
+              to="/posts"
+              activeProps={{ class: 'active' }}
+              inactiveProps={{ class: 'inactive' }}
+            >
+              Posts fuzzy
+            </Link>
+            <Link
+              data-testid="post-exact"
+              to="/posts/$postId"
+              params={{ postId: '1' }}
+              activeOptions={{ exact: true }}
+              activeProps={{ class: 'active' }}
+              inactiveProps={{ class: 'inactive' }}
+            >
+              Post exact
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'posts',
+        component: () => (
+          <>
+            <h1>Posts</h1>
+            <Link
+              data-testid="open-post"
+              to="/posts/$postId"
+              params={{ postId: '1' }}
+            >
+              Open post
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+
+      const postRoute = createRoute({
+        getParentRoute: () => postsRoute,
+        path: '$postId',
+        loader: () => postLoader.promise,
+        component: () => <h1>Post detail</h1>,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([postsRoute.addChildren([postRoute])]),
+        history: createMemoryHistory({ initialEntries: ['/posts'] }),
+        defaultPendingMs: 0,
+        defaultPendingComponent: () => <p>Loading...</p>,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const postsExact = await screen.findByTestId('posts-exact')
+      const postsFuzzy = await screen.findByTestId('posts-fuzzy')
+      const postExact = await screen.findByTestId('post-exact')
+
+      expect(postsExact).toHaveClass('active')
+      expect(postsFuzzy).toHaveClass('active')
+      expect(postExact).toHaveClass('inactive')
+
+      fireEvent.click(screen.getByTestId('open-post'))
+
+      expect(await screen.findByText('Loading...')).toBeInTheDocument()
+      expect(screen.queryByText('Post detail')).not.toBeInTheDocument()
+      expect(router.state.location.pathname).toBe('/posts/1')
+      expect(postsExact).toHaveClass('inactive')
+      expect(postsFuzzy).toHaveClass('active')
+      expect(postExact).toHaveClass('active')
+
+      postLoader.resolve()
+
+      expect(await screen.findByText('Post detail')).toBeInTheDocument()
+    })
+
+    test('updates exact active state and href when only params change with params=true', async () => {
+      const postLoader = createControlledPromise()
+      let postLoadCount = 0
+
+      const rootRoute = createRootRoute({
+        component: () => {
+          const params = useParams({ strict: false })
+          const nextPostId = params().postId === '1' ? '2' : '1'
+
+          return (
+            <>
+              <Link
+                data-testid="current-post"
+                from="/posts/$postId"
+                to="."
+                params={true}
+                activeOptions={{ exact: true }}
+                activeProps={{ class: 'active' }}
+                inactiveProps={{ class: 'inactive' }}
+              >
+                Current post
+              </Link>
+              <Link
+                data-testid="switch-post"
+                from="/posts/$postId"
+                to="."
+                params={{ postId: nextPostId }}
+              >
+                Switch post
+              </Link>
+              <Outlet />
+            </>
+          )
+        },
+      })
+
+      const postRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/$postId',
+        loader: () => {
+          postLoadCount += 1
+          return postLoadCount === 1 ? Promise.resolve() : postLoader.promise
+        },
+        component: () => {
+          const params = useParams({ strict: false })
+          return <h1>{`Post ${params().postId}`}</h1>
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([postRoute]),
+        history: createMemoryHistory({ initialEntries: ['/posts/1'] }),
+        defaultPendingMs: 0,
+        defaultPendingComponent: () => <p>Loading...</p>,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const currentPost = await screen.findByTestId('current-post')
+      expect(await screen.findByText('Post 1')).toBeInTheDocument()
+      expect(currentPost).toHaveClass('active')
+      expect(currentPost).toHaveAttribute('href', '/posts/1')
+
+      fireEvent.click(screen.getByTestId('switch-post'))
+
+      expect(await screen.findByText('Loading...')).toBeInTheDocument()
+      expect(screen.queryByText('Post 2')).not.toBeInTheDocument()
+      expect(router.state.location.pathname).toBe('/posts/2')
+      expect(currentPost).toHaveClass('active')
+
+      await waitFor(() => {
+        expect(currentPost).toHaveAttribute('href', '/posts/2')
+      })
+
+      postLoader.resolve()
+
+      expect(await screen.findByText('Post 2')).toBeInTheDocument()
+    })
+
+    test('updates search-sensitive active state immediately with and without search=true', async () => {
+      const postsLoader = createControlledPromise()
+      let postsLoadCount = 0
+
+      const rootRoute = createRootRoute({
+        component: () => {
+          const search = useSearch({ strict: false })
+          const nextPage = Number(search().page ?? 1) === 1 ? 2 : 1
+
+          return (
+            <>
+              <Link
+                data-testid="static-search"
+                to="/posts"
+                search={{ page: 1 }}
+                activeOptions={{ exact: true, includeSearch: true }}
+                activeProps={{ class: 'active' }}
+                inactiveProps={{ class: 'inactive' }}
+              >
+                Static search
+              </Link>
+              <Link
+                data-testid="current-search"
+                to="/posts"
+                search={true}
+                activeOptions={{ exact: true, includeSearch: true }}
+                activeProps={{ class: 'active' }}
+                inactiveProps={{ class: 'inactive' }}
+              >
+                Current search
+              </Link>
+              <Link
+                data-testid="switch-search"
+                from="/posts"
+                to="."
+                search={{ page: nextPage }}
+              >
+                Switch search
+              </Link>
+              <Outlet />
+            </>
+          )
+        },
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+        validateSearch: (input: Record<string, unknown>) => ({
+          page: Number(input.page ?? 1),
+        }),
+        loaderDeps: ({ search }) => ({ page: search.page }),
+        loader: () => {
+          postsLoadCount += 1
+          return postsLoadCount === 1 ? Promise.resolve() : postsLoader.promise
+        },
+        component: () => {
+          const search = useSearch({ strict: false })
+          return <h1>{`Posts ${search().page}`}</h1>
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([postsRoute]),
+        history: createMemoryHistory({ initialEntries: ['/posts?page=1'] }),
+        defaultPendingMs: 0,
+        defaultPendingComponent: () => <p>Loading...</p>,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const staticSearch = await screen.findByTestId('static-search')
+      const currentSearch = await screen.findByTestId('current-search')
+
+      expect(await screen.findByText('Posts 1')).toBeInTheDocument()
+      expect(staticSearch).toHaveClass('active')
+      expect(currentSearch).toHaveClass('active')
+      expect(currentSearch).toHaveAttribute('href', '/posts?page=1')
+
+      fireEvent.click(screen.getByTestId('switch-search'))
+
+      expect(await screen.findByText('Loading...')).toBeInTheDocument()
+      expect(screen.queryByText('Posts 2')).not.toBeInTheDocument()
+      expect(router.state.location.search).toEqual({ page: 2 })
+      expect(staticSearch).toHaveClass('inactive')
+      expect(currentSearch).toHaveClass('active')
+
+      await waitFor(() => {
+        expect(currentSearch).toHaveAttribute('href', '/posts?page=2')
+      })
+
+      postsLoader.resolve()
+
+      expect(await screen.findByText('Posts 2')).toBeInTheDocument()
+    })
+
+    test('updates hash-sensitive active state immediately with and without hash=true', async () => {
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <Link
+              data-testid="static-hash"
+              to="/posts"
+              hash="first"
+              activeOptions={{ exact: true, includeHash: true }}
+              activeProps={{ class: 'active' }}
+              inactiveProps={{ class: 'inactive' }}
+            >
+              Static hash
+            </Link>
+            <Link
+              data-testid="current-hash"
+              to="/posts"
+              hash={true}
+              activeOptions={{ exact: true, includeHash: true }}
+              activeProps={{ class: 'active' }}
+              inactiveProps={{ class: 'inactive' }}
+            >
+              Current hash
+            </Link>
+            <Link data-testid="switch-hash" from="/posts" to="." hash="second">
+              Switch hash
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+        component: () => <h1>Posts</h1>,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([postsRoute]),
+        history: createMemoryHistory({ initialEntries: ['/posts#first'] }),
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const staticHash = await screen.findByTestId('static-hash')
+      const currentHash = await screen.findByTestId('current-hash')
+
+      expect(staticHash).toHaveClass('active')
+      expect(currentHash).toHaveClass('active')
+      expect(currentHash).toHaveAttribute('href', '/posts#first')
+
+      await fireEvent.click(screen.getByTestId('switch-hash'))
+
+      expect(router.state.location.hash).toBe('second')
+      expect(staticHash).toHaveClass('inactive')
+      expect(currentHash).toHaveClass('active')
+
+      await waitFor(() => {
+        expect(currentHash).toHaveAttribute('href', '/posts#second')
+      })
+    })
+
+    test('eventually updates relative hrefs when the current route changes', async () => {
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <Link data-testid="relative-foo" to="./foo">
+              Relative foo
+            </Link>
+            <Link data-testid="to-posts" to="/posts">
+              To posts
+            </Link>
+            <Link data-testid="to-invoices" to="/invoices">
+              To invoices
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+        component: () => <h1>Posts</h1>,
+      })
+
+      const postsFooRoute = createRoute({
+        getParentRoute: () => postsRoute,
+        path: 'foo',
+        component: () => <h1>Posts foo</h1>,
+      })
+
+      const invoicesRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/invoices',
+        component: () => <h1>Invoices</h1>,
+      })
+
+      const invoicesFooRoute = createRoute({
+        getParentRoute: () => invoicesRoute,
+        path: 'foo',
+        component: () => <h1>Invoices foo</h1>,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([
+          postsRoute.addChildren([postsFooRoute]),
+          invoicesRoute.addChildren([invoicesFooRoute]),
+        ]),
+        history: createMemoryHistory({ initialEntries: ['/posts'] }),
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const relativeFoo = await screen.findByTestId('relative-foo')
+      expect(await screen.findByText('Posts')).toBeInTheDocument()
+      expect(relativeFoo).toHaveAttribute('href', '/posts/foo')
+
+      fireEvent.click(screen.getByTestId('to-invoices'))
+
+      expect(await screen.findByText('Invoices')).toBeInTheDocument()
+
+      await waitFor(() => {
+        expect(relativeFoo).toHaveAttribute('href', '/invoices/foo')
+      })
     })
   })
 
@@ -672,6 +1113,123 @@ describe('Link', () => {
     expect(pageZero).toBeInTheDocument()
   })
 
+  test('when navigation to . from /posts while updating search from /', async () => {
+    const RootComponent = () => {
+      return (
+        <>
+          <div data-testid="root-nav">
+            <Link
+              to="."
+              search={{ page: 2, filter: 'inactive' }}
+              data-testid="update-search"
+            >
+              Update Search
+            </Link>
+          </div>
+          <Outlet />
+        </>
+      )
+    }
+
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link
+              to="/posts"
+              search={{ page: 1, filter: 'active' }}
+              data-testid="to-posts"
+            >
+              Go to Posts
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      const search = useSearch({ strict: false })
+      return (
+        <>
+          <h1>Posts</h1>
+          <span data-testid="current-page">Page: {search().page}</span>
+          <span data-testid="current-filter">Filter: {search().filter}</span>
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      validateSearch: (input: Record<string, unknown>) => {
+        return {
+          page: input.page ? Number(input.page) : 1,
+          filter: (input.filter as string) || 'all',
+        }
+      },
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    // Start at index page
+    const toPostsLink = await screen.findByTestId('to-posts')
+    expect(toPostsLink).toHaveAttribute('href', '/posts?page=1&filter=active')
+
+    // Navigate to posts with initial search params
+    fireEvent.click(toPostsLink)
+
+    // Verify we're on posts with initial search
+    const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
+    expect(postsHeading).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/posts')
+    expect(window.location.search).toBe('?page=1&filter=active')
+
+    const currentPage = await screen.findByTestId('current-page')
+    const currentFilter = await screen.findByTestId('current-filter')
+    expect(currentPage).toHaveTextContent('Page: 1')
+    expect(currentFilter).toHaveTextContent('Filter: active')
+
+    // Navigate to current route (.) with updated search
+    const updateSearchLink = await screen.findByTestId('update-search')
+    expect(updateSearchLink).toHaveAttribute(
+      'href',
+      '/posts?page=2&filter=inactive',
+    )
+
+    fireEvent.click(updateSearchLink)
+
+    // Wait for navigation to complete and search params to update
+    await waitFor(() => {
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
+
+    const updatedPage = await screen.findByTestId('current-page')
+    const updatedFilter = await screen.findByTestId('current-filter')
+
+    // Verify search was updated
+    // Wait for navigation to complete and search params to update
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/posts')
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
+
+    expect(updatedPage).toHaveTextContent('Page: 2')
+    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+  })
+
   test('when navigation to . from /posts while updating search from / and using base path', async () => {
     const RootComponent = () => {
       return (
@@ -772,7 +1330,12 @@ describe('Link', () => {
       '/Dashboard/posts?page=2&filter=inactive',
     )
 
-    fireEvent.click(updateSearchLink)
+    await fireEvent.click(updateSearchLink)
+
+    // Wait for navigation to complete and search params to update
+    await waitFor(() => {
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
 
     await screen.findByTestId('current-page')
     // Verify search was updated
@@ -1361,7 +1924,11 @@ describe('Link', () => {
         return (
           <>
             <h1>Index</h1>
-            <Link to="/posts/$postId" params={{ postId: 'id1' }}>
+            <Link
+              to="/posts/$postId"
+              params={{ postId: 'id1' }}
+              preloadDelay={0}
+            >
               To first post
             </Link>
           </>
@@ -1415,6 +1982,118 @@ describe('Link', () => {
 
     const paramText = await screen.findByText('Params: id1')
     expect(paramText).toBeInTheDocument()
+  })
+
+  test('keeps a relative link active when changing inherited params (issue #5655)', async () => {
+    const rootRoute = createRootRoute()
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/post/$postId',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = () => params().postId
+
+        return (
+          <>
+            <Link
+              data-testid="step1-link"
+              from="/post/$postId"
+              to="step1"
+              activeProps={{ class: 'active' }}
+            >
+              Step 1
+            </Link>
+            <Link
+              data-testid="step2-link"
+              from="/post/$postId"
+              to="step2"
+              params={{ postId: postId() }}
+              activeProps={{ class: 'active' }}
+            >
+              Step 2
+            </Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const step1Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step1',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = () => params().postId
+        const otherPostId = () => (postId() === '1' ? '2' : '1')
+
+        return (
+          <>
+            <span>{`Post ${postId()} step1`}</span>
+            <Link
+              data-testid="switch-post-link"
+              from="/post/$postId/step1"
+              to="."
+              params={{ postId: otherPostId() }}
+            >{`Go to post ${otherPostId()}`}</Link>
+          </>
+        )
+      },
+    })
+
+    const step2Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step2',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = () => params().postId
+        const otherPostId = () => (postId() === '1' ? '2' : '1')
+
+        return (
+          <>
+            <span>{`Post ${postId()} step2`}</span>
+            <Link
+              data-testid="switch-post-link"
+              from="/post/$postId/step2"
+              to="."
+              params={{ postId: otherPostId() }}
+            >{`Go to post ${otherPostId()}`}</Link>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        postRoute.addChildren([step1Route, step2Route]),
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ['/post/1/step1'],
+      }),
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    expect(await screen.findByText('Post 1 step1')).toBeInTheDocument()
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('switch-post-link'))
+
+    expect(await screen.findByText('Post 2 step1')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step1')
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('step2-link'))
+
+    expect(await screen.findByText('Post 2 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('switch-post-link'))
+
+    expect(await screen.findByText('Post 1 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/1/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
   })
 
   test('when navigating from /posts to ./$postId', async () => {
@@ -1513,6 +2192,133 @@ describe('Link', () => {
     expect(paramText).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/posts/id1')
+  })
+
+  test('when navigating from /posts/$postId to "/"', async () => {
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <Link to="/" data-testid="home-link">
+              Home
+            </Link>
+            <Link to="/posts" data-testid="posts-link">
+              Posts
+            </Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1 data-testid="home-heading">Index</h1>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <>
+          <h1>Posts</h1>
+          <Link
+            to="/posts/$postId"
+            params={{ postId: 'id1' }}
+            data-testid="post1-link"
+          >
+            To first post
+          </Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      component: PostsComponent,
+    })
+
+    const PostsIndexComponent = () => {
+      return (
+        <>
+          <h1 data-testid="posts-index-heading">Posts Index</h1>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsIndexRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '/',
+      component: PostsIndexComponent,
+    })
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span data-testid="post-param">Params: {params().postId}</span>
+        </>
+      )
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postId',
+      component: PostComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        postsRoute.addChildren([postsIndexRoute, postRoute]),
+      ]),
+      history,
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const postsLink = await screen.findByTestId('posts-link')
+
+    expect(postsLink).toHaveAttribute('href', '/posts')
+
+    fireEvent.click(postsLink)
+
+    const postsText = await screen.findByTestId('posts-index-heading')
+    expect(postsText).toBeInTheDocument()
+
+    const postLink = await screen.findByTestId('post1-link')
+
+    expect(postLink).toHaveAttribute('href', '/posts/id1')
+
+    fireEvent.click(postLink)
+
+    const paramText = await screen.findByTestId('post-param')
+    expect(paramText).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts/id1')
+
+    const homeLink = await screen.findByTestId('home-link')
+
+    const consoleWarnSpy = vi.spyOn(console, 'warn')
+
+    fireEvent.click(homeLink)
+
+    const homeHeading = await screen.findByTestId('home-heading')
+
+    expect(window.location.pathname).toBe('/')
+    expect(homeHeading).toBeInTheDocument()
+
+    expect(consoleWarnSpy).not.toHaveBeenCalled()
+
+    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts to ../posts/$postId', async () => {
@@ -1811,8 +2617,14 @@ describe('Link', () => {
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
-      path: '$postId/',
+      path: '$postId',
       component: PostComponent,
+    })
+
+    const postIndexRoute = createRoute({
+      getParentRoute: () => postRoute,
+      path: '/',
+      component: () => <div>Post Index</div>,
     })
 
     const DetailsComponent = () => {
@@ -1847,7 +2659,11 @@ describe('Link', () => {
         indexRoute,
         layoutRoute.addChildren([
           postsRoute.addChildren([
-            postRoute.addChildren([detailsRoute, informationRoute]),
+            postRoute.addChildren([
+              postIndexRoute,
+              detailsRoute,
+              informationRoute,
+            ]),
           ]),
         ]),
       ]),
@@ -1883,6 +2699,192 @@ describe('Link', () => {
     expect(paramsText2).toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
+  })
+
+  test('when navigating from /dashboard/posts/$postId to /dashboard/users', async () => {
+    const ErrorComponent = vi.fn(() => <div>Something went wrong!</div>)
+
+    const rootRoute = createRootRoute({
+      errorComponent: ErrorComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/dashboard" data-testid="dashboard-link">
+              dashboard
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const dashboardRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'dashboard',
+      component: () => {
+        return (
+          <>
+            <h1 data-testid="dashboard-heading">dashboard</h1>
+            <Link to="/dashboard/posts" data-testid="posts-link">
+              posts
+            </Link>
+            <Link to="/dashboard/users" data-testid="users-link">
+              users
+            </Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <>
+          <h1 data-testid="posts-heading">Posts</h1>
+          <Link
+            to="/dashboard/posts/$postid"
+            data-testid="post1-link"
+            params={{ postid: 'id1' }}
+          >
+            Post1
+          </Link>
+          <Link
+            to="/dashboard/posts/$postid"
+            data-testid="post2-link"
+            params={{ postid: 'id2' }}
+          >
+            Post2
+          </Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const UsersComponent = () => {
+      return (
+        <>
+          <h1 data-testid="users-heading">Users</h1>
+          <Link
+            to="/dashboard/users/$userid"
+            data-testid="user1-link"
+            params={{ userid: 'id1' }}
+          >
+            User1
+          </Link>
+          <Link
+            to="/dashboard/users/$userid"
+            data-testid="user2-link"
+            params={{ userid: 'id2' }}
+          >
+            User2
+          </Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => dashboardRoute,
+      path: 'posts',
+      component: PostsComponent,
+    })
+
+    const usersRoute = createRoute({
+      getParentRoute: () => dashboardRoute,
+      path: 'users',
+      component: UsersComponent,
+    })
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span data-testid="post-component">Params: {params().postId}</span>
+        </>
+      )
+    }
+
+    const UserComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span data-testid="user-component">Params: {params().userId}</span>
+        </>
+      )
+    }
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postid',
+      component: PostComponent,
+    })
+
+    const userRoute = createRoute({
+      getParentRoute: () => usersRoute,
+      path: '$userid',
+      component: UserComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        dashboardRoute.addChildren([
+          postsRoute.addChildren([postRoute]),
+          usersRoute.addChildren([userRoute]),
+        ]),
+      ]),
+      history,
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const dashboardLink = await screen.findByTestId('dashboard-link')
+
+    fireEvent.click(dashboardLink)
+
+    const dashboardHeading = await screen.findByTestId('dashboard-heading')
+
+    expect(dashboardHeading).toBeInTheDocument()
+
+    const postsLink = await screen.findByTestId('posts-link')
+    fireEvent.click(postsLink)
+
+    const postsHeading = await screen.findByTestId('posts-heading')
+
+    expect(window.location.pathname).toEqual('/dashboard/posts')
+    expect(postsHeading).toBeInTheDocument()
+
+    const post1Link = await screen.findByTestId('post1-link')
+    fireEvent.click(post1Link)
+    const post1Heading = await screen.findByTestId('post-component')
+
+    expect(window.location.pathname).toEqual('/dashboard/posts/id1')
+    expect(post1Heading).toBeInTheDocument()
+
+    const consoleWarnSpy = vi.spyOn(console, 'warn')
+
+    const usersLink = await screen.findByTestId('users-link')
+    fireEvent.click(usersLink)
+
+    const usersHeading = await screen.findByTestId('users-heading')
+
+    expect(window.location.pathname).toEqual('/dashboard/users')
+    expect(usersHeading).toBeInTheDocument()
+
+    const user1Link = await screen.findByTestId('user1-link')
+    fireEvent.click(user1Link)
+    const user1Heading = await screen.findByTestId('user-component')
+
+    expect(window.location.pathname).toEqual('/dashboard/users/id1')
+    expect(user1Heading).toBeInTheDocument()
+
+    expect(consoleWarnSpy).not.toHaveBeenCalled()
+
+    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts/$postId to ./info and the current route is /posts/$postId/details', async () => {
@@ -3917,6 +4919,114 @@ describe('Link', () => {
     expect(mock).toHaveBeenCalledTimes(1)
   })
 
+  test.each([undefined, false, 'render', 'viewport'] as const)(
+    'Link.preload="%s" should not preload on focus, hover, or touchstart',
+    async (preloadMode) => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <>
+            <h1>Index Heading</h1>
+            <Link
+              to="/about"
+              {...(preloadMode === undefined ? {} : { preload: preloadMode })}
+            >
+              About Link
+            </Link>
+          </>
+        ),
+      })
+      const aboutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+        component: () => <h1>About Heading</h1>,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([aboutRoute, indexRoute]),
+        defaultPreload: false,
+        defaultPreloadDelay: 0,
+        history,
+      })
+
+      const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+      render(() => <RouterProvider router={router} />)
+
+      const aboutLink = await screen.findByRole('link', { name: 'About Link' })
+      expect(aboutLink).toBeInTheDocument()
+
+      if (preloadMode === 'render') {
+        await waitFor(() =>
+          expect(preloadRouteSpy.mock.calls.length).toBeGreaterThan(0),
+        )
+      }
+
+      const baselineCalls = preloadRouteSpy.mock.calls.length
+
+      fireEvent.focus(aboutLink)
+      fireEvent.mouseOver(aboutLink)
+      fireEvent.touchStart(aboutLink)
+
+      await sleep(100)
+      expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls)
+    },
+  )
+
+  test('Link.preload="intent" should preload on focus, hover, and touchstart', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link to="/about" preload="intent">
+            About Link
+          </Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <h1>About Heading</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([aboutRoute, indexRoute]),
+      defaultPreload: false,
+      defaultPreloadDelay: 0,
+      history,
+    })
+
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(() => <RouterProvider router={router} />)
+
+    const aboutLink = await screen.findByRole('link', { name: 'About Link' })
+    expect(aboutLink).toBeInTheDocument()
+
+    const baselineCalls = preloadRouteSpy.mock.calls.length
+
+    fireEvent.focus(aboutLink)
+    await waitFor(() =>
+      expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 1),
+    )
+
+    fireEvent.mouseOver(aboutLink)
+    await waitFor(() =>
+      expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 2),
+    )
+
+    fireEvent.touchStart(aboutLink)
+    await waitFor(() =>
+      expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 3),
+    )
+  })
+
   test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
@@ -5084,6 +6194,100 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
   },
 )
 
+describe('splat routes with empty splat', () => {
+  test.each(Object.values(trailingSlashOptions))(
+    'should handle empty _splat parameter with trailingSlash: %s',
+    async (trailingSlash) => {
+      const tail = trailingSlash === 'always' ? '/' : ''
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <>
+              <h1>Index Route</h1>
+              <Link
+                data-testid="splat-link-with-empty-splat"
+                to="/splat/$"
+                params={{ _splat: '' }}
+                activeProps={{ class: 'active' }}
+              >
+                Link to splat with _splat value
+              </Link>
+              <Link
+                data-testid="splat-link-with-undefined-splat"
+                to="/splat/$"
+                params={{ _splat: undefined }}
+                activeProps={{ class: 'active' }}
+              >
+                Link to splat with undefined _splat
+              </Link>
+              <Link
+                data-testid="splat-link-with-no-splat"
+                to="/splat/$"
+                params={{}}
+                activeProps={{ class: 'active' }}
+              >
+                Link to splat with no _splat at all
+              </Link>
+            </>
+          )
+        },
+      })
+
+      const splatRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'splat/$',
+        component: () => {
+          return <h1>Splat Route</h1>
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, splatRoute]),
+        history,
+        trailingSlash,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const splatLinkWithEmptySplat = await screen.findByTestId(
+        'splat-link-with-empty-splat',
+      )
+      const splatLinkWithUndefinedSplat = await screen.findByTestId(
+        'splat-link-with-undefined-splat',
+      )
+      const splatLinkWithNoSplat = await screen.findByTestId(
+        'splat-link-with-no-splat',
+      )
+
+      // When _splat has a value, it should follow the trailingSlash setting
+      await waitFor(() => {
+        expect(splatLinkWithEmptySplat.getAttribute('href')).toBe(
+          `/splat${tail}`,
+        )
+        expect(splatLinkWithUndefinedSplat.getAttribute('href')).toBe(
+          `/splat${tail}`,
+        )
+        expect(splatLinkWithNoSplat.getAttribute('href')).toBe(`/splat${tail}`)
+      })
+
+      // Click the link with empty _splat and ensure the route matches
+      fireEvent.click(splatLinkWithEmptySplat)
+
+      await waitFor(async () => {
+        expect(splatLinkWithEmptySplat).toHaveClass('active')
+        expect(splatLinkWithUndefinedSplat).toHaveClass('active')
+        expect(splatLinkWithNoSplat).toHaveClass('active')
+        expect(window.location.pathname).toBe(`/splat${tail}`)
+        expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      })
+    },
+  )
+})
+
 describe('relative links to current route', () => {
   test.each([true, false])(
     'should navigate to current route when using "." in nested route structure from Index Route with trailingSlash: %s',
@@ -5671,6 +6875,398 @@ describe('relative links to from route', () => {
         ).toBeInTheDocument()
         expect(window.location.pathname).toEqual(`/posts/2${tail}`)
       })
+    },
+  )
+})
+
+describe('when on /posts/$postId and navigating to ../ with default `from` /posts', () => {
+  async function runTest(navigateVia: 'Route' | 'RouteApi') {
+    const rootRoute = createRootRoute()
+
+    const IndexComponent = () => {
+      return (
+        <>
+          <h1 data-testid="index-heading">Index</h1>
+          <Link data-testid="posts-link" to="/posts">
+            Posts
+          </Link>
+          <Link
+            data-testid="index-to-first-post-link"
+            to="/posts/$postId/details"
+            params={{ postId: 'id1' }}
+          >
+            To first post
+          </Link>
+        </>
+      )
+    }
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: IndexComponent,
+    })
+
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      component: () => {
+        return (
+          <>
+            <h1>Layout</h1>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      const LinkViaRoute = () => (
+        <Link from={postsRoute.fullPath} to="../" data-testid="link-to-home">
+          To Home
+        </Link>
+      )
+
+      const LinkViaRouteApi = () => {
+        const RouteApiLink = postsRouteApi.Link
+        return (
+          <RouteApiLink to="../" data-testid="link-to-home">
+            To Home
+          </RouteApiLink>
+        )
+      }
+
+      return (
+        <>
+          <h1>Posts</h1>
+          {navigateVia === 'Route' ? <LinkViaRoute /> : <LinkViaRouteApi />}
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: 'posts',
+      component: PostsComponent,
+    })
+
+    const postsRouteApi = getRouteApi('/_layout/posts')
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span>Params: {params().postId}</span>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postId',
+      component: PostComponent,
+    })
+
+    const PostIndexComponent = () => {
+      return (
+        <>
+          <h1>Post Index</h1>
+        </>
+      )
+    }
+
+    const postIndexRoute = createRoute({
+      getParentRoute: () => postRoute,
+      path: '/',
+      component: PostIndexComponent,
+    })
+
+    const DetailsComponent = () => {
+      return (
+        <>
+          <h1 data-testid="details-heading">Details!</h1>
+        </>
+      )
+    }
+
+    const detailsRoute = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'details',
+      component: DetailsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        layoutRoute.addChildren([
+          postsRoute.addChildren([
+            postRoute.addChildren([postIndexRoute, detailsRoute]),
+          ]),
+        ]),
+      ]),
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const postsButton = await screen.findByTestId('index-to-first-post-link')
+
+    fireEvent.click(postsButton)
+
+    expect(await screen.findByTestId('details-heading')).toBeInTheDocument()
+
+    expect(window.location.pathname).toEqual('/posts/id1/details')
+
+    const homeButton = await screen.findByTestId('link-to-home')
+
+    fireEvent.click(homeButton)
+
+    expect(await screen.findByTestId('index-heading')).toBeInTheDocument()
+    expect(window.location.pathname).toEqual('/')
+  }
+
+  test('Route', () => runTest('Route'))
+  test('RouteApi', () => runTest('RouteApi'))
+})
+
+describe('rewrite', () => {
+  test('renders hard link when rewrite points to different origin', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link data-testid="link-to-index" to="/">
+              Index
+            </Link>
+            <Link data-testid="link-to-info" to="/info">
+              Info
+            </Link>
+            <Link data-testid="link-to-app" to="/app">
+              App
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const infoRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/info',
+      component: () => {
+        return (
+          <>
+            <h1>Info</h1>
+          </>
+        )
+      },
+    })
+
+    const appRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/app',
+      component: () => {
+        return (
+          <>
+            <h1>App</h1>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, infoRoute, appRoute]),
+      history,
+      origin: 'http://example.com',
+      rewrite: {
+        input: ({ url }) => {
+          if (url.href.startsWith('http://app.example.com')) {
+            return url.href.replace('http://example.com/ap', '')
+          }
+          return undefined
+        },
+        output: ({ url }) => {
+          if (url.pathname.startsWith('/app')) {
+            ;((url.hostname = 'app.example.com'),
+              (url.pathname = url.pathname.replace(/^\/app/, '')))
+          }
+          return url
+        },
+      },
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const infoLink = await screen.findByTestId('link-to-info')
+    expect(infoLink).toHaveAttribute('href', '/info')
+
+    const appLink = await screen.findByTestId('link-to-app')
+    expect(appLink).toHaveAttribute('href', 'http://app.example.com/')
+  })
+})
+
+describe('hash history with target="_blank" links', () => {
+  test('should generate correct href for target="_blank" links in hash history mode', async () => {
+    const hashHistory = createHashHistory()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link data-testid="posts-link" to="/posts">
+              Posts (same tab)
+            </Link>
+            <Link data-testid="about-blank-link" to="/about" target="_blank">
+              About (new tab)
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <h1>About</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute, aboutRoute]),
+      history: hashHistory,
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const postsLink = await screen.findByTestId('posts-link')
+    expect(postsLink).toHaveAttribute('href', '/#/posts')
+    expect(postsLink).not.toHaveAttribute('target', '_blank')
+
+    const postsBlankLink = await screen.findByTestId('about-blank-link')
+    expect(postsBlankLink).toHaveAttribute('href', '/#/about')
+    expect(postsBlankLink).toHaveAttribute('target', '_blank')
+  })
+})
+
+describe('encoded and unicode paths', () => {
+  const testCases = [
+    {
+      name: 'with prefix',
+      path: '/foo/prefix@대{$}',
+      expectedPath:
+        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]',
+      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀%40]',
+      params: {
+        _splat: 'test[s\\/.\\/parameter%!🚀@]',
+        '*': 'test[s\\/.\\/parameter%!🚀@]',
+      },
+    },
+    {
+      name: 'with suffix',
+      path: '/foo/{$}대suffix@',
+      expectedPath:
+        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]%EB%8C%80suffix@',
+      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀%40]대suffix@',
+      params: {
+        _splat: 'test[s\\/.\\/parameter%!🚀@]',
+        '*': 'test[s\\/.\\/parameter%!🚀@]',
+      },
+    },
+    {
+      name: 'with wildcard',
+      path: '/foo/$',
+      expectedPath: '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80]',
+      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀]',
+      params: {
+        _splat: 'test[s\\/.\\/parameter%!🚀]',
+        '*': 'test[s\\/.\\/parameter%!🚀]',
+      },
+    },
+    // '/' is left as is with splat params but encoded with normal params
+    {
+      name: 'with path param',
+      path: `/foo/$id`,
+      expectedPath: '/foo/test[s%5C%2F.%5C%2Fparameter%25!%F0%9F%9A%80]',
+      expectedLocation: '/foo/test[s%5C%2F.%5C%2Fparameter%25!🚀]',
+      params: {
+        id: 'test[s\\/.\\/parameter%!🚀]',
+      },
+    },
+  ]
+
+  test.each(testCases)(
+    'should handle encoded, decoded paths with unicode characters correctly - $name',
+    async ({ path, expectedPath, expectedLocation, params }) => {
+      const rootRoute = createRootRoute()
+
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <>
+              <h1>Index Route</h1>
+              <Link data-testid="link-to-path" to={path} params={params}>
+                Link to path
+              </Link>
+            </>
+          )
+        },
+      })
+
+      const pathRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path,
+        component: PathRouteComponent,
+      })
+
+      function PathRouteComponent() {
+        const params = pathRoute.useParams()
+        return (
+          <div>
+            <h1>Path Route</h1>
+            <p>
+              params:{' '}
+              <span data-testid="params-to-validate">
+                {JSON.stringify(params())}
+              </span>
+            </p>
+          </div>
+        )
+      }
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, pathRoute]),
+        history,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const link = await screen.findByTestId('link-to-path')
+
+      expect(link.getAttribute('href')).toBe(expectedPath)
+
+      fireEvent.click(link)
+
+      const paramsToValidate = await screen.findByTestId('params-to-validate')
+
+      expect(window.location.pathname).toBe(expectedPath)
+      expect(router.latestLocation.pathname).toBe(expectedLocation)
+
+      expect(paramsToValidate.textContent).toEqual(JSON.stringify(params))
     },
   )
 })

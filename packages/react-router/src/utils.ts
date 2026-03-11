@@ -1,5 +1,19 @@
 import * as React from 'react'
 
+// Safe version of React.use() that will not cause compilation errors against
+// React 18 with Webpack, which statically analyzes imports and fails when it
+// sees React.use referenced (since 'use' is not exported from React 18).
+// This uses a dynamic string lookup to avoid the static analysis.
+const REACT_USE = 'use'
+
+/**
+ * React.use if available (React 19+), undefined otherwise.
+ * Use dynamic lookup to avoid Webpack compilation errors with React 18.
+ */
+export const reactUse:
+  | (<T>(usable: Promise<T> | React.Context<T>) => T)
+  | undefined = (React as any)[REACT_USE]
+
 export function useStableCallback<T extends (...args: Array<any>) => any>(
   fn: T,
 ): T {

@@ -26,8 +26,13 @@ export default mergeConfig(
     entry: [
       './src/index.ts',
       './src/client.tsx',
+      './src/client-rpc.ts',
       './src/server.tsx',
+      './src/server-rpc.ts',
+      './src/ssr-rpc.ts',
       './src/plugin/vite.ts',
+      './src/server-only.ts',
+      './src/client-only.ts',
     ],
     externalDeps: [
       '@tanstack/react-start-client',

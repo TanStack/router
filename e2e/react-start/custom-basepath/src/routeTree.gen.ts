@@ -11,12 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as NavigateTestRouteImport } from './routes/navigate-test'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
+import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
+import { Route as RedirectThrowItRouteImport } from './routes/redirect/throw-it'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as ApiUsersRouteImport } from './routes/api.users'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
@@ -30,6 +33,11 @@ const UsersRoute = UsersRouteImport.update({
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NavigateTestRoute = NavigateTestRouteImport.update({
+  id: '/navigate-test',
+  path: '/navigate-test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LogoutRoute = LogoutRouteImport.update({
@@ -52,6 +60,11 @@ const UsersIndexRoute = UsersIndexRouteImport.update({
   path: '/',
   getParentRoute: () => UsersRoute,
 } as any)
+const RedirectIndexRoute = RedirectIndexRouteImport.update({
+  id: '/redirect/',
+  path: '/redirect/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -61,6 +74,11 @@ const UsersUserIdRoute = UsersUserIdRouteImport.update({
   id: '/$userId',
   path: '/$userId',
   getParentRoute: () => UsersRoute,
+} as any)
+const RedirectThrowItRoute = RedirectThrowItRouteImport.update({
+  id: '/redirect/throw-it',
+  path: '/redirect/throw-it',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
@@ -87,12 +105,15 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/deferred': typeof DeferredRoute
   '/logout': typeof LogoutRoute
+  '/navigate-test': typeof NavigateTestRoute
   '/posts': typeof PostsRouteWithChildren
   '/users': typeof UsersRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/redirect/throw-it': typeof RedirectThrowItRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts/': typeof PostsIndexRoute
+  '/redirect': typeof RedirectIndexRoute
   '/users/': typeof UsersIndexRoute
   '/api/users/$id': typeof ApiUsersIdRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
@@ -101,10 +122,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/deferred': typeof DeferredRoute
   '/logout': typeof LogoutRoute
+  '/navigate-test': typeof NavigateTestRoute
   '/api/users': typeof ApiUsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/redirect/throw-it': typeof RedirectThrowItRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts': typeof PostsIndexRoute
+  '/redirect': typeof RedirectIndexRoute
   '/users': typeof UsersIndexRoute
   '/api/users/$id': typeof ApiUsersIdRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
@@ -114,12 +138,15 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/deferred': typeof DeferredRoute
   '/logout': typeof LogoutRoute
+  '/navigate-test': typeof NavigateTestRoute
   '/posts': typeof PostsRouteWithChildren
   '/users': typeof UsersRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/redirect/throw-it': typeof RedirectThrowItRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts/': typeof PostsIndexRoute
+  '/redirect/': typeof RedirectIndexRoute
   '/users/': typeof UsersIndexRoute
   '/api/users/$id': typeof ApiUsersIdRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
@@ -130,12 +157,15 @@ export interface FileRouteTypes {
     | '/'
     | '/deferred'
     | '/logout'
+    | '/navigate-test'
     | '/posts'
     | '/users'
     | '/api/users'
     | '/posts/$postId'
+    | '/redirect/throw-it'
     | '/users/$userId'
     | '/posts/'
+    | '/redirect'
     | '/users/'
     | '/api/users/$id'
     | '/posts/$postId/deep'
@@ -144,10 +174,13 @@ export interface FileRouteTypes {
     | '/'
     | '/deferred'
     | '/logout'
+    | '/navigate-test'
     | '/api/users'
     | '/posts/$postId'
+    | '/redirect/throw-it'
     | '/users/$userId'
     | '/posts'
+    | '/redirect'
     | '/users'
     | '/api/users/$id'
     | '/posts/$postId/deep'
@@ -156,12 +189,15 @@ export interface FileRouteTypes {
     | '/'
     | '/deferred'
     | '/logout'
+    | '/navigate-test'
     | '/posts'
     | '/users'
     | '/api/users'
     | '/posts/$postId'
+    | '/redirect/throw-it'
     | '/users/$userId'
     | '/posts/'
+    | '/redirect/'
     | '/users/'
     | '/api/users/$id'
     | '/posts_/$postId/deep'
@@ -171,9 +207,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DeferredRoute: typeof DeferredRoute
   LogoutRoute: typeof LogoutRoute
+  NavigateTestRoute: typeof NavigateTestRoute
   PostsRoute: typeof PostsRouteWithChildren
   UsersRoute: typeof UsersRouteWithChildren
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
+  RedirectThrowItRoute: typeof RedirectThrowItRoute
+  RedirectIndexRoute: typeof RedirectIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
 }
 
@@ -191,6 +230,13 @@ declare module '@tanstack/react-router' {
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/navigate-test': {
+      id: '/navigate-test'
+      path: '/navigate-test'
+      fullPath: '/navigate-test'
+      preLoaderRoute: typeof NavigateTestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/logout': {
@@ -221,6 +267,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersIndexRouteImport
       parentRoute: typeof UsersRoute
     }
+    '/redirect/': {
+      id: '/redirect/'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts/': {
       id: '/posts/'
       path: '/'
@@ -234,6 +287,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/users/$userId'
       preLoaderRoute: typeof UsersUserIdRouteImport
       parentRoute: typeof UsersRoute
+    }
+    '/redirect/throw-it': {
+      id: '/redirect/throw-it'
+      path: '/redirect/throw-it'
+      fullPath: '/redirect/throw-it'
+      preLoaderRoute: typeof RedirectThrowItRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/posts/$postId': {
       id: '/posts/$postId'
@@ -306,9 +366,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DeferredRoute: DeferredRoute,
   LogoutRoute: LogoutRoute,
+  NavigateTestRoute: NavigateTestRoute,
   PostsRoute: PostsRouteWithChildren,
   UsersRoute: UsersRouteWithChildren,
   ApiUsersRoute: ApiUsersRouteWithChildren,
+  RedirectThrowItRoute: RedirectThrowItRoute,
+  RedirectIndexRoute: RedirectIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
 }
 export const routeTree = rootRouteImport

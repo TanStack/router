@@ -97,6 +97,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html>
       <head>
         <HeadContent />
+        <script src="/head-script.js" />
+        <script src="/head-async-script.js" async={true} />
       </head>
       <body>
         <div className="p-2 flex gap-2 text-lg">
@@ -142,6 +144,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Scripts
           </Link>{' '}
           <Link
+            to="/async-scripts"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Async Scripts
+          </Link>{' '}
+          <Link
             to="/inline-scripts"
             activeProps={{
               className: 'font-bold',
@@ -166,6 +176,30 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             redirect
           </Link>{' '}
           <Link
+            to="/not-found"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            not-found
+          </Link>{' '}
+          <Link
+            to="/client-only"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Client Only
+          </Link>{' '}
+          <Link
+            to="/raw-stream"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Raw Stream
+          </Link>{' '}
+          <Link
             // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{
@@ -178,8 +212,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <hr />
         {children}
         <div className="inline-div">This is an inline styled div</div>
-        <RouterDevtools position="bottom-right" />
+        <React.Suspense fallback={null}>
+          <RouterDevtools position="bottom-right" />
+        </React.Suspense>
+        <script src="/before-scripts-script.js" />
+        <script src="/before-scripts-async-script.js" async={true} />
         <Scripts />
+        <script src="/user-script.js" />
+        <script src="/async-user-script.js" async={true} />
       </body>
     </html>
   )

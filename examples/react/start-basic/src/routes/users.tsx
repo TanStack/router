@@ -9,9 +9,9 @@ export const Route = createFileRoute('/users')({
       throw new Error('Unexpected status code')
     }
 
-    const data = (await res.json()) as Array<User>
+    const data = await res.json()
 
-    return data
+    return data as Array<User>
   },
   component: UsersComponent,
 })

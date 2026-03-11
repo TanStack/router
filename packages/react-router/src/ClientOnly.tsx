@@ -55,7 +55,7 @@ export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
  * ```
  * @returns True if the JS has been hydrated already, false otherwise.
  */
-function useHydrated(): boolean {
+export function useHydrated(): boolean {
   return React.useSyncExternalStore(
     subscribe,
     () => true,

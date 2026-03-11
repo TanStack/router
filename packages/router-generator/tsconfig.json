@@ -7,12 +7,12 @@
     "src",
     "vite.config.ts",
     "tests",
-    "tests/generator/**/*.test-d.ts",
-    "tests/generator/**/routeTree.gen.ts"
+    "tests/generator/**/*.test-d.ts"
   ],
   "exclude": [
     "tests/generator/**/*.tsx",
     "tests/generator/**/routeTree.gen.js",
+    "tests/generator/**/routeTree.gen.ts",
     "tests/generator/**/routeTree.snapshot.js",
     "tests/generator/**/routeTree.snapshot.ts"
   ]

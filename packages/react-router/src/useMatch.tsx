@@ -75,6 +75,10 @@ export type UseMatchResult<
     : MakeRouteMatchUnion<TRouter>
   : TSelected
 
+/**
+ * Read and select the nearest or targeted route match.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchHook
+ */
 export function useMatch<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string | undefined = undefined,
