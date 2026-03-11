@@ -42,12 +42,13 @@ describe('errorComponent (server)', () => {
     const html = await renderToStringAsync(() => (
       <RouterProvider router={router} />
     ))
+    const normalizedHtml = html.replace(/<!--[\s\S]*?-->/g, '')
 
     expect(router.state.statusCode).toBe(500)
     expect(onCatch).toHaveBeenCalledTimes(1)
     expect(html).toContain('data-testid="error-component"')
     expect(html).toContain('loader boom')
-    expect(html).toContain('reset:function')
+    expect(normalizedHtml).toContain('reset:function')
     expect(html).not.toContain('Index route')
   })
 })
