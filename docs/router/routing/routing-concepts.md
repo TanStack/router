@@ -151,7 +151,7 @@ Let's take a look at an index route for a `/posts` URL:
 
 # React
 
-```tsx title="src/routes/posts.index.tsx"
+```tsx title="src/routes/posts/index.tsx"
 import { createFileRoute } from '@tanstack/react-router'
 
 // Note the trailing slash, which is used to target index routes
