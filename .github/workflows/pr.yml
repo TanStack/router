@@ -16,6 +16,25 @@ permissions:
   pull-requests: write
 
 jobs:
+  changesets:
+    name: Changesets Check
+    runs-on: ubuntu-latest
+    if: github.actor != 'renovate[bot]' && github.actor != 'dependabot[bot]'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+        with:
+          fetch-depth: 0
+      - name: Check for changesets
+        run: |
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          CHANGESETS=$(echo "$CHANGED_FILES" | grep '^\.changeset/.*\.md$' | grep -v '^\.changeset/README\.md$' || true)
+          if [ -z "$CHANGESETS" ]; then
+            echo "::warning::No changeset found. If this PR includes package changes, run 'pnpm changeset' to add one."
+          else
+            echo "Changesets found:"
+            echo "$CHANGESETS"
+          fi
   test:
     name: Test
     runs-on: ubuntu-latest
