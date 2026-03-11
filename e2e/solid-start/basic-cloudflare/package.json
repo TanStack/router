@@ -16,8 +16,8 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
-    "solid-js": "2.0.0-beta.1",
-    "@solidjs/web": "2.0.0-beta.1"
+    "solid-js": "2.0.0-beta.2",
+    "@solidjs/web": "2.0.0-beta.2"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.15.1",

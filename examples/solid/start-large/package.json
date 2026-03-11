@@ -16,8 +16,8 @@
     "@tanstack/solid-router": "^1.166.2",
     "@tanstack/solid-router-devtools": "^1.166.2",
     "@tanstack/solid-start": "^1.166.2",
-    "solid-js": "2.0.0-beta.1",
-    "@solidjs/web": "2.0.0-beta.1",
+    "solid-js": "2.0.0-beta.2",
+    "@solidjs/web": "2.0.0-beta.2",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
     "valibot": "^1.0.0-beta.15"

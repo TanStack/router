@@ -12,8 +12,8 @@
     "@tanstack/solid-query": "^5.90.9",
     "@router-solid-mono-solid-query/post-feature": "workspace:*",
     "@router-solid-mono-solid-query/router": "workspace:*",
-    "solid-js": "2.0.0-beta.1",
-    "@solidjs/web": "2.0.0-beta.1"
+    "solid-js": "2.0.0-beta.2",
+    "@solidjs/web": "2.0.0-beta.2"
   },
   "devDependencies": {
     "vite-plugin-solid": "3.0.0-next.2",

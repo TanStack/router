@@ -115,14 +115,14 @@
     "@testing-library/jest-dom": "^6.6.3",
     "combinate": "^1.1.11",
     "eslint-plugin-solid": "^0.14.5",
-    "solid-js": "2.0.0-beta.1",
-    "@solidjs/web": "2.0.0-beta.1",
+    "solid-js": "2.0.0-beta.2",
+    "@solidjs/web": "2.0.0-beta.2",
     "vite": "*",
     "vite-plugin-solid": "3.0.0-next.2",
     "zod": "^3.23.8"
   },
   "peerDependencies": {
-    "solid-js": "2.0.0-beta.1",
-    "@solidjs/web": "2.0.0-beta.1"
+    "solid-js": "2.0.0-beta.2",
+    "@solidjs/web": "2.0.0-beta.2"
   }
 }

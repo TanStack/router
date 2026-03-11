@@ -16,8 +16,8 @@
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-virtual": "^3.13.0",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.1",
-    "@solidjs/web": "2.0.0-beta.1",
+    "solid-js": "2.0.0-beta.2",
+    "@solidjs/web": "2.0.0-beta.2",
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
