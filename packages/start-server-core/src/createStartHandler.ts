@@ -27,6 +27,7 @@ import {
 
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
+import { startEventClient } from './event-client'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
@@ -425,6 +426,12 @@ export function createStartHandler<TRegister = Register>(
     request,
     requestOpts,
   ) => {
+    startEventClient.emit('request-received', {
+      headers: request.headers,
+      url: request.url.split('--')[0]!,
+      method: request.method,
+    })
+
     let router: AnyRouter | null = null as AnyRouter | null
     let cbWillCleanup = false as boolean
 

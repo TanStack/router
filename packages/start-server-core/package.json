@@ -47,6 +47,12 @@
         "default": "./dist/esm/index.js"
       }
     },
+    "./event-client": {
+      "import": {
+        "types": "./dist/esm/event-client.d.ts",
+        "default": "./dist/esm/event-client.js"
+      }
+    },
     "./createServerRpc": {
       "import": {
         "types": "./dist/esm/createServerRpc.d.ts",
@@ -75,6 +81,7 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
+    "@tanstack/devtools-event-client": "^0.3.2",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",

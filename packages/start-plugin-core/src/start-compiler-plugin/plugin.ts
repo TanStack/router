@@ -315,7 +315,6 @@ export function startCompilerPlugin(
           return result
         },
       },
-
       hotUpdate(ctx) {
         const compiler = compilers[this.environment.name]
 
