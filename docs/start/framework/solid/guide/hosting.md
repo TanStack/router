@@ -216,10 +216,10 @@ For more details, see [Railway's documentation](https://docs.railway.com).
 1. Install `nitro`:
 
 ```bash
-npm install nitro
+npm install -D nitro
 ```
 
-2. Add the plugin to your `vite.config.ts` file:
+2. Add the `nitro/vite` plugin to your `vite.config.ts` file:
 
 ```tsx
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
