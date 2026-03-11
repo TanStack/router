@@ -11,7 +11,6 @@ const whitelistErrors = [
 test.skip(process.env.MODE === 'prod', 'Dev-only repro')
 
 test.describe('CSS styles in SSR (dev mode)', () => {
-
   test.use({ whitelistErrors })
 
   // Helper to build full URL from baseURL and path
