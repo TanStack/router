@@ -67,7 +67,7 @@ jobs:
         run: pnpm run changeset:publish ${{ steps.dist-tag.outputs.tag && format('--tag {0}', steps.dist-tag.outputs.tag) }}
       - name: Create GitHub Release
         if: steps.commit.outputs.committed == 'true'
-        run: node scripts/create-github-release.mjs ${{ steps.dist-tag.outputs.tag && '--prerelease' }}
+        run: node scripts/create-github-release.mjs ${{ steps.dist-tag.outputs.tag == 'next' && '--prerelease' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
