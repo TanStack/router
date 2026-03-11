@@ -215,15 +215,17 @@ For more details, see [Railway's documentation](https://docs.railway.com).
 
 ### Nitro
 
-[Nitro](https://v3.nitro.build/) is an agnostic layer that allows you to deploy TanStack Start applications to [a wide range of hostings](https://v3.nitro.build/deploy).
+[Nitro](https://nitro.build/) is an agnostic layer that allows you to deploy TanStack Start applications to [a wide range of hostings](https://nitro.build/deploy).
 
-**⚠️ The [`nitro/vite`](https://v3.nitro.build/) plugin natively integrates with Vite Environments API as the underlying build tool for TanStack Start. It is still under active development and receives regular updates. Please report any issues you encounter with reproduction so they can be investigated.**
+**⚠️ The [`nitro/vite`](https://nitro.build/) plugin natively integrates with Vite Environments API as the underlying build tool for TanStack Start. It is still under active development and receives regular updates. Please report any issues you encounter with reproduction so they can be investigated.**
 
-install the nightly version of nitro by specifying the following in your package.json
+1. Install `nitro`:
 
-```json
-"nitro": "npm:nitro-nightly@latest"
+```bash
+npm install nitro
 ```
+
+2. Add the plugin to your `vite.config.ts` file:
 
 ```tsx
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
