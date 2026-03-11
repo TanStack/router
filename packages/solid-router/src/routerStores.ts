@@ -65,29 +65,8 @@ function createSolidMutableStore<TValue>(
   }
 }
 
-function createSolidReadonlyStore<TValue>(
-  read: () => TValue,
-): RouterReadableStore<TValue> {
-  /**
-   * This is a detached root, without an owner. So it can never be disposed.
-   * However it's only used on the client, where the router exists for the entire lifetime of the app, so this is fine.
-   *
-   * On the server we use non-reactive stores, and they don't use Solid at all.
-   */
-  const memo = Solid.createRoot(() => {
-    const computed = Solid.createMemo(read)
-    return () => computed()
-  })
-
-  return {
-    get state() {
-      return memo()
-    },
-  }
-}
-
-export const getStoreFactory: GetStoreConfig = (opts) => {
-  if (isServer ?? opts.isServer) {
+export const getStoreFactory: GetStoreConfig = (router) => {
+  if (isServer ?? router.isServer) {
     return {
       createMutableStore: createNonReactiveMutableStore,
       createReadonlyStore: createNonReactiveReadonlyStore,
@@ -95,12 +74,34 @@ export const getStoreFactory: GetStoreConfig = (opts) => {
       init: (stores) =>
         initRouterStores(stores, createNonReactiveReadonlyStore),
     }
-  }
+  } else {
+    const disposers = new Set<() => void>()
+    function createSolidReadonlyStore<TValue>(
+      read: () => TValue,
+    ): RouterReadableStore<TValue> {
+      const memo = Solid.createRoot((dispose) => {
+        disposers.add(dispose)
+        const computed = Solid.createMemo(read)
+        return () => computed()
+      })
 
-  return {
-    createMutableStore: createSolidMutableStore,
-    createReadonlyStore: createSolidReadonlyStore,
-    batch: Solid.batch,
-    init: (stores) => initRouterStores(stores, createSolidReadonlyStore),
+      return {
+        get state() {
+          return memo()
+        },
+      }
+    }
+    if (typeof window !== 'undefined' && 'FinalizationRegistry' in window) {
+      const finalizationRegistry = new FinalizationRegistry(() => {
+        for (const dispose of disposers) dispose()
+      })
+      finalizationRegistry.register(router, disposers)
+    }
+    return {
+      createMutableStore: createSolidMutableStore,
+      createReadonlyStore: createSolidReadonlyStore,
+      batch: Solid.batch,
+      init: (stores) => initRouterStores(stores, createSolidReadonlyStore),
+    }
   }
 }
