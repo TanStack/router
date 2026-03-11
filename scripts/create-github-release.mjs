@@ -3,8 +3,10 @@ import fs from 'fs'
 import path from 'node:path'
 import { globSync } from 'node:fs'
 import { execSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
 
 const rootDir = path.join(import.meta.dirname, '..')
+const ghToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN
 
 // Get the previous release commit to diff against
 const lastReleaseHash = execSync(
@@ -15,9 +17,9 @@ const lastReleaseHash = execSync(
 
 const rangeFrom = lastReleaseHash || 'HEAD~1'
 
-// Get commits since last release
+// Get commits since last release (include author email for username lookup)
 const rawLog = execSync(
-  `git log ${rangeFrom}..HEAD~1 --pretty=format:"%h %s" --no-merges`,
+  `git log ${rangeFrom}..HEAD~1 --pretty=format:"%h %ae %s" --no-merges`,
 )
   .toString()
   .trim()
@@ -27,22 +29,46 @@ const commits = rawLog
   .filter(Boolean)
   .filter((line) => !line.includes('ci: changeset release'))
 
+// Resolve GitHub usernames from commit author emails
+const usernameCache = {}
+async function resolveUsername(email) {
+  if (!ghToken || !email) return null
+  if (usernameCache[email] !== undefined) return usernameCache[email]
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/search/users?q=${email}`,
+      { headers: { Authorization: `token ${ghToken}` } },
+    )
+    const data = await res.json()
+    const login = data?.items?.[0]?.login || null
+    usernameCache[email] = login
+    return login
+  } catch {
+    usernameCache[email] = null
+    return null
+  }
+}
+
 // Group commits by type
 const groups = {}
 for (const line of commits) {
-  const match = line.match(/^(\w+)\s+(\w+)(?:\(([^)]+)\))?:\s*(.+)$/)
+  const match = line.match(/^(\w+)\s+(\S+)\s+(\w+)(?:\(([^)]+)\))?:\s*(.+)$/)
   if (match) {
-    const [, hash, type, scope, subject] = match
+    const [, hash, email, type, scope, subject] = match
     const key = type.charAt(0).toUpperCase() + type.slice(1)
     if (!groups[key]) groups[key] = []
-    groups[key].push({ hash, scope, subject })
+    groups[key].push({ hash, email, scope, subject })
   } else {
     if (!groups['Other']) groups['Other'] = []
     const spaceIdx = line.indexOf(' ')
+    const rest = line.slice(spaceIdx + 1)
+    const spaceIdx2 = rest.indexOf(' ')
     groups['Other'].push({
       hash: line.slice(0, spaceIdx),
+      email: rest.slice(0, spaceIdx2),
       scope: null,
-      subject: line.slice(spaceIdx + 1),
+      subject: rest.slice(spaceIdx2 + 1),
     })
   }
 }
@@ -66,9 +92,11 @@ const sortedTypes = Object.keys(groups).sort(
 let changelogMd = ''
 for (const type of sortedTypes) {
   changelogMd += `### ${type}\n\n`
-  for (const { hash, scope, subject } of groups[type]) {
+  for (const { hash, email, scope, subject } of groups[type]) {
     const scopeStr = scope ? `${scope}: ` : ''
-    changelogMd += `- ${scopeStr}${subject} (${hash})\n`
+    const username = await resolveUsername(email)
+    const authorStr = username ? ` by @${username}` : ''
+    changelogMd += `- ${scopeStr}${subject} (${hash})${authorStr}\n`
   }
   changelogMd += '\n'
 }
@@ -116,7 +144,7 @@ execSync(`git tag -a -m "${tagName}" ${tagName}`)
 execSync('git push --tags')
 
 const prereleaseFlag = isPrerelease ? '--prerelease' : ''
-const tmpFile = path.join(rootDir, '.release-notes-tmp.md')
+const tmpFile = path.join(tmpdir(), `release-notes-${tagName}.md`)
 fs.writeFileSync(tmpFile, body)
 
 try {
