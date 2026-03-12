@@ -8,7 +8,7 @@
     "dev": "pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^2.0.0-alpha.1",
+    "@tanstack/solid-router": "^2.0.0-alpha.2",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.1",
     "@tanstack/router-plugin": "^1.166.7",
     "solid-js": "2.0.0-beta.2",

@@ -1,5 +1,12 @@
 # @tanstack/start-static-server-functions
 
+## 2.0.0-alpha.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-start@2.0.0-alpha.2
+
 ## 2.0.0-alpha.1
 
 ### Patch Changes

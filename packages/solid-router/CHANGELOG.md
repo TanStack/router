@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 2.0.0-alpha.2
+
+### Patch Changes
+
+- Upgrade solid refresh, fix deep equal for promises ([#6910](https://github.com/TanStack/router/pull/6910))
+
 ## 2.0.0-alpha.1
 
 ### Patch Changes
