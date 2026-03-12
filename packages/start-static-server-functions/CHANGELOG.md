@@ -1,5 +1,12 @@
 # @tanstack/start-static-server-functions
 
+## 2.0.0-alpha.1
+
+### Patch Changes
+
+- Updated dependencies [[`4c5bb71`](https://github.com/TanStack/router/commit/4c5bb71d320df8aa9cb41a67103b671335a1bb7d)]:
+  - @tanstack/solid-start@2.0.0-alpha.1
+
 ## 2.0.0-alpha.0
 
 ### Patch Changes

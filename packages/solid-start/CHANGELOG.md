@@ -1,5 +1,16 @@
 # @tanstack/solid-start
 
+## 2.0.0-alpha.1
+
+### Patch Changes
+
+- bump to alpha.1 ([`4c5bb71`](https://github.com/TanStack/router/commit/4c5bb71d320df8aa9cb41a67103b671335a1bb7d))
+
+- Updated dependencies [[`4c5bb71`](https://github.com/TanStack/router/commit/4c5bb71d320df8aa9cb41a67103b671335a1bb7d)]:
+  - @tanstack/solid-start-client@2.0.0-alpha.1
+  - @tanstack/solid-start-server@2.0.0-alpha.1
+  - @tanstack/solid-router@2.0.0-alpha.1
+
 ## 2.0.0-alpha.0
 
 ### Major Changes
