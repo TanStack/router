@@ -11,6 +11,11 @@ export interface StartStorageContext {
   // Track middlewares that have already executed in the request phase
   // to prevent duplicate execution
   executedRequestMiddlewares: Set<any>
+
+  // Devtools context threading (optional — never set in production)
+  requestId?: string
+  requestStartTime?: number
+  eventClient?: { emit: (event: string, payload: any) => void }
 }
 
 // Use a global symbol to ensure the same AsyncLocalStorage instance is shared
