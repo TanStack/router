@@ -70,13 +70,13 @@ A full‑stack framework built on Router, designed for server rendering, streami
 <table align="center">
   <tr>
     <td>
-        <a href="https://www.coderabbit.ai/?via=tanstack&dub_id=aCcEEdAOqqutX6OS">
-			<picture>
-			  <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/coderabbit-dark-CMcuvjEy.svg" height="40" />
-			  <source media="(prefers-color-scheme: light)" srcset="https://tanstack.com/assets/coderabbit-light-DVMJ2jHi.svg" height="40" />
-			  <img src="https://tanstack.com/assets/coderabbit-dark-CMcuvjEy.svg" height="40" alt="CodeRabbit" />
-			</picture>        
-		</a>
+      <a href="https://www.coderabbit.ai/?via=tanstack&dub_id=aCcEEdAOqqutX6OS" >
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/coderabbit-dark-D643Zkrv.svg" height="40" />
+          <source media="(prefers-color-scheme: light)" srcset="https://tanstack.com/assets/coderabbit-light-CIzGLYU_.svg" height="40" />
+          <img src=https://tanstack.com/assets/coderabbit-light-CIzGLYU_.svg" height="40" alt="CodeRabbit" />
+        </picture>
+      </a>
     </td>
     <td padding="20">
       <a href="https://www.cloudflare.com?utm_source=tanstack">
