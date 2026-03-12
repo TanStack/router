@@ -73,6 +73,6 @@
   },
   "peerDependencies": {
     "solid-js": "2.0.0-beta.2",
-		"@solidjs/web": "2.0.0-beta.2"
+    "@solidjs/web": "2.0.0-beta.2"
   }
 }
