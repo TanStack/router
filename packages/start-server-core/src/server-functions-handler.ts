@@ -477,17 +477,18 @@ export const handleServerAction = async ({
 
   if (process.env.NODE_ENV !== 'production' && requestId && response) {
     const respContentType = response.headers.get('Content-Type') || ''
-    const resultType = response.status >= 400
-      ? 'error'
-      : isRedirect(response)
-        ? 'redirect'
-        : respContentType.includes('x-tss-framed')
-          ? 'framed-binary'
-          : respContentType.includes('x-ndjson')
-            ? 'ndjson-stream'
-            : respContentType.includes('application/json')
-              ? 'json'
-              : 'raw-response'
+    const resultType =
+      response.status >= 400
+        ? 'error'
+        : isRedirect(response)
+          ? 'redirect'
+          : respContentType.includes('x-tss-framed')
+            ? 'framed-binary'
+            : respContentType.includes('x-ndjson')
+              ? 'ndjson-stream'
+              : respContentType.includes('application/json')
+                ? 'json'
+                : 'raw-response'
 
     startEventClient.emit('server-fn-end', {
       requestId,

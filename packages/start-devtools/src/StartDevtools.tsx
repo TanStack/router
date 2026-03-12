@@ -103,9 +103,7 @@ export default function StartDevtools() {
             }
           >
             <For each={filteredEntries()}>
-              {(entry) => (
-                <RequestRow entry={entry} maxTime={maxTime()} />
-              )}
+              {(entry) => <RequestRow entry={entry} maxTime={maxTime()} />}
             </For>
           </Show>
         </Show>

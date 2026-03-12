@@ -139,14 +139,13 @@ export default function RequestRow(props: RequestRowProps) {
               phases={props.entry.phases}
               totalDuration={props.entry.duration}
               maxTime={props.entry.duration || props.maxTime}
-              onPhaseClick={(name) => setSelectedPhase(selectedPhase() === name ? null : name)}
+              onPhaseClick={(name) =>
+                setSelectedPhase(selectedPhase() === name ? null : name)
+              }
             />
           </div>
 
-          <DetailPanel
-            entry={props.entry}
-            selectedPhase={selectedPhase()}
-          />
+          <DetailPanel entry={props.entry} selectedPhase={selectedPhase()} />
         </div>
       </Show>
     </div>

@@ -562,7 +562,10 @@ export function createStartHandler<TRegister = Register>(
         }> = []
         const instrumentedRequestMws =
           process.env.NODE_ENV !== 'production'
-            ? instrumentMiddlewareArray(middlewares as Array<any>, requestMwChain)
+            ? instrumentMiddlewareArray(
+                middlewares as Array<any>,
+                requestMwChain,
+              )
             : middlewares
         const ctx = await executeMiddleware(
           [...instrumentedRequestMws, serverFnHandler],
@@ -590,7 +593,12 @@ export function createStartHandler<TRegister = Register>(
           })
         }
 
-        response = await handleRedirectResponse(ctx.response, request, getRouter, { requestId, requestType })
+        response = await handleRedirectResponse(
+          ctx.response,
+          request,
+          getRouter,
+          { requestId, requestType },
+        )
         return response
       }
 
@@ -634,9 +642,7 @@ export function createStartHandler<TRegister = Register>(
           startEventClient.emit('ssr-start', {
             requestId,
             matchedRoute:
-              (lastRoute as any)?.fullPath ||
-              (lastRoute as any)?.path ||
-              '/',
+              (lastRoute as any)?.fullPath || (lastRoute as any)?.path || '/',
             params: (routerInstance.state.location as any)?.params || {},
             startTime: ssrPhaseStart - requestStartTime!,
           })
@@ -714,8 +720,7 @@ export function createStartHandler<TRegister = Register>(
                 startEventClient.emit('error', {
                   requestId,
                   phase: 'routing',
-                  message:
-                    err instanceof Error ? err.message : String(err),
+                  message: err instanceof Error ? err.message : String(err),
                   stack: err instanceof Error ? err.stack : undefined,
                   timestamp: Date.now(),
                 })
@@ -767,7 +772,12 @@ export function createStartHandler<TRegister = Register>(
         })
       }
 
-      response = await handleRedirectResponse(ctx.response, request, getRouter, { requestId, requestType })
+      response = await handleRedirectResponse(
+        ctx.response,
+        request,
+        getRouter,
+        { requestId, requestType },
+      )
       return response
     } finally {
       if (process.env.NODE_ENV !== 'production' && requestId && response) {
@@ -819,7 +829,10 @@ async function handleRedirectResponse(
     startEventClient.emit('redirect', {
       requestId: devtoolsCtx.requestId,
       from: request.url.replace(/https?:\/\/[^/]+/, ''),
-      to: (opts.href || opts.to || response.headers.get('Location') || '') as string,
+      to: (opts.href ||
+        opts.to ||
+        response.headers.get('Location') ||
+        '') as string,
       status: response.status || ((opts as any).status ?? 302),
       isServerFn: devtoolsCtx.requestType === 'server-fn',
       timestamp: Date.now(),

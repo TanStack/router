@@ -1,6 +1,8 @@
 const GENERIC_FUNCTION_NAMES = new Set(['', 'Mock', 'mockConstructor'])
 
-export function instrumentMiddlewareArray<T extends (...args: Array<any>) => any>(
+export function instrumentMiddlewareArray<
+  T extends (...args: Array<any>) => any,
+>(
   middlewares: Array<T>,
   chain: Array<{ name: string; startTime: number; endTime: number }>,
 ): Array<T> {

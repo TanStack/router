@@ -70,53 +70,84 @@ export default function DetailPanel(props: DetailPanelProps) {
       </div>
 
       <Show when={viewMode() === 'structured'}>
-        <div style={{ display: 'flex', 'flex-direction': 'column', gap: '8px' }}>
+        <div
+          style={{ display: 'flex', 'flex-direction': 'column', gap: '8px' }}
+        >
           <Show when={props.entry.headers}>
             <div>
               <strong>Request Headers</strong>
-              <JsonTree value={props.entry.headers} copyable defaultExpansionDepth={1} />
+              <JsonTree
+                value={props.entry.headers}
+                copyable
+                defaultExpansionDepth={1}
+              />
             </div>
           </Show>
 
           <Show when={props.entry.responseHeaders}>
             <div>
               <strong>Response Headers</strong>
-              <JsonTree value={props.entry.responseHeaders} copyable defaultExpansionDepth={1} />
+              <JsonTree
+                value={props.entry.responseHeaders}
+                copyable
+                defaultExpansionDepth={1}
+              />
             </div>
           </Show>
 
           <Show when={props.entry.routeMatch}>
             <div>
               <strong>Route Match</strong>
-              <JsonTree value={props.entry.routeMatch} copyable defaultExpansionDepth={2} />
+              <JsonTree
+                value={props.entry.routeMatch}
+                copyable
+                defaultExpansionDepth={2}
+              />
             </div>
           </Show>
 
           <Show when={props.entry.serverFn}>
             <div>
               <strong>Server Function</strong>
-              <JsonTree value={props.entry.serverFn} copyable defaultExpansionDepth={2} />
+              <JsonTree
+                value={props.entry.serverFn}
+                copyable
+                defaultExpansionDepth={2}
+              />
             </div>
           </Show>
 
           <Show when={props.entry.serialization}>
             <div>
               <strong>Serialization</strong>
-              <JsonTree value={props.entry.serialization} copyable defaultExpansionDepth={2} />
+              <JsonTree
+                value={props.entry.serialization}
+                copyable
+                defaultExpansionDepth={2}
+              />
             </div>
           </Show>
 
           <Show when={props.entry.redirect}>
             <div>
               <strong>Redirect</strong>
-              <JsonTree value={props.entry.redirect} copyable defaultExpansionDepth={2} />
+              <JsonTree
+                value={props.entry.redirect}
+                copyable
+                defaultExpansionDepth={2}
+              />
             </div>
           </Show>
 
           <Show when={props.entry.streamChunks.length > 0}>
             <div>
               <strong>Stream Progress</strong>
-              <span style={{ 'margin-left': '8px', color: 'var(--tsd-text-secondary, #999)' }}>
+              <span
+                style={{
+                  'margin-left': '8px',
+                  color: 'var(--tsd-text-secondary, #999)',
+                }}
+              >
                 {props.entry.streamChunks.length} chunks
               </span>
             </div>
@@ -128,7 +159,9 @@ export default function DetailPanel(props: DetailPanelProps) {
               <For each={props.entry.errors}>
                 {(err) => (
                   <div style={{ 'margin-top': '4px', color: '#fca5a5' }}>
-                    <div>[{err.phase}] {err.message}</div>
+                    <div>
+                      [{err.phase}] {err.message}
+                    </div>
                     <Show when={err.stack}>
                       <pre
                         style={{
@@ -150,7 +183,11 @@ export default function DetailPanel(props: DetailPanelProps) {
           <Show when={phaseData()}>
             <div>
               <strong>Selected Phase: {phaseData()!.name}</strong>
-              <JsonTree value={phaseData()} copyable defaultExpansionDepth={2} />
+              <JsonTree
+                value={phaseData()}
+                copyable
+                defaultExpansionDepth={2}
+              />
             </div>
           </Show>
         </div>

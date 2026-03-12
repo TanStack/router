@@ -226,8 +226,7 @@ export function processEvent(
           },
           {
             name: 'render',
-            startTime:
-              payload.routerLoadDuration + payload.dehydrationDuration,
+            startTime: payload.routerLoadDuration + payload.dehydrationDuration,
             endTime:
               payload.routerLoadDuration +
               payload.dehydrationDuration +

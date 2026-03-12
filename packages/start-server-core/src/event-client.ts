@@ -114,12 +114,7 @@ export interface StartEventMap {
 
   error: {
     requestId: string
-    phase:
-      | 'middleware'
-      | 'routing'
-      | 'server-fn'
-      | 'ssr'
-      | 'serialization'
+    phase: 'middleware' | 'routing' | 'server-fn' | 'ssr' | 'serialization'
     message: string
     stack?: string
     timestamp: number

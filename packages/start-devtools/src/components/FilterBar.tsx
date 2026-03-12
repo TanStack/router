@@ -63,9 +63,7 @@ export default function FilterBar(props: FilterBarProps) {
         style={selectStyle}
       >
         <option value="">All Status</option>
-        <For each={STATUS_RANGES}>
-          {(s) => <option value={s}>{s}</option>}
-        </For>
+        <For each={STATUS_RANGES}>{(s) => <option value={s}>{s}</option>}</For>
       </select>
 
       <select
