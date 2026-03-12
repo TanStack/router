@@ -5,7 +5,7 @@ import {
   createRootRoute,
   linkOptions,
 } from '@tanstack/solid-router'
-import { Dynamic } from '@solidjs/web'
+import { For } from 'solid-js'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
@@ -26,11 +26,17 @@ function RootComponent() {
   )
 }
 
-function Nav({ type }: { type: 'header' | 'footer' }) {
-  const Elem = type === 'header' ? 'header' : 'footer'
-  const prefix = type === 'header' ? 'Head' : 'Foot'
-  return (
-    <Dynamic component={Elem} class="p-2 flex gap-2 text-lg">
+const navLinks = [
+  linkOptions({ to: '/normal-page' }),
+  linkOptions({ to: '/lazy-page' }),
+  linkOptions({ to: '/virtual-page' }),
+  linkOptions({ to: '/lazy-with-loader-page' }),
+] as const
+
+function Nav(props: { type: 'header' | 'footer' }) {
+  const prefix = () => (props.type === 'header' ? 'Head' : 'Foot')
+  const content = () => (
+    <>
       <Link
         to="/"
         activeProps={{
@@ -38,26 +44,34 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
         }}
         activeOptions={{ exact: true }}
       >
-        {prefix}-/
+        {prefix()}-/
       </Link>{' '}
-      {(
-        [
-          linkOptions({ to: '/normal-page' }),
-          linkOptions({ to: '/lazy-page' }),
-          linkOptions({ to: '/virtual-page' }),
-          linkOptions({ to: '/lazy-with-loader-page' }),
-          linkOptions({ to: '/page-with-search', search: { where: type } }),
-        ] as const
-      ).map((options, i) => (
-        <Link
-          {...options}
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          {prefix}-{options.to}
-        </Link>
-      ))}
-    </Dynamic>
+      <For each={navLinks}>
+        {(options) => (
+          <Link
+            {...options()}
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            {prefix()}-{options().to}
+          </Link>
+        )}
+      </For>
+      <Link
+        to="/page-with-search"
+        search={{ where: props.type }}
+        activeProps={{
+          class: 'font-bold',
+        }}
+      >
+        {prefix()}-/page-with-search
+      </Link>
+    </>
+  )
+  return props.type === 'header' ? (
+    <header class="p-2 flex gap-2 text-lg">{content()}</header>
+  ) : (
+    <footer class="p-2 flex gap-2 text-lg">{content()}</footer>
   )
 }

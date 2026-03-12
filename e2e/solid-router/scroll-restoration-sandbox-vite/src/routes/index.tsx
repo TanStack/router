@@ -1,9 +1,17 @@
-import { createFileRoute } from '@tanstack/solid-router'
-import { Link, linkOptions } from '@tanstack/solid-router'
+import { createFileRoute, Link, linkOptions } from '@tanstack/solid-router'
+import { For } from 'solid-js'
 
 export const Route = createFileRoute('/')({
   component: HomeComponent,
 })
+
+const indexLinks = [
+  linkOptions({ to: '/normal-page' }),
+  linkOptions({ to: '/lazy-page' }),
+  linkOptions({ to: '/virtual-page' }),
+  linkOptions({ to: '/lazy-with-loader-page' }),
+  linkOptions({ to: '/page-with-search', search: { where: 'footer' } }),
+] as const
 
 function HomeComponent() {
   return (
@@ -14,24 +22,18 @@ function HomeComponent() {
         Otherwise known as NOT first-load tests, rather known as navigation
         tests.
       </p>
-      {(
-        [
-          linkOptions({ to: '/normal-page' }),
-          linkOptions({ to: '/lazy-page' }),
-          linkOptions({ to: '/virtual-page' }),
-          linkOptions({ to: '/lazy-with-loader-page' }),
-          linkOptions({ to: '/page-with-search', search: { where: 'footer' } }),
-        ] as const
-      ).map((options, i) => (
-        <div class="border p-2">
-          <h4>{options.to} tests</h4>
-          <p>
-            <Link {...options} hash="at-the-bottom">
-              {options.to}#at-the-bottom
-            </Link>
-          </p>
-        </div>
-      ))}
+      <For each={indexLinks}>
+        {(options) => (
+          <div class="border p-2">
+            <h4>{options().to} tests</h4>
+            <p>
+              <Link {...options()} hash="at-the-bottom">
+                {options().to}#at-the-bottom
+              </Link>
+            </p>
+          </div>
+        )}
+      </For>
     </div>
   )
 }
