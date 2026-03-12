@@ -19,8 +19,8 @@
     "test:e2e:dev:nitro": "MODE=dev VITE_CONFIG=nitro playwright test --project=chromium",
     "test:e2e:dev:basepath": "MODE=dev VITE_CONFIG=basepath playwright test --project=chromium",
     "_test:e2e:dev:cloudflare": "MODE=dev VITE_CONFIG=cloudflare playwright test --project=chromium",
-    "test:e2e:prod": "playwright test --project=chromium",
-    "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:dev",
+    "test:e2e:prod": "MODE=prod playwright test --project=chromium",
+    "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:dev && pnpm run test:e2e:prod",
     "test:e2e:nitro": "rm -rf port*.txt; pnpm run test:e2e:dev:nitro",
     "test:e2e:basepath": "rm -rf port*.txt; pnpm run test:e2e:dev:basepath",
     "_test:e2e:cloudflare": "echo 'Cloudflare dev mode disabled - React duplication issues' && exit 0"

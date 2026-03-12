@@ -8,6 +8,7 @@ const whitelistErrors = [
   'Failed to load resource: net::ERR_NAME_NOT_RESOLVED',
   'Failed to load resource: the server responded with a status of 504',
 ]
+test.skip(process.env.MODE === 'prod', 'Dev-only repro')
 
 test.describe('CSS styles in SSR (dev mode)', () => {
   test.use({ whitelistErrors })
