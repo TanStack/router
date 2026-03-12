@@ -43,5 +43,5 @@
     "@tanstack/vue-start-server": "1.166.7",
     "@tanstack/zod-adapter": "1.166.7"
   },
-  "changesets": []
+  "changesets": ["social-mails-sort"]
 }

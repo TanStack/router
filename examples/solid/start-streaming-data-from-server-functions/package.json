@@ -10,9 +10,9 @@
     "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.166.7",
-    "@tanstack/solid-router-devtools": "^1.166.7",
-    "@tanstack/solid-start": "^1.166.8",
+    "@tanstack/solid-router": "^2.0.0-alpha.0",
+    "@tanstack/solid-router-devtools": "^2.0.0-alpha.0",
+    "@tanstack/solid-start": "^2.0.0-alpha.0",
     "solid-js": "2.0.0-beta.2",
     "@solidjs/web": "2.0.0-beta.2",
     "zod": "^3.24.2"
