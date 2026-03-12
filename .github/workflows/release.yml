@@ -58,7 +58,7 @@ jobs:
         run: |
           BRANCH="${GITHUB_REF_NAME}"
           if [[ "$BRANCH" == *-pre ]]; then
-            echo "tag=next" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
           elif [[ "$BRANCH" == *-maint ]]; then
             echo "tag=maint" >> "$GITHUB_OUTPUT"
           fi
@@ -67,7 +67,7 @@ jobs:
         run: pnpm run changeset:publish ${{ steps.dist-tag.outputs.tag && format('--tag {0}', steps.dist-tag.outputs.tag) }}
       - name: Create GitHub Release
         if: steps.commit.outputs.committed == 'true'
-        run: node scripts/create-github-release.mjs ${{ steps.dist-tag.outputs.tag == 'next' && '--prerelease' }}
+        run: node scripts/create-github-release.mjs ${{ steps.dist-tag.outputs.prerelease == 'true' && '--prerelease' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
