@@ -11,6 +11,8 @@ import type { Accessor } from 'solid-js'
 function deepEqual(a: any, b: any): boolean {
   if (Object.is(a, b)) return true
 
+  if (isPromiseLike(a) || isPromiseLike(b)) return false
+
   if (
     typeof a !== 'object' ||
     a === null ||
@@ -31,6 +33,14 @@ function deepEqual(a: any, b: any): boolean {
   }
 
   return true
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return (
+    !!value &&
+    (typeof value === 'object' || typeof value === 'function') &&
+    typeof (value as PromiseLike<unknown>).then === 'function'
+  )
 }
 
 export type UseRouterStateOptions<TRouter extends AnyRouter, TSelected> = {
