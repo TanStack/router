@@ -28,6 +28,7 @@ import {
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
 import { startEventClient } from './event-client'
+import { instrumentMiddlewareArray } from './devtools-instrumentation'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
@@ -426,11 +427,22 @@ export function createStartHandler<TRegister = Register>(
     request,
     requestOpts,
   ) => {
-    startEventClient.emit("request-received", {
-      headers: request.headers,
-      url: request.url.split("--")[0]!,
-      method: request.method,
-    })
+    let requestId: string | undefined
+    let requestStartTime: number | undefined
+    let response: Response | undefined
+    let requestType: 'server-fn' | 'ssr' | 'server-route' = 'ssr'
+
+    if (process.env.NODE_ENV !== 'production') {
+      requestId = crypto.randomUUID()
+      requestStartTime = performance.now()
+      startEventClient.emit('request-start', {
+        requestId,
+        url: request.url.replace(/https?:\/\/[^/]+/, ''),
+        method: request.method,
+        headers: Object.fromEntries(request.headers.entries()),
+        timestamp: Date.now(),
+      })
+    }
 
     let router: AnyRouter | null = null as AnyRouter | null
     let cbWillCleanup = false as boolean
@@ -507,6 +519,7 @@ export function createStartHandler<TRegister = Register>(
 
       // Check for server function requests first (early exit)
       if (SERVER_FN_BASE && url.pathname.startsWith(SERVER_FN_BASE)) {
+        requestType = 'server-fn'
         const serverFnId = url.pathname
           .slice(SERVER_FN_BASE.length)
           .split('/')[0]
@@ -523,6 +536,12 @@ export function createStartHandler<TRegister = Register>(
               contextAfterGlobalMiddlewares: context,
               request,
               executedRequestMiddlewares,
+              requestId,
+              requestStartTime,
+              eventClient:
+                process.env.NODE_ENV !== 'production'
+                  ? (startEventClient as any)
+                  : undefined,
             },
             () =>
               handleServerAction({
@@ -536,13 +555,43 @@ export function createStartHandler<TRegister = Register>(
         const middlewares = flattenedRequestMiddlewares.map(
           (d) => d.options.server,
         )
-        const ctx = await executeMiddleware([...middlewares, serverFnHandler], {
-          request,
-          pathname: url.pathname,
-          context: createNullProtoObject(requestOpts?.context),
-        })
+        const requestMwChain: Array<{
+          name: string
+          startTime: number
+          endTime: number
+        }> = []
+        const instrumentedRequestMws =
+          process.env.NODE_ENV !== 'production'
+            ? instrumentMiddlewareArray(middlewares as Array<any>, requestMwChain)
+            : middlewares
+        const ctx = await executeMiddleware(
+          [...instrumentedRequestMws, serverFnHandler],
+          {
+            request,
+            pathname: url.pathname,
+            context: createNullProtoObject(requestOpts?.context),
+          },
+        )
 
-        return handleRedirectResponse(ctx.response, request, getRouter)
+        if (
+          process.env.NODE_ENV !== 'production' &&
+          requestId &&
+          requestMwChain.length > 0
+        ) {
+          startEventClient.emit('middleware-executed', {
+            requestId,
+            scope: 'request',
+            chain: requestMwChain,
+            totalDuration: requestMwChain.reduce(
+              (sum, m) => sum + (m.endTime - m.startTime),
+              0,
+            ),
+            startTime: requestMwChain[0]!.startTime - requestStartTime!,
+          })
+        }
+
+        response = await handleRedirectResponse(ctx.response, request, getRouter, { requestId, requestType })
+        return response
       }
 
       // Router execution function
@@ -578,24 +627,58 @@ export function createStartHandler<TRegister = Register>(
         })
 
         routerInstance.update({ additionalContext: { serverContext } })
+
+        const ssrPhaseStart = performance.now()
+        if (process.env.NODE_ENV !== 'production' && requestId) {
+          const lastRoute = matchedRoutes?.[matchedRoutes.length - 1]
+          startEventClient.emit('ssr-start', {
+            requestId,
+            matchedRoute:
+              (lastRoute as any)?.fullPath ||
+              (lastRoute as any)?.path ||
+              '/',
+            params: (routerInstance.state.location as any)?.params || {},
+            startTime: ssrPhaseStart - requestStartTime!,
+          })
+        }
+
+        const loadStart = performance.now()
         await routerInstance.load()
+        const loadEnd = performance.now()
 
         if (routerInstance.state.redirect) {
           return routerInstance.state.redirect
         }
 
+        const dehydrateStart = performance.now()
         await routerInstance.serverSsr!.dehydrate()
+        const dehydrateEnd = performance.now()
 
         const responseHeaders = getStartResponseHeaders({
           router: routerInstance,
         })
         cbWillCleanup = true
 
-        return cb({
+        const renderStart = performance.now()
+        const ssrResponse = await cb({
           request,
           router: routerInstance,
           responseHeaders,
         })
+        const renderEnd = performance.now()
+
+        if (process.env.NODE_ENV !== 'production' && requestId) {
+          startEventClient.emit('ssr-end', {
+            requestId,
+            duration: performance.now() - ssrPhaseStart,
+            routerLoadDuration: loadEnd - loadStart,
+            dehydrationDuration: dehydrateEnd - dehydrateStart,
+            renderDuration: renderEnd - renderStart,
+            hadRedirect: !!routerInstance.state.redirect,
+          })
+        }
+
+        return ssrResponse
       }
 
       // Main request handler
@@ -607,6 +690,12 @@ export function createStartHandler<TRegister = Register>(
             contextAfterGlobalMiddlewares: context,
             request,
             executedRequestMiddlewares,
+            requestId,
+            requestStartTime,
+            eventClient:
+              process.env.NODE_ENV !== 'production'
+                ? (startEventClient as any)
+                : undefined,
           },
           async () => {
             try {
@@ -617,8 +706,20 @@ export function createStartHandler<TRegister = Register>(
                 executeRouter,
                 context,
                 executedRequestMiddlewares,
+                requestId,
+                requestStartTime,
               })
             } catch (err) {
+              if (process.env.NODE_ENV !== 'production' && requestId) {
+                startEventClient.emit('error', {
+                  requestId,
+                  phase: 'routing',
+                  message:
+                    err instanceof Error ? err.message : String(err),
+                  stack: err instanceof Error ? err.stack : undefined,
+                  timestamp: Date.now(),
+                })
+              }
               if (err instanceof Response) {
                 return err
               }
@@ -631,8 +732,17 @@ export function createStartHandler<TRegister = Register>(
       const middlewares = flattenedRequestMiddlewares.map(
         (d) => d.options.server,
       )
+      const requestMwChain: Array<{
+        name: string
+        startTime: number
+        endTime: number
+      }> = []
+      const instrumentedRequestMws =
+        process.env.NODE_ENV !== 'production'
+          ? instrumentMiddlewareArray(middlewares as Array<any>, requestMwChain)
+          : middlewares
       const ctx = await executeMiddleware(
-        [...middlewares, requestHandlerMiddleware],
+        [...instrumentedRequestMws, requestHandlerMiddleware],
         {
           request,
           pathname: url.pathname,
@@ -640,8 +750,35 @@ export function createStartHandler<TRegister = Register>(
         },
       )
 
-      return handleRedirectResponse(ctx.response, request, getRouter)
+      if (
+        process.env.NODE_ENV !== 'production' &&
+        requestId &&
+        requestMwChain.length > 0
+      ) {
+        startEventClient.emit('middleware-executed', {
+          requestId,
+          scope: 'request',
+          chain: requestMwChain,
+          totalDuration: requestMwChain.reduce(
+            (sum, m) => sum + (m.endTime - m.startTime),
+            0,
+          ),
+          startTime: requestMwChain[0]!.startTime - requestStartTime!,
+        })
+      }
+
+      response = await handleRedirectResponse(ctx.response, request, getRouter, { requestId, requestType })
+      return response
     } finally {
+      if (process.env.NODE_ENV !== 'production' && requestId && response) {
+        startEventClient.emit('request-end', {
+          requestId,
+          type: requestType,
+          status: response.status,
+          duration: performance.now() - requestStartTime!,
+          responseHeaders: Object.fromEntries(response.headers.entries()),
+        })
+      }
       if (router && !cbWillCleanup) {
         // Clean up router SSR state if it was set up but won't be cleaned up by the callback
         // (e.g., in redirect cases or early returns before the callback is invoked).
@@ -660,6 +797,7 @@ async function handleRedirectResponse(
   response: Response,
   request: Request,
   getRouter: () => Promise<AnyRouter>,
+  devtoolsCtx?: { requestId?: string; requestType?: string },
 ): Promise<Response> {
   if (!isRedirect(response)) {
     return response
@@ -676,6 +814,17 @@ async function handleRedirectResponse(
   }
 
   const opts = response.options
+
+  if (process.env.NODE_ENV !== 'production' && devtoolsCtx?.requestId) {
+    startEventClient.emit('redirect', {
+      requestId: devtoolsCtx.requestId,
+      from: request.url.replace(/https?:\/\/[^/]+/, ''),
+      to: (opts.href || opts.to || response.headers.get('Location') || '') as string,
+      status: response.status || ((opts as any).status ?? 302),
+      isServerFn: devtoolsCtx.requestType === 'server-fn',
+      timestamp: Date.now(),
+    })
+  }
   if (opts.to && typeof opts.to === 'string' && !opts.to.startsWith('/')) {
     throw new Error(
       `Server side redirects must use absolute paths via the 'href' or 'to' options. The redirect() method's "to" property accepts an internal path only. Use the "href" property to provide an external URL. Received: ${JSON.stringify(opts)}`,
@@ -717,6 +866,8 @@ async function handleServerRoutes({
   executeRouter,
   context,
   executedRequestMiddlewares,
+  requestId,
+  requestStartTime,
 }: {
   getRouter: () => Promise<AnyRouter>
   request: Request
@@ -727,6 +878,8 @@ async function handleServerRoutes({
   ) => Promise<Response>
   context: any
   executedRequestMiddlewares: Set<AnyRequestMiddleware>
+  requestId?: string
+  requestStartTime?: number
 }): Promise<Response> {
   const router = await getRouter()
   const rewrittenUrl = executeRewriteInput(router.rewrite, url)
@@ -760,6 +913,27 @@ async function handleServerRoutes({
 
   // Add handler middleware if exact match
   const server = foundRoute?.options.server
+
+  if (process.env.NODE_ENV !== 'production' && requestId) {
+    startEventClient.emit('route-matched', {
+      requestId,
+      matchedRoutes: matchedRoutes.map((r: any) => ({
+        id: r.id,
+        path: r.fullPath || r.path,
+      })),
+      foundRoute: foundRoute
+        ? {
+            id: foundRoute.id,
+            path: (foundRoute as any).fullPath || foundRoute.path,
+          }
+        : null,
+      isExactMatch: !!isExactMatch,
+      params: routeParams,
+      hasServerHandlers: !!server?.handlers,
+      timestamp: Date.now(),
+    })
+  }
+
   if (server?.handlers && isExactMatch) {
     const handlers =
       typeof server.handlers === 'function'
@@ -793,12 +967,41 @@ async function handleServerRoutes({
     executeRouter(ctx.context, matchedRoutes),
   )
 
-  const ctx = await executeMiddleware(routeMiddlewares, {
+  const routeMwChain: Array<{
+    name: string
+    startTime: number
+    endTime: number
+  }> = []
+  const instrumentedRouteMws =
+    process.env.NODE_ENV !== 'production'
+      ? instrumentMiddlewareArray(routeMiddlewares as Array<any>, routeMwChain)
+      : routeMiddlewares
+
+  const ctx = await executeMiddleware(instrumentedRouteMws, {
     request,
     context,
     params: routeParams,
     pathname,
   })
+
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    requestId &&
+    routeMwChain.length > 0
+  ) {
+    startEventClient.emit('middleware-executed', {
+      requestId,
+      scope: 'route',
+      chain: routeMwChain,
+      totalDuration: routeMwChain.reduce(
+        (sum, m) => sum + (m.endTime - m.startTime),
+        0,
+      ),
+      startTime: requestStartTime
+        ? routeMwChain[0]!.startTime - requestStartTime
+        : routeMwChain[0]!.startTime,
+    })
+  }
 
   return ctx.response
 }
