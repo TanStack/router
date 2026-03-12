@@ -159,7 +159,7 @@ Remove cached route matches.
 
 Loads all of the currently matched route matches and resolves when they are all loaded and ready to be rendered.
 
-> ⚠️⚠️⚠️ **`router.load()` respects `route.staleTime` and will not forcefully reload a route match if it is still fresh. If you need to forcefully reload a route match, use `router.invalidate()` instead.**
+> ⚠️⚠️⚠️ **`router.load()` respects `route.staleTime`: fresh matches stay fresh, but stale matches are revalidated even if their loader key did not change. If you need to forcefully reload all active matches regardless of freshness, use `router.invalidate()` instead.**
 
 - Type: `(opts?: {sync?: boolean}) => Promise<void>`
 - if `sync` is true, the promise returned by this function will only resolve once all loaders have finished.
