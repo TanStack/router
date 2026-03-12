@@ -4,6 +4,8 @@ import {
   isRedirect,
 } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
+import { startEventClient } from './event-client'
+import { getStartContext } from '@tanstack/start-storage-context'
 import {
   TSS_FORMDATA_CONTEXT,
   X_TSS_RAW_RESPONSE,
@@ -50,6 +52,13 @@ export const handleServerAction = async ({
 
   const action = await getServerFnById(serverFnId, { fromClient: true })
 
+  const startCtx = getStartContext({ throwIfNotFound: false })
+  const requestId = startCtx?.requestId
+  const requestStartTime = startCtx?.requestStartTime
+  const fnMeta = (action as any).serverFnMeta as
+    | { id: string; name?: string; filename?: string }
+    | undefined
+
   // Early method check: reject mismatched HTTP methods before parsing
   // the request payload (FormData, JSON, query string, etc.)
   if (action.method && methodUpper !== action.method) {
@@ -72,6 +81,28 @@ export const handleServerAction = async ({
   }
 
   const contentType = request.headers.get('Content-Type')
+
+  const serverFnStart = performance.now()
+
+  if (process.env.NODE_ENV !== 'production' && requestId) {
+    const inputPayloadType = contentType?.includes('multipart/form-data')
+      ? 'formdata'
+      : contentType?.includes('application/json')
+        ? 'json'
+        : request.method === 'GET'
+          ? 'query-string'
+          : 'none'
+
+    startEventClient.emit('server-fn-start', {
+      requestId,
+      serverFnId: fnMeta?.id || serverFnId,
+      serverFnName: fnMeta?.name || serverFnId,
+      filename: fnMeta?.filename || 'unknown',
+      httpMethod: request.method,
+      inputPayloadType,
+      startTime: serverFnStart - requestStartTime!,
+    })
+  }
 
   function parsePayload(payload: any) {
     const parsedPayload = fromJSON(payload, { plugins: serovalPlugins })
@@ -177,6 +208,9 @@ export const handleServerAction = async ({
       return serializeResult(res)
 
       function serializeResult(res: unknown): Response {
+        const serializationStart = performance.now()
+        let lastChunkEmitTime = 0
+        let chunkIndex = 0
         let nonStreamingBody: any = undefined
 
         const alsResponse = getResponse()
@@ -225,6 +259,16 @@ export const handleServerAction = async ({
 
           // If no raw streams and done synchronously, return simple JSON
           if (done && rawStreams.size === 0) {
+            if (process.env.NODE_ENV !== 'production' && requestId) {
+              startEventClient.emit('serialization-result', {
+                requestId,
+                format: 'json',
+                status: alsResponse.status ?? 200,
+                contentType: 'application/json',
+                hasRawStreams: false,
+                duration: performance.now() - serializationStart,
+              })
+            }
             return new Response(
               nonStreamingBody ? JSON.stringify(nonStreamingBody) : undefined,
               {
@@ -244,6 +288,21 @@ export const handleServerAction = async ({
             const jsonStream = new ReadableStream<string>({
               start(controller) {
                 callbacks.onParse = (value) => {
+                  chunkIndex++
+                  const now = performance.now()
+                  if (
+                    process.env.NODE_ENV !== 'production' &&
+                    requestId &&
+                    now - lastChunkEmitTime >= 100
+                  ) {
+                    startEventClient.emit('stream-chunk', {
+                      requestId,
+                      serverFnId,
+                      chunkIndex,
+                      timestamp: Date.now(),
+                    })
+                    lastChunkEmitTime = now
+                  }
                   controller.enqueue(JSON.stringify(value) + '\n')
                 }
                 callbacks.onDone = () => {
@@ -267,6 +326,16 @@ export const handleServerAction = async ({
               rawStreams,
             )
 
+            if (process.env.NODE_ENV !== 'production' && requestId) {
+              startEventClient.emit('serialization-result', {
+                requestId,
+                format: 'framed-binary',
+                status: alsResponse.status ?? 200,
+                contentType: 'application/x-tss-framed; v=1',
+                hasRawStreams: true,
+                duration: performance.now() - serializationStart,
+              })
+            }
             return new Response(multiplexedStream, {
               status: alsResponse.status,
               statusText: alsResponse.statusText,
@@ -280,10 +349,26 @@ export const handleServerAction = async ({
           // No raw streams but not done yet - use standard NDJSON streaming
           const stream = new ReadableStream({
             start(controller) {
-              callbacks.onParse = (value) =>
+              callbacks.onParse = (value) => {
+                chunkIndex++
+                const now = performance.now()
+                if (
+                  process.env.NODE_ENV !== 'production' &&
+                  requestId &&
+                  now - lastChunkEmitTime >= 100
+                ) {
+                  startEventClient.emit('stream-chunk', {
+                    requestId,
+                    serverFnId,
+                    chunkIndex,
+                    timestamp: Date.now(),
+                  })
+                  lastChunkEmitTime = now
+                }
                 controller.enqueue(
                   textEncoder.encode(JSON.stringify(value) + '\n'),
                 )
+              }
               callbacks.onDone = () => {
                 try {
                   controller.close()
@@ -298,6 +383,16 @@ export const handleServerAction = async ({
               }
             },
           })
+          if (process.env.NODE_ENV !== 'production' && requestId) {
+            startEventClient.emit('serialization-result', {
+              requestId,
+              format: 'ndjson',
+              status: alsResponse.status ?? 200,
+              contentType: 'application/x-ndjson',
+              hasRawStreams: false,
+              duration: performance.now() - serializationStart,
+            })
+          }
           return new Response(stream, {
             status: alsResponse.status,
             statusText: alsResponse.statusText,
@@ -308,12 +403,32 @@ export const handleServerAction = async ({
           })
         }
 
+        if (process.env.NODE_ENV !== 'production' && requestId) {
+          startEventClient.emit('serialization-result', {
+            requestId,
+            format: 'raw-response',
+            status: alsResponse.status ?? 200,
+            contentType: '',
+            hasRawStreams: false,
+            duration: performance.now() - serializationStart,
+          })
+        }
         return new Response(undefined, {
           status: alsResponse.status,
           statusText: alsResponse.statusText,
         })
       }
     } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && requestId) {
+        startEventClient.emit('error', {
+          requestId,
+          phase: 'server-fn',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: Date.now(),
+        })
+      }
+
       if (error instanceof Response) {
         return error
       }
@@ -359,6 +474,29 @@ export const handleServerAction = async ({
       })
     }
   })()
+
+  if (process.env.NODE_ENV !== 'production' && requestId && response) {
+    const respContentType = response.headers.get('Content-Type') || ''
+    const resultType = response.status >= 400
+      ? 'error'
+      : isRedirect(response)
+        ? 'redirect'
+        : respContentType.includes('x-tss-framed')
+          ? 'framed-binary'
+          : respContentType.includes('x-ndjson')
+            ? 'ndjson-stream'
+            : respContentType.includes('application/json')
+              ? 'json'
+              : 'raw-response'
+
+    startEventClient.emit('server-fn-end', {
+      requestId,
+      serverFnId: fnMeta?.id || serverFnId,
+      duration: performance.now() - serverFnStart,
+      resultType,
+      status: response.status,
+    })
+  }
 
   return response
 }
