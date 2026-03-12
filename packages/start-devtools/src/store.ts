@@ -293,6 +293,8 @@ export function processEvent(
   }
 }
 
+const MAX_ENTRIES = 500
+
 export function createRequestStore() {
   const [entries, setEntries] = createSignal<Map<string, RequestEntry>>(
     new Map(),
@@ -302,6 +304,10 @@ export function createRequestStore() {
     setEntries((prev) => {
       const next = new Map(prev)
       processEvent(next, event)
+      if (next.size > MAX_ENTRIES) {
+        const keysToRemove = [...next.keys()].slice(0, next.size - MAX_ENTRIES)
+        for (const key of keysToRemove) next.delete(key)
+      }
       return next
     })
   })

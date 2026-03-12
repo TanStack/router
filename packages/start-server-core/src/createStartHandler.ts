@@ -585,10 +585,9 @@ export function createStartHandler<TRegister = Register>(
             requestId,
             scope: 'request',
             chain: requestMwChain,
-            totalDuration: requestMwChain.reduce(
-              (sum, m) => sum + (m.endTime - m.startTime),
-              0,
-            ),
+            totalDuration:
+              Math.max(...requestMwChain.map((m) => m.endTime)) -
+              Math.min(...requestMwChain.map((m) => m.startTime)),
             startTime: requestMwChain[0]!.startTime - requestStartTime!,
           })
         }
@@ -1006,10 +1005,9 @@ async function handleServerRoutes({
       requestId,
       scope: 'route',
       chain: routeMwChain,
-      totalDuration: routeMwChain.reduce(
-        (sum, m) => sum + (m.endTime - m.startTime),
-        0,
-      ),
+      totalDuration:
+        Math.max(...routeMwChain.map((m) => m.endTime)) -
+        Math.min(...routeMwChain.map((m) => m.startTime)),
       startTime: requestStartTime
         ? routeMwChain[0]!.startTime - requestStartTime
         : routeMwChain[0]!.startTime,

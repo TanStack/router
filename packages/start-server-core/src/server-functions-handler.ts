@@ -100,7 +100,7 @@ export const handleServerAction = async ({
       filename: fnMeta?.filename || 'unknown',
       httpMethod: request.method,
       inputPayloadType,
-      startTime: serverFnStart - requestStartTime!,
+      startTime: serverFnStart - (requestStartTime ?? serverFnStart),
     })
   }
 
@@ -189,7 +189,9 @@ export const handleServerAction = async ({
 
       const unwrapped = res.result || res.error
 
+      let wasNotFound = false
       if (isNotFound(res)) {
+        wasNotFound = true
         res = isNotFoundResponse(res)
       }
 
@@ -306,6 +308,15 @@ export const handleServerAction = async ({
                   controller.enqueue(JSON.stringify(value) + '\n')
                 }
                 callbacks.onDone = () => {
+                  if (process.env.NODE_ENV !== 'production' && requestId) {
+                    startEventClient.emit('stream-chunk', {
+                      requestId,
+                      serverFnId,
+                      chunkIndex,
+                      totalChunks: chunkIndex,
+                      timestamp: Date.now(),
+                    })
+                  }
                   try {
                     controller.close()
                   } catch {
@@ -370,6 +381,15 @@ export const handleServerAction = async ({
                 )
               }
               callbacks.onDone = () => {
+                if (process.env.NODE_ENV !== 'production' && requestId) {
+                  startEventClient.emit('stream-chunk', {
+                    requestId,
+                    serverFnId,
+                    chunkIndex,
+                    totalChunks: chunkIndex,
+                    timestamp: Date.now(),
+                  })
+                }
                 try {
                   controller.close()
                 } catch (error) {
@@ -477,8 +497,9 @@ export const handleServerAction = async ({
 
   if (process.env.NODE_ENV !== 'production' && requestId && response) {
     const respContentType = response.headers.get('Content-Type') || ''
-    const resultType =
-      response.status >= 400
+    const resultType = wasNotFound
+      ? 'not-found'
+      : response.status >= 400
         ? 'error'
         : isRedirect(response)
           ? 'redirect'
