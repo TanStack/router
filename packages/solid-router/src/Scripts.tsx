@@ -69,7 +69,7 @@ export const Scripts = () => {
 
   return (
     <NoHydration>
-      {allScripts.map((asset, i) => (
+      {allScripts.map((asset, _i) => (
         <Asset {...asset} />
       ))}
     </NoHydration>

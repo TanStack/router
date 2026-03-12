@@ -34,11 +34,11 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
 ])
 
-const defaultRouter = createRouter({
+const _defaultRouter = createRouter({
   routeTree,
 })
 
-type DefaultRouter = typeof defaultRouter
+type DefaultRouter = typeof _defaultRouter
 
 test('can pass default router to the provider', () => {
   expectTypeOf(RouterProvider<DefaultRouter>)

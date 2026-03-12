@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import { cleanup, render, screen } from '@solidjs/testing-library'
 import {
   Link,
   Outlet,
@@ -195,7 +195,7 @@ test('useParams must return parsed result if applicable.', async () => {
     params: { category: 'first' },
   })
 
-  const firstPostLink = await screen.findByTestId('post-one-link')
+  const _firstPostLink = await screen.findByTestId('post-one-link')
 
   expect(window.location.pathname).toBe('/posts/category_first')
   expect(router.state.location.pathname).toBe('/posts/category_first')

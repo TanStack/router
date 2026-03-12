@@ -1,15 +1,15 @@
 import { expectTypeOf, test } from 'vitest'
 import { createFileRoute, createRootRoute } from '../src'
 
-const rootRoute = createRootRoute()
+const _rootRoute = createRootRoute()
 
-const indexRoute = createFileRoute('/')()
+const _indexRoute = createFileRoute('/')()
 
 const invoicesRoute = createFileRoute('/invoices')()
 
 const invoiceRoute = createFileRoute('/invoices/$invoiceId')()
 
-const postLayoutRoute = createFileRoute('/_postLayout')()
+const _postLayoutRoute = createFileRoute('/_postLayout')()
 
 const postsRoute = createFileRoute('/_postLayout/posts')()
 
@@ -20,22 +20,22 @@ const protectedRoute = createFileRoute('/(auth)/protected')()
 declare module '@tanstack/router-core' {
   interface FileRoutesByPath {
     '/': {
-      preLoaderRoute: typeof indexRoute
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof _indexRoute
+      parentRoute: typeof _rootRoute
       id: string
       fullPath: string
       path: string
     }
     '/(auth)/protected': {
       preLoaderRoute: typeof protectedRoute
-      parentRoute: typeof rootRoute
+      parentRoute: typeof _rootRoute
       id: '/protected'
       fullPath: '/protected'
       path: '(auth)/protected'
     }
     '/invoices': {
       preLoaderRoute: typeof invoicesRoute
-      parentRoute: typeof indexRoute
+      parentRoute: typeof _indexRoute
       id: '/invoices'
       fullPath: '/invoices'
       path: 'invoices'
@@ -48,15 +48,15 @@ declare module '@tanstack/router-core' {
       path: '/$invoiceId'
     }
     '/_postLayout': {
-      preLoaderRoute: typeof postLayoutRoute
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof _postLayoutRoute
+      parentRoute: typeof _rootRoute
       id: string
       fullPath: string
       path: string
     }
     '/_postLayout/posts': {
       preLoaderRoute: typeof postsRoute
-      parentRoute: typeof postLayoutRoute
+      parentRoute: typeof _postLayoutRoute
       id: '/_postLayout/posts'
       fullPath: '/posts'
       path: '/posts'

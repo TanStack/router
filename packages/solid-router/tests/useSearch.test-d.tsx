@@ -32,11 +32,11 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(useSearch<DefaultRouter>)
       .parameter(0)
@@ -101,11 +101,11 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Accessor<{}>
@@ -187,11 +187,11 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Accessor<{}>
@@ -251,11 +251,11 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Accessor<{}>
@@ -316,11 +316,11 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Accessor<{
@@ -383,11 +383,11 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Accessor<{
@@ -453,11 +453,11 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(useSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Accessor<{
@@ -511,8 +511,8 @@ describe('useSearch', () => {
 
     const routeTree = rootRoute.addChildren([indexRoute])
 
-    const router = createRouter({ routeTree })
-    expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
+    const _router = createRouter({ routeTree })
+    expectTypeOf(useSearch<typeof _router, '/'>).returns.toEqualTypeOf<
       Accessor<{
         page: number
       }>
@@ -542,8 +542,8 @@ describe('useSearch', () => {
       indexRoute.addChildren([indexRoute]),
     ])
 
-    const router = createRouter({ routeTree })
-    expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
+    const _router = createRouter({ routeTree })
+    expectTypeOf(useSearch<typeof _router, '/'>).returns.toEqualTypeOf<
       Accessor<
         { status: 'in'; detail: string } | { status: 'out'; detail: string }
       >
@@ -566,13 +566,13 @@ describe('useSearch', () => {
 
     const routeTree = rootRoute.addChildren([invoicesRoute, indexRoute])
 
-    const router = createRouter({ routeTree })
+    const _router = createRouter({ routeTree })
 
     const from = '/invoices'
     test('return type is `{ page: number }` when shouldThrow = true', () => {
       const shouldThrow = true
       const search = useSearch<
-        typeof router,
+        typeof _router,
         typeof from,
         /* strict */ true,
         typeof shouldThrow
@@ -584,7 +584,7 @@ describe('useSearch', () => {
     test('return type is `{page: number} | undefined` when shouldThrow = false', () => {
       const shouldThrow = false
       const search = useSearch<
-        typeof router,
+        typeof _router,
         typeof from,
         /* strict */ true,
         typeof shouldThrow

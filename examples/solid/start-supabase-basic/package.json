@@ -12,13 +12,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@solidjs/web": "2.0.0-beta.2",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
     "@tanstack/solid-router": "^1.166.7",
     "@tanstack/solid-router-devtools": "^1.166.7",
     "@tanstack/solid-start": "^1.166.8",
-    "solid-js": "^1.9.9",
-    "redaxios": "^0.5.1"
+    "redaxios": "^0.5.1",
+    "solid-js": "2.0.0-beta.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",

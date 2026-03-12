@@ -8,11 +8,20 @@ export default defineConfig({
     pluginBabel({
       include: /\.(?:jsx|tsx)$/,
     }),
-    pluginSolid(),
+    pluginSolid({
+      solidPresetOptions: {
+        moduleName: '@solidjs/web',
+      },
+    }),
   ],
   tools: {
     rspack: {
       plugins: [tanstackRouter({ target: 'solid', autoCodeSplitting: true })],
+      resolve: {
+        alias: {
+          'solid-js/web': '@solidjs/web',
+        },
+      },
     },
   },
 })

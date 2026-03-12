@@ -8,7 +8,11 @@ export default defineConfig({
     pluginBabel({
       include: /\.(?:jsx|tsx)$/,
     }),
-    pluginSolid(),
+    pluginSolid({
+      solidPresetOptions: {
+        moduleName: '@solidjs/web',
+      },
+    }),
   ],
   tools: {
     rspack: {
@@ -20,7 +24,9 @@ export default defineConfig({
         }),
       ],
       resolve: {
-        conditionNames: ['solid', 'import', 'module', 'browser', 'default'],
+        alias: {
+          'solid-js/web': '@solidjs/web',
+        },
       },
     },
   },

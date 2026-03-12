@@ -35,11 +35,11 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
 ])
 
-const defaultRouter = createRouter({
+const _defaultRouter = createRouter({
   routeTree,
 })
 
-type DefaultRouter = typeof defaultRouter
+type DefaultRouter = typeof _defaultRouter
 
 type ExtractDefaultFrom<T> =
   T extends UseNavigateResult<infer DefaultFrom> ? DefaultFrom : never
@@ -110,9 +110,9 @@ describe('getRouteApi', () => {
 describe('createRoute', () => {
   describe('useNavigate', () => {
     test('has a static `from`', () => {
-      const navigate = invoiceRoute.useNavigate()
+      const _navigate = invoiceRoute.useNavigate()
       expectTypeOf<
-        ExtractDefaultFrom<typeof navigate>
+        ExtractDefaultFrom<typeof _navigate>
       >().toEqualTypeOf<'/invoices/$invoiceId'>()
     })
   })

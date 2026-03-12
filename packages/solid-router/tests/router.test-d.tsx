@@ -9,9 +9,9 @@ import {
 import type { RouterHistory } from '../src'
 
 test('when creating a router without context', () => {
-  const rootRoute = createRootRoute()
+  const _rootRoute = createRootRoute()
 
-  type RouteTree = typeof rootRoute
+  type RouteTree = typeof _rootRoute
 
   expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
@@ -99,9 +99,9 @@ test('when building location using router', () => {
 })
 
 test('when creating a router with context', () => {
-  const rootRoute = createRootRouteWithContext<{ userId: string }>()()
+  const _rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
-  type RouteTree = typeof rootRoute
+  type RouteTree = typeof _rootRoute
 
   expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
@@ -128,9 +128,9 @@ test('when creating a router with context and children', () => {
     path: '/',
   })
 
-  const routeTree = rootRoute.addChildren([indexRoute])
+  const _routeTree = rootRoute.addChildren([indexRoute])
 
-  type RouteTree = typeof routeTree
+  type RouteTree = typeof _routeTree
 
   expectTypeOf(createRouter<RouteTree, 'never'>)
     .parameter(0)
@@ -187,7 +187,7 @@ test('invalidate and clearCache narrowing in filter', () => {
     context: { userId: 'userId' },
   })
 
-  type Router = typeof router
+  type _Router = typeof router
 
   router.invalidate({
     filter: (route) => {

@@ -75,7 +75,7 @@ describe('disableGlobalCatchBoundary option', () => {
     expect(errorElement).toBeInTheDocument()
   })
 
-  test('errors bubble up to external error boundary when disableGlobalCatchBoundary is true', async () => {
+  test('errors bubble up to external error boundary when disableGlobalCatchBoundary is true', () => {
     const router = createTestRouter(true)
 
     // Wrap RouterProvider in an external error boundary

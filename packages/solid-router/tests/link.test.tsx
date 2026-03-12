@@ -2314,7 +2314,7 @@ describe('Link', () => {
 
     const homeLink = await screen.findByTestId('home-link')
 
-    const consoleWarnSpy = vi.spyOn(console, 'warn')
+    const _consoleWarnSpy = vi.spyOn(console, 'warn')
 
     fireEvent.click(homeLink)
 
@@ -2868,7 +2868,7 @@ describe('Link', () => {
     expect(window.location.pathname).toEqual('/dashboard/posts/id1')
     expect(post1Heading).toBeInTheDocument()
 
-    const consoleWarnSpy = vi.spyOn(console, 'warn')
+    const _consoleWarnSpy = vi.spyOn(console, 'warn')
 
     const usersLink = await screen.findByTestId('users-link')
     fireEvent.click(usersLink)
@@ -3968,7 +3968,7 @@ describe('Link', () => {
               search: { postPage: 0 },
             })
             setStatus('success')
-          } catch (e) {
+          } catch {
             setStatus('error')
           }
         }

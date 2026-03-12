@@ -959,7 +959,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
 
   const DetailsComponent = () => {
     const navigate = useNavigate()
-    const [error, setError] = Solid.createSignal<unknown>()
+    const [_error, setError] = Solid.createSignal<unknown>()
     return (
       <>
         <h1>Details!</h1>

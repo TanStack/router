@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import { cleanup, render, screen } from '@solidjs/testing-library'
 
 import {
   Link,

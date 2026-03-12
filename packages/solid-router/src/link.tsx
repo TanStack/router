@@ -45,8 +45,8 @@ function splitProps<T extends Record<string, any>, TKey extends keyof T>(
   props: T,
   keys: ReadonlyArray<TKey>,
 ): [Pick<T, TKey>, Omit<T, TKey>] {
-  const local = {} as Pick<T, TKey>
-  const rest = {} as Omit<T, TKey>
+  const _local = {} as Pick<T, TKey>
+  const _rest = {} as Omit<T, TKey>
 
   // A safe way to polyfill splitProps if native getter copy is too complex
   // is just to return [props, Solid.omit(props, keys)] but it modifies typing.

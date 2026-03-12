@@ -141,11 +141,11 @@ const routeTree = rootRoute.addChildren([
   layoutRoute.addChildren([commentsRoute]),
 ])
 
-const defaultRouter = createRouter({
+const _defaultRouter = createRouter({
   routeTree,
 })
 
-type DefaultRouter = typeof defaultRouter
+type DefaultRouter = typeof _defaultRouter
 
 const useDefaultMatchRoute = useMatchRoute<DefaultRouter>
 

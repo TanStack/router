@@ -26,11 +26,11 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(useParams<DefaultRouter>)
       .parameter(0)
@@ -92,11 +92,11 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(useParams<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Accessor<{}>
@@ -175,11 +175,11 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(useParams<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Accessor<{}>
@@ -249,13 +249,13 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    const router = createRouter({ routeTree })
+    const _router = createRouter({ routeTree })
 
     const from = '/invoices/$id'
     test('return type is `{ id: string }` when shouldThrow = true', () => {
       const shouldThrow = true
       const params = useParams<
-        typeof router,
+        typeof _router,
         typeof from,
         /* strict */ true,
         typeof shouldThrow
@@ -267,7 +267,7 @@ describe('useParams', () => {
     test('return type is `{page: string} | undefined` when shouldThrow = false', () => {
       const shouldThrow = false
       const params = useParams<
-        typeof router,
+        typeof _router,
         typeof from,
         /* strict */ true,
         typeof shouldThrow

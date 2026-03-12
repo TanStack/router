@@ -31,11 +31,11 @@ test('when there is no context', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(useRouteContext<DefaultRouter>)
     .parameter(0)
@@ -101,12 +101,12 @@ test('when there is the root context', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<
     Accessor<{
@@ -184,12 +184,12 @@ test('when there are multiple contexts', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<
     Accessor<{
@@ -267,12 +267,12 @@ test('when there are overlapping contexts', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(useRouteContext<DefaultRouter, '/'>).returns.toEqualTypeOf<
     Accessor<{

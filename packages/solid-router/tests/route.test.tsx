@@ -210,7 +210,7 @@ describe('useLoaderDeps', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      loaderDeps: ({ search }) => ({ testDep: 'value' }),
+      loaderDeps: ({ search: _search }) => ({ testDep: 'value' }),
       component: () => {
         const deps = indexRoute.useLoaderDeps()
         // deps should be an Accessor, so we need to call it to get the value
@@ -231,7 +231,7 @@ describe('useLoaderDeps', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      loaderDeps: ({ search }) => ({ testDep: 'api-value' }),
+      loaderDeps: ({ search: _search }) => ({ testDep: 'api-value' }),
       component: () => {
         const api = getRouteApi('/')
         const deps = api.useLoaderDeps()
