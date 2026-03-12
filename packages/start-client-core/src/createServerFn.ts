@@ -150,6 +150,8 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           // this function
           __executeServer: async (opts: any) => {
             const startContext = getStartContextServerOnly()
+            const { requestId, requestStartTime, eventClient } =
+              startContext ?? {}
             const serverContextAfterGlobalMiddlewares =
               startContext.contextAfterGlobalMiddlewares
             // Use safeObjectMerge for opts.context which comes from client
@@ -168,6 +170,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
               request: startContext.request,
             }
 
+            const mwStart = performance.now()
             const result = await executeMiddleware(
               resolvedMiddleware,
               'server',
@@ -178,6 +181,27 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
               error: d.error,
               context: d.sendContext,
             }))
+            const mwDuration = performance.now() - mwStart
+
+            if (
+              process.env.NODE_ENV !== 'production' &&
+              requestId &&
+              eventClient
+            ) {
+              eventClient.emit('middleware-executed', {
+                requestId,
+                scope: 'server-fn',
+                chain: [
+                  {
+                    name: 'server-fn-middleware-chain',
+                    startTime: mwStart,
+                    endTime: mwStart + mwDuration,
+                  },
+                ],
+                totalDuration: mwDuration,
+                startTime: mwStart - (requestStartTime ?? mwStart),
+              })
+            }
 
             return result
           },
