@@ -1,4 +1,4 @@
-import { createMemo, createSignal, onCleanup } from 'solid-js'
+import { createEffect, createMemo, createSignal, onCleanup } from 'solid-js'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type {
@@ -72,19 +72,27 @@ export function useRouterState<
     return state
   }
 
-  const [signal, setSignal] = createSignal(() => selector(router.__store.get()))
+  // Track the latest store state in a signal that updates via subscription.
+  // We store the full state so that the selector (which may read reactive
+  // props like props.matchId) re-runs inside a Solid tracking scope (the
+  // createMemo below) rather than inside the store subscriber callback
+  // where reactive reads would be untracked.
+  const [storeState, setStoreState] = createSignal(router.__store.get())
 
   const unsub = router.__store.subscribe((s) => {
-    const data = selector(s)
-    if (deepEqual(signal(), data)) {
-      return
-    }
-    setSignal(data)
+    setStoreState(s)
   }).unsubscribe
 
   onCleanup(() => {
     unsub()
   })
 
-  return signal as Accessor<UseRouterStateResult<TRouter, TSelected>>
+  // Run the selector inside a memo so that:
+  // 1. Reactive values read by the selector (e.g. props.matchId) are tracked
+  // 2. The result is memoized and only updates when the selected value changes
+  const selected = createMemo(() => selector(storeState()), undefined, {
+    equals: (a: any, b: any) => deepEqual(a, b),
+  })
+
+  return selected as Accessor<UseRouterStateResult<TRouter, TSelected>>
 }
