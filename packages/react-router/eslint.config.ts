@@ -2,6 +2,7 @@ import pluginReact from '@eslint-react/eslint-plugin'
 // @ts-expect-error
 import pluginReactHooks from 'eslint-plugin-react-hooks'
 import rootConfig from '../../eslint.config.js'
+import type { Linter } from 'eslint'
 
 export default [
   ...rootConfig,
@@ -22,4 +23,4 @@ export default [
       '@typescript-eslint/no-unnecessary-condition': 'off',
     },
   },
-]
+] as Array<Linter.Config>
