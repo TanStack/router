@@ -101,7 +101,7 @@ export function createHistory(opts: {
   getLength: () => number
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
-  go: (n: number) => void
+  go: (n: number, ignoreBlocker: boolean) => void
   back: (ignoreBlocker: boolean) => void
   forward: (ignoreBlocker: boolean) => void
   createHref: (path: string) => string
@@ -204,7 +204,7 @@ export function createHistory(opts: {
     go: (index, navigateOpts) => {
       tryNavigation({
         task: () => {
-          opts.go(index)
+          opts.go(index, navigateOpts?.ignoreBlocker ?? false)
           handleIndexChange({ type: 'GO', index })
         },
         navigateOpts,
@@ -500,7 +500,8 @@ export function createBrowserHistory(opts?: {
       ignoreNextBeforeUnload = true
       win.history.forward()
     },
-    go: (n) => {
+    go: (n, ignoreBlocker) => {
+      if (ignoreBlocker) skipBlockerNextPop = true
       nextPopIsGo = true
       win.history.go(n)
     },
