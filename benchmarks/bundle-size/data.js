@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773428825377,
+  "lastUpdate": 1773433621191,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -5702,6 +5702,90 @@ window.BENCHMARK_DATA = {
             "value": 105442,
             "unit": "bytes",
             "extra": "raw=330738; brotli=91203"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49923,
+            "unit": "bytes",
+            "extra": "raw=150412; brotli=44175"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 55515,
+            "unit": "bytes",
+            "extra": "raw=166658; brotli=49024"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "manuel.schiller@caligano.de",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6069eba64369dbddb0d8dccdb4407f0e1a82259e",
+          "message": "fix: hoist inline component definitions for proper React HMR (#6919)\n\n* fix: hoist inline component definitions for proper React HMR\n\nthis reverts #6197 and implements a proper fix\n\nfixes #6339\n\n* add changeset",
+          "timestamp": "2026-03-13T21:24:40+01:00",
+          "tree_id": "a3602692b13b3f0c4fb1b0840f72ec9f005bbe69",
+          "url": "https://github.com/TanStack/router/commit/6069eba64369dbddb0d8dccdb4407f0e1a82259e"
+        },
+        "date": 1773433620167,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89175,
+            "unit": "bytes",
+            "extra": "raw=280668; brotli=77537"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92232,
+            "unit": "bytes",
+            "extra": "raw=291168; brotli=80219"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 37299,
+            "unit": "bytes",
+            "extra": "raw=111917; brotli=33523"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41724,
+            "unit": "bytes",
+            "extra": "raw=125200; brotli=37454"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 53541,
+            "unit": "bytes",
+            "extra": "raw=152925; brotli=48142"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 58446,
+            "unit": "bytes",
+            "extra": "raw=168805; brotli=52504"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 102044,
+            "unit": "bytes",
+            "extra": "raw=320758; brotli=88321"
+          },
+          {
+            "name": "react-start.full",
+            "value": 105437,
+            "unit": "bytes",
+            "extra": "raw=330720; brotli=91200"
           },
           {
             "name": "solid-start.minimal",
