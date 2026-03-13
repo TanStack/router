@@ -1644,8 +1644,8 @@ importers:
   e2e/react-start/clerk-basic:
     dependencies:
       '@clerk/tanstack-react-start':
-        specifier: ^0.19.0
-        version: 0.19.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^1.0.1
+        version: 1.0.1(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -8766,8 +8766,8 @@ importers:
   examples/react/start-clerk-basic:
     dependencies:
       '@clerk/tanstack-react-start':
-        specifier: ^0.27.14
-        version: 0.27.14(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^1.0.1
+        version: 1.0.1(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -13424,20 +13424,9 @@ packages:
   '@chevrotain/utils@10.5.0':
     resolution: {integrity: sha512-hBzuU5+JjB2cqNZyszkDHZgOSrUUT8V3dhgRl8Q9Gp6dAj/H5+KILGjbhDpc3Iy9qmqlm/akuOI2ut9VUtzJxQ==}
 
-  '@clerk/backend@2.18.3':
-    resolution: {integrity: sha512-fWMq/Tb2hgfUXLKJN8jr6pbpA5XLUwC4BjWz7lB5Y+YhXhBrO7GtfpZIS91L/aDhNb17X6IaE6XvS6tDJBCUUw==}
-    engines: {node: '>=18.17.0'}
-
-  '@clerk/backend@2.29.2':
-    resolution: {integrity: sha512-HflWfWG0jfnOB++3bu1N0lzAgOuapJRmkfX1jdtF3M+Wn4QVHczLMt2To9VIGiTt62+kRUWLV4SONzVvCoOcsA==}
-    engines: {node: '>=18.17.0'}
-
-  '@clerk/clerk-react@5.53.2':
-    resolution: {integrity: sha512-/ckRJC1dDS6hUVv+zzNX5VUCC49/UlbhKElN5LQqv172ntrx4Mw1TKBCJ3aO5Rct/RiJxhf1PfTUEohtY4QjUg==}
-    engines: {node: '>=18.17.0'}
-    peerDependencies:
-      react: ^19.2.3
-      react-dom: ^19.2.3
+  '@clerk/backend@3.0.1':
+    resolution: {integrity: sha512-U5E+KpNlFlaJRdpOoOltIV8o1YjTWw5affsugEb/kIvGceSP6SzvNEBr/TnCY+2yu87Vq22ShEycpQBlse2Bkw==}
+    engines: {node: '>=20.9.0'}
 
   '@clerk/clerk-react@5.59.3':
     resolution: {integrity: sha512-r1gmAYxhXs+QkXjDwj5Eqvm0Io8PtJ4FKkA45khiAzIQXcaQLFq/wFy7d1K8OSIYAIdFbuO0bnIOU/FdgWOc+A==}
@@ -13446,17 +13435,12 @@ packages:
       react: ^19.2.3
       react-dom: ^19.2.3
 
-  '@clerk/shared@3.28.2':
-    resolution: {integrity: sha512-BfBCPaoPoLCiU0b0MhQUfCjs+bWRRLkdHw0vBffSjtsFLxp1b5IL5D8nKgDPIKIIv7DmCCmO15tr+GqG3CGpYQ==}
-    engines: {node: '>=18.17.0'}
+  '@clerk/react@6.0.1':
+    resolution: {integrity: sha512-zq6vfH7Yiul4PPxUmyl/iW6CZbIzxfHvhXLxZK9zbqHQEy9xDlIQirhWIiHucBqMWTJruudY5KCV5WBe2xmfww==}
+    engines: {node: '>=20.9.0'}
     peerDependencies:
       react: ^19.2.3
       react-dom: ^19.2.3
-    peerDependenciesMeta:
-      react:
-        optional: true
-      react-dom:
-        optional: true
 
   '@clerk/shared@3.42.0':
     resolution: {integrity: sha512-sJUur/7jnHHlAsdoDosxpOmfV05VR7K5rvqlFskj3GaAMFEJrvdOztw0hmhBGVSWiCpjTZfdGITegton8mo7mQ==}
@@ -13470,31 +13454,26 @@ packages:
       react-dom:
         optional: true
 
-  '@clerk/tanstack-react-start@0.19.0':
-    resolution: {integrity: sha512-4jotpgIZXtndctloODcTbIPU3a1521SQK9CNlT2v2DIUz8iic9d+I+hE1JjlY3RG6iy/M1MSimnMQn+a3ki3Rw==}
-    engines: {node: '>=18.17.0'}
+  '@clerk/shared@4.0.0':
+    resolution: {integrity: sha512-Z3QhVud7FM9SBgSGxyUdC+nDg6vro+5zJ5gDO1To3FDzRLWKW4xIGd5y8UBqWZMMMHWaSDiZvYlUynb+gs8PnQ==}
+    engines: {node: '>=20.9.0'}
+    peerDependencies:
+      react: ^19.2.3
+      react-dom: ^19.2.3
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
+  '@clerk/tanstack-react-start@1.0.1':
+    resolution: {integrity: sha512-UsJ9VajyfPZEUl+X7LMptzp6BO6BTR/4rAJht/glMFolgzVADD/1I7j3Y9CuZA/E2sDT85ivMjGh4Tgkfxa2FA==}
+    engines: {node: '>=20.9.0'}
     peerDependencies:
       '@tanstack/react-router': workspace:*
       '@tanstack/react-start': workspace:*
       react: ^19.2.3
       react-dom: ^19.2.3
-
-  '@clerk/tanstack-react-start@0.27.14':
-    resolution: {integrity: sha512-So+pchhM3NUIY0sFqxh3yv2hG9bifPUqkCIDUKVzq0+korMhHTsMXBwcsbt2LpQ9UBXob1dW5v1WxtdWkqELFw==}
-    engines: {node: '>=18.17.0'}
-    peerDependencies:
-      '@tanstack/react-router': workspace:*
-      '@tanstack/react-start': workspace:*
-      react: ^19.2.3
-      react-dom: ^19.2.3
-
-  '@clerk/types@4.101.10':
-    resolution: {integrity: sha512-qlmgnAm/IeK02RKEKVN8/Glx07xw/Lcv67jBfikM8HXhHc5v7bfYLD8UiWTr6H2RGtvB09cIt9JezRRlsuVBew==}
-    engines: {node: '>=18.17.0'}
-
-  '@clerk/types@4.95.0':
-    resolution: {integrity: sha512-K1kI3BjvufG1mZBZJ5Q8Yu9wV6AFpjjITml5vhvP95xibJWOi3eYvlRCTKXDNKBFGvQfrTJbwn67jSG2VdyLKw==}
-    engines: {node: '>=18.17.0'}
 
   '@cloudflare/kv-asset-handler@0.4.0':
     resolution: {integrity: sha512-+tv3z+SPp+gqTIcImN9o0hqE9xyfQjI1XD9pL6NuKjua9B1y7mNYv0S9cP+QEbA4ppVgGZEmKOvHX5G5Ei1CVA==}
@@ -26274,34 +26253,14 @@ snapshots:
 
   '@chevrotain/utils@10.5.0': {}
 
-  '@clerk/backend@2.18.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@clerk/backend@3.0.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@clerk/shared': 3.28.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@clerk/types': 4.95.0
-      cookie: 1.0.2
+      '@clerk/shared': 4.0.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       standardwebhooks: 1.0.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - react
       - react-dom
-
-  '@clerk/backend@2.29.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
-    dependencies:
-      '@clerk/shared': 3.42.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@clerk/types': 4.101.10(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      standardwebhooks: 1.0.0
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@clerk/clerk-react@5.53.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
-    dependencies:
-      '@clerk/shared': 3.28.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@clerk/types': 4.95.0
-      react: 19.2.3
-      react-dom: 19.2.3(react@19.2.3)
-      tslib: 2.8.1
 
   '@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
@@ -26309,18 +26268,14 @@ snapshots:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
       tslib: 2.8.1
+    optional: true
 
-  '@clerk/shared@3.28.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@clerk/react@6.0.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@clerk/types': 4.95.0
-      dequal: 2.0.3
-      glob-to-regexp: 0.4.1
-      js-cookie: 3.0.5
-      std-env: 3.9.0
-      swr: 2.3.4(react@19.2.3)
-    optionalDependencies:
+      '@clerk/shared': 4.0.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
+      tslib: 2.8.1
 
   '@clerk/shared@3.42.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
@@ -26328,46 +26283,34 @@ snapshots:
       dequal: 2.0.3
       glob-to-regexp: 0.4.1
       js-cookie: 3.0.5
-      std-env: 3.9.0
+      std-env: 3.10.0
       swr: 2.3.4(react@19.2.3)
     optionalDependencies:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
+    optional: true
 
-  '@clerk/tanstack-react-start@0.19.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@clerk/shared@4.0.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@clerk/backend': 2.18.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@clerk/clerk-react': 5.53.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@clerk/shared': 3.28.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@clerk/types': 4.95.0
+      '@tanstack/query-core': 5.90.19
+      dequal: 2.0.3
+      glob-to-regexp: 0.4.1
+      js-cookie: 3.0.5
+      std-env: 3.10.0
+    optionalDependencies:
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+
+  '@clerk/tanstack-react-start@1.0.1(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@clerk/backend': 3.0.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@clerk/react': 6.0.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@clerk/shared': 4.0.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router': link:packages/react-router
       '@tanstack/react-start': link:packages/react-start
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
       tslib: 2.8.1
-
-  '@clerk/tanstack-react-start@0.27.14(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
-    dependencies:
-      '@clerk/backend': 2.29.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@clerk/clerk-react': 5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@clerk/shared': 3.42.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@clerk/types': 4.101.10(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tanstack/react-router': link:packages/react-router
-      '@tanstack/react-start': link:packages/react-start
-      react: 19.2.3
-      react-dom: 19.2.3(react@19.2.3)
-      tslib: 2.8.1
-
-  '@clerk/types@4.101.10(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
-    dependencies:
-      '@clerk/shared': 3.42.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@clerk/types@4.95.0':
-    dependencies:
-      csstype: 3.1.3
 
   '@cloudflare/kv-asset-handler@0.4.0':
     dependencies:

@@ -2,8 +2,7 @@
 import {
   ClerkProvider,
   SignInButton,
-  SignedIn,
-  SignedOut,
+  Show,
   UserButton,
 } from '@clerk/tanstack-react-start'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
@@ -117,12 +116,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Posts
           </Link>
           <div className="ml-auto">
-            <SignedIn>
+            <Show when="signed-in">
               <UserButton />
-            </SignedIn>
-            <SignedOut>
+            </Show>
+            <Show when="signed-out">
               <SignInButton mode="modal" />
-            </SignedOut>
+            </Show>
           </div>
         </div>
         <hr />
