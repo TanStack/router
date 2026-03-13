@@ -30,8 +30,8 @@ function handleRouteUpdate(
   walkReplaceSegmentTree(newRoute, router.processedTree.segmentTree)
   const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
   if (
-    router.state.matches.find(filter) ||
-    router.state.pendingMatches?.find(filter)
+    router.stores.activeMatchesSnapshot.state.find(filter) ||
+    router.stores.pendingMatchesSnapshot.state.find(filter)
   ) {
     router.invalidate({ filter })
   }
