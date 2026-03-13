@@ -144,9 +144,9 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   ): Solid.Accessor<
     false | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']>
   > => {
-    const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
-
     return Solid.createMemo(() => {
+      const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
+
       router.stores.matchRouteReactivity.state
       return router.matchRoute(rest as any, {
         pending,
@@ -185,19 +185,19 @@ export function MatchRoute<
 >(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
   const matchRoute = useMatchRoute()
   const params = matchRoute(props as any)
-  const child = props.children
 
-  const renderedChild = () => {
+  const renderedChild = Solid.createMemo(() => {
     const matchedParams = params()
+    const child = props.children
 
     if (typeof child === 'function') {
       return (child as any)(matchedParams)
     }
 
     return matchedParams ? child : null
-  }
+  })
 
-  return renderedChild()
+  return <>{renderedChild()}</>
 }
 
 export interface UseMatchesBaseOptions<TRouter extends AnyRouter, TSelected> {
