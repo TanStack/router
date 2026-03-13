@@ -800,6 +800,8 @@ export interface ServerSsr {
   isDehydrated: () => boolean
   isSerializationFinished: () => boolean
   onRenderFinished: (listener: () => void) => void
+  setRenderFinished: () => void
+  cleanup: () => void
   onSerializationFinished: (listener: () => void) => void
   dehydrate: () => Promise<void>
   takeBufferedScripts: () => RouterManagedTag | undefined
