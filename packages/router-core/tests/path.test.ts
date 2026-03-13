@@ -3,6 +3,7 @@ import {
   compileDecodeCharMap,
   exactPathTest,
   interpolatePath,
+  isPathInScope,
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
@@ -85,6 +86,60 @@ describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
     })
   },
 )
+
+describe('isPathInScope', () => {
+  it('returns true for root basepath with any path', () => {
+    expect(isPathInScope('/anything', '/')).toBe(true)
+    expect(isPathInScope('/', '/')).toBe(true)
+    expect(isPathInScope('/deep/nested/path', '/')).toBe(true)
+  })
+
+  it('returns true when pathname matches basepath exactly', () => {
+    expect(isPathInScope('/app', '/app')).toBe(true)
+    expect(isPathInScope('/user-management', '/user-management')).toBe(true)
+  })
+
+  it('returns true when pathname starts with basepath followed by /', () => {
+    expect(isPathInScope('/app/page', '/app')).toBe(true)
+    expect(isPathInScope('/app/nested/deep', '/app')).toBe(true)
+    expect(isPathInScope('/user-management/users', '/user-management')).toBe(
+      true,
+    )
+  })
+
+  it('returns false when pathname does not start with basepath', () => {
+    expect(isPathInScope('/other', '/app')).toBe(false)
+    expect(isPathInScope('/', '/app')).toBe(false)
+    expect(isPathInScope('/settings', '/app')).toBe(false)
+    expect(isPathInScope('/home', '/user-management')).toBe(false)
+  })
+
+  it('returns false when basepath is prefix but not at path boundary', () => {
+    // /app should not match /application
+    expect(isPathInScope('/application', '/app')).toBe(false)
+    expect(isPathInScope('/apps', '/app')).toBe(false)
+    expect(isPathInScope('/appstore/page', '/app')).toBe(false)
+  })
+
+  it('handles case-insensitive comparison', () => {
+    expect(isPathInScope('/APP/page', '/app')).toBe(true)
+    expect(isPathInScope('/App/Page', '/app')).toBe(true)
+    expect(isPathInScope('/app/page', '/APP')).toBe(true)
+    expect(isPathInScope('/USER-MANAGEMENT/users', '/user-management')).toBe(
+      true,
+    )
+  })
+
+  it('handles trailing slashes correctly', () => {
+    expect(isPathInScope('/app/', '/app')).toBe(true)
+    expect(isPathInScope('/app/page/', '/app')).toBe(true)
+  })
+
+  it('handles edge cases', () => {
+    expect(isPathInScope('', '/')).toBe(true)
+    expect(isPathInScope('/', '/')).toBe(true)
+  })
+})
 
 describe('resolvePath', () => {
   describe.each([
