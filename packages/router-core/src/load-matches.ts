@@ -657,11 +657,13 @@ const runLoader = async (
       }
 
       // Kick off the loader!
-      const loaderResult = route.options.loader?.(
+      const routeLoader = route.options.loader
+      const loader =
+        typeof routeLoader === 'function' ? routeLoader : routeLoader?.handler
+      const loaderResult = loader?.(
         getLoaderContext(inner, matchPromises, matchId, index, route),
       )
-      const loaderResultIsPromise =
-        route.options.loader && isPromise(loaderResult)
+      const loaderResultIsPromise = !!loader && isPromise(loaderResult)
 
       const willLoadSomething = !!(
         loaderResultIsPromise ||
@@ -680,7 +682,7 @@ const runLoader = async (
         }))
       }
 
-      if (route.options.loader) {
+      if (loader) {
         const loaderData = loaderResultIsPromise
           ? await loaderResult
           : loaderResult
@@ -820,7 +822,11 @@ const loadRouteMatch = async (
       (invalid || (shouldReload ?? staleMatchShouldReload))
     if (preload && route.options.preload === false) {
       // Do nothing
-    } else if (loaderShouldRunAsync && !inner.sync) {
+    } else if (
+      loaderShouldRunAsync &&
+      !inner.sync &&
+      shouldReloadInBackground
+    ) {
       loaderIsRunningAsync = true
       ;(async () => {
         try {
@@ -835,7 +841,7 @@ const loadRouteMatch = async (
           }
         }
       })()
-    } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
+    } else if (status !== 'success' || loaderShouldRunAsync) {
       await runLoader(inner, matchPromises, matchId, index, route)
     } else {
       syncMatchContext(inner, matchId, index)
@@ -846,6 +852,12 @@ const loadRouteMatch = async (
   let loaderShouldRunAsync = false
   let loaderIsRunningAsync = false
   const route = inner.router.looseRoutesById[routeId]!
+  const routeLoader = route.options.loader
+  const shouldReloadInBackground =
+    ((typeof routeLoader === 'function'
+      ? undefined
+      : routeLoader?.staleReloadMode) ??
+      inner.router.options.defaultStaleReloadMode) !== 'blocking'
 
   if (shouldSkipLoader(inner, matchId)) {
     const match = inner.router.getMatch(matchId)
@@ -871,7 +883,12 @@ const loadRouteMatch = async (
       // do not block if we already have stale data we can show
       // but only if the ongoing load is not a preload since error handling is different for preloads
       // and we don't want to swallow errors
-      if (prevMatch.status === 'success' && !inner.sync && !prevMatch.preload) {
+      if (
+        prevMatch.status === 'success' &&
+        !inner.sync &&
+        !prevMatch.preload &&
+        shouldReloadInBackground
+      ) {
         return prevMatch
       }
       await prevMatch._nonReactive.loaderPromise
