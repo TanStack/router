@@ -1,12 +1,13 @@
 /** @jsxImportSource solid-js */
-import { createSignal, Show } from 'solid-js'
+import { Show } from 'solid-js'
 import type { RequestEntry } from '../store'
 import WaterfallBar from './WaterfallBar'
-import DetailPanel from './DetailPanel'
 
 interface RequestRowProps {
   entry: RequestEntry
   maxTime: number
+  selected: boolean
+  onSelect: () => void
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -22,10 +23,47 @@ const TYPE_COLORS: Record<string, string> = {
   'server-route': '#22c55e',
 }
 
-export default function RequestRow(props: RequestRowProps) {
-  const [expanded, setExpanded] = createSignal(false)
-  const [selectedPhase, setSelectedPhase] = createSignal<string | null>(null)
+const GRID_COLUMNS = '52px 1fr 42px 60px 90px 2fr'
 
+function displayUrl(entry: RequestEntry): string {
+  if (entry.serverFn?.name) return entry.serverFn.name
+  try {
+    const u = new URL(entry.url, 'http://localhost')
+    return u.pathname
+  } catch {
+    return entry.url
+  }
+}
+
+export function RequestTableHeader() {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        'grid-template-columns': GRID_COLUMNS,
+        gap: '0',
+        padding: '4px 12px',
+        background: 'var(--tsd-bg-header, #1e1e32)',
+        'border-bottom': '1px solid var(--tsd-border, #333)',
+        color: 'var(--tsd-text-secondary, #999)',
+        'font-size': '10px',
+        'text-transform': 'uppercase',
+        'letter-spacing': '0.5px',
+        'font-weight': '600',
+        'flex-shrink': '0',
+      }}
+    >
+      <span>Method</span>
+      <span>Name</span>
+      <span>Status</span>
+      <span>Time</span>
+      <span>Type</span>
+      <span>Waterfall</span>
+    </div>
+  )
+}
+
+export default function RequestRow(props: RequestRowProps) {
   const statusColor = () => {
     if (!props.entry.status) return '#6b7280'
     return STATUS_COLORS[String(props.entry.status)[0]!] || '#6b7280'
@@ -38,116 +76,97 @@ export default function RequestRow(props: RequestRowProps) {
 
   return (
     <div
+      onClick={props.onSelect}
       style={{
-        'border-bottom': '1px solid var(--tsd-border, #333)',
+        display: 'grid',
+        'grid-template-columns': GRID_COLUMNS,
+        gap: '0',
+        padding: '6px 12px',
+        'border-bottom': '1px solid rgba(51,51,51,0.5)',
+        cursor: 'pointer',
+        'align-items': 'center',
+        'background-color': props.selected
+          ? 'rgba(99, 102, 241, 0.15)'
+          : 'transparent',
+        'font-size': '12px',
+      }}
+      onMouseEnter={(e) => {
+        if (!props.selected)
+          e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.08)'
+      }}
+      onMouseLeave={(e) => {
+        if (!props.selected)
+          e.currentTarget.style.backgroundColor = 'transparent'
       }}
     >
-      <div
-        onClick={() => setExpanded(!expanded())}
+      <span
         style={{
-          display: 'grid',
-          'grid-template-columns': '60px 1fr 60px 80px 120px 2fr',
-          'align-items': 'center',
-          gap: '8px',
-          padding: '8px 12px',
-          cursor: 'pointer',
-          'font-size': '12px',
-          'background-color': expanded()
-            ? 'var(--tsd-bg-secondary, #2a2a3e)'
-            : 'transparent',
+          'font-weight': 'bold',
+          color: '#60a5fa',
+          'font-size': '10px',
         }}
       >
+        {props.entry.method}
+      </span>
+
+      <span
+        style={{
+          overflow: 'hidden',
+          'text-overflow': 'ellipsis',
+          'white-space': 'nowrap',
+          color: 'var(--tsd-text, #ccc)',
+        }}
+        title={props.entry.url}
+      >
+        {displayUrl(props.entry)}
+      </span>
+
+      <span
+        style={{
+          color: statusColor(),
+          'font-weight': 'bold',
+          'font-size': '10px',
+        }}
+      >
+        {props.entry.status ?? '...'}
+      </span>
+
+      <span
+        style={{
+          color: 'var(--tsd-text-secondary, #999)',
+          'font-size': '11px',
+        }}
+      >
+        {props.entry.duration !== null
+          ? `${props.entry.duration.toFixed(1)}ms`
+          : 'pending'}
+      </span>
+
+      <Show when={props.entry.type} fallback={<span />}>
         <span
           style={{
+            'background-color': typeColor(),
+            color: '#fff',
+            padding: '1px 6px',
+            'border-radius': '3px',
+            'font-size': '9px',
             'font-weight': 'bold',
-            color: '#60a5fa',
-            'font-size': '11px',
+            'text-transform': 'uppercase',
+            display: 'inline-block',
+            width: 'fit-content',
           }}
         >
-          {props.entry.method}
+          {props.entry.type}
         </span>
+      </Show>
 
-        <span
-          style={{
-            overflow: 'hidden',
-            'text-overflow': 'ellipsis',
-            'white-space': 'nowrap',
-            color: 'var(--tsd-text, #e0e0e0)',
-          }}
-        >
-          {props.entry.url}
-        </span>
-
-        <span
-          style={{
-            color: statusColor(),
-            'font-weight': 'bold',
-            'font-size': '11px',
-          }}
-        >
-          {props.entry.status ?? '...'}
-        </span>
-
-        <span
-          style={{
-            color: 'var(--tsd-text-secondary, #999)',
-            'font-size': '11px',
-          }}
-        >
-          {props.entry.duration !== null
-            ? `${props.entry.duration.toFixed(1)}ms`
-            : 'pending'}
-        </span>
-
-        <Show when={props.entry.type} fallback={<span />}>
-          <span
-            style={{
-              'background-color': typeColor(),
-              color: '#fff',
-              padding: '1px 6px',
-              'border-radius': '3px',
-              'font-size': '10px',
-              'font-weight': 'bold',
-              'text-transform': 'uppercase',
-            }}
-          >
-            {props.entry.type}
-          </span>
-        </Show>
-
+      <div style={{ position: 'relative', height: '18px' }}>
         <WaterfallBar
           phases={props.entry.phases}
           totalDuration={props.entry.duration}
           maxTime={props.maxTime}
         />
       </div>
-
-      <Show when={expanded()}>
-        <div style={{ padding: '0 12px 12px' }}>
-          <div style={{ 'margin-bottom': '12px' }}>
-            <div
-              style={{
-                'font-size': '11px',
-                'font-weight': 'bold',
-                'margin-bottom': '4px',
-                color: 'var(--tsd-text-secondary, #999)',
-              }}
-            >
-              Waterfall
-            </div>
-            <WaterfallBar
-              phases={props.entry.phases}
-              totalDuration={props.entry.duration}
-              maxTime={props.entry.duration || props.maxTime}
-              onPhaseClick={(name) =>
-                setSelectedPhase(selectedPhase() === name ? null : name)
-              }
-            />
-          </div>
-
-          <DetailPanel entry={props.entry} selectedPhase={selectedPhase()} />
-        </div>
-      </Show>
     </div>
   )
 }
