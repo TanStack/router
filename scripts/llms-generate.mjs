@@ -86,7 +86,10 @@ function extractFrontMatter(content) {
 }
 
 function sanitizeMarkdown(markdownContent) {
-  return markdownContent.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')
+  return markdownContent
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${')
 }
 
 function convertMarkdownToTypeScriptESM(markdownContent) {
