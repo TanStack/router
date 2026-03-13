@@ -18,6 +18,8 @@ Middleware allows you to customize the behavior of both server routes like GET/P
 - **Error Handling**: Handle errors in a consistent way.
 - And many more! The possibilities are up to you!
 
+> TanStack Start includes many security protections automatically. Middleware is where you implement app-specific security like auth checks or CSRF tokens for legacy browsers. See the [Security FAQ](./security).
+
 ## Middleware Types
 
 There are two types of middleware: **request middleware** and **server function middleware**.
