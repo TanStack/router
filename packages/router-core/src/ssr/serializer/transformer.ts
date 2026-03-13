@@ -72,8 +72,9 @@ export interface CreateSerializationAdapterOptions<
   fromSerializable: (value: TOutput) => TInput
 }
 
-export type ValidateSerializable<T, TSerializable> =
-  T extends ReadonlyArray<unknown>
+export type ValidateSerializable<T, TSerializable> = unknown extends T
+  ? T
+  : T extends ReadonlyArray<unknown>
     ? ResolveArrayShape<T, TSerializable, 'input'>
     : T extends TSerializable
       ? T
