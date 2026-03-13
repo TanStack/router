@@ -43,7 +43,7 @@ Server utilities (`getRequest`, `getRequestHeader`, `setResponseHeader`, `setCoo
 
 ```bash
 npm i @tanstack/vue-start @tanstack/vue-router vue
-npm i -D vite @vitejs/plugin-vue typescript
+npm i -D vite @vitejs/plugin-vue @vitejs/plugin-vue-jsx typescript
 ```
 
 ### 2. package.json
@@ -81,11 +81,13 @@ npm i -D vite @vitejs/plugin-vue typescript
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/vue-start/plugin/vite'
 import vuePlugin from '@vitejs/plugin-vue'
+import vueJsx from '@vitejs/plugin-vue-jsx'
 
 export default defineConfig({
   plugins: [
     tanstackStart(), // MUST come before vue plugin
     vuePlugin(),
+    vueJsx(), // Required for JSX/TSX route files
   ],
 })
 ```

@@ -381,6 +381,23 @@ function Nav() {
 }
 ```
 
+### Reusable Components with Router Hooks
+
+To create a component that uses router hooks across multiple routes, pass a union of route paths as the `from` prop:
+
+```tsx
+function PostIdDisplay({ from }: { from: '/posts/$id' | '/drafts/$id' }) {
+  const { id } = useParams({ from })
+  return <span>ID: {id}</span>
+}
+
+// Usage in different route components
+<PostIdDisplay from="/posts/$id" />
+<PostIdDisplay from="/drafts/$id" />
+```
+
+This pattern avoids `strict: false` (which returns an imprecise union) while keeping the component reusable across specific known routes.
+
 ### Auth Provider Must Wrap RouterProvider
 
 If routes use auth context (via `createRootRouteWithContext`), the auth provider must be an ancestor of `RouterProvider`:
@@ -420,7 +437,7 @@ const router = createRouter({
 
 ### 1. HIGH: Using React hooks in `beforeLoad` or `loader`
 
-`beforeLoad` and `loader` are NOT React components — they are plain async functions called by the router. React hooks cannot be used in them.
+`beforeLoad` and `loader` are NOT React components — they are plain async functions. React hooks cannot be called in them. Pass auth state via router context instead.
 
 ```tsx
 // WRONG — useAuth is a React hook, cannot be called here
@@ -429,18 +446,7 @@ beforeLoad: () => {
   if (!auth.user) throw redirect({ to: '/login' })
 }
 
-// CORRECT — pass auth state via router context
-const rootRoute = createRootRouteWithContext<{ auth: AuthState }>()({
-  component: RootComponent,
-})
-
-// In the component that creates the router:
-const router = createRouter({
-  routeTree,
-  context: { auth: getAuthState() },
-})
-
-// Then in a route:
+// CORRECT — read auth from router context
 beforeLoad: ({ context }) => {
   if (!context.auth.isAuthenticated) {
     throw redirect({ to: '/login' })
@@ -450,25 +456,26 @@ beforeLoad: ({ context }) => {
 
 ### 2. HIGH: Wrapping RouterProvider inside an auth provider incorrectly
 
-If you use `createRootRouteWithContext<{ auth: AuthState }>()`, the auth state must be available when the router is created — not injected after.
+Create the router once with an `undefined!` placeholder, then inject live auth via `RouterProvider`'s `context` prop. Do NOT recreate the router on auth changes — this resets caches and rebuilds the tree.
 
 ```tsx
-// WRONG — router created before auth is available
-const router = createRouter({ routeTree, context: {} })
+// CORRECT — create router once, inject live auth via context prop
+const router = createRouter({
+  routeTree,
+  context: { auth: undefined! }, // placeholder, filled by RouterProvider
+})
 
-function App() {
-  const auth = useAuth() // too late
-  return <RouterProvider router={router} />
+function InnerApp() {
+  const auth = useAuth()
+  return <RouterProvider router={router} context={{ auth }} />
 }
 
-// CORRECT — provide context at creation time
 function App() {
-  const auth = useAuth()
-  const router = useMemo(
-    () => createRouter({ routeTree, context: { auth } }),
-    [auth],
+  return (
+    <AuthProvider>
+      <InnerApp />
+    </AuthProvider>
   )
-  return <RouterProvider router={router} />
 }
 ```
 

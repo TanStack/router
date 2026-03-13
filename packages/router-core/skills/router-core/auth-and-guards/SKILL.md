@@ -27,7 +27,7 @@ Protect routes with `beforeLoad` + `redirect()` in a pathless layout route (`_au
 
 ```tsx
 // src/routes/_authenticated.tsx
-import { createFileRoute, redirect, Outlet } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ context, location }) => {
@@ -40,7 +40,7 @@ export const Route = createFileRoute('/_authenticated')({
       })
     }
   },
-  component: () => <Outlet />,
+  // component defaults to Outlet — no need to declare it
 })
 ```
 
@@ -94,7 +94,7 @@ import { routeTree } from './routeTree.gen'
 export const router = createRouter({
   routeTree,
   context: {
-    auth: undefined!, // will be set by RouterProvider context prop
+    auth: undefined!, // placeholder — filled by RouterProvider context prop
   },
 })
 
@@ -113,6 +113,7 @@ import { router } from './router'
 
 function InnerApp() {
   const auth = useAuth()
+  // context prop injects live auth state WITHOUT recreating the router
   return <RouterProvider router={router} context={{ auth }} />
 }
 
@@ -125,7 +126,7 @@ function App() {
 }
 ```
 
-The auth hook is called inside a React component (`InnerApp`), satisfying the Rules of Hooks. The returned value is injected into the router context via `RouterProvider`'s `context` prop.
+The router is created once with a placeholder. `RouterProvider`'s `context` prop injects the live auth state on each render — this avoids recreating the router on auth changes (which would reset caches and rebuild the route tree).
 
 ### Redirect-Based Auth with Redirect-Back
 
@@ -133,7 +134,7 @@ Save the current location in search params so you can redirect back after login:
 
 ```tsx
 // src/routes/_authenticated.tsx
-import { createFileRoute, redirect, Outlet } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ context, location }) => {
@@ -144,7 +145,6 @@ export const Route = createFileRoute('/_authenticated')({
       })
     }
   },
-  component: () => <Outlet />,
 })
 ```
 
@@ -153,9 +153,17 @@ export const Route = createFileRoute('/_authenticated')({
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
+// Validate redirect target to prevent open redirect attacks
+function sanitizeRedirect(url: unknown): string {
+  if (typeof url !== 'string' || !url.startsWith('/') || url.startsWith('//')) {
+    return '/'
+  }
+  return url
+}
+
 export const Route = createFileRoute('/login')({
   validateSearch: (search) => ({
-    redirect: (search.redirect as string) || '/',
+    redirect: sanitizeRedirect(search.redirect),
   }),
   beforeLoad: ({ context, search }) => {
     if (context.auth.isAuthenticated) {
@@ -253,7 +261,7 @@ Admin-only layout route:
 
 ```tsx
 // src/routes/_authenticated/_admin.tsx
-import { createFileRoute, redirect, Outlet } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_authenticated/_admin')({
   beforeLoad: ({ context, location }) => {
@@ -264,7 +272,6 @@ export const Route = createFileRoute('/_authenticated/_admin')({
       })
     }
   },
-  component: () => <Outlet />,
 })
 ```
 
@@ -272,7 +279,7 @@ Multi-role access:
 
 ```tsx
 // src/routes/_authenticated/_moderator.tsx
-import { createFileRoute, redirect, Outlet } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_authenticated/_moderator')({
   beforeLoad: ({ context, location }) => {
@@ -283,7 +290,6 @@ export const Route = createFileRoute('/_authenticated/_moderator')({
       })
     }
   },
-  component: () => <Outlet />,
 })
 ```
 
@@ -291,7 +297,7 @@ Permission-based:
 
 ```tsx
 // src/routes/_authenticated/_users.tsx
-import { createFileRoute, redirect, Outlet } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_authenticated/_users')({
   beforeLoad: ({ context, location }) => {
@@ -302,7 +308,6 @@ export const Route = createFileRoute('/_authenticated/_users')({
       })
     }
   },
-  component: () => <Outlet />,
 })
 ```
 
@@ -441,7 +446,6 @@ export const Route = createFileRoute('/_authenticated')({
       throw redirect({ to: '/login' })
     }
   },
-  component: () => <Outlet />,
 })
 ```
 

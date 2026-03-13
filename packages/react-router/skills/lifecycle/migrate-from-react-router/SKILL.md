@@ -20,8 +20,11 @@ sources:
 
 This is a step-by-step migration checklist. Each check covers one conversion task. Complete them in order.
 
-> **CRITICAL**: If your UI is blank after migration, open the console. Errors like "cannot use useNavigate outside of context" mean React Router imports remain alongside TanStack Router imports. Uninstall `react-router` to surface them as TypeScript errors.
+> **CRITICAL**: If your UI is blank after migration, open the console. Errors like "cannot use useNavigate outside of context" mean React Router imports remain alongside TanStack Router imports. Uninstall `react-router` (and `react-router-dom` if present) to surface them as TypeScript errors.
+>
 > **CRITICAL**: TanStack Router uses `to` + `params` for navigation, NOT template literal paths. Never interpolate params into the `to` string.
+>
+> **NOTE**: React Router v7 recommends importing from `react-router` (not `react-router-dom`). The `react-router-dom` package still exists but just re-exports from `react-router`. Check for imports from both.
 
 ## Pre-Migration
 
@@ -34,8 +37,8 @@ git checkout -b migrate-to-tanstack-router
 - [ ] **Install TanStack Router alongside React Router temporarily**
 
 ```bash
-npm install @tanstack/react-router
-npm install -D @tanstack/router-plugin @tanstack/react-router-devtools
+npm install @tanstack/react-router @tanstack/react-router-devtools
+npm install -D @tanstack/router-plugin
 ```
 
 - [ ] **Configure bundler plugin (Vite example)**
@@ -197,7 +200,7 @@ Key differences:
 
 - `to` is a route path pattern, NOT an interpolated string
 - `params` is a separate prop with typed values
-- Active class: `className="[&.active]:font-bold"` (automatic `active` data attribute)
+- Active styling: use `activeProps={{ className: 'font-bold' }}` or `data-status="active"` attribute for CSS
 
 - [ ] **Convert all `useNavigate` calls**
 
@@ -294,6 +297,43 @@ Or from within the route component:
 const { postId } = Route.useParams()
 ```
 
+## `useLocation` — Common Pitfall
+
+- [ ] **Replace `useLocation` with specific hooks**
+
+React Router's `useLocation` is heavily used, and TanStack Router has a hook with the same name — but they are NOT equivalent. TanStack Router's `useLocation()` returns the router's current location, which during pending navigations may differ from what's currently rendered. Most React Router `useLocation` usage should be replaced with more specific hooks. See [#3110](https://github.com/TanStack/router/issues/3110).
+
+Replace based on what you actually need:
+
+```tsx
+// React Router
+import { useLocation } from 'react-router'
+const location = useLocation()
+
+// ❌ DON'T just swap to TanStack Router's useLocation — it's the "live" URL
+import { useLocation } from '@tanstack/react-router'
+
+// ✅ DO use the specific hook for what you need:
+import {
+  useMatch,
+  useMatches,
+  useParams,
+  useSearch,
+} from '@tanstack/react-router'
+
+// Current route match (replaces most useLocation().pathname usage)
+const match = useMatch({ from: '/posts/$postId' })
+
+// All active matches (replaces useLocation for breadcrumbs/analytics)
+const matches = useMatches()
+
+// Path params (replaces useLocation + manual parsing)
+const { postId } = useParams({ from: '/posts/$postId' })
+
+// Search params (replaces useLocation().search parsing)
+const { page } = useSearch({ from: '/posts' })
+```
+
 ## Outlet
 
 - [ ] **Replace React Router `Outlet` with TanStack Router `Outlet`**
@@ -352,62 +392,28 @@ Key differences:
 
 ## Code Splitting
 
-- [ ] **Convert lazy route imports**
-
-React Router:
-
-```tsx
-const LazyPage = lazy(() => import('./pages/LazyPage'))
-{ path: '/lazy', element: <Suspense><LazyPage /></Suspense> }
-```
-
-TanStack Router (with `autoCodeSplitting: true` in plugin config, this is automatic). For manual splitting:
+- [ ] **Convert lazy route imports** — with `autoCodeSplitting: true` in the plugin config, this is automatic. For manual splitting, use `.lazy.tsx` files:
 
 ```tsx
 // src/routes/lazy-page.lazy.tsx
 import { createLazyFileRoute } from '@tanstack/react-router'
 
 export const Route = createLazyFileRoute('/lazy-page')({
-  component: LazyPage,
+  component: () => <div>Lazy loaded</div>,
 })
-
-function LazyPage() {
-  return <div>Lazy loaded</div>
-}
 ```
 
 ## Cleanup
 
-- [ ] **Remove React Router**
+- [ ] **Remove React Router and verify**
 
 ```bash
 npm uninstall react-router react-router-dom
+grep -r "from 'react-router" src/  # find stale imports
+npx tsc --noEmit                    # verify clean build
 ```
 
-- [ ] **Search for remaining React Router imports**
-
-```bash
-grep -r "from 'react-router" src/
-grep -r 'from "react-router' src/
-```
-
-Any remaining imports will now produce TypeScript errors after uninstalling.
-
-- [ ] **Verify TypeScript compiles cleanly**
-
-```bash
-npx tsc --noEmit
-```
-
-- [ ] **Test all routes manually**
-
-Verify:
-
-- All routes render
-- Navigation works (including browser back/forward)
-- Search params persist and validate
-- Dynamic route params resolve
-- Loaders execute and data displays
+- [ ] **Test all routes** — verify rendering, navigation (incl. back/forward), search params, dynamic params, and loaders
 
 ## Common Mistakes
 
@@ -477,6 +483,7 @@ File naming also uses `$`: `src/routes/posts/$postId.tsx`
 | `useParams()`                | `useParams({ from: '/route/$param' })`               |
 | `useSearchParams()`          | `validateSearch` + `useSearch({ from })`             |
 | `useLoaderData()`            | `Route.useLoaderData()`                              |
+| `useLocation()`              | `useMatch`, `useMatches`, `useParams`, `useSearch`   |
 | `<Outlet />`                 | `<Outlet />`                                         |
 | `loader({ params })`         | `loader: ({ params }) => ...` (route option)         |
 | `action({ request })`        | Use mutations / form libraries                       |

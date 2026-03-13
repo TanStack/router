@@ -38,7 +38,7 @@ This skill covers the Vue-specific bindings, components, composables, and setup 
 
 ```bash
 npm install @tanstack/vue-router
-npm install -D @tanstack/router-plugin
+npm install -D @tanstack/router-plugin @vitejs/plugin-vue-jsx
 ```
 
 ### 2. Configure Vite Plugin
@@ -47,6 +47,7 @@ npm install -D @tanstack/router-plugin
 // vite.config.ts
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import vueJsx from '@vitejs/plugin-vue-jsx'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
@@ -57,6 +58,7 @@ export default defineConfig({
       autoCodeSplitting: true,
     }),
     vue(),
+    vueJsx(), // Required for JSX/TSX route files
   ],
 })
 ```
@@ -203,8 +205,8 @@ const match = useMatch({ from: '/posts/$postId' })
 - **`useBlocker({ shouldBlockFn })`** — blocks navigation for unsaved changes
 - **`useCanGoBack()`** — `Ref<boolean>`
 - **`useLocation()`** — `Ref<ParsedLocation>`
-- **`useLoaderDeps({ from })`** — returns raw value (NOT a Ref)
-- **`useLinkProps()`** — returns `ComputedRef<LinkHTMLAttributes>`
+- **`useLoaderDeps({ from })`** — `Ref<T>`, loader dependency values
+- **`useLinkProps()`** — returns `LinkHTMLAttributes`
 - **`useMatchRoute()`** — returns a function; calling it returns `Ref<false | Params>`
 
 ## Components Reference
@@ -301,8 +303,9 @@ const StyledLink = createLink(StyledLinkComponent)
 
 All components in `@tanstack/vue-router` use `h()` render functions internally. Route components can use either SFC templates or render functions:
 
+SFC template (most common for user code) in `MyRoute.component.vue`:
+
 ```vue
-// SFC template (most common for user code) // MyRoute.component.vue
 <template>
   <div>{{ data.title }}</div>
 </template>
@@ -337,9 +340,9 @@ beforeLoad: ({ context }) => {
 
 ### Vue File Conventions for Code Splitting
 
-With `autoCodeSplitting`, Vue routes support split-file conventions:
+With `autoCodeSplitting`, Vue routes can optionally use split-file conventions. These are NOT required — single-file `.tsx` routes work fine. Split files are useful for separating route config from components:
 
-- `myRoute.route.ts` — route configuration (search params, loader, beforeLoad)
+- `myRoute.ts` — route configuration (search params, loader, beforeLoad)
 - `myRoute.component.vue` — route component (lazy-loaded)
 - `myRoute.errorComponent.vue` — error component (lazy-loaded)
 - `myRoute.notFoundComponent.vue` — not-found component (lazy-loaded)

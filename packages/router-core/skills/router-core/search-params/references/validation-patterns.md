@@ -4,7 +4,7 @@ Comprehensive validation patterns for TanStack Router search params across all s
 
 ## Zod with `@tanstack/zod-adapter`
 
-Always use `fallback()` from the adapter instead of zod's `.catch()`. Always wrap with `zodValidator()`.
+Zod v3 does not implement Standard Schema, so the `@tanstack/zod-adapter` wrapper is required. Always use `fallback()` from the adapter instead of zod's `.catch()`. Always wrap with `zodValidator()`.
 
 ### Basic Types
 
@@ -173,10 +173,10 @@ const userSearchSchema = paginationSchema.merge(sortSchema).extend({
 
 ## Valibot (Standard Schema)
 
-Valibot 1.0+ implements Standard Schema. No adapter wrapper needed — pass the schema directly to `validateSearch`.
+Valibot 1.0+ implements Standard Schema. No adapter wrapper needed — pass the schema directly to `validateSearch`. The `@tanstack/valibot-adapter` is optional and only needed for explicit input/output type control.
 
 ```bash
-npm install valibot @tanstack/valibot-adapter
+npm install valibot
 ```
 
 ```tsx
@@ -240,10 +240,10 @@ export const Route = createFileRoute('/items')({
 
 ## ArkType (Standard Schema)
 
-ArkType 2.0-rc+ implements Standard Schema. No adapter needed — pass the type directly to `validateSearch`.
+ArkType 2.0-rc+ implements Standard Schema. No adapter needed — pass the type directly to `validateSearch`. The `@tanstack/arktype-adapter` is optional and only needed for explicit input/output type control.
 
 ```bash
-npm install arktype @tanstack/arktype-adapter
+npm install arktype
 ```
 
 ```tsx

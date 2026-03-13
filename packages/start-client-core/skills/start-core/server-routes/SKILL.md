@@ -104,6 +104,8 @@ Each handler receives:
 - `request` — the incoming [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object
 - `params` — dynamic path parameters
 - `context` — context from middleware
+- `pathname` — the matched pathname
+- `next` — call to fall through to SSR (returns a `Response`)
 
 ## Dynamic Path Params
 

@@ -2,9 +2,9 @@
 name: router-core/not-found-and-errors
 description: >-
   notFound() function, notFoundComponent, defaultNotFoundComponent,
-  notFoundMode (fuzzy/root), errorComponent, onError/onCatch,
-  CatchBoundary, NotFoundRoute (deprecated), route masking (mask
-  option, createRouteMask, unmaskOnReload).
+  notFoundMode (fuzzy/root), errorComponent, CatchBoundary,
+  CatchNotFound, isNotFound, NotFoundRoute (deprecated), route
+  masking (mask option, createRouteMask, unmaskOnReload).
 type: sub-skill
 library: tanstack-router
 library_version: '1.166.2'
@@ -149,7 +149,7 @@ const router = createRouter({
 
 ### `errorComponent` Per Route
 
-`errorComponent` receives `error` and `reset` props. For loader errors, use `router.invalidate()` to re-run the loader, then call `reset()` to clear the error boundary.
+`errorComponent` receives `error`, `info`, and `reset` props. For loader errors, use `router.invalidate()` to re-run the loader — it automatically resets the error boundary.
 
 ```tsx
 // src/routes/posts.$postId.tsx
@@ -167,9 +167,9 @@ export const Route = createFileRoute('/posts/$postId')({
 
 function PostErrorComponent({
   error,
-  reset,
 }: {
   error: Error
+  info: { componentStack: string }
   reset: () => void
 }) {
   const router = useRouter()
@@ -179,9 +179,8 @@ function PostErrorComponent({
       <p>Error: {error.message}</p>
       <button
         onClick={() => {
-          // Invalidate re-runs the loader, reset clears the boundary
+          // Invalidate re-runs the loader and resets the error boundary
           router.invalidate()
-          reset()
         }}
       >
         Retry
@@ -201,7 +200,7 @@ function PostComponent() {
 ```tsx
 const router = createRouter({
   routeTree,
-  defaultErrorComponent: ({ error, reset }) => {
+  defaultErrorComponent: ({ error }) => {
     const router = useRouter()
     return (
       <div>
@@ -209,7 +208,6 @@ const router = createRouter({
         <button
           onClick={() => {
             router.invalidate()
-            reset()
           }}
         >
           Retry
@@ -408,7 +406,7 @@ export const Route = createFileRoute('/posts/$postId')({
 
 Masking data lives in `location.state` (browser history). When a masked URL is copied, shared, or opened in a new tab, the masking data is lost. The browser navigates to the visible (masked) URL directly.
 
-### 5. HIGH (cross-skill): Using `reset()` alone instead of `router.invalidate()` + `reset()`
+### 5. HIGH (cross-skill): Using `reset()` alone instead of `router.invalidate()`
 
 ```tsx
 // WRONG — reset() clears the error boundary but does NOT re-run the loader
@@ -416,14 +414,13 @@ function ErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
   return <button onClick={reset}>Retry</button>
 }
 
-// CORRECT — invalidate re-runs loaders, reset clears the boundary
-function ErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
+// CORRECT — invalidate re-runs loaders and resets the error boundary
+function ErrorFallback({ error }: { error: Error; reset: () => void }) {
   const router = useRouter()
   return (
     <button
       onClick={() => {
         router.invalidate()
-        reset()
       }}
     >
       Retry

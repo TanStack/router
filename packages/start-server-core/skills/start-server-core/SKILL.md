@@ -18,7 +18,7 @@ sources:
 Server-side runtime for TanStack Start. Provides the request handler, request/response utilities, cookie management, and session management. All utilities are available anywhere in the call stack during a request via AsyncLocalStorage.
 
 > **CRITICAL**: These utilities are SERVER-ONLY. Import them from `@tanstack/<framework>-start/server`, not from the main entry point. They throw if called outside a server request context.
-
+>
 > **CRITICAL**: Types are FULLY INFERRED. Never cast, never annotate inferred values.
 
 ## `createStartHandler`
@@ -26,7 +26,8 @@ Server-side runtime for TanStack Start. Provides the request handler, request/re
 Creates the main request handler that processes all incoming requests through three phases: server functions, server routes, then app SSR.
 
 ```ts
-// src/entry.server.ts (or use framework defaults)
+// src/server.ts
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { createStartHandler } from '@tanstack/react-start/server'
 import { defaultStreamHandler } from '@tanstack/react-start/server'
 
@@ -51,6 +52,8 @@ All imported from `@tanstack/<framework>-start/server`. Available anywhere durin
 ### Reading Request Data
 
 ```ts
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
+import { createServerFn } from '@tanstack/react-start'
 import {
   getRequest,
   getRequestHeaders,
@@ -77,6 +80,8 @@ const serverFn = createServerFn({ method: 'GET' }).handler(async () => {
 ### Setting Response Data
 
 ```ts
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
+import { createServerFn } from '@tanstack/react-start'
 import {
   setResponseHeader,
   setResponseHeaders,
@@ -100,6 +105,8 @@ const serverFn = createServerFn({ method: 'POST' }).handler(async () => {
 ## Cookie Management
 
 ```ts
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
+import { createServerFn } from '@tanstack/react-start'
 import {
   getCookies,
   getCookie,
@@ -127,6 +134,8 @@ const serverFn = createServerFn({ method: 'POST' }).handler(async () => {
 Encrypted sessions stored in cookies. Requires a password for encryption.
 
 ```ts
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
+import { createServerFn } from '@tanstack/react-start'
 import {
   useSession,
   getSession,
@@ -183,24 +192,32 @@ await session.clear() // Clear session data
 
 ## Query Validation
 
+Validate query string parameters using a Standard Schema:
+
 ```ts
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { getValidatedQuery } from '@tanstack/react-start/server'
+import { z } from 'zod'
 
 const serverFn = createServerFn({ method: 'GET' }).handler(async () => {
-  const query = getValidatedQuery((q) => ({
-    page: Number(q.page) || 1,
-    limit: Math.min(Number(q.limit) || 20, 100),
-  }))
+  const query = await getValidatedQuery(
+    z.object({
+      page: z.coerce.number().default(1),
+      limit: z.coerce.number().default(20),
+    }),
+  )
 
   return { page: query.page }
 })
 ```
 
+> Note: `getValidatedQuery` accepts a Standard Schema validator, not a callback function.
+
 ## How Request Handling Works
 
 `createStartHandler` processes requests in three phases:
 
-1. **Server Function Dispatch** — If URL matches the server function prefix (`/_server`), deserializes the payload, runs global request middleware, executes the server function, and returns the serialized result.
+1. **Server Function Dispatch** — If URL matches the server function prefix (`/_serverFn`), deserializes the payload, runs global request middleware, executes the server function, and returns the serialized result.
 
 2. **Server Route Handler** — For non-server-function requests, matches the URL against routes with `server.handlers`. Runs route middleware, then the matched HTTP method handler. Handlers can return a `Response` or call `next()` to fall through to SSR.
 
@@ -221,6 +238,7 @@ function MyComponent() {
 }
 
 // CORRECT — use inside server functions only
+// Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { createServerFn } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
 
@@ -229,9 +247,9 @@ const getAuth = createServerFn({ method: 'GET' }).handler(async () => {
 })
 ```
 
-### 2. HIGH: Forgetting session password is required
+### 2. HIGH: Forgetting session password for most session operations
 
-`useSession`, `getSession`, and `updateSession` all require a `password` field for encryption. Missing it throws at runtime.
+`useSession`, `getSession`, `updateSession`, and `sealSession` all require a `password` field for encryption. Missing it throws at runtime. `clearSession` accepts `Partial<SessionConfig>`, so password is optional for clearing.
 
 ### 3. MEDIUM: Using session without HTTPS in production
 

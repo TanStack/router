@@ -168,7 +168,7 @@ Or per-link:
 </Link>
 ```
 
-Preloaded data is cached for 30 seconds by default (`defaultPreloadStaleTime`). When using an external cache like TanStack Query, set `defaultPreloadStaleTime: 0` to let the external library control freshness.
+Preloaded data stays fresh for 30 seconds by default (`defaultPreloadStaleTime: 30_000`). During that window it won't be refetched. When using an external cache like TanStack Query, set `defaultPreloadStaleTime: 0` to let the external library control freshness.
 
 Manual preloading via the router instance:
 
