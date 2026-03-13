@@ -7,6 +7,9 @@ import type { Linter } from 'eslint'
 export default [
   ...rootConfig,
   {
+    ignores: ['bin/**'],
+  },
+  {
     files: ['src/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
   },
   {

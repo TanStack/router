@@ -6,7 +6,12 @@
 try {
   await import('@tanstack/intent/intent-library')
 } catch (e) {
-  if (e?.code === 'ERR_MODULE_NOT_FOUND' || e?.code === 'MODULE_NOT_FOUND') {
+  const isModuleNotFound =
+    e?.code === 'ERR_MODULE_NOT_FOUND' || e?.code === 'MODULE_NOT_FOUND'
+  const missingIntentLibrary =
+    typeof e?.message === 'string' && e.message.includes('@tanstack/intent')
+
+  if (isModuleNotFound && missingIntentLibrary) {
     console.error('@tanstack/intent is not installed.')
     console.error('')
     console.error('Install it as a dev dependency:')

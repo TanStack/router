@@ -86,7 +86,7 @@ export const Route = createRootRouteWithContext<{
 
 ```tsx
 // src/router.tsx
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
@@ -190,14 +190,21 @@ This is the recommended pattern. The loader ensures data is in the cache before 
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 
+interface Post {
+  id: string
+  title: string
+}
+
 const postsQueryOptions = queryOptions({
   queryKey: ['posts'],
-  queryFn: () => fetch('/api/posts').then((r) => r.json()),
+  queryFn: (): Promise<Array<Post>> =>
+    fetch('/api/posts').then((r) => r.json()),
 })
 
 export const Route = createFileRoute('/posts')({
   loader: ({ context }) => {
-    // ensureQueryData returns cached data if fresh, fetches if stale
+    // ensureQueryData returns cached data if available, fetches if not in cache
+    // To also refetch stale data, pass revalidateIfStale: true
     return context.queryClient.ensureQueryData(postsQueryOptions)
   },
   component: PostsPage,
@@ -209,7 +216,7 @@ function PostsPage() {
 
   return (
     <ul>
-      {posts.map((post: any) => (
+      {posts.map((post) => (
         <li key={post.id}>{post.title}</li>
       ))}
     </ul>
@@ -223,6 +230,12 @@ function PostsPage() {
 // src/routes/posts/$postId.tsx
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
+
+interface Post {
+  id: string
+  title: string
+  content: string
+}
 
 const postQueryOptions = (postId: string) =>
   queryOptions({
@@ -250,6 +263,8 @@ function PostPage() {
 For non-critical data, start the fetch without blocking navigation:
 
 ```tsx
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+
 export const Route = createFileRoute('/dashboard')({
   loader: ({ context }) => {
     // Await critical data
@@ -340,15 +355,15 @@ A module-level singleton `QueryClient` is shared across all server requests, lea
 ```tsx
 // WRONG — shared across SSR requests
 const queryClient = new QueryClient()
-export function createRouter() {
+export function createAppRouter() {
   return createRouter({
     routeTree,
     context: { queryClient },
   })
 }
 
-// CORRECT — new QueryClient per createRouter call
-export function createRouter() {
+// CORRECT — new QueryClient per createAppRouter call
+export function createAppRouter() {
   const queryClient = new QueryClient()
   return createRouter({
     routeTree,

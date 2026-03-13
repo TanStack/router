@@ -110,13 +110,13 @@ esbuild.build({
 
 ### File Convention Options
 
-| Option                   | Type               | Default     | Description                          |
-| ------------------------ | ------------------ | ----------- | ------------------------------------ |
-| `routeFilePrefix`        | `string`           | `undefined` | Prefix filter for route files        |
-| `routeFileIgnorePrefix`  | `string`           | `'-'`       | Prefix to exclude files from routing |
-| `routeFileIgnorePattern` | `string`           | `undefined` | Pattern to exclude from routing      |
-| `indexToken`             | `string \| RegExp` | `'index'`   | Token identifying index routes       |
-| `routeToken`             | `string \| RegExp` | `'route'`   | Token identifying route config files |
+| Option                   | Type                                                    | Default     | Description                          |
+| ------------------------ | ------------------------------------------------------- | ----------- | ------------------------------------ |
+| `routeFilePrefix`        | `string`                                                | `undefined` | Prefix filter for route files        |
+| `routeFileIgnorePrefix`  | `string`                                                | `'-'`       | Prefix to exclude files from routing |
+| `routeFileIgnorePattern` | `string`                                                | `undefined` | Pattern to exclude from routing      |
+| `indexToken`             | `string \| RegExp \| { regex: string; flags?: string }` | `'index'`   | Token identifying index routes       |
+| `routeToken`             | `string \| RegExp \| { regex: string; flags?: string }` | `'route'`   | Token identifying route config files |
 
 ### Code Splitting Options
 

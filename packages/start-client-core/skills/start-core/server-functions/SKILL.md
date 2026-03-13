@@ -203,11 +203,9 @@ const getCachedData = createServerFn({ method: 'GET' }).handler(async () => {
   const request = getRequest()
   const authHeader = getRequestHeader('Authorization')
 
-  setResponseHeaders(
-    new Headers({
-      'Cache-Control': 'public, max-age=300',
-    }),
-  )
+  setResponseHeaders({
+    'Cache-Control': 'public, max-age=300',
+  })
   setResponseStatus(200)
 
   return fetchData()
@@ -281,7 +279,7 @@ export const Route = createFileRoute('/posts')({
 ### 2. CRITICAL: Using Next.js/Remix server patterns
 
 ```tsx
-// WRONG — "use server" is a React/Next.js directive
+// WRONG — "use server" is a React directive, not used in TanStack Start
 'use server'
 export async function getUser() { ... }
 

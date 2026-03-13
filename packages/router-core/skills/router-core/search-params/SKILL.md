@@ -23,7 +23,7 @@ sources:
 
 TanStack Router treats search params as JSON-first application state. They are automatically parsed from the URL into structured objects (numbers, booleans, arrays, nested objects) and validated via `validateSearch` on each route.
 
-> **CRITICAL**: Use `fallback()` from `@tanstack/zod-adapter`, NOT zod's `.catch()`. Using `.catch()` makes the output type `unknown`, destroying type safety.
+> **CRITICAL**: When using `zodValidator()`, use `fallback()` from `@tanstack/zod-adapter`, NOT zod's `.catch()`. Using `.catch()` with the zod adapter makes the output type `unknown`, destroying type safety. This does not apply to Valibot or ArkType (which use their own fallback mechanisms).
 > **CRITICAL**: Types are fully inferred. Never annotate the return of `useSearch()`.
 
 ## Setup: Zod Adapter (Recommended)
@@ -292,11 +292,12 @@ export const Route = createFileRoute('/products')({
 
 ## Common Mistakes
 
-### 1. HIGH: Using zod `.catch()` instead of adapter `fallback()`
+### 1. HIGH: Using zod `.catch()` with `zodValidator()` instead of adapter `fallback()`
 
 ```tsx
-// WRONG — .catch() makes the type unknown
+// WRONG — .catch() with zodValidator makes the type unknown
 const schema = z.object({ page: z.number().catch(1) })
+validateSearch: zodValidator(schema) // page is typed as unknown!
 
 // CORRECT — fallback() preserves the inferred type
 import { fallback } from '@tanstack/zod-adapter'
@@ -316,7 +317,7 @@ loaderDeps: ({ search }) => ({ page: search.page })
 ### 3. HIGH: Passing Date objects in search params
 
 ```tsx
-// WRONG — Date serializes to "[object Object]" or invalid string
+// WRONG — Date does not serialize correctly to JSON in URLs
 <Link search={{ startDate: new Date() }}>
 
 // CORRECT — convert to ISO string

@@ -105,7 +105,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 ```tsx
 // src/routes/dashboard.tsx
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: ({ context }) => {
@@ -250,17 +250,16 @@ export const Route = createFileRoute('/posts/$postId')({
 Never use `LinkProps` as a variable type — it's an enormous union:
 
 ```tsx
-import type { LinkProps } from '@tanstack/react-router'
+import type { LinkProps, RegisteredRouter } from '@tanstack/react-router'
 
 // WRONG — LinkProps is a massive union, extremely slow TS check
-const props: LinkProps = { to: '/posts' }
+const wrongProps: LinkProps = { to: '/posts' }
 
 // CORRECT — infer a precise type, validate against LinkProps
-const props = { to: '/posts' } as const satisfies LinkProps
+const goodProps = { to: '/posts' } as const satisfies LinkProps
 
 // EVEN BETTER — narrow LinkProps with generic params
-import type { RegisteredRouter } from '@tanstack/react-router'
-const props = {
+const narrowedProps = {
   to: '/posts',
 } as const satisfies LinkProps<RegisteredRouter, string, '/posts'>
 ```
@@ -322,7 +321,6 @@ import {
   type RegisteredRouter,
   type ValidateNavigateOptions,
 } from '@tanstack/react-router'
-import { useState } from 'react'
 
 export function useDelayedNavigate<
   TRouter extends RegisteredRouter = RegisteredRouter,

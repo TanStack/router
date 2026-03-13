@@ -86,7 +86,7 @@ import solidPlugin from 'vite-plugin-solid'
 export default defineConfig({
   plugins: [
     tanstackStart(), // MUST come before solid plugin
-    solidPlugin(),
+    solidPlugin({ ssr: true }),
   ],
 })
 ```
@@ -115,6 +115,8 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/solid-router'
+import { HydrationScript } from 'solid-js/web'
+import { Suspense } from 'solid-js'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -124,17 +126,19 @@ export const Route = createRootRoute({
       { title: 'My TanStack Start App' },
     ],
   }),
-  component: RootComponent,
+  // shellComponent renders the HTML document shell (always SSR'd)
+  shellComponent: RootDocument,
 })
 
-function RootComponent() {
+function RootDocument(props: { children: any }) {
   return (
     <html>
       <head>
-        <HeadContent />
+        <HydrationScript />
       </head>
       <body>
-        <Outlet />
+        <HeadContent />
+        <Suspense>{props.children}</Suspense>
         <Scripts />
       </body>
     </html>
@@ -205,7 +209,7 @@ All routing components from `@tanstack/solid-router` work in Start:
 - `<Outlet>` — renders matched child route
 - `<Link>` — type-safe navigation
 - `<Navigate>` — declarative redirect
-- `<HeadContent>` — renders head tags via `@solidjs/meta` (must be in `<head>`)
+- `<HeadContent>` — renders head tags via `@solidjs/meta` (must be in `<body>` — uses portals to inject into `<head>`)
 - `<Scripts>` — renders body scripts (must be in `<body>`)
 - `<Await>` — renders deferred data with `<Suspense>`
 - `<ClientOnly>` — renders children only after hydration

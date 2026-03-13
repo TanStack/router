@@ -220,7 +220,10 @@ function PostDetails() {
 All imported from `@tanstack/solid-router`:
 
 - **`useMatches()`** — `Accessor<Array<Match>>`, all active route matches
+- **`useParentMatches()`** — `Accessor<Array<Match>>`, parent route matches
+- **`useChildMatches()`** — `Accessor<Array<Match>>`, child route matches
 - **`useRouteContext({ from })`** — `Accessor<T>`, context from `beforeLoad`
+- **`useLoaderDeps({ from })`** — `Accessor<T>`, loader dependency values
 - **`useBlocker({ shouldBlockFn })`** — blocks navigation for unsaved changes
 - **`useCanGoBack()`** — `Accessor<boolean>`
 - **`useLocation()`** — `Accessor<ParsedLocation>`
@@ -293,18 +296,11 @@ import { Suspense } from 'solid-js'
 function PostWithComments() {
   const data = Route.useLoaderData()
   return (
-    <div>
-      <h1>Post</h1>
-      <Suspense fallback={<div>Loading comments...</div>}>
-        <Await promise={data().deferredComments}>
-          {(comments) => (
-            <ul>
-              <For each={comments}>{(c) => <li>{c.text}</li>}</For>
-            </ul>
-          )}
-        </Await>
-      </Suspense>
-    </div>
+    <Suspense fallback={<div>Loading...</div>}>
+      <Await promise={data().deferredComments}>
+        {(comments) => <For each={comments}>{(c) => <li>{c.text}</li>}</For>}
+      </Await>
+    </Suspense>
   )
 }
 ```
@@ -317,11 +313,46 @@ Error boundary wrapping `Solid.ErrorBoundary`:
 import { CatchBoundary } from '@tanstack/solid-router'
 ;<CatchBoundary
   getResetKey={() => 'widget'}
-  onCatch={(error) => console.error(error)}
   errorComponent={({ error }) => <div>Error: {error.message}</div>}
 >
   <RiskyWidget />
 </CatchBoundary>
+```
+
+### Other Components
+
+- **`CatchNotFound`** — catches `notFound()` errors in children; `fallback` receives the error data
+- **`Block`** — declarative navigation blocker; use `shouldBlockFn` and `withResolver` for custom UI
+- **`ScrollRestoration`** — **deprecated**; use `createRouter`'s `scrollRestoration: true` option instead
+- **`ClientOnly`** — renders children only after hydration; accepts `fallback` prop
+
+### `Block`
+
+Declarative navigation blocker component:
+
+```tsx
+import { Block } from '@tanstack/solid-router'
+;<Block shouldBlockFn={() => formIsDirty()} withResolver>
+  {({ status, proceed, reset }) => (
+    <Show when={status === 'blocked'}>
+      <div>
+        <p>Are you sure?</p>
+        <button onClick={proceed}>Yes</button>
+        <button onClick={reset}>No</button>
+      </div>
+    </Show>
+  )}
+</Block>
+```
+
+### `ScrollRestoration`
+
+Restores scroll position on navigation:
+
+```tsx
+import { ScrollRestoration } from '@tanstack/solid-router'
+// In root route component
+;<ScrollRestoration />
 ```
 
 ### `ClientOnly`

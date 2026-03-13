@@ -106,7 +106,7 @@ TanStack Router has built-in Stale-While-Revalidate caching keyed on the route's
 Defaults:
 
 - **`staleTime`: 0** — data is always considered stale, reloads in background on re-match
-- **`preloadStaleTime`: 30 seconds** — preloaded data stays fresh for 30s
+- **`preloadStaleTime`: 30 seconds** — preloaded data won't be refetched for 30s
 - **`gcTime`: 30 minutes** — unused cache entries garbage collected after 30min
 
 ```tsx
@@ -337,6 +337,7 @@ The `loader` function receives:
 - `preload` — `true` during preloading
 - `location` — current location object
 - `parentMatchPromise` — promise of parent route match
+- `route` — the route object itself
 
 ```tsx
 export const Route = createFileRoute('/posts/$postId')({
@@ -384,7 +385,7 @@ export const Route = createFileRoute('/posts')({
 
 ### HIGH: Using reset() instead of router.invalidate() in error components
 
-`reset()` only resets the error boundary UI. It does NOT re-run the loader. For loader errors, use `router.invalidate()`:
+`reset()` only resets the error boundary UI. It does NOT re-run the loader. For loader errors, use `router.invalidate()` which re-runs loaders and resets the boundary:
 
 ```tsx
 // WRONG — resets boundary but loader still has stale error
@@ -392,8 +393,8 @@ function PostErrorComponent({ error, reset }) {
   return <button onClick={reset}>Retry</button>
 }
 
-// CORRECT — re-runs loader and resets boundary
-function PostErrorComponent({ error, reset }) {
+// CORRECT — re-runs loader and resets the error boundary
+function PostErrorComponent({ error }) {
   const router = useRouter()
   return <button onClick={() => router.invalidate()}>Retry</button>
 }

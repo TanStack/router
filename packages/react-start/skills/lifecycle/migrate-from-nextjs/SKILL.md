@@ -330,8 +330,9 @@ export const config = { matcher: ['/dashboard/:path*'] }
 TanStack Start:
 
 ```tsx
-// src/start.ts
+// src/start.ts — must be manually created
 import { createStart, createMiddleware } from '@tanstack/react-start'
+import { redirect } from '@tanstack/react-router'
 
 const authMiddleware = createMiddleware().server(async ({ next, request }) => {
   const cookie = request.headers.get('cookie')
