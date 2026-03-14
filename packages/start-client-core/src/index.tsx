@@ -17,6 +17,7 @@ export {
 export { createServerFn } from './createServerFn'
 export {
   createMiddleware,
+  type CreateMiddlewareFn,
   type IntersectAllValidatorInputs,
   type IntersectAllValidatorOutputs,
   type FunctionMiddlewareServerFn,
@@ -59,6 +60,7 @@ export {
 export type {
   CompiledFetcherFnOptions,
   CompiledFetcherFn,
+  CreateServerFn,
   CustomFetch,
   Fetcher,
   RscStream,
