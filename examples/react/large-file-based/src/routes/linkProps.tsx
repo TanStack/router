@@ -4,6 +4,12 @@ import { Link, linkOptions } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/linkProps')({
   component: LinkPropsPage,
+  head: ({ matches }) => {
+    if (matches[0].routeId) {
+      // ...
+    }
+    return {}
+  },
 })
 
 function LinkPropsPage() {
