@@ -9,8 +9,8 @@ The fastest way to get started with TanStack Router is to scaffold a new project
 
 <!-- ::start:tabs variant="package-managers" mode="local-install" -->
 
-react: create-tsrouter-app@latest
-solid: create-tsrouter-app@latest --framework solid
+react: npx @tanstack/cli create
+solid: npx @tanstack/cli create --framework solid
 
 <!-- ::end:tabs -->
 
@@ -25,7 +25,7 @@ The CLI will guide you through a short series of prompts to customize your setup
 Once complete, a new project will be generated with TanStack Router installed and ready to use.
 
 > [!TIP]
-> For full details on available options and templates, visit the [`create-tsrouter-app` documentation](https://github.com/TanStack/create-tsrouter-app/tree/main/cli/create-tsrouter-app).
+> For full details on available options and templates, visit the [`@tanstack/cli` documentation](https://tanstack.com/cli/latest/docs/quick-start).
 
 ## Routing Options
 
@@ -37,8 +37,8 @@ The file-based approach is the recommended option for most projects. It automati
 
 <!-- ::start:tabs variant="package-manager" mode="local-install" -->
 
-react: create-tsrouter-app@latest my-app --template file-router
-solid: create-tsrouter-app@latest my-app --framework solid --template file-router
+react: npx @tanstack/cli create my-app
+solid: npx @tanstack/cli create my-app --framework solid
 
 <!-- ::end:tabs -->
 
@@ -46,10 +46,13 @@ solid: create-tsrouter-app@latest my-app --framework solid --template file-route
 
 If you prefer to define routes programmatically, you can use the code-based route configuration. This approach gives you full control over routing logic.
 
+> [!NOTE]
+> When using `@tanstack/cli create`, you'll be prompted to choose between file-based and code-based routing during interactive setup. Select **"code-router"** when asked about the routing mode.
+
 <!-- ::start:tabs variant="package-manager" mode="local-install" -->
 
-react: create-tsrouter-app@latest my-app
-solid: create-tsrouter-app@latest my-app --framework solid
+react: npx @tanstack/cli create my-app
+solid: npx @tanstack/cli create my-app --framework solid
 
 <!-- ::end:tabs -->
 
