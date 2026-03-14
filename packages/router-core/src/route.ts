@@ -292,11 +292,44 @@ export type ResolveRouteContext<TRouteContextFn, TBeforeLoadFn> = Assign<
   ContextAsyncReturnType<TBeforeLoadFn>
 >
 
+export type ResolveRouteLoaderFn<TLoaderFn> = TLoaderFn extends {
+  handler: infer THandler
+}
+  ? THandler
+  : TLoaderFn
+
+export type RouteLoaderObject<
+  TRegister,
+  TParentRoute extends AnyRoute = AnyRoute,
+  TId extends string = string,
+  TParams = {},
+  TLoaderDeps = {},
+  TRouterContext = {},
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
+> = {
+  handler: RouteLoaderFn<
+    TRegister,
+    TParentRoute,
+    TId,
+    TParams,
+    TLoaderDeps,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TServerMiddlewares,
+    THandlers
+  >
+  staleReloadMode?: LoaderStaleReloadMode
+}
+
 export type ResolveLoaderData<TLoaderFn> = unknown extends TLoaderFn
   ? TLoaderFn
-  : LooseAsyncReturnType<TLoaderFn> extends never
+  : LooseAsyncReturnType<ResolveRouteLoaderFn<TLoaderFn>> extends never
     ? undefined
-    : LooseAsyncReturnType<TLoaderFn>
+    : LooseAsyncReturnType<ResolveRouteLoaderFn<TLoaderFn>>
 
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
@@ -1010,8 +1043,7 @@ export interface FilebaseRouteOptionsInterface<
 
   loader?: Constrain<
     TLoaderFn,
-    (
-      ctx: LoaderFnContext<
+    | RouteLoaderFn<
         TRegister,
         TParentRoute,
         TId,
@@ -1022,13 +1054,19 @@ export interface FilebaseRouteOptionsInterface<
         TBeforeLoadFn,
         TServerMiddlewares,
         THandlers
-      >,
-    ) => ValidateSerializableLifecycleResult<
-      TRegister,
-      TParentRoute,
-      TSSR,
-      TLoaderFn
-    >
+      >
+    | RouteLoaderObject<
+        TRegister,
+        TParentRoute,
+        TId,
+        TParams,
+        TLoaderDeps,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn,
+        TServerMiddlewares,
+        THandlers
+      >
   >
 }
 
@@ -1414,6 +1452,45 @@ export type RouteLoaderFn<
     THandlers
   >,
 ) => any
+
+export type LoaderStaleReloadMode = 'background' | 'blocking'
+
+export type RouteLoaderEntry<
+  TRegister,
+  TParentRoute extends AnyRoute = AnyRoute,
+  TId extends string = string,
+  TParams = {},
+  TLoaderDeps = {},
+  TRouterContext = {},
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
+> =
+  | RouteLoaderFn<
+      TRegister,
+      TParentRoute,
+      TId,
+      TParams,
+      TLoaderDeps,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TServerMiddlewares,
+      THandlers
+    >
+  | RouteLoaderObject<
+      TRegister,
+      TParentRoute,
+      TId,
+      TParams,
+      TLoaderDeps,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TServerMiddlewares,
+      THandlers
+    >
 
 export interface LoaderFnContext<
   in out TRegister = unknown,

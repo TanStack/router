@@ -72,6 +72,7 @@ import type {
   AnyContext,
   AnyRoute,
   AnyRouteWithContext,
+  LoaderStaleReloadMode,
   MakeRemountDepsOptionsUnion,
   RouteContextOptions,
   RouteLike,
@@ -238,6 +239,15 @@ export interface RouterOptions<
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#key-options)
    */
   defaultStaleTime?: number
+  /**
+   * The default stale reload mode a route loader should use if no `loader.staleReloadMode` is provided.
+   *
+   * `'background'` preserves the current stale-while-revalidate behavior.
+   * `'blocking'` waits for stale loader reloads to complete before resolving navigation.
+   *
+   * @default 'background'
+   */
+  defaultStaleReloadMode?: LoaderStaleReloadMode
   /**
    * The default `preloadStaleTime` a route should use if no preloadStaleTime is provided.
    *
