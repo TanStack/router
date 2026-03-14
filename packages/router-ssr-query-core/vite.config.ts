@@ -10,6 +10,7 @@ const config = defineConfig({
     watch: false,
     environment: 'jsdom',
     typecheck: { enabled: true },
+    coverage: { enabled: true },
   },
 })
 

@@ -25,6 +25,7 @@ const config = defineConfig({
     environment: 'jsdom',
     typecheck: { enabled: true },
     setupFiles: ['./tests/setupTests.tsx'],
+    coverage: { enabled: true },
   },
 })
 
