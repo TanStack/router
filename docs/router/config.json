@@ -254,6 +254,10 @@
         {
           "label": "Render Optimizations",
           "to": "guide/render-optimizations"
+        },
+        {
+          "label": "Internationalization (i18n)",
+          "to": "guide/internationalization-i18n"
         }
       ],
       "frameworks": [

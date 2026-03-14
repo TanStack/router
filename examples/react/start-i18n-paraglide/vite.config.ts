@@ -17,21 +17,21 @@ const config = defineConfig({
         {
           pattern: '/',
           localized: [
-            ['en', '/en'],
+            ['en', '/'],
             ['de', '/de'],
           ],
         },
         {
           pattern: '/about',
           localized: [
-            ['en', '/en/about'],
+            ['en', '/about'],
             ['de', '/de/ueber'],
           ],
         },
         {
           pattern: '/:path(.*)?',
           localized: [
-            ['en', '/en/:path(.*)?'],
+            ['en', '/:path(.*)?'],
             ['de', '/de/:path(.*)?'],
           ],
         },

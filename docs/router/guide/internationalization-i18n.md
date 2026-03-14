@@ -11,121 +11,354 @@ This guide covers:
 - Language navigation and switching
 - SEO considerations
 - Type safety
-- Integration patterns with i18n libraries (Paraglide)
-
----
+- Integration patterns with i18n libraries (e.g. Paraglide)
 
 ## i18n with Optional Path Parameters
 
-This pattern relies exclusively on TanStack Router features. It is suitable when:
-
-- You want full control over translations
-- You already manage translations manually
-- You do not need automatic locale detection
-
-Optional path parameters are ideal for implementing locale-aware routing without duplicating routes.
-
-```
-/{-$locale}/about
-```
-
-This single route matches:
-
-- `/about` (default locale)
-- `/en/about`
-- `/fr/about`
-- `/es/about`
+Optional path parameters are commonly used to implement internationalized routing. Prefix patterns allow a locale to appear in the URL when explicitly provided while still supporting clean, SEO-friendly URLs.
 
 ### Prefix-based i18n
 
-```tsx
-// Route: /{-$locale}/about
+Use optional language prefixes to support URLs like `/en/about`, `/fr/about`, or just `/about` (default language):
+
+```tsx title="/{-$locale}/about"
 export const Route = createFileRoute('/{-$locale}/about')({
   component: AboutComponent,
 })
 
 function AboutComponent() {
   const { locale } = Route.useParams()
-  const currentLocale = locale || 'en'
+  const currentLocale = locale || 'en' // Default to English
 
   const content = {
-    en: { title: 'About Us' },
-    fr: { title: 'À Propos' },
-    es: { title: 'Acerca de' },
+    en: { title: 'About Us', description: 'Learn more about our company.' },
+    fr: {
+      title: 'À Propos',
+      description: 'En savoir plus sur notre entreprise.',
+    },
+    es: {
+      title: 'Acerca de',
+      description: 'Conoce más sobre nuestra empresa.',
+    },
   }
 
-  return <h1>{content[currentLocale].title}</h1>
+  return (
+    <div>
+      <h1>{content[currentLocale]?.title}</h1>
+      <p>{content[currentLocale]?.description}</p>
+    </div>
+  )
 }
 ```
 
-### Complex Routing Patterns
+This single route definition supports:
 
-```tsx
-// Route: /{-$locale}/blog/{-$category}/$slug
+- `/about` — default language
+- `/en/about`
+- `/fr/about`
+- `/es/about`
+
+The `{-$param}` syntax marks the parameter as optional. When the locale segment is omitted, applications typically fall back to a default language.
+
+### Modeling More Complex i18n URLs
+
+Optional parameters can be combined to support more complex routing structures:
+
+```tsx title="/{-$locale}/blog/{-$category}/$slug"
 export const Route = createFileRoute('/{-$locale}/blog/{-$category}/$slug')({
-  beforeLoad: ({ params }) => {
+  beforeLoad: async ({ params }) => {
     const locale = params.locale || 'en'
-    const validLocales = ['en', 'fr', 'es', 'de']
+    const category = params.category
 
-    if (params.locale && !validLocales.includes(params.locale)) {
+    // Validate locale and category
+    const validLocales = ['en', 'fr', 'es', 'de']
+    if (locale && !validLocales.includes(locale)) {
       throw new Error('Invalid locale')
     }
 
-    return { locale }
+    return { locale, category }
+  },
+  loader: async ({ params, context }) => {
+    const { locale } = context
+    const { slug, category } = params
+
+    return fetchBlogPost({ slug, category, locale })
+  },
+  component: BlogPostComponent,
+})
+
+function BlogPostComponent() {
+  const { locale, category, slug } = Route.useParams()
+  const data = Route.useLoaderData()
+
+  return (
+    <article>
+      <h1>{data.title}</h1>
+      <p>
+        Category: {category || 'All'} | Language: {locale || 'en'}
+      </p>
+      <div>{data.content}</div>
+    </article>
+  )
+}
+```
+
+This pattern supports flexible combinations such as:
+
+- `/blog/tech/my-post` - default locale, English category
+- `/fr/blog/my-post` - French, no category
+- `/en/blog/tech/my-post` - explicit English, English category
+- `/es/blog/tecnologia/mi-post` - Spanish, Spanish category
+
+Validating locale values during route loading ensures downstream logic can safely rely on them.
+
+### Language Navigation
+
+Language switchers typically update only the locale parameter while preserving the rest of the route state:
+
+```tsx
+function LanguageSwitcher() {
+  const currentParams = useParams({ strict: false })
+
+  const languages = [
+    { code: 'en', name: 'English' },
+    { code: 'fr', name: 'Français' },
+    { code: 'es', name: 'Español' },
+  ]
+
+  return (
+    <div className="language-switcher">
+      {languages.map(({ code, name }) => (
+        <Link
+          key={code}
+          to="/{-$locale}/blog/{-$category}/$slug"
+          params={(prev) => ({
+            ...prev,
+            locale: code === 'en' ? undefined : code, // Remove 'en' for clean URLs
+          })}
+          className={currentParams.locale === code ? 'active' : ''}
+        >
+          {name}
+        </Link>
+      ))}
+    </div>
+  )
+}
+```
+
+You can also create more sophisticated language switching logic:
+
+```tsx
+function AdvancedLanguageSwitcher() {
+  const currentParams = useParams({ strict: false })
+
+  const handleLanguageChange = (newLocale: string) => {
+    return (prev: any) => {
+      // Preserve all existing params but update locale
+      const updatedParams = { ...prev }
+
+      if (newLocale === 'en') {
+        // Remove locale for clean English URLs
+        delete updatedParams.locale
+      } else {
+        updatedParams.locale = newLocale
+      }
+
+      return updatedParams
+    }
+  }
+
+  return (
+    <div className="language-switcher">
+      <Link
+        to="/{-$locale}/blog/{-$category}/$slug"
+        params={handleLanguageChange('fr')}
+      >
+        Français
+      </Link>
+
+      <Link
+        to="/{-$locale}/blog/{-$category}/$slug"
+        params={handleLanguageChange('es')}
+      >
+        Español
+      </Link>
+
+      <Link
+        to="/{-$locale}/blog/{-$category}/$slug"
+        params={handleLanguageChange('en')}
+      >
+        English
+      </Link>
+    </div>
+  )
+}
+```
+
+### Advanced i18n with Optional Parameters
+
+A common organization pattern places routes beneath an optional locale segment:
+
+<!-- ::start:tabs -->
+
+```txt title="Route structure"
+Route structure:
+    routes/
+       {-$locale}/
+            index.tsx        // /, /en, /fr
+            about.tsx        // /about, /en/about, /fr/about
+            blog/
+                 index.tsx      // /blog, /en/blog, /fr/blog
+                $slug.tsx      // /blog/post, /en/blog/post, /fr/blog/post
+```
+
+```tsx title="routes/{-$locale}/index.tsx"
+export const Route = createFileRoute('/{-$locale}/')({
+  component: HomeComponent,
+})
+
+function HomeComponent() {
+  const { locale } = Route.useParams()
+  const isRTL = ['ar', 'he', 'fa'].includes(locale || '')
+
+  return (
+    <div dir={isRTL ? 'rtl' : 'ltr'}>
+      <h1>Welcome ({locale || 'en'})</h1>
+      {/* Localized content */}
+    </div>
+  )
+}
+```
+
+```tsx title="routes/{-$locale}/about.tsx"
+export const Route = createFileRoute('/{-$locale}/about')({
+  component: AboutComponent,
+})
+```
+
+<!-- ::end:tabs -->
+
+### SEO and Canonical URLs
+
+Internationalized routes should expose canonical and alternate URLs so search engines can understand language variants:
+
+```tsx
+export const Route = createFileRoute('/{-$locale}/products/$id')({
+  component: ProductComponent,
+  head: ({ params, loaderData }) => {
+    const locale = params.locale || 'en'
+    const product = loaderData
+
+    return {
+      title: product.title[locale] || product.title.en,
+      meta: [
+        {
+          name: 'description',
+          content: product.description[locale] || product.description.en,
+        },
+        {
+          property: 'og:locale',
+          content: locale,
+        },
+      ],
+      links: [
+        // Canonical URL (always use default locale format)
+        {
+          rel: 'canonical',
+          href: `https://example.com/products/${params.id}`,
+        },
+        // Alternate language versions
+        {
+          rel: 'alternate',
+          hreflang: 'en',
+          href: `https://example.com/products/${params.id}`,
+        },
+        {
+          rel: 'alternate',
+          hreflang: 'fr',
+          href: `https://example.com/fr/products/${params.id}`,
+        },
+        {
+          rel: 'alternate',
+          hreflang: 'es',
+          href: `https://example.com/es/products/${params.id}`,
+        },
+      ],
+    }
   },
 })
 ```
 
-### Language Switching
+### Type Safety for i18n
+
+Locale validation can be performed early so downstream logic operates on trusted values:
 
 ```tsx
-<Link
-  to="/{-$locale}/blog/{-$category}/$slug"
-  params={(prev) => ({
-    ...prev,
-    locale: prev.locale === 'en' ? undefined : 'fr',
-  })}
->
-  Français
-</Link>
-```
-
-### Type-safe Locales
-
-```ts
+// Define supported locales
 type Locale = 'en' | 'fr' | 'es' | 'de'
 
-function isLocale(value?: string): value is Locale {
-  return ['en', 'fr', 'es', 'de'].includes(value as Locale)
+// Type-safe locale validation
+function validateLocale(locale: string | undefined): locale is Locale {
+  return ['en', 'fr', 'es', 'de'].includes(locale as Locale)
+}
+
+export const Route = createFileRoute('/{-$locale}/shop/{-$category}')({
+  beforeLoad: async ({ params }) => {
+    const { locale } = params
+
+    // Type-safe locale validation
+    if (locale && !validateLocale(locale)) {
+      throw redirect({
+        to: '/shop/{-$category}',
+        params: { category: params.category },
+      })
+    }
+
+    return {
+      locale: (locale as Locale) || 'en',
+      isDefaultLocale: !locale || locale === 'en',
+    }
+  },
+  component: ShopComponent,
+})
+
+function ShopComponent() {
+  const { locale, category } = Route.useParams()
+  const { isDefaultLocale } = Route.useRouteContext()
+
+  // TypeScript knows locale is Locale | undefined
+  // and we have validated it in beforeLoad
+
+  return (
+    <div>
+      <h1>Shop {category ? `- ${category}` : ''}</h1>
+      <p>Language: {locale || 'en'}</p>
+      {!isDefaultLocale && (
+        <Link to="/shop/{-$category}" params={{ category }}>
+          View in English
+        </Link>
+      )}
+    </div>
+  )
 }
 ```
 
----
+Optional path parameters provide a flexible foundation for internationalization in TanStack Router applications, allowing localized URLs while preserving consistent routing behavior and type safety.
 
 ## i18n Library Integration Patterns
 
-TanStack Router is **library-agnostic**. You can integrate any i18n solution by mapping locale state to routing behavior.
+TanStack Router is **library-agnostic**. i18n libraries manage translations and locale detection, while the router manages URL structure and navigation.
 
 Below is a recommended pattern using **Paraglide**.
 
----
+### TanStack Router + Paraglide
 
-## Client-side i18n with a Library (TanStack Router)
-
-This pattern combines TanStack Router with a client-side i18n library. It is suitable when:
-
-- You want type-safe translations
-- You want localized URLs
-- You do not need server-side rendering
-
-### TanStack Router + Paraglide (Client-only)
-
-Paraglide provides type-safe translations, locale detection, and URL localization that pair naturally with TanStack Router.
+Paraglide is one example of an i18n library that can integrate with TanStack Router for translations, locale detection, and URL localization.
 
 **GitHub example:**
 [https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide)
 
-### Project Setup
+#### Project Setup
 
 ```bash
 npx @inlang/paraglide-js@latest init
@@ -140,9 +373,7 @@ paraglideVitePlugin({
 })
 ```
 
-### URL Localization via Router Rewrite
-
-The router's `rewrite` option enables bidirectional URL transformation, perfect for locale prefixes. For comprehensive documentation on URL rewrites including advanced patterns, see the [URL Rewrites guide](./url-rewrites.md).
+#### URL Localization via Router rewrite
 
 ```ts
 import { deLocalizeUrl, localizeUrl } from './paraglide/runtime'
@@ -156,45 +387,7 @@ const router = createRouter({
 })
 ```
 
----
-
-## Server-side i18n (TanStack Start)
-
-This pattern integrates i18n at the routing and server layers. It is suitable when:
-
-- You use TanStack Start
-- You need SSR or streaming
-- You want locale-aware redirects and metadata
-
-### TanStack Start + Paraglide
-
-**GitHub example:**
-[https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide)
-
-### Server Middleware (SSR)
-
-```ts
-import { paraglideMiddleware } from './paraglide/server'
-
-export default {
-  fetch(req: Request) {
-    return paraglideMiddleware(req, () => handler.fetch(req))
-  },
-}
-```
-
-### HTML Language Attribute
-
-```tsx
-import { getLocale } from '../paraglide/runtime'
-;<html lang={getLocale()} />
-```
-
----
-
-## Offline-safe Redirects
-
-For offline or client-only environments:
+#### URL redirects
 
 ```ts
 import { shouldRedirect } from '../paraglide/runtime'
@@ -207,15 +400,79 @@ beforeLoad: async () => {
 }
 ```
 
----
+If you use TanStack Start and do not need offline capabilities, you don't need to use the shouldRedirect logic, only paraglideMiddleware in the TanStack Start Paraglide integration guide.
 
-## Type-safe Translated Pathnames
+#### Type-safe Translated Pathnames
 
-To ensure every route has translations, you can derive translated pathnames directly from the TanStack Router route tree.
+If you use translated pathnames, you can derive them directly from the TanStack Router route tree to ensure every route has translations.
 
 ```ts
-import { FileRoutesByTo } from '../routeTree.gen'
-import { Locale } from '@/paraglide/runtime'
+import { Locale } from './paraglide/runtime'
+import { RoutePath } from '../../types/Routes'
+
+const excludedPaths = ['admin', 'partner', 'tests', 'api'] as const
+
+type PublicRoutePath = Exclude<
+  RoutePath,
+  `${string}${(typeof excludedPaths)[number]}${string}`
+>
+
+type TranslatedPathname = {
+  pattern: string
+  localized: Array<[Locale, string]>
+}
+
+function toUrlPattern(path: string) {
+  return (
+    path
+      // explicit catch-all: "/$" → "/:path(.*)?"
+      .replace(/\/\$$/, '/:path(.*)?')
+      // optional params like {-$param} → ":param(.*)?"
+      .replace(/\{-\$([a-zA-Z0-9_]+)\}/g, ':$1(.*)?')
+      // normal params like $param → ":param(.*)?"
+      .replace(/\$([a-zA-Z0-9_]+)/g, ':$1(.*)?')
+      // remove any remaining braces (safety)
+      .replace(/[{}]/g, '')
+      // remove trailing slash
+      .replace(/\/+$/, '')
+  )
+}
+
+function createTranslatedPathnames(
+  input: Record<PublicRoutePath, Record<Locale, string>>,
+): TranslatedPathname[] {
+  return Object.entries(input).map(([pattern, locales]) => ({
+    pattern: toUrlPattern(pattern),
+    localized: Object.entries(locales).map(
+      ([locale, path]) =>
+        [locale as Locale, `/${locale}${toUrlPattern(path)}`] satisfies [
+          Locale,
+          string,
+        ],
+    ),
+  }))
+}
+
+export const translatedPathnames = createTranslatedPathnames({
+  '/': {
+    en: '/',
+    de: '/',
+  },
+  '/about': {
+    en: '/about',
+    de: '/ueber',
+  },
+})
+```
+
+Use in vite.config.ts:
+
+```ts
+paraglideVitePlugin({
+  project: './project.inlang',
+  outdir: './app/paraglide',
+  urlPatterns: translatedPathnames,
+})
 ```
 
 This guarantees:
@@ -224,27 +481,6 @@ This guarantees:
 - Full type safety
 - Compiler feedback for routing mistakes
 
----
+## Looking for i18n with SSR/TanStack Start?
 
-## Prerendering Localized Routes
-
-```ts
-import { localizeHref } from './paraglide/runtime'
-
-export const prerenderRoutes = ['/', '/about'].map((path) => ({
-  path: localizeHref(path),
-  prerender: { enabled: true },
-}))
-```
-
----
-
-## Additional i18n Integration Patterns
-
-### Intlayer (TanStack Start integration)
-
-[https://intlayer.org/doc/environment/tanstack-start](https://intlayer.org/doc/environment/tanstack-start)
-
-### use-intl (TanStack Start integration)
-
-[https://nikuscs.com/blog/13-tanstackstart-i18n/](https://nikuscs.com/blog/13-tanstackstart-i18n/)
+Check out the guide on integrating [i18n in TanStack Start](../../start/framework/react/guide/internationalization-i18n).
