@@ -2429,47 +2429,58 @@ export class RouterCore<
                   // Commit the pending matches. If a previous match was
                   // removed, place it in the cachedMatches
                   //
-                  // exitingMatches uses match.id (routeId + params + loaderDeps) so
-                  // navigating /foo?page=1 → /foo?page=2 correctly caches the page=1 entry.
-                  let exitingMatches: Array<AnyRouteMatch> = []
 
                   // Lifecycle-hook identity uses routeId only so that navigating between
                   // different params/deps of the same route fires onStay (not onLeave+onEnter).
-                  let hookExitingMatches: Array<AnyRouteMatch> = []
-                  let hookEnteringMatches: Array<AnyRouteMatch> = []
-                  let hookStayingMatches: Array<AnyRouteMatch> = []
+                  let hookExitingMatches: Array<AnyRouteMatch> | null = null
+                  let hookEnteringMatches: Array<AnyRouteMatch> | null = null
+                  let hookStayingMatches: Array<AnyRouteMatch> | null = null
 
                   batch(() => {
                     this.__store.setState((s) => {
-                      const previousMatches = s.matches
-                      const newMatches = s.pendingMatches || s.matches
+                      const pendingMatches = s.pendingMatches
+                      const mountPending = !!pendingMatches?.length
+                      const currentMatches = s.matches
 
-                      exitingMatches = previousMatches.filter(
-                        (match) => !newMatches.some((d) => d.id === match.id),
-                      )
+                      // exitingMatches uses match.id (routeId + params + loaderDeps) so
+                      // navigating /foo?page=1 → /foo?page=2 correctly caches the page=1 entry.
+                      let exitingMatches: Array<AnyRouteMatch> | null = null
 
-                      // Lifecycle-hook identity: routeId only (route presence in tree)
-                      hookExitingMatches = previousMatches.filter(
-                        (match) =>
-                          !newMatches.some((d) => d.routeId === match.routeId),
-                      )
-                      hookEnteringMatches = newMatches.filter(
-                        (match) =>
-                          !previousMatches.some(
-                            (d) => d.routeId === match.routeId,
-                          ),
-                      )
-                      hookStayingMatches = newMatches.filter((match) =>
-                        previousMatches.some(
-                          (d) => d.routeId === match.routeId,
-                        ),
-                      )
+                      if (mountPending) {
+                        exitingMatches = currentMatches.filter(
+                          (match) =>
+                            !pendingMatches.some((d) => d.id === match.id),
+                        )
+
+                        // Lifecycle-hook identity: routeId only (route presence in tree)
+                        hookExitingMatches = currentMatches.filter(
+                          (match) =>
+                            !pendingMatches.some(
+                              (d) => d.routeId === match.routeId,
+                            ),
+                        )
+                        hookEnteringMatches = []
+                        hookStayingMatches = []
+                        for (const match of pendingMatches) {
+                          if (
+                            currentMatches.some(
+                              (d) => d.routeId === match.routeId,
+                            )
+                          ) {
+                            hookStayingMatches.push(match)
+                          } else {
+                            hookEnteringMatches.push(match)
+                          }
+                        }
+                      } else {
+                        hookStayingMatches = currentMatches
+                      }
 
                       return {
                         ...s,
                         isLoading: false,
                         loadedAt: Date.now(),
-                        matches: newMatches,
+                        matches: mountPending ? pendingMatches : currentMatches,
                         pendingMatches: undefined,
                         /**
                          * When committing new matches, cache any exiting matches that are still usable.
@@ -2477,15 +2488,17 @@ export class RouterCore<
                          * deliberately excluded from `cachedMatches` so that subsequent invalidations
                          * or reloads re-run their loaders instead of reusing the failed/not-found data.
                          */
-                        cachedMatches: [
-                          ...s.cachedMatches,
-                          ...exitingMatches.filter(
-                            (d) =>
-                              d.status !== 'error' &&
-                              d.status !== 'notFound' &&
-                              d.status !== 'redirected',
-                          ),
-                        ],
+                        cachedMatches: mountPending
+                          ? [
+                              ...s.cachedMatches,
+                              ...exitingMatches!.filter(
+                                (d) =>
+                                  d.status !== 'error' &&
+                                  d.status !== 'notFound' &&
+                                  d.status !== 'redirected',
+                              ),
+                            ]
+                          : s.cachedMatches,
                       }
                     })
                     this.clearExpiredCache()
@@ -2499,11 +2512,13 @@ export class RouterCore<
                       [hookStayingMatches, 'onStay'],
                     ] as const
                   ).forEach(([matches, hook]) => {
-                    matches.forEach((match) => {
-                      this.looseRoutesById[match.routeId]!.options[hook]?.(
-                        match,
-                      )
-                    })
+                    ;(matches as null | Array<AnyRouteMatch>)?.forEach(
+                      (match) => {
+                        this.looseRoutesById[match.routeId]!.options[hook]?.(
+                          match,
+                        )
+                      },
+                    )
                   })
                 })
               })
