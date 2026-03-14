@@ -1,6 +1,7 @@
 import babel from '@babel/core'
 import * as t from '@babel/types'
-import { parseAst } from '@tanstack/router-utils'
+import { parseImportProtectionAst } from './ast'
+import type { ParsedAst } from './ast'
 
 type UsagePos = { line: number; column0: number }
 
@@ -15,8 +16,13 @@ export function findPostCompileUsagePos(
   code: string,
   source: string,
 ): UsagePos | undefined {
-  const ast = parseAst({ code })
+  return findPostCompileUsagePosFromAst(parseImportProtectionAst(code), source)
+}
 
+function findPostCompileUsagePosFromAst(
+  ast: ParsedAst,
+  source: string,
+): UsagePos | undefined {
   // Collect local names bound from this specifier
   const imported = new Set<string>()
   for (const node of ast.program.body) {

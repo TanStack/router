@@ -333,22 +333,6 @@ export const MatchInner = (props: { matchId: string }): any => {
       </Solid.Match>
       <Solid.Match when={match().status === 'error'}>
         {(_) => {
-          if (isServer ?? router.isServer) {
-            const RouteErrorComponent =
-              (route().options.errorComponent ??
-                router.options.defaultErrorComponent) ||
-              ErrorComponent
-
-            return (
-              <RouteErrorComponent
-                error={match().error}
-                info={{
-                  componentStack: '',
-                }}
-              />
-            )
-          }
-
           throw match().error
         }}
       </Solid.Match>

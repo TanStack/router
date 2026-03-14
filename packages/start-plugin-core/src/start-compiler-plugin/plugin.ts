@@ -1,7 +1,11 @@
 import assert from 'node:assert'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { resolve as resolvePath } from 'pathe'
-import { TRANSFORM_ID_REGEX, VITE_ENVIRONMENT_NAMES } from '../constants'
+import {
+  SERVER_FN_LOOKUP,
+  TRANSFORM_ID_REGEX,
+  VITE_ENVIRONMENT_NAMES,
+} from '../constants'
 import {
   KindDetectionPatterns,
   LookupKindsPerEnv,
@@ -82,7 +86,8 @@ const getLookupConfigurationsForEnv = (
     ]
   }
 }
-export const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
+// Re-export from shared constants for backwards compatibility
+export { SERVER_FN_LOOKUP }
 
 function resolveViteId(id: string) {
   return `\0${id}`

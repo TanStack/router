@@ -30,6 +30,7 @@ import { Route as RedirectTestIndexRouteImport } from './routes/redirect-test/in
 import { Route as RedirectTestSsrIndexRouteImport } from './routes/redirect-test-ssr/index'
 import { Route as PrimitivesIndexRouteImport } from './routes/primitives/index'
 import { Route as MiddlewareIndexRouteImport } from './routes/middleware/index'
+import { Route as MethodNotAllowedIndexRouteImport } from './routes/method-not-allowed/index'
 import { Route as FunctionMethodIndexRouteImport } from './routes/function-method/index'
 import { Route as FunctionMetadataIndexRouteImport } from './routes/function-metadata/index'
 import { Route as FormdataRedirectIndexRouteImport } from './routes/formdata-redirect/index'
@@ -46,6 +47,7 @@ import { Route as MiddlewareMiddlewareFactoryRouteImport } from './routes/middle
 import { Route as MiddlewareFunctionMetadataRouteImport } from './routes/middleware/function-metadata'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
 import { Route as MiddlewareCatchHandlerErrorRouteImport } from './routes/middleware/catch-handler-error'
+import { Route as MethodNotAllowedMethodRouteImport } from './routes/method-not-allowed/$method'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 import { Route as AbortSignalMethodRouteImport } from './routes/abort-signal/$method'
 import { Route as MiddlewareRedirectWithMiddlewareIndexRouteImport } from './routes/middleware/redirect-with-middleware/index'
@@ -157,6 +159,11 @@ const MiddlewareIndexRoute = MiddlewareIndexRouteImport.update({
   path: '/middleware/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MethodNotAllowedIndexRoute = MethodNotAllowedIndexRouteImport.update({
+  id: '/method-not-allowed/',
+  path: '/method-not-allowed/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FunctionMethodIndexRoute = FunctionMethodIndexRouteImport.update({
   id: '/function-method/',
   path: '/function-method/',
@@ -244,6 +251,11 @@ const MiddlewareCatchHandlerErrorRoute =
     path: '/middleware/catch-handler-error',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MethodNotAllowedMethodRoute = MethodNotAllowedMethodRouteImport.update({
+  id: '/method-not-allowed/$method',
+  path: '/method-not-allowed/$method',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CookiesSetRoute = CookiesSetRouteImport.update({
   id: '/cookies/set',
   path: '/cookies/set',
@@ -293,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
+  '/method-not-allowed/$method': typeof MethodNotAllowedMethodRoute
   '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
@@ -309,6 +322,7 @@ export interface FileRoutesByFullPath {
   '/formdata-redirect/': typeof FormdataRedirectIndexRoute
   '/function-metadata/': typeof FunctionMetadataIndexRoute
   '/function-method/': typeof FunctionMethodIndexRoute
+  '/method-not-allowed/': typeof MethodNotAllowedIndexRoute
   '/middleware/': typeof MiddlewareIndexRoute
   '/primitives/': typeof PrimitivesIndexRoute
   '/redirect-test-ssr/': typeof RedirectTestSsrIndexRoute
@@ -337,6 +351,7 @@ export interface FileRoutesByTo {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
+  '/method-not-allowed/$method': typeof MethodNotAllowedMethodRoute
   '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
@@ -353,6 +368,7 @@ export interface FileRoutesByTo {
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
   '/function-metadata': typeof FunctionMetadataIndexRoute
   '/function-method': typeof FunctionMethodIndexRoute
+  '/method-not-allowed': typeof MethodNotAllowedIndexRoute
   '/middleware': typeof MiddlewareIndexRoute
   '/primitives': typeof PrimitivesIndexRoute
   '/redirect-test-ssr': typeof RedirectTestSsrIndexRoute
@@ -382,6 +398,7 @@ export interface FileRoutesById {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
+  '/method-not-allowed/$method': typeof MethodNotAllowedMethodRoute
   '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
@@ -398,6 +415,7 @@ export interface FileRoutesById {
   '/formdata-redirect/': typeof FormdataRedirectIndexRoute
   '/function-metadata/': typeof FunctionMetadataIndexRoute
   '/function-method/': typeof FunctionMethodIndexRoute
+  '/method-not-allowed/': typeof MethodNotAllowedIndexRoute
   '/middleware/': typeof MiddlewareIndexRoute
   '/primitives/': typeof PrimitivesIndexRoute
   '/redirect-test-ssr/': typeof RedirectTestSsrIndexRoute
@@ -428,6 +446,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/abort-signal/$method'
     | '/cookies/set'
+    | '/method-not-allowed/$method'
     | '/middleware/catch-handler-error'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
@@ -444,6 +463,7 @@ export interface FileRouteTypes {
     | '/formdata-redirect/'
     | '/function-metadata/'
     | '/function-method/'
+    | '/method-not-allowed/'
     | '/middleware/'
     | '/primitives/'
     | '/redirect-test-ssr/'
@@ -472,6 +492,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/abort-signal/$method'
     | '/cookies/set'
+    | '/method-not-allowed/$method'
     | '/middleware/catch-handler-error'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
@@ -488,6 +509,7 @@ export interface FileRouteTypes {
     | '/formdata-redirect'
     | '/function-metadata'
     | '/function-method'
+    | '/method-not-allowed'
     | '/middleware'
     | '/primitives'
     | '/redirect-test-ssr'
@@ -516,6 +538,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/abort-signal/$method'
     | '/cookies/set'
+    | '/method-not-allowed/$method'
     | '/middleware/catch-handler-error'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
@@ -532,6 +555,7 @@ export interface FileRouteTypes {
     | '/formdata-redirect/'
     | '/function-metadata/'
     | '/function-method/'
+    | '/method-not-allowed/'
     | '/middleware/'
     | '/primitives/'
     | '/redirect-test-ssr/'
@@ -561,6 +585,7 @@ export interface RootRouteChildren {
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
   AbortSignalMethodRoute: typeof AbortSignalMethodRoute
   CookiesSetRoute: typeof CookiesSetRoute
+  MethodNotAllowedMethodRoute: typeof MethodNotAllowedMethodRoute
   MiddlewareCatchHandlerErrorRoute: typeof MiddlewareCatchHandlerErrorRoute
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
   MiddlewareFunctionMetadataRoute: typeof MiddlewareFunctionMetadataRoute
@@ -577,6 +602,7 @@ export interface RootRouteChildren {
   FormdataRedirectIndexRoute: typeof FormdataRedirectIndexRoute
   FunctionMetadataIndexRoute: typeof FunctionMetadataIndexRoute
   FunctionMethodIndexRoute: typeof FunctionMethodIndexRoute
+  MethodNotAllowedIndexRoute: typeof MethodNotAllowedIndexRoute
   MiddlewareIndexRoute: typeof MiddlewareIndexRoute
   PrimitivesIndexRoute: typeof PrimitivesIndexRoute
   RedirectTestSsrIndexRoute: typeof RedirectTestSsrIndexRoute
@@ -735,6 +761,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MiddlewareIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/method-not-allowed/': {
+      id: '/method-not-allowed/'
+      path: '/method-not-allowed'
+      fullPath: '/method-not-allowed/'
+      preLoaderRoute: typeof MethodNotAllowedIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/function-method/': {
       id: '/function-method/'
       path: '/function-method'
@@ -847,6 +880,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MiddlewareCatchHandlerErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/method-not-allowed/$method': {
+      id: '/method-not-allowed/$method'
+      path: '/method-not-allowed/$method'
+      fullPath: '/method-not-allowed/$method'
+      preLoaderRoute: typeof MethodNotAllowedMethodRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cookies/set': {
       id: '/cookies/set'
       path: '/cookies/set'
@@ -905,6 +945,7 @@ const rootRouteChildren: RootRouteChildren = {
   SubmitPostFormdataRoute: SubmitPostFormdataRoute,
   AbortSignalMethodRoute: AbortSignalMethodRoute,
   CookiesSetRoute: CookiesSetRoute,
+  MethodNotAllowedMethodRoute: MethodNotAllowedMethodRoute,
   MiddlewareCatchHandlerErrorRoute: MiddlewareCatchHandlerErrorRoute,
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
   MiddlewareFunctionMetadataRoute: MiddlewareFunctionMetadataRoute,
@@ -921,6 +962,7 @@ const rootRouteChildren: RootRouteChildren = {
   FormdataRedirectIndexRoute: FormdataRedirectIndexRoute,
   FunctionMetadataIndexRoute: FunctionMetadataIndexRoute,
   FunctionMethodIndexRoute: FunctionMethodIndexRoute,
+  MethodNotAllowedIndexRoute: MethodNotAllowedIndexRoute,
   MiddlewareIndexRoute: MiddlewareIndexRoute,
   PrimitivesIndexRoute: PrimitivesIndexRoute,
   RedirectTestSsrIndexRoute: RedirectTestSsrIndexRoute,

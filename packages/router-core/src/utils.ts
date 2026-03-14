@@ -215,13 +215,22 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
 const hasOwn = Object.prototype.hasOwnProperty
 const isEnumerable = Object.prototype.propertyIsEnumerable
 
+const createNull = () => Object.create(null)
+export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
+  replaceEqualDeep(prev, next, createNull)
+
 /**
  * This function returns `prev` if `_next` is deeply equal.
  * If not, it will replace any deeply equal children of `b` with those of `a`.
  * This can be used for structural sharing between immutable JSON values for example.
  * Do not use this with signals
  */
-export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
+export function replaceEqualDeep<T>(
+  prev: any,
+  _next: T,
+  _makeObj = () => ({}),
+  _depth = 0,
+): T {
   if (isServer) {
     return _next
   }
@@ -243,7 +252,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
   if (!nextItems) return next
   const prevSize = prevItems.length
   const nextSize = nextItems.length
-  const copy: any = array ? new Array(nextSize) : {}
+  const copy: any = array ? new Array(nextSize) : _makeObj()
 
   let equalItems = 0
 
@@ -268,7 +277,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
       continue
     }
 
-    const v = replaceEqualDeep(p, n, _depth + 1)
+    const v = replaceEqualDeep(p, n, _makeObj, _depth + 1)
     copy[key] = v
     if (v === p) equalItems++
   }

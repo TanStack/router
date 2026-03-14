@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  collectNamedExports,
   collectMockExportNamesBySource,
   isValidExportName,
 } from '../../src/import-protection-plugin/rewriteDeniedImports'
@@ -46,8 +47,50 @@ describe('collectMockExportNamesBySource', () => {
     expect(result.has('mod-a')).toBe(false)
   })
 
-  test('ignores namespace imports', () => {
-    const code = `import * as ns from 'mod-a'`
+  test('collects namespace member usage', () => {
+    const code = [
+      `import * as ns from 'mod-a'`,
+      `const a = ns.alpha`,
+      `const b = ns.beta`,
+    ].join('\n')
+    const result = collectMockExportNamesBySource(code)
+    expect(result.get('mod-a')).toEqual(['alpha', 'beta'])
+  })
+
+  test('collects optional namespace member usage', () => {
+    const code = [
+      `import * as ns from 'mod-a'`,
+      `const maybe = ns.gamma?.()`,
+    ].join('\n')
+    const result = collectMockExportNamesBySource(code)
+    expect(result.get('mod-a')).toEqual(['gamma'])
+  })
+
+  test('collects string-literal computed namespace member usage', () => {
+    const code = [
+      `import * as ns from 'mod-a'`,
+      `const val = ns['delta']`,
+    ].join('\n')
+    const result = collectMockExportNamesBySource(code)
+    expect(result.get('mod-a')).toEqual(['delta'])
+  })
+
+  test('collects member usage from default imports', () => {
+    const code = [
+      `import mock from 'mod-a'`,
+      `const a = mock.getSecret`,
+      `const b = mock['foo-bar']`,
+    ].join('\n')
+    const result = collectMockExportNamesBySource(code)
+    expect(result.get('mod-a')).toEqual(['foo-bar', 'getSecret'])
+  })
+
+  test('ignores non-literal computed namespace member usage', () => {
+    const code = [
+      `import * as ns from 'mod-a'`,
+      `const key = 'epsilon'`,
+      `const val = ns[key]`,
+    ].join('\n')
     const result = collectMockExportNamesBySource(code)
     expect(result.has('mod-a')).toBe(false)
   })
@@ -126,5 +169,68 @@ describe('collectMockExportNamesBySource', () => {
     const code = `import { "foo-bar" as x } from 'mod-a'`
     const result = collectMockExportNamesBySource(code)
     expect(result.get('mod-a')).toEqual(['foo-bar'])
+  })
+})
+
+describe('collectNamedExports', () => {
+  test('collects declaration exports', () => {
+    const code = [
+      `export function alpha() {}`,
+      `export const beta = 1`,
+      `export class Gamma {}`,
+    ].join('\n')
+    expect(collectNamedExports(code)).toEqual(['Gamma', 'alpha', 'beta'])
+  })
+
+  test('collects named export specifiers and aliases', () => {
+    const code = [
+      `const local = 1`,
+      `const x = 2`,
+      `export { local as renamed, x }`,
+    ].join('\n')
+    expect(collectNamedExports(code)).toEqual(['renamed', 'x'])
+  })
+
+  test('ignores default and type-only exports', () => {
+    const code = [
+      `export default function main() {}`,
+      `export type { Foo } from 'mod-a'`,
+    ].join('\n')
+    expect(collectNamedExports(code)).toEqual([])
+  })
+
+  test('collects destructured object pattern exports', () => {
+    const code = `export const { a, b } = obj`
+    expect(collectNamedExports(code)).toEqual(['a', 'b'])
+  })
+
+  test('collects destructured array pattern exports', () => {
+    const code = `export const [x, y] = arr`
+    expect(collectNamedExports(code)).toEqual(['x', 'y'])
+  })
+
+  test('collects renamed destructured exports', () => {
+    const code = `export const { a: renamed } = obj`
+    expect(collectNamedExports(code)).toEqual(['renamed'])
+  })
+
+  test('collects nested destructured exports', () => {
+    const code = `export const { a: { b, c } } = obj`
+    expect(collectNamedExports(code)).toEqual(['b', 'c'])
+  })
+
+  test('collects destructured exports with defaults', () => {
+    const code = `export const { a = 1, b = 2 } = obj`
+    expect(collectNamedExports(code)).toEqual(['a', 'b'])
+  })
+
+  test('collects rest element in destructured exports', () => {
+    const code = `export const { a, ...rest } = obj`
+    expect(collectNamedExports(code)).toEqual(['a', 'rest'])
+  })
+
+  test('collects re-exports with aliases', () => {
+    const code = `export { default as hello } from './foo'`
+    expect(collectNamedExports(code)).toEqual(['hello'])
   })
 })

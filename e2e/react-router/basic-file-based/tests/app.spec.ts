@@ -33,6 +33,17 @@ test('Navigating to a not-found route', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
 })
 
+test('lazy file route errorComponent is rendered when the loader throws', async ({
+  page,
+}) => {
+  await page.goto('/lazy-error')
+
+  await expect(page.getByTestId('lazy-route-error-component')).toContainText(
+    'Lazy route error component',
+  )
+  await expect(page.locator('body')).not.toContainText('Something went wrong!')
+})
+
 test("useBlocker doesn't block navigation if condition is not met", async ({
   page,
 }) => {
