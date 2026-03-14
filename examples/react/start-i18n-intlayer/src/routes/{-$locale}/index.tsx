@@ -1,7 +1,12 @@
 import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { getIntlayer } from 'intlayer'
+import {
+  defaultLocale,
+  getIntlayer,
+  getLocalizedUrl,
+  localeMap,
+} from 'intlayer'
 import { useIntlayer, useLocale } from 'react-intlayer'
 
 import { queryClient } from '@/router'
@@ -14,10 +19,35 @@ export const Route = createFileRoute('/{-$locale}/')({
     </QueryClientProvider>
   ),
   head: ({ params }) => {
-    const { meta } = getIntlayer('app', params.locale)
+    const { locale } = params
+    const path = '/' // The path for this route
+
+    const { meta } = getIntlayer('app', locale)
 
     return {
-      meta: [meta],
+      links: [
+        // Canonical link: Points to the current localized page
+        { rel: 'canonical', href: getLocalizedUrl(path, locale) },
+
+        // Hreflang: Tell Google about all localized versions
+        ...localeMap(({ locale: mapLocale }) => ({
+          rel: 'alternate',
+          hrefLang: mapLocale,
+          href: getLocalizedUrl(path, mapLocale),
+        })),
+
+        // x-default: For users in unmatched languages
+        // Define the default fallback locale (usually your primary language)
+        {
+          rel: 'alternate',
+          hrefLang: 'x-default',
+          href: getLocalizedUrl(path, defaultLocale),
+        },
+      ],
+      meta: [
+        { title: meta.title },
+        { name: 'description', content: meta.description },
+      ],
     }
   },
 })
