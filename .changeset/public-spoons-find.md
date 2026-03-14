@@ -5,4 +5,4 @@
 '@tanstack/vue-start': patch
 ---
 
-fix: add `xmlns:html` to generated sitemap
+fix: add `xmlns:xhtml` to generated sitemap
