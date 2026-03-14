@@ -1,5 +1,11 @@
 # @tanstack/start-plugin-core
 
+## 1.166.11
+
+### Patch Changes
+
+- fix: add `xmlns:xhtml` to generated sitemap ([#6920](https://github.com/TanStack/router/pull/6920))
+
 ## 1.166.10
 
 ### Patch Changes

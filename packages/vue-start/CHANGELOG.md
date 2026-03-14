@@ -1,5 +1,14 @@
 # @tanstack/vue-start
 
+## 1.166.11
+
+### Patch Changes
+
+- fix: add `xmlns:xhtml` to generated sitemap ([#6920](https://github.com/TanStack/router/pull/6920))
+
+- Updated dependencies [[`bfd6e62`](https://github.com/TanStack/router/commit/bfd6e62780f1cb96c210ae405723c5ebc22b10b0)]:
+  - @tanstack/start-plugin-core@1.166.11
+
 ## 1.166.10
 
 ### Patch Changes
