@@ -94,13 +94,8 @@ class ScriptBuffer {
   liftBarrier() {
     if (this._scriptBarrierLifted || this._cleanedUp) return
     this._scriptBarrierLifted = true
-    if (this._queue.length > 0 && !this._pendingMicrotask) {
-      this._pendingMicrotask = true
-      queueMicrotask(() => {
-        this._pendingMicrotask = false
-        this.injectBufferedScripts()
-      })
-    }
+    this._pendingMicrotask = false
+    this.injectBufferedScripts()
   }
 
   /**
@@ -277,15 +272,24 @@ export function attachRouterServerSsrUtils({
         : defaultSerovalPlugins
 
       const signalSerializationComplete = () => {
+        if (_serializationFinished) return
         _serializationFinished = true
+
+        const listeners = serializationFinishedListeners.slice()
+
+        for (const listener of listeners) {
+          try {
+            listener()
+          } catch (err) {
+            console.error('Serialization listener error:', err)
+          }
+        }
         try {
-          serializationFinishedListeners.forEach((l) => l())
           router.emit({ type: 'onSerializationFinished' })
         } catch (err) {
-          console.error('Serialization listener error:', err)
+          console.error('Error emitting onSerializationFinished:', err)
         } finally {
           serializationFinishedListeners.length = 0
-          renderFinishedListeners.length = 0
         }
       }
 
@@ -323,16 +327,19 @@ export function attachRouterServerSsrUtils({
     onSerializationFinished: (listener) =>
       serializationFinishedListeners.push(listener),
     setRenderFinished: () => {
-      // Wrap in try-catch to ensure scriptBuffer.liftBarrier() is always called
-      try {
-        renderFinishedListeners.forEach((l) => l())
-      } catch (err) {
-        console.error('Error in render finished listener:', err)
-      } finally {
-        // Clear listeners after calling them to prevent memory leaks
-        renderFinishedListeners.length = 0
+      const listeners = renderFinishedListeners.slice()
+      renderFinishedListeners.length = 0
+
+      for (const listener of listeners) {
+        try {
+          listener()
+        } catch (err) {
+          console.error('Error in render finished listener:', err)
+        }
       }
+
       scriptBuffer.liftBarrier()
+      scriptBuffer.flush()
     },
     takeBufferedScripts() {
       const scripts = scriptBuffer.takeAll()
@@ -399,7 +406,7 @@ export function getOrigin(request: Request) {
 // chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
 export function getNormalizedURL(url: string | URL, base?: string | URL) {
   // ensure backslashes are encoded correctly in the URL
-  if (typeof url === 'string') url = url.replace('\\', '%5C')
+  if (typeof url === 'string') url = url.replace(/\\/g, '%5C')
 
   const rawUrl = new URL(url, base)
   const { path: decodedPathname, handledProtocolRelativeURL } = decodePath(
