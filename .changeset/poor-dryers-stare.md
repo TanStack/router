@@ -1,8 +1,9 @@
 ---
 '@tanstack/router-core': minor
-'@tanstack/react-core': minor
-'@tanstack/solid-core': minor
-'@tanstack/vue-core': minor
+'@tanstack/react-router': minor
+'@tanstack/solid-router': minor
+'@tanstack/vue-router': minor
+
 ---
 
 feat: add staleReloadMode
