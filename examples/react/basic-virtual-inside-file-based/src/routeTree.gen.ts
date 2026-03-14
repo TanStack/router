@@ -78,8 +78,8 @@ export interface FileRoutesByFullPath {
   '/posts/$postId': typeof postsDetailsRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
-  '/posts/inception': typeof postsLetsGoIndexRoute
-  '/posts/inception/deeper': typeof postsLetsGoDeeperHomeRoute
+  '/posts/inception/': typeof postsLetsGoIndexRoute
+  '/posts/inception/deeper/': typeof postsLetsGoDeeperHomeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -112,8 +112,8 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/layout-a'
     | '/layout-b'
-    | '/posts/inception'
-    | '/posts/inception/deeper'
+    | '/posts/inception/'
+    | '/posts/inception/deeper/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,7 +155,7 @@ declare module '@tanstack/react-router' {
     '/_layout': {
       id: '/_layout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -176,7 +176,7 @@ declare module '@tanstack/react-router' {
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }
@@ -190,7 +190,7 @@ declare module '@tanstack/react-router' {
     '/posts/inception/': {
       id: '/posts/inception/'
       path: '/inception'
-      fullPath: '/posts/inception'
+      fullPath: '/posts/inception/'
       preLoaderRoute: typeof postsLetsGoIndexRouteImport
       parentRoute: typeof PostsRoute
     }
@@ -211,7 +211,7 @@ declare module '@tanstack/react-router' {
     '/posts/inception/deeper/': {
       id: '/posts/inception/deeper/'
       path: '/inception/deeper'
-      fullPath: '/posts/inception/deeper'
+      fullPath: '/posts/inception/deeper/'
       preLoaderRoute: typeof postsLetsGoDeeperHomeRouteImport
       parentRoute: typeof PostsRoute
     }
