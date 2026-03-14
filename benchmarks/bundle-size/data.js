@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773482125781,
+  "lastUpdate": 1773484278677,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -5989,6 +5989,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/e2811d39f6121e18fff6706db1d592495936d84e"
         },
         "date": 1773482124448,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89221,
+            "unit": "bytes",
+            "extra": "raw=280804; brotli=77582"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92294,
+            "unit": "bytes",
+            "extra": "raw=291304; brotli=80318"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 37357,
+            "unit": "bytes",
+            "extra": "raw=112053; brotli=33594"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41777,
+            "unit": "bytes",
+            "extra": "raw=125336; brotli=37543"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 53602,
+            "unit": "bytes",
+            "extra": "raw=153061; brotli=48147"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 58509,
+            "unit": "bytes",
+            "extra": "raw=168941; brotli=52494"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 102105,
+            "unit": "bytes",
+            "extra": "raw=320894; brotli=88282"
+          },
+          {
+            "name": "react-start.full",
+            "value": 105492,
+            "unit": "bytes",
+            "extra": "raw=330856; brotli=91219"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49966,
+            "unit": "bytes",
+            "extra": "raw=150548; brotli=44170"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 55567,
+            "unit": "bytes",
+            "extra": "raw=166794; brotli=48960"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "33615041+SeanCassiere@users.noreply.github.com",
+            "name": "SeanCassiere",
+            "username": "SeanCassiere"
+          },
+          "committer": {
+            "email": "33615041+SeanCassiere@users.noreply.github.com",
+            "name": "SeanCassiere",
+            "username": "SeanCassiere"
+          },
+          "distinct": true,
+          "id": "773c7c9cb9c17646020286a2d8721e2f0b628f8c",
+          "message": "chore: generate route-tree for all sandboxes\na recent change to generator, meant that all the sandboxes had their route-trees files being out-of-date",
+          "timestamp": "2026-03-14T23:28:51+13:00",
+          "tree_id": "59a35382967c5ce7aaaee60631a15b39e337c22a",
+          "url": "https://github.com/TanStack/router/commit/773c7c9cb9c17646020286a2d8721e2f0b628f8c"
+        },
+        "date": 1773484277942,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
