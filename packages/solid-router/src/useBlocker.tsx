@@ -305,12 +305,9 @@ interface BlockComponent {
   (opts: LegacyPromptProps): SolidNode
 }
 
-/**
- *  @deprecated Use the UseBlockerOpts property instead
- */
-export function Block(opts: LegacyPromptProps): SolidNode
-
-export function Block(opts: PromptProps | LegacyPromptProps): SolidNode {
+export const Block: BlockComponent = function Block(
+  opts: PromptProps | LegacyPromptProps,
+): SolidNode {
   const propsWithChildren = {
     get children() {
       return opts.children
