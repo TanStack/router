@@ -59,7 +59,7 @@ overrides:
 
 patchedDependencies:
   '@tanstack/vite-config@0.4.3':
-    hash: 8acdc5e696875b9f528b726e26dba0b38c583b03f400bc98066c203e09429bab
+    hash: 8b376f17466ddecfc11214e3eafef19e924d722adefccf1ae6d8ea31be53160d
     path: patches/@tanstack__vite-config@0.4.3.patch
 
 importers:
@@ -92,7 +92,7 @@ importers:
         version: 5.90.19(react@19.2.3)
       '@tanstack/vite-config':
         specifier: 0.4.3
-        version: 0.4.3(patch_hash=8acdc5e696875b9f528b726e26dba0b38c583b03f400bc98066c203e09429bab)(@types/node@25.0.9)(rollup@4.55.3)(typescript@5.9.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 0.4.3(patch_hash=8b376f17466ddecfc11214e3eafef19e924d722adefccf1ae6d8ea31be53160d)(@types/node@25.0.9)(rollup@4.55.3)(typescript@5.9.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -30487,7 +30487,7 @@ snapshots:
 
   '@tanstack/virtual-core@3.13.13': {}
 
-  '@tanstack/vite-config@0.4.3(patch_hash=8acdc5e696875b9f528b726e26dba0b38c583b03f400bc98066c203e09429bab)(@types/node@25.0.9)(rollup@4.55.3)(typescript@5.9.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
+  '@tanstack/vite-config@0.4.3(patch_hash=8b376f17466ddecfc11214e3eafef19e924d722adefccf1ae6d8ea31be53160d)(@types/node@25.0.9)(rollup@4.55.3)(typescript@5.9.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
       rollup-plugin-preserve-directives: 0.4.0(rollup@4.55.3)
       vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
