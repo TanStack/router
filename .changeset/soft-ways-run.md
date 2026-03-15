@@ -41,4 +41,4 @@
 '@tanstack/zod-adapter': patch
 ---
 
-build: update to vite-config 5.x (rooldown)
+build: update to vite-config 5.x (rolldown)
