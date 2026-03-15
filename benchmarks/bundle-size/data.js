@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773614664922,
+  "lastUpdate": 1773615774672,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -6638,6 +6638,90 @@ window.BENCHMARK_DATA = {
             "value": 57874,
             "unit": "bytes",
             "extra": "raw=177381; brotli=50898"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "manuel.schiller@caligano.de",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32fcba7b044b03f5901308b870f70b0b4910c220",
+          "message": "fix: Fix retained promise refs (#6929)",
+          "timestamp": "2026-03-16T00:00:40+01:00",
+          "tree_id": "61952a4d79ecd2a10e9ca5c35d245e5e065302c0",
+          "url": "https://github.com/TanStack/router/commit/32fcba7b044b03f5901308b870f70b0b4910c220"
+        },
+        "date": 1773615773572,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89714,
+            "unit": "bytes",
+            "extra": "raw=282693; brotli=77948"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92821,
+            "unit": "bytes",
+            "extra": "raw=293155; brotli=80570"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 38027,
+            "unit": "bytes",
+            "extra": "raw=114049; brotli=34088"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 42352,
+            "unit": "bytes",
+            "extra": "raw=127159; brotli=38014"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54258,
+            "unit": "bytes",
+            "extra": "raw=155044; brotli=48791"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59071,
+            "unit": "bytes",
+            "extra": "raw=170331; brotli=52839"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104436,
+            "unit": "bytes",
+            "extra": "raw=331856; brotli=90321"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107863,
+            "unit": "bytes",
+            "extra": "raw=341900; brotli=93205"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 52468,
+            "unit": "bytes",
+            "extra": "raw=161604; brotli=46364"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 57888,
+            "unit": "bytes",
+            "extra": "raw=177475; brotli=50913"
           }
         ]
       }
