@@ -27,14 +27,25 @@ jobs:
         uses: actions/checkout@v6.0.1
         with:
           fetch-depth: 0
+      - name: Check for changesets
+        id: changesets
+        run: |
+          CHANGESET_FILES=$(ls .changeset/*.md 2>/dev/null | grep -v README.md || true)
+          if [ -z "$CHANGESET_FILES" ]; then
+            echo "has_changesets=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changesets=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Start Nx Agents
+        if: steps.changesets.outputs.has_changesets == 'true'
         run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
       - name: Run Tests
+        if: steps.changesets.outputs.has_changesets == 'true'
         run: pnpm run test:ci --parallel=3
       - name: Stop Nx Agents
-        if: ${{ always() }}
+        if: ${{ always() && steps.changesets.outputs.has_changesets == 'true' }}
         run: npx nx-cloud stop-all-agents
       - name: Version Packages
         run: pnpm run changeset:version
