@@ -1,5 +1,5 @@
 import * as t from '@babel/types'
-import babel from '@babel/core'
+import * as babel from '@babel/core'
 import * as template from '@babel/template'
 import {
   deadCodeElimination,
