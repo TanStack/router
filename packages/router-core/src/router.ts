@@ -2120,9 +2120,10 @@ export class RouterCore<
     const isSameUrl =
       trimPathRight(this.latestLocation.href) === trimPathRight(next.href)
 
-    const previousCommitPromise = this.commitLocationPromise
+    let previousCommitPromise = this.commitLocationPromise
     this.commitLocationPromise = createControlledPromise<void>(() => {
       previousCommitPromise?.resolve()
+      previousCommitPromise = undefined
     })
 
     // Don't commit to history if nothing changed
