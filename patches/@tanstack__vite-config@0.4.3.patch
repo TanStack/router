@@ -1,0 +1,26 @@
+diff --git a/dist/index.js b/dist/index.js
+index 9952e014d80daf2f0970130e767e1e9a86bb4981..816600de2c28cf28376b5fa7cc5c901b00945556 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -55,7 +55,7 @@ const tanstackViteConfig = (options) => {
+ 				exclude: options.exclude,
+ 				tsconfigPath: options.tsconfigPath,
+ 				compilerOptions: {
+-					module: 1,
++					module: 199,
+ 					declarationMap: false
+ 				},
+ 				beforeWriteFile: (filePath, content) => {
+diff --git a/src/index.ts b/src/index.ts
+index 8978481c8d1d22473826be4f337299a67941657f..f4677ccf99455534839ae45b7c2738e93cd14415 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -78,7 +78,7 @@ export const tanstackViteConfig = (options: Options): UserConfig => {
+             exclude: options.exclude,
+             tsconfigPath: options.tsconfigPath,
+             compilerOptions: {
+-              module: 1, // CommonJS
++              module: 199, // NodeNext
+               declarationMap: false,
+             },
+             beforeWriteFile: (filePath, content) => {

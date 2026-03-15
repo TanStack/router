@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { defineConfig, mergeConfig } from 'vitest/config'
-import { tanstackViteConfig } from '@tanstack/config/vite'
+import { tanstackViteConfig } from '@tanstack/vite-config'
 import minifyScriptPlugin from './vite-minify-plugin'
 import packageJson from './package.json'
 import type { ViteUserConfig } from 'vitest/config'
