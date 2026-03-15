@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
+import { getReferenceRouteCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import { frameworks } from './constants'
 
 function getFrameworkDir(framework: string) {
@@ -30,6 +31,10 @@ describe('add-hmr works', () => {
           addHmr: true,
           codeSplitGroupings: defaultCodeSplitGroupings,
           targetFramework: framework,
+          compilerPlugins: getReferenceRouteCompilerPlugins({
+            targetFramework: framework,
+            addHmr: true,
+          }),
         })
 
         await expect(compileResult?.code || code).toMatchFileSnapshot(
@@ -51,6 +56,10 @@ describe('add-hmr works', () => {
           addHmr: false,
           codeSplitGroupings: defaultCodeSplitGroupings,
           targetFramework: framework,
+          compilerPlugins: getReferenceRouteCompilerPlugins({
+            targetFramework: framework,
+            addHmr: false,
+          }),
         })
 
         await expect(compileResult?.code || code).toMatchFileSnapshot(

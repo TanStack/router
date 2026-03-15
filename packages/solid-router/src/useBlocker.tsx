@@ -292,10 +292,18 @@ const _resolvePromptBlockerArgs = (
   }
 }
 
-export function Block<
-  TRouter extends AnyRouter = RegisteredRouter,
-  TWithResolver extends boolean = boolean,
->(opts: PromptProps<TRouter, TWithResolver>): SolidNode
+interface BlockComponent {
+  <
+    TRouter extends AnyRouter = RegisteredRouter,
+    TWithResolver extends boolean = boolean,
+  >(
+    opts: PromptProps<TRouter, TWithResolver>,
+  ): SolidNode
+  /**
+   *  @deprecated Use the UseBlockerOpts property instead
+   */
+  (opts: LegacyPromptProps): SolidNode
+}
 
 /**
  *  @deprecated Use the UseBlockerOpts property instead

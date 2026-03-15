@@ -1,5 +1,5 @@
 import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
-import babel from '@babel/core'
+import * as babel from '@babel/core'
 import * as template from '@babel/template'
 import { getConfig } from './config'
 import { debug, normalizePath } from './utils'
