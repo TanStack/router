@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.167.3
+
+### Patch Changes
+
+- Fix retained chained router promise refs during route loads and commits. ([#6929](https://github.com/TanStack/router/pull/6929))
+
 ## 1.167.2
 
 ### Patch Changes

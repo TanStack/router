@@ -1,5 +1,17 @@
 # @tanstack/solid-start
 
+## 1.166.14
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.167.3
+  - @tanstack/solid-start-client@1.166.11
+  - @tanstack/solid-start-server@1.166.11
+  - @tanstack/start-client-core@1.166.11
+  - @tanstack/start-plugin-core@1.166.14
+  - @tanstack/start-server-core@1.166.11
+
 ## 1.166.13
 
 ### Patch Changes
