@@ -9,7 +9,7 @@
     "start": "dev"
   },
   "dependencies": {
-    "@tanstack/router-plugin": "^1.166.11",
+    "@tanstack/router-plugin": "^1.166.12",
     "@tanstack/solid-router": "^2.0.0-alpha.2",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.1",
     "redaxios": "^0.5.1",

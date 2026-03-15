@@ -15,7 +15,7 @@
     "@tanstack/solid-start": "^2.0.0-alpha.2",
     "solid-js": "2.0.0-beta.2",
     "@solidjs/web": "2.0.0-beta.2",
-    "@tanstack/start-static-server-functions": "^1.166.12",
+    "@tanstack/start-static-server-functions": "^1.166.13",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0"
   },

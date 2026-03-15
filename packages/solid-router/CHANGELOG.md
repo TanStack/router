@@ -18,6 +18,13 @@
 
 - solid v2 pre-release for solid-router and start ([#6904](https://github.com/TanStack/router/pull/6904))
 
+## 1.167.3
+
+### Patch Changes
+
+- Updated dependencies [[`32fcba7`](https://github.com/TanStack/router/commit/32fcba7b044b03f5901308b870f70b0b4910c220)]:
+  - @tanstack/router-core@1.167.3
+
 ## 1.167.2
 
 ### Patch Changes
@@ -48,4 +55,5 @@
 
 - Updated dependencies [[`6f297a2`](https://github.com/TanStack/router/commit/6f297a249424c0fd1c1a56aa4fc12c8217be7b6a)]:
   - @tanstack/router-core@1.167.0
+
 
