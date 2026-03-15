@@ -5,8 +5,14 @@ on:
   # - `benchmark-pr` checks out PR merge code and runs it as untrusted with read-only permissions.
   # - `comment-pr` runs trusted base-repo code with limited write access to upsert the PR comment.
   pull_request_target:
+    paths:
+      - 'packages/**'
+      - 'benchmarks/**'
   push:
     branches: [main]
+    paths:
+      - 'packages/**'
+      - 'benchmarks/**'
   workflow_dispatch:
 
 concurrency:
