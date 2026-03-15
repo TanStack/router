@@ -134,6 +134,9 @@
       "@tanstack/router-utils": "workspace:*",
       "@tanstack/start-static-server-functions": "workspace:*",
       "@tanstack/nitro-v2-vite-plugin": "workspace:*"
+    },
+    "patchedDependencies": {
+      "@tanstack/vite-config@0.4.3": "patches/@tanstack__vite-config@0.4.3.patch"
     }
   }
 }
