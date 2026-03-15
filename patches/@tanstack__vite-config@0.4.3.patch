@@ -7,7 +7,7 @@ index 9952e014d80daf2f0970130e767e1e9a86bb4981..816600de2c28cf28376b5fa7cc5c901b
  				tsconfigPath: options.tsconfigPath,
  				compilerOptions: {
 -					module: 1,
-+					module: 100,
++					module: 199,
  					declarationMap: false
  				},
  				beforeWriteFile: (filePath, content) => {
@@ -20,7 +20,7 @@ index 8978481c8d1d22473826be4f337299a67941657f..f4677ccf99455534839ae45b7c2738e9
              tsconfigPath: options.tsconfigPath,
              compilerOptions: {
 -              module: 1, // CommonJS
-+              module: 100, // Node16
++              module: 199, // NodeNext
                declarationMap: false,
              },
              beforeWriteFile: (filePath, content) => {
