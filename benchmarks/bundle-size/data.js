@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773588582294,
+  "lastUpdate": 1773608711219,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -6409,6 +6409,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/ef9b241f3cfe95cee40daa96da669f0ffd4a971a"
         },
         "date": 1773588580892,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89221,
+            "unit": "bytes",
+            "extra": "raw=280804; brotli=77582"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92294,
+            "unit": "bytes",
+            "extra": "raw=291304; brotli=80318"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 37357,
+            "unit": "bytes",
+            "extra": "raw=112053; brotli=33594"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41777,
+            "unit": "bytes",
+            "extra": "raw=125336; brotli=37543"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 53602,
+            "unit": "bytes",
+            "extra": "raw=153061; brotli=48147"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 58509,
+            "unit": "bytes",
+            "extra": "raw=168941; brotli=52494"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 102101,
+            "unit": "bytes",
+            "extra": "raw=320894; brotli=88258"
+          },
+          {
+            "name": "react-start.full",
+            "value": 105491,
+            "unit": "bytes",
+            "extra": "raw=330856; brotli=91245"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49966,
+            "unit": "bytes",
+            "extra": "raw=150548; brotli=44170"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 55567,
+            "unit": "bytes",
+            "extra": "raw=166794; brotli=48960"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "zougarii.ahmed@gmail.com",
+            "name": "Ahmed Zougari",
+            "username": "zougari47"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ac775f5dee67b9d77e448918d0144f9e575a253e",
+          "message": "docs: remove react-oxc plugin suggestion(deprecated) (#6927)",
+          "timestamp": "2026-03-15T22:02:42+01:00",
+          "tree_id": "f63447f635a00397ccbb281e5831c4a3d3b2326b",
+          "url": "https://github.com/TanStack/router/commit/ac775f5dee67b9d77e448918d0144f9e575a253e"
+        },
+        "date": 1773608709596,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
