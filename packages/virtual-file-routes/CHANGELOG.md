@@ -1,5 +1,11 @@
 # @tanstack/virtual-file-routes
 
+## 1.161.6
+
+### Patch Changes
+
+- build: update to vite-config 5.x (rolldown) ([#6926](https://github.com/TanStack/router/pull/6926))
+
 ## 1.161.5
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @tanstack/nitro-v2-vite-plugin
 
+## 1.154.9
+
+### Patch Changes
+
+- build: update to vite-config 5.x (rolldown) ([#6926](https://github.com/TanStack/router/pull/6926))
+
 ## 1.154.8
 
 ### Patch Changes
