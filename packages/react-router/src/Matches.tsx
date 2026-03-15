@@ -144,7 +144,9 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  useRouterState({
+  // Subscribe to router state and capture the values
+  // This ensures the callback below has explicit dependencies on state that changes
+  const routerState = useRouterState({
     select: (s) => [s.location.href, s.resolvedLocation?.href, s.status],
     structuralSharing: true as any,
   })
@@ -169,7 +171,13 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
         includeSearch,
       })
     },
-    [router],
+    // Include routerState in dependencies to prevent React Compiler from
+    // memoizing with stale router state. The router reference is stable,
+    // but router.matchRoute() reads mutable internal state (location, status).
+    // By including routerState, we ensure the callback is recreated when
+    // navigation occurs, preventing stale closure issues.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [router, routerState],
   )
 }
 
