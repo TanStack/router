@@ -15,7 +15,7 @@ const merged = mergeConfig(
   }),
 )
 
-merged.build.rollupOptions.output.manualChunks = undefined
-merged.build.rollupOptions.output.preserveModules = false
+merged.build.rolldownOptions.output.manualChunks = undefined
+merged.build.rolldownOptions.output.preserveModules = false
 
 export default merged
