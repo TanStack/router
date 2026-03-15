@@ -41,4 +41,4 @@
 '@tanstack/history': patch
 ---
 
-fix: build with @tantack/vite-config 0.4.3
+fix: build with @tanstack/vite-config 0.4.3
