@@ -20,7 +20,6 @@ export function previewServerPlugin(): Plugin {
           let serverBuild: any = null
 
           server.middlewares.use(async (req, res, next) => {
-            res.setHeader('content-encoding', 'identity')
             try {
               // Lazy load server build on first request
               if (!serverBuild) {
@@ -50,6 +49,10 @@ export function previewServerPlugin(): Plugin {
 
               const webReq = new NodeRequest({ req, res })
               const webRes: Response = await serverBuild.fetch(webReq)
+
+              if (webRes.headers.get('content-type')?.startsWith('text/html')) {
+                res.setHeader('content-encoding', 'identity')
+              }
 
               // Temporary workaround
               // Vite preview's compression middleware doesn't support flattened array headers that srvx sets
