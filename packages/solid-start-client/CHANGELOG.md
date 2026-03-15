@@ -66,5 +66,3 @@
   - @tanstack/router-core@1.167.0
   - @tanstack/solid-router@1.167.0
   - @tanstack/start-client-core@1.166.8
-
-

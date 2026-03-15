@@ -41,4 +41,3 @@
   - @tanstack/router-devtools-core@1.166.8
   - @tanstack/solid-router@1.167.1
   - @tanstack/router-core@1.167.1
-

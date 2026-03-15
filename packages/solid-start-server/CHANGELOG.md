@@ -72,5 +72,3 @@
   - @tanstack/solid-router@1.167.0
   - @tanstack/start-client-core@1.166.8
   - @tanstack/start-server-core@1.166.8
-
-

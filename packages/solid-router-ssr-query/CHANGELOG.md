@@ -37,4 +37,3 @@
 
 - Updated dependencies [[`ef9b241`](https://github.com/TanStack/router/commit/ef9b241f3cfe95cee40daa96da669f0ffd4a971a)]:
   - @tanstack/router-ssr-query-core@1.166.8
-
