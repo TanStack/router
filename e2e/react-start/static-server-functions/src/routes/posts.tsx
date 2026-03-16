@@ -1,4 +1,4 @@
-import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
+import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { staticFunctionMiddleware } from '@tanstack/start-static-server-functions'
 
@@ -30,14 +30,8 @@ function PostsComponent() {
       <h2 data-testid="posts-heading">Posts</h2>
       <ul>
         {posts.map((post) => (
-          <li key={post.id}>
-            <Link
-              to="/posts/$postId"
-              params={{ postId: post.id }}
-              data-testid={`link-post-${post.id}`}
-            >
-              {post.title}
-            </Link>
+          <li key={post.id} data-testid={`post-${post.id}`}>
+            {post.title}
           </li>
         ))}
       </ul>

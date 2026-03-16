@@ -55,9 +55,9 @@ test.describe('Static Server Functions with Nitro', () => {
     }) => {
       await page.goto('/posts')
       await expect(page.getByTestId('posts-heading')).toHaveText('Posts')
-      await expect(page.getByTestId('link-post-1')).toHaveText('First Post')
-      await expect(page.getByTestId('link-post-2')).toHaveText('Second Post')
-      await expect(page.getByTestId('link-post-3')).toHaveText('Third Post')
+      await expect(page.getByTestId('post-1')).toHaveText('First Post')
+      await expect(page.getByTestId('post-2')).toHaveText('Second Post')
+      await expect(page.getByTestId('post-3')).toHaveText('Third Post')
     })
   })
 })
