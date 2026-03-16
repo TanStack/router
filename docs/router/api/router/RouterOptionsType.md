@@ -109,6 +109,15 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Defaults to `0`
 - The default `staleTime` a route should use if no staleTime is provided.
 
+### `defaultStaleReloadMode` property
+
+- Type: `'background' | 'blocking'`
+- Optional
+- Defaults to `'background'`
+- Controls how stale successful loader data is revalidated by default.
+- `'background'` preserves stale-while-revalidate behavior.
+- `'blocking'` waits for the stale loader reload to finish before navigation resolves.
+
 ### `defaultPreloadStaleTime` property
 
 - Type: `number`

@@ -10,9 +10,9 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^2.0.0-alpha.2",
-    "@tanstack/solid-router-devtools": "^2.0.0-alpha.1",
-    "@tanstack/solid-start": "^2.0.0-alpha.2",
+    "@tanstack/solid-router": "^2.0.0-alpha.3",
+    "@tanstack/solid-router-devtools": "^2.0.0-alpha.2",
+    "@tanstack/solid-start": "^2.0.0-alpha.3",
     "redaxios": "^0.5.1",
     "solid-js": "2.0.0-beta.2",
     "@solidjs/web": "2.0.0-beta.2",
@@ -21,7 +21,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^22.5.4",
-    "nitro": "3.0.1-alpha.2",
+    "nitro": "^3.0.260311-beta",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",

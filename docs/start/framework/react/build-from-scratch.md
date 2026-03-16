@@ -75,7 +75,7 @@ As well as React's Vite plugin:
 npm i -D @vitejs/plugin-react
 ```
 
-Alternatively, you can also use `@vitejs/plugin-react-oxc` or `@vitejs/plugin-react-swc`.
+Alternatively, you can also use `@vitejs/plugin-react-swc`.
 
 and some TypeScript:
 

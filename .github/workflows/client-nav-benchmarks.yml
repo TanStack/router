@@ -5,7 +5,13 @@ on:
   push:
     branches:
       - 'main'
+    paths:
+      - 'packages/**'
+      - 'benchmarks/**'
   pull_request:
+    paths:
+      - 'packages/**'
+      - 'benchmarks/**'
   workflow_dispatch:
 
 permissions:
