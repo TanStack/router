@@ -109,19 +109,7 @@ export function useMatch<
   const nearestMatchId = React.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
-  const previousResult =
-    React.useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(
-      undefined,
-    )
 
-  // Single subscription: instead of two useStore calls (one to resolve
-  // the store, one to read from it), we resolve the store at this level
-  // and subscribe to it directly.
-  //
-  // - by-routeId (opts.from): uses a per-routeId computed store from the
-  //   signal graph that resolves routeId → match state in one step.
-  // - by-matchId (matchContext): subscribes directly to the match store
-  //   from the pool — the matchId from context is stable for this component.
   const key = opts.from ?? nearestMatchId
   const matchStore = key
     ? opts.from
@@ -142,6 +130,12 @@ export function useMatch<
 
     return (opts.select ? opts.select(match as any) : match) as any
   }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  const previousResult =
+    React.useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(
+      undefined,
+    )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   return useStore(matchStore ?? dummyStore, (match) => {
