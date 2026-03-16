@@ -25,7 +25,7 @@ export const Match = (props: { matchId: string }) => {
   const match = Solid.createMemo(() => {
     const id = props.matchId
     if (!id) return undefined
-    return router.stores.activeMatchStoresById.get(id)?.state
+    return Solid.untrack(() => router.stores.activeMatchStoresById.get(id))?.state
   })
 
   const rawMatchState = Solid.createMemo(() => {
