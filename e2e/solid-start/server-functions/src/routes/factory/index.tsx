@@ -207,7 +207,10 @@ function RouteComponent() {
     <div class="p-2 m-2 grid gap-2" data-testid="factory-route-component">
       <h1 class="font-bold text-lg">Server functions middleware E2E tests</h1>
       <For each={Object.entries(functions)}>
-        {([name, testCase]) => <Test {...testCase} />}
+        {(entry) => {
+          const [, testCase] = entry()
+          return <Test {...testCase} />
+        }}
       </For>
     </div>
   )

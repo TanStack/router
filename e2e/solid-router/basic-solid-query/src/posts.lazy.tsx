@@ -1,6 +1,6 @@
 import { Link, Outlet, createLazyRoute } from '@tanstack/solid-router'
 import { useQuery } from '@tanstack/solid-query'
-import { Suspense, createMemo } from 'solid-js'
+import { Loading, createMemo } from 'solid-js'
 import { postsQueryOptions } from './posts'
 
 export const Route = createLazyRoute('/posts')({
@@ -21,7 +21,7 @@ function PostsComponent() {
   return (
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
-        <Suspense>
+        <Loading>
           {[
             ...posts(),
             { id: 'i-do-not-exist', title: 'Non-existent Post' },
@@ -41,7 +41,7 @@ function PostsComponent() {
               </li>
             )
           })}
-        </Suspense>
+        </Loading>
       </ul>
       <Outlet />
     </div>

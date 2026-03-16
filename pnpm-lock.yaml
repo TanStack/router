@@ -3187,11 +3187,11 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-query':
-        specifier: ^5.90.9
-        version: 5.90.9(solid-js@2.0.0-beta.2)
+        specifier: https://pkg.pr.new/@tanstack/solid-query@50aaa98
+        version: https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: https://pkg.pr.new/@tanstack/solid-query-devtools@50aaa98
+        version: https://pkg.pr.new/@tanstack/solid-query-devtools@50aaa98(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -3233,11 +3233,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^5.90.9
-        version: 5.90.9(solid-js@2.0.0-beta.2)
+        specifier: https://pkg.pr.new/@tanstack/solid-query@50aaa98
+        version: https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: https://pkg.pr.new/@tanstack/solid-query-devtools@50aaa98
+        version: https://pkg.pr.new/@tanstack/solid-query-devtools@50aaa98(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -3882,11 +3882,11 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-query':
-        specifier: ^5.90.9
-        version: 5.90.9(solid-js@2.0.0-beta.2)
+        specifier: https://pkg.pr.new/@tanstack/solid-query@50aaa98
+        version: https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: https://pkg.pr.new/@tanstack/solid-query-devtools@50aaa98
+        version: https://pkg.pr.new/@tanstack/solid-query-devtools@50aaa98(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4133,11 +4133,11 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-query':
-        specifier: ^5.90.9
-        version: 5.90.9(solid-js@2.0.0-beta.2)
+        specifier: https://pkg.pr.new/@tanstack/solid-query@50aaa98
+        version: https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: https://pkg.pr.new/@tanstack/solid-query-devtools@50aaa98
+        version: https://pkg.pr.new/@tanstack/solid-query-devtools@50aaa98(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4350,8 +4350,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-query':
-        specifier: ^5.90.9
-        version: 5.90.9(solid-js@2.0.0-beta.2)
+        specifier: https://pkg.pr.new/@tanstack/solid-query@50aaa98
+        version: https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4423,8 +4423,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-query':
-        specifier: ^5.90.9
-        version: 5.90.9(solid-js@2.0.0-beta.2)
+        specifier: https://pkg.pr.new/@tanstack/solid-query@50aaa98
+        version: https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -11407,9 +11407,6 @@ importers:
       '@tanstack/solid-start':
         specifier: workspace:*
         version: link:../../../packages/solid-start
-      '@tanstack/start-static-server-functions':
-        specifier: workspace:*
-        version: link:../../../packages/start-static-server-functions
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -12766,8 +12763,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-query':
-        specifier: '>=5.90.0'
-        version: 5.90.9(solid-js@2.0.0-beta.2)
+        specifier: https://pkg.pr.new/@tanstack/solid-query@50aaa98
+        version: https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
         specifier: workspace:*
         version: link:../solid-router
@@ -18317,6 +18314,10 @@ packages:
   '@tanstack/query-devtools@5.91.1':
     resolution: {integrity: sha512-l8bxjk6BMsCaVQH6NzQEE/bEgFy1hAs5qbgXl0xhzezlaQbPk6Mgz9BqEg2vTLPOHD8N4k+w/gdgCbEzecGyNg==}
 
+  '@tanstack/query-devtools@https://pkg.pr.new/TanStack/query/@tanstack/query-devtools@50aaa98':
+    resolution: {tarball: https://pkg.pr.new/TanStack/query/@tanstack/query-devtools@50aaa98}
+    version: 5.93.0
+
   '@tanstack/react-devtools@0.7.11':
     resolution: {integrity: sha512-a2Lmz8x+JoDrsU6f7uKRcyyY+k8mA/n5mb9h7XJ3Fz/y3+sPV9t7vAW1s5lyNkQyyDt6V1Oim99faLthoJSxMw==}
     engines: {node: '>=18'}
@@ -18367,10 +18368,23 @@ packages:
       '@tanstack/solid-query': ^5.90.4
       solid-js: ^1.6.0
 
+  '@tanstack/solid-query-devtools@https://pkg.pr.new/@tanstack/solid-query-devtools@50aaa98':
+    resolution: {integrity: sha512-oFMkqMnO8Q3C6z3Yq7hb02Q2qkOSRVin0KqO8S61IWfrjopY1BtCSJT60i1C9d891+EhFEc52SIT7a6760tiqQ==, tarball: https://pkg.pr.new/@tanstack/solid-query-devtools@50aaa98}
+    version: 5.91.3
+    peerDependencies:
+      '@tanstack/solid-query': ^5.90.26
+      solid-js: ^1.6.0 || >=2.0.0-beta.0 <2.0.0
+
   '@tanstack/solid-query@5.90.9':
     resolution: {integrity: sha512-OF+FpTHPmZxF5M0zcEERtUA0DhuFdNOpn0EAbASarDfIuNrvi8k07dhYV5zYyYwkt+eoe/RnAX65PdSP+Y0ONw==}
     peerDependencies:
       solid-js: ^1.6.0
+
+  '@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@50aaa98':
+    resolution: {tarball: https://pkg.pr.new/@tanstack/solid-query@50aaa98}
+    version: 5.90.26
+    peerDependencies:
+      solid-js: ^1.6.0 || >=2.0.0-beta.0 <2.0.0
 
   '@tanstack/solid-virtual@3.13.12':
     resolution: {integrity: sha512-0dS8GkBTmbuM9cUR6Jni0a45eJbd32CAEbZj8HrZMWIj3lu974NpGz5ywcomOGJ9GdeHuDaRzlwtonBbKV1ihQ==}
@@ -31248,6 +31262,8 @@ snapshots:
 
   '@tanstack/query-devtools@5.91.1': {}
 
+  '@tanstack/query-devtools@https://pkg.pr.new/TanStack/query/@tanstack/query-devtools@50aaa98': {}
+
   '@tanstack/react-devtools@0.7.11(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.11)':
     dependencies:
       '@tanstack/devtools': 0.7.0(csstype@3.2.3)(solid-js@1.9.11)
@@ -31306,7 +31322,18 @@ snapshots:
       '@tanstack/solid-query': 5.90.9(solid-js@2.0.0-beta.2)
       solid-js: 2.0.0-beta.2
 
+  '@tanstack/solid-query-devtools@https://pkg.pr.new/@tanstack/solid-query-devtools@50aaa98(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)':
+    dependencies:
+      '@tanstack/query-devtools': https://pkg.pr.new/TanStack/query/@tanstack/query-devtools@50aaa98
+      '@tanstack/solid-query': https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2)
+      solid-js: 2.0.0-beta.2
+
   '@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.2)':
+    dependencies:
+      '@tanstack/query-core': 5.90.19
+      solid-js: 2.0.0-beta.2
+
+  '@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.2)':
     dependencies:
       '@tanstack/query-core': 5.90.19
       solid-js: 2.0.0-beta.2

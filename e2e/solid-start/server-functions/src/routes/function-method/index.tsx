@@ -42,7 +42,10 @@ function RouteComponent() {
         </Link>
       </div>
       <For each={Object.entries(functions)}>
-        {([, testCase]) => <Test {...testCase} />}
+        {(entry) => {
+          const [, testCase] = entry()
+          return <Test {...testCase} />
+        }}
       </For>
     </div>
   )

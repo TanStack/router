@@ -58,7 +58,7 @@ function RouteComponent() {
   return (
     <div class="p-2 m-2 grid gap-2" data-testid="route-component">
       <h3>Server Route has only ANY handler</h3>
-      <For each={HttpMethods}>{(method) => <Test method={method} />}</For>
+      <For each={HttpMethods}>{(method) => <Test method={method()} />}</For>
     </div>
   )
 }

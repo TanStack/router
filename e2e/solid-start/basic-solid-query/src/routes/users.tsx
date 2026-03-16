@@ -28,12 +28,12 @@ function UsersComponent() {
               <Link
                 to="/users/$userId"
                 params={{
-                  userId: String(user.id),
+                  userId: String(user().id),
                 }}
                 class="block py-1 text-blue-800 hover:text-blue-600"
                 activeProps={{ class: 'text-black font-bold' }}
               >
-                <div>{user.name}</div>
+                <div>{user().name}</div>
               </Link>
             </li>
           )}
