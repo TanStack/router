@@ -9,7 +9,12 @@ import {
 } from '../src'
 import { createTestRouter } from './routerTestUtils'
 import { loadMatches } from '../src/load-matches'
-import type { AnyRouter, LoaderStaleReloadMode, RootRouteOptions, RouterCore } from '../src'
+import type {
+  AnyRouter,
+  LoaderStaleReloadMode,
+  RootRouteOptions,
+  RouterCore,
+} from '../src'
 
 type AnyRouteOptions = RootRouteOptions<any>
 type BeforeLoad = NonNullable<AnyRouteOptions['beforeLoad']>
@@ -608,7 +613,9 @@ describe('stale loader reload triggers', () => {
     id: string,
   ) =>
     router.state.matches.find((match) => match.id === id) ??
-    router.stores.pendingMatchesSnapshot.state.find((match) => match.id === id) ??
+    router.stores.pendingMatchesSnapshot.state.find(
+      (match) => match.id === id,
+    ) ??
     router.stores.cachedMatchesSnapshot.state.find((match) => match.id === id)
 
   const hasActiveMatch = (
@@ -619,7 +626,10 @@ describe('stale loader reload triggers', () => {
   const hasPendingMatch = (
     router: RouterCore<any, any, any, any, any>,
     id: string,
-  ) => router.stores.pendingMatchesSnapshot.state.some((match) => match.id === id) ?? false
+  ) =>
+    router.stores.pendingMatchesSnapshot.state.some(
+      (match) => match.id === id,
+    ) ?? false
 
   const setup = ({
     loader,
@@ -1138,8 +1148,8 @@ describe('head execution', () => {
       beforeLoad:
         throwAtIndex === 1
           ? () => {
-            throw notFound()
-          }
+              throw notFound()
+            }
           : undefined,
     })
 
@@ -1151,8 +1161,8 @@ describe('head execution', () => {
       beforeLoad:
         throwAtIndex === 2
           ? () => {
-            throw notFound()
-          }
+              throw notFound()
+            }
           : undefined,
     })
 
@@ -1164,8 +1174,8 @@ describe('head execution', () => {
       beforeLoad:
         throwAtIndex === 3
           ? () => {
-            throw notFound()
-          }
+              throw notFound()
+            }
           : undefined,
     })
 
@@ -1244,11 +1254,11 @@ describe('head execution', () => {
     expect(thrownMatch?.status).toBe('notFound')
   }
 
-    ; ([1, 2, 3] as const).forEach((throwAtIndex) => {
-      test(`beforeLoad notFound at hierarchy level ${throwAtIndex} waits for parent loader data and executes heads`, async () => {
-        await assertBeforeLoadNotFoundHierarchy(throwAtIndex)
-      })
+  ;([1, 2, 3] as const).forEach((throwAtIndex) => {
+    test(`beforeLoad notFound at hierarchy level ${throwAtIndex} waits for parent loader data and executes heads`, async () => {
+      await assertBeforeLoadNotFoundHierarchy(throwAtIndex)
     })
+  })
 
   test('executes head once when loader throws notFound', async () => {
     const head = vi.fn(() => ({ meta: [{ title: 'Test' }] }))
@@ -1459,13 +1469,13 @@ describe('head execution', () => {
 
       const routes = [rootRoute, level1Route, level2Route, level3Route] as const
 
-        ; ([0, 1, 2] as const).forEach((index) => {
-          if (parentFailures[index] === 'error') {
-            ; (routes[index].options as any).shouldReload = () => {
-              throw new Error(`loader-${index}-error`)
-            }
+      ;([0, 1, 2] as const).forEach((index) => {
+        if (parentFailures[index] === 'error') {
+          ;(routes[index].options as any).shouldReload = () => {
+            throw new Error(`loader-${index}-error`)
           }
-        })
+        }
+      })
 
       const throwRoute = routes[throwAtIndex]!
       throwRoute.options.beforeLoad = () => {
