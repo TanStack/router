@@ -2,7 +2,6 @@ import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
 import {
   DEFAULT_PROTOCOL_ALLOWLIST,
-  arraysEqual,
   createControlledPromise,
   decodePath,
   deepEqual,
