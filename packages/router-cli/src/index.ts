@@ -6,7 +6,7 @@ import { watch } from './watch'
 main()
 
 export function main() {
-  yargs()
+  yargs(process.argv.slice(2))
     .scriptName('tsr')
     .usage('$0 <cmd> [args]')
     .command('generate', 'Generate the routes for a project', async () => {
