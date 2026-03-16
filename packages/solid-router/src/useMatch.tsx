@@ -77,7 +77,9 @@ export function useMatch<
 
   const match = () => {
     if (opts.from) {
-      return Solid.untrack(() => router.stores.getMatchStoreByRouteId(opts.from)).state
+      return Solid.untrack(() =>
+        router.stores.getMatchStoreByRouteId(opts.from),
+      ).state
     }
 
     return nearestMatch?.match()

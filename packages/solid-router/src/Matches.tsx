@@ -70,7 +70,8 @@ function MatchesInner() {
   const routeId = () => (matchId() ? rootRouteId : undefined)
   const match = () =>
     routeId()
-      ? Solid.untrack(() => router.stores.getMatchStoreByRouteId(rootRouteId)).state
+      ? Solid.untrack(() => router.stores.getMatchStoreByRouteId(rootRouteId))
+          .state
       : undefined
   const hasPendingMatch = () =>
     routeId()
