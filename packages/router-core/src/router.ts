@@ -1417,8 +1417,7 @@ export class RouterCore<
 
     const matches = new Array<AnyRouteMatch>(matchedRoutes.length)
     // Snapshot of active match state keyed by routeId, used to stabilise
-    // params/search across navigations.  Built from the non-reactive pool
-    // so we don't pull in the byRouteId derived store.
+    // params/search across navigations.
     const previousActiveMatchesByRouteId = new Map<string, AnyRouteMatch>()
     for (const store of this.stores.activeMatchStoresById.values()) {
       if (store.routeId) {
@@ -2644,12 +2643,11 @@ export class RouterCore<
       if (cachedMatch) {
         const next = updater(cachedMatch.state)
         if (next.status === 'redirected') {
-          this.stores.cachedMatchStoresById.delete(id)
-          const nextCachedIds = this.stores.cachedMatchesId.state.filter(
-            (matchId) => matchId !== id,
-          )
-          if (!arraysEqual(this.stores.cachedMatchesId.state, nextCachedIds)) {
-            this.stores.cachedMatchesId.setState(() => nextCachedIds)
+          const deleted = this.stores.cachedMatchStoresById.delete(id)
+          if (deleted) {
+            this.stores.cachedMatchesId.setState((prev) => prev.filter(
+              (matchId) => matchId !== id,
+            ))
           }
         } else {
           cachedMatch.setState(() => next)
