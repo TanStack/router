@@ -53,10 +53,7 @@ function readChangesetEntries() {
         const [, name, bump] = match
         const existing = explicit.get(name)
         // keep the highest bump if a package appears in multiple changesets
-        if (
-          !existing ||
-          bumpRank(bump) > bumpRank(existing)
-        ) {
+        if (!existing || bumpRank(bump) > bumpRank(existing)) {
           explicit.set(name, bump)
         }
       }
@@ -134,7 +131,8 @@ function main() {
 
   // Sort: major first, then minor, then patch; within each group alphabetical
   bumps.sort(
-    (a, b) => bumpRank(b.bump) - bumpRank(a.bump) || a.name.localeCompare(b.name),
+    (a, b) =>
+      bumpRank(b.bump) - bumpRank(a.bump) || a.name.localeCompare(b.name),
   )
 
   // 7. Build markdown
