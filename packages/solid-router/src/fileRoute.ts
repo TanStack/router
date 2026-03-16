@@ -28,7 +28,7 @@ import type {
   RouteById,
   RouteConstraints,
   RouteIds,
-  RouteLoaderFn,
+  RouteLoaderEntry,
   UpdatableRouteOptions,
   UseNavigateResult,
 } from '@tanstack/router-core'
@@ -164,7 +164,7 @@ export function FileRouteLoader<
 ): <TLoaderFn>(
   loaderFn: Constrain<
     TLoaderFn,
-    RouteLoaderFn<
+    RouteLoaderEntry<
       Register,
       TRoute['parentRoute'],
       TRoute['types']['id'],

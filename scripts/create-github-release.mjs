@@ -164,6 +164,9 @@ for (const line of commits) {
   const scope = conventionalMatch ? conventionalMatch[2] || '' : ''
   const message = conventionalMatch ? conventionalMatch[3] : subject
 
+  // Only include user-facing change types
+  if (!['feat', 'fix', 'perf', 'refactor', 'build'].includes(type)) continue
+
   // Extract PR number if present
   const prMatch = message.match(/\(#(\d+)\)/)
   const prNumber = prMatch ? prMatch[1] : null

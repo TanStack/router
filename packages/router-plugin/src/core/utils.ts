@@ -1,3 +1,6 @@
+import * as t from '@babel/types'
+import type babel from '@babel/core'
+
 export const debug =
   process.env.TSR_VITE_DEBUG &&
   ['true', 'router-plugin'].includes(process.env.TSR_VITE_DEBUG)
@@ -11,4 +14,22 @@ export const debug =
  */
 export function normalizePath(path: string): string {
   return path.replace(/\\/g, '/')
+}
+
+export function getUniqueProgramIdentifier(
+  programPath: babel.NodePath<t.Program>,
+  baseName: string,
+): t.Identifier {
+  let name = baseName
+  let suffix = 2
+
+  while (
+    programPath.scope.hasBinding(name) ||
+    programPath.scope.hasGlobal(name)
+  ) {
+    name = `${baseName}${suffix}`
+    suffix++
+  }
+
+  return t.identifier(name)
 }

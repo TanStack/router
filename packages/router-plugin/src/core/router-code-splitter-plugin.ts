@@ -13,6 +13,7 @@ import {
   computeSharedBindings,
   detectCodeSplitGroupingsFromRoute,
 } from './code-splitter/compilers'
+import { getReferenceRouteCompilerPlugins } from './code-splitter/plugins/framework-plugins'
 import {
   defaultCodeSplitGroupings,
   splitRouteIdentNodes,
@@ -90,7 +91,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     }
   }
   const isProduction = process.env.NODE_ENV === 'production'
-
   // Map from normalized route file path → set of shared binding names.
   // Populated by the reference compiler, consumed by virtual and shared compilers.
   const sharedBindingsMap = new Map<string, Set<string>>()
@@ -156,6 +156,9 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       sharedBindingsMap.delete(id)
     }
 
+    const addHmr =
+      (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction
+
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
       codeSplitGroupings: splitGroupings,
@@ -165,9 +168,12 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       deleteNodes: userConfig.codeSplittingOptions?.deleteNodes
         ? new Set(userConfig.codeSplittingOptions.deleteNodes)
         : undefined,
-      addHmr:
-        (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction,
+      addHmr,
       sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
+      compilerPlugins: getReferenceRouteCompilerPlugins({
+        targetFramework: userConfig.target,
+        addHmr,
+      }),
     })
 
     if (compiledReferenceRoute === null) {

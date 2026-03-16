@@ -50,9 +50,10 @@
     "@eslint-react/eslint-plugin": "^1.26.2",
     "@playwright/test": "^1.57.0",
     "@svitejs/changesets-changelog-github-compact": "^1.2.0",
-    "@tanstack/config": "0.22.0",
+    "@tanstack/eslint-config": "0.4.0",
     "@tanstack/query-core": "^5.90.19",
     "@tanstack/react-query": "^5.90.19",
+    "@tanstack/vite-config": "0.5.1",
     "@types/node": "25.0.9",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
@@ -77,13 +78,13 @@
     "typescript56": "npm:typescript@5.6",
     "typescript57": "npm:typescript@5.7",
     "typescript58": "npm:typescript@5.8",
-    "vite": "^7.3.1",
+    "vite": "^8.0.0",
     "vitest": "^4.0.17"
   },
   "pnpm": {
     "overrides": {
       "@types/babel__traverse": "^7.28.0",
-      "vite-plugin-dts": "4.0.3",
+      "vite-plugin-dts": "4.2.3",
       "solid-js": "1.9.10",
       "react": "$react",
       "react-dom": "$react-dom",
@@ -91,6 +92,9 @@
       "@types/react-dom": "$@types/react-dom",
       "eslint": "$eslint",
       "vite": "$vite",
+      "@benchmarks/bundle-size>vite": "^7.3.1",
+      "@benchmarks/client-nav>vite": "^7.3.1",
+      "@benchmarks/ssr>vite": "^7.3.1",
       "@types/node": "$@types/node",
       "@playwright/test": "$@playwright/test",
       "@tanstack/react-query": "$@tanstack/react-query",
@@ -133,6 +137,9 @@
       "@tanstack/router-utils": "workspace:*",
       "@tanstack/start-static-server-functions": "workspace:*",
       "@tanstack/nitro-v2-vite-plugin": "workspace:*"
+    },
+    "patchedDependencies": {
+      "@tanstack/vite-config@0.5.1": "patches/@tanstack__vite-config@0.5.1.patch"
     }
   }
 }
