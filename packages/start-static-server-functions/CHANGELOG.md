@@ -68,5 +68,3 @@
 - Updated dependencies []:
   - @tanstack/react-start@1.166.8
   - @tanstack/solid-start@1.166.8
-
-
