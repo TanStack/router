@@ -1362,13 +1362,10 @@ export class RouterCore<
       const parsedTempLocation = parse(__tempLocation) as any
       parsedTempLocation.state.key = location.state.key // TODO: Remove in v2 - use __TSR_key instead
       parsedTempLocation.state.__TSR_key = location.state.__TSR_key
-
+      parsedTempLocation.maskedLocation = location
       delete parsedTempLocation.state.__tempLocation
 
-      return {
-        ...parsedTempLocation,
-        maskedLocation: location,
-      }
+      return parsedTempLocation
     }
     return location
   }
