@@ -9730,8 +9730,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -9770,8 +9770,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -9813,8 +9813,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -9856,8 +9856,8 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -9893,8 +9893,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -9927,8 +9927,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -9967,8 +9967,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10013,8 +10013,8 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10056,8 +10056,8 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10096,8 +10096,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       compression:
         specifier: ^1.8.0
         version: 1.8.0
@@ -10139,8 +10139,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10197,8 +10197,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10240,8 +10240,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10280,8 +10280,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10320,8 +10320,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       solid-js:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2
@@ -10354,8 +10354,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10394,8 +10394,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10443,8 +10443,8 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10492,8 +10492,8 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10538,8 +10538,8 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10578,8 +10578,8 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10615,8 +10615,8 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10649,8 +10649,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10680,8 +10680,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10714,8 +10714,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10754,8 +10754,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10791,8 +10791,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10855,8 +10855,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10892,8 +10892,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10935,8 +10935,8 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -10972,8 +10972,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11015,8 +11015,8 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11064,8 +11064,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11122,8 +11122,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11177,8 +11177,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11223,8 +11223,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11269,8 +11269,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11312,8 +11312,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11361,8 +11361,8 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11410,8 +11410,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11468,8 +11468,8 @@ importers:
         specifier: ^0.7.0
         version: 0.7.14(csstype@3.2.3)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11538,8 +11538,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11599,8 +11599,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11648,8 +11648,8 @@ importers:
         specifier: ^0.7.0
         version: 0.7.14(csstype@3.2.3)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11694,8 +11694,8 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11743,8 +11743,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11786,8 +11786,8 @@ importers:
         specifier: ^2.48.1
         version: 2.48.1
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11829,8 +11829,8 @@ importers:
         specifier: 2.0.0-beta.2
         version: 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11881,8 +11881,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11918,8 +11918,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -11961,8 +11961,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.2
-        version: 2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)
+        specifier: ^2.0.0-alpha.3
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -18134,13 +18134,6 @@ packages:
     resolution: {integrity: sha512-OF+FpTHPmZxF5M0zcEERtUA0DhuFdNOpn0EAbASarDfIuNrvi8k07dhYV5zYyYwkt+eoe/RnAX65PdSP+Y0ONw==}
     peerDependencies:
       solid-js: ^1.6.0
-
-  '@tanstack/solid-router@2.0.0-alpha.2':
-    resolution: {integrity: sha512-0Dj5OeWZEXeogeOV9L0QdD1rgtl0m5l/NHxF2lK0+HqC4NDxBJvOAqJMLzd1fn6Z9yKYHwHSgAHIe8DFzVWORw==}
-    engines: {node: '>=20.19'}
-    peerDependencies:
-      '@solidjs/web': 2.0.0-beta.2
-      solid-js: 2.0.0-beta.2
 
   '@tanstack/solid-virtual@3.13.12':
     resolution: {integrity: sha512-0dS8GkBTmbuM9cUR6Jni0a45eJbd32CAEbZj8HrZMWIj3lu974NpGz5ywcomOGJ9GdeHuDaRzlwtonBbKV1ihQ==}
@@ -30897,18 +30890,6 @@ snapshots:
       '@tanstack/query-core': 5.90.19
       solid-js: 2.0.0-beta.2
 
-  '@tanstack/solid-router@2.0.0-alpha.2(@solidjs/web@2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2))(solid-js@2.0.0-beta.2)':
-    dependencies:
-      '@solid-devtools/logger': 0.9.7(solid-js@2.0.0-beta.2)
-      '@solidjs/meta': 0.29.4(solid-js@2.0.0-beta.2)
-      '@solidjs/web': 2.0.0-beta.2(@solidjs/signals@0.12.0)(solid-js@2.0.0-beta.2)
-      '@tanstack/history': link:packages/history
-      '@tanstack/router-core': link:packages/router-core
-      isbot: 5.1.28
-      solid-js: 2.0.0-beta.2
-      tiny-invariant: 1.3.3
-      tiny-warning: 1.0.3
-
   '@tanstack/solid-virtual@3.13.12(solid-js@2.0.0-beta.2)':
     dependencies:
       '@tanstack/virtual-core': 3.13.12
@@ -36110,8 +36091,8 @@ snapshots:
 
   magicast@0.3.5:
     dependencies:
-      '@babel/parser': 7.28.5
-      '@babel/types': 7.28.5
+      '@babel/parser': 7.29.0
+      '@babel/types': 7.29.0
       source-map-js: 1.2.1
     optional: true
 

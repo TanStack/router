@@ -1,5 +1,11 @@
 # @tanstack/solid-router-ssr-query
 
+## 2.0.0-alpha.2
+
+### Patch Changes
+
+- build: bundle packages with rolldown ([#6931](https://github.com/TanStack/router/pull/6931))
+
 ## 2.0.0-alpha.1
 
 ### Patch Changes

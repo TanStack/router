@@ -44,6 +44,7 @@
     "@tanstack/zod-adapter": "1.166.7"
   },
   "changesets": [
+    "clever-vans-yawn",
     "social-mails-sort",
     "solid-kings-help",
     "three-carrots-return"

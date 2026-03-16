@@ -1,5 +1,14 @@
 # @tanstack/solid-router-devtools
 
+## 2.0.0-alpha.2
+
+### Patch Changes
+
+- build: bundle packages with rolldown ([#6931](https://github.com/TanStack/router/pull/6931))
+
+- Updated dependencies [[`b95b106`](https://github.com/TanStack/router/commit/b95b1061d34579e1fe7fd7ec781e743ec6fe31fe)]:
+  - @tanstack/solid-router@2.0.0-alpha.3
+
 ## 2.0.0-alpha.1
 
 ### Patch Changes
