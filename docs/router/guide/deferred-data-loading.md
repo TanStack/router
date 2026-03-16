@@ -52,11 +52,13 @@ function PostIdComponent() {
   // do something with fastData
 
   return (
-    <Await promise={deferredSlowData} fallback={<div>Loading...</div>}>
-      {(data) => {
-        return <div>{data}</div>
-      }}
-    </Await>
+    <Suspense fallback={<div>Loading...</div>}>
+      <Await promise={deferredSlowData}>
+        {(data) => {
+          return <div>{data}</div>
+        }}
+      </Await>
+    </Suspense>
   )
 }
 ```
