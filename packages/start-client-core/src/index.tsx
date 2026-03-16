@@ -70,6 +70,7 @@ export type {
   ServerFnMiddlewareResult,
   ServerFnBuilder,
   ServerFnBaseOptions,
+  FlattenedMiddlewareEntry,
   NextFn,
   Method,
   OptionalFetcher,
@@ -77,8 +78,8 @@ export type {
 } from './createServerFn'
 export {
   execValidator,
-  flattenMiddlewares,
   executeMiddleware,
+  flattenMiddlewaresWithDetails,
 } from './createServerFn'
 
 export {

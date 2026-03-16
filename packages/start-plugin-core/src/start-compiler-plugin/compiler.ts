@@ -845,6 +845,7 @@ export class StartCompiler {
       path: babel.NodePath<t.CallExpression>
       kind: Exclude<LookupKind, 'ClientOnlyJSX'>
       methodChain: MethodChainPaths
+      rootPath: babel.NodePath<t.CallExpression>
     }> = []
 
     for (const { path, kind } of validCandidates) {
@@ -862,6 +863,7 @@ export class StartCompiler {
       // Walk down the call chain using nodes, look up paths from map
       let currentNode: t.CallExpression = node
       let currentPath: babel.NodePath<t.CallExpression> = path
+      let rootPath: babel.NodePath<t.CallExpression> = path
 
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
@@ -896,9 +898,10 @@ export class StartCompiler {
           break
         }
         currentPath = nextPath
+        rootPath = nextPath
       }
 
-      pathsToRewrite.push({ path, kind, methodChain })
+      pathsToRewrite.push({ path, kind, methodChain, rootPath })
     }
 
     const refIdents = findReferencedIdentifiers(ast)
@@ -924,8 +927,17 @@ export class StartCompiler {
       Array<RewriteCandidate>
     >()
 
-    for (const { path: candidatePath, kind, methodChain } of pathsToRewrite) {
-      const candidate: RewriteCandidate = { path: candidatePath, methodChain }
+    for (const {
+      path: candidatePath,
+      kind,
+      methodChain,
+      rootPath,
+    } of pathsToRewrite) {
+      const candidate: RewriteCandidate = {
+        path: candidatePath,
+        methodChain,
+        rootPath,
+      }
       const existing = candidatesByKind.get(kind)
       if (existing) {
         existing.push(candidate)

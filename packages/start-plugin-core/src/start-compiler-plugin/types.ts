@@ -70,6 +70,7 @@ export type MethodChainKey = keyof MethodChainPaths
 export interface RewriteCandidate {
   path: babel.NodePath<t.CallExpression>
   methodChain: MethodChainPaths
+  rootPath?: babel.NodePath<t.CallExpression>
 }
 
 /**

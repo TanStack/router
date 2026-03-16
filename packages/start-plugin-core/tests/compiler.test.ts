@@ -86,7 +86,6 @@ describe('detectKindsInCode', () => {
         import { createMiddleware } from '@tanstack/react-start'
         const mw = createMiddleware().server(({ next }) => next())
       `
-      // Middleware is only valid on client
       expect(detectKindsInCode(code, 'client')).toEqual(new Set(['Middleware']))
       expect(detectKindsInCode(code, 'server')).toEqual(new Set())
     })
@@ -163,7 +162,7 @@ describe('detectKindsInCode', () => {
       )
     })
 
-    test('detects all valid kinds on server (excludes Middleware)', () => {
+    test('detects all valid kinds on server', () => {
       const code = `
         import { createServerFn, createMiddleware, createIsomorphicFn, createServerOnlyFn, createClientOnlyFn } from '@tanstack/react-start'
         const a = createServerFn().handler(() => {})
@@ -172,7 +171,6 @@ describe('detectKindsInCode', () => {
         const d = createServerOnlyFn(() => {})
         const e = createClientOnlyFn(() => {})
       `
-      // Middleware should NOT be detected on server
       expect(detectKindsInCode(code, 'server')).toEqual(
         new Set(['ServerFn', 'IsomorphicFn', 'ServerOnlyFn', 'ClientOnlyFn']),
       )
@@ -362,7 +360,6 @@ describe('compiler handles multiple files with different kinds', () => {
   test('server environment excludes Middleware from detected kinds', async () => {
     const compiler = createFullCompiler('server')
 
-    // Even if Middleware is in detectedKinds, server env should ignore it
     const result = await compiler.compile({
       code: `
         import { createMiddleware } from '@tanstack/react-start'
@@ -370,11 +367,41 @@ describe('compiler handles multiple files with different kinds', () => {
       `,
       id: 'middleware.ts',
 
-      // Intentionally including Middleware even though it's server env
       detectedKinds: new Set(['Middleware']),
     })
-    // Should return null since Middleware is not valid on server
     expect(result).toBeNull()
+  })
+
+  test('client-only middleware emits hasServer false', async () => {
+    const compiler = createFullCompiler('client')
+
+    const result = await compiler.compile({
+      code: `
+        import { createMiddleware } from '@tanstack/react-start'
+        export const mw = createMiddleware({ id: 'x' }).client(({ next }) => next())
+      `,
+      id: 'client-only-middleware.ts',
+      detectedKinds: new Set(['Middleware']),
+    })
+
+    expect(result).toBeTruthy()
+    expect(result!.code).toContain('hasServer: false')
+  })
+
+  test('server middleware does not emit hasServer false', async () => {
+    const compiler = createFullCompiler('client')
+
+    const result = await compiler.compile({
+      code: `
+        import { createMiddleware } from '@tanstack/react-start'
+        export const mw = createMiddleware({ id: 'x' }).server(({ next }) => next())
+      `,
+      id: 'server-middleware.ts',
+      detectedKinds: new Set(['Middleware']),
+    })
+
+    expect(result).toBeTruthy()
+    expect(result!.code).not.toContain('hasServer: false')
   })
 })
 

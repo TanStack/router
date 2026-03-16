@@ -1,7 +1,7 @@
 import { createMemoryHistory } from '@tanstack/history'
 import {
   createNullProtoObject,
-  flattenMiddlewares,
+  flattenMiddlewaresWithDetails,
   mergeHeaders,
   safeObjectMerge,
 } from '@tanstack/start-client-core'
@@ -457,7 +457,9 @@ export function createStartHandler<TRegister = Register>(
 
       // Flatten request middlewares once
       const flattenedRequestMiddlewares = startOptions.requestMiddleware
-        ? flattenMiddlewares(startOptions.requestMiddleware)
+        ? flattenMiddlewaresWithDetails(startOptions.requestMiddleware).map(
+            (entry) => entry.middleware as AnyRequestMiddleware,
+          )
         : []
 
       // Create set for deduplication
@@ -527,7 +529,7 @@ export function createStartHandler<TRegister = Register>(
         }
 
         const middlewares = flattenedRequestMiddlewares.map(
-          (d) => d.options.server,
+          (d: AnyRequestMiddleware) => d.options.server,
         )
         const ctx = await executeMiddleware([...middlewares, serverFnHandler], {
           request,
@@ -622,7 +624,7 @@ export function createStartHandler<TRegister = Register>(
       }
 
       const middlewares = flattenedRequestMiddlewares.map(
-        (d) => d.options.server,
+        (d: AnyRequestMiddleware) => d.options.server,
       )
       const ctx = await executeMiddleware(
         [...middlewares, requestHandlerMiddleware],
@@ -742,10 +744,10 @@ async function handleServerRoutes({
       | Array<AnyRequestMiddleware>
       | undefined
     if (serverMiddleware) {
-      const flattened = flattenMiddlewares(serverMiddleware)
+      const flattened = flattenMiddlewaresWithDetails(serverMiddleware)
       for (const m of flattened) {
-        if (!executedRequestMiddlewares.has(m)) {
-          routeMiddlewares.push(m.options.server)
+        if (!executedRequestMiddlewares.has(m.middleware)) {
+          routeMiddlewares.push(m.middleware.options.server)
         }
       }
     }
@@ -769,9 +771,11 @@ async function handleServerRoutes({
         routeMiddlewares.push(handlerToMiddleware(handler, mayDefer))
       } else {
         if (handler.middleware?.length) {
-          const handlerMiddlewares = flattenMiddlewares(handler.middleware)
+          const handlerMiddlewares = flattenMiddlewaresWithDetails(
+            handler.middleware,
+          )
           for (const m of handlerMiddlewares) {
-            routeMiddlewares.push(m.options.server)
+            routeMiddlewares.push(m.middleware.options.server)
           }
         }
         if (handler.handler) {

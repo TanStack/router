@@ -522,6 +522,7 @@ export interface FunctionMiddlewareServerFnOptions<
   method: Method
   serverFnMeta: ServerFnMeta
   signal: AbortSignal
+  result: any
 }
 
 export type FunctionMiddlewareServerFnResult<
@@ -620,6 +621,7 @@ export interface FunctionMiddlewareClientFnOptions<
   next: FunctionMiddlewareClientNextFn<TRegister, TMiddlewares>
   filename: string
   fetch?: CustomFetch
+  result: any
 }
 
 export type FunctionMiddlewareClientFnResult<

@@ -1,6 +1,7 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 import { isRedirect, parseRedirect } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
@@ -30,7 +31,144 @@ import type {
   IntersectAllValidatorOutputs,
 } from './createMiddleware'
 
-type TODO = any
+const NEXT_RESULT_SYMBOL = Symbol.for('TSR_SERVER_FN_NEXT_RESULT')
+const RESULT_HELPER_SYMBOL = Symbol.for('TSR_SERVER_FN_RESULT_HELPER')
+const INTERNAL_RESULT_ORIGIN_SYMBOL = Symbol.for(
+  'TSR_SERVER_FN_INTERNAL_RESULT_ORIGIN',
+)
+const SHORT_CIRCUIT_INDEX_KEY = 'sc'
+const MIDDLEWARE_SERVER_MARKER_KEY = 'hasServer'
+
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+const canRunServerCode = (isServer ??
+  typeof document === 'undefined') as boolean
+
+type MiddlewareResultOriginKind = 'server-middleware' | 'client-middleware'
+
+type MiddlewareResultOrigin = {
+  kind: MiddlewareResultOriginKind
+  index?: number
+}
+
+type MiddlewareScopeSource = 'middleware' | 'handler' | 'unknown'
+
+export type FlattenedMiddlewareEntry<
+  T extends AnyFunctionMiddleware | AnyRequestMiddleware,
+> = {
+  middleware: T
+  position: number
+  subtreeStartPosition: number
+  hasServer: boolean
+  hasServerAfter: boolean
+  hasClient: boolean
+  isServerFnBase: boolean
+}
+
+function setInternalResultOrigin(
+  target: object,
+  origin: MiddlewareResultOrigin,
+) {
+  ;(target as any)[INTERNAL_RESULT_ORIGIN_SYMBOL] = origin
+}
+
+function getInternalResultOrigin(
+  value: unknown,
+): MiddlewareResultOrigin | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined
+  }
+
+  const symbolOrigin = (value as any)[INTERNAL_RESULT_ORIGIN_SYMBOL]
+  if (symbolOrigin) {
+    return symbolOrigin
+  }
+
+  const index = (value as any)[SHORT_CIRCUIT_INDEX_KEY]
+
+  if (typeof index !== 'number') {
+    return undefined
+  }
+
+  delete (value as any)[SHORT_CIRCUIT_INDEX_KEY]
+
+  const origin = {
+    kind: 'server-middleware',
+    index,
+  } satisfies MiddlewareResultOrigin
+
+  setInternalResultOrigin(value, origin)
+
+  return origin
+}
+
+function createShortCircuitResult(
+  ctx: ServerFnMiddlewareResult,
+  result: unknown,
+  origin: MiddlewareResultOrigin,
+  headers?: HeadersInit,
+): ServerFnMiddlewareResult {
+  const nextResult = {
+    ...ctx,
+    result,
+    headers: mergeHeaders(ctx.headers, headers),
+  }
+
+  setInternalResultOrigin(nextResult, origin)
+
+  return nextResult
+}
+
+function getMiddlewareSource(
+  origin: MiddlewareResultOrigin | undefined,
+  middlewareEntry: FlattenedMiddlewareEntry<
+    AnyFunctionMiddleware | AnyRequestMiddleware
+  >,
+  flattenedMiddlewareEntries: Array<
+    FlattenedMiddlewareEntry<AnyFunctionMiddleware | AnyRequestMiddleware>
+  >,
+  executedRequestMiddlewares?: ReadonlySet<
+    AnyFunctionMiddleware | AnyRequestMiddleware
+  >,
+): MiddlewareScopeSource {
+  if (
+    origin?.kind === 'server-middleware' &&
+    typeof origin.index === 'number' &&
+    origin.index >= middlewareEntry.subtreeStartPosition &&
+    origin.index <= middlewareEntry.position
+  ) {
+    return 'middleware'
+  }
+
+  if (origin) {
+    return 'unknown'
+  }
+
+  if (
+    canRunServerCode &&
+    middlewareEntry.hasServerAfter &&
+    executedRequestMiddlewares?.size
+  ) {
+    for (
+      let index = middlewareEntry.position + 1;
+      index < flattenedMiddlewareEntries.length;
+      index++
+    ) {
+      const nextEntry = flattenedMiddlewareEntries[index]!
+
+      if (executedRequestMiddlewares.has(nextEntry.middleware)) {
+        continue
+      }
+
+      if (nextEntry.hasServer && !nextEntry.isServerFnBase) {
+        return 'unknown'
+      }
+    }
+
+    return 'handler'
+  }
+
+  return middlewareEntry.hasServerAfter ? 'unknown' : 'handler'
+}
 
 export type CreateServerFn<TRegister> = <
   TMethod extends Method,
@@ -70,7 +208,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       // this is primarily useful for letting users create their own abstractions on top of `createServerFn`
 
       const newMiddleware = [...(resolvedOptions.middleware || [])]
-      middleware.map((m) => {
+      for (const m of middleware) {
         if (TSS_SERVER_FUNCTION_FACTORY in m) {
           if (m.options.middleware) {
             newMiddleware.push(...m.options.middleware)
@@ -78,7 +216,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
         } else {
           newMiddleware.push(m)
         }
-      })
+      }
 
       const newOptions = {
         ...resolvedOptions,
@@ -109,6 +247,26 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
         ...(newOptions.middleware || []),
         serverFnBaseToMiddleware(newOptions),
       ]
+      let middlewareEntries:
+        | Array<
+            FlattenedMiddlewareEntry<
+              AnyFunctionMiddleware | AnyRequestMiddleware
+            >
+          >
+        | undefined
+      const getMiddlewareEntries = () => {
+        if (!middlewareEntries) {
+          const globalMiddlewares = getStartOptions()?.functionMiddleware || []
+
+          middlewareEntries = flattenMiddlewaresWithDetails(
+            globalMiddlewares.length
+              ? globalMiddlewares.concat(resolvedMiddleware)
+              : resolvedMiddleware,
+          )
+        }
+
+        return middlewareEntries
+      }
 
       // We want to make sure the new function has the same
       // properties as the original function
@@ -130,6 +288,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             signal: opts?.signal,
             fetch: opts?.fetch,
             context: createNullProtoObject(),
+            _getMiddlewareEntries: getMiddlewareEntries,
           })
 
           const redirect = parseRedirect(result.error)
@@ -146,41 +305,42 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           // Expose the declared HTTP method so the server handler
           // can reject mismatched methods before parsing payloads
           method: resolvedOptions.method,
-          // The extracted function on the server-side calls
-          // this function
-          __executeServer: async (opts: any) => {
-            const startContext = getStartContextServerOnly()
-            const serverContextAfterGlobalMiddlewares =
-              startContext.contextAfterGlobalMiddlewares
-            // Use safeObjectMerge for opts.context which comes from client
-            const ctx = {
-              ...extractedFn,
-              ...opts,
-              // Ensure we use the full serverFnMeta from the provider file's extractedFn
-              // (which has id, name, filename) rather than the partial one from SSR/client
-              // callers (which only has id)
-              serverFnMeta: extractedFn.serverFnMeta,
-              // Use safeObjectMerge for opts.context which comes from client
-              context: safeObjectMerge(
-                serverContextAfterGlobalMiddlewares,
-                opts.context,
-              ),
-              request: startContext.request,
-            }
+          ...(canRunServerCode
+            ? {
+                __executeServer: async (opts: any) => {
+                  const startContext = getStartContextServerOnly()
 
-            const result = await executeMiddleware(
-              resolvedMiddleware,
-              'server',
-              ctx,
-            ).then((d) => ({
-              // Only send the result and sendContext back to the client
-              result: d.result,
-              error: d.error,
-              context: d.sendContext,
-            }))
+                  const result = await executeMiddleware(
+                    resolvedMiddleware,
+                    'server',
+                    {
+                      ...extractedFn,
+                      ...opts,
+                      serverFnMeta: extractedFn.serverFnMeta,
+                      context: safeObjectMerge(
+                        startContext.contextAfterGlobalMiddlewares,
+                        opts.context,
+                      ),
+                      request: startContext.request,
+                      _getMiddlewareEntries: getMiddlewareEntries,
+                    },
+                  )
 
-            return result
-          },
+                  const origin = getInternalResultOrigin(result)
+
+                  return {
+                    result: result.result,
+                    error: result.error,
+                    headers: result.headers,
+                    context: result.sendContext,
+                    ...(origin?.kind === 'server-middleware' &&
+                    typeof origin.index === 'number'
+                      ? { [SHORT_CIRCUIT_INDEX_KEY]: origin.index }
+                      : {}),
+                  }
+                },
+              }
+            : {}),
         },
       ) as any
     },
@@ -200,31 +360,36 @@ export async function executeMiddleware(
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
-  const globalMiddlewares = getStartOptions()?.functionMiddleware || []
-  let flattenedMiddlewares = flattenMiddlewares([
-    ...globalMiddlewares,
-    ...middlewares,
-  ])
-
-  // On server, filter out middlewares that already executed in the request phase
-  // to prevent duplicate execution (issue #5239)
-  if (env === 'server') {
-    const startContext = getStartContextServerOnly({ throwIfNotFound: false })
-    if (startContext?.executedRequestMiddlewares) {
-      flattenedMiddlewares = flattenedMiddlewares.filter(
-        (m) => !startContext.executedRequestMiddlewares.has(m),
-      )
-    }
-  }
+  const executedRequestMiddlewares = canRunServerCode
+    ? getStartContextServerOnly({ throwIfNotFound: false })
+        ?.executedRequestMiddlewares
+    : undefined
+  const flattenedMiddlewareEntries = opts._getMiddlewareEntries
+    ? opts._getMiddlewareEntries()
+    : flattenMiddlewaresWithDetails(middlewares)
+  let middlewareIndex = 0
 
   const callNextMiddleware: NextFn = async (ctx) => {
-    // Get the next middleware
-    const nextMiddleware = flattenedMiddlewares.shift()
+    let middlewareEntry:
+      | FlattenedMiddlewareEntry<AnyFunctionMiddleware | AnyRequestMiddleware>
+      | undefined
 
-    // If there are no more middlewares, return the context
-    if (!nextMiddleware) {
+    while (middlewareIndex < flattenedMiddlewareEntries.length) {
+      const nextEntry = flattenedMiddlewareEntries[middlewareIndex++]!
+
+      if (executedRequestMiddlewares?.has(nextEntry.middleware)) {
+        continue
+      }
+
+      middlewareEntry = nextEntry
+      break
+    }
+
+    if (!middlewareEntry) {
       return ctx
     }
+
+    const nextMiddleware = middlewareEntry.middleware
 
     // Execute the middleware
     try {
@@ -282,6 +447,22 @@ export async function executeMiddleware(
             throw result.error
           }
 
+          if (env === 'client' && middlewareEntry.hasClient) {
+            const origin = getInternalResultOrigin(result)
+            ;(result as any).source = getMiddlewareSource(
+              origin,
+              middlewareEntry,
+              flattenedMiddlewareEntries,
+              executedRequestMiddlewares,
+            )
+            ;(result as any).data = result.result
+            ;(result as any)[NEXT_RESULT_SYMBOL] = true
+
+            return result
+          }
+
+          ;(result as any)[NEXT_RESULT_SYMBOL] = true
+
           return result
         }
 
@@ -289,6 +470,11 @@ export async function executeMiddleware(
         const result = await middlewareFn({
           ...ctx,
           next: userNext,
+          result: ({ data, headers }: any) => ({
+            [RESULT_HELPER_SYMBOL]: true,
+            data,
+            headers,
+          }),
         })
 
         // If result is NOT a ctx object, we need to return it as
@@ -307,13 +493,43 @@ export async function executeMiddleware(
           }
         }
 
+        if ((result as any)[RESULT_HELPER_SYMBOL] === true) {
+          const origin: MiddlewareResultOrigin =
+            env === 'server'
+              ? {
+                  kind: 'server-middleware',
+                  index: middlewareEntry.position,
+                }
+              : { kind: 'client-middleware' }
+
+          return createShortCircuitResult(
+            ctx,
+            result.data,
+            origin,
+            result.headers,
+          )
+        }
+
         if (!(result as any)) {
           throw new Error(
             'User middleware returned undefined. You must call next() or return a result in your middlewares.',
           )
         }
 
-        return result
+        if ((result as any)[NEXT_RESULT_SYMBOL] === true) {
+          return result
+        }
+
+        if (env === 'server') {
+          return createShortCircuitResult(ctx, result, {
+            kind: 'server-middleware',
+            index: middlewareEntry.position,
+          })
+        }
+
+        return createShortCircuitResult(ctx, result, {
+          kind: 'client-middleware',
+        })
       }
 
       return callNextMiddleware(ctx)
@@ -689,31 +905,83 @@ export interface ServerFnTypes<
   allOutput: IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>
 }
 
-export function flattenMiddlewares<
+export function flattenMiddlewaresWithDetails<
   T extends AnyFunctionMiddleware | AnyRequestMiddleware,
->(middlewares: Array<T>, maxDepth: number = 100): Array<T> {
+>(
+  middlewares: Array<T>,
+  maxDepth: number = 100,
+): Array<FlattenedMiddlewareEntry<T>> {
   const seen = new Set<T>()
-  const flattened: Array<T> = []
+  const flattened: Array<FlattenedMiddlewareEntry<T>> = []
+  const stack: Array<
+    [
+      middleware: T,
+      depth: number,
+      subtreeStartPosition: number,
+      expanded: 0 | 1,
+    ]
+  > = []
 
-  const recurse = (middleware: Array<T>, depth: number) => {
+  for (let index = middlewares.length - 1; index >= 0; index--) {
+    stack.push([middlewares[index]!, 0, 0, 0])
+  }
+
+  while (stack.length) {
+    const [middleware, depth, subtreeStartPosition, expanded] = stack.pop()!
+
     if (depth > maxDepth) {
       throw new Error(
         `Middleware nesting depth exceeded maximum of ${maxDepth}. Check for circular references.`,
       )
     }
-    middleware.forEach((m) => {
-      if (m.options.middleware) {
-        recurse(m.options.middleware as Array<T>, depth + 1)
+
+    if (expanded === 1) {
+      if (seen.has(middleware)) {
+        continue
       }
 
-      if (!seen.has(m)) {
-        seen.add(m)
-        flattened.push(m)
-      }
-    })
+      seen.add(middleware)
+
+      const options = middleware.options as any
+
+      flattened.push({
+        middleware,
+        position: flattened.length,
+        subtreeStartPosition,
+        hasServer:
+          ('server' in middleware.options && !!middleware.options.server) ||
+          (middleware.options as any)[MIDDLEWARE_SERVER_MARKER_KEY] !== false,
+        hasServerAfter: false,
+        hasClient:
+          'client' in middleware.options && !!middleware.options.client,
+        isServerFnBase: !!options._isServerFnBase,
+      })
+
+      continue
+    }
+
+    stack.push([middleware, depth, flattened.length, 1])
+
+    const nestedMiddlewares = middleware.options.middleware as
+      | Array<T>
+      | undefined
+
+    if (!nestedMiddlewares?.length) {
+      continue
+    }
+
+    for (let index = nestedMiddlewares.length - 1; index >= 0; index--) {
+      stack.push([nestedMiddlewares[index]!, depth + 1, 0, 0])
+    }
   }
 
-  recurse(middlewares, 0)
+  let hasServerAfter = false
+  for (let index = flattened.length - 1; index >= 0; index--) {
+    flattened[index]!.hasServerAfter = hasServerAfter
+    if (flattened[index]!.hasServer && !flattened[index]!.isServerFnBase) {
+      hasServerAfter = true
+    }
+  }
 
   return flattened
 }
@@ -729,6 +997,10 @@ export type ServerFnMiddlewareOptions = {
   fetch?: CustomFetch
   /** @internal - Preserves the call-site fetch to ensure it has highest priority over middleware */
   _callSiteFetch?: CustomFetch
+  /** @internal */
+  _getMiddlewareEntries?: () => Array<
+    FlattenedMiddlewareEntry<AnyFunctionMiddleware | AnyRequestMiddleware>
+  >
 }
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
@@ -743,6 +1015,7 @@ export type NextFn = (
 export type MiddlewareFn = (
   ctx: ServerFnMiddlewareOptions & {
     next: NextFn
+    result?: (opts: { data: unknown; headers?: HeadersInit }) => unknown
   },
 ) => Promise<ServerFnMiddlewareResult>
 
@@ -778,14 +1051,15 @@ function serverFnBaseToMiddleware(
   return {
     '~types': undefined!,
     options: {
+      _isServerFnBase: true,
       inputValidator: options.inputValidator,
-      client: async ({ next, sendContext, fetch, ...ctx }) => {
+      client: async ({ next, sendContext, fetch, ...ctx }: any) => {
         const payload = {
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
           fetch,
-        } as any
+        }
 
         // Execute the extracted function
         // but not before serializing the context
@@ -793,21 +1067,22 @@ function serverFnBaseToMiddleware(
 
         return next(res)
       },
-      server: async ({ next, ...ctx }) => {
-        // Execute the server function
-        const result = await options.serverFn?.(ctx as TODO)
+      server: canRunServerCode
+        ? async ({ next, ...ctx }: any) => {
+            const result = await options.serverFn?.(ctx)
 
-        return next({
-          ...ctx,
-          result,
-        } as any) as unknown as FunctionMiddlewareServerFnResult<
-          any,
-          any,
-          any,
-          any,
-          any
-        >
-      },
-    },
+            return next({
+              ...ctx,
+              result,
+            }) as unknown as FunctionMiddlewareServerFnResult<
+              any,
+              any,
+              any,
+              any,
+              any
+            >
+          }
+        : undefined,
+    } as any,
   }
 }
