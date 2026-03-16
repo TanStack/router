@@ -1302,19 +1302,22 @@ export class RouterCore<
         const parsedSearch = this.options.parseSearch(search)
         const searchStr = this.options.stringifySearch(parsedSearch)
 
-        return {
-          href: pathname + searchStr + hash,
-          publicHref: href,
-          pathname: decodePath(pathname).path,
-          external: false,
-          searchStr,
-          search: nullReplaceEqualDeep(
-            previousLocation?.search,
-            parsedSearch,
-          ) as any,
-          hash: decodePath(hash.slice(1)).path,
-          state: replaceEqualDeep(previousLocation?.state, state),
-        }
+        return augmentLocationWithUrl(
+          {
+            href: pathname + searchStr + hash,
+            publicHref: href,
+            pathname: decodePath(pathname).path,
+            external: false,
+            searchStr,
+            search: nullReplaceEqualDeep(
+              previousLocation?.search,
+              parsedSearch,
+            ) as any,
+            hash: decodePath(hash.slice(1)).path,
+            state: replaceEqualDeep(previousLocation?.state, state),
+          },
+          this.origin!,
+        )
       }
 
       // Before we do any processing, we need to allow rewrites to modify the URL
@@ -1331,19 +1334,23 @@ export class RouterCore<
 
       const fullPath = url.href.replace(url.origin, '')
 
-      return {
-        href: fullPath,
-        publicHref: href,
-        pathname: decodePath(url.pathname).path,
-        external: !!this.rewrite && url.origin !== this.origin,
-        searchStr,
-        search: nullReplaceEqualDeep(
-          previousLocation?.search,
-          parsedSearch,
-        ) as any,
-        hash: decodePath(url.hash.slice(1)).path,
-        state: replaceEqualDeep(previousLocation?.state, state),
-      }
+      return augmentLocationWithUrl(
+        {
+          href: fullPath,
+          publicHref: href,
+          pathname: decodePath(url.pathname).path,
+          external: !!this.rewrite && url.origin !== this.origin,
+          searchStr,
+          search: nullReplaceEqualDeep(
+            previousLocation?.search,
+            parsedSearch,
+          ) as any,
+          hash: decodePath(url.hash.slice(1)).path,
+          state: replaceEqualDeep(previousLocation?.state, state),
+        },
+        url.origin,
+        url,
+      )
     }
 
     const location = parse(locationToParse)
@@ -1989,12 +1996,16 @@ export class RouterCore<
       let href: string
       let publicHref: string
       let external = false
+      let memoUrl: URL | null = null
+      let origin: string
 
       if (this.rewrite) {
         // With rewrite, we need to construct URL to apply the rewrite
         const url = new URL(fullPath, this.origin)
         const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
+        memoUrl = rewrittenUrl
         href = url.href.replace(url.origin, '')
+        origin = rewrittenUrl.origin
         // If rewrite changed the origin, publicHref needs full URL
         // Otherwise just use the path components
         if (rewrittenUrl.origin !== this.origin) {
@@ -2011,19 +2022,24 @@ export class RouterCore<
         // since decodePath decoded them from the interpolated path
         href = encodePathLikeUrl(fullPath)
         publicHref = href
+        origin = this.origin!
       }
 
-      return {
-        publicHref,
-        href,
-        pathname: nextPathname,
-        search: nextSearch,
-        searchStr,
-        state: nextState as any,
-        hash: hash ?? '',
-        external,
-        unmaskOnReload: dest.unmaskOnReload,
-      }
+      return augmentLocationWithUrl(
+        {
+          publicHref,
+          href,
+          pathname: nextPathname,
+          search: nextSearch,
+          searchStr,
+          state: nextState as any,
+          hash: hash ?? '',
+          external,
+          unmaskOnReload: dest.unmaskOnReload,
+        },
+        origin,
+        memoUrl,
+      )
     }
 
     const buildWithMatches = (
@@ -2947,6 +2963,19 @@ export class RouterCore<
       (d) => d.status === 'notFound' || d.globalNotFound,
     )
   }
+}
+
+function augmentLocationWithUrl<TSearchObj extends AnySchema = {}>(
+  location:
+    | ParsedLocation<TSearchObj>
+    | Omit<ParsedLocation<TSearchObj>, 'url'>,
+  origin: string,
+  url?: URL | null,
+): ParsedLocation<TSearchObj> {
+  return Object.defineProperty(location, 'url', {
+    enumerable: false,
+    get: () => (url ??= new URL(location.href, origin)),
+  }) as ParsedLocation<TSearchObj>
 }
 
 /** Error thrown when search parameter validation fails. */

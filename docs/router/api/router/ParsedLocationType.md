@@ -15,5 +15,10 @@ interface ParsedLocation {
   hash: string
   maskedLocation?: ParsedLocation
   unmaskOnReload?: boolean
+  url: URL
 }
 ```
+
+> [!NOTE]
+> The `url` property of a `ParsedLocation` is a getter, and the `URL` may be computed
+> on demand. In hot loops, relying on this property may have a negative performance impact.

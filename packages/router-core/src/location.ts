@@ -48,4 +48,9 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
    * @description Whether the publicHref is external (different origin from rewrite).
    */
   external: boolean
+  /**
+   * A `URL` object representation of the location. This object may be created dynamically, so
+   * reading this property if not "free".
+   */
+  url: URL
 }
