@@ -2645,9 +2645,9 @@ export class RouterCore<
         if (next.status === 'redirected') {
           const deleted = this.stores.cachedMatchStoresById.delete(id)
           if (deleted) {
-            this.stores.cachedMatchesId.setState((prev) => prev.filter(
-              (matchId) => matchId !== id,
-            ))
+            this.stores.cachedMatchesId.setState((prev) =>
+              prev.filter((matchId) => matchId !== id),
+            )
           }
         } else {
           cachedMatch.setState(() => next)
