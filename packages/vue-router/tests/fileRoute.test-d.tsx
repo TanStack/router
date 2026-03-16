@@ -100,3 +100,17 @@ test('when creating a folder group', () => {
   expectTypeOf<'(auth)/protected'>(protectedRoute.path)
   expectTypeOf<'/protected'>(protectedRoute.id)
 })
+
+test('when beforeLoad returns Route.fullPath from the same route', () => {
+  const selfReferencingRoute = createFileRoute('/invoices')({
+    beforeLoad: (opts) => {
+      expectTypeOf(opts.routeId).toEqualTypeOf<'/invoices'>()
+
+      return {
+        to: selfReferencingRoute.fullPath,
+      }
+    },
+  })
+
+  expectTypeOf(selfReferencingRoute.fullPath).toEqualTypeOf<'/invoices'>()
+})

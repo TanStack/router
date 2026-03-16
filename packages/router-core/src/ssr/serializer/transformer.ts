@@ -258,14 +258,26 @@ export type ValidateSerializableLifecycleResult<
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,
+> = ValidateSerializableLifecycleResultFromReturn<
+  TRegister,
+  TParentRoute,
+  TSSR,
+  LooseReturnType<TFn>
+>
+
+export type ValidateSerializableLifecycleResultFromReturn<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TReturn,
 > =
   false extends RegisteredSsr<TRegister>
     ? any
-    : ValidateSerializableLifecycleResultSSR<
+    : ValidateSerializableLifecycleResultSSRFromReturn<
           TRegister,
           TParentRoute,
           TSSR,
-          TFn
+          TReturn
         > extends infer TInput
       ? TInput
       : never
@@ -275,12 +287,24 @@ export type ValidateSerializableLifecycleResultSSR<
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,
+> = ValidateSerializableLifecycleResultSSRFromReturn<
+  TRegister,
+  TParentRoute,
+  TSSR,
+  LooseReturnType<TFn>
+>
+
+export type ValidateSerializableLifecycleResultSSRFromReturn<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TReturn,
 > =
   ResolveAllSSR<TParentRoute, TSSR> extends false
     ? any
     : RegisteredSSROption<TRegister> extends false
       ? any
-      : ValidateSerializableInput<TRegister, LooseReturnType<TFn>>
+      : ValidateSerializableInput<TRegister, TReturn>
 
 type ResolveArrayShape<
   T extends ReadonlyArray<unknown>,

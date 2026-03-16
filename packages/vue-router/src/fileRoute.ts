@@ -18,9 +18,11 @@ import type {
   AnyRouter,
   Constrain,
   ConstrainLiteral,
+  CreateFileRoute,
   FileBaseRouteOptions,
   FileRoutesByPath,
   LazyRouteOptions,
+  NoInfer,
   Register,
   RegisteredRouter,
   ResolveParams,
@@ -45,7 +47,7 @@ export function createFileRoute<
     FileRoutesByPath[TFilePath]['fullPath'],
 >(
   path?: TFilePath,
-): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
+): CreateFileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath> {
   if (typeof path === 'object') {
     return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
       silent: true,
@@ -108,16 +110,16 @@ export class FileRoute<
       THandlers
     > &
       UpdatableRouteOptions<
-        TParentRoute,
-        TId,
-        TFullPath,
-        TParams,
-        TSearchValidator,
-        TLoaderFn,
-        TLoaderDeps,
+        NoInfer<TParentRoute>,
+        NoInfer<TId>,
+        NoInfer<TFullPath>,
+        NoInfer<TParams>,
+        NoInfer<TSearchValidator>,
+        NoInfer<TLoaderFn>,
+        NoInfer<TLoaderDeps>,
         AnyContext,
-        TRouteContextFn,
-        TBeforeLoadFn
+        NoInfer<TRouteContextFn>,
+        NoInfer<TBeforeLoadFn>
       >,
   ): Route<
     TRegister,

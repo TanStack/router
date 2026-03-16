@@ -10,6 +10,7 @@ import type {
   UpdatableRouteOptions,
 } from './route'
 import type { AnyValidator } from './validators'
+import type { NoInfer } from './utils'
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: any
@@ -69,16 +70,16 @@ export interface FileRouteOptions<
       THandlers
     >,
     UpdatableRouteOptions<
-      TParentRoute,
-      TId,
-      TFullPath,
-      TParams,
-      TSearchValidator,
-      TLoaderFn,
-      TLoaderDeps,
+      NoInfer<TParentRoute>,
+      NoInfer<TId>,
+      NoInfer<TFullPath>,
+      NoInfer<TParams>,
+      NoInfer<TSearchValidator>,
+      NoInfer<TLoaderFn>,
+      NoInfer<TLoaderDeps>,
       AnyContext,
-      TRouteContextFn,
-      TBeforeLoadFn
+      NoInfer<TRouteContextFn>,
+      NoInfer<TBeforeLoadFn>
     > {}
 
 export type CreateFileRoute<

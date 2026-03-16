@@ -43,7 +43,6 @@ import type {
   ValidatorFn,
   ValidatorObj,
 } from './validators'
-import type { ValidateSerializableLifecycleResult } from './ssr/serializer/transformer'
 
 export type AnyPathParams = {}
 
@@ -1017,12 +1016,7 @@ export interface FilebaseRouteOptionsInterface<
         TServerMiddlewares,
         THandlers
       >,
-    ) => ValidateSerializableLifecycleResult<
-      TRegister,
-      TParentRoute,
-      TSSR,
-      TBeforeLoadFn
-    >
+    ) => any
   >
 
   loaderDeps?: (

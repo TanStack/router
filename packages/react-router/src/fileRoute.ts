@@ -21,6 +21,7 @@ import type {
   FileBaseRouteOptions,
   FileRoutesByPath,
   LazyRouteOptions,
+  NoInfer,
   Register,
   RegisteredRouter,
   ResolveParams,
@@ -119,16 +120,16 @@ export class FileRoute<
       THandlers
     > &
       UpdatableRouteOptions<
-        TParentRoute,
-        TId,
-        TFullPath,
-        TParams,
-        TSearchValidator,
-        TLoaderFn,
-        TLoaderDeps,
+        NoInfer<TParentRoute>,
+        NoInfer<TId>,
+        NoInfer<TFullPath>,
+        NoInfer<TParams>,
+        NoInfer<TSearchValidator>,
+        NoInfer<TLoaderFn>,
+        NoInfer<TLoaderDeps>,
         AnyContext,
-        TRouteContextFn,
-        TBeforeLoadFn
+        NoInfer<TRouteContextFn>,
+        NoInfer<TBeforeLoadFn>
       >,
   ): Route<
     TRegister,
