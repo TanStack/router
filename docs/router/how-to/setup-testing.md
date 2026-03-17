@@ -1,4 +1,6 @@
-# How to Set Up Testing with Code-Based Routing
+---
+title: How to Set Up Testing with Code-Based Routing
+---
 
 This guide covers setting up comprehensive testing for TanStack Router applications that use code-based routing, including unit tests, integration tests, and end-to-end testing strategies.
 
