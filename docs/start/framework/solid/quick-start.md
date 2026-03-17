@@ -11,7 +11,6 @@ The fastest way to get a Start project up and running is with the cli. Just run
 npx @tanstack/cli@latest create --framework solid
 ```
 
-
 depending on your package manager of choice. You'll be prompted to add things like Tailwind, eslint, and a ton of other options.
 
 You can also clone and run the [Basic](https://github.com/TanStack/router/tree/main/examples/solid/start-basic) example right away with the following commands:
