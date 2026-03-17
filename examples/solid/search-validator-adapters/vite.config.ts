@@ -5,6 +5,15 @@ import packageJson from './package.json'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
+  ...(process.env.VITEST && {
+    resolve: {
+      conditions: ['development'],
+      alias: {
+        'solid-js/web': '@solidjs/web',
+        '@solidjs/signals': 'solid-js',
+      },
+    },
+  }),
   test: {
     name: packageJson.name,
     dir: './tests',
