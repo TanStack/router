@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.167.4
+
+### Patch Changes
+
+- Add @tanstack/intent AI agent skills and CLI entry points for Router and Start packages ([#6866](https://github.com/TanStack/router/pull/6866))
+
 ## 1.167.3
 
 ### Patch Changes
