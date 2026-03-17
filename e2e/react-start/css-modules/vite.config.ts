@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 
@@ -14,14 +13,12 @@ export default defineConfig(async () => {
   const nitroPlugin = useNitro ? [(await import('nitro/vite')).nitro()] : []
 
   return {
+    resolve: { tsconfigPaths: true },
     base: basePath,
     server: {
       port: 3000,
     },
     plugins: [
-      tsConfigPaths({
-        projects: ['./tsconfig.json'],
-      }),
       // Nitro is placed BEFORE tanstackStart to test that our CSS middleware
       // works regardless of plugin order (nitro has a catch-all middleware)
       ...nitroPlugin,

@@ -1,7 +1,6 @@
 import path from 'node:path'
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import tsconfigPaths from 'vite-tsconfig-paths'
 
 // Allow env var to override the import protection behavior.
 // Default: 'mock' (build completes, violations logged as warnings).
@@ -9,11 +8,11 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 const behavior = (process.env.BEHAVIOR ?? 'mock') as 'mock' | 'error'
 
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
   server: {
     port: 3000,
   },
   plugins: [
-    tsconfigPaths({ projects: ['./tsconfig.json'] }),
     tanstackStart({
       importProtection: {
         behavior,
