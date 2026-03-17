@@ -20,8 +20,8 @@
     "@tanstack/solid-router-ssr-query": "^2.0.0-alpha.2",
     "@tanstack/solid-start": "^2.0.0-alpha.3",
     "@tanstack/router-plugin": "^1.166.12",
-    "solid-js": "2.0.0-beta.2",
-    "@solidjs/web": "2.0.0-beta.2",
+    "solid-js": "2.0.0-beta.3",
+    "@solidjs/web": "2.0.0-beta.3",
     "tailwindcss": "^4.1.18",
     "vite-tsconfig-paths": "^5.1.4"
   },

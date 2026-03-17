@@ -15,8 +15,8 @@
     "@tanstack/solid-router": "^2.0.0-alpha.3",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.2",
     "@tanstack/router-plugin": "^1.166.12",
-    "solid-js": "2.0.0-beta.2",
-    "@solidjs/web": "2.0.0-beta.2",
+    "solid-js": "2.0.0-beta.3",
+    "@solidjs/web": "2.0.0-beta.3",
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
