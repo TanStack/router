@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
       - name: Check for changesets
@@ -40,7 +40,7 @@ jobs:
         if: steps.changesets.outputs.has_changesets == 'true'
         run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
       - name: Setup Tools
-        uses: tanstack/config/.github/setup@main
+        uses: TanStack/config/.github/setup@main
       - name: Run Tests
         if: steps.changesets.outputs.has_changesets == 'true'
         run: pnpm run test:ci --parallel=3
