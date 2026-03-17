@@ -1,13 +1,15 @@
 import * as vite from 'vite'
 
 /**
- * Vite 8 renamed `build.rollupOptions` to `build.rolldownOptions`.
- * Detect which version is running so we can set/read the correct key.
+ * Vite 8+ uses Rolldown instead of Rollup, renaming `build.rollupOptions`
+ * to `build.rolldownOptions`. Detect which bundler is in use.
  */
-export const isVite8 = 'rolldownVersion' in vite
+export const isRolldown = 'rolldownVersion' in vite
 
-/** Returns `'rolldownOptions'` on Vite 8+, `'rollupOptions'` on Vite 7. */
-export const bundlerOptionsKey = isVite8 ? 'rolldownOptions' : 'rollupOptions'
+/** Returns `'rolldownOptions'` when using Rolldown, `'rollupOptions'` otherwise. */
+export const bundlerOptionsKey = (
+  isRolldown ? 'rolldownOptions' : 'rollupOptions'
+)
 
 /** Read `build.rollupOptions` or `build.rolldownOptions` from a build config. */
 export function getBundlerOptions(build: any): any {
