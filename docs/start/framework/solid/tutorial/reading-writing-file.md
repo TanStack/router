@@ -3,7 +3,7 @@ id: reading-and-writing-file
 title: Building a Full Stack DevJokes App with TanStack Start
 ---
 
-This tutorial will guide you through building a complete full-stack application using TanStack Start. You'll create a DevJokes app where users can view and add developer-themed jokes, demonstrating key concepts of TanStack Start including server functions, file-based data storage, and React components.
+This tutorial will guide you through building a complete full-stack application using TanStack Start. You'll create a DevJokes app where users can view and add developer-themed jokes, demonstrating key concepts of TanStack Start including server functions, file-based data storage, and Solid components.
 
 Here's a demo of the app in action:
 
@@ -16,26 +16,26 @@ The complete code for this tutorial is available on [GitHub](https://github.com/
 1. Setting up a TanStack Start project
 2. Implementing server functions
 3. Reading and writing data to files
-4. Building a complete UI with React components
+4. Building a complete UI with Solid components
 5. Using TanStack Router for data fetching and navigation
 
 ## Prerequisites
 
-- Basic knowledge of React and TypeScript.
+- Basic knowledge of Solid and TypeScript.
 - Node.js and `pnpm` installed on your machine
 
 ## Nice to know
 
-- [Server Side Rendering (SSR)](/router/latest/docs/framework/react/guide/ssr)
-- [TanStack Router concepts](/router/latest/docs/framework/react/routing/routing-concepts)
-- [React Query concepts](/query/latest/docs/framework/react/overview)
+- [Server Side Rendering (SSR)](/router/latest/docs/framework/solid/guide/ssr)
+- [TanStack Router concepts](/router/latest/docs/framework/solid/routing/routing-concepts)
+- [Solid Query concepts](/query/latest/docs/framework/solid/overview)
 
 ## Setting up a TanStack Start Project
 
 First, let's create a new TanStack Start project:
 
 ```bash
-pnpx @tanstack/cli@latest create devjokes
+pnpx @tanstack/cli@latest create --framework solid devjokes
 cd devjokes
 ```
 
@@ -68,7 +68,7 @@ At this point, the project structure should look like this -
 │   │   ├── demo/                         # Demo routes
 │   │   ├── __root.tsx                    # Root layout
 │   │   └── index.tsx                     # Home page
-│   ├── components/                       # React components
+│   ├── components/                       # Solid components
 │   ├── data/                             # Data files
 │   ├── router.tsx                        # Router configuration
 │   ├── routeTree.gen.ts                  # Generated route tree
@@ -152,11 +152,11 @@ export type JokesData = Joke[]
 
 ### Step 1.3: Create Server Functions to Read the File
 
-Let's create a new file `src/serverActions/jokesActions.ts` to create a server function to perform a read-write operation. We will be creating a server function using [`createServerFn`](https://tanstack.com/start/latest/docs/framework/react/server-functions).
+Let's create a new file `src/serverActions/jokesActions.ts` to create a server function to perform a read-write operation. We will be creating a server function using [`createServerFn`](https://tanstack.com/start/latest/docs/framework/solid/server-functions).
 
 ```tsx
 // src/serverActions/jokesActions.ts
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/solid-start'
 import * as fs from 'node:fs'
 import type { JokesData } from '../types'
 
@@ -186,19 +186,19 @@ interface JokesListProps {
 
 export function JokesList({ jokes }: JokesListProps) {
   if (!jokes || jokes.length === 0) {
-    return <p className="text-gray-500 italic">No jokes found. Add some!</p>
+    return <p class="text-gray-500 italic">No jokes found. Add some!</p>
   }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Jokes Collection</h2>
+    <div class="space-y-4">
+      <h2 class="text-xl font-semibold">Jokes Collection</h2>
       {jokes.map((joke) => (
         <div
           key={joke.id}
-          className="bg-white p-4 rounded-lg shadow-md border border-gray-200"
+          class="bg-white p-4 rounded-lg shadow-md border border-gray-200"
         >
-          <p className="font-bold text-lg mb-2">{joke.question}</p>
-          <p className="text-gray-700">{joke.answer}</p>
+          <p class="font-bold text-lg mb-2">{joke.question}</p>
+          <p class="text-gray-700">{joke.answer}</p>
         </div>
       ))}
     </div>
@@ -210,7 +210,7 @@ Now let's call our server function inside `index.tsx` using TanStack Router whic
 
 ```jsx
 // src/routes/index.tsx
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/solid-router'
 import { getJokes } from './serverActions/jokesActions'
 import { JokesList } from './JokesList'
 
@@ -226,8 +226,8 @@ const App = () => {
   const jokes = Route.useLoaderData() || []
 
   return (
-    <div className="max-w-2xl mx-auto py-12 px-4 space-y-6">
-      <h1 className="text-4xl font-bold text-center mb-10">DevJokes</h1>
+    <div class="max-w-2xl mx-auto py-12 px-4 space-y-6">
+      <h1 class="text-4xl font-bold text-center mb-10">DevJokes</h1>
       <JokesList jokes={jokes} />
     </div>
   )
@@ -250,7 +250,7 @@ It's time to modify the `jokes.json` file so that we can add new jokes to it. Le
 
 ```tsx
 // src/serverActions/jokesActions.ts
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/solid-start'
 import * as fs from 'node:fs'
 import { v4 as uuidv4 } from 'uuid' // Add this import
 import type { Joke, JokesData } from '../types'
@@ -319,30 +319,30 @@ Now, let's modify our home page to display jokes and provide a form to add new o
 
 ```tsx
 // src/components/JokeForm.tsx
-import { useState } from 'react'
-import { useRouter } from '@tanstack/react-router'
+import { createSignal } from 'solid'
+import { useRouter } from '@tanstack/solid-router'
 import { addJoke } from '../serverActions/jokesActions'
 
 export function JokeForm() {
   const router = useRouter()
-  const [question, setQuestion] = useState('')
-  const [answer, setAnswer] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [question, setQuestion] = createSignal('')
+  const [answer, setAnswer] = createSignal('')
+  const [isSubmitting, setIsSubmitting] = createSignal(false)
+  const [error, setError] = createSignal<string | null>(null)
 
   return (
-    <form onSubmit={handleSubmit} className="mb-8">
+    <form onSubmit={handleSubmit} class="mb-8">
       {error && (
-        <div className="bg-red-100 text-red-700 p-2 rounded mb-4">{error}</div>
+        <div class="bg-red-100 text-red-700 p-2 rounded mb-4">{error}</div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-8">
+      <div class="flex flex-col sm:flex-row gap-4 mb-8">
         <input
           id="question"
           type="text"
           placeholder="Enter joke question"
-          className="w-full p-2 border rounded focus:ring focus:ring-blue-300 flex-1"
-          value={question}
+          class="w-full p-2 border rounded focus:ring focus:ring-blue-300 flex-1"
+          value={question()}
           onChange={(e) => setQuestion(e.target.value)}
           required
         />
@@ -351,18 +351,18 @@ export function JokeForm() {
           id="answer"
           type="text"
           placeholder="Enter joke answer"
-          className="w-full p-2 border rounded focus:ring focus:ring-blue-300 flex-1 py-4"
-          value={answer}
+          class="w-full p-2 border rounded focus:ring focus:ring-blue-300 flex-1 py-4"
+          value={answer()}
           onChange={(e) => setAnswer(e.target.value)}
           required
         />
 
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-medium rounded disabled:opacity-50 px-4"
+          disabled={isSubmitting()}
+          class="bg-blue-500 hover:bg-blue-600 text-white font-medium rounded disabled:opacity-50 px-4"
         >
-          {isSubmitting ? 'Adding...' : 'Add Joke'}
+          {isSubmitting() ? 'Adding...' : 'Add Joke'}
         </button>
       </div>
     </form>
@@ -376,23 +376,23 @@ Now, let's wire the form up to our `addJoke` server function in the `handleSubmi
 
 ```tsx
 //JokeForm.tsx
-import { useState } from 'react'
-import { useRouter } from '@tanstack/react-router'
+import { createSignal } from 'solid'
+import { useRouter } from '@tanstack/solid-router'
 import { addJoke } from '../serverActions/jokesActions'
 
 export function JokeForm() {
   const router = useRouter()
-  const [question, setQuestion] = useState('')
-  const [answer, setAnswer] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [question, setQuestion] = createSignal('')
+  const [answer, setAnswer] = createSignal('')
+  const [isSubmitting, setIsSubmitting] = createSignal(false)
+  const [error, setError] = createSignal<string | null>(null)
 
   const handleSubmit = async () => {
-    if (!question || !answer || isSubmitting) return
+    if (!question() || !answer() || isSubmitting()) return
     try {
       setIsSubmitting(true)
       await addJoke({
-        data: { question, answer },
+        data: { question(), answer() },
       })
 
       // Clear form
@@ -410,17 +410,17 @@ export function JokeForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mb-8">
+    <form onSubmit={handleSubmit} class="mb-8">
       {error && (
-        <div className="bg-red-100 text-red-700 p-2 rounded mb-4">{error}</div>
+        <div class="bg-red-100 text-red-700 p-2 rounded mb-4">{error}</div>
       )}
-      <div className="flex flex-col sm:flex-row gap-4 mb-8">
+      <div class="flex flex-col sm:flex-row gap-4 mb-8">
         <input
           id="question"
           type="text"
           placeholder="Enter joke question"
-          className="w-full p-2 border rounded focus:ring focus:ring-blue-300 flex-1"
-          value={question}
+          class="w-full p-2 border rounded focus:ring focus:ring-blue-300 flex-1"
+          value={question()}
           onChange={(e) => setQuestion(e.target.value)}
           required
         />
@@ -428,17 +428,17 @@ export function JokeForm() {
           id="answer"
           type="text"
           placeholder="Enter joke answer"
-          className="w-full p-2 border rounded focus:ring focus:ring-blue-300 flex-1 py-4"
-          value={answer}
+          class="w-full p-2 border rounded focus:ring focus:ring-blue-300 flex-1 py-4"
+          value={answer()}
           onChange={(e) => setAnswer(e.target.value)}
           required
         />
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-medium rounded disabled:opacity-50 px-4"
+          disabled={isSubmitting()}
+          class="bg-blue-500 hover:bg-blue-600 text-white font-medium rounded disabled:opacity-50 px-4"
         >
-          {isSubmitting ? 'Adding...' : 'Add Joke'}
+          {isSubmitting() ? 'Adding...' : 'Add Joke'}
         </button>
       </div>
     </form>
@@ -462,7 +462,7 @@ Let's break down how the different parts of our application work together:
    - `useLoaderData` makes this data available in our component
    - `router.invalidate()` refreshes the data when we add a new joke
 
-3. **React Components**: Build the UI of our application
+3. **Solid Components**: Build the UI of our application
    - `JokesList`: Displays the list of jokes
    - `JokeForm`: Provides a form for adding new jokes
 
@@ -573,7 +573,7 @@ Congratulations! You've built a full-stack DevJokes app using TanStack Start. In
 - How to set up a TanStack Start project
 - How to implement server functions for data operations
 - How to read and write data to files
-- How to build React components for your UI
+- How to build Solid components for your UI
 - How to use TanStack Router for routing and data fetching
 
 This simple application demonstrates the power of TanStack Start for building full-stack applications with a minimal amount of code. You can extend this app by adding features like:
