@@ -2,8 +2,6 @@ name: Changeset Preview
 
 on:
   pull_request:
-    paths:
-      - '.changeset/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.number }}
