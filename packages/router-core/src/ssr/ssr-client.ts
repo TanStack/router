@@ -210,7 +210,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           params: match.params,
           loaderData: match.loaderData,
         }
-        const headFnContent = await route.options.head?.(assetContext)
+        const headFnContent =
+          typeof route.options.head === 'function'
+            ? await route.options.head(assetContext)
+            : route.options.head
 
         const scripts = await route.options.scripts?.(assetContext)
 

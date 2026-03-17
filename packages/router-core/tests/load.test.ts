@@ -1851,6 +1851,65 @@ describe('head execution', () => {
       expect(rootMatch?.error).toBeUndefined()
     })
   })
+
+  test('accepts a static object for head instead of a function', async () => {
+    const staticHead = {
+      meta: [{ title: 'Static Title' }],
+      links: [{ rel: 'icon', href: '/favicon.ico' }],
+    }
+
+    const rootRoute = new BaseRootRoute({
+      head: staticHead,
+    })
+    const testRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/test',
+    })
+    const routeTree = rootRoute.addChildren([testRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/test'] }),
+    })
+
+    await router.load()
+
+    const match = router.state.matches.find(
+      (m) => m.routeId === rootRoute.id,
+    )
+    expect(match?.meta).toEqual([{ title: 'Static Title' }])
+    expect(match?.links).toEqual([{ rel: 'icon', href: '/favicon.ico' }])
+  })
+
+  test('static head object and function head work together in route hierarchy', async () => {
+    const rootRoute = new BaseRootRoute({
+      head: {
+        meta: [{ charSet: 'UTF-8' }],
+      },
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      head: () => ({
+        meta: [{ title: 'Child Page' }],
+      }),
+    })
+    const routeTree = rootRoute.addChildren([childRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/child'] }),
+    })
+
+    await router.load()
+
+    const rootMatch = router.state.matches.find(
+      (m) => m.routeId === rootRoute.id,
+    )
+    const childMatch = router.state.matches.find(
+      (m) => m.routeId === childRoute.id,
+    )
+    expect(rootMatch?.meta).toEqual([{ charSet: 'UTF-8' }])
+    expect(childMatch?.meta).toEqual([{ title: 'Child Page' }])
+  })
 })
 
 describe('params.parse notFound', () => {
