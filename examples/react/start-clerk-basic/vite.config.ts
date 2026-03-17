@@ -7,11 +7,7 @@ export default defineConfig({
   server: {
     port: 3000,
   },
-  plugins: [
-    tailwindcss(),
-    tanstackStart(),
-    viteReact(),
-  ],
+  plugins: [tailwindcss(), tanstackStart(), viteReact()],
   // See https://github.com/TanStack/router/issues/5738
   resolve: {
     tsconfigPaths: true,

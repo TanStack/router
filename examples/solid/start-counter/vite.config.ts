@@ -9,8 +9,5 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-  plugins: [
-    tanstackStart(),
-    viteSolid({ ssr: true }),
-  ],
+  plugins: [tanstackStart(), viteSolid({ ssr: true })],
 })

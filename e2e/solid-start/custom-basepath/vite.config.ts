@@ -9,9 +9,5 @@ export default defineConfig({
   server: {
     port: 3000,
   },
-  plugins: [
-    tailwindcss(),
-    tanstackStart(),
-    viteSolid({ ssr: true }),
-  ],
+  plugins: [tailwindcss(), tanstackStart(), viteSolid({ ssr: true })],
 })

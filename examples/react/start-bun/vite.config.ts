@@ -7,11 +7,7 @@ const config = defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-  plugins: [
-    tailwindcss(),
-    tanstackStart(),
-    viteReact(),
-  ],
+  plugins: [tailwindcss(), tanstackStart(), viteReact()],
 })
 
 export default config
