@@ -1177,6 +1177,13 @@ export interface BeforeLoadContextOptions<
   >
 }
 
+export type HeadContent = {
+  links?: AnyRouteMatch['links']
+  scripts?: AnyRouteMatch['headScripts']
+  meta?: AnyRouteMatch['meta']
+  styles?: AnyRouteMatch['styles']
+}
+
 type AssetFnContextOptions<
   in out TRouteId,
   in out TFullPath,
@@ -1397,18 +1404,8 @@ export interface UpdatableRouteOptions<
           TBeforeLoadFn,
           TLoaderDeps
         >,
-      ) => Awaitable<{
-        links?: AnyRouteMatch['links']
-        scripts?: AnyRouteMatch['headScripts']
-        meta?: AnyRouteMatch['meta']
-        styles?: AnyRouteMatch['styles']
-      }>)
-    | {
-        links?: AnyRouteMatch['links']
-        scripts?: AnyRouteMatch['headScripts']
-        meta?: AnyRouteMatch['meta']
-        styles?: AnyRouteMatch['styles']
-      }
+      ) => Awaitable<HeadContent>)
+    | HeadContent
   scripts?: (
     ctx: AssetFnContextOptions<
       TRouteId,
