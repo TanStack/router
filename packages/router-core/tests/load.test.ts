@@ -1873,9 +1873,7 @@ describe('head execution', () => {
 
     await router.load()
 
-    const match = router.state.matches.find(
-      (m) => m.routeId === rootRoute.id,
-    )
+    const match = router.state.matches.find((m) => m.routeId === rootRoute.id)
     expect(match?.meta).toEqual([{ title: 'Static Title' }])
     expect(match?.links).toEqual([{ rel: 'icon', href: '/favicon.ico' }])
   })
