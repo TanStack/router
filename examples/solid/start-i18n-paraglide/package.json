@@ -20,7 +20,6 @@
     "vite-plugin-solid": "^2.11.11",
     "typescript": "^5.9.2",
     "vite": "^8.0.0",
-    "vite-tsconfig-paths": "^5.1.4",
     "@tailwindcss/vite": "^4.1.18",
     "tailwindcss": "^4.1.18",
     "@inlang/paraglide-js": "^2.4.0"

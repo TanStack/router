@@ -1,6 +1,5 @@
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
@@ -10,10 +9,10 @@ export default defineConfig({
   ssr: {
     noExternal: ['@mui/*'],
   },
+  resolve: {
+    tsconfigPaths: true,
+  },
   plugins: [
-    tsConfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
     tanstackStart(),
     viteReact(),
   ],

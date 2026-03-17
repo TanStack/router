@@ -25,7 +25,6 @@
     "typescript": "^5.7.2",
     "vite": "^8.0.0",
     "@vitejs/plugin-vue": "^6.0.5",
-    "@vitejs/plugin-vue-jsx": "^5.1.5",
-    "vite-tsconfig-paths": "^5.1.4"
+    "@vitejs/plugin-vue-jsx": "^5.1.5"
   }
 }

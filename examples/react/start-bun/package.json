@@ -22,8 +22,7 @@
     "@tanstack/router-plugin": "^1.166.13",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "tailwindcss": "^4.1.18",
-    "vite-tsconfig-paths": "^5.1.4"
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
     "@tanstack/eslint-config": "^0.3.2",
