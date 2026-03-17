@@ -2427,9 +2427,8 @@ describe('useRouteContext in the component', () => {
         const context = rootRoute.useRouteContext()
 
         // Track context value at render time
-        createEffect(context, (c) => {
-          const contextValue: { data: string } = c()
-          contextValues.push(contextValue)
+        createEffect(context, (contextValue) => {
+          contextValues.push(contextValue as { data: string })
         })
 
         return <Outlet />
