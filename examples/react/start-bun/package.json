@@ -33,11 +33,11 @@
     "@types/node": "22.10.2",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
-    "@vitejs/plugin-react": "^5.0.3",
+    "@vitejs/plugin-react": "^6.0.1",
     "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
-    "vite": "^7.3.1",
+    "vite": "^8.0.0",
     "vitest": "^3.2.4",
     "web-vitals": "^5.1.0"
   }

@@ -18,13 +18,13 @@
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.13.7",
+    "@cloudflare/vite-plugin": "^1.29.0",
     "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^22.5.4",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
-    "vite": "^7.3.1",
-    "vite-plugin-solid": "^2.11.10",
+    "vite": "^8.0.0",
+    "vite-plugin-solid": "^2.11.11",
     "vite-tsconfig-paths": "^5.1.4",
     "wrangler": "^4.49.1"
   }

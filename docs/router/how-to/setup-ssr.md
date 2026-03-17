@@ -163,7 +163,7 @@ export default defineConfig(({ isSsrBuild }) => ({
         outDir: 'dist/server',
         emitAssets: true,
         copyPublicDir: false,
-        rollupOptions: {
+        rolldownOptions: {
           input: path.resolve(__dirname, 'src/entry-server.tsx'),
           output: {
             entryFileNames: '[name].js',
@@ -177,7 +177,7 @@ export default defineConfig(({ isSsrBuild }) => ({
         outDir: 'dist/client',
         emitAssets: true,
         copyPublicDir: true,
-        rollupOptions: {
+        rolldownOptions: {
           input: path.resolve(__dirname, 'src/entry-client.tsx'),
           output: {
             entryFileNames: '[name].js',
@@ -530,7 +530,7 @@ const ssrConfig = {
   outDir: 'dist/server',
   ssrEmitAssets: true, // Important for asset handling
   copyPublicDir: false,
-  rollupOptions: {
+  rolldownOptions: {
     input: path.resolve(__dirname, 'src/entry-server.tsx'),
     external: ['express', 'compression'], // External deps
   },
