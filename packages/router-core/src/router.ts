@@ -32,8 +32,10 @@ import {
 } from './path'
 import { createLRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
+import { decode } from './qss'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
+import { validatorUsesRawSearchInput } from './searchValidator'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
 import { loadMatches, loadRouteChunk, routeNeedsPreload } from './load-matches'
@@ -113,6 +115,22 @@ export type ControllablePromise<T = any> = Promise<T> & {
 }
 
 export type InjectedHtmlEntry = Promise<string>
+
+type ParsedLocationWithRaw<TSearchObj extends AnySchema = AnySchema> =
+  ParsedLocation<TSearchObj> & {
+    _rawSearch?: Record<string, unknown>
+  }
+
+function withRawSearch<TSearchObj extends AnySchema>(
+  location: ParsedLocation<TSearchObj>,
+  rawSearch: Record<string, unknown>,
+): ParsedLocationWithRaw<TSearchObj> {
+  return Object.defineProperty(location, '_rawSearch', {
+    value: rawSearch,
+    enumerable: false,
+    configurable: true,
+  }) as ParsedLocationWithRaw<TSearchObj>
+}
 
 export interface Register {
   // Lots of things on here like...
@@ -1300,21 +1318,28 @@ export class RouterCore<
       // eslint-disable-next-line no-control-regex
       if (!this.rewrite && !/[ \x00-\x1f\x7f\u0080-\uffff]/.test(pathname)) {
         const parsedSearch = this.options.parseSearch(search)
+        const rawSearch = decode(
+          search[0] === '?' ? search.substring(1) : search,
+          (value) => value,
+        )
         const searchStr = this.options.stringifySearch(parsedSearch)
 
-        return {
-          href: pathname + searchStr + hash,
-          publicHref: href,
-          pathname: decodePath(pathname).path,
-          external: false,
-          searchStr,
-          search: nullReplaceEqualDeep(
-            previousLocation?.search,
-            parsedSearch,
-          ) as any,
-          hash: decodePath(hash.slice(1)).path,
-          state: replaceEqualDeep(previousLocation?.state, state),
-        }
+        return withRawSearch(
+          {
+            href: pathname + searchStr + hash,
+            publicHref: href,
+            pathname: decodePath(pathname).path,
+            external: false,
+            searchStr,
+            search: nullReplaceEqualDeep(
+              previousLocation?.search,
+              parsedSearch,
+            ) as any,
+            hash: decodePath(hash.slice(1)).path,
+            state: replaceEqualDeep(previousLocation?.state, state),
+          },
+          rawSearch,
+        )
       }
 
       // Before we do any processing, we need to allow rewrites to modify the URL
@@ -1324,6 +1349,7 @@ export class RouterCore<
       const url = executeRewriteInput(this.rewrite, fullUrl)
 
       const parsedSearch = this.options.parseSearch(url.search)
+      const rawSearch = decode(url.search, (value) => value)
       const searchStr = this.options.stringifySearch(parsedSearch)
       // Make sure our final url uses the re-stringified pathname, search, and has for consistency
       // (We were already doing this, so just keeping it for now)
@@ -1331,19 +1357,22 @@ export class RouterCore<
 
       const fullPath = url.href.replace(url.origin, '')
 
-      return {
-        href: fullPath,
-        publicHref: href,
-        pathname: decodePath(url.pathname).path,
-        external: !!this.rewrite && url.origin !== this.origin,
-        searchStr,
-        search: nullReplaceEqualDeep(
-          previousLocation?.search,
-          parsedSearch,
-        ) as any,
-        hash: decodePath(url.hash.slice(1)).path,
-        state: replaceEqualDeep(previousLocation?.state, state),
-      }
+      return withRawSearch(
+        {
+          href: fullPath,
+          publicHref: href,
+          pathname: decodePath(url.pathname).path,
+          external: !!this.rewrite && url.origin !== this.origin,
+          searchStr,
+          search: nullReplaceEqualDeep(
+            previousLocation?.search,
+            parsedSearch,
+          ) as any,
+          hash: decodePath(url.hash.slice(1)).path,
+          state: replaceEqualDeep(previousLocation?.state, state),
+        },
+        rawSearch,
+      )
     }
 
     const location = parse(locationToParse)
@@ -1358,10 +1387,14 @@ export class RouterCore<
 
       delete parsedTempLocation.state.__tempLocation
 
-      return {
+      // Re-attach _rawSearch after spread (non-enumerable props are lost
+      // by the spread operator)
+      const merged = {
         ...parsedTempLocation,
         maskedLocation: location,
       }
+      const tempRaw = (parsedTempLocation as ParsedLocationWithRaw)._rawSearch
+      return tempRaw ? withRawSearch(merged, tempRaw) : merged
     }
     return location
   }
@@ -1413,6 +1446,9 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
+    const rawLocationSearch =
+      (next as ParsedLocation & { _rawSearch?: Record<string, unknown> })
+        ._rawSearch ?? next.search
     const matchedRoutesResult = this.getMatchedRoutes(next.pathname)
     const { foundRoute, routeParams, parsedParams } = matchedRoutesResult
     let { matchedRoutes } = matchedRoutesResult
@@ -1463,11 +1499,21 @@ export class RouterCore<
         // Validate the search params and stabilize them
         const parentSearch = parentMatch?.search ?? next.search
         const parentStrictSearch = parentMatch?._strictSearch ?? undefined
+        const searchValidationInput = validatorUsesRawSearchInput(
+          route.options.validateSearch,
+        )
+          ? {
+              ...rawLocationSearch,
+              ...parentStrictSearch,
+            }
+          : { ...parentSearch }
 
         try {
           const strictSearch =
-            validateSearch(route.options.validateSearch, { ...parentSearch }) ??
-            undefined
+            validateSearch(
+              route.options.validateSearch,
+              searchValidationInput,
+            ) ?? undefined
 
           preMatchSearch = {
             ...parentSearch,

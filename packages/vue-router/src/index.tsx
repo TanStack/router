@@ -21,6 +21,7 @@ export {
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
+  validateSearchWithRawInput,
   createSerializationAdapter,
 } from '@tanstack/router-core'
 
