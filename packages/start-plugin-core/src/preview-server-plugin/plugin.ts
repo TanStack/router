@@ -4,6 +4,7 @@ import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { joinURL } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { getServerOutputDirectory } from '../output-directory'
+import { getBundlerOptions } from '../utils'
 import type { Plugin } from 'vite'
 
 export function previewServerPlugin(): Plugin {
@@ -27,7 +28,7 @@ export function previewServerPlugin(): Plugin {
                 const serverEnv =
                   server.config.environments[VITE_ENVIRONMENT_NAMES.server]
                 const serverInput =
-                  serverEnv?.build.rollupOptions.input ?? 'server'
+                  getBundlerOptions(serverEnv?.build)?.input ?? 'server'
 
                 if (typeof serverInput !== 'string') {
                   throw new Error('Invalid server input. Expected a string.')
