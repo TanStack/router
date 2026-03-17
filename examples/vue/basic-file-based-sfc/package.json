@@ -20,10 +20,10 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.3",
-    "@vitejs/plugin-vue-jsx": "^4.1.2",
+    "@vitejs/plugin-vue": "^6.0.5",
+    "@vitejs/plugin-vue-jsx": "^5.1.5",
     "typescript": "~5.8.3",
-    "vite": "^7.3.1",
+    "vite": "^8.0.0",
     "vue-tsc": "^3.1.5"
   }
 }
