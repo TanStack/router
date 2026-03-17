@@ -2,12 +2,12 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { zodValidator } from '../src'
 import { z } from 'zod'
 import {
+  Link,
+  RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
-  Link,
-  RouterProvider,
   validateSearchWithRawInput,
 } from '@tanstack/react-router'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
