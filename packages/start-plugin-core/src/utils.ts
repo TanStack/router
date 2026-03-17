@@ -7,9 +7,9 @@ import * as vite from 'vite'
 export const isRolldown = 'rolldownVersion' in vite
 
 /** Returns `'rolldownOptions'` when using Rolldown, `'rollupOptions'` otherwise. */
-export const bundlerOptionsKey = (
-  isRolldown ? 'rolldownOptions' : 'rollupOptions'
-)
+export const bundlerOptionsKey = isRolldown
+  ? 'rolldownOptions'
+  : 'rollupOptions'
 
 /** Read `build.rollupOptions` or `build.rolldownOptions` from a build config. */
 export function getBundlerOptions(build: any): any {
