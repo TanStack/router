@@ -1348,8 +1348,7 @@ export class RouterCore<
           hash: decodePath(url.hash.slice(1)).path,
           state: replaceEqualDeep(previousLocation?.state, state),
         },
-        url.origin,
-        url,
+        this.origin!,
       )
     }
 
@@ -2971,7 +2970,7 @@ function augmentLocationWithUrl<TSearchObj extends AnySchema = {}>(
 ): ParsedLocation<TSearchObj> {
   return Object.defineProperty(location, 'url', {
     enumerable: false,
-    get: () => (url ??= new URL(location.href, origin)),
+    get: () => (url ??= new URL(location.publicHref, origin)),
   }) as ParsedLocation<TSearchObj>
 }
 
