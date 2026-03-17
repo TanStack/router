@@ -16,7 +16,7 @@
     }
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.90.9",
+    "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@e7415f0",
     "@router-solid-mono-simple-lazy/router": "workspace:*",
     "solid-js": "2.0.0-beta.3",
     "@solidjs/web": "2.0.0-beta.3"

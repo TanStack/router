@@ -4361,8 +4361,11 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-query':
-        specifier: https://pkg.pr.new/@tanstack/solid-query@50aaa98
-        version: https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.3)
+        specifier: https://pkg.pr.new/@tanstack/solid-query@e7415f0
+        version: https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3)
+      '@tanstack/solid-query-devtools':
+        specifier: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0
+        version: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3))(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -8879,7 +8882,7 @@ importers:
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17)(esbuild@0.27.2)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17(vitest@4.0.17))(esbuild@0.27.2)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
@@ -11521,7 +11524,7 @@ importers:
         version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17)(esbuild@0.27.2)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17(vitest@4.0.17))(esbuild@0.27.2)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
@@ -12777,8 +12780,8 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-query':
-        specifier: https://pkg.pr.new/@tanstack/solid-query@50aaa98
-        version: https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.3)
+        specifier: https://pkg.pr.new/@tanstack/solid-query@e7415f0
+        version: https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
         specifier: workspace:*
         version: link:../solid-router
@@ -18084,6 +18087,10 @@ packages:
     resolution: {tarball: https://pkg.pr.new/TanStack/query/@tanstack/query-devtools@50aaa98}
     version: 5.93.0
 
+  '@tanstack/query-devtools@https://pkg.pr.new/TanStack/query/@tanstack/query-devtools@e7415f0':
+    resolution: {tarball: https://pkg.pr.new/TanStack/query/@tanstack/query-devtools@e7415f0}
+    version: 5.93.0
+
   '@tanstack/react-devtools@0.7.0':
     resolution: {integrity: sha512-HJH+oNBYQotgsKWAQqvkY8KnfQbbZptHbrkPGVaIwj393vVFGT1BuXMYy+rlmOYxczyerb90ltRFgsQyUtJTuw==}
     engines: {node: '>=18'}
@@ -18141,6 +18148,13 @@ packages:
       '@tanstack/solid-query': ^5.90.26
       solid-js: ^1.6.0 || >=2.0.0-beta.0 <2.0.0
 
+  '@tanstack/solid-query-devtools@https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0':
+    resolution: {tarball: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0}
+    version: 5.91.3
+    peerDependencies:
+      '@tanstack/solid-query': ^5.90.26
+      solid-js: ^1.6.0 || >=2.0.0-beta.0 <2.0.0
+
   '@tanstack/solid-query@5.90.9':
     resolution: {integrity: sha512-OF+FpTHPmZxF5M0zcEERtUA0DhuFdNOpn0EAbASarDfIuNrvi8k07dhYV5zYyYwkt+eoe/RnAX65PdSP+Y0ONw==}
     peerDependencies:
@@ -18148,6 +18162,12 @@ packages:
 
   '@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@50aaa98':
     resolution: {tarball: https://pkg.pr.new/@tanstack/solid-query@50aaa98}
+    version: 5.90.26
+    peerDependencies:
+      solid-js: ^1.6.0 || >=2.0.0-beta.0 <2.0.0
+
+  '@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@e7415f0':
+    resolution: {tarball: https://pkg.pr.new/@tanstack/solid-query@e7415f0}
     version: 5.90.26
     peerDependencies:
       solid-js: ^1.6.0 || >=2.0.0-beta.0 <2.0.0
@@ -30855,6 +30875,8 @@ snapshots:
 
   '@tanstack/query-devtools@https://pkg.pr.new/TanStack/query/@tanstack/query-devtools@50aaa98': {}
 
+  '@tanstack/query-devtools@https://pkg.pr.new/TanStack/query/@tanstack/query-devtools@e7415f0': {}
+
   '@tanstack/react-devtools@0.7.0(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.11)':
     dependencies:
       '@tanstack/devtools': 0.6.14(csstype@3.2.3)(solid-js@1.9.11)
@@ -30919,12 +30941,23 @@ snapshots:
       '@tanstack/solid-query': https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.3)
       solid-js: 2.0.0-beta.3
 
+  '@tanstack/solid-query-devtools@https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3))(solid-js@2.0.0-beta.3)':
+    dependencies:
+      '@tanstack/query-devtools': https://pkg.pr.new/TanStack/query/@tanstack/query-devtools@e7415f0
+      '@tanstack/solid-query': https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3)
+      solid-js: 2.0.0-beta.3
+
   '@tanstack/solid-query@5.90.9(solid-js@2.0.0-beta.3)':
     dependencies:
       '@tanstack/query-core': 5.90.19
       solid-js: 2.0.0-beta.3
 
   '@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@50aaa98(solid-js@2.0.0-beta.3)':
+    dependencies:
+      '@tanstack/query-core': 5.90.19
+      solid-js: 2.0.0-beta.3
+
+  '@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3)':
     dependencies:
       '@tanstack/query-core': 5.90.19
       solid-js: 2.0.0-beta.3
@@ -32081,7 +32114,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vitest: 4.0.17(@types/node@25.0.9)(@vitest/ui@4.0.17)(esbuild@0.27.2)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vitest: 4.0.17(@types/node@25.0.9)(@vitest/ui@4.0.17)(esbuild@0.27.2)(jiti@2.6.1)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
 
   '@vitest/utils@3.2.4':
     dependencies:
@@ -39429,7 +39462,7 @@ snapshots:
     optionalDependencies:
       vite: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
 
-  vitest@3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17)(esbuild@0.27.2)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1):
+  vitest@3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17(vitest@4.0.17))(esbuild@0.27.2)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4

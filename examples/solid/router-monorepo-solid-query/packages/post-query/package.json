@@ -8,7 +8,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "@tanstack/solid-query": "^5.90.9",
+    "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@e7415f0",
     "redaxios": "^0.5.1",
     "zod": "^3.24.2"
   },

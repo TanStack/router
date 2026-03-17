@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "echo 'Skipped: waiting for @tanstack/solid-query Solid 2.0 support' && exit 0",
+    "build": "vite build",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "gen": "node ./src/createRoutes.mjs",
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.90.9",
+    "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@e7415f0",
     "@tanstack/solid-router": "^2.0.0-alpha.3",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.2",
     "@tanstack/solid-start": "^2.0.0-alpha.3",
