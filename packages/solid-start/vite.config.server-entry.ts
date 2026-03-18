@@ -1,4 +1,4 @@
-import { tanstackViteConfig } from '@tanstack/config/vite'
+import { tanstackViteConfig } from '@tanstack/vite-config'
 
 export default tanstackViteConfig({
   srcDir: './src/default-entry',

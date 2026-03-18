@@ -209,9 +209,17 @@ For more details, see [Railway's documentation](https://docs.railway.com).
 
 ### Nitro
 
-[Nitro](https://v3.nitro.build/) is an agnostic layer that allows you to deploy TanStack Start applications to [a wide range of hostings](https://v3.nitro.build/deploy).
+[Nitro](https://nitro.build/) is an agnostic layer that allows you to deploy TanStack Start applications to [a wide range of hostings](https://nitro.build/deploy).
 
-**⚠️ The [`nitro/vite`](https://v3.nitro.build/) plugin natively integrates with Vite Environments API as the underlying build tool for TanStack Start. It is still under active development and receives regular updates. Please report any issues you encounter with reproduction so they can be investigated.**
+**⚠️ The [`nitro/vite`](https://nitro.build/) plugin natively integrates with Vite Environments API as the underlying build tool for TanStack Start. It is still under active development and receives regular updates. Please report any issues you encounter with reproduction so they can be investigated.**
+
+1. Install `nitro`:
+
+```bash
+npm install nitro
+```
+
+2. Add the `nitro/vite` plugin to your `vite.config.ts` file:
 
 ```tsx
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
@@ -402,7 +410,7 @@ When deploying to [Appwrite Sites](https://appwrite.io/products/sites), you'll n
 1. **Create a TanStack Start app** (or use an existing one)
 
 ```bash
-npm create @tanstack/start@latest
+npx @tanstack/cli@latest create --framework solid
 ```
 
 2. **Push your project to a GitHub repository**

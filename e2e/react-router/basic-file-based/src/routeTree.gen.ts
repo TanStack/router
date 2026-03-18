@@ -13,6 +13,7 @@ import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
 import { Route as MasksRouteImport } from './routes/masks'
+import { Route as LazyErrorRouteImport } from './routes/lazy-error'
 import { Route as HoverPreloadHashRouteImport } from './routes/hover-preload-hash'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
@@ -149,6 +150,11 @@ const MasksRoute = MasksRouteImport.update({
   path: '/masks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LazyErrorRoute = LazyErrorRouteImport.update({
+  id: '/lazy-error',
+  path: '/lazy-error',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/lazy-error.lazy').then((d) => d.Route))
 const HoverPreloadHashRoute = HoverPreloadHashRouteImport.update({
   id: '/hover-preload-hash',
   path: '/hover-preload-hash',
@@ -784,6 +790,7 @@ export interface FileRoutesByFullPath {
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
+  '/lazy-error': typeof LazyErrorRoute
   '/masks': typeof MasksRouteWithChildren
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
@@ -899,6 +906,7 @@ export interface FileRoutesByTo {
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
+  '/lazy-error': typeof LazyErrorRoute
   '/masks': typeof MasksRouteWithChildren
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
@@ -1006,6 +1014,7 @@ export interface FileRoutesById {
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
+  '/lazy-error': typeof LazyErrorRoute
   '/masks': typeof MasksRouteWithChildren
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
@@ -1128,6 +1137,7 @@ export interface FileRouteTypes {
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
+    | '/lazy-error'
     | '/masks'
     | '/notRemountDeps'
     | '/posts'
@@ -1243,6 +1253,7 @@ export interface FileRouteTypes {
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
+    | '/lazy-error'
     | '/masks'
     | '/notRemountDeps'
     | '/remountDeps'
@@ -1349,6 +1360,7 @@ export interface FileRouteTypes {
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
+    | '/lazy-error'
     | '/masks'
     | '/notRemountDeps'
     | '/posts'
@@ -1471,6 +1483,7 @@ export interface RootRouteChildren {
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
   HoverPreloadHashRoute: typeof HoverPreloadHashRoute
+  LazyErrorRoute: typeof LazyErrorRoute
   MasksRoute: typeof MasksRouteWithChildren
   NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
@@ -1534,6 +1547,13 @@ declare module '@tanstack/react-router' {
       path: '/masks'
       fullPath: '/masks'
       preLoaderRoute: typeof MasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lazy-error': {
+      id: '/lazy-error'
+      path: '/lazy-error'
+      fullPath: '/lazy-error'
+      preLoaderRoute: typeof LazyErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hover-preload-hash': {
@@ -2861,6 +2881,7 @@ const rootRouteChildren: RootRouteChildren = {
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
   HoverPreloadHashRoute: HoverPreloadHashRoute,
+  LazyErrorRoute: LazyErrorRoute,
   MasksRoute: MasksRouteWithChildren,
   NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,

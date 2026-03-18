@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -9,11 +9,12 @@ import {
   rootRouteId,
 } from '../src'
 import { loadMatches } from '../src/load-matches'
-import type { AnyRouter, RootRouteOptions } from '../src'
+import type { AnyRouter, LoaderStaleReloadMode, RootRouteOptions } from '../src'
 
 type AnyRouteOptions = RootRouteOptions<any>
 type BeforeLoad = NonNullable<AnyRouteOptions['beforeLoad']>
 type Loader = NonNullable<AnyRouteOptions['loader']>
+type LoaderEntry = Exclude<Loader, Function>
 
 describe('redirect resolution', () => {
   test('resolveRedirect normalizes same-origin Location to path-only', async () => {
@@ -46,6 +47,34 @@ describe('redirect resolution', () => {
     expect(resolved.headers.get('Location')).toBe('/foo')
     expect(resolved.options.href).toBe('/foo')
   })
+
+  test.each(['/$a', '/$toString', '/$__proto__'])(
+    'server startup redirects initial path %s to /undefined',
+    async (initialPath) => {
+      const rootRoute = new BaseRootRoute({})
+      const slugRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/$slug',
+      })
+
+      const routeTree = rootRoute.addChildren([slugRoute])
+
+      const router = new RouterCore({
+        routeTree,
+        history: createMemoryHistory({ initialEntries: [initialPath] }),
+        isServer: true,
+      })
+
+      await router.load()
+
+      expect(router.state.redirect).toEqual(
+        expect.objectContaining({
+          options: expect.objectContaining({ href: '/undefined' }),
+        }),
+      )
+      expect(router.state.redirect?.headers.get('Location')).toBe('/undefined')
+    },
+  )
 })
 
 describe('beforeLoad skip or exec', () => {
@@ -238,9 +267,11 @@ describe('loader skip or exec', () => {
   const setup = ({
     loader,
     staleTime,
+    defaultStaleReloadMode,
   }: {
     loader?: Loader
     staleTime?: number
+    defaultStaleReloadMode?: LoaderStaleReloadMode
   }) => {
     const rootRoute = new BaseRootRoute({})
 
@@ -261,6 +292,7 @@ describe('loader skip or exec', () => {
 
     const router = new RouterCore({
       routeTree,
+      defaultStaleReloadMode,
       history: createMemoryHistory(),
     })
 
@@ -337,7 +369,7 @@ describe('loader skip or exec', () => {
   })
 
   test('exec if rejected preload (notFound)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
+    const loader: Loader = vi.fn(async ({ preload }) => {
       if (preload) throw notFound()
       await Promise.resolve()
     })
@@ -352,7 +384,7 @@ describe('loader skip or exec', () => {
   })
 
   test('skip if pending preload (notFound)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
+    const loader: Loader = vi.fn(async ({ preload }) => {
       await sleep(100)
       if (preload) throw notFound()
     })
@@ -367,7 +399,7 @@ describe('loader skip or exec', () => {
   })
 
   test('exec if rejected preload (redirect)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
+    const loader: Loader = vi.fn(async ({ preload }) => {
       if (preload) throw redirect({ to: '/bar' })
       await Promise.resolve()
     })
@@ -389,7 +421,7 @@ describe('loader skip or exec', () => {
   })
 
   test('skip if pending preload (redirect)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
+    const loader: Loader = vi.fn(async ({ preload }) => {
       await sleep(100)
       if (preload) throw redirect({ to: '/bar' })
     })
@@ -433,7 +465,7 @@ describe('loader skip or exec', () => {
   })
 
   test('exec if rejected preload (error)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
+    const loader: Loader = vi.fn(async ({ preload }) => {
       if (preload) throw new Error('error')
       await Promise.resolve()
     })
@@ -448,7 +480,7 @@ describe('loader skip or exec', () => {
   })
 
   test('skip if pending preload (error)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
+    const loader: Loader = vi.fn(async ({ preload }) => {
       await sleep(100)
       if (preload) throw new Error('error')
     })
@@ -539,6 +571,474 @@ test('exec on stay (beforeLoad & loader)', async () => {
   // beforeLoad calls were correctly awaited
   expect(rootBeforeLoadResolved).toBe(true)
   expect(layoutBeforeLoadResolved).toBe(true)
+})
+
+describe('stale loader reload triggers', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const getMatchById = (
+    router: RouterCore<any, any, any, any, any>,
+    id: string,
+  ) =>
+    router.state.matches.find((match) => match.id === id) ??
+    router.state.pendingMatches?.find((match) => match.id === id) ??
+    router.state.cachedMatches.find((match) => match.id === id)
+
+  const hasActiveMatch = (
+    router: RouterCore<any, any, any, any, any>,
+    id: string,
+  ) => router.state.matches.some((match) => match.id === id)
+
+  const hasPendingMatch = (
+    router: RouterCore<any, any, any, any, any>,
+    id: string,
+  ) => router.state.pendingMatches?.some((match) => match.id === id) ?? false
+
+  const setup = ({
+    loader,
+    staleTime,
+    defaultStaleReloadMode,
+  }: {
+    loader?: Loader
+    staleTime?: number
+    defaultStaleReloadMode?: LoaderStaleReloadMode
+  }) => {
+    const rootRoute = new BaseRootRoute({})
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader,
+      staleTime,
+      gcTime: 60_000,
+    })
+
+    const barRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/bar',
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute, barRoute])
+
+    return new RouterCore({
+      routeTree,
+      defaultStaleReloadMode,
+      history: createMemoryHistory(),
+    })
+  }
+
+  const createControlledStaleReload = () => {
+    let resolveStaleReload: (() => void) | undefined
+    let callCount = 0
+
+    const loader = vi.fn(() => {
+      callCount += 1
+      if (callCount === 1) {
+        return { value: 'first' }
+      }
+
+      return new Promise<{ value: string }>((resolve) => {
+        resolveStaleReload = () => resolve({ value: 'second' })
+      })
+    })
+
+    return {
+      loader,
+      resolveStaleReload: () => resolveStaleReload?.(),
+    }
+  }
+
+  const expectBlockingStaleReloadBehavior = async (
+    router: RouterCore<any, any, any, any, any>,
+    loader: ReturnType<typeof vi.fn>,
+    resolveStaleReload: () => void,
+  ) => {
+    await router.navigate({ to: '/foo' })
+    expect(loader).toHaveBeenCalledTimes(1)
+    expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
+      value: 'first',
+    })
+
+    await vi.advanceTimersByTimeAsync(1)
+    await router.navigate({ to: '/bar' })
+    await vi.advanceTimersByTimeAsync(1)
+
+    const revisit = router.navigate({ to: '/foo' })
+    await Promise.resolve()
+
+    expect(loader).toHaveBeenCalledTimes(2)
+    expect(hasActiveMatch(router, '/bar/bar')).toBe(true)
+    expect(hasActiveMatch(router, '/foo/foo')).toBe(false)
+    expect(hasPendingMatch(router, '/foo/foo')).toBe(true)
+    expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
+      value: 'first',
+    })
+
+    resolveStaleReload()
+    await revisit
+
+    expect(loader).toHaveBeenCalledTimes(2)
+    expect(hasActiveMatch(router, '/foo/foo')).toBe(true)
+    expect(hasPendingMatch(router, '/foo/foo')).toBe(false)
+    expect(router.state.location.pathname).toBe('/foo')
+    expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
+      value: 'second',
+    })
+  }
+
+  const expectBackgroundStaleReloadBehavior = async (
+    router: RouterCore<any, any, any, any, any>,
+    loader: ReturnType<typeof vi.fn>,
+    resolveStaleReload: () => void,
+  ) => {
+    await router.navigate({ to: '/foo' })
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1)
+    await router.navigate({ to: '/bar' })
+    await vi.advanceTimersByTimeAsync(1)
+
+    const revisit = router.navigate({ to: '/foo' })
+
+    expect(loader).toHaveBeenCalledTimes(2)
+
+    await revisit
+    const backgroundReloadPromise = getMatchById(router, '/foo/foo')
+      ?._nonReactive.loaderPromise
+
+    expect(backgroundReloadPromise).toBeDefined()
+    expect(hasActiveMatch(router, '/foo/foo')).toBe(true)
+    expect(hasPendingMatch(router, '/foo/foo')).toBe(false)
+    expect(router.state.location.pathname).toBe('/foo')
+    expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
+      value: 'first',
+    })
+
+    resolveStaleReload()
+    await backgroundReloadPromise
+
+    expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
+      value: 'second',
+    })
+  }
+
+  test('skips stale loader when only unrelated search params change', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const loader = vi.fn(() => ({ ok: true }))
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader,
+      staleTime: 0,
+      gcTime: 0,
+      loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+        page: search['page'],
+      }),
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/foo', search: { page: '1', filter: 'a' } })
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    await router.navigate({ to: '/foo', search: { page: '1', filter: 'b' } })
+
+    expect(loader).toHaveBeenCalledTimes(1)
+  })
+
+  test('reloads stale loader when loader deps change', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const loader = vi.fn(() => ({ ok: true }))
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader,
+      staleTime: 0,
+      gcTime: 0,
+      loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+        page: search['page'],
+      }),
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/foo', search: { page: '1' } })
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    await router.navigate({ to: '/foo', search: { page: '2' } })
+
+    expect(loader).toHaveBeenCalledTimes(2)
+  })
+
+  test('reloads a stale preloaded loader when switching to a different match id of the same route', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const rootLoader = vi.fn(() => ({ ok: true }))
+    const childLoader = vi.fn(() => ({ ok: true }))
+
+    const rootChildRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      loader: rootLoader,
+      staleTime: 0,
+      gcTime: 0,
+      loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+        page: search['page'],
+      }),
+    })
+
+    const leafRoute = new BaseRoute({
+      getParentRoute: () => rootChildRoute,
+      path: '/$postId',
+      loader: childLoader,
+      staleTime: 0,
+      gcTime: 0,
+    })
+
+    const routeTree = rootRoute.addChildren([
+      rootChildRoute.addChildren([leafRoute]),
+    ])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({
+      to: '/posts/$postId',
+      params: { postId: '1' },
+      search: { page: '1' },
+    })
+
+    expect(rootLoader).toHaveBeenCalledTimes(1)
+    expect(childLoader).toHaveBeenCalledTimes(1)
+
+    await router.preloadRoute({
+      to: '/posts/$postId',
+      params: { postId: '2' },
+      search: { page: '2' },
+    })
+
+    expect(rootLoader).toHaveBeenCalledTimes(2)
+    expect(childLoader).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(1)
+
+    await router.navigate({
+      to: '/posts/$postId',
+      params: { postId: '2' },
+      search: { page: '2' },
+    })
+
+    expect(rootLoader).toHaveBeenCalledTimes(3)
+    expect(childLoader).toHaveBeenCalledTimes(3)
+  })
+
+  test('skips stale ancestor loader when only a child path param changes', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const parentLoader = vi.fn(() => ({ ok: true }))
+    const childLoader = vi.fn(() => ({ ok: true }))
+
+    const orgRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/orgs/$orgId',
+      loader: parentLoader,
+      staleTime: 0,
+      gcTime: 0,
+    })
+
+    const userRoute = new BaseRoute({
+      getParentRoute: () => orgRoute,
+      path: '/users/$userId',
+      loader: childLoader,
+      staleTime: 0,
+      gcTime: 0,
+    })
+
+    const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({
+      to: '/orgs/$orgId/users/$userId',
+      params: { orgId: 'acme', userId: 'u1' },
+    })
+    expect(parentLoader).toHaveBeenCalledTimes(1)
+    expect(childLoader).toHaveBeenCalledTimes(1)
+
+    await router.navigate({
+      to: '/orgs/$orgId/users/$userId',
+      params: { orgId: 'acme', userId: 'u2' },
+    })
+
+    expect(parentLoader).toHaveBeenCalledTimes(1)
+    expect(childLoader).toHaveBeenCalledTimes(2)
+  })
+
+  test('reloads stale ancestor loader when its own path param changes', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const parentLoader = vi.fn(() => ({ ok: true }))
+    const childLoader = vi.fn(() => ({ ok: true }))
+
+    const orgRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/orgs/$orgId',
+      loader: parentLoader,
+      staleTime: 0,
+      gcTime: 0,
+    })
+
+    const userRoute = new BaseRoute({
+      getParentRoute: () => orgRoute,
+      path: '/users/$userId',
+      loader: childLoader,
+      staleTime: 0,
+      gcTime: 0,
+    })
+
+    const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({
+      to: '/orgs/$orgId/users/$userId',
+      params: { orgId: 'acme', userId: 'u1' },
+    })
+    expect(parentLoader).toHaveBeenCalledTimes(1)
+    expect(childLoader).toHaveBeenCalledTimes(1)
+
+    await router.navigate({
+      to: '/orgs/$orgId/users/$userId',
+      params: { orgId: 'beta', userId: 'u2' },
+    })
+
+    expect(parentLoader).toHaveBeenCalledTimes(2)
+    expect(childLoader).toHaveBeenCalledTimes(2)
+  })
+
+  test('revalidates stale loaders on explicit same-location router.load()', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const loader = vi.fn(() => ({ ok: true }))
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader,
+      staleTime: 0,
+      gcTime: 0,
+      loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+        page: search['page'],
+      }),
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/foo', search: { page: '1', filter: 'a' } })
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1)
+    await router.load()
+    await Promise.resolve()
+
+    expect(loader).toHaveBeenCalledTimes(2)
+  })
+
+  test('supports object-form loader handler', async () => {
+    const handler = vi.fn(() => ({ ok: true }))
+    const router = setup({
+      loader: {
+        handler,
+      } satisfies LoaderEntry,
+    })
+
+    await router.navigate({ to: '/foo' })
+
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(router.state.matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '/foo/foo',
+          loaderData: { ok: true },
+        }),
+      ]),
+    )
+  })
+
+  test('reloads stale loaders in the background by default', async () => {
+    const { loader, resolveStaleReload } = createControlledStaleReload()
+    const router = setup({ loader, staleTime: 0 })
+
+    await expectBackgroundStaleReloadBehavior(
+      router,
+      loader,
+      resolveStaleReload,
+    )
+  })
+
+  test('blocks stale reloads when loader staleReloadMode is blocking', async () => {
+    const { loader, resolveStaleReload } = createControlledStaleReload()
+    const router = setup({
+      staleTime: 0,
+      loader: {
+        handler: loader,
+        staleReloadMode: 'blocking',
+      } satisfies LoaderEntry,
+    })
+
+    await expectBlockingStaleReloadBehavior(router, loader, resolveStaleReload)
+  })
+
+  test('blocks stale reloads when defaultStaleReloadMode is blocking', async () => {
+    const { loader, resolveStaleReload } = createControlledStaleReload()
+    const router = setup({
+      loader,
+      staleTime: 0,
+      defaultStaleReloadMode: 'blocking',
+    })
+
+    await expectBlockingStaleReloadBehavior(router, loader, resolveStaleReload)
+  })
+
+  test('loader staleReloadMode overrides defaultStaleReloadMode', async () => {
+    const { loader, resolveStaleReload } = createControlledStaleReload()
+    const router = setup({
+      staleTime: 0,
+      defaultStaleReloadMode: 'blocking',
+      loader: {
+        handler: loader,
+        staleReloadMode: 'background',
+      } satisfies LoaderEntry,
+    })
+
+    await expectBackgroundStaleReloadBehavior(
+      router,
+      loader,
+      resolveStaleReload,
+    )
+  })
 })
 
 test('cancelMatches after pending timeout', async () => {

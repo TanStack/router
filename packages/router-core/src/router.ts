@@ -12,6 +12,7 @@ import {
   functionalUpdate,
   isDangerousProtocol,
   last,
+  nullReplaceEqualDeep,
   replaceEqualDeep,
 } from './utils'
 import {
@@ -71,6 +72,7 @@ import type {
   AnyContext,
   AnyRoute,
   AnyRouteWithContext,
+  LoaderStaleReloadMode,
   MakeRemountDepsOptionsUnion,
   RouteContextOptions,
   RouteLike,
@@ -237,6 +239,15 @@ export interface RouterOptions<
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#key-options)
    */
   defaultStaleTime?: number
+  /**
+   * The default stale reload mode a route loader should use if no `loader.staleReloadMode` is provided.
+   *
+   * `'background'` preserves the current stale-while-revalidate behavior.
+   * `'blocking'` waits for stale loader reloads to complete before resolving navigation.
+   *
+   * @default 'background'
+   */
+  defaultStaleReloadMode?: LoaderStaleReloadMode
   /**
    * The default `preloadStaleTime` a route should use if no preloadStaleTime is provided.
    *
@@ -789,6 +800,8 @@ export interface ServerSsr {
   isDehydrated: () => boolean
   isSerializationFinished: () => boolean
   onRenderFinished: (listener: () => void) => void
+  setRenderFinished: () => void
+  cleanup: () => void
   onSerializationFinished: (listener: () => void) => void
   dehydrate: () => Promise<void>
   takeBufferedScripts: () => RouterManagedTag | undefined
@@ -1295,7 +1308,7 @@ export class RouterCore<
           pathname: decodePath(pathname).path,
           external: false,
           searchStr,
-          search: replaceEqualDeep(
+          search: nullReplaceEqualDeep(
             previousLocation?.search,
             parsedSearch,
           ) as any,
@@ -1324,7 +1337,10 @@ export class RouterCore<
         pathname: decodePath(url.pathname).path,
         external: !!this.rewrite && url.origin !== this.origin,
         searchStr,
-        search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
+        search: nullReplaceEqualDeep(
+          previousLocation?.search,
+          parsedSearch,
+        ) as any,
         hash: decodePath(url.hash.slice(1)).path,
         state: replaceEqualDeep(previousLocation?.state, state),
       }
@@ -1549,8 +1565,8 @@ export class RouterCore<
           params: previousMatch?.params ?? routeParams,
           _strictParams: strictParams,
           search: previousMatch
-            ? replaceEqualDeep(previousMatch.search, preMatchSearch)
-            : replaceEqualDeep(existingMatch.search, preMatchSearch),
+            ? nullReplaceEqualDeep(previousMatch.search, preMatchSearch)
+            : nullReplaceEqualDeep(existingMatch.search, preMatchSearch),
           _strictSearch: strictMatchSearch,
         }
       } else {
@@ -1572,7 +1588,7 @@ export class RouterCore<
           pathname: interpolatedPath,
           updatedAt: Date.now(),
           search: previousMatch
-            ? replaceEqualDeep(previousMatch.search, preMatchSearch)
+            ? nullReplaceEqualDeep(previousMatch.search, preMatchSearch)
             : preMatchSearch,
           _strictSearch: strictMatchSearch,
           searchError: undefined,
@@ -1630,7 +1646,7 @@ export class RouterCore<
       // Update the match's params
       const previousMatch = previousMatchesByRouteId.get(match.routeId)
       match.params = previousMatch
-        ? replaceEqualDeep(previousMatch.params, routeParams)
+        ? nullReplaceEqualDeep(previousMatch.params, routeParams)
         : routeParams
 
       if (!existingMatch) {
@@ -1729,7 +1745,10 @@ export class RouterCore<
       params = lastStateMatch.params
     } else {
       // Parse params through the route chain
-      const strictParams: Record<string, unknown> = { ...routeParams }
+      const strictParams: Record<string, unknown> = Object.assign(
+        Object.create(null),
+        routeParams,
+      )
       for (const route of matchedRoutes) {
         try {
           extractStrictParams(
@@ -1836,7 +1855,10 @@ export class RouterCore<
       // From search should always use the current location
       const fromSearch = lightweightResult.search
       // Same with params. It can't hurt to provide as many as possible
-      const fromParams = { ...lightweightResult.params }
+      const fromParams = Object.assign(
+        Object.create(null),
+        lightweightResult.params,
+      )
 
       // Resolve the next to
       // ensure this includes the basePath if set
@@ -1847,7 +1869,7 @@ export class RouterCore<
       // Resolve the next params
       const nextParams =
         dest.params === false || dest.params === null
-          ? {}
+          ? Object.create(null)
           : (dest.params ?? true) === true
             ? fromParams
             : Object.assign(
@@ -1933,7 +1955,7 @@ export class RouterCore<
       })
 
       // Replace the equal deep
-      nextSearch = replaceEqualDeep(fromSearch, nextSearch)
+      nextSearch = nullReplaceEqualDeep(fromSearch, nextSearch)
 
       // Stringify the next search
       const searchStr = this.options.stringifySearch(nextSearch)
@@ -2013,7 +2035,7 @@ export class RouterCore<
       let maskedNext = maskedDest ? build(maskedDest) : undefined
 
       if (!maskedNext) {
-        const params = {}
+        const params = Object.create(null)
 
         if (this.options.routeMasks) {
           const match = findFlatMatch<RouteMask<TRouteTree>>(
@@ -2032,7 +2054,7 @@ export class RouterCore<
             // Otherwise, use the matched params or the provided params value
             const nextParams =
               maskParams === false || maskParams === null
-                ? {}
+                ? Object.create(null)
                 : (maskParams ?? true) === true
                   ? params
                   : Object.assign(params, functionalUpdate(maskParams, params))
@@ -2098,9 +2120,10 @@ export class RouterCore<
     const isSameUrl =
       trimPathRight(this.latestLocation.href) === trimPathRight(next.href)
 
-    const previousCommitPromise = this.commitLocationPromise
+    let previousCommitPromise = this.commitLocationPromise
     this.commitLocationPromise = createControlledPromise<void>(() => {
       previousCommitPromise?.resolve()
+      previousCommitPromise = undefined
     })
 
     // Don't commit to history if nothing changed
@@ -2364,6 +2387,7 @@ export class RouterCore<
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
     let loadPromise: Promise<void>
+    const previousLocation = this.state.resolvedLocation ?? this.state.location
 
     // eslint-disable-next-line prefer-const
     loadPromise = new Promise<void>((resolve) => {
@@ -2394,6 +2418,7 @@ export class RouterCore<
           await loadMatches({
             router: this,
             sync: opts?.sync,
+            forceStaleReload: previousLocation.href === next.href,
             matches: this.state.pendingMatches as Array<AnyRouteMatch>,
             location: next,
             updateMatch: this.updateMatch,
@@ -3011,7 +3036,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesById: Record<string, TRouteLike>
   processedTree: ProcessedTree<any, any, any>
 }) {
-  const routeParams: Record<string, string> = {}
+  const routeParams: Record<string, string> = Object.create(null)
   const trimmedPath = trimPathRight(pathname)
 
   let foundRoute: TRouteLike | undefined = undefined
@@ -3020,7 +3045,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   if (match) {
     foundRoute = match.route
     Object.assign(routeParams, match.rawParams) // Copy params, because they're cached
-    parsedParams = Object.assign({}, match.parsedParams)
+    parsedParams = Object.assign(Object.create(null), match.parsedParams)
   }
 
   const matchedRoutes = match?.branch || [routesById[rootRouteId]!]

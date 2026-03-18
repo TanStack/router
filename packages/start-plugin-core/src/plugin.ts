@@ -5,6 +5,7 @@ import { join } from 'pathe'
 import { escapePath } from 'tinyglobby'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
+import { bundlerOptionsKey, getBundlerOptions } from './utils'
 import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import { devServerPlugin } from './dev-server-plugin/plugin'
@@ -244,7 +245,7 @@ export function TanStackStartVitePluginCore(
             [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
               build: {
-                rollupOptions: {
+                [bundlerOptionsKey]: {
                   input: {
                     main: ENTRY_POINTS.client,
                   },
@@ -264,10 +265,12 @@ export function TanStackStartVitePluginCore(
               consumer: 'server',
               build: {
                 ssr: true,
-                rollupOptions: {
+                [bundlerOptionsKey]: {
                   input:
-                    viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
-                      ?.build?.rollupOptions?.input ?? serverAlias,
+                    getBundlerOptions(
+                      viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
+                        ?.build,
+                    )?.input ?? serverAlias,
                 },
                 outDir: getServerOutputDirectory(viteConfig),
                 commonjsOptions: {
@@ -305,7 +308,6 @@ export function TanStackStartVitePluginCore(
             // This is not the same as injecting environment variables.
 
             ...defineReplaceEnv('TSS_SERVER_FN_BASE', TSS_SERVER_FN_BASE),
-            ...defineReplaceEnv('TSS_CLIENT_OUTPUT_DIR', getClientOutputDirectory(viteConfig)),
             ...defineReplaceEnv('TSS_ROUTER_BASEPATH', startConfig.router.basepath),
             ...(command === 'serve' ? defineReplaceEnv('TSS_SHELL', startConfig.spa?.enabled ? 'true' : 'false') : {}),
             ...defineReplaceEnv('TSS_DEV_SERVER', command === 'serve' ? 'true' : 'false'),

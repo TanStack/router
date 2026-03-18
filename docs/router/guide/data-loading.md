@@ -57,7 +57,7 @@ The router cache is built-in and is as easy as returning data from any route's `
 
 ## Route `loader`s
 
-Route `loader` functions are called when a route match is loaded. They are called with a single parameter which is an object containing many helpful properties. We'll go over those in a bit, but first, let's look at an example of a route `loader` function:
+Route `loader` functions are called when a route match is loaded. They are called with a single parameter which is an object containing many helpful properties. We'll go over those in a bit, but first, let's look at the two supported `loader` forms:
 
 ```tsx
 // src/routes/posts.tsx
@@ -65,6 +65,17 @@ export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
 })
 ```
+
+```tsx
+// src/routes/posts.tsx
+export const Route = createFileRoute('/posts')({
+  loader: {
+    handler: () => fetchPosts(),
+  },
+})
+```
+
+Use the object form when you want to configure loader-specific behavior such as `staleReloadMode`.
 
 ## `loader` Parameters
 
@@ -151,12 +162,16 @@ To control router dependencies and "freshness", TanStack Router provides a pleth
   - The number of milliseconds that a route's data should be kept in the cache before being garbage collected.
 - `routeOptions.shouldReload`
   - A function that receives the same `beforeLoad` and `loaderContext` parameters and returns a boolean indicating if the route should reload. This offers one more level of control over when a route should reload beyond `staleTime` and `loaderDeps` and can be used to implement patterns similar to Remix's `shouldLoad` option.
+- `routeOptions.loader.staleReloadMode`
+- `routerOptions.defaultStaleReloadMode`
+  - Controls what happens when a matched route already has stale successful data. Use `'background'` for stale-while-revalidate, or `'blocking'` to wait for the stale loader reload to finish before continuing.
 
 ### ⚠️ Some Important Defaults
 
-- By default, the `staleTime` is set to `0`, meaning that the route's data will always be considered stale and will always be reloaded in the background when the route is rematched.
+- By default, the `staleTime` is set to `0`, meaning that the route's data is immediately considered stale. Stale matches are reloaded in the background when the route is entered again, when its loader key changes (path params used by the route or `loaderDeps`), or when `router.load()` is called explicitly.
 - By default, a previously preloaded route is considered fresh for **30 seconds**. This means if a route is preloaded, then preloaded again within 30 seconds, the second preload will be ignored. This prevents unnecessary preloads from happening too frequently. **When a route is loaded normally, the standard `staleTime` is used.**
 - By default, the `gcTime` is set to **30 minutes**, meaning that any route data that has not been accessed in 30 minutes will be garbage collected and removed from the cache.
+- By default, `staleReloadMode` is `'background'`, so stale successful matches keep rendering with their existing `loaderData` while the loader revalidates in the background.
 - `router.invalidate()` will force all active routes to reload their loaders immediately and mark every cached route's data as stale.
 
 ### Using `loaderDeps` to access search params
@@ -201,7 +216,7 @@ export const Route = createFileRoute('/posts')({
 
 ### Using `staleTime` to control how long data is considered fresh
 
-By default, `staleTime` for navigations is set to `0`ms (and 30 seconds for preloads) which means that the route's data will always be considered stale and will always be reloaded in the background when the route is matched and navigated to.
+By default, `staleTime` for navigations is set to `0`ms (and 30 seconds for preloads) which means that the route's data will always be considered stale. When a stale route is entered again, its loader key changes, or `router.load()` is called explicitly, the route will reload in the background.
 
 **This is a good default for most use cases, but you may find that some route data is more static or potentially expensive to load.** In these cases, you can use the `staleTime` option to control how long the route's data is considered fresh for navigations. Let's take a look at an example:
 
@@ -216,9 +231,36 @@ export const Route = createFileRoute('/posts')({
 
 By passing `10_000` to the `staleTime` option, we are telling the router to consider the route's data fresh for 10 seconds. This means that if the user navigates to `/posts` from `/about` within 10 seconds of the last loader result, the route's data will not be reloaded. If the user then navigates to `/posts` from `/about` after 10 seconds, the route's data will be reloaded **in the background**.
 
-## Turning off stale-while-revalidate caching
+## Choosing background vs blocking stale reloads
 
-To disable stale-while-revalidate caching for a route, set the `staleTime` option to `Infinity`:
+By default, stale successful matches use stale-while-revalidate behavior. That means the router can render with the existing `loaderData` immediately and then refresh it in the background.
+
+If you want a specific loader to wait for a stale reload to finish before continuing, use the object form and set `staleReloadMode: 'blocking'`:
+
+```tsx
+// /routes/posts.tsx
+export const Route = createFileRoute('/posts')({
+  loader: {
+    handler: () => fetchPosts(),
+    staleReloadMode: 'blocking',
+  },
+})
+```
+
+You can also change the default for the entire router:
+
+```tsx
+const router = createRouter({
+  routeTree,
+  defaultStaleReloadMode: 'blocking',
+})
+```
+
+Use `'background'` when showing stale data during revalidation is acceptable. Use `'blocking'` when you want stale matches to behave more like a fresh load and wait for the new loader result.
+
+## Turning off automatic stale reloads
+
+To disable automatic stale reloads for a route, set the `staleTime` option to `Infinity`:
 
 ```tsx
 // /routes/posts.tsx
@@ -236,6 +278,11 @@ const router = createRouter({
   defaultStaleTime: Infinity,
 })
 ```
+
+This differs from `staleReloadMode: 'blocking'`:
+
+- `staleTime: Infinity` prevents the route from becoming stale in the first place
+- `staleReloadMode: 'blocking'` still allows stale reloads, but waits for them instead of doing them in the background
 
 ## Using `shouldReload` and `gcTime` to opt-out of caching
 

@@ -896,7 +896,7 @@ function extractParams<T extends RouteLike>(
 ): [rawParams: Record<string, string>, state: ParamExtractionState] {
   const list = buildBranch(leaf.node)
   let nodeParts: Array<string> | null = null
-  const rawParams: Record<string, string> = {}
+  const rawParams: Record<string, string> = Object.create(null)
   /** which segment of the path we're currently processing */
   let partIndex = leaf.extract?.part ?? 0
   /** which node of the route tree branch we're currently processing */
@@ -1330,8 +1330,8 @@ function getNodeMatch<T extends RouteLike>(
       sliceIndex += parts[i]!.length
     }
     const splat = sliceIndex === path.length ? '/' : path.slice(sliceIndex)
-    bestFuzzy.rawParams ??= {}
-    bestFuzzy.rawParams['**'] = decodeURIComponent(splat)
+    bestFuzzy.rawParams ??= Object.create(null)
+    bestFuzzy.rawParams!['**'] = decodeURIComponent(splat)
     return bestFuzzy
   }
 
@@ -1348,7 +1348,11 @@ function validateMatchParams<T extends RouteLike>(
     frame.rawParams = rawParams
     frame.extract = state
     const parsed = frame.node.parse!(rawParams)
-    frame.parsedParams = Object.assign({}, frame.parsedParams, parsed)
+    frame.parsedParams = Object.assign(
+      Object.create(null),
+      frame.parsedParams,
+      parsed,
+    )
     return true
   } catch {
     return null
