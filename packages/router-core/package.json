@@ -172,7 +172,7 @@
   },
   "devDependencies": {
     "@tanstack/intent": "^0.0.14",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.27.4",
     "vite": "*"
   },
   "bin": {
