@@ -5,6 +5,8 @@ import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+const RELS_TO_DEDUPE = new Set(['canonical'])
+
 export const useTags = () => {
   const router = useRouter()
 
@@ -76,7 +78,6 @@ export const useTags = () => {
   const links = useRouterState({
     select: (state) => {
       const constructedLinks: Array<RouterManagedTag> = []
-      const relsToDedupe = new Set(['canonical'])
       const linksByRel = new Set<string>()
 
       for (let i = state.matches.length - 1; i >= 0; i--) {
@@ -85,10 +86,12 @@ export const useTags = () => {
         if (!matchLinks) continue
 
         for (let j = matchLinks.length - 1; j >= 0; j--) {
-          const link = matchLinks[j]!
+          const link = matchLinks[j]
+          if (!link) continue
+
           if (link.rel) {
             const rel = link.rel.toLowerCase()
-            if (relsToDedupe.has(rel)) {
+            if (RELS_TO_DEDUPE.has(rel)) {
               if (linksByRel.has(rel)) {
                 continue
               }
@@ -106,7 +109,7 @@ export const useTags = () => {
       }
 
       constructedLinks.reverse()
-      return constructedLinks satisfies Array<RouterManagedTag>
+      return constructedLinks
     },
   })
 
