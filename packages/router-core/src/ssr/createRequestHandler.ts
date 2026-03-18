@@ -36,7 +36,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
       const { url } = getNormalizedURL(request.url, 'http://localhost')
-      const origin = getOrigin(request)
+      const origin = url.origin
       const href = url.href.replace(url.origin, '')
 
       // Create a history for the router
