@@ -59,11 +59,6 @@ overrides:
   '@tanstack/start-static-server-functions': workspace:*
   '@tanstack/nitro-v2-vite-plugin': workspace:*
 
-patchedDependencies:
-  '@tanstack/vite-config@0.5.1':
-    hash: 015a1bc786178cdfafc3af6960d9d7b6e6054e3e087d4757a72874ea57445da6
-    path: patches/@tanstack__vite-config@0.5.1.patch
-
 importers:
 
   .:
@@ -93,8 +88,8 @@ importers:
         specifier: ^5.90.19
         version: 5.90.19(react@19.2.3)
       '@tanstack/vite-config':
-        specifier: 0.5.1
-        version: 0.5.1(patch_hash=015a1bc786178cdfafc3af6960d9d7b6e6054e3e087d4757a72874ea57445da6)(@types/node@25.0.9)(typescript@5.9.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 0.5.2
+        version: 0.5.2(@types/node@25.0.9)(typescript@5.9.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -18161,8 +18156,8 @@ packages:
   '@tanstack/virtual-core@3.13.13':
     resolution: {integrity: sha512-uQFoSdKKf5S8k51W5t7b2qpfkyIbdHMzAn+AMQvHPxKUPeo1SsGaA4JRISQT87jm28b7z8OEqPcg1IOZagQHcA==}
 
-  '@tanstack/vite-config@0.5.1':
-    resolution: {integrity: sha512-IBMlGyJ9QLuSD3jgJXCAdgNHrZjUFpAfVScIYMtH8cKJxZiNoRFtA+gVS+EoEQqSJonho8EFT9Nv8d3eQwttMg==}
+  '@tanstack/vite-config@0.5.2':
+    resolution: {integrity: sha512-cTswDmoTn5UZA5pV2z/IWhGYgb8NS0zPRYYLv5q9JxHY4WxL/l/Riy6Aq76QttH8w6IHAIO/ZGwHBfF/OV0Kcw==}
     engines: {node: '>=18'}
     peerDependencies:
       vite: ^8.0.0
@@ -30923,7 +30918,7 @@ snapshots:
 
   '@tanstack/virtual-core@3.13.13': {}
 
-  '@tanstack/vite-config@0.5.1(patch_hash=015a1bc786178cdfafc3af6960d9d7b6e6054e3e087d4757a72874ea57445da6)(@types/node@25.0.9)(typescript@5.9.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
+  '@tanstack/vite-config@0.5.2(@types/node@25.0.9)(typescript@5.9.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
       vite: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-dts: 4.2.3(@types/node@25.0.9)(rollup@4.55.3)(typescript@5.9.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
