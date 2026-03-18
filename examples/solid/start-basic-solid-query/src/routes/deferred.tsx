@@ -46,7 +46,12 @@ function DeferredQuery() {
       <h1>Deferred Query</h1>
       <div>Status: {deferredQuery.data?.status ?? 'loading...'}</div>
       <div>Message: {deferredQuery.data?.message ?? ''}</div>
-      <div>Time: {deferredQuery.data ? new Date(deferredQuery.data.time).toISOString() : ''}</div>
+      <div>
+        Time:{' '}
+        {deferredQuery.data
+          ? new Date(deferredQuery.data.time).toISOString()
+          : ''}
+      </div>
     </div>
   )
 }
