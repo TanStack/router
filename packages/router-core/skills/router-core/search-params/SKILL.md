@@ -38,11 +38,11 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
-  page: fallback(z.number(), 1).default(1),
-  filter: fallback(z.string(), '').default(''),
-  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').default(
+  page: z.number().default(1).catch(1),
+  filter: z.string().default(''),
+  sort: z.enum(['newest', 'oldest', 'price']).default(
     'newest',
-  ),
+  ).catch('newest'),
 })
 
 export const Route = createFileRoute('/products')({
