@@ -13,7 +13,6 @@ import {
 import {
   attachRouterServerSsrUtils,
   getNormalizedURL,
-  getOrigin,
 } from '@tanstack/router-core/ssr/server'
 import { runWithStartContext } from '@tanstack/start-storage-context'
 import { requestHandler } from './request-response'

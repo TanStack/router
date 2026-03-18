@@ -1,10 +1,6 @@
 import { createMemoryHistory } from '@tanstack/history'
 import { mergeHeaders } from './headers'
-import {
-  attachRouterServerSsrUtils,
-  getNormalizedURL,
-  getOrigin,
-} from './ssr-server'
+import { attachRouterServerSsrUtils, getNormalizedURL } from './ssr-server'
 import type { HandlerCallback } from './handlerCallback'
 import type { AnyHeaders } from './headers'
 import type { AnyRouter } from '../router'
