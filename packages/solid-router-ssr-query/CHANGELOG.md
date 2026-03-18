@@ -1,5 +1,11 @@
 # @tanstack/solid-router-ssr-query
 
+## 2.0.0-alpha.3
+
+### Patch Changes
+
+- fix: use solid v2 compatible solid-query ([#6938](https://github.com/TanStack/router/pull/6938))
+
 ## 2.0.0-alpha.2
 
 ### Patch Changes
