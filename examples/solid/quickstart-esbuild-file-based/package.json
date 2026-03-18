@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/router-plugin": "^1.166.12",
-    "@tanstack/solid-router": "^2.0.0-alpha.3",
+    "@tanstack/solid-router": "^2.0.0-alpha.4",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.2",
     "redaxios": "^0.5.1",
     "solid-js": "2.0.0-beta.3",

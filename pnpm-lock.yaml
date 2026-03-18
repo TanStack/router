@@ -9733,7 +9733,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9773,7 +9773,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9816,7 +9816,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9859,7 +9859,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9896,7 +9896,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9930,7 +9930,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9970,7 +9970,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10016,7 +10016,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3))(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10059,7 +10059,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3))(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10099,7 +10099,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       compression:
         specifier: ^1.8.0
@@ -10142,7 +10142,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10200,7 +10200,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10243,7 +10243,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10283,7 +10283,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10323,7 +10323,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       solid-js:
         specifier: 2.0.0-beta.3
@@ -10357,7 +10357,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10397,7 +10397,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10446,7 +10446,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3))(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10495,7 +10495,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3))(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10541,7 +10541,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10581,7 +10581,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10618,7 +10618,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10652,7 +10652,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10683,7 +10683,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10717,7 +10717,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10757,7 +10757,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10794,7 +10794,7 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10858,7 +10858,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10895,7 +10895,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10938,7 +10938,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3))(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10975,7 +10975,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11018,7 +11018,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11067,7 +11067,7 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11125,7 +11125,7 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11180,7 +11180,7 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11226,7 +11226,7 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11272,7 +11272,7 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11315,7 +11315,7 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11364,7 +11364,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0(@tanstack/solid-query@https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3))(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11413,7 +11413,7 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11471,7 +11471,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.14(csstype@3.2.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11541,7 +11541,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11602,7 +11602,7 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11651,7 +11651,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.14(csstype@3.2.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11697,7 +11697,7 @@ importers:
         specifier: https://pkg.pr.new/@tanstack/solid-query@e7415f0
         version: https://pkg.pr.new/@tanstack/solid-query@e7415f0(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11746,7 +11746,7 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11789,7 +11789,7 @@ importers:
         specifier: ^2.48.1
         version: 2.48.1
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11832,7 +11832,7 @@ importers:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(@solidjs/signals@0.13.3)(solid-js@2.0.0-beta.3)
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11884,7 +11884,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11921,7 +11921,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11964,7 +11964,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^2.0.0-alpha.3
+        specifier: ^2.0.0-alpha.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^

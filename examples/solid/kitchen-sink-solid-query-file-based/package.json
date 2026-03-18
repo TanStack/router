@@ -13,7 +13,7 @@
     "@tanstack/router-plugin": "^1.166.12",
     "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@e7415f0",
     "@tanstack/solid-query-devtools": "https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0",
-    "@tanstack/solid-router": "^2.0.0-alpha.3",
+    "@tanstack/solid-router": "^2.0.0-alpha.4",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.2",
     "immer": "^10.1.1",
     "redaxios": "^0.5.1",
