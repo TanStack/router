@@ -46,7 +46,9 @@ import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
 import type { UseRouteContextRoute } from './useRouteContext'
-import type { LinkComponentRoute } from './link'
+import type { LinkComponent, LinkComponentRoute, CreateLinkProps } from './link'
+import type { Constrain } from '@tanstack/router-core'
+import type { ReactNode } from 'react'
 
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
@@ -76,6 +78,9 @@ declare module '@tanstack/router-core' {
     useLoaderData: UseLoaderDataRoute<TId>
     useNavigate: () => UseNavigateResult<TFullPath>
     Link: LinkComponentRoute<TFullPath>
+    createLink: <const TComp>(
+      Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
+    ) => LinkComponent<TComp, TFullPath>
   }
 }
 
@@ -163,6 +168,17 @@ export class RouteApi<
     }) as unknown as LinkComponentRoute<
       RouteTypesById<TRouter, TId>['fullPath']
     >
+
+  createLink<const TComp>(
+    Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
+  ): LinkComponent<TComp, RouteTypesById<TRouter, TId>['fullPath']> {
+    const id = this.id
+    return React.forwardRef(function CreatedLink(props: any, ref) {
+      const router = useRouter()
+      const from = router.routesById[id as string].fullPath
+      return <Link {...props} _asChild={Comp} from={from} ref={ref} />
+    }) as any
+  }
 }
 
 export class Route<
@@ -308,6 +324,15 @@ export class Route<
       return <Link ref={ref} from={this.fullPath as never} {...props} />
     },
   ) as unknown as LinkComponentRoute<TFullPath>
+
+  createLink<const TComp>(
+    Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
+  ): LinkComponent<TComp, TFullPath> {
+    const from = this.fullPath
+    return React.forwardRef(function CreatedLink(props: any, ref) {
+      return <Link {...props} _asChild={Comp} from={from} ref={ref} />
+    }) as any
+  }
 }
 
 /**
@@ -580,6 +605,15 @@ export class RootRoute<
       return <Link ref={ref} from={this.fullPath} {...props} />
     },
   ) as unknown as LinkComponentRoute<'/'>
+
+  createLink<const TComp>(
+    Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
+  ): LinkComponent<TComp, '/'> {
+    const from = this.fullPath
+    return React.forwardRef(function CreatedLink(props: any, ref) {
+      return <Link {...props} _asChild={Comp} from={from} ref={ref} />
+    }) as any
+  }
 }
 
 /**
