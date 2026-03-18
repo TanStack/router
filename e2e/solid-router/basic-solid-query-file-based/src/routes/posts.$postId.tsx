@@ -1,4 +1,8 @@
-import { createFileRoute, ErrorComponent, useRouter } from '@tanstack/solid-router'
+import {
+  createFileRoute,
+  ErrorComponent,
+  useRouter,
+} from '@tanstack/solid-router'
 import { useQuery } from '@tanstack/solid-query'
 import { createEffect, createMemo } from 'solid-js'
 import { PostNotFoundError } from '../posts'
