@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 2.0.0-alpha.4
+
+### Patch Changes
+
+- Bump to solid js 2.0.0-beta.3 ([#6943](https://github.com/TanStack/router/pull/6943))
+
 ## 2.0.0-alpha.3
 
 ### Patch Changes
