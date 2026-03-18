@@ -1681,8 +1681,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.3)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       tailwindcss:
-        specifier: 4.1.18
-        version: 4.1.18
+        specifier: ^4.2.2
+        version: 4.2.2
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -7575,8 +7575,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.3)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       tailwindcss:
-        specifier: 4.1.18
-        version: 4.1.18
+        specifier: ^4.2.2
+        version: 4.2.2
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -7812,8 +7812,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.3)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       tailwindcss:
-        specifier: 4.1.18
-        version: 4.1.18
+        specifier: ^4.2.2
+        version: 4.2.2
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -7932,8 +7932,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.3)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       tailwindcss:
-        specifier: 4.1.18
-        version: 4.1.18
+        specifier: ^4.2.2
+        version: 4.2.2
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -8480,8 +8480,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.3)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       tailwindcss:
-        specifier: 4.1.18
-        version: 4.1.18
+        specifier: ^4.2.2
+        version: 4.2.2
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -8532,8 +8532,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.8)
       tailwindcss:
-        specifier: 4.1.18
-        version: 4.1.18
+        specifier: ^4.2.2
+        version: 4.2.2
       typescript:
         specifier: ^5.6.2
         version: 5.8.2
@@ -10997,8 +10997,8 @@ importers:
         specifier: 25.0.9
         version: 25.0.9
       tailwindcss:
-        specifier: 4.1.18
-        version: 4.1.18
+        specifier: ^4.2.2
+        version: 4.2.2
       typescript:
         specifier: ^5.6.2
         version: 5.8.2
