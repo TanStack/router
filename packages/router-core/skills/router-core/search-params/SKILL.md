@@ -23,7 +23,7 @@ sources:
 
 TanStack Router treats search params as JSON-first application state. They are automatically parsed from the URL into structured objects (numbers, booleans, arrays, nested objects) and validated via `validateSearch` on each route.
 
-> **CRITICAL**: When using `zodValidator()`, use `fallback()` from `@tanstack/zod-adapter`, NOT zod's `.catch()`. Using `.catch()` with the zod adapter makes the output type `unknown`, destroying type safety. This does not apply to Valibot or ArkType (which use their own fallback mechanisms).
+> **CRITICAL**: When using `zodValidator()` and Zod v3, use `fallback()` from `@tanstack/zod-adapter`, NOT zod's `.catch()`. Using `.catch()` with the zod adapter makes the output type `unknown`, destroying type safety. This does not apply to Valibot or ArkType (which use their own fallback mechanisms). It also does not apply to Zod v4, which should use `.catch()` and not use the `zodValidator()`.
 > **CRITICAL**: Types are fully inferred. Never annotate the return of `useSearch()`.
 
 ## Setup: Zod Adapter (Recommended)
@@ -35,7 +35,6 @@ npm install zod @tanstack/zod-adapter
 ```tsx
 // src/routes/products.tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { zodValidator, fallback } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
@@ -47,7 +46,7 @@ const productSearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/products')({
-  validateSearch: zodValidator(productSearchSchema),
+  validateSearch: productSearchSchema,
   component: ProductsPage,
 })
 
@@ -168,15 +167,14 @@ Parent route search params are automatically merged into child routes:
 ```tsx
 // src/routes/shop.tsx — parent defines shared params
 import { createFileRoute } from '@tanstack/react-router'
-import { zodValidator, fallback } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const shopSearchSchema = z.object({
-  currency: fallback(z.enum(['USD', 'EUR']), 'USD').default('USD'),
+  currency: z.enum(['USD', 'EUR']).default('USD').catch('USD'),
 })
 
 export const Route = createFileRoute('/shop')({
-  validateSearch: zodValidator(shopSearchSchema),
+  validateSearch: shopSearchSchema,
 })
 ```
 
@@ -201,7 +199,6 @@ function ShopProducts() {
 
 ```tsx
 import { createRootRoute, retainSearchParams } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const rootSearchSchema = z.object({
@@ -209,7 +206,7 @@ const rootSearchSchema = z.object({
 })
 
 export const Route = createRootRoute({
-  validateSearch: zodValidator(rootSearchSchema),
+  validateSearch: rootSearchSchema,
   search: {
     middlewares: [retainSearchParams(['debug'])],
   },
@@ -220,7 +217,6 @@ export const Route = createRootRoute({
 
 ```tsx
 import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const defaults = { sort: 'newest', page: 1 }
@@ -231,7 +227,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/items')({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   search: {
     middlewares: [stripSearchParams(defaults)],
   },
@@ -242,13 +238,12 @@ export const Route = createFileRoute('/items')({
 
 ```tsx
 export const Route = createFileRoute('/search')({
-  validateSearch: zodValidator(
+  validateSearch:
     z.object({
       retainMe: z.string().optional(),
       arrayWithDefaults: z.string().array().default(['foo', 'bar']),
       required: z.string(),
     }),
-  ),
   search: {
     middlewares: [
       retainSearchParams(['retainMe']),
@@ -281,7 +276,7 @@ const router = createRouter({
 
 ```tsx
 export const Route = createFileRoute('/products')({
-  validateSearch: zodValidator(productSearchSchema),
+  validateSearch: productSearchSchema,
   // Pick ONLY the params the loader needs — not the entire search object
   loaderDeps: ({ search }) => ({ page: search.page }),
   loader: async ({ deps }) => {
@@ -292,7 +287,7 @@ export const Route = createFileRoute('/products')({
 
 ## Common Mistakes
 
-### 1. HIGH: Using zod `.catch()` with `zodValidator()` instead of adapter `fallback()`
+### 1. HIGH: Using zod v3's `.catch()` with `zodValidator()` instead of adapter `fallback()`
 
 ```tsx
 // WRONG — .catch() with zodValidator makes the type unknown
@@ -303,6 +298,8 @@ validateSearch: zodValidator(schema) // page is typed as unknown!
 import { fallback } from '@tanstack/zod-adapter'
 const schema = z.object({ page: fallback(z.number(), 1) })
 ```
+
+**Important:** This only applies when using Zod v3, not when using Zod v4. For v4, using `.catch()` is correct.
 
 ### 2. HIGH: Returning entire search object from `loaderDeps`
 
@@ -335,7 +332,7 @@ export const Route = createRootRoute({
 
 // CORRECT — parent must define validateSearch for children to inherit
 export const Route = createRootRoute({
-  validateSearch: zodValidator(globalSearchSchema),
+  validateSearch: globalSearchSchema,
   component: RootComponent,
 })
 ```

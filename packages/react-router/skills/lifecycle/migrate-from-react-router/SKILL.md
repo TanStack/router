@@ -243,14 +243,12 @@ TanStack Router:
 // In the route definition:
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { zodValidator, fallback } from '@tanstack/zod-adapter'
 
 export const Route = createFileRoute('/posts')({
-  validateSearch: zodValidator(
+  validateSearch:
     z.object({
-      page: fallback(z.number(), 1).default(1),
+      page: z.number().default(1).catch(1),
     }),
-  ),
   component: Posts,
 })
 
@@ -441,11 +439,10 @@ const page = Number(searchParams.get('page'))
 
 // CORRECT — TanStack Router pattern, returns typed object
 // Route definition:
-validateSearch: zodValidator(
+validateSearch:
   z.object({
-    page: fallback(z.number(), 1).default(1),
+    page: z.number().default(1).catch(1),
   }),
-)
 
 // Component:
 const { page } = Route.useSearch()
