@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.167.5
+
+### Patch Changes
+
+- chore: bump esbuild to 0.27.4 ([#6975](https://github.com/TanStack/router/pull/6975))
+
 ## 1.167.4
 
 ### Patch Changes
