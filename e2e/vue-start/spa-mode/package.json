@@ -23,9 +23,8 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
-    "vite": "^7.3.1",
-    "@vitejs/plugin-vue": "^6.0.3",
-    "@vitejs/plugin-vue-jsx": "^5.1.2",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite": "^8.0.0",
+    "@vitejs/plugin-vue": "^6.0.5",
+    "@vitejs/plugin-vue-jsx": "^5.1.5"
   }
 }
