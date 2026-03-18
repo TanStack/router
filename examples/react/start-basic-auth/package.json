@@ -30,7 +30,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "dotenv": "^17.2.3",
     "prisma": "^7.0.0",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.2",
     "typescript": "^5.7.2",
     "vite": "^8.0.0"
   }

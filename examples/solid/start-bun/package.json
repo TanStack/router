@@ -21,7 +21,7 @@
     "@tanstack/solid-start": "^1.166.16",
     "@tanstack/router-plugin": "^1.166.13",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
     "@tanstack/eslint-config": "^0.3.2",

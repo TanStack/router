@@ -26,7 +26,7 @@
     "@types/node": "^22.5.4",
     "dotenv": "^17.2.3",
     "prisma": "^7.0.0",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.2",
     "typescript": "^5.7.2",
     "vite": "^8.0.0",
     "vite-plugin-solid": "^2.11.11"

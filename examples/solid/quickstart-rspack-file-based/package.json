@@ -8,12 +8,12 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/postcss": "^4.2.2",
     "@tanstack/solid-router": "^1.167.4",
     "@tanstack/solid-router-devtools": "^1.166.9",
     "postcss": "^8.5.1",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
     "@rsbuild/core": "^1.2.4",

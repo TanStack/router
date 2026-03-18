@@ -17,7 +17,7 @@
     "@tanstack/vue-virtual": "^3.13.0",
     "redaxios": "^0.5.1",
     "vue": "^3.5.16",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
