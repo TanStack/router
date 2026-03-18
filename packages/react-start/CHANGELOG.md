@@ -1,0 +1,102 @@
+# @tanstack/react-start
+
+## 1.166.16
+
+### Patch Changes
+
+- Updated dependencies [[`6651473`](https://github.com/TanStack/router/commit/6651473d028a55c70f3f54af37a12b4379b46813)]:
+  - @tanstack/start-plugin-core@1.167.0
+
+## 1.166.15
+
+### Patch Changes
+
+- Add @tanstack/intent AI agent skills and CLI entry points for Router and Start packages ([#6866](https://github.com/TanStack/router/pull/6866))
+
+- Updated dependencies [[`940151c`](https://github.com/TanStack/router/commit/940151cbed0c76c92a5cf196c0905b17a956ca7e), [`d637152`](https://github.com/TanStack/router/commit/d6371529b5ab09af7d81463a6c4082b092411967)]:
+  - @tanstack/react-router@1.167.4
+  - @tanstack/start-client-core@1.166.12
+  - @tanstack/start-server-core@1.166.12
+  - @tanstack/start-plugin-core@1.166.15
+  - @tanstack/react-start-client@1.166.13
+  - @tanstack/react-start-server@1.166.13
+
+## 1.166.14
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-router@1.167.3
+  - @tanstack/react-start-client@1.166.12
+  - @tanstack/react-start-server@1.166.12
+  - @tanstack/start-client-core@1.166.11
+  - @tanstack/start-plugin-core@1.166.14
+  - @tanstack/start-server-core@1.166.11
+
+## 1.166.13
+
+### Patch Changes
+
+- build: update to vite-config 5.x (rolldown) ([#6926](https://github.com/TanStack/router/pull/6926))
+
+- Updated dependencies [[`838b0eb`](https://github.com/TanStack/router/commit/838b0eb9a8bbbb987a0a6972c1446e01423bbd7b)]:
+  - @tanstack/react-router@1.167.2
+  - @tanstack/react-start-client@1.166.11
+  - @tanstack/react-start-server@1.166.11
+  - @tanstack/router-utils@1.161.6
+  - @tanstack/start-client-core@1.166.10
+  - @tanstack/start-plugin-core@1.166.13
+  - @tanstack/start-server-core@1.166.10
+
+## 1.166.12
+
+### Patch Changes
+
+- fix: build with @tanstack/vite-config 0.4.3 ([#6923](https://github.com/TanStack/router/pull/6923))
+
+- Updated dependencies [[`ef9b241`](https://github.com/TanStack/router/commit/ef9b241f3cfe95cee40daa96da669f0ffd4a971a)]:
+  - @tanstack/react-start-client@1.166.10
+  - @tanstack/react-start-server@1.166.10
+  - @tanstack/start-client-core@1.166.9
+  - @tanstack/start-plugin-core@1.166.12
+  - @tanstack/start-server-core@1.166.9
+  - @tanstack/react-router@1.167.1
+  - @tanstack/router-utils@1.161.5
+
+## 1.166.11
+
+### Patch Changes
+
+- fix: add `xmlns:xhtml` to generated sitemap ([#6920](https://github.com/TanStack/router/pull/6920))
+
+- Updated dependencies [[`bfd6e62`](https://github.com/TanStack/router/commit/bfd6e62780f1cb96c210ae405723c5ebc22b10b0)]:
+  - @tanstack/start-plugin-core@1.166.11
+
+## 1.166.10
+
+### Patch Changes
+
+- Updated dependencies [[`6f297a2`](https://github.com/TanStack/router/commit/6f297a249424c0fd1c1a56aa4fc12c8217be7b6a)]:
+  - @tanstack/react-router@1.167.0
+  - @tanstack/react-start-client@1.166.9
+  - @tanstack/react-start-server@1.166.9
+  - @tanstack/start-client-core@1.166.8
+  - @tanstack/start-plugin-core@1.166.10
+  - @tanstack/start-server-core@1.166.8
+
+## 1.166.9
+
+### Patch Changes
+
+- Updated dependencies [[`6069eba`](https://github.com/TanStack/router/commit/6069eba64369dbddb0d8dccdb4407f0e1a82259e)]:
+  - @tanstack/react-router@1.166.8
+  - @tanstack/start-plugin-core@1.166.9
+  - @tanstack/react-start-client@1.166.8
+  - @tanstack/react-start-server@1.166.8
+
+## 1.166.8
+
+### Patch Changes
+
+- Updated dependencies [[`9a4d924`](https://github.com/TanStack/router/commit/9a4d924d2b60ffb0f7f3f8f11c95195222929870)]:
+  - @tanstack/start-plugin-core@1.166.8

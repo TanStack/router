@@ -193,7 +193,7 @@ These params are then usable in your route's configuration and components! Let's
 
 # React
 
-```tsx title="src/routes/posts.tsx"
+```tsx title="src/routes/posts/$postId.tsx"
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/posts/$postId')({

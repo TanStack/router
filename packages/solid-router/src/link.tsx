@@ -127,8 +127,15 @@ export function useLinkProps<
     select: (s) => s.location,
   })
 
-  const currentSearch = useRouterState({
-    select: (s) => s.location.searchStr,
+  const buildLocationKey = useRouterState({
+    select: (s) => {
+      const leaf = s.matches[s.matches.length - 1]
+      return {
+        search: leaf?.search,
+        hash: s.location.hash,
+        path: leaf?.pathname, // path + params
+      }
+    },
   })
 
   const from = options.from
@@ -141,7 +148,7 @@ export function useLinkProps<
   }
 
   const next = Solid.createMemo(() => {
-    currentSearch()
+    buildLocationKey()
     return router.buildLocation(_options() as any)
   })
 

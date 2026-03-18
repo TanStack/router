@@ -179,6 +179,22 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         config.virtualRouteConfig = virtualRouteConfig
       }
       break
+    case 'virtual-root-sibling-routes':
+      {
+        // Test case for issue #5431: Virtual routes that are siblings at the root level
+        // should NOT be auto-nested based on shared path prefix.
+        // /device/$id and /device/$id/history/$filename are both children of root,
+        // NOT parent-child of each other.
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          route('/device/$id', 'device/route.tsx'),
+          route('/device/$id/history/$filename', 'history/route.tsx'),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
+    case 'add-extensions-custom':
+      config.addExtensions = '.js'
+      break
     case 'virtual-nested-layouts-with-virtual-route':
       {
         // Test case for nested layouts with a virtual file-less route in between.

@@ -1,0 +1,115 @@
+import * as Vue from 'vue'
+import {
+  Link,
+  Outlet,
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  useParams,
+  useSearch,
+} from '@tanstack/vue-router'
+
+function runPerfSelectorComputation(seed: number) {
+  let value = Math.trunc(seed) | 0
+
+  for (let index = 0; index < 100; index++) {
+    value = (value * 1664525 + 1013904223 + index) >>> 0
+  }
+
+  return value
+}
+
+const selectors = Array.from({ length: 20 }, (_, index) => index)
+
+const Params = Vue.defineComponent({
+  setup() {
+    const params = useParams({
+      strict: false,
+      select: (params) => runPerfSelectorComputation(Number(params.id ?? 0)),
+    })
+
+    return () => {
+      void params.value
+      return null
+    }
+  },
+})
+
+const Search = Vue.defineComponent({
+  setup() {
+    const search = useSearch({
+      strict: false,
+      select: (search) => runPerfSelectorComputation(Number(search.id ?? 0)),
+    })
+
+    return () => {
+      void search.value
+      return null
+    }
+  },
+})
+
+const Links = Vue.defineComponent({
+  setup() {
+    return () => (
+      <Link to="/$id" params={{ id: '0' }} search={{ id: '0' }}>
+        Link
+      </Link>
+    )
+  },
+})
+
+const Root = Vue.defineComponent({
+  setup() {
+    return () => (
+      <>
+        {selectors.map((selector) => (
+          <Params key={`params-${selector}`} />
+        ))}
+        {selectors.map((selector) => (
+          <Search key={`search-${selector}`} />
+        ))}
+        {selectors.map((selector) => (
+          <Links key={`link-${selector}`} />
+        ))}
+        <Outlet />
+      </>
+    )
+  },
+})
+
+const root = createRootRoute({
+  component: Root,
+})
+
+const route = createRoute({
+  getParentRoute: () => root,
+  path: '/$id',
+  component: () => <div />,
+})
+
+export function mountTestApp(container: Element) {
+  const router = createRouter({
+    history: createMemoryHistory({
+      initialEntries: ['/0'],
+    }),
+    scrollRestoration: true,
+    routeTree: root.addChildren([route]),
+  })
+
+  const component = <RouterProvider router={router} />
+  const app = Vue.createApp({
+    render: () => component,
+  })
+
+  app.mount(container)
+
+  return {
+    router,
+    unmount() {
+      app.unmount()
+    },
+  }
+}

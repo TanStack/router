@@ -1,5 +1,5 @@
 import * as t from '@babel/types'
-import babel from '@babel/core'
+import * as babel from '@babel/core'
 import * as template from '@babel/template'
 import {
   deadCodeElimination,
@@ -11,6 +11,10 @@ import { tsrShared, tsrSplit } from '../constants'
 import { routeHmrStatement } from '../route-hmr-statement'
 import { createIdentifier } from './path-ids'
 import { getFrameworkOptions } from './framework-options'
+import type {
+  CompileCodeSplitReferenceRouteOptions,
+  ReferenceRouteCompilerPlugin,
+} from './plugins'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
 import type { Config, DeletableNodes } from '../config'
@@ -642,6 +646,7 @@ export function compileCodeSplitReferenceRoute(
     id: string
     addHmr?: boolean
     sharedBindings?: Set<string>
+    compilerPlugins?: Array<ReferenceRouteCompilerPlugin>
   },
 ): GeneratorResult | null {
   const ast = parseAst(opts)
@@ -714,6 +719,23 @@ export function compileCodeSplitReferenceRoute(
                   )
                 }
                 if (!splittableCreateRouteFns.includes(createRouteFn)) {
+                  const insertionPath = path.getStatementParent() ?? path
+
+                  opts.compilerPlugins?.forEach((plugin) => {
+                    const pluginResult = plugin.onUnsplittableRoute?.({
+                      programPath,
+                      callExpressionPath: path,
+                      insertionPath,
+                      routeOptions,
+                      createRouteFn,
+                      opts: opts as CompileCodeSplitReferenceRouteOptions,
+                    })
+
+                    if (pluginResult?.modified) {
+                      modified = true
+                    }
+                  })
+
                   // we can't split this route but we still add HMR handling if enabled
                   if (opts.addHmr && !hmrAdded) {
                     programPath.pushContainer('body', routeHmrStatement)

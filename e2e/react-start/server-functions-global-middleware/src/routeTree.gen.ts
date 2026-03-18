@@ -56,10 +56,19 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/multiple-server-functions' | '/pathname-middleware' | '/simple'
+  fullPaths:
+    | '/'
+    | '/multiple-server-functions'
+    | '/pathname-middleware'
+    | '/simple'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/multiple-server-functions' | '/pathname-middleware' | '/simple'
-  id: '__root__' | '/' | '/multiple-server-functions' | '/pathname-middleware' | '/simple'
+  id:
+    | '__root__'
+    | '/'
+    | '/multiple-server-functions'
+    | '/pathname-middleware'
+    | '/simple'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {

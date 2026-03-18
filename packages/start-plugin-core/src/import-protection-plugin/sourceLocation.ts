@@ -1,7 +1,8 @@
 import { SourceMapConsumer } from 'source-map'
 import * as path from 'pathe'
 
-import { escapeRegExp, getOrCreate, normalizeFilePath } from './utils'
+import { findPostCompileUsagePos } from './postCompileUsage'
+import { getOrCreate, normalizeFilePath } from './utils'
 import type { Loc } from './trace'
 import type { RawSourceMap } from 'source-map'
 
@@ -270,36 +271,7 @@ export class ImportLocCache {
   }
 }
 
-// Import specifier search (regex-based)
-
-const importPatternCache = new Map<string, Array<RegExp>>()
-
-export function clearImportPatternCache(): void {
-  importPatternCache.clear()
-}
-
-function findFirstImportSpecifierIndex(code: string, source: string): number {
-  let patterns = importPatternCache.get(source)
-  if (!patterns) {
-    const escaped = escapeRegExp(source)
-    patterns = [
-      new RegExp(`\\bimport\\s+(['"])${escaped}\\1`),
-      new RegExp(`\\bfrom\\s+(['"])${escaped}\\1`),
-      new RegExp(`\\bimport\\s*\\(\\s*(['"])${escaped}\\1\\s*\\)`),
-    ]
-    importPatternCache.set(source, patterns)
-  }
-
-  let best = -1
-  for (const re of patterns) {
-    const m = re.exec(code)
-    if (!m) continue
-    const idx = m.index + m[0].indexOf(source)
-    if (idx === -1) continue
-    if (best === -1 || idx < best) best = idx
-  }
-  return best
-}
+export type FindImportSpecifierIndex = (code: string, source: string) => number
 
 /**
  * Find the location of an import statement in a transformed module
@@ -311,6 +283,7 @@ export async function findImportStatementLocationFromTransformed(
   importerId: string,
   source: string,
   importLocCache: ImportLocCache,
+  findImportSpecifierIndex: FindImportSpecifierIndex,
 ): Promise<Loc | undefined> {
   const importerFile = normalizeFilePath(importerId)
   const cacheKey = `${importerFile}::${source}`
@@ -329,7 +302,7 @@ export async function findImportStatementLocationFromTransformed(
 
     const lineIndex = res.lineIndex ?? buildLineIndex(code)
 
-    const idx = findFirstImportSpecifierIndex(code, source)
+    const idx = findImportSpecifierIndex(code, source)
     if (idx === -1) {
       importLocCache.set(cacheKey, null)
       return undefined
@@ -354,10 +327,6 @@ export async function findPostCompileUsageLocation(
   provider: TransformResultProvider,
   importerId: string,
   source: string,
-  findPostCompileUsagePos: (
-    code: string,
-    source: string,
-  ) => { line: number; column0: number } | undefined,
 ): Promise<Loc | undefined> {
   try {
     const importerFile = normalizeFilePath(importerId)
@@ -391,6 +360,7 @@ export async function addTraceImportLocations(
     column?: number
   }>,
   importLocCache: ImportLocCache,
+  findImportSpecifierIndex: FindImportSpecifierIndex,
 ): Promise<void> {
   for (const step of trace) {
     if (!step.specifier) continue
@@ -400,6 +370,7 @@ export async function addTraceImportLocations(
       step.file,
       step.specifier,
       importLocCache,
+      findImportSpecifierIndex,
     )
     if (!loc) continue
     step.line = loc.line
@@ -435,67 +406,26 @@ export function buildCodeSnippet(
     const res = provider.getTransformResult(moduleId)
     if (!res) return undefined
 
-    const { code: transformedCode, originalCode } = res
-
-    const sourceCode = originalCode ?? transformedCode
+    const sourceCode = res.originalCode ?? res.code
     const targetLine = loc.line // 1-indexed
     const targetCol = loc.column // 1-indexed
 
     if (targetLine < 1) return undefined
 
+    const allLines = sourceCode.split('\n')
+    // Strip trailing \r from \r\n line endings
+    for (let i = 0; i < allLines.length; i++) {
+      const line = allLines[i]!
+      if (line.endsWith('\r')) allLines[i] = line.slice(0, -1)
+    }
+
     const wantStart = Math.max(1, targetLine - contextLines)
-    const wantEnd = targetLine + contextLines
+    const wantEnd = Math.min(allLines.length, targetLine + contextLines)
 
-    // Advance to wantStart
-    let lineNum = 1
-    let pos = 0
-    while (lineNum < wantStart && pos < sourceCode.length) {
-      const ch = sourceCode.charCodeAt(pos)
-      if (ch === 10) {
-        lineNum++
-      } else if (ch === 13) {
-        lineNum++
-        if (
-          pos + 1 < sourceCode.length &&
-          sourceCode.charCodeAt(pos + 1) === 10
-        )
-          pos++
-      }
-      pos++
-    }
-    if (lineNum < wantStart) return undefined
+    if (targetLine > allLines.length) return undefined
 
-    const lines: Array<string> = []
-    let curLine = wantStart
-    while (curLine <= wantEnd && pos <= sourceCode.length) {
-      // Find end of current line
-      let eol = pos
-      while (eol < sourceCode.length) {
-        const ch = sourceCode.charCodeAt(eol)
-        if (ch === 10 || ch === 13) break
-        eol++
-      }
-      lines.push(sourceCode.slice(pos, eol))
-      curLine++
-      if (eol < sourceCode.length) {
-        if (
-          sourceCode.charCodeAt(eol) === 13 &&
-          eol + 1 < sourceCode.length &&
-          sourceCode.charCodeAt(eol + 1) === 10
-        ) {
-          pos = eol + 2
-        } else {
-          pos = eol + 1
-        }
-      } else {
-        pos = eol + 1
-      }
-    }
-
-    if (targetLine > wantStart + lines.length - 1) return undefined
-
-    const actualEnd = wantStart + lines.length - 1
-    const gutterWidth = String(actualEnd).length
+    const lines = allLines.slice(wantStart - 1, wantEnd)
+    const gutterWidth = String(wantEnd).length
 
     const sourceFile = loc.file ?? importerFile
     const snippetLines: Array<string> = []

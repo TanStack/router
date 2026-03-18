@@ -736,7 +736,7 @@ describe('matchPathname', () => {
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
       expect(matchPathname(input, matchingOptions)).toStrictEqual(
-        expectedMatchedParams,
+        toNullObj(expectedMatchedParams),
       )
     })
   })
@@ -800,7 +800,7 @@ describe('matchPathname', () => {
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
       expect(matchPathname(input, matchingOptions)).toStrictEqual(
-        expectedMatchedParams,
+        toNullObj(expectedMatchedParams),
       )
     })
   })
@@ -879,7 +879,7 @@ describe('matchPathname', () => {
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
       expect(matchPathname(input, matchingOptions)).toStrictEqual(
-        expectedMatchedParams,
+        toNullObj(expectedMatchedParams),
       )
     })
   })
@@ -1217,3 +1217,8 @@ describe('parsePathname', () => {
     })
   })
 })
+
+function toNullObj<T>(obj: T): T {
+  if (typeof obj === 'object') return Object.assign(Object.create(null), obj)
+  return obj
+}
