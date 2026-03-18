@@ -4,14 +4,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000",
-    "build": "echo 'Skipped: waiting for @tanstack/solid-query Solid 2.0 support' && exit 0",
+    "build": "vite build",
     "preview": "vite preview",
     "start": "vite"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/solid-query": "^5.90.9",
-    "@tanstack/solid-query-devtools": "^5.90.0",
+    "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@e7415f0",
+    "@tanstack/solid-query-devtools": "https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0",
     "@tanstack/solid-router": "^2.0.0-alpha.4",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.2",
     "redaxios": "^0.5.1",

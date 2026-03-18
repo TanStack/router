@@ -36,14 +36,17 @@ function RouteComponent() {
   const [cookiesFromDocument, setCookiesFromDocument] = Solid.createSignal<
     Record<string, string | undefined> | undefined
   >(undefined)
-  Solid.createEffect(() => {
-    const tempCookies: Record<string, string | undefined> = {}
-    for (let i = 1; i <= 4; i++) {
-      const key = `cookie-${i}-${search().value}`
-      tempCookies[key] = Cookies.get(key)
-    }
-    setCookiesFromDocument(tempCookies)
-  }, [])
+  Solid.createEffect(
+    () => search().value,
+    (value) => {
+      const tempCookies: Record<string, string | undefined> = {}
+      for (let i = 1; i <= 4; i++) {
+        const key = `cookie-${i}-${value}`
+        tempCookies[key] = Cookies.get(key)
+      }
+      setCookiesFromDocument(tempCookies)
+    },
+  )
   return (
     <div>
       <h1 class="text-xl">cookies result</h1>

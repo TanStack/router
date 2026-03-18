@@ -128,5 +128,12 @@ const testCases = [
 ] as Array<PrimitiveComponentProps<any>>
 
 function RouteComponent() {
-  return <For each={testCases}>{(t) => <PrimitiveComponent {...t} />}</For>
+  return (
+    <For each={testCases}>
+      {(t) => {
+        const item = t()
+        return <PrimitiveComponent serverFn={item.serverFn} data={item.data} />
+      }}
+    </For>
+  )
 }

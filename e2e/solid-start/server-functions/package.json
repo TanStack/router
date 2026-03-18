@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
-    "build": "exit 0;vite build && tsc --noEmit",
+    "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
-    "test:e2e": "exit 0; rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.90.9",
+    "@solidjs/web": "2.0.0-beta.3",
+    "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@e7415f0",
+    "@tanstack/solid-query-devtools": "https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-router-ssr-query": "workspace:^",
@@ -20,7 +22,6 @@
     "js-cookie": "^3.0.5",
     "redaxios": "^0.5.1",
     "solid-js": "2.0.0-beta.3",
-    "@solidjs/web": "2.0.0-beta.3",
     "tailwind-merge": "^2.6.0",
     "vite": "^7.3.1",
     "zod": "^3.24.2"

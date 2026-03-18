@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/solid-query'
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
-import { For, Suspense } from 'solid-js'
+import { For, Loading } from 'solid-js'
 import { postsQueryOptions } from '~/utils/posts'
 
 export const Route = createFileRoute('/posts')({
@@ -17,7 +17,7 @@ function PostsComponent() {
   return (
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
-        <Suspense fallback={<div>Loading posts...</div>}>
+        <Loading fallback={<div>Loading posts...</div>}>
           <For
             each={[
               ...(postsQuery.data || []),
@@ -29,17 +29,17 @@ function PostsComponent() {
                 <Link
                   to="/posts/$postId"
                   params={{
-                    postId: post.id,
+                    postId: post().id,
                   }}
                   class="block py-1 text-blue-800 hover:text-blue-600"
                   activeProps={{ class: 'text-black font-bold' }}
                 >
-                  <div>{post.title.substring(0, 20)}</div>
+                  <div>{post().title.substring(0, 20)}</div>
                 </Link>
               </li>
             )}
           </For>
-        </Suspense>
+        </Loading>
       </ul>
       <hr />
       <Outlet />
