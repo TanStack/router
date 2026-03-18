@@ -245,10 +245,9 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
 export const Route = createFileRoute('/posts')({
-  validateSearch:
-    z.object({
-      page: z.number().default(1).catch(1),
-    }),
+  validateSearch: z.object({
+    page: z.number().default(1).catch(1),
+  }),
   component: Posts,
 })
 

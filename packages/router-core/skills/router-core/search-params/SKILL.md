@@ -238,12 +238,11 @@ export const Route = createFileRoute('/items')({
 
 ```tsx
 export const Route = createFileRoute('/search')({
-  validateSearch:
-    z.object({
-      retainMe: z.string().optional(),
-      arrayWithDefaults: z.string().array().default(['foo', 'bar']),
-      required: z.string(),
-    }),
+  validateSearch: z.object({
+    retainMe: z.string().optional(),
+    arrayWithDefaults: z.string().array().default(['foo', 'bar']),
+    required: z.string(),
+  }),
   search: {
     middlewares: [
       retainSearchParams(['retainMe']),

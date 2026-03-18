@@ -206,9 +206,7 @@ function PostsPage() {
 ```tsx
 const catalogSchema = z.object({
   sort: z.enum(['name', 'date', 'price']).default('name'),
-  category:
-    z.enum(['electronics', 'clothing', 'books', 'all'])
-    .default('all'),
+  category: z.enum(['electronics', 'clothing', 'books', 'all']).default('all'),
   ascending: z.boolean().default(true),
 })
 
@@ -224,9 +222,7 @@ export const Route = createFileRoute('/catalog')({
 const dashboardSchema = z.object({
   // Numbers with validation
   userId: z.number().positive().default(1),
-  refreshInterval: z.number().min(1000).max(60000).default(
-    5000,
-  ),
+  refreshInterval: z.number().min(1000).max(60000).default(5000),
 
   // Strings with validation
   theme: z.enum(['light', 'dark']).default('light'),
@@ -237,8 +233,8 @@ const dashboardSchema = z.object({
   tags: z.string().array().default([]),
 
   // Objects with validation
-  filters:
-    z.object({
+  filters: z
+    .object({
       status: z.enum(['active', 'inactive']).optional(),
       type: z.string().optional(),
     })
