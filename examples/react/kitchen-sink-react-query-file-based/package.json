@@ -9,7 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query": "^5.90.0",
     "@tanstack/react-query-devtools": "^5.90.0",
     "@tanstack/react-router": "^1.167.4",
@@ -19,7 +19,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {

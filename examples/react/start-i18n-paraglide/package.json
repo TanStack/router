@@ -23,8 +23,8 @@
     "@vitejs/plugin-react": "^6.0.1",
     "typescript": "^5.9.2",
     "vite": "^8.0.0",
-    "@tailwindcss/vite": "^4.1.18",
-    "tailwindcss": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
+    "tailwindcss": "^4.2.2",
     "@inlang/paraglide-js": "^2.4.0"
   }
 }

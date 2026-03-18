@@ -20,12 +20,12 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.29.0",
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.2",
     "typescript": "^5.7.2",
     "vite": "^8.0.0",
     "wrangler": "^4.74.0"
