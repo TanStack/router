@@ -9,7 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-router": "^1.167.4",
     "@tanstack/react-router-devtools": "^1.166.9",
     "immer": "^10.1.1",

@@ -11,7 +11,7 @@
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-router": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

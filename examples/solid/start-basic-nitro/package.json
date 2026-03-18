@@ -15,7 +15,7 @@
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.5.4",
     "nitro": "^3.0.260311-beta",
     "tailwindcss": "^4.1.18",

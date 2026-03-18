@@ -21,7 +21,7 @@
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.5.4",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",

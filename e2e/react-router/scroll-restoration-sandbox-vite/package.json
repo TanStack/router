@@ -14,7 +14,7 @@
     "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:browser && pnpm run test:e2e:hash"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",

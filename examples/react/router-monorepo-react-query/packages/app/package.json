@@ -24,7 +24,7 @@
     "typescript": "^5.7.2",
     "vite": "^8.0.0",
     "vite-plugin-dts": "^4.5.4",
-    "@tailwindcss/vite": "4.1.18"
+    "@tailwindcss/vite": "^4.2.2"
   },
   "nx": {
     "targets": {
