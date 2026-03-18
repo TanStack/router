@@ -10,17 +10,17 @@
     "test:unit": "vitest"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/arktype-adapter": "^1.166.9",
     "@tanstack/solid-query": "^5.90.9",
-    "@tanstack/solid-router": "^1.167.4",
+    "@tanstack/solid-router": "^1.167.5",
     "@tanstack/solid-router-devtools": "^1.166.9",
-    "@tanstack/router-plugin": "^1.166.13",
+    "@tanstack/router-plugin": "^1.166.14",
     "@tanstack/valibot-adapter": "^1.166.9",
     "@tanstack/zod-adapter": "^1.166.9",
     "arktype": "^2.1.7",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.2",
     "valibot": "1.0.0-beta.15",
     "zod": "^3.24.2"
   },

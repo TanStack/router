@@ -422,6 +422,19 @@
               "to": "framework/react/tutorial/fetching-external-api"
             }
           ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Reading and Writing a File",
+              "to": "framework/solid/tutorial/reading-writing-file"
+            },
+            {
+              "label": "Fetching Data from External API",
+              "to": "framework/solid/tutorial/fetching-external-api"
+            }
+          ]
         }
       ]
     }
