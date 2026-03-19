@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773928314938,
+  "lastUpdate": 1773943797347,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -6997,6 +6997,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/e5d23ecd5c28aa592100e7344b408d67fd261c61"
         },
         "date": 1773928313359,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89714,
+            "unit": "bytes",
+            "extra": "raw=282693; brotli=77948"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92821,
+            "unit": "bytes",
+            "extra": "raw=293155; brotli=80570"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 38027,
+            "unit": "bytes",
+            "extra": "raw=114049; brotli=34088"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 42352,
+            "unit": "bytes",
+            "extra": "raw=127159; brotli=38014"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54258,
+            "unit": "bytes",
+            "extra": "raw=155044; brotli=48791"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59071,
+            "unit": "bytes",
+            "extra": "raw=170331; brotli=52839"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104436,
+            "unit": "bytes",
+            "extra": "raw=331856; brotli=90321"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107863,
+            "unit": "bytes",
+            "extra": "raw=341900; brotli=93205"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 52468,
+            "unit": "bytes",
+            "extra": "raw=161604; brotli=46364"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 57888,
+            "unit": "bytes",
+            "extra": "raw=177475; brotli=50913"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "74932975+birkskyum@users.noreply.github.com",
+            "name": "Birk Skyum",
+            "username": "birkskyum"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f585d5289c8a3b11697caa9b2aa3015d37d776e",
+          "message": "fix(start-plugin-core): improve rollupOptions/rolldownOptions handling (#6985)",
+          "timestamp": "2026-03-19T19:07:41+01:00",
+          "tree_id": "f3054ba83a119b24db74536648f589491c28ca05",
+          "url": "https://github.com/TanStack/router/commit/0f585d5289c8a3b11697caa9b2aa3015d37d776e"
+        },
+        "date": 1773943796290,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
