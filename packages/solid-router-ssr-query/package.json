@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-router-ssr-query",
-  "version": "2.0.0-alpha.4",
+  "version": "2.0.0-alpha.5",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
