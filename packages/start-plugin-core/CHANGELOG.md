@@ -1,5 +1,11 @@
 # @tanstack/start-plugin-core
 
+## 1.167.2
+
+### Patch Changes
+
+- fix(start-plugin-core): fix Vite 7/8 compat for bundler options ([#6985](https://github.com/TanStack/router/pull/6985))
+
 ## 1.167.1
 
 ### Patch Changes
