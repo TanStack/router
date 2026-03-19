@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/solid-router": "^2.0.0-alpha.4",
-    "@tanstack/solid-router-devtools": "^2.0.0-alpha.2",
+    "@tanstack/solid-router": "^2.0.0-alpha.5",
+    "@tanstack/solid-router-devtools": "^2.0.0-alpha.3",
     "@tanstack/router-plugin": "^1.166.14",
     "@tanstack/virtual-file-routes": "^1.161.7",
     "solid-js": "2.0.0-beta.3",

@@ -1,5 +1,14 @@
 # @tanstack/solid-router-devtools
 
+## 2.0.0-alpha.3
+
+### Patch Changes
+
+- fix: add vite 8 compat ([`dfd64e4`](https://github.com/TanStack/router/commit/dfd64e4a08e74ef292c6bd7baab77283c258bb92))
+
+- Updated dependencies [[`dfd64e4`](https://github.com/TanStack/router/commit/dfd64e4a08e74ef292c6bd7baab77283c258bb92)]:
+  - @tanstack/solid-router@2.0.0-alpha.5
+
 ## 2.0.0-alpha.2
 
 ### Patch Changes

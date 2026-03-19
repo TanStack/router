@@ -1,5 +1,11 @@
 # @tanstack/solid-router-ssr-query
 
+## 2.0.0-alpha.4
+
+### Patch Changes
+
+- fix: add vite 8 compat ([`dfd64e4`](https://github.com/TanStack/router/commit/dfd64e4a08e74ef292c6bd7baab77283c258bb92))
+
 ## 2.0.0-alpha.3
 
 ### Patch Changes
