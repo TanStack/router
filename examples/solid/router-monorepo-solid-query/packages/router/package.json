@@ -9,7 +9,7 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@tanstack/history": "^1.161.6",
-    "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@e7415f0",
+    "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@10272",
     "@tanstack/solid-router": "^2.0.0-alpha.4",
     "@tanstack/router-plugin": "^1.166.14",
     "@router-solid-mono-solid-query/post-query": "workspace:*",
