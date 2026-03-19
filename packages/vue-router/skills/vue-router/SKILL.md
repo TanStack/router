@@ -1,13 +1,6 @@
 ---
 name: vue-router
-description: >-
-  Vue bindings for TanStack Router: RouterProvider, useRouter,
-  useRouterState, useMatch, useMatches, useLocation, useSearch,
-  useParams, useNavigate, useLoaderData, useLoaderDeps,
-  useRouteContext, useBlocker, useCanGoBack, Link, Navigate,
-  Outlet, CatchBoundary, ErrorComponent, Html, Body.
-  Vue-specific patterns with Ref<T> returns, defineComponent,
-  h() render functions, provide/inject, and computed refs.
+description: "Use TanStack Router with Vue via composables, components, and Vue-specific patterns. Use when setting up routing in a Vue app, navigating between routes, reading search or path params, blocking navigation, or rendering error boundaries. Key APIs: RouterProvider, useRouter, useSearch, useParams, useNavigate, Link, Outlet, CatchBoundary."
 type: framework
 library: tanstack-router
 library_version: '1.166.2'

@@ -1,10 +1,6 @@
 ---
-name: router-core/code-splitting
-description: >-
-  Automatic code splitting (autoCodeSplitting), .lazy.tsx convention,
-  createLazyFileRoute, createLazyRoute, lazyRouteComponent, getRouteApi
-  for typed hooks in split files, codeSplitGroupings per-route override,
-  splitBehavior programmatic config, critical vs non-critical properties.
+name: router-core-code-splitting
+description: "Reduce bundle size with automatic and manual code splitting in TanStack Router. Use when configuring lazy-loaded routes, splitting route files for performance, or understanding critical vs non-critical route properties. Key APIs: autoCodeSplitting, createLazyFileRoute, createLazyRoute, getRouteApi, .lazy.tsx convention, codeSplitGroupings."
 type: sub-skill
 library: tanstack-router
 library_version: '1.166.2'
