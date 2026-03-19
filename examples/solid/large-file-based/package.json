@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@10272",
+    "@tanstack/solid-query": "6.0.0-alpha.0",
     "@tanstack/solid-router": "^2.0.0-alpha.5",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.3",
     "@tanstack/router-plugin": "^1.166.14",
