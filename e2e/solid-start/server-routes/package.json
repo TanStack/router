@@ -12,7 +12,7 @@
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@e7415f0",
+    "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@10272",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-router-ssr-query": "workspace:^",
