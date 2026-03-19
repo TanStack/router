@@ -1,5 +1,11 @@
 # @tanstack/solid-start
 
+## 2.0.0-alpha.6
+
+### Patch Changes
+
+- fix: better rollupOptions/rolldownOptions handling ([#6990](https://github.com/TanStack/router/pull/6990))
+
 ## 2.0.0-alpha.5
 
 ### Patch Changes

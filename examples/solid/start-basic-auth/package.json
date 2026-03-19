@@ -16,7 +16,7 @@
     "@prisma/client": "^7.0.0",
     "@tanstack/solid-router": "^2.0.0-alpha.5",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.3",
-    "@tanstack/solid-start": "^2.0.0-alpha.5",
+    "@tanstack/solid-start": "^2.0.0-alpha.6",
     "redaxios": "^0.5.1",
     "solid-js": "2.0.0-beta.3",
     "@solidjs/web": "2.0.0-beta.3",
