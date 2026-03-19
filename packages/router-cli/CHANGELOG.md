@@ -1,5 +1,11 @@
 # @tanstack/router-cli
 
+## 1.166.14
+
+### Patch Changes
+
+- fix(router-cli): pass process.argv to yargs to fix silent CLI failure ([#6981](https://github.com/TanStack/router/pull/6981))
+
 ## 1.166.13
 
 ### Patch Changes
