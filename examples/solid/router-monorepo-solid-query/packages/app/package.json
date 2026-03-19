@@ -9,7 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@10272",
+    "@tanstack/solid-query": "6.0.0-alpha.0",
     "@router-solid-mono-solid-query/post-feature": "workspace:*",
     "@router-solid-mono-solid-query/router": "workspace:*",
     "solid-js": "2.0.0-beta.3",
