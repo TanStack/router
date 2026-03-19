@@ -1,5 +1,11 @@
 # @tanstack/start-plugin-core
 
+## 1.167.0
+
+### Minor Changes
+
+- Support both Vite 7 (`rollupOptions`) and Vite 8 (`rolldownOptions`) by detecting the Vite version at runtime ([#6955](https://github.com/TanStack/router/pull/6955))
+
 ## 1.166.15
 
 ### Patch Changes

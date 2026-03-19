@@ -9,7 +9,7 @@ export default defineConfig({
   build: {
     ssr: true,
     emptyOutDir: true,
-    rollupOptions: {
+    rolldownOptions: {
       input: 'src/index.ts',
       output: [
         {
