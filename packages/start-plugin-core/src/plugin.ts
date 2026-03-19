@@ -244,21 +244,21 @@ export function TanStackStartVitePluginCore(
           environments: {
             [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
-              build: {
-                // Set both keys so this works with Vite 7 (rollupOptions)
-                // and Vite 8+ (rolldownOptions). Vite ignores unknown keys.
-                rollupOptions: {
+              build: (() => {
+                // Use the same object reference for both keys to avoid
+                // Vite 8's deprecation warning when both are present.
+                // Vite 7 reads rollupOptions, Vite 8 reads rolldownOptions.
+                const bundlerOptions = {
                   input: {
                     main: ENTRY_POINTS.client,
                   },
-                },
-                rolldownOptions: {
-                  input: {
-                    main: ENTRY_POINTS.client,
-                  },
-                },
-                outDir: getClientOutputDirectory(viteConfig),
-              },
+                }
+                return {
+                  rollupOptions: bundlerOptions,
+                  rolldownOptions: bundlerOptions,
+                  outDir: getClientOutputDirectory(viteConfig),
+                }
+              })(),
               optimizeDeps: {
                 exclude: crawlFrameworkPkgsResult.optimizeDeps.exclude,
                 // Ensure user code can be crawled for dependencies
@@ -272,20 +272,19 @@ export function TanStackStartVitePluginCore(
               consumer: 'server',
               build: {
                 ssr: true,
-                rollupOptions: {
-                  input:
-                    getBundlerOptions(
-                      viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
-                        ?.build,
-                    )?.input ?? serverAlias,
-                },
-                rolldownOptions: {
-                  input:
-                    getBundlerOptions(
-                      viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
-                        ?.build,
-                    )?.input ?? serverAlias,
-                },
+                ...(() => {
+                  const bundlerOptions = {
+                    input:
+                      getBundlerOptions(
+                        viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
+                          ?.build,
+                      )?.input ?? serverAlias,
+                  }
+                  return {
+                    rollupOptions: bundlerOptions,
+                    rolldownOptions: bundlerOptions,
+                  }
+                })(),
                 outDir: getServerOutputDirectory(viteConfig),
                 commonjsOptions: {
                   include: [/node_modules/],
