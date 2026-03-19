@@ -12,7 +12,7 @@
     "test:e2e:default": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
@@ -20,7 +20,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -28,8 +28,8 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.0.1",
     "combinate": "^1.1.11",
-    "vite": "^7.3.1"
+    "vite": "^8.0.0"
   }
 }

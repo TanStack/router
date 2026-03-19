@@ -1,5 +1,17 @@
 # @tanstack/router-core
 
+## 1.167.5
+
+### Patch Changes
+
+- chore: bump esbuild to 0.27.4 ([#6975](https://github.com/TanStack/router/pull/6975))
+
+## 1.167.4
+
+### Patch Changes
+
+- Add @tanstack/intent AI agent skills and CLI entry points for Router and Start packages ([#6866](https://github.com/TanStack/router/pull/6866))
+
 ## 1.167.3
 
 ### Patch Changes

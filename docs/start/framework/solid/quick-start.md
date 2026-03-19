@@ -8,13 +8,7 @@ title: Quick Start
 The fastest way to get a Start project up and running is with the cli. Just run
 
 ```
-pnpm create @tanstack/start@latest --framework solid
-```
-
-or
-
-```
-npm create @tanstack/start@latest -- --framework solid
+npx @tanstack/cli@latest create --framework solid
 ```
 
 depending on your package manager of choice. You'll be prompted to add things like Tailwind, eslint, and a ton of other options.

@@ -410,7 +410,7 @@ When deploying to [Appwrite Sites](https://appwrite.io/products/sites), you'll n
 1. **Create a TanStack Start app** (or use an existing one)
 
 ```bash
-npm create @tanstack/start@latest
+npx @tanstack/cli@latest create --framework solid
 ```
 
 2. **Push your project to a GitHub repository**

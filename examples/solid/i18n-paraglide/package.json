@@ -10,18 +10,16 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-router": "^2.0.0-alpha.4",
-    "@tanstack/router-plugin": "^1.166.12",
+    "@tanstack/router-plugin": "^1.166.14",
     "solid-js": "2.0.0-beta.3",
     "@solidjs/web": "2.0.0-beta.3",
-    "tailwindcss": "^4.1.18"
-  },
-  "devDependencies": {
+    "tailwindcss": "^4.2.2",
     "@types/node": "^22.18.6",
     "vite-plugin-solid": "3.0.0-next.3",
     "typescript": "^5.9.2",
-    "vite": "^7.3.1",
+    "vite": "^8.0.0",
     "@inlang/paraglide-js": "^2.4.0"
   }
 }

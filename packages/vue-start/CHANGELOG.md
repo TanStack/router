@@ -1,5 +1,38 @@
 # @tanstack/vue-start
 
+## 1.166.17
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.166.13
+  - @tanstack/start-plugin-core@1.167.1
+  - @tanstack/start-server-core@1.166.13
+  - @tanstack/vue-router@1.167.5
+  - @tanstack/vue-start-client@1.166.13
+  - @tanstack/vue-start-server@1.166.13
+
+## 1.166.16
+
+### Patch Changes
+
+- Updated dependencies [[`6651473`](https://github.com/TanStack/router/commit/6651473d028a55c70f3f54af37a12b4379b46813)]:
+  - @tanstack/start-plugin-core@1.167.0
+
+## 1.166.15
+
+### Patch Changes
+
+- Add @tanstack/intent AI agent skills and CLI entry points for Router and Start packages ([#6866](https://github.com/TanStack/router/pull/6866))
+
+- Updated dependencies [[`940151c`](https://github.com/TanStack/router/commit/940151cbed0c76c92a5cf196c0905b17a956ca7e), [`d637152`](https://github.com/TanStack/router/commit/d6371529b5ab09af7d81463a6c4082b092411967)]:
+  - @tanstack/start-client-core@1.166.12
+  - @tanstack/start-server-core@1.166.12
+  - @tanstack/vue-router@1.167.4
+  - @tanstack/start-plugin-core@1.166.15
+  - @tanstack/vue-start-client@1.166.12
+  - @tanstack/vue-start-server@1.166.12
+
 ## 1.166.14
 
 ### Patch Changes

@@ -67,6 +67,7 @@ export async function prerender({
   const outputDir = clientEnv.config.build.outDir
 
   process.env.TSS_PRERENDERING = 'true'
+  process.env.TSS_CLIENT_OUTPUT_DIR = outputDir
 
   // Start Vite preview server instead of importing module
   const previewServer = await startPreviewServer(serverEnv.config)

@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@solidjs/web": "2.0.0-beta.3",
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/solid-query": "https://pkg.pr.new/@tanstack/solid-query@e7415f0",
     "@tanstack/solid-query-devtools": "https://pkg.pr.new/@tanstack/solid-query-devtools@e7415f0",
@@ -20,13 +20,13 @@
     "@tanstack/solid-router-devtools": "workspace:^",
     "redaxios": "^0.5.1",
     "solid-js": "2.0.0-beta.3",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "vite": "^7.3.1",
+    "vite": "^8.0.0",
     "vite-plugin-solid": "3.0.0-next.3"
   }
 }

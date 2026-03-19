@@ -1,3 +1,21 @@
+import * as vite from 'vite'
+
+/**
+ * Vite 8+ uses Rolldown instead of Rollup, renaming `build.rollupOptions`
+ * to `build.rolldownOptions`. Detect which bundler is in use.
+ */
+export const isRolldown = 'rolldownVersion' in vite
+
+/** Returns `'rolldownOptions'` when using Rolldown, `'rollupOptions'` otherwise. */
+export const bundlerOptionsKey = isRolldown
+  ? 'rolldownOptions'
+  : 'rollupOptions'
+
+/** Read `build.rollupOptions` or `build.rolldownOptions` from a build config. */
+export function getBundlerOptions(build: any): any {
+  return build?.rolldownOptions ?? build?.rollupOptions
+}
+
 export function resolveViteId(id: string) {
   return `\0${id}`
 }

@@ -2,6 +2,8 @@
 
 ## 2.0.0-alpha.2
 
+## 1.166.15
+
 ### Patch Changes
 
 - Updated dependencies []:
@@ -20,6 +22,25 @@
 
 - Updated dependencies [[`a0191af`](https://github.com/TanStack/router/commit/a0191afd21afe0e7571af8b0faab171f62e71db7)]:
   - @tanstack/solid-start@2.0.0-alpha.0
+
+  - @tanstack/start-client-core@1.166.13
+  - @tanstack/react-start@1.166.17
+  - @tanstack/solid-start@1.166.17
+
+## 1.166.14
+
+### Patch Changes
+
+- fix: write static server function cache to correct output directory when using Nitro ([#6940](https://github.com/TanStack/router/pull/6940))
+
+  `TSS_CLIENT_OUTPUT_DIR` was baked in via Vite's `define` at config time, before Nitro's `configEnvironment` hook changed the client `build.outDir`. This caused `staticServerFnCache` files to be written to `dist/client/` instead of the Nitro-managed `.output/public/` directory.
+
+  Now `TSS_CLIENT_OUTPUT_DIR` is set as a runtime environment variable during prerendering using the resolved client output directory, so it correctly reflects any output directory changes made by deployment adapters like Nitro.
+
+- Updated dependencies [[`940151c`](https://github.com/TanStack/router/commit/940151cbed0c76c92a5cf196c0905b17a956ca7e)]:
+  - @tanstack/react-start@1.166.15
+  - @tanstack/solid-start@1.166.15
+  - @tanstack/start-client-core@1.166.12
 
 ## 1.166.13
 
