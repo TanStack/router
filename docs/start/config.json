@@ -420,6 +420,10 @@
             {
               "label": "Fetching Data from External API",
               "to": "framework/react/tutorial/fetching-external-api"
+            },
+            {
+              "label": "Multi-Tenancy in TanStack Start: A Simple Guide",
+              "to": "framework/react/tutorial/multi-tenant-setup"
             }
           ]
         },
