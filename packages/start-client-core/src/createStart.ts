@@ -1,16 +1,13 @@
 import { createMiddleware } from './createMiddleware'
+import { createServerFn } from './createServerFn'
 import type { TSS_SERVER_FUNCTION } from './constants'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   CreateMiddlewareFn,
 } from './createMiddleware'
-import type { CustomFetch } from './createServerFn'
-import type {
-  AnySerializationAdapter,
-  Register,
-  SSROption,
-} from '@tanstack/router-core'
+import type { CreateServerFn, CustomFetch } from './createServerFn'
+import type { AnySerializationAdapter, SSROption } from '@tanstack/router-core'
 
 export interface StartInstanceOptions<
   in out TSerializationAdapters,
@@ -70,7 +67,68 @@ export interface StartInstance<
         TRequestMiddlewares,
         TFunctionMiddlewares
       >
-  createMiddleware: CreateMiddlewareFn<Register>
+  /**
+   * A pre-typed `createMiddleware` that carries the global middleware context
+   * types from this Start instance. Middleware created through this method
+   * will see the accumulated context from all global request and function
+   * middleware in their `.server()` callbacks, without requiring the app's
+   * module augmentation of `Register`.
+   *
+   * @example
+   * ```ts
+   * // In an external package, import the start instance:
+   * import { startInstance } from '@myapp/start-config'
+   *
+   * // The middleware's server callback sees context.locale from global middleware
+   * export const authMiddleware = startInstance
+   *   .createMiddleware({ type: 'function' })
+   *   .server(({ next, context }) => {
+   *     // context.locale is fully typed from global request middleware!
+   *     console.log(context.locale)
+   *     return next({ context: { user: getUser() } })
+   *   })
+   * ```
+   */
+  createMiddleware: CreateMiddlewareFn<{
+    config: StartInstanceOptions<
+      TSerializationAdapters,
+      TDefaultSsr,
+      TRequestMiddlewares,
+      TFunctionMiddlewares
+    >
+  }>
+  /**
+   * A pre-typed `createServerFn` that carries the global middleware context
+   * types from this Start instance. Use this to create server functions in
+   * external packages that need access to middleware-provided context without
+   * requiring the app's module augmentation of `Register`.
+   *
+   * @example
+   * ```ts
+   * // In your app's start.ts, export the start instance:
+   * export const startInstance = createStart(() => ({
+   *   requestMiddleware: [localeMiddleware],
+   * }))
+   *
+   * // In an external package, import and use it:
+   * import { startInstance } from '@myapp/start-config'
+   *
+   * export const getLocale = startInstance
+   *   .createServerFn({ method: 'GET' })
+   *   .handler(({ context }) => {
+   *     // context.locale is fully typed!
+   *     return { locale: context.locale }
+   *   })
+   * ```
+   */
+  createServerFn: CreateServerFn<{
+    config: StartInstanceOptions<
+      TSerializationAdapters,
+      TDefaultSsr,
+      TRequestMiddlewares,
+      TFunctionMiddlewares
+    >
+  }>
 }
 
 export interface StartInstanceTypes<
@@ -148,7 +206,8 @@ export const createStart = <
       return options
     },
     createMiddleware: createMiddleware,
-  } as StartInstance<
+    createServerFn: createServerFn,
+  } as unknown as StartInstance<
     TSerializationAdapters,
     TDefaultSsr,
     TRequestMiddlewares,
