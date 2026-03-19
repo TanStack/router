@@ -1,10 +1,20 @@
 import * as vite from 'vite'
 
 /**
- * Vite 8+ uses Rolldown instead of Rollup, renaming `build.rollupOptions`
- * to `build.rolldownOptions`. Detect which bundler is in use.
+ * Vite 7 also exports `rolldownVersion`, so feature detection on that export is
+ * not enough to tell which build config key Vite expects.
  */
-export const isRolldown = 'rolldownVersion' in vite
+export function usesRolldown(viteVersion: string): boolean {
+  const viteMajorVersion = Number.parseInt(viteVersion.split('.')[0] ?? '', 10)
+
+  return Number.isFinite(viteMajorVersion) && viteMajorVersion >= 8
+}
+
+/**
+ * Vite 8+ uses Rolldown instead of Rollup, renaming `build.rollupOptions`
+ * to `build.rolldownOptions`.
+ */
+export const isRolldown = usesRolldown(vite.version)
 
 /** Returns `'rolldownOptions'` when using Rolldown, `'rollupOptions'` otherwise. */
 export const bundlerOptionsKey = isRolldown
