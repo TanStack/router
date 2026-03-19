@@ -5,7 +5,7 @@ import { join } from 'pathe'
 import { escapePath } from 'tinyglobby'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
-import { bundlerOptionsKey, getBundlerOptions } from './utils'
+import { getBundlerOptions } from './utils'
 import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import { devServerPlugin } from './dev-server-plugin/plugin'
@@ -245,7 +245,14 @@ export function TanStackStartVitePluginCore(
             [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
               build: {
-                [bundlerOptionsKey]: {
+                // Set both keys so this works with Vite 7 (rollupOptions)
+                // and Vite 8+ (rolldownOptions). Vite ignores unknown keys.
+                rollupOptions: {
+                  input: {
+                    main: ENTRY_POINTS.client,
+                  },
+                },
+                rolldownOptions: {
                   input: {
                     main: ENTRY_POINTS.client,
                   },
@@ -265,7 +272,14 @@ export function TanStackStartVitePluginCore(
               consumer: 'server',
               build: {
                 ssr: true,
-                [bundlerOptionsKey]: {
+                rollupOptions: {
+                  input:
+                    getBundlerOptions(
+                      viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
+                        ?.build,
+                    )?.input ?? serverAlias,
+                },
+                rolldownOptions: {
                   input:
                     getBundlerOptions(
                       viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
