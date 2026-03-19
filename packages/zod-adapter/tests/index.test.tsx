@@ -187,6 +187,79 @@ test('buildLocation with search=true preserves raw string search values', async 
   })
 })
 
+test('defaultRawSearchInput on router preserves numeric-looking strings globally', async () => {
+  const rootRoute = createRootRoute()
+
+  const Files = () => {
+    const search = filesRoute.useSearch()
+
+    return (
+      <>
+        <h1>Files</h1>
+        <span>Folder: {search.folder}</span>
+      </>
+    )
+  }
+
+  const filesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'files',
+    validateSearch: z.object({
+      folder: z.string(),
+    }),
+    component: Files,
+  })
+
+  const routeTree = rootRoute.addChildren([filesRoute])
+  const router = createRouter({
+    routeTree,
+    defaultRawSearchInput: true,
+    history: createMemoryHistory({
+      initialEntries: ['/files?folder=34324324235325352523'],
+    }),
+  })
+
+  render(<RouterProvider router={router} />)
+
+  expect(
+    await screen.findByText('Folder: 34324324235325352523'),
+  ).toBeInTheDocument()
+})
+
+test('defaultRawSearchInput does not affect routes using validateSearchWithRawInput', async () => {
+  const rootRoute = createRootRoute()
+
+  const filesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'files',
+    validateSearch: validateSearchWithRawInput(
+      z.object({
+        folder: z.string(),
+      }),
+    ),
+  })
+
+  const routeTree = rootRoute.addChildren([filesRoute])
+  const router = createRouter({
+    routeTree,
+    defaultRawSearchInput: true,
+    history: createMemoryHistory({
+      initialEntries: ['/files?folder=34324324235325352523'],
+    }),
+  })
+
+  await router.load()
+
+  const nextLocation = router.buildLocation({
+    to: '.',
+    search: true,
+  })
+
+  expect(nextLocation.search).toEqual({
+    folder: '34324324235325352523',
+  })
+})
+
 test('when navigating to a route with zodValidator input set to output', async () => {
   const rootRoute = createRootRoute()
 

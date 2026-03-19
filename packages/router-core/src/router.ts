@@ -158,8 +158,9 @@ function getSearchValidationInput(
   search: Record<string, unknown>,
   rawSearch: Record<string, unknown>,
   parentStrictSearch?: Record<string, unknown>,
+  defaultRawSearchInput?: boolean,
 ) {
-  return validatorUsesRawSearchInput(validateSearch)
+  return validatorUsesRawSearchInput(validateSearch) || defaultRawSearchInput
     ? {
         ...rawSearch,
         ...parentStrictSearch,
@@ -240,6 +241,14 @@ export interface RouterOptions<
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization)
    */
   parseSearch?: SearchParser
+  /**
+   * When `true`, all route validators receive raw URL search strings instead of
+   * the default parsed/coerced values.  Individual routes can still override this
+   * via `validateSearchWithRawInput`.
+   *
+   * @default false
+   */
+  defaultRawSearchInput?: boolean
   /**
    * If `false`, routes will not be preloaded by default in any way.
    *
@@ -1537,6 +1546,7 @@ export class RouterCore<
           parentSearch,
           rawLocationSearch,
           parentStrictSearch,
+          this.options.defaultRawSearchInput,
         )
 
         try {
@@ -1810,6 +1820,7 @@ export class RouterCore<
             accumulatedSearch,
             rawLocationSearch,
             accumulatedStrictSearch,
+            this.options.defaultRawSearchInput,
           ),
         )
         Object.assign(accumulatedSearch, strictSearch)
@@ -2030,6 +2041,7 @@ export class RouterCore<
                     },
                     nextSearch,
                     validatedSearch,
+                    this.options.defaultRawSearchInput,
                   ),
                 ),
               )
@@ -2046,6 +2058,7 @@ export class RouterCore<
         dest,
         destRoutes,
         _includeValidateSearch: opts._includeValidateSearch,
+        defaultRawSearchInput: this.options.defaultRawSearchInput,
       })
 
       // Replace the equal deep
@@ -3156,20 +3169,26 @@ function applySearchMiddleware({
   dest,
   destRoutes,
   _includeValidateSearch,
+  defaultRawSearchInput,
 }: {
   search: any
   dest: { search?: unknown }
   destRoutes: ReadonlyArray<AnyRoute>
   _includeValidateSearch: boolean | undefined
+  defaultRawSearchInput?: boolean
 }) {
-  const middleware = buildMiddlewareChain(destRoutes)
+  const middleware = buildMiddlewareChain(destRoutes, defaultRawSearchInput)
   return middleware(search, dest, _includeValidateSearch ?? false)
 }
 
-function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
+function buildMiddlewareChain(
+  destRoutes: ReadonlyArray<AnyRoute>,
+  defaultRawSearchInput?: boolean,
+) {
   const context = {
     dest: null as unknown as BuildNextOptions,
     _includeValidateSearch: false,
+    defaultRawSearchInput,
     middlewares: [] as Array<SearchMiddleware<any>>,
   }
 
@@ -3227,6 +3246,8 @@ function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
                 route.options.validateSearch,
                 result,
                 result,
+                undefined,
+                context.defaultRawSearchInput,
               ),
             ) ?? undefined),
           }
