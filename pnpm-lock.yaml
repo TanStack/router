@@ -227,8 +227,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   benchmarks/client-nav:
     dependencies:
@@ -288,8 +288,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vitest:
         specifier: ^4.0.17
         version: 4.0.17(@types/node@25.0.9)(@vitest/ui@4.0.17)(esbuild@0.27.2)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -346,8 +346,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vitest:
         specifier: ^4.0.17
         version: 4.0.17(@types/node@25.0.9)(@vitest/ui@4.0.17)(esbuild@0.27.2)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -2975,8 +2975,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic:
     dependencies:
@@ -3012,8 +3012,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-esbuild-file-based:
     dependencies:
@@ -3101,8 +3101,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-file-based-code-splitting:
     dependencies:
@@ -3141,8 +3141,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-scroll-restoration:
     dependencies:
@@ -3181,8 +3181,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-solid-query:
     dependencies:
@@ -3224,8 +3224,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-solid-query-file-based:
     dependencies:
@@ -3273,8 +3273,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-virtual-file-based:
     dependencies:
@@ -3319,8 +3319,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-virtual-named-export-config-file-based:
     dependencies:
@@ -3365,8 +3365,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/generator-cli-only:
     dependencies:
@@ -3405,8 +3405,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/js-only-file-based:
     dependencies:
@@ -3445,8 +3445,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/rspack-basic-file-based:
     dependencies:
@@ -3592,8 +3592,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/sentry-integration:
     dependencies:
@@ -3638,8 +3638,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/view-transitions:
     dependencies:
@@ -3684,8 +3684,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-start/basic:
     dependencies:
@@ -3754,8 +3754,8 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3824,8 +3824,8 @@ importers:
         specifier: ^5.7.2
         version: 5.9.2
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3873,8 +3873,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3943,8 +3943,8 @@ importers:
         specifier: ^5.7.2
         version: 5.9.2
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3983,8 +3983,8 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -4023,8 +4023,8 @@ importers:
         specifier: ^5.7.2
         version: 5.9.2
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-start/css-modules:
     dependencies:
@@ -4063,8 +4063,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -4127,8 +4127,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -4188,8 +4188,8 @@ importers:
         specifier: ^5.7.2
         version: 5.9.2
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -4252,8 +4252,8 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -4295,8 +4295,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -4347,8 +4347,8 @@ importers:
         specifier: ^5.7.2
         version: 5.9.2
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-start/server-functions:
     dependencies:
@@ -4420,8 +4420,8 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -4493,8 +4493,8 @@ importers:
         specifier: ^5.7.2
         version: 5.8.3
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -4536,8 +4536,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -4600,8 +4600,8 @@ importers:
         specifier: ^5.7.2
         version: 5.9.2
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -4658,8 +4658,8 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -9753,8 +9753,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/authenticated-routes-firebase:
     dependencies:
@@ -9799,8 +9799,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic:
     dependencies:
@@ -9839,8 +9839,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-default-search-params:
     dependencies:
@@ -9879,8 +9879,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-devtools-panel:
     dependencies:
@@ -9913,8 +9913,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-file-based:
     dependencies:
@@ -9953,8 +9953,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-non-nested-devtools:
     dependencies:
@@ -9993,8 +9993,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-solid-query:
     dependencies:
@@ -10036,8 +10036,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-solid-query-file-based:
     dependencies:
@@ -10082,8 +10082,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-ssr-file-based:
     dependencies:
@@ -10125,8 +10125,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-ssr-streaming-file-based:
     dependencies:
@@ -10180,8 +10180,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-virtual-file-based:
     dependencies:
@@ -10223,8 +10223,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-virtual-inside-file-based:
     dependencies:
@@ -10266,8 +10266,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/deferred-data:
     dependencies:
@@ -10303,8 +10303,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/i18n-paraglide:
     dependencies:
@@ -10340,8 +10340,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/kitchen-sink:
     dependencies:
@@ -10380,8 +10380,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/kitchen-sink-file-based:
     dependencies:
@@ -10423,8 +10423,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/kitchen-sink-solid-query:
     dependencies:
@@ -10469,8 +10469,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/kitchen-sink-solid-query-file-based:
     dependencies:
@@ -10518,8 +10518,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/large-file-based:
     dependencies:
@@ -10561,8 +10561,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/location-masking:
     dependencies:
@@ -10598,8 +10598,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/navigation-blocking:
     dependencies:
@@ -10635,8 +10635,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/quickstart:
     dependencies:
@@ -10666,8 +10666,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/quickstart-esbuild-file-based:
     dependencies:
@@ -10740,8 +10740,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/quickstart-rspack-file-based:
     dependencies:
@@ -10878,8 +10878,8 @@ importers:
         specifier: 4.2.3
         version: 4.2.3(@types/node@25.0.9)(rollup@4.55.3)(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/router-monorepo-simple-lazy:
     dependencies:
@@ -10915,8 +10915,8 @@ importers:
         specifier: 4.2.3
         version: 4.2.3(@types/node@25.0.9)(rollup@4.55.3)(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/router-monorepo-solid-query:
     dependencies:
@@ -10958,8 +10958,8 @@ importers:
         specifier: 4.2.3
         version: 4.2.3(@types/node@25.0.9)(rollup@4.55.3)(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/scroll-restoration:
     dependencies:
@@ -10992,8 +10992,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/search-validator-adapters:
     dependencies:
@@ -11053,8 +11053,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/start-basic:
     dependencies:
@@ -11099,8 +11099,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11160,8 +11160,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11209,8 +11209,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11252,8 +11252,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11298,8 +11298,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11341,8 +11341,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11396,8 +11396,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11445,8 +11445,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.3
         version: 5.1.4(typescript@5.8.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11515,8 +11515,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17)(esbuild@0.27.2)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -11585,8 +11585,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11631,8 +11631,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11677,8 +11677,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11729,8 +11729,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11766,8 +11766,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11815,8 +11815,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11861,8 +11861,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11904,8 +11904,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/with-framer-motion:
     dependencies:
@@ -11944,8 +11944,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/with-trpc:
     dependencies:
@@ -11996,8 +11996,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/vue/basic:
     dependencies:
@@ -12601,7 +12601,7 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: ^2.11.10 || 3.0.0-next.2
+        specifier: ^2.11.10 || 3.0.0-next.3
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       webpack:
         specifier: '>=5.92.0'
@@ -12731,8 +12731,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       zod:
         specifier: ^3.23.8
         version: 3.25.57
@@ -12759,8 +12759,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   packages/solid-router-ssr-query:
     dependencies:
@@ -12790,8 +12790,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   packages/solid-start:
     dependencies:
@@ -12864,8 +12864,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   packages/solid-start-server:
     dependencies:
@@ -12901,8 +12901,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
-        specifier: 3.0.0-next.2
-        version: 3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: 3.0.0-next.3
+        version: 3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   packages/start-client-core:
     dependencies:
@@ -19385,15 +19385,6 @@ packages:
       solid-js:
         optional: true
 
-  babel-preset-solid@2.0.0-beta.2:
-    resolution: {integrity: sha512-+yS9inYZqrHnn58GuOHjEHnuKd0qqFpYlD3jcd92JFSDs/ngff4we7NobpCYbFj39aIJFlxbKaeyetJfH7ewkQ==}
-    peerDependencies:
-      '@babel/core': ^7.0.0
-      solid-js: ^2.0.0-beta.2
-    peerDependenciesMeta:
-      solid-js:
-        optional: true
-
   babel-preset-solid@2.0.0-beta.3:
     resolution: {integrity: sha512-hV8Gi0Akolju1ydXNZNmt/SWcvGSWX5mqg+HHQFU2/iz22MDMflRSJrhaqrmN0gxJin9s3A/x3A20HqmcGhkBg==}
     peerDependencies:
@@ -25150,8 +25141,8 @@ packages:
       '@testing-library/jest-dom':
         optional: true
 
-  vite-plugin-solid@3.0.0-next.2:
-    resolution: {integrity: sha512-13AjTjjvrit4QfLtygAEC2pnYWgawowniqBHBtjNnpltnjIzYd8YhPbBv1NEBf3jcFQtQZEQib1tFiIRAxba6w==}
+  vite-plugin-solid@3.0.0-next.3:
+    resolution: {integrity: sha512-qyhmO19+IbLUdWtxfmPlhbG0qRDXIPYDCN3Vpb/kb2nCkK6HiDBm/d9AkSbHZDNHP/LmFtLb+3qVnas/S3IDdA==}
     peerDependencies:
       '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
       solid-js: '>=2.0.0-beta.0 <2.0.0'
@@ -25840,7 +25831,7 @@ snapshots:
 
   '@babel/helper-annotate-as-pure@7.27.3':
     dependencies:
-      '@babel/types': 7.28.5
+      '@babel/types': 7.29.0
 
   '@babel/helper-compilation-targets@7.27.2':
     dependencies:
@@ -25899,7 +25890,7 @@ snapshots:
   '@babel/helper-module-imports@7.27.1':
     dependencies:
       '@babel/traverse': 7.28.5
-      '@babel/types': 7.28.5
+      '@babel/types': 7.29.0
     transitivePeerDependencies:
       - supports-color
 
@@ -25930,7 +25921,7 @@ snapshots:
   '@babel/helper-skip-transparent-expression-wrappers@7.27.1':
     dependencies:
       '@babel/traverse': 7.28.5
-      '@babel/types': 7.28.5
+      '@babel/types': 7.29.0
     transitivePeerDependencies:
       - supports-color
 
@@ -28602,7 +28593,7 @@ snapshots:
 
   '@netlify/zip-it-and-ship-it@14.1.11(encoding@0.1.13)(rollup@4.55.3)':
     dependencies:
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.0
       '@babel/types': 7.28.4
       '@netlify/binary-info': 1.0.0
       '@netlify/serverless-functions-api': 2.7.1
@@ -32136,7 +32127,7 @@ snapshots:
       '@babel/core': 7.28.5
       '@babel/helper-module-imports': 7.27.1
       '@babel/helper-plugin-utils': 7.27.1
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.0
       '@vue/compiler-sfc': 3.5.25
     transitivePeerDependencies:
       - supports-color
@@ -32147,14 +32138,14 @@ snapshots:
       '@babel/core': 7.28.5
       '@babel/helper-module-imports': 7.27.1
       '@babel/helper-plugin-utils': 7.27.1
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.0
       '@vue/compiler-sfc': 3.5.25
     transitivePeerDependencies:
       - supports-color
 
   '@vue/compiler-core@3.5.25':
     dependencies:
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.0
       '@vue/shared': 3.5.25
       entities: 4.5.0
       estree-walker: 2.0.2
@@ -32792,13 +32783,6 @@ snapshots:
     dependencies:
       '@babel/core': 7.28.5
       babel-plugin-jsx-dom-expressions: 0.40.3(@babel/core@7.28.5)
-    optionalDependencies:
-      solid-js: 2.0.0-beta.3
-
-  babel-preset-solid@2.0.0-beta.2(@babel/core@7.28.5)(solid-js@2.0.0-beta.3):
-    dependencies:
-      '@babel/core': 7.28.5
-      babel-plugin-jsx-dom-expressions: 0.41.0-next.11(@babel/core@7.28.5)
     optionalDependencies:
       solid-js: 2.0.0-beta.3
 
@@ -36121,7 +36105,7 @@ snapshots:
   magicast@0.5.1:
     dependencies:
       '@babel/parser': 7.28.5
-      '@babel/types': 7.28.5
+      '@babel/types': 7.29.0
       source-map-js: 1.2.1
 
   manage-path@2.0.0: {}
@@ -36640,7 +36624,7 @@ snapshots:
 
   node-source-walk@7.0.1:
     dependencies:
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.0
 
   node-stream-zip@1.15.0: {}
 
@@ -39237,11 +39221,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-solid@3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
+  vite-plugin-solid@3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.32.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
     dependencies:
       '@babel/core': 7.28.5
       '@types/babel__core': 7.20.5
-      babel-preset-solid: 2.0.0-beta.2(@babel/core@7.28.5)(solid-js@2.0.0-beta.3)
+      babel-preset-solid: 2.0.0-beta.3(@babel/core@7.28.5)(solid-js@2.0.0-beta.3)
       merge-anything: 5.1.7
       solid-js: 2.0.0-beta.3
       solid-refresh: 0.8.0-next.4(solid-js@2.0.0-beta.3)
@@ -39252,11 +39236,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-solid@3.0.0-next.2(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
+  vite-plugin-solid@3.0.0-next.3(@testing-library/jest-dom@6.6.3)(solid-js@2.0.0-beta.3)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.2)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
     dependencies:
       '@babel/core': 7.28.5
       '@types/babel__core': 7.20.5
-      babel-preset-solid: 2.0.0-beta.2(@babel/core@7.28.5)(solid-js@2.0.0-beta.3)
+      babel-preset-solid: 2.0.0-beta.3(@babel/core@7.28.5)(solid-js@2.0.0-beta.3)
       merge-anything: 5.1.7
       solid-js: 2.0.0-beta.3
       solid-refresh: 0.8.0-next.4(solid-js@2.0.0-beta.3)

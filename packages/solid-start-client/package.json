@@ -69,7 +69,7 @@
     "@solidjs/testing-library": "^0.8.10",
     "@testing-library/jest-dom": "^6.6.3",
     "vite": "*",
-    "vite-plugin-solid": "3.0.0-next.2"
+    "vite-plugin-solid": "3.0.0-next.3"
   },
   "peerDependencies": {
     "solid-js": "2.0.0-beta.3",
