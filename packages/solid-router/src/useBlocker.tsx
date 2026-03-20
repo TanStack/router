@@ -259,7 +259,7 @@ export function useBlocker(
           enableBeforeUnload: props.enableBeforeUnload,
         })
 
-    Solid.onCleanup(() => disposeBlock?.())
+    return () => disposeBlock?.()
   })
 
   return resolver
