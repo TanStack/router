@@ -17,6 +17,6 @@ export default async function setup() {
   await waitForServer(baseURL)
   await preOptimizeDevServer({
     baseURL,
-    readyTestId: 'heading',
+    readyTestId: 'hydrated',
   })
 }

@@ -27,6 +27,7 @@ test.describe('react-start hmr', () => {
     page,
   }) => {
     await page.goto('/')
+    await page.getByTestId('hydrated').waitFor({ state: 'visible' })
 
     await page.getByTestId('increment').click()
     await page.getByTestId('message').fill('hmr state')
