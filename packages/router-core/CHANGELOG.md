@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.168.1
+
+### Patch Changes
+
+- Update store to 0.9.2 ([#6993](https://github.com/TanStack/router/pull/6993))
+
 ## 1.168.0
 
 ### Minor Changes
