@@ -40,9 +40,7 @@ import { z } from 'zod'
 const productSearchSchema = z.object({
   page: z.number().default(1).catch(1),
   filter: z.string().default(''),
-  sort: z.enum(['newest', 'oldest', 'price']).default(
-    'newest',
-  ).catch('newest'),
+  sort: z.enum(['newest', 'oldest', 'price']).default('newest').catch('newest'),
 })
 
 export const Route = createFileRoute('/products')({
