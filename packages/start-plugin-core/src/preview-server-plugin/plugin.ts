@@ -54,7 +54,7 @@ export function previewServerPlugin(): Plugin {
               // Temporary workaround
               // Vite preview's compression middleware doesn't support flattened array headers that srvx sets
               // Call writeHead() before srvx to avoid corruption
-              res.setHeaders(webRes.headers)
+              webRes.headers.forEach((value, key) => res.setHeader(key, value));
               res.writeHead(webRes.status, webRes.statusText)
 
               return sendNodeResponse(res, webRes)
