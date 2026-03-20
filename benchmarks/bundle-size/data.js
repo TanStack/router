@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774001197706,
+  "lastUpdate": 1774002955388,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -7382,6 +7382,90 @@ window.BENCHMARK_DATA = {
             "value": 108909,
             "unit": "bytes",
             "extra": "raw=345791; brotli=94112"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 51528,
+            "unit": "bytes",
+            "extra": "raw=159205; brotli=45382"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 57060,
+            "unit": "bytes",
+            "extra": "raw=175376; brotli=50074"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "fpellet@ensc.fr",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "91cc62899b75ca920fe83c5ee7f3dbb5c71a523f",
+          "message": "chore: update TanStack store packages to 0.9.2 (#6993)",
+          "timestamp": "2026-03-20T11:33:30+01:00",
+          "tree_id": "4572444b841c7bffe5830255f49f2750241ad9f4",
+          "url": "https://github.com/TanStack/router/commit/91cc62899b75ca920fe83c5ee7f3dbb5c71a523f"
+        },
+        "date": 1774002953806,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 90682,
+            "unit": "bytes",
+            "extra": "raw=286049; brotli=78682"
+          },
+          {
+            "name": "react-router.full",
+            "value": 93928,
+            "unit": "bytes",
+            "extra": "raw=297035; brotli=81392"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36995,
+            "unit": "bytes",
+            "extra": "raw=111596; brotli=33186"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41446,
+            "unit": "bytes",
+            "extra": "raw=125006; brotli=37126"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 55410,
+            "unit": "bytes",
+            "extra": "raw=158998; brotli=49648"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 60301,
+            "unit": "bytes",
+            "extra": "raw=174514; brotli=53892"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 105471,
+            "unit": "bytes",
+            "extra": "raw=335266; brotli=91154"
+          },
+          {
+            "name": "react-start.full",
+            "value": 108922,
+            "unit": "bytes",
+            "extra": "raw=345824; brotli=94032"
           },
           {
             "name": "solid-start.minimal",
