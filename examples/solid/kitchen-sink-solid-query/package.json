@@ -16,8 +16,8 @@
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.3",
     "immer": "^10.1.1",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.3",
-    "@solidjs/web": "2.0.0-beta.3",
+    "solid-js": "2.0.0-beta.4",
+    "@solidjs/web": "2.0.0-beta.4",
     "tailwindcss": "^4.2.2",
     "zod": "^3.24.2"
   },

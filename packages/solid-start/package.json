@@ -120,8 +120,8 @@
     "vite": "*"
   },
   "peerDependencies": {
-    "solid-js": "2.0.0-beta.3",
-    "@solidjs/web": "2.0.0-beta.3",
+    "solid-js": "2.0.0-beta.4",
+    "@solidjs/web": "2.0.0-beta.4",
     "vite": ">=7.0.0"
   },
   "bin": {

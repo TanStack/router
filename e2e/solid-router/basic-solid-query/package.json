@@ -11,14 +11,14 @@
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.3",
+    "@solidjs/web": "2.0.0-beta.4",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-query": "6.0.0-alpha.0",
     "@tanstack/solid-query-devtools": "6.0.0-alpha.0",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.3",
+    "solid-js": "2.0.0-beta.4",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
