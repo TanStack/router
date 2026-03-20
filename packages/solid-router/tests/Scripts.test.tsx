@@ -19,6 +19,24 @@ import {
   createRouter,
 } from '../src'
 import { Scripts } from '../src/Scripts'
+import type { Manifest } from '@tanstack/router-core'
+
+const createTestManifest = (routeId: string) =>
+  ({
+    routes: {
+      [routeId]: {
+        assets: [
+          {
+            tag: 'link',
+            attrs: {
+              rel: 'stylesheet',
+              href: '/main.css',
+            },
+          },
+        ],
+      },
+    },
+  }) satisfies Manifest
 
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
@@ -151,22 +169,8 @@ describe('ssr scripts', () => {
       })
 
       router.ssr = {
-        manifest: {
-          routes: {
-            [rootRoute.id]: {
-              assets: [
-                {
-                  tag: 'link',
-                  attrs: {
-                    rel: 'stylesheet',
-                    href: '/main.css',
-                  },
-                },
-              ],
-            },
-          },
-        },
-      } as any
+        manifest: createTestManifest(rootRoute.id),
+      }
 
       await router.load()
 
@@ -337,22 +341,8 @@ describe('ssr HeadContent', () => {
       })
 
       router.ssr = {
-        manifest: {
-          routes: {
-            [rootRoute.id]: {
-              assets: [
-                {
-                  tag: 'link',
-                  attrs: {
-                    rel: 'stylesheet',
-                    href: '/main.css',
-                  },
-                },
-              ],
-            },
-          },
-        },
-      } as any
+        manifest: createTestManifest(rootRoute.id),
+      }
 
       await router.load()
 
@@ -373,9 +363,9 @@ describe('ssr HeadContent', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Replace state' }))
 
       await waitFor(() => {
-        expect(
-          (router.state.location.state as { slideId?: string }).slideId,
-        ).toBe('slide-2')
+        expect(router.state.location.state).toMatchObject({
+          slideId: 'slide-2',
+        })
       })
 
       expect(getStylesheetLink()).toBe(initialLink)
