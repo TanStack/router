@@ -1,4 +1,5 @@
-import { chromium, Page } from '@playwright/test'
+import { chromium } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 export async function waitForServer(url: string) {
   const start = Date.now()
