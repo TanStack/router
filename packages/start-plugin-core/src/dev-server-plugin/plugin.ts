@@ -8,7 +8,12 @@ import {
   collectDevStyles,
   normalizeCssModuleCacheKey,
 } from './dev-styles'
-import type { Connect, DevEnvironment, PluginOption, RunnableDevEnvironment } from 'vite'
+import type {
+  Connect,
+  DevEnvironment,
+  PluginOption,
+  RunnableDevEnvironment,
+} from 'vite'
 import type { GetConfigFn } from '../types'
 
 export function devServerPlugin({
@@ -176,9 +181,9 @@ export function devServerPlugin({
                *  fetch(req: Request): Promise<Response>
                * }
                */
-              const serverEntry = await (serverEnv as RunnableDevEnvironment).runner.import(
-                ENTRY_POINTS.server,
-              )
+              const serverEntry = await (
+                serverEnv as RunnableDevEnvironment
+              ).runner.import(ENTRY_POINTS.server)
               const webRes = await serverEntry['default'].fetch(webReq)
 
               return sendNodeResponse(res, webRes)
