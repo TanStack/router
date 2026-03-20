@@ -11936,9 +11936,6 @@ importers:
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
-      '@tanstack/store':
-        specifier: ^0.9.1
-        version: 0.9.1
       cookie-es:
         specifier: ^2.0.0
         version: 2.0.0
@@ -11958,6 +11955,9 @@ importers:
       '@tanstack/intent':
         specifier: ^0.0.14
         version: 0.0.14
+      '@tanstack/store':
+        specifier: ^0.9.1
+        version: 0.9.1
       esbuild:
         specifier: ^0.27.4
         version: 0.27.4
@@ -12210,9 +12210,6 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-      '@tanstack/solid-store':
-        specifier: ^0.9.1
-        version: 0.9.1(solid-js@1.9.10)
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
@@ -17971,11 +17968,6 @@ packages:
 
   '@tanstack/solid-query@5.90.9':
     resolution: {integrity: sha512-OF+FpTHPmZxF5M0zcEERtUA0DhuFdNOpn0EAbASarDfIuNrvi8k07dhYV5zYyYwkt+eoe/RnAX65PdSP+Y0ONw==}
-    peerDependencies:
-      solid-js: 1.9.10
-
-  '@tanstack/solid-store@0.9.1':
-    resolution: {integrity: sha512-gx7ToM+Yrkui36NIj0HjAufzv1Dg8usjtVFy5H3Ll52Xjuz+eliIJL+ihAr4LRuWh3nDPBR+nCLW0ShFrbE5yw==}
     peerDependencies:
       solid-js: 1.9.10
 
@@ -30767,11 +30759,6 @@ snapshots:
   '@tanstack/solid-query@5.90.9(solid-js@1.9.10)':
     dependencies:
       '@tanstack/query-core': 5.90.19
-      solid-js: 1.9.10
-
-  '@tanstack/solid-store@0.9.1(solid-js@1.9.10)':
-    dependencies:
-      '@tanstack/store': 0.9.1
       solid-js: 1.9.10
 
   '@tanstack/solid-virtual@3.13.12(solid-js@1.9.10)':

@@ -142,6 +142,9 @@ router.invalidate()
 
 ### `useRouterState()` — returns `Ref<T>`
 
+Subscribe to router state changes. Exposes the entire state and thus incurs
+a performance cost. For matches or location favor `useMatches` and `useLocation`.
+
 ```tsx
 import { useRouterState } from '@tanstack/vue-router'
 
