@@ -10,7 +10,6 @@ Set up search parameters with schema validation (recommended for production):
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { zodValidator, fallback } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
@@ -20,7 +19,7 @@ const productSearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/products')({
-  validateSearch: zodValidator(productSearchSchema),
+  validateSearch: productSearchSchema,
   component: ProductsPage,
 })
 
@@ -50,7 +49,25 @@ function ProductsPage() {
 
 ## Validation Library Setup
 
-TanStack Router supports any standard schema-compliant validation library. This guide focuses on Zod for examples, but you can use any validation library:
+TanStack Router supports any standard schema-compliant validation library. This guide focuses on Zod for examples, but you can use any validation library.
+
+Using Zod v4:
+
+```tsx
+import { z } from 'zod'
+
+const searchSchema = z.object({
+  page: z.number().default(1),
+  category: z.string().default('all').catch('all'),
+})
+
+export const Route = createFileRoute('/products')({
+  validateSearch: searchSchema,
+  component: ProductsPage,
+})
+```
+
+For Zod v3:
 
 ```bash
 npm install zod @tanstack/zod-adapter
@@ -75,15 +92,9 @@ export const Route = createFileRoute('/products')({
 
 ## Step-by-Step Setup with Zod
 
-The rest of this guide uses Zod for examples, but the patterns apply to any validation library.
+The rest of this guide uses Zod v4 for examples, but the patterns apply to any validation library.
 
-### Step 1: Install Dependencies
-
-```bash
-npm install zod @tanstack/zod-adapter
-```
-
-### Step 2: Define Your Search Schema
+### Step 1: Define Your Search Schema
 
 Start by identifying what search parameters your route needs:
 
@@ -93,40 +104,38 @@ import { fallback } from '@tanstack/zod-adapter'
 
 const shopSearchSchema = z.object({
   // Pagination
-  page: fallback(z.number(), 1).default(1),
-  limit: fallback(z.number(), 20).default(20),
+  page: z.number().default(1),
+  limit: z.number().default(20),
 
   // Filtering
-  category: fallback(z.string(), 'all').default('all'),
-  minPrice: fallback(z.number(), 0).default(0),
-  maxPrice: fallback(z.number(), 1000).default(1000),
+  category: z.string().default('all'),
+  minPrice: z.number().default(0),
+  maxPrice: z.number().default(1000),
 
   // Settings
-  sort: fallback(z.enum(['name', 'price', 'date']), 'name').default('name'),
-  ascending: fallback(z.boolean(), true).default(true),
+  sort: z.enum(['name', 'price', 'date']).default('name'),
+  ascending: z.boolean().default(true),
 
   // Optional parameters
   searchTerm: z.string().optional(),
-  showOnlyInStock: fallback(z.boolean(), false).default(false),
+  showOnlyInStock: z.boolean().default(false),
 })
 
 type ShopSearch = z.infer<typeof shopSearchSchema>
 ```
 
-### Step 3: Add Schema Validation to Route
+### Step 2: Add Schema Validation to Route
 
-Use the validation adapter to connect your schema to the route:
+Connect your schema to the route:
 
 ```tsx
-import { zodValidator } from '@tanstack/zod-adapter'
-
 export const Route = createFileRoute('/shop')({
-  validateSearch: zodValidator(shopSearchSchema),
+  validateSearch: shopSearchSchema,
   component: ShopPage,
 })
 ```
 
-### Step 4: Read Search Parameters in Components
+### Step 3: Read Search Parameters in Components
 
 Use the route's `useSearch()` hook to access validated and typed search parameters:
 
@@ -166,12 +175,12 @@ function ShopPage() {
 
 ```tsx
 const paginationSchema = z.object({
-  page: fallback(z.number().min(1), 1).default(1),
-  limit: fallback(z.number().min(10).max(100), 20).default(20),
+  page: z.number().min(1).default(1),
+  limit: z.number().min(10).max(100).default(20),
 })
 
 export const Route = createFileRoute('/posts')({
-  validateSearch: zodValidator(paginationSchema),
+  validateSearch: paginationSchema,
   component: PostsPage,
 })
 
@@ -196,16 +205,13 @@ function PostsPage() {
 
 ```tsx
 const catalogSchema = z.object({
-  sort: fallback(z.enum(['name', 'date', 'price']), 'name').default('name'),
-  category: fallback(
-    z.enum(['electronics', 'clothing', 'books', 'all']),
-    'all',
-  ).default('all'),
-  ascending: fallback(z.boolean(), true).default(true),
+  sort: z.enum(['name', 'date', 'price']).default('name'),
+  category: z.enum(['electronics', 'clothing', 'books', 'all']).default('all'),
+  ascending: z.boolean().default(true),
 })
 
 export const Route = createFileRoute('/catalog')({
-  validateSearch: zodValidator(catalogSchema),
+  validateSearch: catalogSchema,
   component: CatalogPage,
 })
 ```
@@ -215,27 +221,24 @@ export const Route = createFileRoute('/catalog')({
 ```tsx
 const dashboardSchema = z.object({
   // Numbers with validation
-  userId: fallback(z.number().positive(), 1).default(1),
-  refreshInterval: fallback(z.number().min(1000).max(60000), 5000).default(
-    5000,
-  ),
+  userId: z.number().positive().default(1),
+  refreshInterval: z.number().min(1000).max(60000).default(5000),
 
   // Strings with validation
-  theme: fallback(z.enum(['light', 'dark']), 'light').default('light'),
+  theme: z.enum(['light', 'dark']).default('light'),
   timezone: z.string().optional(),
 
   // Arrays with validation
-  selectedIds: fallback(z.number().array(), []).default([]),
-  tags: fallback(z.string().array(), []).default([]),
+  selectedIds: z.number().array().default([]),
+  tags: z.string().array().default([]),
 
   // Objects with validation
-  filters: fallback(
-    z.object({
+  filters: z
+    .object({
       status: z.enum(['active', 'inactive']).optional(),
       type: z.string().optional(),
-    }),
-    {},
-  ).default({}),
+    })
+    .default({}),
 })
 ```
 
@@ -245,8 +248,8 @@ const dashboardSchema = z.object({
 const reportSchema = z.object({
   startDate: z.string().pipe(z.coerce.date()).optional(),
   endDate: z.string().pipe(z.coerce.date()).optional(),
-  format: fallback(z.enum(['pdf', 'csv', 'excel']), 'pdf').default('pdf'),
-  includeCharts: fallback(z.boolean(), true).default(true),
+  format: z.enum(['pdf', 'csv', 'excel']).default('pdf').catch('pdf'),
+  includeCharts: z.boolean().default(true),
 })
 ```
 
@@ -330,7 +333,7 @@ export const Route = createFileRoute('/example')({
 
 ### Problem: Search Parameters Cause TypeScript Errors
 
-**Cause:** Missing or incorrect schema definition.
+**Cause:** Missing or incorrect schema definition with Zod v3.
 
 **Solution:** Ensure your schema covers all search parameters and use proper types:
 
@@ -366,7 +369,7 @@ const schema = z.object({
 
 // ✅ Graceful fallback handling
 const schema = z.object({
-  page: fallback(z.number(), 1).default(1), // Safe fallback to 1
+  page: z.number().default(1).catch(1), // Safe fallback to 1
 })
 ```
 
