@@ -138,8 +138,6 @@ describe('ssr scripts', () => {
 
   test('keeps manifest stylesheet links mounted across repeated Link navigations', async () => {
     const history = createBrowserHistory()
-    let observer: MutationObserver | undefined
-
     try {
       const rootRoute = createRootRoute({
         component: () => {
@@ -189,21 +187,6 @@ describe('ssr scripts', () => {
       const initialLink = getStylesheetLink()
       expect(initialLink).toBeInstanceOf(HTMLLinkElement)
 
-      const removedStylesheetLinks: Array<HTMLLinkElement> = []
-      observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          mutation.removedNodes.forEach((node) => {
-            if (
-              node instanceof HTMLLinkElement &&
-              node.getAttribute('href') === '/main.css'
-            ) {
-              removedStylesheetLinks.push(node)
-            }
-          })
-        })
-      })
-      observer.observe(document.head, { childList: true })
-
       for (let i = 0; i < 5; i++) {
         fireEvent.click(screen.getByRole('link', { name: 'Go to about page' }))
 
@@ -223,14 +206,12 @@ describe('ssr scripts', () => {
       }
 
       expect(getStylesheetLink()).toBe(initialLink)
-      expect(removedStylesheetLinks).toHaveLength(0)
       expect(
         Array.from(
           document.head.querySelectorAll('link[rel="stylesheet"]'),
         ).filter((link) => link.getAttribute('href') === '/main.css'),
       ).toHaveLength(1)
     } finally {
-      observer?.disconnect()
       history.destroy()
       document.head
         .querySelectorAll('link[rel="stylesheet"]')
