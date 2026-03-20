@@ -1,4 +1,4 @@
-import { chromium } from '@playwright/test'
+import { chromium, Page } from '@playwright/test'
 
 export async function waitForServer(url: string) {
   const start = Date.now()
@@ -31,7 +31,7 @@ export async function waitForServer(url: string) {
 export async function preOptimizeDevServer(opts: {
   baseURL: string
   readyTestId?: string
-  warmup?: (page: import('@playwright/test').Page) => Promise<void>
+  warmup?: (page: Page) => Promise<void>
 }) {
   const browser = await chromium.launch()
   const context = await browser.newContext()
