@@ -1,7 +1,6 @@
 import * as Solid from 'solid-js'
 import { escapeHtml } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 const RELS_TO_DEDUPE = new Set(['canonical'])
@@ -13,11 +12,14 @@ const RELS_TO_DEDUPE = new Set(['canonical'])
 export const useTags = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const routeMeta = useRouterState({
-    select: (state) => {
-      return state.matches.map((match) => match.meta!).filter(Boolean)
-    },
-  })
+  const activeMatches = Solid.createMemo(
+    () => router.stores.activeMatchesSnapshot.state,
+  )
+  const routeMeta = Solid.createMemo(() =>
+    activeMatches()
+      .map((match) => match.meta!)
+      .filter(Boolean),
+  )
 
   const meta: Solid.Accessor<Array<RouterManagedTag>> = Solid.createMemo(() => {
     const resultMeta: Array<RouterManagedTag> = []
@@ -91,119 +93,115 @@ export const useTags = () => {
     return resultMeta
   })
 
-  const links = useRouterState({
-    select: (state) => {
-      const constructedLinks: Array<RouterManagedTag> = []
-      const linksByRel = new Set<string>()
+  const links = Solid.createMemo(() => {
+    const matches = activeMatches()
+    const constructed: Array<RouterManagedTag> = []
+    const linksByRel = new Set<string>()
 
-      for (let i = state.matches.length - 1; i >= 0; i--) {
-        const match = state.matches[i]!
-        const matchLinks = match.links
-        if (!matchLinks) continue
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const match = matches[i]!
+      const matchLinks = match.links
+      if (!matchLinks) continue
 
-        for (let j = matchLinks.length - 1; j >= 0; j--) {
-          const link = matchLinks[j]
-          if (!link) continue
+      for (let j = matchLinks.length - 1; j >= 0; j--) {
+        const link = matchLinks[j]
+        if (!link) continue
 
-          if (link.rel) {
-            const rel = link.rel.toLowerCase()
-            if (RELS_TO_DEDUPE.has(rel)) {
-              if (linksByRel.has(rel)) {
-                continue
-              }
-              linksByRel.add(rel)
+        if (link.rel) {
+          const rel = link.rel.toLowerCase()
+          if (RELS_TO_DEDUPE.has(rel)) {
+            if (linksByRel.has(rel)) {
+              continue
             }
+            linksByRel.add(rel)
           }
-
-          constructedLinks.push({
-            tag: 'link',
-            attrs: {
-              ...link,
-              nonce,
-            },
-          })
         }
+
+        constructed.push({
+          tag: 'link',
+          attrs: {
+            ...link,
+            nonce,
+          },
+        })
       }
+    }
 
-      constructedLinks.reverse()
+    constructed.reverse()
 
-      const manifest = router.ssr?.manifest
+    const manifest = router.ssr?.manifest
 
-      const assets = state.matches
-        .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
-        .filter(Boolean)
-        .flat(1)
-        .filter((asset) => asset.tag === 'link')
-        .map(
-          (asset) =>
-            ({
+    const assets = matches
+      .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
+      .filter(Boolean)
+      .flat(1)
+      .filter((asset) => asset.tag === 'link')
+      .map(
+        (asset) =>
+          ({
+            tag: 'link',
+            attrs: { ...asset.attrs, nonce },
+          }) satisfies RouterManagedTag,
+      )
+
+    return [...constructed, ...assets]
+  })
+
+  const preloadLinks = Solid.createMemo(() => {
+    const matches = activeMatches()
+    const preloadLinks: Array<RouterManagedTag> = []
+
+    matches
+      .map((match) => router.looseRoutesById[match.routeId]!)
+      .forEach((route) =>
+        router.ssr?.manifest?.routes[route.id]?.preloads
+          ?.filter(Boolean)
+          .forEach((preload) => {
+            preloadLinks.push({
               tag: 'link',
-              attrs: { ...asset.attrs, nonce },
-            }) satisfies RouterManagedTag,
-        )
+              attrs: {
+                rel: 'modulepreload',
+                href: preload,
+                nonce,
+              },
+            })
+          }),
+      )
 
-      return [...constructedLinks, ...assets]
-    },
+    return preloadLinks
   })
 
-  const preloadLinks = useRouterState({
-    select: (state) => {
-      const preloadLinks: Array<RouterManagedTag> = []
+  const styles = Solid.createMemo(() =>
+    (
+      activeMatches()
+        .map((match) => match.styles!)
+        .flat(1)
+        .filter(Boolean) as Array<RouterManagedTag>
+    ).map(({ children, ...style }) => ({
+      tag: 'style',
+      attrs: {
+        ...style,
+        nonce,
+      },
+      children,
+    })),
+  )
 
-      state.matches
-        .map((match) => router.looseRoutesById[match.routeId]!)
-        .forEach((route) =>
-          router.ssr?.manifest?.routes[route.id]?.preloads
-            ?.filter(Boolean)
-            .forEach((preload) => {
-              preloadLinks.push({
-                tag: 'link',
-                attrs: {
-                  rel: 'modulepreload',
-                  href: preload,
-                  nonce,
-                },
-              })
-            }),
-        )
-
-      return preloadLinks
-    },
-  })
-
-  const styles = useRouterState({
-    select: (state) =>
-      (
-        state.matches
-          .map((match) => match.styles!)
-          .flat(1)
-          .filter(Boolean) as Array<RouterManagedTag>
-      ).map(({ children, ...style }) => ({
-        tag: 'style',
-        attrs: {
-          ...style,
-          nonce,
-        },
-        children,
-      })),
-  })
-
-  const headScripts = useRouterState({
-    select: (state) =>
-      (
-        state.matches
-          .map((match) => match.headScripts!)
-          .flat(1)
-          .filter(Boolean) as Array<RouterManagedTag>
-      ).map(({ children, ...script }) => ({
-        tag: 'script',
-        attrs: {
-          ...script,
-          nonce,
-        },
-        children,
-      })),
-  })
+  const headScripts = Solid.createMemo(() =>
+    (
+      activeMatches()
+        .map((match) => match.headScripts!)
+        .flat(1)
+        .filter(Boolean) as Array<RouterManagedTag>
+    ).map(({ children, ...script }) => ({
+      tag: 'script',
+      attrs: {
+        ...script,
+        nonce,
+      },
+      children,
+    })),
+  )
 
   return () =>
     uniqBy(

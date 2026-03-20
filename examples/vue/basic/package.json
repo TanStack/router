@@ -9,8 +9,8 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/vue-router": "^1.167.4",
-    "@tanstack/vue-router-devtools": "^1.166.9",
+    "@tanstack/vue-router": "^1.168.0",
+    "@tanstack/vue-router-devtools": "^1.166.10",
     "redaxios": "^0.5.1",
     "vue": "^3.5.13",
     "tailwindcss": "4.1.18"
@@ -21,6 +21,6 @@
     "vue-tsc": "^3.1.5",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
-    "@tailwindcss/vite": "4.1.18"
+    "@tailwindcss/vite": "^4.2.2"
   }
 }

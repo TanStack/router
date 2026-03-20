@@ -1,5 +1,42 @@
 # @tanstack/react-start
 
+## 1.167.0
+
+### Minor Changes
+
+- remove pendingMatches, cachedMatches ([#6704](https://github.com/TanStack/router/pull/6704))
+  move to signal-based reactivity
+  solid uses its own native signals
+
+### Patch Changes
+
+- Updated dependencies [[`0545239`](https://github.com/TanStack/router/commit/054523900b2ee19308e5a88417dadfc6923afe30)]:
+  - @tanstack/start-client-core@1.167.0
+  - @tanstack/start-server-core@1.167.0
+  - @tanstack/react-router@1.168.0
+  - @tanstack/react-start-client@1.166.15
+  - @tanstack/react-start-server@1.166.15
+  - @tanstack/start-plugin-core@1.167.3
+
+## 1.166.18
+
+### Patch Changes
+
+- Updated dependencies [[`0f585d5`](https://github.com/TanStack/router/commit/0f585d5289c8a3b11697caa9b2aa3015d37d776e)]:
+  - @tanstack/start-plugin-core@1.167.2
+
+## 1.166.17
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-router@1.167.5
+  - @tanstack/react-start-client@1.166.14
+  - @tanstack/react-start-server@1.166.14
+  - @tanstack/start-client-core@1.166.13
+  - @tanstack/start-plugin-core@1.167.1
+  - @tanstack/start-server-core@1.166.13
+
 ## 1.166.16
 
 ### Patch Changes

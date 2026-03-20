@@ -1,5 +1,33 @@
 # @tanstack/start-plugin-core
 
+## 1.167.3
+
+### Patch Changes
+
+- Updated dependencies [[`0545239`](https://github.com/TanStack/router/commit/054523900b2ee19308e5a88417dadfc6923afe30)]:
+  - @tanstack/start-client-core@1.167.0
+  - @tanstack/start-server-core@1.167.0
+  - @tanstack/router-plugin@1.167.0
+  - @tanstack/router-core@1.168.0
+  - @tanstack/router-generator@1.166.14
+
+## 1.167.2
+
+### Patch Changes
+
+- fix(start-plugin-core): fix Vite 7/8 compat for bundler options ([#6985](https://github.com/TanStack/router/pull/6985))
+
+## 1.167.1
+
+### Patch Changes
+
+- Updated dependencies [[`5ff4f0b`](https://github.com/TanStack/router/commit/5ff4f0b8dce1fac2bb0b0bfe2684fc677a8ee505)]:
+  - @tanstack/router-core@1.167.5
+  - @tanstack/router-generator@1.166.13
+  - @tanstack/router-plugin@1.166.14
+  - @tanstack/start-client-core@1.166.13
+  - @tanstack/start-server-core@1.166.13
+
 ## 1.167.0
 
 ### Minor Changes

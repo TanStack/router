@@ -1,5 +1,19 @@
 # @tanstack/router-core
 
+## 1.168.0
+
+### Minor Changes
+
+- remove pendingMatches, cachedMatches ([#6704](https://github.com/TanStack/router/pull/6704))
+  move to signal-based reactivity
+  solid uses its own native signals
+
+## 1.167.5
+
+### Patch Changes
+
+- chore: bump esbuild to 0.27.4 ([#6975](https://github.com/TanStack/router/pull/6975))
+
 ## 1.167.4
 
 ### Patch Changes

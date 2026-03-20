@@ -1,70 +1,69 @@
 import * as Vue from 'vue'
-
 import { escapeHtml } from '@tanstack/router-core'
+import { useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 const RELS_TO_DEDUPE = new Set(['canonical'])
 
 export const useTags = () => {
   const router = useRouter()
+  const matches = useStore(
+    router.stores.activeMatchesSnapshot,
+    (value) => value,
+  )
 
-  const routeMeta = useRouterState({
-    select: (state) => {
-      return state.matches.map((match) => match.meta!).filter(Boolean)
-    },
-  })
-
-  const meta: Vue.Ref<Array<RouterManagedTag>> = Vue.computed(() => {
+  const meta = Vue.computed<Array<RouterManagedTag>>(() => {
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
-    ;[...routeMeta.value].reverse().forEach((metas) => {
-      ;[...metas].reverse().forEach((m) => {
-        if (!m) return
+    ;[...matches.value.map((match) => match.meta!).filter(Boolean)]
+      .reverse()
+      .forEach((metas) => {
+        ;[...metas].reverse().forEach((m) => {
+          if (!m) return
 
-        if (m.title) {
-          if (!title) {
-            title = {
-              tag: 'title',
-              children: m.title,
+          if (m.title) {
+            if (!title) {
+              title = {
+                tag: 'title',
+                children: m.title,
+              }
             }
-          }
-        } else if ('script:ld+json' in m) {
-          // Handle JSON-LD structured data
-          // Content is HTML-escaped to prevent XSS when injected via innerHTML
-          try {
-            const json = JSON.stringify(m['script:ld+json'])
+          } else if ('script:ld+json' in m) {
+            // Handle JSON-LD structured data
+            // Content is HTML-escaped to prevent XSS when injected via innerHTML
+            try {
+              const json = JSON.stringify(m['script:ld+json'])
+              resultMeta.push({
+                tag: 'script',
+                attrs: {
+                  type: 'application/ld+json',
+                },
+                children: escapeHtml(json),
+              })
+            } catch {
+              // Skip invalid JSON-LD objects
+            }
+          } else {
+            const attribute = m.name ?? m.property
+            if (attribute) {
+              if (metaByAttribute[attribute]) {
+                return
+              } else {
+                metaByAttribute[attribute] = true
+              }
+            }
+
             resultMeta.push({
-              tag: 'script',
+              tag: 'meta',
               attrs: {
-                type: 'application/ld+json',
+                ...m,
               },
-              children: escapeHtml(json),
             })
-          } catch {
-            // Skip invalid JSON-LD objects
           }
-        } else {
-          const attribute = m.name ?? m.property
-          if (attribute) {
-            if (metaByAttribute[attribute]) {
-              return
-            } else {
-              metaByAttribute[attribute] = true
-            }
-          }
-
-          resultMeta.push({
-            tag: 'meta',
-            attrs: {
-              ...m,
-            },
-          })
-        }
+        })
       })
-    })
 
     if (title) {
       resultMeta.push(title)
@@ -75,103 +74,96 @@ export const useTags = () => {
     return resultMeta
   })
 
-  const links = useRouterState({
-    select: (state) => {
-      const constructedLinks: Array<RouterManagedTag> = []
-      const linksByRel = new Set<string>()
+  const links = Vue.computed<Array<RouterManagedTag>>(() => {
+    const constructedLinks: Array<RouterManagedTag> = []
+    const linksByRel = new Set<string>()
 
-      for (let i = state.matches.length - 1; i >= 0; i--) {
-        const match = state.matches[i]!
-        const matchLinks = match.links
-        if (!matchLinks) continue
+    for (let i = matches.value.length - 1; i >= 0; i--) {
+      const match = matches.value[i]!
+      const matchLinks = match.links
+      if (!matchLinks) continue
 
-        for (let j = matchLinks.length - 1; j >= 0; j--) {
-          const link = matchLinks[j]
-          if (!link) continue
+      for (let j = matchLinks.length - 1; j >= 0; j--) {
+        const link = matchLinks[j]
+        if (!link) continue
 
-          if (link.rel) {
-            const rel = link.rel.toLowerCase()
-            if (RELS_TO_DEDUPE.has(rel)) {
-              if (linksByRel.has(rel)) {
-                continue
-              }
-              linksByRel.add(rel)
+        if (link.rel) {
+          const rel = link.rel.toLowerCase()
+          if (RELS_TO_DEDUPE.has(rel)) {
+            if (linksByRel.has(rel)) {
+              continue
             }
+            linksByRel.add(rel)
           }
-
-          constructedLinks.push({
-            tag: 'link',
-            attrs: {
-              ...link,
-            },
-          })
         }
+
+        constructedLinks.push({
+          tag: 'link',
+          attrs: {
+            ...link,
+          },
+        })
       }
+    }
 
-      constructedLinks.reverse()
-      return constructedLinks
-    },
+    constructedLinks.reverse()
+    return constructedLinks
   })
 
-  const preloadMeta = useRouterState({
-    select: (state) => {
-      const preloadMeta: Array<RouterManagedTag> = []
+  const preloadMeta = Vue.computed<Array<RouterManagedTag>>(() => {
+    const preloadMeta: Array<RouterManagedTag> = []
 
-      state.matches
-        .map((match) => router.looseRoutesById[match.routeId]!)
-        .forEach((route) =>
-          router.ssr?.manifest?.routes[route.id]?.preloads
-            ?.filter(Boolean)
-            .forEach((preload) => {
-              preloadMeta.push({
-                tag: 'link',
-                attrs: {
-                  rel: 'modulepreload',
-                  href: preload,
-                },
-              })
-            }),
-        )
-
-      return preloadMeta
-    },
-  })
-
-  const headScripts = useRouterState({
-    select: (state) =>
-      (
-        state.matches
-          .map((match) => match.headScripts!)
-          .flat(1)
-          .filter(Boolean) as Array<RouterManagedTag>
-      ).map(({ children, ...script }) => ({
-        tag: 'script',
-        attrs: {
-          ...script,
-        },
-        children,
-      })),
-  })
-
-  const manifestAssets = useRouterState({
-    select: (state) => {
-      const manifest = router.ssr?.manifest
-
-      const assets = state.matches
-        .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
-        .filter(Boolean)
-        .flat(1)
-        .filter((asset) => asset.tag === 'link')
-        .map(
-          (asset) =>
-            ({
+    matches.value
+      .map((match) => router.looseRoutesById[match.routeId]!)
+      .forEach((route) =>
+        router.ssr?.manifest?.routes[route.id]?.preloads
+          ?.filter(Boolean)
+          .forEach((preload) => {
+            preloadMeta.push({
               tag: 'link',
-              attrs: { ...asset.attrs },
-            }) satisfies RouterManagedTag,
-        )
+              attrs: {
+                rel: 'modulepreload',
+                href: preload,
+              },
+            })
+          }),
+      )
 
-      return assets
-    },
+    return preloadMeta
+  })
+
+  const headScripts = Vue.computed<Array<RouterManagedTag>>(() =>
+    (
+      matches.value
+        .map((match) => match.headScripts!)
+        .flat(1)
+        .filter(Boolean) as Array<RouterManagedTag>
+    ).map(({ children, ...script }) => ({
+      tag: 'script',
+      attrs: {
+        ...script,
+      },
+      children,
+    })),
+  )
+
+  const manifestAssets = Vue.computed<Array<RouterManagedTag>>(() => {
+    const manifest = router.ssr?.manifest
+
+    const assets = matches.value
+      .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
+      .filter(Boolean)
+      .flat(1)
+      .filter((asset) => asset.tag === 'link')
+      .map(
+        (asset) =>
+          ({
+            tag: 'link',
+            attrs: { ...asset.attrs },
+          }) satisfies RouterManagedTag,
+      )
+
+    return assets
   })
 
   return () =>

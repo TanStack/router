@@ -18,7 +18,6 @@ title: Search middleware to strip search params
 ```tsx
 import { z } from 'zod'
 import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
 
 const defaultValues = {
   one: 'abc',
@@ -31,7 +30,8 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/')({
-  validateSearch: zodValidator(searchSchema),
+  // for Zod v4, use the schema directly
+  validateSearch: searchSchema,
   search: {
     // strip default values
     middlewares: [stripSearchParams(defaultValues)],
@@ -42,7 +42,6 @@ export const Route = createFileRoute('/')({
 ```tsx
 import { z } from 'zod'
 import { createRootRoute, stripSearchParams } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
 
 const searchSchema = z.object({
   hello: z.string().default('world'),
@@ -50,7 +49,8 @@ const searchSchema = z.object({
 })
 
 export const Route = createRootRoute({
-  validateSearch: zodValidator(searchSchema),
+  // for Zod v4, use the schema directly
+  validateSearch: searchSchema,
   search: {
     // always remove `hello`
     middlewares: [stripSearchParams(['hello'])],
@@ -61,7 +61,6 @@ export const Route = createRootRoute({
 ```tsx
 import { z } from 'zod'
 import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
 
 const searchSchema = z.object({
   one: z.string().default('abc'),
@@ -69,7 +68,8 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/')({
-  validateSearch: zodValidator(searchSchema),
+  // for Zod v4, use the schema directly
+  validateSearch: searchSchema,
   search: {
     // remove all search params
     middlewares: [stripSearchParams(true)],

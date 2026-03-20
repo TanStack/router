@@ -10,18 +10,18 @@
     "test:unit": "vitest"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/arktype-adapter": "^1.166.9",
     "@tanstack/react-query": "^5.90.0",
-    "@tanstack/react-router": "^1.167.4",
-    "@tanstack/react-router-devtools": "^1.166.9",
-    "@tanstack/router-plugin": "^1.166.13",
+    "@tanstack/react-router": "^1.168.0",
+    "@tanstack/react-router-devtools": "^1.166.10",
+    "@tanstack/router-plugin": "^1.167.0",
     "@tanstack/valibot-adapter": "^1.166.9",
     "@tanstack/zod-adapter": "^1.166.9",
     "arktype": "^2.1.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.2",
     "valibot": "1.0.0-beta.15",
     "zod": "^3.24.2"
   },
