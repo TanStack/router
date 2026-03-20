@@ -5,32 +5,18 @@ import {
   waitForServer,
 } from '@tanstack/router-e2e-utils'
 import packageJson from '../../package.json' with { type: 'json' }
-import { ssrStylesMode, useNitro } from '../../env'
-
-function getPortKey() {
-  let key = packageJson.name
-  if (ssrStylesMode !== 'default') {
-    key += `-${ssrStylesMode}`
-  }
-  if (useNitro) {
-    key += '-nitro'
-  }
-  return key
-}
 
 export default async function setup() {
-  const portKey = getPortKey()
-
-  await e2eStartDummyServer(portKey)
+  await e2eStartDummyServer(packageJson.name)
 
   if (process.env.MODE !== 'dev') return
 
-  const port = await getTestServerPort(portKey)
+  const port = await getTestServerPort(packageJson.name)
   const baseURL = `http://localhost:${port}`
 
   await waitForServer(baseURL)
   await preOptimizeDevServer({
     baseURL,
-    readyTestId: 'home-heading',
+    readyTestId: 'heading',
   })
 }

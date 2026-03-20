@@ -18,14 +18,8 @@ import type {
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
 import type { Config, DeletableNodes } from '../config'
+import type { SplitNodeMeta } from './types'
 
-type SplitNodeMeta = {
-  routeIdent: SplitRouteIdentNodes
-  splitStrategy: 'lazyFn' | 'lazyRouteComponent'
-  localImporterIdent: string
-  exporterIdent: string
-  localExporterIdent: string
-}
 const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
   [
     'loader',
@@ -858,9 +852,39 @@ export function compileCodeSplitReferenceRoute(
                           ])
                         }
 
-                        prop.value = template.expression(
-                          `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
-                        )()
+                        const insertionPath = path.getStatementParent() ?? path
+                        let splitPropValue: t.Expression | undefined
+
+                        for (const plugin of opts.compilerPlugins ?? []) {
+                          const pluginPropValue = plugin.onSplitRouteProperty?.(
+                            {
+                              programPath,
+                              callExpressionPath: path,
+                              insertionPath,
+                              routeOptions,
+                              prop,
+                              splitNodeMeta,
+                              lazyRouteComponentIdent:
+                                LAZY_ROUTE_COMPONENT_IDENT,
+                            },
+                          )
+
+                          if (!pluginPropValue) {
+                            continue
+                          }
+
+                          modified = true
+                          splitPropValue = pluginPropValue
+                          break
+                        }
+
+                        if (splitPropValue) {
+                          prop.value = splitPropValue
+                        } else {
+                          prop.value = template.expression(
+                            `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                          )()
+                        }
 
                         // add HMR handling
                         if (opts.addHmr && !hmrAdded) {
