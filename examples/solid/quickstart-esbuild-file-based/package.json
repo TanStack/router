@@ -9,16 +9,16 @@
     "start": "dev"
   },
   "dependencies": {
-    "@tanstack/router-plugin": "^1.166.12",
-    "@tanstack/solid-router": "^1.167.3",
-    "@tanstack/solid-router-devtools": "^1.166.9",
+    "@tanstack/router-plugin": "^1.167.1",
+    "@tanstack/solid-router": "^1.168.1",
+    "@tanstack/solid-router-devtools": "^1.166.10",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.27.4",
     "esbuild-plugin-solid": "^0.6.0"
   }
 }

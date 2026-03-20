@@ -1,5 +1,31 @@
 # @tanstack/router-core
 
+## 1.168.1
+
+### Patch Changes
+
+- Update store to 0.9.2 ([#6993](https://github.com/TanStack/router/pull/6993))
+
+## 1.168.0
+
+### Minor Changes
+
+- remove pendingMatches, cachedMatches ([#6704](https://github.com/TanStack/router/pull/6704))
+  move to signal-based reactivity
+  solid uses its own native signals
+
+## 1.167.5
+
+### Patch Changes
+
+- chore: bump esbuild to 0.27.4 ([#6975](https://github.com/TanStack/router/pull/6975))
+
+## 1.167.4
+
+### Patch Changes
+
+- Add @tanstack/intent AI agent skills and CLI entry points for Router and Start packages ([#6866](https://github.com/TanStack/router/pull/6866))
+
 ## 1.167.3
 
 ### Patch Changes

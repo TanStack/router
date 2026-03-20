@@ -62,7 +62,7 @@ export const renderRouterToStream = async ({
     }
 
     return new Response(`<!DOCTYPE html>${fullHtml}`, {
-      status: router.state.statusCode,
+      status: router.stores.statusCode.state,
       headers: responseHeaders,
     })
   }
@@ -78,7 +78,7 @@ export const renderRouterToStream = async ({
   )
 
   return new Response(responseStream as any, {
-    status: router.state.statusCode,
+    status: router.stores.statusCode.state,
     headers: responseHeaders,
   })
 }

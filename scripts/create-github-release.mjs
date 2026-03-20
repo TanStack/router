@@ -2,7 +2,7 @@
 import fs from 'fs'
 import path from 'node:path'
 import { globSync } from 'node:fs'
-import { execSync } from 'node:child_process'
+import { execSync, execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 
 const rootDir = path.join(import.meta.dirname, '..')
@@ -80,8 +80,9 @@ for (const relPath of allPkgJsonPaths) {
   // Get the version from the previous release commit
   if (previousRelease) {
     try {
-      const prevContent = execSync(
-        `git show ${previousRelease}:packages/${relPath}`,
+      const prevContent = execFileSync(
+        'git',
+        ['show', `${previousRelease}:packages/${relPath}`],
         { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] },
       )
       const prevPkg = JSON.parse(prevContent)
@@ -123,6 +124,7 @@ const rawLog = execSync(
 ).trim()
 
 const typeOrder = [
+  'breaking',
   'feat',
   'fix',
   'perf',
@@ -133,6 +135,7 @@ const typeOrder = [
   'ci',
 ]
 const typeLabels = {
+  breaking: '⚠️ Breaking Changes',
   feat: 'Features',
   fix: 'Fix',
   perf: 'Performance',
@@ -158,21 +161,24 @@ for (const line of commits) {
   // Skip release commits
   if (subject.startsWith('ci: changeset release')) continue
 
-  // Parse conventional commit: type(scope): message
-  const conventionalMatch = subject.match(/^(\w+)(?:\(([^)]*)\))?:\s*(.*)$/)
+  // Parse conventional commit: type(scope)!: message
+  const conventionalMatch = subject.match(/^(\w+)(?:\(([^)]*)\))?(!)?:\s*(.*)$/)
   const type = conventionalMatch ? conventionalMatch[1] : 'other'
+  const isBreaking = conventionalMatch ? !!conventionalMatch[3] : false
   const scope = conventionalMatch ? conventionalMatch[2] || '' : ''
-  const message = conventionalMatch ? conventionalMatch[3] : subject
+  const message = conventionalMatch ? conventionalMatch[4] : subject
 
   // Only include user-facing change types
-  if (!['feat', 'fix', 'perf', 'refactor', 'build'].includes(type)) continue
+  if (!['chore', 'feat', 'fix', 'perf', 'refactor', 'build'].includes(type))
+    continue
 
   // Extract PR number if present
   const prMatch = message.match(/\(#(\d+)\)/)
   const prNumber = prMatch ? prMatch[1] : null
 
-  if (!groups[type]) groups[type] = []
-  groups[type].push({ hash, email, scope, message, prNumber })
+  const bucket = isBreaking ? 'breaking' : type
+  if (!groups[bucket]) groups[bucket] = []
+  groups[bucket].push({ hash, email, scope, message, prNumber })
 }
 
 // Build markdown grouped by conventional commit type
@@ -210,6 +216,7 @@ const tagName = `release-${date}-${time}`
 const titleDate = `${date} ${now.toISOString().slice(11, 16)}`
 
 const isPrerelease = process.argv.includes('--prerelease')
+const isLatest = process.argv.includes('--latest')
 
 const body = `Release ${titleDate}
 
@@ -238,7 +245,7 @@ if (!tagExists) {
 }
 
 const prereleaseFlag = isPrerelease ? '--prerelease' : ''
-const latestFlag = isPrerelease ? '' : ' --latest'
+const latestFlag = isLatest ? ' --latest' : ''
 const tmpFile = path.join(tmpdir(), `release-notes-${tagName}.md`)
 fs.writeFileSync(tmpFile, body)
 

@@ -1,3 +1,8 @@
+/** Read `build.rollupOptions` or `build.rolldownOptions` from a build config. */
+export function getBundlerOptions(build: any): any {
+  return build?.rolldownOptions ?? build?.rollupOptions
+}
+
 export function resolveViteId(id: string) {
   return `\0${id}`
 }

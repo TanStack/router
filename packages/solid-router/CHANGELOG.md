@@ -1,5 +1,41 @@
 # @tanstack/solid-router
 
+## 1.168.1
+
+### Patch Changes
+
+- Updated dependencies [[`91cc628`](https://github.com/TanStack/router/commit/91cc62899b75ca920fe83c5ee7f3dbb5c71a523f)]:
+  - @tanstack/router-core@1.168.1
+
+## 1.168.0
+
+### Minor Changes
+
+- remove pendingMatches, cachedMatches ([#6704](https://github.com/TanStack/router/pull/6704))
+  move to signal-based reactivity
+  solid uses its own native signals
+
+### Patch Changes
+
+- Updated dependencies [[`0545239`](https://github.com/TanStack/router/commit/054523900b2ee19308e5a88417dadfc6923afe30)]:
+  - @tanstack/router-core@1.168.0
+
+## 1.167.5
+
+### Patch Changes
+
+- Updated dependencies [[`5ff4f0b`](https://github.com/TanStack/router/commit/5ff4f0b8dce1fac2bb0b0bfe2684fc677a8ee505)]:
+  - @tanstack/router-core@1.167.5
+
+## 1.167.4
+
+### Patch Changes
+
+- Add @tanstack/intent AI agent skills and CLI entry points for Router and Start packages ([#6866](https://github.com/TanStack/router/pull/6866))
+
+- Updated dependencies [[`940151c`](https://github.com/TanStack/router/commit/940151cbed0c76c92a5cf196c0905b17a956ca7e)]:
+  - @tanstack/router-core@1.167.4
+
 ## 1.167.3
 
 ### Patch Changes

@@ -5,6 +5,7 @@ import { join } from 'pathe'
 import { escapePath } from 'tinyglobby'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
+import { getBundlerOptions } from './utils'
 import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import { devServerPlugin } from './dev-server-plugin/plugin'
@@ -243,14 +244,21 @@ export function TanStackStartVitePluginCore(
           environments: {
             [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
-              build: {
-                rollupOptions: {
+              build: (() => {
+                // Use the same object reference for both keys to avoid
+                // Vite 8's deprecation warning when both are present.
+                // Vite 7 reads rollupOptions, Vite 8 reads rolldownOptions.
+                const bundlerOptions = {
                   input: {
                     main: ENTRY_POINTS.client,
                   },
-                },
-                outDir: getClientOutputDirectory(viteConfig),
-              },
+                }
+                return {
+                  rollupOptions: bundlerOptions,
+                  rolldownOptions: bundlerOptions,
+                  outDir: getClientOutputDirectory(viteConfig),
+                }
+              })(),
               optimizeDeps: {
                 exclude: crawlFrameworkPkgsResult.optimizeDeps.exclude,
                 // Ensure user code can be crawled for dependencies
@@ -264,11 +272,19 @@ export function TanStackStartVitePluginCore(
               consumer: 'server',
               build: {
                 ssr: true,
-                rollupOptions: {
-                  input:
-                    viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
-                      ?.build?.rollupOptions?.input ?? serverAlias,
-                },
+                ...(() => {
+                  const bundlerOptions = {
+                    input:
+                      getBundlerOptions(
+                        viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
+                          ?.build,
+                      )?.input ?? serverAlias,
+                  }
+                  return {
+                    rollupOptions: bundlerOptions,
+                    rolldownOptions: bundlerOptions,
+                  }
+                })(),
                 outDir: getServerOutputDirectory(viteConfig),
                 commonjsOptions: {
                   include: [/node_modules/],
@@ -305,7 +321,6 @@ export function TanStackStartVitePluginCore(
             // This is not the same as injecting environment variables.
 
             ...defineReplaceEnv('TSS_SERVER_FN_BASE', TSS_SERVER_FN_BASE),
-            ...defineReplaceEnv('TSS_CLIENT_OUTPUT_DIR', getClientOutputDirectory(viteConfig)),
             ...defineReplaceEnv('TSS_ROUTER_BASEPATH', startConfig.router.basepath),
             ...(command === 'serve' ? defineReplaceEnv('TSS_SHELL', startConfig.spa?.enabled ? 'true' : 'false') : {}),
             ...defineReplaceEnv('TSS_DEV_SERVER', command === 'serve' ? 'true' : 'false'),

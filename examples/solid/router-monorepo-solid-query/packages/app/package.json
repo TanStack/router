@@ -15,13 +15,13 @@
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^2.11.10",
+    "vite-plugin-solid": "^2.11.11",
     "typescript": "^5.7.2",
-    "@tanstack/solid-router-devtools": "^1.166.9",
-    "tailwindcss": "4.1.18",
-    "vite": "^7.3.1",
+    "@tanstack/solid-router-devtools": "^1.166.10",
+    "tailwindcss": "^4.2.2",
+    "vite": "^8.0.0",
     "vite-plugin-dts": "^4.5.4",
-    "@tailwindcss/vite": "4.1.18"
+    "@tailwindcss/vite": "^4.2.2"
   },
   "nx": {
     "targets": {
