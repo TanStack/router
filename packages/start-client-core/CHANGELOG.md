@@ -1,5 +1,19 @@
 # @tanstack/start-client-core
 
+## 1.167.0
+
+### Minor Changes
+
+- remove pendingMatches, cachedMatches ([#6704](https://github.com/TanStack/router/pull/6704))
+  move to signal-based reactivity
+  solid uses its own native signals
+
+### Patch Changes
+
+- Updated dependencies [[`0545239`](https://github.com/TanStack/router/commit/054523900b2ee19308e5a88417dadfc6923afe30)]:
+  - @tanstack/router-core@1.168.0
+  - @tanstack/start-storage-context@1.166.14
+
 ## 1.166.13
 
 ### Patch Changes

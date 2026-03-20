@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/react-router": "^1.167.5",
-    "@tanstack/react-router-devtools": "^1.166.9",
-    "@tanstack/router-plugin": "^1.166.14",
+    "@tanstack/react-router": "^1.168.0",
+    "@tanstack/react-router-devtools": "^1.166.10",
+    "@tanstack/router-plugin": "^1.167.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",

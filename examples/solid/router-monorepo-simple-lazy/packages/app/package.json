@@ -19,7 +19,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
     "typescript": "^5.7.2",
-    "@tanstack/solid-router-devtools": "^1.166.9",
+    "@tanstack/solid-router-devtools": "^1.166.10",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.0",
     "vite-plugin-dts": "^4.5.4",
