@@ -39,9 +39,18 @@ const createTestManifest = (routeId: string) =>
     },
   }) satisfies Manifest
 
+const browserHistories: Array<ReturnType<typeof createBrowserHistory>> = []
+
+const createTestBrowserHistory = () => {
+  const history = createBrowserHistory()
+  browserHistories.push(history)
+  return history
+}
+
 afterEach(() => {
-  window.history.replaceState(null, 'root', '/')
   cleanup()
+  browserHistories.splice(0).forEach((history) => history.destroy())
+  window.history.replaceState(null, 'root', '/')
 })
 
 describe('ssr scripts', () => {
@@ -233,139 +242,133 @@ describe('ssr HeadContent', () => {
   })
 
   test('keeps manifest stylesheet links mounted when history state changes', async () => {
-    const history = createBrowserHistory()
+    const history = createTestBrowserHistory()
 
-    try {
-      const rootRoute = createRootRoute({
-        component: () => {
-          return (
-            <>
-              <Teleport to="head">
-                <HeadContent />
-              </Teleport>
-              <button
-                onClick={() => {
-                  window.history.replaceState(
-                    { slideId: 'slide-2' },
-                    '',
-                    window.location.href,
-                  )
-                }}
-              >
-                Replace state
-              </button>
-              <Outlet />
-            </>
-          )
-        },
-      })
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        component: () => <div>Index</div>,
-      })
-
-      const router = createRouter({
-        history,
-        routeTree: rootRoute.addChildren([indexRoute]),
-      })
-
-      router.ssr = {
-        manifest: createTestManifest(rootRoute.id),
-      }
-
-      await router.load()
-
-      render(<RouterProvider router={router} />)
-
-      const getStylesheetLink = () =>
-        Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
-          (link) => link.getAttribute('href') === '/main.css',
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <Teleport to="head">
+              <HeadContent />
+            </Teleport>
+            <button
+              onClick={() => {
+                window.history.replaceState(
+                  { slideId: 'slide-2' },
+                  '',
+                  window.location.href,
+                )
+              }}
+            >
+              Replace state
+            </button>
+            <Outlet />
+          </>
         )
+      },
+    })
 
-      await waitFor(() => {
-        expect(getStylesheetLink()).toBeInstanceOf(HTMLLinkElement)
-      })
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
 
-      const initialLink = getStylesheetLink()
-      expect(initialLink).toBeInstanceOf(HTMLLinkElement)
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
 
-      await fireEvent.click(
-        screen.getByRole('button', { name: 'Replace state' }),
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id),
+    }
+
+    await router.load()
+
+    render(<RouterProvider router={router} />)
+
+    const getStylesheetLink = () =>
+      Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
+        (link) => link.getAttribute('href') === '/main.css',
       )
 
-      await waitFor(() => {
-        expect(router.state.location.state).toMatchObject({
-          slideId: 'slide-2',
-        })
-      })
+    await waitFor(() => {
+      expect(getStylesheetLink()).toBeInstanceOf(HTMLLinkElement)
+    })
 
-      expect(getStylesheetLink()).toBe(initialLink)
-      expect(
-        Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(
-          (link) => link.getAttribute('href') === '/main.css',
-        ),
-      ).toHaveLength(1)
-    } finally {
-      history.destroy()
-    }
+    const initialLink = getStylesheetLink()
+    expect(initialLink).toBeInstanceOf(HTMLLinkElement)
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Replace state' }))
+
+    await waitFor(() => {
+      expect(router.state.location.state).toMatchObject({
+        slideId: 'slide-2',
+      })
+    })
+
+    expect(getStylesheetLink()).toBe(initialLink)
+    expect(
+      Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(
+        (link) => link.getAttribute('href') === '/main.css',
+      ),
+    ).toHaveLength(1)
   })
 
-  test('keeps manifest stylesheet links mounted when navigating with Link', async () => {
-    const history = createBrowserHistory()
+  test('keeps manifest stylesheet links mounted across repeated Link navigations', async () => {
+    const history = createTestBrowserHistory()
 
-    try {
-      const rootRoute = createRootRoute({
-        component: () => {
-          return (
-            <>
-              <Teleport to="head">
-                <HeadContent />
-              </Teleport>
-              <Outlet />
-            </>
-          )
-        },
-      })
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        component: () => <Link to="/about">Go to about page</Link>,
-      })
-
-      const aboutRoute = createRoute({
-        path: '/about',
-        getParentRoute: () => rootRoute,
-        component: () => <div>About</div>,
-      })
-
-      const router = createRouter({
-        history,
-        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
-      })
-
-      router.ssr = {
-        manifest: createTestManifest(rootRoute.id),
-      }
-
-      await router.load()
-
-      render(<RouterProvider router={router} />)
-
-      const getStylesheetLink = () =>
-        Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
-          (link) => link.getAttribute('href') === '/main.css',
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <Teleport to="head">
+              <HeadContent />
+            </Teleport>
+            <Outlet />
+          </>
         )
+      },
+    })
 
-      await waitFor(() => {
-        expect(getStylesheetLink()).toBeInstanceOf(HTMLLinkElement)
-      })
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <Link to="/about">Go to about page</Link>,
+    })
 
-      const initialLink = getStylesheetLink()
-      expect(initialLink).toBeInstanceOf(HTMLLinkElement)
+    const aboutRoute = createRoute({
+      path: '/about',
+      getParentRoute: () => rootRoute,
+      component: () => <Link to="/">Back to home</Link>,
+    })
 
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id),
+    }
+
+    await router.load()
+
+    render(<RouterProvider router={router} />)
+
+    const getStylesheetLink = () =>
+      Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
+        (link) => link.getAttribute('href') === '/main.css',
+      )
+
+    await waitFor(() => {
+      expect(getStylesheetLink()).toBeInstanceOf(HTMLLinkElement)
+    })
+
+    const initialLink = getStylesheetLink()
+    expect(initialLink).toBeInstanceOf(HTMLLinkElement)
+
+    for (let i = 0; i < 5; i++) {
       await fireEvent.click(
         screen.getByRole('link', { name: 'Go to about page' }),
       )
@@ -374,14 +377,22 @@ describe('ssr HeadContent', () => {
         expect(router.state.location.pathname).toBe('/about')
       })
 
-      expect(getStylesheetLink()).toBe(initialLink)
-      expect(
-        Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(
-          (link) => link.getAttribute('href') === '/main.css',
-        ),
-      ).toHaveLength(1)
-    } finally {
-      history.destroy()
+      await screen.findByRole('link', { name: 'Back to home' })
+
+      await fireEvent.click(screen.getByRole('link', { name: 'Back to home' }))
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/')
+      })
+
+      await screen.findByRole('link', { name: 'Go to about page' })
     }
+
+    expect(getStylesheetLink()).toBe(initialLink)
+    expect(
+      Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(
+        (link) => link.getAttribute('href') === '/main.css',
+      ),
+    ).toHaveLength(1)
   })
 })
