@@ -11,6 +11,8 @@ import {
 } from '@tanstack/react-router'
 import { createRoot } from 'react-dom/client'
 
+export type Scenario = 'default' | 'static-search-links'
+
 function runPerfSelectorComputation(seed: number) {
   let value = Math.trunc(seed) | 0
 
@@ -22,6 +24,7 @@ function runPerfSelectorComputation(seed: number) {
 }
 
 const selectors = Array.from({ length: 20 }, (_, index) => index)
+const staticSearchLinkIds = Array.from({ length: 200 }, (_, index) => index)
 
 function Params() {
   const params = useParams({
@@ -49,6 +52,18 @@ function Links() {
   )
 }
 
+function StaticSearchLinks(props: { linkId: number }) {
+  return (
+    <Link
+      to="/links"
+      search={{ linkId: `${props.linkId}` }}
+      activeOptions={{ includeSearch: false }}
+    >
+      Link
+    </Link>
+  )
+}
+
 function Root() {
   return (
     <>
@@ -66,20 +81,34 @@ function Root() {
   )
 }
 
-const rootRoute = createRootRoute({
-  component: Root,
-})
+function StaticSearchLinksRoot() {
+  return (
+    <>
+      {staticSearchLinkIds.map((linkId) => (
+        <StaticSearchLinks key={linkId} linkId={linkId} />
+      ))}
+      <Outlet />
+    </>
+  )
+}
 
-const route = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/$id',
-  component: () => <div />,
-})
+export function mountTestApp(
+  container: Element,
+  scenario: Scenario = 'default',
+) {
+  const rootRoute = createRootRoute({
+    component: scenario === 'default' ? Root : StaticSearchLinksRoot,
+  })
 
-export function mountTestApp(container: Element) {
+  const route = createRoute({
+    getParentRoute: () => rootRoute,
+    path: scenario === 'default' ? '/$id' : '/links',
+    component: () => <div />,
+  })
+
   const router = createRouter({
     history: createMemoryHistory({
-      initialEntries: ['/0'],
+      initialEntries: [scenario === 'default' ? '/0' : '/links'],
     }),
     scrollRestoration: true,
     routeTree: rootRoute.addChildren([route]),

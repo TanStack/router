@@ -19,6 +19,7 @@ import type {
   AnyRouter,
   Constrain,
   LinkOptions,
+  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -396,17 +397,75 @@ export function useLinkProps<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLocation = useStore(
-    router.stores.location,
-    (l) => l,
-    (prev, next) => prev.href === next.href,
+  const buildLocationRef = React.useRef<BuildLocationState | null>(null)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const activeLocationDepsRef = React.useRef<ActiveLocationDeps>(
+    NO_ACTIVE_LOCATION_DEPS,
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const next = React.useMemo(() => {
-    const opts = { _fromLocation: currentLocation, ..._options }
-    return router.buildLocation(opts as any)
+  const locationStateEqual = React.useCallback(
+    (prev: ParsedLocation, next: ParsedLocation) => {
+      const buildLocation = buildLocationRef.current
+
+      if (
+        didLocationChange(
+          prev,
+          next,
+          buildLocation?.deps ?? BUILD_LOCATION_DEP_ALL,
+        ) ||
+        didActiveLocationChange(prev, next, activeLocationDepsRef.current)
+      ) {
+        return false
+      }
+
+      return true
+    },
+    [],
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const currentLocation = useStore(
+    router.stores.location,
+    (l) => l,
+    locationStateEqual,
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const buildLocation = React.useMemo(() => {
+    const previousBuildLocation = buildLocationRef.current
+
+    if (
+      previousBuildLocation &&
+      previousBuildLocation.router === router &&
+      previousBuildLocation.options === _options &&
+      !didLocationChange(
+        previousBuildLocation.location,
+        currentLocation,
+        previousBuildLocation.deps,
+      )
+    ) {
+      return previousBuildLocation
+    }
+
+    const next = router.buildLocation({
+      _collectLocationDeps: true,
+      _fromLocation: currentLocation,
+      ..._options,
+    } as any)
+
+    return {
+      router,
+      location: currentLocation,
+      next,
+      deps: _options._fromLocation
+        ? BUILD_LOCATION_DEP_NONE
+        : getBuildLocationDeps(next),
+      options: _options,
+    }
   }, [router, currentLocation, _options])
+
+  const next = buildLocation.next
 
   // Use publicHref - it contains the correct href for display
   // When a rewrite changes the origin, publicHref is the full URL
@@ -460,6 +519,27 @@ export function useLinkProps<
     } catch {}
     return undefined
   }, [to, hrefOption, router.protocolAllowlist])
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const activeLocationDeps = React.useMemo(
+    () =>
+      getActiveLocationDeps(
+        activeOptions,
+        {
+          hash: next.hash,
+          pathname: next.pathname,
+          search: next.search,
+        },
+        !!externalLink,
+      ),
+    [activeOptions, externalLink, next.hash, next.pathname, next.search],
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  React.useLayoutEffect(() => {
+    buildLocationRef.current = buildLocation
+    activeLocationDepsRef.current = activeLocationDeps
+  }, [activeLocationDeps, buildLocation])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isActive = React.useMemo(() => {
@@ -725,6 +805,41 @@ const intersectionObserverOptions: IntersectionObserverInit = {
   rootMargin: '100px',
 }
 
+type BuildLocationState = {
+  router: AnyRouter
+  location: ParsedLocation
+  next: ParsedLocation
+  deps: number
+  options: unknown
+}
+
+type ActiveLocationDeps = {
+  deps: number
+  ignoreUndefined: boolean
+  searchMode: number
+}
+
+const BUILD_LOCATION_DEP_NONE = 0
+const BUILD_LOCATION_DEP_PATHNAME = 1 << 0
+const BUILD_LOCATION_DEP_SEARCH = 1 << 1
+const BUILD_LOCATION_DEP_HASH = 1 << 2
+const BUILD_LOCATION_DEP_STATE = 1 << 3
+const BUILD_LOCATION_DEP_ALL =
+  BUILD_LOCATION_DEP_PATHNAME |
+  BUILD_LOCATION_DEP_SEARCH |
+  BUILD_LOCATION_DEP_HASH |
+  BUILD_LOCATION_DEP_STATE
+
+const ACTIVE_LOCATION_SEARCH_NONE = 0
+const ACTIVE_LOCATION_SEARCH_FULL = 1
+const ACTIVE_LOCATION_SEARCH_HAS_ENTRIES = 2
+
+const NO_ACTIVE_LOCATION_DEPS: ActiveLocationDeps = {
+  deps: BUILD_LOCATION_DEP_NONE,
+  ignoreUndefined: true,
+  searchMode: ACTIVE_LOCATION_SEARCH_NONE,
+}
+
 const composeHandlers =
   (handlers: Array<undefined | React.EventHandler<any>>) =>
   (e: React.SyntheticEvent) => {
@@ -757,6 +872,102 @@ function isSafeInternal(to: unknown) {
   const zero = to.charCodeAt(0)
   if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
   return zero === 46 // '.', '..', './', '../'
+}
+
+function didLocationChange(
+  prev: ParsedLocation,
+  next: ParsedLocation,
+  deps: number,
+) {
+  return !!(
+    (deps & BUILD_LOCATION_DEP_PATHNAME && prev.pathname !== next.pathname) ||
+    (deps & BUILD_LOCATION_DEP_SEARCH && prev.search !== next.search) ||
+    (deps & BUILD_LOCATION_DEP_HASH && prev.hash !== next.hash) ||
+    (deps & BUILD_LOCATION_DEP_STATE && prev.state !== next.state)
+  )
+}
+
+function getBuildLocationDeps(next: ParsedLocation) {
+  return ((next as any).__TSR_buildLocationDeps ??
+    BUILD_LOCATION_DEP_ALL) as number
+}
+
+function getActiveLocationDeps(
+  activeOptions: LinkOptions['activeOptions'],
+  nextLocation: Pick<ParsedLocation, 'hash' | 'pathname' | 'search'>,
+  externalLink: boolean,
+): ActiveLocationDeps {
+  if (externalLink) {
+    return NO_ACTIVE_LOCATION_DEPS
+  }
+
+  const exact = activeOptions?.exact ?? false
+  const includeSearch = activeOptions?.includeSearch ?? true
+  const includeHash = !!activeOptions?.includeHash
+  const ignoreUndefined = !activeOptions?.explicitUndefined
+  const nextSearchIsEmpty = isSearchEmpty(nextLocation.search, ignoreUndefined)
+
+  return {
+    deps:
+      BUILD_LOCATION_DEP_PATHNAME | (includeHash ? BUILD_LOCATION_DEP_HASH : 0),
+    ignoreUndefined,
+    searchMode: !includeSearch
+      ? ACTIVE_LOCATION_SEARCH_NONE
+      : nextSearchIsEmpty
+        ? exact
+          ? ACTIVE_LOCATION_SEARCH_HAS_ENTRIES
+          : ACTIVE_LOCATION_SEARCH_NONE
+        : ACTIVE_LOCATION_SEARCH_FULL,
+  }
+}
+
+function didActiveLocationChange(
+  prev: ParsedLocation,
+  next: ParsedLocation,
+  deps: ActiveLocationDeps,
+) {
+  if (
+    deps.deps & BUILD_LOCATION_DEP_PATHNAME &&
+    prev.pathname !== next.pathname
+  ) {
+    return true
+  }
+
+  if (deps.searchMode === ACTIVE_LOCATION_SEARCH_FULL) {
+    if (prev.search !== next.search) {
+      return true
+    }
+  } else if (deps.searchMode === ACTIVE_LOCATION_SEARCH_HAS_ENTRIES) {
+    if (
+      hasSearchEntries(prev.search, deps.ignoreUndefined) !==
+      hasSearchEntries(next.search, deps.ignoreUndefined)
+    ) {
+      return true
+    }
+  }
+
+  return !!(deps.deps & BUILD_LOCATION_DEP_HASH && prev.hash !== next.hash)
+}
+
+function isSearchEmpty(search: unknown, ignoreUndefined: boolean): boolean {
+  return !hasSearchEntries(search, ignoreUndefined)
+}
+
+function hasSearchEntries(search: unknown, ignoreUndefined: boolean): boolean {
+  if (!search || typeof search !== 'object') {
+    return false
+  }
+
+  for (const key in search as Record<string, unknown>) {
+    if (
+      !ignoreUndefined ||
+      (search as Record<string, unknown>)[key] !== undefined
+    ) {
+      return true
+    }
+  }
+
+  return false
 }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
