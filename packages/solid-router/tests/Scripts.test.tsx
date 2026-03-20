@@ -1,15 +1,28 @@
-import { describe, expect, test } from 'vitest'
-import { render } from '@solidjs/testing-library'
+import { afterEach, describe, expect, test } from 'vitest'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
 
 import {
   HeadContent,
+  Outlet,
   RouterProvider,
+  createBrowserHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
 import { Scripts } from '../src/Scripts'
+
+afterEach(() => {
+  window.history.replaceState(null, 'root', '/')
+  cleanup()
+})
 
 describe('ssr scripts', () => {
   test('it works', async () => {
@@ -193,5 +206,102 @@ describe('ssr HeadContent', () => {
       { name: 'last-modified', content: '2021-10-10' },
       { property: 'og:image', content: 'index-image.jpg' },
     ])
+  })
+
+  test('keeps manifest stylesheet links mounted when history state changes', async () => {
+    const history = createBrowserHistory()
+
+    try {
+      const rootRoute = createRootRoute({
+        component: () => {
+          return (
+            <>
+              <HeadContent />
+              <button
+                onClick={() => {
+                  window.history.replaceState(
+                    { slideId: 'slide-2' },
+                    '',
+                    window.location.href,
+                  )
+                }}
+              >
+                Replace state
+              </button>
+              <Outlet />
+            </>
+          )
+        },
+      })
+
+      const indexRoute = createRoute({
+        path: '/',
+        getParentRoute: () => rootRoute,
+        component: () => <div>Index</div>,
+      })
+
+      const router = createRouter({
+        history,
+        routeTree: rootRoute.addChildren([indexRoute]),
+      })
+
+      router.ssr = {
+        manifest: {
+          routes: {
+            [rootRoute.id]: {
+              assets: [
+                {
+                  tag: 'link',
+                  attrs: {
+                    rel: 'stylesheet',
+                    href: '/main.css',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      } as any
+
+      await router.load()
+
+      render(() => <RouterProvider router={router} />)
+
+      const getStylesheetLink = () =>
+        Array.from(
+          document.head.querySelectorAll('link[rel="stylesheet"]'),
+        ).find((link) => link.getAttribute('href') === '/main.css')
+
+      await waitFor(() => {
+        expect(getStylesheetLink()).toBeInstanceOf(HTMLLinkElement)
+      })
+
+      const initialLink = getStylesheetLink()
+      expect(initialLink).toBeInstanceOf(HTMLLinkElement)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Replace state' }))
+
+      await waitFor(() => {
+        expect(
+          (router.state.location.state as { slideId?: string }).slideId,
+        ).toBe('slide-2')
+      })
+
+      expect(getStylesheetLink()).toBe(initialLink)
+      expect(
+        Array.from(
+          document.head.querySelectorAll('link[rel="stylesheet"]'),
+        ).filter((link) => link.getAttribute('href') === '/main.css'),
+      ).toHaveLength(1)
+    } finally {
+      history.destroy()
+      document.head
+        .querySelectorAll('link[rel="stylesheet"]')
+        .forEach((link) => {
+          if (link.getAttribute('href') === '/main.css') {
+            link.remove()
+          }
+        })
+    }
   })
 })
