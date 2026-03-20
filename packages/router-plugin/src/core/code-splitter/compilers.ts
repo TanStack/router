@@ -177,6 +177,18 @@ export function collectIdentifiersFromNode(node: t.Node): Set<string> {
   return ids
 }
 
+function getObjectPropertyKeyName(prop: t.ObjectProperty): string | undefined {
+  if (t.isIdentifier(prop.key)) {
+    return prop.key.name
+  }
+
+  if (t.isStringLiteral(prop.key)) {
+    return prop.key.value
+  }
+
+  return undefined
+}
+
 /**
  * Build a map from binding name → declaration AST node for all
  * locally-declared module-level bindings. Built once, O(1) lookup.
@@ -291,10 +303,12 @@ export function computeSharedBindings(opts: {
   const splitGroupsPresent = new Set<number>()
   let hasNonSplit = false
   for (const prop of routeOptions.properties) {
-    if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) continue
-    if (prop.key.name === 'codeSplitGroupings') continue
+    if (!t.isObjectProperty(prop)) continue
+    const key = getObjectPropertyKeyName(prop)
+    if (!key) continue
+    if (key === 'codeSplitGroupings') continue
     if (t.isIdentifier(prop.value) && prop.value.name === 'undefined') continue
-    const groupIndex = findIndexForSplitNode(prop.key.name) // -1 if non-split
+    const groupIndex = findIndexForSplitNode(key) // -1 if non-split
     if (groupIndex === -1) {
       hasNonSplit = true
     } else {
@@ -327,8 +341,9 @@ export function computeSharedBindings(opts: {
   const refsByGroup = new Map<string, Set<number>>()
 
   for (const prop of routeOptions.properties) {
-    if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) continue
-    const key = prop.key.name
+    if (!t.isObjectProperty(prop)) continue
+    const key = getObjectPropertyKeyName(prop)
+    if (!key) continue
 
     if (key === 'codeSplitGroupings') continue
 
@@ -701,11 +716,10 @@ export function compileCodeSplitReferenceRoute(
                   routeOptions.properties = routeOptions.properties.filter(
                     (prop) => {
                       if (t.isObjectProperty(prop)) {
-                        if (t.isIdentifier(prop.key)) {
-                          if (opts.deleteNodes!.has(prop.key.name as any)) {
-                            modified = true
-                            return false
-                          }
+                        const key = getObjectPropertyKeyName(prop)
+                        if (key && opts.deleteNodes!.has(key as any)) {
+                          modified = true
+                          return false
                         }
                       }
                       return true
@@ -741,9 +755,9 @@ export function compileCodeSplitReferenceRoute(
                 }
                 routeOptions.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {
-                    if (t.isIdentifier(prop.key)) {
-                      const key = prop.key.name
+                    const key = getObjectPropertyKeyName(prop)
 
+                    if (key) {
                       // If the user has not specified a split grouping for this key
                       // then we should not split it
                       const codeSplitGroupingByKey = findIndexForSplitNode(key)
@@ -1152,10 +1166,7 @@ export function compileCodeSplitVirtualRoute(
                     // since we have special considerations that need
                     // to be accounted for like (not splitting exported identifiers)
                     KNOWN_SPLIT_ROUTE_IDENTS.forEach((splitType) => {
-                      if (
-                        !t.isIdentifier(prop.key) ||
-                        prop.key.name !== splitType
-                      ) {
+                      if (getObjectPropertyKeyName(prop) !== splitType) {
                         return
                       }
 
@@ -1697,33 +1708,32 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
               if (t.isObjectExpression(routeOptions)) {
                 routeOptions.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {
-                    if (t.isIdentifier(prop.key)) {
-                      if (prop.key.name === 'codeSplitGroupings') {
-                        const value = prop.value
+                    const key = getObjectPropertyKeyName(prop)
+                    if (key === 'codeSplitGroupings') {
+                      const value = prop.value
 
-                        if (t.isArrayExpression(value)) {
-                          codeSplitGroupings = value.elements.map((group) => {
-                            if (t.isArrayExpression(group)) {
-                              return group.elements.map((node) => {
-                                if (!t.isStringLiteral(node)) {
-                                  throw new Error(
-                                    'You must provide a string literal for the codeSplitGroupings',
-                                  )
-                                }
+                      if (t.isArrayExpression(value)) {
+                        codeSplitGroupings = value.elements.map((group) => {
+                          if (t.isArrayExpression(group)) {
+                            return group.elements.map((node) => {
+                              if (!t.isStringLiteral(node)) {
+                                throw new Error(
+                                  'You must provide a string literal for the codeSplitGroupings',
+                                )
+                              }
 
-                                return node.value
-                              }) as Array<SplitRouteIdentNodes>
-                            }
+                              return node.value
+                            }) as Array<SplitRouteIdentNodes>
+                          }
 
-                            throw new Error(
-                              'You must provide arrays with codeSplitGroupings options.',
-                            )
-                          })
-                        } else {
                           throw new Error(
-                            'You must provide an array of arrays for the codeSplitGroupings.',
+                            'You must provide arrays with codeSplitGroupings options.',
                           )
-                        }
+                        })
+                      } else {
+                        throw new Error(
+                          'You must provide an array of arrays for the codeSplitGroupings.',
+                        )
                       }
                     }
                   }

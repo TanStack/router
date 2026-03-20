@@ -3,13 +3,6 @@ import * as t from '@babel/types'
 import { getUniqueProgramIdentifier } from '../../utils'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
 
-const REACT_STABLE_HMR_COMPONENT_IDENTS = new Set([
-  'component',
-  'pendingComponent',
-  'errorComponent',
-  'notFoundComponent',
-])
-
 function capitalizeIdentifier(str: string) {
   return str[0]!.toUpperCase() + str.slice(1)
 }
@@ -34,14 +27,6 @@ export function createReactStableHmrSplitRouteComponentsPlugin(): ReferenceRoute
   return {
     name: 'react-stable-hmr-split-route-components',
     onSplitRouteProperty(ctx) {
-      if (!t.isIdentifier(ctx.prop.key)) {
-        return
-      }
-
-      if (!REACT_STABLE_HMR_COMPONENT_IDENTS.has(ctx.prop.key.name)) {
-        return
-      }
-
       if (ctx.splitNodeMeta.splitStrategy !== 'lazyRouteComponent') {
         return
       }
