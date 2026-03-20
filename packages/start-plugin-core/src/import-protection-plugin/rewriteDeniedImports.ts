@@ -1,35 +1,56 @@
 import * as t from '@babel/types'
-import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import { generateFromAst } from '@tanstack/router-utils'
 
 import { MOCK_MODULE_ID } from './virtualModules'
-
-// ---------------------------------------------------------------------------
-// Export name collection (for dev mock-edge modules)
-// ---------------------------------------------------------------------------
+import { getOrCreate } from './utils'
+import { parseImportProtectionAst } from './ast'
+import type { SourceMapLike } from './sourceLocation'
+import type { ParsedAst } from './ast'
 
 export function isValidExportName(name: string): boolean {
-  if (name === 'default') return false
-  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)
+  if (name === 'default' || name.length === 0) return false
+  const first = name.charCodeAt(0)
+  // First char: A-Z (65-90), a-z (97-122), _ (95), $ (36)
+  if (
+    !(
+      (first >= 65 && first <= 90) ||
+      (first >= 97 && first <= 122) ||
+      first === 95 ||
+      first === 36
+    )
+  )
+    return false
+  for (let i = 1; i < name.length; i++) {
+    const ch = name.charCodeAt(i)
+    // Subsequent: A-Z, a-z, 0-9 (48-57), _, $
+    if (
+      !(
+        (ch >= 65 && ch <= 90) ||
+        (ch >= 97 && ch <= 122) ||
+        (ch >= 48 && ch <= 57) ||
+        ch === 95 ||
+        ch === 36
+      )
+    )
+      return false
+  }
+  return true
 }
 
-/**
- * Best-effort static analysis of an importer's source to determine which
- * named exports are needed per specifier, to keep native ESM valid in dev.
- */
 export function collectMockExportNamesBySource(
   code: string,
 ): Map<string, Array<string>> {
-  const ast = parseAst({ code })
+  return collectMockExportNamesBySourceFromAst(parseImportProtectionAst(code))
+}
 
+function collectMockExportNamesBySourceFromAst(
+  ast: ParsedAst,
+): Map<string, Array<string>> {
   const namesBySource = new Map<string, Set<string>>()
+  const memberBindingToSource = new Map<string, string>()
   const add = (source: string, name: string) => {
-    if (!isValidExportName(name)) return
-    let set = namesBySource.get(source)
-    if (!set) {
-      set = new Set<string>()
-      namesBySource.set(source, set)
-    }
-    set.add(name)
+    if (name === 'default' || name.length === 0) return
+    getOrCreate(namesBySource, source, () => new Set<string>()).add(name)
   }
 
   for (const node of ast.program.body) {
@@ -37,6 +58,14 @@ export function collectMockExportNamesBySource(
       if (node.importKind === 'type') continue
       const source = node.source.value
       for (const s of node.specifiers) {
+        if (t.isImportNamespaceSpecifier(s)) {
+          memberBindingToSource.set(s.local.name, source)
+          continue
+        }
+        if (t.isImportDefaultSpecifier(s)) {
+          memberBindingToSource.set(s.local.name, source)
+          continue
+        }
         if (!t.isImportSpecifier(s)) continue
         if (s.importKind === 'type') continue
         const importedName = t.isIdentifier(s.imported)
@@ -59,6 +88,45 @@ export function collectMockExportNamesBySource(
     }
   }
 
+  // For namespace/default imports, collect property names used as
+  // `binding.foo`/`binding?.foo` so mock-edge modules can expose explicit ESM
+  // named exports required by Rolldown/native ESM.
+  if (memberBindingToSource.size > 0) {
+    const visit = (node: t.Node): void => {
+      if (t.isMemberExpression(node)) {
+        const object = node.object
+        if (t.isIdentifier(object)) {
+          const source = memberBindingToSource.get(object.name)
+          if (source) {
+            const property = node.property
+            if (!node.computed && t.isIdentifier(property)) {
+              add(source, property.name)
+            } else if (node.computed && t.isStringLiteral(property)) {
+              add(source, property.value)
+            }
+          }
+        }
+      }
+
+      const keys = t.VISITOR_KEYS[node.type]
+      if (!keys) return
+      for (const key of keys) {
+        const child = (node as unknown as Record<string, unknown>)[key]
+        if (Array.isArray(child)) {
+          for (const item of child) {
+            if (item && typeof item === 'object' && 'type' in item) {
+              visit(item as t.Node)
+            }
+          }
+        } else if (child && typeof child === 'object' && 'type' in child) {
+          visit(child as t.Node)
+        }
+      }
+    }
+
+    visit(ast.program)
+  }
+
   const out = new Map<string, Array<string>>()
   for (const [source, set] of namesBySource) {
     out.set(source, Array.from(set).sort())
@@ -66,9 +134,70 @@ export function collectMockExportNamesBySource(
   return out
 }
 
-// ---------------------------------------------------------------------------
-// AST-based import rewriting
-// ---------------------------------------------------------------------------
+/** Collect all valid named export identifiers from the given code. */
+export function collectNamedExports(code: string): Array<string> {
+  return collectNamedExportsFromAst(parseImportProtectionAst(code))
+}
+
+function collectIdentifiersFromPattern(
+  pattern: t.LVal,
+  add: (name: string) => void,
+): void {
+  if (t.isIdentifier(pattern)) {
+    add(pattern.name)
+  } else if (t.isObjectPattern(pattern)) {
+    for (const prop of pattern.properties) {
+      if (t.isRestElement(prop)) {
+        collectIdentifiersFromPattern(prop.argument as t.LVal, add)
+      } else {
+        collectIdentifiersFromPattern(prop.value as t.LVal, add)
+      }
+    }
+  } else if (t.isArrayPattern(pattern)) {
+    for (const elem of pattern.elements) {
+      if (elem) collectIdentifiersFromPattern(elem as t.LVal, add)
+    }
+  } else if (t.isAssignmentPattern(pattern)) {
+    collectIdentifiersFromPattern(pattern.left, add)
+  } else if (t.isRestElement(pattern)) {
+    collectIdentifiersFromPattern(pattern.argument as t.LVal, add)
+  }
+}
+
+function collectNamedExportsFromAst(ast: ParsedAst): Array<string> {
+  const names = new Set<string>()
+  const add = (name: string) => {
+    if (isValidExportName(name)) names.add(name)
+  }
+
+  for (const node of ast.program.body) {
+    if (t.isExportNamedDeclaration(node)) {
+      if (node.exportKind === 'type') continue
+
+      if (node.declaration) {
+        const decl = node.declaration
+        if (t.isFunctionDeclaration(decl) || t.isClassDeclaration(decl)) {
+          if (decl.id?.name) add(decl.id.name)
+        } else if (t.isVariableDeclaration(decl)) {
+          for (const d of decl.declarations) {
+            collectIdentifiersFromPattern(d.id as t.LVal, add)
+          }
+        }
+      }
+
+      for (const s of node.specifiers) {
+        if (!t.isExportSpecifier(s)) continue
+        if (s.exportKind === 'type') continue
+        const exportedName = t.isIdentifier(s.exported)
+          ? s.exported.name
+          : s.exported.value
+        add(exportedName)
+      }
+    }
+  }
+
+  return Array.from(names).sort()
+}
 
 /**
  * Rewrite static imports/re-exports from denied sources using Babel AST transforms.
@@ -92,8 +221,21 @@ export function rewriteDeniedImports(
   id: string,
   deniedSources: Set<string>,
   getMockModuleId: (source: string) => string = () => MOCK_MODULE_ID,
-): { code: string; map?: object | null } | undefined {
-  const ast = parseAst({ code })
+): { code: string; map?: SourceMapLike } | undefined {
+  return rewriteDeniedImportsFromAst(
+    parseImportProtectionAst(code),
+    id,
+    deniedSources,
+    getMockModuleId,
+  )
+}
+
+function rewriteDeniedImportsFromAst(
+  ast: ParsedAst,
+  id: string,
+  deniedSources: Set<string>,
+  getMockModuleId: (source: string) => string = () => MOCK_MODULE_ID,
+): { code: string; map?: SourceMapLike } | undefined {
   let modified = false
   let mockCounter = 0
 
@@ -101,16 +243,13 @@ export function rewriteDeniedImports(
   for (let i = ast.program.body.length - 1; i >= 0; i--) {
     const node = ast.program.body[i]!
 
-    // --- import declarations ---
     if (t.isImportDeclaration(node)) {
-      // Skip type-only imports
       if (node.importKind === 'type') continue
       if (!deniedSources.has(node.source.value)) continue
 
       const mockVar = `__tss_deny_${mockCounter++}`
       const replacements: Array<t.Statement> = []
 
-      // import __tss_deny_N from '<mock>'
       replacements.push(
         t.importDeclaration(
           [t.importDefaultSpecifier(t.identifier(mockVar))],
@@ -119,18 +258,10 @@ export function rewriteDeniedImports(
       )
 
       for (const specifier of node.specifiers) {
-        if (t.isImportDefaultSpecifier(specifier)) {
-          // import def from 'denied' -> const def = __tss_deny_N
-          replacements.push(
-            t.variableDeclaration('const', [
-              t.variableDeclarator(
-                t.identifier(specifier.local.name),
-                t.identifier(mockVar),
-              ),
-            ]),
-          )
-        } else if (t.isImportNamespaceSpecifier(specifier)) {
-          // import * as ns from 'denied' -> const ns = __tss_deny_N
+        if (
+          t.isImportDefaultSpecifier(specifier) ||
+          t.isImportNamespaceSpecifier(specifier)
+        ) {
           replacements.push(
             t.variableDeclaration('const', [
               t.variableDeclarator(
@@ -140,9 +271,7 @@ export function rewriteDeniedImports(
             ]),
           )
         } else if (t.isImportSpecifier(specifier)) {
-          // Skip type-only specifiers
           if (specifier.importKind === 'type') continue
-          // import { a as b } from 'denied' -> const b = __tss_deny_N.a
           const importedName = t.isIdentifier(specifier.imported)
             ? specifier.imported.name
             : specifier.imported.value
@@ -165,7 +294,6 @@ export function rewriteDeniedImports(
       continue
     }
 
-    // --- export { x } from 'denied' ---
     if (t.isExportNamedDeclaration(node) && node.source) {
       if (node.exportKind === 'type') continue
       if (!deniedSources.has(node.source.value)) continue
@@ -173,15 +301,12 @@ export function rewriteDeniedImports(
       const mockVar = `__tss_deny_${mockCounter++}`
       const replacements: Array<t.Statement> = []
 
-      // import __tss_deny_N from '<mock>'
       replacements.push(
         t.importDeclaration(
           [t.importDefaultSpecifier(t.identifier(mockVar))],
           t.stringLiteral(getMockModuleId(node.source.value)),
         ),
       )
-
-      // For each re-exported specifier, create an exported const
       const exportSpecifiers: Array<{
         localName: string
         exportedName: string
@@ -195,7 +320,6 @@ export function rewriteDeniedImports(
             : specifier.exported.value
 
           const internalVar = `__tss_reexport_${localName}`
-          // const __tss_reexport_x = __tss_deny_N.x
           replacements.push(
             t.variableDeclaration('const', [
               t.variableDeclarator(
@@ -211,7 +335,6 @@ export function rewriteDeniedImports(
         }
       }
 
-      // export { __tss_reexport_x as x, ... }
       if (exportSpecifiers.length > 0) {
         replacements.push(
           t.exportNamedDeclaration(
@@ -231,12 +354,10 @@ export function rewriteDeniedImports(
       continue
     }
 
-    // --- export * from 'denied' ---
     if (t.isExportAllDeclaration(node)) {
       if (node.exportKind === 'type') continue
       if (!deniedSources.has(node.source.value)) continue
 
-      // Remove the star re-export entirely
       ast.program.body.splice(i, 1)
       modified = true
       continue
@@ -251,5 +372,8 @@ export function rewriteDeniedImports(
     filename: id,
   })
 
-  return { code: result.code, map: result.map }
+  return {
+    code: result.code,
+    ...(result.map ? { map: result.map as SourceMapLike } : {}),
+  }
 }

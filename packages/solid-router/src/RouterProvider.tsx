@@ -1,4 +1,4 @@
-import { getRouterContext } from './routerContext'
+import { routerContext } from './routerContext'
 import { SafeFragment } from './SafeFragment'
 import { Matches } from './Matches'
 import type {
@@ -27,8 +27,6 @@ export function RouterContextProvider<
       ...rest.context,
     },
   })
-
-  const routerContext = getRouterContext()
 
   const OptionalWrapper = router.options.Wrap || SafeFragment
 

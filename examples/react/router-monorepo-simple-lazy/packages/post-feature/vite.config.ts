@@ -28,7 +28,7 @@ export default defineConfig({
       name: 'post-feature',
       formats: ['es'],
     },
-    rollupOptions: {
+    rolldownOptions: {
       // External packages that should not be bundled into your library.
       external: [
         'react',

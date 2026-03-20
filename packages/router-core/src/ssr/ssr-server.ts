@@ -4,6 +4,7 @@ import { decodePath } from '../utils'
 import { createLRUCache } from '../lru-cache'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
+import { dehydrateSsrMatchId } from './ssr-match-id'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
 import type { LRUCache } from '../lru-cache'
@@ -36,7 +37,7 @@ const P_SUFFIX = ')'
 
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   const dehydratedMatch: DehydratedMatch = {
-    i: match.id,
+    i: dehydrateSsrMatchId(match.id),
     u: match.updatedAt,
     s: match.status,
   }
@@ -52,6 +53,9 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
     if (match[key] !== undefined) {
       dehydratedMatch[shorthand] = match[key]
     }
+  }
+  if (match.globalNotFound) {
+    dehydratedMatch.g = true
   }
   return dehydratedMatch
 }
@@ -198,7 +202,7 @@ export function attachRouterServerSsrUtils({
     },
     dehydrate: async () => {
       invariant(!_dehydrated, 'router is already dehydrated!')
-      let matchesToDehydrate = router.state.matches
+      let matchesToDehydrate = router.stores.activeMatchesSnapshot.state
       if (router.isShell()) {
         // In SPA mode we only want to dehydrate the root match
         matchesToDehydrate = matchesToDehydrate.slice(0, 1)
@@ -254,7 +258,7 @@ export function attachRouterServerSsrUtils({
       }
       const lastMatchId = matchesToDehydrate[matchesToDehydrate.length - 1]?.id
       if (lastMatchId) {
-        dehydratedRouter.lastMatchId = lastMatchId
+        dehydratedRouter.lastMatchId = dehydrateSsrMatchId(lastMatchId)
       }
       const dehydratedData = await router.options.dehydrate?.()
       if (dehydratedData) {

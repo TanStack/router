@@ -14,7 +14,6 @@ export type {
   ResolveCurrentPath,
   ResolveParentPath,
   ResolveRelativePath,
-  LinkCurrentTargetElement,
   FindDescendantToPaths,
   InferDescendantToPaths,
   RelativeToPath,
@@ -38,8 +37,6 @@ export type {
   ToSubOptionsProps,
   RequiredToOptions,
 } from './link'
-
-export { componentTypes } from './load-matches'
 
 export type {
   RouteToPath,
@@ -167,7 +164,9 @@ export type {
   FileBaseRouteOptions,
   BaseRouteOptions,
   UpdatableRouteOptions,
+  LoaderStaleReloadMode,
   RouteLoaderFn,
+  RouteLoaderEntry,
   LoaderFnContext,
   RouteContextFn,
   ContextOptions,
@@ -189,6 +188,17 @@ export type {
   RootRoute,
   FilebaseRouteOptionsInterface,
 } from './route'
+export {
+  createNonReactiveMutableStore,
+  createNonReactiveReadonlyStore,
+} from './stores'
+export type {
+  RouterBatchFn,
+  RouterReadableStore,
+  GetStoreConfig,
+  RouterStores,
+  RouterWritableStore,
+} from './stores'
 export {
   defaultSerializeError,
   getLocationChangeInfo,
@@ -264,7 +274,6 @@ export type { SearchSerializer, SearchParser } from './searchParams'
 export type { OptionalStructuralSharing } from './structuralSharing'
 
 export {
-  last,
   functionalUpdate,
   replaceEqualDeep,
   isPlainObject,
@@ -272,7 +281,6 @@ export {
   deepEqual,
   createControlledPromise,
   isModuleNotFoundError,
-  decodePath,
   DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
   isDangerousProtocol,
@@ -440,7 +448,6 @@ export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
 
 export {
   RawStream,
-  RawStreamSSRPlugin,
   createRawStreamRPCPlugin,
   createRawStreamDeserializePlugin,
 } from './ssr/serializer/RawStream'
@@ -450,9 +457,5 @@ export type {
   RawStreamOptions,
 } from './ssr/serializer/RawStream'
 
-export {
-  composeRewrites,
-  executeRewriteInput,
-  executeRewriteOutput,
-} from './rewrite'
+export { composeRewrites, executeRewriteInput } from './rewrite'
 export type { LocationRewrite, LocationRewriteFunction } from './router'

@@ -109,6 +109,15 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Defaults to `0`
 - The default `staleTime` a route should use if no staleTime is provided.
 
+### `defaultStaleReloadMode` property
+
+- Type: `'background' | 'blocking'`
+- Optional
+- Defaults to `'background'`
+- Controls how stale successful loader data is revalidated by default.
+- `'background'` preserves stale-while-revalidate behavior.
+- `'blocking'` waits for the stale loader reload to finish before navigation resolves.
+
 ### `defaultPreloadStaleTime` property
 
 - Type: `number`
@@ -290,7 +299,7 @@ When both `basepath` and `rewrite` are configured, they are automatically compos
 - Type: `boolean`
 - Optional
 - Defaults to `false`
-- If `true`, route masks will, by default, be removed when the page is reloaded. This can be overridden on a per-mask basis by setting the `unmaskOnReload` option on the mask, or on a per-navigation basis by setting the `unmaskOnReload` option in the `Navigate` options.
+- If `true`, route masks will, by default, be removed when the page is reloaded. This can be overridden on a per-mask basis by setting `unmaskOnReload` on the mask, or on a per-navigation basis by setting `mask.unmaskOnReload` in [`NavigateOptions`](./NavigateOptionsType.md).
 
 ### `Wrap` property
 

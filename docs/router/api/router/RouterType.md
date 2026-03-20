@@ -81,7 +81,7 @@ Builds a new parsed location object that can be used later to navigate to a new 
     - `unmaskOnReload`
       - Type: `boolean`
       - Optional
-      - If `true`, the route mask will be removed when the page is reloaded. This can be overridden on a per-navigation basis by setting the `unmaskOnReload` option in the `Navigate` options.
+      - If `true`, the route mask will be removed when the page is reloaded. This can be overridden on a per-navigation basis by setting `mask.unmaskOnReload` in [`NavigateOptions`](./NavigateOptionsType.md).
 
 ### `.commitLocation` method
 
@@ -159,7 +159,7 @@ Remove cached route matches.
 
 Loads all of the currently matched route matches and resolves when they are all loaded and ready to be rendered.
 
-> ⚠️⚠️⚠️ **`router.load()` respects `route.staleTime` and will not forcefully reload a route match if it is still fresh. If you need to forcefully reload a route match, use `router.invalidate()` instead.**
+> ⚠️⚠️⚠️ **`router.load()` respects `route.staleTime`: fresh matches stay fresh, but stale matches are revalidated even if their loader key did not change. If you need to forcefully reload all active matches regardless of freshness, use `router.invalidate()` instead.**
 
 - Type: `(opts?: {sync?: boolean}) => Promise<void>`
 - if `sync` is true, the promise returned by this function will only resolve once all loaders have finished.

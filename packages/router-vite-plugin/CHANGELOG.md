@@ -1,0 +1,68 @@
+# @tanstack/router-vite-plugin
+
+## 1.166.16
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.167.1
+
+## 1.166.15
+
+### Patch Changes
+
+- Updated dependencies [[`0545239`](https://github.com/TanStack/router/commit/054523900b2ee19308e5a88417dadfc6923afe30)]:
+  - @tanstack/router-plugin@1.167.0
+
+## 1.166.14
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.166.14
+
+## 1.166.13
+
+### Patch Changes
+
+- Updated dependencies [[`940151c`](https://github.com/TanStack/router/commit/940151cbed0c76c92a5cf196c0905b17a956ca7e)]:
+  - @tanstack/router-plugin@1.166.13
+
+## 1.166.12
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.166.12
+
+## 1.166.11
+
+### Patch Changes
+
+- build: update to vite-config 5.x (rolldown) ([#6926](https://github.com/TanStack/router/pull/6926))
+
+- Updated dependencies [[`838b0eb`](https://github.com/TanStack/router/commit/838b0eb9a8bbbb987a0a6972c1446e01423bbd7b)]:
+  - @tanstack/router-plugin@1.166.11
+
+## 1.166.10
+
+### Patch Changes
+
+- fix: build with @tanstack/vite-config 0.4.3 ([#6923](https://github.com/TanStack/router/pull/6923))
+
+- Updated dependencies [[`ef9b241`](https://github.com/TanStack/router/commit/ef9b241f3cfe95cee40daa96da669f0ffd4a971a)]:
+  - @tanstack/router-plugin@1.166.10
+
+## 1.166.9
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.166.9
+
+## 1.166.8
+
+### Patch Changes
+
+- Updated dependencies [[`6069eba`](https://github.com/TanStack/router/commit/6069eba64369dbddb0d8dccdb4407f0e1a82259e)]:
+  - @tanstack/router-plugin@1.166.8

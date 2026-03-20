@@ -12,15 +12,14 @@ Add robust validation with custom error messages, complex types, and production-
 
 ```tsx
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { zodValidator, fallback } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
   query: z.string().min(1, 'Search query required'),
   category: z.enum(['electronics', 'clothing', 'books', 'home']).optional(),
-  minPrice: fallback(z.number().min(0, 'Price cannot be negative'), 0),
-  maxPrice: fallback(z.number().min(0, 'Price cannot be negative'), 1000),
-  inStock: fallback(z.boolean(), true),
+  minPrice: z.number().min(0, 'Price cannot be negative').default(0),
+  maxPrice: z.number().min(0, 'Price cannot be negative').default(1000),
+  inStock: z.boolean().default(true),
   tags: z.array(z.string()).optional(),
   dateRange: z
     .object({
@@ -31,7 +30,7 @@ const productSearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/products')({
-  validateSearch: zodValidator(productSearchSchema),
+  validateSearch: productSearchSchema,
   errorComponent: ({ error }) => {
     const router = useRouter()
     return (
@@ -80,7 +79,7 @@ TanStack Router supports multiple validation libraries through adapters:
 
 ### Zod (Recommended)
 
-Most popular with excellent TypeScript integration:
+Most popular with excellent TypeScript integration. For Zod v3, use `@tanstack/zod-adapter` for validation:
 
 ```tsx
 import { zodValidator, fallback } from '@tanstack/zod-adapter'
@@ -95,6 +94,24 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/search')({
   validateSearch: zodValidator(searchSchema),
+  component: SearchPage,
+})
+```
+
+For Zod v4, the adapter is no longer necessary:
+
+```tsx
+import { z } from 'zod'
+
+const searchSchema = z.object({
+  query: z.string().min(1).max(100),
+  page: z.number().int().positive().default(1),
+  sortBy: z.enum(['name', 'date', 'relevance']).optional(),
+  filters: z.array(z.string()).optional(),
+})
+
+export const Route = createFileRoute('/search')({
+  validateSearch: searchSchema,
   component: SearchPage,
 })
 ```

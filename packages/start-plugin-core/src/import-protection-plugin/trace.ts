@@ -1,4 +1,4 @@
-import * as path from 'pathe'
+import { getOrCreate, relativizePath } from './utils'
 
 export interface TraceEdge {
   importer: string
@@ -30,21 +30,11 @@ export class ImportGraph {
   readonly entries: Set<string> = new Set()
 
   addEdge(resolved: string, importer: string, specifier?: string): void {
-    let importers = this.reverseEdges.get(resolved)
-    if (!importers) {
-      importers = new Map()
-      this.reverseEdges.set(resolved, importers)
-    }
-    // Last writer wins; good enough for trace display.
-    importers.set(importer, specifier)
-
-    // Maintain forward index
-    let targets = this.forwardEdges.get(importer)
-    if (!targets) {
-      targets = new Set()
-      this.forwardEdges.set(importer, targets)
-    }
-    targets.add(resolved)
+    getOrCreate(this.reverseEdges, resolved, () => new Map()).set(
+      importer,
+      specifier,
+    )
+    getOrCreate(this.forwardEdges, importer, () => new Set()).add(resolved)
   }
 
   /** Convenience for tests/debugging. */
@@ -113,13 +103,13 @@ export function buildTrace(
   const down = new Map<string, { next: string; specifier?: string }>()
 
   const queue: Array<string> = [startNode]
-  let queueIndex = 0
+  let qi = 0
 
   let root: string | null = null
 
-  while (queueIndex < queue.length) {
-    const node = queue[queueIndex++]!
-    const depth = depthByNode.get(node) ?? 0
+  while (qi < queue.length) {
+    const node = queue[qi++]!
+    const depth = depthByNode.get(node)!
     const importers = graph.reverseEdges.get(node)
 
     if (node !== startNode) {
@@ -185,13 +175,29 @@ export interface ViolationInfo {
   }
 }
 
+/**
+ * Suggestion strings for server-only code leaking into client environments.
+ * Used by both `formatViolation` (terminal) and runtime mock modules (browser).
+ */
+export const CLIENT_ENV_SUGGESTIONS = [
+  'Use createServerFn().handler(() => ...) to keep the logic on the server and call it from the client via an RPC bridge',
+  'Use createServerOnlyFn(() => ...) to mark it as server-only (it will throw if accidentally called from the client)',
+  'Use createIsomorphicFn().client(() => ...).server(() => ...) to provide separate client and server implementations',
+  'Move the server-only import out of this file into a separate .server.ts module that is not imported by any client code',
+] as const
+
+/**
+ * Suggestion strings for client-only code leaking into server environments.
+ * The JSX-specific suggestion is conditionally prepended by `formatViolation`.
+ */
+export const SERVER_ENV_SUGGESTIONS = [
+  'Use createClientOnlyFn(() => ...) to mark it as client-only (returns undefined on the server)',
+  'Use createIsomorphicFn().client(() => ...).server(() => ...) to provide separate client and server implementations',
+  'Move the client-only import out of this file into a separate .client.ts module that is not imported by any server code',
+] as const
+
 export function formatViolation(info: ViolationInfo, root: string): string {
-  const rel = (p: string) => {
-    if (p.startsWith(root)) {
-      return path.relative(root, p)
-    }
-    return p
-  }
+  const rel = (p: string) => relativizePath(p, root)
 
   const relLoc = (p: string, loc?: Loc) => {
     const r = rel(p)
@@ -253,22 +259,11 @@ export function formatViolation(info: ViolationInfo, root: string): string {
 
   // Add suggestions
   if (info.envType === 'client') {
-    // Server-only code leaking into the client environment
     lines.push(`  Suggestions:`)
-    lines.push(
-      `    - Use createServerFn().handler(() => ...) to keep the logic on the server and call it from the client via an RPC bridge`,
-    )
-    lines.push(
-      `    - Use createServerOnlyFn(() => ...) to mark it as server-only (it will throw if accidentally called from the client)`,
-    )
-    lines.push(
-      `    - Use createIsomorphicFn().client(() => ...).server(() => ...) to provide separate client and server implementations`,
-    )
-    lines.push(
-      `    - Move the server-only import out of this file into a separate .server.ts module that is not imported by any client code`,
-    )
+    for (const s of CLIENT_ENV_SUGGESTIONS) {
+      lines.push(`    - ${s}`)
+    }
   } else {
-    // Client-only code leaking into the server environment
     const snippetText = info.snippet?.lines.join('\n') ?? ''
     const looksLikeJsx =
       /<[A-Z]/.test(snippetText) ||
@@ -280,15 +275,9 @@ export function formatViolation(info: ViolationInfo, root: string): string {
         `    - Wrap the JSX in <ClientOnly fallback={<Loading />}>...</ClientOnly> so it only renders in the browser after hydration`,
       )
     }
-    lines.push(
-      `    - Use createClientOnlyFn(() => ...) to mark it as client-only (returns undefined on the server)`,
-    )
-    lines.push(
-      `    - Use createIsomorphicFn().client(() => ...).server(() => ...) to provide separate client and server implementations`,
-    )
-    lines.push(
-      `    - Move the client-only import out of this file into a separate .client.ts module that is not imported by any server code`,
-    )
+    for (const s of SERVER_ENV_SUGGESTIONS) {
+      lines.push(`    - ${s}`)
+    }
   }
 
   lines.push(``)

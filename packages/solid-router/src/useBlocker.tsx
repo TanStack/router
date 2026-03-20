@@ -292,17 +292,22 @@ const _resolvePromptBlockerArgs = (
   }
 }
 
-export function Block<
-  TRouter extends AnyRouter = RegisteredRouter,
-  TWithResolver extends boolean = boolean,
->(opts: PromptProps<TRouter, TWithResolver>): SolidNode
+interface BlockComponent {
+  <
+    TRouter extends AnyRouter = RegisteredRouter,
+    TWithResolver extends boolean = boolean,
+  >(
+    opts: PromptProps<TRouter, TWithResolver>,
+  ): SolidNode
+  /**
+   *  @deprecated Use the UseBlockerOpts property instead
+   */
+  (opts: LegacyPromptProps): SolidNode
+}
 
-/**
- *  @deprecated Use the UseBlockerOpts property instead
- */
-export function Block(opts: LegacyPromptProps): SolidNode
-
-export function Block(opts: PromptProps | LegacyPromptProps): SolidNode {
+export const Block: BlockComponent = function Block(
+  opts: PromptProps | LegacyPromptProps,
+): SolidNode {
   const [propsWithChildren, rest] = Solid.splitProps(opts, ['children'])
   const args = _resolvePromptBlockerArgs(rest)
 

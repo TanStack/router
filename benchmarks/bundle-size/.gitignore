@@ -1,0 +1,8 @@
+node_modules
+dist
+scenarios/*/src/routeTree.gen.ts
+
+results/*.json
+results/*.md
+results/*.js
+!results/.gitkeep

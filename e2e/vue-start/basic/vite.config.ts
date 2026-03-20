@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/vue-start/plugin/vite'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { isSpaMode } from './tests/utils/isSpaMode'
@@ -20,8 +19,7 @@ const prerenderConfiguration = {
       '/this-route-does-not-exist',
       '/redirect',
       '/i-do-not-exist',
-      '/not-found/via-beforeLoad',
-      '/not-found/via-loader',
+      '/not-found',
       '/specialChars/search',
       '/specialChars/hash',
       '/specialChars/malformed',
@@ -33,6 +31,7 @@ const prerenderConfiguration = {
 }
 
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
   server: {
     port: 3000,
   },
@@ -41,9 +40,6 @@ export default defineConfig({
   },
   plugins: [
     tailwindcss(),
-    tsConfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
     tanstackStart({
       spa: isSpaMode ? spaModeConfiguration : undefined,
       prerender: isPrerender ? prerenderConfiguration : undefined,

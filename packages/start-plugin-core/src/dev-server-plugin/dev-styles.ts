@@ -104,9 +104,8 @@ export async function collectDevStyles(
     if (dep.file && isCssModulesFile(dep.file)) {
       const css = cssModulesCache[normalizeCssModuleCacheKey(dep.file)]
       if (!css) {
-        throw new Error(
-          `[tanstack-start] Missing CSS module in cache: ${dep.file}`,
-        )
+        // skip this module - it may not be a real CSS module or it may not have been transformed yet
+        continue
       }
       styles.set(dep.url, css)
       continue

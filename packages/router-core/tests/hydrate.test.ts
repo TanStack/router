@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, RouterCore, notFound } from '../src'
+import { BaseRootRoute, BaseRoute, notFound } from '../src'
 import { hydrate } from '../src/ssr/client'
+import { createTestRouter } from './routerTestUtils'
+import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { AnyRouteMatch } from '../src'
 
@@ -40,7 +42,7 @@ describe('hydrate', () => {
       indexRoute.addChildren([otherRoute]),
     ])
 
-    mockRouter = new RouterCore({ routeTree, history, isServer: true })
+    mockRouter = createTestRouter({ routeTree, history, isServer: true })
   })
 
   afterEach(() => {
@@ -215,6 +217,182 @@ describe('hydrate', () => {
     expect(loaderData).toEqual({ indexData: 'server-data' })
     expect(status).toBe('success')
     expect(ssr).toBe(true)
+  })
+
+  it('should hydrate globalNotFound when dehydrated flag is present', async () => {
+    const mockMatches = [
+      {
+        id: '/',
+        routeId: '/',
+        index: 0,
+        ssr: undefined,
+        _nonReactive: {},
+      },
+    ]
+
+    const dehydratedMatches = [
+      {
+        i: '/',
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+        g: true as const,
+      },
+    ]
+
+    mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
+    mockRouter.state.matches = mockMatches
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: { routes: {} },
+        dehydratedData: {},
+        lastMatchId: '/',
+        matches: dehydratedMatches,
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(mockRouter)
+
+    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBe(true)
+  })
+
+  it('should leave globalNotFound undefined when dehydrated flag is omitted', async () => {
+    const mockMatches = [
+      {
+        id: '/',
+        routeId: '/',
+        index: 0,
+        ssr: undefined,
+        _nonReactive: {},
+      },
+    ]
+
+    const dehydratedMatches = [
+      {
+        i: '/',
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+      },
+    ]
+
+    mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
+    mockRouter.state.matches = mockMatches
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: { routes: {} },
+        dehydratedData: {},
+        lastMatchId: '/',
+        matches: dehydratedMatches,
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(mockRouter)
+
+    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBeUndefined()
+  })
+
+  it('should preserve existing globalNotFound when dehydrated flag is omitted', async () => {
+    const mockMatches = [
+      {
+        id: '/',
+        routeId: '/',
+        index: 0,
+        ssr: undefined,
+        _nonReactive: {},
+        globalNotFound: true,
+      },
+    ]
+
+    const dehydratedMatches = [
+      {
+        i: '/',
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+      },
+    ]
+
+    mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
+    mockRouter.state.matches = mockMatches
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: { routes: {} },
+        dehydratedData: {},
+        lastMatchId: '/',
+        matches: dehydratedMatches,
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(mockRouter)
+
+    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBe(true)
+  })
+
+  it('should decode dehydrated match ids before hydration lookup and SPA-mode checks', async () => {
+    const loadSpy = vi.spyOn(mockRouter, 'load')
+
+    const mockMatches = [
+      {
+        id: '/',
+        routeId: '/',
+        index: 0,
+        ssr: undefined,
+        _nonReactive: {},
+      },
+    ]
+
+    mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
+    mockRouter.state.matches = mockMatches
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: { routes: {} },
+        dehydratedData: {},
+        lastMatchId: dehydrateSsrMatchId('/'),
+        matches: [
+          {
+            i: dehydrateSsrMatchId('/'),
+            l: { indexData: 'server-data' },
+            s: 'success',
+            ssr: true,
+            u: Date.now(),
+          },
+        ],
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(mockRouter)
+
+    expect(loadSpy).not.toHaveBeenCalled()
+    expect((mockRouter.state.matches[0] as AnyRouteMatch).id).toBe('/')
   })
 
   it('should handle errors during route context hydration', async () => {

@@ -1,0 +1,26 @@
+# @tanstack/react-router-ssr-query
+
+## 1.166.10
+
+### Patch Changes
+
+- Updated dependencies [[`0545239`](https://github.com/TanStack/router/commit/054523900b2ee19308e5a88417dadfc6923afe30)]:
+  - @tanstack/router-ssr-query-core@1.167.0
+
+## 1.166.9
+
+### Patch Changes
+
+- build: update to vite-config 5.x (rolldown) ([#6926](https://github.com/TanStack/router/pull/6926))
+
+- Updated dependencies [[`838b0eb`](https://github.com/TanStack/router/commit/838b0eb9a8bbbb987a0a6972c1446e01423bbd7b)]:
+  - @tanstack/router-ssr-query-core@1.166.9
+
+## 1.166.8
+
+### Patch Changes
+
+- fix: build with @tanstack/vite-config 0.4.3 ([#6923](https://github.com/TanStack/router/pull/6923))
+
+- Updated dependencies [[`ef9b241`](https://github.com/TanStack/router/commit/ef9b241f3cfe95cee40daa96da669f0ffd4a971a)]:
+  - @tanstack/router-ssr-query-core@1.166.8

@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useStore } from '@tanstack/react-store'
 import { flushSync } from 'react-dom'
 import {
   deepEqual,
@@ -9,7 +10,6 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
 import { useForwardedRef, useIntersectionObserver } from './utils'
@@ -76,6 +76,7 @@ export function useLinkProps<
     style,
     className,
     onClick,
+    onBlur,
     onFocus,
     onMouseEnter,
     onMouseLeave,
@@ -101,7 +102,7 @@ export function useLinkProps<
   //
   // For SSR parity (to avoid hydration errors), we still compute the link's
   // active status on the server, but we avoid creating any router-state
-  // subscriptions by reading from `router.state` directly.
+  // subscriptions by reading from the location store directly.
   //
   // Note: `location.hash` is not available on the server.
   // ==========================================================================
@@ -203,7 +204,7 @@ export function useLinkProps<
     const isActive = (() => {
       if (externalLink) return false
 
-      const currentLocation = router.state.location
+      const currentLocation = router.stores.location.state
 
       const exact = activeOptions?.exact ?? false
 
@@ -376,32 +377,13 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated()
 
-  // subscribe to path/search/hash/params to re-build location when they change
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLocationState = useRouterState({
-    select: (s) => {
-      const leaf = s.matches[s.matches.length - 1]
-      return {
-        search: leaf?.search,
-        hash: s.location.hash,
-        path: leaf?.pathname, // path + params
-      }
-    },
-    structuralSharing: true as any,
-  })
-
-  const from = options.from
-
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
-    () => {
-      return { ...options, from }
-    },
+    () => options,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
-      currentLocationState,
-      from,
+      options.from,
       options._fromLocation,
       options.hash,
       options.to,
@@ -414,10 +396,17 @@ export function useLinkProps<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const next = React.useMemo(
-    () => router.buildLocation({ ..._options } as any),
-    [router, _options],
+  const currentLocation = useStore(
+    router.stores.location,
+    (l) => l,
+    (prev, next) => prev.href === next.href,
   )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const next = React.useMemo(() => {
+    const opts = { _fromLocation: currentLocation, ..._options }
+    return router.buildLocation(opts as any)
+  }, [router, currentLocation, _options])
 
   // Use publicHref - it contains the correct href for display
   // When a rewrite changes the origin, publicHref is the full URL
@@ -473,54 +462,61 @@ export function useLinkProps<
   }, [to, hrefOption, router.protocolAllowlist])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isActive = useRouterState({
-    select: (s) => {
-      if (externalLink) return false
-      if (activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          next.pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          router.basepath,
-        )
-        const nextPathSplit = removeTrailingSlash(
-          next.pathname,
-          router.basepath,
-        )
-
-        const pathIsFuzzyEqual =
-          currentPathSplit.startsWith(nextPathSplit) &&
-          (currentPathSplit.length === nextPathSplit.length ||
-            currentPathSplit[nextPathSplit.length] === '/')
-
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
+  const isActive = React.useMemo(() => {
+    if (externalLink) return false
+    if (activeOptions?.exact) {
+      const testExact = exactPathTest(
+        currentLocation.pathname,
+        next.pathname,
+        router.basepath,
+      )
+      if (!testExact) {
+        return false
       }
+    } else {
+      const currentPathSplit = removeTrailingSlash(
+        currentLocation.pathname,
+        router.basepath,
+      )
+      const nextPathSplit = removeTrailingSlash(next.pathname, router.basepath)
 
-      if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next.search, {
-          partial: !activeOptions?.exact,
-          ignoreUndefined: !activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
-        }
-      }
+      const pathIsFuzzyEqual =
+        currentPathSplit.startsWith(nextPathSplit) &&
+        (currentPathSplit.length === nextPathSplit.length ||
+          currentPathSplit[nextPathSplit.length] === '/')
 
-      if (activeOptions?.includeHash) {
-        return isHydrated && s.location.hash === next.hash
+      if (!pathIsFuzzyEqual) {
+        return false
       }
-      return true
-    },
-  })
+    }
+
+    if (activeOptions?.includeSearch ?? true) {
+      const searchTest = deepEqual(currentLocation.search, next.search, {
+        partial: !activeOptions?.exact,
+        ignoreUndefined: !activeOptions?.explicitUndefined,
+      })
+      if (!searchTest) {
+        return false
+      }
+    }
+
+    if (activeOptions?.includeHash) {
+      return isHydrated && currentLocation.hash === next.hash
+    }
+    return true
+  }, [
+    activeOptions?.exact,
+    activeOptions?.explicitUndefined,
+    activeOptions?.includeHash,
+    activeOptions?.includeSearch,
+    currentLocation,
+    externalLink,
+    isHydrated,
+    next.hash,
+    next.pathname,
+    next.search,
+    router.basepath,
+  ])
 
   // Get the active props
   const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
@@ -651,6 +647,7 @@ export function useLinkProps<
       ...(style && { style }),
       ...(className && { className }),
       ...(onClick && { onClick }),
+      ...(onBlur && { onBlur }),
       ...(onFocus && { onFocus }),
       ...(onMouseEnter && { onMouseEnter }),
       ...(onMouseLeave && { onMouseLeave }),
@@ -658,36 +655,35 @@ export function useLinkProps<
     }
   }
 
-  const handleFocus = (_: React.MouseEvent) => {
-    if (disabled) return
-    if (preload) {
-      doPreload()
-    }
-  }
-
-  const handleTouchStart = handleFocus
-
-  const handleEnter = (e: React.MouseEvent) => {
-    if (disabled || !preload) return
+  const enqueueIntentPreload = (e: React.MouseEvent | React.FocusEvent) => {
+    if (disabled || preload !== 'intent') return
 
     if (!preloadDelay) {
       doPreload()
-    } else {
-      const eventTarget = e.target
-      if (timeoutMap.has(eventTarget)) {
-        return
-      }
-      const id = setTimeout(() => {
-        timeoutMap.delete(eventTarget)
-        doPreload()
-      }, preloadDelay)
-      timeoutMap.set(eventTarget, id)
+      return
     }
+
+    const eventTarget = e.currentTarget
+
+    if (timeoutMap.has(eventTarget)) {
+      return
+    }
+
+    const id = setTimeout(() => {
+      timeoutMap.delete(eventTarget)
+      doPreload()
+    }, preloadDelay)
+    timeoutMap.set(eventTarget, id)
   }
 
-  const handleLeave = (e: React.MouseEvent) => {
+  const handleTouchStart = (_: React.TouchEvent) => {
+    if (disabled || preload !== 'intent') return
+    doPreload()
+  }
+
+  const handleLeave = (e: React.MouseEvent | React.FocusEvent) => {
     if (disabled || !preload || !preloadDelay) return
-    const eventTarget = e.target
+    const eventTarget = e.currentTarget
     const id = timeoutMap.get(eventTarget)
     if (id) {
       clearTimeout(id)
@@ -702,8 +698,9 @@ export function useLinkProps<
     href: hrefOption?.href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
-    onFocus: composeHandlers([onFocus, handleFocus]),
-    onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
+    onBlur: composeHandlers([onBlur, handleLeave]),
+    onFocus: composeHandlers([onFocus, enqueueIntentPreload]),
+    onMouseEnter: composeHandlers([onMouseEnter, enqueueIntentPreload]),
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     disabled: !!disabled,

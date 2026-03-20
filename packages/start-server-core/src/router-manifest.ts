@@ -2,8 +2,10 @@ import { buildDevStylesUrl, rootRouteId } from '@tanstack/router-core'
 import type { AnyRoute, RouterManagedTag } from '@tanstack/router-core'
 import type { StartManifestWithClientEntry } from './transformAssetUrls'
 
-// Pre-computed constant for dev styles URL
-const ROUTER_BASEPATH = process.env.TSS_ROUTER_BASEPATH || '/'
+// Pre-computed constant for dev styles URL basepath.
+// Defaults to vite `base` (set via TSS_DEV_SSR_STYLES_BASEPATH in the plugin),
+// aligning dev styles with how other CSS/JS assets are served.
+const DEV_SSR_STYLES_BASEPATH = process.env.TSS_DEV_SSR_STYLES_BASEPATH || '/'
 
 /**
  * @description Returns the router manifest data that should be sent to the client.
@@ -28,14 +30,18 @@ export async function getStartManifest(
 
   rootRoute.assets = rootRoute.assets || []
 
-  // Inject dev styles link in dev mode
-  if (process.env.TSS_DEV_SERVER === 'true' && matchedRoutes) {
+  // Inject dev styles link in dev mode (when SSR styles are enabled)
+  if (
+    process.env.TSS_DEV_SERVER === 'true' &&
+    process.env.TSS_DEV_SSR_STYLES_ENABLED !== 'false' &&
+    matchedRoutes
+  ) {
     const matchedRouteIds = matchedRoutes.map((route) => route.id)
     rootRoute.assets.push({
       tag: 'link',
       attrs: {
         rel: 'stylesheet',
-        href: buildDevStylesUrl(ROUTER_BASEPATH, matchedRouteIds),
+        href: buildDevStylesUrl(DEV_SSR_STYLES_BASEPATH, matchedRouteIds),
         'data-tanstack-router-dev-styles': 'true',
       },
     })

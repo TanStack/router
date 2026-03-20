@@ -75,12 +75,12 @@ As well as React's Vite plugin:
 npm i -D @vitejs/plugin-react
 ```
 
-Alternatively, you can also use `@vitejs/plugin-react-oxc` or `@vitejs/plugin-react-swc`.
+Alternatively, you can also use `@vitejs/plugin-react-swc`.
 
 and some TypeScript:
 
 ```shell
-npm i -D typescript @types/react @types/react-dom @types/node vite-tsconfig-paths
+npm i -D typescript @types/react @types/react-dom @types/node
 ```
 
 ## Update Configuration Files
@@ -103,7 +103,6 @@ Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 
@@ -111,8 +110,10 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  resolve: {
+    tsconfigPaths: true,
+  },
   plugins: [
-    tsConfigPaths(),
     tanstackStart(),
     // react's vite plugin must come after start's vite plugin
     viteReact(),
