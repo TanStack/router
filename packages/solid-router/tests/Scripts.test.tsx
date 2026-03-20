@@ -136,8 +136,9 @@ describe('ssr scripts', () => {
     )
   })
 
-  test('keeps manifest stylesheet links mounted when navigating with Link', async () => {
+  test('keeps manifest stylesheet links mounted across repeated Link navigations', async () => {
     const history = createBrowserHistory()
+    let observer: MutationObserver | undefined
 
     try {
       const rootRoute = createRootRoute({
@@ -160,7 +161,7 @@ describe('ssr scripts', () => {
       const aboutRoute = createRoute({
         path: '/about',
         getParentRoute: () => rootRoute,
-        component: () => <div>About</div>,
+        component: () => <Link to="/">Back to home</Link>,
       })
 
       const router = createRouter({
@@ -188,19 +189,48 @@ describe('ssr scripts', () => {
       const initialLink = getStylesheetLink()
       expect(initialLink).toBeInstanceOf(HTMLLinkElement)
 
-      fireEvent.click(screen.getByRole('link', { name: 'Go to about page' }))
-
-      await waitFor(() => {
-        expect(router.state.location.pathname).toBe('/about')
+      const removedStylesheetLinks: Array<HTMLLinkElement> = []
+      observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.removedNodes.forEach((node) => {
+            if (
+              node instanceof HTMLLinkElement &&
+              node.getAttribute('href') === '/main.css'
+            ) {
+              removedStylesheetLinks.push(node)
+            }
+          })
+        })
       })
+      observer.observe(document.head, { childList: true })
+
+      for (let i = 0; i < 5; i++) {
+        fireEvent.click(screen.getByRole('link', { name: 'Go to about page' }))
+
+        await waitFor(() => {
+          expect(router.state.location.pathname).toBe('/about')
+        })
+
+        await screen.findByRole('link', { name: 'Back to home' })
+
+        fireEvent.click(screen.getByRole('link', { name: 'Back to home' }))
+
+        await waitFor(() => {
+          expect(router.state.location.pathname).toBe('/')
+        })
+
+        await screen.findByRole('link', { name: 'Go to about page' })
+      }
 
       expect(getStylesheetLink()).toBe(initialLink)
+      expect(removedStylesheetLinks).toHaveLength(0)
       expect(
         Array.from(
           document.head.querySelectorAll('link[rel="stylesheet"]'),
         ).filter((link) => link.getAttribute('href') === '/main.css'),
       ).toHaveLength(1)
     } finally {
+      observer?.disconnect()
       history.destroy()
       document.head
         .querySelectorAll('link[rel="stylesheet"]')
