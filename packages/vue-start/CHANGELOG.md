@@ -1,5 +1,42 @@
 # @tanstack/vue-start
 
+## 1.167.1
+
+### Patch Changes
+
+- Updated dependencies [[`91cc628`](https://github.com/TanStack/router/commit/91cc62899b75ca920fe83c5ee7f3dbb5c71a523f)]:
+  - @tanstack/vue-router@1.168.1
+  - @tanstack/start-client-core@1.167.1
+  - @tanstack/start-plugin-core@1.167.4
+  - @tanstack/start-server-core@1.167.1
+  - @tanstack/vue-start-client@1.166.15
+  - @tanstack/vue-start-server@1.166.15
+
+## 1.167.0
+
+### Minor Changes
+
+- remove pendingMatches, cachedMatches ([#6704](https://github.com/TanStack/router/pull/6704))
+  move to signal-based reactivity
+  solid uses its own native signals
+
+### Patch Changes
+
+- Updated dependencies [[`0545239`](https://github.com/TanStack/router/commit/054523900b2ee19308e5a88417dadfc6923afe30)]:
+  - @tanstack/start-client-core@1.167.0
+  - @tanstack/start-server-core@1.167.0
+  - @tanstack/vue-router@1.168.0
+  - @tanstack/start-plugin-core@1.167.3
+  - @tanstack/vue-start-client@1.166.14
+  - @tanstack/vue-start-server@1.166.14
+
+## 1.166.18
+
+### Patch Changes
+
+- Updated dependencies [[`0f585d5`](https://github.com/TanStack/router/commit/0f585d5289c8a3b11697caa9b2aa3015d37d776e)]:
+  - @tanstack/start-plugin-core@1.167.2
+
 ## 1.166.17
 
 ### Patch Changes

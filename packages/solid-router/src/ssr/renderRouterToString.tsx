@@ -3,7 +3,7 @@ import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
 
-export const renderRouterToString = async ({
+export const renderRouterToString = ({
   router,
   responseHeaders,
   children,
@@ -32,7 +32,7 @@ export const renderRouterToString = async ({
       html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
     }
     return new Response(`<!DOCTYPE html>${html}`, {
-      status: router.state.statusCode,
+      status: router.stores.statusCode.state,
       headers: responseHeaders,
     })
   } catch (error) {

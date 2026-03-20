@@ -1,25 +1,5 @@
 import * as Solid from 'solid-js'
 
-export const usePrevious = (fn: () => boolean) => {
-  return Solid.createMemo(
-    (
-      prev: { current: boolean | null; previous: boolean | null } = {
-        current: null,
-        previous: null,
-      },
-    ) => {
-      const current = fn()
-
-      if (prev.current !== current) {
-        prev.previous = prev.current
-        prev.current = current
-      }
-
-      return prev
-    },
-  )
-}
-
 /**
  * React hook to wrap `IntersectionObserver`.
  *
