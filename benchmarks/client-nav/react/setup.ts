@@ -50,7 +50,7 @@ export function setup(scenario: Scenario = 'default') {
         : () =>
             navigate({
               to: '/links',
-              search: { id: id++ },
+              search: { id: id++, stable: '1' },
               replace: true,
             })
     await router.load()

@@ -188,9 +188,9 @@ This isolates the intended search-only invalidation case.
 
 Current implementation vs `main`:
 
-- `main`: `37.94 hz`, mean `26.36 ms`
-- current: `37.12 hz`, mean `26.94 ms`
-- Result: roughly flat to slightly worse (`-2.2%` throughput)
+- `main`: `38.78 hz`, mean `25.79 ms`
+- current: `36.33 hz`, mean `27.53 ms`
+- Result: still slightly worse in the broad benchmark (`-6.3%` throughput in the latest run)
 
 Interpretation:
 
@@ -201,9 +201,9 @@ Interpretation:
 
 Current implementation vs `main`:
 
-- `main`: `15.93 hz`, mean `62.76 ms`
-- current: `26.33 hz`, mean `37.98 ms`
-- Result: `+65.2%` throughput, `-39.5%` mean time
+- `main`: `16.42 hz`, mean `60.92 ms`
+- current: `27.03 hz`, mean `37.00 ms`
+- Result: `+64.7%` throughput, `-39.3%` mean time
 
 Interpretation:
 
@@ -212,30 +212,39 @@ Interpretation:
 
 ### Search-only benchmark, default `includeSearch: true`
 
-Measured by temporarily removing `activeOptions={{ includeSearch: false }}` from the new benchmark.
+Follow-up work narrowed active-search dependency tracking for static-search links so React no longer subscribes to the full current search object in the common partial-match case.
+
+The active-state dependency now distinguishes:
+
+- no current-search dependency
+- selected current-search keys only
+- selected current-search keys plus exact current-search entry count
+
+That means common links such as `search={{ page: 0 }}` with default `includeSearch: true` only react to current `page`, not unrelated current search keys.
 
 Current implementation vs `main`:
 
-- `main`: `17.36 hz`, mean `57.60 ms`
-- current: `18.36 hz`, mean `54.47 ms`
-- Result: `+5.8%` throughput, `-5.4%` mean time
+- `main`: `14.46 hz`, mean `69.16 ms`
+- current: `20.28 hz`, mean `49.31 ms`
+- Result: `+40.2%` throughput, `-28.7%` mean time
 
 Interpretation:
 
-- The gain is still real, but much smaller.
-- Default `includeSearch: true` means React `Link` usually still rerenders to recompute `isActive` when current search changes.
-- The remaining win comes from reusing cached `next` and skipping `buildLocation`.
+- The default `includeSearch: true` case now benefits much more because React can skip rerenders when unrelated current search keys change.
+- React still rerenders when the selected search keys or exact-search key count can affect `isActive`.
+- The remaining work is now much closer to the true semantic dependency of active-state matching.
 
 ### Bundle size
 
 Current implementation vs `main`:
 
-- `react-router.minimal`: `90682 -> 91453 gzip` (`+771 B`, `+0.85%`)
-- `react-router.full`: `93928 -> 94692 gzip` (`+764 B`, `+0.81%`)
+- `react-router.minimal`: `90682 -> 91531 gzip` (`+849 B`, `+0.94%`)
+- `react-router.full`: `93928 -> 94779 gzip` (`+851 B`, `+0.91%`)
 
 Interpretation:
 
 - The core-assisted React-only approach is still larger than `main`, but much better than the original three-adapter duplicated approach.
+- Replacing the hidden dependency metadata property with an internal `_locationDeps` target simplified the implementation, but it did not materially reduce the emitted React bundle on its own.
 
 ## What Worked
 
@@ -253,16 +262,15 @@ Interpretation:
 ## Current Understanding
 
 - The optimization target is real.
-- The common-case default `includeSearch: true` still benefits, but only modestly, because React usually still has to rerender for active-state changes.
+- The common-case default `includeSearch: true` can benefit substantially when a static-search link only depends on a small subset of current search keys.
 - The biggest win appears when search changes affect neither `next` nor `isActive`.
 - The current mixed benchmark suggests there is still a larger amount of unavoidable pathname-driven work in the general case.
 
 ## Open Questions / Next Steps
 
-1. Can active-state search dependency become narrower for common static-search links, even when `includeSearch` stays at its default `true`?
-2. Can the dependency mask be compressed or inferred with less emitted code to reduce the remaining React bundle increase?
-3. Is there a cheap way to distinguish "needs exact current search" from "only needs to know whether current search exists" in more common cases?
-4. Should the same core-assisted pattern eventually be extended to Solid and Vue, or is React the only adapter worth optimizing at this level?
+1. Can the remaining React/client-nav regression be explained by unavoidable pathname work, or is there still avoidable `Link` overhead in the mixed benchmark?
+2. Can the dependency metadata be compressed further without giving up the selected-key / key-count active-search win?
+3. Should the same core-assisted pattern eventually be extended to Solid and Vue, or is React the only adapter worth optimizing at this level?
 
 ## Practical Status
 

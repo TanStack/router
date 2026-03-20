@@ -448,8 +448,10 @@ export function useLinkProps<
       return previousBuildLocation
     }
 
+    const locationDeps = { value: BUILD_LOCATION_DEP_ALL }
+
     const next = router.buildLocation({
-      _collectLocationDeps: true,
+      _locationDeps: locationDeps,
       _fromLocation: currentLocation,
       ..._options,
     } as any)
@@ -460,7 +462,7 @@ export function useLinkProps<
       next,
       deps: _options._fromLocation
         ? BUILD_LOCATION_DEP_NONE
-        : getBuildLocationDeps(next),
+        : locationDeps.value,
       options: _options,
     }
   }, [router, currentLocation, _options])
@@ -815,29 +817,28 @@ type BuildLocationState = {
 
 type ActiveLocationDeps = {
   deps: number
+  expectedSearchCount: number
   ignoreUndefined: boolean
-  searchMode: number
+  searchKeys?: ReadonlyArray<string>
 }
 
 const BUILD_LOCATION_DEP_NONE = 0
-const BUILD_LOCATION_DEP_PATHNAME = 1 << 0
-const BUILD_LOCATION_DEP_SEARCH = 1 << 1
-const BUILD_LOCATION_DEP_HASH = 1 << 2
-const BUILD_LOCATION_DEP_STATE = 1 << 3
-const BUILD_LOCATION_DEP_ALL =
-  BUILD_LOCATION_DEP_PATHNAME |
-  BUILD_LOCATION_DEP_SEARCH |
-  BUILD_LOCATION_DEP_HASH |
-  BUILD_LOCATION_DEP_STATE
+const BUILD_LOCATION_DEP_PATHNAME = 1
+const BUILD_LOCATION_DEP_SEARCH = 2
+const BUILD_LOCATION_DEP_HASH = 4
+const BUILD_LOCATION_DEP_STATE = 8
+const BUILD_LOCATION_DEP_ALL = 15
 
-const ACTIVE_LOCATION_SEARCH_NONE = 0
-const ACTIVE_LOCATION_SEARCH_FULL = 1
-const ACTIVE_LOCATION_SEARCH_HAS_ENTRIES = 2
+const ACTIVE_LOCATION_SEARCH_COUNT_NONE = -1
+
+const SEARCH_EXPLICIT_UNDEFINED_OPTIONS = {
+  ignoreUndefined: false,
+} as const
 
 const NO_ACTIVE_LOCATION_DEPS: ActiveLocationDeps = {
   deps: BUILD_LOCATION_DEP_NONE,
+  expectedSearchCount: ACTIVE_LOCATION_SEARCH_COUNT_NONE,
   ignoreUndefined: true,
-  searchMode: ACTIVE_LOCATION_SEARCH_NONE,
 }
 
 const composeHandlers =
@@ -887,11 +888,6 @@ function didLocationChange(
   )
 }
 
-function getBuildLocationDeps(next: ParsedLocation) {
-  return ((next as any).__TSR_buildLocationDeps ??
-    BUILD_LOCATION_DEP_ALL) as number
-}
-
 function getActiveLocationDeps(
   activeOptions: LinkOptions['activeOptions'],
   nextLocation: Pick<ParsedLocation, 'hash' | 'pathname' | 'search'>,
@@ -905,19 +901,19 @@ function getActiveLocationDeps(
   const includeSearch = activeOptions?.includeSearch ?? true
   const includeHash = !!activeOptions?.includeHash
   const ignoreUndefined = !activeOptions?.explicitUndefined
-  const nextSearchIsEmpty = isSearchEmpty(nextLocation.search, ignoreUndefined)
+  const searchKeys = includeSearch
+    ? getSearchKeys(nextLocation.search, ignoreUndefined)
+    : undefined
 
   return {
     deps:
       BUILD_LOCATION_DEP_PATHNAME | (includeHash ? BUILD_LOCATION_DEP_HASH : 0),
+    expectedSearchCount:
+      includeSearch && exact
+        ? (searchKeys?.length ?? BUILD_LOCATION_DEP_NONE)
+        : ACTIVE_LOCATION_SEARCH_COUNT_NONE,
     ignoreUndefined,
-    searchMode: !includeSearch
-      ? ACTIVE_LOCATION_SEARCH_NONE
-      : nextSearchIsEmpty
-        ? exact
-          ? ACTIVE_LOCATION_SEARCH_HAS_ENTRIES
-          : ACTIVE_LOCATION_SEARCH_NONE
-        : ACTIVE_LOCATION_SEARCH_FULL,
+    searchKeys: searchKeys?.length ? searchKeys : undefined,
   }
 }
 
@@ -933,14 +929,24 @@ function didActiveLocationChange(
     return true
   }
 
-  if (deps.searchMode === ACTIVE_LOCATION_SEARCH_FULL) {
-    if (prev.search !== next.search) {
-      return true
+  if (deps.searchKeys?.length) {
+    const prevSearch = prev.search as Record<string, unknown>
+    const nextSearch = next.search as Record<string, unknown>
+    const deepEqualOptions = deps.ignoreUndefined
+      ? undefined
+      : SEARCH_EXPLICIT_UNDEFINED_OPTIONS
+
+    for (const key of deps.searchKeys) {
+      if (!deepEqual(prevSearch?.[key], nextSearch?.[key], deepEqualOptions)) {
+        return true
+      }
     }
-  } else if (deps.searchMode === ACTIVE_LOCATION_SEARCH_HAS_ENTRIES) {
+  }
+
+  if (deps.expectedSearchCount !== ACTIVE_LOCATION_SEARCH_COUNT_NONE) {
     if (
-      hasSearchEntries(prev.search, deps.ignoreUndefined) !==
-      hasSearchEntries(next.search, deps.ignoreUndefined)
+      getSearchEntryCount(prev.search, deps.ignoreUndefined) !==
+      getSearchEntryCount(next.search, deps.ignoreUndefined)
     ) {
       return true
     }
@@ -949,25 +955,32 @@ function didActiveLocationChange(
   return !!(deps.deps & BUILD_LOCATION_DEP_HASH && prev.hash !== next.hash)
 }
 
-function isSearchEmpty(search: unknown, ignoreUndefined: boolean): boolean {
-  return !hasSearchEntries(search, ignoreUndefined)
-}
+function getSearchKeys(search: unknown, ignoreUndefined: boolean) {
+  const searchRecord = search as Record<string, unknown>
 
-function hasSearchEntries(search: unknown, ignoreUndefined: boolean): boolean {
-  if (!search || typeof search !== 'object') {
-    return false
-  }
+  const keys = [] as Array<string>
 
-  for (const key in search as Record<string, unknown>) {
-    if (
-      !ignoreUndefined ||
-      (search as Record<string, unknown>)[key] !== undefined
-    ) {
-      return true
+  for (const key in searchRecord) {
+    if (!ignoreUndefined || searchRecord[key] !== undefined) {
+      keys.push(key)
     }
   }
 
-  return false
+  return keys
+}
+
+function getSearchEntryCount(search: unknown, ignoreUndefined: boolean) {
+  const searchRecord = search as Record<string, unknown>
+
+  let count = BUILD_LOCATION_DEP_NONE
+
+  for (const key in searchRecord) {
+    if (!ignoreUndefined || searchRecord[key] !== undefined) {
+      count++
+    }
+  }
+
+  return count
 }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements

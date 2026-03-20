@@ -564,16 +564,16 @@ export interface BuildNextOptions {
   from?: string
   href?: string
   _fromLocation?: ParsedLocation
-  _collectLocationDeps?: boolean
+  _locationDeps?: { value: number }
   unsafeRelative?: 'path'
   _isNavigate?: boolean
 }
 
 const BUILD_LOCATION_DEP_NONE = 0
-const BUILD_LOCATION_DEP_PATHNAME = 1 << 0
-const BUILD_LOCATION_DEP_SEARCH = 1 << 1
-const BUILD_LOCATION_DEP_HASH = 1 << 2
-const BUILD_LOCATION_DEP_STATE = 1 << 3
+const BUILD_LOCATION_DEP_PATHNAME = 1
+const BUILD_LOCATION_DEP_SEARCH = 2
+const BUILD_LOCATION_DEP_HASH = 4
+const BUILD_LOCATION_DEP_STATE = 8
 
 type NavigationEventInfo = {
   fromLocation?: ParsedLocation
@@ -1800,7 +1800,8 @@ export class RouterCore<
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
   buildLocation: BuildLocationFn = (opts) => {
-    const collectLocationDeps = !!opts._collectLocationDeps
+    const locationDepsTarget = opts._locationDeps
+    let collectedLocationDeps = BUILD_LOCATION_DEP_NONE
 
     const build = (
       dest: BuildNextOptions & {
@@ -1816,7 +1817,7 @@ export class RouterCore<
       const toIsAbsolute =
         !!toPath && toPath.charCodeAt(0) === 47 && toPath.charCodeAt(1) !== 47
 
-      if (collectLocationDeps) {
+      if (locationDepsTarget) {
         if (!dest.from && (!toPath || !toIsAbsolute)) {
           locationDeps |= BUILD_LOCATION_DEP_PATHNAME
         }
@@ -1881,7 +1882,7 @@ export class RouterCore<
         : this.resolvePathWithBase(fromPath, '.')
 
       if (
-        collectLocationDeps &&
+        locationDepsTarget &&
         dest.params !== false &&
         dest.params !== null &&
         nextTo.includes('$')
@@ -1917,7 +1918,7 @@ export class RouterCore<
       }
 
       if (
-        collectLocationDeps &&
+        locationDepsTarget &&
         (dest.search === true ||
           typeof dest.search === 'function' ||
           destRoutes.some((route) =>
@@ -2062,8 +2063,8 @@ export class RouterCore<
         unmaskOnReload: dest.unmaskOnReload,
       }
 
-      if (collectLocationDeps) {
-        setBuildLocationDeps(nextLocation, locationDeps)
+      if (locationDepsTarget) {
+        collectedLocationDeps |= locationDeps
       }
 
       return nextLocation
@@ -2114,26 +2115,29 @@ export class RouterCore<
 
       if (maskedNext) {
         next.maskedLocation = maskedNext
-
-        if (collectLocationDeps) {
-          setBuildLocationDeps(
-            next,
-            getBuildLocationDeps(next) | getBuildLocationDeps(maskedNext),
-          )
-        }
       }
 
       return next
     }
 
     if (opts.mask) {
-      return buildWithMatches(opts, {
+      const next = buildWithMatches(opts, {
         from: opts.from,
         ...opts.mask,
       })
+      if (locationDepsTarget) {
+        locationDepsTarget.value = collectedLocationDeps
+      }
+      return next
     }
 
-    return buildWithMatches(opts)
+    const next = buildWithMatches(opts)
+
+    if (locationDepsTarget) {
+      locationDepsTarget.value = collectedLocationDeps
+    }
+
+    return next
   }
 
   commitLocationPromise: undefined | ControlledPromise<void>
@@ -3132,15 +3136,6 @@ function routeNeedsCurrentSearch(
     route.options.postSearchFilters?.length ||
     (includeValidateSearch && route.options.validateSearch)
   )
-}
-
-function getBuildLocationDeps(location: ParsedLocation): number {
-  return ((location as any).__TSR_buildLocationDeps ??
-    BUILD_LOCATION_DEP_NONE) as number
-}
-
-function setBuildLocationDeps(location: ParsedLocation, deps: number) {
-  ;(location as any).__TSR_buildLocationDeps = deps
 }
 
 function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {

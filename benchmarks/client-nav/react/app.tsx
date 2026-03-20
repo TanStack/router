@@ -11,7 +11,10 @@ import {
 } from '@tanstack/react-router'
 import { createRoot } from 'react-dom/client'
 
-export type Scenario = 'default' | 'static-search-links'
+export type Scenario =
+  | 'default'
+  | 'static-search-links'
+  | 'static-search-links-active-search'
 
 function runPerfSelectorComputation(seed: number) {
   let value = Math.trunc(seed) | 0
@@ -52,12 +55,19 @@ function Links() {
   )
 }
 
-function StaticSearchLinks(props: { linkId: number }) {
+function StaticSearchLinks(props: {
+  linkId: number
+  includeActiveSearch: boolean
+}) {
+  const activeOptions = props.includeActiveSearch
+    ? undefined
+    : { includeSearch: false as const }
+
   return (
     <Link
       to="/links"
       search={{ linkId: `${props.linkId}` }}
-      activeOptions={{ includeSearch: false }}
+      activeOptions={activeOptions}
     >
       Link
     </Link>
@@ -81,11 +91,15 @@ function Root() {
   )
 }
 
-function StaticSearchLinksRoot() {
+function StaticSearchLinksRoot(props: { includeActiveSearch: boolean }) {
   return (
     <>
       {staticSearchLinkIds.map((linkId) => (
-        <StaticSearchLinks key={linkId} linkId={linkId} />
+        <StaticSearchLinks
+          key={linkId}
+          linkId={linkId}
+          includeActiveSearch={props.includeActiveSearch}
+        />
       ))}
       <Outlet />
     </>
@@ -96,19 +110,29 @@ export function mountTestApp(
   container: Element,
   scenario: Scenario = 'default',
 ) {
+  const isStaticSearchScenario = scenario !== 'default'
+
   const rootRoute = createRootRoute({
-    component: scenario === 'default' ? Root : StaticSearchLinksRoot,
+    component: isStaticSearchScenario
+      ? () => (
+          <StaticSearchLinksRoot
+            includeActiveSearch={
+              scenario === 'static-search-links-active-search'
+            }
+          />
+        )
+      : Root,
   })
 
   const route = createRoute({
     getParentRoute: () => rootRoute,
-    path: scenario === 'default' ? '/$id' : '/links',
+    path: isStaticSearchScenario ? '/links' : '/$id',
     component: () => <div />,
   })
 
   const router = createRouter({
     history: createMemoryHistory({
-      initialEntries: [scenario === 'default' ? '/0' : '/links'],
+      initialEntries: [isStaticSearchScenario ? '/links' : '/0'],
     }),
     scrollRestoration: true,
     routeTree: rootRoute.addChildren([route]),

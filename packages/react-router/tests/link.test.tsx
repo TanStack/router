@@ -831,6 +831,121 @@ describe('Link', () => {
       expect(buildLocationSpy).not.toHaveBeenCalled()
     })
 
+    test('does not rerender when unrelated search keys change for partial active search', async () => {
+      const history = createMemoryHistory({
+        initialEntries: ['/?page=0&filter=first'],
+      })
+      let renderCount = 0
+
+      function StaticSearchLink() {
+        renderCount++
+
+        return (
+          <Link
+            data-testid="static-search"
+            to="/"
+            search={{ page: 0 }}
+            activeProps={{ className: 'active' }}
+          >
+            Static search
+          </Link>
+        )
+      }
+
+      const rootRoute = createRootRoute({
+        component: () => <StaticSearchLink />,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute,
+        history,
+      })
+
+      const buildLocationSpy = vi.spyOn(router, 'buildLocation')
+
+      render(<RouterProvider router={router} />)
+
+      const staticSearch = await screen.findByTestId('static-search')
+      const initialRenderCount = renderCount
+
+      expect(staticSearch).toHaveClass('active')
+
+      buildLocationSpy.mockClear()
+
+      await act(async () => {
+        history.push('/?page=0&filter=second')
+      })
+
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({
+          filter: 'second',
+          page: 0,
+        })
+      })
+
+      expect(staticSearch).toHaveClass('active')
+      expect(renderCount).toBe(initialRenderCount)
+      expect(buildLocationSpy).not.toHaveBeenCalled()
+    })
+
+    test('does not rerender when exact active search keeps the same key count', async () => {
+      const history = createMemoryHistory({
+        initialEntries: ['/?page=0&filter=first'],
+      })
+      let renderCount = 0
+
+      function StaticSearchLink() {
+        renderCount++
+
+        return (
+          <Link
+            data-testid="static-search"
+            to="/"
+            search={{ page: 0 }}
+            activeOptions={{ exact: true }}
+            inactiveProps={{ className: 'inactive' }}
+          >
+            Static search
+          </Link>
+        )
+      }
+
+      const rootRoute = createRootRoute({
+        component: () => <StaticSearchLink />,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute,
+        history,
+      })
+
+      const buildLocationSpy = vi.spyOn(router, 'buildLocation')
+
+      render(<RouterProvider router={router} />)
+
+      const staticSearch = await screen.findByTestId('static-search')
+      const initialRenderCount = renderCount
+
+      expect(staticSearch).toHaveClass('inactive')
+
+      buildLocationSpy.mockClear()
+
+      await act(async () => {
+        history.push('/?page=0&filter=second')
+      })
+
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({
+          filter: 'second',
+          page: 0,
+        })
+      })
+
+      expect(staticSearch).toHaveClass('inactive')
+      expect(renderCount).toBe(initialRenderCount)
+      expect(buildLocationSpy).not.toHaveBeenCalled()
+    })
+
     test('updates hash-sensitive active state immediately with and without hash=true', async () => {
       const rootRoute = createRootRoute({
         component: () => (

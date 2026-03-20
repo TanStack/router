@@ -36,7 +36,11 @@ function registerBenchmark(name: string, test: ReturnType<typeof setup>) {
 describe('client-nav', () => {
   registerBenchmark('client-side navigation loop (react)', setup())
   registerBenchmark(
-    'client-side navigation loop with static search links (react)',
+    'client-side navigation loop with static search links and includeSearch=false (react)',
     setup('static-search-links'),
+  )
+  registerBenchmark(
+    'client-side navigation loop with static search links and includeSearch=true (react)',
+    setup('static-search-links-active-search'),
   )
 })
