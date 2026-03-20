@@ -9,6 +9,7 @@ import {
 
 import {
   HeadContent,
+  Link,
   Outlet,
   RouterProvider,
   createBrowserHistory,
@@ -115,6 +116,96 @@ describe('ssr scripts', () => {
     expect(container.innerHTML).toEqual(
       '<script src="script.js"></script><script src="script3.js"></script>',
     )
+  })
+
+  test('keeps manifest stylesheet links mounted when navigating with Link', async () => {
+    const history = createBrowserHistory()
+
+    try {
+      const rootRoute = createRootRoute({
+        component: () => {
+          return (
+            <>
+              <HeadContent />
+              <Outlet />
+            </>
+          )
+        },
+      })
+
+      const indexRoute = createRoute({
+        path: '/',
+        getParentRoute: () => rootRoute,
+        component: () => <Link to="/about">Go to about page</Link>,
+      })
+
+      const aboutRoute = createRoute({
+        path: '/about',
+        getParentRoute: () => rootRoute,
+        component: () => <div>About</div>,
+      })
+
+      const router = createRouter({
+        history,
+        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      })
+
+      router.ssr = {
+        manifest: {
+          routes: {
+            [rootRoute.id]: {
+              assets: [
+                {
+                  tag: 'link',
+                  attrs: {
+                    rel: 'stylesheet',
+                    href: '/main.css',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      } as any
+
+      await router.load()
+
+      render(() => <RouterProvider router={router} />)
+
+      const getStylesheetLink = () =>
+        Array.from(
+          document.head.querySelectorAll('link[rel="stylesheet"]'),
+        ).find((link) => link.getAttribute('href') === '/main.css')
+
+      await waitFor(() => {
+        expect(getStylesheetLink()).toBeInstanceOf(HTMLLinkElement)
+      })
+
+      const initialLink = getStylesheetLink()
+      expect(initialLink).toBeInstanceOf(HTMLLinkElement)
+
+      fireEvent.click(screen.getByRole('link', { name: 'Go to about page' }))
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/about')
+      })
+
+      expect(getStylesheetLink()).toBe(initialLink)
+      expect(
+        Array.from(
+          document.head.querySelectorAll('link[rel="stylesheet"]'),
+        ).filter((link) => link.getAttribute('href') === '/main.css'),
+      ).toHaveLength(1)
+    } finally {
+      history.destroy()
+      document.head
+        .querySelectorAll('link[rel="stylesheet"]')
+        .forEach((link) => {
+          if (link.getAttribute('href') === '/main.css') {
+            link.remove()
+          }
+        })
+    }
   })
 })
 
