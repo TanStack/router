@@ -126,6 +126,10 @@
               "to": "framework/react/guide/selective-ssr"
             },
             {
+              "label": "Selective Hydration",
+              "to": "framework/react/guide/selective-hydration"
+            },
+            {
               "label": "SPA Mode",
               "to": "framework/react/guide/spa-mode"
             },
