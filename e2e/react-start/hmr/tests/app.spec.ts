@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test'
+import type { ConsoleMessage } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -88,28 +89,26 @@ async function rewriteRouteFile(
   await assertion()
 }
 
-async function waitForRouterIdle(page: Page) {
-  await page.waitForFunction(() => {
-    const router = (window as any).__TSR_ROUTER__
-    return router?.state?.status === 'idle'
+/**
+ * Returns a promise that resolves once Vite logs a client HMR update
+ * for the given route filename. Must be called BEFORE the file write
+ * so the listener is in place when the message arrives.
+ */
+function onNextHmrUpdate(page: Page, routeFilename: string): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const handler = (msg: ConsoleMessage) => {
+      const text = msg.text()
+      if (
+        text.includes('[vite]') &&
+        text.includes(routeFilename) &&
+        (text.includes('hot updated') || text.includes('hmr update'))
+      ) {
+        page.off('console', handler)
+        resolve()
+      }
+    }
+    page.on('console', handler)
   })
-}
-
-async function waitForChildLoaderCrumb(page: Page, expectedCrumb: string) {
-  await page.waitForFunction((crumb) => {
-    const router = (window as any).__TSR_ROUTER__
-    const loader = router?.routesById?.['/child']?.options?.loader
-
-    if (typeof loader !== 'function') {
-      return false
-    }
-
-    try {
-      return loader()?.crumb === crumb
-    } catch {
-      return false
-    }
-  }, expectedCrumb)
 }
 
 async function waitForRouteRemovalReload(page: Page) {
@@ -333,26 +332,18 @@ test.describe('react-start hmr', () => {
     await page.getByTestId('hydrated').waitFor({ state: 'visible' })
 
     // First edit: change child loader while on /
-    await replaceRouteTextAndWait(
-      page,
-      'child',
-      "crumb: 'Child'",
-      "crumb: 'Child Updated'",
-      async () => {
-        await waitForChildLoaderCrumb(page, 'Child Updated')
-      },
-    )
+    const hmr1 = onNextHmrUpdate(page, 'child.tsx')
+    await replaceRouteText('child', "crumb: 'Child'", "crumb: 'Child Updated'")
+    await hmr1
 
     // Second edit: change child loader again while still on /
-    await replaceRouteTextAndWait(
-      page,
+    const hmr2 = onNextHmrUpdate(page, 'child.tsx')
+    await replaceRouteText(
       'child',
       "crumb: 'Child Updated'",
       "crumb: 'Child Updated Again'",
-      async () => {
-        await waitForChildLoaderCrumb(page, 'Child Updated Again')
-      },
     )
+    await hmr2
 
     // Now navigate to /child — should see the LATEST value
     await page.getByTestId('child-link').click()
