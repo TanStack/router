@@ -1,3 +1,4 @@
+import { createReactRefreshIgnoredRouteExportsPlugin } from './react-refresh-ignored-route-exports'
 import { createReactRefreshRouteComponentsPlugin } from './react-refresh-route-components'
 import { createReactStableHmrSplitRouteComponentsPlugin } from './react-stable-hmr-split-route-components'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
@@ -11,6 +12,7 @@ export function getReferenceRouteCompilerPlugins(opts: {
     case 'react': {
       if (opts.addHmr) {
         return [
+          createReactRefreshIgnoredRouteExportsPlugin(),
           createReactRefreshRouteComponentsPlugin(),
           createReactStableHmrSplitRouteComponentsPlugin(),
         ]

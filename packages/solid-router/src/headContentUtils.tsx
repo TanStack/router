@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { escapeHtml } from '@tanstack/router-core'
+import { escapeHtml, replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
@@ -179,8 +179,8 @@ export const useTags = () => {
     })),
   )
 
-  return () =>
-    uniqBy(
+  return Solid.createMemo((prev: Array<RouterManagedTag> | undefined) => {
+    const next = uniqBy(
       [
         ...meta(),
         ...preloadLinks(),
@@ -192,6 +192,11 @@ export const useTags = () => {
         return JSON.stringify(d)
       },
     )
+    if (prev === undefined) {
+      return next
+    }
+    return replaceEqualDeep(prev, next)
+  })
 }
 
 export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {

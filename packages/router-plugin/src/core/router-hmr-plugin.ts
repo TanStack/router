@@ -1,7 +1,7 @@
 import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import { compileCodeSplitReferenceRoute } from './code-splitter/compilers'
 import { getReferenceRouteCompilerPlugins } from './code-splitter/plugins/framework-plugins'
-import { routeHmrStatement } from './route-hmr-statement'
+import { createRouteHmrStatement } from './route-hmr-statement'
 import { debug, normalizePath } from './utils'
 import { getConfig } from './config'
 import type { UnpluginFactory } from 'unplugin'
@@ -44,6 +44,10 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
         if (debug) console.info('Adding HMR handling to route ', normalizedId)
 
         if (userConfig.target === 'react') {
+          const compilerPlugins = getReferenceRouteCompilerPlugins({
+            targetFramework: 'react',
+            addHmr: true,
+          })
           const compiled = compileCodeSplitReferenceRoute({
             code,
             filename: normalizedId,
@@ -51,10 +55,7 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
             addHmr: true,
             codeSplitGroupings: [],
             targetFramework: 'react',
-            compilerPlugins: getReferenceRouteCompilerPlugins({
-              targetFramework: 'react',
-              addHmr: true,
-            }),
+            compilerPlugins,
           })
 
           if (compiled) {
@@ -68,7 +69,7 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
         }
 
         const ast = parseAst({ code })
-        ast.program.body.push(routeHmrStatement)
+        ast.program.body.push(createRouteHmrStatement([]))
         const result = generateFromAst(ast, {
           sourceMaps: true,
           filename: normalizedId,

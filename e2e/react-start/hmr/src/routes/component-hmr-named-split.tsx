@@ -1,31 +1,24 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 
-export const Route = createFileRoute('/')({
-  component: Home,
+export const Route = createFileRoute('/component-hmr-named-split')({
+  component: ComponentHmrPage,
 })
 
-function Home() {
+function ComponentHmrPage() {
   const [count, setCount] = useState(0)
 
   return (
     <main className="hmr-card flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="hmr-label">Home route</p>
-          <h1
-            className="mt-2 font-display text-3xl font-bold text-[var(--color-night)]"
-            data-testid="heading"
-          >
-            HMR State Test
+          <p className="hmr-label">Named split route</p>
+          <h1 className="mt-2 font-display text-3xl font-bold text-[var(--color-night)]">
+            Named component with default splitting
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            This page checks that local component state and uncontrolled input
-            values survive component refreshes.
-          </p>
         </div>
-        <p className="hmr-marker" data-testid="marker">
-          baseline
+        <p className="hmr-marker" data-testid="component-hmr-marker">
+          component-hmr-named-split-baseline
         </p>
       </div>
 
@@ -34,7 +27,7 @@ function Home() {
           <p className="hmr-label">Counter</p>
           <p
             className="mt-2 text-2xl font-bold text-[var(--color-night)]"
-            data-testid="count"
+            data-testid="component-hmr-count"
           >
             Count: {count}
           </p>
@@ -42,16 +35,16 @@ function Home() {
         <div className="flex flex-col gap-3">
           <button
             className="hmr-button w-full sm:w-fit"
-            data-testid="increment"
-            onClick={() => setCount((d) => d + 1)}
+            data-testid="component-hmr-increment"
+            onClick={() => setCount((value) => value + 1)}
           >
             Increment
           </button>
           <input
             className="hmr-input"
-            data-testid="message"
+            data-testid="component-hmr-message"
             defaultValue=""
-            placeholder="Type something to verify state survives HMR"
+            placeholder="Component-local uncontrolled state"
           />
         </div>
       </div>
