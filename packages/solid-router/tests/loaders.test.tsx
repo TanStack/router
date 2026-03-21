@@ -779,14 +779,16 @@ test('cancelMatches after pending timeout', async () => {
   const router = createRouter({ routeTree, history })
   render(() => <RouterProvider router={router} />)
   await router.latestLoadPromise
-  void router.navigate({ to: '/foo' })
+  const fooLink = await screen.findByTestId('link-to-foo')
+  fireEvent.click(fooLink)
+  await sleep(WAIT_TIME * 30)
+  const pendingElement = await screen.findByText('Pending...')
+  expect(pendingElement).toBeInTheDocument()
 
-  await waitFor(() => {
-    expect(fooPendingComponentOnMountMock).toHaveBeenCalled()
-  })
-
-  await router.navigate({ to: '/bar' })
+  const barLink = await screen.findByTestId('link-to-bar')
+  fireEvent.click(barLink)
   const barElement = await screen.findByText('Bar page')
   expect(barElement).toBeInTheDocument()
+  expect(fooPendingComponentOnMountMock).toHaveBeenCalled()
   expect(onAbortMock).toHaveBeenCalled()
 })
