@@ -1,5 +1,5 @@
-export function invariant(value: unknown, message: string): asserts value {
+export function invariant(value: unknown, message?: string): asserts value {
   if (!value) {
-    throw new Error(message)
+    throw new Error(message ?? 'Invariant failed')
   }
 }
