@@ -34,7 +34,12 @@ import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
-import { loadMatches, loadRouteChunk, routeNeedsPreload } from './load-matches'
+import {
+  isMatchLoadCancelledError,
+  loadMatches,
+  loadRouteChunk,
+  routeNeedsPreload,
+} from './load-matches'
 import {
   composeRewrites,
   executeRewriteInput,
@@ -2852,6 +2857,9 @@ export class RouterCore<
 
       return matches
     } catch (err) {
+      if (isMatchLoadCancelledError(err)) {
+        return undefined
+      }
       if (isRedirect(err)) {
         if (err.options.reloadDocument) {
           return undefined

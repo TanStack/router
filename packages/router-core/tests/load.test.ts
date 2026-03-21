@@ -427,7 +427,7 @@ describe('loader skip or exec', () => {
 
     resolveLoader?.({ ok: true })
 
-    await preloadPromise
+    await expect(preloadPromise).resolves.toBeUndefined()
     // the route load won't throw, but it will log errors to the console if any
     expect(consoleErrorSpy).not.toHaveBeenCalled()
 
@@ -488,9 +488,13 @@ describe('loader skip or exec', () => {
 
     resolveFooLoader?.({ ok: true })
 
-    await Promise.all([preloadPromise, invalidatePromise])
+    const [preloadResult] = await Promise.all([
+      preloadPromise,
+      invalidatePromise,
+    ])
 
     expect(barLoader).toHaveBeenCalledTimes(2)
+    expect(preloadResult).toBeUndefined()
     // the route load won't throw, but it will log errors to the console if any
     expect(consoleErrorSpy).not.toHaveBeenCalled()
     expect(
