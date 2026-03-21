@@ -193,18 +193,20 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   ): RouterReadableStore<AnyRouteMatch | undefined> {
     let cached = matchStoreByRouteIdCache.get(routeId)
     if (!cached) {
-      cached = {
-        get state() {
-          const ids = matchesId.state
-          for (const id of ids) {
-            const matchStore = activeMatchStoresById.get(id)
-            if (matchStore && matchStore.routeId === routeId) {
-              return matchStore.state
-            }
+      cached = createReadonlyStore(() => {
+        // Reading matchesId.state tracks it as a dependency.
+        // When matchesId changes (navigation), this computed re-evaluates.
+        const ids = matchesId.state
+        for (const id of ids) {
+          const matchStore = activeMatchStoresById.get(id)
+          if (matchStore && matchStore.routeId === routeId) {
+            // Reading matchStore.state tracks it as a dependency.
+            // When the match store's state changes, this re-evaluates.
+            return matchStore.state
           }
-          return undefined
-        },
-      }
+        }
+        return undefined
+      })
       matchStoreByRouteIdCache.set(routeId, cached)
     }
     return cached

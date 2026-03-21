@@ -315,14 +315,24 @@ export const MatchInner = (): any => {
           <Solid.Switch>
             <Solid.Match when={currentMatch()._displayPending}>
               {(_) => {
-                throw router.getMatch(currentMatch().id)?._nonReactive
-                  .displayPendingPromise
+                const displayPendingResult = Solid.createMemo(
+                  () =>
+                    router.getMatch(currentMatch().id)?._nonReactive
+                      .displayPendingPromise,
+                )
+
+                return <>{displayPendingResult()}</>
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch()._forcePending}>
               {(_) => {
-                throw router.getMatch(currentMatch().id)?._nonReactive
-                  .minPendingPromise
+                const minPendingResult = Solid.createMemo(
+                  () =>
+                    router.getMatch(currentMatch().id)?._nonReactive
+                      .minPendingPromise,
+                )
+
+                return <>{minPendingResult()}</>
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'pending'}>
@@ -357,8 +367,26 @@ export const MatchInner = (): any => {
                   }
                 }
 
-                throw router.getMatch(currentMatch().id)?._nonReactive
-                  .loadPromise
+                const loaderResult = Solid.createMemo(async () => {
+                  await new Promise((r) => setTimeout(r, 0))
+                  return router.getMatch(currentMatch().id)?._nonReactive
+                    .loadPromise
+                })
+
+                const FallbackComponent = Solid.untrack(
+                  () =>
+                    route().options.pendingComponent ??
+                    router.options.defaultPendingComponent,
+                )
+
+                return (
+                  <>
+                    {FallbackComponent && pendingMinMs > 0 ? (
+                      <Dynamic component={FallbackComponent} />
+                    ) : null}
+                    {loaderResult()}
+                  </>
+                )
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'notFound'}>
@@ -383,8 +411,7 @@ export const MatchInner = (): any => {
                 const matchError = Solid.untrack(() => currentMatch().error)
                 invariant(isRedirect(matchError), 'Expected a redirect error')
 
-                throw router.getMatch(currentMatch().id)?._nonReactive
-                  .loadPromise
+                return null
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'error'}>
@@ -445,6 +472,17 @@ export const Outlet = () => {
     return router.stores.activeMatchStoresById.get(id)?.state.routeId
   })
 
+  const childRoute = Solid.createMemo(() => {
+    const id = childRouteId()
+    return id ? (router.routesById[id] as AnyRoute) : undefined
+  })
+
+  const childPendingComponent = Solid.createMemo(
+    () =>
+      childRoute()?.options.pendingComponent ??
+      router.options.defaultPendingComponent,
+  )
+
   const childMatchStatus = Solid.createMemo(() => {
     const id = childMatchId()
     if (!id) return undefined
@@ -480,9 +518,9 @@ export const Outlet = () => {
               {(_routeId) => (
                 <Solid.Loading
                   fallback={
-                    <Dynamic
-                      component={router.options.defaultPendingComponent}
-                    />
+                    childPendingComponent() ? (
+                      <Dynamic component={childPendingComponent()} />
+                    ) : null
                   }
                 >
                   <Match matchId={currentMatchId()} />

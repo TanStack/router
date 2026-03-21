@@ -405,20 +405,15 @@ export function getNormalizedURL(url: string | URL, base?: string | URL) {
   const { path: decodedPathname, handledProtocolRelativeURL } = decodePath(
     rawUrl.pathname,
   )
-  const normalizedSearch = normalizeSearchLikeBrowser(rawUrl.search)
-  const normalizedHref = decodedPathname + normalizedSearch + rawUrl.hash
+  const searchParams = new URLSearchParams(rawUrl.search)
+  const normalizedHref =
+    decodedPathname +
+    (searchParams.size > 0 ? '?' : '') +
+    searchParams.toString() +
+    rawUrl.hash
 
   return {
     url: new URL(normalizedHref, rawUrl.origin),
     handledProtocolRelativeURL,
   }
-}
-
-function normalizeSearchLikeBrowser(search: string) {
-  if (!search) return ''
-
-  // Chromium preserves `|` in search params on direct navigations, while
-  // URLSearchParams always re-encodes it as `%7C`. Preserve the browser form and
-  // avoid reserializing malformed percent-encoded input like `%E0%A4`.
-  return search.replace(/%7C/gi, '|')
 }

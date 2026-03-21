@@ -837,11 +837,11 @@ const loadRouteMatch = async (
       ;(async () => {
         try {
           await runLoader(inner, matchPromises, matchId, index, route)
-          const resolvedMatch = inner.router.getMatch(matchId) ?? match
-          resolvedMatch._nonReactive.loaderPromise?.resolve()
-          resolvedMatch._nonReactive.loadPromise?.resolve()
-          resolvedMatch._nonReactive.loaderPromise = undefined
-          resolvedMatch._nonReactive.loadPromise = undefined
+          const match = inner.router.getMatch(matchId)!
+          match._nonReactive.loaderPromise?.resolve()
+          match._nonReactive.loadPromise?.resolve()
+          match._nonReactive.loaderPromise = undefined
+          match._nonReactive.loadPromise = undefined
         } catch (err) {
           if (isRedirect(err)) {
             await inner.router.navigate(err.options)
@@ -906,10 +906,7 @@ const loadRouteMatch = async (
         return prevMatch
       }
       await prevMatch._nonReactive.loaderPromise
-      const match = inner.router.getMatch(matchId)
-      if (!match) {
-        return prevMatch
-      }
+      const match = inner.router.getMatch(matchId)!
       const error = match._nonReactive.error || match.error
       if (error) {
         handleRedirectAndNotFound(inner, match, error)
@@ -939,7 +936,7 @@ const loadRouteMatch = async (
       await handleLoader(preload, prevMatch, previousRouteMatchId, match, route)
     }
   }
-  const match = inner.router.getMatch(matchId) ?? inner.matches[index]!
+  const match = inner.router.getMatch(matchId)!
   if (!loaderIsRunningAsync) {
     match._nonReactive.loaderPromise?.resolve()
     match._nonReactive.loadPromise?.resolve()
