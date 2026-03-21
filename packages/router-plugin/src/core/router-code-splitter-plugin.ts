@@ -116,7 +116,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       code,
     })
 
-    if (fromCode.groupings) {
+    if (fromCode.groupings !== undefined) {
       const res = splitGroupingsSchema.safeParse(fromCode.groupings)
       if (!res.success) {
         const message = res.error.errors.map((e) => e.message).join('. ')
@@ -143,7 +143,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     }
 
     const splitGroupings: CodeSplitGroupings =
-      fromCode.groupings || pluginSplitBehavior || getGlobalCodeSplitGroupings()
+      fromCode.groupings ?? pluginSplitBehavior ?? getGlobalCodeSplitGroupings()
 
     // Compute shared bindings before compiling the reference route
     const sharedBindings = computeSharedBindings({

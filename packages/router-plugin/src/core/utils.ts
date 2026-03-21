@@ -16,6 +16,20 @@ export function normalizePath(path: string): string {
   return path.replace(/\\/g, '/')
 }
 
+export function getObjectPropertyKeyName(
+  prop: t.ObjectProperty,
+): string | undefined {
+  if (t.isIdentifier(prop.key)) {
+    return prop.key.name
+  }
+
+  if (t.isStringLiteral(prop.key)) {
+    return prop.key.value
+  }
+
+  return undefined
+}
+
 export function getUniqueProgramIdentifier(
   programPath: babel.NodePath<t.Program>,
   baseName: string,

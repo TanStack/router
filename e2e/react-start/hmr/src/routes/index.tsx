@@ -1,4 +1,4 @@
-import { ClientOnly, createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 
 export const Route = createFileRoute('/')({
@@ -17,9 +17,6 @@ function Home() {
       <input data-testid="message" defaultValue="" />
       <h1 data-testid="heading">HMR State Test</h1>
       <p data-testid="marker">baseline</p>
-      <ClientOnly>
-        <p data-testid="hydrated">hydrated</p>
-      </ClientOnly>
     </main>
   )
 }
