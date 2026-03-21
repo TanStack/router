@@ -80,25 +80,27 @@ if (import.meta.hot) {
         if (activeMatch || pendingMatch || cachedMatches.length > 0) {
           if (removedKeys.has("loader") || removedKeys.has("beforeLoad")) {
             const matchIds = [activeMatch?.id, pendingMatch?.id, ...cachedMatches.map(match => match.id)].filter(Boolean);
-            for (const matchId of matchIds) {
-              const store = router.stores.pendingMatchStoresById.get(matchId) || router.stores.activeMatchStoresById.get(matchId) || router.stores.cachedMatchStoresById.get(matchId);
-              if (store) {
-                store.setState(prev => {
-                  const next = {
-                    ...prev
-                  };
-                  if (removedKeys.has("loader")) {
-                    next.loaderData = undefined;
-                  }
-                  ;
-                  if (removedKeys.has("beforeLoad")) {
-                    next.__beforeLoadContext = undefined;
-                  }
-                  ;
-                  return next;
-                });
+            router.batch(() => {
+              for (const matchId of matchIds) {
+                const store = router.stores.pendingMatchStoresById.get(matchId) || router.stores.activeMatchStoresById.get(matchId) || router.stores.cachedMatchStoresById.get(matchId);
+                if (store) {
+                  store.setState(prev => {
+                    const next = {
+                      ...prev
+                    };
+                    if (removedKeys.has("loader")) {
+                      next.loaderData = undefined;
+                    }
+                    ;
+                    if (removedKeys.has("beforeLoad")) {
+                      next.__beforeLoadContext = undefined;
+                    }
+                    ;
+                    return next;
+                  });
+                }
               }
-            }
+            });
           }
           ;
           router.invalidate({
