@@ -101,6 +101,29 @@ type MatchViewState = {
   parentRouteId: string | undefined
 }
 
+function getMatchNonReactivePromise(
+  router: ReturnType<typeof useRouter>,
+  match: {
+    id: string
+    _nonReactive: {
+      displayPendingPromise?: Promise<void>
+      minPendingPromise?: Promise<void>
+      loadPromise?: Promise<void>
+    }
+  },
+  key: 'displayPendingPromise' | 'minPendingPromise' | 'loadPromise',
+) {
+  const promise =
+    router.getMatch(match.id)?._nonReactive[key] ?? match._nonReactive[key]
+
+  invariant(
+    promise,
+    `Missing suspense promise '${key}' for match '${match.id}'`,
+  )
+
+  return promise
+}
+
 function MatchView({
   router,
   matchId,
@@ -270,15 +293,15 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     const out = Comp ? <Comp key={key} /> : <Outlet />
 
     if (match._displayPending) {
-      throw router.getMatch(match.id)?._nonReactive.displayPendingPromise
+      throw getMatchNonReactivePromise(router, match, 'displayPendingPromise')
     }
 
     if (match._forcePending) {
-      throw router.getMatch(match.id)?._nonReactive.minPendingPromise
+      throw getMatchNonReactivePromise(router, match, 'minPendingPromise')
     }
 
     if (match.status === 'pending') {
-      throw router.getMatch(match.id)?._nonReactive.loadPromise
+      throw getMatchNonReactivePromise(router, match, 'loadPromise')
     }
 
     if (match.status === 'notFound') {
@@ -288,7 +311,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
     if (match.status === 'redirected') {
       invariant(isRedirect(match.error), 'Expected a redirect error')
-      throw router.getMatch(match.id)?._nonReactive.loadPromise
+      throw getMatchNonReactivePromise(router, match, 'loadPromise')
     }
 
     if (match.status === 'error') {
@@ -351,11 +374,11 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }, [key, route.options.component, router.options.defaultComponent])
 
   if (match._displayPending) {
-    throw router.getMatch(match.id)?._nonReactive.displayPendingPromise
+    throw getMatchNonReactivePromise(router, match, 'displayPendingPromise')
   }
 
   if (match._forcePending) {
-    throw router.getMatch(match.id)?._nonReactive.minPendingPromise
+    throw getMatchNonReactivePromise(router, match, 'minPendingPromise')
   }
 
   // see also hydrate() in packages/router-core/src/ssr/ssr-client.ts
@@ -380,7 +403,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         }
       }
     }
-    throw router.getMatch(match.id)?._nonReactive.loadPromise
+    throw getMatchNonReactivePromise(router, match, 'loadPromise')
   }
 
   if (match.status === 'notFound') {
@@ -397,7 +420,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     //   false,
     //   'Tried to render a redirected route match! This is a weird circumstance, please file an issue!',
     // )
-    throw router.getMatch(match.id)?._nonReactive.loadPromise
+    throw getMatchNonReactivePromise(router, match, 'loadPromise')
   }
 
   if (match.status === 'error') {

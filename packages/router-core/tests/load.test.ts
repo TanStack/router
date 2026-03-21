@@ -381,6 +381,130 @@ describe('loader skip or exec', () => {
     expect(loader).toHaveBeenCalledTimes(1)
   })
 
+  test('does not error if cache gc clears an in-flight preload', async () => {
+    let resolveLoader: ((value: { ok: true }) => void) | undefined
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {})
+
+    const loader: Loader = vi.fn(
+      () =>
+        new Promise<{ ok: true }>((resolve) => {
+          resolveLoader = resolve
+        }),
+    )
+
+    const rootRoute = new BaseRootRoute({})
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader,
+      preloadGcTime: 0,
+    })
+
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([fooRoute]),
+      history: createMemoryHistory(),
+      defaultPreloadGcTime: 0,
+    })
+
+    const preloadPromise = router.preloadRoute({ to: '/foo' })
+    await Promise.resolve()
+
+    expect(
+      router.stores.cachedMatchesSnapshot.state.some(
+        (match) => match.routeId === fooRoute.id,
+      ),
+    ).toBe(true)
+
+    router.clearExpiredCache()
+
+    expect(
+      router.stores.cachedMatchesSnapshot.state.some(
+        (match) => match.routeId === fooRoute.id,
+      ),
+    ).toBe(false)
+
+    resolveLoader?.({ ok: true })
+
+    await expect(preloadPromise).resolves.toBeUndefined()
+    // the route load won't throw, but it will log errors to the console if any
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
+
+    expect(
+      router.stores.cachedMatchesSnapshot.state.some(
+        (match) => match.routeId === fooRoute.id,
+      ),
+    ).toBe(false)
+    consoleErrorSpy.mockRestore()
+  })
+
+  test('does not error when invalidate clears an in-flight preload', async () => {
+    let resolveFooLoader: ((value: { ok: true }) => void) | undefined
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {})
+
+    const fooLoader: Loader = vi.fn(
+      () =>
+        new Promise<{ ok: true }>((resolve) => {
+          resolveFooLoader = resolve
+        }),
+    )
+    const barLoader: Loader = vi.fn(() => ({ ok: true }))
+
+    const rootRoute = new BaseRootRoute({})
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader: fooLoader,
+      preloadGcTime: 0,
+    })
+    const barRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/bar',
+      loader: barLoader,
+    })
+
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([fooRoute, barRoute]),
+      history: createMemoryHistory(),
+      defaultPreloadGcTime: 0,
+    })
+
+    await router.navigate({ to: '/bar' })
+
+    const preloadPromise = router.preloadRoute({ to: '/foo' })
+    await Promise.resolve()
+
+    expect(
+      router.stores.cachedMatchesSnapshot.state.some(
+        (match) => match.routeId === fooRoute.id,
+      ),
+    ).toBe(true)
+
+    const invalidatePromise = router.invalidate()
+    await Promise.resolve()
+
+    resolveFooLoader?.({ ok: true })
+
+    const [preloadResult] = await Promise.all([
+      preloadPromise,
+      invalidatePromise,
+    ])
+
+    expect(barLoader).toHaveBeenCalledTimes(2)
+    expect(preloadResult).toBeUndefined()
+    // the route load won't throw, but it will log errors to the console if any
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
+    expect(
+      router.stores.cachedMatchesSnapshot.state.some(
+        (match) => match.routeId === fooRoute.id,
+      ),
+    ).toBe(false)
+    consoleErrorSpy.mockRestore()
+  })
+
   test('exec if rejected preload (notFound)', async () => {
     const loader: Loader = vi.fn(async ({ preload }) => {
       if (preload) throw notFound()

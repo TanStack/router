@@ -1538,6 +1538,9 @@ export class RouterCore<
       let match: AnyRouteMatch
 
       if (existingMatch) {
+        const shouldResetExistingMatch =
+          existingMatch.abortController.signal.aborted
+
         match = {
           ...existingMatch,
           cause,
@@ -1547,6 +1550,31 @@ export class RouterCore<
             ? nullReplaceEqualDeep(previousMatch.search, preMatchSearch)
             : nullReplaceEqualDeep(existingMatch.search, preMatchSearch),
           _strictSearch: strictMatchSearch,
+          _nonReactive: {
+            ...existingMatch._nonReactive,
+            loadPromise:
+              existingMatch._nonReactive.loadPromise ??
+              createControlledPromise(),
+          },
+          ...(shouldResetExistingMatch
+            ? {
+                isFetching: false,
+                abortController: new AbortController(),
+                _displayPending: undefined,
+                _forcePending: undefined,
+                _nonReactive: {
+                  ...existingMatch._nonReactive,
+                  beforeLoadPromise: undefined,
+                  loaderPromise: undefined,
+                  pendingTimeout: undefined,
+                  loadPromise: createControlledPromise(),
+                  displayPendingPromise: undefined,
+                  minPendingPromise: undefined,
+                  dehydrated: undefined,
+                  error: undefined,
+                },
+              }
+            : undefined),
         }
       } else {
         const status =
@@ -1759,7 +1787,11 @@ export class RouterCore<
 
     if (!match) return
 
-    match.abortController.abort()
+    match._nonReactive.beforeLoadPromise?.resolve()
+    match._nonReactive.loaderPromise?.resolve()
+    match._nonReactive.beforeLoadPromise = undefined
+    match._nonReactive.loaderPromise = undefined
+    match.abortController.abort('Cancelled match')
     clearTimeout(match._nonReactive.pendingTimeout)
     match._nonReactive.pendingTimeout = undefined
   }
@@ -2760,12 +2792,31 @@ export class RouterCore<
   }
 
   clearCache: ClearCacheFn<this> = (opts) => {
+    const cachedMatches = this.stores.cachedMatchesSnapshot.state
     const filter = opts?.filter
+
+    const matchesToClear =
+      filter !== undefined
+        ? cachedMatches.filter((match) =>
+            filter(match as MakeRouteMatchUnion<this>),
+          )
+        : cachedMatches
+
+    matchesToClear.forEach((match) => {
+      if (
+        match.status === 'pending' ||
+        match.isFetching ||
+        match._nonReactive.beforeLoadPromise ||
+        match._nonReactive.loaderPromise ||
+        match._nonReactive.loadPromise
+      ) {
+        this.cancelMatch(match.id)
+      }
+    })
+
     if (filter !== undefined) {
       this.stores.setCachedMatches(
-        this.stores.cachedMatchesSnapshot.state.filter(
-          (m) => !filter(m as MakeRouteMatchUnion<this>),
-        ),
+        cachedMatches.filter((m) => !filter(m as MakeRouteMatchUnion<this>)),
       )
     } else {
       this.stores.setCachedMatches([])
@@ -2849,6 +2900,10 @@ export class RouterCore<
           }
         },
       })
+
+      if (matches.some((match) => !this.getMatch(match.id))) {
+        return undefined
+      }
 
       return matches
     } catch (err) {
