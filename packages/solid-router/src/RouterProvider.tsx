@@ -1,3 +1,4 @@
+import * as Solid from 'solid-js'
 import { routerContext } from './routerContext'
 import { SafeFragment } from './SafeFragment'
 import { Matches } from './Matches'
@@ -6,8 +7,6 @@ import type {
   RegisteredRouter,
   RouterOptions,
 } from '@tanstack/router-core'
-import type * as Solid from 'solid-js'
-
 const RouterContext = routerContext as unknown as Solid.Component<{
   value: any
   children: any
@@ -23,15 +22,18 @@ export function RouterContextProvider<
 }: RouterProps<TRouter, TDehydrated> & {
   children: () => Solid.JSX.Element
 }) {
-  // Allow the router to update options on the router instance
-  router.update({
-    ...router.options,
-    ...rest,
-    context: {
-      ...router.options.context,
-      ...rest.context,
-    },
-  } as any)
+  if (Object.keys(rest).length > 0) {
+    Solid.runWithOwner(null, () => {
+      router.update({
+        ...router.options,
+        ...rest,
+        context: {
+          ...router.options.context,
+          ...rest.context,
+        },
+      } as any)
+    })
+  }
 
   const OptionalWrapper = router.options.Wrap || SafeFragment
 

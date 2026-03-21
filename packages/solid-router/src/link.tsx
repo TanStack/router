@@ -325,11 +325,15 @@ export function useLinkProps<
     ) {
       e.preventDefault()
 
-      setIsTransitioning(true)
+      Solid.runWithOwner(null, () => {
+        setIsTransitioning(true)
+      })
 
       const unsub = router.subscribe('onResolved', () => {
         unsub()
-        setIsTransitioning(false)
+        Solid.runWithOwner(null, () => {
+          setIsTransitioning(false)
+        })
       })
 
       // All is well? Navigate!

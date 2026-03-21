@@ -114,7 +114,7 @@ export const getStoreFactory: GetStoreConfig = (opts) => {
       // flush automatically when the effect completes.
       try {
         Solid.flush()
-      } catch {
+      } catch (e) {
         // flush() throws when called from inside onSettled or
         // createTrackedEffect — Solid will flush automatically there.
       }

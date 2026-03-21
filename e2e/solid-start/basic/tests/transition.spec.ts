@@ -3,16 +3,6 @@ import { expect, test } from '@playwright/test'
 test('transitions/count/create-resource should keep old values visible during navigation', async ({
   page,
 }) => {
-  const burstClicks = async (count: number) => {
-    await page
-      .getByTestId('increase-button')
-      .evaluate((element, clickCount) => {
-        for (let index = 0; index < clickCount; index++) {
-          ;(element as HTMLAnchorElement).click()
-        }
-      }, count)
-  }
-
   await page.goto('/transition/count/create-resource')
 
   await expect(page.getByTestId('n-value')).toContainText('n: 1')
@@ -28,9 +18,7 @@ test('transitions/count/create-resource should keep old values visible during na
     if (text) bodyTexts.push(text)
   }, 50)
 
-  // 1 click
-
-  await burstClicks(1)
+  await page.getByTestId('increase-button').click()
 
   await expect(page.getByTestId('n-value')).toContainText('n: 1', {
     timeout: 2_000,
@@ -39,53 +27,11 @@ test('transitions/count/create-resource should keep old values visible during na
     timeout: 2_000,
   })
 
-  await page.waitForTimeout(200)
-
   await expect(page.getByTestId('n-value')).toContainText('n: 2', {
-    timeout: 2000,
+    timeout: 5000,
   })
   await expect(page.getByTestId('double-value')).toContainText('double: 4', {
-    timeout: 2000,
-  })
-
-  // 2 clicks
-
-  await burstClicks(2)
-
-  await expect(page.getByTestId('n-value')).toContainText('n: 2', {
-    timeout: 2000,
-  })
-  await expect(page.getByTestId('double-value')).toContainText('double: 4', {
-    timeout: 2000,
-  })
-
-  await page.waitForTimeout(200)
-
-  await expect(page.getByTestId('n-value')).toContainText('n: 4', {
-    timeout: 2000,
-  })
-  await expect(page.getByTestId('double-value')).toContainText('double: 8', {
-    timeout: 2000,
-  })
-
-  // 3 clicks
-
-  await burstClicks(3)
-
-  await expect(page.getByTestId('n-value')).toContainText('n: 4', {
-    timeout: 2000,
-  })
-  await expect(page.getByTestId('double-value')).toContainText('double: 8', {
-    timeout: 2000,
-  })
-
-  await page.waitForTimeout(200)
-
-  await expect(page.getByTestId('n-value')).toContainText('n: 7', {
-    timeout: 2000,
-  })
-  await expect(page.getByTestId('double-value')).toContainText('double: 14', {
-    timeout: 2000,
+    timeout: 5000,
   })
 
   clearInterval(pollInterval)

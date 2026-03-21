@@ -114,8 +114,6 @@ export function Transitioner() {
       tryLoad()
     })
   })
-
-
   Solid.createRenderEffect(
     () =>
       [
@@ -166,10 +164,14 @@ export function Transitioner() {
           ...changeInfo,
         })
 
-        router.stores.status.setState(() => 'idle')
-        // Use `loc` from the source tuple to avoid reading
-        // router.stores.location.state inside the effect callback
-        router.stores.resolvedLocation.setState(() => loc)
+        Solid.runWithOwner(null, () => {
+          router.batch(() => {
+            router.stores.status.setState(() => 'idle')
+            // Use `loc` from the source tuple to avoid reading
+            // router.stores.location.state inside the effect callback
+            router.stores.resolvedLocation.setState(() => loc)
+          })
+        })
 
         if (changeInfo.hrefChanged) {
           // Pass the already-captured location to avoid a reactive read

@@ -315,24 +315,14 @@ export const MatchInner = (): any => {
           <Solid.Switch>
             <Solid.Match when={currentMatch()._displayPending}>
               {(_) => {
-                const displayPendingResult = Solid.createMemo(
-                  () =>
-                    router.getMatch(currentMatch().id)?._nonReactive
-                      .displayPendingPromise,
-                )
-
-                return <>{displayPendingResult()}</>
+                throw router.getMatch(currentMatch().id)?._nonReactive
+                  .displayPendingPromise
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch()._forcePending}>
               {(_) => {
-                const minPendingResult = Solid.createMemo(
-                  () =>
-                    router.getMatch(currentMatch().id)?._nonReactive
-                      .minPendingPromise,
-                )
-
-                return <>{minPendingResult()}</>
+                throw router.getMatch(currentMatch().id)?._nonReactive
+                  .minPendingPromise
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'pending'}>
@@ -367,26 +357,8 @@ export const MatchInner = (): any => {
                   }
                 }
 
-                const loaderResult = Solid.createMemo(async () => {
-                  await new Promise((r) => setTimeout(r, 0))
-                  return router.getMatch(currentMatch().id)?._nonReactive
-                    .loadPromise
-                })
-
-                const FallbackComponent = Solid.untrack(
-                  () =>
-                    route().options.pendingComponent ??
-                    router.options.defaultPendingComponent,
-                )
-
-                return (
-                  <>
-                    {FallbackComponent && pendingMinMs > 0 ? (
-                      <Dynamic component={FallbackComponent} />
-                    ) : null}
-                    {loaderResult()}
-                  </>
-                )
+                throw router.getMatch(currentMatch().id)?._nonReactive
+                  .loadPromise
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'notFound'}>
@@ -411,13 +383,8 @@ export const MatchInner = (): any => {
                 const matchError = Solid.untrack(() => currentMatch().error)
                 invariant(isRedirect(matchError), 'Expected a redirect error')
 
-                const loaderResult = Solid.createMemo(async () => {
-                  await new Promise((r) => setTimeout(r, 0))
-                  return router.getMatch(currentMatch().id)?._nonReactive
-                    .loadPromise
-                })
-
-                return <>{loaderResult()}</>
+                throw router.getMatch(currentMatch().id)?._nonReactive
+                  .loadPromise
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'error'}>
