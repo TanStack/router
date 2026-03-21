@@ -116,7 +116,17 @@ describe('getObjectPropertyKeyName', () => {
     expect(getObjectPropertyKeyName(prop)).toBe('errorComponent')
   })
 
-  it('returns undefined for computed keys', () => {
+  it('returns undefined for computed identifier keys', () => {
+    const prop = t.objectProperty(
+      t.identifier('component'),
+      t.identifier('x'),
+      true,
+    )
+
+    expect(getObjectPropertyKeyName(prop)).toBeUndefined()
+  })
+
+  it('returns undefined for computed member expression keys', () => {
     const prop = t.objectProperty(
       t.memberExpression(t.identifier('foo'), t.identifier('bar')),
       t.identifier('x'),

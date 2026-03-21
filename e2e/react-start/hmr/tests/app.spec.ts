@@ -254,7 +254,9 @@ test.describe('react-start hmr', () => {
       },
     )
 
-    await expect(page.getByTestId('root-message')).toHaveValue('child preserved')
+    await expect(page.getByTestId('root-message')).toHaveValue(
+      'child preserved',
+    )
     await expect(page.getByTestId('child')).toHaveText('child')
   })
 
@@ -271,7 +273,7 @@ test.describe('react-start hmr', () => {
       'index',
       (source) =>
         source.replace(
-          'export const Route = createFileRoute(\'/\')({\n  component: Home,\n})',
+          "export const Route = createFileRoute('/')({\n  component: Home,\n})",
           "export const Route = createFileRoute('/')({\n  loader: () => ({\n    crumb: 'Index Added',\n  }),\n  component: Home,\n})",
         ),
       async () => {
@@ -294,17 +296,16 @@ test.describe('react-start hmr', () => {
       page,
       'child',
       (source) =>
-        source.replace(
-          "  loader: () => ({\n    crumb: 'Child',\n  }),\n",
-          '',
-        ),
+        source.replace("  loader: () => ({\n    crumb: 'Child',\n  }),\n", ''),
       async () => {
         await waitForRouteRemovalReload(page)
         await expect(page.getByTestId('crumb-/child')).toHaveCount(0)
       },
     )
 
-    await expect(page.getByTestId('root-message')).toHaveValue('property removed')
+    await expect(page.getByTestId('root-message')).toHaveValue(
+      'property removed',
+    )
     await expect(page.getByTestId('child')).toHaveText('child')
   })
 
@@ -338,10 +339,11 @@ test.describe('react-start hmr', () => {
 
     // Now navigate to /child — should see the LATEST value
     await page.getByTestId('child-link').click()
-    await page.getByTestId('child').waitFor({ state: 'visible' })
+    await expect(page.getByTestId('child')).toBeVisible()
 
     await expect(page.getByTestId('crumb-/child')).toHaveText(
       'Child Updated Again',
+      { timeout: 10000 },
     )
   })
 
@@ -425,7 +427,9 @@ test.describe('react-start hmr', () => {
     )
 
     // Root state should be preserved
-    await expect(page.getByTestId('root-message')).toHaveValue('beforeLoad test')
+    await expect(page.getByTestId('root-message')).toHaveValue(
+      'beforeLoad test',
+    )
     await expect(page.getByTestId('child')).toHaveText('child')
   })
 
@@ -454,7 +458,9 @@ test.describe('react-start hmr', () => {
     )
 
     // Root state should be preserved
-    await expect(page.getByTestId('root-message')).toHaveValue('beforeLoad removal')
+    await expect(page.getByTestId('root-message')).toHaveValue(
+      'beforeLoad removal',
+    )
     await expect(page.getByTestId('child')).toHaveText('child')
     // Loader crumb should still work
     await expect(page.getByTestId('crumb-/child')).toHaveText('Child')

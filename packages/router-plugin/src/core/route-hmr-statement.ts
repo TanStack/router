@@ -16,15 +16,24 @@ type AnyRouterWithPrivateMaps = AnyRouter & {
   routesById: Record<string, AnyRoute>
   routesByPath: Record<string, AnyRoute>
   stores: AnyRouter['stores'] & {
-    cachedMatchStoresById: Map<string, {
-      setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
-    }>
-    pendingMatchStoresById: Map<string, {
-      setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
-    }>
-    activeMatchStoresById: Map<string, {
-      setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
-    }>
+    cachedMatchStoresById: Map<
+      string,
+      {
+        setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
+      }
+    >
+    pendingMatchStoresById: Map<
+      string,
+      {
+        setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
+      }
+    >
+    activeMatchStoresById: Map<
+      string,
+      {
+        setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
+      }
+    >
   }
 }
 
@@ -105,26 +114,28 @@ function handleRouteUpdate(
         pendingMatch?.id,
         ...cachedMatches.map((match) => match.id),
       ].filter(Boolean) as Array<string>
-      for (const matchId of matchIds) {
-        const store =
-          router.stores.pendingMatchStoresById.get(matchId) ||
-          router.stores.activeMatchStoresById.get(matchId) ||
-          router.stores.cachedMatchStoresById.get(matchId)
-        if (store) {
-          store.setState((prev) => {
-            const next: AnyRouteMatchWithPrivateProps = { ...prev }
+      router.batch(() => {
+        for (const matchId of matchIds) {
+          const store =
+            router.stores.pendingMatchStoresById.get(matchId) ||
+            router.stores.activeMatchStoresById.get(matchId) ||
+            router.stores.cachedMatchStoresById.get(matchId)
+          if (store) {
+            store.setState((prev) => {
+              const next: AnyRouteMatchWithPrivateProps = { ...prev }
 
-            if (removedKeys.has('loader')) {
-              next.loaderData = undefined
-            }
-            if (removedKeys.has('beforeLoad')) {
-              next.__beforeLoadContext = undefined
-            }
+              if (removedKeys.has('loader')) {
+                next.loaderData = undefined
+              }
+              if (removedKeys.has('beforeLoad')) {
+                next.__beforeLoadContext = undefined
+              }
 
-            return next
-          })
+              return next
+            })
+          }
         }
-      }
+      })
     }
 
     router.invalidate({ filter, sync: true })
@@ -159,7 +170,7 @@ if (import.meta.hot) {
         import.meta.hot.data['tsr-route-id'] = routeId
       }
       (${handleRouteUpdateStr.replace(
-        /['\"]__TSR_COMPONENT_TYPES__['\"]/,
+        /['"]__TSR_COMPONENT_TYPES__['"]/,
         JSON.stringify(stableRouteOptionKeys),
       )})(routeId, newModule.Route)
     }

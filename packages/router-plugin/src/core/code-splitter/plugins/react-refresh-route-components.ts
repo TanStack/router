@@ -3,9 +3,7 @@ import {
   getObjectPropertyKeyName,
   getUniqueProgramIdentifier,
 } from '../../utils'
-import {
-  type ReferenceRouteCompilerPlugin,
-} from '../plugins'
+import type { ReferenceRouteCompilerPlugin } from '../plugins'
 
 const REACT_REFRESH_ROUTE_COMPONENT_IDENTS = new Set([
   'component',

@@ -1,5 +1,5 @@
 import type babel from '@babel/core'
-import * as t from '@babel/types'
+import type * as t from '@babel/types'
 import type { Config, DeletableNodes } from '../config'
 import type { CodeSplitGroupings } from '../constants'
 import type { SplitNodeMeta } from './types'

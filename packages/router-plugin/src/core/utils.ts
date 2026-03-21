@@ -19,6 +19,10 @@ export function normalizePath(path: string): string {
 export function getObjectPropertyKeyName(
   prop: t.ObjectProperty,
 ): string | undefined {
+  if (prop.computed) {
+    return undefined
+  }
+
   if (t.isIdentifier(prop.key)) {
     return prop.key.name
   }

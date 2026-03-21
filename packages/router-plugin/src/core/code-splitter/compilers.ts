@@ -12,8 +12,7 @@ import { createRouteHmrStatement } from '../route-hmr-statement'
 import { getObjectPropertyKeyName } from '../utils'
 import { createIdentifier } from './path-ids'
 import { getFrameworkOptions } from './framework-options'
-import {
-  type
+import type {
   CompileCodeSplitReferenceRouteOptions,
   ReferenceRouteCompilerPlugin,
 } from './plugins'
