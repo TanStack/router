@@ -44,6 +44,7 @@
     "@tanstack/zod-adapter": "1.166.7"
   },
   "changesets": [
+    "brave-pans-create",
     "clever-vans-yawn",
     "evil-parrots-end",
     "quiet-shrimps-jam",

@@ -1,5 +1,11 @@
 # @tanstack/solid-router-ssr-query
 
+## 2.0.0-alpha.6
+
+### Patch Changes
+
+- Update to beta.4 ([#6991](https://github.com/TanStack/router/pull/6991))
+
 ## 2.0.0-alpha.5
 
 ### Patch Changes

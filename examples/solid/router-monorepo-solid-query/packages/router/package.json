@@ -10,7 +10,7 @@
   "dependencies": {
     "@tanstack/history": "^1.161.6",
     "@tanstack/solid-query": "6.0.0-alpha.0",
-    "@tanstack/solid-router": "^2.0.0-alpha.5",
+    "@tanstack/solid-router": "^2.0.0-alpha.6",
     "@tanstack/router-plugin": "^1.166.14",
     "@router-solid-mono-solid-query/post-query": "workspace:*",
     "redaxios": "^0.5.1",
