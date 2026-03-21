@@ -65,9 +65,9 @@ export function Transitioner() {
       router.commitLocation({ ...nextLocation, replace: true })
     }
 
-    Solid.onCleanup(() => {
+    return () => {
       unsub()
-    })
+    }
   })
 
   // Try to load the initial location
