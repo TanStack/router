@@ -1,5 +1,4 @@
 import { clsx as cx } from 'clsx'
-import { invariant } from '@tanstack/router-core'
 import { interpolatePath, rootRouteId, trimPath } from '@tanstack/router-core'
 import {
   For,
@@ -263,16 +262,6 @@ export const BaseTanStackRouterDevtoolsPanel =
     const { onCloseClick } = useDevtoolsOnClose()
     const styles = useStyles()
     const { className, style, ...otherPanelProps } = panelProps
-
-    if (!router) {
-      if (process.env.NODE_ENV !== 'production') {
-        throw new Error(
-          'Invariant failed: No router was found for the TanStack Router Devtools. Please place the devtools in the <RouterProvider> component tree or pass the router instance to the devtools manually.',
-        )
-      }
-
-      invariant()
-    }
 
     // useStore(router.stores.__store)
 

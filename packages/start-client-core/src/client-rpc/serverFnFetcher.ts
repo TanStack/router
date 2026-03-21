@@ -1,11 +1,11 @@
 import {
   createRawStreamDeserializePlugin,
   encode,
+  invariant,
   isNotFound,
   parseRedirect,
 } from '@tanstack/router-core'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
-import { invariant } from '@tanstack/router-core'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
 import {
   TSS_CONTENT_TYPE_FRAMED,

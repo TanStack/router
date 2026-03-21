@@ -1,9 +1,9 @@
 import {
   createRawStreamRPCPlugin,
+  invariant,
   isNotFound,
   isRedirect,
 } from '@tanstack/router-core'
-import { invariant } from '@tanstack/router-core'
 import {
   TSS_FORMDATA_CONTEXT,
   X_TSS_RAW_RESPONSE,

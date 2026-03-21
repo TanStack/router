@@ -366,7 +366,7 @@ describe('redirect', () => {
           state: {
             __TSR_index: 0,
             __TSR_key: redirectResponse.options._fromLocation!.state.__TSR_key,
-            key: currentRedirect.options._fromLocation!.state.key,
+            key: redirectResponse.options._fromLocation!.state.key,
           },
         },
         href: '/about',
