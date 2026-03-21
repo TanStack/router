@@ -4,8 +4,8 @@ import { fetchPosts } from '../posts'
 
 export const Route = createFileRoute('/posts')({
   loader: fetchPosts,
-  component: PostsComponent,
-  errorComponent: PostsErrorComponent,
+  'component': PostsComponent,
+  'errorComponent': PostsErrorComponent,
 })
 
 function PostsComponent() {
