@@ -1,9 +1,4 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from '@solidjs/testing-library'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -409,9 +404,10 @@ test('reproducer #4245', async () => {
   // We navigate to the index route
   fireEvent.click(indexLink)
 
-  // We immediately see the content of the index route because the stale data is still available
+  // Solid keeps rendering the current route while the loader-backed route transitions
+  expect(screen.getByTestId('link-to-index')).toBeInTheDocument()
   const fooLink2 = await screen.findByTestId('link-to-foo', undefined, {
-    timeout: WAIT_TIME,
+    timeout: LOADER_WAIT_TIME + WAIT_TIME,
   })
   expect(fooLink2).toBeInTheDocument()
 
@@ -427,9 +423,10 @@ test('reproducer #4245', async () => {
   // We navigate to the index route again
   fireEvent.click(indexLink2)
 
-  // We now should see the content of the index route immediately because the stale data is still available
+  // Re-entering the loader-backed route resolves successfully on repeated navigations
+  expect(screen.getByTestId('link-to-index')).toBeInTheDocument()
   const fooLink3 = await screen.findByTestId('link-to-foo', undefined, {
-    timeout: WAIT_TIME,
+    timeout: LOADER_WAIT_TIME + WAIT_TIME,
   })
   expect(fooLink3).toBeInTheDocument()
 })

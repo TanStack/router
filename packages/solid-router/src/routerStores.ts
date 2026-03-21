@@ -98,25 +98,20 @@ export const getStoreFactory: GetStoreConfig = (opts) => {
     }
   }
 
+  let depth = 0
+
   return {
     createMutableStore: createSolidMutableStore,
     createReadonlyStore: createSolidReadonlyStore,
+
     batch: (fn) => {
+      depth++
       fn()
-      // In Solid v2, signal updates are batched by default and only
-      // committed when the reactive system flushes. When batch() is
-      // called from outside a reactive context (e.g. from router.load()
-      // invoked directly in test code or before render), we must flush
-      // manually so that derived stores (memos) see the new values
-      // synchronously. Inside a reactive scheduling context (effects,
-      // onSettled, createTrackedEffect), flush() is not reentrant and
-      // will throw, so we catch and ignore that case since Solid will
-      // flush automatically when the effect completes.
-      try {
-        Solid.flush()
-      } catch (e) {
-        // flush() throws when called from inside onSettled or
-        // createTrackedEffect — Solid will flush automatically there.
+      depth--
+      if (depth === 0) {
+        try {
+          Solid.flush()
+        } catch { }
       }
     },
     init: (stores) => initRouterStores(stores, createSolidReadonlyStore),
