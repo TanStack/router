@@ -408,18 +408,14 @@ export function useLinkProps<
     (prev: ParsedLocation, next: ParsedLocation) => {
       const buildLocation = buildLocationRef.current
 
-      if (
-        didLocationChange(
+      return (
+        !didLocationChange(
           prev,
           next,
           buildLocation?.deps ?? BUILD_LOCATION_DEP_ALL,
-        ) ||
-        didActiveLocationChange(prev, next, activeLocationDepsRef.current)
-      ) {
-        return false
-      }
-
-      return true
+        ) &&
+        !didActiveLocationChange(prev, next, activeLocationDepsRef.current)
+      )
     },
     [],
   )
@@ -436,9 +432,7 @@ export function useLinkProps<
     const previousBuildLocation = buildLocationRef.current
 
     if (
-      previousBuildLocation &&
-      previousBuildLocation.router === router &&
-      previousBuildLocation.options === _options &&
+      previousBuildLocation?.options === _options &&
       !didLocationChange(
         previousBuildLocation.location,
         currentLocation,
@@ -457,7 +451,6 @@ export function useLinkProps<
     } as any)
 
     return {
-      router,
       location: currentLocation,
       next,
       deps: _options._fromLocation
@@ -527,11 +520,7 @@ export function useLinkProps<
     () =>
       getActiveLocationDeps(
         activeOptions,
-        {
-          hash: next.hash,
-          pathname: next.pathname,
-          search: next.search,
-        },
+        next,
         !!externalLink,
       ),
     [activeOptions, externalLink, next.hash, next.pathname, next.search],
@@ -808,7 +797,6 @@ const intersectionObserverOptions: IntersectionObserverInit = {
 }
 
 type BuildLocationState = {
-  router: AnyRouter
   location: ParsedLocation
   next: ParsedLocation
   deps: number
@@ -910,7 +898,7 @@ function getActiveLocationDeps(
       BUILD_LOCATION_DEP_PATHNAME | (includeHash ? BUILD_LOCATION_DEP_HASH : 0),
     expectedSearchCount:
       includeSearch && exact
-        ? (searchKeys?.length ?? BUILD_LOCATION_DEP_NONE)
+        ? (searchKeys?.length ?? 0)
         : ACTIVE_LOCATION_SEARCH_COUNT_NONE,
     ignoreUndefined,
     searchKeys: searchKeys?.length ? searchKeys : undefined,
@@ -945,8 +933,8 @@ function didActiveLocationChange(
 
   if (deps.expectedSearchCount !== ACTIVE_LOCATION_SEARCH_COUNT_NONE) {
     if (
-      getSearchEntryCount(prev.search, deps.ignoreUndefined) !==
-      getSearchEntryCount(next.search, deps.ignoreUndefined)
+      getSearchKeys(prev.search, deps.ignoreUndefined).length !==
+      getSearchKeys(next.search, deps.ignoreUndefined).length
     ) {
       return true
     }
@@ -955,32 +943,16 @@ function didActiveLocationChange(
   return !!(deps.deps & BUILD_LOCATION_DEP_HASH && prev.hash !== next.hash)
 }
 
-function getSearchKeys(search: unknown, ignoreUndefined: boolean) {
-  const searchRecord = search as Record<string, unknown>
-
+function getSearchKeys(search: Record<string, unknown>, ignoreUndefined: boolean) {
   const keys = [] as Array<string>
 
-  for (const key in searchRecord) {
-    if (!ignoreUndefined || searchRecord[key] !== undefined) {
+  for (const key in search) {
+    if (!ignoreUndefined || search[key] !== undefined) {
       keys.push(key)
     }
   }
 
   return keys
-}
-
-function getSearchEntryCount(search: unknown, ignoreUndefined: boolean) {
-  const searchRecord = search as Record<string, unknown>
-
-  let count = BUILD_LOCATION_DEP_NONE
-
-  for (const key in searchRecord) {
-    if (!ignoreUndefined || searchRecord[key] !== undefined) {
-      count++
-    }
-  }
-
-  return count
 }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
