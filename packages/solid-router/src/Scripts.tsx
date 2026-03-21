@@ -70,7 +70,7 @@ export const Scripts = () => {
       <Solid.For each={allScripts()}>
         {(asset) => {
           const a = Solid.untrack(asset)
-          return <Asset {...(a)} />
+          return <Asset {...a} />
         }}
       </Solid.For>
     </NoHydration>

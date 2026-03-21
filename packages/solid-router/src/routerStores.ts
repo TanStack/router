@@ -111,7 +111,7 @@ export const getStoreFactory: GetStoreConfig = (opts) => {
       if (depth === 0) {
         try {
           Solid.flush()
-        } catch { }
+        } catch {}
       }
     },
     init: (stores) => initRouterStores(stores, createSolidReadonlyStore),

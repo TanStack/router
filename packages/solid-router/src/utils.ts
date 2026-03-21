@@ -46,9 +46,9 @@ export function useIntersectionObserver<T extends Element>(
 
     observerRef.observe(r)
 
-    return (() => {
+    return () => {
       observerRef?.disconnect()
-    })
+    }
   })
 
   return () => observerRef
