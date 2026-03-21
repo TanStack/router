@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import { createSignal } from 'solid-js'
+import { createMemo, createSignal } from 'solid-js'
 import {
   cleanup,
   fireEvent,
@@ -7,7 +7,6 @@ import {
   screen,
   waitFor,
 } from '@solidjs/testing-library'
-import { createMemo } from 'solid-js'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   Link,
