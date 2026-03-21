@@ -83,4 +83,15 @@ describe('getUniqueProgramIdentifier', () => {
       'window2',
     )
   })
+
+  it('avoids collisions across consecutive calls with the same base name', () => {
+    const programPath = getProgramPath('const existing = 1')
+
+    const first = getUniqueProgramIdentifier(programPath, 'TSRComponent')
+    const second = getUniqueProgramIdentifier(programPath, 'TSRComponent')
+
+    expect(first.name).toBe('TSRComponent')
+    expect(second.name).toBe('TSRComponent2')
+    expect(first.name).not.toBe(second.name)
+  })
 })

@@ -3,9 +3,13 @@ import { lazyRouteComponent } from '@tanstack/react-router';
 import * as React from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchPosts } from '../posts';
+const TSRSplitComponent = import.meta.hot?.data?.["tsr-split-component:component"] ?? lazyRouteComponent($$splitComponentImporter, "component");
+if (import.meta.hot) {
+  import.meta.hot.data["tsr-split-component:component"] = TSRSplitComponent;
+}
 export const Route = createFileRoute('/posts')({
   loader: fetchPosts,
-  component: lazyRouteComponent($$splitComponentImporter, 'component')
+  component: TSRSplitComponent
 });
 if (import.meta.hot) {
   import.meta.hot.accept(newModule => {
