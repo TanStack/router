@@ -23,13 +23,20 @@ export function getUniqueProgramIdentifier(
   let name = baseName
   let suffix = 2
 
+  const programScope = programPath.scope.getProgramParent()
+
   while (
-    programPath.scope.hasBinding(name) ||
-    programPath.scope.hasGlobal(name)
+    programScope.hasBinding(name) ||
+    programScope.hasGlobal(name) ||
+    programScope.hasReference(name)
   ) {
     name = `${baseName}${suffix}`
     suffix++
   }
+
+  // Register the name so subsequent calls within the same traversal
+  // see it and avoid collisions
+  programScope.references[name] = true
 
   return t.identifier(name)
 }

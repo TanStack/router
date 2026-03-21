@@ -136,9 +136,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has fewer updates than React due to different reactivity
-    expect(updates).toBeGreaterThanOrEqual(5)
-    expect(updates).toBeLessThanOrEqual(9)
+    expect(updates).toBe(8)
   })
 
   test('redirection in preload', async () => {
@@ -156,8 +154,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has fewer updates than React due to different reactivity
-    expect(updates).toBe(3)
+    // Note: Solid has different update counts than React due to different reactivity
+    expect(updates).toBe(2)
   })
 
   test.skip('sync beforeLoad', async () => {
@@ -174,7 +172,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Solid has different update counts than React due to different reactivity
-    expect(updates).toBe(11)
+    // Note: Solid has different update counts than React due to different reactivity
+    expect(updates).toBe(4)
   })
 
   test('nothing', async () => {
@@ -185,9 +184,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has fewer updates than React due to different reactivity
-    expect(updates).toBeGreaterThanOrEqual(2) // WARN: this is flaky
-    expect(updates).toBeLessThanOrEqual(5)
+    expect(updates).toBe(3)
   })
 
   test('not found in beforeLoad', async () => {
@@ -202,7 +199,6 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has fewer updates than React due to different reactivity
     expect(updates).toBe(4)
   })
 
@@ -229,9 +225,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has fewer updates than React due to different reactivity
-    expect(updates).toBeGreaterThanOrEqual(7)
-    expect(updates).toBeLessThanOrEqual(11)
+    expect(updates).toBe(3)
   })
 
   test('navigate, w/ preloaded & async loaders', async () => {
@@ -247,9 +241,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has fewer updates than React due to different reactivity
-    expect(updates).toBeGreaterThanOrEqual(3)
-    expect(updates).toBeLessThanOrEqual(7)
+    expect(updates).toBe(3)
   })
 
   test('navigate, w/ preloaded & sync loaders', async () => {
@@ -265,7 +257,6 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has fewer updates than React due to different reactivity
     expect(updates).toBe(3)
   })
 
@@ -282,7 +273,6 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has fewer updates than React due to different reactivity
     expect(updates).toBe(3)
   })
 
@@ -301,6 +291,6 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(1)
+    expect(updates).toBe(0)
   })
 })

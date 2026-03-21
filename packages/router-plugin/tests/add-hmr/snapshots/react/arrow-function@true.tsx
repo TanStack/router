@@ -3,9 +3,13 @@ import { lazyRouteComponent } from '@tanstack/react-router';
 import * as React from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchPosts } from '../posts';
+const TSRSplitComponent = import.meta.hot?.data?.["tsr-split-component:component"] ?? lazyRouteComponent($$splitComponentImporter, "component");
+if (import.meta.hot) {
+  import.meta.hot.data["tsr-split-component:component"] = TSRSplitComponent;
+}
 export const Route = createFileRoute('/posts')({
   loader: fetchPosts,
-  component: lazyRouteComponent($$splitComponentImporter, 'component')
+  component: TSRSplitComponent
 });
 if (import.meta.hot) {
   import.meta.hot.accept(newModule => {
@@ -26,7 +30,7 @@ if (import.meta.hot) {
         router.resolvePathCache.clear();
         walkReplaceSegmentTree(newRoute, router.processedTree.segmentTree);
         const filter = m => m.routeId === oldRoute.id;
-        if (router.state.matches.find(filter) || router.state.pendingMatches?.find(filter)) {
+        if (router.stores.activeMatchesSnapshot.state.find(filter) || router.stores.pendingMatchesSnapshot.state.find(filter)) {
           router.invalidate({
             filter
           });

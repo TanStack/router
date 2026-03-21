@@ -2,8 +2,6 @@
 
 ## 2.0.0-alpha.2
 
-## 1.166.15
-
 ### Patch Changes
 
 - Updated dependencies []:
@@ -23,6 +21,29 @@
 - Updated dependencies [[`a0191af`](https://github.com/TanStack/router/commit/a0191afd21afe0e7571af8b0faab171f62e71db7)]:
   - @tanstack/solid-start@2.0.0-alpha.0
 
+## 1.166.17
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-start@1.167.1
+  - @tanstack/start-client-core@1.167.1
+  - @tanstack/solid-start@1.167.1
+
+## 1.166.16
+
+### Patch Changes
+
+- Updated dependencies [[`0545239`](https://github.com/TanStack/router/commit/054523900b2ee19308e5a88417dadfc6923afe30)]:
+  - @tanstack/start-client-core@1.167.0
+  - @tanstack/react-start@1.167.0
+  - @tanstack/solid-start@1.167.0
+
+## 1.166.15
+
+### Patch Changes
+
+- Updated dependencies []:
   - @tanstack/start-client-core@1.166.13
   - @tanstack/react-start@1.166.17
   - @tanstack/solid-start@1.166.17

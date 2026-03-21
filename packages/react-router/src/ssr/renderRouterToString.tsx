@@ -21,7 +21,7 @@ export const renderRouterToString = async ({
     }
 
     return new Response(`<!DOCTYPE html>${html}`, {
-      status: router.state.statusCode,
+      status: router.stores.statusCode.state,
       headers: responseHeaders,
     })
   } catch (error) {

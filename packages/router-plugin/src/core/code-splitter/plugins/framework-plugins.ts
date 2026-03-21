@@ -1,4 +1,5 @@
 import { createReactRefreshRouteComponentsPlugin } from './react-refresh-route-components'
+import { createReactStableHmrSplitRouteComponentsPlugin } from './react-stable-hmr-split-route-components'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
 import type { Config } from '../../config'
 
@@ -9,7 +10,10 @@ export function getReferenceRouteCompilerPlugins(opts: {
   switch (opts.targetFramework) {
     case 'react': {
       if (opts.addHmr) {
-        return [createReactRefreshRouteComponentsPlugin()]
+        return [
+          createReactRefreshRouteComponentsPlugin(),
+          createReactStableHmrSplitRouteComponentsPlugin(),
+        ]
       }
       return undefined
     }
