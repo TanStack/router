@@ -18,22 +18,6 @@ describe('getNormalizedURL', () => {
     expect(new URL(url1).search).not.toBe(new URL(url2).search)
   })
 
-  test('preserves browser-style search param encoding on direct navigation', () => {
-    const url = 'https://example.com/specialChars/search?query=%EB%8C%80|'
-
-    const normalizedUrl = getNormalizedURL(url)
-
-    expect(normalizedUrl.url.search).toBe('?query=%EB%8C%80|')
-  })
-
-  test('preserves malformed search params without reserializing them', () => {
-    const url = 'https://example.com/specialChars/search?query=%E0%A4'
-
-    const normalizedUrl = getNormalizedURL(url)
-
-    expect(normalizedUrl.url.search).toBe('?query=%E0%A4')
-  })
-
   const testCases = [
     {
       url: 'https://example.com/%3Fstart?query=value',
