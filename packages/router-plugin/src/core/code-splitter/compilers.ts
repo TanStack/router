@@ -8,7 +8,8 @@ import {
   parseAst,
 } from '@tanstack/router-utils'
 import { tsrShared, tsrSplit } from '../constants'
-import { routeHmrStatement } from '../route-hmr-statement'
+import { createRouteHmrStatement } from '../route-hmr-statement'
+import { getObjectPropertyKeyName } from '../utils'
 import { createIdentifier } from './path-ids'
 import { getFrameworkOptions } from './framework-options'
 import type {
@@ -72,6 +73,7 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     },
   ],
 ])
+
 const KNOWN_SPLIT_ROUTE_IDENTS = [...SPLIT_NODES_CONFIG.keys()] as const
 
 function addSplitSearchParamToFilename(
@@ -175,18 +177,6 @@ export function collectIdentifiersFromNode(node: t.Node): Set<string> {
   })(node)
 
   return ids
-}
-
-function getObjectPropertyKeyName(prop: t.ObjectProperty): string | undefined {
-  if (t.isIdentifier(prop.key)) {
-    return prop.key.name
-  }
-
-  if (t.isStringLiteral(prop.key)) {
-    return prop.key.value
-  }
-
-  return undefined
 }
 
 /**
@@ -674,6 +664,13 @@ export function compileCodeSplitReferenceRoute(
   const PACKAGE = frameworkOptions.package
   const LAZY_ROUTE_COMPONENT_IDENT = frameworkOptions.idents.lazyRouteComponent
   const LAZY_FN_IDENT = frameworkOptions.idents.lazyFn
+  const stableRouteOptionKeys = [
+    ...new Set(
+      (opts.compilerPlugins ?? []).flatMap(
+        (plugin) => plugin.getStableRouteOptionKeys?.() ?? [],
+      ),
+    ),
+  ]
 
   let createRouteFn: string
 
@@ -711,7 +708,40 @@ export function compileCodeSplitReferenceRoute(
                 return programPath.scope.hasBinding(name)
               }
 
+              const addRouteHmr = (
+                insertionPath: babel.NodePath,
+                routeOptions: t.ObjectExpression,
+              ) => {
+                if (!opts.addHmr || hmrAdded) {
+                  return
+                }
+
+                opts.compilerPlugins?.forEach((plugin) => {
+                  const pluginResult = plugin.onAddHmr?.({
+                    programPath,
+                    callExpressionPath: path,
+                    insertionPath,
+                    routeOptions,
+                    createRouteFn,
+                    opts: opts as CompileCodeSplitReferenceRouteOptions,
+                  })
+
+                  if (pluginResult?.modified) {
+                    modified = true
+                  }
+                })
+
+                programPath.pushContainer(
+                  'body',
+                  createRouteHmrStatement(stableRouteOptionKeys),
+                )
+                modified = true
+                hmrAdded = true
+              }
+
               if (t.isObjectExpression(routeOptions)) {
+                const insertionPath = path.getStatementParent() ?? path
+
                 if (opts.deleteNodes && opts.deleteNodes.size > 0) {
                   routeOptions.properties = routeOptions.properties.filter(
                     (prop) => {
@@ -727,8 +757,6 @@ export function compileCodeSplitReferenceRoute(
                   )
                 }
                 if (!splittableCreateRouteFns.includes(createRouteFn)) {
-                  const insertionPath = path.getStatementParent() ?? path
-
                   opts.compilerPlugins?.forEach((plugin) => {
                     const pluginResult = plugin.onUnsplittableRoute?.({
                       programPath,
@@ -745,11 +773,7 @@ export function compileCodeSplitReferenceRoute(
                   })
 
                   // we can't split this route but we still add HMR handling if enabled
-                  if (opts.addHmr && !hmrAdded) {
-                    programPath.pushContainer('body', routeHmrStatement)
-                    modified = true
-                    hmrAdded = true
-                  }
+                  addRouteHmr(insertionPath, routeOptions)
                   // exit traversal so this route is not split
                   return programPath.stop()
                 }
@@ -901,11 +925,7 @@ export function compileCodeSplitReferenceRoute(
                         }
 
                         // add HMR handling
-                        if (opts.addHmr && !hmrAdded) {
-                          programPath.pushContainer('body', routeHmrStatement)
-                          modified = true
-                          hmrAdded = true
-                        }
+                        addRouteHmr(insertionPath, routeOptions)
                       } else {
                         // if (splitNodeMeta.splitStrategy === 'lazyFn') {
                         const value = prop.value
@@ -975,6 +995,8 @@ export function compileCodeSplitReferenceRoute(
 
                   programPath.scope.crawl()
                 })
+
+                addRouteHmr(insertionPath, routeOptions)
               }
             }
 

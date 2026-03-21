@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest'
 import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import { getReferenceRouteCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
-import { createIdentifier } from '../src/core/code-splitter/path-ids'
 import { frameworks } from './constants'
 
 function getFrameworkDir(framework: string) {
@@ -28,7 +27,7 @@ describe('add-hmr works', () => {
         const compileResult = compileCodeSplitReferenceRoute({
           code,
           filename,
-          id: `${filename}?${createIdentifier(['component'])}`,
+          id: filename,
           addHmr: true,
           codeSplitGroupings: defaultCodeSplitGroupings,
           targetFramework: framework,
@@ -53,7 +52,7 @@ describe('add-hmr works', () => {
         const compileResult = compileCodeSplitReferenceRoute({
           code,
           filename,
-          id: `${filename}?${createIdentifier(['component'])}`,
+          id: filename,
           addHmr: false,
           codeSplitGroupings: defaultCodeSplitGroupings,
           targetFramework: framework,
