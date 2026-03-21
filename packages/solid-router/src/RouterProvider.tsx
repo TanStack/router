@@ -7,6 +7,7 @@ import type {
   RegisteredRouter,
   RouterOptions,
 } from '@tanstack/router-core'
+
 const RouterContext = routerContext as unknown as Solid.Component<{
   value: any
   children: any

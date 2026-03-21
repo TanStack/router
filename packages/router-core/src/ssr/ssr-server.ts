@@ -405,12 +405,14 @@ export function getNormalizedURL(url: string | URL, base?: string | URL) {
   const { path: decodedPathname, handledProtocolRelativeURL } = decodePath(
     rawUrl.pathname,
   )
-  const searchParams = new URLSearchParams(rawUrl.search)
-  const normalizedHref =
-    decodedPathname +
-    (searchParams.size > 0 ? '?' : '') +
-    searchParams.toString() +
-    rawUrl.hash
+  const normalizedSearch =
+    decodedPathname !== rawUrl.pathname
+      ? (() => {
+          const searchParams = new URLSearchParams(rawUrl.search)
+          return searchParams.size > 0 ? `?${searchParams.toString()}` : ''
+        })()
+      : rawUrl.search
+  const normalizedHref = decodedPathname + normalizedSearch + rawUrl.hash
 
   return {
     url: new URL(normalizedHref, rawUrl.origin),
