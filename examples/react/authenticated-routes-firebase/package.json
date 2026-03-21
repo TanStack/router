@@ -12,7 +12,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-router": "^1.168.1",
     "@tanstack/react-router-devtools": "^1.166.10",
-    "@tanstack/router-plugin": "^1.167.1",
+    "@tanstack/router-plugin": "^1.167.2",
     "firebase": "^11.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

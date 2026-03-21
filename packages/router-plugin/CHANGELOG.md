@@ -1,5 +1,11 @@
 # @tanstack/router-plugin
 
+## 1.167.2
+
+### Patch Changes
+
+- Fix React Fast Refresh state preservation for auto code-split route components during HMR updates. ([#7000](https://github.com/TanStack/router/pull/7000))
+
 ## 1.167.1
 
 ### Patch Changes
