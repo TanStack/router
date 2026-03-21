@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774072996688,
+  "lastUpdate": 1774112924269,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -7634,6 +7634,90 @@ window.BENCHMARK_DATA = {
             "value": 108922,
             "unit": "bytes",
             "extra": "raw=345824; brotli=94032"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 51528,
+            "unit": "bytes",
+            "extra": "raw=159205; brotli=45382"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 57072,
+            "unit": "bytes",
+            "extra": "raw=175417; brotli=50112"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "manuel.schiller@caligano.de",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d7445e048d7dbc0c3455eb7af2c18938186468e1",
+          "message": "fix: better react HMR (#7005)\n\n* fix: better react HMR\n\n* layout and fixes\n\n* fix\n\n* stabilize test\n\n* stabilize test",
+          "timestamp": "2026-03-21T18:06:31+01:00",
+          "tree_id": "3e364df3d7f22e287cc8f8101567664af0609184",
+          "url": "https://github.com/TanStack/router/commit/d7445e048d7dbc0c3455eb7af2c18938186468e1"
+        },
+        "date": 1774112923466,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 90670,
+            "unit": "bytes",
+            "extra": "raw=285932; brotli=78750"
+          },
+          {
+            "name": "react-router.full",
+            "value": 93914,
+            "unit": "bytes",
+            "extra": "raw=296918; brotli=81431"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36995,
+            "unit": "bytes",
+            "extra": "raw=111596; brotli=33186"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41461,
+            "unit": "bytes",
+            "extra": "raw=125047; brotli=37115"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 55410,
+            "unit": "bytes",
+            "extra": "raw=158998; brotli=49648"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 60301,
+            "unit": "bytes",
+            "extra": "raw=174514; brotli=53892"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 105451,
+            "unit": "bytes",
+            "extra": "raw=335149; brotli=91087"
+          },
+          {
+            "name": "react-start.full",
+            "value": 108903,
+            "unit": "bytes",
+            "extra": "raw=345707; brotli=94113"
           },
           {
             "name": "solid-start.minimal",
