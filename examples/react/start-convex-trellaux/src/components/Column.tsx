@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useMemo, useRef, useState } from 'react'
-import invariant from 'tiny-invariant'
+import { invariant } from '../invariant'
 import { twMerge } from 'tailwind-merge'
 
 import { flushSync } from 'react-dom'

@@ -8765,9 +8765,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -9172,9 +9169,6 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -11762,12 +11756,6 @@ importers:
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-      tiny-warning:
-        specifier: ^1.0.3
-        version: 1.0.3
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.6.3
@@ -11907,12 +11895,6 @@ importers:
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-      tiny-warning:
-        specifier: ^1.0.3
-        version: 1.0.3
     devDependencies:
       '@testing-library/react':
         specifier: ^16.2.0
@@ -11991,12 +11973,6 @@ importers:
       seroval-plugins:
         specifier: ^1.4.2
         version: 1.4.2(seroval@1.4.2)
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-      tiny-warning:
-        specifier: ^1.0.3
-        version: 1.0.3
     devDependencies:
       '@tanstack/intent':
         specifier: ^0.0.14
@@ -12056,9 +12032,6 @@ importers:
       goober:
         specifier: ^2.1.16
         version: 2.1.16(csstype@3.1.3)
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
     devDependencies:
       solid-js:
         specifier: 1.9.10
@@ -12259,12 +12232,6 @@ importers:
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-      tiny-warning:
-        specifier: ^1.0.3
-        version: 1.0.3
     devDependencies:
       '@solidjs/testing-library':
         specifier: ^0.8.10
@@ -12395,12 +12362,6 @@ importers:
       solid-js:
         specifier: 1.9.10
         version: 1.9.10
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-      tiny-warning:
-        specifier: ^1.0.3
-        version: 1.0.3
     devDependencies:
       '@solidjs/testing-library':
         specifier: ^0.8.10
@@ -12463,12 +12424,6 @@ importers:
       seroval:
         specifier: ^1.4.2
         version: 1.4.2
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-      tiny-warning:
-        specifier: ^1.0.3
-        version: 1.0.3
     devDependencies:
       '@tanstack/intent':
         specifier: ^0.0.14
@@ -12582,9 +12537,6 @@ importers:
       seroval:
         specifier: ^1.4.2
         version: 1.4.2
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
     devDependencies:
       '@standard-schema/spec':
         specifier: ^1.0.0
@@ -12684,12 +12636,6 @@ importers:
       jsesc:
         specifier: ^3.0.2
         version: 3.1.0
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-      tiny-warning:
-        specifier: ^1.0.3
-        version: 1.0.3
     devDependencies:
       '@tanstack/intent':
         specifier: ^0.0.14
@@ -12820,12 +12766,6 @@ importers:
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../vue-router
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-      tiny-warning:
-        specifier: ^1.0.3
-        version: 1.0.3
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.6.3
@@ -24259,9 +24199,6 @@ packages:
 
   tiny-invariant@1.3.3:
     resolution: {integrity: sha512-+FbBPE1o9QAYvviau/qC5SE3caw21q3xkvWKBtja5vgqOWIHHJ3ioaq1VPfn/Szqctz2bU/oYeKd9/z5BL+PVg==}
-
-  tiny-warning@1.0.3:
-    resolution: {integrity: sha512-lBN9zLN/oAf68o3zNXYrdCt1kP8WsiGW8Oo2ka41b2IM5JL/S1CTyX1rW0mb/zSuJun0ZUrDxx4sqvYS2FWzPA==}
 
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
@@ -38479,8 +38416,6 @@ snapshots:
   timestring@6.0.0: {}
 
   tiny-invariant@1.3.3: {}
-
-  tiny-warning@1.0.3: {}
 
   tinybench@2.9.0: {}
 
