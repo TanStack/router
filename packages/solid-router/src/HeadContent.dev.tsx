@@ -1,6 +1,8 @@
 import { For, createEffect, createMemo } from 'solid-js'
+import { Portal, isServer } from '@solidjs/web'
 import { Asset } from './Asset'
 import { useHydrated } from './ClientOnly'
+import { useRouter } from './useRouter'
 import { useTags } from './headContentUtils'
 
 const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
@@ -17,6 +19,7 @@ const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
 export function HeadContent() {
   const tags = useTags()
   const hydrated = useHydrated()
+  const router = useRouter()
 
   // Fallback cleanup for hydration mismatch cases
   // Runs when hydration completes to remove any orphaned dev styles links from DOM
@@ -39,12 +42,18 @@ export function HeadContent() {
     return tags()
   })
 
-  return (
+  const content = () => (
     <For each={filteredTags()}>
       {(tag) => {
         const t = tag() as any
         return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
       }}
     </For>
+  )
+
+  return (isServer ?? router.isServer) ? (
+    content()
+  ) : (
+    <Portal mount={document.head}>{content()}</Portal>
   )
 }
