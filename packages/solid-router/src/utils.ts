@@ -46,7 +46,7 @@ export function useIntersectionObserver<T extends Element>(
 
     observerRef.observe(r)
 
-    Solid.onCleanup(() => {
+    return (() => {
       observerRef?.disconnect()
     })
   })

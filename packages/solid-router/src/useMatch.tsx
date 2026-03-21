@@ -83,31 +83,22 @@ export function useMatch<
     return nearestMatch?.match()
   }
 
-  Solid.createEffect(
-    () => {
-      const m = match()
+  return Solid.createMemo((prev: TSelected | undefined) => {
+    const selectedMatch = match()
+
+    if (selectedMatch === undefined) {
       const hasPendingMatch = opts.from
         ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
         : (nearestMatch?.hasPending() ?? false)
       const isTransitioning = router.stores.isTransitioning.state
-      return { m, hasPendingMatch, isTransitioning } as const
-    },
-    ({ m, hasPendingMatch, isTransitioning }) => {
-      if (m !== undefined) {
-        return
-      }
 
       invariant(
         !(!hasPendingMatch && !isTransitioning && (opts.shouldThrow ?? true)),
         `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
       )
-    },
-  )
+      return undefined
+    }
 
-  return Solid.createMemo((prev: TSelected | undefined) => {
-    const selectedMatch = match()
-
-    if (selectedMatch === undefined) return undefined
     const res = opts.select ? opts.select(selectedMatch as any) : selectedMatch
     if (prev === undefined) return res as TSelected
     return replaceEqualDeep(prev, res) as TSelected

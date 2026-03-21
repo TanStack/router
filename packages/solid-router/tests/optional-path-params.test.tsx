@@ -646,16 +646,22 @@ describe('Solid Router - Optional Path Parameters', () => {
       render(() => <RouterProvider router={router} />)
 
       // Test navigation scenarios
+      // In Solid v2, we must wait for the router to become idle between
+      // navigations because Solid lacks React's startTransition for
+      // concurrent state updates. Without this, the next navigation
+      // fires while the previous load is still pending, causing timeouts.
       const navigateAll = await screen.findByTestId('navigate-all')
       await fireEvent.click(navigateAll)
       await waitFor(() => {
         expect(router.state.location.pathname).toBe('/posts')
+        expect(router.state.status).toBe('idle')
       })
 
       const navigateTech = await screen.findByTestId('navigate-tech')
       await fireEvent.click(navigateTech)
       await waitFor(() => {
         expect(router.state.location.pathname).toBe('/posts/tech')
+        expect(router.state.status).toBe('idle')
       })
 
       const navigateSpecific = await screen.findByTestId('navigate-specific')

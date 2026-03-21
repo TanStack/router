@@ -1,5 +1,5 @@
 import { isServer } from '@tanstack/router-core/isServer'
-import { createEffect, onCleanup } from 'solid-js'
+import { createEffect } from 'solid-js'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { JSX } from 'solid-js'
@@ -168,7 +168,7 @@ function Script(props: {
         document.head.appendChild(script)
       }
 
-      onCleanup(() => {
+      return (() => {
         if (script?.parentNode) {
           script.parentNode.removeChild(script)
         }

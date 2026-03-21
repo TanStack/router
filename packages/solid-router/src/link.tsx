@@ -120,7 +120,7 @@ export function useLinkProps<
   const currentLocation = Solid.createMemo(
     () => router.stores.location.state,
     undefined,
-    { equals: (prev, next) => prev.href === next.href },
+    { equals: (prev, next) => prev?.href === next?.href },
   )
 
   const _options = () => options
@@ -277,17 +277,18 @@ export function useLinkProps<
       return
     }
     if (!local.disabled && preloadValue === 'render') {
-      doPreload()
+      Solid.untrack(() => doPreload())
       hasRenderFetched = true
     }
   })
 
   if (Solid.untrack(externalLink)) {
+    const externalHref = Solid.untrack(externalLink)
     return Solid.merge(
       propsSafeToSpread,
       {
         // ref: mergeRefs(setRef, _options().ref),
-        href: externalLink(),
+        href: externalHref,
       },
       splitProps(local, [
         'target',
@@ -484,7 +485,7 @@ const STATIC_DEFAULT_ACTIVE_ATTRIBUTES = {
 }
 const STATIC_DISABLED_PROPS = {
   role: 'link',
-  'aria-disabled': true,
+  'aria-disabled': 'true',
 }
 const STATIC_ACTIVE_ATTRIBUTES = {
   'data-status': 'active',
