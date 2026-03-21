@@ -834,18 +834,19 @@ const loadRouteMatch = async (
       shouldReloadInBackground
     ) {
       loaderIsRunningAsync = true
+      const matchForCleanup = prevMatch
       ;(async () => {
         try {
           await runLoader(inner, matchPromises, matchId, index, route)
-          const match = inner.router.getMatch(matchId)!
-          match._nonReactive.loaderPromise?.resolve()
-          match._nonReactive.loadPromise?.resolve()
-          match._nonReactive.loaderPromise = undefined
-          match._nonReactive.loadPromise = undefined
         } catch (err) {
           if (isRedirect(err)) {
             await inner.router.navigate(err.options)
           }
+        } finally {
+          matchForCleanup._nonReactive.loaderPromise?.resolve()
+          matchForCleanup._nonReactive.loadPromise?.resolve()
+          matchForCleanup._nonReactive.loaderPromise = undefined
+          matchForCleanup._nonReactive.loadPromise = undefined
         }
       })()
     } else if (status !== 'success' || loaderShouldRunAsync) {
@@ -878,7 +879,12 @@ const loadRouteMatch = async (
       return inner.router.getMatch(matchId)!
     }
   } else {
-    const prevMatch = inner.router.getMatch(matchId)! // This is where all of the stale-while-revalidate magic happens
+    const prevMatch = inner.router.getMatch(matchId)
+    if (!prevMatch) {
+      return inner.matches[index]!
+    }
+
+    // This is where all of the stale-while-revalidate magic happens
     const activeIdAtIndex = inner.router.stores.matchesId.state[index]
     const activeAtIndex =
       (activeIdAtIndex &&
@@ -906,7 +912,11 @@ const loadRouteMatch = async (
         return prevMatch
       }
       await prevMatch._nonReactive.loaderPromise
-      const match = inner.router.getMatch(matchId)!
+      const match = inner.router.getMatch(matchId)
+      if (!match) {
+        return inner.matches[index]!
+      }
+
       const error = match._nonReactive.error || match.error
       if (error) {
         handleRedirectAndNotFound(inner, match, error)
@@ -924,7 +934,11 @@ const loadRouteMatch = async (
     } else {
       const nextPreload =
         preload && !inner.router.stores.activeMatchStoresById.has(matchId)
-      const match = inner.router.getMatch(matchId)!
+      const match = inner.router.getMatch(matchId)
+      if (!match) {
+        return inner.matches[index]!
+      }
+
       match._nonReactive.loaderPromise = createControlledPromise<void>()
       if (nextPreload !== match.preload) {
         inner.updateMatch(matchId, (prev) => ({
@@ -936,7 +950,11 @@ const loadRouteMatch = async (
       await handleLoader(preload, prevMatch, previousRouteMatchId, match, route)
     }
   }
-  const match = inner.router.getMatch(matchId)!
+  const match = inner.router.getMatch(matchId)
+  if (!match) {
+    return inner.matches[index]!
+  }
+
   if (!loaderIsRunningAsync) {
     match._nonReactive.loaderPromise?.resolve()
     match._nonReactive.loadPromise?.resolve()
@@ -955,7 +973,7 @@ const loadRouteMatch = async (
       isFetching: nextIsFetching,
       invalid: false,
     }))
-    return inner.router.getMatch(matchId)!
+    return inner.router.getMatch(matchId) ?? match
   } else {
     return match
   }
