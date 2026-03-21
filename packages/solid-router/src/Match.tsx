@@ -398,7 +398,9 @@ export const MatchInner = (): any => {
                 return (
                   <Solid.Show when={currentMatchState().routeId} keyed>
                     {(_routeId) =>
-                      renderRouteNotFound(router, route(), matchError)
+                      Solid.untrack(() =>
+                        renderRouteNotFound(router, route(), matchError),
+                      )
                     }
                   </Solid.Show>
                 )

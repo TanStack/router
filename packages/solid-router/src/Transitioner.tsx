@@ -44,6 +44,11 @@ export function Transitioner() {
 
   router.startTransition = (fn: () => void | Promise<void>) => {
     Solid.runWithOwner(null, fn)
+    try {
+      Solid.flush()
+    } catch {
+      // flush() throws inside reactive contexts — Solid auto-flushes there
+    }
   }
 
   // Subscribe to location changes
@@ -110,10 +115,6 @@ export function Transitioner() {
     })
   })
 
-  const locationState = Solid.createMemo(() => router.stores.location.state)
-  const resolvedLocationState = Solid.createMemo(
-    () => router.stores.resolvedLocation.state,
-  )
 
   Solid.createRenderEffect(
     () =>
@@ -121,8 +122,8 @@ export function Transitioner() {
         isLoading(),
         isPagePending(),
         isAnyPending(),
-        locationState(),
-        resolvedLocationState(),
+        router.stores.location.state,
+        router.stores.resolvedLocation.state,
       ] as const,
     (
       [

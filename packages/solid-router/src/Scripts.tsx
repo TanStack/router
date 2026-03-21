@@ -51,26 +51,28 @@ export const Scripts = () => {
     })),
   )
 
-  let serverBufferedScript: RouterManagedTag | undefined = undefined
+  const serverBufferedScript: RouterManagedTag | undefined = router.serverSsr
+    ? router.serverSsr.takeBufferedScripts()
+    : undefined
 
-  if (router.serverSsr) {
-    serverBufferedScript = router.serverSsr.takeBufferedScripts()
-  }
+  const allScripts = Solid.createMemo(() => {
+    const result = [...scripts(), ...assetScripts()] as Array<RouterManagedTag>
 
-  const allScripts = [
-    ...scripts(),
-    ...assetScripts(),
-  ] as Array<RouterManagedTag>
+    if (serverBufferedScript) {
+      result.unshift(serverBufferedScript)
+    }
 
-  if (serverBufferedScript) {
-    allScripts.unshift(serverBufferedScript)
-  }
+    return result
+  })
 
   return (
     <NoHydration>
-      {allScripts.map((asset, _i) => (
-        <Asset {...asset} />
-      ))}
+      <Solid.For each={allScripts()}>
+        {(asset) => {
+          const a = Solid.untrack(asset)
+          return <Asset {...(a as RouterManagedTag)} />
+        }}
+      </Solid.For>
     </NoHydration>
   )
 }

@@ -168,11 +168,11 @@ function Script(props: {
         document.head.appendChild(script)
       }
 
-      return (() => {
+      return () => {
         if (script?.parentNode) {
           script.parentNode.removeChild(script)
         }
-      })
+      }
     },
   )
 

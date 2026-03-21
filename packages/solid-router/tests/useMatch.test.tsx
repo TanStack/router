@@ -79,7 +79,9 @@ describe('useMatch', () => {
       'throws if shouldThrow = %s',
       async (shouldThrow) => {
         function RootComponent() {
-          useMatch({ from: '/posts', shouldThrow })
+          const match = useMatch({ from: '/posts', shouldThrow })
+          // In Solid, createMemo is lazy - we must call the accessor to trigger the invariant
+          match()
           return <Outlet />
         }
         setup({ RootComponent })
