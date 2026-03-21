@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { escapeHtml, replaceEqualDeep } from '@tanstack/router-core'
+import { escapeHtml } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
@@ -10,6 +10,7 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const useTags = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
+  const getTagKey = (tag: RouterManagedTag) => JSON.stringify(tag)
   const activeMatches = Solid.createMemo(
     () => router.stores.activeMatchesSnapshot.state,
   )
@@ -188,14 +189,18 @@ export const useTags = () => {
         ...styles(),
         ...headScripts(),
       ] as Array<RouterManagedTag>,
-      (d) => {
-        return JSON.stringify(d)
-      },
+      getTagKey,
     )
-    if (prev === undefined) {
-      return next
+
+    if (
+      prev &&
+      prev.length === next.length &&
+      prev.every((tag, index) => getTagKey(tag) === getTagKey(next[index]!))
+    ) {
+      return prev
     }
-    return replaceEqualDeep(prev, next)
+
+    return next
   })
 }
 
