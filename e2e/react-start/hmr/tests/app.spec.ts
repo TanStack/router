@@ -95,6 +95,23 @@ async function waitForRouterIdle(page: Page) {
   })
 }
 
+async function waitForChildLoaderCrumb(page: Page, expectedCrumb: string) {
+  await page.waitForFunction((crumb) => {
+    const router = (window as any).__TSR_ROUTER__
+    const loader = router?.routesById?.['/child']?.options?.loader
+
+    if (typeof loader !== 'function') {
+      return false
+    }
+
+    try {
+      return loader()?.crumb === crumb
+    } catch {
+      return false
+    }
+  }, expectedCrumb)
+}
+
 async function waitForRouteRemovalReload(page: Page) {
   await page.waitForFunction(() => {
     const router = (window as any).__TSR_ROUTER__
@@ -322,7 +339,7 @@ test.describe('react-start hmr', () => {
       "crumb: 'Child'",
       "crumb: 'Child Updated'",
       async () => {
-        await waitForRouterIdle(page)
+        await waitForChildLoaderCrumb(page, 'Child Updated')
       },
     )
 
@@ -333,7 +350,7 @@ test.describe('react-start hmr', () => {
       "crumb: 'Child Updated'",
       "crumb: 'Child Updated Again'",
       async () => {
-        await waitForRouterIdle(page)
+        await waitForChildLoaderCrumb(page, 'Child Updated Again')
       },
     )
 
