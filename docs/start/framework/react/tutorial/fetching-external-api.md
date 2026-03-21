@@ -29,13 +29,13 @@ The complete code for this tutorial is available on [GitHub](https://github.com/
 First, let's create a new TanStack Start project:
 
 ```bash
-pnpx create-start-app movie-discovery
+pnpx @tanstack/cli create movie-discovery
 cd movie-discovery
 ```
 
 When this script runs, it will ask you a few setup questions. You can either pick choices that work for you or just press enter to accept the defaults.
 
-Optionally, you can pass in a `--add-on` flag to get options such as Shadcn, Clerk, Convex, TanStack Query, etc.
+Optionally, you can pass in a `--add-ons` flag to get options such as Shadcn, Clerk, Convex, TanStack Query, etc.
 
 Once setup is complete, install dependencies and start the development server:
 
