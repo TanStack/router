@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774002955388,
+  "lastUpdate": 1774053004147,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -7417,6 +7417,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/91cc62899b75ca920fe83c5ee7f3dbb5c71a523f"
         },
         "date": 1774002953806,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 90682,
+            "unit": "bytes",
+            "extra": "raw=286049; brotli=78682"
+          },
+          {
+            "name": "react-router.full",
+            "value": 93928,
+            "unit": "bytes",
+            "extra": "raw=297035; brotli=81392"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36995,
+            "unit": "bytes",
+            "extra": "raw=111596; brotli=33186"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41446,
+            "unit": "bytes",
+            "extra": "raw=125006; brotli=37126"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 55410,
+            "unit": "bytes",
+            "extra": "raw=158998; brotli=49648"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 60301,
+            "unit": "bytes",
+            "extra": "raw=174514; brotli=53892"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 105471,
+            "unit": "bytes",
+            "extra": "raw=335266; brotli=91154"
+          },
+          {
+            "name": "react-start.full",
+            "value": 108922,
+            "unit": "bytes",
+            "extra": "raw=345824; brotli=94032"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 51528,
+            "unit": "bytes",
+            "extra": "raw=159205; brotli=45382"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 57060,
+            "unit": "bytes",
+            "extra": "raw=175376; brotli=50074"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "manuel.schiller@caligano.de",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9351e997962d02ecc3f6f1791edd84e64361d27b",
+          "message": "fix: Fix React Fast Refresh state preservation for auto code-split ro… (#7000)",
+          "timestamp": "2026-03-21T01:27:50+01:00",
+          "tree_id": "ceb1995a888d3fc1ad214ed7b0d8ea112dd890fa",
+          "url": "https://github.com/TanStack/router/commit/9351e997962d02ecc3f6f1791edd84e64361d27b"
+        },
+        "date": 1774053003093,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
