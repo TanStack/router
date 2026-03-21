@@ -1689,35 +1689,12 @@ export class RouterCore<
   private matchRoutesLightweight(location: ParsedLocation): {
     matchedRoutes: ReadonlyArray<AnyRoute>
     fullPath: string
-    search: Record<string, unknown>
     params: Record<string, unknown>
   } {
     const { matchedRoutes, routeParams, parsedParams } = this.getMatchedRoutes(
       location.pathname,
     )
     const lastRoute = last(matchedRoutes)!
-
-    // I don't know if we should run the full search middleware chain, or just validateSearch
-    // // Accumulate search validation through the route chain
-    // const accumulatedSearch: Record<string, unknown> = applySearchMiddleware({
-    //   search: { ...location.search },
-    //   dest: location,
-    //   destRoutes: matchedRoutes,
-    //   _includeValidateSearch: true,
-    // })
-
-    // Accumulate search validation through route chain
-    const accumulatedSearch = { ...location.search }
-    for (const route of matchedRoutes) {
-      try {
-        Object.assign(
-          accumulatedSearch,
-          validateSearch(route.options.validateSearch, accumulatedSearch),
-        )
-      } catch {
-        // Ignore errors, we're not actually routing
-      }
-    }
 
     // Determine params: reuse from state if possible, otherwise parse
     const lastStateMatchId = last(this.stores.matchesId.state)
@@ -1756,7 +1733,6 @@ export class RouterCore<
     return {
       matchedRoutes,
       fullPath: lastRoute.fullPath,
-      search: accumulatedSearch,
       params,
     }
   }
@@ -1813,11 +1789,11 @@ export class RouterCore<
         dest._fromLocation || this.pendingBuiltLocation || this.latestLocation
 
       let locationDeps = BUILD_LOCATION_DEP_NONE
-      const toPath = dest.to == null ? undefined : `${dest.to}`
-      const toIsAbsolute =
-        !!toPath && toPath.charCodeAt(0) === 47 && toPath.charCodeAt(1) !== 47
 
       if (locationDepsTarget) {
+        const toPath = dest.to == null ? undefined : `${dest.to}`
+        const toIsAbsolute =
+          !!toPath && toPath.charCodeAt(0) === 47 && toPath.charCodeAt(1) !== 47
         if (!dest.from && (!toPath || !toIsAbsolute)) {
           locationDeps |= BUILD_LOCATION_DEP_PATHNAME
         }
@@ -1868,7 +1844,7 @@ export class RouterCore<
       const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
 
       // From search should always use the current location
-      const fromSearch = lightweightResult.search
+      const fromSearch = currentLocation.search
       // Same with params. It can't hurt to provide as many as possible
       const fromParams = Object.assign(
         Object.create(null),

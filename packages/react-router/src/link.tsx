@@ -523,6 +523,8 @@ export function useLinkProps<
         next,
         !!externalLink,
       ),
+    // TODO: do we need full `next` here? or could we re-compute this only when next.search changes?
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- next is tracked as its properties
     [activeOptions, externalLink, next.hash, next.pathname, next.search],
   )
 
