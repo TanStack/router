@@ -3,7 +3,6 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
 } from '@solidjs/testing-library'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'

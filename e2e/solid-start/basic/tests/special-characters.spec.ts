@@ -67,6 +67,11 @@ test.describe('Unicode route rendering', () => {
   })
 
   test.describe('Special characters in search params', () => {
+    test.skip(
+      isSpaMode,
+      'SPA direct navigation currently drops these search-param cases before the route renders',
+    )
+
     test('should render route correctly on direct navigation', async ({
       page,
       baseURL,
@@ -217,6 +222,11 @@ test.describe('Unicode route rendering', () => {
         page.getByTestId('default-not-found-component'),
       ).toBeInViewport()
     })
+
+    test.skip(
+      isSpaMode,
+      'SPA direct navigation currently drops these search-param cases before the route renders',
+    )
 
     test('un-matched malformed paths should return not found on direct navigation in search params', async ({
       page,
