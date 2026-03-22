@@ -12,6 +12,11 @@ export type { AssetCrossOrigin }
 
 export type TransformAssetKind = 'modulepreload' | 'stylesheet' | 'clientEntry'
 
+type TransformAssetsShorthandCrossOriginKind = Exclude<
+  TransformAssetKind,
+  'clientEntry'
+>
+
 export type AssetUrlType = TransformAssetKind
 
 export interface TransformAssetsContext {
@@ -148,7 +153,7 @@ export type TransformAssetUrls =
  */
 export type TransformAssetsCrossOriginConfig =
   | AssetCrossOrigin
-  | Partial<Record<TransformAssetKind, AssetCrossOrigin>>
+  | Partial<Record<TransformAssetsShorthandCrossOriginKind, AssetCrossOrigin>>
 
 /**
  * Object shorthand for `transformAssets`. Combines a URL prefix with optional
@@ -217,10 +222,11 @@ function normalizeTransformAssetResult(
 
 function resolveTransformAssetsCrossOrigin(
   config: TransformAssetsCrossOriginConfig | undefined,
-  kind: TransformAssetKind,
+  kind: TransformAssetsShorthandCrossOriginKind,
 ): AssetCrossOrigin | undefined {
   if (!config) return undefined
   if (typeof config === 'string') return config
+
   return config[kind]
 }
 
@@ -253,17 +259,18 @@ export function resolveTransformAssetsConfig(
   // Object shorthand: { prefix, crossOrigin? }
   if (isObjectShorthand(transform)) {
     const { prefix, crossOrigin } = transform
+
     return {
       type: 'transform',
       transformFn: ({ url, kind }) => {
+        const href = `${prefix}${url}`
+
+        if (kind === 'clientEntry') {
+          return { href }
+        }
+
         const co = resolveTransformAssetsCrossOrigin(crossOrigin, kind)
-        const result: { href: string; crossOrigin?: AssetCrossOrigin } = {
-          href: `${prefix}${url}`,
-        }
-        if (co) {
-          result.crossOrigin = co
-        }
-        return result
+        return co ? { href, crossOrigin: co } : { href }
       },
       cache: true,
     }
@@ -377,13 +384,11 @@ function assignManifestAssetLink(
 export async function transformManifestAssets(
   source: StartManifestWithClientEntry,
   transformFn: TransformAssetsFn,
-  opts?: {
+  _opts?: {
     clone?: boolean
   },
 ): Promise<Manifest> {
-  const manifest = opts?.clone
-    ? structuredClone(source.manifest)
-    : source.manifest
+  const manifest = structuredClone(source.manifest)
 
   for (const route of Object.values(manifest.routes)) {
     if (route.preloads) {

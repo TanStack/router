@@ -101,6 +101,42 @@ describe('transformAssets', () => {
     )
   })
 
+  it('does not mutate the source manifest when clone is false', async () => {
+    const source = {
+      manifest: {
+        routes: {
+          __root__: {
+            preloads: ['/assets/app.js'],
+            assets: [
+              {
+                tag: 'link' as const,
+                attrs: { rel: 'stylesheet', href: '/assets/app.css' },
+              },
+            ],
+          },
+        },
+      },
+      clientEntry: '/assets/entry.js',
+    }
+
+    const manifest = await transformManifestAssets(
+      source,
+      ({ url }) => ({ href: `https://cdn.example.com${url}` }),
+      { clone: false },
+    )
+
+    expect(manifest.routes.__root__?.preloads?.[0]).toBe(
+      'https://cdn.example.com/assets/app.js',
+    )
+    expect(source.manifest.routes.__root__?.preloads?.[0]).toBe(
+      '/assets/app.js',
+    )
+    expect(source.manifest.routes.__root__?.assets?.[0]).toEqual({
+      tag: 'link',
+      attrs: { rel: 'stylesheet', href: '/assets/app.css' },
+    })
+  })
+
   describe('object shorthand', () => {
     it('supports { prefix } — same as string shorthand', () => {
       const config = resolveTransformAssetsConfig({
@@ -138,12 +174,10 @@ describe('transformAssets', () => {
         crossOrigin: 'anonymous',
       })
 
-      // clientEntry gets crossOrigin too (though only href matters for script)
       expect(
         config.transformFn({ kind: 'clientEntry', url: '/assets/entry.js' }),
       ).toEqual({
         href: 'https://cdn.example.com/assets/entry.js',
-        crossOrigin: 'anonymous',
       })
     })
 
@@ -178,6 +212,16 @@ describe('transformAssets', () => {
       ).toEqual({
         href: 'https://cdn.example.com/assets/entry.js',
       })
+    })
+
+    it('supports empty-string prefix shorthand', () => {
+      const config = resolveTransformAssetsConfig('')
+
+      if (config.type !== 'transform') throw new Error('expected transform')
+
+      expect(
+        config.transformFn({ kind: 'modulepreload', url: '/assets/app.js' }),
+      ).toEqual({ href: '/assets/app.js' })
     })
 
     it('applies object shorthand crossOrigin to manifest assets', async () => {

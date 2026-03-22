@@ -445,15 +445,16 @@ export function createStartHandler<TRegister = Register>(
       ? undefined
       : cbOrOptions.transformAssetUrls
 
-  const transformOption = transformAssetsOption
-    ? resolveTransformAssetsConfig(transformAssetsOption)
-    : transformAssetUrlsOption
-      ? resolveTransformAssetsConfig(
-          adaptTransformAssetUrlsConfigToTransformAssets(
-            transformAssetUrlsOption,
-          ),
-        )
-      : undefined
+  const transformOption =
+    transformAssetsOption !== undefined
+      ? resolveTransformAssetsConfig(transformAssetsOption)
+      : transformAssetUrlsOption !== undefined
+        ? resolveTransformAssetsConfig(
+            adaptTransformAssetUrlsConfigToTransformAssets(
+              transformAssetUrlsOption,
+            ),
+          )
+        : undefined
 
   const warmupTransformManifest =
     (!!transformAssetsOption &&
@@ -467,25 +468,35 @@ export function createStartHandler<TRegister = Register>(
   // Pre-resolve the transform function and cache flag
   const resolvedTransformConfig = transformOption
   const cache = resolvedTransformConfig ? resolvedTransformConfig.cache : true
+  const shouldCacheCreateTransform =
+    cache && process.env.TSS_DEV_SERVER !== 'true'
 
-  // Memoize a single createTransform() result when caching is enabled.
+  // Memoize a single createTransform() result when caching is enabled outside
+  // of the dev server.
   let cachedCreateTransformPromise: Promise<TransformAssetsFn> | undefined
 
   const getTransformFn = async (
     opts: { warmup: true } | { warmup: false; request: Request },
   ): Promise<TransformAssetsFn | undefined> => {
     if (!resolvedTransformConfig) return undefined
+
     if (resolvedTransformConfig.type === 'createTransform') {
-      if (cache) {
+      if (shouldCacheCreateTransform) {
         if (!cachedCreateTransformPromise) {
           cachedCreateTransformPromise = Promise.resolve(
             resolvedTransformConfig.createTransform(opts),
-          )
+          ).catch((error) => {
+            cachedCreateTransformPromise = undefined
+            throw error
+          })
         }
+
         return cachedCreateTransformPromise
       }
+
       return resolvedTransformConfig.createTransform(opts)
     }
+
     return resolvedTransformConfig.transformFn
   }
 

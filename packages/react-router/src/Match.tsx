@@ -64,7 +64,7 @@ export const Match = React.memo(function MatchImpl({
   // Subscribe directly to the match store from the pool.
   // The matchId prop is stable for this component's lifetime (set by Outlet),
   // and reconcileMatchPool reuses stores for the same matchId.
-   
+
   const matchStore = router.stores.activeMatchStoresById.get(matchId)
   if (!matchStore) {
     if (process.env.NODE_ENV !== 'production') {
@@ -338,7 +338,6 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     return out
   }
 
-   
   const matchStore = router.stores.activeMatchStoresById.get(matchId)
   if (!matchStore) {
     if (process.env.NODE_ENV !== 'production') {
