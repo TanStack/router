@@ -767,6 +767,17 @@ export interface MatchRoutesFn {
   ): Array<AnyRouteMatch>
 }
 
+type MatchRoutesLightweightResult = {
+  matchedRoutes: ReadonlyArray<AnyRoute>
+  fullPath: string
+  params: Record<string, unknown>
+}
+
+type MatchRoutesLightweightCache = {
+  location: ParsedLocation
+  result: MatchRoutesLightweightResult
+}
+
 export type GetMatchFn = (matchId: string) => AnyRouteMatch | undefined
 
 export type UpdateMatchFn = (
@@ -1674,43 +1685,27 @@ export class RouterCore<
     })
   }
 
+  private matchRoutesLightweightCache?: MatchRoutesLightweightCache
   /**
    * Lightweight route matching for buildLocation.
    * Only computes fullPath, accumulated search, and params - skipping expensive
    * operations like AbortController, ControlledPromise, loaderDeps, and full match objects.
    */
-  private matchRoutesLightweight(location: ParsedLocation): {
-    matchedRoutes: ReadonlyArray<AnyRoute>
-    fullPath: string
-    search: Record<string, unknown>
-    params: Record<string, unknown>
-  } {
+  private matchRoutesLightweight(
+    location: ParsedLocation,
+  ): MatchRoutesLightweightResult {
+    const isCurrent = this.stores.location.state === location
+    if (isCurrent) {
+      const cached = this.matchRoutesLightweightCache
+      if (cached?.location === location) {
+        return cached.result
+      }
+    }
+
     const { matchedRoutes, routeParams, parsedParams } = this.getMatchedRoutes(
       location.pathname,
     )
     const lastRoute = last(matchedRoutes)!
-
-    // I don't know if we should run the full search middleware chain, or just validateSearch
-    // // Accumulate search validation through the route chain
-    // const accumulatedSearch: Record<string, unknown> = applySearchMiddleware({
-    //   search: { ...location.search },
-    //   dest: location,
-    //   destRoutes: matchedRoutes,
-    //   _includeValidateSearch: true,
-    // })
-
-    // Accumulate search validation through route chain
-    const accumulatedSearch = { ...location.search }
-    for (const route of matchedRoutes) {
-      try {
-        Object.assign(
-          accumulatedSearch,
-          validateSearch(route.options.validateSearch, accumulatedSearch),
-        )
-      } catch {
-        // Ignore errors, we're not actually routing
-      }
-    }
 
     // Determine params: reuse from state if possible, otherwise parse
     const lastStateMatchId = last(this.stores.matchesId.state)
@@ -1746,12 +1741,20 @@ export class RouterCore<
       params = strictParams
     }
 
-    return {
+    const result = {
       matchedRoutes,
       fullPath: lastRoute.fullPath,
-      search: accumulatedSearch,
       params,
     }
+
+    if (isCurrent) {
+      this.matchRoutesLightweightCache = {
+        location,
+        result,
+      }
+    }
+
+    return result
   }
 
   cancelMatch = (id: string) => {
@@ -1839,7 +1842,7 @@ export class RouterCore<
       const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
 
       // From search should always use the current location
-      const fromSearch = lightweightResult.search
+      const fromSearch = currentLocation.search
       // Same with params. It can't hurt to provide as many as possible
       const fromParams = Object.assign(
         Object.create(null),
