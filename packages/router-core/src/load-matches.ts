@@ -586,7 +586,9 @@ const executeHead = (
   }
 
   return Promise.all([
-    route.options.head?.(assetContext),
+    typeof route.options.head === 'function'
+      ? route.options.head(assetContext)
+      : route.options.head,
     route.options.scripts?.(assetContext),
     route.options.headers?.(assetContext),
   ]).then(([headFnContent, scripts, headers]) => {
