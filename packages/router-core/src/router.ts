@@ -1277,8 +1277,9 @@ export class RouterCore<
         const parsedSearch = this.options.parseSearch(search)
         const searchStr = this.options.stringifySearch(parsedSearch)
 
-        return augmentLocationWithUrl(
+        return initializeParsedLocation(
           {
+            __proto__: parsedLocationPrototype,
             href: pathname + searchStr + hash,
             publicHref: href,
             pathname: decodePath(pathname).path,
@@ -1290,7 +1291,7 @@ export class RouterCore<
             ) as any,
             hash: decodePath(hash.slice(1)).path,
             state: replaceEqualDeep(previousLocation?.state, state),
-          },
+          } as ParsedLocationWithoutUrl<FullSearchSchema<TRouteTree>>,
           this.origin!,
         )
       }
@@ -1309,8 +1310,9 @@ export class RouterCore<
 
       const fullPath = url.href.replace(url.origin, '')
 
-      return augmentLocationWithUrl(
+      return initializeParsedLocation(
         {
+          __proto__: parsedLocationPrototype,
           href: fullPath,
           publicHref: href,
           pathname: decodePath(url.pathname).path,
@@ -1322,8 +1324,9 @@ export class RouterCore<
           ) as any,
           hash: decodePath(url.hash.slice(1)).path,
           state: replaceEqualDeep(previousLocation?.state, state),
-        },
+        } as ParsedLocationWithoutUrl<FullSearchSchema<TRouteTree>>,
         this.origin!,
+        fullUrl,
       )
     }
 
@@ -1337,6 +1340,7 @@ export class RouterCore<
       parsedTempLocation.state.key = location.state.key // TODO: Remove in v2 - use __TSR_key instead
       parsedTempLocation.state.__TSR_key = location.state.__TSR_key
       parsedTempLocation.maskedLocation = location
+
       delete parsedTempLocation.state.__tempLocation
 
       return parsedTempLocation
@@ -2007,8 +2011,9 @@ export class RouterCore<
         origin = this.origin!
       }
 
-      return augmentLocationWithUrl(
+      return initializeParsedLocation(
         {
+          __proto__: parsedLocationPrototype,
           publicHref,
           href,
           pathname: nextPathname,
@@ -2018,7 +2023,7 @@ export class RouterCore<
           hash: hash ?? '',
           external,
           unmaskOnReload: dest.unmaskOnReload,
-        },
+        } as ParsedLocationWithoutUrl,
         origin,
         memoUrl,
       )
@@ -2949,19 +2954,6 @@ export class RouterCore<
   }
 }
 
-function augmentLocationWithUrl<TSearchObj extends AnySchema = {}>(
-  location:
-    | ParsedLocation<TSearchObj>
-    | Omit<ParsedLocation<TSearchObj>, 'url'>,
-  origin: string,
-  url?: URL | null,
-): ParsedLocation<TSearchObj> {
-  return Object.defineProperty(location, 'url', {
-    enumerable: false,
-    get: () => (url ??= new URL(location.publicHref, origin)),
-  }) as ParsedLocation<TSearchObj>
-}
-
 /** Error thrown when search parameter validation fails. */
 export class SearchParamError extends Error {}
 
@@ -2972,6 +2964,53 @@ const normalize = (str: string) =>
   str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
 function comparePaths(a: string, b: string) {
   return normalize(a) === normalize(b)
+}
+
+type ParsedLocationWithoutUrl<TSearchObj extends AnySchema = {}> = Omit<
+  ParsedLocation<TSearchObj>,
+  'url'
+>
+
+const parsedLocationOrigins = new WeakMap<ParsedLocation<any>, string>()
+const parsedLocationUrls = new WeakMap<ParsedLocation<any>, URL>()
+
+function getParsedLocationUrl(location: ParsedLocation<any>) {
+  let url = parsedLocationUrls.get(location)
+
+  if (!url) {
+    const origin = parsedLocationOrigins.get(location)
+
+    if (!origin) {
+      throw new Error('ParsedLocation origin is missing')
+    }
+
+    url = new URL(location.publicHref, origin)
+    parsedLocationUrls.set(location, url)
+  }
+
+  return url
+}
+
+const parsedLocationPrototype = {
+  get url() {
+    return getParsedLocationUrl(this as ParsedLocation<any>)
+  },
+}
+
+function initializeParsedLocation<TSearchObj extends AnySchema = {}>(
+  location: ParsedLocationWithoutUrl<TSearchObj>,
+  origin: string,
+  url?: URL | null,
+): ParsedLocation<TSearchObj> {
+  const parsedLocation = location as ParsedLocation<TSearchObj>
+
+  parsedLocationOrigins.set(parsedLocation, origin)
+
+  if (url) {
+    parsedLocationUrls.set(parsedLocation, url)
+  }
+
+  return parsedLocation
 }
 
 /**

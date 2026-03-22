@@ -49,8 +49,8 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
    */
   external: boolean
   /**
-   * A `URL` object representation of the location. This object may be created dynamically, so
-   * reading this property if not "free".
+   * A `URL` object representation of the location. This object is created lazily,
+   * so reading this property is not free.
    */
   url: URL
 }
