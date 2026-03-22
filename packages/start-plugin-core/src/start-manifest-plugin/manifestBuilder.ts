@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/prefer-for-of */
 import { joinURL } from 'ufo'
-import { rootRouteId } from '@tanstack/router-core'
+import { resolveManifestAssetLink, rootRouteId } from '@tanstack/router-core'
 import { tsrSplit } from '@tanstack/router-plugin'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type { ManifestAssetLink, RouterManagedTag } from '@tanstack/router-core'
 import type { Rollup } from 'vite'
 
 const ROUTER_MANAGED_MODE = 1
@@ -29,6 +29,11 @@ interface ManifestAssetResolvers {
   getAssetPath: (fileName: string) => string
   getChunkPreloads: (chunk: Rollup.OutputChunk) => Array<string>
   getStylesheetAsset: (cssFile: string) => RouterManagedTag
+}
+
+type DedupePreloadRoute = {
+  preloads?: Array<ManifestAssetLink>
+  children?: Array<string>
 }
 
 export function appendUniqueStrings(
@@ -506,25 +511,27 @@ export function buildRouteManifestRoutes(options: {
 }
 
 export function dedupeNestedRoutePreloads(
-  route: { preloads?: Array<string>; children?: Array<string> },
-  routesById: Record<string, RouteTreeRoute>,
+  route: DedupePreloadRoute,
+  routesById: Record<string, DedupePreloadRoute>,
   seenPreloads = new Set<string>(),
 ) {
   let routePreloads = route.preloads
 
   if (routePreloads && routePreloads.length > 0) {
-    let dedupedPreloads: Array<string> | undefined
+    let dedupedPreloads: Array<ManifestAssetLink> | undefined
 
     for (let i = 0; i < routePreloads.length; i++) {
       const preload = routePreloads[i]!
-      if (seenPreloads.has(preload)) {
+      const preloadHref = resolveManifestAssetLink(preload).href
+
+      if (seenPreloads.has(preloadHref)) {
         if (dedupedPreloads === undefined) {
           dedupedPreloads = routePreloads.slice(0, i)
         }
         continue
       }
 
-      seenPreloads.add(preload)
+      seenPreloads.add(preloadHref)
 
       if (dedupedPreloads) {
         dedupedPreloads.push(preload)
@@ -549,7 +556,7 @@ export function dedupeNestedRoutePreloads(
 
   if (routePreloads) {
     for (let i = routePreloads.length - 1; i >= 0; i--) {
-      seenPreloads.delete(routePreloads[i]!)
+      seenPreloads.delete(resolveManifestAssetLink(routePreloads[i]!).href)
     }
   }
 }

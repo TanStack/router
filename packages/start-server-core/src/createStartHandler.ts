@@ -20,9 +20,10 @@ import { requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
 import {
+  adaptTransformAssetUrlsConfigToTransformAssets,
   buildManifestWithClientEntry,
-  resolveTransformConfig,
-  transformManifestUrls,
+  resolveTransformAssetsConfig,
+  transformManifestAssets,
 } from './transformAssetUrls'
 
 import { HEADERS } from './constants'
@@ -47,7 +48,8 @@ import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 import type {
   StartManifestWithClientEntry,
   TransformAssetUrls,
-  TransformAssetUrlsFn,
+  TransformAssets,
+  TransformAssetsFn,
 } from './transformAssetUrls'
 
 type TODO = any
@@ -59,7 +61,87 @@ type AnyMiddlewareServerFn =
 export interface CreateStartHandlerOptions {
   handler: HandlerCallback<AnyRouter>
   /**
-   * Transform asset URLs at runtime, e.g. to prepend a CDN prefix.
+   * Transform asset URLs and attributes at runtime, e.g. to prepend a CDN prefix.
+   *
+   * **String** — a URL prefix prepended to every asset URL (cached by default):
+   * ```ts
+   * createStartHandler({
+   *   handler: defaultStreamHandler,
+   *   transformAssets: 'https://cdn.example.com',
+   * })
+   * ```
+   *
+   * **Object shorthand** — a URL prefix with optional `crossOrigin`:
+   * ```ts
+   * createStartHandler({
+   *   handler: defaultStreamHandler,
+   *   transformAssets: {
+   *     prefix: 'https://cdn.example.com',
+   *     crossOrigin: 'anonymous',
+   *   },
+   * })
+   * ```
+   *
+   * `crossOrigin` accepts a single value or a per-kind record:
+   * ```ts
+   * transformAssets: {
+   *   prefix: 'https://cdn.example.com',
+   *   crossOrigin: {
+   *     modulepreload: 'anonymous',
+   *     stylesheet: 'use-credentials',
+   *   },
+   * }
+   * ```
+   *
+   * **Callback** — receives `{ kind, url }` and returns either a string URL or
+   * `{ href, crossOrigin? }` (cached by default — runs once on first request):
+   * ```ts
+   * createStartHandler({
+   *   handler: defaultStreamHandler,
+   *   transformAssets: ({ kind, url }) => {
+   *     const href = `https://cdn.example.com${url}`
+   *
+   *     if (kind === 'modulepreload') {
+   *       return { href, crossOrigin: 'anonymous' }
+   *     }
+   *
+   *     return { href }
+   *   },
+   * })
+   * ```
+   *
+   * **Object** — for explicit cache control:
+   * ```ts
+   * createStartHandler({
+   *   handler: defaultStreamHandler,
+   *   transformAssets: {
+   *     transform: ({ url }) => {
+   *       const region = getRequest().headers.get('x-region') || 'us'
+   *       return { href: `https://cdn-${region}.example.com${url}` }
+   *     },
+   *     cache: false,
+   *   },
+   * })
+   * ```
+   *
+   * `kind` is one of `'modulepreload' | 'stylesheet' | 'clientEntry'`.
+   * `crossOrigin` applies to manifest-managed `<link>` assets.
+   *
+   * By default, the transformed manifest is cached after the first request
+   * (`cache: true`). Set `cache: false` for per-request transforms.
+   *
+   * If you're using a cached transform, you can optionally set `warmup: true`
+   * (object form only) to compute the transformed manifest in the background at
+   * server startup.
+   *
+   * Note: This only transforms URLs managed by TanStack Start's manifest
+   * (JS preloads, CSS links, and the client entry script). For asset imports
+   * used directly in components (e.g. `import logo from './logo.svg'`),
+   * configure Vite's `experimental.renderBuiltUrl` in your vite.config.ts.
+   */
+  transformAssets?: TransformAssets
+  /**
+   * @deprecated Use `transformAssets` instead.
    *
    * **String** — a URL prefix prepended to every asset URL (cached by default):
    * ```ts
@@ -181,14 +263,14 @@ function getBaseManifest(
  */
 async function resolveManifest(
   matchedRoutes: ReadonlyArray<AnyRoute> | undefined,
-  transformFn: TransformAssetUrlsFn | undefined,
+  transformFn: TransformAssetsFn | undefined,
   cache: boolean,
 ): Promise<Manifest> {
   const base = await getBaseManifest(matchedRoutes)
 
   const computeFinalManifest = async () => {
     return transformFn
-      ? await transformManifestUrls(base, transformFn, { clone: !cache })
+      ? await transformManifestAssets(base, transformFn, { clone: !cache })
       : buildManifestWithClientEntry(base)
   }
 
@@ -332,7 +414,7 @@ function handlerToMiddleware(
  * ```ts
  * export default createStartHandler({
  *   handler: defaultStreamHandler,
- *   transformAssetUrls: 'https://cdn.example.com',
+ *   transformAssets: 'https://cdn.example.com',
  * })
  * ```
  *
@@ -340,10 +422,10 @@ function handlerToMiddleware(
  * ```ts
  * export default createStartHandler({
  *   handler: defaultStreamHandler,
- *   transformAssetUrls: {
+ *   transformAssets: {
  *     transform: ({ url }) => {
  *       const cdnBase = getRequest().headers.get('x-cdn-base') || ''
- *       return `${cdnBase}${url}`
+ *       return { href: `${cdnBase}${url}` }
  *     },
  *     cache: false,
  *   },
@@ -356,40 +438,65 @@ export function createStartHandler<TRegister = Register>(
   // Normalize the overloaded argument
   const cb: HandlerCallback<AnyRouter> =
     typeof cbOrOptions === 'function' ? cbOrOptions : cbOrOptions.handler
+  const transformAssetsOption: TransformAssets | undefined =
+    typeof cbOrOptions === 'function' ? undefined : cbOrOptions.transformAssets
   const transformAssetUrlsOption: TransformAssetUrls | undefined =
     typeof cbOrOptions === 'function'
       ? undefined
       : cbOrOptions.transformAssetUrls
 
+  const transformOption =
+    transformAssetsOption !== undefined
+      ? resolveTransformAssetsConfig(transformAssetsOption)
+      : transformAssetUrlsOption !== undefined
+        ? resolveTransformAssetsConfig(
+            adaptTransformAssetUrlsConfigToTransformAssets(
+              transformAssetUrlsOption,
+            ),
+          )
+        : undefined
+
   const warmupTransformManifest =
-    !!transformAssetUrlsOption &&
-    typeof transformAssetUrlsOption === 'object' &&
-    transformAssetUrlsOption.warmup === true
+    (!!transformAssetsOption &&
+      typeof transformAssetsOption === 'object' &&
+      'warmup' in transformAssetsOption &&
+      transformAssetsOption.warmup === true) ||
+    (!!transformAssetUrlsOption &&
+      typeof transformAssetUrlsOption === 'object' &&
+      transformAssetUrlsOption.warmup === true)
 
   // Pre-resolve the transform function and cache flag
-  const resolvedTransformConfig = transformAssetUrlsOption
-    ? resolveTransformConfig(transformAssetUrlsOption)
-    : undefined
+  const resolvedTransformConfig = transformOption
   const cache = resolvedTransformConfig ? resolvedTransformConfig.cache : true
+  const shouldCacheCreateTransform =
+    cache && process.env.TSS_DEV_SERVER !== 'true'
 
-  // Memoize a single createTransform() result when caching is enabled.
-  let cachedCreateTransformPromise: Promise<TransformAssetUrlsFn> | undefined
+  // Memoize a single createTransform() result when caching is enabled outside
+  // of the dev server.
+  let cachedCreateTransformPromise: Promise<TransformAssetsFn> | undefined
 
   const getTransformFn = async (
     opts: { warmup: true } | { warmup: false; request: Request },
-  ): Promise<TransformAssetUrlsFn | undefined> => {
+  ): Promise<TransformAssetsFn | undefined> => {
     if (!resolvedTransformConfig) return undefined
+
     if (resolvedTransformConfig.type === 'createTransform') {
-      if (cache) {
+      if (shouldCacheCreateTransform) {
         if (!cachedCreateTransformPromise) {
           cachedCreateTransformPromise = Promise.resolve(
             resolvedTransformConfig.createTransform(opts),
-          )
+          ).catch((error) => {
+            cachedCreateTransformPromise = undefined
+            throw error
+          })
         }
+
         return cachedCreateTransformPromise
       }
+
       return resolvedTransformConfig.createTransform(opts)
     }
+
     return resolvedTransformConfig.transformFn
   }
 
@@ -408,7 +515,7 @@ export function createStartHandler<TRegister = Register>(
       const base = await getBaseManifest(undefined)
       const transformFn = await getTransformFn({ warmup: true })
       return transformFn
-        ? await transformManifestUrls(base, transformFn, { clone: false })
+        ? await transformManifestAssets(base, transformFn, { clone: false })
         : buildManifestWithClientEntry(base)
     })()
     cachedFinalManifestPromise = warmupPromise

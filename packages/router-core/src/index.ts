@@ -68,7 +68,14 @@ export type {
 } from './fileRoute'
 
 export type { ParsedLocation } from './location'
-export type { Manifest, RouterManagedTag } from './manifest'
+export type {
+  Manifest,
+  RouterManagedTag,
+  AssetCrossOrigin,
+  AssetCrossOriginConfig,
+  ManifestAssetLink,
+} from './manifest'
+export { getAssetCrossOrigin, resolveManifestAssetLink } from './manifest'
 export { isMatch } from './Matches'
 export type {
   AnyMatchAndValue,

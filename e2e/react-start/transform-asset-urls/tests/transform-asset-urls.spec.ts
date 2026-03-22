@@ -19,23 +19,23 @@ async function getSSRHtml(page: Page, path = '/') {
   return response.text()
 }
 
-test.describe('transformAssetUrls with CDN prefix', () => {
+test.describe('transformAssets with CDN prefix', () => {
   test('test run mode is set (string|function|options)', async () => {
-    expect(process.env.TRANSFORM_ASSET_URLS_MODE).toMatch(
+    expect(process.env.TRANSFORM_ASSETS_MODE).toMatch(
       /^(string|function|options)$/,
     )
 
-    if (process.env.TRANSFORM_ASSET_URLS_MODE === 'options') {
-      expect(process.env.TRANSFORM_ASSET_URLS_OPTIONS_KIND).toMatch(
+    if (process.env.TRANSFORM_ASSETS_MODE === 'options') {
+      const optionsCache = process.env.TRANSFORM_ASSETS_OPTIONS_CACHE || 'true'
+      const optionsWarmup =
+        process.env.TRANSFORM_ASSETS_OPTIONS_WARMUP || 'true'
+
+      expect(process.env.TRANSFORM_ASSETS_OPTIONS_KIND).toMatch(
         /^(transform|createTransform)$/,
       )
 
-      expect(process.env.TRANSFORM_ASSET_URLS_OPTIONS_CACHE).toMatch(
-        /^(true|false)$/,
-      )
-      expect(process.env.TRANSFORM_ASSET_URLS_OPTIONS_WARMUP).toMatch(
-        /^(true|false)$/,
-      )
+      expect(optionsCache).toMatch(/^(true|false)$/)
+      expect(optionsWarmup).toMatch(/^(true|false)$/)
     }
   })
 
@@ -54,6 +54,22 @@ test.describe('transformAssetUrls with CDN prefix', () => {
       expect(href).toBeTruthy()
       expect(href).toMatch(/^http:\/\/localhost:\d+\//)
     }
+  })
+
+  test('SSR HTML contains expected crossorigin attributes', async ({
+    page,
+  }) => {
+    const html = await getSSRHtml(page)
+
+    const modulepreloadLink = html.match(
+      /<link[^>]*rel="modulepreload"[^>]*crossorigin="anonymous"[^>]*>/,
+    )
+    expect(modulepreloadLink).toBeTruthy()
+
+    const stylesheetLink = html.match(
+      /<link[^>]*rel="stylesheet"[^>]*crossorigin="use-credentials"[^>]*>/,
+    )
+    expect(stylesheetLink).toBeTruthy()
   })
 
   test('SSR HTML contains CDN-prefixed stylesheet link', async ({ page }) => {
@@ -133,7 +149,7 @@ test.describe('transformAssetUrls with CDN prefix', () => {
     // Page content renders
     await expect(page.getByTestId('home-heading')).toHaveText('Welcome Home')
     await expect(page.getByTestId('home-content')).toContainText(
-      'transformAssetUrls',
+      'transformAssets',
     )
   })
 

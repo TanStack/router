@@ -26,6 +26,7 @@ const createTestManifest = (routeId: string) =>
   ({
     routes: {
       [routeId]: {
+        preloads: ['/main.js'],
         assets: [
           {
             tag: 'link',
@@ -151,6 +152,63 @@ describe('ssr scripts', () => {
 })
 
 describe('ssr HeadContent', () => {
+  test('applies assetCrossOrigin to manifest assets and preloads', async () => {
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <Teleport to="head">
+            <HeadContent
+              assetCrossOrigin={{
+                modulepreload: 'anonymous',
+                stylesheet: 'use-credentials',
+              }}
+            />
+          </Teleport>
+          <Outlet />
+        </>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id),
+    }
+
+    await router.load()
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(document.head.querySelector('link[rel="stylesheet"]')).toBeTruthy()
+      expect(
+        document.head.querySelector('link[rel="modulepreload"]'),
+      ).toBeTruthy()
+    })
+
+    expect(
+      document.head
+        .querySelector('link[rel="stylesheet"]')
+        ?.getAttribute('crossorigin'),
+    ).toBe('use-credentials')
+    expect(
+      document.head
+        .querySelector('link[rel="modulepreload"]')
+        ?.getAttribute('crossorigin'),
+    ).toBe('anonymous')
+  })
+
   test('derives title, dedupes meta, and allows non-loader HeadContent', async () => {
     const rootRoute = createRootRoute({
       loader: () =>

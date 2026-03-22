@@ -1,5 +1,9 @@
 import { buildDevStylesUrl, rootRouteId } from '@tanstack/router-core'
-import type { AnyRoute, RouterManagedTag } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  ManifestAssetLink,
+  RouterManagedTag,
+} from '@tanstack/router-core'
 import type { StartManifestWithClientEntry } from './transformAssetUrls'
 
 // Pre-computed constant for dev styles URL basepath.
@@ -61,7 +65,7 @@ export async function getStartManifest(
     routes: Object.fromEntries(
       Object.entries(startManifest.routes).flatMap(([k, v]) => {
         const result = {} as {
-          preloads?: Array<string>
+          preloads?: Array<ManifestAssetLink>
           assets?: Array<RouterManagedTag>
         }
         let hasData = false
@@ -82,7 +86,7 @@ export async function getStartManifest(
   }
 
   return {
-    manifest,
+    manifest: manifest as StartManifestWithClientEntry['manifest'],
     clientEntry: startManifest.clientEntry,
     injectedHeadScripts,
   }

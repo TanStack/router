@@ -3,6 +3,7 @@ import * as Vue from 'vue'
 import { Asset } from './Asset'
 import { useHydrated } from './ClientOnly'
 import { useTags } from './headContentUtils'
+import type { AssetCrossOriginConfig } from '@tanstack/router-core'
 
 const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
 
@@ -14,8 +15,14 @@ const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
  */
 export const HeadContent = Vue.defineComponent({
   name: 'HeadContent',
-  setup() {
-    const tags = useTags()
+  props: {
+    assetCrossOrigin: {
+      type: [String, Object] as Vue.PropType<AssetCrossOriginConfig>,
+      default: undefined,
+    },
+  },
+  setup(props) {
+    const tags = useTags(props.assetCrossOrigin)
     const hydrated = useHydrated()
 
     // Fallback cleanup for hydration mismatch cases
