@@ -5,6 +5,8 @@ import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+const RELS_TO_DEDUPE = new Set(['canonical'])
+
 function buildTagsFromMatches(
   router: ReturnType<typeof useRouter>,
   nonce: string | undefined,
@@ -77,17 +79,39 @@ function buildTagsFromMatches(
   }
   resultMeta.reverse()
 
-  const constructedLinks = matches
-    .map((match) => match.links!)
-    .filter(Boolean)
-    .flat(1)
-    .map((link) => ({
-      tag: 'link',
-      attrs: {
-        ...link,
-        nonce,
-      },
-    })) satisfies Array<RouterManagedTag>
+  const constructedLinks: Array<RouterManagedTag> = []
+  const linksByRel = new Set<string>()
+
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const match = matches[i]!
+    const matchLinks = match.links
+    if (!matchLinks) continue
+
+    for (let j = matchLinks.length - 1; j >= 0; j--) {
+      const link = matchLinks[j]
+      if (!link) continue
+
+      if (link.rel) {
+        const rel = link.rel.toLowerCase()
+        if (RELS_TO_DEDUPE.has(rel)) {
+          if (linksByRel.has(rel)) {
+            continue
+          }
+          linksByRel.add(rel)
+        }
+      }
+
+      constructedLinks.push({
+        tag: 'link',
+        attrs: {
+          ...link,
+          nonce,
+        },
+      })
+    }
+  }
+
+  constructedLinks.reverse()
 
   const manifest = router.ssr?.manifest
   const assetLinks = matches
@@ -267,17 +291,39 @@ export const useTags = () => {
   const links = useStore(
     router.stores.activeMatchesSnapshot,
     (matches) => {
-      const constructed = matches
-        .map((match) => match.links!)
-        .filter(Boolean)
-        .flat(1)
-        .map((link) => ({
-          tag: 'link',
-          attrs: {
-            ...link,
-            nonce,
-          },
-        })) satisfies Array<RouterManagedTag>
+      const constructedLinks: Array<RouterManagedTag> = []
+      const linksByRel = new Set<string>()
+
+      for (let i = matches.length - 1; i >= 0; i--) {
+        const match = matches[i]!
+        const matchLinks = match.links
+        if (!matchLinks) continue
+
+        for (let j = matchLinks.length - 1; j >= 0; j--) {
+          const link = matchLinks[j]
+          if (!link) continue
+
+          if (link.rel) {
+            const rel = link.rel.toLowerCase()
+            if (RELS_TO_DEDUPE.has(rel)) {
+              if (linksByRel.has(rel)) {
+                continue
+              }
+              linksByRel.add(rel)
+            }
+          }
+
+          constructedLinks.push({
+            tag: 'link',
+            attrs: {
+              ...link,
+              nonce,
+            },
+          })
+        }
+      }
+
+      constructedLinks.reverse()
 
       const manifest = router.ssr?.manifest
 
@@ -300,7 +346,7 @@ export const useTags = () => {
             }) satisfies RouterManagedTag,
         )
 
-      return [...constructed, ...assets]
+      return [...constructedLinks, ...assets]
     },
     deepEqual,
   )

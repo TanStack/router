@@ -3,6 +3,8 @@ import { escapeHtml, replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+const RELS_TO_DEDUPE = new Set(['canonical'])
+
 /**
  * Build the list of head/link/meta/script tags to render for active matches.
  * Used internally by `HeadContent`.
@@ -93,17 +95,39 @@ export const useTags = () => {
 
   const links = Solid.createMemo(() => {
     const matches = activeMatches()
-    const constructed = matches
-      .map((match) => match.links!)
-      .filter(Boolean)
-      .flat(1)
-      .map((link) => ({
-        tag: 'link',
-        attrs: {
-          ...link,
-          nonce,
-        },
-      })) satisfies Array<RouterManagedTag>
+    const constructed: Array<RouterManagedTag> = []
+    const linksByRel = new Set<string>()
+
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const match = matches[i]!
+      const matchLinks = match.links
+      if (!matchLinks) continue
+
+      for (let j = matchLinks.length - 1; j >= 0; j--) {
+        const link = matchLinks[j]
+        if (!link) continue
+
+        if (link.rel) {
+          const rel = link.rel.toLowerCase()
+          if (RELS_TO_DEDUPE.has(rel)) {
+            if (linksByRel.has(rel)) {
+              continue
+            }
+            linksByRel.add(rel)
+          }
+        }
+
+        constructed.push({
+          tag: 'link',
+          attrs: {
+            ...link,
+            nonce,
+          },
+        })
+      }
+    }
+
+    constructed.reverse()
 
     const manifest = router.ssr?.manifest
 

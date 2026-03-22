@@ -4,6 +4,8 @@ import { useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+const RELS_TO_DEDUPE = new Set(['canonical'])
+
 export const useTags = () => {
   const router = useRouter()
   const matches = useStore(
@@ -72,19 +74,41 @@ export const useTags = () => {
     return resultMeta
   })
 
-  const links = Vue.computed<Array<RouterManagedTag>>(
-    () =>
-      matches.value
-        .map((match) => match.links!)
-        .filter(Boolean)
-        .flat(1)
-        .map((link) => ({
+  const links = Vue.computed<Array<RouterManagedTag>>(() => {
+    const constructedLinks: Array<RouterManagedTag> = []
+    const linksByRel = new Set<string>()
+
+    for (let i = matches.value.length - 1; i >= 0; i--) {
+      const match = matches.value[i]!
+      const matchLinks = match.links
+      if (!matchLinks) continue
+
+      for (let j = matchLinks.length - 1; j >= 0; j--) {
+        const link = matchLinks[j]
+        if (!link) continue
+
+        if (link.rel) {
+          const rel = link.rel.toLowerCase()
+          if (RELS_TO_DEDUPE.has(rel)) {
+            if (linksByRel.has(rel)) {
+              continue
+            }
+            linksByRel.add(rel)
+          }
+        }
+
+        constructedLinks.push({
           tag: 'link',
           attrs: {
             ...link,
           },
-        })) as Array<RouterManagedTag>,
-  )
+        })
+      }
+    }
+
+    constructedLinks.reverse()
+    return constructedLinks
+  })
 
   const preloadMeta = Vue.computed<Array<RouterManagedTag>>(() => {
     const preloadMeta: Array<RouterManagedTag> = []
