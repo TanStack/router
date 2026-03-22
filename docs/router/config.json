@@ -268,6 +268,101 @@
       ]
     },
     {
+      "label": "How To",
+      "children": [
+        {
+          "label": "Install TanStack Router",
+          "to": "how-to/install"
+        },
+        {
+          "label": "Use Environment Variables",
+          "to": "how-to/use-environment-variables"
+        },
+        {
+          "label": "Deploy to Production",
+          "to": "how-to/deploy-to-production"
+        },
+        {
+          "label": "Set Up SSR",
+          "to": "how-to/setup-ssr"
+        },
+        {
+          "label": "Migrate from React Router",
+          "to": "how-to/migrate-from-react-router"
+        },
+        {
+          "label": "Set Up Authentication",
+          "to": "how-to/setup-authentication"
+        },
+        {
+          "label": "Integrate Auth Providers",
+          "to": "how-to/setup-auth-providers"
+        },
+        {
+          "label": "Set Up RBAC",
+          "to": "how-to/setup-rbac"
+        },
+        {
+          "label": "Navigate with Search Params",
+          "to": "how-to/navigate-with-search-params"
+        },
+        {
+          "label": "Set Up Basic Search Params",
+          "to": "how-to/setup-basic-search-params"
+        },
+        {
+          "label": "Validate Search Params",
+          "to": "how-to/validate-search-params"
+        },
+        {
+          "label": "Arrays, Objects & Dates in Search Params",
+          "to": "how-to/arrays-objects-dates-search-params"
+        },
+        {
+          "label": "Share Search Params Across Routes",
+          "to": "how-to/share-search-params-across-routes"
+        },
+        {
+          "label": "Set Up Testing",
+          "to": "how-to/setup-testing"
+        },
+        {
+          "label": "Test File-Based Routing",
+          "to": "how-to/test-file-based-routing"
+        },
+        {
+          "label": "Debug Router Issues",
+          "to": "how-to/debug-router-issues"
+        },
+        {
+          "label": "Integrate Shadcn UI",
+          "to": "how-to/integrate-shadcn-ui"
+        },
+        {
+          "label": "Integrate Material UI",
+          "to": "how-to/integrate-material-ui"
+        },
+        {
+          "label": "Integrate Chakra UI",
+          "to": "how-to/integrate-chakra-ui"
+        },
+        {
+          "label": "Integrate Framer Motion",
+          "to": "how-to/integrate-framer-motion"
+        }
+      ],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": []
+        },
+        {
+          "label": "solid",
+          "children": []
+        }
+      ]
+    },
+    {
       "label": "API",
       "children": [
         {
