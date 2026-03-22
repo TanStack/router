@@ -13,7 +13,6 @@ import {
 import {
   attachRouterServerSsrUtils,
   getNormalizedURL,
-  getOrigin,
 } from '@tanstack/router-core/ssr/server'
 import { runWithStartContext } from '@tanstack/start-storage-context'
 import { requestHandler } from './request-response'
@@ -541,7 +540,7 @@ export function createStartHandler<TRegister = Register>(
       // in these cases we would prefer to redirect to the new path
       const { url, handledProtocolRelativeURL } = getNormalizedURL(request.url)
       const href = url.pathname + url.search + url.hash
-      const origin = getOrigin(request)
+      const origin = url.origin
 
       if (handledProtocolRelativeURL) {
         return Response.redirect(url, 308)
