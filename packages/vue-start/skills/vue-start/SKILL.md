@@ -1,10 +1,6 @@
 ---
 name: vue-start
-description: >-
-  Vue bindings for TanStack Start: useServerFn hook, tanstackStart
-  Vite plugin, StartClient, StartServer, Vue-specific setup,
-  re-exports from @tanstack/start-client-core. Full project setup
-  with Vue.
+description: "Build full-stack Vue applications with TanStack Start including SSR, server functions, and Vite integration. Use when setting up a new Vue + TanStack Start project, configuring SSR with Vue, or calling server functions from Vue components. Key APIs: tanstackStart Vite plugin, StartClient, StartServer, useServerFn."
 type: framework
 library: tanstack-start
 library_version: '1.166.2'

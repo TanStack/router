@@ -1,11 +1,6 @@
 ---
-name: router-core/data-loading
-description: >-
-  Route loader option, loaderDeps for cache keys, staleTime/gcTime/
-  defaultPreloadStaleTime SWR caching, pendingComponent/pendingMs/
-  pendingMinMs, errorComponent/onError/onCatch, beforeLoad, router
-  context and createRootRouteWithContext DI pattern, router.invalidate,
-  Await component, deferred data loading with unawaited promises.
+name: router-core-data-loading
+description: "Load and cache route data with TanStack Router's built-in SWR loader system and dependency injection via router context. Use when fetching data on route load, configuring stale-while-revalidate caching, deferring slow data, showing pending UI, or injecting dependencies into loaders. Key APIs: loader, loaderDeps, staleTime, gcTime, beforeLoad, Await, router.invalidate, createRootRouteWithContext."
 type: sub-skill
 library: tanstack-router
 library_version: '1.166.2'

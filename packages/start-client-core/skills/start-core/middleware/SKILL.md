@@ -1,11 +1,6 @@
 ---
-name: start-core/middleware
-description: >-
-  createMiddleware, request middleware (.server only), server function
-  middleware (.client + .server), context passing via next({ context }),
-  sendContext for client-server transfer, global middleware via
-  createStart in src/start.ts, middleware factories, method order
-  enforcement, fetch override precedence.
+name: start-core-middleware
+description: "Build composable middleware chains for TanStack Start server functions and request handling. Use when adding auth checks, logging, context passing between middleware layers, setting up global middleware, or transferring context between client and server. Key APIs: createMiddleware, next(), sendContext, createStart."
 type: sub-skill
 library: tanstack-start
 library_version: '1.166.2'

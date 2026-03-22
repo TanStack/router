@@ -1,10 +1,6 @@
 ---
-name: router-core/not-found-and-errors
-description: >-
-  notFound() function, notFoundComponent, defaultNotFoundComponent,
-  notFoundMode (fuzzy/root), errorComponent, CatchBoundary,
-  CatchNotFound, isNotFound, NotFoundRoute (deprecated), route
-  masking (mask option, createRouteMask, unmaskOnReload).
+name: router-core-not-found-and-errors
+description: "Handle 404 pages, error boundaries, and route masking in TanStack Router. Use when creating custom not-found pages, handling missing resources in loaders, configuring per-route error boundaries, or masking URLs for cleaner sharing. Key APIs: notFound(), notFoundComponent, notFoundMode, errorComponent, CatchBoundary, CatchNotFound, createRouteMask."
 type: sub-skill
 library: tanstack-router
 library_version: '1.166.2'

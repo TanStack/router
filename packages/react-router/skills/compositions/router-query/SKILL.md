@@ -1,11 +1,6 @@
 ---
-name: compositions/router-query
-description: >-
-  Integrating TanStack Router with TanStack Query: queryClient
-  in router context, ensureQueryData/prefetchQuery in loaders,
-  useSuspenseQuery in components, defaultPreloadStaleTime: 0,
-  setupRouterSsrQueryIntegration for SSR dehydration/hydration
-  and streaming, per-request QueryClient isolation.
+name: compositions-router-query
+description: "Integrate TanStack Router with TanStack Query for external data loading and caching. Use when adding Query to a Router project, prefetching data in loaders with ensureQueryData, configuring defaultPreloadStaleTime, setting up SSR streaming with setupRouterSsrQueryIntegration, or isolating QueryClient per request. Key APIs: useSuspenseQuery, prefetchQuery, queryClient context."
 type: composition
 library: tanstack-router
 library_version: '1.166.2'

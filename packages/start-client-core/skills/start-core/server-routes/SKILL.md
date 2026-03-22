@@ -1,11 +1,6 @@
 ---
-name: start-core/server-routes
-description: >-
-  Server-side API endpoints using the server property on
-  createFileRoute, HTTP method handlers (GET, POST, PUT, DELETE),
-  createHandlers for per-handler middleware, handler context
-  (request, params, context), request body parsing, response
-  helpers, file naming for API routes.
+name: start-core-server-routes
+description: "Define server-side API endpoints in TanStack Start using file-based routing conventions. Use when building REST APIs, handling webhooks, processing raw HTTP requests, or adding per-endpoint middleware. Key APIs: createFileRoute server property, createHandlers, HTTP method handlers (GET, POST, PUT, DELETE)."
 type: sub-skill
 library: tanstack-start
 library_version: '1.166.2'
