@@ -182,7 +182,12 @@ function buildTrendGraph(points) {
     return 'n/a'
   }
 
-  const src = `${TREND_GRAPH_URL}?coords=${encodeURIComponent(coords.join(','))}`
+  const params = new URLSearchParams({
+    coords: coords.join(','),
+    width: '165',
+    height: '45',
+  })
+  const src = `${TREND_GRAPH_URL}?${params.toString()}`
   return `![Historical gzip bytes trend](${src})`
 }
 
