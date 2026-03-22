@@ -6,6 +6,7 @@ import path from 'node:path'
 import { parseArgs as parseNodeArgs } from 'node:util'
 
 const DEFAULT_MARKER = '<!-- bundle-size-benchmark -->'
+const TREND_GRAPH_URL = 'https://tiny-graph.florianpellet.com/'
 const INT_FORMAT = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 })
@@ -132,29 +133,57 @@ function formatDelta(current, baseline) {
   return `${formatBytes(delta, { signed: true })} (${sign}${PERCENT_FORMAT.format(ratio)})`
 }
 
-function sparkline(values) {
-  if (!values.length) {
+function toUnixTimestamp(value) {
+  if (Number.isFinite(value)) {
+    return Math.floor(Number(value) / 1000)
+  }
+
+  if (typeof value !== 'string' || !value) {
+    return undefined
+  }
+
+  const parsed = Date.parse(value)
+  if (Number.isNaN(parsed)) {
+    return undefined
+  }
+
+  return Math.floor(parsed / 1000)
+}
+
+function resolveHistoryEntryTimestamp(entry) {
+  return (
+    toUnixTimestamp(entry?.date) ?? toUnixTimestamp(entry?.commit?.timestamp)
+  )
+}
+
+function resolveCurrentTimestamp(current) {
+  return (
+    toUnixTimestamp(current?.measuredAt) ??
+    toUnixTimestamp(current?.generatedAt)
+  )
+}
+
+function buildTrendGraph(points) {
+  if (!points.length) {
     return 'n/a'
   }
 
-  const blocks = '▁▂▃▄▅▆▇█'
-  const min = Math.min(...values)
-  const max = Math.max(...values)
+  const coords = []
 
-  if (max === min) {
-    return '▅'.repeat(values.length)
+  for (const point of points) {
+    if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) {
+      continue
+    }
+
+    coords.push(point.x, point.y)
   }
 
-  return values
-    .map((value) => {
-      const normalized = (value - min) / (max - min)
-      const idx = Math.min(
-        blocks.length - 1,
-        Math.max(0, Math.round(normalized * (blocks.length - 1))),
-      )
-      return blocks[idx]
-    })
-    .join('')
+  if (!coords.length) {
+    return 'n/a'
+  }
+
+  const src = `${TREND_GRAPH_URL}?coords=${encodeURIComponent(coords.join(','))}`
+  return `![Historical gzip bytes trend](${src})`
 }
 
 function normalizeHistoryEntries(history, benchmarkName) {
@@ -177,6 +206,12 @@ function buildSeriesByScenario(historyEntries) {
   const map = new Map()
 
   for (const entry of historyEntries) {
+    const timestamp = resolveHistoryEntryTimestamp(entry)
+
+    if (!Number.isFinite(timestamp)) {
+      continue
+    }
+
     for (const bench of entry?.benches || []) {
       if (typeof bench?.name !== 'string' || !Number.isFinite(bench?.value)) {
         continue
@@ -186,7 +221,10 @@ function buildSeriesByScenario(historyEntries) {
         map.set(bench.name, [])
       }
 
-      map.get(bench.name).push(Number(bench.value))
+      map.get(bench.name).push({
+        x: timestamp,
+        y: Number(bench.value),
+      })
     }
   }
 
@@ -263,6 +301,7 @@ async function main() {
 
   const historyEntries = normalizeHistoryEntries(history, current.benchmarkName)
   const seriesByScenario = buildSeriesByScenario(historyEntries)
+  const currentTimestamp = resolveCurrentTimestamp(current)
 
   const baseline =
     baselineCurrent != null
@@ -274,15 +313,22 @@ async function main() {
   for (const metric of current.metrics || []) {
     const baselineValue = baseline.benchesByName.get(metric.id)
     const historySeries = (seriesByScenario.get(metric.id) || []).slice(
-      // Reserve one slot for the current metric so the sparkline stays at trendPoints.
+      // Reserve one slot for the current metric so the trend stays at trendPoints.
       -args.trendPoints + 1,
     )
+    const currentPoint = {
+      x: currentTimestamp,
+      y: metric.gzipBytes,
+    }
+    const lastPoint = historySeries[historySeries.length - 1]
 
     if (
-      !historySeries.length ||
-      historySeries[historySeries.length - 1] !== metric.gzipBytes
+      Number.isFinite(currentPoint.x) &&
+      (!lastPoint ||
+        lastPoint.x !== currentPoint.x ||
+        lastPoint.y !== currentPoint.y)
     ) {
-      historySeries.push(metric.gzipBytes)
+      historySeries.push(currentPoint)
     }
 
     rows.push({
@@ -291,7 +337,7 @@ async function main() {
       raw: metric.rawBytes,
       brotli: metric.brotliBytes,
       deltaCell: formatDelta(metric.gzipBytes, baselineValue),
-      trendCell: sparkline(historySeries.slice(-args.trendPoints)),
+      trendCell: buildTrendGraph(historySeries.slice(-args.trendPoints)),
     })
   }
 
@@ -321,7 +367,7 @@ async function main() {
 
   lines.push('')
   lines.push(
-    '_Trend sparkline is historical gzip bytes ending with this PR measurement; lower is better._',
+    '_Trend chart uses historical gzip bytes plotted by measurement date, ending with this PR measurement; lower is better._',
   )
 
   const markdown = lines.join('\n') + '\n'
