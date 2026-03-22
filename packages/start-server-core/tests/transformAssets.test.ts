@@ -137,6 +137,70 @@ describe('transformAssets', () => {
     })
   })
 
+  it('only treats stylesheet links in route.assets as stylesheet transforms', async () => {
+    const transformFn = vi.fn(({ url }) => ({
+      href: `https://cdn.example.com${url}`,
+    }))
+
+    const manifest = await transformManifestAssets(
+      {
+        manifest: {
+          routes: {
+            __root__: {
+              preloads: [],
+              assets: [
+                {
+                  tag: 'link',
+                  attrs: { rel: 'stylesheet preload', href: '/assets/app.css' },
+                },
+                {
+                  tag: 'link',
+                  attrs: { rel: 'icon', href: '/favicon.ico' },
+                },
+              ],
+            },
+          },
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+      { clone: true },
+    )
+
+    expect(transformFn).toHaveBeenCalledWith({
+      kind: 'stylesheet',
+      url: '/assets/app.css',
+    })
+    expect(transformFn).not.toHaveBeenCalledWith({
+      kind: 'stylesheet',
+      url: '/favicon.ico',
+    })
+    expect(manifest.routes.__root__?.assets).toEqual([
+      {
+        tag: 'link',
+        attrs: {
+          rel: 'stylesheet preload',
+          href: 'https://cdn.example.com/assets/app.css',
+        },
+      },
+      {
+        tag: 'link',
+        attrs: {
+          rel: 'icon',
+          href: '/favicon.ico',
+        },
+      },
+      {
+        tag: 'script',
+        attrs: {
+          type: 'module',
+          async: true,
+        },
+        children: 'import("https://cdn.example.com/assets/entry.js")',
+      },
+    ])
+  })
+
   describe('object shorthand', () => {
     it('supports { prefix } — same as string shorthand', () => {
       const config = resolveTransformAssetsConfig({

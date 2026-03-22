@@ -413,6 +413,13 @@ export async function transformManifestAssets(
     if (route.assets) {
       for (const asset of route.assets) {
         if (asset.tag === 'link' && asset.attrs?.href) {
+          const rel = asset.attrs.rel
+          const relTokens = typeof rel === 'string' ? rel.split(/\s+/) : []
+
+          if (!relTokens.includes('stylesheet')) {
+            continue
+          }
+
           const result = normalizeTransformAssetResult(
             await transformFn({
               url: asset.attrs.href,
