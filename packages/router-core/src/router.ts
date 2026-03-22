@@ -564,9 +564,16 @@ export interface BuildNextOptions {
   from?: string
   href?: string
   _fromLocation?: ParsedLocation
+  _locationDeps?: { value: number }
   unsafeRelative?: 'path'
   _isNavigate?: boolean
 }
+
+const BUILD_LOCATION_DEP_NONE = 0
+const BUILD_LOCATION_DEP_PATHNAME = 1
+const BUILD_LOCATION_DEP_SEARCH = 2
+const BUILD_LOCATION_DEP_HASH = 4
+const BUILD_LOCATION_DEP_STATE = 8
 
 type NavigationEventInfo = {
   fromLocation?: ParsedLocation
@@ -1682,35 +1689,12 @@ export class RouterCore<
   private matchRoutesLightweight(location: ParsedLocation): {
     matchedRoutes: ReadonlyArray<AnyRoute>
     fullPath: string
-    search: Record<string, unknown>
     params: Record<string, unknown>
   } {
     const { matchedRoutes, routeParams, parsedParams } = this.getMatchedRoutes(
       location.pathname,
     )
     const lastRoute = last(matchedRoutes)!
-
-    // I don't know if we should run the full search middleware chain, or just validateSearch
-    // // Accumulate search validation through the route chain
-    // const accumulatedSearch: Record<string, unknown> = applySearchMiddleware({
-    //   search: { ...location.search },
-    //   dest: location,
-    //   destRoutes: matchedRoutes,
-    //   _includeValidateSearch: true,
-    // })
-
-    // Accumulate search validation through route chain
-    const accumulatedSearch = { ...location.search }
-    for (const route of matchedRoutes) {
-      try {
-        Object.assign(
-          accumulatedSearch,
-          validateSearch(route.options.validateSearch, accumulatedSearch),
-        )
-      } catch {
-        // Ignore errors, we're not actually routing
-      }
-    }
 
     // Determine params: reuse from state if possible, otherwise parse
     const lastStateMatchId = last(this.stores.matchesId.state)
@@ -1749,7 +1733,6 @@ export class RouterCore<
     return {
       matchedRoutes,
       fullPath: lastRoute.fullPath,
-      search: accumulatedSearch,
       params,
     }
   }
@@ -1793,6 +1776,9 @@ export class RouterCore<
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
   buildLocation: BuildLocationFn = (opts) => {
+    const locationDepsTarget = opts._locationDeps
+    let collectedLocationDeps = BUILD_LOCATION_DEP_NONE
+
     const build = (
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
@@ -1801,6 +1787,25 @@ export class RouterCore<
       // We allow the caller to override the current location
       const currentLocation =
         dest._fromLocation || this.pendingBuiltLocation || this.latestLocation
+
+      let locationDeps = BUILD_LOCATION_DEP_NONE
+
+      if (locationDepsTarget) {
+        const toPath = dest.to == null ? undefined : `${dest.to}`
+        const toIsAbsolute =
+          !!toPath && toPath.charCodeAt(0) === 47 && toPath.charCodeAt(1) !== 47
+        if (!dest.from && (!toPath || !toIsAbsolute)) {
+          locationDeps |= BUILD_LOCATION_DEP_PATHNAME
+        }
+
+        if (dest.hash === true || typeof dest.hash === 'function') {
+          locationDeps |= BUILD_LOCATION_DEP_HASH
+        }
+
+        if (dest.state === true || typeof dest.state === 'function') {
+          locationDeps |= BUILD_LOCATION_DEP_STATE
+        }
+      }
 
       // Use lightweight matching - only computes what buildLocation needs
       // (fullPath, search, params) without creating full match objects
@@ -1839,7 +1844,7 @@ export class RouterCore<
       const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
 
       // From search should always use the current location
-      const fromSearch = lightweightResult.search
+      const fromSearch = currentLocation.search
       // Same with params. It can't hurt to provide as many as possible
       const fromParams = Object.assign(
         Object.create(null),
@@ -1851,6 +1856,13 @@ export class RouterCore<
       const nextTo = dest.to
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
         : this.resolvePathWithBase(fromPath, '.')
+
+      if (
+        locationDepsTarget &&
+        pathRequiresCurrentParams(nextTo, dest.params)
+      ) {
+        locationDeps |= BUILD_LOCATION_DEP_PATHNAME
+      }
 
       // Resolve the next params
       const nextParams =
@@ -1877,6 +1889,20 @@ export class RouterCore<
 
       if (isGlobalNotFound && this.options.notFoundRoute) {
         destRoutes = [...destRoutes, this.options.notFoundRoute]
+      }
+
+      if (
+        locationDepsTarget &&
+        (dest.search === true ||
+          typeof dest.search === 'function' ||
+          destRoutes.some((route) =>
+            routeNeedsCurrentSearch(
+              route,
+              opts._includeValidateSearch ?? false,
+            ),
+          ))
+      ) {
+        locationDeps |= BUILD_LOCATION_DEP_SEARCH
       }
 
       // If there are any params, we need to stringify them
@@ -1999,7 +2025,7 @@ export class RouterCore<
         publicHref = href
       }
 
-      return {
+      const nextLocation = {
         publicHref,
         href,
         pathname: nextPathname,
@@ -2010,6 +2036,12 @@ export class RouterCore<
         external,
         unmaskOnReload: dest.unmaskOnReload,
       }
+
+      if (locationDepsTarget) {
+        collectedLocationDeps |= locationDeps
+      }
+
+      return nextLocation
     }
 
     const buildWithMatches = (
@@ -2063,13 +2095,23 @@ export class RouterCore<
     }
 
     if (opts.mask) {
-      return buildWithMatches(opts, {
+      const next = buildWithMatches(opts, {
         from: opts.from,
         ...opts.mask,
       })
+      if (locationDepsTarget) {
+        locationDepsTarget.value = collectedLocationDeps
+      }
+      return next
     }
 
-    return buildWithMatches(opts)
+    const next = buildWithMatches(opts)
+
+    if (locationDepsTarget) {
+      locationDepsTarget.value = collectedLocationDeps
+    }
+
+    return next
   }
 
   commitLocationPromise: undefined | ControlledPromise<void>
@@ -3056,6 +3098,22 @@ function applySearchMiddleware({
 }) {
   const middleware = buildMiddlewareChain(destRoutes)
   return middleware(search, dest, _includeValidateSearch ?? false)
+}
+
+function routeNeedsCurrentSearch(
+  route: AnyRoute,
+  includeValidateSearch: boolean,
+) {
+  return !!(
+    route.options.search?.middlewares?.length ||
+    route.options.preSearchFilters?.length ||
+    route.options.postSearchFilters?.length ||
+    (includeValidateSearch && route.options.validateSearch)
+  )
+}
+
+function pathRequiresCurrentParams(nextTo: string, params: unknown) {
+  return params !== false && nextTo.includes('$')
 }
 
 function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {

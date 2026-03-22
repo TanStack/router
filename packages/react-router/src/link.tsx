@@ -19,6 +19,7 @@ import type {
   AnyRouter,
   Constrain,
   LinkOptions,
+  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -396,6 +397,15 @@ export function useLinkProps<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
+  const buildLocationRef = React.useRef<BuildLocationState | null>(null)
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const shouldReuseBuildLocation = React.useMemo(
+    () => canReuseBuildLocation(_options),
+    [_options],
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const currentLocation = useStore(
     router.stores.location,
     (l) => l,
@@ -403,10 +413,51 @@ export function useLinkProps<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const next = React.useMemo(() => {
-    const opts = { _fromLocation: currentLocation, ..._options }
-    return router.buildLocation(opts as any)
-  }, [router, currentLocation, _options])
+  const buildLocation = React.useMemo(() => {
+    const previousBuildLocation = buildLocationRef.current
+
+    if (
+      shouldReuseBuildLocation &&
+      previousBuildLocation?.options === _options &&
+      !didLocationChange(
+        previousBuildLocation.location,
+        currentLocation,
+        previousBuildLocation.deps,
+      )
+    ) {
+      return previousBuildLocation
+    }
+
+    const shouldCollectLocationDeps =
+      shouldReuseBuildLocation &&
+      !(
+        (previousBuildLocation?.deps ?? BUILD_LOCATION_DEP_NONE) &
+        (BUILD_LOCATION_DEP_PATHNAME | BUILD_LOCATION_DEP_SEARCH)
+      )
+
+    const locationDeps = shouldCollectLocationDeps
+      ? { value: BUILD_LOCATION_DEP_ALL }
+      : undefined
+
+    const next = router.buildLocation({
+      ...(locationDeps ? { _locationDeps: locationDeps } : null),
+      _fromLocation: currentLocation,
+      ..._options,
+    } as any)
+
+    const result = {
+      location: currentLocation,
+      next,
+      deps: _options._fromLocation
+        ? BUILD_LOCATION_DEP_NONE
+        : (locationDeps?.value ?? BUILD_LOCATION_DEP_ALL),
+      options: _options,
+    }
+    buildLocationRef.current = result
+    return result
+  }, [router, currentLocation, _options, shouldReuseBuildLocation])
+
+  const next = buildLocation.next
 
   // Use publicHref - it contains the correct href for display
   // When a rewrite changes the origin, publicHref is the full URL
@@ -725,6 +776,20 @@ const intersectionObserverOptions: IntersectionObserverInit = {
   rootMargin: '100px',
 }
 
+type BuildLocationState = {
+  location: ParsedLocation
+  next: ParsedLocation
+  deps: number
+  options: unknown
+}
+
+const BUILD_LOCATION_DEP_NONE = 0
+const BUILD_LOCATION_DEP_PATHNAME = 1
+const BUILD_LOCATION_DEP_SEARCH = 2
+const BUILD_LOCATION_DEP_HASH = 4
+const BUILD_LOCATION_DEP_STATE = 8
+const BUILD_LOCATION_DEP_ALL = 15
+
 const composeHandlers =
   (handlers: Array<undefined | React.EventHandler<any>>) =>
   (e: React.SyntheticEvent) => {
@@ -757,6 +822,52 @@ function isSafeInternal(to: unknown) {
   const zero = to.charCodeAt(0)
   if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
   return zero === 46 // '.', '..', './', '../'
+}
+
+function didLocationChange(
+  prev: ParsedLocation,
+  next: ParsedLocation,
+  deps: number,
+) {
+  return !!(
+    (deps & BUILD_LOCATION_DEP_PATHNAME && prev.pathname !== next.pathname) ||
+    (deps & BUILD_LOCATION_DEP_SEARCH && prev.search !== next.search) ||
+    (deps & BUILD_LOCATION_DEP_HASH && prev.hash !== next.hash) ||
+    (deps & BUILD_LOCATION_DEP_STATE && prev.state !== next.state)
+  )
+}
+
+function canReuseBuildLocation(options: {
+  from?: unknown
+  hash?: unknown
+  mask?: unknown
+  params?: unknown
+  search?: unknown
+  state?: unknown
+  to?: unknown
+}) {
+  if (options.mask) {
+    return false
+  }
+
+  if (
+    isInherit(options.search) ||
+    isInherit(options.params) ||
+    isInherit(options.hash) ||
+    isInherit(options.state)
+  ) {
+    return false
+  }
+
+  if (typeof options.to !== 'string') {
+    return false
+  }
+
+  return options.to.charCodeAt(0) === 47 && options.to.charCodeAt(1) !== 47
+}
+
+function isInherit(p: unknown) {
+  return p === true || typeof p === 'function'
 }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
