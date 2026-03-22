@@ -1,14 +1,23 @@
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
-import { deepEqual, escapeHtml } from '@tanstack/router-core'
+import {
+  deepEqual,
+  escapeHtml,
+  getAssetCrossOrigin,
+  resolveManifestAssetLink,
+} from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type {
+  AssetCrossOriginConfig,
+  RouterManagedTag,
+} from '@tanstack/router-core'
 
 function buildTagsFromMatches(
   router: ReturnType<typeof useRouter>,
   nonce: string | undefined,
   matches: Array<any>,
+  assetCrossOrigin?: AssetCrossOriginConfig,
 ): Array<RouterManagedTag> {
   const routeMeta = matches.map((match) => match.meta!).filter(Boolean)
 
@@ -101,6 +110,9 @@ function buildTagsFromMatches(
           tag: 'link',
           attrs: {
             ...asset.attrs,
+            crossOrigin:
+              getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+              asset.attrs?.crossOrigin,
             suppressHydrationWarning: true,
             nonce,
           },
@@ -114,11 +126,15 @@ function buildTagsFromMatches(
       router.ssr?.manifest?.routes[route.id]?.preloads
         ?.filter(Boolean)
         .forEach((preload) => {
+          const preloadLink = resolveManifestAssetLink(preload)
           preloadLinks.push({
             tag: 'link',
             attrs: {
               rel: 'modulepreload',
-              href: preload,
+              href: preloadLink.href,
+              crossOrigin:
+                getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
+                preloadLink.crossOrigin,
               nonce,
             },
           })
@@ -170,7 +186,7 @@ function buildTagsFromMatches(
  * Build the list of head/link/meta/script tags to render for active matches.
  * Used internally by `HeadContent`.
  */
-export const useTags = () => {
+export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
 
@@ -179,6 +195,7 @@ export const useTags = () => {
       router,
       nonce,
       router.stores.activeMatchesSnapshot.state,
+      assetCrossOrigin,
     )
   }
 
@@ -294,6 +311,9 @@ export const useTags = () => {
               tag: 'link',
               attrs: {
                 ...asset.attrs,
+                crossOrigin:
+                  getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+                  asset.attrs?.crossOrigin,
                 suppressHydrationWarning: true,
                 nonce,
               },
@@ -317,11 +337,15 @@ export const useTags = () => {
           router.ssr?.manifest?.routes[route.id]?.preloads
             ?.filter(Boolean)
             .forEach((preload) => {
+              const preloadLink = resolveManifestAssetLink(preload)
               preloadLinks.push({
                 tag: 'link',
                 attrs: {
                   rel: 'modulepreload',
-                  href: preload,
+                  href: preloadLink.href,
+                  crossOrigin:
+                    getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
+                    preloadLink.crossOrigin,
                   nonce,
                 },
               })

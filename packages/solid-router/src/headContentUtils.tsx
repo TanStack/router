@@ -1,13 +1,21 @@
 import * as Solid from 'solid-js'
-import { escapeHtml, replaceEqualDeep } from '@tanstack/router-core'
+import {
+  escapeHtml,
+  getAssetCrossOrigin,
+  replaceEqualDeep,
+  resolveManifestAssetLink,
+} from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type {
+  AssetCrossOriginConfig,
+  RouterManagedTag,
+} from '@tanstack/router-core'
 
 /**
  * Build the list of head/link/meta/script tags to render for active matches.
  * Used internally by `HeadContent`.
  */
-export const useTags = () => {
+export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
   const activeMatches = Solid.createMemo(
@@ -116,7 +124,13 @@ export const useTags = () => {
         (asset) =>
           ({
             tag: 'link',
-            attrs: { ...asset.attrs, nonce },
+            attrs: {
+              ...asset.attrs,
+              crossOrigin:
+                getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+                asset.attrs?.crossOrigin,
+              nonce,
+            },
           }) satisfies RouterManagedTag,
       )
 
@@ -133,11 +147,15 @@ export const useTags = () => {
         router.ssr?.manifest?.routes[route.id]?.preloads
           ?.filter(Boolean)
           .forEach((preload) => {
+            const preloadLink = resolveManifestAssetLink(preload)
             preloadLinks.push({
               tag: 'link',
               attrs: {
                 rel: 'modulepreload',
-                href: preload,
+                href: preloadLink.href,
+                crossOrigin:
+                  getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
+                  preloadLink.crossOrigin,
                 nonce,
               },
             })
