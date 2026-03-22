@@ -61,9 +61,7 @@
   "dependencies": {
     "@tanstack/router-core": "workspace:*",
     "@tanstack/vue-router": "workspace:*",
-    "@tanstack/start-client-core": "workspace:*",
-    "tiny-invariant": "^1.3.3",
-    "tiny-warning": "^1.0.3"
+    "@tanstack/start-client-core": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/vue": "^8.1.0",

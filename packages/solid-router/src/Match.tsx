@@ -1,9 +1,8 @@
 import * as Solid from 'solid-js'
-import invariant from 'tiny-invariant'
-import warning from 'tiny-warning'
 import {
   createControlledPromise,
   getLocationChangeInfo,
+  invariant,
   isNotFound,
   isRedirect,
   rootRouteId,
@@ -119,10 +118,11 @@ export const Match = (props: { matchId: string }) => {
                   onCatch={(error: Error) => {
                     // Forward not found errors (we don't want to show the error component for these)
                     if (isNotFound(error)) throw error
-                    warning(
-                      false,
-                      `Error in route match: ${currentMatchState().routeId}`,
-                    )
+                    if (process.env.NODE_ENV !== 'production') {
+                      console.warn(
+                        `Warning: Error in route match: ${currentMatchState().routeId}`,
+                      )
+                    }
                     routeOnCatch()?.(error)
                   }}
                 >
@@ -342,10 +342,15 @@ export const MatchInner = (): any => {
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'notFound'}>
               {(_) => {
-                invariant(
-                  isNotFound(currentMatch().error),
-                  'Expected a notFound error',
-                )
+                if (!isNotFound(currentMatch().error)) {
+                  if (process.env.NODE_ENV !== 'production') {
+                    throw new Error(
+                      'Invariant failed: Expected a notFound error',
+                    )
+                  }
+
+                  invariant()
+                }
 
                 // Use Show with keyed to ensure re-render when routeId changes
                 return (
@@ -359,10 +364,15 @@ export const MatchInner = (): any => {
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'redirected'}>
               {(_) => {
-                invariant(
-                  isRedirect(currentMatch().error),
-                  'Expected a redirect error',
-                )
+                if (!isRedirect(currentMatch().error)) {
+                  if (process.env.NODE_ENV !== 'production') {
+                    throw new Error(
+                      'Invariant failed: Expected a redirect error',
+                    )
+                  }
+
+                  invariant()
+                }
 
                 const [loaderResult] = Solid.createResource(async () => {
                   await new Promise((r) => setTimeout(r, 0))

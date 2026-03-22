@@ -63,8 +63,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
-    "goober": "^2.1.16",
-    "tiny-invariant": "^1.3.3"
+    "goober": "^2.1.16"
   },
   "devDependencies": {
     "solid-js": "^1.9.10",
