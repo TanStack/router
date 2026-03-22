@@ -1,5 +1,5 @@
-import invariant from 'tiny-invariant'
 import { isServer } from '@tanstack/router-core/isServer'
+import { invariant } from './invariant'
 import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { rootRouteId } from './root'
@@ -1076,10 +1076,15 @@ export async function loadMatches(arg: {
       notFoundToThrow,
     )
 
-    invariant(
-      renderedBoundaryIndex !== undefined,
-      'Could not find match for notFound boundary',
-    )
+    if (renderedBoundaryIndex === undefined) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          'Invariant failed: Could not find match for notFound boundary',
+        )
+      }
+
+      invariant()
+    }
     const boundaryMatch = inner.matches[renderedBoundaryIndex]!
 
     const boundaryRoute = inner.router.looseRoutesById[boundaryMatch.routeId]!

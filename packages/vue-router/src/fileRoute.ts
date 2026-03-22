@@ -1,4 +1,3 @@
-import warning from 'tiny-warning'
 import { createRoute } from './route'
 
 import { useMatch } from './useMatch'
@@ -140,10 +139,11 @@ export class FileRoute<
     THandlers
   > => {
     if (process.env.NODE_ENV !== 'production') {
-      warning(
-        this.silent,
-        'FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.',
-      )
+      if (!this.silent) {
+        console.warn(
+          'Warning: FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.',
+        )
+      }
     }
     const route = createRoute(options as any)
     ;(route as any).isRoot = false
@@ -177,9 +177,8 @@ export function FileRouteLoader<
   >,
 ) => TLoaderFn {
   if (process.env.NODE_ENV !== 'production') {
-    warning(
-      false,
-      `FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
+    console.warn(
+      `Warning: FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
     )
   }
   return (loaderFn) => loaderFn as any

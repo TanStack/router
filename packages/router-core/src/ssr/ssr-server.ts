@@ -1,5 +1,5 @@
 import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
-import invariant from 'tiny-invariant'
+import { invariant } from '../invariant'
 import { decodePath } from '../utils'
 import { createLRUCache } from '../lru-cache'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
@@ -201,7 +201,13 @@ export function attachRouterServerSsrUtils({
       router.serverSsr!.injectHtml(html)
     },
     dehydrate: async () => {
-      invariant(!_dehydrated, 'router is already dehydrated!')
+      if (_dehydrated) {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error('Invariant failed: router is already dehydrated!')
+        }
+
+        invariant()
+      }
       let matchesToDehydrate = router.stores.activeMatchesSnapshot.state
       if (router.isShell()) {
         // In SPA mode we only want to dehydrate the root match

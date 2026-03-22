@@ -87,9 +87,11 @@ describe('getRouteApi', () => {
     >()
   })
   test('useLoaderDeps', () => {
-    expectTypeOf(invoiceRouteApi.useLoaderDeps<DefaultRouter>()).toEqualTypeOf<{
-      dep: number
-    }>()
+    expectTypeOf(invoiceRouteApi.useLoaderDeps<DefaultRouter>()).toEqualTypeOf<
+      Vue.Ref<{
+        dep: number
+      }>
+    >()
   })
   test('useMatch', () => {
     expectTypeOf(invoiceRouteApi.useMatch<DefaultRouter>()).toEqualTypeOf<
