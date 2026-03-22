@@ -1859,9 +1859,7 @@ export class RouterCore<
 
       if (
         locationDepsTarget &&
-        dest.params !== false &&
-        dest.params !== null &&
-        nextTo.includes('$')
+        pathRequiresCurrentParams(nextTo, dest.params)
       ) {
         locationDeps |= BUILD_LOCATION_DEP_PATHNAME
       }
@@ -3112,6 +3110,10 @@ function routeNeedsCurrentSearch(
     route.options.postSearchFilters?.length ||
     (includeValidateSearch && route.options.validateSearch)
   )
+}
+
+function pathRequiresCurrentParams(nextTo: string, params: unknown) {
+  return params !== false && nextTo.includes('$')
 }
 
 function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {

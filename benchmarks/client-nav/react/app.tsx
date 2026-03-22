@@ -34,6 +34,7 @@ const noop = () => {}
 const rootSelectors = Array.from({ length: 10 }, (_, index) => index)
 const routeSelectors = Array.from({ length: 6 }, (_, index) => index)
 const linkGroups = Array.from({ length: 4 }, (_, index) => index)
+const staticContextLinkIds = Array.from({ length: 8 }, (_, index) => index)
 
 function RootParamsSubscriber() {
   const params = useParams({
@@ -99,7 +100,10 @@ function LinkPanel() {
               data-testid={groupIndex === 0 ? 'go-ctx' : undefined}
               to="/ctx/$id"
               params={{ id: ctxId }}
-              search={true}
+              search={(prev: Record<string, unknown>) => ({
+                ...prev,
+                noise: '0',
+              })}
               replace
               activeOptions={{ includeSearch: false }}
             >
@@ -128,6 +132,43 @@ function LinkPanel() {
   )
 }
 
+function StaticContextLinkPanel() {
+  return (
+    <>
+      {staticContextLinkIds.map((linkId) => (
+        <div key={linkId}>
+          <Link
+            to="/ctx/$id"
+            params={{ id: 1 }}
+            search={{ linkId: `${linkId}` }}
+            activeOptions={{ includeSearch: true }}
+            activeProps={{ className: 'active-link' }}
+            inactiveProps={{ className: 'inactive-link' }}
+          >
+            {`Context search ${linkId}`}
+          </Link>
+          <Link
+            to="/ctx/$id"
+            params={{ id: 1 }}
+            search={{ linkId: `${linkId}` }}
+            activeOptions={{ includeSearch: false }}
+          >
+            {`Context search ignore ${linkId}`}
+          </Link>
+          <Link
+            to="/ctx/$id"
+            params={{ id: 1 }}
+            search={{ linkId: `${linkId}` }}
+            activeOptions={{ exact: true }}
+          >
+            {`Context search exact ${linkId}`}
+          </Link>
+        </div>
+      ))}
+    </>
+  )
+}
+
 function Root() {
   return (
     <>
@@ -138,6 +179,7 @@ function Root() {
         <RootSearchSubscriber key={`root-search-${selector}`} />
       ))}
       <LinkPanel />
+      <StaticContextLinkPanel />
       <Outlet />
     </>
   )

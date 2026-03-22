@@ -79,7 +79,8 @@ export function setup() {
       () =>
         navigate({
           to: '/ctx/$id',
-          params: { id: 2 },
+          params: { id: 1 },
+          search: { page: 1, filter: 'all', noise: '1' },
           replace: true,
         }),
       () => click('go-items-2', cachedLinks),
