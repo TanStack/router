@@ -1,4 +1,3 @@
-import { isRunnableDevEnvironment } from 'vite'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../constants'
@@ -9,7 +8,12 @@ import {
   collectDevStyles,
   normalizeCssModuleCacheKey,
 } from './dev-styles'
-import type { Connect, DevEnvironment, PluginOption } from 'vite'
+import type {
+  Connect,
+  DevEnvironment,
+  PluginOption,
+  RunnableDevEnvironment,
+} from 'vite'
 import type { GetConfigFn } from '../types'
 
 export function devServerPlugin({
@@ -145,7 +149,9 @@ export function devServerPlugin({
 
             // do not install middleware if SSR env in case another plugin already did
             if (
-              !isRunnableDevEnvironment(serverEnv) ||
+              // Use duck-type check instead of instanceof/isRunnableDevEnvironment to avoid
+              // dual-package hazard when vite is aliased (e.g. vite-plus pnpm override)
+              !('runner' in serverEnv) ||
               // do not check via `isFetchableDevEnvironment` since nitro does implement the `FetchableDevEnvironment` interface but not via inheritance (which this helper checks)
               'dispatchFetch' in serverEnv
             ) {
@@ -153,7 +159,7 @@ export function devServerPlugin({
             }
           }
 
-          if (!isRunnableDevEnvironment(serverEnv)) {
+          if (!('runner' in serverEnv)) {
             throw new Error(
               'cannot install vite dev server middleware for TanStack Start since the SSR environment is not a RunnableDevEnvironment',
             )
@@ -175,9 +181,9 @@ export function devServerPlugin({
                *  fetch(req: Request): Promise<Response>
                * }
                */
-              const serverEntry = await serverEnv.runner.import(
-                ENTRY_POINTS.server,
-              )
+              const serverEntry = await (
+                serverEnv as RunnableDevEnvironment
+              ).runner.import(ENTRY_POINTS.server)
               const webRes = await serverEntry['default'].fetch(webReq)
 
               return sendNodeResponse(res, webRes)
