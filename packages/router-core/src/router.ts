@@ -767,6 +767,18 @@ export interface MatchRoutesFn {
   ): Array<AnyRouteMatch>
 }
 
+type MatchRoutesLightweightResult = {
+  matchedRoutes: ReadonlyArray<AnyRoute>
+  fullPath: string
+  search: Record<string, unknown>
+  params: Record<string, unknown>
+}
+
+type MatchRoutesLightweightCache = {
+  location: ParsedLocation
+  result: MatchRoutesLightweightResult
+}
+
 export type GetMatchFn = (matchId: string) => AnyRouteMatch | undefined
 
 export type UpdateMatchFn = (
@@ -973,6 +985,7 @@ export class RouterCore<
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
+  private matchRoutesLightweightCache?: MatchRoutesLightweightCache
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -1045,6 +1058,8 @@ export class RouterCore<
       ...prevOptions,
       ...newOptions,
     }
+
+    this.matchRoutesLightweightCache = undefined
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
 
@@ -1676,36 +1691,31 @@ export class RouterCore<
 
   /**
    * Lightweight route matching for buildLocation.
-   * Only computes fullPath, accumulated search, and params - skipping expensive
-   * operations like AbortController, ControlledPromise, loaderDeps, and full match objects.
+   * Returns matched routes, full path, validated search, and params without
+   * creating full match objects.
    */
-  private matchRoutesLightweight(location: ParsedLocation): {
-    matchedRoutes: ReadonlyArray<AnyRoute>
-    fullPath: string
-    search: Record<string, unknown>
-    params: Record<string, unknown>
-  } {
+  private matchRoutesLightweight(
+    location: ParsedLocation,
+  ): MatchRoutesLightweightResult {
+    const isCurrent = this.stores.location.state === location
+    if (isCurrent) {
+      const cached = this.matchRoutesLightweightCache
+      if (cached?.location === location) {
+        return cached.result
+      }
+    }
+
     const { matchedRoutes, routeParams, parsedParams } = this.getMatchedRoutes(
       location.pathname,
     )
     const lastRoute = last(matchedRoutes)!
 
-    // I don't know if we should run the full search middleware chain, or just validateSearch
-    // // Accumulate search validation through the route chain
-    // const accumulatedSearch: Record<string, unknown> = applySearchMiddleware({
-    //   search: { ...location.search },
-    //   dest: location,
-    //   destRoutes: matchedRoutes,
-    //   _includeValidateSearch: true,
-    // })
-
-    // Accumulate search validation through route chain
-    const accumulatedSearch = { ...location.search }
+    const search = { ...location.search }
     for (const route of matchedRoutes) {
       try {
         Object.assign(
-          accumulatedSearch,
-          validateSearch(route.options.validateSearch, accumulatedSearch),
+          search,
+          validateSearch(route.options.validateSearch, search),
         )
       } catch {
         // Ignore errors, we're not actually routing
@@ -1746,12 +1756,21 @@ export class RouterCore<
       params = strictParams
     }
 
-    return {
+    const result = {
       matchedRoutes,
       fullPath: lastRoute.fullPath,
-      search: accumulatedSearch,
+      search,
       params,
     }
+
+    if (isCurrent) {
+      this.matchRoutesLightweightCache = {
+        location,
+        result,
+      }
+    }
+
+    return result
   }
 
   cancelMatch = (id: string) => {
@@ -1838,8 +1857,8 @@ export class RouterCore<
       // ensure this includes the basePath if set
       const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
 
-      // From search should always use the current location
-      const fromSearch = lightweightResult.search
+      // From search should use the validated snapshot for the from location
+      const fromSearch = { ...lightweightResult.search }
       // Same with params. It can't hurt to provide as many as possible
       const fromParams = Object.assign(
         Object.create(null),
