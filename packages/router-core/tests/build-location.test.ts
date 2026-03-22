@@ -1246,6 +1246,58 @@ describe('buildLocation - location output structure', () => {
     expect(location.searchStr).toBe('')
     expect(location.href).toBe('/posts')
   })
+
+  test('location should expose a memoized lazy url', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+
+    const routeTree = rootRoute.addChildren([postsRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/posts'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/posts',
+      search: { page: 1 },
+      hash: 'section',
+    })
+
+    expect(Object.keys(location)).not.toContain('url')
+    expect(location.url).toBe(location.url)
+    expect(location.url.pathname).toBe('/posts')
+    expect(location.url.search).toBe('?page=1')
+    expect(location.url.hash).toBe('#section')
+  })
+
+  test('router state location should expose url after parsing history', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+
+    const routeTree = rootRoute.addChildren([postsRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/posts?page=1#section'],
+      }),
+    })
+
+    await router.load()
+
+    expect(router.state.location.url.pathname).toBe('/posts')
+    expect(router.state.location.url.search).toBe('?page=1')
+    expect(router.state.location.url.hash).toBe('#section')
+  })
 })
 
 describe('buildLocation - optional params', () => {
