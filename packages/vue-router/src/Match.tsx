@@ -1,9 +1,8 @@
 import * as Vue from 'vue'
-import invariant from 'tiny-invariant'
-import warning from 'tiny-warning'
 import {
   createControlledPromise,
   getLocationChangeInfo,
+  invariant,
   isNotFound,
   isRedirect,
   rootRouteId,
@@ -42,10 +41,15 @@ export const Match = Vue.defineComponent({
       props.matchId,
     )?.routeId
 
-    invariant(
-      routeId,
-      `Could not find routeId for matchId "${props.matchId}". Please file an issue!`,
-    )
+    if (!routeId) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Could not find routeId for matchId "${props.matchId}". Please file an issue!`,
+        )
+      }
+
+      invariant()
+    }
 
     // Static route-tree check: is this route a direct child of the root?
     // parentRoute is set at build time, so no reactive tracking needed.
@@ -187,7 +191,9 @@ export const Match = Vue.defineComponent({
             onCatch: (error: Error) => {
               // Forward not found errors (we don't want to show the error component for these)
               if (isNotFound(error)) throw error
-              warning(false, `Error in route match: ${actualMatchId}`)
+              if (process.env.NODE_ENV !== 'production') {
+                console.warn(`Warning: Error in route match: ${actualMatchId}`)
+              }
               routeOnCatch.value?.(error)
             },
             children: content,
@@ -358,12 +364,24 @@ export const MatchInner = Vue.defineComponent({
       }
 
       if (match.value.status === 'notFound') {
-        invariant(isNotFound(match.value.error), 'Expected a notFound error')
+        if (!isNotFound(match.value.error)) {
+          if (process.env.NODE_ENV !== 'production') {
+            throw new Error('Invariant failed: Expected a notFound error')
+          }
+
+          invariant()
+        }
         return renderRouteNotFound(router, route.value, match.value.error)
       }
 
       if (match.value.status === 'redirected') {
-        invariant(isRedirect(match.value.error), 'Expected a redirect error')
+        if (!isRedirect(match.value.error)) {
+          if (process.env.NODE_ENV !== 'production') {
+            throw new Error('Invariant failed: Expected a redirect error')
+          }
+
+          invariant()
+        }
         throw router.getMatch(match.value.id)?._nonReactive.loadPromise
       }
 

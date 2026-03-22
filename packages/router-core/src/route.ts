@@ -1,4 +1,4 @@
-import invariant from 'tiny-invariant'
+import { invariant } from './invariant'
 import { joinPaths, trimPathLeft, trimPathRight } from './path'
 import { notFound } from './not-found'
 import { redirect } from './redirect'
@@ -1808,10 +1808,13 @@ export class BaseRoute<
     if (isRoot) {
       this._path = rootRouteId as TPath
     } else if (!this.parentRoute) {
-      invariant(
-        false,
-        `Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
-      )
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
+        )
+      }
+
+      invariant()
     }
 
     let path: undefined | string = isRoot ? rootRouteId : options?.path

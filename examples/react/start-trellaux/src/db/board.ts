@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import { createServerFn } from '@tanstack/react-start'
-import invariant from 'tiny-invariant'
+import { invariant } from '../invariant'
 import * as z from 'zod'
 import {
   deleteColumnSchema,

@@ -16,3 +16,4 @@ node_modules
 **/tests/generator/**/routeTree*.snapshot.ts
 /.nx/workspace-data
 **/src/routeTree.gen.ts
+packages/router-plugin/tests/**/test-files/**

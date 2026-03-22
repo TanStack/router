@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.168.2
+
+### Patch Changes
+
+- Replace tiny-invariant and tiny-warning with in-house solution for bundle-size ([#7007](https://github.com/TanStack/router/pull/7007))
+
 ## 1.168.1
 
 ### Patch Changes

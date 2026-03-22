@@ -1,8 +1,7 @@
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
-import { replaceEqualDeep } from '@tanstack/router-core'
+import { invariant, replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import invariant from 'tiny-invariant'
 import { dummyMatchContext, matchContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
@@ -119,10 +118,15 @@ export function useMatch<
 
   if (isServer ?? router.isServer) {
     const match = matchStore?.state
-    invariant(
-      !((opts.shouldThrow ?? true) && !match),
-      `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-    )
+    if ((opts.shouldThrow ?? true) && !match) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+        )
+      }
+
+      invariant()
+    }
 
     if (match === undefined) {
       return undefined as any
@@ -139,10 +143,15 @@ export function useMatch<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   return useStore(matchStore ?? dummyStore, (match) => {
-    invariant(
-      !((opts.shouldThrow ?? true) && !match),
-      `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-    )
+    if ((opts.shouldThrow ?? true) && !match) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+        )
+      }
+
+      invariant()
+    }
 
     if (match === undefined) {
       return undefined

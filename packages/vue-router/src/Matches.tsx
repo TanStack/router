@@ -1,5 +1,4 @@
 import * as Vue from 'vue'
-import warning from 'tiny-warning'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useStore } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
@@ -129,11 +128,10 @@ const MatchesInner = Vue.defineComponent({
         onCatch:
           process.env.NODE_ENV !== 'production'
             ? (error: Error) => {
-                warning(
-                  false,
-                  `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+                console.warn(
+                  `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
                 )
-                warning(false, error.message || error.toString())
+                console.warn(`Warning: ${error.message || error.toString()}`)
               }
             : undefined,
         children: childElement,

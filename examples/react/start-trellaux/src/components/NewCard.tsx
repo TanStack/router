@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import invariant from 'tiny-invariant'
+import { invariant } from '../invariant'
 
 import { ItemMutationFields } from '../types'
 import { useCreateItemMutation } from '../queries'

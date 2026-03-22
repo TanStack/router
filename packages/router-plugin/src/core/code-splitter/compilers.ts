@@ -8,7 +8,8 @@ import {
   parseAst,
 } from '@tanstack/router-utils'
 import { tsrShared, tsrSplit } from '../constants'
-import { routeHmrStatement } from '../route-hmr-statement'
+import { createRouteHmrStatement } from '../route-hmr-statement'
+import { getObjectPropertyKeyName } from '../utils'
 import { createIdentifier } from './path-ids'
 import { getFrameworkOptions } from './framework-options'
 import type {
@@ -18,14 +19,8 @@ import type {
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
 import type { Config, DeletableNodes } from '../config'
+import type { SplitNodeMeta } from './types'
 
-type SplitNodeMeta = {
-  routeIdent: SplitRouteIdentNodes
-  splitStrategy: 'lazyFn' | 'lazyRouteComponent'
-  localImporterIdent: string
-  exporterIdent: string
-  localExporterIdent: string
-}
 const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
   [
     'loader',
@@ -78,6 +73,7 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
     },
   ],
 ])
+
 const KNOWN_SPLIT_ROUTE_IDENTS = [...SPLIT_NODES_CONFIG.keys()] as const
 
 function addSplitSearchParamToFilename(
@@ -297,10 +293,12 @@ export function computeSharedBindings(opts: {
   const splitGroupsPresent = new Set<number>()
   let hasNonSplit = false
   for (const prop of routeOptions.properties) {
-    if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) continue
-    if (prop.key.name === 'codeSplitGroupings') continue
+    if (!t.isObjectProperty(prop)) continue
+    const key = getObjectPropertyKeyName(prop)
+    if (!key) continue
+    if (key === 'codeSplitGroupings') continue
     if (t.isIdentifier(prop.value) && prop.value.name === 'undefined') continue
-    const groupIndex = findIndexForSplitNode(prop.key.name) // -1 if non-split
+    const groupIndex = findIndexForSplitNode(key) // -1 if non-split
     if (groupIndex === -1) {
       hasNonSplit = true
     } else {
@@ -333,8 +331,9 @@ export function computeSharedBindings(opts: {
   const refsByGroup = new Map<string, Set<number>>()
 
   for (const prop of routeOptions.properties) {
-    if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) continue
-    const key = prop.key.name
+    if (!t.isObjectProperty(prop)) continue
+    const key = getObjectPropertyKeyName(prop)
+    if (!key) continue
 
     if (key === 'codeSplitGroupings') continue
 
@@ -665,6 +664,13 @@ export function compileCodeSplitReferenceRoute(
   const PACKAGE = frameworkOptions.package
   const LAZY_ROUTE_COMPONENT_IDENT = frameworkOptions.idents.lazyRouteComponent
   const LAZY_FN_IDENT = frameworkOptions.idents.lazyFn
+  const stableRouteOptionKeys = [
+    ...new Set(
+      (opts.compilerPlugins ?? []).flatMap(
+        (plugin) => plugin.getStableRouteOptionKeys?.() ?? [],
+      ),
+    ),
+  ]
 
   let createRouteFn: string
 
@@ -702,16 +708,48 @@ export function compileCodeSplitReferenceRoute(
                 return programPath.scope.hasBinding(name)
               }
 
+              const addRouteHmr = (
+                insertionPath: babel.NodePath,
+                routeOptions: t.ObjectExpression,
+              ) => {
+                if (!opts.addHmr || hmrAdded) {
+                  return
+                }
+
+                opts.compilerPlugins?.forEach((plugin) => {
+                  const pluginResult = plugin.onAddHmr?.({
+                    programPath,
+                    callExpressionPath: path,
+                    insertionPath,
+                    routeOptions,
+                    createRouteFn,
+                    opts: opts as CompileCodeSplitReferenceRouteOptions,
+                  })
+
+                  if (pluginResult?.modified) {
+                    modified = true
+                  }
+                })
+
+                programPath.pushContainer(
+                  'body',
+                  createRouteHmrStatement(stableRouteOptionKeys),
+                )
+                modified = true
+                hmrAdded = true
+              }
+
               if (t.isObjectExpression(routeOptions)) {
+                const insertionPath = path.getStatementParent() ?? path
+
                 if (opts.deleteNodes && opts.deleteNodes.size > 0) {
                   routeOptions.properties = routeOptions.properties.filter(
                     (prop) => {
                       if (t.isObjectProperty(prop)) {
-                        if (t.isIdentifier(prop.key)) {
-                          if (opts.deleteNodes!.has(prop.key.name as any)) {
-                            modified = true
-                            return false
-                          }
+                        const key = getObjectPropertyKeyName(prop)
+                        if (key && opts.deleteNodes!.has(key as any)) {
+                          modified = true
+                          return false
                         }
                       }
                       return true
@@ -719,8 +757,6 @@ export function compileCodeSplitReferenceRoute(
                   )
                 }
                 if (!splittableCreateRouteFns.includes(createRouteFn)) {
-                  const insertionPath = path.getStatementParent() ?? path
-
                   opts.compilerPlugins?.forEach((plugin) => {
                     const pluginResult = plugin.onUnsplittableRoute?.({
                       programPath,
@@ -737,19 +773,15 @@ export function compileCodeSplitReferenceRoute(
                   })
 
                   // we can't split this route but we still add HMR handling if enabled
-                  if (opts.addHmr && !hmrAdded) {
-                    programPath.pushContainer('body', routeHmrStatement)
-                    modified = true
-                    hmrAdded = true
-                  }
+                  addRouteHmr(insertionPath, routeOptions)
                   // exit traversal so this route is not split
                   return programPath.stop()
                 }
                 routeOptions.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {
-                    if (t.isIdentifier(prop.key)) {
-                      const key = prop.key.name
+                    const key = getObjectPropertyKeyName(prop)
 
+                    if (key) {
                       // If the user has not specified a split grouping for this key
                       // then we should not split it
                       const codeSplitGroupingByKey = findIndexForSplitNode(key)
@@ -858,16 +890,42 @@ export function compileCodeSplitReferenceRoute(
                           ])
                         }
 
-                        prop.value = template.expression(
-                          `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
-                        )()
+                        const insertionPath = path.getStatementParent() ?? path
+                        let splitPropValue: t.Expression | undefined
+
+                        for (const plugin of opts.compilerPlugins ?? []) {
+                          const pluginPropValue = plugin.onSplitRouteProperty?.(
+                            {
+                              programPath,
+                              callExpressionPath: path,
+                              insertionPath,
+                              routeOptions,
+                              prop,
+                              splitNodeMeta,
+                              lazyRouteComponentIdent:
+                                LAZY_ROUTE_COMPONENT_IDENT,
+                            },
+                          )
+
+                          if (!pluginPropValue) {
+                            continue
+                          }
+
+                          modified = true
+                          splitPropValue = pluginPropValue
+                          break
+                        }
+
+                        if (splitPropValue) {
+                          prop.value = splitPropValue
+                        } else {
+                          prop.value = template.expression(
+                            `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                          )()
+                        }
 
                         // add HMR handling
-                        if (opts.addHmr && !hmrAdded) {
-                          programPath.pushContainer('body', routeHmrStatement)
-                          modified = true
-                          hmrAdded = true
-                        }
+                        addRouteHmr(insertionPath, routeOptions)
                       } else {
                         // if (splitNodeMeta.splitStrategy === 'lazyFn') {
                         const value = prop.value
@@ -937,6 +995,8 @@ export function compileCodeSplitReferenceRoute(
 
                   programPath.scope.crawl()
                 })
+
+                addRouteHmr(insertionPath, routeOptions)
               }
             }
 
@@ -1128,10 +1188,7 @@ export function compileCodeSplitVirtualRoute(
                     // since we have special considerations that need
                     // to be accounted for like (not splitting exported identifiers)
                     KNOWN_SPLIT_ROUTE_IDENTS.forEach((splitType) => {
-                      if (
-                        !t.isIdentifier(prop.key) ||
-                        prop.key.name !== splitType
-                      ) {
+                      if (getObjectPropertyKeyName(prop) !== splitType) {
                         return
                       }
 
@@ -1673,33 +1730,32 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
               if (t.isObjectExpression(routeOptions)) {
                 routeOptions.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {
-                    if (t.isIdentifier(prop.key)) {
-                      if (prop.key.name === 'codeSplitGroupings') {
-                        const value = prop.value
+                    const key = getObjectPropertyKeyName(prop)
+                    if (key === 'codeSplitGroupings') {
+                      const value = prop.value
 
-                        if (t.isArrayExpression(value)) {
-                          codeSplitGroupings = value.elements.map((group) => {
-                            if (t.isArrayExpression(group)) {
-                              return group.elements.map((node) => {
-                                if (!t.isStringLiteral(node)) {
-                                  throw new Error(
-                                    'You must provide a string literal for the codeSplitGroupings',
-                                  )
-                                }
+                      if (t.isArrayExpression(value)) {
+                        codeSplitGroupings = value.elements.map((group) => {
+                          if (t.isArrayExpression(group)) {
+                            return group.elements.map((node) => {
+                              if (!t.isStringLiteral(node)) {
+                                throw new Error(
+                                  'You must provide a string literal for the codeSplitGroupings',
+                                )
+                              }
 
-                                return node.value
-                              }) as Array<SplitRouteIdentNodes>
-                            }
+                              return node.value
+                            }) as Array<SplitRouteIdentNodes>
+                          }
 
-                            throw new Error(
-                              'You must provide arrays with codeSplitGroupings options.',
-                            )
-                          })
-                        } else {
                           throw new Error(
-                            'You must provide an array of arrays for the codeSplitGroupings.',
+                            'You must provide arrays with codeSplitGroupings options.',
                           )
-                        }
+                        })
+                      } else {
+                        throw new Error(
+                          'You must provide an array of arrays for the codeSplitGroupings.',
+                        )
                       }
                     }
                   }

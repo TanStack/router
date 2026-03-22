@@ -1,4 +1,4 @@
-import invariant from 'tiny-invariant'
+import { invariant } from './invariant'
 import { v } from 'convex/values'
 import {
   type QueryCtx,
