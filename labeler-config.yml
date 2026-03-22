@@ -55,6 +55,9 @@
 'package: router-vite-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-vite-plugin/**/*'
+'package: skills':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/skills/**/*'
 'package: solid-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-router/**/*'
