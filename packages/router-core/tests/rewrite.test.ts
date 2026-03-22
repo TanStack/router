@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, RouterCore } from '../src'
+import { createTestRouter } from './routerTestUtils'
 
 const createAboutRouter = (opts: {
   initialEntries: Array<string>
@@ -19,7 +20,7 @@ const createAboutRouter = (opts: {
 
   const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
 
-  return new RouterCore({
+  return createTestRouter({
     routeTree,
     history: createMemoryHistory({ initialEntries: opts.initialEntries }),
     origin: opts.origin,

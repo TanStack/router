@@ -1326,7 +1326,6 @@ export class RouterCore<
           state: replaceEqualDeep(previousLocation?.state, state),
         } as ParsedLocationWithoutUrl<FullSearchSchema<TRouteTree>>,
         this.origin!,
-        fullUrl,
       )
     }
 
