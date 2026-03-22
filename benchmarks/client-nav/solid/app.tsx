@@ -1,4 +1,4 @@
-import { For, createEffect } from 'solid-js'
+import { For, createRenderEffect } from 'solid-js'
 import { render } from 'solid-js/web'
 import {
   Link,
@@ -37,11 +37,11 @@ const routeSelectors = Array.from({ length: 6 }, (_, index) => index)
 const linkGroups = Array.from({ length: 4 }, (_, index) => index)
 
 function PerfValue(props: { value: () => number }) {
-  createEffect(() => {
+  createRenderEffect(() => {
     void props.value()
   })
 
-  return <span hidden>{props.value()}</span>
+  return null
 }
 
 function RootParamsSubscriber() {
@@ -76,6 +76,7 @@ function LinkPanel() {
                 data-testid={groupIndex === 0 ? 'go-items-1' : undefined}
                 to="/items/$id"
                 params={{ id: itemsId }}
+                replace
                 activeOptions={{ exact: true }}
                 activeProps={{ class: 'active-link' }}
                 inactiveProps={{ class: 'inactive-link' }}
@@ -86,6 +87,7 @@ function LinkPanel() {
                 data-testid={groupIndex === 0 ? 'go-items-2' : undefined}
                 to="/items/$id"
                 params={{ id: 2 }}
+                replace
                 activeOptions={{ includeSearch: false }}
               >
                 {`Items 2 alt ${groupIndex}`}
@@ -94,6 +96,7 @@ function LinkPanel() {
                 data-testid={groupIndex === 0 ? 'go-search' : undefined}
                 to="/search"
                 search={{ page: 1, filter: 'all', junk: `group-${groupIndex}` }}
+                replace
                 activeOptions={{ includeSearch: true }}
                 activeProps={{ class: 'active-link' }}
                 inactiveProps={{ class: 'inactive-link' }}
@@ -105,6 +108,7 @@ function LinkPanel() {
                 to="/ctx/$id"
                 params={{ id: ctxId }}
                 search={true}
+                replace
                 activeOptions={{ includeSearch: false }}
               >
                 {`Context ${ctxId}`}
@@ -272,6 +276,7 @@ function ItemsPage() {
         data-testid="items-details"
         from={itemsRoute.fullPath}
         to="./details"
+        replace
       >
         Details
       </Link>
@@ -296,6 +301,7 @@ function ItemDetailsPage() {
         data-testid="items-parent"
         from={itemDetailsRoute.fullPath}
         to=".."
+        replace
         activeOptions={{ exact: true }}
       >
         Back to item
@@ -314,6 +320,7 @@ function SearchPage() {
         data-testid="search-next-page"
         from={searchRoute.fullPath}
         to="."
+        replace
         search={(prev: { page: number; filter: string }) => ({
           page: prev.page + 1,
           filter: prev.filter,

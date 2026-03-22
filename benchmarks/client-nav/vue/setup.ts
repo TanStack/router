@@ -1,52 +1,9 @@
 import type { NavigateOptions } from '@tanstack/router-core'
 import type * as App from './app'
+import { getRequiredLink, waitForRequiredLink } from '../setup-helpers'
 
 const appModulePath = './dist/app.js'
 const { mountTestApp } = (await import(appModulePath)) as typeof App
-
-function getRequiredLink(
-  container: ParentNode,
-  testId: string,
-  cache?: Map<string, HTMLAnchorElement>,
-) {
-  const cachedLink = cache?.get(testId)
-  if (cachedLink) {
-    return cachedLink
-  }
-
-  const link = container.querySelector<HTMLAnchorElement>(
-    `[data-testid="${testId}"]`,
-  )
-  if (!link) {
-    throw new Error(`Unable to find benchmark link: ${testId}`)
-  }
-
-  cache?.set(testId, link)
-  return link
-}
-
-async function waitForRequiredLink(
-  container: ParentNode,
-  testId: string,
-  cache?: Map<string, HTMLAnchorElement>,
-) {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const link = container.querySelector<HTMLAnchorElement>(
-      `[data-testid="${testId}"]`,
-    )
-
-    if (link) {
-      cache?.set(testId, link)
-      return link
-    }
-
-    await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => resolve())
-    })
-  }
-
-  return getRequiredLink(container, testId, cache)
-}
 
 export function setup() {
   if (process.env.NODE_ENV !== 'production') {
@@ -123,6 +80,7 @@ export function setup() {
         navigate({
           to: '/ctx/$id',
           params: { id: 2 },
+          replace: true,
         }),
       () => click('go-items-2', cachedLinks),
     ] as const

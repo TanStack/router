@@ -68,6 +68,7 @@ function LinkPanel() {
               data-testid={groupIndex === 0 ? 'go-items-1' : undefined}
               to="/items/$id"
               params={{ id: itemsId }}
+              replace
               activeOptions={{ exact: true }}
               activeProps={{ className: 'active-link' }}
               inactiveProps={{ className: 'inactive-link' }}
@@ -78,6 +79,7 @@ function LinkPanel() {
               data-testid={groupIndex === 0 ? 'go-items-2' : undefined}
               to="/items/$id"
               params={{ id: 2 }}
+              replace
               activeOptions={{ includeSearch: false }}
             >
               {`Items 2 alt ${groupIndex}`}
@@ -86,6 +88,7 @@ function LinkPanel() {
               data-testid={groupIndex === 0 ? 'go-search' : undefined}
               to="/search"
               search={{ page: 1, filter: 'all', junk: `group-${groupIndex}` }}
+              replace
               activeOptions={{ includeSearch: true }}
               activeProps={{ className: 'active-link' }}
               inactiveProps={{ className: 'inactive-link' }}
@@ -97,6 +100,7 @@ function LinkPanel() {
               to="/ctx/$id"
               params={{ id: ctxId }}
               search={true}
+              replace
               activeOptions={{ includeSearch: false }}
             >
               {`Context ${ctxId}`}
@@ -275,6 +279,7 @@ function ItemsPage() {
         data-testid="items-details"
         from={itemsRoute.fullPath}
         to="./details"
+        replace
       >
         Details
       </Link>
@@ -301,6 +306,7 @@ function ItemDetailsPage() {
         data-testid="items-parent"
         from={itemDetailsRoute.fullPath}
         to=".."
+        replace
         activeOptions={{ exact: true }}
       >
         Back to item
@@ -325,6 +331,7 @@ function SearchPage() {
         data-testid="search-next-page"
         from={searchRoute.fullPath}
         to="."
+        replace
         search={(prev: { page: number; filter: string }) => ({
           page: prev.page + 1,
           filter: prev.filter,

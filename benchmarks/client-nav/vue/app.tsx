@@ -77,6 +77,7 @@ const LinkPanel = Vue.defineComponent({
                 data-testid={groupIndex === 0 ? 'go-items-1' : undefined}
                 to="/items/$id"
                 params={{ id: itemsId }}
+                replace
                 activeOptions={{ exact: true }}
                 activeProps={{ class: 'active-link' }}
                 inactiveProps={{ class: 'inactive-link' }}
@@ -87,6 +88,7 @@ const LinkPanel = Vue.defineComponent({
                 data-testid={groupIndex === 0 ? 'go-items-2' : undefined}
                 to="/items/$id"
                 params={{ id: 2 }}
+                replace
                 activeOptions={{ includeSearch: false }}
               >
                 {`Items 2 alt ${groupIndex}`}
@@ -95,6 +97,7 @@ const LinkPanel = Vue.defineComponent({
                 data-testid={groupIndex === 0 ? 'go-search' : undefined}
                 to="/search"
                 search={{ page: 1, filter: 'all', junk: `group-${groupIndex}` }}
+                replace
                 activeOptions={{ includeSearch: true }}
                 activeProps={{ class: 'active-link' }}
                 inactiveProps={{ class: 'inactive-link' }}
@@ -106,6 +109,7 @@ const LinkPanel = Vue.defineComponent({
                 to="/ctx/$id"
                 params={{ id: ctxId }}
                 search={true}
+                replace
                 activeOptions={{ includeSearch: false }}
               >
                 {`Context ${ctxId}`}
@@ -187,7 +191,7 @@ const SearchLoaderDepsSubscriber = Vue.defineComponent({
     const loaderDeps = searchRoute.useLoaderDeps({
       select: (loaderDeps) =>
         runPerfSelectorComputation(loaderDeps.page + loaderDeps.filter.length),
-    }) as unknown as Vue.Ref<number>
+    })
 
     return () => {
       void runPerfSelectorComputation(loaderDeps.value)
@@ -247,6 +251,7 @@ const ItemsPage = Vue.defineComponent({
           data-testid="items-details"
           from={itemsRoute.fullPath}
           to="./details"
+          replace
         >
           Details
         </Link>
@@ -275,6 +280,7 @@ const ItemDetailsPage = Vue.defineComponent({
           data-testid="items-parent"
           from={itemDetailsRoute.fullPath}
           to=".."
+          replace
           activeOptions={{ exact: true }}
         >
           Back to item
@@ -301,6 +307,7 @@ const SearchPage = Vue.defineComponent({
           data-testid="search-next-page"
           from={searchRoute.fullPath}
           to="."
+          replace
           search={(prev: { page: number; filter: string }) => ({
             page: prev.page + 1,
             filter: prev.filter,
