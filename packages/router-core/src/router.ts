@@ -770,6 +770,7 @@ export interface MatchRoutesFn {
 type MatchRoutesLightweightResult = {
   matchedRoutes: ReadonlyArray<AnyRoute>
   fullPath: string
+  search: Record<string, unknown>
   params: Record<string, unknown>
 }
 
@@ -984,6 +985,7 @@ export class RouterCore<
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
+  private matchRoutesLightweightCache?: MatchRoutesLightweightCache
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -1056,6 +1058,8 @@ export class RouterCore<
       ...prevOptions,
       ...newOptions,
     }
+
+    this.matchRoutesLightweightCache = undefined
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
 
@@ -1685,11 +1689,10 @@ export class RouterCore<
     })
   }
 
-  private matchRoutesLightweightCache?: MatchRoutesLightweightCache
   /**
    * Lightweight route matching for buildLocation.
-   * Only computes fullPath, accumulated search, and params - skipping expensive
-   * operations like AbortController, ControlledPromise, loaderDeps, and full match objects.
+   * Returns matched routes, full path, validated search, and params without
+   * creating full match objects.
    */
   private matchRoutesLightweight(
     location: ParsedLocation,
@@ -1706,6 +1709,18 @@ export class RouterCore<
       location.pathname,
     )
     const lastRoute = last(matchedRoutes)!
+
+    const search = { ...location.search }
+    for (const route of matchedRoutes) {
+      try {
+        Object.assign(
+          search,
+          validateSearch(route.options.validateSearch, search),
+        )
+      } catch {
+        // Ignore errors, we're not actually routing
+      }
+    }
 
     // Determine params: reuse from state if possible, otherwise parse
     const lastStateMatchId = last(this.stores.matchesId.state)
@@ -1744,6 +1759,7 @@ export class RouterCore<
     const result = {
       matchedRoutes,
       fullPath: lastRoute.fullPath,
+      search,
       params,
     }
 
@@ -1841,8 +1857,8 @@ export class RouterCore<
       // ensure this includes the basePath if set
       const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
 
-      // From search should always use the current location
-      const fromSearch = currentLocation.search
+      // From search should use the validated snapshot for the from location
+      const fromSearch = { ...lightweightResult.search }
       // Same with params. It can't hurt to provide as many as possible
       const fromParams = Object.assign(
         Object.create(null),
