@@ -1277,19 +1277,23 @@ export class RouterCore<
         const parsedSearch = this.options.parseSearch(search)
         const searchStr = this.options.stringifySearch(parsedSearch)
 
-        return {
-          href: pathname + searchStr + hash,
-          publicHref: href,
-          pathname: decodePath(pathname).path,
-          external: false,
-          searchStr,
-          search: nullReplaceEqualDeep(
-            previousLocation?.search,
-            parsedSearch,
-          ) as any,
-          hash: decodePath(hash.slice(1)).path,
-          state: replaceEqualDeep(previousLocation?.state, state),
-        }
+        return initializeParsedLocation(
+          {
+            __proto__: parsedLocationPrototype,
+            href: pathname + searchStr + hash,
+            publicHref: href,
+            pathname: decodePath(pathname).path,
+            external: false,
+            searchStr,
+            search: nullReplaceEqualDeep(
+              previousLocation?.search,
+              parsedSearch,
+            ) as any,
+            hash: decodePath(hash.slice(1)).path,
+            state: replaceEqualDeep(previousLocation?.state, state),
+          } as ParsedLocationWithoutUrl<FullSearchSchema<TRouteTree>>,
+          this.origin!,
+        )
       }
 
       // Before we do any processing, we need to allow rewrites to modify the URL
@@ -1306,19 +1310,23 @@ export class RouterCore<
 
       const fullPath = url.href.replace(url.origin, '')
 
-      return {
-        href: fullPath,
-        publicHref: href,
-        pathname: decodePath(url.pathname).path,
-        external: !!this.rewrite && url.origin !== this.origin,
-        searchStr,
-        search: nullReplaceEqualDeep(
-          previousLocation?.search,
-          parsedSearch,
-        ) as any,
-        hash: decodePath(url.hash.slice(1)).path,
-        state: replaceEqualDeep(previousLocation?.state, state),
-      }
+      return initializeParsedLocation(
+        {
+          __proto__: parsedLocationPrototype,
+          href: fullPath,
+          publicHref: href,
+          pathname: decodePath(url.pathname).path,
+          external: !!this.rewrite && url.origin !== this.origin,
+          searchStr,
+          search: nullReplaceEqualDeep(
+            previousLocation?.search,
+            parsedSearch,
+          ) as any,
+          hash: decodePath(url.hash.slice(1)).path,
+          state: replaceEqualDeep(previousLocation?.state, state),
+        } as ParsedLocationWithoutUrl<FullSearchSchema<TRouteTree>>,
+        this.origin!,
+      )
     }
 
     const location = parse(locationToParse)
@@ -1330,13 +1338,11 @@ export class RouterCore<
       const parsedTempLocation = parse(__tempLocation) as any
       parsedTempLocation.state.key = location.state.key // TODO: Remove in v2 - use __TSR_key instead
       parsedTempLocation.state.__TSR_key = location.state.__TSR_key
+      parsedTempLocation.maskedLocation = location
 
       delete parsedTempLocation.state.__tempLocation
 
-      return {
-        ...parsedTempLocation,
-        maskedLocation: location,
-      }
+      return parsedTempLocation
     }
     return location
   }
@@ -1975,12 +1981,16 @@ export class RouterCore<
       let href: string
       let publicHref: string
       let external = false
+      let memoUrl: URL | null = null
+      let origin: string
 
       if (this.rewrite) {
         // With rewrite, we need to construct URL to apply the rewrite
         const url = new URL(fullPath, this.origin)
         const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
+        memoUrl = rewrittenUrl
         href = url.href.replace(url.origin, '')
+        origin = rewrittenUrl.origin
         // If rewrite changed the origin, publicHref needs full URL
         // Otherwise just use the path components
         if (rewrittenUrl.origin !== this.origin) {
@@ -1997,19 +2007,25 @@ export class RouterCore<
         // since decodePath decoded them from the interpolated path
         href = encodePathLikeUrl(fullPath)
         publicHref = href
+        origin = this.origin!
       }
 
-      return {
-        publicHref,
-        href,
-        pathname: nextPathname,
-        search: nextSearch,
-        searchStr,
-        state: nextState as any,
-        hash: hash ?? '',
-        external,
-        unmaskOnReload: dest.unmaskOnReload,
-      }
+      return initializeParsedLocation(
+        {
+          __proto__: parsedLocationPrototype,
+          publicHref,
+          href,
+          pathname: nextPathname,
+          search: nextSearch,
+          searchStr,
+          state: nextState as any,
+          hash: hash ?? '',
+          external,
+          unmaskOnReload: dest.unmaskOnReload,
+        } as ParsedLocationWithoutUrl,
+        origin,
+        memoUrl,
+      )
     }
 
     const buildWithMatches = (
@@ -2947,6 +2963,53 @@ const normalize = (str: string) =>
   str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
 function comparePaths(a: string, b: string) {
   return normalize(a) === normalize(b)
+}
+
+type ParsedLocationWithoutUrl<TSearchObj extends AnySchema = {}> = Omit<
+  ParsedLocation<TSearchObj>,
+  'url'
+>
+
+const parsedLocationOrigins = new WeakMap<ParsedLocation<any>, string>()
+const parsedLocationUrls = new WeakMap<ParsedLocation<any>, URL>()
+
+function getParsedLocationUrl(location: ParsedLocation<any>) {
+  let url = parsedLocationUrls.get(location)
+
+  if (!url) {
+    const origin = parsedLocationOrigins.get(location)
+
+    if (!origin) {
+      throw new Error('ParsedLocation origin is missing')
+    }
+
+    url = new URL(location.publicHref, origin)
+    parsedLocationUrls.set(location, url)
+  }
+
+  return url
+}
+
+const parsedLocationPrototype = {
+  get url() {
+    return getParsedLocationUrl(this as ParsedLocation<any>)
+  },
+}
+
+function initializeParsedLocation<TSearchObj extends AnySchema = {}>(
+  location: ParsedLocationWithoutUrl<TSearchObj>,
+  origin: string,
+  url?: URL | null,
+): ParsedLocation<TSearchObj> {
+  const parsedLocation = location as ParsedLocation<TSearchObj>
+
+  parsedLocationOrigins.set(parsedLocation, origin)
+
+  if (url) {
+    parsedLocationUrls.set(parsedLocation, url)
+  }
+
+  return parsedLocation
 }
 
 /**

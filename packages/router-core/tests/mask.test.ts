@@ -90,6 +90,8 @@ describe('buildLocation - route masks', () => {
     expect(location.maskedLocation).toBeDefined()
     expect(location.maskedLocation!.pathname).toBe('/photos/123')
     expect(location.pathname).toBe('/photos/123/modal')
+    expect(location.maskedLocation!.url.pathname).toBe('/photos/123')
+    expect(location.url.pathname).toBe('/photos/123/modal')
   })
 
   test('should set params to {} when maskParams is false', () => {
