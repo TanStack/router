@@ -1,5 +1,14 @@
 # @tanstack/solid-router
 
+## 1.168.2
+
+### Patch Changes
+
+- Replace tiny-invariant and tiny-warning with in-house solution for bundle-size ([#7007](https://github.com/TanStack/router/pull/7007))
+
+- Updated dependencies [[`c9e1855`](https://github.com/TanStack/router/commit/c9e18555f3a5531e96de8f574cfca9edcdb18e5c)]:
+  - @tanstack/router-core@1.168.2
+
 ## 1.168.1
 
 ### Patch Changes
