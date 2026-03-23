@@ -52,7 +52,7 @@ rm postcss.config.* next.config.*
 
 ### 2. Install Required Dependencies
 
-TanStack Start leverages [Vite](https://vite.dev), [nitro](https://nitro.build/) and TanStack Router:
+TanStack Start leverages Tanstack Router, [Vite](https://vite.dev), and a vite deployment plugin e.g. [nitro](https://nitro.build/).
 
 ```sh
 npm i @tanstack/react-router @tanstack/react-start nitro vite @vitejs/plugin-react
