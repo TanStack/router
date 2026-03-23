@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/solid-query": "6.0.0-alpha.1",
+    "@tanstack/solid-query": "6.0.0-alpha.2",
     "@tanstack/solid-router": "^2.0.0-alpha.7",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.5",
     "solid-js": "2.0.0-beta.4",
