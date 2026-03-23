@@ -51,6 +51,10 @@ export function previewServerPlugin(): Plugin {
               const webReq = new NodeRequest({ req, res })
               const webRes: Response = await serverBuild.fetch(webReq)
 
+              if (webRes.headers.get('content-type')?.startsWith('text/html')) {
+                res.setHeader('content-encoding', 'identity')
+              }
+
               // Temporary workaround
               // Vite preview's compression middleware doesn't support flattened array headers that srvx sets
               // Call writeHead() before srvx to avoid corruption
