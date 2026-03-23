@@ -125,4 +125,18 @@ describe('getNormalizedURL', () => {
       expect(normalizedUrl.url.hash).toBe(expectedHash)
     },
   )
+
+  test('should encode all backslashes in pathname', () => {
+    const normalized = getNormalizedURL('https://example.com/path\\a\\b\\c')
+    expect(normalized.url.pathname).toBe('/path%5Ca%5Cb%5Cc')
+  })
+
+  test('should encode backslashes in pathname while preserving query and hash', () => {
+    const normalized = getNormalizedURL(
+      'https://example.com/path\\a?x=1&y=2#section',
+    )
+    expect(normalized.url.pathname).toBe('/path%5Ca')
+    expect(normalized.url.search).toBe('?x=1&y=2')
+    expect(normalized.url.hash).toBe('#section')
+  })
 })

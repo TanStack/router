@@ -16,6 +16,21 @@ test.describe('Fast serialization (serialization completes before render)', () =
     expect(responseHtml).toContain('$_TSR.router')
     expect(responseHtml).toContain('$_TSR.e()')
     expect(responseHtml).toContain('$tsr-stream-barrier')
+
+    // Router scripts and end marker must be injected before closing tags.
+    const bodyCloseIndex = responseHtml.lastIndexOf('</body>')
+    const htmlCloseIndex = responseHtml.lastIndexOf('</html>')
+    const barrierIndex = responseHtml.indexOf('$tsr-stream-barrier')
+    const endMarkerIndex = responseHtml.indexOf('$_TSR.e()')
+
+    expect(bodyCloseIndex).toBeGreaterThan(-1)
+    expect(htmlCloseIndex).toBeGreaterThan(-1)
+    expect(barrierIndex).toBeGreaterThan(-1)
+    expect(endMarkerIndex).toBeGreaterThan(-1)
+
+    expect(barrierIndex).toBeLessThan(bodyCloseIndex)
+    expect(endMarkerIndex).toBeLessThan(bodyCloseIndex)
+    expect(endMarkerIndex).toBeLessThan(htmlCloseIndex)
   })
 
   test('all data is available immediately', async ({ page }) => {

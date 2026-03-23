@@ -31,6 +31,11 @@
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch",
+    "bench:transform-stream": "vitest bench tests/transformStreamWithRouter.bench.ts",
+    "bench:transform-stream:prof": "pnpm dlx @platformatic/flame run --md-format=detailed ../../node_modules/vitest/vitest.mjs bench tests/transformStreamWithRouter.bench.ts",
+    "profile:transform-stream": "pnpm build && pnpm run profile:transform-stream:run:prof",
+    "profile:transform-stream:run": "node ./tests/transformStreamWithRouter.profile.mjs",
+    "profile:transform-stream:run:prof": "pnpm dlx @platformatic/flame run --delay=none --md-format=detailed ./tests/transformStreamWithRouter.profile.mjs",
     "build": "vite build"
   },
   "type": "module",

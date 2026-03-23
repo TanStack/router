@@ -68,6 +68,21 @@ test('Sync-only route has bootstrap scripts in initial HTML', async ({
   // SSR should include the barrier script tag in the HTML (rendered by <Scripts />)
   // This is the critical marker transformStreamWithRouter can scan for.
   expect(responseHtml).toContain('$tsr-stream-barrier')
+
+  // Router scripts and end marker must be injected before closing tags.
+  const bodyCloseIndex = responseHtml.lastIndexOf('</body>')
+  const htmlCloseIndex = responseHtml.lastIndexOf('</html>')
+  const barrierIndex = responseHtml.indexOf('$tsr-stream-barrier')
+  const endMarkerIndex = responseHtml.indexOf('$_TSR.e()')
+
+  expect(bodyCloseIndex).toBeGreaterThan(-1)
+  expect(htmlCloseIndex).toBeGreaterThan(-1)
+  expect(barrierIndex).toBeGreaterThan(-1)
+  expect(endMarkerIndex).toBeGreaterThan(-1)
+
+  expect(barrierIndex).toBeLessThan(bodyCloseIndex)
+  expect(endMarkerIndex).toBeLessThan(bodyCloseIndex)
+  expect(endMarkerIndex).toBeLessThan(htmlCloseIndex)
 })
 
 test('Navigating to sync-only from home page', async ({ page }) => {
