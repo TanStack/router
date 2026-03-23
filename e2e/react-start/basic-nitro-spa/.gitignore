@@ -1,0 +1,12 @@
+node_modules
+.DS_Store
+.cache
+.env
+dist
+.output
+.nitro
+
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
