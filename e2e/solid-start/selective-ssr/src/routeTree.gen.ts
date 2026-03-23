@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PostsPendingInheritRouteImport } from './routes/posts.pending-inherit'
+import { Route as PostsPendingDataOnlyComponentRouteImport } from './routes/posts.pending-data-only-component'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 
 const PostsRoute = PostsRouteImport.update({
@@ -23,6 +25,17 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PostsPendingInheritRoute = PostsPendingInheritRouteImport.update({
+  id: '/pending-inherit',
+  path: '/pending-inherit',
+  getParentRoute: () => PostsRoute,
+} as any)
+const PostsPendingDataOnlyComponentRoute =
+  PostsPendingDataOnlyComponentRouteImport.update({
+    id: '/pending-data-only-component',
+    path: '/pending-data-only-component',
+    getParentRoute: () => PostsRoute,
+  } as any)
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
@@ -33,24 +46,46 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/posts/pending-data-only-component': typeof PostsPendingDataOnlyComponentRoute
+  '/posts/pending-inherit': typeof PostsPendingInheritRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/posts/pending-data-only-component': typeof PostsPendingDataOnlyComponentRoute
+  '/posts/pending-inherit': typeof PostsPendingInheritRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
+  '/posts/pending-data-only-component': typeof PostsPendingDataOnlyComponentRoute
+  '/posts/pending-inherit': typeof PostsPendingInheritRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/posts' | '/posts/$postId'
+  fullPaths:
+    | '/'
+    | '/posts'
+    | '/posts/$postId'
+    | '/posts/pending-data-only-component'
+    | '/posts/pending-inherit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/posts' | '/posts/$postId'
-  id: '__root__' | '/' | '/posts' | '/posts/$postId'
+  to:
+    | '/'
+    | '/posts'
+    | '/posts/$postId'
+    | '/posts/pending-data-only-component'
+    | '/posts/pending-inherit'
+  id:
+    | '__root__'
+    | '/'
+    | '/posts'
+    | '/posts/$postId'
+    | '/posts/pending-data-only-component'
+    | '/posts/pending-inherit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -74,6 +109,20 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/posts/pending-inherit': {
+      id: '/posts/pending-inherit'
+      path: '/pending-inherit'
+      fullPath: '/posts/pending-inherit'
+      preLoaderRoute: typeof PostsPendingInheritRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/posts/pending-data-only-component': {
+      id: '/posts/pending-data-only-component'
+      path: '/pending-data-only-component'
+      fullPath: '/posts/pending-data-only-component'
+      preLoaderRoute: typeof PostsPendingDataOnlyComponentRouteImport
+      parentRoute: typeof PostsRoute
+    }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
@@ -86,10 +135,14 @@ declare module '@tanstack/solid-router' {
 
 interface PostsRouteChildren {
   PostsPostIdRoute: typeof PostsPostIdRoute
+  PostsPendingDataOnlyComponentRoute: typeof PostsPendingDataOnlyComponentRoute
+  PostsPendingInheritRoute: typeof PostsPendingInheritRoute
 }
 
 const PostsRouteChildren: PostsRouteChildren = {
   PostsPostIdRoute: PostsPostIdRoute,
+  PostsPendingDataOnlyComponentRoute: PostsPendingDataOnlyComponentRoute,
+  PostsPendingInheritRoute: PostsPendingInheritRoute,
 }
 
 const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
