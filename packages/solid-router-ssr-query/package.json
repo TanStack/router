@@ -68,7 +68,7 @@
   },
   "devDependencies": {
     "@solidjs/web": "2.0.0-beta.4",
-    "@tanstack/solid-query": "6.0.0-alpha.1",
+    "@tanstack/solid-query": "6.0.0-alpha.2",
     "@tanstack/solid-router": "workspace:*",
     "eslint-plugin-solid": "^0.14.5",
     "solid-js": "2.0.0-beta.4",
