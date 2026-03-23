@@ -52,16 +52,16 @@ rm postcss.config.* next.config.*
 
 ### 2. Install Required Dependencies
 
-TanStack Start leverages [Vite](https://vite.dev) and TanStack Router:
+TanStack Start leverages [Vite](https://vite.dev), [nitro](https://nitro.build/) and TanStack Router:
 
 ```sh
-npm i @tanstack/react-router @tanstack/react-start
+npm i @tanstack/react-router @tanstack/react-start nitro
 ```
 
-For Tailwind CSS and resolving imports using path aliases:
+For Tailwind CSS:
 
 ```sh
-npm i -D vite @vitejs/plugin-react @tailwindcss/vite tailwindcss vite-tsconfig-paths
+npm i -D vite @vitejs/plugin-react @tailwindcss/vite tailwindcss
 ```
 
 ### 3. Update Project Configuration
@@ -90,15 +90,18 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
+import { nitro } from "nitro/vite";
 
 export default defineConfig({
   server: {
     port: 3000,
   },
+  resolve: {
+      // Enables Vite to resolve imports using path aliases.
+      tsconfigPaths: true,
+  },
   plugins: [
     tailwindcss(),
-    // Enables Vite to resolve imports using path aliases.
-    tsconfigPaths(),
     tanstackStart({
       srcDirectory: 'src', // This is the default
       router: {
@@ -107,6 +110,7 @@ export default defineConfig({
       },
     }),
     viteReact(),
+    nitro(),
   ],
 })
 ```
