@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "vite-plugin-solid": "^2.11.11",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0"
   }
 }
