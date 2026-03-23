@@ -15,6 +15,10 @@ const tokenMatcherSchema = z.union([
   tokenJsonRegexSchema,
 ])
 
+const stringArrayFactorySchema = z.custom<() => Array<string>>(
+  (value) => typeof value === 'function',
+)
+
 export type TokenMatcherJson = string | z.infer<typeof tokenJsonRegexSchema>
 
 export type TokenMatcher = z.infer<typeof tokenMatcherSchema>
@@ -61,7 +65,7 @@ export const configSchema = baseConfigSchema.extend({
   routeTreeFileFooter: z
     .union([
       z.array(z.string()).optional().default([]),
-      z.function().returns(z.array(z.string())),
+      stringArrayFactorySchema,
     ])
     .optional(),
   autoCodeSplitting: z.boolean().optional(),
