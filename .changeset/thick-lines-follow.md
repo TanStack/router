@@ -1,5 +1,5 @@
 ---
-'@tanstack/start-plugin-core': minor
+'@tanstack/start-plugin-core': patch
 ---
 
-fix streaming in vite preview
+fix: streaming in vite preview
