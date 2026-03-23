@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, RouterCore } from '../src'
+import { BaseRootRoute, BaseRoute } from '../src'
+import { createTestRouter } from './routerTestUtils'
 import type { RouteMask } from '../src'
 
 describe('buildLocation - route masks', () => {
@@ -36,7 +37,7 @@ describe('buildLocation - route masks', () => {
       postsRoute.addChildren([postRoute.addChildren([infoRoute])]),
     ])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
       routeMasks,
@@ -412,7 +413,7 @@ describe('buildLocation - route masks', () => {
       },
     ]
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
       routeMasks,
@@ -459,7 +460,7 @@ describe('buildLocation - route masks', () => {
       },
     ]
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
       routeMasks,
@@ -509,7 +510,7 @@ describe('buildLocation - route masks', () => {
       },
     ]
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
       routeMasks,
@@ -553,7 +554,7 @@ describe('buildLocation - route masks', () => {
       },
     ]
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
       routeMasks,
@@ -604,7 +605,7 @@ describe('buildLocation - route masks', () => {
       },
     ]
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
       routeMasks,

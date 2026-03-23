@@ -1,4 +1,6 @@
-import { useRouterState } from './useRouterState'
+import * as Solid from 'solid-js'
+import { replaceEqualDeep } from '@tanstack/router-core'
+import { useRouter } from './useRouter'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -23,8 +25,19 @@ export function useLocation<
 >(
   opts?: UseLocationBaseOptions<TRouter, TSelected>,
 ): Accessor<UseLocationResult<TRouter, TSelected>> {
-  return useRouterState({
-    select: (state: any) =>
-      opts?.select ? opts.select(state.location) : state.location,
-  } as any) as Accessor<UseLocationResult<TRouter, TSelected>>
+  const router = useRouter<TRouter>()
+
+  if (!opts?.select) {
+    return (() => router.stores.location.state) as Accessor<
+      UseLocationResult<TRouter, TSelected>
+    >
+  }
+
+  const select = opts.select
+
+  return Solid.createMemo((prev: TSelected | undefined) => {
+    const res = select(router.stores.location.state)
+    if (prev === undefined) return res
+    return replaceEqualDeep(prev, res)
+  }) as Accessor<UseLocationResult<TRouter, TSelected>>
 }

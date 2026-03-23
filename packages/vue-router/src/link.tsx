@@ -6,16 +6,17 @@ import {
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 
-import { useRouterState } from './useRouterState'
+import { useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
 import { useIntersectionObserver } from './utils'
-import { useMatches } from './Matches'
 
 import type {
   AnyRouter,
   Constrain,
   LinkOptions,
+  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -48,6 +49,14 @@ type LinkHTMLAttributes = AnchorHTMLAttributes &
     disabled?: boolean
   }
 
+type VueStyleLinkEventHandlers = {
+  onMouseenter?: EventHandler<MouseEvent>
+  onMouseleave?: EventHandler<MouseEvent>
+  onMouseover?: EventHandler<MouseEvent>
+  onMouseout?: EventHandler<MouseEvent>
+  onTouchstart?: EventHandler<TouchEvent>
+}
+
 interface StyledProps {
   class?: LinkHTMLAttributes['class']
   style?: LinkHTMLAttributes['style']
@@ -62,6 +71,9 @@ type PropsOfComponent<TComp> =
       TComp extends Vue.Component<infer P>
       ? P
       : Record<string, unknown>
+
+type AnyLinkPropsOptions = UseLinkPropsOptions<any, any, any, any, any>
+type LinkEventOptions = AnyLinkPropsOptions & Partial<VueStyleLinkEventHandlers>
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -92,35 +104,133 @@ export function useLinkProps<
     }
   })
 
-  const buildLocationKey = useRouterState({
-    select: (s) => {
-      const leaf = s.matches[s.matches.length - 1]
-      return {
-        search: leaf?.search,
-        hash: s.location.hash,
-        path: leaf?.pathname, // path + params
+  const ref = Vue.ref<Element | null>(null)
+  const eventHandlers = getLinkEventHandlers(options as LinkEventOptions)
+
+  if (type.value === 'external') {
+    // Block dangerous protocols like javascript:, blob:, data:
+    if (isDangerousProtocol(options.to as string, router.protocolAllowlist)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Blocked Link with dangerous protocol: ${options.to}`)
       }
-    },
-  })
+      // Return props without href to prevent navigation
+      const safeProps: Record<string, unknown> = {
+        ...getPropsSafeToSpread(options as AnyLinkPropsOptions),
+        ref,
+        // No href attribute - blocks the dangerous protocol
+        target: options.target,
+        disabled: options.disabled,
+        style: options.style,
+        class: options.class,
+        onClick: options.onClick,
+        onBlur: options.onBlur,
+        onFocus: options.onFocus,
+        onMouseenter: eventHandlers.onMouseenter,
+        onMouseleave: eventHandlers.onMouseleave,
+        onMouseover: eventHandlers.onMouseover,
+        onMouseout: eventHandlers.onMouseout,
+        onTouchstart: eventHandlers.onTouchstart,
+      }
 
-  // when `from` is not supplied, use the leaf route of the current matches as the `from` location
-  const from = useMatches({
-    select: (matches) => options.from ?? matches[matches.length - 1]?.fullPath,
-  })
+      // Remove undefined values
+      Object.keys(safeProps).forEach((key) => {
+        if (safeProps[key] === undefined) {
+          delete safeProps[key]
+        }
+      })
 
-  const _options = Vue.computed(() => ({
-    ...options,
-    from: from.value,
-  }))
+      return Vue.computed(
+        () => safeProps as LinkHTMLAttributes,
+      ) as unknown as LinkHTMLAttributes
+    }
+
+    // External links just have simple props
+    const externalProps: Record<string, unknown> = {
+      ...getPropsSafeToSpread(options as AnyLinkPropsOptions),
+      ref,
+      href: options.to,
+      target: options.target,
+      disabled: options.disabled,
+      style: options.style,
+      class: options.class,
+      onClick: options.onClick,
+      onBlur: options.onBlur,
+      onFocus: options.onFocus,
+      onMouseenter: eventHandlers.onMouseenter,
+      onMouseleave: eventHandlers.onMouseleave,
+      onMouseover: eventHandlers.onMouseover,
+      onMouseout: eventHandlers.onMouseout,
+      onTouchstart: eventHandlers.onTouchstart,
+    }
+
+    // Remove undefined values
+    Object.keys(externalProps).forEach((key) => {
+      if (externalProps[key] === undefined) {
+        delete externalProps[key]
+      }
+    })
+
+    return Vue.computed(
+      () => externalProps as LinkHTMLAttributes,
+    ) as unknown as LinkHTMLAttributes
+  }
+
+  // During SSR we render exactly once and do not need reactivity.
+  // Avoid store subscriptions, effects and observers on the server.
+  if (isServer ?? router.isServer) {
+    const next = router.buildLocation(options as any)
+    const href = getHref({
+      options: options as AnyLinkPropsOptions,
+      router,
+      nextLocation: next,
+    })
+
+    const isActive = getIsActive({
+      loc: router.stores.location.state,
+      nextLoc: next,
+      activeOptions: options.activeOptions,
+      router,
+    })
+
+    const {
+      resolvedActiveProps,
+      resolvedInactiveProps,
+      resolvedClassName,
+      resolvedStyle,
+    } = resolveStyleProps({
+      options: options as AnyLinkPropsOptions,
+      isActive,
+    })
+
+    const result = combineResultProps({
+      href,
+      options: options as AnyLinkPropsOptions,
+      isActive,
+      isTransitioning: false,
+      resolvedActiveProps,
+      resolvedInactiveProps,
+      resolvedClassName,
+      resolvedStyle,
+    })
+
+    return Vue.ref(
+      result as LinkHTMLAttributes,
+    ) as unknown as LinkHTMLAttributes
+  }
+
+  const currentLocation = useStore(router.stores.location, (l) => l, {
+    equal: (prev, next) => prev.href === next.href,
+  })
 
   const next = Vue.computed(() => {
-    // Depend on search to rebuild when search changes
-    buildLocationKey.value
-    return router.buildLocation(_options.value as any)
+    // Rebuild when inherited search/hash or the current route context changes.
+
+    const opts = { _fromLocation: currentLocation.value, ...options }
+    return router.buildLocation(opts as any)
   })
 
   const preload = Vue.computed(() => {
-    if (_options.value.reloadDocument) {
+    if (options.reloadDocument) {
       return false
     }
     return options.preload ?? router.options.defaultPreload
@@ -130,58 +240,22 @@ export function useLinkProps<
     () => options.preloadDelay ?? router.options.defaultPreloadDelay ?? 0,
   )
 
-  const isActive = useRouterState({
-    select: (s) => {
-      const activeOptions = options.activeOptions
-      if (activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          next.value.pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          router.basepath,
-        ).split('/')
-        const nextPathSplit = removeTrailingSlash(
-          next.value?.pathname,
-          router.basepath,
-        )?.split('/')
-
-        const pathIsFuzzyEqual = nextPathSplit?.every(
-          (d, i) => d === currentPathSplit[i],
-        )
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
-      }
-
-      if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next.value.search, {
-          partial: !activeOptions?.exact,
-          ignoreUndefined: !activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
-        }
-      }
-
-      if (activeOptions?.includeHash) {
-        return s.location.hash === next.value.hash
-      }
-      return true
-    },
-  })
+  const isActive = Vue.computed(() =>
+    getIsActive({
+      activeOptions: options.activeOptions,
+      loc: currentLocation.value,
+      nextLoc: next.value,
+      router,
+    }),
+  )
 
   const doPreload = () =>
-    router.preloadRoute(_options.value as any).catch((err: any) => {
-      console.warn(err)
-      console.warn(preloadWarning)
-    })
+    router
+      .preloadRoute({ ...options, _builtLocation: next.value } as any)
+      .catch((err: any) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
 
   const preloadViewportIoCallback = (
     entry: IntersectionObserverEntry | undefined,
@@ -190,8 +264,6 @@ export function useLinkProps<
       doPreload()
     }
   }
-
-  const ref = Vue.ref<Element | null>(null)
 
   useIntersectionObserver(
     ref,
@@ -210,123 +282,6 @@ export function useLinkProps<
     }
   })
 
-  // Create safe props that can be spread
-  const getPropsSafeToSpread = () => {
-    const result: Record<string, any> = {}
-    const optionRecord = options as unknown as Record<string, unknown>
-    for (const key in options) {
-      if (
-        ![
-          'activeProps',
-          'inactiveProps',
-          'activeOptions',
-          'to',
-          'preload',
-          'preloadDelay',
-          'hashScrollIntoView',
-          'replace',
-          'startTransition',
-          'resetScroll',
-          'viewTransition',
-          'children',
-          'target',
-          'disabled',
-          'style',
-          'class',
-          'onClick',
-          'onBlur',
-          'onFocus',
-          'onMouseEnter',
-          'onMouseLeave',
-          'onMouseOver',
-          'onMouseOut',
-          'onTouchStart',
-          'ignoreBlocker',
-          'params',
-          'search',
-          'hash',
-          'state',
-          'mask',
-          'reloadDocument',
-          '_asChild',
-          'from',
-          'additionalProps',
-        ].includes(key)
-      ) {
-        result[key] = optionRecord[key]
-      }
-    }
-    return result
-  }
-
-  if (type.value === 'external') {
-    // Block dangerous protocols like javascript:, blob:, data:
-    if (isDangerousProtocol(options.to as string, router.protocolAllowlist)) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn(`Blocked Link with dangerous protocol: ${options.to}`)
-      }
-      // Return props without href to prevent navigation
-      const safeProps: Record<string, unknown> = {
-        ...getPropsSafeToSpread(),
-        ref,
-        // No href attribute - blocks the dangerous protocol
-        target: options.target,
-        disabled: options.disabled,
-        style: options.style,
-        class: options.class,
-        onClick: options.onClick,
-        onBlur: options.onBlur,
-        onFocus: options.onFocus,
-        onMouseEnter: options.onMouseEnter,
-        onMouseLeave: options.onMouseLeave,
-        onMouseOver: options.onMouseOver,
-        onMouseOut: options.onMouseOut,
-        onTouchStart: options.onTouchStart,
-      }
-
-      // Remove undefined values
-      Object.keys(safeProps).forEach((key) => {
-        if (safeProps[key] === undefined) {
-          delete safeProps[key]
-        }
-      })
-
-      return Vue.computed(
-        () => safeProps as LinkHTMLAttributes,
-      ) as unknown as LinkHTMLAttributes
-    }
-
-    // External links just have simple props
-    const externalProps: Record<string, unknown> = {
-      ...getPropsSafeToSpread(),
-      ref,
-      href: options.to,
-      target: options.target,
-      disabled: options.disabled,
-      style: options.style,
-      class: options.class,
-      onClick: options.onClick,
-      onBlur: options.onBlur,
-      onFocus: options.onFocus,
-      onMouseEnter: options.onMouseEnter,
-      onMouseLeave: options.onMouseLeave,
-      onMouseOver: options.onMouseOver,
-      onMouseOut: options.onMouseOut,
-      onTouchStart: options.onTouchStart,
-    }
-
-    // Remove undefined values
-    Object.keys(externalProps).forEach((key) => {
-      if (externalProps[key] === undefined) {
-        delete externalProps[key]
-      }
-    })
-
-    return Vue.computed(
-      () => externalProps as LinkHTMLAttributes,
-    ) as unknown as LinkHTMLAttributes
-  }
-
   // The click handler
   const handleClick = (e: PointerEvent): void => {
     // Check actual element's target attribute as fallback
@@ -344,7 +299,7 @@ export function useLinkProps<
       e.button === 0
     ) {
       // Don't prevent default or handle navigation if reloadDocument is true
-      if (_options.value.reloadDocument) {
+      if (options.reloadDocument) {
         return
       }
 
@@ -359,7 +314,7 @@ export function useLinkProps<
 
       // All is well? Navigate!
       router.navigate({
-        ..._options.value,
+        ...options,
         replace: options.replace,
         resetScroll: options.resetScroll,
         hashScrollIntoView: options.hashScrollIntoView,
@@ -421,75 +376,20 @@ export function useLinkProps<
   }
 
   // Get the active and inactive props
-  const resolvedActiveProps = Vue.computed<StyledProps>(() => {
-    const activeProps = options.activeProps || (() => ({ class: 'active' }))
-    const props = isActive.value
-      ? typeof activeProps === 'function'
-        ? activeProps()
-        : activeProps
-      : {}
+  const resolvedStyleProps = Vue.computed(() =>
+    resolveStyleProps({
+      options: options as AnyLinkPropsOptions,
+      isActive: isActive.value,
+    }),
+  )
 
-    return props || { class: undefined, style: undefined }
-  })
-
-  const resolvedInactiveProps = Vue.computed<StyledProps>(() => {
-    const inactiveProps = options.inactiveProps || (() => ({}))
-    const props = isActive.value
-      ? {}
-      : typeof inactiveProps === 'function'
-        ? inactiveProps()
-        : inactiveProps
-
-    return props || { class: undefined, style: undefined }
-  })
-
-  const resolvedClassName = Vue.computed(() => {
-    const classes = [
-      options.class,
-      resolvedActiveProps.value?.class,
-      resolvedInactiveProps.value?.class,
-    ].filter(Boolean)
-    return classes.length ? classes.join(' ') : undefined
-  })
-
-  const resolvedStyle = Vue.computed(() => {
-    const result: Record<string, string | number> = {}
-
-    // Merge styles from all sources
-    if (options.style) {
-      Object.assign(result, options.style)
-    }
-
-    if (resolvedActiveProps.value?.style) {
-      Object.assign(result, resolvedActiveProps.value.style)
-    }
-
-    if (resolvedInactiveProps.value?.style) {
-      Object.assign(result, resolvedInactiveProps.value.style)
-    }
-
-    return Object.keys(result).length > 0 ? result : undefined
-  })
-
-  const href = Vue.computed(() => {
-    if (options.disabled) {
-      return undefined
-    }
-    const nextLocation = next.value
-    const location = nextLocation?.maskedLocation ?? nextLocation
-
-    // Use publicHref - it contains the correct href for display
-    // When a rewrite changes the origin, publicHref is the full URL
-    // Otherwise it's the origin-stripped path
-    // This avoids constructing URL objects in the hot path
-    const publicHref = location?.publicHref
-    if (!publicHref) return undefined
-
-    const external = location?.external
-    if (external) return publicHref
-
-    return router.history.createHref(publicHref) || '/'
-  })
+  const href = Vue.computed(() =>
+    getHref({
+      options: options as AnyLinkPropsOptions,
+      router,
+      nextLocation: next.value,
+    }),
+  )
 
   // Create static event handlers that don't change between renders
   const staticEventHandlers = {
@@ -506,23 +406,23 @@ export function useLinkProps<
       enqueueIntentPreload,
     ]) as any,
     onMouseenter: composeEventHandlers<MouseEvent>([
-      options.onMouseEnter,
+      eventHandlers.onMouseenter,
       enqueueIntentPreload,
     ]) as any,
     onMouseover: composeEventHandlers<MouseEvent>([
-      options.onMouseOver,
+      eventHandlers.onMouseover,
       enqueueIntentPreload,
     ]) as any,
     onMouseleave: composeEventHandlers<MouseEvent>([
-      options.onMouseLeave,
+      eventHandlers.onMouseleave,
       handleLeave,
     ]) as any,
     onMouseout: composeEventHandlers<MouseEvent>([
-      options.onMouseOut,
+      eventHandlers.onMouseout,
       handleLeave,
     ]) as any,
     onTouchstart: composeEventHandlers<TouchEvent>([
-      options.onTouchStart,
+      eventHandlers.onTouchstart,
       handleTouchStart,
     ]) as any,
   }
@@ -530,62 +430,309 @@ export function useLinkProps<
   // Compute all props synchronously to avoid hydration mismatches
   // Using Vue.computed ensures props are calculated at render time, not after
   const computedProps = Vue.computed<LinkHTMLAttributes>(() => {
-    const result: Record<string, unknown> = {
-      ...getPropsSafeToSpread(),
+    const {
+      resolvedActiveProps,
+      resolvedInactiveProps,
+      resolvedClassName,
+      resolvedStyle,
+    } = resolvedStyleProps.value
+    return combineResultProps({
       href: href.value,
+      options: options as AnyLinkPropsOptions,
       ref,
-      ...staticEventHandlers,
-      disabled: !!options.disabled,
-      target: options.target,
-    }
-
-    // Add style if present
-    if (resolvedStyle.value) {
-      result.style = resolvedStyle.value
-    }
-
-    // Add class if present
-    if (resolvedClassName.value) {
-      result.class = resolvedClassName.value
-    }
-
-    // Add disabled props
-    if (options.disabled) {
-      result.role = 'link'
-      result['aria-disabled'] = true
-    }
-
-    // Add active status
-    if (isActive.value) {
-      result['data-status'] = 'active'
-      result['aria-current'] = 'page'
-    }
-
-    // Add transitioning status
-    if (isTransitioning.value) {
-      result['data-transitioning'] = 'transitioning'
-    }
-
-    // Merge active/inactive props (excluding class and style which are handled above)
-    const activeP = resolvedActiveProps.value
-    const inactiveP = resolvedInactiveProps.value
-
-    for (const key of Object.keys(activeP)) {
-      if (key !== 'class' && key !== 'style') {
-        result[key] = (activeP as any)[key]
-      }
-    }
-    for (const key of Object.keys(inactiveP)) {
-      if (key !== 'class' && key !== 'style') {
-        result[key] = (inactiveP as any)[key]
-      }
-    }
-
-    return result
+      staticEventHandlers,
+      isActive: isActive.value,
+      isTransitioning: isTransitioning.value,
+      resolvedActiveProps,
+      resolvedInactiveProps,
+      resolvedClassName,
+      resolvedStyle,
+    })
   })
 
   // Return the computed ref itself - callers should access .value
   return computedProps as unknown as LinkHTMLAttributes
+}
+
+function resolveStyleProps({
+  options,
+  isActive,
+}: {
+  options: AnyLinkPropsOptions
+  isActive: boolean
+}) {
+  const activeProps = options.activeProps || (() => ({ class: 'active' }))
+  const resolvedActiveProps: StyledProps = (isActive
+    ? typeof activeProps === 'function'
+      ? activeProps()
+      : activeProps
+    : {}) || { class: undefined, style: undefined }
+
+  const inactiveProps = options.inactiveProps || (() => ({}))
+
+  const resolvedInactiveProps: StyledProps = (isActive
+    ? {}
+    : typeof inactiveProps === 'function'
+      ? inactiveProps()
+      : inactiveProps) || { class: undefined, style: undefined }
+
+  const classes = [
+    options.class,
+    resolvedActiveProps?.class,
+    resolvedInactiveProps?.class,
+  ].filter(Boolean)
+  const resolvedClassName = classes.length ? classes.join(' ') : undefined
+
+  const result: Record<string, string | number> = {}
+
+  // Merge styles from all sources
+  if (options.style) {
+    Object.assign(result, options.style)
+  }
+
+  if (resolvedActiveProps?.style) {
+    Object.assign(result, resolvedActiveProps.style)
+  }
+
+  if (resolvedInactiveProps?.style) {
+    Object.assign(result, resolvedInactiveProps.style)
+  }
+
+  const resolvedStyle = Object.keys(result).length > 0 ? result : undefined
+  return {
+    resolvedActiveProps,
+    resolvedInactiveProps,
+    resolvedClassName,
+    resolvedStyle,
+  }
+}
+
+function combineResultProps({
+  href,
+  options,
+  isActive,
+  isTransitioning,
+  resolvedActiveProps,
+  resolvedInactiveProps,
+  resolvedClassName,
+  resolvedStyle,
+  ref,
+  staticEventHandlers,
+}: {
+  initial?: LinkHTMLAttributes
+  href: string | undefined
+  options: AnyLinkPropsOptions
+  isActive: boolean
+  isTransitioning: boolean
+  resolvedActiveProps: StyledProps
+  resolvedInactiveProps: StyledProps
+  resolvedClassName?: string
+  resolvedStyle?: Record<string, string | number>
+  ref?: Vue.VNodeRef | undefined
+  staticEventHandlers?: {
+    onClick: any
+    onBlur: any
+    onFocus: any
+    onMouseenter: any
+    onMouseover: any
+    onMouseleave: any
+    onMouseout: any
+    onTouchstart: any
+  }
+}) {
+  const result: Record<string, unknown> = {
+    ...getPropsSafeToSpread(options),
+    ref,
+    ...staticEventHandlers,
+    href,
+    disabled: !!options.disabled,
+    target: options.target,
+  }
+
+  if (resolvedStyle) {
+    result.style = resolvedStyle
+  }
+
+  if (resolvedClassName) {
+    result.class = resolvedClassName
+  }
+
+  if (options.disabled) {
+    result.role = 'link'
+    result['aria-disabled'] = true
+  }
+
+  if (isActive) {
+    result['data-status'] = 'active'
+    result['aria-current'] = 'page'
+  }
+
+  if (isTransitioning) {
+    result['data-transitioning'] = 'transitioning'
+  }
+
+  for (const key of Object.keys(resolvedActiveProps)) {
+    if (key !== 'class' && key !== 'style') {
+      result[key] = resolvedActiveProps[key]
+    }
+  }
+
+  for (const key of Object.keys(resolvedInactiveProps)) {
+    if (key !== 'class' && key !== 'style') {
+      result[key] = resolvedInactiveProps[key]
+    }
+  }
+  return result
+}
+
+function getLinkEventHandlers(
+  options: LinkEventOptions,
+): VueStyleLinkEventHandlers {
+  return {
+    onMouseenter: options.onMouseEnter ?? options.onMouseenter,
+    onMouseleave: options.onMouseLeave ?? options.onMouseleave,
+    onMouseover: options.onMouseOver ?? options.onMouseover,
+    onMouseout: options.onMouseOut ?? options.onMouseout,
+    onTouchstart: options.onTouchStart ?? options.onTouchstart,
+  }
+}
+
+const propsUnsafeToSpread = new Set([
+  'activeProps',
+  'inactiveProps',
+  'activeOptions',
+  'to',
+  'preload',
+  'preloadDelay',
+  'hashScrollIntoView',
+  'replace',
+  'startTransition',
+  'resetScroll',
+  'viewTransition',
+  'children',
+  'target',
+  'disabled',
+  'style',
+  'class',
+  'onClick',
+  'onBlur',
+  'onFocus',
+  'onMouseEnter',
+  'onMouseenter',
+  'onMouseLeave',
+  'onMouseleave',
+  'onMouseOver',
+  'onMouseover',
+  'onMouseOut',
+  'onMouseout',
+  'onTouchStart',
+  'onTouchstart',
+  'ignoreBlocker',
+  'params',
+  'search',
+  'hash',
+  'state',
+  'mask',
+  'reloadDocument',
+  '_asChild',
+  'from',
+  'additionalProps',
+])
+
+// Create safe props that can be spread
+const getPropsSafeToSpread = (options: AnyLinkPropsOptions) => {
+  const result: Record<string, unknown> = {}
+  for (const key in options) {
+    if (!propsUnsafeToSpread.has(key)) {
+      result[key] = (options as Record<string, unknown>)[key]
+    }
+  }
+
+  return result
+}
+
+function getIsActive({
+  activeOptions,
+  loc,
+  nextLoc,
+  router,
+}: {
+  activeOptions: LinkOptions['activeOptions']
+  loc: {
+    pathname: string
+    search: any
+    hash: string
+  }
+  nextLoc: {
+    pathname: string
+    search: any
+    hash: string
+  }
+  router: AnyRouter
+}) {
+  if (activeOptions?.exact) {
+    const testExact = exactPathTest(
+      loc.pathname,
+      nextLoc.pathname,
+      router.basepath,
+    )
+    if (!testExact) {
+      return false
+    }
+  } else {
+    const currentPath = removeTrailingSlash(loc.pathname, router.basepath)
+    const nextPath = removeTrailingSlash(nextLoc.pathname, router.basepath)
+
+    const pathIsFuzzyEqual =
+      currentPath.startsWith(nextPath) &&
+      (currentPath.length === nextPath.length ||
+        currentPath[nextPath.length] === '/')
+    if (!pathIsFuzzyEqual) {
+      return false
+    }
+  }
+
+  if (activeOptions?.includeSearch ?? true) {
+    const searchTest = deepEqual(loc.search, nextLoc.search, {
+      partial: !activeOptions?.exact,
+      ignoreUndefined: !activeOptions?.explicitUndefined,
+    })
+    if (!searchTest) {
+      return false
+    }
+  }
+
+  if (activeOptions?.includeHash) {
+    return loc.hash === nextLoc.hash
+  }
+  return true
+}
+
+function getHref({
+  options,
+  router,
+  nextLocation,
+}: {
+  options: AnyLinkPropsOptions
+  router: AnyRouter
+  nextLocation?: ParsedLocation
+}) {
+  if (options.disabled) {
+    return undefined
+  }
+  const location = nextLocation?.maskedLocation ?? nextLocation
+
+  // Use publicHref - it contains the correct href for display
+  // When a rewrite changes the origin, publicHref is the full URL
+  // Otherwise it's the origin-stripped path
+  // This avoids constructing URL objects in the hot path
+  const publicHref = location?.publicHref
+  if (!publicHref) return undefined
+
+  const external = location?.external
+  if (external) return publicHref
+
+  return router.history.createHref(publicHref) || '/'
 }
 
 // Type definitions
@@ -747,17 +894,15 @@ const LinkImpl = Vue.defineComponent({
   ],
   setup(props, { attrs, slots }) {
     // Call useLinkProps ONCE during setup with combined props and attrs
-    // The returned object is a computed ref that updates reactively
     const allProps = { ...props, ...attrs }
-    const linkPropsComputed = useLinkProps(
-      allProps as any,
-    ) as unknown as Vue.ComputedRef<LinkHTMLAttributes>
+    const linkPropsSource = useLinkProps(allProps as any) as
+      | LinkHTMLAttributes
+      | Vue.ComputedRef<LinkHTMLAttributes>
 
     return () => {
       const Component = props._asChild || 'a'
 
-      // Access the computed value to get fresh props each render
-      const linkProps = linkPropsComputed.value
+      const linkProps = Vue.unref(linkPropsSource)
 
       const isActive = linkProps['data-status'] === 'active'
       const isTransitioning =

@@ -37,11 +37,10 @@ export function useLoaderDeps<
 >(
   opts: UseLoaderDepsOptions<TRouter, TFrom, TSelected>,
 ): Accessor<UseLoaderDepsResult<TRouter, TFrom, TSelected>> {
-  const { select, ...rest } = opts
   return useMatch({
-    ...rest,
+    ...opts,
     select: (s) => {
-      return select ? select(s.loaderDeps) : s.loaderDeps
+      return opts.select ? opts.select(s.loaderDeps) : s.loaderDeps
     },
   }) as Accessor<UseLoaderDepsResult<TRouter, TFrom, TSelected>>
 }

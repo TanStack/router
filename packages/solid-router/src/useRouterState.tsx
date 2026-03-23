@@ -1,5 +1,6 @@
-import { createMemo, createSignal, onCleanup } from 'solid-js'
 import { isServer } from '@tanstack/router-core/isServer'
+import * as Solid from 'solid-js'
+import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -7,41 +8,6 @@ import type {
   RouterState,
 } from '@tanstack/router-core'
 import type { Accessor } from 'solid-js'
-
-function deepEqual(a: any, b: any): boolean {
-  if (Object.is(a, b)) return true
-
-  if (isPromiseLike(a) || isPromiseLike(b)) return false
-
-  if (
-    typeof a !== 'object' ||
-    a === null ||
-    typeof b !== 'object' ||
-    b === null
-  ) {
-    return false
-  }
-
-  const keysA = Object.keys(a)
-  const keysB = Object.keys(b)
-
-  if (keysA.length !== keysB.length) return false
-
-  for (const key of keysA) {
-    if (!Object.prototype.hasOwnProperty.call(b, key)) return false
-    if (!deepEqual(a[key], b[key])) return false
-  }
-
-  return true
-}
-
-function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
-  return (
-    !!value &&
-    (typeof value === 'object' || typeof value === 'function') &&
-    typeof (value as PromiseLike<unknown>).then === 'function'
-  )
-}
 
 export type UseRouterStateOptions<TRouter extends AnyRouter, TSelected> = {
   router?: TRouter
@@ -69,40 +35,28 @@ export function useRouterState<
   // implementation does not provide subscribe() semantics.
   const _isServer = isServer ?? router.isServer
   if (_isServer) {
-    const state = router.state as RouterState<TRouter['routeTree']>
-    const selected = createMemo(() =>
-      opts?.select ? opts.select(state) : state,
-    ) as Accessor<UseRouterStateResult<TRouter, TSelected>>
-    return selected
+    const state = router.stores.__store.state as RouterState<
+      TRouter['routeTree']
+    >
+    const selected = (
+      opts?.select ? opts.select(state) : state
+    ) as UseRouterStateResult<TRouter, TSelected>
+    return (() => selected) as Accessor<
+      UseRouterStateResult<TRouter, TSelected>
+    >
   }
 
-  const selector = (state: any) => {
-    if (opts?.select) return opts.select(state)
-
-    return state
+  if (!opts?.select) {
+    return (() => router.stores.__store.state) as Accessor<
+      UseRouterStateResult<TRouter, TSelected>
+    >
   }
 
-  // Track the latest store state in a signal that updates via subscription.
-  // We store the full state so that the selector (which may read reactive
-  // props like props.matchId) re-runs inside a Solid tracking scope (the
-  // createMemo below) rather than inside the store subscriber callback
-  // where reactive reads would be untracked.
-  const [storeState, setStoreState] = createSignal(router.__store.get())
+  const select = opts.select
 
-  const unsub = router.__store.subscribe((s) => {
-    setStoreState(s)
-  }).unsubscribe
-
-  onCleanup(() => {
-    unsub()
-  })
-
-  // Run the selector inside a memo so that:
-  // 1. Reactive values read by the selector (e.g. props.matchId) are tracked
-  // 2. The result is memoized and only updates when the selected value changes
-  const selected = createMemo(() => selector(storeState()), undefined, {
-    equals: (a: any, b: any) => deepEqual(a, b),
-  })
-
-  return selected as Accessor<UseRouterStateResult<TRouter, TSelected>>
+  return Solid.createMemo((prev: TSelected | undefined) => {
+    const res = select(router.stores.__store.state)
+    if (prev === undefined) return res
+    return replaceEqualDeep(prev, res)
+  }) as Accessor<UseRouterStateResult<TRouter, TSelected>>
 }

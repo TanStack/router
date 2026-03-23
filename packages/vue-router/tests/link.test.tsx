@@ -262,6 +262,66 @@ describe('Link', () => {
     expect(postsLink).not.toHaveAttribute('data-status', 'active')
   })
 
+  test('external links call user hover and touch handlers', async () => {
+    const camelCaseMouseEnter = vi.fn()
+    const camelCaseTouchStart = vi.fn()
+    const vueCaseMouseenter = vi.fn()
+    const vueCaseTouchstart = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <Link
+            data-testid="camel-case-external-link"
+            to="https://tanstack.com/router"
+            onMouseEnter={camelCaseMouseEnter}
+            onTouchStart={camelCaseTouchStart}
+          >
+            Camel case external link
+          </Link>
+          <Link
+            data-testid="vue-case-external-link"
+            to="https://tanstack.com/start"
+            onMouseenter={vueCaseMouseenter}
+            onTouchstart={vueCaseTouchstart}
+          >
+            Vue case external link
+          </Link>
+        </>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const camelCaseExternalLink = await screen.findByTestId(
+      'camel-case-external-link',
+    )
+
+    fireEvent.mouseEnter(camelCaseExternalLink)
+    fireEvent.touchStart(camelCaseExternalLink)
+
+    expect(camelCaseMouseEnter).toHaveBeenCalledTimes(1)
+    expect(camelCaseTouchStart).toHaveBeenCalledTimes(1)
+
+    const vueCaseExternalLink = await screen.findByTestId(
+      'vue-case-external-link',
+    )
+
+    fireEvent.mouseEnter(vueCaseExternalLink)
+    fireEvent.touchStart(vueCaseExternalLink)
+
+    expect(vueCaseMouseenter).toHaveBeenCalledTimes(1)
+    expect(vueCaseTouchstart).toHaveBeenCalledTimes(1)
+  })
+
   describe('when the current route has a search fields with undefined values', () => {
     async function runTest(opts: { explicitUndefined: boolean | undefined }) {
       const rootRoute = createRootRoute()

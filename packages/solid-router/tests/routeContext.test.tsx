@@ -211,9 +211,14 @@ describe('context function', () => {
       expect(mockContextFn).toHaveBeenCalledWith({})
       mockContextFn.mockClear()
 
+      // In Solid v2, we must wait for the router to become idle between
+      // navigations because Solid lacks React's startTransition for
+      // concurrent state updates. Without this, the next navigation
+      // fires while the previous load is still pending, causing timeouts.
       await clickButton('foo-1')
       await waitFor(() => {
         expect(router.state.location.search).toEqual({ foo: 'foo-1' })
+        expect(router.state.status).toBe('idle')
       })
       expect(mockContextFn).toHaveBeenCalledOnce()
       expect(mockContextFn).toHaveBeenCalledWith({ foo: 'foo-1' })
@@ -222,6 +227,7 @@ describe('context function', () => {
       await clickButton('foo-1')
       await waitFor(() => {
         expect(router.state.location.search).toEqual({ foo: 'foo-1' })
+        expect(router.state.status).toBe('idle')
       })
       expect(mockContextFn).not.toHaveBeenCalled()
 
@@ -231,6 +237,7 @@ describe('context function', () => {
           foo: 'foo-1',
           bar: 'bar-1',
         })
+        expect(router.state.status).toBe('idle')
       })
       expect(mockContextFn).not.toHaveBeenCalled()
 
@@ -240,6 +247,7 @@ describe('context function', () => {
           foo: 'foo-2',
           bar: 'bar-1',
         })
+        expect(router.state.status).toBe('idle')
       })
       expect(mockContextFn).toHaveBeenCalledWith({ foo: 'foo-2' })
       mockContextFn.mockClear()
@@ -250,12 +258,14 @@ describe('context function', () => {
           foo: 'foo-2',
           bar: 'bar-2',
         })
+        expect(router.state.status).toBe('idle')
       })
       expect(mockContextFn).not.toHaveBeenCalled()
 
       await clickButton('clear')
       await waitFor(() => {
         expect(router.state.location.search).toEqual({})
+        expect(router.state.status).toBe('idle')
       })
       expect(mockContextFn).toHaveBeenCalledOnce()
       expect(mockContextFn).toHaveBeenCalledWith({})

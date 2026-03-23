@@ -1,44 +1,62 @@
 import * as Solid from 'solid-js'
-import {
-  getLocationChangeInfo,
-  handleHashScroll,
-  trimPathRight,
-} from '@tanstack/router-core'
+import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
-import { usePrevious } from './utils'
+import type { ParsedLocation } from '@tanstack/router-core'
+
+/**
+ * Inline version of handleHashScroll that accepts a pre-captured location
+ * to avoid reading router.stores.location.state inside an effect callback
+ * (which would trigger a Solid v2 reactive warning).
+ */
+function handleHashScrollWithLocation(_router: any, location: ParsedLocation) {
+  if (typeof document !== 'undefined' && (document as any).querySelector) {
+    const hashScrollIntoViewOptions =
+      location.state.__hashScrollIntoViewOptions ?? true
+
+    if (hashScrollIntoViewOptions && location.hash !== '') {
+      const el = document.getElementById(location.hash)
+      if (el) {
+        el.scrollIntoView(hashScrollIntoViewOptions)
+      }
+    }
+  }
+}
 
 export function Transitioner() {
   const router = useRouter()
   let mountLoadForRouter = { router, mounted: false }
-  const isLoading = useRouterState({
-    select: ({ isLoading }) => isLoading,
-  })
+  const isLoading = Solid.createMemo(() => router.stores.isLoading.state)
 
   const [isSolidTransitioning] = [() => false]
 
   // Track pending state changes
-  const hasPendingMatches = useRouterState({
-    select: (s) => s.matches.some((d) => d.status === 'pending'),
-  })
+  const hasPendingMatches = Solid.createMemo(
+    () => router.stores.hasPendingMatches.state,
+  )
 
-  const previousIsLoading = usePrevious(isLoading)
+  const isAnyPending = Solid.createMemo(
+    () => isLoading() || isSolidTransitioning() || hasPendingMatches(),
+  )
 
-  const isAnyPending = () =>
-    isLoading() || isSolidTransitioning() || hasPendingMatches()
-  const previousIsAnyPending = usePrevious(isAnyPending)
-
-  const isPagePending = () => isLoading() || hasPendingMatches()
-  const previousIsPagePending = usePrevious(isPagePending)
+  const isPagePending = Solid.createMemo(
+    () => isLoading() || hasPendingMatches(),
+  )
 
   router.startTransition = (fn: () => void | Promise<void>) => {
     Solid.runWithOwner(null, fn)
+    try {
+      Solid.flush()
+    } catch {
+      // flush() throws inside reactive contexts — Solid auto-flushes there
+    }
   }
 
   // Subscribe to location changes
   // and try to load the new location
   Solid.onSettled(() => {
-    const unsub = router.history.subscribe(router.load)
+    const unsub = router.history.subscribe(() => {
+      queueMicrotask(() => router.load())
+    })
 
     // Refresh latestLocation from the current browser URL before comparing.
     // The URL may have been changed synchronously (e.g. via replaceState) after
@@ -71,16 +89,21 @@ export function Transitioner() {
   })
 
   // Try to load the initial location
-  Solid.createTrackedEffect(() => {
-    Solid.untrack(() => {
-      if (
-        // if we are hydrating from SSR, loading is triggered in ssr-client
-        (typeof window !== 'undefined' && router.ssr) ||
-        (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
-      ) {
-        return
-      }
-      mountLoadForRouter = { router, mounted: true }
+  // In Solid v2, signal updates inside onSettled cannot be flushed
+  // synchronously (flush() throws). router.load() sets signals via batch(),
+  // and the code that runs immediately after needs those values committed.
+  // By deferring to queueMicrotask, the load runs outside the reactive
+  // scheduling frame so flush() works correctly.
+  Solid.onSettled(() => {
+    if (
+      // if we are hydrating from SSR, loading is triggered in ssr-client
+      (typeof window !== 'undefined' && router.ssr) ||
+      (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
+    ) {
+      return
+    }
+    mountLoadForRouter = { router, mounted: true }
+    queueMicrotask(() => {
       const tryLoad = async () => {
         try {
           await router.load()
@@ -91,50 +114,70 @@ export function Transitioner() {
       tryLoad()
     })
   })
+  Solid.createRenderEffect(
+    () =>
+      [
+        isLoading(),
+        isPagePending(),
+        isAnyPending(),
+        router.stores.location.state,
+        router.stores.resolvedLocation.state,
+      ] as const,
+    (
+      [
+        currentIsLoading,
+        currentIsPagePending,
+        currentIsAnyPending,
+        loc,
+        resolvedLoc,
+      ],
+      prev,
+    ) => {
+      // Guard: if location state isn't available yet, skip all event emissions
+      if (!loc) return
 
-  Solid.createEffect(
-    () => [previousIsLoading(), isLoading()] as const,
-    ([previousIsLoading, isLoading]) => {
-      if (previousIsLoading.previous && !isLoading) {
+      const previousIsLoading = prev?.[0]
+      const previousIsPagePending = prev?.[1]
+      const previousIsAnyPending = prev?.[2]
+
+      // onLoad: when the router finishes loading
+      if (previousIsLoading && !currentIsLoading) {
         router.emit({
           type: 'onLoad',
-          ...getLocationChangeInfo(router.state),
+          ...getLocationChangeInfo(loc, resolvedLoc),
         })
       }
-    },
-  )
 
-  Solid.createEffect(
-    () => [isPagePending(), previousIsPagePending()] as const,
-    ([isPagePending, previousIsPagePending]) => {
-      // emit onBeforeRouteMount
-      if (previousIsPagePending.previous && !isPagePending) {
+      // onBeforeRouteMount: must fire before onResolved
+      if (previousIsPagePending && !currentIsPagePending) {
         router.emit({
           type: 'onBeforeRouteMount',
-          ...getLocationChangeInfo(router.state),
+          ...getLocationChangeInfo(loc, resolvedLoc),
         })
       }
-    },
-  )
 
-  Solid.createEffect(
-    () => [isAnyPending(), previousIsAnyPending()] as const,
-    ([isAnyPending, previousIsAnyPending]) => {
-      if (previousIsAnyPending.previous && !isAnyPending) {
-        const changeInfo = getLocationChangeInfo(router.state)
+      // onResolved: fires after onBeforeRouteMount
+      if (previousIsAnyPending && !currentIsAnyPending) {
+        const changeInfo = getLocationChangeInfo(loc, resolvedLoc)
         router.emit({
           type: 'onResolved',
           ...changeInfo,
         })
 
-        router.__store.setState((s) => ({
-          ...s,
-          status: 'idle',
-          resolvedLocation: s.location,
-        }))
+        Solid.runWithOwner(null, () => {
+          router.batch(() => {
+            router.stores.status.setState(() => 'idle')
+            // Use `loc` from the source tuple to avoid reading
+            // router.stores.location.state inside the effect callback
+            router.stores.resolvedLocation.setState(() => loc)
+          })
+        })
 
         if (changeInfo.hrefChanged) {
-          handleHashScroll(router)
+          // Pass the already-captured location to avoid a reactive read
+          // inside the effect callback (handleHashScroll would otherwise
+          // read router.stores.location.state which triggers a warning)
+          handleHashScrollWithLocation(router, loc)
         }
       }
     },

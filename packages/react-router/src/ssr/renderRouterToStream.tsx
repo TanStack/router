@@ -36,7 +36,7 @@ export const renderRouterToStream = async ({
       stream as unknown as ReadableStream,
     )
     return new Response(responseStream as any, {
-      status: router.state.statusCode,
+      status: router.stores.statusCode.state,
       headers: responseHeaders,
     })
   }
@@ -79,7 +79,7 @@ export const renderRouterToStream = async ({
       reactAppPassthrough,
     )
     return new Response(responseStream as any, {
-      status: router.state.statusCode,
+      status: router.stores.statusCode.state,
       headers: responseHeaders,
     })
   }

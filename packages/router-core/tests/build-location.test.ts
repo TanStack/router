@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, RouterCore } from '../src'
+import { BaseRootRoute, BaseRoute } from '../src'
+import { createTestRouter } from './routerTestUtils'
 
 describe('buildLocation - params function receives parsed params', () => {
   test('prev params should contain parsed params from route params.parse', async () => {
@@ -19,7 +20,7 @@ describe('buildLocation - params function receives parsed params', () => {
 
     const routeTree = rootRoute.addChildren([userRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/users/123'] }),
     })
@@ -68,7 +69,7 @@ describe('buildLocation - params function receives parsed params', () => {
 
     const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/orgs/42/users/123'] }),
     })
@@ -113,7 +114,7 @@ describe('buildLocation - params function receives parsed params', () => {
 
     const routeTree = rootRoute.addChildren([userRoute, postRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/users/123'] }),
     })
@@ -147,7 +148,7 @@ describe('buildLocation - params function receives parsed params', () => {
 
     const routeTree = rootRoute.addChildren([userRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/users/123'] }),
     })
@@ -189,7 +190,7 @@ describe('buildLocation - params function receives parsed params', () => {
 
     const routeTree = rootRoute.addChildren([orgRoute.addChildren([teamRoute])])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({
         initialEntries: ['/orgs/42/teams/engineering'],
@@ -221,7 +222,7 @@ describe('buildLocation - search params', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -247,7 +248,7 @@ describe('buildLocation - search params', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts?page=1'] }),
     })
@@ -278,7 +279,7 @@ describe('buildLocation - search params', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({
         initialEntries: ['/posts?page=5&filter=active'],
@@ -304,7 +305,7 @@ describe('buildLocation - search params', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({
         initialEntries: ['/posts?existing=value'],
@@ -336,7 +337,7 @@ describe('buildLocation - search params', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts?page=5'] }),
       search: { strict: true },
@@ -362,7 +363,7 @@ describe('buildLocation - search params', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({
         initialEntries: ['/posts?page=1&filter=active'],
@@ -389,7 +390,7 @@ describe('buildLocation - search params', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({
         initialEntries: ['/posts?page=1'],
@@ -417,7 +418,7 @@ describe('buildLocation - hash', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -442,7 +443,7 @@ describe('buildLocation - hash', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts#current'] }),
     })
@@ -470,7 +471,7 @@ describe('buildLocation - hash', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts#existing'] }),
     })
@@ -495,7 +496,7 @@ describe('buildLocation - hash', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts#existing'] }),
     })
@@ -519,7 +520,7 @@ describe('buildLocation - hash', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts#existing'] }),
     })
@@ -546,7 +547,7 @@ describe('buildLocation - state', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -574,7 +575,7 @@ describe('buildLocation - state', () => {
     // Set initial state on history
     history.replace('/posts', { existing: 'value' })
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history,
     })
@@ -611,7 +612,7 @@ describe('buildLocation - state', () => {
     const history = createMemoryHistory({ initialEntries: ['/posts'] })
     history.replace('/posts', { preserved: true })
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history,
     })
@@ -639,7 +640,7 @@ describe('buildLocation - state', () => {
     const history = createMemoryHistory({ initialEntries: ['/posts'] })
     history.replace('/posts', { existing: 'value' })
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history,
     })
@@ -662,7 +663,7 @@ describe('buildLocation - state', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -698,7 +699,7 @@ describe('buildLocation - relative paths', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute, aboutRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -728,7 +729,7 @@ describe('buildLocation - relative paths', () => {
       postsRoute.addChildren([postDetailRoute]),
     ])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -761,7 +762,7 @@ describe('buildLocation - relative paths', () => {
       postsRoute.addChildren([postDetailRoute, postAboutRoute]),
     ])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts/detail'] }),
     })
@@ -799,7 +800,7 @@ describe('buildLocation - relative paths', () => {
       aRoute.addChildren([bRoute.addChildren([cRoute]), dRoute]),
     ])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/a/b/c'] }),
     })
@@ -823,7 +824,7 @@ describe('buildLocation - relative paths', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -856,7 +857,7 @@ describe('buildLocation - relative paths', () => {
       usersRoute.addChildren([userRoute.addChildren([settingsRoute])]),
     ])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/users'] }),
     })
@@ -883,7 +884,7 @@ describe('buildLocation - basepath', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       basepath: '/app',
       history: createMemoryHistory({ initialEntries: ['/app/posts'] }),
@@ -916,7 +917,7 @@ describe('buildLocation - basepath', () => {
       postsRoute.addChildren([postRoute]),
     ])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       basepath: '/app',
       history: createMemoryHistory({ initialEntries: ['/app/posts'] }),
@@ -942,7 +943,7 @@ describe('buildLocation - basepath', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       basepath: '/app/',
       history: createMemoryHistory({ initialEntries: ['/app/posts'] }),
@@ -968,7 +969,7 @@ describe('buildLocation - basepath', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       basepath: '/app',
       history: createMemoryHistory({ initialEntries: ['/app/posts'] }),
@@ -996,7 +997,7 @@ describe('buildLocation - params edge cases', () => {
 
     const routeTree = rootRoute.addChildren([userRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/users/123'] }),
     })
@@ -1020,7 +1021,7 @@ describe('buildLocation - params edge cases', () => {
 
     const routeTree = rootRoute.addChildren([userRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/users/123'] }),
     })
@@ -1048,7 +1049,7 @@ describe('buildLocation - params edge cases', () => {
 
     const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/orgs/abc/users/123'] }),
     })
@@ -1085,7 +1086,7 @@ describe('buildLocation - params edge cases', () => {
 
     const routeTree = rootRoute.addChildren([userRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/users/000123'] }),
     })
@@ -1133,7 +1134,7 @@ describe('buildLocation - params edge cases', () => {
 
     const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({
         initialEntries: ['/orgs/org-1/users/user-1'],
@@ -1160,7 +1161,7 @@ describe('buildLocation - params edge cases', () => {
 
     const routeTree = rootRoute.addChildren([userRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/users/123'] }),
     })
@@ -1189,7 +1190,7 @@ describe('buildLocation - location output structure', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -1230,7 +1231,7 @@ describe('buildLocation - location output structure', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -1257,7 +1258,7 @@ describe('buildLocation - optional params', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -1281,7 +1282,7 @@ describe('buildLocation - optional params', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -1305,7 +1306,7 @@ describe('buildLocation - optional params', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -1329,7 +1330,7 @@ describe('buildLocation - optional params', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts'] }),
     })
@@ -1353,7 +1354,7 @@ describe('buildLocation - optional params', () => {
 
     const routeTree = rootRoute.addChildren([usersRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/users/123'] }),
     })
@@ -1386,7 +1387,7 @@ describe('buildLocation - splat params', () => {
 
     const routeTree = rootRoute.addChildren([docsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/docs'] }),
     })
@@ -1410,7 +1411,7 @@ describe('buildLocation - splat params', () => {
 
     const routeTree = rootRoute.addChildren([docsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/docs'] }),
     })
@@ -1434,7 +1435,7 @@ describe('buildLocation - splat params', () => {
 
     const routeTree = rootRoute.addChildren([docsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/docs'] }),
     })
@@ -1458,7 +1459,7 @@ describe('buildLocation - splat params', () => {
 
     const routeTree = rootRoute.addChildren([filesRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/files'] }),
     })
@@ -1484,7 +1485,7 @@ describe('buildLocation - _fromLocation override', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts?page=1'] }),
     })
@@ -1518,7 +1519,7 @@ describe('buildLocation - _fromLocation override', () => {
 
     const routeTree = rootRoute.addChildren([postsRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/posts#original'] }),
     })
@@ -1553,7 +1554,7 @@ describe('buildLocation - _fromLocation override', () => {
     const history = createMemoryHistory({ initialEntries: ['/posts'] })
     history.replace('/posts', { original: true })
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history,
     })
@@ -1595,7 +1596,7 @@ describe('buildLocation - _fromLocation override', () => {
       usersRoute.addChildren([userRoute.addChildren([settingsRoute])]),
     ])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/users/123'] }),
     })

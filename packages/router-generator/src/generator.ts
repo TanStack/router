@@ -521,12 +521,11 @@ export class Generator {
 
     let newMtimeMs: bigint | undefined
     if (this.routeTreeFileCache) {
-      if (
-        writeRouteTreeFile !== 'force' &&
-        this.routeTreeFileCache.fileContent === routeTreeContent
-      ) {
-        // existing route tree file is already up-to-date, don't write it
-        // we should only get here in the initial run when the route cache is not filled yet
+      if (this.routeTreeFileCache.fileContent === routeTreeContent) {
+        // existing route tree file is already up-to-date, don't write it.
+        // When 'force' was set because an external change was detected,
+        // we still re-read and re-check here, but if the generated content
+        // matches we skip the write to avoid triggering another watcher cycle.
       } else {
         const newRouteTreeFileStat = await this.safeFileWrite({
           filePath: this.generatedRouteTreePath,
@@ -1296,9 +1295,14 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       }
     }
 
-    const stat = await this.fs.stat(tmpPath)
-
     await this.fs.rename(tmpPath, opts.filePath)
+
+    // stat the target file AFTER rename so the cached mtime matches
+    // what the filesystem reports for the actual file path.
+    // Previously we stat'd the temp file before rename, but rename()
+    // can assign a different mtime to the target on some filesystems,
+    // causing the cache to be permanently stale.
+    const stat = await this.fs.stat(opts.filePath)
 
     return stat
   }

@@ -2280,8 +2280,8 @@ describe('basepath', () => {
 
     render(() => <RouterProvider router={router} />)
 
-    expect(router.state.location.pathname).toBe('/final')
     expect(await screen.findByTestId('final')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/final')
 
     // Should apply: /base/legacy/old/path -> /legacy/old/path -> /new/path -> /final
   })

@@ -1,9 +1,13 @@
 import * as babel from '@babel/core'
+import * as t from '@babel/types'
 import { parseAst } from '@tanstack/router-utils'
 import { describe, expect, it } from 'vitest'
-import { getUniqueProgramIdentifier, normalizePath } from '../src/core/utils'
+import {
+  getObjectPropertyKeyName,
+  getUniqueProgramIdentifier,
+  normalizePath,
+} from '../src/core/utils'
 import type { NodePath } from '@babel/core'
-import type * as t from '@babel/types'
 
 function getProgramPath(code: string): NodePath<t.Program> {
   const ast = parseAst({ code })
@@ -82,5 +86,53 @@ describe('getUniqueProgramIdentifier', () => {
     expect(getUniqueProgramIdentifier(programPath, 'window').name).toBe(
       'window2',
     )
+  })
+
+  it('avoids collisions across consecutive calls with the same base name', () => {
+    const programPath = getProgramPath('const existing = 1')
+
+    const first = getUniqueProgramIdentifier(programPath, 'TSRComponent')
+    const second = getUniqueProgramIdentifier(programPath, 'TSRComponent')
+
+    expect(first.name).toBe('TSRComponent')
+    expect(second.name).toBe('TSRComponent2')
+    expect(first.name).not.toBe(second.name)
+  })
+})
+
+describe('getObjectPropertyKeyName', () => {
+  it('returns identifier keys', () => {
+    const prop = t.objectProperty(t.identifier('component'), t.identifier('x'))
+
+    expect(getObjectPropertyKeyName(prop)).toBe('component')
+  })
+
+  it('returns string literal keys', () => {
+    const prop = t.objectProperty(
+      t.stringLiteral('errorComponent'),
+      t.identifier('x'),
+    )
+
+    expect(getObjectPropertyKeyName(prop)).toBe('errorComponent')
+  })
+
+  it('returns undefined for computed identifier keys', () => {
+    const prop = t.objectProperty(
+      t.identifier('component'),
+      t.identifier('x'),
+      true,
+    )
+
+    expect(getObjectPropertyKeyName(prop)).toBeUndefined()
+  })
+
+  it('returns undefined for computed member expression keys', () => {
+    const prop = t.objectProperty(
+      t.memberExpression(t.identifier('foo'), t.identifier('bar')),
+      t.identifier('x'),
+      true,
+    )
+
+    expect(getObjectPropertyKeyName(prop)).toBeUndefined()
   })
 })

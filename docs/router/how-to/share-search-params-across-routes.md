@@ -21,7 +21,6 @@ Share parameters across your entire application by validating them in the root r
 ```tsx
 // routes/__root.tsx
 import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const globalSearchSchema = z.object({
@@ -31,7 +30,7 @@ const globalSearchSchema = z.object({
 })
 
 export const Route = createRootRoute({
-  validateSearch: zodValidator(globalSearchSchema),
+  validateSearch: globalSearchSchema,
   component: RootComponent,
 })
 
@@ -50,7 +49,6 @@ function RootComponent() {
 ```tsx
 // routes/products/index.tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
@@ -59,7 +57,7 @@ const productSearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/products/')({
-  validateSearch: zodValidator(productSearchSchema),
+  validateSearch: productSearchSchema,
   component: ProductsPage,
 })
 
@@ -84,7 +82,6 @@ Share parameters within a section of your app using layout routes:
 ```tsx
 // routes/_authenticated.tsx
 import { createFileRoute, Outlet } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const authSearchSchema = z.object({
@@ -94,7 +91,7 @@ const authSearchSchema = z.object({
 })
 
 export const Route = createFileRoute('/_authenticated')({
-  validateSearch: zodValidator(authSearchSchema),
+  validateSearch: authSearchSchema,
   component: AuthenticatedLayout,
 })
 
@@ -181,7 +178,7 @@ function ProductsPage() {
 ```tsx
 // ✅ Root route validates shared parameters
 export const Route = createRootRoute({
-  validateSearch: zodValidator(globalSearchSchema),
+  validateSearch: globalSearchSchema,
   component: RootComponent,
 })
 ```

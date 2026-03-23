@@ -83,6 +83,43 @@
   - @tanstack/solid-start-server@2.0.0-alpha.0
   - @tanstack/solid-router@2.0.0-alpha.0
 
+## 1.167.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-plugin-core@1.167.5
+
+## 1.167.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.168.1
+  - @tanstack/solid-start-client@1.166.15
+  - @tanstack/solid-start-server@1.166.15
+  - @tanstack/start-client-core@1.167.1
+  - @tanstack/start-plugin-core@1.167.4
+  - @tanstack/start-server-core@1.167.1
+
+## 1.167.0
+
+### Minor Changes
+
+- remove pendingMatches, cachedMatches ([#6704](https://github.com/TanStack/router/pull/6704))
+  move to signal-based reactivity
+  solid uses its own native signals
+
+### Patch Changes
+
+- Updated dependencies [[`0545239`](https://github.com/TanStack/router/commit/054523900b2ee19308e5a88417dadfc6923afe30)]:
+  - @tanstack/start-client-core@1.167.0
+  - @tanstack/start-server-core@1.167.0
+  - @tanstack/solid-router@1.168.0
+  - @tanstack/solid-start-client@1.166.14
+  - @tanstack/solid-start-server@1.166.14
+  - @tanstack/start-plugin-core@1.167.3
+
 ## 1.166.18
 
 ### Patch Changes

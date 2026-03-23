@@ -1,5 +1,19 @@
 # @tanstack/router-core
 
+## 1.168.1
+
+### Patch Changes
+
+- Update store to 0.9.2 ([#6993](https://github.com/TanStack/router/pull/6993))
+
+## 1.168.0
+
+### Minor Changes
+
+- remove pendingMatches, cachedMatches ([#6704](https://github.com/TanStack/router/pull/6704))
+  move to signal-based reactivity
+  solid uses its own native signals
+
 ## 1.167.5
 
 ### Patch Changes

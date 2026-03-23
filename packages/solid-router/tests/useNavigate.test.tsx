@@ -2146,8 +2146,8 @@ describe('relative navigate to current route', () => {
         expect(router.state.location.search).toEqual({ _test: true })
       })
 
-      const detail2RemoveBtn = await screen.findByTestId('detail-btn-remove-2')
-      fireEvent.click(detail2RemoveBtn)
+      const detail1RemoveBtn = await screen.findByTestId('detail-btn-remove-1')
+      fireEvent.click(detail1RemoveBtn)
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)

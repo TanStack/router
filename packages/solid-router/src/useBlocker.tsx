@@ -180,86 +180,103 @@ export function useBlocker(
     reset: undefined,
   })
 
-  Solid.createTrackedEffect(() => {
-    const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
-      function getLocation(
-        location: HistoryLocation,
-      ): AnyShouldBlockFnLocation {
-        const parsedLocation = router.parseLocation(location)
-        const matchedRoutes = router.getMatchedRoutes(parsedLocation.pathname)
-        if (matchedRoutes.foundRoute === undefined) {
+  let disposeBlock: (() => void) | undefined
+
+  Solid.createEffect(
+    () => props.disabled,
+    (disabled) => {
+      // Dispose previous blocker registration when re-running
+      disposeBlock?.()
+      disposeBlock = undefined
+
+      if (disabled) {
+        return
+      }
+
+      const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
+        function getLocation(
+          location: HistoryLocation,
+        ): AnyShouldBlockFnLocation {
+          const parsedLocation = router.parseLocation(location)
+          const matchedRoutes = router.getMatchedRoutes(parsedLocation.pathname)
+          if (matchedRoutes.foundRoute === undefined) {
+            return {
+              routeId: '__notFound__',
+              fullPath: parsedLocation.pathname,
+              pathname: parsedLocation.pathname,
+              params: matchedRoutes.routeParams,
+              search: parsedLocation.search,
+            }
+          }
           return {
-            routeId: '__notFound__',
-            fullPath: parsedLocation.pathname,
+            routeId: matchedRoutes.foundRoute.id,
+            fullPath: matchedRoutes.foundRoute.fullPath,
             pathname: parsedLocation.pathname,
             params: matchedRoutes.routeParams,
             search: parsedLocation.search,
           }
         }
-        return {
-          routeId: matchedRoutes.foundRoute.id,
-          fullPath: matchedRoutes.foundRoute.fullPath,
-          pathname: parsedLocation.pathname,
-          params: matchedRoutes.routeParams,
-          search: parsedLocation.search,
+
+        const current = getLocation(blockerFnArgs.currentLocation)
+        const next = getLocation(blockerFnArgs.nextLocation)
+
+        if (
+          current.routeId === '__notFound__' &&
+          next.routeId !== '__notFound__'
+        ) {
+          return false
         }
-      }
 
-      const current = getLocation(blockerFnArgs.currentLocation)
-      const next = getLocation(blockerFnArgs.nextLocation)
-
-      if (
-        current.routeId === '__notFound__' &&
-        next.routeId !== '__notFound__'
-      ) {
-        return false
-      }
-
-      const shouldBlock = await props.shouldBlockFn({
-        action: blockerFnArgs.action,
-        current,
-        next,
-      })
-      if (!props.withResolver) {
-        return shouldBlock
-      }
-
-      if (!shouldBlock) {
-        return false
-      }
-
-      const promise = new Promise<boolean>((resolve) => {
-        setResolver({
-          status: 'blocked',
+        const shouldBlock = await props.shouldBlockFn({
+          action: blockerFnArgs.action,
           current,
           next,
-          action: blockerFnArgs.action,
-          proceed: () => resolve(false),
-          reset: () => resolve(true),
         })
-      })
+        if (!props.withResolver) {
+          return shouldBlock
+        }
 
-      const canNavigateAsync = await promise
-      setResolver({
-        status: 'idle',
-        current: undefined,
-        next: undefined,
-        action: undefined,
-        proceed: undefined,
-        reset: undefined,
-      })
+        if (!shouldBlock) {
+          return false
+        }
 
-      return canNavigateAsync
+        const promise = new Promise<boolean>((resolve) => {
+          setResolver({
+            status: 'blocked',
+            current,
+            next,
+            action: blockerFnArgs.action,
+            proceed: () => resolve(false),
+            reset: () => resolve(true),
+          })
+        })
+
+        const canNavigateAsync = await promise
+        setResolver({
+          status: 'idle',
+          current: undefined,
+          next: undefined,
+          action: undefined,
+          proceed: undefined,
+          reset: undefined,
+        })
+
+        return canNavigateAsync
+      }
+
+      disposeBlock = router.history.block({
+        blockerFn: blockerFnComposed,
+        enableBeforeUnload: props.enableBeforeUnload,
+      })
+    },
+  )
+
+  // Clean up on unmount
+  Solid.onSettled(() => {
+    return () => {
+      disposeBlock?.()
+      disposeBlock = undefined
     }
-
-    const disposeBlock = props.disabled
-      ? undefined
-      : router.history.block({
-          blockerFn: blockerFnComposed,
-          enableBeforeUnload: props.enableBeforeUnload,
-        })
-
-    return () => disposeBlock?.()
   })
 
   return resolver

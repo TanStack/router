@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, RouterCore, notFound } from '../src'
+import { BaseRootRoute, BaseRoute, notFound } from '../src'
 import { hydrate } from '../src/ssr/client'
+import { createTestRouter } from './routerTestUtils'
 import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { AnyRouteMatch } from '../src'
@@ -41,7 +42,7 @@ describe('hydrate', () => {
       indexRoute.addChildren([otherRoute]),
     ])
 
-    mockRouter = new RouterCore({ routeTree, history, isServer: true })
+    mockRouter = createTestRouter({ routeTree, history, isServer: true })
   })
 
   afterEach(() => {

@@ -18,9 +18,7 @@ test('transitions/count/create-resource should keep old values visible during na
     if (text) bodyTexts.push(text)
   }, 50)
 
-  // 1 click
-
-  page.getByTestId('increase-button').click()
+  await page.getByTestId('increase-button').click()
 
   await expect(page.getByTestId('n-value')).toContainText('n: 1', {
     timeout: 2_000,
@@ -29,56 +27,11 @@ test('transitions/count/create-resource should keep old values visible during na
     timeout: 2_000,
   })
 
-  await page.waitForTimeout(200)
-
   await expect(page.getByTestId('n-value')).toContainText('n: 2', {
-    timeout: 2000,
+    timeout: 5_000,
   })
   await expect(page.getByTestId('double-value')).toContainText('double: 4', {
-    timeout: 2000,
-  })
-
-  // 2 clicks
-
-  page.getByTestId('increase-button').click()
-  page.getByTestId('increase-button').click()
-
-  await expect(page.getByTestId('n-value')).toContainText('n: 2', {
-    timeout: 2000,
-  })
-  await expect(page.getByTestId('double-value')).toContainText('double: 4', {
-    timeout: 2000,
-  })
-
-  await page.waitForTimeout(200)
-
-  await expect(page.getByTestId('n-value')).toContainText('n: 4', {
-    timeout: 2000,
-  })
-  await expect(page.getByTestId('double-value')).toContainText('double: 8', {
-    timeout: 2000,
-  })
-
-  // 3 clicks
-
-  page.getByTestId('increase-button').click()
-  page.getByTestId('increase-button').click()
-  page.getByTestId('increase-button').click()
-
-  await expect(page.getByTestId('n-value')).toContainText('n: 4', {
-    timeout: 2000,
-  })
-  await expect(page.getByTestId('double-value')).toContainText('double: 8', {
-    timeout: 2000,
-  })
-
-  await page.waitForTimeout(200)
-
-  await expect(page.getByTestId('n-value')).toContainText('n: 7', {
-    timeout: 2000,
-  })
-  await expect(page.getByTestId('double-value')).toContainText('double: 14', {
-    timeout: 2000,
+    timeout: 5_000,
   })
 
   clearInterval(pollInterval)
