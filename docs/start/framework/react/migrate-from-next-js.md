@@ -55,13 +55,13 @@ rm postcss.config.* next.config.*
 TanStack Start leverages [Vite](https://vite.dev), [nitro](https://nitro.build/) and TanStack Router:
 
 ```sh
-npm i @tanstack/react-router @tanstack/react-start nitro
+npm i @tanstack/react-router @tanstack/react-start nitro vite @vitejs/plugin-react
 ```
 
 For Tailwind CSS:
 
 ```sh
-npm i -D vite @vitejs/plugin-react @tailwindcss/vite tailwindcss
+npm i -D @tailwindcss/vite tailwindcss
 ```
 
 ### 3. Update Project Configuration
@@ -88,7 +88,6 @@ Now that you've installed the necessary dependencies, update your project config
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
-import tsconfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
 import { nitro } from "nitro/vite";
 
