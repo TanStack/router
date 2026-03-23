@@ -55,13 +55,19 @@ function initRouterStores(
 function createSolidMutableStore<TValue>(
   initialValue: TValue,
 ): RouterWritableStore<TValue> {
-  const [signal, setSignal] = Solid.createSignal(initialValue as any)
+  const [store, setStore] = Solid.createStore({
+    value: initialValue,
+  })
 
   return {
     get state() {
-      return signal()
+      return store.value
     },
-    setState: setSignal,
+    setState(updater) {
+      setStore(d => {
+        d.value = updater(d.value)
+      })
+    },
   }
 }
 
