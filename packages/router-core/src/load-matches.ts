@@ -431,22 +431,40 @@ const executeBeforeLoad = (
     }))
   }
 
-  const resolve = () => {
+  const resolve = (updateFetchingState: boolean = isPending) => {
     match._nonReactive.beforeLoadPromise?.resolve()
     match._nonReactive.beforeLoadPromise = undefined
+    if (!updateFetchingState) {
+      return
+    }
     inner.updateMatch(matchId, (prev) => ({
       ...prev,
       isFetching: false,
     }))
   }
 
-  // if there is no `beforeLoad` option, just mark as pending and resolve
-  // Context will be updated later in loadRouteMatch after loader completes
+  const finishSyncBeforeLoad = (beforeLoadContext: any) => {
+    const shouldUpdateMatch =
+      beforeLoadContext !== undefined || !!route.options.loader
+
+    if (shouldUpdateMatch) {
+      inner.updateMatch(matchId, (prev) => ({
+        ...prev,
+        abortController,
+        fetchCount: prev.fetchCount + 1,
+        ...(beforeLoadContext !== undefined
+          ? { __beforeLoadContext: beforeLoadContext }
+          : null),
+      }))
+    }
+
+    resolve(false)
+  }
+
+  // Routes without beforeLoad still need pending timeout setup for loaders, but
+  // they do not need to publish a synthetic beforeLoad fetch cycle.
   if (!route.options.beforeLoad) {
-    inner.router.batch(() => {
-      pending()
-      resolve()
-    })
+    finishSyncBeforeLoad(undefined)
     return
   }
 
@@ -491,10 +509,11 @@ const executeBeforeLoad = (
 
   const updateContext = (beforeLoadContext: any) => {
     if (beforeLoadContext === undefined) {
-      inner.router.batch(() => {
-        pending()
+      if (isPending) {
         resolve()
-      })
+      } else {
+        finishSyncBeforeLoad(undefined)
+      }
       return
     }
     if (isRedirect(beforeLoadContext) || isNotFound(beforeLoadContext)) {
@@ -502,14 +521,17 @@ const executeBeforeLoad = (
       handleSerialError(inner, index, beforeLoadContext, 'BEFORE_LOAD')
     }
 
-    inner.router.batch(() => {
-      pending()
-      inner.updateMatch(matchId, (prev) => ({
-        ...prev,
-        __beforeLoadContext: beforeLoadContext,
-      }))
-      resolve()
-    })
+    if (isPending) {
+      inner.router.batch(() => {
+        inner.updateMatch(matchId, (prev) => ({
+          ...prev,
+          __beforeLoadContext: beforeLoadContext,
+        }))
+        resolve()
+      })
+    } else {
+      finishSyncBeforeLoad(beforeLoadContext)
+    }
   }
 
   let beforeLoadContext
@@ -670,6 +692,8 @@ const runLoader = async (
         getLoaderContext(inner, matchPromises, matchId, index, route),
       )
       const loaderResultIsPromise = !!loader && isPromise(loaderResult)
+      let nextLoaderData: unknown = undefined
+      let hasDeferredLoaderData = false
 
       const willLoadSomething = !!(
         loaderResultIsPromise ||
@@ -699,10 +723,15 @@ const runLoader = async (
           loaderData,
         )
         if (loaderData !== undefined) {
-          inner.updateMatch(matchId, (prev) => ({
-            ...prev,
-            loaderData,
-          }))
+          if (loaderResultIsPromise || willLoadSomething) {
+            inner.updateMatch(matchId, (prev) => ({
+              ...prev,
+              loaderData,
+            }))
+          } else {
+            nextLoaderData = loaderData
+            hasDeferredLoaderData = true
+          }
         }
       }
 
@@ -718,6 +747,7 @@ const runLoader = async (
       if (route._componentsPromise) await route._componentsPromise
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
+        ...(hasDeferredLoaderData ? { loaderData: nextLoaderData } : null),
         error: undefined,
         context: buildMatchContext(inner, index),
         status: 'success',
