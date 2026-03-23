@@ -4,13 +4,7 @@
     "jsx": "preserve",
     "jsxImportSource": "vue",
     "module": "esnext",
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
-  "include": [
-    "src",
-    "vite.config.ts",
-    "vite.config.server-entry.ts"
-  ]
+  "include": ["src", "vite.config.ts", "vite.config.server-entry.ts"]
 }

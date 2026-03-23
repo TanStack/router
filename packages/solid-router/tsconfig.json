@@ -3,14 +3,7 @@
   "compilerOptions": {
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
-  "include": [
-    "src",
-    "tests",
-    "vite.config.ts",
-    "eslint.config.ts"
-  ]
+  "include": ["src", "tests", "vite.config.ts", "eslint.config.ts"]
 }
