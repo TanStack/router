@@ -14,7 +14,8 @@
     "allowJs": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "convex/*": ["./convex/*"]
     },
     "noEmit": true
   }
