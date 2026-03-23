@@ -1,5 +1,11 @@
 # @tanstack/solid-router-ssr-query
 
+## 2.0.0-alpha.7
+
+### Patch Changes
+
+- chore: sync main branch with store refactor ([#7001](https://github.com/TanStack/router/pull/7001))
+
 ## 2.0.0-alpha.6
 
 ### Patch Changes

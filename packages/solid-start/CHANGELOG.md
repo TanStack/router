@@ -1,5 +1,16 @@
 # @tanstack/solid-start
 
+## 2.0.0-alpha.8
+
+### Patch Changes
+
+- chore: sync main branch with store refactor ([#7001](https://github.com/TanStack/router/pull/7001))
+
+- Updated dependencies [[`7232349`](https://github.com/TanStack/router/commit/72323492afec4e901df16eb32a523ca384c9c48a)]:
+  - @tanstack/solid-start-client@2.0.0-alpha.7
+  - @tanstack/solid-start-server@2.0.0-alpha.7
+  - @tanstack/solid-router@2.0.0-alpha.7
+
 ## 2.0.0-alpha.7
 
 ### Patch Changes
