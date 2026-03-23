@@ -53,6 +53,7 @@ export default defineConfig((env) =>
   mergeConfig(
     config(env),
     tanstackViteConfig({
+    tsconfigPath: './tsconfig.build.json',
       entry: [
         './src/index.tsx',
         './src/index.dev.tsx',

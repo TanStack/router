@@ -37,5 +37,6 @@ export default mergeConfig(
     ],
     srcDir: './src',
     externalDeps: ['@tanstack/router-core/isServer'],
+    tsconfigPath: './tsconfig.build.json',
   }),
 )

@@ -119,7 +119,8 @@
     "@tanstack/router-utils": "workspace:*",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "vite": "*",
-    "vue": "^3.5.25"
+    "vue": "^3.5.25",
+    "@types/node": ">=20"
   },
   "peerDependencies": {
     "vue": "^3.3.0",

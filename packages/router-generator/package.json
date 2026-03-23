@@ -76,6 +76,7 @@
   },
   "devDependencies": {
     "@tanstack/react-router": "workspace:*",
-    "vite": "*"
+    "vite": "*",
+    "@types/node": ">=20"
   }
 }

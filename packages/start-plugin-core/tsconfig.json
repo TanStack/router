@@ -1,9 +1,19 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["src", "vite.config.ts", "tests"],
-  "exclude": ["tests/**/test-files/**", "tests/**/snapshots/**"],
+  "include": [
+    "src",
+    "vite.config.ts",
+    "tests"
+  ],
+  "exclude": [
+    "tests/**/test-files/**",
+    "tests/**/snapshots/**"
+  ],
   "compilerOptions": {
     "target": "esnext",
-    "noEmit": true
+    "noEmit": true,
+    "types": [
+      "node"
+    ]
   }
 }

@@ -117,7 +117,8 @@
   "devDependencies": {
     "@tanstack/intent": "^0.0.14",
     "@tanstack/router-utils": "workspace:*",
-    "vite": "*"
+    "vite": "*",
+    "@types/node": ">=20"
   },
   "peerDependencies": {
     "solid-js": ">=1.0.0",

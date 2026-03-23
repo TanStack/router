@@ -68,7 +68,8 @@
     "@vitejs/plugin-react": "^4.3.4",
     "react": ">=19",
     "react-dom": ">=19",
-    "vite": "*"
+    "vite": "*",
+    "@types/node": ">=20"
   },
   "peerDependencies": {
     "@tanstack/react-router": "workspace:^",

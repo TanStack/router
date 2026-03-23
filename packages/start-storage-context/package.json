@@ -62,6 +62,7 @@
     "@tanstack/router-core": "workspace:*"
   },
   "devDependencies": {
-    "vite": "*"
+    "vite": "*",
+    "@types/node": ">=20"
   }
 }

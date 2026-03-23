@@ -87,7 +87,8 @@
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
     "@types/picomatch": "^4.0.2",
-    "vite": "*"
+    "vite": "*",
+    "@types/node": ">=20"
   },
   "peerDependencies": {
     "vite": ">=7.0.0"

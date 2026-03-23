@@ -66,7 +66,8 @@
   "devDependencies": {
     "@testing-library/react": "^16.2.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "*"
+    "vite": "*",
+    "@types/node": ">=20"
   },
   "peerDependencies": {
     "react": ">=18.0.0 || >=19.0.0",

@@ -9,6 +9,7 @@ const config = defineConfig({
 const merged = mergeConfig(
   config,
   tanstackViteConfig({
+    tsconfigPath: './tsconfig.build.json',
     entry: './src/index.tsx',
     srcDir: './src',
     bundledDeps: ['solid-js', 'solid-js/web'],

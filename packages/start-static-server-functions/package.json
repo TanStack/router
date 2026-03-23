@@ -63,7 +63,8 @@
     "seroval": "^1.4.2"
   },
   "devDependencies": {
-    "vite": "*"
+    "vite": "*",
+    "@types/node": ">=20"
   },
   "peerDependencies": {
     "@tanstack/react-start": "workspace:^",

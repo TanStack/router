@@ -121,7 +121,8 @@
     "vite": ">=7.0.0"
   },
   "devDependencies": {
-    "@tanstack/intent": "^0.0.14"
+    "@tanstack/intent": "^0.0.14",
+    "@types/node": ">=20"
   },
   "bin": {
     "intent": "./bin/intent.js"
