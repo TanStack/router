@@ -1,5 +1,11 @@
 # @tanstack/start-plugin-core
 
+## 1.167.7
+
+### Patch Changes
+
+- fix: streaming in vite preview ([#6828](https://github.com/TanStack/router/pull/6828))
+
 ## 1.167.6
 
 ### Patch Changes
