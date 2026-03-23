@@ -30,8 +30,10 @@ import {
 } from './path'
 import { createLRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
+import { decode } from './qss'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
+import { validatorUsesRawSearchInput } from './searchValidator'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
 import { loadMatches, loadRouteChunk, routeNeedsPreload } from './load-matches'
@@ -112,6 +114,58 @@ export type ControllablePromise<T = any> = Promise<T> & {
 
 export type InjectedHtmlEntry = Promise<string>
 
+type ParsedLocationWithRaw<TSearchObj extends AnySchema = AnySchema> =
+  ParsedLocation<TSearchObj> & {
+    _rawSearch?: Record<string, unknown>
+  }
+
+function withRawSearch<TSearchObj extends AnySchema>(
+  location: ParsedLocation<TSearchObj>,
+  rawSearch: Record<string, unknown>,
+): ParsedLocationWithRaw<TSearchObj> {
+  return Object.defineProperty(location, '_rawSearch', {
+    value: rawSearch,
+    enumerable: false,
+    configurable: true,
+  }) as ParsedLocationWithRaw<TSearchObj>
+}
+
+function parseRawSearchValue(value: string) {
+  if (value[0] === '"' && value[value.length - 1] === '"') {
+    try {
+      const parsed = JSON.parse(value)
+      if (typeof parsed === 'string') {
+        return parsed
+      }
+    } catch {
+      // fall through to the raw decoded value
+    }
+  }
+
+  return value
+}
+
+function getRawSearchFromLocation(
+  location: ParsedLocation,
+): Record<string, unknown> {
+  return (location as ParsedLocationWithRaw)._rawSearch ?? location.search
+}
+
+function getSearchValidationInput(
+  validateSearch: AnyValidator,
+  search: Record<string, unknown>,
+  rawSearch: Record<string, unknown>,
+  parentStrictSearch?: Record<string, unknown>,
+  defaultRawSearchInput?: boolean,
+) {
+  return validatorUsesRawSearchInput(validateSearch) || defaultRawSearchInput
+    ? {
+        ...rawSearch,
+        ...parentStrictSearch,
+      }
+    : { ...search }
+}
+
 export interface Register {
   // Lots of things on here like...
   // router
@@ -185,6 +239,14 @@ export interface RouterOptions<
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization)
    */
   parseSearch?: SearchParser
+  /**
+   * When `true`, all route validators receive raw URL search strings instead of
+   * the default parsed/coerced values.  Individual routes can still override this
+   * via `validateSearchWithRawInput`.
+   *
+   * @default false
+   */
+  defaultRawSearchInput?: boolean
   /**
    * If `false`, routes will not be preloaded by default in any way.
    *
@@ -1275,21 +1337,28 @@ export class RouterCore<
       // eslint-disable-next-line no-control-regex
       if (!this.rewrite && !/[ \x00-\x1f\x7f\u0080-\uffff]/.test(pathname)) {
         const parsedSearch = this.options.parseSearch(search)
+        const rawSearch = decode(
+          search[0] === '?' ? search.substring(1) : search,
+          parseRawSearchValue,
+        )
         const searchStr = this.options.stringifySearch(parsedSearch)
 
-        return {
-          href: pathname + searchStr + hash,
-          publicHref: href,
-          pathname: decodePath(pathname).path,
-          external: false,
-          searchStr,
-          search: nullReplaceEqualDeep(
-            previousLocation?.search,
-            parsedSearch,
-          ) as any,
-          hash: decodePath(hash.slice(1)).path,
-          state: replaceEqualDeep(previousLocation?.state, state),
-        }
+        return withRawSearch(
+          {
+            href: pathname + searchStr + hash,
+            publicHref: href,
+            pathname: decodePath(pathname).path,
+            external: false,
+            searchStr,
+            search: nullReplaceEqualDeep(
+              previousLocation?.search,
+              parsedSearch,
+            ) as any,
+            hash: decodePath(hash.slice(1)).path,
+            state: replaceEqualDeep(previousLocation?.state, state),
+          },
+          rawSearch,
+        )
       }
 
       // Before we do any processing, we need to allow rewrites to modify the URL
@@ -1299,6 +1368,7 @@ export class RouterCore<
       const url = executeRewriteInput(this.rewrite, fullUrl)
 
       const parsedSearch = this.options.parseSearch(url.search)
+      const rawSearch = decode(url.search, parseRawSearchValue)
       const searchStr = this.options.stringifySearch(parsedSearch)
       // Make sure our final url uses the re-stringified pathname, search, and has for consistency
       // (We were already doing this, so just keeping it for now)
@@ -1306,19 +1376,22 @@ export class RouterCore<
 
       const fullPath = url.href.replace(url.origin, '')
 
-      return {
-        href: fullPath,
-        publicHref: href,
-        pathname: decodePath(url.pathname).path,
-        external: !!this.rewrite && url.origin !== this.origin,
-        searchStr,
-        search: nullReplaceEqualDeep(
-          previousLocation?.search,
-          parsedSearch,
-        ) as any,
-        hash: decodePath(url.hash.slice(1)).path,
-        state: replaceEqualDeep(previousLocation?.state, state),
-      }
+      return withRawSearch(
+        {
+          href: fullPath,
+          publicHref: href,
+          pathname: decodePath(url.pathname).path,
+          external: !!this.rewrite && url.origin !== this.origin,
+          searchStr,
+          search: nullReplaceEqualDeep(
+            previousLocation?.search,
+            parsedSearch,
+          ) as any,
+          hash: decodePath(url.hash.slice(1)).path,
+          state: replaceEqualDeep(previousLocation?.state, state),
+        },
+        rawSearch,
+      )
     }
 
     const location = parse(locationToParse)
@@ -1333,10 +1406,14 @@ export class RouterCore<
 
       delete parsedTempLocation.state.__tempLocation
 
-      return {
+      // Re-attach _rawSearch after spread (non-enumerable props are lost
+      // by the spread operator)
+      const merged = {
         ...parsedTempLocation,
         maskedLocation: location,
       }
+      const tempRaw = (parsedTempLocation as ParsedLocationWithRaw)._rawSearch
+      return tempRaw ? withRawSearch(merged, tempRaw) : merged
     }
     return location
   }
@@ -1388,6 +1465,7 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
+    const rawLocationSearch = getRawSearchFromLocation(next)
     const matchedRoutesResult = this.getMatchedRoutes(next.pathname)
     const { foundRoute, routeParams, parsedParams } = matchedRoutesResult
     let { matchedRoutes } = matchedRoutesResult
@@ -1442,11 +1520,20 @@ export class RouterCore<
         // Validate the search params and stabilize them
         const parentSearch = parentMatch?.search ?? next.search
         const parentStrictSearch = parentMatch?._strictSearch ?? undefined
+        const searchValidationInput = getSearchValidationInput(
+          route.options.validateSearch,
+          parentSearch,
+          rawLocationSearch,
+          parentStrictSearch,
+          this.options.defaultRawSearchInput,
+        )
 
         try {
           const strictSearch =
-            validateSearch(route.options.validateSearch, { ...parentSearch }) ??
-            undefined
+            validateSearch(
+              route.options.validateSearch,
+              searchValidationInput,
+            ) ?? undefined
 
           preMatchSearch = {
             ...parentSearch,
@@ -1700,13 +1787,23 @@ export class RouterCore<
     // })
 
     // Accumulate search validation through route chain
+    const rawLocationSearch = getRawSearchFromLocation(location)
     const accumulatedSearch = { ...location.search }
+    const accumulatedStrictSearch: Record<string, unknown> = {}
     for (const route of matchedRoutes) {
       try {
-        Object.assign(
-          accumulatedSearch,
-          validateSearch(route.options.validateSearch, accumulatedSearch),
+        const strictSearch = validateSearch(
+          route.options.validateSearch,
+          getSearchValidationInput(
+            route.options.validateSearch,
+            accumulatedSearch,
+            rawLocationSearch,
+            accumulatedStrictSearch,
+            this.options.defaultRawSearchInput,
+          ),
         )
+        Object.assign(accumulatedSearch, strictSearch)
+        Object.assign(accumulatedStrictSearch, strictSearch)
       } catch {
         // Ignore errors, we're not actually routing
       }
@@ -1920,10 +2017,19 @@ export class RouterCore<
             try {
               Object.assign(
                 validatedSearch,
-                validateSearch(route.options.validateSearch, {
-                  ...validatedSearch,
-                  ...nextSearch,
-                }),
+                validateSearch(
+                  route.options.validateSearch,
+                  getSearchValidationInput(
+                    route.options.validateSearch,
+                    {
+                      ...validatedSearch,
+                      ...nextSearch,
+                    },
+                    nextSearch,
+                    validatedSearch,
+                    this.options.defaultRawSearchInput,
+                  ),
+                ),
               )
             } catch {
               // ignore errors here because they are already handled in matchRoutes
@@ -1938,6 +2044,7 @@ export class RouterCore<
         dest,
         destRoutes,
         _includeValidateSearch: opts._includeValidateSearch,
+        defaultRawSearchInput: this.options.defaultRawSearchInput,
       })
 
       // Replace the equal deep
@@ -3048,20 +3155,26 @@ function applySearchMiddleware({
   dest,
   destRoutes,
   _includeValidateSearch,
+  defaultRawSearchInput,
 }: {
   search: any
   dest: { search?: unknown }
   destRoutes: ReadonlyArray<AnyRoute>
   _includeValidateSearch: boolean | undefined
+  defaultRawSearchInput?: boolean
 }) {
-  const middleware = buildMiddlewareChain(destRoutes)
+  const middleware = buildMiddlewareChain(destRoutes, defaultRawSearchInput)
   return middleware(search, dest, _includeValidateSearch ?? false)
 }
 
-function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
+function buildMiddlewareChain(
+  destRoutes: ReadonlyArray<AnyRoute>,
+  defaultRawSearchInput?: boolean,
+) {
   const context = {
     dest: null as unknown as BuildNextOptions,
     _includeValidateSearch: false,
+    defaultRawSearchInput,
     middlewares: [] as Array<SearchMiddleware<any>>,
   }
 
@@ -3113,8 +3226,16 @@ function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
         try {
           const validatedSearch = {
             ...result,
-            ...(validateSearch(route.options.validateSearch, result) ??
-              undefined),
+            ...(validateSearch(
+              route.options.validateSearch,
+              getSearchValidationInput(
+                route.options.validateSearch,
+                result,
+                result,
+                undefined,
+                context.defaultRawSearchInput,
+              ),
+            ) ?? undefined),
           }
           return validatedSearch
         } catch {
