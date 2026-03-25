@@ -202,11 +202,12 @@ function MatchView({
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
       </matchContext.Provider>
-      {matchState.parentRouteId === rootRouteId &&
-      router.options.scrollRestoration ? (
+      {matchState.parentRouteId === rootRouteId ? (
         <>
           <OnRendered />
-          <ScrollRestoration />
+          {router.options.scrollRestoration && (isServer ?? router.isServer) ? (
+            <ScrollRestoration />
+          ) : null}
         </>
       ) : null}
     </ShellComponent>

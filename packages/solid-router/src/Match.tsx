@@ -170,7 +170,10 @@ export const Match = (props: { matchId: string }) => {
             {currentMatchState().parentRouteId === rootRouteId ? (
               <>
                 <OnRendered />
-                <ScrollRestoration />
+                {router.options.scrollRestoration &&
+                (isServer ?? router.isServer) ? (
+                  <ScrollRestoration />
+                ) : null}
               </>
             ) : null}
           </ShellComponent>
