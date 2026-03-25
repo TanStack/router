@@ -11754,8 +11754,8 @@ importers:
         specifier: workspace:*
         version: link:../history
       '@tanstack/react-store':
-        specifier: ^0.9.2
-        version: 0.9.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^0.9.3
+        version: 0.9.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -11996,8 +11996,8 @@ importers:
         specifier: ^0.0.14
         version: 0.0.14
       '@tanstack/store':
-        specifier: ^0.9.2
-        version: 0.9.2
+        specifier: ^0.9.3
+        version: 0.9.3
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -12679,8 +12679,8 @@ importers:
         specifier: workspace:*
         version: link:../router-core
       '@tanstack/vue-store':
-        specifier: ^0.9.2
-        version: 0.9.2(vue@3.5.25(typescript@6.0.2))
+        specifier: ^0.9.3
+        version: 0.9.3(vue@3.5.25(typescript@6.0.2))
       '@vue/runtime-dom':
         specifier: ^3.5.25
         version: 3.5.25
@@ -17991,8 +17991,8 @@ packages:
     peerDependencies:
       react: ^19.2.3
 
-  '@tanstack/react-store@0.9.2':
-    resolution: {integrity: sha512-Vt5usJE5sHG/cMechQfmwvwne6ktGCELe89Lmvoxe3LKRoFrhPa8OCKWs0NliG8HTJElEIj7PLtaBQIcux5pAQ==}
+  '@tanstack/react-store@0.9.3':
+    resolution: {integrity: sha512-y2iHd/N9OkoQbFJLUX1T9vbc2O9tjH0pQRgTcx1/Nz4IlwLvkgpuglXUx+mXt0g5ZDFrEeDnONPqkbfxXJKwRg==}
     peerDependencies:
       react: ^19.2.3
       react-dom: ^19.2.3
@@ -18025,8 +18025,8 @@ packages:
     peerDependencies:
       solid-js: 1.9.10
 
-  '@tanstack/store@0.9.2':
-    resolution: {integrity: sha512-K013lUJEFJK2ofFQ/hZKJUmCnpcV00ebLyOyFOWQvyQHUOZp/iYO84BM6aOGiV81JzwbX0APTVmW8YI7yiG5oA==}
+  '@tanstack/store@0.9.3':
+    resolution: {integrity: sha512-8reSzl/qGWGGVKhBoxXPMWzATSbZLZFWhwBAFO9NAyp0TxzfBP0mIrGb8CP8KrQTmvzXlR/vFPPUrHTLBGyFyw==}
 
   '@tanstack/virtual-core@3.13.0':
     resolution: {integrity: sha512-NBKJP3OIdmZY3COJdWkSonr50FMVIi+aj5ZJ7hI/DTpEKg2RMfo/KvP8A3B/zOSpMgIe52B5E2yn7rryULzA6g==}
@@ -18073,8 +18073,8 @@ packages:
       '@vue/composition-api':
         optional: true
 
-  '@tanstack/vue-store@0.9.2':
-    resolution: {integrity: sha512-Cz2QvwWg/vDziuCnP5TVjmZroshM8rI+Yaifqiv6A5jK8eaMxD5r86SJLUtznnOEGmqpTOPdp3ryvWzuPVTZrA==}
+  '@tanstack/vue-store@0.9.3':
+    resolution: {integrity: sha512-YZb5SAR3f2kLt58Ip6gig2+z8vRAfSkJK30Bq7enZ7cG4epyygmRsbrrDMxvmoYSJu33CY5uJ6MvI74KGP0ZvQ==}
     peerDependencies:
       '@vue/composition-api': ^1.2.1
       vue: ^2.5.0 || ^3.0.0
@@ -30735,9 +30735,9 @@ snapshots:
       '@tanstack/query-core': 5.90.19
       react: 19.2.3
 
-  '@tanstack/react-store@0.9.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@tanstack/react-store@0.9.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@tanstack/store': 0.9.2
+      '@tanstack/store': 0.9.3
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
       use-sync-external-store: 1.6.0(react@19.2.3)
@@ -30773,7 +30773,7 @@ snapshots:
       '@tanstack/virtual-core': 3.13.12
       solid-js: 1.9.10
 
-  '@tanstack/store@0.9.2': {}
+  '@tanstack/store@0.9.3': {}
 
   '@tanstack/virtual-core@3.13.0': {}
 
@@ -30841,9 +30841,9 @@ snapshots:
       vue: 3.5.25(typescript@6.0.2)
       vue-demi: 0.14.10(vue@3.5.25(typescript@6.0.2))
 
-  '@tanstack/vue-store@0.9.2(vue@3.5.25(typescript@6.0.2))':
+  '@tanstack/vue-store@0.9.3(vue@3.5.25(typescript@6.0.2))':
     dependencies:
-      '@tanstack/store': 0.9.2
+      '@tanstack/store': 0.9.3
       vue: 3.5.25(typescript@6.0.2)
       vue-demi: 0.14.10(vue@3.5.25(typescript@6.0.2))
 
