@@ -19,22 +19,41 @@ export default function (options: {
   if (
     options.shouldScrollRestoration &&
     elementEntries &&
+    typeof elementEntries === 'object' &&
     Object.keys(elementEntries).length > 0
   ) {
     for (const elementSelector in elementEntries) {
       const entry = elementEntries[elementSelector]
 
+      if (!entry || typeof entry !== 'object') {
+        continue
+      }
+
+      const scrollX = entry.scrollX
+      const scrollY = entry.scrollY
+
+      if (!Number.isFinite(scrollX) || !Number.isFinite(scrollY)) {
+        continue
+      }
+
       if (elementSelector === 'window') {
         window.scrollTo({
-          top: entry.scrollY,
-          left: entry.scrollX,
+          top: scrollY,
+          left: scrollX,
           behavior: options.behavior,
         })
       } else if (elementSelector) {
-        const element = document.querySelector(elementSelector)
+        let element
+
+        try {
+          element = document.querySelector(elementSelector)
+        } catch {
+          continue
+        }
+
         if (element) {
-          element.scrollLeft = entry.scrollX
-          element.scrollTop = entry.scrollY
+          element.scrollLeft = scrollX
+          element.scrollTop = scrollY
         }
       }
     }

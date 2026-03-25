@@ -5,4 +5,4 @@
 '@tanstack/vue-router': patch
 ---
 
-fix: scroll restorating without throttling
+fix: scroll restoration without throttling

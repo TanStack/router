@@ -397,9 +397,7 @@ export { isNotFound, notFound } from './not-found'
 
 export {
   defaultGetScrollRestorationKey,
-  getScrollRestorationScript,
   getScrollRestorationScriptForRouter,
-  restoreScroll,
   storageKey,
   getCssSelector,
   scrollRestorationCache,
@@ -408,8 +406,6 @@ export {
 } from './scroll-restoration'
 
 export type {
-  RestoreScrollOptions,
-  InlineScrollRestorationScriptOptions,
   ScrollRestorationOptions,
   ScrollRestorationEntry,
 } from './scroll-restoration'
