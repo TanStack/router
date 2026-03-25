@@ -45,6 +45,8 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
           linkOptions({ to: '/virtual-page' }),
           linkOptions({ to: '/lazy-with-loader-page' }),
           linkOptions({ to: '/page-with-search', search: { where: type } }),
+          linkOptions({ to: '/issue-7040-source' }),
+          linkOptions({ to: '/issue-7040-target' }),
         ] as const
       ).map((options, i) => (
         <Link
