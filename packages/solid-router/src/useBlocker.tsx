@@ -18,7 +18,7 @@ type ShouldBlockFnLocation<
   out TFullPath,
   out TAllParams,
   out TFullSearchSchema,
-> {
+> = {
   routeId: TRouteId
   fullPath: TFullPath
   pathname: string
