@@ -183,13 +183,10 @@ export const Match = (props: { matchId: string }) => {
   )
 }
 
-// On Rendered can't happen above the root layout because it actually
-// renders a dummy dom element to track the rendered state of the app.
-// We render a script tag with a key that changes based on the current
-// location state.__TSR_key. Also, because it's below the root layout, it
-// allows us to fire onRendered events even after a hydration mismatch
-// error that occurred above the root layout (like bad head/link tags,
-// which is common).
+// On Rendered can't happen above the root layout because it needs to run
+// after the app has committed below the root layout. Keeping it here lets us
+// fire onRendered even after a hydration mismatch above the root layout
+// (like bad head/link tags, which is common).
 function OnRendered() {
   const router = useRouter()
 

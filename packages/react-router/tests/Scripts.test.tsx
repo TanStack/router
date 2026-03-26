@@ -162,7 +162,7 @@ describe('ssr scripts', () => {
     expect(await screen.findByTestId('index')).toBeInTheDocument()
 
     expect(container.innerHTML).toEqual(
-      `<div><div data-testid="root">root</div><div data-testid="index">index</div><script></script><script src="script.js"></script><script src="script3.js"></script></div>`,
+      `<div><div data-testid="root">root</div><div data-testid="index">index</div><script src="script.js"></script><script src="script3.js"></script></div>`,
     )
   })
 })

@@ -17,9 +17,9 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
+import { useLayoutEffect } from './utils'
 import type {
   AnyRoute,
-  ParsedLocation,
   RootRouteOptions,
 } from '@tanstack/router-core'
 
@@ -204,7 +204,7 @@ function MatchView({
       </matchContext.Provider>
       {matchState.parentRouteId === rootRouteId ? (
         <>
-          <OnRendered />
+          <OnRendered resetKey={resetKey} />
           {router.options.scrollRestoration && (isServer ?? router.isServer) ? (
             <ScrollRestoration />
           ) : null}
@@ -214,42 +214,38 @@ function MatchView({
   )
 }
 
-// On Rendered can't happen above the root layout because it actually
-// renders a dummy dom element to track the rendered state of the app.
-// We render a script tag with a key that changes based on the current
-// location state.__TSR_key. Also, because it's below the root layout, it
-// allows us to fire onRendered events even after a hydration mismatch
-// error that occurred above the root layout (like bad head/link tags,
-// which is common).
-function OnRendered() {
+// On Rendered can't happen above the root layout because it needs to run after
+// the route subtree has committed below the root layout. Keeping it here lets
+// us fire onRendered even after a hydration mismatch above the root layout
+// (like bad head/link tags, which is common).
+function OnRendered({ resetKey }: { resetKey: number }) {
   const router = useRouter()
 
-  const prevLocationRef = React.useRef<undefined | ParsedLocation<{}>>(
-    undefined,
-  )
+  if (isServer ?? router.isServer) {
+    return null
+  }
 
-  return (
-    <script
-      key={router.latestLocation.state.__TSR_key}
-      suppressHydrationWarning
-      ref={(el) => {
-        if (
-          el &&
-          (prevLocationRef.current === undefined ||
-            prevLocationRef.current.href !== router.latestLocation.href)
-        ) {
-          router.emit({
-            type: 'onRendered',
-            ...getLocationChangeInfo(
-              router.stores.location.state,
-              router.stores.resolvedLocation.state,
-            ),
-          })
-          prevLocationRef.current = router.latestLocation
-        }
-      }}
-    />
-  )
+  const prevHrefRef = React.useRef<string | undefined>(undefined)
+
+  useLayoutEffect(() => {
+    const currentHref = router.latestLocation.href
+
+    if (
+      prevHrefRef.current === undefined ||
+      prevHrefRef.current !== currentHref
+    ) {
+      router.emit({
+        type: 'onRendered',
+        ...getLocationChangeInfo(
+          router.stores.location.state,
+          router.stores.resolvedLocation.state,
+        ),
+      })
+      prevHrefRef.current = currentHref
+    }
+  }, [router.latestLocation.state.__TSR_key, resetKey, router])
+
+  return null
 }
 
 export const MatchInner = React.memo(function MatchInnerImpl({
