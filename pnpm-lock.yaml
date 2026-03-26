@@ -12576,9 +12576,9 @@ importers:
       '@tanstack/start-storage-context':
         specifier: workspace:*
         version: link:../start-storage-context
-      h3-v2:
-        specifier: npm:h3@2.0.1-rc.16
-        version: h3@2.0.1-rc.16(crossws@0.4.4(srvx@0.11.9))
+      h3:
+        specifier: 2.0.1-rc.19
+        version: 2.0.1-rc.19(crossws@0.4.4(srvx@0.11.13))
       seroval:
         specifier: ^1.4.2
         version: 1.4.2
@@ -21163,6 +21163,16 @@ packages:
       crossws:
         optional: true
 
+  h3@2.0.1-rc.19:
+    resolution: {integrity: sha512-47er/mh8eGA7+0nvNUloalj+yTJ1ku8M0BVzA2I1ZHSlpfbUNdBK4LpWztfH7TwW6kuhF8MfAvl0AwB+X9B+2w==}
+    engines: {node: '>=20.11.1'}
+    hasBin: true
+    peerDependencies:
+      crossws: ^0.4.1
+    peerDependenciesMeta:
+      crossws:
+        optional: true
+
   handle-thing@2.0.1:
     resolution: {integrity: sha512-9Qn4yBxelxoh2Ow62nP+Ka/kMnOXRi8BXnRaUwezLNhqelnN49xKz4F/dPP8OYLxLxq6JDtZb2i9XznUQbNPTg==}
 
@@ -23986,6 +23996,11 @@ packages:
 
   srvx@0.10.1:
     resolution: {integrity: sha512-A//xtfak4eESMWWydSRFUVvCTQbSwivnGCEf8YGPe2eHU0+Z6znfUTCPF0a7oV3sObSOcrXHlL6Bs9vVctfXdg==}
+    engines: {node: '>=20.16.0'}
+    hasBin: true
+
+  srvx@0.11.13:
+    resolution: {integrity: sha512-oknN6qduuMPafxKtHucUeG32Q963pjriA5g3/Bl05cwEsUe5VVbIU4qR9LrALHbipSCyBe+VmfDGGydqazDRkw==}
     engines: {node: '>=20.16.0'}
     hasBin: true
 
@@ -33184,6 +33199,11 @@ snapshots:
     optionalDependencies:
       srvx: 0.10.1
 
+  crossws@0.4.4(srvx@0.11.13):
+    optionalDependencies:
+      srvx: 0.11.13
+    optional: true
+
   crossws@0.4.4(srvx@0.11.9):
     optionalDependencies:
       srvx: 0.11.9
@@ -34806,6 +34826,13 @@ snapshots:
       srvx: 0.11.9
     optionalDependencies:
       crossws: 0.4.4(srvx@0.11.9)
+
+  h3@2.0.1-rc.19(crossws@0.4.4(srvx@0.11.13)):
+    dependencies:
+      rou3: 0.8.1
+      srvx: 0.11.13
+    optionalDependencies:
+      crossws: 0.4.4(srvx@0.11.13)
 
   handle-thing@2.0.1: {}
 
@@ -37983,6 +38010,8 @@ snapshots:
   sqlstring@2.3.3: {}
 
   srvx@0.10.1: {}
+
+  srvx@0.11.13: {}
 
   srvx@0.11.9: {}
 
