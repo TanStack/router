@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
-    "build": "MODE=spa vite build && tsc --noEmit",
+    "build": "vite build && tsc --noEmit",
+    "build:spa": "MODE=spa vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "node server.js",
-    "test:e2e:startDummyServer": "node -e 'import(\"./tests/setup/global.setup.ts\").then(m => m.default())' &",
+    "test:e2e:startDummyServer": "node -e 'import(\"./tests/setup/global.setup.ts\").then(m => m.default())' & node -e 'import(\"./tests/setup/waitForDummyServer.ts\").then(m => m.default())'",
     "test:e2e:stopDummyServer": "node -e 'import(\"./tests/setup/global.teardown.ts\").then(m => m.default())'",
     "test:e2e": "rm -rf dist; rm -rf port*.txt; MODE=spa playwright test --project=chromium"
   },

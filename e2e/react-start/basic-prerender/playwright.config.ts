@@ -14,7 +14,7 @@ const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
 const spaModeCommand = `pnpm build && pnpm start`
 const ssrModeCommand = `pnpm build && pnpm start`
-const prerenderModeCommand = `pnpm run test:e2e:startDummyServer && pnpm build && pnpm run test:e2e:stopDummyServer && pnpm start`
+const prerenderModeCommand = `pnpm run test:e2e:startDummyServer && pnpm build:prerender && pnpm run test:e2e:stopDummyServer && pnpm start`
 const previewModeCommand = `pnpm build && pnpm preview --port ${PORT}`
 
 const getCommand = () => {
