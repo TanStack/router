@@ -283,10 +283,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
 
   // observeDom()
 
-  const saveScrollPosition = (
-    restoreKey: string,
-    elementSelector: string,
-  ) => {
+  const saveScrollPosition = (restoreKey: string, elementSelector: string) => {
     scrollRestorationCache.set((state) => {
       const keyEntry = (state[restoreKey] ||= {} as ScrollRestorationByElement)
 

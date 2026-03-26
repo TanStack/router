@@ -1,5 +1,5 @@
 ---
-"@tanstack/router-core": patch
+'@tanstack/router-core': patch
 ---
 
 fix(scroll-restoration): capture restoreKey at scroll-event time to prevent race condition
@@ -11,6 +11,7 @@ If the user scrolled and then immediately navigated, the throttle could fire aft
 page's scroll position under the new page's cache key.
 
 Two fixes:
+
 1. Capture `restoreKey` eagerly at scroll-event time by separating the event
    listener from the throttled save function. The throttle receives the key as
    an argument so it always writes to the key that was active when the scroll
