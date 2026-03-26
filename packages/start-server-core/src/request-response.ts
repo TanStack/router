@@ -19,7 +19,7 @@ import {
   unsealSession as h3_unsealSession,
   updateSession as h3_updateSession,
   useSession as h3_useSession,
-} from 'h3-v2'
+} from 'h3'
 import type {
   RequestHeaderMap,
   RequestHeaderName,
@@ -147,7 +147,6 @@ export function getRequest(): Request {
 }
 
 export function getRequestHeaders(): TypedHeaders<RequestHeaderMap> {
-  // TODO `as any` not needed when fetchdts is updated
   return getH3Event().req.headers as any
 }
 
@@ -284,7 +283,16 @@ export function setResponseStatus(code?: number, text?: string): void {
  */
 export function getCookies(): Record<string, string> {
   const event = getH3Event()
-  return h3_parseCookies(event)
+  const cookies = h3_parseCookies(event)
+  const normalizedCookies: Record<string, string> = {}
+
+  for (const [name, value] of Object.entries(cookies)) {
+    if (value !== undefined) {
+      normalizedCookies[name] = value
+    }
+  }
+
+  return normalizedCookies
 }
 
 /**
@@ -296,7 +304,9 @@ export function getCookies(): Record<string, string> {
  * ```
  */
 export function getCookie(name: string): string | undefined {
-  return getCookies()[name] || undefined
+  const event = getH3Event()
+  const cookies = h3_parseCookies(event)
+  return cookies[name] || undefined
 }
 
 /**
