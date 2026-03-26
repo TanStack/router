@@ -108,31 +108,31 @@ export function getScrollRestorationScript(
   return `(${minifiedScrollRestorationScript})(${escapeHtml(JSON.stringify(options))})`
 }
 
-function shouldRestoreScrollForLocation(
-  router: AnyRouter,
-  location: ParsedLocation,
-) {
-  if (typeof router.options.scrollRestoration === 'function') {
-    return router.options.scrollRestoration({ location })
-  }
-
-  return true
-}
-
 export function getScrollRestorationScriptForRouter(router: AnyRouter) {
-  if (!shouldRestoreScrollForLocation(router, router.latestLocation)) {
+  if (
+    typeof router.options.scrollRestoration === 'function' &&
+    !router.options.scrollRestoration({ location: router.latestLocation })
+  ) {
     return null
   }
 
-  const getKey =
-    router.options.getScrollRestorationKey || defaultGetScrollRestorationKey
-  const userKey = getKey(router.latestLocation)
-  const defaultKey = defaultGetScrollRestorationKey(router.latestLocation)
+  const getKey = router.options.getScrollRestorationKey
+  if (!getKey) {
+    return defaultInlineScrollRestorationScript
+  }
+
+  const location = router.latestLocation
+  const userKey = getKey(location)
+  const defaultKey = defaultGetScrollRestorationKey(location)
+
+  if (userKey === defaultKey) {
+    return defaultInlineScrollRestorationScript
+  }
 
   return getScrollRestorationScript({
     storageKey,
     shouldScrollRestoration: true,
-    key: userKey !== defaultKey ? userKey : undefined,
+    key: userKey,
   })
 }
 
@@ -174,23 +174,22 @@ export function getElementScrollRestorationEntry(
   },
 ): ScrollRestorationEntry | undefined {
   const getKey = options.getKey || defaultGetScrollRestorationKey
-
-  let elementSelector = ''
+  const restoreKey = getKey(router.latestLocation)
 
   if (options.id) {
-    elementSelector = `[${scrollRestorationIdAttribute}="${options.id}"]`
-  } else {
-    const element = options.getElement?.()
-    if (!element) {
-      return
-    }
-    elementSelector =
-      element instanceof Window ? windowScrollTarget : getCssSelector(element)
+    return scrollRestorationCache?.state[restoreKey]?.[
+      `[${scrollRestorationIdAttribute}="${options.id}"]`
+    ]
   }
 
-  const restoreKey = getKey(router.latestLocation)
-  const byKey = scrollRestorationCache?.state[restoreKey]
-  return byKey?.[elementSelector]
+  const element = options.getElement?.()
+  if (!element) {
+    return
+  }
+
+  return scrollRestorationCache?.state[restoreKey]?.[
+    element instanceof Window ? windowScrollTarget : getCssSelector(element)
+  ]
 }
 
 let ignoreScroll = false
@@ -310,7 +309,10 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       return
     }
 
-    if (!shouldRestoreScrollForLocation(router, router.latestLocation)) {
+    if (
+      typeof router.options.scrollRestoration === 'function' &&
+      !router.options.scrollRestoration({ location: router.latestLocation })
+    ) {
       return
     }
 
