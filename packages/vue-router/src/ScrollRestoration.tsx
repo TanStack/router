@@ -1,7 +1,5 @@
 import {
-  defaultGetScrollRestorationKey,
-  getCssSelector,
-  scrollRestorationCache,
+  getElementScrollRestorationEntry,
   setupScrollRestoration,
 } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
@@ -47,23 +45,5 @@ export function useElementScrollRestoration(
 ): ScrollRestorationEntry | undefined {
   useScrollRestoration()
 
-  const router = useRouter()
-  const getKey = options.getKey || defaultGetScrollRestorationKey
-
-  let elementSelector = ''
-
-  if (options.id) {
-    elementSelector = `[data-scroll-restoration-id="${options.id}"]`
-  } else {
-    const element = options.getElement?.()
-    if (!element) {
-      return
-    }
-    elementSelector =
-      element instanceof Window ? 'window' : getCssSelector(element)
-  }
-
-  const restoreKey = getKey(router.latestLocation)
-  const byKey = scrollRestorationCache?.state[restoreKey]
-  return byKey?.[elementSelector]
+  return getElementScrollRestorationEntry(useRouter(), options)
 }

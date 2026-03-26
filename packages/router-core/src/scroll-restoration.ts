@@ -146,7 +146,7 @@ export const defaultGetScrollRestorationKey = (location: ParsedLocation) => {
   return location.state.__TSR_key! || location.href
 }
 
-export function getCssSelector(el: any): string {
+function getCssSelector(el: any): string {
   const path = []
   let parent: HTMLElement
   while ((parent = el.parentNode)) {
@@ -156,6 +156,41 @@ export function getCssSelector(el: any): string {
     el = parent
   }
   return `${path.reverse().join(' > ')}`.toLowerCase()
+}
+
+export function getElementScrollRestorationEntry(
+  router: AnyRouter,
+  options: (
+    | {
+        id: string
+        getElement?: () => Window | Element | undefined | null
+      }
+    | {
+        id?: string
+        getElement: () => Window | Element | undefined | null
+      }
+  ) & {
+    getKey?: (location: ParsedLocation) => string
+  },
+): ScrollRestorationEntry | undefined {
+  const getKey = options.getKey || defaultGetScrollRestorationKey
+
+  let elementSelector = ''
+
+  if (options.id) {
+    elementSelector = `[${scrollRestorationIdAttribute}="${options.id}"]`
+  } else {
+    const element = options.getElement?.()
+    if (!element) {
+      return
+    }
+    elementSelector =
+      element instanceof Window ? windowScrollTarget : getCssSelector(element)
+  }
+
+  const restoreKey = getKey(router.latestLocation)
+  const byKey = scrollRestorationCache?.state[restoreKey]
+  return byKey?.[elementSelector]
 }
 
 let ignoreScroll = false
@@ -396,27 +431,4 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       })
     }
   })
-}
-
-/**
- * @private
- * Handles hash-based scrolling after navigation completes.
- * To be used in framework-specific <Transitioner> components during the onResolved event.
- *
- * Provides hash scrolling for programmatic navigation when default browser handling is prevented.
- * @param router The router instance containing current location and state
- */
-export function handleHashScroll(router: AnyRouter) {
-  if (typeof document !== 'undefined' && (document as any).querySelector) {
-    const location = router.stores.location.state
-    const hashScrollIntoViewOptions =
-      location.state.__hashScrollIntoViewOptions ?? true
-
-    if (hashScrollIntoViewOptions && location.hash !== '') {
-      const el = document.getElementById(location.hash)
-      if (el) {
-        el.scrollIntoView(hashScrollIntoViewOptions)
-      }
-    }
-  }
 }
