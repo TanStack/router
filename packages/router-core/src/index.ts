@@ -397,7 +397,6 @@ export { isNotFound, notFound } from './not-found'
 
 export {
   defaultGetScrollRestorationKey,
-  getScrollRestorationScriptForRouter,
   getElementScrollRestorationEntry,
   storageKey,
   scrollRestorationCache,

@@ -1,6 +1,5 @@
 import { isServer } from '@tanstack/router-core/isServer'
-import minifiedScrollRestorationScript from './scroll-restoration-inline?script-string'
-import { escapeHtml, functionalUpdate, isPlainObject } from './utils'
+import { functionalUpdate, isPlainObject } from './utils'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
 import type { NonNullableUpdater } from './utils'
@@ -20,13 +19,6 @@ type ScrollRestorationCache = {
 export type ScrollRestorationOptions = {
   getKey?: (location: ParsedLocation) => string
   scrollBehavior?: ScrollToOptions['behavior']
-}
-
-type InlineScrollRestorationScriptOptions = {
-  storageKey: string
-  key?: string
-  behavior?: ScrollToOptions['behavior']
-  shouldScrollRestoration?: boolean
 }
 
 function getSafeSessionStorage() {
@@ -85,56 +77,6 @@ function createScrollRestorationCache(): ScrollRestorationCache | null {
 }
 
 export const scrollRestorationCache = createScrollRestorationCache()
-
-const defaultInlineScrollRestorationScript = `(${minifiedScrollRestorationScript})(${escapeHtml(
-  JSON.stringify({
-    storageKey,
-    shouldScrollRestoration: true,
-  } satisfies InlineScrollRestorationScriptOptions),
-)})`
-
-export function getScrollRestorationScript(
-  options: InlineScrollRestorationScriptOptions,
-) {
-  if (
-    options.storageKey === storageKey &&
-    options.shouldScrollRestoration === true &&
-    options.key === undefined &&
-    options.behavior === undefined
-  ) {
-    return defaultInlineScrollRestorationScript
-  }
-
-  return `(${minifiedScrollRestorationScript})(${escapeHtml(JSON.stringify(options))})`
-}
-
-export function getScrollRestorationScriptForRouter(router: AnyRouter) {
-  if (
-    typeof router.options.scrollRestoration === 'function' &&
-    !router.options.scrollRestoration({ location: router.latestLocation })
-  ) {
-    return null
-  }
-
-  const getKey = router.options.getScrollRestorationKey
-  if (!getKey) {
-    return defaultInlineScrollRestorationScript
-  }
-
-  const location = router.latestLocation
-  const userKey = getKey(location)
-  const defaultKey = defaultGetScrollRestorationKey(location)
-
-  if (userKey === defaultKey) {
-    return defaultInlineScrollRestorationScript
-  }
-
-  return getScrollRestorationScript({
-    storageKey,
-    shouldScrollRestoration: true,
-    key: userKey,
-  })
-}
 
 /**
  * The default `getKey` function for `useScrollRestoration`.
