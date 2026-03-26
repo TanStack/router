@@ -283,31 +283,10 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
 
   // observeDom()
 
-  const onScroll = (event: Event) => {
-    // unobserveDom()
-
-    if (ignoreScroll || !router.isScrollRestoring) {
-      return
-    }
-
-    let elementSelector = ''
-
-    if (event.target === document || event.target === window) {
-      elementSelector = 'window'
-    } else {
-      const attrId = (event.target as Element).getAttribute(
-        'data-scroll-restoration-id',
-      )
-
-      if (attrId) {
-        elementSelector = `[data-scroll-restoration-id="${attrId}"]`
-      } else {
-        elementSelector = getCssSelector(event.target)
-      }
-    }
-
-    const restoreKey = getKey(router.stores.location.state)
-
+  const saveScrollPosition = (
+    restoreKey: string,
+    elementSelector: string,
+  ) => {
     scrollRestorationCache.set((state) => {
       const keyEntry = (state[restoreKey] ||= {} as ScrollRestorationByElement)
 
@@ -329,9 +308,49 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     })
   }
 
+  // Throttle the save to avoid excessive sessionStorage writes, but capture
+  // the restore key and element selector eagerly at scroll-event time (not
+  // at throttle-execution time). This prevents the race condition where the
+  // throttled callback reads router.state.location after navigation has
+  // already changed it, saving the old page's scroll position under the new
+  // page's cache key.
+  const throttledSaveScrollPosition = throttle(saveScrollPosition, 100)
+
   // Throttle the scroll event to avoid excessive updates
   if (typeof document !== 'undefined') {
-    document.addEventListener('scroll', throttle(onScroll, 100), true)
+    document.addEventListener(
+      'scroll',
+      (event: Event) => {
+        // unobserveDom()
+
+        if (ignoreScroll || !router.isScrollRestoring) {
+          return
+        }
+
+        let elementSelector = ''
+
+        if (event.target === document || event.target === window) {
+          elementSelector = 'window'
+        } else {
+          const attrId = (event.target as Element).getAttribute(
+            'data-scroll-restoration-id',
+          )
+
+          if (attrId) {
+            elementSelector = `[data-scroll-restoration-id="${attrId}"]`
+          } else {
+            elementSelector = getCssSelector(event.target)
+          }
+        }
+
+        // Capture the restore key immediately at scroll-event time so that
+        // the throttled save always writes to the correct cache key, even if
+        // router.state.location changes before the throttle fires.
+        const restoreKey = getKey(router.stores.location.state)
+        throttledSaveScrollPosition(restoreKey, elementSelector)
+      },
+      true,
+    )
   }
 
   router.subscribe('onRendered', (event) => {
@@ -352,6 +371,19 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       if (!shouldRestore) {
         return
       }
+    }
+
+    // Clear any stale scroll entries for the destination key before restoring.
+    // Browser-generated scroll events (e.g. during DOM transitions) can fire
+    // after router.state.location has already advanced to the new route,
+    // polluting the new key's cache with the old page's scroll position.
+    // We only clear when scroll is about to be reset (forward navigation) so
+    // that back/forward navigations still restore their cached scroll positions.
+    if (scrollRestorationCache) {
+      scrollRestorationCache.set((state) => {
+        delete state[cacheKey]
+        return state
+      })
     }
 
     restoreScroll({
