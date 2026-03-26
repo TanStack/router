@@ -18,10 +18,7 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
 import { useLayoutEffect } from './utils'
-import type {
-  AnyRoute,
-  RootRouteOptions,
-} from '@tanstack/router-core'
+import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
 export const Match = React.memo(function MatchImpl({
   matchId,
