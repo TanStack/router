@@ -414,7 +414,7 @@ export function isSegmentPathless(
   return !hasEscapedLeadingUnderscore(originalSegment)
 }
 
-function escapeRegExp(s: string): string {
+export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
