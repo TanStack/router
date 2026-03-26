@@ -225,8 +225,10 @@ function OnRendered({ resetKey }: { resetKey: number }) {
     return null
   }
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const prevHrefRef = React.useRef<string | undefined>(undefined)
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useLayoutEffect(() => {
     const currentHref = router.latestLocation.href
 
