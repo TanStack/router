@@ -7,6 +7,7 @@
   "tui": {
     "enabled": false
   },
+  "plugins": [],
   "namedInputs": {
     "sharedGlobals": [
       "{workspaceRoot}/.nvmrc",
