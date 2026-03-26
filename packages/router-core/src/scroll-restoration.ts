@@ -258,24 +258,6 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       return
     }
 
-    const fromIndex = event.fromLocation?.state.__TSR_index
-    const toIndex = event.toLocation.state.__TSR_index
-    // Clear on forward navigations, and on same-entry replace navigations where
-    // the href changed. Preserve back/restore entries so they can be restored.
-    const shouldClearCache =
-      typeof fromIndex === 'number' && typeof toIndex === 'number'
-        ? toIndex > fromIndex ||
-          (toIndex === fromIndex &&
-            event.fromLocation?.href !== event.toLocation.href)
-        : true
-
-    if (shouldClearCache) {
-      cache.set((state) => {
-        delete state[cacheKey]
-        return state
-      })
-    }
-
     ignoreScroll = true
 
     try {
