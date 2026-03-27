@@ -3774,6 +3774,9 @@ importers:
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
+      tanstack-solid-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
@@ -3891,6 +3894,36 @@ importers:
         specifier: ^4.74.0
         version: 4.75.0
 
+  e2e/solid-start/basic-prerender:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      tanstack-solid-start-e2e-basic:
+        specifier: workspace:*
+        version: link:../basic
+      tanstack-solid-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
+
+  e2e/solid-start/basic-preview:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      tanstack-solid-start-e2e-basic:
+        specifier: workspace:*
+        version: link:../basic
+      tanstack-solid-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
+
   e2e/solid-start/basic-solid-query:
     dependencies:
       '@tanstack/solid-query':
@@ -3951,6 +3984,36 @@ importers:
       vite-plugin-solid:
         specifier: ^2.11.11
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+
+  e2e/solid-start/basic-spa:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      tanstack-solid-start-e2e-basic:
+        specifier: workspace:*
+        version: link:../basic
+      tanstack-solid-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
+
+  e2e/solid-start/basic-test-suite:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
 
   e2e/solid-start/basic-tsr-config:
     dependencies:
@@ -5542,6 +5605,9 @@ importers:
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
+      tanstack-vue-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
@@ -5661,6 +5727,66 @@ importers:
       wrangler:
         specifier: ^4.74.0
         version: 4.75.0
+
+  e2e/vue-start/basic-prerender:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      tanstack-vue-start-e2e-basic:
+        specifier: workspace:*
+        version: link:../basic
+      tanstack-vue-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
+
+  e2e/vue-start/basic-preview:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      tanstack-vue-start-e2e-basic:
+        specifier: workspace:*
+        version: link:../basic
+      tanstack-vue-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
+
+  e2e/vue-start/basic-spa:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      tanstack-vue-start-e2e-basic:
+        specifier: workspace:*
+        version: link:../basic
+      tanstack-vue-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
+
+  e2e/vue-start/basic-test-suite:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
 
   e2e/vue-start/basic-tsr-config:
     dependencies:

@@ -9,7 +9,6 @@ const PORT = await getTestServerPort(packageJson.name)
 const START_PORT = await getTestServerPort(`${packageJson.name}_start`)
 const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
-const ssrModeCommand = `pnpm build && pnpm start`
 
 export default defineConfig({
   testDir: '../basic-test-suite/src',
@@ -23,12 +22,12 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `pnpm run test:e2e:startDummyServer && ${ssrModeCommand}`,
+    command: `pnpm run test:e2e:startDummyServer && pnpm --dir ../basic build && pnpm --dir ../basic preview --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
     env: {
-      MODE: '',
+      MODE: 'preview',
       VITE_NODE_ENV: 'test',
       VITE_EXTERNAL_PORT: String(EXTERNAL_PORT),
       VITE_SERVER_PORT: String(PORT),
