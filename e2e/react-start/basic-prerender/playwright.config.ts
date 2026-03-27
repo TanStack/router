@@ -9,10 +9,7 @@ const PORT = await getTestServerPort(packageJson.name)
 const START_PORT = await getTestServerPort(`${packageJson.name}_start`)
 const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
-const ssrModeCommand = `pnpm build && pnpm start`
-/**
- * See https://playwright.dev/docs/test-configuration.
- */
+
 export default defineConfig({
   testDir: '../basic-test-suite/src',
   workers: 1,
@@ -22,17 +19,17 @@ export default defineConfig({
   globalTeardown: '../basic-test-suite/src/setup/global.teardown.ts',
 
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL,
   },
 
   webServer: {
-    command: ssrModeCommand,
+    command:
+      'pnpm --dir ../basic run test:e2e:startDummyServer && pnpm --dir ../basic build:prerender && pnpm --dir ../basic run test:e2e:stopDummyServer && pnpm --dir ../basic start',
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
     env: {
-      MODE: '',
+      MODE: 'prerender',
       VITE_NODE_ENV: 'test',
       VITE_EXTERNAL_PORT: String(EXTERNAL_PORT),
       VITE_SERVER_PORT: String(PORT),

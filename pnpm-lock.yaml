@@ -1338,6 +1338,9 @@ importers:
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
+      tanstack-react-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
@@ -1473,6 +1476,36 @@ importers:
         specifier: ^4.74.0
         version: 4.75.0
 
+  e2e/react-start/basic-prerender:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      tanstack-react-start-e2e-basic:
+        specifier: workspace:*
+        version: link:../basic
+      tanstack-react-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
+
+  e2e/react-start/basic-preview:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      tanstack-react-start-e2e-basic:
+        specifier: workspace:*
+        version: link:../basic
+      tanstack-react-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
+
   e2e/react-start/basic-react-query:
     dependencies:
       '@tanstack/react-query':
@@ -1591,6 +1624,36 @@ importers:
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
+
+  e2e/react-start/basic-spa:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      tanstack-react-start-e2e-basic:
+        specifier: workspace:*
+        version: link:../basic
+      tanstack-react-start-e2e-basic-test-suite:
+        specifier: workspace:*
+        version: link:../basic-test-suite
+
+  e2e/react-start/basic-test-suite:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
 
   e2e/react-start/basic-tsr-config:
     dependencies:
