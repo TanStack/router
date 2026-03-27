@@ -15,7 +15,6 @@ export default defineConfig({
   workers: 1,
   reporter: [['line']],
 
-  globalSetup: '../basic-test-suite/src/setup/global.setup.ts',
   globalTeardown: '../basic-test-suite/src/setup/global.teardown.ts',
 
   use: {
@@ -24,7 +23,7 @@ export default defineConfig({
 
   webServer: {
     command:
-      'pnpm --dir ../basic run test:e2e:startDummyServer && pnpm --dir ../basic build:prerender && pnpm --dir ../basic run test:e2e:stopDummyServer && pnpm --dir ../basic start',
+      'pnpm run test:e2e:startDummyServer && pnpm --dir ../basic build:prerender && pnpm --dir ../basic start',
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',

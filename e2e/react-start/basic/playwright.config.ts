@@ -18,7 +18,6 @@ export default defineConfig({
   workers: 1,
   reporter: [['line']],
 
-  globalSetup: '../basic-test-suite/src/setup/global.setup.ts',
   globalTeardown: '../basic-test-suite/src/setup/global.teardown.ts',
 
   use: {
@@ -27,7 +26,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: ssrModeCommand,
+    command: `pnpm run test:e2e:startDummyServer && ${ssrModeCommand}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
