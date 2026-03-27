@@ -3,13 +3,14 @@ import { join } from 'node:path'
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 import { isPrerender } from './utils/isPrerender'
+import { getBasicAppRoot } from './utils/getBasicAppRoot'
 
 test.describe('Prerender Static Path Discovery', () => {
   test.skip(!isPrerender, 'Skipping since not in prerender mode')
   test.describe('Build Output Verification', () => {
     test('should automatically discover and prerender static routes', () => {
       // Check that static routes were automatically discovered and prerendered
-      const distDir = join(process.cwd(), 'dist', 'client')
+      const distDir = join(getBasicAppRoot(), 'dist', 'client')
 
       // These static routes should be automatically discovered and prerendered
       expect(existsSync(join(distDir, 'index.html'))).toBe(true)
@@ -34,7 +35,7 @@ test.describe('Prerender Static Path Discovery', () => {
 
   test.describe('Static Files Verification', () => {
     test('should contain prerendered content in posts.html', () => {
-      const distDir = join(process.cwd(), 'dist', 'client')
+      const distDir = join(getBasicAppRoot(), 'dist', 'client')
       expect(existsSync(join(distDir, 'posts/index.html'))).toBe(true)
 
       // "Select a post." should be in the prerendered HTML
