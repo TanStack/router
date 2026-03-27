@@ -327,6 +327,105 @@
       ]
     },
     {
+      "label": "How To",
+      "children": [
+        {
+          "label": "Overview",
+          "to": "how-to/README"
+        },
+        {
+          "label": "Install",
+          "to": "how-to/install"
+        },
+        {
+          "label": "Setup Authentication",
+          "to": "how-to/setup-authentication"
+        },
+        {
+          "label": "Setup Auth Providers",
+          "to": "how-to/setup-auth-providers"
+        },
+        {
+          "label": "Setup RBAC",
+          "to": "how-to/setup-rbac"
+        },
+        {
+          "label": "Setup SSR",
+          "to": "how-to/setup-ssr"
+        },
+        {
+          "label": "Setup Testing",
+          "to": "how-to/setup-testing"
+        },
+        {
+          "label": "Setup Basic Search Params",
+          "to": "how-to/setup-basic-search-params"
+        },
+        {
+          "label": "Validate Search Params",
+          "to": "how-to/validate-search-params"
+        },
+        {
+          "label": "Arrays, Objects, Dates in Search Params",
+          "to": "how-to/arrays-objects-dates-search-params"
+        },
+        {
+          "label": "Navigate with Search Params",
+          "to": "how-to/navigate-with-search-params"
+        },
+        {
+          "label": "Share Search Params Across Routes",
+          "to": "how-to/share-search-params-across-routes"
+        },
+        {
+          "label": "Test File-Based Routing",
+          "to": "how-to/test-file-based-routing"
+        },
+        {
+          "label": "Debug Router Issues",
+          "to": "how-to/debug-router-issues"
+        },
+        {
+          "label": "Deploy to Production",
+          "to": "how-to/deploy-to-production"
+        },
+        {
+          "label": "Use Environment Variables",
+          "to": "how-to/use-environment-variables"
+        },
+        {
+          "label": "Integrate Chakra UI",
+          "to": "how-to/integrate-chakra-ui"
+        },
+        {
+          "label": "Integrate Framer Motion",
+          "to": "how-to/integrate-framer-motion"
+        },
+        {
+          "label": "Integrate Material UI",
+          "to": "how-to/integrate-material-ui"
+        },
+        {
+          "label": "Integrate shadcn/ui",
+          "to": "how-to/integrate-shadcn-ui"
+        },
+        {
+          "label": "Migrate from React Router",
+          "to": "how-to/migrate-from-react-router"
+        }
+      ],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": []
+        },
+        {
+          "label": "solid",
+          "children": []
+        }
+      ]
+    },
+    {
       "label": "Router Examples",
       "children": [],
       "frameworks": [
