@@ -1646,7 +1646,7 @@ importers:
         specifier: ^1.57.0
         version: 1.57.0
       '@tanstack/router-e2e-utils':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../e2e-utils
       '@types/node':
         specifier: 25.0.9
