@@ -2,6 +2,7 @@ import path from 'node:path'
 import * as fsp from 'node:fs/promises'
 import {
   determineInitialRoutePath,
+  escapeRegExp,
   hasEscapedLeadingUnderscore,
   removeExt,
   replaceBackslash,
@@ -265,9 +266,12 @@ export async function getRouteNodes(
 
           if (suffixToStrip || shouldStripRouteToken) {
             const stripSegment = suffixToStrip ?? lastRouteSegment
-            routePath = routePath.replace(new RegExp(`/${stripSegment}$`), '')
+            routePath = routePath.replace(
+              new RegExp(`/${escapeRegExp(stripSegment)}$`),
+              '',
+            )
             originalRoutePath = originalRoutePath.replace(
-              new RegExp(`/${stripSegment}$`),
+              new RegExp(`/${escapeRegExp(stripSegment)}$`),
               '',
             )
           }
@@ -305,13 +309,13 @@ export async function getRouteNodes(
 
               routePath =
                 routePath.replace(
-                  new RegExp(`/${updatedLastRouteSegment}$`),
+                  new RegExp(`/${escapeRegExp(updatedLastRouteSegment)}$`),
                   '/',
                 ) || (isLayoutRoute ? '' : '/')
 
               originalRoutePath =
                 originalRoutePath.replace(
-                  new RegExp(`/${indexTokenCandidate}$`),
+                  new RegExp(`/${escapeRegExp(indexTokenCandidate)}$`),
                   '/',
                 ) || (isLayoutRoute ? '' : '/')
             }

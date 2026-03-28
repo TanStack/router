@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-core",
-  "version": "1.168.4",
+  "version": "1.168.6",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -146,6 +146,26 @@
       "require": {
         "types": "./dist/cjs/isServer/client.d.cts",
         "default": "./dist/cjs/isServer/client.cjs"
+      }
+    },
+    "./scroll-restoration-script": {
+      "browser": {
+        "import": {
+          "types": "./dist/esm/scroll-restoration-script/client.d.ts",
+          "default": "./dist/esm/scroll-restoration-script/client.js"
+        },
+        "require": {
+          "types": "./dist/cjs/scroll-restoration-script/client.d.cts",
+          "default": "./dist/cjs/scroll-restoration-script/client.cjs"
+        }
+      },
+      "import": {
+        "types": "./dist/esm/scroll-restoration-script/server.d.ts",
+        "default": "./dist/esm/scroll-restoration-script/server.js"
+      },
+      "require": {
+        "types": "./dist/cjs/scroll-restoration-script/server.d.cts",
+        "default": "./dist/cjs/scroll-restoration-script/server.cjs"
       }
     },
     "./package.json": "./package.json"

@@ -203,10 +203,13 @@ export const Match = Vue.defineComponent({
         // Add scroll restoration if needed
         const withScrollRestoration: Array<VNode> = [
           content,
-          isChildOfRoot && router.options.scrollRestoration
+          isChildOfRoot
             ? Vue.h(Vue.Fragment, null, [
                 Vue.h(OnRendered),
-                Vue.h(ScrollRestoration),
+                router.options.scrollRestoration &&
+                (isServer ?? router.isServer)
+                  ? Vue.h(ScrollRestoration)
+                  : null,
               ])
             : null,
         ].filter(Boolean) as Array<VNode>

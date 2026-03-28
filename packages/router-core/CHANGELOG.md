@@ -1,5 +1,17 @@
 # @tanstack/router-core
 
+## 1.168.6
+
+### Patch Changes
+
+- Fix a regression where browser back/forward navigation could fail to restore the previous scroll position for an existing history entry. ([#7055](https://github.com/TanStack/router/pull/7055))
+
+## 1.168.5
+
+### Patch Changes
+
+- fix: scroll restoration without throttling ([#7042](https://github.com/TanStack/router/pull/7042))
+
 ## 1.168.4
 
 ### Patch Changes

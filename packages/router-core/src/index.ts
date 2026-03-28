@@ -397,13 +397,13 @@ export { isNotFound, notFound } from './not-found'
 
 export {
   defaultGetScrollRestorationKey,
-  restoreScroll,
+  getElementScrollRestorationEntry,
   storageKey,
-  getCssSelector,
   scrollRestorationCache,
   setupScrollRestoration,
-  handleHashScroll,
 } from './scroll-restoration'
+
+export { handleHashScroll } from './hash-scroll'
 
 export type {
   ScrollRestorationOptions,
