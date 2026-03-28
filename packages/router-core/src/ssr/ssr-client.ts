@@ -254,6 +254,11 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       // remove the dehydrated flag since we won't run router.load() which would remove it
       match._nonReactive.dehydrated = undefined
     })
+    // Mark the current location as resolved so that later load cycles
+    // (e.g. preloads, invalidations) don't mistakenly detect a href change
+    // (resolvedLocation defaults to undefined and router.load() is skipped
+    // in the normal SSR hydration path).
+    router.stores.resolvedLocation.setState(() => router.stores.location.state)
     return routeChunkPromise
   }
 
