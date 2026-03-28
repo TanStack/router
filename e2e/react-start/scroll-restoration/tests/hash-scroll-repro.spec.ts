@@ -40,14 +40,14 @@ test('hover preloading another route does not scroll back to the current hash', 
   await goToRepro(page)
   const scrollYBeforeHover = await scrollUpFromHashTarget(page)
 
-  // Hover the About link to trigger preload
-  await page.getByTestId('hash-scroll-about-link').hover()
-
-  // Wait for the preload request to complete
-  await page.waitForResponse(
+  const preloadResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/hash-scroll-about') && response.ok(),
   )
+
+  // Hover the About link to trigger preload
+  await page.getByTestId('hash-scroll-about-link').hover()
+  await preloadResponse
 
   // Give any erroneous scroll a chance to happen
   await page.waitForTimeout(300)
