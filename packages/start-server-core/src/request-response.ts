@@ -122,7 +122,15 @@ export function requestHandler<TRegister = unknown>(
   handler: RequestHandler<TRegister>,
 ) {
   return (request: Request, requestOpts: any): Promise<Response> | Response => {
-    const h3Event = new H3Event(request)
+    let h3Event: H3Event
+    try {
+      h3Event = new H3Event(request)
+    } catch (err) {
+      if (err instanceof URIError) {
+        return new Response(null, { status: 404 })
+      }
+      throw err
+    }
 
     const response = eventStorage.run({ h3Event }, () =>
       handler(request, requestOpts),
