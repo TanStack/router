@@ -163,7 +163,7 @@
   },
   "dependencies": {
     "@tanstack/history": "workspace:*",
-    "cookie-es": "^2.0.0",
+    "cookie-es": "^3.0.0",
     "seroval": "^1.4.2",
     "seroval-plugins": "^1.4.2"
   },
