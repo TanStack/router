@@ -117,6 +117,24 @@ In the above example, we're validating the search params of the `Route` and retu
 
 The `validateSearch` option is a function that is provided the JSON parsed (but non-validated) search params as a `Record<string, unknown>` and returns a typed object of your choice. It's usually best to provide sensible fallbacks for malformed or unexpected search params so your users' experience stays non-interrupted.
 
+If you need to validate against the raw URL string values instead of the default parsed search object, wrap the validator with `validateSearchWithRawInput(...)`:
+
+```tsx
+import {
+  createFileRoute,
+  validateSearchWithRawInput,
+} from '@tanstack/react-router'
+import { z } from 'zod'
+
+export const Route = createFileRoute('/files')({
+  validateSearch: validateSearchWithRawInput(
+    z.object({
+      folder: z.string(),
+    }),
+  ),
+})
+```
+
 Here's an example:
 
 ```tsx title="src/routes/shop/products.tsx"

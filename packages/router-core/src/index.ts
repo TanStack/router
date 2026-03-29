@@ -270,6 +270,7 @@ export type {
 } from './RouterProvider'
 
 export { retainSearchParams, stripSearchParams } from './searchMiddleware'
+export { validateSearchWithRawInput } from './searchValidator'
 
 export {
   defaultParseSearch,

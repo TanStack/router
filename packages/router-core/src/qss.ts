@@ -61,7 +61,10 @@ function toValue(str: unknown) {
  * // Example input: decode("token=foo&key=value")
  * // Expected output: { "token": "foo", "key": "value" }
  */
-export function decode(str: any): any {
+export function decode(
+  str: any,
+  parser: (value: string) => unknown = toValue,
+): any {
   const searchParams = new URLSearchParams(str)
 
   const result: Record<string, unknown> = Object.create(null)
@@ -69,11 +72,11 @@ export function decode(str: any): any {
   for (const [key, value] of searchParams.entries()) {
     const previousValue = result[key]
     if (previousValue == null) {
-      result[key] = toValue(value)
+      result[key] = parser(value)
     } else if (Array.isArray(previousValue)) {
-      previousValue.push(toValue(value))
+      previousValue.push(parser(value))
     } else {
-      result[key] = [previousValue, toValue(value)]
+      result[key] = [previousValue, parser(value)]
     }
   }
 

@@ -53,9 +53,10 @@ The `RouteOptions` type accepts an object with the following properties:
 
 ### `validateSearch` method
 
-- Type: `(rawSearchParams: unknown) => TSearchSchema`
+- Type: `(searchParams: unknown) => TSearchSchema`
 - Optional
-- A function that will be called when this route is matched and passed the raw search params from the current location and return valid parsed search params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's search params and the return type will be inferred into the rest of the router.
+- A function that will be called when this route is matched and passed the parsed-but-not-yet-validated search params from the current location and return valid parsed search params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's search params and the return type will be inferred into the rest of the router.
+- By default, search params have already gone through the router's search parser before `validateSearch` runs. If you need the raw URL string values for validation, wrap your validator with `validateSearchWithRawInput(...)`.
 - Optionally, the parameter type can be tagged with the `SearchSchemaInput` type like this: `(searchParams: TSearchSchemaInput & SearchSchemaInput) => TSearchSchema`. If this tag is present, `TSearchSchemaInput` will be used to type the `search` property of `<Link />` and `navigate()` **instead of** `TSearchSchema`. The difference between `TSearchSchemaInput` and `TSearchSchema` can be useful, for example, to express optional search parameters.
 
 ### `search.middlewares` property
