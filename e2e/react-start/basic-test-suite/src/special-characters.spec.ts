@@ -77,11 +77,23 @@ test.describe('Unicode route rendering', () => {
         `${baseURL}/specialChars/search?searchParam=%EB%8C%80|`,
       )
 
+      await page.waitForLoadState('networkidle')
+
       const searchParam = await page
         .getByTestId('special-search-param')
         .textContent()
 
       expect(searchParam).toBe('대|')
+
+      const loadedOn = await page
+        .getByTestId('special-search-loaded-info')
+        .textContent()
+
+      if (isSpaMode) {
+        expect(loadedOn).toBe('Loaded on: client')
+      } else {
+        expect(loadedOn).toBe('Loaded on: server')
+      }
     })
 
     test('should render route correctly on router navigation', async ({
