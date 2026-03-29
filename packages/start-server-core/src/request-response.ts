@@ -147,7 +147,7 @@ export function getRequest(): Request {
 }
 
 export function getRequestHeaders(): TypedHeaders<RequestHeaderMap> {
-  return getH3Event().req.headers as any
+  return getH3Event().req.headers
 }
 
 export function getRequestHeader(name: RequestHeaderName): string | undefined {
