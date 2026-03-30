@@ -22,7 +22,7 @@ export function getNotFound(
 
 export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => Solid.JSX.Element
-  onCatch?: (error: Error) => void
+  onCatch?: (error: NotFoundError) => void
   children: Solid.JSX.Element
 }) {
   const router = useRouter()
@@ -37,7 +37,7 @@ export function CatchNotFound(props: {
         const notFoundError = getNotFound(error)
 
         if (notFoundError) {
-          props.onCatch?.(notFoundError as any)
+          props.onCatch?.(notFoundError)
         } else {
           throw error
         }
