@@ -1002,7 +1002,7 @@ export async function loadMatches(arg: {
       break
     }
 
-    if (inner.serialError) {
+    if (inner.serialError || inner.firstBadMatchIndex != null) {
       break
     }
   }
@@ -1057,9 +1057,10 @@ export async function loadMatches(arg: {
     firstNotFound ??
     (beforeLoadNotFound && !inner.preload ? beforeLoadNotFound : undefined)
 
-  let headMaxIndex = inner.serialError
-    ? (inner.firstBadMatchIndex ?? 0)
-    : inner.matches.length - 1
+  let headMaxIndex =
+    inner.firstBadMatchIndex !== undefined
+      ? inner.firstBadMatchIndex
+      : inner.matches.length - 1
 
   if (!notFoundToThrow && beforeLoadNotFound && inner.preload) {
     return inner.matches
