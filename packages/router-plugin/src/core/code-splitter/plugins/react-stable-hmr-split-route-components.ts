@@ -15,6 +15,7 @@ const buildStableSplitComponentStatements = template.statements(
   `
     const %%stableComponentIdent%% = import.meta.hot?.data?.[%%hotDataKey%%] ?? %%lazyRouteComponentIdent%%(%%localImporterIdent%%, %%exporterIdent%%)
     if (import.meta.hot) {
+      import.meta.hot.data ??= {}
       import.meta.hot.data[%%hotDataKey%%] = %%stableComponentIdent%%
     }
   `,
