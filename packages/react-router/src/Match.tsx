@@ -167,7 +167,10 @@ function MatchView({
             errorComponent={routeErrorComponent || ErrorComponent}
             onCatch={(error, errorInfo) => {
               // Forward not found errors (we don't want to show the error component for these)
-              if (isNotFound(error)) throw error
+              if (isNotFound(error)) {
+                error.routeId ??= matchState.routeId as any
+                throw error
+              }
               if (process.env.NODE_ENV !== 'production') {
                 console.warn(`Warning: Error in route match: ${matchId}`)
               }
@@ -176,6 +179,8 @@ function MatchView({
           >
             <ResolvedNotFoundBoundary
               fallback={(error) => {
+                error.routeId ??= matchState.routeId as any
+
                 // If the current not found handler doesn't exist or it has a
                 // route ID which doesn't match the current route, rethrow the error
                 if (
