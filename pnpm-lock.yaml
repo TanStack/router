@@ -170,7 +170,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../packages/react-router
@@ -231,7 +231,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../packages/react-router
@@ -295,7 +295,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../packages/react-router
@@ -2968,7 +2968,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -2999,7 +2999,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3036,7 +3036,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -3076,7 +3076,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3125,7 +3125,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3165,7 +3165,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3205,7 +3205,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3248,7 +3248,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3297,7 +3297,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3343,7 +3343,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3389,7 +3389,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3429,7 +3429,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3469,7 +3469,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -3518,7 +3518,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -3570,7 +3570,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3625,7 +3625,7 @@ importers:
         version: 4.6.1(encoding@0.1.13)
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3662,7 +3662,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3708,7 +3708,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -3790,7 +3790,7 @@ importers:
         version: 7.0.0(prisma@7.0.0(@types/react@19.2.8)(magicast@0.3.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.2))(typescript@5.9.2)
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -3851,7 +3851,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -3903,7 +3903,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-query':
         specifier: 6.0.0-alpha.2
         version: 6.0.0-alpha.2(solid-js@2.0.0-beta.4)
@@ -3970,7 +3970,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4010,7 +4010,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4047,7 +4047,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:*
         version: link:../../../packages/solid-router
@@ -4090,7 +4090,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4154,7 +4154,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-query':
         specifier: 6.0.0-alpha.2
         version: 6.0.0-alpha.2(solid-js@2.0.0-beta.4)
@@ -4215,7 +4215,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4279,7 +4279,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4322,7 +4322,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4371,7 +4371,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-query':
         specifier: 6.0.0-alpha.2
         version: 6.0.0-alpha.2(solid-js@2.0.0-beta.4)
@@ -4447,7 +4447,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-query':
         specifier: 6.0.0-alpha.2
         version: 6.0.0-alpha.2(solid-js@2.0.0-beta.4)
@@ -4520,7 +4520,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4563,7 +4563,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4627,7 +4627,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -9620,7 +9620,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -9660,7 +9660,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -9706,7 +9706,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -9746,7 +9746,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -9786,7 +9786,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -9819,7 +9819,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -9859,7 +9859,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -9899,7 +9899,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -9942,7 +9942,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -9988,7 +9988,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -10031,7 +10031,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10086,7 +10086,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10129,7 +10129,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10172,7 +10172,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10212,7 +10212,7 @@ importers:
         version: 2.4.0(babel-plugin-macros@3.1.0)
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10245,7 +10245,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10285,7 +10285,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10328,7 +10328,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10374,7 +10374,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10423,7 +10423,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10466,7 +10466,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10503,7 +10503,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10540,7 +10540,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10570,7 +10570,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -10604,7 +10604,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10644,7 +10644,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/postcss':
         specifier: ^4.2.2
         version: 4.2.2
@@ -10684,7 +10684,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: ^2.0.0-alpha.7
         version: link:../../../packages/solid-router
@@ -10745,7 +10745,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -10782,7 +10782,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -10819,7 +10819,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -10862,7 +10862,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10895,7 +10895,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10956,7 +10956,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: ^2.0.0-alpha.7
         version: link:../../../packages/solid-router
@@ -11014,7 +11014,7 @@ importers:
         version: 7.0.0(prisma@7.0.0(@types/react@19.2.8)(magicast@0.3.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.2))(typescript@5.9.2)
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: ^2.0.0-alpha.7
         version: link:../../../packages/solid-router
@@ -11069,7 +11069,7 @@ importers:
         version: 0.41.1
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: ^2.0.0-alpha.7
         version: link:../../../packages/solid-router
@@ -11115,7 +11115,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: ^2.0.0-alpha.7
         version: link:../../../packages/solid-router
@@ -11161,7 +11161,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: ^2.0.0-alpha.7
         version: link:../../../packages/solid-router
@@ -11204,7 +11204,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: ^2.0.0-alpha.7
         version: link:../../../packages/solid-router
@@ -11247,7 +11247,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-query':
         specifier: 6.0.0-alpha.2
         version: 6.0.0-alpha.2(solid-js@2.0.0-beta.4)
@@ -11302,7 +11302,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: ^2.0.0-alpha.7
         version: link:../../../packages/solid-router
@@ -11351,7 +11351,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11427,7 +11427,7 @@ importers:
         version: 0.9.7(@standard-schema/spec@1.0.0)(better-auth@1.3.27(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@2.0.0-beta.4))(convex@1.28.2(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3))(hono@4.7.10)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.2)
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11491,7 +11491,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: ^2.0.0-alpha.7
         version: link:../../../packages/solid-router
@@ -11537,7 +11537,7 @@ importers:
         version: 2.4.0(babel-plugin-macros@3.1.0)
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11576,7 +11576,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-query':
         specifier: 6.0.0-alpha.2
         version: 6.0.0-alpha.2(solid-js@2.0.0-beta.4)
@@ -11625,7 +11625,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: ^2.0.0-alpha.7
         version: link:../../../packages/solid-router
@@ -11659,7 +11659,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@supabase/ssr':
         specifier: ^0.5.2
         version: 0.5.2(@supabase/supabase-js@2.48.1)
@@ -11708,7 +11708,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: ^2.0.0-alpha.7
         version: link:../../../packages/solid-router
@@ -11754,7 +11754,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11794,7 +11794,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -11834,7 +11834,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -12588,7 +12588,7 @@ importers:
         version: 0.29.4(solid-js@2.0.0-beta.4)
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
@@ -12637,7 +12637,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -12669,7 +12669,7 @@ importers:
     devDependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-query':
         specifier: 6.0.0-alpha.2
         version: 6.0.0-alpha.2(solid-js@2.0.0-beta.4)
@@ -12693,7 +12693,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/solid-router':
         specifier: workspace:*
         version: link:../solid-router
@@ -12733,7 +12733,7 @@ importers:
     dependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -12789,7 +12789,7 @@ importers:
     devDependencies:
       '@solidjs/web':
         specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)
+        version: 2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)
       solid-js:
         specifier: 2.0.0-beta.4
         version: 2.0.0-beta.4
@@ -18009,8 +18009,8 @@ packages:
     peerDependencies:
       solid-js: '>=1.8.4'
 
-  '@solidjs/signals@0.13.6':
-    resolution: {integrity: sha512-KdnfY9Xtq8lwmouePO/ixuQCEG2MXrUbx8FnqE/p3LhRFZpPTALypvWe2rExe3x5oTYmxQXiYqLvM2LGqHwKPA==}
+  '@solidjs/signals@0.13.8':
+    resolution: {integrity: sha512-3xTgJ2a+YC6fZjrMyDy72XKfafjRv8MnzafHmQm6JZCwOWFnLAlqvbhMvKZDXVeMz9l2shOTKc6nPgRPcEmwGg==}
 
   '@solidjs/testing-library@0.8.10':
     resolution: {integrity: sha512-qdeuIerwyq7oQTIrrKvV0aL9aFeuwTd86VYD3afdq5HYEwoox1OBTJy4y8A3TFZr8oAR0nujYgCzY/8wgHGfeQ==}
@@ -30806,16 +30806,16 @@ snapshots:
     dependencies:
       solid-js: 2.0.0-beta.4
 
-  '@solidjs/signals@0.13.6': {}
+  '@solidjs/signals@0.13.8': {}
 
   '@solidjs/testing-library@0.8.10(solid-js@2.0.0-beta.4)':
     dependencies:
       '@testing-library/dom': 10.4.1
       solid-js: 2.0.0-beta.4
 
-  '@solidjs/web@2.0.0-beta.4(@solidjs/signals@0.13.6)(solid-js@2.0.0-beta.4)':
+  '@solidjs/web@2.0.0-beta.4(@solidjs/signals@0.13.8)(solid-js@2.0.0-beta.4)':
     dependencies:
-      '@solidjs/signals': 0.13.6
+      '@solidjs/signals': 0.13.8
       seroval: 1.5.1
       seroval-plugins: 1.5.1(seroval@1.5.1)
       solid-js: 2.0.0-beta.4
@@ -38527,7 +38527,7 @@ snapshots:
 
   solid-js@2.0.0-beta.4:
     dependencies:
-      '@solidjs/signals': 0.13.6
+      '@solidjs/signals': 0.13.8
       csstype: 3.2.3
       seroval: 1.5.1
       seroval-plugins: 1.5.1(seroval@1.5.1)
