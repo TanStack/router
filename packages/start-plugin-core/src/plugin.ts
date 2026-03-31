@@ -260,7 +260,6 @@ export function TanStackStartVitePluginCore(
                 }
               })(),
               optimizeDeps: {
-                exclude: crawlFrameworkPkgsResult.optimizeDeps.exclude,
                 // Ensure user code can be crawled for dependencies
                 entries: [clientAlias, routerAlias].map((entry) =>
                   // Entries are treated as `tinyglobby` patterns so need to be escaped
