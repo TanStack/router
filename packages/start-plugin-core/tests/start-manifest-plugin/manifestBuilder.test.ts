@@ -235,6 +235,27 @@ describe('scanClientChunks', () => {
     expect(scanned.entryChunk).toBe(appEntry)
   })
 
+  test('skips plugin-injected entries even when scanned before the app entry', () => {
+    const mfHostInit = makeChunk({
+      fileName: 'hostInit.js',
+      isEntry: true,
+      facadeModuleId:
+        '/project/node_modules/__mf__virtual/host__H_A_I__hostAutoInit__H_A_I__.js',
+    })
+    const appEntry = makeChunk({
+      fileName: 'main.js',
+      isEntry: true,
+      facadeModuleId: '/project/src/client.tsx',
+    })
+
+    const scanned = scanClientChunks({
+      'hostInit.js': mfHostInit,
+      'main.js': appEntry,
+    })
+
+    expect(scanned.entryChunk).toBe(appEntry)
+  })
+
   test('still throws on multiple non-plugin app entries', () => {
     const entryA = makeChunk({
       fileName: 'entryA.js',
