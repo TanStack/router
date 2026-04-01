@@ -19,6 +19,7 @@ function makeChunk(options: {
   importedCss?: Array<string>
   moduleIds?: Array<string>
   isEntry?: boolean
+  facadeModuleId?: string | null
 }): Rollup.OutputChunk {
   return {
     type: 'chunk',
@@ -29,7 +30,7 @@ function makeChunk(options: {
     moduleIds: options.moduleIds ?? [],
     isEntry: options.isEntry ?? false,
     isDynamicEntry: false,
-    facadeModuleId: null,
+    facadeModuleId: options.facadeModuleId ?? null,
     implicitlyLoadedBefore: [],
     importedBindings: {},
     modules: {},
@@ -191,6 +192,67 @@ describe('scanClientChunks', () => {
     expect(() => scanClientChunks({ 'posts.js': routeChunk })).toThrow(
       'No entry file found',
     )
+  })
+
+  test('skips __mf__virtual plugin-injected entry chunks', () => {
+    const appEntry = makeChunk({
+      fileName: 'main.js',
+      isEntry: true,
+      facadeModuleId: '/project/src/client.tsx',
+    })
+    const mfHostInit = makeChunk({
+      fileName: 'hostInit.js',
+      isEntry: true,
+      facadeModuleId:
+        '/project/node_modules/__mf__virtual/host__H_A_I__hostAutoInit__H_A_I__.js',
+    })
+
+    const scanned = scanClientChunks({
+      'main.js': appEntry,
+      'hostInit.js': mfHostInit,
+    })
+
+    expect(scanned.entryChunk).toBe(appEntry)
+  })
+
+  test('skips virtual:mf- plugin-injected entry chunks', () => {
+    const appEntry = makeChunk({
+      fileName: 'main.js',
+      isEntry: true,
+      facadeModuleId: '/project/src/client.tsx',
+    })
+    const mfRemoteEntry = makeChunk({
+      fileName: 'remoteEntry.js',
+      isEntry: true,
+      facadeModuleId: 'virtual:mf-REMOTE_ENTRY_ID:host__remoteEntry-hash',
+    })
+
+    const scanned = scanClientChunks({
+      'main.js': appEntry,
+      'remoteEntry.js': mfRemoteEntry,
+    })
+
+    expect(scanned.entryChunk).toBe(appEntry)
+  })
+
+  test('still throws on multiple non-plugin app entries', () => {
+    const entryA = makeChunk({
+      fileName: 'entryA.js',
+      isEntry: true,
+      facadeModuleId: '/project/src/clientA.tsx',
+    })
+    const entryB = makeChunk({
+      fileName: 'entryB.js',
+      isEntry: true,
+      facadeModuleId: '/project/src/clientB.tsx',
+    })
+
+    expect(() =>
+      scanClientChunks({
+        'entryA.js': entryA,
+        'entryB.js': entryB,
+      }),
+    ).toThrow('multiple entries detected')
   })
 })
 
