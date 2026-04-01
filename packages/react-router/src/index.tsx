@@ -71,6 +71,7 @@ export type {
   ResolveRouteContext,
   SearchSerializer,
   SearchParser,
+  SearchMiddleware,
   TrailingSlashOption,
   Manifest,
   RouterManagedTag,
