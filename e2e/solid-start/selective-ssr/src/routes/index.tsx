@@ -174,6 +174,12 @@ function Home() {
       <div>
         test count: <b data-testid="test-count">{links.length}</b>
       </div>
+      <div>
+        <Link data-testid="mre-data-only-link" to="/mre-data-only">
+          MRE data-only + pendingComponent
+        </Link>
+      </div>
+      <br />
       <div>{links}</div>
     </>
   )

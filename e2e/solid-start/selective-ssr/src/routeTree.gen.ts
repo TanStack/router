@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as MreDataOnlyRouteImport } from './routes/mre-data-only'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MreDataOnlyRoute = MreDataOnlyRouteImport.update({
+  id: '/mre-data-only',
+  path: '/mre-data-only',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,30 +37,34 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/mre-data-only': typeof MreDataOnlyRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/mre-data-only': typeof MreDataOnlyRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/mre-data-only': typeof MreDataOnlyRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/posts' | '/posts/$postId'
+  fullPaths: '/' | '/mre-data-only' | '/posts' | '/posts/$postId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/posts' | '/posts/$postId'
-  id: '__root__' | '/' | '/posts' | '/posts/$postId'
+  to: '/' | '/mre-data-only' | '/posts' | '/posts/$postId'
+  id: '__root__' | '/' | '/mre-data-only' | '/posts' | '/posts/$postId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MreDataOnlyRoute: typeof MreDataOnlyRoute
   PostsRoute: typeof PostsRouteWithChildren
 }
 
@@ -65,6 +75,13 @@ declare module '@tanstack/solid-router' {
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mre-data-only': {
+      id: '/mre-data-only'
+      path: '/mre-data-only'
+      fullPath: '/mre-data-only'
+      preLoaderRoute: typeof MreDataOnlyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -96,6 +113,7 @@ const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MreDataOnlyRoute: MreDataOnlyRoute,
   PostsRoute: PostsRouteWithChildren,
 }
 export const routeTree = rootRouteImport

@@ -9,7 +9,8 @@
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium",
+    "test:e2e:dev": "rm -rf port*.txt; playwright test --config=playwright.dev.config.ts --project=chromium"
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
