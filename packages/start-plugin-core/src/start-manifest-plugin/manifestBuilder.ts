@@ -194,12 +194,19 @@ export function scanClientChunks(
     chunksByFileName.set(bundleEntry.fileName, bundleEntry)
 
     if (bundleEntry.isEntry) {
-      if (entryChunk) {
-        throw new Error(
-          `multiple entries detected: ${entryChunk.fileName} ${bundleEntry.fileName}`,
-        )
+      // Skip injected entries from bundler plugins (e.g. @module-federation/vite
+      // emits hostInit and remoteEntry entries). These are not the app entry.
+      const facadeId = bundleEntry.facadeModuleId ?? ''
+      const isPluginInjectedEntry =
+        facadeId.includes('__mf__virtual') || facadeId.startsWith('virtual:mf-')
+      if (!isPluginInjectedEntry) {
+        if (entryChunk) {
+          throw new Error(
+            `multiple entries detected: ${entryChunk.fileName} ${bundleEntry.fileName}`,
+          )
+        }
+        entryChunk = bundleEntry
       }
-      entryChunk = bundleEntry
     }
 
     const routeFilePaths = getRouteFilePathsFromModuleIds(bundleEntry.moduleIds)
