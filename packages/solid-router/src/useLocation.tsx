@@ -1,5 +1,4 @@
 import * as Solid from 'solid-js'
-import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -35,9 +34,7 @@ export function useLocation<
 
   const select = opts.select
 
-  return Solid.createMemo((prev: TSelected | undefined) => {
-    const res = select(router.stores.location.state)
-    if (prev === undefined) return res
-    return replaceEqualDeep(prev, res)
-  }) as Accessor<UseLocationResult<TRouter, TSelected>>
+  return Solid.createMemo(() =>
+    select(router.stores.location.state),
+  ) as Accessor<UseLocationResult<TRouter, TSelected>>
 }

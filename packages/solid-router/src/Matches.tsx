@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { replaceEqualDeep, rootRouteId } from '@tanstack/router-core'
+import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
@@ -214,13 +214,11 @@ export function useMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
-  return Solid.createMemo((prev: TSelected | undefined) => {
+  return Solid.createMemo(() => {
     const matches = router.stores.activeMatchesSnapshot.state as Array<
       MakeRouteMatchUnion<TRouter>
     >
-    const res = opts?.select ? opts.select(matches) : matches
-    if (prev === undefined) return res
-    return replaceEqualDeep(prev, res) as any
+    return (opts?.select ? opts.select(matches) : matches) as any
   }) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
 }
 

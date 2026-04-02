@@ -1,6 +1,5 @@
 import { isServer } from '@tanstack/router-core/isServer'
 import * as Solid from 'solid-js'
-import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -54,9 +53,7 @@ export function useRouterState<
 
   const select = opts.select
 
-  return Solid.createMemo((prev: TSelected | undefined) => {
-    const res = select(router.stores.__store.state)
-    if (prev === undefined) return res
-    return replaceEqualDeep(prev, res)
-  }) as Accessor<UseRouterStateResult<TRouter, TSelected>>
+  return Solid.createMemo(() =>
+    select(router.stores.__store.state),
+  ) as Accessor<UseRouterStateResult<TRouter, TSelected>>
 }

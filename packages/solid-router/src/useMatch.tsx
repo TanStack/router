@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { invariant, replaceEqualDeep } from '@tanstack/router-core'
+import { invariant } from '@tanstack/router-core'
 import { nearestMatchContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
@@ -106,12 +106,12 @@ export function useMatch<
     }
   })
 
-  return Solid.createMemo((prev: TSelected | undefined) => {
+  return Solid.createMemo(() => {
     const selectedMatch = match()
 
     if (selectedMatch === undefined) return undefined
-    const res = opts.select ? opts.select(selectedMatch as any) : selectedMatch
-    if (prev === undefined) return res as TSelected
-    return replaceEqualDeep(prev, res) as TSelected
+    return (opts.select ? opts.select(selectedMatch as any) : selectedMatch) as
+      | TSelected
+      | undefined
   }) as any
 }
