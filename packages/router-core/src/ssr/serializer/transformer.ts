@@ -10,6 +10,8 @@ import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
 import type { RawStream } from './RawStream'
 
+type MaybePromise<T> = T | Promise<T>
+
 declare const TSR_SERIALIZABLE: unique symbol
 export type TSR_SERIALIZABLE = typeof TSR_SERIALIZABLE
 
@@ -42,15 +44,22 @@ export type UnionizeSerializationAdaptersInput<
 export function createSerializationAdapter<
   TInput = unknown,
   TOutput = unknown,
+  TOutputAsync = TOutput,
   const TExtendsAdapters extends
     | ReadonlyArray<AnySerializationAdapter>
     | never = never,
 >(
-  opts: CreateSerializationAdapterOptions<TInput, TOutput, TExtendsAdapters>,
-): SerializationAdapter<TInput, TOutput, TExtendsAdapters> {
+  opts: CreateSerializationAdapterOptions<
+    TInput,
+    TOutput,
+    TOutputAsync,
+    TExtendsAdapters
+  >,
+): SerializationAdapter<TInput, TOutput, TOutputAsync, TExtendsAdapters> {
   return opts as unknown as SerializationAdapter<
     TInput,
     TOutput,
+    TOutputAsync,
     TExtendsAdapters
   >
 }
@@ -58,18 +67,35 @@ export function createSerializationAdapter<
 export interface CreateSerializationAdapterOptions<
   TInput,
   TOutput,
+  TOutputAsync,
   TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter> | never,
 > {
   key: string
   extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
+  /**
+   * Serialization function. This function will be used to serialize data synchronously or through a stream.
+   */
   toSerializable: (
     value: TInput,
   ) => ValidateSerializable<
     TOutput,
     Serializable | UnionizeSerializationAdaptersInput<TExtendsAdapters>
   >
-  fromSerializable: (value: TOutput) => TInput
+  /**
+   * Function to serialize data in a non-streaming context.
+   *
+   * Default to `toSerializable` for backwards compatibility.
+   */
+  toSerializableAsync?: (
+    value: TInput,
+  ) => MaybePromise<
+    ValidateSerializable<
+      TOutputAsync,
+      Serializable | UnionizeSerializationAdaptersInput<TExtendsAdapters>
+    >
+  >
+  fromSerializable: (value: TOutput | TOutputAsync) => TInput
 }
 
 export type ValidateSerializable<T, TSerializable> =
@@ -139,27 +165,35 @@ export interface SerializerExtensions extends DefaultSerializerExtensions {}
 export interface SerializationAdapter<
   TInput,
   TOutput,
+  TOutputAsync,
   TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter>,
 > {
-  '~types': SerializationAdapterTypes<TInput, TOutput, TExtendsAdapters>
+  '~types': SerializationAdapterTypes<
+    TInput,
+    TOutput,
+    TOutputAsync,
+    TExtendsAdapters
+  >
   key: string
   extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
   toSerializable: (value: TInput) => TOutput
-  fromSerializable: (value: TOutput) => TInput
+  toSerializableAsync?: (value: TInput) => MaybePromise<TOutputAsync>
+  fromSerializable: (value: TOutput | TOutputAsync) => TInput
 }
 
 export interface SerializationAdapterTypes<
   TInput,
   TOutput,
+  TOutputAsync,
   TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter>,
 > {
   input: TInput | UnionizeSerializationAdaptersInput<TExtendsAdapters>
-  output: TOutput
+  output: TOutput | TOutputAsync
   extends: TExtendsAdapters
 }
 
-export type AnySerializationAdapter = SerializationAdapter<any, any, any>
+export type AnySerializationAdapter = SerializationAdapter<any, any, any, any>
 
 /** Create a Seroval plugin for server-side serialization only. */
 export function makeSsrSerovalPlugin(
@@ -202,7 +236,11 @@ export function makeSerovalPlugin(
         return ctx.parse(serializationAdapter.toSerializable(value))
       },
       async async(value, ctx) {
-        return await ctx.parse(serializationAdapter.toSerializable(value))
+        return await ctx.parse(
+          serializationAdapter.toSerializableAsync
+            ? await serializationAdapter.toSerializableAsync(value)
+            : serializationAdapter.toSerializable(value),
+        )
       },
       stream(value, ctx) {
         return ctx.parse(serializationAdapter.toSerializable(value))
