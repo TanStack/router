@@ -137,12 +137,12 @@ As your application scales, TypeScript check times will naturally increase. Ther
 
 ### Only infer types you need
 
-A great pattern with client side data caches (TanStack Query, etc.) is to prefetch data. For example with TanStack Query you might have a route which calls `queryClient.ensureQueryData` in a `loader`.
+A great pattern with client side data caches (TanStack Query, etc.) is to prefetch data. For example with TanStack Query you might have a route which calls `queryClient.query` in a `loader`.
 
 ```tsx
 export const Route = createFileRoute('/posts/$postId/deep')({
   loader: ({ context: { queryClient }, params: { postId } }) =>
-    queryClient.ensureQueryData(postQueryOptions(postId)),
+    queryClient.query({ ...postQueryOptions(postId), staleTime: 'static' }),
   component: PostDeepComponent,
 })
 
@@ -159,7 +159,7 @@ This may look fine and for small route trees and you may not notice any TS perfo
 ```tsx
 export const Route = createFileRoute('/posts/$postId/deep')({
   loader: async ({ context: { queryClient }, params: { postId } }) => {
-    await queryClient.ensureQueryData(postQueryOptions(postId))
+    await queryClient.query({ ...postQueryOptions(postId), staleTime: 'static' })
   },
   component: PostDeepComponent,
 })
