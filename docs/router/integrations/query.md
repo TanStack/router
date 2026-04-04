@@ -165,7 +165,7 @@ const postsQuery = queryOptions({
 
 export const Route = createFileRoute('/posts')({
   // Ensure the data is in the cache before render
-  loader: ({ context }) => context.queryClient.ensureQueryData(postsQuery),
+  loader: ({ context }) => context.queryClient.query({...postsQuery, staleTime: 'static' }),
   component: PostsPage,
 })
 
@@ -180,7 +180,7 @@ function PostsPage() {
 
 ### Prefetching and streaming
 
-You can also prefetch with `fetchQuery` or `ensureQueryData` in a loader without consuming the data in a component. If you return the promise directly from the loader, it will be awaited and thus block the SSR request until the query finishes. If you don't await the promise nor return it, the query will be started on the server and will be streamed to the client without blocking the SSR request.
+You can also prefetch with `query` in a loader without consuming the data in a component. If you return the promise directly from the loader, it will be awaited and thus block the SSR request until the query finishes. If you don't await the promise nor return it, the query will be started on the server and will be streamed to the client without blocking the SSR request.
 
 <!-- ::start:framework -->
 
