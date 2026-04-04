@@ -95,10 +95,10 @@ import { slowDataOptions, fastDataOptions } from '~/api/query-options'
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ context: { queryClient } }) => {
     // Kick off the fetching of some slower data, but do not await it
-    queryClient.prefetchQuery(slowDataOptions())
+    void queryClient.query(slowDataOptions()).catch(noop)
 
     // Fetch and await some data that resolves quickly
-    await queryClient.ensureQueryData(fastDataOptions())
+    await queryClient.query({...fastDataOptions(), staleTime: 'static')
   },
 })
 ```
@@ -113,10 +113,10 @@ import { slowDataOptions, fastDataOptions } from '~/api/query-options'
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ context: { queryClient } }) => {
     // Kick off the fetching of some slower data, but do not await it
-    queryClient.prefetchQuery(slowDataOptions())
+    void queryClient.query(slowDataOptions()).catch(noop)
 
     // Fetch and await some data that resolves quickly
-    await queryClient.ensureQueryData(fastDataOptions())
+    await queryClient.query({...fastDataOptions(), staleTime: 'static')
   },
 })
 ```
