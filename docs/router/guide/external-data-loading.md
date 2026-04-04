@@ -82,7 +82,7 @@ const postsQueryOptions = queryOptions({
 
 export const Route = createFileRoute('/posts')({
   // Use the `loader` option to ensure that the data is loaded
-  loader: () => queryClient.ensureQueryData(postsQueryOptions),
+  loader: () => queryClient.query({...postsQueryOptions, staleTime: 'static'),
   component: () => {
     // Read the data from the cache and subscribe to updates
     const {
@@ -106,7 +106,7 @@ When an error occurs while using `suspense` with `TanStack Query`, you need to l
 
 ```tsx
 export const Route = createFileRoute('/')({
-  loader: () => queryClient.ensureQueryData(postsQueryOptions),
+  loader: () => queryClient.query({...postsQueryOptions, staleTime: 'static' }),
   errorComponent: ({ error, reset }) => {
     const router = useRouter()
     const queryErrorResetBoundary = useQueryErrorResetBoundary()
