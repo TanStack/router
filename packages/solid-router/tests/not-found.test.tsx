@@ -5,20 +5,25 @@ import {
   Link,
   Outlet,
   RouterProvider,
+  createBrowserHistory,
   createRootRoute,
   createRoute,
   createRouter,
   notFound,
   rootRouteId,
 } from '../src'
-import type { NotFoundRouteProps } from '../src'
+import type { NotFoundRouteProps, RouterHistory } from '../src'
+
+let history: RouterHistory
 
 beforeEach(() => {
+  history = createBrowserHistory()
   window.scrollTo = vi.fn()
   expect(window.location.pathname).toBe('/')
 })
 
 afterEach(() => {
+  history.destroy()
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
   cleanup()
