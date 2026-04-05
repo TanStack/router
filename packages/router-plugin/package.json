@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-plugin",
-  "version": "1.167.2",
+  "version": "1.167.12",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -31,12 +31,12 @@
     "test:unit:dev": "vitest --watch",
     "test:eslint": "eslint ./src",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
-    "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
     "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
     "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js",
-    "test:types:ts59": "tsc",
+    "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js",
+    "test:types:ts60": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
@@ -125,7 +125,8 @@
     "@tanstack/intent": "^0.0.14",
     "@types/babel__core": "^7.20.5",
     "@types/babel__template": "^7.4.4",
-    "@types/babel__traverse": "^7.28.0"
+    "@types/babel__traverse": "^7.28.0",
+    "@types/node": ">=20"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2",

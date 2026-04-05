@@ -1,12 +1,39 @@
-import { rootRouteId } from '@tanstack/router-core'
+import { resolveManifestAssetLink, rootRouteId } from '@tanstack/router-core'
 
 import type {
+  AssetCrossOrigin,
   Awaitable,
   Manifest,
+  ManifestAssetLink,
   RouterManagedTag,
 } from '@tanstack/router-core'
 
-export type AssetUrlType = 'modulepreload' | 'stylesheet' | 'clientEntry'
+export type { AssetCrossOrigin }
+
+export type TransformAssetKind = 'modulepreload' | 'stylesheet' | 'clientEntry'
+
+type TransformAssetsShorthandCrossOriginKind = Exclude<
+  TransformAssetKind,
+  'clientEntry'
+>
+
+export type AssetUrlType = TransformAssetKind
+
+export interface TransformAssetsContext {
+  url: string
+  kind: TransformAssetKind
+}
+
+export type TransformAssetResult =
+  | string
+  | {
+      href: string
+      crossOrigin?: AssetCrossOrigin
+    }
+
+export type TransformAssetsFn = (
+  context: TransformAssetsContext,
+) => Awaitable<TransformAssetResult>
 
 export interface TransformAssetUrlsContext {
   url: string
@@ -40,6 +67,10 @@ export type CreateTransformAssetUrlsContext =
 export type CreateTransformAssetUrlsFn = (
   ctx: CreateTransformAssetUrlsContext,
 ) => Awaitable<TransformAssetUrlsFn>
+
+export type CreateTransformAssetsFn = (
+  ctx: CreateTransformAssetUrlsContext,
+) => Awaitable<TransformAssetsFn>
 
 type TransformAssetUrlsOptionsBase = {
   /**
@@ -91,41 +122,132 @@ export type TransformAssetUrlsOptions =
       transform?: never
     })
 
+export type TransformAssetsOptions =
+  | (TransformAssetUrlsOptionsBase & {
+      transform: string | TransformAssetsFn
+      createTransform?: never
+    })
+  | (TransformAssetUrlsOptionsBase & {
+      createTransform: CreateTransformAssetsFn
+      transform?: never
+    })
+
 export type TransformAssetUrls =
   | string
   | TransformAssetUrlsFn
   | TransformAssetUrlsOptions
 
-export type ResolvedTransformAssetUrlsConfig =
+/**
+ * Per-kind crossOrigin configuration for the object shorthand.
+ *
+ * Accepts either a single value applied to all asset kinds, or a per-kind
+ * record (matching `HeadContent`'s `assetCrossOrigin` shape):
+ *
+ * ```ts
+ * // All assets get the same value
+ * crossOrigin: 'anonymous'
+ *
+ * // Different values per kind
+ * crossOrigin: { modulepreload: 'anonymous', stylesheet: 'use-credentials' }
+ * ```
+ */
+export type TransformAssetsCrossOriginConfig =
+  | AssetCrossOrigin
+  | Partial<Record<TransformAssetsShorthandCrossOriginKind, AssetCrossOrigin>>
+
+/**
+ * Object shorthand for `transformAssets`. Combines a URL prefix with optional
+ * per-asset `crossOrigin` without needing a callback:
+ *
+ * ```ts
+ * transformAssets: {
+ *   prefix: 'https://cdn.example.com',
+ *   crossOrigin: 'anonymous',
+ * }
+ * ```
+ */
+export interface TransformAssetsObjectShorthand {
+  /** URL prefix prepended to every asset URL. */
+  prefix: string
+  /**
+   * Optional crossOrigin attribute applied to manifest-managed `<link>` assets.
+   *
+   * Accepts a single value or a per-kind record.
+   */
+  crossOrigin?: TransformAssetsCrossOriginConfig
+}
+
+export type TransformAssets =
+  | string
+  | TransformAssetsFn
+  | TransformAssetsObjectShorthand
+  | TransformAssetsOptions
+
+export type ResolvedTransformAssetsConfig =
   | {
       type: 'transform'
-      transformFn: TransformAssetUrlsFn
+      transformFn: TransformAssetsFn
       cache: boolean
     }
   | {
       type: 'createTransform'
-      createTransform: CreateTransformAssetUrlsFn
+      createTransform: CreateTransformAssetsFn
       cache: boolean
     }
 
-/**
- * Resolves a TransformAssetUrls value (string prefix, callback, or options
- * object) into a concrete transform function and cache flag.
- */
-export function resolveTransformConfig(
-  transform: TransformAssetUrls,
-): ResolvedTransformAssetUrlsConfig {
-  // String shorthand
+let hasWarnedAboutDeprecatedTransformAssetUrls = false
+
+export function warnDeprecatedTransformAssetUrls() {
+  if (
+    (process.env.NODE_ENV === 'development' ||
+      process.env.TSS_DEV_SERVER === 'true') &&
+    !hasWarnedAboutDeprecatedTransformAssetUrls
+  ) {
+    hasWarnedAboutDeprecatedTransformAssetUrls = true
+    console.warn(
+      '[TanStack Start] `transformAssetUrls` is deprecated. Use `transformAssets` instead.',
+    )
+  }
+}
+
+function normalizeTransformAssetResult(
+  result: TransformAssetResult,
+): Exclude<TransformAssetResult, string> {
+  if (typeof result === 'string') {
+    return { href: result }
+  }
+
+  return result
+}
+
+function resolveTransformAssetsCrossOrigin(
+  config: TransformAssetsCrossOriginConfig | undefined,
+  kind: TransformAssetsShorthandCrossOriginKind,
+): AssetCrossOrigin | undefined {
+  if (!config) return undefined
+  if (typeof config === 'string') return config
+
+  return config[kind]
+}
+
+function isObjectShorthand(
+  transform: TransformAssetsObjectShorthand | TransformAssetsOptions,
+): transform is TransformAssetsObjectShorthand {
+  return 'prefix' in transform
+}
+
+export function resolveTransformAssetsConfig(
+  transform: TransformAssets,
+): ResolvedTransformAssetsConfig {
   if (typeof transform === 'string') {
     const prefix = transform
     return {
       type: 'transform',
-      transformFn: ({ url }) => `${prefix}${url}`,
+      transformFn: ({ url }) => ({ href: `${prefix}${url}` }),
       cache: true,
     }
   }
 
-  // Callback shorthand
   if (typeof transform === 'function') {
     return {
       type: 'transform',
@@ -134,7 +256,26 @@ export function resolveTransformConfig(
     }
   }
 
-  // Options object
+  // Object shorthand: { prefix, crossOrigin? }
+  if (isObjectShorthand(transform)) {
+    const { prefix, crossOrigin } = transform
+
+    return {
+      type: 'transform',
+      transformFn: ({ url, kind }) => {
+        const href = `${prefix}${url}`
+
+        if (kind === 'clientEntry') {
+          return { href }
+        }
+
+        const co = resolveTransformAssetsCrossOrigin(crossOrigin, kind)
+        return co ? { href, crossOrigin: co } : { href }
+      },
+      cache: true,
+    }
+  }
+
   if ('createTransform' in transform && transform.createTransform) {
     return {
       type: 'createTransform',
@@ -145,14 +286,57 @@ export function resolveTransformConfig(
 
   const transformFn =
     typeof transform.transform === 'string'
-      ? ((({ url }: TransformAssetUrlsContext) =>
-          `${transform.transform}${url}`) as TransformAssetUrlsFn)
+      ? ((({ url }: TransformAssetsContext) => ({
+          href: `${transform.transform}${url}`,
+        })) as TransformAssetsFn)
       : transform.transform
 
   return {
     type: 'transform',
     transformFn,
     cache: transform.cache !== false,
+  }
+}
+
+export function adaptTransformAssetUrlsToTransformAssets(
+  transformFn: TransformAssetUrlsFn,
+): TransformAssetsFn {
+  return async ({ url, kind }) => ({
+    href: await transformFn({ url, type: kind }),
+  })
+}
+
+export function adaptTransformAssetUrlsConfigToTransformAssets(
+  transform: TransformAssetUrls,
+): TransformAssets {
+  warnDeprecatedTransformAssetUrls()
+
+  if (typeof transform === 'string') {
+    return transform
+  }
+
+  if (typeof transform === 'function') {
+    return adaptTransformAssetUrlsToTransformAssets(transform)
+  }
+
+  if ('createTransform' in transform && transform.createTransform) {
+    return {
+      createTransform: async (ctx: CreateTransformAssetUrlsContext) =>
+        adaptTransformAssetUrlsToTransformAssets(
+          await transform.createTransform(ctx),
+        ),
+      cache: transform.cache,
+      warmup: transform.warmup,
+    }
+  }
+
+  return {
+    transform:
+      typeof transform.transform === 'string'
+        ? transform.transform
+        : adaptTransformAssetUrlsToTransformAssets(transform.transform),
+    cache: transform.cache,
+    warmup: transform.warmup,
   }
 }
 
@@ -186,72 +370,93 @@ export function buildClientEntryScriptTag(
   }
 }
 
-/**
- * Applies a URL transform to every asset URL in the manifest and returns a
- * new manifest with a client entry script tag appended to the root route's
- * assets.
- *
- * The source manifest is deep-cloned so the cached original is never mutated.
- */
-export function transformManifestUrls(
+function assignManifestAssetLink(
+  link: ManifestAssetLink,
+  next: { href: string; crossOrigin?: AssetCrossOrigin },
+): ManifestAssetLink {
+  if (typeof link === 'string') {
+    return next.crossOrigin ? next : next.href
+  }
+
+  return next.crossOrigin ? next : { href: next.href }
+}
+
+export async function transformManifestAssets(
   source: StartManifestWithClientEntry,
-  transformFn: TransformAssetUrlsFn,
-  opts?: {
-    /** When true, clone the source manifest before mutating it. */
+  transformFn: TransformAssetsFn,
+  _opts?: {
     clone?: boolean
   },
 ): Promise<Manifest> {
-  return (async () => {
-    const manifest = opts?.clone
-      ? structuredClone(source.manifest)
-      : source.manifest
+  const manifest = structuredClone(source.manifest)
 
-    for (const route of Object.values(manifest.routes)) {
-      // Transform preload URLs (modulepreload)
-      if (route.preloads) {
-        route.preloads = await Promise.all(
-          route.preloads.map((url) =>
-            Promise.resolve(transformFn({ url, type: 'modulepreload' })),
-          ),
-        )
-      }
+  for (const route of Object.values(manifest.routes)) {
+    if (route.preloads) {
+      route.preloads = await Promise.all(
+        route.preloads.map(async (link) => {
+          const resolved = resolveManifestAssetLink(link)
+          const result = normalizeTransformAssetResult(
+            await transformFn({
+              url: resolved.href,
+              kind: 'modulepreload',
+            }),
+          )
 
-      // Transform asset tag URLs
-      if (route.assets) {
-        for (const asset of route.assets) {
-          if (asset.tag === 'link' && asset.attrs?.href) {
-            asset.attrs.href = await Promise.resolve(
-              transformFn({
-                url: asset.attrs.href,
-                type: 'stylesheet',
-              }),
-            )
+          return assignManifestAssetLink(link, {
+            href: result.href,
+            crossOrigin: result.crossOrigin,
+          })
+        }),
+      )
+    }
+
+    if (route.assets) {
+      for (const asset of route.assets) {
+        if (asset.tag === 'link' && asset.attrs?.href) {
+          const rel = asset.attrs.rel
+          const relTokens = typeof rel === 'string' ? rel.split(/\s+/) : []
+
+          if (!relTokens.includes('stylesheet')) {
+            continue
+          }
+
+          const result = normalizeTransformAssetResult(
+            await transformFn({
+              url: asset.attrs.href,
+              kind: 'stylesheet',
+            }),
+          )
+
+          asset.attrs.href = result.href
+          if (result.crossOrigin) {
+            asset.attrs.crossOrigin = result.crossOrigin
+          } else {
+            delete asset.attrs.crossOrigin
           }
         }
       }
     }
+  }
 
-    // Transform and append the client entry script tag
-    const transformedClientEntry = await Promise.resolve(
-      transformFn({
-        url: source.clientEntry,
-        type: 'clientEntry',
-      }),
+  const transformedClientEntry = normalizeTransformAssetResult(
+    await transformFn({
+      url: source.clientEntry,
+      kind: 'clientEntry',
+    }),
+  )
+
+  const rootRoute = manifest.routes[rootRouteId]
+  if (rootRoute) {
+    rootRoute.assets = rootRoute.assets || []
+    rootRoute.assets.push(
+      buildClientEntryScriptTag(
+        transformedClientEntry.href,
+        source.injectedHeadScripts,
+      ),
     )
+  }
 
-    const rootRoute = manifest.routes[rootRouteId]
-    if (rootRoute) {
-      rootRoute.assets = rootRoute.assets || []
-      rootRoute.assets.push(
-        buildClientEntryScriptTag(
-          transformedClientEntry,
-          source.injectedHeadScripts,
-        ),
-      )
-    }
-
-    return manifest
-  })()
+  return manifest
 }
 
 /**

@@ -1,5 +1,4 @@
 import * as Vue from 'vue'
-import warning from 'tiny-warning'
 import { DefaultGlobalNotFound } from './not-found'
 import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
 
@@ -21,11 +20,12 @@ export function renderRouteNotFound(
       return Vue.h(router.options.defaultNotFoundComponent as any, data)
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      warning(
-        route.options.notFoundComponent,
-        `A notFoundError was encountered on the route with ID "${route.id}", but a notFoundComponent option was not configured, nor was a router level defaultNotFoundComponent configured. Consider configuring at least one of these to avoid TanStack Router's overly generic defaultNotFoundComponent (<p>Not Found</p>)`,
-      )
+    if (process.env.NODE_ENV !== 'production') {
+      if (!route.options.notFoundComponent) {
+        console.warn(
+          `Warning: A notFoundError was encountered on the route with ID "${route.id}", but a notFoundComponent option was not configured, nor was a router level defaultNotFoundComponent configured. Consider configuring at least one of these to avoid TanStack Router's overly generic defaultNotFoundComponent (<p>Not Found</p>)`,
+        )
+      }
     }
 
     return Vue.h(DefaultGlobalNotFound)

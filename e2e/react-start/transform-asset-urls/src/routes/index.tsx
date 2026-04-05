@@ -9,7 +9,7 @@ function Home() {
     <div>
       <h1 data-testid="home-heading">Welcome Home</h1>
       <p data-testid="home-content">
-        This page tests the transformAssetUrls feature.
+        This page tests the transformAssets feature.
       </p>
       <Link to="/about" data-testid="link-to-about">
         About

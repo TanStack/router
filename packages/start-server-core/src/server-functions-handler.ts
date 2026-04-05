@@ -1,9 +1,9 @@
 import {
   createRawStreamRPCPlugin,
+  invariant,
   isNotFound,
   isRedirect,
 } from '@tanstack/router-core'
-import invariant from 'tiny-invariant'
 import {
   TSS_FORMDATA_CONTEXT,
   X_TSS_RAW_RESPONSE,
@@ -88,10 +88,15 @@ export const handleServerAction = async ({
           )
         ) {
           // We don't support GET requests with FormData payloads... that seems impossible
-          invariant(
-            methodUpper !== 'GET',
-            'GET requests with FormData payloads are not supported',
-          )
+          if (methodUpper === 'GET') {
+            if (process.env.NODE_ENV !== 'production') {
+              throw new Error(
+                'Invariant failed: GET requests with FormData payloads are not supported',
+              )
+            }
+
+            invariant()
+          }
           const formData = await request.formData()
           const serializedContext = formData.get(TSS_FORMDATA_CONTEXT)
           formData.delete(TSS_FORMDATA_CONTEXT)

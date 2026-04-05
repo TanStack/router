@@ -123,6 +123,8 @@ function ChatRoom() {
 
 ## Using the `router.subscribe` method
 
+See the [Router Events guide](./router-events.md) for a more complete walkthrough of the available events and when to use them.
+
 For libraries that don't have a keying mechanism, we'll likely need to manually reset the mutation state when the user navigates away from the screen. To solve this, we can use TanStack Router's `invalidate` and `subscribe` method to clear mutation states when the user is no longer in need of them.
 
 The `router.subscribe` method is a function that subscribes a callback to various router events. The event in particular that we'll use here is the `onResolved` event. It's important to understand that this event is fired when the location path is _changed (not just reloaded) and has finally resolved_.

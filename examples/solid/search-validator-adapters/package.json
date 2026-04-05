@@ -15,7 +15,7 @@
     "@tanstack/solid-query": "6.0.0-beta.3",
     "@tanstack/solid-router": "^2.0.0-alpha.9",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.6",
-    "@tanstack/router-plugin": "^1.167.2",
+    "@tanstack/router-plugin": "^1.167.12",
     "@tanstack/valibot-adapter": "^1.166.9",
     "@tanstack/zod-adapter": "^1.166.9",
     "arktype": "^2.1.7",
@@ -29,7 +29,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@solidjs/testing-library": "^0.8.10",
     "vite-plugin-solid": "3.0.0-next.4",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0"
   }
 }

@@ -2,6 +2,7 @@ export * from './global'
 
 export { TSR_DEFERRED_PROMISE, defer } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
+export { invariant } from './invariant'
 export { preloadWarning } from './link'
 export type {
   IsRequiredParams,
@@ -67,7 +68,14 @@ export type {
 } from './fileRoute'
 
 export type { ParsedLocation } from './location'
-export type { Manifest, RouterManagedTag } from './manifest'
+export type {
+  Manifest,
+  RouterManagedTag,
+  AssetCrossOrigin,
+  AssetCrossOriginConfig,
+  ManifestAssetLink,
+} from './manifest'
+export { getAssetCrossOrigin, resolveManifestAssetLink } from './manifest'
 export { isMatch } from './Matches'
 export type {
   AnyMatchAndValue,
@@ -389,13 +397,13 @@ export { isNotFound, notFound } from './not-found'
 
 export {
   defaultGetScrollRestorationKey,
-  restoreScroll,
+  getElementScrollRestorationEntry,
   storageKey,
-  getCssSelector,
   scrollRestorationCache,
   setupScrollRestoration,
-  handleHashScroll,
 } from './scroll-restoration'
+
+export { handleHashScroll } from './hash-scroll'
 
 export type {
   ScrollRestorationOptions,

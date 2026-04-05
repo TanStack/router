@@ -1,6 +1,5 @@
 import * as Solid from 'solid-js'
-import invariant from 'tiny-invariant'
-import { replaceEqualDeep } from '@tanstack/router-core'
+import { invariant, replaceEqualDeep } from '@tanstack/router-core'
 import { nearestMatchContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
@@ -77,15 +76,7 @@ export function useMatch<
 
   const match = () => {
     if (opts.from) {
-      const ids = router.stores.matchesId.state
-      for (const id of ids) {
-        const matchStore = router.stores.activeMatchStoresById.get(id)
-        if (matchStore?.routeId === opts.from) {
-          return matchStore.state
-        }
-      }
-
-      return undefined
+      return router.stores.getMatchStoreByRouteId(opts.from).state
     }
 
     return nearestMatch?.match()

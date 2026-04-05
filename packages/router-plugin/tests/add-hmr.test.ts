@@ -68,4 +68,37 @@ describe('add-hmr works', () => {
       },
     )
   })
+
+  it('initializes import.meta.hot.data before storing stable split components', () => {
+    const code = `
+import * as React from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts')({
+  component: component,
+})
+
+function component() {
+  return <div>posts</div>
+}
+`
+
+    const compileResult = compileCodeSplitReferenceRoute({
+      code,
+      filename: 'posts.tsx',
+      id: 'posts.tsx',
+      addHmr: true,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+      targetFramework: 'react',
+      compilerPlugins: getReferenceRouteCompilerPlugins({
+        targetFramework: 'react',
+        addHmr: true,
+      }),
+    })
+
+    expect(compileResult?.code).toContain('import.meta.hot.data ??= {}')
+    expect(compileResult?.code).toContain(
+      'import.meta.hot.data["tsr-split-component:component"] = TSRSplitComponent',
+    )
+  })
 })

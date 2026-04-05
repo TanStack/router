@@ -27,7 +27,12 @@ function RootComponent() {
   return (
     <html>
       <head>
-        <HeadContent />
+        <HeadContent
+          assetCrossOrigin={{
+            modulepreload: 'anonymous',
+            stylesheet: 'use-credentials',
+          }}
+        />
       </head>
       <body>
         <div className="app-styled">

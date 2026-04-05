@@ -27,7 +27,7 @@
     "@tanstack/virtual-file-routes": "workspace:^",
     "postcss": "^8.5.1",
     "tailwindcss": "^4.2.2",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.2",
     "vue-tsc": "^3.1.5"
   }
 }

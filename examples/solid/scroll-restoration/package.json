@@ -15,9 +15,11 @@
     "@tanstack/solid-virtual": "^3.13.0",
     "solid-js": "2.0.0-beta.5",
     "@solidjs/web": "2.0.0-beta.5",
-    "tailwindcss": "^4.2.2",
+    "tailwindcss": "^4.2.2"
+  },
+  "devDependencies": {
     "vite-plugin-solid": "3.0.0-next.4",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0"
   }
 }

@@ -23,10 +23,11 @@ An instance of the `Router` has the following properties and methods:
 
 ### `.subscribe` method
 
-- Type: `(eventType: TType, fn: ListenerFn<RouterEvents[TType]>) => (event: RouterEvent) => void`
+- Type: `(eventType: TType, fn: ListenerFn<RouterEvents[TType]>) => () => void`
 - Subscribes to a [`RouterEvent`](./RouterEventsType.md).
 - Returns a function that can be used to unsubscribe from the event.
-- The callback provided to the returned function will be called with the event that was emitted.
+- The listener will be called with the event payload whenever that event is emitted.
+- See the [Router Events guide](../../guide/router-events.md) for lifecycle ordering and usage patterns.
 
 ### `.matchRoutes` method
 

@@ -1,5 +1,53 @@
 # @tanstack/router-core
 
+## 1.168.9
+
+### Patch Changes
+
+- Preserve component-thrown `notFound()` errors through framework error boundaries so route `notFoundComponent` handlers render without requiring an explicit `routeId`. ([#7077](https://github.com/TanStack/router/pull/7077))
+
+## 1.168.8
+
+### Patch Changes
+
+- Fix preload from continuing into child `beforeLoad` and `head` handlers after a parent `beforeLoad` fails. ([#7075](https://github.com/TanStack/router/pull/7075))
+
+## 1.168.7
+
+### Patch Changes
+
+- Avoid re-running hash scrolling after SSR hydration when later preload or invalidate cycles resolve without a location change. ([#7066](https://github.com/TanStack/router/pull/7066))
+
+## 1.168.6
+
+### Patch Changes
+
+- Fix a regression where browser back/forward navigation could fail to restore the previous scroll position for an existing history entry. ([#7055](https://github.com/TanStack/router/pull/7055))
+
+## 1.168.5
+
+### Patch Changes
+
+- fix: scroll restoration without throttling ([#7042](https://github.com/TanStack/router/pull/7042))
+
+## 1.168.4
+
+### Patch Changes
+
+- tanstack/store 0.9.3 ([#7041](https://github.com/TanStack/router/pull/7041))
+
+## 1.168.3
+
+### Patch Changes
+
+- feat: transformAssets ([#7023](https://github.com/TanStack/router/pull/7023))
+
+## 1.168.2
+
+### Patch Changes
+
+- Replace tiny-invariant and tiny-warning with in-house solution for bundle-size ([#7007](https://github.com/TanStack/router/pull/7007))
+
 ## 1.168.1
 
 ### Patch Changes

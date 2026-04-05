@@ -6,10 +6,12 @@ import { createFileRoute } from '@tanstack/react-router';
 import { fetchPosts } from '../posts';
 const TSRSplitComponent = import.meta.hot?.data?.["tsr-split-component:component"] ?? lazyRouteComponent($$splitComponentImporter, "component");
 if (import.meta.hot) {
+  import.meta.hot.data ??= {};
   import.meta.hot.data["tsr-split-component:component"] = TSRSplitComponent;
 }
 const TSRSplitErrorComponent = import.meta.hot?.data?.["tsr-split-component:errorComponent"] ?? lazyRouteComponent($$splitErrorComponentImporter, "errorComponent");
 if (import.meta.hot) {
+  import.meta.hot.data ??= {};
   import.meta.hot.data["tsr-split-component:errorComponent"] = TSRSplitErrorComponent;
 }
 export const Route = createFileRoute('/posts')({

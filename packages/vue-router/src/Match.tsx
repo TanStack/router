@@ -1,9 +1,8 @@
 import * as Vue from 'vue'
-import invariant from 'tiny-invariant'
-import warning from 'tiny-warning'
 import {
   createControlledPromise,
   getLocationChangeInfo,
+  invariant,
   isNotFound,
   isRedirect,
   rootRouteId,
@@ -42,10 +41,49 @@ export const Match = Vue.defineComponent({
       props.matchId,
     )?.routeId
 
-    invariant(
-      routeId,
-      `Could not find routeId for matchId "${props.matchId}". Please file an issue!`,
+    if (!routeId) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Could not find routeId for matchId "${props.matchId}". Please file an issue!`,
+        )
+      }
+
+      invariant()
+    }
+
+    // Static route-tree check: is this route a direct child of the root?
+    // parentRoute is set at build time, so no reactive tracking needed.
+    const isChildOfRoot =
+      (router.routesById[routeId] as AnyRoute)?.parentRoute?.id === rootRouteId
+
+    // Single stable store subscription — getMatchStoreByRouteId returns a
+    // cached computed store that resolves routeId → current match state
+    // through the signal graph. No bridge needed.
+    const activeMatch = useStore(
+      router.stores.getMatchStoreByRouteId(routeId),
+      (value) => value,
     )
+    const isPendingMatchRef = useStore(
+      router.stores.pendingRouteIds,
+      (pendingRouteIds) => Boolean(pendingRouteIds[routeId]),
+      { equal: Object.is },
+    )
+    const loadedAt = useStore(router.stores.loadedAt, (value) => value)
+
+    const matchData = Vue.computed(() => {
+      const match = activeMatch.value
+      if (!match) {
+        return null
+      }
+
+      return {
+        matchId: match.id,
+        routeId,
+        loadedAt: loadedAt.value,
+        ssr: match.ssr,
+        _displayPending: match._displayPending,
+      }
+    })
 
     // Static route-tree check: is this route a direct child of the root?
     // parentRoute is set at build time, so no reactive tracking needed.
@@ -164,6 +202,8 @@ export const Match = Vue.defineComponent({
         if (routeNotFoundComponent.value) {
           content = Vue.h(CatchNotFound, {
             fallback: (error: any) => {
+              error.routeId ??= matchData.value?.routeId as any
+
               // If the current not found handler doesn't exist or it has a
               // route ID which doesn't match the current route, rethrow the error
               if (
@@ -186,8 +226,13 @@ export const Match = Vue.defineComponent({
             errorComponent: routeErrorComponent.value || ErrorComponent,
             onCatch: (error: Error) => {
               // Forward not found errors (we don't want to show the error component for these)
-              if (isNotFound(error)) throw error
-              warning(false, `Error in route match: ${actualMatchId}`)
+              if (isNotFound(error)) {
+                error.routeId ??= matchData.value?.routeId as any
+                throw error
+              }
+              if (process.env.NODE_ENV !== 'production') {
+                console.warn(`Warning: Error in route match: ${actualMatchId}`)
+              }
               routeOnCatch.value?.(error)
             },
             children: content,
@@ -197,10 +242,13 @@ export const Match = Vue.defineComponent({
         // Add scroll restoration if needed
         const withScrollRestoration: Array<VNode> = [
           content,
-          isChildOfRoot && router.options.scrollRestoration
+          isChildOfRoot
             ? Vue.h(Vue.Fragment, null, [
                 Vue.h(OnRendered),
-                Vue.h(ScrollRestoration),
+                router.options.scrollRestoration &&
+                (isServer ?? router.isServer)
+                  ? Vue.h(ScrollRestoration)
+                  : null,
               ])
             : null,
         ].filter(Boolean) as Array<VNode>
@@ -358,12 +406,24 @@ export const MatchInner = Vue.defineComponent({
       }
 
       if (match.value.status === 'notFound') {
-        invariant(isNotFound(match.value.error), 'Expected a notFound error')
+        if (!isNotFound(match.value.error)) {
+          if (process.env.NODE_ENV !== 'production') {
+            throw new Error('Invariant failed: Expected a notFound error')
+          }
+
+          invariant()
+        }
         return renderRouteNotFound(router, route.value, match.value.error)
       }
 
       if (match.value.status === 'redirected') {
-        invariant(isRedirect(match.value.error), 'Expected a redirect error')
+        if (!isRedirect(match.value.error)) {
+          if (process.env.NODE_ENV !== 'production') {
+            throw new Error('Invariant failed: Expected a redirect error')
+          }
+
+          invariant()
+        }
         throw router.getMatch(match.value.id)?._nonReactive.loadPromise
       }
 

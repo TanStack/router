@@ -1,5 +1,4 @@
 import * as Solid from 'solid-js'
-import warning from 'tiny-warning'
 import { replaceEqualDeep, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -117,11 +116,10 @@ function MatchesInner() {
         onCatch={
           process.env.NODE_ENV !== 'production'
             ? (error) => {
-                warning(
-                  false,
-                  `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+                console.warn(
+                  `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
                 )
-                warning(false, error.message || error.toString())
+                console.warn(`Warning: ${error.message || error.toString()}`)
               }
             : undefined
         }

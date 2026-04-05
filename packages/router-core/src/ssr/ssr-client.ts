@@ -1,4 +1,4 @@
-import invariant from 'tiny-invariant'
+import { invariant } from '../invariant'
 import { isNotFound } from '../not-found'
 import { createControlledPromise } from '../utils'
 import { hydrateSsrMatchId } from './ssr-match-id'
@@ -38,10 +38,15 @@ function hydrateMatch(
 }
 
 export async function hydrate(router: AnyRouter): Promise<any> {
-  invariant(
-    window.$_TSR,
-    'Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!',
-  )
+  if (!window.$_TSR) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        'Invariant failed: Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!',
+      )
+    }
+
+    invariant()
+  }
 
   const serializationAdapters = router.options.serializationAdapters as
     | Array<AnySerializationAdapter>
@@ -57,10 +62,15 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   }
   window.$_TSR.initialized = true
 
-  invariant(
-    window.$_TSR.router,
-    'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
-  )
+  if (!window.$_TSR.router) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        'Invariant failed: Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
+      )
+    }
+
+    invariant()
+  }
 
   const dehydratedRouter = window.$_TSR.router
   dehydratedRouter.matches.forEach((dehydratedMatch) => {
@@ -244,6 +254,11 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       // remove the dehydrated flag since we won't run router.load() which would remove it
       match._nonReactive.dehydrated = undefined
     })
+    // Mark the current location as resolved so that later load cycles
+    // (e.g. preloads, invalidations) don't mistakenly detect a href change
+    // (resolvedLocation defaults to undefined and router.load() is skipped
+    // in the normal SSR hydration path).
+    router.stores.resolvedLocation.setState(() => router.stores.location.state)
     return routeChunkPromise
   }
 
@@ -258,10 +273,15 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // this will prevent that other pending components are rendered but hydration is not blocked
   if (isSpaMode) {
     const match = matches[1]
-    invariant(
-      match,
-      'Expected to find a match below the root match in SPA mode.',
-    )
+    if (!match) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          'Invariant failed: Expected to find a match below the root match in SPA mode.',
+        )
+      }
+
+      invariant()
+    }
     setMatchForcePending(match)
 
     match._displayPending = true

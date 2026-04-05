@@ -19,11 +19,10 @@
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.6",
     "@tanstack/solid-router-ssr-query": "^2.0.0-alpha.11",
     "@tanstack/solid-start": "^2.0.0-alpha.10",
-    "@tanstack/router-plugin": "^1.167.2",
+    "@tanstack/router-plugin": "^1.167.12",
     "solid-js": "2.0.0-beta.5",
     "@solidjs/web": "2.0.0-beta.5",
-    "tailwindcss": "^4.2.2",
-    "vite-tsconfig-paths": "^5.1.4"
+    "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
     "@tanstack/eslint-config": "^0.3.2",
@@ -34,7 +33,7 @@
     "vite-plugin-solid": "3.0.0-next.4",
     "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
-    "typescript": "^5.9.2",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0",
     "vitest": "^3.2.4",
     "web-vitals": "^5.1.0"

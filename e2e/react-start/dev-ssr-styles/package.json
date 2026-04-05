@@ -37,7 +37,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "nitro": "^3.0.260311-beta",
     "srvx": "^0.11.9",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0",
     "zod": "^3.24.2"
   }

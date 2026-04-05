@@ -1,5 +1,79 @@
 # @tanstack/react-router
 
+## 1.168.10
+
+### Patch Changes
+
+- Preserve component-thrown `notFound()` errors through framework error boundaries so route `notFoundComponent` handlers render without requiring an explicit `routeId`. ([#7077](https://github.com/TanStack/router/pull/7077))
+
+- Updated dependencies [[`796406d`](https://github.com/TanStack/router/commit/796406da66cfb12b518bb3ca326c9d541368fb06)]:
+  - @tanstack/router-core@1.168.9
+
+## 1.168.9
+
+### Patch Changes
+
+- Updated dependencies [[`2d1ec86`](https://github.com/TanStack/router/commit/2d1ec865a446926f7db6e29dbbde82d265de6d36)]:
+  - @tanstack/router-core@1.168.8
+
+## 1.168.8
+
+### Patch Changes
+
+- Updated dependencies [[`6ee0e79`](https://github.com/TanStack/router/commit/6ee0e795b085651beb2f1ac6503cdbd7eaffedd1)]:
+  - @tanstack/router-core@1.168.7
+
+## 1.168.7
+
+### Patch Changes
+
+- Updated dependencies [[`42c3f3b`](https://github.com/TanStack/router/commit/42c3f3b3a3a478fd6d6894310ef94b2d23794b8e)]:
+  - @tanstack/router-core@1.168.6
+
+## 1.168.6
+
+### Patch Changes
+
+- Remove the extra SSR sentinel tag used for `onRendered` in React Router while ([#7054](https://github.com/TanStack/router/pull/7054))
+  preserving the client-side render timing needed for scroll restoration and
+  `onRendered` subscribers.
+
+## 1.168.5
+
+### Patch Changes
+
+- fix: scroll restoration without throttling ([#7042](https://github.com/TanStack/router/pull/7042))
+
+- Updated dependencies [[`cf5f554`](https://github.com/TanStack/router/commit/cf5f5542476137a81515099ad740747e84512f9a)]:
+  - @tanstack/router-core@1.168.5
+
+## 1.168.4
+
+### Patch Changes
+
+- tanstack/store 0.9.3 ([#7041](https://github.com/TanStack/router/pull/7041))
+
+- Updated dependencies [[`71a8b68`](https://github.com/TanStack/router/commit/71a8b684c87c37fd4a033d99f5ba4a05c7a179f5)]:
+  - @tanstack/router-core@1.168.4
+
+## 1.168.3
+
+### Patch Changes
+
+- feat: transformAssets ([#7023](https://github.com/TanStack/router/pull/7023))
+
+- Updated dependencies [[`d81d21a`](https://github.com/TanStack/router/commit/d81d21ad05c9401bf54b24acd29401e1e4fd624c)]:
+  - @tanstack/router-core@1.168.3
+
+## 1.168.2
+
+### Patch Changes
+
+- Replace tiny-invariant and tiny-warning with in-house solution for bundle-size ([#7007](https://github.com/TanStack/router/pull/7007))
+
+- Updated dependencies [[`c9e1855`](https://github.com/TanStack/router/commit/c9e18555f3a5531e96de8f574cfca9edcdb18e5c)]:
+  - @tanstack/router-core@1.168.2
+
 ## 1.168.1
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 // TODO: RSCs
 import { isValidElement } from 'react'
-import invariant from 'tiny-invariant'
+import { invariant } from '@tanstack/router-core'
 import type React from 'react'
 
 export function renderRsc(input: any): React.JSX.Element {
@@ -68,7 +68,11 @@ export function renderRsc(input: any): React.JSX.Element {
 
           // return element
 
-          invariant(false, 'renderRSC() is coming soon!')
+          if (process.env.NODE_ENV !== 'production') {
+            throw new Error('Invariant failed: renderRSC() is coming soon!')
+          }
+
+          invariant()
         })
         .then((element) => {
           input.state.value = element

@@ -14,14 +14,14 @@
     "@tanstack/solid-query-devtools": "6.0.0-beta.3",
     "@tanstack/solid-router": "^2.0.0-alpha.9",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.6",
-    "@tanstack/router-plugin": "^1.167.2",
+    "@tanstack/router-plugin": "^1.167.12",
     "solid-js": "2.0.0-beta.5",
     "@solidjs/web": "2.0.0-beta.5",
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.2",
     "vite-plugin-solid": "3.0.0-next.4",
     "vite": "^8.0.0",
     "vite-plugin-dts": "^4.5.4"

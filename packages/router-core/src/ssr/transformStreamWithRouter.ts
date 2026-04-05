@@ -167,7 +167,7 @@ export function transformStreamWithRouter(
     }, lifetimeMs)
 
     const stream = new ReadableStream<Uint8Array>({
-      start(c) {
+      start(c: ReadableStreamDefaultController<Uint8Array>) {
         controller = c
       },
       cancel() {
@@ -299,7 +299,7 @@ export function transformStreamWithRouter(
   }
 
   const stream = new ReadableStream({
-    start(c) {
+    start(c: ReadableStreamDefaultController<any>) {
       controller = c
     },
     cancel() {

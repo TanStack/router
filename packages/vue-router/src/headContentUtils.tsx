@@ -1,10 +1,17 @@
 import * as Vue from 'vue'
-import { escapeHtml } from '@tanstack/router-core'
+import {
+  escapeHtml,
+  getAssetCrossOrigin,
+  resolveManifestAssetLink,
+} from '@tanstack/router-core'
 import { useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type {
+  AssetCrossOriginConfig,
+  RouterManagedTag,
+} from '@tanstack/router-core'
 
-export const useTags = () => {
+export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const matches = useStore(
     router.stores.activeMatchesSnapshot,
@@ -95,11 +102,15 @@ export const useTags = () => {
         router.ssr?.manifest?.routes[route.id]?.preloads
           ?.filter(Boolean)
           .forEach((preload) => {
+            const preloadLink = resolveManifestAssetLink(preload)
             preloadMeta.push({
               tag: 'link',
               attrs: {
                 rel: 'modulepreload',
-                href: preload,
+                href: preloadLink.href,
+                crossOrigin:
+                  getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
+                  preloadLink.crossOrigin,
               },
             })
           }),
@@ -135,7 +146,12 @@ export const useTags = () => {
         (asset) =>
           ({
             tag: 'link',
-            attrs: { ...asset.attrs },
+            attrs: {
+              ...asset.attrs,
+              crossOrigin:
+                getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+                asset.attrs?.crossOrigin,
+            },
           }) satisfies RouterManagedTag,
       )
 

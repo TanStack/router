@@ -1279,7 +1279,7 @@ export class RouterCore<
 
         return {
           href: pathname + searchStr + hash,
-          publicHref: href,
+          publicHref: pathname + searchStr + hash,
           pathname: decodePath(pathname).path,
           external: false,
           searchStr,

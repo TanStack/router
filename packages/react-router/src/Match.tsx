@@ -1,10 +1,9 @@
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
-import invariant from 'tiny-invariant'
-import warning from 'tiny-warning'
 import {
   createControlledPromise,
   getLocationChangeInfo,
+  invariant,
   isNotFound,
   isRedirect,
   rootRouteId,
@@ -18,11 +17,8 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
-import type {
-  AnyRoute,
-  ParsedLocation,
-  RootRouteOptions,
-} from '@tanstack/router-core'
+import { useLayoutEffect } from './utils'
+import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
 export const Match = React.memo(function MatchImpl({
   matchId,
@@ -33,10 +29,15 @@ export const Match = React.memo(function MatchImpl({
 
   if (isServer ?? router.isServer) {
     const match = router.stores.activeMatchStoresById.get(matchId)?.state
-    invariant(
-      match,
-      `Could not find match for matchId "${matchId}". Please file an issue!`,
-    )
+    if (!match) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Could not find match for matchId "${matchId}". Please file an issue!`,
+        )
+      }
+
+      invariant()
+    }
 
     const routeId = match.routeId as string
     const parentRouteId = (router.routesById[routeId] as AnyRoute).parentRoute
@@ -60,12 +61,17 @@ export const Match = React.memo(function MatchImpl({
   // Subscribe directly to the match store from the pool.
   // The matchId prop is stable for this component's lifetime (set by Outlet),
   // and reconcileMatchPool reuses stores for the same matchId.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+
   const matchStore = router.stores.activeMatchStoresById.get(matchId)
-  invariant(
-    matchStore,
-    `Could not find match for matchId "${matchId}". Please file an issue!`,
-  )
+  if (!matchStore) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        `Invariant failed: Could not find match for matchId "${matchId}". Please file an issue!`,
+      )
+    }
+
+    invariant()
+  }
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -161,13 +167,20 @@ function MatchView({
             errorComponent={routeErrorComponent || ErrorComponent}
             onCatch={(error, errorInfo) => {
               // Forward not found errors (we don't want to show the error component for these)
-              if (isNotFound(error)) throw error
-              warning(false, `Error in route match: ${matchId}`)
+              if (isNotFound(error)) {
+                error.routeId ??= matchState.routeId as any
+                throw error
+              }
+              if (process.env.NODE_ENV !== 'production') {
+                console.warn(`Warning: Error in route match: ${matchId}`)
+              }
               routeOnCatch?.(error, errorInfo)
             }}
           >
             <ResolvedNotFoundBoundary
               fallback={(error) => {
+                error.routeId ??= matchState.routeId as any
+
                 // If the current not found handler doesn't exist or it has a
                 // route ID which doesn't match the current route, rethrow the error
                 if (
@@ -191,53 +204,52 @@ function MatchView({
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
       </matchContext.Provider>
-      {matchState.parentRouteId === rootRouteId &&
-      router.options.scrollRestoration ? (
+      {matchState.parentRouteId === rootRouteId ? (
         <>
-          <OnRendered />
-          <ScrollRestoration />
+          <OnRendered resetKey={resetKey} />
+          {router.options.scrollRestoration && (isServer ?? router.isServer) ? (
+            <ScrollRestoration />
+          ) : null}
         </>
       ) : null}
     </ShellComponent>
   )
 }
 
-// On Rendered can't happen above the root layout because it actually
-// renders a dummy dom element to track the rendered state of the app.
-// We render a script tag with a key that changes based on the current
-// location state.__TSR_key. Also, because it's below the root layout, it
-// allows us to fire onRendered events even after a hydration mismatch
-// error that occurred above the root layout (like bad head/link tags,
-// which is common).
-function OnRendered() {
+// On Rendered can't happen above the root layout because it needs to run after
+// the route subtree has committed below the root layout. Keeping it here lets
+// us fire onRendered even after a hydration mismatch above the root layout
+// (like bad head/link tags, which is common).
+function OnRendered({ resetKey }: { resetKey: number }) {
   const router = useRouter()
 
-  const prevLocationRef = React.useRef<undefined | ParsedLocation<{}>>(
-    undefined,
-  )
+  if (isServer ?? router.isServer) {
+    return null
+  }
 
-  return (
-    <script
-      key={router.latestLocation.state.__TSR_key}
-      suppressHydrationWarning
-      ref={(el) => {
-        if (
-          el &&
-          (prevLocationRef.current === undefined ||
-            prevLocationRef.current.href !== router.latestLocation.href)
-        ) {
-          router.emit({
-            type: 'onRendered',
-            ...getLocationChangeInfo(
-              router.stores.location.state,
-              router.stores.resolvedLocation.state,
-            ),
-          })
-          prevLocationRef.current = router.latestLocation
-        }
-      }}
-    />
-  )
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const prevHrefRef = React.useRef<string | undefined>(undefined)
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useLayoutEffect(() => {
+    const currentHref = router.latestLocation.href
+
+    if (
+      prevHrefRef.current === undefined ||
+      prevHrefRef.current !== currentHref
+    ) {
+      router.emit({
+        type: 'onRendered',
+        ...getLocationChangeInfo(
+          router.stores.location.state,
+          router.stores.resolvedLocation.state,
+        ),
+      })
+      prevHrefRef.current = currentHref
+    }
+  }, [router.latestLocation.state.__TSR_key, resetKey, router])
+
+  return null
 }
 
 export const MatchInner = React.memo(function MatchInnerImpl({
@@ -249,10 +261,15 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
   if (isServer ?? router.isServer) {
     const match = router.stores.activeMatchStoresById.get(matchId)?.state
-    invariant(
-      match,
-      `Could not find match for matchId "${matchId}". Please file an issue!`,
-    )
+    if (!match) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Could not find match for matchId "${matchId}". Please file an issue!`,
+        )
+      }
+
+      invariant()
+    }
 
     const routeId = match.routeId as string
     const route = router.routesById[routeId] as AnyRoute
@@ -282,12 +299,24 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     }
 
     if (match.status === 'notFound') {
-      invariant(isNotFound(match.error), 'Expected a notFound error')
+      if (!isNotFound(match.error)) {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error('Invariant failed: Expected a notFound error')
+        }
+
+        invariant()
+      }
       return renderRouteNotFound(router, route, match.error)
     }
 
     if (match.status === 'redirected') {
-      invariant(isRedirect(match.error), 'Expected a redirect error')
+      if (!isRedirect(match.error)) {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error('Invariant failed: Expected a redirect error')
+        }
+
+        invariant()
+      }
       throw router.getMatch(match.id)?._nonReactive.loadPromise
     }
 
@@ -310,12 +339,16 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     return out
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const matchStore = router.stores.activeMatchStoresById.get(matchId)
-  invariant(
-    matchStore,
-    `Could not find match for matchId "${matchId}". Please file an issue!`,
-  )
+  if (!matchStore) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        `Invariant failed: Could not find match for matchId "${matchId}". Please file an issue!`,
+      )
+    }
+
+    invariant()
+  }
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const match = useStore(matchStore, (value) => value)
   const routeId = match.routeId as string
@@ -384,14 +417,26 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }
 
   if (match.status === 'notFound') {
-    invariant(isNotFound(match.error), 'Expected a notFound error')
+    if (!isNotFound(match.error)) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error('Invariant failed: Expected a notFound error')
+      }
+
+      invariant()
+    }
     return renderRouteNotFound(router, route, match.error)
   }
 
   if (match.status === 'redirected') {
     // Redirects should be handled by the router transition. If we happen to
     // encounter a redirect here, it's a bug. Let's warn, but render nothing.
-    invariant(isRedirect(match.error), 'Expected a redirect error')
+    if (!isRedirect(match.error)) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error('Invariant failed: Expected a redirect error')
+      }
+
+      invariant()
+    }
 
     // warning(
     //   false,
@@ -479,7 +524,15 @@ export const Outlet = React.memo(function OutletImpl() {
   ) : null
 
   if (parentGlobalNotFound) {
-    invariant(route, 'Could not resolve route for Outlet render')
+    if (!route) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          'Invariant failed: Could not resolve route for Outlet render',
+        )
+      }
+
+      invariant()
+    }
     return renderRouteNotFound(router, route, undefined)
   }
 

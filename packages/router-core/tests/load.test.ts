@@ -260,6 +260,41 @@ describe('beforeLoad skip or exec', () => {
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
+  test('skip child beforeLoad when parent beforeLoad throws during preload', async () => {
+    const parentBeforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
+      if (preload) throw new Error('parent error')
+    })
+    const childBeforeLoad = vi.fn<BeforeLoad>()
+    const parentHead = vi.fn(() => ({ meta: [{ title: 'Parent' }] }))
+    const childHead = vi.fn(() => ({ meta: [{ title: 'Child' }] }))
+
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      beforeLoad: parentBeforeLoad,
+      head: parentHead,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: childBeforeLoad,
+      head: childHead,
+    })
+
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory(),
+    })
+
+    await router.preloadRoute({ to: '/parent/child' })
+
+    expect(parentBeforeLoad).toHaveBeenCalledTimes(1)
+    expect(childBeforeLoad).not.toHaveBeenCalled()
+    expect(parentHead).toHaveBeenCalledTimes(1)
+    expect(childHead).not.toHaveBeenCalled()
+  })
+
   test('exec if pending preload (error)', async () => {
     const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
       await sleep(100)

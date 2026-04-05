@@ -15,8 +15,10 @@
     "redaxios": "^0.5.1",
     "solid-js": "2.0.0-beta.5",
     "@solidjs/web": "2.0.0-beta.5",
-    "tailwindcss": "^4.2.2",
-    "typescript": "^5.7.2",
+    "tailwindcss": "^4.2.2"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2",
     "vite": "^8.0.0",
     "vite-plugin-solid": "3.0.0-next.4"
   }

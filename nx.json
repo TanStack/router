@@ -55,6 +55,11 @@
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
     },
+    "test:e2e:preview": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"]
+    },
     "test:types": {
       "cache": true,
       "dependsOn": ["^build"],

@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as testsWithSearchRouteImport } from './routes/(tests)/with-search'
 import { Route as testsWithLoaderRouteImport } from './routes/(tests)/with-loader'
 import { Route as testsNormalPageRouteImport } from './routes/(tests)/normal-page'
+import { Route as testsHashScrollReproRouteImport } from './routes/(tests)/hash-scroll-repro'
+import { Route as testsHashScrollAboutRouteImport } from './routes/(tests)/hash-scroll-about'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,15 +36,29 @@ const testsNormalPageRoute = testsNormalPageRouteImport.update({
   path: '/normal-page',
   getParentRoute: () => rootRouteImport,
 } as any)
+const testsHashScrollReproRoute = testsHashScrollReproRouteImport.update({
+  id: '/(tests)/hash-scroll-repro',
+  path: '/hash-scroll-repro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsHashScrollAboutRoute = testsHashScrollAboutRouteImport.update({
+  id: '/(tests)/hash-scroll-about',
+  path: '/hash-scroll-about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/hash-scroll-about': typeof testsHashScrollAboutRoute
+  '/hash-scroll-repro': typeof testsHashScrollReproRoute
   '/normal-page': typeof testsNormalPageRoute
   '/with-loader': typeof testsWithLoaderRoute
   '/with-search': typeof testsWithSearchRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/hash-scroll-about': typeof testsHashScrollAboutRoute
+  '/hash-scroll-repro': typeof testsHashScrollReproRoute
   '/normal-page': typeof testsNormalPageRoute
   '/with-loader': typeof testsWithLoaderRoute
   '/with-search': typeof testsWithSearchRoute
@@ -50,18 +66,34 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/(tests)/hash-scroll-about': typeof testsHashScrollAboutRoute
+  '/(tests)/hash-scroll-repro': typeof testsHashScrollReproRoute
   '/(tests)/normal-page': typeof testsNormalPageRoute
   '/(tests)/with-loader': typeof testsWithLoaderRoute
   '/(tests)/with-search': typeof testsWithSearchRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/normal-page' | '/with-loader' | '/with-search'
+  fullPaths:
+    | '/'
+    | '/hash-scroll-about'
+    | '/hash-scroll-repro'
+    | '/normal-page'
+    | '/with-loader'
+    | '/with-search'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/normal-page' | '/with-loader' | '/with-search'
+  to:
+    | '/'
+    | '/hash-scroll-about'
+    | '/hash-scroll-repro'
+    | '/normal-page'
+    | '/with-loader'
+    | '/with-search'
   id:
     | '__root__'
     | '/'
+    | '/(tests)/hash-scroll-about'
+    | '/(tests)/hash-scroll-repro'
     | '/(tests)/normal-page'
     | '/(tests)/with-loader'
     | '/(tests)/with-search'
@@ -69,6 +101,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  testsHashScrollAboutRoute: typeof testsHashScrollAboutRoute
+  testsHashScrollReproRoute: typeof testsHashScrollReproRoute
   testsNormalPageRoute: typeof testsNormalPageRoute
   testsWithLoaderRoute: typeof testsWithLoaderRoute
   testsWithSearchRoute: typeof testsWithSearchRoute
@@ -104,11 +138,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof testsNormalPageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(tests)/hash-scroll-repro': {
+      id: '/(tests)/hash-scroll-repro'
+      path: '/hash-scroll-repro'
+      fullPath: '/hash-scroll-repro'
+      preLoaderRoute: typeof testsHashScrollReproRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/hash-scroll-about': {
+      id: '/(tests)/hash-scroll-about'
+      path: '/hash-scroll-about'
+      fullPath: '/hash-scroll-about'
+      preLoaderRoute: typeof testsHashScrollAboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  testsHashScrollAboutRoute: testsHashScrollAboutRoute,
+  testsHashScrollReproRoute: testsHashScrollReproRoute,
   testsNormalPageRoute: testsNormalPageRoute,
   testsWithLoaderRoute: testsWithLoaderRoute,
   testsWithSearchRoute: testsWithSearchRoute,

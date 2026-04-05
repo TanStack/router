@@ -1,4 +1,5 @@
 import { useMatch } from './useMatch'
+import type * as Vue from 'vue'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -27,7 +28,7 @@ export type UseLoaderDepsRoute<out TId> = <
   TSelected = unknown,
 >(
   opts?: UseLoaderDepsBaseOptions<TRouter, TId, TSelected>,
-) => UseLoaderDepsResult<TRouter, TId, TSelected>
+) => Vue.Ref<UseLoaderDepsResult<TRouter, TId, TSelected>>
 
 export function useLoaderDeps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -35,12 +36,12 @@ export function useLoaderDeps<
   TSelected = unknown,
 >(
   opts: UseLoaderDepsOptions<TRouter, TFrom, TSelected>,
-): UseLoaderDepsResult<TRouter, TFrom, TSelected> {
+): Vue.Ref<UseLoaderDepsResult<TRouter, TFrom, TSelected>> {
   const { select, ...rest } = opts
   return useMatch({
     ...rest,
     select: (s) => {
       return select ? select(s.loaderDeps) : s.loaderDeps
     },
-  }) as UseLoaderDepsResult<TRouter, TFrom, TSelected>
+  }) as Vue.Ref<UseLoaderDepsResult<TRouter, TFrom, TSelected>>
 }

@@ -1,9 +1,8 @@
 import * as Solid from 'solid-js'
-import invariant from 'tiny-invariant'
-import warning from 'tiny-warning'
 import {
   createControlledPromise,
   getLocationChangeInfo,
+  invariant,
   isNotFound,
   isRedirect,
   rootRouteId,
@@ -12,7 +11,7 @@ import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from '@solidjs/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
-import { CatchNotFound } from './not-found'
+import { CatchNotFound, getNotFound } from './not-found'
 import { nearestMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
@@ -140,31 +139,43 @@ export const Match = (props: { matchId: string }) => {
                   errorComponent={routeErrorComponent() || ErrorComponent}
                   onCatch={(error: Error) => {
                     // Forward not found errors (we don't want to show the error component for these)
-                    if (isNotFound(error)) throw error
-                    warning(
-                      false,
-                      `Error in route match: ${currentMatchState().routeId}`,
-                    )
+                    const notFoundError = getNotFound(error)
+                    if (notFoundError) {
+                      notFoundError.routeId ??= currentMatchState()
+                        .routeId as any
+                      throw notFoundError
+                    }
+                    if (process.env.NODE_ENV !== 'production') {
+                      console.warn(
+                        `Warning: Error in route match: ${currentMatchState().routeId}`,
+                      )
+                    }
                     routeOnCatch()?.(error)
                   }}
                 >
                   <Dynamic
                     component={ResolvedNotFoundBoundary()}
                     fallback={(error: any) => {
+                      const notFoundError = getNotFound(error) ?? error
+
+                      notFoundError.routeId ??= currentMatchState()
+                        .routeId as any
+
                       // If the current not found handler doesn't exist or it has a
                       // route ID which doesn't match the current route, rethrow the error
                       if (
                         !routeNotFoundComponent() ||
-                        (error.routeId &&
-                          error.routeId !== currentMatchState().routeId) ||
-                        (!error.routeId && !route().isRoot)
+                        (notFoundError.routeId &&
+                          notFoundError.routeId !==
+                            currentMatchState().routeId) ||
+                        (!notFoundError.routeId && !route().isRoot)
                       )
-                        throw error
+                        throw notFoundError
 
                       return (
                         <Dynamic
                           component={routeNotFoundComponent()}
-                          {...error}
+                          {...notFoundError}
                         />
                       )
                     }}
@@ -192,7 +203,10 @@ export const Match = (props: { matchId: string }) => {
             {currentMatchState().parentRouteId === rootRouteId ? (
               <>
                 <OnRendered />
-                <ScrollRestoration />
+                {router.options.scrollRestoration &&
+                (isServer ?? router.isServer) ? (
+                  <ScrollRestoration />
+                ) : null}
               </>
             ) : null}
           </Dynamic>

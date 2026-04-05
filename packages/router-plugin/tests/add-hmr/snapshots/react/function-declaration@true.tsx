@@ -5,6 +5,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { fetchPosts } from '../posts';
 const TSRSplitComponent = import.meta.hot?.data?.["tsr-split-component:component"] ?? lazyRouteComponent($$splitComponentImporter, "component");
 if (import.meta.hot) {
+  import.meta.hot.data ??= {};
   import.meta.hot.data["tsr-split-component:component"] = TSRSplitComponent;
 }
 export const Route = createFileRoute('/posts')({

@@ -68,6 +68,24 @@ The `<HeadContent />` component is **required** to render the head, title, meta,
 
 It should be **rendered either in the `<head>` tag of your root layout or as high up in the component tree as possible** if your application doesn't or can't manage the `<head>` tag.
 
+For manifest-managed assets, you can also set `crossorigin` values on emitted
+`modulepreload` and stylesheet links:
+
+```tsx
+<HeadContent assetCrossOrigin="anonymous" />
+
+<HeadContent
+  assetCrossOrigin={{
+    modulepreload: 'anonymous',
+    stylesheet: 'use-credentials',
+  }}
+/>
+```
+
+`assetCrossOrigin` only applies to manifest-managed asset links emitted by Start.
+If you also set `crossOrigin` via `transformAssets` (either the object shorthand
+or a callback return value), `assetCrossOrigin` wins.
+
 ### Start/Full-Stack Applications
 
 <!-- ::start:framework -->

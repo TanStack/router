@@ -4,6 +4,7 @@ import { Asset } from './Asset'
 import { useHydrated } from './ClientOnly'
 import { useRouter } from './useRouter'
 import { useTags } from './headContentUtils'
+import type { HeadContentProps } from './HeadContent'
 
 const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
 
@@ -16,8 +17,8 @@ const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
  * Development version: filters out dev styles link after hydration and
  * includes a fallback cleanup effect for hydration mismatch cases.
  */
-export function HeadContent() {
-  const tags = useTags()
+export function HeadContent(props: HeadContentProps) {
+  const tags = useTags(props.assetCrossOrigin)
   const hydrated = useHydrated()
   const router = useRouter()
 

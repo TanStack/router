@@ -1,5 +1,122 @@
 # @tanstack/start-plugin-core
 
+## 1.167.17
+
+### Patch Changes
+
+- Updated dependencies [[`796406d`](https://github.com/TanStack/router/commit/796406da66cfb12b518bb3ca326c9d541368fb06)]:
+  - @tanstack/router-core@1.168.9
+  - @tanstack/router-generator@1.166.24
+  - @tanstack/router-plugin@1.167.12
+  - @tanstack/start-client-core@1.167.9
+  - @tanstack/start-server-core@1.167.9
+
+## 1.167.16
+
+### Patch Changes
+
+- Updated dependencies [[`2d1ec86`](https://github.com/TanStack/router/commit/2d1ec865a446926f7db6e29dbbde82d265de6d36)]:
+  - @tanstack/router-core@1.168.8
+  - @tanstack/router-generator@1.166.23
+  - @tanstack/router-plugin@1.167.11
+  - @tanstack/start-client-core@1.167.8
+  - @tanstack/start-server-core@1.167.8
+
+## 1.167.15
+
+### Patch Changes
+
+- Updated dependencies [[`f8351a8`](https://github.com/TanStack/router/commit/f8351a8d7aa9f5a341377f96966451892acb39f1)]:
+  - @tanstack/router-plugin@1.167.10
+
+## 1.167.14
+
+### Patch Changes
+
+- Updated dependencies [[`6ee0e79`](https://github.com/TanStack/router/commit/6ee0e795b085651beb2f1ac6503cdbd7eaffedd1)]:
+  - @tanstack/router-core@1.168.7
+  - @tanstack/router-generator@1.166.22
+  - @tanstack/router-plugin@1.167.9
+  - @tanstack/start-client-core@1.167.7
+  - @tanstack/start-server-core@1.167.7
+
+## 1.167.13
+
+### Patch Changes
+
+- Updated dependencies [[`42c3f3b`](https://github.com/TanStack/router/commit/42c3f3b3a3a478fd6d6894310ef94b2d23794b8e)]:
+  - @tanstack/router-core@1.168.6
+  - @tanstack/router-generator@1.166.21
+  - @tanstack/router-plugin@1.167.8
+  - @tanstack/start-client-core@1.167.6
+  - @tanstack/start-server-core@1.167.6
+
+## 1.167.12
+
+### Patch Changes
+
+- Updated dependencies [[`70b2225`](https://github.com/TanStack/router/commit/70b222513720d99c6d44bd3f28d1e9b19dc91a43)]:
+  - @tanstack/router-generator@1.166.20
+  - @tanstack/router-plugin@1.167.7
+
+## 1.167.11
+
+### Patch Changes
+
+- Updated dependencies [[`cf5f554`](https://github.com/TanStack/router/commit/cf5f5542476137a81515099ad740747e84512f9a)]:
+  - @tanstack/router-core@1.168.5
+  - @tanstack/router-generator@1.166.19
+  - @tanstack/router-plugin@1.167.6
+  - @tanstack/start-client-core@1.167.5
+  - @tanstack/start-server-core@1.167.5
+
+## 1.167.10
+
+### Patch Changes
+
+- Updated dependencies [[`71a8b68`](https://github.com/TanStack/router/commit/71a8b684c87c37fd4a033d99f5ba4a05c7a179f5)]:
+  - @tanstack/router-core@1.168.4
+  - @tanstack/router-generator@1.166.18
+  - @tanstack/router-plugin@1.167.5
+  - @tanstack/start-client-core@1.167.4
+  - @tanstack/start-server-core@1.167.4
+
+## 1.167.9
+
+### Patch Changes
+
+- Deduplicate CSS assets in the Start manifest so shared stylesheets are not repeated within a route entry or across an active parent-child route chain. ([#7030](https://github.com/TanStack/router/pull/7030))
+
+## 1.167.8
+
+### Patch Changes
+
+- feat: transformAssets ([#7023](https://github.com/TanStack/router/pull/7023))
+
+- Updated dependencies [[`d81d21a`](https://github.com/TanStack/router/commit/d81d21ad05c9401bf54b24acd29401e1e4fd624c)]:
+  - @tanstack/router-core@1.168.3
+  - @tanstack/start-server-core@1.167.3
+  - @tanstack/router-generator@1.166.17
+  - @tanstack/router-plugin@1.167.4
+  - @tanstack/start-client-core@1.167.3
+
+## 1.167.7
+
+### Patch Changes
+
+- fix: streaming in vite preview ([#6828](https://github.com/TanStack/router/pull/6828))
+
+## 1.167.6
+
+### Patch Changes
+
+- Updated dependencies [[`c9e1855`](https://github.com/TanStack/router/commit/c9e18555f3a5531e96de8f574cfca9edcdb18e5c)]:
+  - @tanstack/start-client-core@1.167.2
+  - @tanstack/start-server-core@1.167.2
+  - @tanstack/router-core@1.168.2
+  - @tanstack/router-generator@1.166.16
+  - @tanstack/router-plugin@1.167.3
+
 ## 1.167.5
 
 ### Patch Changes

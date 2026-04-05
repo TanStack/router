@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
+import { invariant } from '@tanstack/router-core'
 import { useStore } from '@tanstack/vue-store'
 import { isServer } from '@tanstack/router-core/isServer'
-import invariant from 'tiny-invariant'
 import {
   injectDummyPendingMatch,
   injectPendingMatch,
@@ -87,10 +87,15 @@ export function useMatch<
         : undefined
     const match = matchStore?.state
 
-    invariant(
-      !((opts.shouldThrow ?? true) && !match),
-      `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-    )
+    if ((opts.shouldThrow ?? true) && !match) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+        )
+      }
+
+      invariant()
+    }
 
     if (match === undefined) {
       return Vue.ref(undefined) as Vue.Ref<
@@ -151,14 +156,19 @@ export function useMatch<
       const hasPendingMatch = opts.from
         ? Boolean(hasPendingRouteMatch?.value[opts.from!])
         : hasPendingNearestMatch.value
-      invariant(
-        !(
-          !hasPendingMatch &&
-          !isTransitioning.value &&
-          (opts.shouldThrow ?? true)
-        ),
-        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-      )
+      if (
+        !hasPendingMatch &&
+        !isTransitioning.value &&
+        (opts.shouldThrow ?? true)
+      ) {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error(
+            `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+          )
+        }
+
+        invariant()
+      }
 
       return undefined
     }

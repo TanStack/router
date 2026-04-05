@@ -23,6 +23,7 @@ const config = defineConfig({
 export default mergeConfig(
   config,
   tanstackViteConfig({
+    tsconfigPath: './tsconfig.build.json',
     srcDir: './src',
     exclude: ['./src/default-entry'],
     entry: [

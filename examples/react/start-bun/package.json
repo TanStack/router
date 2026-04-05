@@ -14,11 +14,12 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/react-router": "^1.168.1",
-    "@tanstack/react-router-devtools": "^1.166.10",
+    "@tanstack/react-devtools": "^0.7.0",
+    "@tanstack/react-router": "^1.168.10",
+    "@tanstack/react-router-devtools": "^1.166.11",
     "@tanstack/react-router-ssr-query": "^1.166.10",
-    "@tanstack/react-start": "^1.167.2",
-    "@tanstack/router-plugin": "^1.167.2",
+    "@tanstack/react-start": "^1.167.16",
+    "@tanstack/router-plugin": "^1.167.12",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tailwindcss": "^4.2.2"
@@ -34,7 +35,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
-    "typescript": "^5.9.2",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0",
     "vitest": "^3.2.4",
     "web-vitals": "^5.1.0"

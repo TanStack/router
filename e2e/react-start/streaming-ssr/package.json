@@ -8,7 +8,9 @@
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "preview": "vite preview",
+    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium",
+    "test:e2e:preview": "rm -rf port*.txt; MODE=preview playwright test preview-streaming.spec.ts --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.80.7",
@@ -26,6 +28,6 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "srvx": "^0.11.9",
-    "typescript": "^5.7.2"
+    "typescript": "^6.0.2"
   }
 }

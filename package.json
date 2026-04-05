@@ -37,7 +37,7 @@
     "test:docs": "node scripts/verify-links.ts",
     "vite-ecosystem-ci:build": "nx run-many --targets=build --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start,@tanstack/react-start-client,@tanstack/react-start-server --skipRemoteCache",
     "vite-ecosystem-ci:before-test": "pnpm exec playwright install chromium",
-    "vite-ecosystem-ci:test": "nx run-many --targets=test:unit --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start-client --skipRemoteCache && nx run-many --target=test:e2e --projects=tanstack-router-e2e-react-basic-file-based,tanstack-router-e2e-react-basic-file-based-code-splitting,tanstack-react-start-e2e-basic --skipRemoteCache"
+    "vite-ecosystem-ci:test": "nx run-many --targets=test:unit --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start-client --skipRemoteCache && nx run-many --target=test:e2e --projects=tanstack-router-e2e-react-basic-file-based,tanstack-router-e2e-react-basic-file-based-code-splitting,tanstack-react-start-e2e-basic,tanstack-react-start-e2e-basic-spa,tanstack-react-start-e2e-basic-prerender,tanstack-react-start-e2e-basic-preview,tanstack-vue-start-e2e-basic,tanstack-vue-start-e2e-basic-spa,tanstack-vue-start-e2e-basic-prerender,tanstack-vue-start-e2e-basic-preview,tanstack-solid-start-e2e-basic,tanstack-solid-start-e2e-basic-spa,tanstack-solid-start-e2e-basic-prerender,tanstack-solid-start-e2e-basic-preview --skipRemoteCache"
   },
   "nx": {
     "includedScripts": [
@@ -72,12 +72,12 @@
     "redaxios": "^0.5.1",
     "rimraf": "^6.1.2",
     "tinyglobby": "^0.2.15",
-    "typescript": "^5.9.3",
-    "typescript54": "npm:typescript@5.4",
+    "typescript": "^6.0.2",
     "typescript55": "npm:typescript@5.5",
     "typescript56": "npm:typescript@5.6",
     "typescript57": "npm:typescript@5.7",
     "typescript58": "npm:typescript@5.8",
+    "typescript59": "npm:typescript@5.9",
     "vite": "^8.0.0",
     "vitest": "^4.0.17"
   },

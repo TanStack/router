@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import invariant from 'tiny-invariant'
 
 import {
   Link,
@@ -283,9 +282,9 @@ describe('redirect', () => {
 
       expect(router.state.redirect).toBeDefined()
       expect(router.state.redirect).toBeInstanceOf(Response)
-      invariant(router.state.redirect)
+      const redirectResponse = router.state.redirect!
 
-      expect(router.state.redirect.options).toEqual({
+      expect(redirectResponse.options).toEqual({
         _fromLocation: expect.objectContaining({
           hash: '',
           href: '/',
@@ -335,9 +334,9 @@ describe('redirect', () => {
 
       expect(currentRedirect).toBeDefined()
       expect(currentRedirect).toBeInstanceOf(Response)
-      invariant(currentRedirect)
+      const redirectResponse = currentRedirect!
 
-      expect(currentRedirect.options).toEqual({
+      expect(redirectResponse.options).toEqual({
         _fromLocation: expect.objectContaining({
           hash: '',
           href: '/',

@@ -1,4 +1,4 @@
-import invariant from 'tiny-invariant'
+import { invariant } from './invariant'
 import { createLRUCache } from './lru-cache'
 import { last } from './utils'
 import type { LRUCache } from './lru-cache'
@@ -811,10 +811,15 @@ export function processRouteTree<
   parseSegments(caseSensitive, data, routeTree, 1, segmentTree, 0, (route) => {
     initRoute?.(route, index)
 
-    invariant(
-      !(route.id in routesById),
-      `Duplicate routes found with id: ${String(route.id)}`,
-    )
+    if (route.id in routesById) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Duplicate routes found with id: ${String(route.id)}`,
+        )
+      }
+
+      invariant()
+    }
 
     routesById[route.id] = route
 

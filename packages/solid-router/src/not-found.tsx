@@ -4,9 +4,25 @@ import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import type { NotFoundError } from '@tanstack/router-core'
 
+// Solid wraps non-Error throws in an Error and stores the original thrown value
+// on `cause`, so component-thrown `notFound()` needs one extra unwrapping step.
+export function getNotFound(
+  error: unknown,
+): (NotFoundError & { isNotFound: true }) | undefined {
+  if (isNotFound(error)) {
+    return error as NotFoundError & { isNotFound: true }
+  }
+
+  if (isNotFound((error as any)?.cause)) {
+    return (error as any).cause as NotFoundError & { isNotFound: true }
+  }
+
+  return undefined
+}
+
 export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => Solid.JSX.Element
-  onCatch?: (error: Error) => void
+  onCatch?: (error: NotFoundError) => void
   children: Solid.JSX.Element
 }) {
   const router = useRouter()
@@ -18,15 +34,19 @@ export function CatchNotFound(props: {
     <CatchBoundary
       getResetKey={() => `not-found-${pathname()}-${status()}`}
       onCatch={(error) => {
-        if (isNotFound(error)) {
-          props.onCatch?.(error)
+        const notFoundError = getNotFound(error)
+
+        if (notFoundError) {
+          props.onCatch?.(notFoundError)
         } else {
           throw error
         }
       }}
       errorComponent={({ error }) => {
-        if (isNotFound(error)) {
-          return props.fallback?.(error)
+        const notFoundError = getNotFound(error)
+
+        if (notFoundError) {
+          return props.fallback?.(notFoundError)
         } else {
           throw error
         }

@@ -34,6 +34,6 @@
     "combinate": "^1.1.11",
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
-    "typescript": "^5.7.2"
+    "typescript": "^6.0.2"
   }
 }

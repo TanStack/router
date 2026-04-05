@@ -20,7 +20,7 @@ The `useBlocker` hook accepts a single _required_ argument, an option object:
 - Think of this function as telling the router if it should block the navigation, so returning `true` mean that it should block the navigation and `false` meaning that it should be allowed
 
 ```ts
-interface ShouldBlockFnLocation<...> {
+type ShouldBlockFnLocation<...> = {
   routeId: TRouteId
   fullPath: TFullPath
   pathname: string

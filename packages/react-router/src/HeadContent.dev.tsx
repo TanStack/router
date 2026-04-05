@@ -3,6 +3,7 @@ import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useHydrated } from './ClientOnly'
 import { useTags } from './headContentUtils'
+import type { HeadContentProps } from './HeadContent'
 
 const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
 
@@ -15,8 +16,8 @@ const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
  *
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/document-head-management
  */
-export function HeadContent() {
-  const tags = useTags()
+export function HeadContent(props: HeadContentProps) {
+  const tags = useTags(props.assetCrossOrigin)
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
   const hydrated = useHydrated()

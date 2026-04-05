@@ -1,11 +1,11 @@
 import {
   createRawStreamDeserializePlugin,
   encode,
+  invariant,
   isNotFound,
   parseRedirect,
 } from '@tanstack/router-core'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
-import invariant from 'tiny-invariant'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
 import {
   TSS_CONTENT_TYPE_FRAMED,
@@ -185,7 +185,15 @@ async function getResponse(fn: () => Promise<Response>) {
   }
 
   const contentType = response.headers.get('content-type')
-  invariant(contentType, 'expected content-type header to be set')
+  if (!contentType) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        'Invariant failed: expected content-type header to be set',
+      )
+    }
+
+    invariant()
+  }
   const serializedByStart = !!response.headers.get(X_TSS_SERIALIZED)
 
   // If the response is serialized by the start server, we need to process it
@@ -239,7 +247,13 @@ async function getResponse(fn: () => Promise<Response>) {
       result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
     }
 
-    invariant(result, 'expected result to be resolved')
+    if (!result) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error('Invariant failed: expected result to be resolved')
+      }
+
+      invariant()
+    }
     if (result instanceof Error) {
       throw result
     }

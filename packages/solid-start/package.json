@@ -26,7 +26,7 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:build",
-    "test:build": "exit 0; vitest",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build && vite build -c vite.config.server-entry.ts"
   },
   "type": "module",
@@ -117,7 +117,8 @@
   "devDependencies": {
     "@tanstack/intent": "^0.0.14",
     "@tanstack/router-utils": "workspace:*",
-    "vite": "*"
+    "vite": "*",
+    "@types/node": ">=20"
   },
   "peerDependencies": {
     "solid-js": "2.0.0-beta.5",

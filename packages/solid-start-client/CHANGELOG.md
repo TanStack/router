@@ -86,6 +86,80 @@
 - Updated dependencies [[`a0191af`](https://github.com/TanStack/router/commit/a0191afd21afe0e7571af8b0faab171f62e71db7)]:
   - @tanstack/solid-router@2.0.0-alpha.0
 
+## 1.166.23
+
+### Patch Changes
+
+- Updated dependencies [[`796406d`](https://github.com/TanStack/router/commit/796406da66cfb12b518bb3ca326c9d541368fb06)]:
+  - @tanstack/router-core@1.168.9
+  - @tanstack/solid-router@1.168.9
+  - @tanstack/start-client-core@1.167.9
+
+## 1.166.22
+
+### Patch Changes
+
+- Updated dependencies [[`2d1ec86`](https://github.com/TanStack/router/commit/2d1ec865a446926f7db6e29dbbde82d265de6d36)]:
+  - @tanstack/router-core@1.168.8
+  - @tanstack/solid-router@1.168.8
+  - @tanstack/start-client-core@1.167.8
+
+## 1.166.21
+
+### Patch Changes
+
+- Updated dependencies [[`6ee0e79`](https://github.com/TanStack/router/commit/6ee0e795b085651beb2f1ac6503cdbd7eaffedd1)]:
+  - @tanstack/router-core@1.168.7
+  - @tanstack/solid-router@1.168.7
+  - @tanstack/start-client-core@1.167.7
+
+## 1.166.20
+
+### Patch Changes
+
+- Updated dependencies [[`42c3f3b`](https://github.com/TanStack/router/commit/42c3f3b3a3a478fd6d6894310ef94b2d23794b8e)]:
+  - @tanstack/router-core@1.168.6
+  - @tanstack/solid-router@1.168.6
+  - @tanstack/start-client-core@1.167.6
+
+## 1.166.19
+
+### Patch Changes
+
+- Updated dependencies [[`cf5f554`](https://github.com/TanStack/router/commit/cf5f5542476137a81515099ad740747e84512f9a)]:
+  - @tanstack/router-core@1.168.5
+  - @tanstack/solid-router@1.168.5
+  - @tanstack/start-client-core@1.167.5
+
+## 1.166.18
+
+### Patch Changes
+
+- Updated dependencies [[`71a8b68`](https://github.com/TanStack/router/commit/71a8b684c87c37fd4a033d99f5ba4a05c7a179f5)]:
+  - @tanstack/router-core@1.168.4
+  - @tanstack/solid-router@1.168.4
+  - @tanstack/start-client-core@1.167.4
+
+## 1.166.17
+
+### Patch Changes
+
+- Updated dependencies [[`d81d21a`](https://github.com/TanStack/router/commit/d81d21ad05c9401bf54b24acd29401e1e4fd624c)]:
+  - @tanstack/router-core@1.168.3
+  - @tanstack/solid-router@1.168.3
+  - @tanstack/start-client-core@1.167.3
+
+## 1.166.16
+
+### Patch Changes
+
+- Replace tiny-invariant and tiny-warning with in-house solution for bundle-size ([#7007](https://github.com/TanStack/router/pull/7007))
+
+- Updated dependencies [[`c9e1855`](https://github.com/TanStack/router/commit/c9e18555f3a5531e96de8f574cfca9edcdb18e5c)]:
+  - @tanstack/start-client-core@1.167.2
+  - @tanstack/solid-router@1.168.2
+  - @tanstack/router-core@1.168.2
+
 ## 1.166.15
 
 ### Patch Changes

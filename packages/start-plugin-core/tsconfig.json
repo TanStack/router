@@ -4,6 +4,7 @@
   "exclude": ["tests/**/test-files/**", "tests/**/snapshots/**"],
   "compilerOptions": {
     "target": "esnext",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node"]
   }
 }
