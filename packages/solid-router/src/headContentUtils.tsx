@@ -2,7 +2,6 @@ import * as Solid from 'solid-js'
 import {
   escapeHtml,
   getAssetCrossOrigin,
-  replaceEqualDeep,
   resolveManifestAssetLink,
 } from '@tanstack/router-core'
 import { useRouter } from './useRouter'

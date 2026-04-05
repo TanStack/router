@@ -1,5 +1,5 @@
 import { For, createRenderEffect } from 'solid-js'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import {
   Link,
   Outlet,
@@ -37,9 +37,10 @@ const routeSelectors = Array.from({ length: 6 }, (_, index) => index)
 const linkGroups = Array.from({ length: 4 }, (_, index) => index)
 
 function PerfValue(props: { value: () => number }) {
-  createRenderEffect(() => {
-    void props.value()
-  })
+  createRenderEffect(
+    () => props.value(),
+    () => {},
+  )
 
   return null
 }
@@ -66,7 +67,8 @@ function LinkPanel() {
   return (
     <>
       <For each={linkGroups}>
-        {(groupIndex) => {
+        {(groupIndexAccessor) => {
+          const groupIndex = groupIndexAccessor()
           const itemsId = groupIndex === 0 ? 1 : groupIndex + 2
           const ctxId = groupIndex + 1
 
