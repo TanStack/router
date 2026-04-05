@@ -9,14 +9,14 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/solid-query": "6.0.0-alpha.2",
+    "@tanstack/solid-query": "6.0.0-beta.3",
     "@router-solid-mono-solid-query/post-feature": "workspace:*",
     "@router-solid-mono-solid-query/router": "workspace:*",
     "solid-js": "2.0.0-beta.5",
     "@solidjs/web": "2.0.0-beta.5"
   },
   "devDependencies": {
-    "vite-plugin-solid": "3.0.0-next.3",
+    "vite-plugin-solid": "3.0.0-next.4",
     "typescript": "^5.7.2",
     "@tanstack/solid-router-devtools": "^2.0.0-alpha.5",
     "tailwindcss": "^4.2.2",

@@ -68,12 +68,12 @@
   },
   "devDependencies": {
     "@solidjs/web": "2.0.0-beta.5",
-    "@tanstack/solid-query": "6.0.0-alpha.2",
+    "@tanstack/solid-query": "6.0.0-beta.3",
     "@tanstack/solid-router": "workspace:*",
     "eslint-plugin-solid": "^0.14.5",
     "solid-js": "2.0.0-beta.5",
     "vite": "*",
-    "vite-plugin-solid": "3.0.0-next.3"
+    "vite-plugin-solid": "3.0.0-next.4"
   },
   "peerDependencies": {
     "@solidjs/web": "2.0.0-beta.5",

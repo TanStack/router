@@ -122,7 +122,7 @@
     "solid-js": "2.0.0-beta.5",
     "@solidjs/web": "2.0.0-beta.5",
     "vite": "*",
-    "vite-plugin-solid": "3.0.0-next.3",
+    "vite-plugin-solid": "3.0.0-next.4",
     "zod": "^3.23.8"
   },
   "peerDependencies": {
