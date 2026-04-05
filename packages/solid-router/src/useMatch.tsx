@@ -91,11 +91,7 @@ export function useMatch<
         : (nearestMatch?.hasPending() ?? false)
       const isTransitioning = router.stores.isTransitioning.state
 
-      if (
-        !hasPendingMatch &&
-        !isTransitioning &&
-        (opts.shouldThrow ?? true)
-      ) {
+      if (!hasPendingMatch && !isTransitioning && (opts.shouldThrow ?? true)) {
         if (process.env.NODE_ENV !== 'production') {
           throw new Error(
             `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,

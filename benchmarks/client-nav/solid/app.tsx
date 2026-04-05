@@ -37,8 +37,7 @@ const routeSelectors = Array.from({ length: 6 }, (_, index) => index)
 const linkGroups = Array.from({ length: 4 }, (_, index) => index)
 
 function PerfValue(props: { value: () => number }) {
-  createRenderEffect(
-		() => {
+  createRenderEffect(() => {
     void props.value()
   })
 
