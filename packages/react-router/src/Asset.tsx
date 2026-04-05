@@ -215,5 +215,19 @@ function Script({
     }
   }
 
+  // For inline scripts (children, no src), keep the element in the React tree after
+  // hydration so React doesn't unmount the SSR-rendered script from the DOM.
+  // The useEffect above detects the existing element via textContent match and skips
+  // re-injection, so the script won't execute a second time.
+  if (!attrs?.src && typeof children === 'string') {
+    return (
+      <script
+        {...attrs}
+        dangerouslySetInnerHTML={{ __html: children }}
+        suppressHydrationWarning
+      />
+    )
+  }
+
   return null
 }
