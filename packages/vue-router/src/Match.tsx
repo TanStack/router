@@ -85,40 +85,6 @@ export const Match = Vue.defineComponent({
       }
     })
 
-    // Static route-tree check: is this route a direct child of the root?
-    // parentRoute is set at build time, so no reactive tracking needed.
-    const isChildOfRoot =
-      (router.routesById[routeId] as AnyRoute)?.parentRoute?.id === rootRouteId
-
-    // Single stable store subscription — getMatchStoreByRouteId returns a
-    // cached computed store that resolves routeId → current match state
-    // through the signal graph. No bridge needed.
-    const activeMatch = useStore(
-      router.stores.getMatchStoreByRouteId(routeId),
-      (value) => value,
-    )
-    const isPendingMatchRef = useStore(
-      router.stores.pendingRouteIds,
-      (pendingRouteIds) => Boolean(pendingRouteIds[routeId]),
-      { equal: Object.is },
-    )
-    const loadedAt = useStore(router.stores.loadedAt, (value) => value)
-
-    const matchData = Vue.computed(() => {
-      const match = activeMatch.value
-      if (!match) {
-        return null
-      }
-
-      return {
-        matchId: match.id,
-        routeId,
-        loadedAt: loadedAt.value,
-        ssr: match.ssr,
-        _displayPending: match._displayPending,
-      }
-    })
-
     const route = Vue.computed(() =>
       matchData.value ? router.routesById[matchData.value.routeId] : null,
     )

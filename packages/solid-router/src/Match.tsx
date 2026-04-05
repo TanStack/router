@@ -406,7 +406,14 @@ export const MatchInner = (): any => {
             <Solid.Match when={currentMatch().status === 'notFound'}>
               {(_) => {
                 const matchError = Solid.untrack(() => currentMatch().error)
-                invariant(isNotFound(matchError), 'Expected a notFound error')
+                if (!isNotFound(matchError)) {
+                  if (process.env.NODE_ENV !== 'production') {
+                    throw new Error(
+                      'Invariant failed: Expected a notFound error',
+                    )
+                  }
+                  invariant()
+                }
 
                 // Use Show with keyed to ensure re-render when routeId changes
                 return (
@@ -423,7 +430,14 @@ export const MatchInner = (): any => {
             <Solid.Match when={currentMatch().status === 'redirected'}>
               {(_) => {
                 const matchError = Solid.untrack(() => currentMatch().error)
-                invariant(isRedirect(matchError), 'Expected a redirect error')
+                if (!isRedirect(matchError)) {
+                  if (process.env.NODE_ENV !== 'production') {
+                    throw new Error(
+                      'Invariant failed: Expected a redirect error',
+                    )
+                  }
+                  invariant()
+                }
 
                 return null
               }}
