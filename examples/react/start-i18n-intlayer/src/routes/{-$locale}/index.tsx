@@ -9,15 +9,17 @@ import {
 } from 'intlayer'
 import { useIntlayer, useLocale } from 'react-intlayer'
 
-import { queryClient } from '@/router'
 import { getLocale } from '@/utils/getLocale'
 
 export const Route = createFileRoute('/{-$locale}/')({
-  component: () => (
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  ),
+  component: () => {
+    const { queryClient } = Route.useRouteContext()
+    return (
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    )
+  },
   head: ({ params }) => {
     const { locale } = params
     const path = '/' // The path for this route

@@ -5,15 +5,18 @@ import {
   useMatches,
 } from '@tanstack/react-router'
 import { defaultLocale, getHTMLTextDir } from 'intlayer'
-import { type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { IntlayerProvider } from 'react-intlayer'
+import type { QueryClient } from '@tanstack/react-query'
 
 import Header from '@/components/Header'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 
 import appCss from '../styles.css?url'
 
-export const Route = createRootRouteWithContext<{}>()({
+export const Route = createRootRouteWithContext<{
+  queryClient: QueryClient
+}>()({
   head: () => ({
     links: [
       {
@@ -51,8 +54,8 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Header />
         <IntlayerProvider locale={locale}>
+          <Header />
           <LocaleSwitcher />
           {children}
         </IntlayerProvider>
