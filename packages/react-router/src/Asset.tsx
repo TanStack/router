@@ -51,6 +51,11 @@ function Script({
 }) {
   const router = useRouter()
   const hydrated = useHydrated()
+  // Track whether this component instance went through the !hydrated (pre-hydration) phase.
+  // true  → component was SSR-rendered; the inline script was already executed by the browser.
+  // false → component was mounted fresh on the client (client-side navigation); useEffect must
+  //         inject an executable script because dangerouslySetInnerHTML never executes scripts.
+  const wentThroughNonHydratedPhase = React.useRef(!hydrated)
   const dataScript =
     typeof attrs?.type === 'string' &&
     attrs.type !== '' &&
@@ -215,11 +220,20 @@ function Script({
     }
   }
 
-  // For inline scripts (children, no src), keep the element in the React tree after
-  // hydration so React doesn't unmount the SSR-rendered script from the DOM.
+  // For inline scripts (children, no src) that went through SSR hydration, keep the element
+  // in the React tree so React doesn't unmount the SSR-rendered script from the DOM.
   // The useEffect above detects the existing element via textContent match and skips
   // re-injection, so the script won't execute a second time.
-  if (!attrs?.src && typeof children === 'string') {
+  //
+  // For client-side navigation (wentThroughNonHydratedPhase === false), skip this path and
+  // fall through to return null — the useEffect handles imperative injection in that case.
+  // (dangerouslySetInnerHTML does not execute scripts, so we must not render an inert element
+  // that would fool the existingScript dedup check into returning early without executing.)
+  if (
+    !attrs?.src &&
+    typeof children === 'string' &&
+    wentThroughNonHydratedPhase.current
+  ) {
     return (
       <script
         {...attrs}
