@@ -2630,6 +2630,43 @@ describe('useRouteContext in the component', () => {
     expect(content).toBeInTheDocument()
   })
 
+
+  test('route context preserved when beforeLoad returns null', async () => {
+    const rootRoute = createRootRoute({
+      beforeLoad: () => null,
+      component: () => {
+        const context = rootRoute.useRouteContext()
+        return <div>{JSON.stringify(context)}</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([])
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
+
+    expect(content).toBeInTheDocument()
+  })
+
+  test('route context preserved when async beforeLoad returns null', async () => {
+    const rootRoute = createRootRoute({
+      beforeLoad: async () => null,
+      component: () => {
+        const context = rootRoute.useRouteContext()
+        return <div>{JSON.stringify(context)}</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([])
+    const router = createRouter({ routeTree, history, context: { foo: 'bar' } })
+
+    render(<RouterProvider router={router} />)
+
+    const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
+
+    expect(content).toBeInTheDocument()
+  })
+
   test('route context (sleep in beforeLoad), present in the root route', async () => {
     const rootRoute = createRootRoute({
       beforeLoad: async () => {
