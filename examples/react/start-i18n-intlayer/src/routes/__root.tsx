@@ -2,7 +2,6 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Scripts,
-  useMatches,
 } from '@tanstack/react-router'
 import { defaultLocale, getHTMLTextDir } from 'intlayer'
 import type { ReactNode } from 'react'
@@ -12,6 +11,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import Header from '@/components/Header'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 
+import { Route as LocaleRoute } from './{-$locale}/route'
 import appCss from '../styles.css?url'
 
 export const Route = createRootRouteWithContext<{
@@ -42,11 +42,7 @@ export const Route = createRootRouteWithContext<{
 })
 
 function RootDocument({ children }: { children: ReactNode }) {
-  const match = useMatches()
-
-  // Try to find locale in params of any active match
-  const localeRoute = match.find((match) => match.routeId === '/{-$locale}')
-  const locale = localeRoute?.params?.locale ?? defaultLocale
+  const { locale = defaultLocale } = LocaleRoute.useParams()
 
   return (
     <html dir={getHTMLTextDir(locale)} lang={locale}>
