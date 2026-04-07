@@ -2630,7 +2630,6 @@ describe('useRouteContext in the component', () => {
     expect(content).toBeInTheDocument()
   })
 
-
   test('route context preserved when beforeLoad returns null', async () => {
     const rootRoute = createRootRoute({
       beforeLoad: () => null,
