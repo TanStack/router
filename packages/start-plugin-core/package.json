@@ -56,6 +56,12 @@
         "default": "./dist/esm/utils.js"
       }
     },
+    "./rsbuild/types": {
+      "import": {
+        "types": "./dist/esm/rsbuild/types.d.ts",
+        "default": "./dist/esm/rsbuild/types.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -91,6 +97,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@rsbuild/core": "^2.0.0-0",
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
     "@types/picomatch": "^4.0.2",
@@ -98,6 +105,12 @@
     "@types/node": ">=20"
   },
   "peerDependencies": {
+    "@rsbuild/core": "^2.0.0-0",
     "vite": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@rsbuild/core": {
+      "optional": true
+    }
   }
 }

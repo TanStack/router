@@ -61,16 +61,6 @@ export function isServerComponent(
   )
 }
 
-/**
- * Type guard to check if a value is a RenderableRsc (renderable proxy from renderServerComponent).
- * The value can be either an object (proxy target) or a function (stub for server functions).
- */
-export function isRenderableRsc(value: unknown): boolean {
-  if (value === null || value === undefined) return false
-  if (typeof value !== 'object' && typeof value !== 'function') return false
-  return RENDERABLE_RSC in value && (value as any)[RENDERABLE_RSC] === true
-}
-
 export type ValidateCompositeComponent<TComp> = Constrain<
   TComp,
   (

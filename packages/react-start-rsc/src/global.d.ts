@@ -1,5 +1,29 @@
 /// <reference types="vite/client" />
 
+declare module '@rspack/core/rsc/ssr' {
+  export function setOnClientReference(
+    callback:
+      | ((reference: {
+          id: string
+          deps: { js: Array<string>; css: Array<string> }
+          runtime: 'rsbuild'
+        }) => void)
+      | null
+      | undefined,
+  ): void
+  export function getManifest(): {
+    moduleCssFiles?: Record<string, Array<string>>
+    [key: string]: unknown
+  }
+}
+
+declare module '@rspack/core/rsc/browser' {
+  export function getManifest(): {
+    moduleCssFiles?: Record<string, Array<string>>
+    [key: string]: unknown
+  }
+}
+
 /**
  * Type declarations for virtual:tanstack-rsc-runtime
  *

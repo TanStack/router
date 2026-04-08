@@ -1,7 +1,6 @@
 import { renderToReadableStream } from 'virtual:tanstack-rsc-runtime'
 import { getRequest } from '@tanstack/start-server-core'
 import { getStartContext } from '@tanstack/start-storage-context'
-
 import { ReplayableStream } from './ReplayableStream'
 import { RENDERABLE_RSC, SERVER_COMPONENT_STREAM } from './ServerComponentTypes'
 import type {
@@ -59,7 +58,6 @@ export function isRenderableRscHandle(
 export async function renderServerComponent<TNode>(
   node: ValidateRenderableServerComponent<TNode>,
 ): Promise<RenderableServerComponentBuilder<TNode>> {
-  // Render the element directly to a Flight stream
   const flightStream = renderToReadableStream(node)
 
   // Check if this is an SSR request (router) or a direct server function call
@@ -82,7 +80,7 @@ export async function renderServerComponent<TNode>(
 
   // Server function call path: return a handle for serialization
   return createRenderableHandle(
-    flightStream,
+    new ReplayableStream(flightStream),
   ) as unknown as RenderableServerComponentBuilder<TNode>
 }
 
@@ -91,12 +89,8 @@ export async function renderServerComponent<TNode>(
  * Tagged with RENDERABLE_RSC for the serialization adapter.
  */
 function createRenderableHandle(
-  flightStream: ReadableStream<Uint8Array>,
+  flightStream: ServerComponentStream,
 ): AnyRenderableServerComponent {
-  const streamWrapper: ServerComponentStream = {
-    createReplayStream: () => flightStream,
-  }
-
   const stub = function RenderableRscStub(): never {
     throw new Error(
       'Renderable RSC from server function cannot be rendered on server. ' +
@@ -104,7 +98,7 @@ function createRenderableHandle(
     )
   }
 
-  ;(stub as any)[SERVER_COMPONENT_STREAM] = streamWrapper
+  ;(stub as any)[SERVER_COMPONENT_STREAM] = flightStream
   ;(stub as any)[RENDERABLE_RSC] = true
   return stub as unknown as AnyRenderableServerComponent
 }

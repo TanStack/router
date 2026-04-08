@@ -1,4 +1,5 @@
 import { SERVER_FN_LOOKUP } from '../constants'
+import { cleanId } from './utils'
 import type { StartCompiler } from './compiler'
 
 interface ViteCompilerModuleLoaderOptions {
@@ -28,4 +29,11 @@ export async function loadModuleForViteCompiler(
   }
 
   await opts.fetchModule(`${opts.id}?${SERVER_FN_LOOKUP}`)
+}
+
+export async function loadModuleForRsbuildCompiler(opts: {
+  compiler: StartCompiler
+  id: string
+}): Promise<void> {
+  opts.compiler.invalidateModule(cleanId(opts.id))
 }
