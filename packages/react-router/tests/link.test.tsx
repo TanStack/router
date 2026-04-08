@@ -1529,7 +1529,7 @@ describe('Link', () => {
   test('when navigating away from a route with a loader that errors', async () => {
     const postsOnError = vi.fn()
     const indexOnError = vi.fn()
-    const indexErrorComponent = vi.fn(() => (<span>IndexError</span>))
+    const indexErrorComponent = vi.fn(() => <span>IndexError</span>)
 
     const rootRoute = createRootRoute({
       component: () => (
