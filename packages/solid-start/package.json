@@ -74,6 +74,12 @@
         "default": "./dist/esm/plugin/vite.js"
       }
     },
+    "./plugin/rsbuild": {
+      "import": {
+        "types": "./dist/esm/plugin/rsbuild.d.ts",
+        "default": "./dist/esm/plugin/rsbuild.js"
+      }
+    },
     "./server-entry": {
       "import": {
         "types": "./dist/default-entry/esm/server.d.ts",
@@ -121,8 +127,14 @@
     "@types/node": ">=20"
   },
   "peerDependencies": {
+    "@rsbuild/core": "^2.0.0-0",
     "solid-js": ">=1.0.0",
     "vite": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@rsbuild/core": {
+      "optional": true
+    }
   },
   "bin": {
     "intent": "./bin/intent.js"

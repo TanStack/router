@@ -80,21 +80,49 @@ function Script({
     )
   }
 
+  const getExistingSrcScript = React.useCallback((src: string) => {
+    const normSrc = (() => {
+      try {
+        const base = document.baseURI || window.location.href
+        return new URL(src, base).href
+      } catch {
+        return src
+      }
+    })()
+
+    return Array.from(document.querySelectorAll('script[src]')).find(
+      (el) => (el as HTMLScriptElement).src === normSrc,
+    )
+  }, [])
+
+  const getExistingInlineScript = React.useCallback(
+    (content: string) => {
+      const typeAttr =
+        typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
+      const nonceAttr =
+        typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
+
+      return Array.from(document.querySelectorAll('script:not([src])')).find(
+        (el) => {
+          if (!(el instanceof HTMLScriptElement)) return false
+          const sType = el.getAttribute('type') ?? 'text/javascript'
+          const sNonce = el.getAttribute('nonce') ?? undefined
+          return (
+            el.textContent === content &&
+            sType === typeAttr &&
+            sNonce === nonceAttr
+          )
+        },
+      )
+    },
+    [attrs?.nonce, attrs?.type],
+  )
+
   React.useEffect(() => {
     if (dataScript) return
 
     if (attrs?.src) {
-      const normSrc = (() => {
-        try {
-          const base = document.baseURI || window.location.href
-          return new URL(attrs.src, base).href
-        } catch {
-          return attrs.src
-        }
-      })()
-      const existingScript = Array.from(
-        document.querySelectorAll('script[src]'),
-      ).find((el) => (el as HTMLScriptElement).src === normSrc)
+      const existingScript = getExistingSrcScript(attrs.src)
 
       if (existingScript) {
         return
@@ -125,22 +153,7 @@ function Script({
     }
 
     if (typeof children === 'string') {
-      const typeAttr =
-        typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
-      const nonceAttr =
-        typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
-      const existingScript = Array.from(
-        document.querySelectorAll('script:not([src])'),
-      ).find((el) => {
-        if (!(el instanceof HTMLScriptElement)) return false
-        const sType = el.getAttribute('type') ?? 'text/javascript'
-        const sNonce = el.getAttribute('nonce') ?? undefined
-        return (
-          el.textContent === children &&
-          sType === typeAttr &&
-          sNonce === nonceAttr
-        )
-      })
+      const existingScript = getExistingInlineScript(children)
 
       if (existingScript) {
         return
@@ -214,16 +227,25 @@ function Script({
   // After hydration, return null — the useEffect handles imperative injection.
   if (!hydrated) {
     if (attrs?.src) {
-      return <script {...attrs} suppressHydrationWarning />
+      if (getExistingSrcScript(attrs.src)) {
+        return <script {...attrs} suppressHydrationWarning />
+      }
+
+      return null
     }
+
     if (typeof children === 'string') {
-      return (
-        <script
-          {...attrs}
-          dangerouslySetInnerHTML={{ __html: children }}
-          suppressHydrationWarning
-        />
-      )
+      if (getExistingInlineScript(children)) {
+        return (
+          <script
+            {...attrs}
+            dangerouslySetInnerHTML={{ __html: children }}
+            suppressHydrationWarning
+          />
+        )
+      }
+
+      return null
     }
   }
 

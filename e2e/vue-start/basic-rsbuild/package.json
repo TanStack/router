@@ -1,0 +1,31 @@
+{
+  "name": "tanstack-vue-start-e2e-basic-rsbuild",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_OPTIONS='--experimental-vm-modules' rsbuild dev --port 3000",
+    "dev:e2e": "NODE_OPTIONS='--experimental-vm-modules' rsbuild dev --port $PORT",
+    "build": "rsbuild build && tsc --noEmit",
+    "start": "pnpx srvx --prod -s ../client dist/server/index.js",
+    "test:e2e:dev": "MODE=dev playwright test --project=chromium",
+    "test:e2e:prod": "playwright test --project=chromium",
+    "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:dev && pnpm run test:e2e:prod"
+  },
+  "dependencies": {
+    "@tanstack/vue-router": "workspace:^",
+    "@tanstack/vue-start": "workspace:^",
+    "vue": "^3.5.16"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.1",
+    "@rsbuild/core": "2.0.0-beta.10",
+    "@rsbuild/plugin-babel": "^1.0.5",
+    "@rsbuild/plugin-vue": "^1.2.2",
+    "@rsbuild/plugin-vue-jsx": "^1.1.1",
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "@types/node": "^22.10.2",
+    "srvx": "^0.11.9",
+    "typescript": "^6.0.2"
+  }
+}

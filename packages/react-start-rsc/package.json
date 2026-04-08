@@ -69,6 +69,18 @@
         "default": "./dist/esm/plugin/vite.js"
       }
     },
+    "./rsbuild/ssr-decode": {
+      "import": {
+        "types": "./dist/esm/src/rsbuild/ssr-decode.d.ts",
+        "default": "./dist/esm/rsbuild/ssr-decode.js"
+      }
+    },
+    "./rsbuild/browser-decode": {
+      "import": {
+        "types": "./dist/esm/src/rsbuild/browser-decode.d.ts",
+        "default": "./dist/esm/rsbuild/browser-decode.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -91,17 +103,27 @@
     "@tanstack/router-utils": "workspace:*"
   },
   "devDependencies": {
+    "@rspack/core": "link:../../../../rsbuild/rspack/packages/rspack",
     "@testing-library/react": "^16.2.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "@vitejs/plugin-rsc": "^0.5.20"
+    "@vitejs/plugin-rsc": "^0.5.20",
+    "react-server-dom-rspack": "^0.0.2"
   },
   "peerDependencies": {
+    "@rspack/core": ">=2.0.0-0",
     "@vitejs/plugin-rsc": ">=0.5.20",
     "react": ">=18.0.0 || >=19.0.0",
-    "react-dom": ">=18.0.0 || >=19.0.0"
+    "react-dom": ">=18.0.0 || >=19.0.0",
+    "react-server-dom-rspack": ">=0.0.2"
   },
   "peerDependenciesMeta": {
+    "@rspack/core": {
+      "optional": true
+    },
     "@vitejs/plugin-rsc": {
+      "optional": true
+    },
+    "react-server-dom-rspack": {
       "optional": true
     }
   }

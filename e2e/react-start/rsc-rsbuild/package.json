@@ -1,0 +1,35 @@
+{
+  "name": "tanstack-react-start-e2e-rsc-rsbuild",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_OPTIONS='--experimental-vm-modules' rsbuild dev --port 3000",
+    "dev:e2e": "NODE_OPTIONS='--experimental-vm-modules' rsbuild dev --port $PORT",
+    "build": "rsbuild build && tsc --noEmit",
+    "start": "pnpx srvx --prod -s ../client dist/server/index.js",
+    "test:e2e:dev": "MODE=dev playwright test --project=chromium",
+    "test:e2e:prod": "playwright test --project=chromium",
+    "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:dev && pnpm run test:e2e:prod"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.0",
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/react-start": "workspace:^",
+    "@tanstack/react-start-rsc": "workspace:^",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-server-dom-rspack": "^0.0.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.1",
+    "@rsbuild/core": "2.0.0-beta.10",
+    "@rsbuild/plugin-react": "2.0.0-alpha.3",
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "srvx": "^0.11.9",
+    "typescript": "^6.0.2"
+  }
+}

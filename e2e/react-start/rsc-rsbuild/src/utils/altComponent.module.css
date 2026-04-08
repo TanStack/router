@@ -1,0 +1,33 @@
+/* Alternate CSS Module for second RSC CSS route */
+
+.wrapper {
+  background-color: #fef3c7;
+  border: 2px solid #f59e0b;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.heading {
+  margin: 0 0 8px 0;
+  color: #92400e;
+  font-size: 18px;
+}
+
+.tagline {
+  display: inline-block;
+  background-color: #f59e0b;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.card {
+  padding: 10px 14px;
+  background-color: #fffbeb;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  color: #78350f;
+}
