@@ -1529,6 +1529,8 @@ describe('Link', () => {
   test('when navigating away from a route with a loader that errors', async () => {
     const postsOnError = vi.fn()
     const indexOnError = vi.fn()
+    const indexErrorComponent = vi.fn(() => (<span>IndexError</span>))
+
     const rootRoute = createRootRoute({
       component: () => (
         <>
@@ -1551,7 +1553,7 @@ describe('Link', () => {
         )
       },
       onError: indexOnError,
-      errorComponent: () => <span>IndexError</span>,
+      errorComponent: indexErrorComponent,
     })
 
     const error = new Error('Something went wrong!')
@@ -1596,6 +1598,7 @@ describe('Link', () => {
 
     await expect(screen.findByText('IndexError')).rejects.toThrow()
     expect(indexOnError).not.toHaveBeenCalledOnce()
+    expect(indexErrorComponent).not.toHaveBeenCalled()
   })
 
   test('when navigating to /posts with a beforeLoad that redirects', async () => {
