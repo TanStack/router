@@ -123,7 +123,7 @@ A full TanStack Start example for Cloudflare Workers is available [here](https:/
 
 ### Netlify ⭐ _Official Partner_
 
-<a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
+<a href="https://www.netlify.com?utm_source=tanstack">
   <img
     class="block dark:hidden"
     src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-light.svg"
@@ -202,12 +202,17 @@ tool](https://docs.netlify.com/start/quickstarts/deploy-from-ai-code-generation-
 
 ### Railway ⭐ _Official Partner_
 
-<a href="https://railway.com?utm_source=tanstack" alt="Railway Logo">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-white.svg" width="280">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-black.svg" width="280">
-    <img alt="Railway logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-light.svg" width="280">
-  </picture>
+<a href="https://railway.com?utm_source=tanstack">
+  <img
+    class="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-light.svg"
+    alt="Railway logo"
+  />
+  <img
+    class="hidden dark:block"
+    src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-dark.svg"
+    width="280"
+    alt="Railway logo"
+  />
 </a>
 
 Railway provides instant deployments with zero configuration. Follow the [`Nitro`](#nitro) deployment instructions, then deploy to Railway:
