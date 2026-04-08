@@ -169,6 +169,8 @@ function buildTagsFromMatches(
     children,
   }))
 
+  const unmaskOnReloadScript = buildUnmaskOnReloadHeadScript(router, nonce)
+
   return uniqBy(
     [
       ...resultMeta,
@@ -176,6 +178,7 @@ function buildTagsFromMatches(
       ...constructedLinks,
       ...assetLinks,
       ...styles,
+      ...(unmaskOnReloadScript ? [unmaskOnReloadScript] : []),
       ...headScripts,
     ] as Array<RouterManagedTag>,
     (d) => JSON.stringify(d),
@@ -397,18 +400,128 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     deepEqual,
   )
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  const unmaskOnReloadScript = React.useMemo(
+    () => buildUnmaskOnReloadHeadScript(router, nonce),
+    [router, nonce],
+  )
+
   return uniqBy(
     [
       ...meta,
       ...preloadLinks,
       ...links,
       ...styles,
+      ...(unmaskOnReloadScript ? [unmaskOnReloadScript] : []),
       ...headScripts,
     ] as Array<RouterManagedTag>,
     (d) => {
       return JSON.stringify(d)
     },
   )
+}
+
+function buildUnmaskOnReloadHeadScript(
+  router: ReturnType<typeof useRouter>,
+  nonce: string | undefined,
+) {
+  const routeMaskSources = (router.options.routeMasks ?? [])
+    .filter((routeMask) => routeMask.unmaskOnReload && typeof routeMask.from === 'string')
+    .map((routeMask) => routePathToRegExpSource(routeMask.from))
+
+  if (!routeMaskSources.length) return undefined
+
+  return {
+    tag: 'script',
+    attrs: nonce ? { nonce } : undefined,
+    children: `
+(() => {
+  const maskedRoutePathPatterns = ${JSON.stringify(routeMaskSources)}
+    .map((source) => new RegExp(source))
+  const tempLocation = window.history.state?.__tempLocation
+  if (!tempLocation?.pathname) return
+  if (
+    tempLocation.pathname === window.location.pathname &&
+    (tempLocation.search ?? '') === window.location.search &&
+    (tempLocation.hash ?? '') === window.location.hash
+  ) return
+  if (!maskedRoutePathPatterns.some((pattern) => pattern.test(tempLocation.pathname)))
+    return
+  window.location.replace(
+    tempLocation.pathname + (tempLocation.search ?? '') + (tempLocation.hash ?? ''),
+  )
+})()
+`,
+  } satisfies RouterManagedTag
+}
+
+function routePathToRegExpSource(routePath: string) {
+  let regExpSource = '^'
+
+  for (const segment of routePath.split('/').filter(Boolean)) {
+    const routeSegment = parseRoutePathSegment(segment)
+
+    if (routeSegment.type === 'optional-param') {
+      regExpSource += `(?:/${routeSegment.source})?`
+      continue
+    }
+
+    if (routeSegment.type === 'wildcard') {
+      regExpSource += `(?:/${routeSegment.source})?`
+      continue
+    }
+
+    regExpSource += `/${routeSegment.source}`
+  }
+
+  return `${regExpSource}$`
+}
+
+function parseRoutePathSegment(segment: string) {
+  if (!segment.includes('$')) {
+    return { source: escapeRegExp(segment), type: 'pathname' as const }
+  }
+
+  if (segment === '$') {
+    return { source: '.*', type: 'wildcard' as const }
+  }
+
+  if (segment.startsWith('$')) {
+    return { source: '[^/]+', type: 'param' as const }
+  }
+
+  const openBraceIndex = segment.indexOf('{')
+  if (openBraceIndex === -1) {
+    return { source: escapeRegExp(segment), type: 'pathname' as const }
+  }
+
+  const closeBraceIndex = segment.indexOf('}', openBraceIndex)
+  if (closeBraceIndex === -1) {
+    return { source: escapeRegExp(segment), type: 'pathname' as const }
+  }
+
+  const prefix = segment.slice(0, openBraceIndex)
+  const suffix = segment.slice(closeBraceIndex + 1)
+  const token = segment.slice(openBraceIndex + 1, closeBraceIndex)
+  const source = `${escapeRegExp(prefix)}${token === '$' ? '.*' : '[^/]+'}${escapeRegExp(suffix)}`
+
+  if (token === '$') {
+    return { source, type: 'wildcard' as const }
+  }
+
+  if (token.startsWith('-$') && token.length > 2) {
+    return { source, type: 'optional-param' as const }
+  }
+
+  if (token.startsWith('$') && token.length > 1) {
+    return { source, type: 'param' as const }
+  }
+
+  return { source: escapeRegExp(segment), type: 'pathname' as const }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {

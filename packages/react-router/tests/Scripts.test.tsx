@@ -19,6 +19,7 @@ import {
   createMemoryHistory,
   createRootRoute,
   createRoute,
+  createRouteMask,
   createRouter,
 } from '../src'
 import { Scripts } from '../src/Scripts'
@@ -369,6 +370,95 @@ describe('ssr HeadContent', () => {
     expect(html).toEqual(
       `<title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/>`,
     )
+  })
+
+  test('injects a nonce-aware preload script for masks that unmask on reload', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <HeadContent />,
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+
+    const modalRoute = createRoute({
+      path: '/modal',
+      getParentRoute: () => rootRoute,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, modalRoute])
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      isServer: true,
+      routeMasks: [
+        createRouteMask({
+          from: '/modal',
+          routeTree,
+          to: '/',
+          unmaskOnReload: true,
+        }),
+      ],
+      routeTree,
+      ssr: {
+        nonce: 'test-nonce',
+      },
+    })
+
+    await router.load()
+
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
+    )
+
+    expect(html).toContain('<script nonce="test-nonce">')
+    expect(html).toContain('window.history.state?.__tempLocation')
+    expect(html).toContain('window.location.replace(')
+    expect(html).toContain('^/modal$')
+  })
+
+  test('does not inject an unmask-on-reload script for ordinary route masks', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <HeadContent />,
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+
+    const modalRoute = createRoute({
+      path: '/modal',
+      getParentRoute: () => rootRoute,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, modalRoute])
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      isServer: true,
+      routeMasks: [
+        createRouteMask({
+          from: '/modal',
+          routeTree,
+          to: '/',
+        }),
+      ],
+      routeTree,
+    })
+
+    await router.load()
+
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
+    )
+
+    expect(html).not.toContain('window.history.state?.__tempLocation')
   })
 
   test('keeps manifest stylesheet links mounted when history state changes', async () => {
