@@ -204,7 +204,9 @@ tool](https://docs.netlify.com/start/quickstarts/deploy-from-ai-code-generation-
 
 <a href="https://railway.com?utm_source=tanstack">
   <img
-    class="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-light.svg"
+    class="block dark:hidden"
+    arc="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-light.svg"
+    width="280"
     alt="Railway logo"
   />
   <img
