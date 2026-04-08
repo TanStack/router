@@ -45,7 +45,6 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 ### Cloudflare Workers
 
 When deploying to Cloudflare Workers, you'll need to complete a few extra steps before your users can start using your app.
-testing updats
 
 1. Install `@cloudflare/vite-plugin`
 
