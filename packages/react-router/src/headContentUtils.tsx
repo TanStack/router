@@ -4,9 +4,8 @@ import {
   deepEqual,
   escapeHtml,
   getAssetCrossOrigin,
-  getUnmaskOnReloadScript,
+  getUnmaskOnReloadScriptFromRouteMasks,
   resolveManifestAssetLink,
-  routePathToRegExpSource,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -427,13 +426,7 @@ function buildUnmaskOnReloadHeadScript(
   router: ReturnType<typeof useRouter>,
   nonce: string | undefined,
 ) {
-  const routeMaskSources = (router.options.routeMasks ?? [])
-    .filter((routeMask) => routeMask.unmaskOnReload && typeof routeMask.from === 'string')
-    .map((routeMask) => routePathToRegExpSource(routeMask.from))
-
-  if (!routeMaskSources.length) return undefined
-
-  const script = getUnmaskOnReloadScript(routeMaskSources)
+  const script = getUnmaskOnReloadScriptFromRouteMasks(router.options.routeMasks)
   if (!script) return undefined
 
   return {
