@@ -1,7 +1,7 @@
 import minifiedUnmaskOnReloadScript from './unmask-on-reload-inline?script-string'
 import { routePathToRegExpSource } from './path'
-import type { AnyRoute, RouteMask } from './route'
 import { escapeHtml } from './utils'
+import type { AnyRoute, RouteMask } from './route'
 
 export function getUnmaskOnReloadScriptFromRouteMasks(
   routeMasks?: ReadonlyArray<

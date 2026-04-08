@@ -431,7 +431,7 @@ function buildUnmaskOnReloadHeadScript(
 
   return {
     tag: 'script',
-    attrs: nonce ? { nonce } : undefined,
+    ...(nonce ? { attrs: { nonce } } : {}),
     children: script,
   } satisfies RouterManagedTag
 }
