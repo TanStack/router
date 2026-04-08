@@ -4,6 +4,7 @@ import {
   deepEqual,
   escapeHtml,
   getAssetCrossOrigin,
+  getUnmaskOnReloadScript,
   resolveManifestAssetLink,
   routePathToRegExpSource,
 } from '@tanstack/router-core'
@@ -432,27 +433,13 @@ function buildUnmaskOnReloadHeadScript(
 
   if (!routeMaskSources.length) return undefined
 
+  const script = getUnmaskOnReloadScript(routeMaskSources)
+  if (!script) return undefined
+
   return {
     tag: 'script',
     attrs: nonce ? { nonce } : undefined,
-    children: `
-(() => {
-  const maskedRoutePathPatterns = ${JSON.stringify(routeMaskSources)}
-    .map((source) => new RegExp(source))
-  const tempLocation = window.history.state?.__tempLocation
-  if (!tempLocation?.pathname) return
-  if (
-    tempLocation.pathname === window.location.pathname &&
-    (tempLocation.search ?? '') === window.location.search &&
-    (tempLocation.hash ?? '') === window.location.hash
-  ) return
-  if (!maskedRoutePathPatterns.some((pattern) => pattern.test(tempLocation.pathname)))
-    return
-  window.location.replace(
-    tempLocation.pathname + (tempLocation.search ?? '') + (tempLocation.hash ?? ''),
-  )
-})()
-`,
+    children: script,
   } satisfies RouterManagedTag
 }
 

@@ -111,6 +111,7 @@ export {
 export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
+export { getUnmaskOnReloadScript } from './unmask-on-reload-script'
 
 export { BaseRoute, BaseRouteApi, BaseRootRoute } from './route'
 export type {
