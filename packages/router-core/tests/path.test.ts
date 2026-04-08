@@ -4,6 +4,7 @@ import {
   exactPathTest,
   interpolatePath,
   removeTrailingSlash,
+  routePathToRegExpSource,
   resolvePath,
   trimPathLeft,
 } from '../src/path'
@@ -240,6 +241,62 @@ describe('resolvePath', () => {
       })
     },
   )
+})
+
+describe('routePathToRegExpSource', () => {
+  it('matches static paths', () => {
+    const pattern = new RegExp(routePathToRegExpSource('/modal'))
+
+    expect(pattern.test('/modal')).toBe(true)
+    expect(pattern.test('/billing')).toBe(false)
+  })
+
+  it('matches params', () => {
+    const pattern = new RegExp(
+      routePathToRegExpSource('/photos/$photoId/modal'),
+    )
+
+    expect(pattern.test('/photos/123/modal')).toBe(true)
+    expect(pattern.test('/photos/123')).toBe(false)
+  })
+
+  it('matches optional params with and without the segment', () => {
+    const pattern = new RegExp(
+      routePathToRegExpSource('/docs/{-$lang}/install'),
+    )
+
+    expect(pattern.test('/docs/install')).toBe(true)
+    expect(pattern.test('/docs/en/install')).toBe(true)
+    expect(pattern.test('/docs/en')).toBe(false)
+  })
+
+  it('matches wildcard segments with and without a splat', () => {
+    const pattern = new RegExp(routePathToRegExpSource('/files/$'))
+
+    expect(pattern.test('/files')).toBe(true)
+    expect(pattern.test('/files/readme.md')).toBe(true)
+    expect(pattern.test('/files/nested/path')).toBe(true)
+    expect(pattern.test('/file')).toBe(false)
+  })
+
+  it('keeps wildcard prefix and suffix segments required', () => {
+    const pattern = new RegExp(
+      routePathToRegExpSource('/docs/prefix{$}suffix'),
+    )
+
+    expect(pattern.test('/docs/prefixsuffix')).toBe(true)
+    expect(pattern.test('/docs/prefixnested/pathsuffix')).toBe(true)
+    expect(pattern.test('/docs')).toBe(false)
+  })
+
+  it('matches param segments with prefixes and suffixes', () => {
+    const pattern = new RegExp(
+      routePathToRegExpSource('/blog/prefix{$slug}suffix'),
+    )
+
+    expect(pattern.test('/blog/prefixpostsuffix')).toBe(true)
+    expect(pattern.test('/blog/prefixsuffix')).toBe(false)
+  })
 })
 
 describe.each([{ server: true }, { server: false }])(

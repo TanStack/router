@@ -5,6 +5,7 @@ import {
   escapeHtml,
   getAssetCrossOrigin,
   resolveManifestAssetLink,
+  routePathToRegExpSource,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -453,75 +454,6 @@ function buildUnmaskOnReloadHeadScript(
 })()
 `,
   } satisfies RouterManagedTag
-}
-
-function routePathToRegExpSource(routePath: string) {
-  let regExpSource = '^'
-
-  for (const segment of routePath.split('/').filter(Boolean)) {
-    const routeSegment = parseRoutePathSegment(segment)
-
-    if (routeSegment.type === 'optional-param') {
-      regExpSource += `(?:/${routeSegment.source})?`
-      continue
-    }
-
-    if (routeSegment.type === 'wildcard') {
-      regExpSource += `(?:/${routeSegment.source})?`
-      continue
-    }
-
-    regExpSource += `/${routeSegment.source}`
-  }
-
-  return `${regExpSource}$`
-}
-
-function parseRoutePathSegment(segment: string) {
-  if (!segment.includes('$')) {
-    return { source: escapeRegExp(segment), type: 'pathname' as const }
-  }
-
-  if (segment === '$') {
-    return { source: '.*', type: 'wildcard' as const }
-  }
-
-  if (segment.startsWith('$')) {
-    return { source: '[^/]+', type: 'param' as const }
-  }
-
-  const openBraceIndex = segment.indexOf('{')
-  if (openBraceIndex === -1) {
-    return { source: escapeRegExp(segment), type: 'pathname' as const }
-  }
-
-  const closeBraceIndex = segment.indexOf('}', openBraceIndex)
-  if (closeBraceIndex === -1) {
-    return { source: escapeRegExp(segment), type: 'pathname' as const }
-  }
-
-  const prefix = segment.slice(0, openBraceIndex)
-  const suffix = segment.slice(closeBraceIndex + 1)
-  const token = segment.slice(openBraceIndex + 1, closeBraceIndex)
-  const source = `${escapeRegExp(prefix)}${token === '$' ? '.*' : '[^/]+'}${escapeRegExp(suffix)}`
-
-  if (token === '$') {
-    return { source, type: 'wildcard' as const }
-  }
-
-  if (token.startsWith('-$') && token.length > 2) {
-    return { source, type: 'optional-param' as const }
-  }
-
-  if (token.startsWith('$') && token.length > 1) {
-    return { source, type: 'param' as const }
-  }
-
-  return { source: escapeRegExp(segment), type: 'pathname' as const }
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {

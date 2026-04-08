@@ -199,6 +199,58 @@ export function resolvePath({
 }
 
 /**
+ * Convert a route path template into a regular expression source that matches
+ * concrete pathnames for that route.
+ */
+export function routePathToRegExpSource(routePath: string) {
+  if (!routePath || routePath === '/') {
+    return '^/$'
+  }
+
+  let cursor = 0
+  let regExpSource = ''
+  let segment
+
+  while (cursor < routePath.length) {
+    const start = cursor
+    segment = parseSegment(routePath, start, segment)
+    const end = segment[5]
+    cursor = end + 1
+
+    if (start === end) continue
+
+    const kind = segment[0]
+
+    if (kind === SEGMENT_TYPE_PATHNAME) {
+      regExpSource += `/${escapeRegExp(routePath.substring(start, end))}`
+      continue
+    }
+
+    const prefix = routePath.substring(start, segment[1])
+    const suffix = routePath.substring(segment[4], end)
+
+    if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
+      regExpSource += `(?:/${escapeRegExp(prefix)}[^/]+${escapeRegExp(suffix)})?`
+      continue
+    }
+
+    if (kind === SEGMENT_TYPE_WILDCARD) {
+      if (!prefix && !suffix) {
+        regExpSource += '(?:/.*)?'
+        continue
+      }
+
+      regExpSource += `/${escapeRegExp(prefix)}.*${escapeRegExp(suffix)}`
+      continue
+    }
+
+    regExpSource += `/${escapeRegExp(prefix)}[^/]+${escapeRegExp(suffix)}`
+  }
+
+  return `^${regExpSource}$`
+}
+
+/**
  * Create a pre-compiled decode config from allowed characters.
  * This should be called once at router initialization.
  */
@@ -210,7 +262,7 @@ export function compileDecodeCharMap(
   )
   // Escape special regex characters and join with |
   const pattern = Array.from(charMap.keys())
-    .map((key) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .map((key) => escapeRegExp(key))
     .join('|')
   const regex = new RegExp(pattern, 'g')
   return (encoded: string) =>
@@ -433,4 +485,8 @@ function encodePathParam(
 ) {
   const encoded = encodeURIComponent(value)
   return decoder?.(encoded) ?? encoded
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
