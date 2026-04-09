@@ -138,7 +138,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(16)
+    expect(updates).toBe(14)
   })
 
   test('redirection in preload', async () => {
@@ -174,7 +174,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(12)
+    expect(updates).toBe(10)
   })
 
   test('nothing', async () => {
