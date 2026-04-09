@@ -12,15 +12,15 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/arktype-adapter": "^1.166.9",
-    "@tanstack/solid-query": "6.0.0-beta.3",
+    "@tanstack/solid-query": "^6.0.0-beta.3",
     "@tanstack/solid-router": "^2.0.0-beta.10",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.7",
     "@tanstack/router-plugin": "^1.167.12",
     "@tanstack/valibot-adapter": "^1.166.9",
     "@tanstack/zod-adapter": "^1.166.9",
     "arktype": "^2.1.7",
-    "solid-js": "2.0.0-beta.5",
-    "@solidjs/web": "2.0.0-beta.5",
+    "solid-js": "^2.0.0-beta.5",
+    "@solidjs/web": "^2.0.0-beta.5",
     "tailwindcss": "^4.2.2",
     "valibot": "1.0.0-beta.15",
     "zod": "^3.24.2"
@@ -28,7 +28,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
     "@solidjs/testing-library": "^0.8.10",
-    "vite-plugin-solid": "3.0.0-next.4",
+    "vite-plugin-solid": "^3.0.0-next.4",
     "typescript": "^6.0.2",
     "vite": "^8.0.0"
   }
