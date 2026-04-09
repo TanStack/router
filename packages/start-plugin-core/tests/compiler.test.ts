@@ -434,6 +434,57 @@ describe('edge cases for detectedKinds', () => {
   })
 })
 
+describe('middleware stripping on client', () => {
+  test('strips .middleware() from createServerFn on client builds', async () => {
+    const compiler = createFullCompiler('client')
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        import { authMiddleware } from './server-only-auth'
+        export const fetchData = createServerFn()
+          .middleware([authMiddleware])
+          .handler(async () => {
+            return { data: 'hello' }
+          })
+      `,
+      id: 'with-middleware.ts',
+
+      detectedKinds: new Set(['ServerFn']),
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('createClientRpc')
+    // Middleware should be stripped on client — server-only imports
+    // like authMiddleware must not survive into the client bundle
+    expect(result!.code).not.toContain('.middleware(')
+    expect(result!.code).not.toContain('authMiddleware')
+  })
+
+  test('preserves .middleware() on server builds', async () => {
+    const compiler = createFullCompiler('server')
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        import { authMiddleware } from './server-only-auth'
+        export const fetchData = createServerFn()
+          .middleware([authMiddleware])
+          .handler(async () => {
+            return { data: 'hello' }
+          })
+      `,
+      id: 'with-middleware-server.ts',
+
+      detectedKinds: new Set(['ServerFn']),
+    })
+
+    expect(result).not.toBeNull()
+    // Server should keep middleware intact
+    expect(result!.code).toContain('authMiddleware')
+  })
+})
+
 test('ingestModule handles empty code gracefully', () => {
   const compiler = new StartCompiler({
     env: 'client',

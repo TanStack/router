@@ -227,7 +227,7 @@ export function handleCreateServerFn(
 
   for (const candidate of candidates) {
     const { path: candidatePath, methodChain } = candidate
-    const { inputValidator, handler } = methodChain
+    const { inputValidator, handler, middleware } = methodChain
 
     // Check if the call is assigned to a variable
     if (!candidatePath.parentPath.isVariableDeclarator()) {
@@ -282,6 +282,13 @@ export function handleCreateServerFn(
       if (context.env === 'client') {
         stripMethodCall(inputValidator.callPath)
       }
+    }
+
+    // Handle middleware - remove on client to prevent server-only
+    // dependencies (auth, DB, etc.) from leaking into the client bundle.
+    // Middleware only executes server-side; the client RPC stub skips it.
+    if (middleware && context.env === 'client') {
+      stripMethodCall(middleware.callPath)
     }
 
     const handlerFnPath = handler?.firstArgPath
