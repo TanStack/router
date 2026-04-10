@@ -118,33 +118,25 @@ function attachResponseHeaders<T>(
   return value
 }
 
-function createMalformedPathFallbackRequest(request: Request): Request {
-  const url = new URL(request.url)
-  url.pathname = '/__tanstack_start_malformed_path__'
-
-  return new Request(url, request)
-}
-
 export function requestHandler<TRegister = unknown>(
   handler: RequestHandler<TRegister>,
 ) {
   return (request: Request, requestOpts: any): Promise<Response> | Response => {
-    let effectiveRequest = request
     let h3Event: H3Event
-
     try {
       h3Event = new H3Event(request)
     } catch (error) {
-      if (!(error instanceof URIError)) {
-        throw error
+      if (error instanceof URIError) {
+        return new Response(null, {
+          status: 400,
+          statusText: 'Bad Request',
+        })
       }
-
-      effectiveRequest = createMalformedPathFallbackRequest(request)
-      h3Event = new H3Event(effectiveRequest)
+      throw error
     }
 
     const response = eventStorage.run({ h3Event }, () =>
-      handler(effectiveRequest, requestOpts),
+      handler(request, requestOpts),
     )
     return h3_toResponse(attachResponseHeaders(response, h3Event), h3Event)
   }
