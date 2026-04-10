@@ -5,6 +5,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react'
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -939,4 +940,99 @@ test('reproducer for #6388 - rapid navigation between parameterized routes shoul
   expect(paramPage).toBeInTheDocument()
   expect(paramPage).toHaveTextContent('Param Component 1 Done')
   expect(loaderCompleteMock).toHaveBeenCalled()
+})
+
+test('keeps rendering the current pending route when a regular navigation aborts it', async () => {
+  const firstLoaderAborted = vi.fn()
+  const firstErrorComponentRenderCount = vi.fn()
+  let resolveSecondLoader: (() => void) | undefined
+
+  const rootRoute = createRootRoute({
+    component: () => <Outlet />,
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div data-testid="home-page">Home page</div>,
+  })
+
+  const firstRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/first',
+    pendingMs: 0,
+    loader: async ({ abortController }) => {
+      await new Promise<void>((_resolve, reject) => {
+        abortController.signal.addEventListener('abort', () => {
+          firstLoaderAborted()
+          reject(new DOMException('Aborted', 'AbortError'))
+        })
+      })
+
+      return 'first'
+    },
+    component: () => (
+      <div data-testid="first-page">{firstRoute.useLoaderData()}</div>
+    ),
+    pendingComponent: () => (
+      <div data-testid="first-pending">Pending first route</div>
+    ),
+    errorComponent: ({ error }) => {
+      firstErrorComponentRenderCount(error)
+      return <div data-testid="first-error">{String(error)}</div>
+    },
+  })
+
+  const secondRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/second',
+    loader: async () => {
+      await new Promise<void>((resolve) => {
+        resolveSecondLoader = resolve
+      })
+
+      return 'second'
+    },
+    component: () => (
+      <div data-testid="second-page">{secondRoute.useLoaderData()}</div>
+    ),
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute, firstRoute, secondRoute])
+  const router = createRouter({
+    routeTree,
+    history,
+    defaultPreload: false,
+  })
+
+  render(<RouterProvider router={router} />)
+  await act(() => router.latestLoadPromise)
+
+  expect(await screen.findByTestId('home-page')).toBeInTheDocument()
+
+  act(() => {
+    void router.navigate({ to: '/first' })
+  })
+  expect(await screen.findByTestId('first-pending')).toBeInTheDocument()
+
+  act(() => {
+    void router.navigate({ to: '/second' })
+  })
+  await act(() => sleep(0))
+
+  await waitFor(() => {
+    expect(resolveSecondLoader).toBeDefined()
+  })
+
+  expect(firstLoaderAborted).toHaveBeenCalled()
+  expect(screen.getByTestId('first-pending')).toBeInTheDocument()
+  expect(firstErrorComponentRenderCount).not.toHaveBeenCalled()
+  expect(screen.queryByTestId('first-error')).not.toBeInTheDocument()
+
+  act(() => {
+    resolveSecondLoader?.()
+  })
+
+  await act(() => router.latestLoadPromise)
+  expect(await screen.findByTestId('second-page')).toHaveTextContent('second')
 })

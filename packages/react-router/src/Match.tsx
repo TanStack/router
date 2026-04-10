@@ -413,7 +413,10 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         }
       }
     }
-    throw router.getMatch(match.id)?._nonReactive.loadPromise
+    if (match._nonReactive.pendingRenderPromise?.status !== 'pending') {
+      match._nonReactive.pendingRenderPromise = createControlledPromise<void>()
+    }
+    throw match._nonReactive.pendingRenderPromise
   }
 
   if (match.status === 'notFound') {

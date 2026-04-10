@@ -1423,6 +1423,79 @@ describe('invalidate', () => {
     })
   })
 
+  it('keeps rendering a suspense fallback when invalidate({ forcePending: true }) reloads a route', async () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/force-pending'],
+    })
+    const errorComponentRenderCount = vi.fn()
+    let shouldSuspendReload = false
+    let resolveReload: (() => void) | undefined
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const forcePendingRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/force-pending',
+      pendingMs: 0,
+      pendingMinMs: 10,
+      loader: async () => {
+        if (shouldSuspendReload) {
+          await new Promise<void>((resolve) => {
+            resolveReload = resolve
+          })
+        }
+
+        return 'done'
+      },
+      component: () => (
+        <div data-testid="force-pending-route">
+          {forcePendingRoute.useLoaderData()}
+        </div>
+      ),
+      pendingComponent: () => (
+        <div data-testid="force-pending-fallback">Pending...</div>
+      ),
+      errorComponent: ({ error }) => {
+        errorComponentRenderCount(error)
+        return <div data-testid="force-pending-error">{String(error)}</div>
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([forcePendingRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.load())
+    expect(await screen.findByTestId('force-pending-route')).toHaveTextContent(
+      'done',
+    )
+
+    shouldSuspendReload = true
+    act(() => {
+      void router.invalidate({ forcePending: true })
+    })
+
+    expect(
+      await screen.findByTestId('force-pending-fallback'),
+    ).toBeInTheDocument()
+    expect(errorComponentRenderCount).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('force-pending-error')).not.toBeInTheDocument()
+
+    act(() => {
+      resolveReload?.()
+    })
+
+    await act(() => router.latestLoadPromise)
+    expect(await screen.findByTestId('force-pending-route')).toHaveTextContent(
+      'done',
+    )
+  })
+
   /**
    * Regression test:
    * - When a route loader throws `notFound()`, the match enters a `'notFound'` status.

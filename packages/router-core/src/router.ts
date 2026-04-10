@@ -112,6 +112,13 @@ export type ControllablePromise<T = any> = Promise<T> & {
 
 export type InjectedHtmlEntry = Promise<string>
 
+const clearPendingRenderPromise = (match: AnyRouteMatch | undefined) => {
+  if (match) {
+    match._nonReactive.pendingRenderPromise?.resolve()
+    match._nonReactive.pendingRenderPromise = undefined
+  }
+}
+
 export interface Register {
   // Lots of things on here like...
   // router
@@ -2475,6 +2482,19 @@ export class RouterCore<
                      * or reloads re-run their loaders instead of reusing the failed/not-found data.
                      */
                     if (mountPending) {
+                      const pendingMatchesById = new Map(
+                        pendingMatches.map((match) => [match.id, match]),
+                      )
+
+                      currentMatches.forEach((currentMatch) => {
+                        if (
+                          pendingMatchesById.get(currentMatch.id)?.status !==
+                          'pending'
+                        ) {
+                          clearPendingRenderPromise(currentMatch)
+                        }
+                      })
+
                       this.stores.setActiveMatches(pendingMatches)
                       this.stores.setPendingMatches([])
                       this.stores.setCachedMatches([
@@ -2634,7 +2654,11 @@ export class RouterCore<
 
       const activeMatch = this.stores.activeMatchStoresById.get(id)
       if (activeMatch) {
-        activeMatch.setState(updater)
+        const next = updater(activeMatch.state)
+        if (next.status !== 'pending') {
+          clearPendingRenderPromise(activeMatch.state)
+        }
+        activeMatch.setState(() => next)
         return
       }
 
@@ -2696,9 +2720,16 @@ export class RouterCore<
     }
 
     this.batch(() => {
-      this.stores.setActiveMatches(
-        this.stores.activeMatchesSnapshot.state.map(invalidate),
-      )
+      const activeMatches = this.stores.activeMatchesSnapshot.state
+      const nextActiveMatches = activeMatches.map(invalidate)
+
+      activeMatches.forEach((activeMatch, index) => {
+        if (nextActiveMatches[index]?.status !== 'pending') {
+          clearPendingRenderPromise(activeMatch)
+        }
+      })
+
+      this.stores.setActiveMatches(nextActiveMatches)
       this.stores.setCachedMatches(
         this.stores.cachedMatchesSnapshot.state.map(invalidate),
       )

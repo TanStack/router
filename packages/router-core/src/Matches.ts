@@ -145,6 +145,7 @@ export interface RouteMatch<
     /** @internal */
     pendingTimeout?: ReturnType<typeof setTimeout>
     loadPromise?: ControlledPromise<void>
+    pendingRenderPromise?: ControlledPromise<void>
     displayPendingPromise?: Promise<void>
     minPendingPromise?: ControlledPromise<void>
     dehydrated?: boolean

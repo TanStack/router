@@ -841,7 +841,6 @@ const loadRouteMatch = async (
           match._nonReactive.loaderPromise?.resolve()
           match._nonReactive.loadPromise?.resolve()
           match._nonReactive.loaderPromise = undefined
-          match._nonReactive.loadPromise = undefined
         } catch (err) {
           if (isRedirect(err)) {
             await inner.router.navigate(err.options)
@@ -940,7 +939,6 @@ const loadRouteMatch = async (
   if (!loaderIsRunningAsync) {
     match._nonReactive.loaderPromise?.resolve()
     match._nonReactive.loadPromise?.resolve()
-    match._nonReactive.loadPromise = undefined
   }
 
   clearTimeout(match._nonReactive.pendingTimeout)
