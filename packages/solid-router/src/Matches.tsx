@@ -17,11 +17,8 @@ import type {
   MakeRouteMatchUnion,
   MaskOptions,
   MatchRouteOptions,
-  NoInfer,
   RegisteredRouter,
-  ResolveRelativePath,
   ResolveRoute,
-  RouteByPath,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 
@@ -166,10 +163,9 @@ export type MakeMatchRouteOptions<
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | ((
-        params?: RouteByPath<
-          TRouter['routeTree'],
-          ResolveRelativePath<TFrom, NoInfer<TTo>>
-        >['types']['allParams'],
+        params?: Expand<
+          ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
+        >,
       ) => Solid.JSX.Element)
     | Solid.JSX.Element
 }
