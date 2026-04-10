@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SimpleRouteImport } from './routes/simple'
 import { Route as PathnameMiddlewareRouteImport } from './routes/pathname-middleware'
 import { Route as MultipleServerFunctionsRouteImport } from './routes/multiple-server-functions'
+import { Route as ContextCollisionRouteImport } from './routes/context-collision'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SimpleRoute = SimpleRouteImport.update({
@@ -29,6 +30,11 @@ const MultipleServerFunctionsRoute = MultipleServerFunctionsRouteImport.update({
   path: '/multiple-server-functions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContextCollisionRoute = ContextCollisionRouteImport.update({
+  id: '/context-collision',
+  path: '/context-collision',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/context-collision': typeof ContextCollisionRoute
   '/multiple-server-functions': typeof MultipleServerFunctionsRoute
   '/pathname-middleware': typeof PathnameMiddlewareRoute
   '/simple': typeof SimpleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/context-collision': typeof ContextCollisionRoute
   '/multiple-server-functions': typeof MultipleServerFunctionsRoute
   '/pathname-middleware': typeof PathnameMiddlewareRoute
   '/simple': typeof SimpleRoute
@@ -50,6 +58,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/context-collision': typeof ContextCollisionRoute
   '/multiple-server-functions': typeof MultipleServerFunctionsRoute
   '/pathname-middleware': typeof PathnameMiddlewareRoute
   '/simple': typeof SimpleRoute
@@ -58,14 +67,21 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/context-collision'
     | '/multiple-server-functions'
     | '/pathname-middleware'
     | '/simple'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/multiple-server-functions' | '/pathname-middleware' | '/simple'
+  to:
+    | '/'
+    | '/context-collision'
+    | '/multiple-server-functions'
+    | '/pathname-middleware'
+    | '/simple'
   id:
     | '__root__'
     | '/'
+    | '/context-collision'
     | '/multiple-server-functions'
     | '/pathname-middleware'
     | '/simple'
@@ -73,6 +89,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ContextCollisionRoute: typeof ContextCollisionRoute
   MultipleServerFunctionsRoute: typeof MultipleServerFunctionsRoute
   PathnameMiddlewareRoute: typeof PathnameMiddlewareRoute
   SimpleRoute: typeof SimpleRoute
@@ -101,6 +118,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MultipleServerFunctionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/context-collision': {
+      id: '/context-collision'
+      path: '/context-collision'
+      fullPath: '/context-collision'
+      preLoaderRoute: typeof ContextCollisionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -113,6 +137,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContextCollisionRoute: ContextCollisionRoute,
   MultipleServerFunctionsRoute: MultipleServerFunctionsRoute,
   PathnameMiddlewareRoute: PathnameMiddlewareRoute,
   SimpleRoute: SimpleRoute,

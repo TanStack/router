@@ -117,8 +117,8 @@ export const handleServerAction = async ({
                 deserializedContext
               ) {
                 params.context = safeObjectMerge(
-                  context,
                   deserializedContext as Record<string, unknown>,
+                  context,
                 )
               }
             } catch (e) {
@@ -144,7 +144,7 @@ export const handleServerAction = async ({
           const payload: any = payloadParam
             ? parsePayload(JSON.parse(payloadParam))
             : {}
-          payload.context = safeObjectMerge(context, payload.context)
+          payload.context = safeObjectMerge(payload.context, context)
           payload.method = methodUpper
           // Send it through!
           return await action(payload)

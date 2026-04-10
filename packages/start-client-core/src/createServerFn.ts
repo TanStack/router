@@ -152,7 +152,6 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             const startContext = getStartContextServerOnly()
             const serverContextAfterGlobalMiddlewares =
               startContext.contextAfterGlobalMiddlewares
-            // Use safeObjectMerge for opts.context which comes from client
             const ctx = {
               ...extractedFn,
               ...opts,
@@ -160,10 +159,10 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
               // (which has id, name, filename) rather than the partial one from SSR/client
               // callers (which only has id)
               serverFnMeta: extractedFn.serverFnMeta,
-              // Use safeObjectMerge for opts.context which comes from client
+              // Merge client context first so trusted server middleware context wins.
               context: safeObjectMerge(
-                serverContextAfterGlobalMiddlewares,
                 opts.context,
+                serverContextAfterGlobalMiddlewares,
               ),
               request: startContext.request,
             }
