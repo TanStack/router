@@ -597,58 +597,57 @@ function getLinkEventHandlers(
   }
 }
 
-const propsUnsafeToSpread = new Set([
-  'activeProps',
-  'inactiveProps',
-  'activeOptions',
-  'to',
-  'preload',
-  'preloadDelay',
-  'hashScrollIntoView',
-  'replace',
-  'startTransition',
-  'resetScroll',
-  'viewTransition',
-  'children',
-  'target',
-  'disabled',
-  'style',
-  'class',
-  'onClick',
-  'onBlur',
-  'onFocus',
-  'onMouseEnter',
-  'onMouseenter',
-  'onMouseLeave',
-  'onMouseleave',
-  'onMouseOver',
-  'onMouseover',
-  'onMouseOut',
-  'onMouseout',
-  'onTouchStart',
-  'onTouchstart',
-  'ignoreBlocker',
-  'params',
-  'search',
-  'hash',
-  'state',
-  'mask',
-  'reloadDocument',
-  '_asChild',
-  'from',
-  'additionalProps',
-])
-
-// Create safe props that can be spread
 const getPropsSafeToSpread = (options: AnyLinkPropsOptions) => {
-  const result: Record<string, unknown> = {}
-  for (const key in options) {
-    if (!propsUnsafeToSpread.has(key)) {
-      result[key] = (options as Record<string, unknown>)[key]
-    }
+  const {
+    activeProps: _activeProps,
+    inactiveProps: _inactiveProps,
+    activeOptions: _activeOptions,
+    to: _to,
+    preload: _preload,
+    preloadDelay: _preloadDelay,
+    preloadIntentProximity: _preloadIntentProximity,
+    hashScrollIntoView: _hashScrollIntoView,
+    replace: _replace,
+    startTransition: _startTransition,
+    resetScroll: _resetScroll,
+    viewTransition: _viewTransition,
+    children: _children,
+    target: _target,
+    disabled: _disabled,
+    style: _style,
+    class: _class,
+    onClick: _onClick,
+    onBlur: _onBlur,
+    onFocus: _onFocus,
+    onMouseEnter: _onMouseEnter,
+    onMouseenter: _onMouseenter,
+    onMouseLeave: _onMouseLeave,
+    onMouseleave: _onMouseleave,
+    onMouseOver: _onMouseOver,
+    onMouseover: _onMouseover,
+    onMouseOut: _onMouseOut,
+    onMouseout: _onMouseout,
+    onTouchStart: _onTouchStart,
+    onTouchstart: _onTouchstart,
+    ignoreBlocker: _ignoreBlocker,
+    params: _params,
+    search: _search,
+    hash: _hash,
+    state: _state,
+    mask: _mask,
+    reloadDocument: _reloadDocument,
+    unsafeRelative: _unsafeRelative,
+    _asChild: __asChild,
+    from: _from,
+    additionalProps: _additionalProps,
+    ...propsSafeToSpread
+  } = options as AnyLinkPropsOptions & {
+    additionalProps?: unknown
+    children?: unknown
+    _asChild?: unknown
   }
 
-  return result
+  return propsSafeToSpread
 }
 
 function getIsActive({
@@ -872,6 +871,7 @@ const LinkImpl = Vue.defineComponent({
     'to',
     'preload',
     'preloadDelay',
+    'preloadIntentProximity',
     'activeProps',
     'inactiveProps',
     'activeOptions',

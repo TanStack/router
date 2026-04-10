@@ -64,6 +64,7 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
+    preloadIntentProximity: _preloadIntentProximity,
     hashScrollIntoView,
     replace,
     startTransition,
