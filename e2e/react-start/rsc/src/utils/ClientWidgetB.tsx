@@ -1,5 +1,6 @@
 'use client'
 
+import { useHydrated } from '@tanstack/react-router'
 import * as React from 'react'
 import styles from './ClientWidgetB.module.css'
 
@@ -9,6 +10,7 @@ import styles from './ClientWidgetB.module.css'
  */
 export function ClientWidgetB({ title }: { title: string }) {
   const [active, setActive] = React.useState(false)
+  const isHydrated = useHydrated()
 
   return (
     <div className={styles.widget} data-testid="client-widget-b">
@@ -25,6 +27,7 @@ export function ClientWidgetB({ title }: { title: string }) {
         className={`${styles.toggleButton} ${active ? styles.active : ''}`}
         onClick={() => setActive((a) => !a)}
         data-testid="client-widget-b-toggle"
+        disabled={!isHydrated}
       >
         {active ? 'Active' : 'Inactive'}
       </button>

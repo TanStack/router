@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useHydrated } from '@tanstack/react-router'
 import { CompositeComponent } from '@tanstack/react-start/rsc'
 import { streamNotificationsReadable } from '~/utils/streamingServerComponents'
 import {
@@ -22,6 +22,7 @@ export const Route = createFileRoute('/rsc-stream-readable')({
 type NotificationRSC = any
 
 function RscStreamReadableComponent() {
+  const hydrated = useHydrated()
   const [notifications, setNotifications] = React.useState<
     Array<NotificationRSC>
   >([])
@@ -120,7 +121,7 @@ function RscStreamReadableComponent() {
         <button
           data-testid="start-stream-btn"
           onClick={startStreaming}
-          disabled={isStreaming}
+          disabled={isStreaming || !hydrated}
           style={{
             ...clientStyles.button,
             ...clientStyles.primaryButton,
@@ -211,6 +212,7 @@ function RscStreamReadableComponent() {
                 <button
                   data-testid={`expand-btn-${index}`}
                   onClick={() => toggleExpanded(id)}
+                  disabled={!hydrated}
                   style={{
                     ...clientStyles.button,
                     ...clientStyles.secondaryButton,

@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Stream Generator Tests - Streaming RSCs via async generator', () => {
   test('Page loads with empty state and controls visible', async ({ page }) => {
     await page.goto('/rsc-stream-generator')
@@ -32,7 +30,7 @@ test.describe('RSC Stream Generator Tests - Streaming RSCs via async generator',
   }) => {
     await page.goto('/rsc-stream-generator')
     await page.waitForURL('/rsc-stream-generator')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Start streaming
     await page.getByTestId('start-stream-btn').click()
@@ -63,7 +61,7 @@ test.describe('RSC Stream Generator Tests - Streaming RSCs via async generator',
   test('Notifications stream in progressively', async ({ page }) => {
     await page.goto('/rsc-stream-generator')
     await page.waitForURL('/rsc-stream-generator')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Start streaming
     await page.getByTestId('start-stream-btn').click()
@@ -98,7 +96,7 @@ test.describe('RSC Stream Generator Tests - Streaming RSCs via async generator',
   }) => {
     await page.goto('/rsc-stream-generator')
     await page.waitForURL('/rsc-stream-generator')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Start streaming and wait for completion
     await page.getByTestId('start-stream-btn').click()
@@ -124,7 +122,7 @@ test.describe('RSC Stream Generator Tests - Streaming RSCs via async generator',
   }) => {
     await page.goto('/rsc-stream-generator')
     await page.waitForURL('/rsc-stream-generator')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Start streaming and wait for completion
     await page.getByTestId('start-stream-btn').click()
@@ -160,7 +158,7 @@ test.describe('RSC Stream Generator Tests - Streaming RSCs via async generator',
   }) => {
     await page.goto('/rsc-stream-generator')
     await page.waitForURL('/rsc-stream-generator')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Start streaming and wait for completion
     await page.getByTestId('start-stream-btn').click()
@@ -184,7 +182,7 @@ test.describe('RSC Stream Generator Tests - Streaming RSCs via async generator',
   }) => {
     await page.goto('/rsc-stream-generator')
     await page.waitForURL('/rsc-stream-generator')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Start streaming and wait for completion
     await page.getByTestId('start-stream-btn').click()
@@ -215,7 +213,7 @@ test.describe('RSC Stream Generator Tests - Streaming RSCs via async generator',
   test('Can restart streaming after completion', async ({ page }) => {
     await page.goto('/rsc-stream-generator')
     await page.waitForURL('/rsc-stream-generator')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // First stream
     await page.getByTestId('start-stream-btn').click()

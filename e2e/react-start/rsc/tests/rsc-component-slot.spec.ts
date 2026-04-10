@@ -1,15 +1,13 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Component Slot Tests - Passing components as props', () => {
   test('Renders server product card with client component slots', async ({
     page,
   }) => {
     await page.goto('/rsc-component-slot')
     await page.waitForURL('/rsc-component-slot')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify server-rendered product card
     await expect(page.getByTestId('rsc-product-card')).toBeVisible()
@@ -29,7 +27,7 @@ test.describe('RSC Component Slot Tests - Passing components as props', () => {
   test('Changing quantity does not reload RSC', async ({ page }) => {
     await page.goto('/rsc-component-slot')
     await page.waitForURL('/rsc-component-slot')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial RSC timestamp
     const initialTimestamp = await page
@@ -66,7 +64,7 @@ test.describe('RSC Component Slot Tests - Passing components as props', () => {
   test('Toggling badge details does not reload RSC', async ({ page }) => {
     await page.goto('/rsc-component-slot')
     await page.waitForURL('/rsc-component-slot')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial RSC timestamp
     const initialTimestamp = await page
@@ -96,7 +94,7 @@ test.describe('RSC Component Slot Tests - Passing components as props', () => {
   test('Add to cart interaction does not reload RSC', async ({ page }) => {
     await page.goto('/rsc-component-slot')
     await page.waitForURL('/rsc-component-slot')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial RSC timestamp
     const initialTimestamp = await page
@@ -131,7 +129,7 @@ test.describe('RSC Component Slot Tests - Passing components as props', () => {
   }) => {
     await page.goto('/rsc-component-slot')
     await page.waitForURL('/rsc-component-slot')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial RSC timestamp
     const initialTimestamp = await page
@@ -161,7 +159,7 @@ test.describe('RSC Component Slot Tests - Passing components as props', () => {
   test('Reset quantity works without reloading RSC', async ({ page }) => {
     await page.goto('/rsc-component-slot')
     await page.waitForURL('/rsc-component-slot')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial RSC timestamp
     const initialTimestamp = await page
@@ -193,7 +191,7 @@ test.describe('RSC Component Slot Tests - Passing components as props', () => {
   }) => {
     await page.goto('/rsc-component-slot')
     await page.waitForURL('/rsc-component-slot')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify server-provided data is passed to client components
     // Product ID comes from server and is displayed in client component

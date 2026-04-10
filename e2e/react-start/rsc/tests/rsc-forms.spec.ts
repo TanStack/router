@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Page loads with todo list visible', async ({ page }) => {
     await page.goto('/rsc-forms')
@@ -22,7 +20,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Add todo button is disabled when input is empty', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify button is disabled with empty input
     await expect(page.getByTestId('add-todo-btn')).toBeDisabled()
@@ -43,7 +41,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Adding a todo refreshes the RSC', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial timestamp
     const initialTimestamp = await page
@@ -56,7 +54,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
     await page.getByTestId('add-todo-btn').click()
 
     // Wait for the RSC to refetch (router.invalidate())
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('todo-input')).toHaveValue('')
 
     // Verify timestamp changed (RSC refetched)
     const newTimestamp = await page
@@ -71,16 +69,13 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Todo input clears after successful submission', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Type and submit
     await page.getByTestId('todo-input').fill('Clear test todo')
     await expect(page.getByTestId('todo-input')).toHaveValue('Clear test todo')
 
     await page.getByTestId('add-todo-btn').click()
-
-    // Wait for submission
-    await page.waitForTimeout(500)
 
     // Input should be cleared
     await expect(page.getByTestId('todo-input')).toHaveValue('')
@@ -89,7 +84,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Form submission works via Enter key', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial timestamp
     const initialTimestamp = await page
@@ -100,8 +95,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
     await page.getByTestId('todo-input').fill('Enter key todo')
     await page.getByTestId('todo-input').press('Enter')
 
-    // Wait for submission
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('todo-input')).toHaveValue('')
 
     // Verify RSC refetched
     const newTimestamp = await page
@@ -116,12 +110,12 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Multiple todos can be added in sequence', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Add first todo
     await page.getByTestId('todo-input').fill('First todo')
     await page.getByTestId('add-todo-btn').click()
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('todo-input')).toHaveValue('')
 
     const firstTimestamp = await page
       .getByTestId('loader-timestamp')
@@ -130,7 +124,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
     // Add second todo
     await page.getByTestId('todo-input').fill('Second todo')
     await page.getByTestId('add-todo-btn').click()
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('todo-input')).toHaveValue('')
 
     const secondTimestamp = await page
       .getByTestId('loader-timestamp')
@@ -142,7 +136,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
     // Add third todo
     await page.getByTestId('todo-input').fill('Third todo')
     await page.getByTestId('add-todo-btn').click()
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('todo-input')).toHaveValue('')
 
     const thirdTimestamp = await page
       .getByTestId('loader-timestamp')
@@ -154,7 +148,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Whitespace-only input does not submit', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Type whitespace only
     await page.getByTestId('todo-input').fill('   ')
@@ -167,10 +161,10 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
 
     // Try to submit
     await page.getByTestId('add-todo-btn').click({ force: true })
-    await page.waitForTimeout(300)
 
     // Timestamp should not change for whitespace-only input
     // (depends on implementation - if trim() is used, it won't submit)
+    await expect(page.getByTestId('todo-input')).toHaveValue('   ')
     const newTimestamp = await page
       .getByTestId('loader-timestamp')
       .textContent()

@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Context Tests - React Context interaction', () => {
   test('Page loads with context controls visible', async ({ page }) => {
     await page.goto('/rsc-context')
@@ -27,7 +25,7 @@ test.describe('RSC Context Tests - React Context interaction', () => {
   test('Theme toggle changes context', async ({ page }) => {
     await page.goto('/rsc-context')
     await page.waitForURL('/rsc-context')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify initial theme
     await expect(page.getByTestId('current-theme')).toContainText(
@@ -55,7 +53,7 @@ test.describe('RSC Context Tests - React Context interaction', () => {
   test('Notifications toggle works correctly', async ({ page }) => {
     await page.goto('/rsc-context')
     await page.waitForURL('/rsc-context')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify initial notifications state is ON
     await expect(page.getByTestId('toggle-notifications-btn')).toContainText(
@@ -85,7 +83,7 @@ test.describe('RSC Context Tests - React Context interaction', () => {
   test('Theme changes do not refetch RSC', async ({ page }) => {
     await page.goto('/rsc-context')
     await page.waitForURL('/rsc-context')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial timestamp
     const initialTimestamp = await page
@@ -94,11 +92,13 @@ test.describe('RSC Context Tests - React Context interaction', () => {
 
     // Toggle theme multiple times
     await page.getByTestId('toggle-theme-btn').click()
-    await page.waitForTimeout(200)
+    await expect(page.getByTestId('current-theme')).toContainText('Theme: dark')
     await page.getByTestId('toggle-theme-btn').click()
-    await page.waitForTimeout(200)
+    await expect(page.getByTestId('current-theme')).toContainText(
+      'Theme: light',
+    )
     await page.getByTestId('toggle-theme-btn').click()
-    await page.waitForTimeout(200)
+    await expect(page.getByTestId('current-theme')).toContainText('Theme: dark')
 
     // Verify timestamp hasn't changed (RSC not refetched)
     const newTimestamp = await page
@@ -121,7 +121,7 @@ test.describe('RSC Context Tests - React Context interaction', () => {
   }) => {
     await page.goto('/rsc-context')
     await page.waitForURL('/rsc-context')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify context consumer is visible
     await expect(page.getByTestId('context-consumer')).toBeVisible()
@@ -144,7 +144,7 @@ test.describe('RSC Context Tests - React Context interaction', () => {
   test('Multiple context changes work correctly', async ({ page }) => {
     await page.goto('/rsc-context')
     await page.waitForURL('/rsc-context')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Change both theme and notifications
     await page.getByTestId('toggle-theme-btn').click()

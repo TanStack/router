@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useHydrated } from '@tanstack/react-router'
 import { CompositeComponent } from '@tanstack/react-start/rsc'
 import { streamNotificationsGenerator } from '~/utils/streamingServerComponents'
 import {
@@ -34,6 +34,7 @@ type NotificationRSC = any
 
 function RscStreamLoaderComponent() {
   const { notificationStream, loaderTimestamp } = Route.useLoaderData()
+  const hydrated = useHydrated()
   const [notifications, setNotifications] = React.useState<
     Array<NotificationRSC>
   >([])
@@ -199,6 +200,7 @@ function RscStreamLoaderComponent() {
                 <button
                   data-testid={`expand-btn-${index}`}
                   onClick={() => toggleExpanded(id)}
+                  disabled={!hydrated}
                   style={{
                     ...clientStyles.button,
                     ...clientStyles.secondaryButton,

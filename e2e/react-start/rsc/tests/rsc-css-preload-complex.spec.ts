@@ -79,9 +79,7 @@ test.describe('RSC Complex CSS Preload Tests', () => {
       '[data-testid="client-widget-a-increment"]',
     )
     await expect(incrementBtn).toBeVisible()
-
-    // Give hydration time to complete
-    await page.waitForTimeout(500)
+    await expect(incrementBtn).toBeEnabled()
 
     const count = page.locator('[data-testid="client-widget-a-count"]')
     await expect(count).toHaveText('0')
@@ -101,9 +99,7 @@ test.describe('RSC Complex CSS Preload Tests', () => {
 
     const toggle = page.locator('[data-testid="client-widget-b-toggle"]')
     await expect(toggle).toBeVisible()
-
-    // Give hydration time to complete
-    await page.waitForTimeout(500)
+    await expect(toggle).toBeEnabled()
 
     await expect(toggle).toHaveText('Inactive')
 
@@ -172,9 +168,7 @@ test.describe('RSC Complex CSS Preload Tests', () => {
       '[data-testid="client-widget-a-increment"]',
     )
     await expect(incrementBtn).toBeVisible()
-
-    // Give hydration time to complete
-    await page.waitForTimeout(500)
+    await expect(incrementBtn).toBeEnabled()
 
     // Click to verify hydration
     await incrementBtn.click()

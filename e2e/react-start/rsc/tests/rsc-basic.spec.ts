@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Basic Tests', () => {
   test('RSC renders with server timestamp', async ({ page }) => {
     await page.goto('/rsc-basic')
@@ -31,7 +29,7 @@ test.describe('RSC Basic Tests', () => {
     // Start from home
     await page.goto('/')
     await page.waitForURL('/')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Navigate to RSC page via nav bar (need to be specific to avoid matching example cards)
     await page.getByTestId('nav-basic').click()

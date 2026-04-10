@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Caching Tests - staleTime behavior', () => {
   test('Page loads with cache controls visible', async ({ page }) => {
     await page.goto('/rsc-caching')
@@ -26,7 +24,7 @@ test.describe('RSC Caching Tests - staleTime behavior', () => {
   test('Force refresh button triggers RSC refetch', async ({ page }) => {
     await page.goto('/rsc-caching')
     await page.waitForURL('/rsc-caching')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial timestamp
     const initialTimestamp = await page
@@ -36,41 +34,37 @@ test.describe('RSC Caching Tests - staleTime behavior', () => {
     // Click force refresh
     await page.getByTestId('force-refresh-btn').click()
 
-    // Wait for refetch
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('invalidate-count')).toContainText(
+      'Manual invalidations: 1',
+    )
+    await expect(page.getByTestId('loader-timestamp')).not.toHaveText(
+      initialTimestamp!,
+    )
 
     // Verify timestamp changed
     const newTimestamp = await page
       .getByTestId('loader-timestamp')
       .textContent()
     expect(Number(newTimestamp)).toBeGreaterThan(Number(initialTimestamp))
-
-    // Verify invalidation count increased
-    await expect(page.getByTestId('invalidate-count')).toContainText(
-      'Manual invalidations: 1',
-    )
   })
 
   test('Multiple force refreshes increment counter', async ({ page }) => {
     await page.goto('/rsc-caching')
     await page.waitForURL('/rsc-caching')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Click force refresh multiple times
     await page.getByTestId('force-refresh-btn').click()
-    await page.waitForTimeout(300)
     await expect(page.getByTestId('invalidate-count')).toContainText(
       'Manual invalidations: 1',
     )
 
     await page.getByTestId('force-refresh-btn').click()
-    await page.waitForTimeout(300)
     await expect(page.getByTestId('invalidate-count')).toContainText(
       'Manual invalidations: 2',
     )
 
     await page.getByTestId('force-refresh-btn').click()
-    await page.waitForTimeout(300)
     await expect(page.getByTestId('invalidate-count')).toContainText(
       'Manual invalidations: 3',
     )
@@ -81,7 +75,7 @@ test.describe('RSC Caching Tests - staleTime behavior', () => {
   }) => {
     await page.goto('/rsc-caching')
     await page.waitForURL('/rsc-caching')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial timestamp
     const initialTimestamp = await page
@@ -110,7 +104,7 @@ test.describe('RSC Caching Tests - staleTime behavior', () => {
   test('Each force refresh updates the timestamp', async ({ page }) => {
     await page.goto('/rsc-caching')
     await page.waitForURL('/rsc-caching')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     const timestamps: number[] = []
 
@@ -120,8 +114,12 @@ test.describe('RSC Caching Tests - staleTime behavior', () => {
 
     // Do 3 force refreshes, collecting timestamps
     for (let i = 0; i < 3; i++) {
+      const previousTimestamp = String(timestamps[timestamps.length - 1])
       await page.getByTestId('force-refresh-btn').click()
-      await page.waitForTimeout(300)
+      await expect(page.getByTestId('loader-timestamp')).not.toHaveText(
+        previousTimestamp,
+      )
+      await page.waitForTimeout(50)
       const ts = await page.getByTestId('loader-timestamp').textContent()
       timestamps.push(Number(ts))
     }
@@ -150,7 +148,7 @@ test.describe('RSC Caching Tests - staleTime behavior', () => {
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Navigate to caching page via nav bar
     await page.getByTestId('nav-caching').click()

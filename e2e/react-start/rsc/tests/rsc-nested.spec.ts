@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Nested Tests - RSCs composed inside each other via client', () => {
   test('Nested RSCs render correctly on initial load', async ({ page }) => {
     await page.goto('/rsc-nested')
@@ -48,7 +46,7 @@ test.describe('RSC Nested Tests - RSCs composed inside each other via client', (
   }) => {
     await page.goto('/rsc-nested')
     await page.waitForURL('/rsc-nested')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial timestamps for both RSCs
     const initialProductTimestamp = await page
@@ -86,7 +84,7 @@ test.describe('RSC Nested Tests - RSCs composed inside each other via client', (
   }) => {
     await page.goto('/rsc-nested')
     await page.waitForURL('/rsc-nested')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial timestamps
     const initialProductTimestamp = await page
@@ -146,7 +144,7 @@ test.describe('RSC Nested Tests - RSCs composed inside each other via client', (
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Navigate to nested RSC page via nav bar
     await page.getByTestId('nav-nested').click()
@@ -191,7 +189,7 @@ test.describe('RSC Nested Tests - RSCs composed inside each other via client', (
   }) => {
     await page.goto('/rsc-nested')
     await page.waitForURL('/rsc-nested')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial timestamps
     const initialProductTimestamp = await page

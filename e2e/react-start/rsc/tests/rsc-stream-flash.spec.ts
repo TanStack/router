@@ -57,7 +57,7 @@ test.describe('RSC Stream Flash Prevention', () => {
   test('no flash when RSCs stream via ReadableStream', async ({ page }) => {
     await page.goto('/rsc-stream-readable')
     await page.waitForURL('/rsc-stream-readable')
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Start streaming and monitor for flash on notification elements
     const flashDetected = await monitorElementsForFlash(
@@ -82,7 +82,7 @@ test.describe('RSC Stream Flash Prevention', () => {
   test('no flash when RSCs stream via async generator', async ({ page }) => {
     await page.goto('/rsc-stream-generator')
     await page.waitForURL('/rsc-stream-generator')
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     const flashDetected = await monitorElementsForFlash(
       page,
@@ -124,7 +124,7 @@ test.describe('RSC Stream Flash Prevention', () => {
   test('streamed RSCs have SERVER COMPONENT badge', async ({ page }) => {
     await page.goto('/rsc-stream-readable')
     await page.waitForURL('/rsc-stream-readable')
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Start streaming
     await page.getByTestId('start-stream-btn').click()
@@ -147,7 +147,7 @@ test.describe('RSC Stream Flash Prevention', () => {
   test('client interactivity works on streamed RSCs', async ({ page }) => {
     await page.goto('/rsc-stream-readable')
     await page.waitForURL('/rsc-stream-readable')
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Start streaming
     await page.getByTestId('start-stream-btn').click()
@@ -155,13 +155,11 @@ test.describe('RSC Stream Flash Prevention', () => {
       timeout: 20000,
     })
 
-    // Wait for hydration
-    await page.waitForTimeout(1000)
-
     // Expand first notification - should work without flash
     await expect(page.getByTestId('expand-btn-0')).toBeVisible({
       timeout: 5000,
     })
+    await expect(page.getByTestId('expand-btn-0')).toBeEnabled()
     await page.getByTestId('expand-btn-0').click()
 
     // Expanded content should appear without flash

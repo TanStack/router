@@ -13,10 +13,7 @@ test.describe('RSC Low-Level Flight Stream API', () => {
     // Wait for hydration - the button needs to be interactive
     const button = page.getByTestId('fetch-response-button')
     await expect(button).toBeVisible()
-
-    // Wait for hydration by checking that the page is interactive
-    // We can verify hydration by waiting for a state change after click
-    await page.waitForTimeout(1000)
+    await expect(button).toBeEnabled()
 
     // Click and verify the result area updates
     await button.click()
@@ -53,7 +50,7 @@ test.describe('RSC Low-Level Flight Stream API', () => {
     // Wait for hydration
     const button = page.getByTestId('fetch-api-button')
     await expect(button).toBeVisible()
-    await page.waitForTimeout(500)
+    await expect(button).toBeEnabled()
 
     await button.click()
 
@@ -75,8 +72,8 @@ test.describe('RSC Low-Level Flight Stream API', () => {
   })
 
   test('both patterns work independently', async ({ page }) => {
-    // Wait for hydration
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('fetch-response-button')).toBeEnabled()
+    await expect(page.getByTestId('fetch-api-button')).toBeEnabled()
 
     // Click Pattern 1 button
     await page.getByTestId('fetch-response-button').click()

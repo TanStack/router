@@ -1,7 +1,5 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
-
-const HYDRATION_WAIT = 1000
 const DEFERRED_DATA_TIMEOUT = 5000 // Deferred data takes ~2 seconds
 
 test.describe('RSC Deferred Tests - RSC with streamed Promise data', () => {
@@ -66,7 +64,7 @@ test.describe('RSC Deferred Tests - RSC with streamed Promise data', () => {
     await expect(page.getByTestId('analytics-display')).toBeVisible({
       timeout: DEFERRED_DATA_TIMEOUT,
     })
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Initially no metric selected
     await expect(page.getByTestId('selected-metric')).not.toBeVisible()
@@ -128,7 +126,7 @@ test.describe('RSC Deferred Tests - RSC with streamed Promise data', () => {
     await expect(page.getByTestId('analytics-display')).toBeVisible({
       timeout: DEFERRED_DATA_TIMEOUT,
     })
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial values
     const initialTimestamp = await page
@@ -160,7 +158,7 @@ test.describe('RSC Deferred Tests - RSC with streamed Promise data', () => {
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Navigate to deferred page via nav bar
     await page.getByTestId('nav-deferred').click()

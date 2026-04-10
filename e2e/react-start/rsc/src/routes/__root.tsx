@@ -4,6 +4,7 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
+  useHydrated,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { colors } from '~/utils/styles'
@@ -19,6 +20,8 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  const hydrated = useHydrated()
+
   return (
     <html>
       <head>
@@ -49,6 +52,10 @@ function RootComponent() {
             backgroundColor: '#fff',
           }}
         >
+          <span data-testid="app-hydrated" style={{ display: 'none' }}>
+            {hydrated ? 'hydrated' : 'hydrating'}
+          </span>
+
           <Link
             to="/"
             className="nav-link"

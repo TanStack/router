@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_CHECK_WAIT = 1500
-
 test.describe('RSC Hydration Tests - Hydration mismatch detection', () => {
   test('Page loads with hydration status visible', async ({ page }) => {
     await page.goto('/rsc-hydration')
@@ -22,7 +20,9 @@ test.describe('RSC Hydration Tests - Hydration mismatch detection', () => {
     await page.waitForURL('/rsc-hydration')
 
     // Wait for hydration check to complete
-    await page.waitForTimeout(HYDRATION_CHECK_WAIT)
+    await expect(page.getByTestId('hydration-result')).toHaveText(
+      'Hydration Successful',
+    )
 
     // Verify hydration succeeded
     await expect(page.getByTestId('hydration-result')).toHaveText(
@@ -94,8 +94,6 @@ test.describe('RSC Hydration Tests - Hydration mismatch detection', () => {
 
     // Initially might show "Checking Hydration..." or quickly transition to success
     // We just need to verify it eventually shows success
-    await page.waitForTimeout(HYDRATION_CHECK_WAIT)
-
     await expect(page.getByTestId('hydration-result')).toHaveText(
       'Hydration Successful',
     )
@@ -107,15 +105,13 @@ test.describe('RSC Hydration Tests - Hydration mismatch detection', () => {
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await page.waitForTimeout(1000)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Navigate to hydration page via nav
     await page.getByTestId('nav-hydration').click()
     await page.waitForURL('/rsc-hydration')
 
     // Wait for hydration check
-    await page.waitForTimeout(HYDRATION_CHECK_WAIT)
-
     // Verify hydration succeeded
     await expect(page.getByTestId('hydration-result')).toHaveText(
       'Hydration Successful',
@@ -125,7 +121,6 @@ test.describe('RSC Hydration Tests - Hydration mismatch detection', () => {
   test('Full page reload maintains hydration success', async ({ page }) => {
     await page.goto('/rsc-hydration')
     await page.waitForURL('/rsc-hydration')
-    await page.waitForTimeout(HYDRATION_CHECK_WAIT)
 
     // Verify initial success
     await expect(page.getByTestId('hydration-result')).toHaveText(
@@ -135,7 +130,6 @@ test.describe('RSC Hydration Tests - Hydration mismatch detection', () => {
     // Reload page
     await page.reload()
     await page.waitForURL('/rsc-hydration')
-    await page.waitForTimeout(HYDRATION_CHECK_WAIT)
 
     // Verify still successful after reload
     await expect(page.getByTestId('hydration-result')).toHaveText(

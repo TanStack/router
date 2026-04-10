@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Param - no remount / state preserved', () => {
   test('full load hydrates without mismatch', async ({ page }) => {
     await page.goto('/rsc-param/bravo')
@@ -16,8 +14,7 @@ test.describe('RSC Param - no remount / state preserved', () => {
       'id: bravo',
     )
 
-    // Basic interaction sanity (wait for client hydration)
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
     await page.getByTestId('rsc-param-direct-inc').click()
     await expect(page.getByTestId('rsc-param-direct-count')).toHaveText('1')
   })
@@ -30,7 +27,7 @@ test.describe('RSC Param - no remount / state preserved', () => {
 
     await page.goto('/rsc-param/alpha')
     await page.waitForURL('/rsc-param/alpha')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     await expect(page.getByTestId('rsc-param-renderable-id')).toContainText(
       'id: alpha',

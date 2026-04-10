@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Stream Loader Tests - Streaming RSCs via loader', () => {
   test('Page loads and starts streaming automatically', async ({ page }) => {
     await page.goto('/rsc-stream-loader')
@@ -88,10 +86,9 @@ test.describe('RSC Stream Loader Tests - Streaming RSCs via loader', () => {
       timeout: 10000,
     })
 
-    await page.waitForTimeout(HYDRATION_WAIT)
-
     // Expand button should be visible and functional
     await expect(page.getByTestId('expand-btn-0')).toBeVisible()
+    await expect(page.getByTestId('expand-btn-0')).toBeEnabled()
     await page.getByTestId('expand-btn-0').click()
 
     // Expanded content should appear
@@ -116,9 +113,9 @@ test.describe('RSC Stream Loader Tests - Streaming RSCs via loader', () => {
       timeout: 10000,
     })
 
-    await page.waitForTimeout(HYDRATION_WAIT)
-
     // Expand first and third notifications
+    await expect(page.getByTestId('expand-btn-0')).toBeEnabled()
+    await expect(page.getByTestId('expand-btn-2')).toBeEnabled()
     await page.getByTestId('expand-btn-0').click()
     await page.getByTestId('expand-btn-2').click()
 
@@ -172,7 +169,7 @@ test.describe('RSC Stream Loader Tests - Streaming RSCs via loader', () => {
     )
 
     // Client interactivity should work
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('expand-btn-0')).toBeEnabled()
     await page.getByTestId('expand-btn-0').click()
     await expect(page.getByTestId('expanded-content-0')).toBeVisible()
   })

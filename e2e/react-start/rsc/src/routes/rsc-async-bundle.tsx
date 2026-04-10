@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useHydrated } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import {
   renderServerComponent,
@@ -281,6 +281,7 @@ function RscAsyncBundleComponent() {
   } = Route.useLoaderData()
 
   const [interactionCount, setInteractionCount] = React.useState(0)
+  const hydrated = useHydrated()
 
   return (
     <div style={pageStyles.container}>
@@ -338,6 +339,7 @@ function RscAsyncBundleComponent() {
                   <span style={clientStyles.badge}>CLIENT SLOT</span>
                   <button
                     data-testid="medium-slot-btn"
+                    disabled={!hydrated}
                     onClick={() => setInteractionCount((c) => c + 1)}
                     style={{
                       ...clientStyles.button,
@@ -406,6 +408,7 @@ function RscAsyncBundleComponent() {
         </span>
         <button
           data-testid="increment-btn"
+          disabled={!hydrated}
           onClick={() => setInteractionCount((c) => c + 1)}
           style={{
             ...clientStyles.button,

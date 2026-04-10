@@ -1,5 +1,6 @@
 'use client'
 
+import { useHydrated } from '@tanstack/react-router'
 import * as React from 'react'
 import styles from './ClientWidgetA.module.css'
 
@@ -9,6 +10,7 @@ import styles from './ClientWidgetA.module.css'
  */
 export function ClientWidgetA({ title }: { title: string }) {
   const [count, setCount] = React.useState(0)
+  const isHydrated = useHydrated()
 
   return (
     <div className={styles.widget} data-testid="client-widget-a">
@@ -28,6 +30,7 @@ export function ClientWidgetA({ title }: { title: string }) {
           className={styles.button}
           onClick={() => setCount((c) => c - 1)}
           data-testid="client-widget-a-decrement"
+          disabled={!isHydrated}
         >
           -
         </button>
@@ -38,6 +41,7 @@ export function ClientWidgetA({ title }: { title: string }) {
           className={styles.button}
           onClick={() => setCount((c) => c + 1)}
           data-testid="client-widget-a-increment"
+          disabled={!isHydrated}
         >
           +
         </button>

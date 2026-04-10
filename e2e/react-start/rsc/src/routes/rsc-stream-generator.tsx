@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useHydrated } from '@tanstack/react-router'
 import { CompositeComponent } from '@tanstack/react-start/rsc'
 import { streamNotificationsGenerator } from '~/utils/streamingServerComponents'
 import {
@@ -22,6 +22,7 @@ export const Route = createFileRoute('/rsc-stream-generator')({
 type NotificationRSC = any
 
 function RscStreamGeneratorComponent() {
+  const hydrated = useHydrated()
   const [notifications, setNotifications] = React.useState<
     Array<NotificationRSC>
   >([])
@@ -115,7 +116,7 @@ function RscStreamGeneratorComponent() {
         <button
           data-testid="start-stream-btn"
           onClick={startStreaming}
-          disabled={isStreaming}
+          disabled={isStreaming || !hydrated}
           style={{
             ...clientStyles.button,
             ...clientStyles.primaryButton,
@@ -219,6 +220,7 @@ function RscStreamGeneratorComponent() {
                     <button
                       data-testid={`dismiss-btn-${index}`}
                       onClick={() => toggleDismissed(id)}
+                      disabled={!hydrated}
                       style={{
                         ...clientStyles.button,
                         ...clientStyles.secondaryButton,

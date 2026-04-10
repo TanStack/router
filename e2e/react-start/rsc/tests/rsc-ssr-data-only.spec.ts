@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC SSR Data-Only Tests - Loader on server, component on client', () => {
   test('Page renders with RSC content after initial load', async ({ page }) => {
     await page.goto('/rsc-ssr-data-only')
@@ -46,7 +44,9 @@ test.describe('RSC SSR Data-Only Tests - Loader on server, component on client',
   }) => {
     await page.goto('/rsc-ssr-data-only')
     await page.waitForURL('/rsc-ssr-data-only')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('visualization')).toContainText(
+      /Window: \d+px/,
+    )
 
     // Verify client visualization container
     await expect(page.getByTestId('visualization')).toBeVisible()
@@ -61,7 +61,9 @@ test.describe('RSC SSR Data-Only Tests - Loader on server, component on client',
   test('Client interactivity works - selecting referrers', async ({ page }) => {
     await page.goto('/rsc-ssr-data-only')
     await page.waitForURL('/rsc-ssr-data-only')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('visualization')).toContainText(
+      /Window: \d+px/,
+    )
 
     await expect(page.getByTestId('visualization')).toBeVisible()
 
@@ -89,7 +91,9 @@ test.describe('RSC SSR Data-Only Tests - Loader on server, component on client',
   }) => {
     await page.goto('/rsc-ssr-data-only')
     await page.waitForURL('/rsc-ssr-data-only')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('visualization')).toContainText(
+      /Window: \d+px/,
+    )
 
     await expect(page.getByTestId('visualization')).toBeVisible()
 
@@ -118,7 +122,7 @@ test.describe('RSC SSR Data-Only Tests - Loader on server, component on client',
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Navigate to the page via nav bar
     await page.getByTestId('nav-ssr-data-only').click()
@@ -141,7 +145,9 @@ test.describe('RSC SSR Data-Only Tests - Loader on server, component on client',
   }) => {
     await page.goto('/rsc-ssr-data-only')
     await page.waitForURL('/rsc-ssr-data-only')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('visualization')).toContainText(
+      /Window: \d+px/,
+    )
 
     // Verify client controls section exists
     await expect(page.getByTestId('client-controls')).toBeVisible()
@@ -156,7 +162,9 @@ test.describe('RSC SSR Data-Only Tests - Loader on server, component on client',
   test('Full page reload works correctly', async ({ page }) => {
     await page.goto('/rsc-ssr-data-only')
     await page.waitForURL('/rsc-ssr-data-only')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('visualization')).toContainText(
+      /Window: \d+px/,
+    )
 
     // Verify initial load
     await expect(page.getByTestId('rsc-ssr-data-only-content')).toBeVisible()
@@ -168,7 +176,9 @@ test.describe('RSC SSR Data-Only Tests - Loader on server, component on client',
     // Reload page
     await page.reload()
     await page.waitForURL('/rsc-ssr-data-only')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('visualization')).toContainText(
+      /Window: \d+px/,
+    )
 
     // Verify content reloads (selection should be cleared after reload)
     await expect(page.getByTestId('rsc-ssr-data-only-content')).toBeVisible()
@@ -181,7 +191,9 @@ test.describe('RSC SSR Data-Only Tests - Loader on server, component on client',
   }) => {
     await page.goto('/rsc-ssr-data-only')
     await page.waitForURL('/rsc-ssr-data-only')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('visualization')).toContainText(
+      /Window: \d+px/,
+    )
 
     await expect(page.getByTestId('visualization')).toBeVisible()
 

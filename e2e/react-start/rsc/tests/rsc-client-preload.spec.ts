@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Client Component Preload Tests', () => {
   function getModulePreloads(html: string): Array<string> {
     return Array.from(
@@ -78,7 +76,7 @@ test.describe('RSC Client Component Preload Tests', () => {
   test('client component is interactive after hydration', async ({ page }) => {
     await page.goto('/rsc-client-preload')
     await page.waitForURL('/rsc-client-preload')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify initial count is 0
     await expect(page.getByTestId('client-widget-count')).toHaveText('0')
@@ -106,7 +104,7 @@ test.describe('RSC Client Component Preload Tests', () => {
 
     await page.goto('/rsc-client-preload')
     await page.waitForURL('/rsc-client-preload')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify content is visible
     await expect(page.getByTestId('client-widget')).toBeVisible()

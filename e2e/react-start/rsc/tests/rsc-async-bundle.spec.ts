@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Async Bundle Tests - Multiple RSC Promises with React.use()', () => {
   test('Loading states appear for each RSC before they resolve', async ({
     page,
@@ -104,7 +102,7 @@ test.describe('RSC Async Bundle Tests - Multiple RSC Promises with React.use()',
     ).toBeVisible({
       timeout: 3000,
     })
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('medium-slot-btn')).toBeEnabled()
 
     // Verify the slot content is rendered
     await expect(
@@ -133,7 +131,7 @@ test.describe('RSC Async Bundle Tests - Multiple RSC Promises with React.use()',
     ).toBeVisible({
       timeout: 5000,
     })
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('increment-btn')).toBeEnabled()
 
     // Verify render prop content is displayed
     await expect(page.getByTestId('rsc-async-slow-status')).toBeVisible()
@@ -184,7 +182,7 @@ test.describe('RSC Async Bundle Tests - Multiple RSC Promises with React.use()',
     ).toBeVisible({
       timeout: 5000,
     })
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('increment-btn')).toBeEnabled()
 
     // Get initial timestamps
     const fastTimestamp = await page
@@ -224,7 +222,7 @@ test.describe('RSC Async Bundle Tests - Multiple RSC Promises with React.use()',
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Navigate to async bundle page via link (if nav exists) or direct navigation
     await page.goto('/rsc-async-bundle')
@@ -249,7 +247,7 @@ test.describe('RSC Async Bundle Tests - Multiple RSC Promises with React.use()',
     ).toBeVisible()
 
     // Verify interactivity works after navigation
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('increment-btn')).toBeEnabled()
     await page.getByTestId('increment-btn').click()
     await expect(page.getByTestId('interaction-count')).toHaveText('1')
   })
@@ -267,7 +265,7 @@ test.describe('RSC Async Bundle Tests - Multiple RSC Promises with React.use()',
     // Navigate away
     await page.goto('/')
     await page.waitForURL('/')
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Second visit (force new request)
     await page.goto('/rsc-async-bundle')

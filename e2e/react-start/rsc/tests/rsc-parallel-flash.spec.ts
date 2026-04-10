@@ -78,7 +78,7 @@ test.describe('RSC Parallel Flash Prevention', () => {
     await expect(page.getByTestId('rsc-basic-content')).toBeVisible({
       timeout: 10000,
     })
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Navigate to parallel route and monitor for flash
     const flashDetected = await monitorForFlash(
@@ -102,7 +102,7 @@ test.describe('RSC Parallel Flash Prevention', () => {
     page,
   }) => {
     await page.goto('/')
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     await page.getByTestId('nav-parallel').click()
     await page.waitForURL('/rsc-parallel')
@@ -133,7 +133,7 @@ test.describe('RSC Parallel Flash Prevention', () => {
     await expect(page.getByTestId('rsc-basic-content')).toBeVisible({
       timeout: 10000,
     })
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Monitor all three RSC elements for flash
     const flashADetected = await monitorForFlash(
@@ -151,7 +151,7 @@ test.describe('RSC Parallel Flash Prevention', () => {
     await page.getByTestId('nav-basic').click()
     await page.waitForURL('/rsc-basic')
     await expect(page.getByTestId('rsc-basic-content')).toBeVisible()
-    await page.waitForTimeout(500)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     const flashBDetected = await monitorForFlash(
       page,

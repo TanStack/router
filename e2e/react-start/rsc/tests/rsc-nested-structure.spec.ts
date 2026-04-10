@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-const HYDRATION_WAIT = 1000
-
 test.describe('RSC Nested Structure Tests', () => {
   test('Nested renderServerComponent parts render via dot access', async ({
     page,
@@ -26,7 +24,7 @@ test.describe('RSC Nested Structure Tests', () => {
   }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify Header component
     await expect(page.getByTestId('rsc-nested-header')).toBeVisible()
@@ -47,7 +45,7 @@ test.describe('RSC Nested Structure Tests', () => {
   }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify Stats component
     await expect(page.getByTestId('rsc-nested-stats')).toBeVisible()
@@ -71,7 +69,7 @@ test.describe('RSC Nested Structure Tests', () => {
   }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify Info component
     await expect(page.getByTestId('rsc-nested-info')).toBeVisible()
@@ -91,7 +89,7 @@ test.describe('RSC Nested Structure Tests', () => {
   }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify Footer component
     await expect(page.getByTestId('rsc-nested-footer')).toBeVisible()
@@ -117,7 +115,7 @@ test.describe('RSC Nested Structure Tests', () => {
   }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial server timestamp
     const initialTimestamp = await page
@@ -150,7 +148,7 @@ test.describe('RSC Nested Structure Tests', () => {
   }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Initial: 13624 * 1 = 13624
     await expect(page.getByTestId('stats-computed-value')).toContainText(
@@ -179,7 +177,7 @@ test.describe('RSC Nested Structure Tests', () => {
   test('Nested slot visibility can be toggled', async ({ page }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Initially visible
     await expect(page.getByTestId('info-slot-content')).toBeVisible()
@@ -200,7 +198,7 @@ test.describe('RSC Nested Structure Tests', () => {
   }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial server timestamp from footer
     const initialVersion = await page
@@ -234,7 +232,7 @@ test.describe('RSC Nested Structure Tests', () => {
     // Start from home
     await page.goto('/')
     await page.waitForURL('/')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Navigate via nav link
     await page.getByTestId('nav-nested-structure').click()
@@ -259,7 +257,7 @@ test.describe('RSC Destructured Access Tests', () => {
   test('Destructured components render correctly', async ({ page }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify destructured Header
     await expect(page.getByTestId('rsc-destructured-header')).toBeVisible()
@@ -277,7 +275,7 @@ test.describe('RSC Destructured Access Tests', () => {
   }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify header slot
     await expect(page.getByTestId('destructured-header-slot')).toBeVisible()
@@ -297,7 +295,7 @@ test.describe('RSC Destructured Access Tests', () => {
   }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Verify render prop slot with server data (count = 42)
     await expect(page.getByTestId('destructured-content-slot')).toBeVisible()
@@ -315,7 +313,7 @@ test.describe('RSC Destructured Access Tests', () => {
   }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Get initial timestamp
     const initialTimestamp = await page
@@ -348,7 +346,7 @@ test.describe('RSC Destructured Access Tests', () => {
   }) => {
     await page.goto('/rsc-nested-structure')
     await page.waitForURL('/rsc-nested-structure')
-    await page.waitForTimeout(HYDRATION_WAIT)
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Initial: 42 * 1 = 42
     await expect(page.getByTestId('destructured-computed-value')).toContainText(

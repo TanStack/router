@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useHydrated } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import {
   createFromFetch,
@@ -40,6 +40,8 @@ export const Route = createFileRoute('/rsc-flight-api')({
 })
 
 function RscFlightApiComponent() {
+  const isHydrated = useHydrated()
+
   // Pattern 1: Server function returning Response
   const [responsePromise, setResponsePromise] =
     useState<Promise<React.ReactNode> | null>(null)
@@ -124,6 +126,7 @@ function RscFlightApiComponent() {
         <button
           data-testid="fetch-response-button"
           onClick={handleResponseClick}
+          disabled={!isHydrated}
           style={{
             padding: '8px 16px',
             backgroundColor: '#0284c7',
@@ -176,6 +179,7 @@ function RscFlightApiComponent() {
         <button
           data-testid="fetch-api-button"
           onClick={handleApiClick}
+          disabled={!isHydrated}
           style={{
             padding: '8px 16px',
             backgroundColor: '#0284c7',

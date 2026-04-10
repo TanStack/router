@@ -61,7 +61,7 @@ test.describe('RSC Suspense Tests - Async RSC with streaming', () => {
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await page.waitForTimeout(1000) // Wait for hydration
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Navigate to suspense page via nav bar (need to be specific to avoid matching example cards)
     await page.getByTestId('nav-suspense').click()
@@ -81,7 +81,7 @@ test.describe('RSC Suspense Tests - Async RSC with streaming', () => {
     // Start at a different page
     await page.goto('/rsc-basic')
     await expect(page.getByTestId('rsc-basic-title')).toBeVisible()
-    await page.waitForTimeout(500) // Wait for hydration
+    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
     // Navigate to suspense page
     await page.getByTestId('nav-suspense').click()
