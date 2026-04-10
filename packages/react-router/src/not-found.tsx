@@ -11,7 +11,7 @@ export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => React.ReactElement
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
   children: React.ReactNode
-}) {
+}): React.JSX.Element {
   const router = useRouter()
 
   if (isServer ?? router.isServer) {
@@ -75,6 +75,6 @@ export function CatchNotFound(props: {
   )
 }
 
-export function DefaultGlobalNotFound() {
+export function DefaultGlobalNotFound(): React.JSX.Element {
   return <p>Not Found</p>
 }

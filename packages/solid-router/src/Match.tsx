@@ -18,7 +18,7 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
-export const Match = (props: { matchId: string }) => {
+export const Match = (props: { matchId: string }): Solid.JSX.Element => {
   const router = useRouter()
 
   const match = Solid.createMemo(() => {
@@ -425,7 +425,7 @@ export const MatchInner = (): any => {
   )
 }
 
-export const Outlet = () => {
+export const Outlet = (): Solid.JSX.Element => {
   const router = useRouter()
   const nearestParentMatch = Solid.useContext(nearestMatchContext)
   const parentMatch = nearestParentMatch.match

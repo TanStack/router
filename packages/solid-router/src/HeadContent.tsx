@@ -3,6 +3,7 @@ import { For } from 'solid-js'
 import { Asset } from './Asset'
 import { useTags } from './headContentUtils'
 import type { AssetCrossOriginConfig } from '@tanstack/router-core'
+import type { JSX } from 'solid-js'
 
 export interface HeadContentProps {
   assetCrossOrigin?: AssetCrossOriginConfig
@@ -14,7 +15,7 @@ export interface HeadContentProps {
  * to ensure it's part of the reactive tree and updates correctly during client-side navigation.
  * The component uses portals internally to render content into the `<head>` element.
  */
-export function HeadContent(props: HeadContentProps) {
+export function HeadContent(props: HeadContentProps): JSX.Element {
   const tags = useTags(props.assetCrossOrigin)
 
   return (

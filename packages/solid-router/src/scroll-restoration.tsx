@@ -2,7 +2,9 @@ import { getScrollRestorationScriptForRouter } from '@tanstack/router-core/scrol
 import { useRouter } from './useRouter'
 import { ScriptOnce } from './ScriptOnce'
 
-export function ScrollRestoration() {
+import type { JSX } from 'solid-js'
+
+export function ScrollRestoration(): JSX.Element | null {
   const router = useRouter()
   const script = getScrollRestorationScriptForRouter(router)
 

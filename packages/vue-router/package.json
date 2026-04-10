@@ -34,7 +34,7 @@
     "test:perf": "vitest bench",
     "test:perf:dev": "pnpm run test:perf --watch --hideSkippedTests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build && tsc -p tsconfig.build.json"
+    "build": "vite build"
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",

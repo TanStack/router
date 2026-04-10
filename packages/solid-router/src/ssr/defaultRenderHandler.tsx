@@ -2,7 +2,10 @@ import { defineHandlerCallback } from '@tanstack/router-core/ssr/server'
 import { RouterServer } from './RouterServer'
 import { renderRouterToString } from './renderRouterToString'
 
-export const defaultRenderHandler = defineHandlerCallback(
+import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
+import type { AnyRouter } from '@tanstack/router-core'
+
+export const defaultRenderHandler: HandlerCallback<AnyRouter> = defineHandlerCallback(
   ({ router, responseHeaders }) =>
     renderRouterToString({
       router,

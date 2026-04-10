@@ -1679,19 +1679,19 @@ export class BaseRoute<
   private _fullPath!: TFullPath
   private _to!: TrimPathRight<TFullPath>
 
-  public get to() {
+  public get to(): TrimPathRight<TFullPath> {
     return this._to
   }
 
-  public get id() {
+  public get id(): TId {
     return this._id
   }
 
-  public get path() {
+  public get path(): TPath {
     return this._path
   }
 
-  public get fullPath() {
+  public get fullPath(): TFullPath {
     return this._fullPath
   }
 
@@ -2025,7 +2025,7 @@ export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
     this.id = id
   }
 
-  notFound = (opts?: NotFoundError) => {
+  notFound = (opts?: NotFoundError): NotFoundError => {
     return notFound({ routeId: this.id as string, ...opts })
   }
 

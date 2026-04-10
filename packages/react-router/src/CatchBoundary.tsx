@@ -7,7 +7,7 @@ export function CatchBoundary(props: {
   children: React.ReactNode
   errorComponent?: ErrorRouteComponent
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
-}) {
+}): React.JSX.Element {
   const errorComponent = props.errorComponent ?? ErrorComponent
 
   return (
@@ -77,7 +77,7 @@ class CatchBoundaryImpl extends React.Component<{
   }
 }
 
-export function ErrorComponent({ error }: { error: any }) {
+export function ErrorComponent({ error }: { error: any }): React.JSX.Element {
   const [show, setShow] = React.useState(process.env.NODE_ENV !== 'production')
 
   return (

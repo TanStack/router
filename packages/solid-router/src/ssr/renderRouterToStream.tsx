@@ -16,7 +16,7 @@ export const renderRouterToStream = async ({
   router: AnyRouter
   responseHeaders: Headers
   children: () => JSXElement
-}) => {
+}): Promise<Response> => {
   const { writable, readable } = new TransformStream()
 
   const docType = Solid.ssr('<!DOCTYPE html>')

@@ -23,7 +23,7 @@ function toHeadersInstance(init: AnyHeaders) {
 }
 
 // Function to merge headers with proper overrides
-export function mergeHeaders(...headers: Array<AnyHeaders>) {
+export function mergeHeaders(...headers: Array<AnyHeaders>): Headers {
   return headers.reduce((acc: Headers, header) => {
     const headersInstance = toHeadersInstance(header)
     if (!headersInstance) return acc

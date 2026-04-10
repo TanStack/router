@@ -1,5 +1,6 @@
 import { DefaultGlobalNotFound } from './not-found'
 import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
+import type { JSX } from 'solid-js'
 
 /**
  * Renders a not found component for a route when no matching route is found.
@@ -13,7 +14,7 @@ export function renderRouteNotFound(
   router: AnyRouter,
   route: AnyRoute,
   data: any,
-) {
+): JSX.Element {
   if (!route.options.notFoundComponent) {
     if (router.options.defaultNotFoundComponent) {
       return <router.options.defaultNotFoundComponent {...data} />

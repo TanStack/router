@@ -128,7 +128,7 @@ export function buildSitemap({
 }: {
   startConfig: TanStackStartOutputConfig
   publicDir: string
-}) {
+}): void {
   const logger = createLogger('sitemap')
 
   let sitemapOptions = startConfig.sitemap

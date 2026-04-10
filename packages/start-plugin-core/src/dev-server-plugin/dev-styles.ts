@@ -10,7 +10,7 @@ const CSS_FILE_REGEX =
   /\.(css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/
 // CSS modules file pattern - exported for use in plugin hook filters
 // Note: allow query/hash suffix since Vite ids often include them.
-export const CSS_MODULES_REGEX =
+export const CSS_MODULES_REGEX: RegExp =
   /\.module\.(css|less|sass|scss|styl|stylus)(?:$|[?#])/i
 
 export function normalizeCssModuleCacheKey(idOrFile: string): string {

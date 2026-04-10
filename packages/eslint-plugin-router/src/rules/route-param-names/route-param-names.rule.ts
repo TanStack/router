@@ -7,14 +7,14 @@ import { pathAsFirstArgFunctions, pathAsPropertyFunctions } from './constants'
 import type { TSESTree } from '@typescript-eslint/utils'
 import type { ExtraRuleDocs } from '../../types'
 
-const createRule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)
+const createRule: ReturnType<typeof ESLintUtils.RuleCreator<ExtraRuleDocs>> = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)
 
 const pathAsFirstArgSet = new Set<string>(pathAsFirstArgFunctions)
 const pathAsPropertySet = new Set<string>(pathAsPropertyFunctions)
 
 export const name = 'route-param-names'
 
-export const rule = createRule({
+export const rule: ReturnType<typeof createRule> = createRule({
   name,
   meta: {
     type: 'problem',

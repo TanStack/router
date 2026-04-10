@@ -11,6 +11,7 @@ import { useTags } from '../headContentUtils'
 import { RouterProvider } from '../RouterProvider'
 import { Scripts } from '../Scripts'
 import type { AnyRouter } from '@tanstack/router-core'
+import type { JSX } from 'solid-js'
 
 export function ServerHeadContent() {
   const tags = useTags()
@@ -30,7 +31,7 @@ const docType = ssr('<!DOCTYPE html>')
 
 export function RouterServer<TRouter extends AnyRouter>(props: {
   router: TRouter
-}) {
+}): JSX.Element {
   return (
     <NoHydration>
       {docType as any}

@@ -35,7 +35,7 @@ declare module '@tanstack/router-core' {
   }
 }
 
-export function Matches() {
+export function Matches(): Solid.JSX.Element {
   const router = useRouter()
 
   const ResolvedSuspense =

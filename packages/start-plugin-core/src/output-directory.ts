@@ -5,13 +5,13 @@ import type * as vite from 'vite'
 
 export function getClientOutputDirectory(
   userConfig: vite.UserConfig | vite.ResolvedConfig,
-) {
+): string {
   return getOutputDirectory(userConfig, VITE_ENVIRONMENT_NAMES.client, 'client')
 }
 
 export function getServerOutputDirectory(
   userConfig: vite.UserConfig | vite.ResolvedConfig,
-) {
+): string {
   return getOutputDirectory(userConfig, VITE_ENVIRONMENT_NAMES.server, 'server')
 }
 

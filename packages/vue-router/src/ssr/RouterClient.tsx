@@ -6,7 +6,7 @@ import type { AnyRouter } from '@tanstack/router-core'
 
 let hydrationPromise: Promise<void | Array<Array<void>>> | undefined
 
-export const RouterClient = Vue.defineComponent({
+export const RouterClient: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'RouterClient',
   props: {
     router: {
@@ -36,7 +36,7 @@ export const RouterClient = Vue.defineComponent({
       isHydrated.value = true
     }
 
-    return () => {
+    return (): Vue.VNode | null => {
       if (!isHydrated.value) {
         return null
       }

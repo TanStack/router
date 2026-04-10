@@ -35,7 +35,7 @@ function getScrollRestorationScript(
   return `(${minifiedScrollRestorationScript})(${escapeHtml(JSON.stringify(options))})`
 }
 
-export function getScrollRestorationScriptForRouter(router: AnyRouter) {
+export function getScrollRestorationScriptForRouter(router: AnyRouter): string | null {
   if (
     typeof router.options.scrollRestoration === 'function' &&
     !router.options.scrollRestoration({ location: router.latestLocation })

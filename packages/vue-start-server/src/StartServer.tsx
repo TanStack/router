@@ -2,7 +2,8 @@ import * as Vue from 'vue'
 import { RouterProvider } from '@tanstack/vue-router'
 import type { AnyRouter } from '@tanstack/router-core'
 
-export const StartServer = Vue.defineComponent({
+export const StartServer: ReturnType<typeof Vue.defineComponent> =
+  Vue.defineComponent({
   name: 'StartServer',
   props: {
     router: {

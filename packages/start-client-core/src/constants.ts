@@ -1,6 +1,6 @@
-export const TSS_FORMDATA_CONTEXT = '__TSS_CONTEXT'
-export const TSS_SERVER_FUNCTION = Symbol.for('TSS_SERVER_FUNCTION')
-export const TSS_SERVER_FUNCTION_FACTORY = Symbol.for(
+export const TSS_FORMDATA_CONTEXT: string = '__TSS_CONTEXT'
+export const TSS_SERVER_FUNCTION: symbol = Symbol.for('TSS_SERVER_FUNCTION')
+export const TSS_SERVER_FUNCTION_FACTORY: symbol = Symbol.for(
   'TSS_SERVER_FUNCTION_FACTORY',
 )
 
@@ -34,7 +34,7 @@ export const FRAME_HEADER_SIZE = 9
 export const TSS_FRAMED_PROTOCOL_VERSION = 1
 
 /** Full Content-Type header value with version parameter */
-export const TSS_CONTENT_TYPE_FRAMED_VERSIONED = `${TSS_CONTENT_TYPE_FRAMED}; v=${TSS_FRAMED_PROTOCOL_VERSION}`
+export const TSS_CONTENT_TYPE_FRAMED_VERSIONED: string = `${TSS_CONTENT_TYPE_FRAMED}; v=${TSS_FRAMED_PROTOCOL_VERSION}`
 
 /**
  * Parses the version parameter from a framed Content-Type header.

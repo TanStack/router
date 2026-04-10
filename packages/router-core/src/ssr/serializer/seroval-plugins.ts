@@ -3,7 +3,7 @@ import { ShallowErrorPlugin } from './ShallowErrorPlugin'
 import { RawStreamSSRPlugin } from './RawStream'
 import type { Plugin } from 'seroval'
 
-export const defaultSerovalPlugins = [
+export const defaultSerovalPlugins: Array<Plugin<any, any>> = [
   ShallowErrorPlugin as Plugin<Error, any>,
   // RawStreamSSRPlugin must come before ReadableStreamPlugin to match first
   RawStreamSSRPlugin,

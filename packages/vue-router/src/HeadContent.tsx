@@ -12,7 +12,7 @@ export interface HeadContentProps {
  * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
  * It should be rendered in the `<head>` of your document.
  */
-export const HeadContent = Vue.defineComponent({
+export const HeadContent: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'HeadContent',
   props: {
     assetCrossOrigin: {
@@ -20,7 +20,7 @@ export const HeadContent = Vue.defineComponent({
       default: undefined,
     },
   },
-  setup(props) {
+  setup(props): () => Array<Vue.VNode> {
     const tags = useTags(props.assetCrossOrigin)
 
     return () => {

@@ -1,10 +1,11 @@
+import * as React from 'react'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
 /**
  * Server-only helper to emit a script tag exactly once during SSR.
  */
-export function ScriptOnce({ children }: { children: string }) {
+export function ScriptOnce({ children }: { children: string }): React.JSX.Element | null {
   const router = useRouter()
   if (!(isServer ?? router.isServer)) {
     return null

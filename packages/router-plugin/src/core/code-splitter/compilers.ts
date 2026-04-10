@@ -394,7 +394,7 @@ export function expandSharedDestructuredDeclarators(
   ast: t.File,
   refsByGroup: Map<string, Set<number>>,
   shared: Set<string>,
-) {
+): void {
   for (const stmt of ast.program.body) {
     const decl =
       t.isExportNamedDeclaration(stmt) && stmt.declaration
@@ -432,7 +432,7 @@ export function expandSharedDestructuredDeclarators(
 export function collectLocalBindingsFromStatement(
   node: t.Statement | t.ModuleDeclaration,
   bindings: Set<string>,
-) {
+): void {
   const decl =
     t.isExportNamedDeclaration(node) && node.declaration
       ? node.declaration
@@ -474,7 +474,7 @@ export function collectModuleLevelRefsFromNode(
 export function expandTransitively(
   shared: Set<string>,
   depGraph: Map<string, Set<string>>,
-) {
+): void {
   const queue = [...shared]
   const visited = new Set<string>()
 
@@ -507,7 +507,7 @@ export function expandTransitively(
 export function removeBindingsDependingOnRoute(
   shared: Set<string>,
   depGraph: Map<string, Set<string>>,
-) {
+): void {
   const reverseGraph = new Map<string, Set<string>>()
   for (const [name, deps] of depGraph) {
     for (const dep of deps) {
@@ -550,7 +550,7 @@ export function removeBindingsDependingOnRoute(
 export function expandDestructuredDeclarations(
   ast: t.File,
   shared: Set<string>,
-) {
+): void {
   for (const stmt of ast.program.body) {
     const decl =
       t.isExportNamedDeclaration(stmt) && stmt.declaration

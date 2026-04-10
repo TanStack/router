@@ -17,7 +17,7 @@ const ServerHeadContent = Vue.defineComponent({
   },
 })
 
-export const RouterServer = Vue.defineComponent({
+export const RouterServer: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'RouterServer',
   props: {
     router: {
@@ -25,7 +25,7 @@ export const RouterServer = Vue.defineComponent({
       required: true,
     },
   },
-  setup(props) {
+  setup(props): () => Vue.VNode {
     return () =>
       Vue.h('html', null, [
         Vue.h('head', null, [Vue.h(ServerHeadContent)]),

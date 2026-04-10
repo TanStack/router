@@ -5,9 +5,9 @@ import useMediaQuery from './useMediaQuery'
 import type { AnyRoute, AnyRouteMatch } from '@tanstack/router-core'
 
 import type { Theme } from './theme'
-import type { JSX } from 'solid-js'
+import type { Accessor, JSX } from 'solid-js'
 
-export const isServer = typeof window === 'undefined'
+export const isServer: boolean = typeof window === 'undefined'
 
 type StyledComponent<T> = T extends 'button'
   ? JSX.ButtonHTMLAttributes<HTMLButtonElement>
@@ -19,7 +19,7 @@ type StyledComponent<T> = T extends 'button'
         ? JSX.HTMLAttributes<HTMLElementTagNameMap[T]>
         : never
 
-export function getStatusColor(match: AnyRouteMatch) {
+export function getStatusColor(match: AnyRouteMatch): 'yellow' | 'green' | 'red' | 'purple' | 'gray' | 'blue' {
   const colorMap = {
     pending: 'yellow',
     success: 'green',
@@ -38,7 +38,7 @@ export function getStatusColor(match: AnyRouteMatch) {
 export function getRouteStatusColor(
   matches: Array<AnyRouteMatch>,
   route: AnyRoute,
-) {
+): 'yellow' | 'green' | 'red' | 'purple' | 'gray' | 'blue' {
   const found = matches.find((d) => d.routeId === route.id)
   if (!found) return 'gray'
   return getStatusColor(found)
@@ -52,7 +52,7 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
   type: T,
   newStyles: Styles,
   queries: Record<string, Styles> = {},
-) {
+): (props: StyledComponent<T> & { ref?: HTMLElementTagNameMap[T] | undefined }) => JSX.Element {
   return ({
     ref,
     style,
@@ -92,7 +92,7 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
   }
 }
 
-export function useIsMounted() {
+export function useIsMounted(): Accessor<boolean> {
   const [isMounted, setIsMounted] = createSignal(false)
 
   const effect = isServer ? createEffect : createRenderEffect
@@ -108,7 +108,7 @@ export function useIsMounted() {
  * Displays a string regardless the type of the data
  * @param {unknown} value Value to be stringified
  */
-export const displayValue = (value: unknown) => {
+export const displayValue = (value: unknown): string | undefined => {
   const name = Object.getOwnPropertyNames(Object(value))
   const newValue = typeof value === 'bigint' ? `${value.toString()}n` : value
   try {

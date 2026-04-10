@@ -1,8 +1,8 @@
 import * as Vue from 'vue'
 
-export const Body = Vue.defineComponent({
+export const Body: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'Body',
-  setup(_, { slots }) {
+  setup(_, { slots }): () => Vue.VNode {
     const isServer = typeof window === 'undefined'
 
     return () => {

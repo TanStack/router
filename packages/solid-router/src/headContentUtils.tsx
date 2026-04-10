@@ -15,7 +15,7 @@ import type {
  * Build the list of head/link/meta/script tags to render for active matches.
  * Used internally by `HeadContent`.
  */
-export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
+export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig): Solid.Accessor<Array<RouterManagedTag>> => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
   const activeMatches = Solid.createMemo(
@@ -217,7 +217,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   })
 }
 
-export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
+export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string): Array<T> {
   const seen = new Set<string>()
   return arr.filter((item) => {
     const key = fn(item)

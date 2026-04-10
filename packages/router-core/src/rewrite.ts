@@ -3,7 +3,7 @@ import type { LocationRewrite } from './router'
 
 /** Compose multiple rewrite pairs into a single in/out rewrite. */
 /** Compose multiple rewrite pairs into a single in/out rewrite. */
-export function composeRewrites(rewrites: Array<LocationRewrite>) {
+export function composeRewrites(rewrites: Array<LocationRewrite>): LocationRewrite {
   return {
     input: ({ url }) => {
       for (const rewrite of rewrites) {
@@ -25,7 +25,7 @@ export function composeRewrites(rewrites: Array<LocationRewrite>) {
 export function rewriteBasepath(opts: {
   basepath: string
   caseSensitive?: boolean
-}) {
+}): LocationRewrite {
   const trimmedBasepath = trimPath(opts.basepath)
   const normalizedBasepath = `/${trimmedBasepath}`
   const normalizedBasepathWithSlash = `${normalizedBasepath}/`

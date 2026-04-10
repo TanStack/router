@@ -3,7 +3,7 @@ import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
-export const Scripts = () => {
+export const Scripts = (): Solid.JSX.Element => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
   const activeMatches = Solid.createMemo(

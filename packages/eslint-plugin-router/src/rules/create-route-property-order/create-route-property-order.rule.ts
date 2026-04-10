@@ -11,7 +11,7 @@ import {
 import type { CreateRouteFunction } from './constants'
 import type { ExtraRuleDocs } from '../../types'
 
-const createRule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)
+const createRule: ReturnType<typeof ESLintUtils.RuleCreator<ExtraRuleDocs>> = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)
 
 const createRouteFunctionSet = new Set(createRouteFunctions)
 function isCreateRouteFunction(node: any): node is CreateRouteFunction {
@@ -20,7 +20,7 @@ function isCreateRouteFunction(node: any): node is CreateRouteFunction {
 
 export const name = 'create-route-property-order'
 
-export const rule = createRule({
+export const rule: ReturnType<typeof createRule> = createRule({
   name,
   meta: {
     type: 'problem',

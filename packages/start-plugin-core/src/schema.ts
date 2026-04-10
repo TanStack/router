@@ -1,25 +1,53 @@
 import path from 'node:path'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-plugin'
-import type { TanStackStartVitePluginCoreOptions } from './types'
+import type { Config } from '@tanstack/router-plugin'
+import type { CompileStartFrameworkOptions, TanStackStartVitePluginCoreOptions } from './types'
 
-const tsrConfig = configSchema
+const tsrConfig: z.ZodType<Partial<Omit<Config, 'autoCodeSplitting' | 'target' | 'verboseFileRoutes'>>> = configSchema
   .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
-  .partial()
+  .partial() as any
 
 // --- Import Protection Schema ---
 
 const patternSchema = z.union([z.string(), z.instanceof(RegExp)])
 
-const importProtectionBehaviorSchema = z.enum(['error', 'mock'])
+type _ImportProtectionBehavior = 'error' | 'mock'
 
-const importProtectionEnvRulesSchema = z.object({
+type _ImportProtectionEnvRules = {
+  specifiers?: Array<string | RegExp>
+  files?: Array<string | RegExp>
+  excludeFiles?: Array<string | RegExp>
+}
+
+type _ImportProtectionOptions = {
+  enabled?: boolean
+  behavior?:
+    | _ImportProtectionBehavior
+    | {
+        dev?: _ImportProtectionBehavior
+        build?: _ImportProtectionBehavior
+      }
+  mockAccess?: 'error' | 'warn' | 'off'
+  onViolation?: (arg: any) => boolean | void | Promise<boolean | void>
+  include?: Array<string | RegExp>
+  exclude?: Array<string | RegExp>
+  client?: _ImportProtectionEnvRules
+  server?: _ImportProtectionEnvRules
+  ignoreImporters?: Array<string | RegExp>
+  maxTraceDepth?: number
+  log?: 'once' | 'always'
+}
+
+const importProtectionBehaviorSchema: z.ZodType<_ImportProtectionBehavior> = z.enum(['error', 'mock']) as any
+
+const importProtectionEnvRulesSchema: z.ZodType<_ImportProtectionEnvRules> = z.object({
   specifiers: z.array(patternSchema).optional(),
   files: z.array(patternSchema).optional(),
   excludeFiles: z.array(patternSchema).optional(),
-})
+}) as any
 
-const importProtectionOptionsSchema = z
+const importProtectionOptionsSchema: z.ZodType<_ImportProtectionOptions | undefined> = z
   .object({
     enabled: z.boolean().optional(),
     behavior: z
@@ -59,13 +87,16 @@ const importProtectionOptionsSchema = z
     maxTraceDepth: z.number().optional(),
     log: z.enum(['once', 'always']).optional(),
   })
-  .optional()
+  .optional() as any
 
 export function parseStartConfig(
   opts: z.input<typeof tanstackStartOptionsSchema>,
   corePluginOpts: TanStackStartVitePluginCoreOptions,
   root: string,
-) {
+): Omit<_TanStackStartParsedOptions, 'router'> & {
+  router: _TanStackStartParsedOptions['router'] &
+    Config & { target: CompileStartFrameworkOptions }
+} {
   const options = tanstackStartOptionsSchema.parse(opts)
 
   const srcDirectory = options.srcDirectory
@@ -176,11 +207,136 @@ const spaSchema = z.object({
     })),
 })
 
-const pageSchema = pageBaseSchema.extend({
-  prerender: pagePrerenderOptionsSchema.optional(),
-})
+type _PageSitemapOptions = {
+  exclude?: boolean
+  priority?: number
+  changefreq?:
+    | 'always'
+    | 'hourly'
+    | 'daily'
+    | 'weekly'
+    | 'monthly'
+    | 'yearly'
+    | 'never'
+  lastmod?: string | Date
+  alternateRefs?: Array<{ href: string; hreflang: string }>
+  images?: Array<{ loc: string; caption?: string; title?: string }>
+  news?: {
+    publication: { name: string; language: string }
+    publicationDate: string | Date
+    title: string
+  }
+}
 
-const tanstackStartOptionsSchema = z
+type _PagePrerenderOptions = {
+  enabled?: boolean
+  outputPath?: string
+  autoSubfolderIndex?: boolean
+  crawlLinks?: boolean
+  retryCount?: number
+  retryDelay?: number
+  onSuccess?: (arg: {
+    page: { path: string; sitemap?: _PageSitemapOptions; fromCrawl?: boolean }
+    html: string
+  }) => any
+  headers?: Record<string, string>
+}
+
+type _Page = {
+  path: string
+  sitemap?: _PageSitemapOptions
+  fromCrawl?: boolean
+  prerender?: _PagePrerenderOptions
+}
+
+const pageSchema: z.ZodType<_Page> = pageBaseSchema.extend({
+  prerender: pagePrerenderOptionsSchema.optional(),
+}) as any
+
+type _TanStackStartParsedOptions = {
+  srcDirectory: string
+  start: { entry?: string }
+  router: { entry?: string; basepath?: string } & Partial<
+    Omit<Config, 'autoCodeSplitting' | 'target' | 'verboseFileRoutes'>
+  >
+  client: { entry?: string; base: string }
+  server: { entry?: string; build: { staticNodeEnv: boolean } }
+  serverFns: {
+    base: string
+    generateFunctionId?: (arg: {
+      filename: string
+      functionName: string
+    }) => string | undefined
+  }
+  pages: Array<_Page>
+  sitemap?: { enabled: boolean; host?: string; outputPath: string }
+  prerender?: {
+    enabled?: boolean
+    concurrency?: number
+    filter?: (arg: _Page) => any
+    failOnError?: boolean
+    autoStaticPathsDiscovery?: boolean
+    maxRedirects?: number
+  } & (_PagePrerenderOptions | undefined)
+  dev: {
+    ssrStyles: { enabled: boolean; basepath?: string }
+  }
+  spa?: {
+    enabled: boolean
+    maskPath: string
+    prerender: _PagePrerenderOptions & {
+      outputPath: string
+      crawlLinks: boolean
+      retryCount: number
+      enabled: true
+    }
+  }
+  vite?: { installDevServerMiddleware?: boolean }
+  importProtection: _ImportProtectionOptions | undefined
+}
+
+type _TanStackStartInputOptions = {
+  srcDirectory?: string
+  start?: { entry?: string }
+  router?: { entry?: string; basepath?: string } & Partial<
+    Omit<Config, 'autoCodeSplitting' | 'target' | 'verboseFileRoutes'>
+  >
+  client?: { entry?: string; base?: string }
+  server?: { entry?: string; build?: { staticNodeEnv?: boolean } }
+  serverFns?: {
+    base?: string
+    generateFunctionId?: (arg: {
+      filename: string
+      functionName: string
+    }) => string | undefined
+  }
+  pages?: Array<_Page>
+  sitemap?: { enabled?: boolean; host?: string; outputPath?: string }
+  prerender?: {
+    enabled?: boolean
+    concurrency?: number
+    filter?: (arg: _Page) => any
+    failOnError?: boolean
+    autoStaticPathsDiscovery?: boolean
+    maxRedirects?: number
+  } & (_PagePrerenderOptions | undefined)
+  dev?: {
+    ssrStyles?: { enabled?: boolean; basepath?: string }
+  }
+  spa?: {
+    enabled?: boolean
+    maskPath?: string
+    prerender?: _PagePrerenderOptions
+  }
+  vite?: { installDevServerMiddleware?: boolean }
+  importProtection?: _ImportProtectionOptions
+} | undefined
+
+const tanstackStartOptionsSchema: z.ZodType<
+  _TanStackStartParsedOptions,
+  z.ZodTypeDef,
+  _TanStackStartInputOptions
+> = z
   .object({
     srcDirectory: z.string().optional().default('src'),
     start: z
@@ -270,7 +426,7 @@ const tanstackStartOptionsSchema = z
     importProtection: importProtectionOptionsSchema,
   })
   .optional()
-  .default({})
+  .default({}) as any
 
 export type Page = z.infer<typeof pageSchema>
 

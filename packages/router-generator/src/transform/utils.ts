@@ -6,7 +6,7 @@ export function ensureStringArgument(
   callExpression: types.namedTypes.CallExpression,
   value: string,
   preferredQuote?: "'" | '"',
-) {
+): boolean {
   const argument = callExpression.arguments[0]
   if (!argument) {
     let stringLiteral: types.namedTypes.StringLiteral

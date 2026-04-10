@@ -43,7 +43,7 @@ export const handleServerAction = async ({
   request: Request
   context: any
   serverFnId: string
-}) => {
+}): Promise<Response> => {
   const method = request.method
   const methodUpper = method.toUpperCase()
   const url = new URL(request.url)

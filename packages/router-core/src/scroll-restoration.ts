@@ -76,7 +76,7 @@ function createScrollRestorationCache(): ScrollRestorationCache | null {
   }
 }
 
-export const scrollRestorationCache = createScrollRestorationCache()
+export const scrollRestorationCache: ScrollRestorationCache | null = createScrollRestorationCache()
 
 /**
  * The default `getKey` function for `useScrollRestoration`.
@@ -84,7 +84,7 @@ export const scrollRestorationCache = createScrollRestorationCache()
  *
  * The `location.href` is used as a fallback to support the use case where the location state is not available like the initial render.
  */
-export const defaultGetScrollRestorationKey = (location: ParsedLocation) => {
+export const defaultGetScrollRestorationKey = (location: ParsedLocation): string => {
   return location.state.__TSR_key! || location.href
 }
 
@@ -139,7 +139,7 @@ const windowScrollTarget = 'window'
 const scrollRestorationIdAttribute = 'data-scroll-restoration-id'
 type ScrollTarget = typeof windowScrollTarget | Element
 
-export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
+export function setupScrollRestoration(router: AnyRouter, force?: boolean): void {
   if (!scrollRestorationCache && !(isServer ?? router.isServer)) {
     return
   }

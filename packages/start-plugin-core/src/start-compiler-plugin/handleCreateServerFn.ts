@@ -204,7 +204,7 @@ function generateCallerRpcStub(
 export function handleCreateServerFn(
   candidates: Array<RewriteCandidate>,
   context: CompilationContext,
-) {
+): void {
   if (candidates.length === 0) {
     return
   }

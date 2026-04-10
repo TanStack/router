@@ -10,7 +10,7 @@ export function pruneServerOnlySubtrees({
 }: {
   rootRouteNode: RouteNode
   acc: HandleNodeAccumulator
-}) {
+}): { routeTree: Array<RouteNode>; routeNodes: Array<RouteNode> } {
   const routeNodes: Array<RouteNode> = []
   const routeTree =
     prune({ ...rootRouteNode, children: acc.routeTree }, routeNodes)
@@ -18,8 +18,8 @@ export function pruneServerOnlySubtrees({
   // remove root node from routeNodes
   routeNodes.pop()
   return {
-    routeTree,
-    routeNodes,
+    routeTree: routeTree,
+    routeNodes: routeNodes,
   }
 }
 function prune(

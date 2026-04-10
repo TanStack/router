@@ -5,7 +5,7 @@ import type { AnyRouter } from './router'
  * Handles hash-based scrolling after navigation completes.
  * To be used in framework-specific <Transitioner> components during the onResolved event.
  */
-export function handleHashScroll(router: AnyRouter) {
+export function handleHashScroll(router: AnyRouter): void {
   if (typeof document !== 'undefined' && (document as any).querySelector) {
     const location = router.stores.location.state
     const hashScrollIntoViewOptions =

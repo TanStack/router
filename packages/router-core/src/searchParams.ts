@@ -2,9 +2,9 @@ import { decode, encode } from './qss'
 import type { AnySchema } from './validators'
 
 /** Default `parseSearch` that strips leading '?' and JSON-parses values. */
-export const defaultParseSearch = parseSearchWith(JSON.parse)
+export const defaultParseSearch: (searchStr: string) => AnySchema = parseSearchWith(JSON.parse)
 /** Default `stringifySearch` using JSON.stringify for complex values. */
-export const defaultStringifySearch = stringifySearchWith(
+export const defaultStringifySearch: (search: Record<string, any>) => string = stringifySearchWith(
   JSON.stringify,
   JSON.parse,
 )
@@ -80,7 +80,7 @@ export function stringifySearchWith(
     return val
   }
 
-  return (search: Record<string, any>) => {
+  return (search: Record<string, any>): string => {
     const searchStr = encode(search, stringifyValue)
     return searchStr ? `?${searchStr}` : ''
   }

@@ -67,7 +67,7 @@
     },
     "build": {
       "cache": true,
-      "dependsOn": ["^build"],
+      "dependsOn": [],
       "inputs": ["production", "^production"],
       "outputs": ["{projectRoot}/build", "{projectRoot}/dist"]
     },

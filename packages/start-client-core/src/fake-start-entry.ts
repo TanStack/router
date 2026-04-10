@@ -1,2 +1,2 @@
-export const startInstance = undefined
-export const getRouter = () => {}
+export const startInstance: undefined = undefined
+export const getRouter = (): void => {}

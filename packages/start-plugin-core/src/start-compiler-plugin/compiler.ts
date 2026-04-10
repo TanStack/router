@@ -7,6 +7,7 @@ import {
   generateFromAst,
   parseAst,
 } from '@tanstack/router-utils'
+import type { GeneratorResult, ParseAstResult } from '@tanstack/router-utils'
 import babel from '@babel/core'
 import { handleCreateServerFn } from './handleCreateServerFn'
 import { handleCreateMiddleware } from './handleCreateMiddleware'
@@ -619,13 +620,13 @@ export class StartCompiler {
     return info
   }
 
-  public ingestModule({ code, id }: { code: string; id: string }) {
+  public ingestModule({ code, id }: { code: string; id: string }): { info: ModuleInfo; ast: ParseAstResult } {
     const ast = parseAst({ code })
     const info = this.extractModuleInfo(ast, id)
-    return { info, ast }
+    return { info: info, ast: ast }
   }
 
-  public invalidateModule(id: string) {
+  public invalidateModule(id: string): boolean {
     // Note: Resolution caches (resolveIdCache, exportResolutionCache) are only
     // used in build mode where there's no HMR. In dev mode, caching is disabled,
     // so we only need to invalidate the moduleCache here.
@@ -641,7 +642,7 @@ export class StartCompiler {
     id: string
     /** Pre-detected kinds present in this file. If not provided, all valid kinds are checked. */
     detectedKinds?: Set<LookupKind>
-  }) {
+  }): Promise<GeneratorResult | null> {
     if (!this.initialized) {
       await this.init()
     }

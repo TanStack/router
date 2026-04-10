@@ -18,4 +18,5 @@ export function createServerEntry(entry: ServerEntry): ServerEntry {
   }
 }
 
-export default createServerEntry({ fetch })
+const _serverEntry: ServerEntry = createServerEntry({ fetch })
+export default _serverEntry

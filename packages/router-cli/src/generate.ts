@@ -1,7 +1,7 @@
 import { Generator } from '@tanstack/router-generator'
 import type { Config } from '@tanstack/router-generator'
 
-export async function generate(config: Config, root: string) {
+export async function generate(config: Config, root: string): Promise<never> {
   try {
     const generator = new Generator({
       config,

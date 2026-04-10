@@ -4,6 +4,7 @@ import { Asset } from './Asset'
 import { useHydrated } from './ClientOnly'
 import { useTags } from './headContentUtils'
 import type { HeadContentProps } from './HeadContent'
+import type { JSX } from 'solid-js'
 
 const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
 
@@ -16,7 +17,7 @@ const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
  * Development version: filters out dev styles link after hydration and
  * includes a fallback cleanup effect for hydration mismatch cases.
  */
-export function HeadContent(props: HeadContentProps) {
+export function HeadContent(props: HeadContentProps): JSX.Element {
   const tags = useTags(props.assetCrossOrigin)
   const hydrated = useHydrated()
 

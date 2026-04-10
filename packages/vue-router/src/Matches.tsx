@@ -56,9 +56,9 @@ const MatchesContent = Vue.defineComponent({
   },
 })
 
-export const Matches = Vue.defineComponent({
+export const Matches: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'Matches',
-  setup() {
+  setup(): () => Vue.VNode {
     const router = useRouter()
 
     return () => {

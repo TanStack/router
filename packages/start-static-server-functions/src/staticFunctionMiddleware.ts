@@ -3,6 +3,7 @@ import path from 'node:path'
 import {
   createMiddleware,
   getDefaultSerovalPlugins,
+  type AnyFunctionMiddleware,
 } from '@tanstack/start-client-core'
 import { fromJSON, toJSONAsync } from 'seroval'
 
@@ -125,7 +126,7 @@ const fetchItem = async ({
   return result
 }
 
-export const staticFunctionMiddleware = createMiddleware({ type: 'function' })
+export const staticFunctionMiddleware: AnyFunctionMiddleware = createMiddleware({ type: 'function' })
   .client(async (ctx) => {
     if (
       process.env.NODE_ENV === 'production' &&

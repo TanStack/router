@@ -6,7 +6,7 @@ import {
 } from '@tanstack/router-generator'
 import type { FileEventType } from '@tanstack/router-generator'
 
-export function watch(root: string) {
+export function watch(root: string): void {
   const configPath = resolveConfigPath({
     configDirectory: root,
   })

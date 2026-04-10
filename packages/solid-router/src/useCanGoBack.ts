@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
 
-export function useCanGoBack() {
+export function useCanGoBack(): Solid.Accessor<boolean> {
   const router = useRouter()
   return Solid.createMemo(
     () => router.stores.location.state.state.__TSR_index !== 0,

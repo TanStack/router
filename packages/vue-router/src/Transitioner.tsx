@@ -22,7 +22,7 @@ let mountLoadForRouter = { router: null as any, mounted: false }
  *
  * Must be called during component setup phase.
  */
-export function useTransitionerSetup() {
+export function useTransitionerSetup(): void {
   const router = useRouter()
 
   // Skip on server - no transitions needed
@@ -255,9 +255,9 @@ export function useTransitionerSetup() {
  * This component is kept for backwards compatibility but the setup logic
  * has been moved to useTransitionerSetup() for better SSR hydration.
  */
-export const Transitioner = Vue.defineComponent({
+export const Transitioner: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'Transitioner',
-  setup() {
+  setup(): () => null {
     useTransitionerSetup()
     return () => null
   },

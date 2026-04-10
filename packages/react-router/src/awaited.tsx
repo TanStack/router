@@ -35,7 +35,7 @@ export function Await<T>(
     fallback?: React.ReactNode
     children: (result: T) => React.ReactNode
   },
-) {
+): React.JSX.Element {
   const inner = <AwaitInner {...props} />
   if (props.fallback) {
     return <React.Suspense fallback={props.fallback}>{inner}</React.Suspense>

@@ -4,7 +4,7 @@ import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
-export const Scripts = Vue.defineComponent({
+export const Scripts: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'Scripts',
   setup() {
     const router = useRouter()
@@ -60,7 +60,7 @@ export const Scripts = Vue.defineComponent({
       mounted.value = true
     })
 
-    return () => {
+    return (): Vue.VNode => {
       const allScripts: Array<RouterManagedTag> = []
 
       if (router.serverSsr) {

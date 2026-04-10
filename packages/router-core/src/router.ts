@@ -836,7 +836,7 @@ export interface ViewTransitionOptions {
  * Convert an unknown error into a minimal, serializable object.
  * Includes name and message (and stack in development).
  */
-export function defaultSerializeError(err: unknown) {
+export function defaultSerializeError(err: unknown): { name: string; message: string } | { data: unknown } {
   if (err instanceof Error) {
     const obj = {
       name: err.name,
@@ -872,13 +872,13 @@ export type TrailingSlashOption =
 export function getLocationChangeInfo(
   location: ParsedLocation,
   resolvedLocation?: ParsedLocation,
-) {
+): { fromLocation: ParsedLocation | undefined; toLocation: ParsedLocation; pathChanged: boolean; hrefChanged: boolean; hashChanged: boolean } {
   const fromLocation = resolvedLocation
   const toLocation = location
   const pathChanged = fromLocation?.pathname !== toLocation.pathname
   const hrefChanged = fromLocation?.href !== toLocation.href
   const hashChanged = fromLocation?.hash !== toLocation.hash
-  return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
+  return { fromLocation: fromLocation, toLocation: toLocation, pathChanged: pathChanged, hrefChanged: hrefChanged, hashChanged: hashChanged }
 }
 
 export type CreateRouterFn = <
@@ -939,7 +939,7 @@ export class RouterCore<
   resetNextScroll = true
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
   isViewTransitionTypesSupported?: boolean = undefined
-  subscribers = new Set<RouterListener<RouterEvent>>()
+  subscribers: Set<RouterListener<RouterEvent>> = new Set<RouterListener<RouterEvent>>()
   viewTransitionPromise?: ControlledPromise<true>
   isScrollRestoring = false
   isScrollRestorationSetup = false
@@ -1013,11 +1013,11 @@ export class RouterCore<
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
 
-  isShell() {
+  isShell(): boolean {
     return !!this.options.isShell
   }
 
-  isPrerendering() {
+  isPrerendering(): boolean {
     return !!this.options.isPrerendering
   }
 
@@ -1185,14 +1185,14 @@ export class RouterCore<
     return this.stores.__store.state
   }
 
-  updateLatestLocation = () => {
+  updateLatestLocation = (): void => {
     this.latestLocation = this.parseLocation(
       this.history.location,
       this.latestLocation,
     )
   }
 
-  buildRouteTree = () => {
+  buildRouteTree = (): ProcessRouteTreeResult<TRouteTree> => {
     const result = processRouteTree(
       this.routeTree,
       this.options.caseSensitive,
@@ -1213,7 +1213,7 @@ export class RouterCore<
     routesById,
     routesByPath,
     processedTree,
-  }: ProcessRouteTreeResult<TRouteTree>) {
+  }: ProcessRouteTreeResult<TRouteTree>): void {
     this.routesById = routesById as RoutesById<TRouteTree>
     this.routesByPath = routesByPath as RoutesByPath<TRouteTree>
     this.processedTree = processedTree
@@ -1342,7 +1342,7 @@ export class RouterCore<
   }
 
   /** Resolve a path against the router basepath and trailing-slash policy. */
-  resolvePathWithBase = (from: string, path: string) => {
+  resolvePathWithBase = (from: string, path: string): string => {
     const resolvedPath = resolvePath({
       base: from,
       to: cleanPath(path),
@@ -1754,7 +1754,7 @@ export class RouterCore<
     }
   }
 
-  cancelMatch = (id: string) => {
+  cancelMatch = (id: string): void => {
     const match = this.getMatch(id)
 
     if (!match) return
@@ -1764,7 +1764,7 @@ export class RouterCore<
     match._nonReactive.pendingTimeout = undefined
   }
 
-  cancelMatches = () => {
+  cancelMatches = (): void => {
     this.stores.pendingMatchesId.state.forEach((matchId) => {
       this.cancelMatch(matchId)
     })
@@ -2183,7 +2183,7 @@ export class RouterCore<
     ignoreBlocker,
     href,
     ...rest
-  }: BuildNextOptions & CommitLocationOptions = {}) => {
+  }: BuildNextOptions & CommitLocationOptions = {}): Promise<void> => {
     if (href) {
       const currentIndex = this.history.location.state.__TSR_index
 
@@ -2323,7 +2323,7 @@ export class RouterCore<
 
   latestLoadPromise: undefined | Promise<void>
 
-  beforeLoad = () => {
+  beforeLoad = (): void => {
     // Cancel any pending matches
     this.cancelMatches()
     this.updateLatestLocation()
@@ -2571,7 +2571,7 @@ export class RouterCore<
     }
   }
 
-  startViewTransition = (fn: () => Promise<void>) => {
+  startViewTransition = (fn: () => Promise<void>): void => {
     // Determine if we should start a view transition from the navigation
     // or from the router default
     const shouldViewTransition =
@@ -2711,7 +2711,7 @@ export class RouterCore<
     return this.load({ sync: opts?.sync })
   }
 
-  getParsedLocationHref = (location: ParsedLocation) => {
+  getParsedLocationHref = (location: ParsedLocation): string => {
     // For redirects and external use, we need publicHref (with rewrite output applied)
     // href is the internal path after rewrite input, publicHref is user-facing
     return location.publicHref || '/'
@@ -2772,7 +2772,7 @@ export class RouterCore<
     }
   }
 
-  clearExpiredCache = () => {
+  clearExpiredCache = (): void => {
     const now = Date.now()
     // This is where all of the garbage collection magic happens
     const filter = (d: MakeRouteMatch<TRouteTree>) => {
@@ -2799,7 +2799,7 @@ export class RouterCore<
     this.clearCache({ filter })
   }
 
-  loadRouteChunk = loadRouteChunk
+  loadRouteChunk: typeof loadRouteChunk = loadRouteChunk
 
   preloadRoute: PreloadRouteFn<
     TRouteTree,
@@ -2930,7 +2930,7 @@ export class RouterCore<
 
   serverSsr?: ServerSsr
 
-  hasNotFoundMatch = () => {
+  hasNotFoundMatch = (): boolean => {
     return this.stores.activeMatchesSnapshot.state.some(
       (d) => d.status === 'notFound' || d.globalNotFound,
     )
@@ -3021,7 +3021,12 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   pathname: string
   routesById: Record<string, TRouteLike>
   processedTree: ProcessedTree<any, any, any>
-}) {
+}): {
+  matchedRoutes: ReadonlyArray<TRouteLike>
+  routeParams: Record<string, string>
+  foundRoute: TRouteLike | undefined
+  parsedParams: Record<string, unknown> | undefined
+} {
   const routeParams: Record<string, string> = Object.create(null)
   const trimmedPath = trimPathRight(pathname)
 
@@ -3036,7 +3041,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 
   const matchedRoutes = match?.branch || [routesById[rootRouteId]!]
 
-  return { matchedRoutes, routeParams, foundRoute, parsedParams }
+  return { matchedRoutes: matchedRoutes, routeParams: routeParams, foundRoute: foundRoute, parsedParams: parsedParams }
 }
 
 /**

@@ -28,7 +28,7 @@ export interface ClientOnlyProps {
  * )
  * ```
  */
-export function ClientOnly(props: ClientOnlyProps) {
+export function ClientOnly(props: ClientOnlyProps): Solid.JSX.Element {
   const hydrated = useHydrated()
   return (
     <Solid.Show when={hydrated()} fallback={props.fallback ?? null}>

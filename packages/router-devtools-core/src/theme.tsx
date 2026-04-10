@@ -23,7 +23,7 @@ interface ProviderProps {
 
 const ThemeContext = createContext(defaultTheme)
 
-export function ThemeProvider({ children, theme, ...rest }: ProviderProps) {
+export function ThemeProvider({ children, theme, ...rest }: ProviderProps): JSX.Element {
   return (
     <ThemeContext.Provider value={theme} {...rest}>
       {children}
@@ -31,6 +31,6 @@ export function ThemeProvider({ children, theme, ...rest }: ProviderProps) {
   )
 }
 
-export function useTheme() {
+export function useTheme(): Theme {
   return useContext(ThemeContext)
 }

@@ -9,7 +9,7 @@ export function codeFrameError(
     end: { line: number; column: number }
   },
   message: string,
-) {
+): Error {
   const frame = codeFrameColumns(
     code,
     {

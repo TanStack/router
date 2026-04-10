@@ -1,6 +1,7 @@
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
 import { defineComponent, h, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter, useRouterState } from '@tanstack/vue-router'
+import type { DefineComponent, VNode } from 'vue'
 import type { AnyRouter } from '@tanstack/vue-router'
 
 export interface TanStackRouterDevtoolsOptions {
@@ -41,89 +42,90 @@ export interface TanStackRouterDevtoolsOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-export const TanStackRouterDevtools = /* #__PURE__ */ defineComponent({
-  name: 'TanStackRouterDevtools',
-  props: [
-    'initialIsOpen',
-    'panelProps',
-    'closeButtonProps',
-    'toggleButtonProps',
-    'position',
-    'containerElement',
-    'router',
-    'shadowDOMTarget',
-  ] as unknown as undefined,
-  setup(props: TanStackRouterDevtoolsOptions) {
-    const devToolRef = ref<HTMLDivElement | null>(null)
-    let isMounted = false
+export const TanStackRouterDevtools: DefineComponent<TanStackRouterDevtoolsOptions> =
+  /* #__PURE__ */ defineComponent({
+    name: 'TanStackRouterDevtools',
+    props: [
+      'initialIsOpen',
+      'panelProps',
+      'closeButtonProps',
+      'toggleButtonProps',
+      'position',
+      'containerElement',
+      'router',
+      'shadowDOMTarget',
+    ] as unknown as undefined,
+    setup(props: TanStackRouterDevtoolsOptions): () => VNode {
+      const devToolRef = ref<HTMLDivElement | null>(null)
+      let isMounted = false
 
-    const hookRouter = useRouter({ warn: false })
-    const activeRouter = props.router ?? hookRouter
+      const hookRouter = useRouter({ warn: false })
+      const activeRouter = props.router ?? hookRouter
 
-    const activeRouterState = useRouterState({ router: activeRouter })
+      const activeRouterState = useRouterState({ router: activeRouter })
 
-    const devtools = new TanStackRouterDevtoolsCore({
-      initialIsOpen: props.initialIsOpen,
-      panelProps: props.panelProps,
-      closeButtonProps: props.closeButtonProps,
-      toggleButtonProps: props.toggleButtonProps,
-      position: props.position,
-      containerElement: props.containerElement,
-      shadowDOMTarget: props.shadowDOMTarget,
-      router: activeRouter,
-      routerState: activeRouterState.value,
-    })
+      const devtools = new TanStackRouterDevtoolsCore({
+        initialIsOpen: props.initialIsOpen,
+        panelProps: props.panelProps,
+        closeButtonProps: props.closeButtonProps,
+        toggleButtonProps: props.toggleButtonProps,
+        position: props.position,
+        containerElement: props.containerElement,
+        shadowDOMTarget: props.shadowDOMTarget,
+        router: activeRouter,
+        routerState: activeRouterState.value,
+      })
 
-    // Update devtools when router changes
-    watch(
-      () => activeRouter,
-      (router) => {
-        devtools.setRouter(router)
-      },
-    )
+      // Update devtools when router changes
+      watch(
+        () => activeRouter,
+        (router) => {
+          devtools.setRouter(router)
+        },
+      )
 
-    // Update devtools when router state changes
-    watch(activeRouterState, (routerState) => {
-      devtools.setRouterState(routerState)
-    })
+      // Update devtools when router state changes
+      watch(activeRouterState, (routerState) => {
+        devtools.setRouterState(routerState)
+      })
 
-    // Update devtools when options change
-    watch(
-      () => [
-        props.initialIsOpen,
-        props.panelProps,
-        props.closeButtonProps,
-        props.toggleButtonProps,
-        props.position,
-        props.containerElement,
-        props.shadowDOMTarget,
-      ],
-      () => {
-        devtools.setOptions({
-          initialIsOpen: props.initialIsOpen,
-          panelProps: props.panelProps,
-          closeButtonProps: props.closeButtonProps,
-          toggleButtonProps: props.toggleButtonProps,
-          position: props.position,
-          containerElement: props.containerElement,
-          shadowDOMTarget: props.shadowDOMTarget,
-        })
-      },
-    )
+      // Update devtools when options change
+      watch(
+        () => [
+          props.initialIsOpen,
+          props.panelProps,
+          props.closeButtonProps,
+          props.toggleButtonProps,
+          props.position,
+          props.containerElement,
+          props.shadowDOMTarget,
+        ],
+        () => {
+          devtools.setOptions({
+            initialIsOpen: props.initialIsOpen,
+            panelProps: props.panelProps,
+            closeButtonProps: props.closeButtonProps,
+            toggleButtonProps: props.toggleButtonProps,
+            position: props.position,
+            containerElement: props.containerElement,
+            shadowDOMTarget: props.shadowDOMTarget,
+          })
+        },
+      )
 
-    onMounted(() => {
-      if (devToolRef.value) {
-        devtools.mount(devToolRef.value)
-        isMounted = true
-      }
-    })
+      onMounted(() => {
+        if (devToolRef.value) {
+          devtools.mount(devToolRef.value)
+          isMounted = true
+        }
+      })
 
-    onUnmounted(() => {
-      if (isMounted) {
-        devtools.unmount()
-      }
-    })
+      onUnmounted(() => {
+        if (isMounted) {
+          devtools.unmount()
+        }
+      })
 
-    return () => h('div', { ref: devToolRef })
-  },
-})
+      return () => h('div', { ref: devToolRef })
+    },
+  })

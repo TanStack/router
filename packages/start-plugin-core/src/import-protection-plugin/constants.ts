@@ -1,15 +1,15 @@
 import { SERVER_FN_LOOKUP } from '../constants'
 
-export const SERVER_FN_LOOKUP_QUERY = `?${SERVER_FN_LOOKUP}`
+export const SERVER_FN_LOOKUP_QUERY: string = `?${SERVER_FN_LOOKUP}`
 
-export const IMPORT_PROTECTION_DEBUG =
+export const IMPORT_PROTECTION_DEBUG: boolean =
   process.env.TSR_IMPORT_PROTECTION_DEBUG === '1' ||
   process.env.TSR_IMPORT_PROTECTION_DEBUG === 'true'
 
-export const IMPORT_PROTECTION_DEBUG_FILTER =
+export const IMPORT_PROTECTION_DEBUG_FILTER: string | undefined =
   process.env.TSR_IMPORT_PROTECTION_DEBUG_FILTER
 
-export const KNOWN_SOURCE_EXTENSIONS = new Set([
+export const KNOWN_SOURCE_EXTENSIONS: Set<string> = new Set([
   '.ts',
   '.tsx',
   '.mts',

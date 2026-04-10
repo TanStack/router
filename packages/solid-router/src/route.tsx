@@ -82,7 +82,7 @@ declare module '@tanstack/router-core' {
 export function getRouteApi<
   const TId,
   TRouter extends AnyRouter = RegisteredRouter,
->(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>) {
+>(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>): RouteApi<TId, TRouter> {
   return new RouteApi<TId, TRouter>({ id })
 }
 
@@ -137,7 +137,7 @@ export class RouteApi<
     return useNavigate({ from: router.routesById[this.id as string].fullPath })
   }
 
-  notFound = (opts?: NotFoundError) => {
+  notFound = (opts?: NotFoundError): NotFoundError => {
     return notFound({ routeId: this.id as string, ...opts })
   }
 
@@ -381,7 +381,40 @@ export type AnyRootRoute = RootRoute<
   any
 >
 
-export function createRootRouteWithContext<TRouterContext extends {}>() {
+export function createRootRouteWithContext<TRouterContext extends {}>(): <
+  TRegister = Register,
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TSearchValidator = undefined,
+  TLoaderDeps extends Record<string, any> = {},
+  TLoaderFn = undefined,
+  TSSR = unknown,
+  THandlers = undefined,
+>(
+  options?: RootRouteOptions<
+    TRegister,
+    TSearchValidator,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TSSR,
+    THandlers
+  >,
+) => RootRoute<
+  TRegister,
+  TSearchValidator,
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  unknown,
+  unknown,
+  TSSR,
+  THandlers
+> {
   return <
     TRegister = Register,
     TRouteContextFn = AnyContext,
@@ -421,7 +454,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 /**
  * @deprecated Use the `createRootRouteWithContext` function instead.
  */
-export const rootRouteWithContext = createRootRouteWithContext
+export const rootRouteWithContext: typeof createRootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
   in out TRegister = Register,

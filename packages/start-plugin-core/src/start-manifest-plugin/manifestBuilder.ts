@@ -40,7 +40,7 @@ type DedupeRoute = {
 export function appendUniqueStrings(
   target: Array<string> | undefined,
   source: Array<string>,
-) {
+): Array<string> | undefined {
   // Similar to Set.prototype.union, but for ordered arrays.
   // It preserves first-seen order and returns the original target array when
   // source contributes no new values, which avoids extra allocations.
@@ -73,7 +73,7 @@ export function appendUniqueStrings(
 export function appendUniqueAssets(
   target: Array<RouterManagedTag> | undefined,
   source: Array<RouterManagedTag>,
-) {
+): Array<RouterManagedTag> | undefined {
   // Same semantics as appendUniqueStrings, but uniqueness is based on the
   // serialized asset identity instead of object reference.
   if (source.length === 0) {
@@ -139,7 +139,7 @@ export function buildStartManifest(options: {
   clientBundle: Rollup.OutputBundle
   routeTreeRoutes: RouteTreeRoutes
   basePath: string
-}) {
+}): { routes: Record<string, RouteTreeRoute>; clientEntry: string } {
   const scannedChunks = scanClientChunks(options.clientBundle)
   const hashedCssFiles = collectDynamicImportCss(
     scannedChunks.routeEntryChunks,
@@ -232,7 +232,7 @@ export function scanClientChunks(
   }
 }
 
-export function getRouteFilePathsFromModuleIds(moduleIds: Array<string>) {
+export function getRouteFilePathsFromModuleIds(moduleIds: Array<string>): Array<string> {
   let routeFilePaths: Array<string> | undefined
   let seenRouteFilePaths: Set<string> | undefined
 
@@ -276,7 +276,7 @@ export function collectDynamicImportCss(
   routeEntryChunks: Set<Rollup.OutputChunk>,
   chunksByFileName: Map<string, Rollup.OutputChunk>,
   entryChunk?: Rollup.OutputChunk,
-) {
+): Set<string> {
   const routerManagedCssFiles = new Set<string>()
   const nonRouteDynamicCssFiles = new Set<string>()
   const hashedCssFiles = new Set<string>()
@@ -415,7 +415,7 @@ export function createManifestAssetResolvers(options: {
 export function createChunkCssAssetCollector(options: {
   chunksByFileName: Map<string, Rollup.OutputChunk>
   getStylesheetAsset: (cssFile: string) => RouterManagedTag
-}) {
+}): { getChunkCssAssets: (chunk: Rollup.OutputChunk) => Array<RouterManagedTag> } {
   const assetsByChunk = new Map<Rollup.OutputChunk, Array<RouterManagedTag>>()
   const stateByChunk = new Map<Rollup.OutputChunk, number>()
 
@@ -470,7 +470,7 @@ export function createChunkCssAssetCollector(options: {
     return assets
   }
 
-  return { getChunkCssAssets }
+  return { getChunkCssAssets: getChunkCssAssets }
 }
 
 export function buildRouteManifestRoutes(options: {
@@ -479,7 +479,7 @@ export function buildRouteManifestRoutes(options: {
   chunksByFileName: Map<string, Rollup.OutputChunk>
   entryChunk: Rollup.OutputChunk
   assetResolvers: ManifestAssetResolvers
-}) {
+}): Record<string, RouteTreeRoute> {
   const routes: Record<string, RouteTreeRoute> = {}
   const getChunkCssAssets = createChunkCssAssetCollector({
     chunksByFileName: options.chunksByFileName,

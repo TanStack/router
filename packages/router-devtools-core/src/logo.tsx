@@ -1,6 +1,7 @@
 import { createUniqueId } from 'solid-js'
+import type { JSX } from 'solid-js'
 
-export function TanStackLogo() {
+export function TanStackLogo(): JSX.Element {
   const id = createUniqueId()
   return (
     <svg

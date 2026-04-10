@@ -23,7 +23,7 @@ import { ScrollRestoration } from './scroll-restoration'
 import type { VNode } from 'vue'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
-export const Match = Vue.defineComponent({
+export const Match: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'Match',
   props: {
     matchId: {
@@ -283,7 +283,7 @@ const OnRendered = Vue.defineComponent({
   },
 })
 
-export const MatchInner = Vue.defineComponent({
+export const MatchInner: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'MatchInner',
   props: {
     matchId: {
@@ -471,7 +471,7 @@ export const MatchInner = Vue.defineComponent({
   },
 })
 
-export const Outlet = Vue.defineComponent({
+export const Outlet: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'Outlet',
   setup() {
     const router = useRouter()

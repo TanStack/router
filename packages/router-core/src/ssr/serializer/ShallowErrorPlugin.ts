@@ -1,5 +1,5 @@
 import { createPlugin } from 'seroval'
-import type { SerovalNode } from 'seroval'
+import type { Plugin, SerovalNode } from 'seroval'
 
 export interface ErrorNode {
   message: SerovalNode
@@ -9,7 +9,7 @@ export interface ErrorNode {
  * this plugin serializes only the `message` part of an Error
  * this helps with serializing e.g. a ZodError which has functions attached that cannot be serialized
  */
-export const ShallowErrorPlugin = /* @__PURE__ */ createPlugin<
+export const ShallowErrorPlugin: Plugin<Error, ErrorNode> = /* @__PURE__ */ createPlugin<
   Error,
   ErrorNode
 >({

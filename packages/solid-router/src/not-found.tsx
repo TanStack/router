@@ -24,7 +24,7 @@ export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => Solid.JSX.Element
   onCatch?: (error: NotFoundError) => void
   children: Solid.JSX.Element
-}) {
+}): Solid.JSX.Element {
   const router = useRouter()
   // TODO: Some way for the user to programmatically reset the not-found boundary?
   const pathname = Solid.createMemo(() => router.stores.location.state.pathname)
@@ -57,6 +57,6 @@ export function CatchNotFound(props: {
   )
 }
 
-export function DefaultGlobalNotFound() {
+export function DefaultGlobalNotFound(): Solid.JSX.Element {
   return <p>Not Found</p>
 }

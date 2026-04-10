@@ -5,7 +5,14 @@ import type { ServerFn } from '#tanstack-start-server-fn-resolver'
 
 export type SsrRpcImporter = () => Promise<ServerFn>
 
-export const createSsrRpc = (functionId: string, importer?: SsrRpcImporter) => {
+export const createSsrRpc = (
+  functionId: string,
+  importer?: SsrRpcImporter,
+): ((...args: Array<any>) => Promise<any>) & {
+  url: string
+  serverFnMeta: ClientFnMeta
+  [k: symbol]: boolean
+} => {
   const url = process.env.TSS_SERVER_FN_BASE + functionId
   const serverFnMeta: ClientFnMeta = { id: functionId }
 

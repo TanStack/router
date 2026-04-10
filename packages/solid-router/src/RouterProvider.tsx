@@ -17,7 +17,7 @@ export function RouterContextProvider<
   ...rest
 }: RouterProps<TRouter, TDehydrated> & {
   children: () => Solid.JSX.Element
-}) {
+}): Solid.JSX.Element {
   // Allow the router to update options on the router instance
   router.update({
     ...router.options,
@@ -42,7 +42,7 @@ export function RouterContextProvider<
 export function RouterProvider<
   TRouter extends AnyRouter = RegisteredRouter,
   TDehydrated extends Record<string, any> = Record<string, any>,
->({ router, ...rest }: RouterProps<TRouter, TDehydrated>) {
+>({ router, ...rest }: RouterProps<TRouter, TDehydrated>): Solid.JSX.Element {
   return (
     <RouterContextProvider router={router} {...rest}>
       {() => <Matches />}

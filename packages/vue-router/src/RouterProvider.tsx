@@ -8,7 +8,7 @@ import type {
 } from '@tanstack/router-core'
 
 // Component that provides router context and renders children
-export const RouterContextProvider = Vue.defineComponent({
+export const RouterContextProvider: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'RouterContextProvider',
   props: {
     router: {
@@ -17,7 +17,7 @@ export const RouterContextProvider = Vue.defineComponent({
     },
     // Rest of router options will be passed as attrs
   },
-  setup(props, { attrs, slots }) {
+  setup(props, { attrs, slots }): () => Vue.VNode | Array<Vue.VNode> | undefined {
     const router = props.router as AnyRouter
     const restAttrs = attrs
 

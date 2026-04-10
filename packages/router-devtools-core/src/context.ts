@@ -1,10 +1,19 @@
 import { createContext, useContext } from 'solid-js'
+import type { Context } from 'solid-js'
 
-export const ShadowDomTargetContext = createContext<ShadowRoot | undefined>(
+export const ShadowDomTargetContext: Context<ShadowRoot | undefined> = createContext<ShadowRoot | undefined>(
   undefined,
 )
 
-export const DevtoolsOnCloseContext = createContext<
+type DevtoolsOnCloseContextValue =
+  | {
+      onCloseClick: (
+        e: MouseEvent & { currentTarget: HTMLButtonElement; target: Element },
+      ) => void
+    }
+  | undefined
+
+export const DevtoolsOnCloseContext: Context<DevtoolsOnCloseContextValue> = createContext<
   | {
       onCloseClick: (
         e: MouseEvent & { currentTarget: HTMLButtonElement; target: Element },
@@ -13,7 +22,7 @@ export const DevtoolsOnCloseContext = createContext<
   | undefined
 >(undefined)
 
-export const useDevtoolsOnClose = () => {
+export const useDevtoolsOnClose = (): { onCloseClick: (e: MouseEvent & { currentTarget: HTMLButtonElement; target: Element }) => void } => {
   const context = useContext(DevtoolsOnCloseContext)
   if (!context) {
     throw new Error(

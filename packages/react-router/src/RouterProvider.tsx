@@ -20,7 +20,7 @@ export function RouterContextProvider<
   ...rest
 }: RouterProps<TRouter, TDehydrated> & {
   children: React.ReactNode
-}) {
+}): React.JSX.Element {
   if (Object.keys(rest).length > 0) {
     // Allow the router to update options on the router instance
     router.update({
@@ -58,7 +58,7 @@ export function RouterContextProvider<
 export function RouterProvider<
   TRouter extends AnyRouter = RegisteredRouter,
   TDehydrated extends Record<string, any> = Record<string, any>,
->({ router, ...rest }: RouterProps<TRouter, TDehydrated>) {
+>({ router, ...rest }: RouterProps<TRouter, TDehydrated>): React.JSX.Element {
   return (
     <RouterContextProvider router={router} {...rest}>
       <Matches />

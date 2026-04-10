@@ -10,7 +10,7 @@ export const renderRouterToString = async ({
   router: AnyRouter
   responseHeaders: Headers
   children: ReactNode
-}) => {
+}): Promise<Response> => {
   try {
     let html = ReactDOMServer.renderToString(children)
     router.serverSsr!.setRenderFinished()

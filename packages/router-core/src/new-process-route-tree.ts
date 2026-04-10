@@ -675,7 +675,7 @@ export function processRouteMasks<
 >(
   routeList: Array<TRouteLike>,
   processedTree: ProcessedTree<any, TRouteLike, any>,
-) {
+): void {
   const segmentTree = createStaticNode<TRouteLike>('/')
   const data = new Uint16Array(6)
   for (const route of routeList) {
@@ -697,7 +697,7 @@ export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(
   path: string,
   /** The `processedTree` returned by the initial `processRouteTree` call. */
   processedTree: ProcessedTree<any, T, any>,
-) {
+): { route: T; rawParams: Record<string, string>; parsedParams?: Record<string, unknown> } | null {
   path ||= '/'
   const cached = processedTree.flatCache!.get(path)
   if (cached) return cached
@@ -715,7 +715,7 @@ export function findSingleMatch(
   fuzzy: boolean,
   path: string,
   processedTree: ProcessedTree<any, any, { from: string }>,
-) {
+): { route: { from: string }; rawParams: Record<string, string>; parsedParams?: Record<string, unknown> } | null {
   from ||= '/'
   path ||= '/'
   const key = caseSensitive ? `case\0${from}` : from
@@ -774,7 +774,7 @@ export function findRouteMatch<
 }
 
 /** Trim trailing slashes (except preserving root '/'). */
-export function trimPathRight(path: string) {
+export function trimPathRight(path: string): string {
   return path === '/' ? path : path.replace(/\/{1,}$/, '')
 }
 

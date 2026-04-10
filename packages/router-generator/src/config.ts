@@ -15,11 +15,29 @@ const tokenMatcherSchema = z.union([
   tokenJsonRegexSchema,
 ])
 
-export type TokenMatcherJson = string | z.infer<typeof tokenJsonRegexSchema>
+export type TokenMatcherJson = string | { regex: string; flags?: string }
 
-export type TokenMatcher = z.infer<typeof tokenMatcherSchema>
+export type TokenMatcher = string | RegExp | { regex: string; flags?: string }
 
-export const baseConfigSchema = z.object({
+export interface BaseConfig {
+  target: 'react' | 'solid' | 'vue'
+  virtualRouteConfig?: z.infer<typeof virtualRootRouteSchema> | string
+  routeFilePrefix?: string
+  routeFileIgnorePrefix: string
+  routeFileIgnorePattern?: string
+  routesDirectory: string
+  quoteStyle: 'single' | 'double'
+  semicolons: boolean
+  disableLogging: boolean
+  routeTreeFileHeader: Array<string>
+  indexToken: TokenMatcher
+  routeToken: TokenMatcher
+  pathParamsAllowedCharacters?: Array<
+    ';' | ':' | '@' | '&' | '=' | '+' | '$' | ','
+  >
+}
+
+export const baseConfigSchema: z.ZodObject<z.ZodRawShape, 'strip', z.ZodTypeAny, BaseConfig> = z.object({
   target: z.enum(['react', 'solid', 'vue']).optional().default('react'),
   virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
@@ -42,11 +60,31 @@ export const baseConfigSchema = z.object({
   pathParamsAllowedCharacters: z
     .array(z.enum([';', ':', '@', '&', '=', '+', '$', ',']))
     .optional(),
-})
+}) as any
 
-export type BaseConfig = z.infer<typeof baseConfigSchema>
+export interface Config extends BaseConfig {
+  generatedRouteTree: string
+  disableTypes: boolean
+  verboseFileRoutes?: boolean
+  addExtensions: boolean | string
+  enableRouteTreeFormatting: boolean
+  routeTreeFileFooter?:
+    | Array<string>
+    | ((...args: Array<any>) => Array<string>)
+  autoCodeSplitting?: boolean
+  customScaffolding?: {
+    routeTemplate?: string
+    lazyRouteTemplate?: string
+  }
+  experimental?: {
+    enableCodeSplitting?: boolean
+  }
+  plugins?: Array<GeneratorPlugin>
+  tmpDir: string
+  importRoutesUsingAbsolutePaths: boolean
+}
 
-export const configSchema = baseConfigSchema.extend({
+export const configSchema: z.ZodObject<z.ZodRawShape, 'strip', z.ZodTypeAny, Config> = baseConfigSchema.extend({
   generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   disableTypes: z.boolean().optional().default(false),
   verboseFileRoutes: z.boolean().optional(),
@@ -80,15 +118,13 @@ export const configSchema = baseConfigSchema.extend({
   plugins: z.array(z.custom<GeneratorPlugin>()).optional(),
   tmpDir: z.string().optional().default(''),
   importRoutesUsingAbsolutePaths: z.boolean().optional().default(false),
-})
-
-export type Config = z.infer<typeof configSchema>
+}) as any
 
 type ResolveParams = {
   configDirectory: string
 }
 
-export function resolveConfigPath({ configDirectory }: ResolveParams) {
+export function resolveConfigPath({ configDirectory }: ResolveParams): string {
   return path.resolve(configDirectory, 'tsr.config.json')
 }
 

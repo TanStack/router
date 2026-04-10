@@ -4,6 +4,6 @@ import type { AnyRouter } from '@tanstack/router-core'
 
 export function RouterServer<TRouter extends AnyRouter>(props: {
   router: TRouter
-}) {
+}): React.JSX.Element {
   return <RouterProvider router={props.router} />
 }

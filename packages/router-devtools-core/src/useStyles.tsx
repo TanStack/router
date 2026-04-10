@@ -4,7 +4,64 @@ import { tokens } from './tokens'
 import { ShadowDomTargetContext } from './context'
 import type { Accessor } from 'solid-js'
 
-const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
+type Styles = {
+  devtoolsPanelContainer: string
+  devtoolsPanelContainerVisibility: (isOpen: boolean) => string
+  devtoolsPanelContainerResizing: (isResizing: Accessor<boolean>) => string
+  devtoolsPanelContainerAnimation: (isOpen: boolean, height: number) => string
+  logo: string
+  tanstackLogo: string
+  routerLogo: string
+  devtoolsPanel: string
+  dragHandle: string
+  firstContainer: string
+  routerExplorerContainer: string
+  routerExplorer: string
+  row: string
+  detailsHeader: string
+  maskedBadge: string
+  maskedLocation: string
+  detailsContent: string
+  routeMatchesToggle: string
+  routeMatchesToggleBtn: (active: boolean, showBorder: boolean) => Array<string>
+  detailsHeaderInfo: string
+  matchRow: (active: boolean) => Array<string>
+  matchIndicator: (color: 'green' | 'red' | 'yellow' | 'gray' | 'blue' | 'purple') => Array<string>
+  matchID: string
+  ageTicker: (showWarning: boolean) => Array<string>
+  secondContainer: string
+  thirdContainer: string
+  fourthContainer: string
+  routesContainer: string
+  routesRowContainer: (active: boolean, isMatch: boolean) => Array<string>
+  routesRow: (isMatch: boolean) => Array<string>
+  routesRowInner: string
+  routeParamInfo: string
+  nestedRouteRow: (isRoot: boolean) => string
+  code: string
+  matchesContainer: string
+  cachedMatchesContainer: string
+  historyContainer: string
+  historyOverflowContainer: string
+  maskedBadgeContainer: string
+  matchDetails: string
+  matchStatus: (status: 'pending' | 'success' | 'error' | 'notFound' | 'redirected', isFetching: false | 'beforeLoad' | 'loader') => string
+  matchDetailsInfo: string
+  matchDetailsInfoLabel: string
+  mainCloseBtn: string
+  mainCloseBtnPosition: (position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right') => string
+  mainCloseBtnAnimation: (isOpen: boolean) => string
+  routerLogoCloseButton: string
+  mainCloseBtnDivider: string
+  mainCloseBtnIconContainer: string
+  mainCloseBtnIconOuter: string
+  mainCloseBtnIconInner: string
+  panelCloseBtn: string
+  panelCloseBtnIcon: string
+  navigateButton: string
+}
+
+const stylesFactory = (shadowDOMTarget?: ShadowRoot): Styles => {
   const { colors, font, size, alpha, shadow, border } = tokens
   const { fontFamily, lineHeight, size: fontSize } = font
   const css = shadowDOMTarget
@@ -617,7 +674,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
   }
 }
 
-export function useStyles() {
+export function useStyles(): Accessor<Styles> {
   const shadowDomTarget = useContext(ShadowDomTargetContext)
   const [_styles] = createSignal(stylesFactory(shadowDomTarget))
   return _styles

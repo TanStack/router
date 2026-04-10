@@ -10,7 +10,7 @@ import {
 import type { LRUCache } from './lru-cache'
 
 /** Join path segments, cleaning duplicate slashes between parts. */
-export function joinPaths(paths: Array<string | undefined>) {
+export function joinPaths(paths: Array<string | undefined>): string {
   return cleanPath(
     paths
       .filter((val) => {
@@ -21,24 +21,24 @@ export function joinPaths(paths: Array<string | undefined>) {
 }
 
 /** Remove repeated slashes from a path string. */
-export function cleanPath(path: string) {
+export function cleanPath(path: string): string {
   // remove double slashes
   return path.replace(/\/{2,}/g, '/')
 }
 
 /** Trim leading slashes (except preserving root '/'). */
-export function trimPathLeft(path: string) {
+export function trimPathLeft(path: string): string {
   return path === '/' ? path : path.replace(/^\/{1,}/, '')
 }
 
 /** Trim trailing slashes (except preserving root '/'). */
-export function trimPathRight(path: string) {
+export function trimPathRight(path: string): string {
   const len = path.length
   return len > 1 && path[len - 1] === '/' ? path.replace(/\/{1,}$/, '') : path
 }
 
 /** Trim both leading and trailing slashes. */
-export function trimPath(path: string) {
+export function trimPath(path: string): string {
   return trimPathRight(trimPathLeft(path))
 }
 
@@ -111,7 +111,7 @@ export function resolvePath({
   to,
   trailingSlash = 'never',
   cache,
-}: ResolvePathOptions) {
+}: ResolvePathOptions): string {
   const isAbsolute = to.startsWith('/')
   const isBase = !isAbsolute && to === '.'
 
@@ -213,7 +213,7 @@ export function compileDecodeCharMap(
     .map((key) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('|')
   const regex = new RegExp(pattern, 'g')
-  return (encoded: string) =>
+  return (encoded: string): string =>
     encoded.replace(regex, (match) => charMap.get(match) ?? match)
 }
 

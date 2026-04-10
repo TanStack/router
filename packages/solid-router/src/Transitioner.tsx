@@ -7,7 +7,7 @@ import {
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
-export function Transitioner() {
+export function Transitioner(): null {
   const router = useRouter()
   let mountLoadForRouter = { router, mounted: false }
   const isLoading = Solid.createMemo(() => router.stores.isLoading.state)

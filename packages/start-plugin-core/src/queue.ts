@@ -65,7 +65,7 @@ export class Queue<T> {
     }
   }
 
-  add(fn: () => Promise<T> | T, { priority }: { priority?: boolean } = {}) {
+  add(fn: () => Promise<T> | T, { priority }: { priority?: boolean } = {}): Promise<any> {
     return new Promise<any>((resolve, reject) => {
       const task = () =>
         Promise.resolve(fn())
@@ -86,36 +86,36 @@ export class Queue<T> {
     })
   }
 
-  throttle(n: number) {
+  throttle(n: number): void {
     this.currentConcurrency = n
   }
 
-  onSettled(cb: () => void) {
+  onSettled(cb: () => void): () => void {
     this.onSettles.push(cb)
     return () => {
       this.onSettles = this.onSettles.filter((d) => d !== cb)
     }
   }
 
-  onError(cb: (error: any, task: () => Promise<any>) => void) {
+  onError(cb: (error: any, task: () => Promise<any>) => void): () => void {
     this.onErrors.push(cb)
     return () => {
       this.onErrors = this.onErrors.filter((d) => d !== cb)
     }
   }
 
-  onSuccess(cb: (result: any, task: () => Promise<any>) => void) {
+  onSuccess(cb: (result: any, task: () => Promise<any>) => void): () => void {
     this.onSuccesses.push(cb)
     return () => {
       this.onSuccesses = this.onSuccesses.filter((d) => d !== cb)
     }
   }
 
-  stop() {
+  stop(): void {
     this.running = false
   }
 
-  start() {
+  start(): Promise<void> {
     this.running = true
     this.tick()
     return new Promise<void>((resolve) => {
@@ -127,27 +127,27 @@ export class Queue<T> {
     })
   }
 
-  clear() {
+  clear(): void {
     this.pending = []
   }
 
-  getActive() {
+  getActive(): Array<() => Promise<any>> {
     return this.active
   }
 
-  getPending() {
+  getPending(): Array<() => Promise<any>> {
     return this.pending
   }
 
-  getAll() {
+  getAll(): Array<() => Promise<any>> {
     return [...this.active, ...this.pending]
   }
 
-  isRunning() {
+  isRunning(): boolean {
     return this.running
   }
 
-  isSettled() {
+  isSettled(): boolean {
     return !this.active.length && !this.pending.length
   }
 }

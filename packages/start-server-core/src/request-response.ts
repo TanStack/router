@@ -162,7 +162,7 @@ export function getRequestIP(opts?: {
    * Note: Make sure that this header can be trusted (your application running behind a CDN or reverse proxy) before enabling.
    */
   xForwardedFor?: boolean
-}) {
+}): string | undefined {
   return h3_getRequestIP(getH3Event(), opts)
 }
 
@@ -173,7 +173,7 @@ export function getRequestIP(opts?: {
  *
  * If no host header is found, it will default to "localhost".
  */
-export function getRequestHost(opts?: { xForwardedHost?: boolean }) {
+export function getRequestHost(opts?: { xForwardedHost?: boolean }): string {
   return h3_getRequestHost(getH3Event(), opts)
 }
 
@@ -187,7 +187,7 @@ export function getRequestHost(opts?: { xForwardedHost?: boolean }) {
 export function getRequestUrl(opts?: {
   xForwardedHost?: boolean
   xForwardedProto?: boolean
-}) {
+}): URL {
   return h3_getRequestURL(getH3Event(), opts)
 }
 
@@ -396,7 +396,7 @@ export function clearSession(config: Partial<SessionConfig>): Promise<void> {
   return h3_clearSession(event, { name: 'start', ...config })
 }
 
-export function getResponse() {
+export function getResponse(): H3Event['res'] {
   const event = getH3Event()
   return event.res
 }

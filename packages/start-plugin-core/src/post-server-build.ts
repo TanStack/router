@@ -11,7 +11,7 @@ export async function postServerBuild({
 }: {
   builder: ViteBuilder
   startConfig: TanStackStartOutputConfig
-}) {
+}): Promise<void> {
   // If the user has not set a prerender option, we need to set it to true
   // if the pages array is not empty and has sub options requiring for prerendering
   // If the user has explicitly set prerender.enabled, this should be respected

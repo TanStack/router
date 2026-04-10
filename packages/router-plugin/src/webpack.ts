@@ -4,7 +4,14 @@ import { configSchema } from './core/config'
 import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-plugin'
 import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
+import type {
+  UnpluginFactoryOutput,
+  WebpackPluginInstance,
+} from 'unplugin'
 import type { CodeSplittingOptions, Config } from './core/config'
+
+type AutoImportOptions = Partial<Config | (() => Config)> | undefined
+type ComposedOptions = Partial<Config> | undefined
 
 /**
  * @example
@@ -15,9 +22,10 @@ import type { CodeSplittingOptions, Config } from './core/config'
  * }
  * ```
  */
-const TanStackRouterGeneratorWebpack = /* #__PURE__ */ createWebpackPlugin(
-  unpluginRouterGeneratorFactory,
-)
+const TanStackRouterGeneratorWebpack: UnpluginFactoryOutput<
+  AutoImportOptions,
+  WebpackPluginInstance
+> = /* #__PURE__ */ createWebpackPlugin(unpluginRouterGeneratorFactory)
 
 /**
  * @example
@@ -28,9 +36,10 @@ const TanStackRouterGeneratorWebpack = /* #__PURE__ */ createWebpackPlugin(
  * }
  * ```
  */
-const TanStackRouterCodeSplitterWebpack = /* #__PURE__ */ createWebpackPlugin(
-  unpluginRouterCodeSplitterFactory,
-)
+const TanStackRouterCodeSplitterWebpack: UnpluginFactoryOutput<
+  AutoImportOptions,
+  WebpackPluginInstance
+> = /* #__PURE__ */ createWebpackPlugin(unpluginRouterCodeSplitterFactory)
 
 /**
  * @example
@@ -41,12 +50,19 @@ const TanStackRouterCodeSplitterWebpack = /* #__PURE__ */ createWebpackPlugin(
  * }
  * ```
  */
-const TanStackRouterWebpack = /* #__PURE__ */ createWebpackPlugin(
-  unpluginRouterComposedFactory,
-)
+const TanStackRouterWebpack: UnpluginFactoryOutput<
+  ComposedOptions,
+  WebpackPluginInstance
+> = /* #__PURE__ */ createWebpackPlugin(unpluginRouterComposedFactory)
 
-const tanstackRouter = TanStackRouterWebpack
-export default TanStackRouterWebpack
+const tanstackRouter: UnpluginFactoryOutput<
+  ComposedOptions,
+  WebpackPluginInstance
+> = TanStackRouterWebpack
+export default TanStackRouterWebpack as UnpluginFactoryOutput<
+  ComposedOptions,
+  WebpackPluginInstance
+>
 export {
   configSchema,
   TanStackRouterWebpack,

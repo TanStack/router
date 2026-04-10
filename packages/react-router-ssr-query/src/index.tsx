@@ -11,7 +11,7 @@ export type Options<TRouter extends AnyRouter> =
 
 export function setupRouterSsrQueryIntegration<TRouter extends AnyRouter>(
   opts: Options<TRouter>,
-) {
+): void {
   setupCoreRouterSsrQueryIntegration(opts)
 
   if (opts.wrapQueryClient === false) {

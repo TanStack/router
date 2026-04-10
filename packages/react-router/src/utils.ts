@@ -24,7 +24,7 @@ export function useStableCallback<T extends (...args: Array<any>) => any>(
   return ref.current as T
 }
 
-export const useLayoutEffect =
+export const useLayoutEffect: typeof React.useLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
 
 /**
@@ -83,7 +83,7 @@ export function useIntersectionObserver<T extends Element>(
   callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
   options: { disabled?: boolean } = {},
-) {
+): void {
   React.useEffect(() => {
     if (
       !ref.current ||
@@ -118,7 +118,7 @@ export function useIntersectionObserver<T extends Element>(
  * })
  * ```
  */
-export function useForwardedRef<T>(ref?: React.ForwardedRef<T>) {
+export function useForwardedRef<T>(ref?: React.ForwardedRef<T>): React.RefObject<T | null> {
   const innerRef = React.useRef<T>(null)
   React.useImperativeHandle(ref, () => innerRef.current!, [])
   return innerRef

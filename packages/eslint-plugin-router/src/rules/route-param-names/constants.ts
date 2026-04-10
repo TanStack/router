@@ -21,10 +21,10 @@ export type PathAsPropertyFunction = (typeof pathAsPropertyFunctions)[number]
 /**
  * All route functions that need param name validation
  */
-export const allRouteFunctions = [
-  ...pathAsFirstArgFunctions,
-  ...pathAsPropertyFunctions,
-] as const
+export const allRouteFunctions: ReadonlyArray<
+  | (typeof pathAsFirstArgFunctions)[number]
+  | (typeof pathAsPropertyFunctions)[number]
+> = [...pathAsFirstArgFunctions, ...pathAsPropertyFunctions] as const
 
 export type RouteFunction = (typeof allRouteFunctions)[number]
 
@@ -33,4 +33,4 @@ export type RouteFunction = (typeof allRouteFunctions)[number]
  * Must start with letter, underscore, or dollar sign
  * Can contain letters, numbers, underscores, or dollar signs
  */
-export const VALID_PARAM_NAME_REGEX = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/
+export const VALID_PARAM_NAME_REGEX: RegExp = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/

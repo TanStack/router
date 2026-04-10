@@ -2,7 +2,7 @@ import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
-export const ScriptOnce = Vue.defineComponent({
+export const ScriptOnce: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'ScriptOnce',
   props: {
     children: {
@@ -27,7 +27,7 @@ export const ScriptOnce = Vue.defineComponent({
       mounted.value = true
     })
 
-    return () => {
+    return (): Vue.VNode | null => {
       if (mounted.value) {
         return null
       }

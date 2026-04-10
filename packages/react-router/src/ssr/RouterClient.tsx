@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { Await } from '../awaited'
 import { RouterProvider } from '../RouterProvider'
@@ -5,7 +6,7 @@ import type { AnyRouter } from '@tanstack/router-core'
 
 let hydrationPromise: Promise<void | Array<Array<void>>> | undefined
 
-export function RouterClient(props: { router: AnyRouter }) {
+export function RouterClient(props: { router: AnyRouter }): React.JSX.Element {
   if (!hydrationPromise) {
     if (!props.router.stores.matchesId.state.length) {
       hydrationPromise = hydrate(props.router)

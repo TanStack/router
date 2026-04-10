@@ -3,16 +3,16 @@ import { getScrollRestorationScriptForRouter } from '@tanstack/router-core/scrol
 import { useRouter } from './useRouter'
 import { ScriptOnce } from './ScriptOnce'
 
-export const ScrollRestoration = Vue.defineComponent({
+export const ScrollRestoration: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'ScrollRestoration',
-  setup() {
+  setup(): () => Vue.VNode | null {
     const router = useRouter()
 
     return () => {
       const script = getScrollRestorationScriptForRouter(router)
 
       if (script) {
-        return <ScriptOnce children={script} />
+        return Vue.h(ScriptOnce, { children: script })
       }
 
       return null

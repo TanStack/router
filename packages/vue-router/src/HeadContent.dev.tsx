@@ -13,7 +13,7 @@ const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
  *
  * This is the development version that filters out dev styles after hydration.
  */
-export const HeadContent = Vue.defineComponent({
+export const HeadContent: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'HeadContent',
   props: {
     assetCrossOrigin: {
@@ -21,7 +21,7 @@ export const HeadContent = Vue.defineComponent({
       default: undefined,
     },
   },
-  setup(props) {
+  setup(props): () => Array<Vue.VNode> {
     const tags = useTags(props.assetCrossOrigin)
     const hydrated = useHydrated()
 

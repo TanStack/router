@@ -7,7 +7,7 @@ export function fillTemplate(
   config: Config,
   template: string,
   values: Record<TemplateTag, string>,
-) {
+): Promise<string> {
   const replaced = template.replace(
     /%%(\w+)%%/g,
     (_, key) => values[key as TemplateTag] || '',

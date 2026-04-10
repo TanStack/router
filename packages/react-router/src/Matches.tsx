@@ -44,7 +44,7 @@ declare module '@tanstack/router-core' {
  * Internal component that renders the router's active match tree with
  * suspense, error, and not-found boundaries. Rendered by `RouterProvider`.
  */
-export function Matches() {
+export function Matches(): React.JSX.Element {
   const router = useRouter()
   const rootRoute: AnyRoute = router.routesById[rootRouteId]
 
@@ -138,7 +138,16 @@ export type UseMatchRouteOptions<
  * @returns A `matchRoute(options)` function that returns `false` or params.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchRouteHook
  */
-export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
+export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>(): <
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) =>
+  | false
+  | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']> {
   const router = useRouter()
 
   if (!(isServer ?? router.isServer)) {

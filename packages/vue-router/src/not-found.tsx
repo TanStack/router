@@ -9,7 +9,7 @@ export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => Vue.VNode
   onCatch?: (error: Error) => void
   children: Vue.VNode
-}) {
+}): Vue.VNode {
   const router = useRouter()
   // TODO: Some way for the user to programmatically reset the not-found boundary?
   const pathname = useStore(
@@ -51,9 +51,9 @@ export function CatchNotFound(props: {
   })
 }
 
-export const DefaultGlobalNotFound = Vue.defineComponent({
+export const DefaultGlobalNotFound: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'DefaultGlobalNotFound',
-  setup() {
+  setup(): () => Vue.VNode {
     return () => Vue.h('p', null, 'Not Found')
   },
 })

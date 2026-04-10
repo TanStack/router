@@ -13,7 +13,7 @@ export interface HeadContentProps {
  * Place inside the document head of your app shell.
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/document-head-management
  */
-export function HeadContent(props: HeadContentProps) {
+export function HeadContent(props: HeadContentProps): React.JSX.Element {
   const tags = useTags(props.assetCrossOrigin)
   const router = useRouter()
   const nonce = router.options.ssr?.nonce

@@ -158,7 +158,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     return assets
   })
 
-  return () =>
+  return (): Array<RouterManagedTag> =>
     uniqBy(
       [
         ...manifestAssets.value,
@@ -173,7 +173,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     )
 }
 
-export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
+export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string): Array<T> {
   const seen = new Set<string>()
   return arr.filter((item) => {
     const key = fn(item)

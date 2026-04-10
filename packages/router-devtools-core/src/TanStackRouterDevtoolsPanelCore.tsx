@@ -66,7 +66,7 @@ export class TanStackRouterDevtoolsPanelCore {
     this.#setIsOpen = setIsOpen
   }
 
-  mount<T extends HTMLElement>(el: T) {
+  mount<T extends HTMLElement>(el: T): void {
     if (this.#isMounted) {
       throw new Error('Devtools is already mounted')
     }
@@ -114,7 +114,7 @@ export class TanStackRouterDevtoolsPanelCore {
     this.#dispose = dispose
   }
 
-  unmount() {
+  unmount(): void {
     if (!this.#isMounted) {
       throw new Error('Devtools is not mounted')
     }
@@ -122,23 +122,23 @@ export class TanStackRouterDevtoolsPanelCore {
     this.#isMounted = false
   }
 
-  setRouter(router: AnyRouter) {
+  setRouter(router: AnyRouter): void {
     this.#router[1](router)
   }
 
-  setRouterState(routerState: any) {
+  setRouterState(routerState: any): void {
     this.#routerState[1](routerState)
   }
 
-  setStyle(style: any) {
+  setStyle(style: any): void {
     this.#style[1](style)
   }
 
-  setClassName(className: any) {
+  setClassName(className: any): void {
     this.#className[1](className)
   }
 
-  setOptions(options: Partial<TanStackRouterDevtoolsPanelCoreOptions>) {
+  setOptions(options: Partial<TanStackRouterDevtoolsPanelCoreOptions>): void {
     if (options.shadowDOMTarget !== undefined) {
       this.#shadowDOMTarget = options.shadowDOMTarget
     }

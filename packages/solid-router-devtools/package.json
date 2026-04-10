@@ -34,7 +34,7 @@
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js",
     "test:types:ts60": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build && tsc -p tsconfig.build.json"
+    "build": "vite build"
   },
   "type": "module",
   "types": "./dist/esm/index.d.ts",

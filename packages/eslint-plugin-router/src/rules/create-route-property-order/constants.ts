@@ -9,10 +9,10 @@ export const createRouteFunctionsDirect = [
   'createRoute',
 ] as const
 
-export const createRouteFunctions = [
-  ...createRouteFunctionsDirect,
-  ...createRouteFunctionsIndirect,
-] as const
+export const createRouteFunctions: ReadonlyArray<
+  | (typeof createRouteFunctionsDirect)[number]
+  | (typeof createRouteFunctionsIndirect)[number]
+> = [...createRouteFunctionsDirect, ...createRouteFunctionsIndirect] as const
 
 export type CreateRouteFunction = (typeof createRouteFunctions)[number]
 
@@ -37,4 +37,5 @@ export const sortRules = [
 ] as const
 
 export type CheckedProperties = (typeof sortRules)[number][number][number]
-export const checkedProperties = getCheckedProperties(sortRules)
+export const checkedProperties: ReadonlyArray<CheckedProperties> =
+  getCheckedProperties(sortRules)

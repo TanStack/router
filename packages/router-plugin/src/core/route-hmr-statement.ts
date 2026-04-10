@@ -1,4 +1,5 @@
 import * as template from '@babel/template'
+import type * as t from '@babel/types'
 import type { AnyRoute, AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
 
 type AnyRouteWithPrivateProps = AnyRoute & {
@@ -159,7 +160,7 @@ function handleRouteUpdate(
 
 const handleRouteUpdateStr = handleRouteUpdate.toString()
 
-export function createRouteHmrStatement(stableRouteOptionKeys: Array<string>) {
+export function createRouteHmrStatement(stableRouteOptionKeys: Array<string>): import('@babel/types').Statement {
   return template.statement(
     `
 if (import.meta.hot) {

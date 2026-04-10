@@ -3,7 +3,7 @@ export default function (options: {
   key?: string
   behavior?: ScrollToOptions['behavior']
   shouldScrollRestoration?: boolean
-}) {
+}): void {
   let byKey
 
   try {

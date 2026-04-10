@@ -9,7 +9,7 @@ export function CatchBoundary(
     errorComponent?: ErrorRouteComponent
     onCatch?: (error: Error) => void
   } & Solid.ParentProps,
-) {
+): Solid.JSX.Element {
   return (
     <Solid.ErrorBoundary
       fallback={(error, reset) => {
@@ -33,7 +33,7 @@ export function CatchBoundary(
   )
 }
 
-export function ErrorComponent({ error }: { error: any }) {
+export function ErrorComponent({ error }: { error: any }): Solid.JSX.Element {
   const [show, setShow] = Solid.createSignal(
     process.env.NODE_ENV !== 'production',
   )

@@ -78,7 +78,7 @@ export class TanStackRouterDevtoolsCore {
     this.#containerElement = config.containerElement
   }
 
-  mount<T extends HTMLElement>(el: T) {
+  mount<T extends HTMLElement>(el: T): void {
     if (this.#isMounted) {
       throw new Error('Devtools is already mounted')
     }
@@ -125,7 +125,7 @@ export class TanStackRouterDevtoolsCore {
     this.#dispose = dispose
   }
 
-  unmount() {
+  unmount(): void {
     if (!this.#isMounted) {
       throw new Error('Devtools is not mounted')
     }
@@ -133,15 +133,15 @@ export class TanStackRouterDevtoolsCore {
     this.#isMounted = false
   }
 
-  setRouter(router: AnyRouter) {
+  setRouter(router: AnyRouter): void {
     this.#router[1](router)
   }
 
-  setRouterState(routerState: any) {
+  setRouterState(routerState: any): void {
     this.#routerState[1](routerState)
   }
 
-  setOptions(options: Partial<TanStackRouterDevtoolsCoreOptions>) {
+  setOptions(options: Partial<TanStackRouterDevtoolsCoreOptions>): void {
     if (options.position !== undefined) {
       this.#position = options.position
     }

@@ -9,7 +9,7 @@ let hydrationPromise: Promise<void | Array<Array<void>>> | undefined
 
 const Dummy = (props: { children?: JSXElement }) => <>{props.children}</>
 
-export function RouterClient(props: { router: AnyRouter }) {
+export function RouterClient(props: { router: AnyRouter }): JSXElement {
   if (!hydrationPromise) {
     if (!props.router.stores.matchesId.state.length) {
       hydrationPromise = hydrate(props.router)

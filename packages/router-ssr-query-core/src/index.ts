@@ -32,7 +32,7 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   router,
   queryClient,
   handleRedirects = true,
-}: RouterSsrQueryOptions<TRouter>) {
+}: RouterSsrQueryOptions<TRouter>): void {
   const ogHydrate = router.options.hydrate
   const ogDehydrate = router.options.dehydrate
 

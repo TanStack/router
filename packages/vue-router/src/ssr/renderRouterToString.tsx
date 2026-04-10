@@ -11,7 +11,7 @@ export const renderRouterToString = async ({
   router: AnyRouter
   responseHeaders: Headers
   App: Component
-}) => {
+}): Promise<Response> => {
   try {
     const app = Vue.createSSRApp(App, { router })
 

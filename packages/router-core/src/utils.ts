@@ -189,7 +189,7 @@ export type LooseAsyncReturnType<T> = T extends (
  * Return the last element of an array.
  * Intended for non-empty arrays used within router internals.
  */
-export function last<T>(arr: ReadonlyArray<T>) {
+export function last<T>(arr: ReadonlyArray<T>): T | undefined {
   return arr[arr.length - 1]
 }
 
@@ -315,7 +315,7 @@ function getEnumerableOwnKeys(o: object) {
 }
 
 // Copied from: https://github.com/jonschlinkert/is-plain-object
-export function isPlainObject(o: any) {
+export function isPlainObject(o: any): boolean {
   if (!hasObjectPrototype(o)) {
     return false
   }
@@ -452,7 +452,7 @@ export type ControlledPromise<T> = Promise<T> & {
  * Create a promise with exposed resolve/reject and status fields.
  * Useful for coordinating async router lifecycle operations.
  */
-export function createControlledPromise<T>(onResolve?: (value: T) => void) {
+export function createControlledPromise<T>(onResolve?: (value: T) => void): ControlledPromise<T> {
   let resolveLoadPromise!: (value: T) => void
   let rejectLoadPromise!: (value: any) => void
 
@@ -556,7 +556,7 @@ export const DEFAULT_PROTOCOL_ALLOWLIST = [
   // Common browser-safe actions
   'mailto:',
   'tel:',
-]
+] as const
 
 /**
  * Check if a URL string uses a protocol that is not in the allowlist.
@@ -614,7 +614,7 @@ export function escapeHtml(str: string): string {
   return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
 }
 
-export function decodePath(path: string) {
+export function decodePath(path: string): { path: string; handledProtocolRelativeURL: boolean } {
   if (!path) return { path, handledProtocolRelativeURL: false }
 
   // Fast path: most paths are already decoded and safe.
@@ -698,7 +698,7 @@ export function buildDevStylesUrl(
   return `${normalizedBasepath}/@tanstack-start/styles.css?routes=${encodeURIComponent(routeIds.join(','))}`
 }
 
-export function arraysEqual<T>(a: Array<T>, b: Array<T>) {
+export function arraysEqual<T>(a: Array<T>, b: Array<T>): boolean {
   if (a === b) return true
   if (a.length !== b.length) return false
   for (let i = 0; i < a.length; i++) {

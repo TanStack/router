@@ -1,7 +1,7 @@
 import { clsx as cx } from 'clsx'
 import { useStyles } from './useStyles'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
-import type { Accessor } from 'solid-js'
+import type { Accessor, JSX } from 'solid-js'
 
 function formatTime(ms: number) {
   const units = ['s', 'min', 'h', 'd']
@@ -28,7 +28,7 @@ export function AgeTicker({
 }: {
   match?: AnyRouteMatch
   router: Accessor<AnyRouter>
-}) {
+}): JSX.Element | null {
   const styles = useStyles()
 
   if (!match) {

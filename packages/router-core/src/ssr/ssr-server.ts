@@ -174,7 +174,7 @@ export function attachRouterServerSsrUtils({
 }: {
   router: AnyRouter
   manifest: Manifest | undefined
-}) {
+}): void {
   router.ssr = {
     manifest,
   }
@@ -390,7 +390,7 @@ export function attachRouterServerSsrUtils({
  * For applications behind proxies that need to trust forwarded headers,
  * use the router's `origin` option to explicitly configure a trusted origin.
  */
-export function getOrigin(request: Request) {
+export function getOrigin(request: Request): string {
   try {
     return new URL(request.url).origin
   } catch {}
@@ -403,7 +403,7 @@ export function getOrigin(request: Request) {
 // Another anomaly is that in Node new URLSearchParams and new URL also decode/encode characters differently.
 // new URLSearchParams() encodes "|" while new URL() does not, and in this instance
 // chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
-export function getNormalizedURL(url: string | URL, base?: string | URL) {
+export function getNormalizedURL(url: string | URL, base?: string | URL): { url: URL; handledProtocolRelativeURL: boolean } {
   // ensure backslashes are encoded correctly in the URL
   if (typeof url === 'string') url = url.replace('\\', '%5C')
 
@@ -420,6 +420,6 @@ export function getNormalizedURL(url: string | URL, base?: string | URL) {
 
   return {
     url: new URL(normalizedHref, rawUrl.origin),
-    handledProtocolRelativeURL,
+    handledProtocolRelativeURL: handledProtocolRelativeURL,
   }
 }

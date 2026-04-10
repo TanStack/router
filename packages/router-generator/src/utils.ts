@@ -133,12 +133,12 @@ export function multiSortBy<T>(
   return result
 }
 
-export function cleanPath(path: string) {
+export function cleanPath(path: string): string {
   // remove double slashes
   return path.replace(/\/{2,}/g, '/')
 }
 
-export function trimPathLeft(path: string) {
+export function trimPathLeft(path: string): string {
   return path === '/' ? path : path.replace(/^\/{1,}/, '')
 }
 
@@ -146,7 +146,7 @@ export function removeLeadingSlash(path: string): string {
   return path.replace(/^\//, '')
 }
 
-export function removeTrailingSlash(s: string) {
+export function removeTrailingSlash(s: string): string {
   return s.replace(/\/$/, '')
 }
 
@@ -172,7 +172,10 @@ const DISALLOWED_ESCAPE_CHARS = new Set([
   '%',
 ])
 
-export function determineInitialRoutePath(routePath: string) {
+export function determineInitialRoutePath(routePath: string): {
+  routePath: string
+  originalRoutePath: string
+} {
   const originalRoutePath =
     cleanPath(
       `/${(cleanPath(routePath) || '').split(SPLIT_REGEX).join('/')}`,
@@ -213,7 +216,7 @@ export function determineInitialRoutePath(routePath: string) {
 
   return {
     routePath: final,
-    originalRoutePath,
+    originalRoutePath: originalRoutePath,
   }
 }
 
@@ -260,7 +263,7 @@ export function hasEscapedTrailingUnderscore(originalSegment: string): boolean {
 
 const backslashRegex = /\\/g
 
-export function replaceBackslash(s: string) {
+export function replaceBackslash(s: string): string {
   return s.replace(backslashRegex, '/')
 }
 
@@ -322,7 +325,7 @@ export function routePathToVariable(routePath: string): string {
 const underscoreStartEndRegex = /(^_|_$)/gi
 const underscoreSlashRegex = /(\/_|_\/)/gi
 
-export function removeUnderscores(s?: string) {
+export function removeUnderscores(s?: string): string | undefined {
   return s
     ?.replace(underscoreStartEndRegex, '')
     .replace(underscoreSlashRegex, '/')
@@ -490,7 +493,7 @@ export function unwrapBracketWrappedSegment(segment: string): string {
   return isBracketWrappedSegment(segment) ? segment.slice(1, -1) : segment
 }
 
-export function removeLeadingUnderscores(s: string, routeToken: string) {
+export function removeLeadingUnderscores(s: string, routeToken: string): string {
   if (!s) return s
 
   const hasLeadingUnderscore = routeToken[0] === '_'
@@ -508,7 +511,7 @@ export function removeLeadingUnderscores(s: string, routeToken: string) {
   return s.replaceAll(leadingUnderscoreRegex, '')
 }
 
-export function removeTrailingUnderscores(s: string, routeToken: string) {
+export function removeTrailingUnderscores(s: string, routeToken: string): string {
   if (!s) return s
 
   const hasTrailingUnderscore = routeToken.slice(-1) === '_'
@@ -526,12 +529,12 @@ export function removeTrailingUnderscores(s: string, routeToken: string) {
   return s.replaceAll(trailingUnderscoreRegex, '')
 }
 
-export function capitalize(s: string) {
+export function capitalize(s: string): string {
   if (typeof s !== 'string') return ''
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-export function removeExt(d: string, addExtensions: boolean | string = false) {
+export function removeExt(d: string, addExtensions: boolean | string = false): string {
   if (typeof addExtensions === 'string') {
     const dotIndex = d.lastIndexOf('.')
     if (dotIndex === -1) return d
@@ -594,7 +597,7 @@ export async function format(
  * @param regex The regex object to reset
  * @returns
  */
-export function resetRegex(regex: RegExp) {
+export function resetRegex(regex: RegExp): void {
   regex.lastIndex = 0
   return
 }
@@ -605,7 +608,7 @@ export function resetRegex(regex: RegExp) {
  * @param file The path to the file
  * @returns Whether the file exists
  */
-export async function checkFileExists(file: string) {
+export async function checkFileExists(file: string): Promise<boolean> {
   try {
     await fsp.access(file, fsp.constants.F_OK)
     return true
@@ -615,7 +618,7 @@ export async function checkFileExists(file: string) {
 }
 
 const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
-export function removeGroups(s: string) {
+export function removeGroups(s: string): string {
   return s.replace(possiblyNestedRouteGroupPatternRegex, '')
 }
 
@@ -639,7 +642,7 @@ export function removeLayoutSegments(routePath: string = '/'): string {
  * @param node - The node to determine the path for.
  * @returns The correct path for the given node.
  */
-export function determineNodePath(node: RouteNode) {
+export function determineNodePath(node: RouteNode): string | undefined {
   return (node.path = node.parent
     ? node.routePath?.replace(node.parent.routePath ?? '', '') || '/'
     : node.routePath)
@@ -849,7 +852,7 @@ function checkUnique<TElement>(routes: Array<TElement>, key: keyof TElement) {
 export function checkRouteFullPathUniqueness(
   _routes: Array<RouteNode>,
   config: Config,
-) {
+): void {
   const emptyPathRoutes = _routes.filter((d) => d.routePath === '')
   if (emptyPathRoutes.length) {
     const errorMessage = `Invalid route path "" was found. Root routes must be defined via __root.tsx (createRootRoute), not createFileRoute('') or a route file that resolves to an empty path.
@@ -944,7 +947,7 @@ export function buildImportString(
     : ''
 }
 
-export function lowerCaseFirstChar(value: string) {
+export function lowerCaseFirstChar(value: string): string {
   if (!value[0]) {
     return value
   }

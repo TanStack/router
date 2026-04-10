@@ -25,4 +25,4 @@ export const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
 // .ts, .tsx, .cts, .mts, .js, .jsx, .cjs, .mjs
 // with optional query params after
 // but not .json
-export const TRANSFORM_ID_REGEX = [/\.[cm]?[tj]sx?($|\?)/]
+export const TRANSFORM_ID_REGEX: Array<RegExp> = [/\.[cm]?[tj]sx?($|\?)/]

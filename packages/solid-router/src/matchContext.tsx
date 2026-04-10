@@ -15,5 +15,5 @@ const defaultNearestMatchContext: NearestMatchContextValue = {
   hasPending: () => false,
 }
 
-export const nearestMatchContext =
+export const nearestMatchContext: Solid.Context<NearestMatchContextValue> =
   Solid.createContext<NearestMatchContextValue>(defaultNearestMatchContext)

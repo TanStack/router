@@ -12,7 +12,7 @@ type ExpanderProps = {
   style?: JSX.CSSProperties
 }
 
-export const Expander = ({ expanded, style = {} }: ExpanderProps) => {
+export const Expander = ({ expanded, style = {} }: ExpanderProps): JSX.Element => {
   const styles = useStyles()
   return (
     <span class={styles().expander}>
@@ -96,7 +96,7 @@ export function Explorer({
   pageSize = 100,
   filterSubEntries,
   ...rest
-}: ExplorerProps) {
+}: ExplorerProps): JSX.Element {
   const [expanded, setExpanded] = createSignal(Boolean(defaultExpanded))
   const toggleExpanded = () => setExpanded((old) => !old)
 

@@ -26,7 +26,7 @@ export function getAssetCrossOrigin(
   return assetCrossOrigin[kind]
 }
 
-export function resolveManifestAssetLink(link: ManifestAssetLink) {
+export function resolveManifestAssetLink(link: ManifestAssetLink): { href: string; crossOrigin?: AssetCrossOrigin } {
   if (typeof link === 'string') {
     return { href: link, crossOrigin: undefined }
   }

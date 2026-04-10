@@ -1,9 +1,9 @@
 import * as Vue from 'vue'
 import { Body } from './Body'
 
-export const Html = Vue.defineComponent({
+export const Html: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'Html',
-  setup(_, { slots }) {
+  setup(_, { slots }): () => Vue.VNode | Array<Vue.VNode> {
     const isServer = typeof window === 'undefined'
 
     const hydrated = Vue.ref(false)
@@ -59,7 +59,7 @@ export const Html = Vue.defineComponent({
         result.push(Vue.h(Vue.Teleport, { to: 'head' }, headChildren))
       }
 
-      return result.length === 1 ? result[0] : Vue.h(Vue.Fragment, result)
+      return result.length === 1 ? result[0]! : Vue.h(Vue.Fragment, result)
     }
   },
 })

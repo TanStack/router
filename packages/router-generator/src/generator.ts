@@ -576,7 +576,11 @@ export class Generator {
     acc: HandleNodeAccumulator
     routeFileResult: Array<RouteNode>
     config?: Partial<Config>
-  }) {
+  }): {
+    routeTreeContent: string
+    routeTree: Array<RouteNode>
+    routeNodes: Array<RouteNode>
+  } {
     const config = { ...this.config, ...(opts.config || {}) }
 
     const { rootRouteNode, acc } = opts
@@ -1028,7 +1032,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       .filter(Boolean)
       .join('\n\n')
     return {
-      routeTreeContent,
+      routeTreeContent: routeTreeContent,
       routeTree: acc.routeTree,
       routeNodes: acc.routeNodes,
     }

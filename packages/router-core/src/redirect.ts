@@ -170,7 +170,7 @@ export function isResolvedRedirect(
 
 /** Parse a serialized redirect object back into a redirect Response. */
 /** Parse a serialized redirect object back into a redirect Response. */
-export function parseRedirect(obj: any) {
+export function parseRedirect(obj: any): AnyRedirect | undefined {
   if (obj !== null && typeof obj === 'object' && obj.isSerializedRedirect) {
     return redirect(obj)
   }

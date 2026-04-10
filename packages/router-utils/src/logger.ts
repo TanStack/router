@@ -1,7 +1,7 @@
 import ansis from 'ansis'
 import { diffWords } from 'diff'
 
-export function logDiff(oldStr: string, newStr: string) {
+export function logDiff(oldStr: string, newStr: string): void {
   const differences = diffWords(oldStr, newStr)
 
   let output = ''

@@ -14,7 +14,7 @@ export function renderRouteNotFound(
   router: AnyRouter,
   route: AnyRoute,
   data: any,
-) {
+): React.JSX.Element {
   if (!route.options.notFoundComponent) {
     if (router.options.defaultNotFoundComponent) {
       return <router.options.defaultNotFoundComponent {...data} />

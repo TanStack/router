@@ -29,7 +29,7 @@ export function Await<T>(
     fallback?: SolidNode
     children: (result: T) => SolidNode
   },
-) {
+): Solid.JSX.Element {
   const [resource] = Solid.createResource(
     () => defer(props.promise),
     // Simple passthrough - just return the promise for Solid to await

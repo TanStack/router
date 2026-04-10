@@ -109,7 +109,7 @@ type MockAccessMode = 'error' | 'warn' | 'off'
  * Compact runtime suggestion text for browser console, derived from
  * {@link CLIENT_ENV_SUGGESTIONS} so there's a single source of truth.
  */
-export const RUNTIME_SUGGESTION_TEXT =
+export const RUNTIME_SUGGESTION_TEXT: string =
   'Fix: ' +
   CLIENT_ENV_SUGGESTIONS.join('. ') +
   '. To disable these runtime diagnostics, set importProtection.mockAccess: "off".'

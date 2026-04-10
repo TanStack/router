@@ -102,17 +102,17 @@ const CatchBoundaryWrapper = Vue.defineComponent({
   },
 })
 
-export function CatchBoundary(props: CatchBoundaryProps) {
+export function CatchBoundary(props: CatchBoundaryProps): Vue.VNode {
   return Vue.h(CatchBoundaryWrapper, props as any)
 }
 
-export const ErrorComponent = Vue.defineComponent({
+export const ErrorComponent: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'ErrorComponent',
   props: {
     error: Object,
     reset: Function,
   },
-  setup(props) {
+  setup(props): () => Vue.VNode {
     const show = Vue.ref(process.env.NODE_ENV !== 'production')
 
     const toggleShow = () => {

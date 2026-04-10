@@ -11,7 +11,7 @@ const config = defineConfig({
   },
 })
 
-export default mergeConfig(
+const mergedConfig: Record<string, any> = mergeConfig(
   config,
   tanstackViteConfig({
     tsconfigPath: './tsconfig.build.json',
@@ -25,3 +25,4 @@ export default mergeConfig(
     srcDir: './src',
   }),
 )
+export default mergedConfig

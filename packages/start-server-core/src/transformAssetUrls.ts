@@ -197,7 +197,7 @@ export type ResolvedTransformAssetsConfig =
 
 let hasWarnedAboutDeprecatedTransformAssetUrls = false
 
-export function warnDeprecatedTransformAssetUrls() {
+export function warnDeprecatedTransformAssetUrls(): void {
   if (
     (process.env.NODE_ENV === 'development' ||
       process.env.TSS_DEV_SERVER === 'true') &&

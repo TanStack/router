@@ -28,7 +28,7 @@ export interface ClientOnlyProps {
  * )
  * ```
  */
-export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
+export function ClientOnly({ children, fallback = null }: ClientOnlyProps): React.JSX.Element {
   return useHydrated() ? (
     <React.Fragment>{children}</React.Fragment>
   ) : (

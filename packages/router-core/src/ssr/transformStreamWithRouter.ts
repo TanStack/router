@@ -6,14 +6,14 @@ import type { AnyRouter } from '../router'
 export function transformReadableStreamWithRouter(
   router: AnyRouter,
   routerStream: ReadableStream,
-) {
+): ReadableStream {
   return transformStreamWithRouter(router, routerStream)
 }
 
 export function transformPipeableStreamWithRouter(
   router: AnyRouter,
   routerStream: Readable,
-) {
+): Readable {
   return Readable.fromWeb(
     transformStreamWithRouter(router, Readable.toWeb(routerStream)),
   )
@@ -106,7 +106,7 @@ export function transformStreamWithRouter(
     /** Maximum lifetime of the stream transform (default: 60000ms). Safety net for cleanup. */
     lifetimeMs?: number
   },
-) {
+): ReadableStream<Uint8Array> {
   // Check upfront if serialization already finished synchronously
   // This is the fast path for routes with no deferred data
   const serializationAlreadyFinished =

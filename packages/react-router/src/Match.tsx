@@ -20,11 +20,13 @@ import { ClientOnly } from './ClientOnly'
 import { useLayoutEffect } from './utils'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
-export const Match = React.memo(function MatchImpl({
+export const Match: React.NamedExoticComponent<{
+  matchId: string
+}> = React.memo(function MatchImpl({
   matchId,
 }: {
   matchId: string
-}) {
+}): React.JSX.Element {
   const router = useRouter()
 
   if (isServer ?? router.isServer) {
@@ -252,7 +254,9 @@ function OnRendered({ resetKey }: { resetKey: number }) {
   return null
 }
 
-export const MatchInner = React.memo(function MatchInnerImpl({
+export const MatchInner: React.NamedExoticComponent<{
+  matchId: string
+}> = React.memo(function MatchInnerImpl({
   matchId,
 }: {
   matchId: string
@@ -479,7 +483,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
  *
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/outletComponent
  */
-export const Outlet = React.memo(function OutletImpl() {
+export const Outlet: React.NamedExoticComponent<object> = React.memo(function OutletImpl(): React.JSX.Element | null {
   const router = useRouter()
   const matchId = React.useContext(matchContext)
 

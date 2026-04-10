@@ -23,6 +23,7 @@ export default mergeConfig(
       './src/client-rpc/index.ts',
     ],
     cjs: false,
+    exclude: ['./src/tests'],
     externalDeps: ['#tanstack-start-entry', '#tanstack-router-entry'],
   }),
 )

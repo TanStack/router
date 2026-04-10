@@ -5,7 +5,11 @@ import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-p
 import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
 
+import type { EsbuildPlugin, UnpluginFactoryOutput } from 'unplugin'
 import type { CodeSplittingOptions, Config } from './core/config'
+
+type AutoImportOptions = Partial<Config | (() => Config)> | undefined
+type ComposedOptions = Partial<Config> | undefined
 
 /**
  * @example
@@ -16,9 +20,10 @@ import type { CodeSplittingOptions, Config } from './core/config'
  * }
  * ```
  */
-const TanStackRouterGeneratorEsbuild = createEsbuildPlugin(
-  unpluginRouterGeneratorFactory,
-)
+const TanStackRouterGeneratorEsbuild: UnpluginFactoryOutput<
+  AutoImportOptions,
+  EsbuildPlugin
+> = createEsbuildPlugin(unpluginRouterGeneratorFactory)
 
 /**
  * @example
@@ -29,9 +34,10 @@ const TanStackRouterGeneratorEsbuild = createEsbuildPlugin(
  * }
  * ```
  */
-const TanStackRouterCodeSplitterEsbuild = createEsbuildPlugin(
-  unpluginRouterCodeSplitterFactory,
-)
+const TanStackRouterCodeSplitterEsbuild: UnpluginFactoryOutput<
+  AutoImportOptions,
+  EsbuildPlugin
+> = createEsbuildPlugin(unpluginRouterCodeSplitterFactory)
 
 /**
  * @example
@@ -42,9 +48,16 @@ const TanStackRouterCodeSplitterEsbuild = createEsbuildPlugin(
  * }
  * ```
  */
-const TanStackRouterEsbuild = createEsbuildPlugin(unpluginRouterComposedFactory)
-const tanstackRouter = TanStackRouterEsbuild
-export default TanStackRouterEsbuild
+const TanStackRouterEsbuild: UnpluginFactoryOutput<
+  ComposedOptions,
+  EsbuildPlugin
+> = createEsbuildPlugin(unpluginRouterComposedFactory)
+const tanstackRouter: UnpluginFactoryOutput<ComposedOptions, EsbuildPlugin> =
+  TanStackRouterEsbuild
+export default TanStackRouterEsbuild as UnpluginFactoryOutput<
+  ComposedOptions,
+  EsbuildPlugin
+>
 
 export {
   configSchema,

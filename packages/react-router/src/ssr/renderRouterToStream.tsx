@@ -19,7 +19,7 @@ export const renderRouterToStream = async ({
   router: AnyRouter
   responseHeaders: Headers
   children: ReactNode
-}) => {
+}): Promise<Response> => {
   if (typeof ReactDOMServer.renderToReadableStream === 'function') {
     const stream = await ReactDOMServer.renderToReadableStream(children, {
       signal: request.signal,

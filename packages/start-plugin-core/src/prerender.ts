@@ -14,7 +14,7 @@ export async function prerender({
 }: {
   startConfig: TanStackStartOutputConfig
   builder: ViteBuilder
-}) {
+}): Promise<void> {
   const logger = createLogger('prerender')
   logger.info('Prerendering pages...')
 

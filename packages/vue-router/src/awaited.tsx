@@ -23,7 +23,7 @@ export function useAwaited<T>({
   return [promise[TSR_DEFERRED_PROMISE].data, promise]
 }
 
-export const Await = Vue.defineComponent({
+export const Await: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'Await',
   props: {
     promise: {
@@ -35,7 +35,7 @@ export const Await = Vue.defineComponent({
       required: true,
     },
   },
-  async setup(props) {
+  async setup(props): Promise<() => Vue.VNode> {
     const deferred = defer(props.promise)
     const data = await deferred
     return () => (props.children as (result: unknown) => Vue.VNode)(data)

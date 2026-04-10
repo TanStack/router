@@ -2,7 +2,7 @@ import { useStore } from '@tanstack/react-store'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
-export function useCanGoBack() {
+export function useCanGoBack(): boolean {
   const router = useRouter()
 
   if (isServer ?? router.isServer) {

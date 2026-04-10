@@ -11,7 +11,7 @@ export const renderRouterToString = ({
   router: AnyRouter
   responseHeaders: Headers
   children: () => JSXElement
-}) => {
+}): Response => {
   try {
     const serializationAdapters =
       (router.options as any)?.serializationAdapters ||

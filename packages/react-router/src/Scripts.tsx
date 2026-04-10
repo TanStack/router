@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
 import { deepEqual } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -9,7 +10,7 @@ import type { RouterManagedTag } from '@tanstack/router-core'
  * Render body script tags collected from route matches and SSR manifests.
  * Should be placed near the end of the document body.
  */
-export const Scripts = () => {
+export const Scripts = (): React.JSX.Element => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
 

@@ -28,7 +28,7 @@ export interface ClientOnlyProps {
  * )
  * ```
  */
-export const ClientOnly = Vue.defineComponent({
+export const ClientOnly: new (...args: Array<any>) => any = Vue.defineComponent({
   name: 'ClientOnly',
   props: {
     fallback: {
@@ -36,7 +36,7 @@ export const ClientOnly = Vue.defineComponent({
       default: null,
     },
   },
-  setup(props, { slots }) {
+  setup(props, { slots }): () => Vue.VNode | Array<Vue.VNode> | null | undefined {
     const hydrated = useHydrated()
     return () => {
       if (hydrated.value) {

@@ -46,7 +46,7 @@ export const renderRouterToStream = async ({
   router: AnyRouter
   responseHeaders: Headers
   App: Component
-}) => {
+}): Promise<Response> => {
   const app = Vue.createSSRApp(App, { router })
 
   if (isbot(request.headers.get('User-Agent'))) {

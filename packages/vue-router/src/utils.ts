@@ -1,9 +1,9 @@
 import * as Vue from 'vue'
 
-export const useLayoutEffect =
+export const useLayoutEffect: typeof Vue.effect =
   typeof window !== 'undefined' ? Vue.effect : Vue.effect
 
-export const usePrevious = (fn: () => boolean) => {
+export const usePrevious = (fn: () => boolean): Vue.ComputedRef<{ current: boolean | null; previous: boolean | null }> => {
   return Vue.computed(
     (
       prev: { current: boolean | null; previous: boolean | null } = {
@@ -89,7 +89,7 @@ export function useIntersectionObserver<T extends Element>(
 export function splitProps<T extends Record<string, any>>(
   props: T,
   keys: Array<keyof T>,
-) {
+): readonly [Vue.ComputedRef<Record<string, unknown>>, Vue.ComputedRef<Record<string, unknown>>] {
   // Get the specified props
   const selectedProps = Vue.computed(() => {
     return Object.fromEntries(keys.map((key) => [key, props[key]]))
@@ -103,7 +103,7 @@ export function splitProps<T extends Record<string, any>>(
     )
   })
 
-  return [selectedProps, remainingAttrs]
+  return [selectedProps, remainingAttrs] as const
 }
 
 export type ParentProps<T = {}> = T & {

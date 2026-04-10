@@ -70,7 +70,7 @@ export class FileRoute<
   silent?: boolean
 
   constructor(
-    public path?: TFilePath,
+    public path: TFilePath | undefined,
     _opts?: { silent: boolean },
   ) {
     this.silent = _opts?.silent
@@ -252,7 +252,7 @@ export function createLazyRoute<
   TRouter extends AnyRouter = RegisteredRouter,
   TId extends string = string,
   TRoute extends AnyRoute = RouteById<TRouter['routeTree'], TId>,
->(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>) {
+>(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>): (opts: LazyRouteOptions) => LazyRoute<TRoute> {
   return (opts: LazyRouteOptions) => {
     return new LazyRoute<TRoute>({
       id: id,

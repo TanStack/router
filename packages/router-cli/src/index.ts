@@ -6,7 +6,7 @@ import { watch } from './watch'
 
 main()
 
-export function main() {
+export function main(): void {
   yargs(hideBin(process.argv))
     .scriptName('tsr')
     .usage('$0 <cmd> [args]')

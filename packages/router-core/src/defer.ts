@@ -5,7 +5,8 @@ import { defaultSerializeError } from './router'
  * its deferred state. Consumers can read `promise[TSR_DEFERRED_PROMISE]`
  * to access `status`, `data`, or `error`.
  */
-export const TSR_DEFERRED_PROMISE = Symbol.for('TSR_DEFERRED_PROMISE')
+declare const TSR_DEFERRED_PROMISE_BRAND: unique symbol
+export const TSR_DEFERRED_PROMISE: typeof TSR_DEFERRED_PROMISE_BRAND = Symbol.for('TSR_DEFERRED_PROMISE') as any
 
 export type DeferredPromiseState<T> =
   | {
@@ -44,7 +45,7 @@ export function defer<T>(
   options?: {
     serializeError?: typeof defaultSerializeError
   },
-) {
+): DeferredPromise<T> {
   const promise = _promise as DeferredPromise<T>
   // this is already deferred promise
   if ((promise as any)[TSR_DEFERRED_PROMISE]) {

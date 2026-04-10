@@ -3,10 +3,14 @@
   "compilerOptions": {
     "moduleResolution": "Bundler",
     "rootDir": "src",
-    "outDir": "dist/source",
+    "isolatedDeclarations": true,
+    "allowJs": false,
+    "checkJs": false,
+    "declarationDir": "dist/esm",
     "noEmit": false,
+    "composite": true,
     "declaration": true,
-    "sourceMap": true,
+    "emitDeclarationOnly": true,
     "paths": {
       "@tanstack/router-devtools-core": ["../../router-devtools-core/src"]
     }
