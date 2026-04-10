@@ -5,16 +5,16 @@
 export type { AnyCompositeComponent } from './ServerComponentTypes'
 
 // New API: renderServerComponent - renders element to renderable proxy
-export { renderServerComponent } from './renderServerComponent'
+export { renderServerComponent } from './renderServerComponent.js'
 
 // New API: createCompositeComponent - creates composite with slot support
-export { createCompositeComponent } from './createCompositeComponent'
+export { createCompositeComponent } from './createCompositeComponent.js'
 
 // Renderer for composite RSC data (client/SSR)
 export { CompositeComponent } from './CompositeComponent.js'
 
 // Low-level Flight stream API (RSC only)
-export { renderToReadableStream } from './flight.rsc'
+export { renderToReadableStream } from './flight.rsc.js'
 
 // Low-level Flight stream APIs (also available in RSC for decode operations)
 export { createFromReadableStream, createFromFetch } from './flight'

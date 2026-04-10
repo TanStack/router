@@ -141,14 +141,12 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
           return
         }
 
-        if (rootKind === 'renderServerComponent') {
-          const element = node.arguments[0]
-          if (!element) return
+        const element = node.arguments[0]
+        if (!element) return
 
-          const tsNode = services.esTreeNodeToTSNodeMap.get(element)
-          analyzeServerComponentNode(tsNode, node, rootKind)
-          return
-        }
+        const tsNode = services.esTreeNodeToTSNodeMap.get(element)
+        analyzeServerComponentNode(tsNode, node, rootKind)
+        return
       },
     }
 

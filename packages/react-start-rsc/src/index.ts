@@ -8,8 +8,8 @@ export type { AnyCompositeComponent } from './ServerComponentTypes'
 export { SERVER_COMPONENT_CSS_HREFS } from './ServerComponentTypes'
 
 // Stubs for RSC-only functions - throw if called outside RSC context
-export { renderServerComponent } from './renderServerComponent.stub'
-export { createCompositeComponent } from './createCompositeComponent.stub'
+export { renderServerComponent } from './renderServerComponent.stub.js'
+export { createCompositeComponent } from './createCompositeComponent.stub.js'
 
 // Renderer for composite RSC data (client/SSR)
 export { CompositeComponent } from './CompositeComponent.js'
@@ -18,7 +18,7 @@ export { CompositeComponent } from './CompositeComponent.js'
 export { createFromReadableStream, createFromFetch } from './flight'
 
 // Stub for renderToReadableStream - throws if called outside RSC context
-export { renderToReadableStream } from './flight.stub'
+export { renderToReadableStream } from './flight.stub.js'
 
 // Note: rscSerializationAdapter is intentionally NOT exported here.
 // It imports virtual:tanstack-rsc-hmr which is client-only (not available in SSR).

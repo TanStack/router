@@ -30,17 +30,17 @@
     "build": "vite build && tsc --noEmit"
   },
   "type": "module",
-  "types": "dist/esm/index.d.ts",
+  "types": "dist/esm/src/index.d.ts",
   "main": "dist/cjs/index.cjs",
   "module": "dist/esm/index.js",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/esm/index.d.ts",
+        "types": "./dist/esm/src/index.d.ts",
         "default": "./dist/esm/index.js"
       },
       "require": {
-        "types": "./dist/cjs/index.d.cts",
+        "types": "./dist/cjs/src/index.d.cts",
         "default": "./dist/cjs/index.cjs"
       }
     },

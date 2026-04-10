@@ -5,6 +5,11 @@ import { copyFilesPlugin } from '@tanstack/router-utils'
 import packageJson from './package.json'
 
 const config = defineConfig({
+  resolve: {
+    alias: {
+      'virtual:tanstack-rsc-browser-decode': '@vitejs/plugin-rsc/browser',
+    },
+  },
   plugins: [
     react(),
     copyFilesPlugin({
