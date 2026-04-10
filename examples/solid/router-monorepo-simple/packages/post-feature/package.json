@@ -9,8 +9,8 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@router-solid-mono-simple/router": "workspace:*",
-    "solid-js": "^2.0.0-beta.5",
-    "@solidjs/web": "^2.0.0-beta.5"
+    "solid-js": "^2.0.0-beta.6",
+    "@solidjs/web": "^2.0.0-beta.6"
   },
   "devDependencies": {
     "vite-plugin-solid": "^3.0.0-next.4",

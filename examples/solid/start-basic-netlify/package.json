@@ -12,8 +12,8 @@
     "@tanstack/solid-router": "^2.0.0-beta.11",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.8",
     "@tanstack/solid-start": "^2.0.0-beta.12",
-    "solid-js": "^2.0.0-beta.5",
-    "@solidjs/web": "^2.0.0-beta.5"
+    "solid-js": "^2.0.0-beta.6",
+    "@solidjs/web": "^2.0.0-beta.6"
   },
   "devDependencies": {
     "@netlify/vite-plugin-tanstack-start": "^1.1.4",

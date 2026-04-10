@@ -18,8 +18,8 @@
     "@tanstack/solid-router-devtools": "^2.0.0-beta.8",
     "@tanstack/solid-start": "^2.0.0-beta.12",
     "redaxios": "^0.5.1",
-    "solid-js": "^2.0.0-beta.5",
-    "@solidjs/web": "^2.0.0-beta.5",
+    "solid-js": "^2.0.0-beta.6",
+    "@solidjs/web": "^2.0.0-beta.6",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {

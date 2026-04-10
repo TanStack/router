@@ -13,8 +13,8 @@
     "@tanstack/solid-router": "^2.0.0-beta.11",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.8",
     "redaxios": "^0.5.1",
-    "solid-js": "^2.0.0-beta.5",
-    "@solidjs/web": "^2.0.0-beta.5",
+    "solid-js": "^2.0.0-beta.6",
+    "@solidjs/web": "^2.0.0-beta.6",
     "solid-motionone": "^1.0.4",
     "tailwindcss": "^4.2.2",
     "zod": "^3.24.2"
