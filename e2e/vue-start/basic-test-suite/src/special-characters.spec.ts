@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { isSpaMode } from './utils/isSpaMode'
 
 test.use({
   whitelistErrors: [
@@ -195,7 +196,12 @@ test.describe('Unicode route rendering', () => {
 
         await page.waitForLoadState(`load`)
 
-        expect(res!.status()).toBe(400)
+        // in spa mode this is caught and handled at server level
+        if (!isSpaMode) {
+          expect(res!.status()).toBe(400)
+        } else {
+          expect(res!.status()).toBe(400)
+        }
       })
     }
 
