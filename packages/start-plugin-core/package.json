@@ -53,8 +53,7 @@
       "default": "./dist/esm/utils.js"
     },
     "./vite/types": {
-      "types": "./dist/esm/vite/types.d.ts",
-      "default": "./dist/esm/vite/types.js"
+      "types": "./dist/esm/vite/types.d.ts"
     },
     "./package.json": "./package.json"
   },

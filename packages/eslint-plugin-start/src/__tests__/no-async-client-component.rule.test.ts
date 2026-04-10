@@ -8,7 +8,8 @@ import {
 } from '../rules/no-async-client-component/no-async-client-component.rule'
 
 RuleTester.afterAll = vitest.afterAll
-RuleTester.it = vitest.it
+RuleTester.it = ((name, fn) =>
+  vitest.it(name, { timeout: 15000 }, fn)) as typeof RuleTester.it
 RuleTester.itOnly = vitest.it.only
 RuleTester.describe = vitest.describe
 
