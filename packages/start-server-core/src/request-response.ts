@@ -304,7 +304,7 @@ export function setResponseStatus(code?: number, text?: string): void {
 export function getCookies(): Record<string, string> {
   const event = getH3Event()
   const cookies = h3_parseCookies(event)
-  const definedCookies: Record<string, string> = {}
+  const definedCookies = Object.create(null) as Record<string, string>
 
   for (const [name, value] of Object.entries(cookies)) {
     if (value !== undefined) {
