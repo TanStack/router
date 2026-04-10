@@ -1,5 +1,5 @@
 import { createPlugin, createStream } from 'seroval'
-import type { Plugin, PluginData, PluginInfo, SerovalNode } from 'seroval'
+import type { PluginData, PluginInfo, SerovalNode } from 'seroval'
 
 /**
  * Hint for RawStream encoding strategy during SSR serialization.
