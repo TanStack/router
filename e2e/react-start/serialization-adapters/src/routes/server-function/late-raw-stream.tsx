@@ -91,13 +91,14 @@ function StreamReader({
   stream,
   testId,
 }: {
-  stream: ReadableStream<Uint8Array>
+  stream: ReadableStream<Uint8Array> | RawStream
   testId: string
 }) {
   const [result, setResult] = useState<string | null>(null)
 
   useEffect(() => {
-    const reader = stream.getReader()
+    const actualStream = stream instanceof RawStream ? stream.stream : stream
+    const reader = actualStream.getReader()
     const chunks: Array<string> = []
     const decoder = new TextDecoder()
 
@@ -125,11 +126,11 @@ function LateStreamResolver({
   streamPromise,
   testId,
 }: {
-  streamPromise: Promise<RawStream>
+  streamPromise: Promise<ReadableStream<Uint8Array> | RawStream>
   testId: string
 }) {
   const stream = use(streamPromise)
-  return <StreamReader stream={stream.stream} testId={testId} />
+  return <StreamReader stream={stream} testId={testId} />
 }
 
 function LateStreamResult({
@@ -190,7 +191,7 @@ function MixedStreamResult({
     <div>
       <div data-testid="mixed-timestamp">{result.timestamp}</div>
       <StreamReader
-        stream={result.immediateStream.stream}
+        stream={result.immediateStream}
         testId="mixed-immediate-result"
       />
       <Suspense fallback={<div>loading late...</div>}>
