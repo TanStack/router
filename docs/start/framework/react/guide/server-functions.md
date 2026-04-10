@@ -322,6 +322,10 @@ Compose server functions with middleware for authentication, logging, and shared
 
 Cache server function results at build time for static generation. See [Static Server Functions](./static-server-functions).
 
+### Server Components
+
+Server functions can return Server Components - server-rendered React components that the client can compose. See [Server Components](./server-components.md).
+
 ### Request Cancellation
 
 Handle request cancellation with `AbortSignal` for long-running operations.

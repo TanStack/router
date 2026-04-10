@@ -2,11 +2,8 @@ import { describe, expect, test } from 'vitest'
 import {
   StartCompiler,
   detectKindsInCode,
-} from '../src/start-compiler-plugin/compiler'
-import type {
-  LookupConfig,
-  LookupKind,
-} from '../src/start-compiler-plugin/compiler'
+} from '../src/start-compiler/compiler'
+import type { LookupConfig, LookupKind } from '../src/start-compiler/compiler'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -67,6 +64,7 @@ function createFullCompiler(env: 'client' | 'server') {
     lookupConfigurations,
     loadModule: async () => {},
     resolveId: async (id) => id,
+    mode: 'build',
   })
 }
 

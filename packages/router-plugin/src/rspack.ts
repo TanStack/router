@@ -1,6 +1,7 @@
 import { createRspackPlugin } from 'unplugin'
 
 import { configSchema } from './core/config'
+import { withHmrHotExpression } from './core/hmr-hot-expression'
 import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-plugin'
 import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
@@ -37,7 +38,14 @@ const TanStackRouterGeneratorRspack = /* #__PURE__ */ createRspackPlugin(
  * ```
  */
 const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
-  unpluginRouterCodeSplitterFactory,
+  (options, meta) =>
+    unpluginRouterCodeSplitterFactory(
+      withHmrHotExpression(
+        options as Partial<Config> | undefined,
+        'import.meta.webpackHot',
+      ),
+      meta,
+    ),
 )
 
 /**
@@ -54,7 +62,14 @@ const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
  * ```
  */
 const TanStackRouterRspack = /* #__PURE__ */ createRspackPlugin(
-  unpluginRouterComposedFactory,
+  (options, meta) =>
+    unpluginRouterComposedFactory(
+      withHmrHotExpression(
+        options as Partial<Config> | undefined,
+        'import.meta.webpackHot',
+      ),
+      meta,
+    ),
 )
 const tanstackRouter = TanStackRouterRspack
 export default TanStackRouterRspack

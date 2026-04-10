@@ -9,3 +9,10 @@ declare module '#tanstack-router-entry' {
 
   export const getRouter: RouterEntry['getRouter']
 }
+
+declare module '#tanstack-start-plugin-adapters' {
+  import type { AnySerializationAdapter } from '@tanstack/router-core'
+
+  export const pluginSerializationAdapters: Array<AnySerializationAdapter>
+  export const hasPluginAdapters: boolean
+}

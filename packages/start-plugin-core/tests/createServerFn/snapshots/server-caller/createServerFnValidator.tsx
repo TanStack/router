@@ -3,4 +3,4 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 export const withUseServer = createServerFn({
   method: 'GET'
-}).inputValidator(z.number()).handler(createSsrRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ", () => import("/test/src/test.ts?tss-serverfn-split").then(m => m["withUseServer_createServerFn_handler"])));
+}).inputValidator(z.number()).handler(createSsrRpc("b6fe31e85836ae6c65d8ab262dd1af6a68620aeef609029d50127f4cceaaf320"));

@@ -6,6 +6,7 @@ import type { ServerFnMeta } from '../constants'
 import type {
   Constrain,
   Register,
+  SerializationError,
   TsrSerializable,
   ValidateSerializableInput,
   Validator,
@@ -512,7 +513,9 @@ test('createServerFn returns undefined', () => {
 test('createServerFn cannot return function', () => {
   expectTypeOf(createServerFn().handler<{ func: () => 'func' }>)
     .parameter(0)
-    .returns.toEqualTypeOf<{ func: 'Function is not serializable' }>()
+    .returns.toEqualTypeOf<{
+      func: SerializationError<'Function may not be serializable'>
+    }>()
 })
 
 test('createServerFn cannot validate function', () => {
@@ -525,7 +528,10 @@ test('createServerFn cannot validate function', () => {
     .toEqualTypeOf<
       Constrain<
         (input: { func: () => 'string' }) => { output: 'string' },
-        Validator<{ func: 'Function is not serializable' }, any>
+        Validator<
+          { func: SerializationError<'Function may not be serializable'> },
+          any
+        >
       >
     >()
 })

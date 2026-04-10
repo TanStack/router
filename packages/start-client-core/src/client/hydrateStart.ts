@@ -1,12 +1,14 @@
 import { hydrate } from '@tanstack/router-core/ssr/client'
 
+import { startInstance } from '#tanstack-start-entry'
+import {
+  hasPluginAdapters,
+  pluginSerializationAdapters,
+} from '#tanstack-start-plugin-adapters'
+import { getRouter } from '#tanstack-router-entry'
 import { ServerFunctionSerializationAdapter } from './ServerFunctionSerializationAdapter'
 import type { AnyStartInstanceOptions } from '../createStart'
 import type { AnyRouter, AnySerializationAdapter } from '@tanstack/router-core'
-// eslint-disable-next-line import/no-duplicates,import/order
-import { getRouter } from '#tanstack-router-entry'
-// eslint-disable-next-line import/no-duplicates,import/order
-import { startInstance } from '#tanstack-start-entry'
 
 export async function hydrateStart(): Promise<AnyRouter> {
   const router = await getRouter()
@@ -26,6 +28,10 @@ export async function hydrateStart(): Promise<AnyRouter> {
     } as AnyStartInstanceOptions
   }
 
+  // Only spread plugin adapters if any are configured (this will tree-shake away otherwise)
+  if (hasPluginAdapters) {
+    serializationAdapters.push(...pluginSerializationAdapters)
+  }
   serializationAdapters.push(ServerFunctionSerializationAdapter)
   if (router.options.serializationAdapters) {
     serializationAdapters.push(...router.options.serializationAdapters)

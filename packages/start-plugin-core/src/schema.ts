@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-plugin'
-import type { TanStackStartVitePluginCoreOptions } from './types'
+import type { CompileStartFrameworkOptions } from './types'
 
 const tsrConfig = configSchema
   .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
@@ -63,7 +63,7 @@ const importProtectionOptionsSchema = z
 
 export function parseStartConfig(
   opts: z.input<typeof tanstackStartOptionsSchema>,
-  corePluginOpts: TanStackStartVitePluginCoreOptions,
+  corePluginOpts: { framework: CompileStartFrameworkOptions },
   root: string,
 ) {
   const options = tanstackStartOptionsSchema.parse(opts)
@@ -180,103 +180,103 @@ const pageSchema = pageBaseSchema.extend({
   prerender: pagePrerenderOptionsSchema.optional(),
 })
 
-const tanstackStartOptionsSchema = z
-  .object({
-    srcDirectory: z.string().optional().default('src'),
-    start: z
-      .object({
-        entry: z.string().optional(),
-      })
-      .optional()
-      .default({}),
-    router: z
-      .object({
-        entry: z.string().optional(),
-        basepath: z.string().optional(),
-      })
-      .and(tsrConfig.optional().default({}))
-      .optional()
-      .default({}),
-    client: z
-      .object({
-        entry: z.string().optional(),
-        base: z.string().optional().default('/_build'),
-      })
-      .optional()
-      .default({}),
-    server: z
-      .object({
-        entry: z.string().optional(),
-        build: z
-          .object({
-            staticNodeEnv: z.boolean().optional().default(true),
-          })
-          .optional()
-          .default({}),
-      })
-      .optional()
-      .default({}),
-    serverFns: z
-      .object({
-        base: z.string().optional().default('/_serverFn'),
-        generateFunctionId: z
-          .function()
-          .args(
-            z.object({
-              filename: z.string(),
-              functionName: z.string(),
-            }),
-          )
-          .returns(z.string().optional())
-          .optional(),
-      })
-      .optional()
-      .default({}),
-    pages: z.array(pageSchema).optional().default([]),
-    sitemap: z
-      .object({
-        enabled: z.boolean().optional().default(true),
-        host: z.string().optional(),
-        outputPath: z.string().optional().default('sitemap.xml'),
-      })
-      .optional(),
-    prerender: z
-      .object({
-        enabled: z.boolean().optional(),
-        concurrency: z.number().optional(),
-        filter: z.function().args(pageSchema).returns(z.any()).optional(),
-        failOnError: z.boolean().optional(),
-        autoStaticPathsDiscovery: z.boolean().optional(),
-        maxRedirects: z.number().min(0).optional(),
-      })
-      .and(pagePrerenderOptionsSchema.optional())
-      .optional(),
-    dev: z
-      .object({
-        ssrStyles: z
-          .object({
-            enabled: z.boolean().optional().default(true),
-            basepath: z.string().optional(),
-          })
-          .optional()
-          .default({}),
-      })
-      .optional()
-      .default({}),
-    spa: spaSchema.optional(),
-    vite: z
-      .object({ installDevServerMiddleware: z.boolean().optional() })
-      .optional(),
-    importProtection: importProtectionOptionsSchema,
-  })
+export const tanstackStartOptionsObjectSchema = z.object({
+  srcDirectory: z.string().optional().default('src'),
+  start: z
+    .object({
+      entry: z.string().optional(),
+    })
+    .optional()
+    .default({}),
+  router: z
+    .object({
+      entry: z.string().optional(),
+      basepath: z.string().optional(),
+    })
+    .and(tsrConfig.optional().default({}))
+    .optional()
+    .default({}),
+  client: z
+    .object({
+      entry: z.string().optional(),
+      base: z.string().optional().default('/_build'),
+    })
+    .optional()
+    .default({}),
+  server: z
+    .object({
+      entry: z.string().optional(),
+      build: z
+        .object({
+          staticNodeEnv: z.boolean().optional().default(true),
+        })
+        .optional()
+        .default({}),
+    })
+    .optional()
+    .default({}),
+  serverFns: z
+    .object({
+      base: z.string().optional().default('/_serverFn'),
+      generateFunctionId: z
+        .function()
+        .args(
+          z.object({
+            filename: z.string(),
+            functionName: z.string(),
+          }),
+        )
+        .returns(z.string().optional())
+        .optional(),
+    })
+    .optional()
+    .default({}),
+  pages: z.array(pageSchema).optional().default([]),
+  sitemap: z
+    .object({
+      enabled: z.boolean().optional().default(true),
+      host: z.string().optional(),
+      outputPath: z.string().optional().default('sitemap.xml'),
+    })
+    .optional(),
+  prerender: z
+    .object({
+      enabled: z.boolean().optional(),
+      concurrency: z.number().optional(),
+      filter: z.function().args(pageSchema).returns(z.any()).optional(),
+      failOnError: z.boolean().optional(),
+      autoStaticPathsDiscovery: z.boolean().optional(),
+      maxRedirects: z.number().min(0).optional(),
+    })
+    .and(pagePrerenderOptionsSchema.optional())
+    .optional(),
+  dev: z
+    .object({
+      ssrStyles: z
+        .object({
+          enabled: z.boolean().optional().default(true),
+          basepath: z.string().optional(),
+        })
+        .optional()
+        .default({}),
+    })
+    .optional()
+    .default({}),
+  spa: spaSchema.optional(),
+  importProtection: importProtectionOptionsSchema,
+})
+
+export const tanstackStartOptionsSchema = tanstackStartOptionsObjectSchema
   .optional()
   .default({})
 
 export type Page = z.infer<typeof pageSchema>
 
-export type TanStackStartInputConfig = z.input<
-  typeof tanstackStartOptionsSchema
+type TanStackStartOptionsInput = NonNullable<
+  z.input<typeof tanstackStartOptionsSchema>
 >
+
+export type TanStackStartInputConfig = TanStackStartOptionsInput
 export type TanStackStartOutputConfig = ReturnType<typeof parseStartConfig>
 
 export type ImportProtectionBehavior = z.infer<

@@ -1,4 +1,5 @@
 import * as template from '@babel/template'
+import { createHmrHotExpressionAst } from './hmr-hot-expression'
 import type { AnyRoute, AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
 
 type AnyRouteWithPrivateProps = AnyRoute & {
@@ -59,7 +60,7 @@ function handleRouteUpdate(
   // handles hot-updating the function bodies of these components — our job
   // is only to update non-component route options (loader, head, etc.).
   // For code-split (splittable) routes, the lazyRouteComponent wrapper is
-  // already cached in import.meta.hot.data so its identity is stable.
+  // already cached in the bundler hot data so its identity is stable.
   // For unsplittable routes (e.g. root routes), the component is a plain
   // function reference that gets recreated on every module re-execution,
   // so we must explicitly preserve the old reference.
@@ -159,15 +160,20 @@ function handleRouteUpdate(
 
 const handleRouteUpdateStr = handleRouteUpdate.toString()
 
-export function createRouteHmrStatement(stableRouteOptionKeys: Array<string>) {
+export function createRouteHmrStatement(
+  stableRouteOptionKeys: Array<string>,
+  opts?: { hotExpression?: string },
+) {
   return template.statement(
     `
-if (import.meta.hot) {
-  import.meta.hot.accept((newModule) => {
+if (%%hotExpression%%) {
+  const hot = %%hotExpression%%
+  const hotData = hot.data ??= {}
+  hot.accept((newModule) => {
     if (Route && newModule && newModule.Route) {
-      const routeId = import.meta.hot.data['tsr-route-id'] ?? Route.id
+      const routeId = hotData['tsr-route-id'] ?? Route.id
       if (routeId) {
-        import.meta.hot.data['tsr-route-id'] = routeId
+        hotData['tsr-route-id'] = routeId
       }
       (${handleRouteUpdateStr.replace(
         /['"]__TSR_COMPONENT_TYPES__['"]/,
@@ -177,6 +183,10 @@ if (import.meta.hot) {
     })
 }
 `,
-    { placeholderPattern: false },
-  )()
+    {
+      syntacticPlaceholders: true,
+    },
+  )({
+    hotExpression: createHmrHotExpressionAst(opts?.hotExpression),
+  })
 }

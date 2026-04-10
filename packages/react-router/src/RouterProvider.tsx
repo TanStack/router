@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { Matches } from './Matches'
 import { routerContext } from './routerContext'

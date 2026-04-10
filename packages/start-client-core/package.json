@@ -64,10 +64,13 @@
   },
   "imports": {
     "#tanstack-start-entry": {
-      "default": "./dist/esm/fake-start-entry.js"
+      "default": "./dist/esm/fake-entries/start.js"
     },
     "#tanstack-router-entry": {
-      "default": "./dist/esm/fake-start-entry.js"
+      "default": "./dist/esm/fake-entries/router.js"
+    },
+    "#tanstack-start-plugin-adapters": {
+      "default": "./dist/esm/fake-entries/plugin-adapters.js"
     }
   },
   "sideEffects": false,
@@ -85,7 +88,7 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/start-fn-stubs": "workspace:*",
     "@tanstack/start-storage-context": "workspace:*",
-    "seroval": "^1.4.2"
+    "seroval": "^1.5.0"
   },
   "devDependencies": {
     "@tanstack/intent": "^0.0.14",

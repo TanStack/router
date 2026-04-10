@@ -11,6 +11,7 @@ export type CompileCodeSplitReferenceRouteOptions = {
   filename: string
   id: string
   addHmr?: boolean
+  hmrHotExpression?: string
   sharedBindings?: Set<string>
 }
 
@@ -31,6 +32,7 @@ export type ReferenceRouteSplitPropertyCompilerPluginContext = {
   prop: t.ObjectProperty
   splitNodeMeta: SplitNodeMeta
   lazyRouteComponentIdent: string
+  opts: CompileCodeSplitReferenceRouteOptions
 }
 
 export type ReferenceRouteCompilerPluginResult = {

@@ -366,6 +366,9 @@ export function transformStreamWithRouter(
       if (isAppRendering || leftover || pendingClosingTags) {
         appendRouterHtml(html)
       } else {
+        // App is done rendering - flush any pending buffer first to maintain order,
+        // then write the new HTML directly
+        flushPendingRouterHtml()
         safeEnqueue(html)
       }
     })

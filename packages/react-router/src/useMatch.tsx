@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
 import { invariant, replaceEqualDeep } from '@tanstack/router-core'

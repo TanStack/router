@@ -2,7 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { StartCompiler } from '../../src/start-compiler-plugin/compiler'
+import { StartCompiler } from '../../src/start-compiler/compiler'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {

@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import type { ErrorRouteComponent } from './route'
 import type { ErrorInfo } from 'react'

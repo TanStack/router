@@ -11,12 +11,14 @@ declare module 'tanstack-start-route-tree:v' {
 }
 
 declare module '#tanstack-start-server-fn-resolver' {
+  export type ServerFnLookupAccess = { origin: 'client' } | { origin: 'server' }
+
   export type ServerFn = ((...args: Array<any>) => Promise<any>) & {
     method?: 'GET' | 'POST'
   }
   export function getServerFnById(
     id: string,
-    opts?: { fromClient?: boolean },
+    access: ServerFnLookupAccess,
   ): Promise<ServerFn>
 }
 

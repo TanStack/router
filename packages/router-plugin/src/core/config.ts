@@ -72,6 +72,10 @@ export type CodeSplittingOptions = {
   addHmr?: boolean
 }
 
+export type HmrOptions = {
+  hotExpression?: string
+}
+
 const codeSplittingOptionsSchema = z.object({
   splitBehavior: z.function().optional(),
   defaultBehavior: splitGroupingsSchema.optional(),
@@ -93,6 +97,11 @@ export const configSchema = generatorConfigSchema.extend({
     .optional(),
   plugin: z
     .object({
+      hmr: z
+        .object({
+          hotExpression: z.string().optional(),
+        })
+        .optional(),
       vite: z
         .object({
           environmentName: z.string().optional(),

@@ -15,7 +15,10 @@ import {
   getNormalizedURL,
   getOrigin,
 } from '@tanstack/router-core/ssr/server'
-import { runWithStartContext } from '@tanstack/start-storage-context'
+import {
+  getStartContext,
+  runWithStartContext,
+} from '@tanstack/start-storage-context'
 import { requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
@@ -41,6 +44,7 @@ import type { RequestHandler } from './request-handler'
 import type {
   AnyRoute,
   AnyRouter,
+  AnySerializationAdapter,
   Manifest,
   Register,
 } from '@tanstack/router-core'
@@ -205,14 +209,20 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
   return headers
 }
 
+interface PluginAdaptersEntry {
+  hasPluginAdapters: boolean
+  pluginSerializationAdapters: Array<AnySerializationAdapter>
+}
+
+interface Entries {
+  startEntry: StartEntry
+  routerEntry: RouterEntry
+  pluginAdapters: PluginAdaptersEntry
+}
+
 // Cached entries - promises stored immediately to prevent concurrent imports
 // that can cause race conditions during module initialization
-let entriesPromise:
-  | Promise<{
-      startEntry: StartEntry
-      routerEntry: RouterEntry
-    }>
-  | undefined
+let entriesPromise: Promise<Entries> | undefined
 let baseManifestPromise: Promise<StartManifestWithClientEntry> | undefined
 
 /**
@@ -221,12 +231,20 @@ let baseManifestPromise: Promise<StartManifestWithClientEntry> | undefined
  */
 let cachedFinalManifestPromise: Promise<Manifest> | undefined
 
-async function loadEntries() {
-  // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-  const routerEntry = (await import('#tanstack-router-entry')) as RouterEntry
-  // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-  const startEntry = (await import('#tanstack-start-entry')) as StartEntry
-  return { startEntry, routerEntry }
+async function loadEntries(): Promise<Entries> {
+  const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
+    // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+    import('#tanstack-router-entry'),
+    // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+    import('#tanstack-start-entry'),
+    // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+    import('#tanstack-start-plugin-adapters'),
+  ])
+  return {
+    routerEntry: routerEntry as unknown as RouterEntry,
+    startEntry: startEntry as unknown as StartEntry,
+    pluginAdapters: pluginAdapters as unknown as PluginAdaptersEntry,
+  }
 }
 
 function getEntries() {
@@ -552,8 +570,12 @@ export function createStartHandler<TRegister = Register>(
         (await entries.startEntry.startInstance?.getOptions()) ||
         ({} as AnyStartInstanceOptions)
 
+      const { hasPluginAdapters, pluginSerializationAdapters } =
+        entries.pluginAdapters
+
       const serializationAdapters = [
         ...(startOptions.serializationAdapters || []),
+        ...(hasPluginAdapters ? pluginSerializationAdapters : []),
         ServerFunctionSerializationAdapter,
       ]
 
@@ -623,6 +645,7 @@ export function createStartHandler<TRegister = Register>(
               contextAfterGlobalMiddlewares: context,
               request,
               executedRequestMiddlewares,
+              handlerType: 'serverFn',
             },
             () =>
               handleServerAction({
@@ -675,6 +698,8 @@ export function createStartHandler<TRegister = Register>(
         attachRouterServerSsrUtils({
           router: routerInstance,
           manifest,
+          getRequestAssets: () =>
+            getStartContext({ throwIfNotFound: false })?.requestAssets,
         })
 
         routerInstance.update({ additionalContext: { serverContext } })
@@ -684,7 +709,11 @@ export function createStartHandler<TRegister = Register>(
           return routerInstance.state.redirect
         }
 
-        await routerInstance.serverSsr!.dehydrate()
+        // Pass request-scoped assets to dehydrate for manifest injection
+        const ctx = getStartContext({ throwIfNotFound: false })
+        await routerInstance.serverSsr!.dehydrate({
+          requestAssets: ctx?.requestAssets,
+        })
 
         const responseHeaders = getStartResponseHeaders({
           router: routerInstance,
@@ -707,6 +736,7 @@ export function createStartHandler<TRegister = Register>(
             contextAfterGlobalMiddlewares: context,
             request,
             executedRequestMiddlewares,
+            handlerType: 'router',
           },
           async () => {
             try {

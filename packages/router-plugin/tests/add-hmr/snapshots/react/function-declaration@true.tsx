@@ -3,16 +3,22 @@ import { lazyRouteComponent } from '@tanstack/react-router';
 import * as React from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchPosts } from '../posts';
-const TSRSplitComponent = import.meta.hot?.data?.["tsr-split-component:component"] ?? lazyRouteComponent($$splitComponentImporter, "component");
+const TSRSplitComponent = (() => {
+  const hot = import.meta.hot;
+  const hotData = hot ? hot.data ??= {} : undefined;
+  return hotData?.["tsr-split-component:component"] ?? lazyRouteComponent($$splitComponentImporter, "component");
+})();
 if (import.meta.hot) {
-  import.meta.hot.data ??= {};
-  import.meta.hot.data["tsr-split-component:component"] = TSRSplitComponent;
+  (import.meta.hot.data ??= {})["tsr-split-component:component"] = TSRSplitComponent;
 }
 export const Route = createFileRoute('/posts')({
   loader: fetchPosts,
   component: TSRSplitComponent
 });
-if (import.meta.hot && typeof window !== 'undefined') {
+const hot = import.meta.hot;
+if (hot && typeof window !== 'undefined') {
+  ;
+  hot.data ??= {};
   const tsrReactRefresh = window.__TSR_REACT_REFRESH__ ??= (() => {
     const ignoredExportsById = new Map();
     const previousGetIgnoredExports = window.__getReactRefreshIgnoredExports;
@@ -31,11 +37,13 @@ export function TSRFastRefreshAnchor() {
   return null;
 }
 if (import.meta.hot) {
-  import.meta.hot.accept(newModule => {
+  const hot = import.meta.hot;
+  const hotData = hot.data ??= {};
+  hot.accept(newModule => {
     if (Route && newModule && newModule.Route) {
-      const routeId = import.meta.hot.data['tsr-route-id'] ?? Route.id;
+      const routeId = hotData['tsr-route-id'] ?? Route.id;
       if (routeId) {
-        import.meta.hot.data['tsr-route-id'] = routeId;
+        hotData['tsr-route-id'] = routeId;
       }
       (function handleRouteUpdate(routeId, newRoute) {
         const router = window.__TSR_ROUTER__;

@@ -184,8 +184,8 @@
   "dependencies": {
     "@tanstack/history": "workspace:*",
     "cookie-es": "^2.0.0",
-    "seroval": "^1.4.2",
-    "seroval-plugins": "^1.4.2"
+    "seroval": "^1.5.0",
+    "seroval-plugins": "^1.5.0"
   },
   "devDependencies": {
     "@tanstack/intent": "^0.0.14",

@@ -2,7 +2,7 @@ import { expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import type { RequestServerNextFn } from '../createMiddleware'
 import type { ConstrainValidator, CustomFetch } from '../createServerFn'
-import type { Register } from '@tanstack/router-core'
+import type { Register, SerializationError } from '@tanstack/router-core'
 import type { ServerFnMeta } from '../constants'
 
 test('createServeMiddleware removes middleware after middleware,', () => {
@@ -573,7 +573,10 @@ test('createMiddleware sendContext cannot send a function', () => {
         .parameter(0)
         .exclude<undefined>()
         .toHaveProperty('sendContext')
-        .toEqualTypeOf<{ func: 'Function is not serializable' } | undefined>()
+        .toEqualTypeOf<
+          | { func: SerializationError<'Function may not be serializable'> }
+          | undefined
+        >()
 
       return next()
     })
@@ -582,7 +585,10 @@ test('createMiddleware sendContext cannot send a function', () => {
         .parameter(0)
         .exclude<undefined>()
         .toHaveProperty('sendContext')
-        .toEqualTypeOf<{ func: 'Function is not serializable' } | undefined>()
+        .toEqualTypeOf<
+          | { func: SerializationError<'Function may not be serializable'> }
+          | undefined
+        >()
 
       return next()
     })

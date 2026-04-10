@@ -1,3 +1,5 @@
+'use client'
+
 export {
   defer,
   isMatch,
@@ -326,6 +328,9 @@ export type {
   InferSelected,
   ValidateUseSearchResult,
   ValidateUseParamsResult,
+  SerializerExtensions,
+  RegisteredSerializableInput,
+  Serializable,
 } from '@tanstack/router-core'
 
 export { ScriptOnce } from './ScriptOnce'

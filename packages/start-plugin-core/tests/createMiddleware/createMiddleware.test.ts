@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
-import { StartCompiler } from '../../src/start-compiler-plugin/compiler'
+import { StartCompiler } from '../../src/start-compiler/compiler'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -101,15 +101,9 @@ describe('createMiddleware compiles correctly', async () => {
       id: 'test.ts',
     })
 
-    // resolveId should only be called once during init() for the library itself
-    // It should NOT be called again to resolve the import binding because
-    // the fast path uses knownRootImports map for O(1) lookup
-    // Note: init() now resolves from project root, not from a specific file
-    expect(resolveIdMock).toHaveBeenCalledTimes(1)
-    expect(resolveIdMock).toHaveBeenCalledWith(
-      '@tanstack/react-start',
-      undefined,
-    )
+    // Direct known-library imports use the knownRootImports fast path, so they
+    // do not need resolveId.
+    expect(resolveIdMock).not.toHaveBeenCalled()
   })
 
   test('should use slow path for factory pattern (resolveId called for import resolution)', async () => {
@@ -153,18 +147,12 @@ describe('createMiddleware compiles correctly', async () => {
       id: 'test.ts',
     })
 
-    // resolveId should be called exactly twice:
-    // 1. Once during init() for '@tanstack/react-start' (no importer - resolved from project root)
-    // 2. Once to resolve './factory' import (slow path - not in knownRootImports)
+    // resolveId should only be called for './factory'. Direct known-library
+    // imports use the knownRootImports fast path.
     //
     // Note: The factory module's import from '@tanstack/react-start' ALSO uses
     // the fast path (knownRootImports), so no additional resolveId call is needed there.
-    expect(resolveIdMock).toHaveBeenCalledTimes(2)
-    expect(resolveIdMock).toHaveBeenNthCalledWith(
-      1,
-      '@tanstack/react-start',
-      undefined,
-    )
-    expect(resolveIdMock).toHaveBeenNthCalledWith(2, './factory', 'test.ts')
+    expect(resolveIdMock).toHaveBeenCalledTimes(1)
+    expect(resolveIdMock).toHaveBeenNthCalledWith(1, './factory', 'test.ts')
   })
 })

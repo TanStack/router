@@ -1,5 +1,6 @@
 import * as template from '@babel/template'
 import * as t from '@babel/types'
+import { createHmrHotExpressionAst } from '../../hmr-hot-expression'
 import { getUniqueProgramIdentifier } from '../../utils'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
 
@@ -13,10 +14,13 @@ function createHotDataKey(exportName: string) {
 
 const buildStableSplitComponentStatements = template.statements(
   `
-    const %%stableComponentIdent%% = import.meta.hot?.data?.[%%hotDataKey%%] ?? %%lazyRouteComponentIdent%%(%%localImporterIdent%%, %%exporterIdent%%)
-    if (import.meta.hot) {
-      import.meta.hot.data ??= {}
-      import.meta.hot.data[%%hotDataKey%%] = %%stableComponentIdent%%
+    const %%stableComponentIdent%% = (() => {
+      const hot = %%hotExpression%%
+      const hotData = hot ? (hot.data ??= {}) : undefined
+      return hotData?.[%%hotDataKey%%] ?? %%lazyRouteComponentIdent%%(%%localImporterIdent%%, %%exporterIdent%%)
+    })()
+    if (%%hotExpression%%) {
+      ((%%hotExpression%%).data ??= {})[%%hotDataKey%%] = %%stableComponentIdent%%
     }
   `,
   {
@@ -24,7 +28,9 @@ const buildStableSplitComponentStatements = template.statements(
   },
 )
 
-export function createReactStableHmrSplitRouteComponentsPlugin(): ReferenceRouteCompilerPlugin {
+export function createReactStableHmrSplitRouteComponentsPlugin(opts?: {
+  hotExpression?: string
+}): ReferenceRouteCompilerPlugin {
   return {
     name: 'react-stable-hmr-split-route-components',
     onSplitRouteProperty(ctx) {
@@ -43,6 +49,9 @@ export function createReactStableHmrSplitRouteComponentsPlugin(): ReferenceRoute
         buildStableSplitComponentStatements({
           stableComponentIdent,
           hotDataKey: t.stringLiteral(hotDataKey),
+          hotExpression: createHmrHotExpressionAst(
+            opts?.hotExpression ?? ctx.opts.hmrHotExpression,
+          ),
           lazyRouteComponentIdent: t.identifier(ctx.lazyRouteComponentIdent),
           localImporterIdent: t.identifier(
             ctx.splitNodeMeta.localImporterIdent,

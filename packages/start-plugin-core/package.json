@@ -45,10 +45,16 @@
   "module": "dist/esm/index.js",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/index.js"
-      }
+      "types": "./dist/esm/index.d.ts",
+      "default": "./dist/esm/index.js"
+    },
+    "./utils": {
+      "types": "./dist/esm/utils.d.ts",
+      "default": "./dist/esm/utils.js"
+    },
+    "./vite/types": {
+      "types": "./dist/esm/vite/types.d.ts",
+      "default": "./dist/esm/vite/types.js"
     },
     "./package.json": "./package.json"
   },

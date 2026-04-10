@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'

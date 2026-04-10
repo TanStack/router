@@ -642,3 +642,73 @@ test.describe('RawStream - Edge Cases (RPC)', () => {
     expect(result).toContain('Error stream test')
   })
 })
+
+test.describe('RawStream - Late RawStream Tests (RPC)', () => {
+  test('Single late RawStream - Promise<RawStream> resolves correctly', async ({
+    page,
+  }) => {
+    await page.goto('/raw-stream/client-call')
+    await page.waitForURL('/raw-stream/client-call')
+
+    await page.getByTestId('test17-btn').waitFor({ state: 'visible' })
+    await page.waitForTimeout(HYDRATION_WAIT)
+
+    await page.getByTestId('test17-btn').click()
+
+    await expect(page.getByTestId('test17-result')).toContainText(
+      '"match":true',
+      { timeout: 15000 },
+    )
+    await expect(page.getByTestId('test17-result')).toContainText(
+      'Late stream test',
+    )
+  })
+
+  test('Multiple late RawStreams - different Promise delays', async ({
+    page,
+  }) => {
+    await page.goto('/raw-stream/client-call')
+    await page.waitForURL('/raw-stream/client-call')
+
+    await page.getByTestId('test18-btn').waitFor({ state: 'visible' })
+    await page.waitForTimeout(HYDRATION_WAIT)
+
+    await page.getByTestId('test18-btn').click()
+
+    // Both streams should match
+    await expect(page.getByTestId('test18-result')).toContainText(
+      '"match":true',
+      { timeout: 15000 },
+    )
+    // Verify both streams match by checking result
+    const result = await page.getByTestId('test18-result').textContent()
+    const parsed = JSON.parse(result || '{}')
+    expect(parsed.streamA?.match).toBe(true)
+    expect(parsed.streamB?.match).toBe(true)
+    expect(parsed.message).toBe('Multiple late streams test')
+  })
+
+  test('Mixed immediate and late RawStreams - both work correctly', async ({
+    page,
+  }) => {
+    await page.goto('/raw-stream/client-call')
+    await page.waitForURL('/raw-stream/client-call')
+
+    await page.getByTestId('test19-btn').waitFor({ state: 'visible' })
+    await page.waitForTimeout(HYDRATION_WAIT)
+
+    await page.getByTestId('test19-btn').click()
+
+    // Both immediate and late streams should match
+    await expect(page.getByTestId('test19-result')).toContainText(
+      '"match":true',
+      { timeout: 15000 },
+    )
+    // Verify both streams match by checking result
+    const result = await page.getByTestId('test19-result').textContent()
+    const parsed = JSON.parse(result || '{}')
+    expect(parsed.immediate?.match).toBe(true)
+    expect(parsed.late?.match).toBe(true)
+    expect(parsed.message).toBe('Mixed immediate and late test')
+  })
+})

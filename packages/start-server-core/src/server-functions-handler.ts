@@ -18,13 +18,11 @@ import {
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
   createMultiplexedStream,
 } from './frame-protocol'
+import type { LateStreamRegistration } from './frame-protocol'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
 // Cache serovalPlugins at module level to avoid repeated calls
 let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined = undefined
-
-// Cache TextEncoder for NDJSON serialization
-const textEncoder = new TextEncoder()
 
 // Known FormData 'Content-Type' header values - module-level constant
 const FORM_DATA_CONTENT_TYPES = [
@@ -48,7 +46,7 @@ export const handleServerAction = async ({
   const methodUpper = method.toUpperCase()
   const url = new URL(request.url)
 
-  const action = await getServerFnById(serverFnId, { fromClient: true })
+  const action = await getServerFnById(serverFnId, { origin: 'client' })
 
   // Early method check: reject mismatched HTTP methods before parsing
   // the request payload (FormData, JSON, query string, etc.)
@@ -186,11 +184,40 @@ export const handleServerAction = async ({
 
         const alsResponse = getResponse()
         if (res !== undefined) {
-          // Collect raw streams encountered during serialization
+          // Collect raw streams encountered during initial synchronous serialization
           const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
+
+          // Track whether we're still in the initial synchronous phase
+          // After initial phase, new RawStreams go to lateStreamWriter
+          let initialPhase = true
+
+          // Late stream registration for RawStreams discovered after initial pass
+          // (e.g., from resolved Promises)
+          let lateStreamWriter:
+            | WritableStreamDefaultWriter<LateStreamRegistration>
+            | undefined
+          let lateStreamReadable:
+            | ReadableStream<LateStreamRegistration>
+            | undefined = undefined
+          const pendingLateStreams: Array<LateStreamRegistration> = []
+
           const rawStreamPlugin = createRawStreamRPCPlugin(
             (id: number, stream: ReadableStream<Uint8Array>) => {
-              rawStreams.set(id, stream)
+              if (initialPhase) {
+                rawStreams.set(id, stream)
+                return
+              }
+
+              if (lateStreamWriter) {
+                // Late stream - write to the late stream channel
+                lateStreamWriter.write({ id, stream }).catch(() => {
+                  // Ignore write errors - stream may be closed
+                })
+                return
+              }
+
+              // Discovered after initial phase but before writer exists.
+              pendingLateStreams.push({ id, stream })
             },
           )
 
@@ -228,6 +255,13 @@ export const handleServerAction = async ({
             },
           })
 
+          // End of initial synchronous phase - any new RawStreams are "late"
+          initialPhase = false
+
+          // If any RawStreams are discovered after this point but before the
+          // late-stream writer exists, we buffer them and flush once the writer
+          // is ready. This avoids an occasional missed-stream race.
+
           // If no raw streams and done synchronously, return simple JSON
           if (done && rawStreams.size === 0) {
             return new Response(
@@ -243,71 +277,87 @@ export const handleServerAction = async ({
             )
           }
 
-          // If we have raw streams, use framed protocol
-          if (rawStreams.size > 0) {
-            // Create a stream of JSON chunks (NDJSON style)
-            const jsonStream = new ReadableStream<string>({
-              start(controller) {
-                callbacks.onParse = (value) => {
-                  controller.enqueue(JSON.stringify(value) + '\n')
-                }
-                callbacks.onDone = () => {
-                  try {
-                    controller.close()
-                  } catch {
-                    // Already closed
-                  }
-                }
-                callbacks.onError = (error) => controller.error(error)
-                // Emit initial body if we have one
-                if (nonStreamingBody !== undefined) {
-                  callbacks.onParse(nonStreamingBody)
-                }
-              },
-            })
+          // Not done synchronously or has raw streams - use framed protocol
+          // This supports late RawStreams from resolved Promises
+          const { readable, writable } =
+            new TransformStream<LateStreamRegistration>()
+          lateStreamReadable = readable
+          lateStreamWriter = writable.getWriter()
 
-            // Create multiplexed stream with JSON and raw streams
-            const multiplexedStream = createMultiplexedStream(
-              jsonStream,
-              rawStreams,
-            )
-
-            return new Response(multiplexedStream, {
-              status: alsResponse.status,
-              statusText: alsResponse.statusText,
-              headers: {
-                'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
-                [X_TSS_SERIALIZED]: 'true',
-              },
+          // Flush any late streams that were discovered in the small window
+          // between end of initial serialization and writer setup.
+          for (const registration of pendingLateStreams) {
+            lateStreamWriter.write(registration).catch(() => {
+              // Ignore write errors - stream may be closed
             })
           }
+          pendingLateStreams.length = 0
 
-          // No raw streams but not done yet - use standard NDJSON streaming
-          const stream = new ReadableStream({
+          // Create a stream of JSON chunks
+          const jsonStream = new ReadableStream<string>({
             start(controller) {
-              callbacks.onParse = (value) =>
-                controller.enqueue(
-                  textEncoder.encode(JSON.stringify(value) + '\n'),
-                )
+              callbacks.onParse = (value) => {
+                controller.enqueue(JSON.stringify(value) + '\n')
+              }
               callbacks.onDone = () => {
                 try {
                   controller.close()
-                } catch (error) {
-                  controller.error(error)
+                } catch {
+                  // Already closed
                 }
+                // Close late stream writer when JSON serialization is done
+                // Any RawStreams not yet discovered won't be sent
+                lateStreamWriter
+                  ?.close()
+                  .catch(() => {
+                    // Ignore close errors
+                  })
+                  .finally(() => {
+                    lateStreamWriter = undefined
+                  })
               }
-              callbacks.onError = (error) => controller.error(error)
-              // stream initial body
+
+              callbacks.onError = (error) => {
+                controller.error(error)
+                lateStreamWriter
+                  ?.abort(error)
+                  .catch(() => {
+                    // Ignore abort errors
+                  })
+                  .finally(() => {
+                    lateStreamWriter = undefined
+                  })
+              }
+
+              // Emit initial body if we have one
               if (nonStreamingBody !== undefined) {
                 callbacks.onParse(nonStreamingBody)
               }
+              // If serialization already completed synchronously, close now
+              // This handles the case where onDone was called during toCrossJSONStream
+              // before we overwrote callbacks.onDone
+              if (done) {
+                callbacks.onDone()
+              }
+            },
+            cancel() {
+              lateStreamWriter?.abort().catch(() => {})
+              lateStreamWriter = undefined
             },
           })
-          return new Response(stream, {
+
+          // Create multiplexed stream with JSON, initial raw streams, and late streams
+          const multiplexedStream = createMultiplexedStream(
+            jsonStream,
+            rawStreams,
+            lateStreamReadable,
+          )
+
+          return new Response(multiplexedStream, {
             status: alsResponse.status,
             statusText: alsResponse.statusText,
             headers: {
-              'Content-Type': 'application/x-ndjson',
+              'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
               [X_TSS_SERIALIZED]: 'true',
             },
           })

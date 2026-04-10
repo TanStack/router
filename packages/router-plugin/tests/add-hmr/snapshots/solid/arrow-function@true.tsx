@@ -7,11 +7,13 @@ export const Route = createFileRoute('/posts')({
   component: lazyRouteComponent($$splitComponentImporter, 'component')
 });
 if (import.meta.hot) {
-  import.meta.hot.accept(newModule => {
+  const hot = import.meta.hot;
+  const hotData = hot.data ??= {};
+  hot.accept(newModule => {
     if (Route && newModule && newModule.Route) {
-      const routeId = import.meta.hot.data['tsr-route-id'] ?? Route.id;
+      const routeId = hotData['tsr-route-id'] ?? Route.id;
       if (routeId) {
-        import.meta.hot.data['tsr-route-id'] = routeId;
+        hotData['tsr-route-id'] = routeId;
       }
       (function handleRouteUpdate(routeId, newRoute) {
         const router = window.__TSR_ROUTER__;

@@ -21,6 +21,70 @@ import type { Plugin as SerovalPlugin } from 'seroval'
 let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
 
 /**
+ * Current async post-processing context for deserialization.
+ *
+ * Some deserializers need to perform async work after synchronous deserialization
+ * (e.g., decoding RSC payloads, fetching remote data). This context allows them
+ * to register promises that must complete before the deserialized value is used.
+ *
+ * This uses a synchronous execution context pattern:
+ * - Each call to `fromCrossJSON` is synchronous
+ * - Within that synchronous execution, all `fromSerializable` calls happen
+ * - We set the context before `fromCrossJSON`, clear it after
+ * - For streaming chunks, we set/clear context around each `onMessage` call
+ *
+ * Even with concurrent server function calls, each individual deserialization
+ * is atomic (synchronous), so promises are correctly scoped to their call.
+ */
+let currentPostProcessContext: Array<Promise<unknown>> | null = null
+
+/**
+ * Set the current post-processing context for async deserialization work.
+ * Called before deserialization starts.
+ *
+ * @param ctx - Array to collect async work promises, or null to clear
+ */
+export function setPostProcessContext(
+  ctx: Array<Promise<unknown>> | null,
+): void {
+  currentPostProcessContext = ctx
+}
+
+/**
+ * Get the current post-processing context.
+ * Returns null if no deserialization is in progress.
+ */
+export function getPostProcessContext(): Array<Promise<unknown>> | null {
+  return currentPostProcessContext
+}
+
+/**
+ * Track an async post-processing promise in the current deserialization context.
+ * Called by deserializers that need to perform async work after sync deserialization.
+ *
+ * If no context is active (e.g., on server), this is a no-op.
+ *
+ * @param promise - The async work promise to track
+ */
+export function trackPostProcessPromise(promise: Promise<unknown>): void {
+  if (currentPostProcessContext) {
+    currentPostProcessContext.push(promise)
+  }
+}
+
+/**
+ * Helper to await all post-processing promises.
+ * Uses Promise.allSettled to ensure all promises complete even if some reject.
+ */
+async function awaitPostProcessPromises(
+  promises: Array<Promise<unknown>>,
+): Promise<void> {
+  if (promises.length > 0) {
+    await Promise.allSettled(promises)
+  }
+}
+
+/**
  * Checks if an object has at least one own enumerable property.
  * More efficient than Object.keys(obj).length > 0 as it short-circuits on first property.
  */
@@ -228,23 +292,19 @@ async function getResponse(fn: () => Promise<Response>) {
         },
       })
     }
-    // If it's a stream from the start serializer, process it as such
-    else if (contentType.includes('application/x-ndjson')) {
-      const refs = new Map()
-      result = await processServerFnResponse({
-        response,
-        onMessage: (msg) =>
-          fromCrossJSON(msg, { refs, plugins: serovalPlugins! }),
-        onError(msg, error) {
-          // TODO how could we notify consumer that an error occurred?
-          console.error(msg, error)
-        },
-      })
-    }
     // If it's a JSON response, it can be simpler
     else if (contentType.includes('application/json')) {
       const jsonPayload = await response.json()
-      result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
+      // Track async post-processing work for this deserialization
+      const postProcessPromises: Array<Promise<unknown>> = []
+      setPostProcessContext(postProcessPromises)
+      try {
+        result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
+      } finally {
+        setPostProcessContext(null)
+      }
+      // Await any async post-processing before returning
+      await awaitPostProcessPromises(postProcessPromises)
     }
 
     if (!result) {
@@ -284,93 +344,13 @@ async function getResponse(fn: () => Promise<Response>) {
   return response
 }
 
-async function processServerFnResponse({
-  response,
-  onMessage,
-  onError,
-}: {
-  response: Response
-  onMessage: (msg: any) => any
-  onError?: (msg: string, error?: any) => void
-}) {
-  if (!response.body) {
-    throw new Error('No response body')
-  }
-
-  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
-
-  let buffer = ''
-  let firstRead = false
-  let firstObject
-
-  while (!firstRead) {
-    const { value, done } = await reader.read()
-    if (value) buffer += value
-
-    if (buffer.length === 0 && done) {
-      throw new Error('Stream ended before first object')
-    }
-
-    // common case: buffer ends with newline
-    if (buffer.endsWith('\n')) {
-      const lines = buffer.split('\n').filter(Boolean)
-      const firstLine = lines[0]
-      if (!firstLine) throw new Error('No JSON line in the first chunk')
-      firstObject = JSON.parse(firstLine)
-      firstRead = true
-      buffer = lines.slice(1).join('\n')
-    } else {
-      // fallback: wait for a newline to parse first object safely
-      const newlineIndex = buffer.indexOf('\n')
-      if (newlineIndex >= 0) {
-        const line = buffer.slice(0, newlineIndex).trim()
-        buffer = buffer.slice(newlineIndex + 1)
-        if (line.length > 0) {
-          firstObject = JSON.parse(line)
-          firstRead = true
-        }
-      }
-    }
-  }
-
-  // process rest of the stream asynchronously
-  ;(async () => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      while (true) {
-        const { value, done } = await reader.read()
-        if (value) buffer += value
-
-        const lastNewline = buffer.lastIndexOf('\n')
-        if (lastNewline >= 0) {
-          const chunk = buffer.slice(0, lastNewline)
-          buffer = buffer.slice(lastNewline + 1)
-          const lines = chunk.split('\n').filter(Boolean)
-
-          for (const line of lines) {
-            try {
-              onMessage(JSON.parse(line))
-            } catch (e) {
-              onError?.(`Invalid JSON line: ${line}`, e)
-            }
-          }
-        }
-
-        if (done) {
-          break
-        }
-      }
-    } catch (err) {
-      onError?.('Stream processing error:', err)
-    }
-  })()
-
-  return onMessage(firstObject)
-}
-
 /**
  * Processes a framed response where each JSON chunk is a complete JSON string
  * (already decoded by frame decoder).
+ *
+ * Uses per-chunk post-processing context to ensure async deserialization work
+ * completes before the next chunk is processed. This prevents issues when
+ * streaming values require async post-processing (e.g., RSC decoding).
  */
 async function processFramedResponse({
   jsonStream,
@@ -392,8 +372,11 @@ async function processFramedResponse({
   // Each frame is a complete JSON string
   const firstObject = JSON.parse(firstValue)
 
-  // Process remaining frames asynchronously (for streaming refs like RawStream)
-  ;(async () => {
+  // Process remaining frames for streaming refs like RawStream.
+  // Keep draining until the server closes the stream.
+  // Each chunk gets its own post-processing context to properly scope async work.
+  let drainCancelled = false as boolean
+  const drain = (async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
@@ -401,16 +384,62 @@ async function processFramedResponse({
         if (done) break
         if (value) {
           try {
-            onMessage(JSON.parse(value))
+            // Set up post-processing context for this chunk
+            const chunkPostProcessPromises: Array<Promise<unknown>> = []
+            setPostProcessContext(chunkPostProcessPromises)
+            try {
+              onMessage(JSON.parse(value))
+            } finally {
+              setPostProcessContext(null)
+            }
+            // Await any async post-processing from this chunk before processing next.
+            // This ensures values requiring async work are ready before their
+            // containing Promise/Stream resolves/emits to consumers.
+            await awaitPostProcessPromises(chunkPostProcessPromises)
           } catch (e) {
             onError?.(`Invalid JSON: ${value}`, e)
           }
         }
       }
     } catch (err) {
-      onError?.('Stream processing error:', err)
+      if (!drainCancelled) {
+        onError?.('Stream processing error:', err)
+      }
     }
   })()
 
-  return onMessage(firstObject)
+  // Process first object with its own post-processing context
+  let result: any
+  const initialPostProcessPromises: Array<Promise<unknown>> = []
+  setPostProcessContext(initialPostProcessPromises)
+  try {
+    result = onMessage(firstObject)
+  } catch (err) {
+    setPostProcessContext(null)
+    drainCancelled = true
+    reader.cancel().catch(() => {})
+    throw err
+  }
+  setPostProcessContext(null)
+
+  // Await initial post-processing promises before returning result
+  await awaitPostProcessPromises(initialPostProcessPromises)
+
+  // If the initial decode fails async, stop draining to avoid holding
+  // onto the response body and raw stream buffers unnecessarily.
+  Promise.resolve(result).catch(() => {
+    drainCancelled = true
+    reader.cancel().catch(() => {})
+  })
+
+  // Detach reader once draining completes.
+  drain.finally(() => {
+    try {
+      reader.releaseLock()
+    } catch {
+      // Ignore
+    }
+  })
+
+  return result
 }
