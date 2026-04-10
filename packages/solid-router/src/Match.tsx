@@ -273,6 +273,22 @@ export const MatchInner = (): any => {
           return <Outlet />
         }
 
+        const getLoadPromise = (
+          matchId: string,
+          fallbackMatch:
+            | {
+                _nonReactive: {
+                  loadPromise?: Promise<void>
+                }
+              }
+            | undefined,
+        ) => {
+          return (
+            router.getMatch(matchId)?._nonReactive.loadPromise ??
+            fallbackMatch?._nonReactive.loadPromise
+          )
+        }
+
         const keyedOut = () => (
           <Solid.Show when={componentKey()} keyed>
             {(_key) => out()}
@@ -375,6 +391,9 @@ export const MatchInner = (): any => {
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'redirected'}>
               {(_) => {
+                const matchId = currentMatch().id
+                const routerMatch = router.getMatch(matchId)
+
                 if (!isRedirect(currentMatch().error)) {
                   if (process.env.NODE_ENV !== 'production') {
                     throw new Error(
@@ -387,8 +406,7 @@ export const MatchInner = (): any => {
 
                 const [loaderResult] = Solid.createResource(async () => {
                   await new Promise((r) => setTimeout(r, 0))
-                  return router.getMatch(currentMatch().id)?._nonReactive
-                    .loadPromise
+                  return getLoadPromise(matchId, routerMatch)
                 })
 
                 return <>{loaderResult()}</>

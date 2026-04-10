@@ -337,6 +337,7 @@ export const MatchInner = Vue.defineComponent({
           ssr: match.ssr,
           _forcePending: match._forcePending,
           _displayPending: match._displayPending,
+          _nonReactive: match._nonReactive,
         },
         remountKey,
       }
@@ -349,6 +350,22 @@ export const MatchInner = Vue.defineComponent({
 
     const match = Vue.computed(() => combinedState.value?.match)
     const remountKey = Vue.computed(() => combinedState.value?.remountKey)
+
+    const getMatchPromise = (
+      match: {
+        id: string
+        _nonReactive: {
+          displayPendingPromise?: Promise<void>
+          minPendingPromise?: Promise<void>
+          loadPromise?: Promise<void>
+        }
+      },
+      key: 'displayPendingPromise' | 'minPendingPromise' | 'loadPromise',
+    ) => {
+      return (
+        router.getMatch(match.id)?._nonReactive[key] ?? match._nonReactive[key]
+      )
+    }
 
     return (): VNode | null => {
       // If match doesn't exist, return null (component is being unmounted or not ready)
@@ -390,7 +407,7 @@ export const MatchInner = Vue.defineComponent({
 
           invariant()
         }
-        throw router.getMatch(match.value.id)?._nonReactive.loadPromise
+        throw getMatchPromise(match.value, 'loadPromise')
       }
 
       if (match.value.status === 'error') {
