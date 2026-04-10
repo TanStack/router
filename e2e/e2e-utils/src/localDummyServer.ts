@@ -1,6 +1,6 @@
 import http from 'node:http'
-import { posts } from './posts'
-import { users } from './users'
+import posts from './posts'
+import users from './users'
 
 // some tests redirect to an external host
 // however, in CI this is unstable due to network conditions

@@ -24,7 +24,7 @@ export type User = {
   }
 }
 
-export const users: Array<User> = [
+const users: Array<User> = [
   {
     id: 1,
     name: 'Leanne Graham',
@@ -256,3 +256,6 @@ export const users: Array<User> = [
     },
   },
 ]
+
+export { users }
+export default users
