@@ -1,6 +1,4 @@
 import { expectTypeOf, test } from 'vitest'
-import type * as React from 'react'
-import type { MakeMatchRouteOptions } from '../src'
 import {
   MatchRoute,
   createRootRoute,
@@ -10,7 +8,8 @@ import {
   useMatchRoute,
   useMatches,
 } from '../src'
-import type { AnyRouteMatch, RouteMatch } from '../src'
+import type * as React from 'react'
+import type { AnyRouteMatch, MakeMatchRouteOptions, RouteMatch } from '../src'
 
 const rootRoute = createRootRoute()
 
