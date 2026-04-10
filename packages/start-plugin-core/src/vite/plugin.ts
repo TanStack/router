@@ -248,7 +248,7 @@ export function tanStackStartVite(
     // Registered BEFORE devServerPlugin so this middleware is added to the Connect stack first,
     // ensuring all subsequent middlewares (CSS, SSR, etc.) see the rewritten URL.
     createDevBaseRewritePlugin({
-      needsDevBaseRewrite,
+      shouldRewriteDevBase: () => needsDevBaseRewrite,
       resolvedStartConfig,
     }),
     devServerPlugin({

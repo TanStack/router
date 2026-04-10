@@ -29,13 +29,13 @@ export function createPostBuildPlugin(opts: {
 }
 
 export function createDevBaseRewritePlugin(opts: {
-  needsDevBaseRewrite: boolean
+  shouldRewriteDevBase: () => boolean
   resolvedStartConfig: ResolvedStartConfig
 }): PluginOption {
   return {
     name: 'tanstack-start-core:dev-base-rewrite',
     configureServer(server) {
-      if (!opts.needsDevBaseRewrite) {
+      if (!opts.shouldRewriteDevBase()) {
         return
       }
 
