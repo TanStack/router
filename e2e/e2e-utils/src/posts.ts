@@ -7,7 +7,7 @@ export type Post = {
   body: string
 }
 
-const posts: Array<Post> = [
+export const posts: Array<Post> = [
   {
     userId: 1,
     id: 1,
@@ -617,6 +617,3 @@ const posts: Array<Post> = [
     body: 'cupiditate quo est a modi nesciunt soluta\nipsa voluptas error itaque dicta in\nautem qui minus magnam et distinctio eum\naccusamus ratione error aut',
   },
 ]
-
-export { posts }
-export default posts
