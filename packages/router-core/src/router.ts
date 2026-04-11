@@ -1250,11 +1250,11 @@ export class RouterCore<
   }
 
   emit: EmitFn = (routerEvent) => {
-    this.subscribers.forEach((listener) => {
+    for (const listener of this.subscribers) {
       if (listener.eventType === routerEvent.type) {
         listener.fn(routerEvent)
       }
-    })
+    }
   }
 
   /**
@@ -1767,24 +1767,24 @@ export class RouterCore<
   }
 
   cancelMatches = () => {
-    this.stores.pendingMatchesId.state.forEach((matchId) => {
+    for (const matchId of this.stores.pendingMatchesId.state) {
       this.cancelMatch(matchId)
-    })
+    }
 
-    this.stores.matchesId.state.forEach((matchId) => {
+    for (const matchId of this.stores.matchesId.state) {
       if (this.stores.pendingMatchStoresById.has(matchId)) {
-        return
+        continue
       }
 
       const match = this.stores.activeMatchStoresById.get(matchId)?.state
       if (!match) {
-        return
+        continue
       }
 
       if (match.status === 'pending' || match.isFetching === 'loader') {
         this.cancelMatch(matchId)
       }
-    })
+    }
   }
 
   /**
@@ -1917,7 +1917,7 @@ export class RouterCore<
       let nextSearch = fromSearch
       if (opts._includeValidateSearch && this.options.search?.strict) {
         const validatedSearch = {}
-        destRoutes.forEach((route) => {
+        for (const route of destRoutes) {
           if (route.options.validateSearch) {
             try {
               Object.assign(
@@ -1931,7 +1931,7 @@ export class RouterCore<
               // ignore errors here because they are already handled in matchRoutes
             }
           }
-        })
+        }
         nextSearch = validatedSearch
       }
 
@@ -2095,13 +2095,13 @@ export class RouterCore<
         '__TSR_index',
         '__hashScrollIntoViewOptions',
       ] as const
-      ignoredProps.forEach((prop) => {
+      for (const prop of ignoredProps) {
         ;(next.state as any)[prop] = this.latestLocation.state[prop]
-      })
+      }
       const isEqual = deepEqual(next.state, this.latestLocation.state)
-      ignoredProps.forEach((prop) => {
+      for (const prop of ignoredProps) {
         delete next.state[prop]
-      })
+      }
       return isEqual
     }
 
@@ -2420,53 +2420,41 @@ export class RouterCore<
                   // exitingMatches uses match.id (routeId + params + loaderDeps) so
                   // navigating /foo?page=1 → /foo?page=2 correctly caches the page=1 entry.
                   let exitingMatches: Array<AnyRouteMatch> | null = null
-
-                  // Lifecycle-hook identity uses routeId only so that navigating between
-                  // different params/deps of the same route fires onStay (not onLeave+onEnter).
-                  let hookExitingMatches: Array<AnyRouteMatch> | null = null
-                  let hookEnteringMatches: Array<AnyRouteMatch> | null = null
-                  let hookStayingMatches: Array<AnyRouteMatch> | null = null
+                  let pendingMatches: Array<AnyRouteMatch> = []
+                  let currentMatches: Array<AnyRouteMatch> = []
+                  let pendingRouteIds: Set<string> | null = null
+                  let activeRouteIds: Set<string> | null = null
 
                   this.batch(() => {
-                    const pendingMatches =
-                      this.stores.pendingMatchesSnapshot.state
-                    const mountPending = pendingMatches.length
-                    const currentMatches =
-                      this.stores.activeMatchesSnapshot.state
+                    pendingMatches = this.stores.pendingMatchesSnapshot.state
+                    currentMatches = this.stores.activeMatchesSnapshot.state
 
-                    exitingMatches = mountPending
-                      ? currentMatches.filter(
-                          (match) =>
-                            !this.stores.pendingMatchStoresById.has(match.id),
-                        )
-                      : null
+                    if (pendingMatches.length) {
+                      activeRouteIds = new Set<string>()
+                      for (const match of currentMatches) {
+                        activeRouteIds.add(match.routeId)
+                      }
 
-                    // Lifecycle-hook identity: routeId only (route presence in tree)
-                    // Build routeId sets from pools to avoid derived stores.
-                    const pendingRouteIds = new Set<string>()
-                    for (const s of this.stores.pendingMatchStoresById.values()) {
-                      if (s.routeId) pendingRouteIds.add(s.routeId)
+                      pendingRouteIds = new Set<string>()
+                      exitingMatches = []
+
+                      for (const match of pendingMatches) {
+                        pendingRouteIds.add(match.routeId)
+                      }
+
+                      for (const match of currentMatches) {
+                        if (
+                          !this.stores.pendingMatchStoresById.has(match.id) &&
+                          match.status !== 'error' &&
+                          match.status !== 'notFound' &&
+                          match.status !== 'redirected'
+                        ) {
+                          exitingMatches.push(match)
+                        }
+                      }
+                    } else {
+                      exitingMatches = null
                     }
-                    const activeRouteIds = new Set<string>()
-                    for (const s of this.stores.activeMatchStoresById.values()) {
-                      if (s.routeId) activeRouteIds.add(s.routeId)
-                    }
-
-                    hookExitingMatches = mountPending
-                      ? currentMatches.filter(
-                          (match) => !pendingRouteIds.has(match.routeId),
-                        )
-                      : null
-                    hookEnteringMatches = mountPending
-                      ? pendingMatches.filter(
-                          (match) => !activeRouteIds.has(match.routeId),
-                        )
-                      : null
-                    hookStayingMatches = mountPending
-                      ? pendingMatches.filter((match) =>
-                          activeRouteIds.has(match.routeId),
-                        )
-                      : currentMatches
 
                     this.stores.isLoading.setState(() => false)
                     this.stores.loadedAt.setState(() => Date.now())
@@ -2476,31 +2464,47 @@ export class RouterCore<
                      * deliberately excluded from `cachedMatches` so that subsequent invalidations
                      * or reloads re-run their loaders instead of reusing the failed/not-found data.
                      */
-                    if (mountPending) {
+                    if (pendingMatches.length) {
                       this.stores.setActiveMatches(pendingMatches)
                       this.stores.setPendingMatches([])
                       this.stores.setCachedMatches([
                         ...this.stores.cachedMatchesSnapshot.state,
-                        ...exitingMatches!.filter(
-                          (d) =>
-                            d.status !== 'error' &&
-                            d.status !== 'notFound' &&
-                            d.status !== 'redirected',
-                        ),
+                        ...exitingMatches!,
                       ])
                       this.clearExpiredCache()
                     }
                   })
 
-                  //
-                  for (const [matches, hook] of [
-                    [hookExitingMatches, 'onLeave'],
-                    [hookEnteringMatches, 'onEnter'],
-                    [hookStayingMatches, 'onStay'],
-                  ] as const) {
-                    if (!matches) continue
-                    for (const match of matches as Array<AnyRouteMatch>) {
-                      this.looseRoutesById[match.routeId]!.options[hook]?.(
+                  // Lifecycle-hook identity uses routeId only so that navigating between
+                  // different params/deps of the same route fires onStay (not onLeave+onEnter).
+                  const nextPendingRouteIds =
+                    pendingRouteIds as Set<string> | null
+                  const nextActiveRouteIds =
+                    activeRouteIds as Set<string> | null
+
+                  if (nextPendingRouteIds && nextActiveRouteIds) {
+                    for (const match of currentMatches) {
+                      if (!nextPendingRouteIds.has(match.routeId)) {
+                        this.looseRoutesById[match.routeId]!.options.onLeave?.(
+                          match,
+                        )
+                      }
+                    }
+
+                    for (const match of pendingMatches) {
+                      if (nextActiveRouteIds.has(match.routeId)) {
+                        this.looseRoutesById[match.routeId]!.options.onStay?.(
+                          match,
+                        )
+                      } else {
+                        this.looseRoutesById[match.routeId]!.options.onEnter?.(
+                          match,
+                        )
+                      }
+                    }
+                  } else {
+                    for (const match of currentMatches) {
+                      this.looseRoutesById[match.routeId]!.options.onStay?.(
                         match,
                       )
                     }
@@ -2527,9 +2531,7 @@ export class RouterCore<
             ? redirect.status
             : notFound
               ? 404
-              : this.stores.activeMatchesSnapshot.state.some(
-                    (d) => d.status === 'error',
-                  )
+              : this.hasErrorMatch()
                 ? 500
                 : 200
 
@@ -2563,9 +2565,7 @@ export class RouterCore<
     let newStatusCode: number | undefined = undefined
     if (this.hasNotFoundMatch()) {
       newStatusCode = 404
-    } else if (
-      this.stores.activeMatchesSnapshot.state.some((d) => d.status === 'error')
-    ) {
+    } else if (this.hasErrorMatch()) {
       newStatusCode = 500
     }
     if (newStatusCode !== undefined) {
@@ -2932,10 +2932,24 @@ export class RouterCore<
 
   serverSsr?: ServerSsr
 
+  hasErrorMatch = () => {
+    for (const match of this.stores.activeMatchesSnapshot.state) {
+      if (match.status === 'error') {
+        return true
+      }
+    }
+
+    return false
+  }
+
   hasNotFoundMatch = () => {
-    return this.stores.activeMatchesSnapshot.state.some(
-      (d) => d.status === 'notFound' || d.globalNotFound,
-    )
+    for (const match of this.stores.activeMatchesSnapshot.state) {
+      if (match.status === 'notFound' || match.globalNotFound) {
+        return true
+      }
+    }
+
+    return false
   }
 }
 

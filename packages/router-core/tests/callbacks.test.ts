@@ -1,6 +1,6 @@
 import { describe, expect, it, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 describe('callbacks', () => {
@@ -156,6 +156,105 @@ describe('callbacks', () => {
       expect(onEnter).toHaveBeenCalledTimes(1)
       expect(onLeave).toHaveBeenCalledTimes(0)
       expect(onStay).toHaveBeenCalledTimes(2)
+    })
+
+    it('treats a navigation that changes the match instance and match id for the same routeId as stay, not leave plus enter', async () => {
+      const onEnter = vi.fn()
+      const onLeave = vi.fn()
+      const onStay = vi.fn()
+      const loaderPromises: Array<
+        ReturnType<typeof createControlledPromise<void>>
+      > = []
+
+      const rootRoute = new BaseRootRoute({})
+      const fooRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/foo',
+        loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+          page: search['page'],
+        }),
+        onEnter,
+        onLeave,
+        onStay,
+        loader: () => {
+          const promise = createControlledPromise<void>()
+          loaderPromises.push(promise)
+          return promise
+        },
+      })
+
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([fooRoute]),
+        history: createMemoryHistory(),
+      })
+
+      const initialNavigation = router.navigate({
+        to: '/foo',
+        search: { page: '1' },
+      })
+
+      expect(loaderPromises).toHaveLength(1)
+      loaderPromises[0]!.resolve()
+      await initialNavigation
+
+      onEnter.mockClear()
+      onLeave.mockClear()
+      onStay.mockClear()
+
+      const currentMatches = router.stores.activeMatchesSnapshot.state
+      const currentFooMatch = currentMatches.find(
+        (match) => match.routeId === fooRoute.id,
+      )
+
+      expect(currentFooMatch).toBeDefined()
+      expect(router.looseRoutesById[fooRoute.id]!.options.onStay).toBe(onStay)
+      expect(router.looseRoutesById[fooRoute.id]!.options.onLeave).toBe(onLeave)
+      expect(router.looseRoutesById[fooRoute.id]!.options.onEnter).toBe(onEnter)
+
+      const secondNavigation = router.navigate({
+        to: '/foo',
+        search: { page: '2' },
+      })
+
+      expect(loaderPromises).toHaveLength(2)
+
+      let pendingMatches = router.stores.pendingMatchesSnapshot.state
+      for (let index = 0; index < 10 && pendingMatches.length === 0; index++) {
+        await Promise.resolve()
+        pendingMatches = router.stores.pendingMatchesSnapshot.state
+      }
+
+      const pendingFooMatch = pendingMatches.find(
+        (match) => match.routeId === fooRoute.id,
+      )
+
+      expect(pendingFooMatch).toBeDefined()
+      expect(pendingFooMatch).not.toBe(currentFooMatch)
+      expect(pendingFooMatch!.id).not.toBe(currentFooMatch!.id)
+      expect(pendingFooMatch!.routeId).toBe(currentFooMatch!.routeId)
+
+      const pendingRouteIds = new Set(
+        pendingMatches.map((match) => match.routeId),
+      )
+      const activeRouteIds = new Set(
+        currentMatches.map((match) => match.routeId),
+      )
+
+      expect(pendingRouteIds.has(fooRoute.id)).toBe(true)
+      expect(activeRouteIds.has(fooRoute.id)).toBe(true)
+
+      loaderPromises[1]!.resolve()
+      await secondNavigation
+
+      expect(onStay).toHaveBeenCalledTimes(1)
+      expect(onStay).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: pendingFooMatch!.id,
+          routeId: fooRoute.id,
+        }),
+      )
+      expect(onLeave).toHaveBeenCalledTimes(0)
+      expect(onEnter).toHaveBeenCalledTimes(0)
     })
   })
 
