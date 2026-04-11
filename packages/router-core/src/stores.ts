@@ -1,5 +1,5 @@
 import { createLRUCache } from './lru-cache'
-import { arraysEqual } from './utils'
+import { arraysEqual, functionalUpdate } from './utils'
 
 import type { AnyRoute } from './route'
 import type { RouterState } from './router'
@@ -15,7 +15,7 @@ export interface RouterReadableStore<TValue> {
 export interface RouterWritableStore<
   TValue,
 > extends RouterReadableStore<TValue> {
-  set: (updater: (prev: TValue) => TValue) => void
+  set: ((updater: (prev: TValue) => TValue) => void) & ((value: TValue) => void)
 }
 
 export type RouterBatchFn = (fn: () => void) => void
@@ -52,8 +52,8 @@ export function createNonReactiveMutableStore<TValue>(
     get() {
       return value
     },
-    set(updater: (prev: TValue) => TValue) {
-      value = updater(value)
+    set(nextOrUpdater: TValue | ((prev: TValue) => TValue)) {
+      value = functionalUpdate(nextOrUpdater, value)
     },
   }
 }
@@ -331,12 +331,12 @@ function reconcileMatchPool(
 
       existing.routeId = nextMatch.routeId
       if (existing.get() !== nextMatch) {
-        existing.set(() => nextMatch)
+        existing.set(nextMatch)
       }
     }
 
     if (!arraysEqual(idStore.get(), nextIds)) {
-      idStore.set(() => nextIds)
+      idStore.set(nextIds)
     }
   })
 }

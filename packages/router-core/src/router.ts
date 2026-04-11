@@ -1169,7 +1169,7 @@ export class RouterCore<
     }
 
     if (needsLocationUpdate && this.stores) {
-      this.stores.location.set(() => this.latestLocation)
+      this.stores.location.set(this.latestLocation)
     }
 
     if (
@@ -2362,10 +2362,10 @@ export class RouterCore<
 
     // Ingest the new matches
     this.batch(() => {
-      this.stores.status.set(() => 'pending')
-      this.stores.statusCode.set(() => 200)
-      this.stores.isLoading.set(() => true)
-      this.stores.location.set(() => this.latestLocation)
+      this.stores.status.set('pending')
+      this.stores.statusCode.set(200)
+      this.stores.isLoading.set(true)
+      this.stores.location.set(this.latestLocation)
       this.stores.setPendingMatches(pendingMatches)
       // If a cached match moved to pending matches, remove it from cached matches
       this.stores.setCachedMatches(nextCachedMatches)
@@ -2468,8 +2468,8 @@ export class RouterCore<
                         )
                       : currentMatches
 
-                    this.stores.isLoading.set(() => false)
-                    this.stores.loadedAt.set(() => Date.now())
+                    this.stores.isLoading.set(false)
+                    this.stores.loadedAt.set(Date.now())
                     /**
                      * When committing new matches, cache any exiting matches that are still usable.
                      * Routes that resolved with `status: 'error'` or `status: 'notFound'` are
@@ -2534,8 +2534,8 @@ export class RouterCore<
                 : 200
 
           this.batch(() => {
-            this.stores.statusCode.set(() => nextStatusCode)
-            this.stores.redirect.set(() => redirect)
+            this.stores.statusCode.set(nextStatusCode)
+            this.stores.redirect.set(redirect)
           })
         }
 
@@ -2569,7 +2569,7 @@ export class RouterCore<
       newStatusCode = 500
     }
     if (newStatusCode !== undefined) {
-      this.stores.statusCode.set(() => newStatusCode)
+      this.stores.statusCode.set(newStatusCode)
     }
   }
 
@@ -2651,7 +2651,7 @@ export class RouterCore<
             )
           }
         } else {
-          cachedMatch.set(() => next)
+          cachedMatch.set(next)
         }
       }
     })

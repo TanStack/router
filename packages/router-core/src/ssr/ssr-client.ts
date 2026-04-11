@@ -258,7 +258,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     // (e.g. preloads, invalidations) don't mistakenly detect a href change
     // (resolvedLocation defaults to undefined and router.load() is skipped
     // in the normal SSR hydration path).
-    router.stores.resolvedLocation.set(() => router.stores.location.get())
+    router.stores.resolvedLocation.set(router.stores.location.get())
     return routeChunkPromise
   }
 
@@ -294,10 +294,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         // Transitioner won't be rendered while loading so it cannot track the change from loading:true to loading:false
         if (router.stores.status.get() === 'pending') {
           router.batch(() => {
-            router.stores.status.set(() => 'idle')
-            router.stores.resolvedLocation.set(() =>
-              router.stores.location.get(),
-            )
+            router.stores.status.set('idle')
+            router.stores.resolvedLocation.set(router.stores.location.get())
           })
         }
         // hide the pending component once the load is finished

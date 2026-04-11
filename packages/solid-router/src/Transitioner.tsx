@@ -134,8 +134,8 @@ export function Transitioner() {
       })
 
       Solid.batch(() => {
-        router.stores.status.set(() => 'idle')
-        router.stores.resolvedLocation.set(() => router.stores.location.get())
+        router.stores.status.set('idle')
+        router.stores.resolvedLocation.set(router.stores.location.get())
       })
 
       if (changeInfo.hrefChanged) {
