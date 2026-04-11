@@ -293,9 +293,18 @@ export function setResponseStatus(code?: number, text?: string): void {
  * const cookies = getCookies()
  * ```
  */
-export function getCookies(): Record<string, string | undefined> {
+export function getCookies(): Record<string, string> {
   const event = getH3Event()
-  return h3_parseCookies(event)
+  const cookies = h3_parseCookies(event)
+  const definedCookies: Record<string, string> = Object.create(null)
+
+  for (const [name, value] of Object.entries(cookies)) {
+    if (value !== undefined) {
+      definedCookies[name] = value
+    }
+  }
+
+  return definedCookies
 }
 
 /**
