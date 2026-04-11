@@ -18,7 +18,7 @@ export const RouterClient = Vue.defineComponent({
     const isHydrated = Vue.ref(false)
 
     if (!hydrationPromise) {
-      if (!props.router.stores.matchesId.state.length) {
+      if (!props.router.stores.matchesId.get().length) {
         hydrationPromise = hydrate(props.router)
       } else {
         hydrationPromise = Promise.resolve()

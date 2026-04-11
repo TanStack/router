@@ -10,7 +10,7 @@ import { useRouter } from './useRouter'
 export function Transitioner() {
   const router = useRouter()
   let mountLoadForRouter = { router, mounted: false }
-  const isLoading = Solid.createMemo(() => router.stores.isLoading.state)
+  const isLoading = Solid.createMemo(() => router.stores.isLoading.get())
 
   if (isServer ?? router.isServer) {
     return null
@@ -20,7 +20,7 @@ export function Transitioner() {
 
   // Track pending state changes
   const hasPendingMatches = Solid.createMemo(
-    () => router.stores.hasPendingMatches.state,
+    () => router.stores.hasPendingMatches.get(),
   )
 
   const isAnyPending = Solid.createMemo(
@@ -95,8 +95,8 @@ export function Transitioner() {
       router.emit({
         type: 'onLoad',
         ...getLocationChangeInfo(
-          router.stores.location.state,
-          router.stores.resolvedLocation.state,
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
         ),
       })
     }
@@ -111,8 +111,8 @@ export function Transitioner() {
       router.emit({
         type: 'onBeforeRouteMount',
         ...getLocationChangeInfo(
-          router.stores.location.state,
-          router.stores.resolvedLocation.state,
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
         ),
       })
     }
@@ -125,8 +125,8 @@ export function Transitioner() {
 
     if (previousIsAnyPending && !currentIsAnyPending) {
       const changeInfo = getLocationChangeInfo(
-        router.stores.location.state,
-        router.stores.resolvedLocation.state,
+        router.stores.location.get(),
+        router.stores.resolvedLocation.get(),
       )
       router.emit({
         type: 'onResolved',
@@ -134,9 +134,9 @@ export function Transitioner() {
       })
 
       Solid.batch(() => {
-        router.stores.status.setState(() => 'idle')
-        router.stores.resolvedLocation.setState(
-          () => router.stores.location.state,
+        router.stores.status.set(() => 'idle')
+        router.stores.resolvedLocation.set(
+          () => router.stores.location.get(),
         )
       })
 

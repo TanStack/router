@@ -294,30 +294,30 @@ export const BaseTanStackRouterDevtoolsPanel =
       type Subscribe = (fn: () => void) => { unsubscribe: () => void }
       createEffect(() => {
         const pendingMatchesStore = router().stores.pendingMatchesSnapshot
-        setPendingMatches(pendingMatchesStore.state)
+        setPendingMatches(pendingMatchesStore.get())
         const subscription = (
           (pendingMatchesStore as any).subscribe as Subscribe
         )(() => {
-          setPendingMatches(pendingMatchesStore.state)
+          setPendingMatches(pendingMatchesStore.get())
         })
         onCleanup(() => subscription.unsubscribe())
       })
 
       createEffect(() => {
         const cachedMatchesStore = router().stores.cachedMatchesSnapshot
-        setCachedMatches(cachedMatchesStore.state)
+        setCachedMatches(cachedMatchesStore.get())
         const subscription = (
           (cachedMatchesStore as any).subscribe as Subscribe
         )(() => {
-          setCachedMatches(cachedMatchesStore.state)
+          setCachedMatches(cachedMatchesStore.get())
         })
         onCleanup(() => subscription.unsubscribe())
       })
     }
     // signal implementation
     else {
-      pendingMatches = () => router().stores.pendingMatchesSnapshot.state
-      cachedMatches = () => router().stores.cachedMatchesSnapshot.state
+      pendingMatches = () => router().stores.pendingMatchesSnapshot.get()
+      cachedMatches = () => router().stores.cachedMatchesSnapshot.get()
     }
 
     createEffect(() => {

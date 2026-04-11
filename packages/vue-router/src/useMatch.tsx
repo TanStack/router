@@ -85,7 +85,7 @@ export function useMatch<
       (opts.from ?? nearestRouteId)
         ? router.stores.getMatchStoreByRouteId(opts.from ?? nearestRouteId!)
         : undefined
-    const match = matchStore?.state
+    const match = matchStore?.get()
 
     if ((opts.shouldThrow ?? true) && !match) {
       if (process.env.NODE_ENV !== 'production') {

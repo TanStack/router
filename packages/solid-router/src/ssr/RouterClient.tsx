@@ -11,7 +11,7 @@ const Dummy = (props: { children?: JSXElement }) => <>{props.children}</>
 
 export function RouterClient(props: { router: AnyRouter }) {
   if (!hydrationPromise) {
-    if (!props.router.stores.matchesId.state.length) {
+    if (!props.router.stores.matchesId.get().length) {
       hydrationPromise = hydrate(props.router)
     } else {
       hydrationPromise = Promise.resolve()

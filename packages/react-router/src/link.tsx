@@ -207,7 +207,7 @@ export function useLinkProps<
     const isActive = (() => {
       if (externalLink) return false
 
-      const currentLocation = router.stores.location.state
+      const currentLocation = router.stores.location.get()
 
       const exact = activeOptions?.exact ?? false
 

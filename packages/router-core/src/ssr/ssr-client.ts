@@ -95,7 +95,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   }
 
   // Hydrate the router state
-  const matches = router.matchRoutes(router.stores.location.state)
+  const matches = router.matchRoutes(router.stores.location.get())
 
   // kick off loading the route chunks
   const routeChunkPromise = Promise.all(
@@ -170,8 +170,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // now that all necessary data is hydrated:
   // 1) fully reconstruct the route context
   // 2) execute `head()` and `scripts()` for each match
-  const activeMatches = router.stores.activeMatchesSnapshot.state
-  const location = router.stores.location.state
+  const activeMatches = router.stores.activeMatchesSnapshot.get()
+  const location = router.stores.location.get()
   await Promise.all(
     activeMatches.map(async (match) => {
       try {
@@ -258,7 +258,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     // (e.g. preloads, invalidations) don't mistakenly detect a href change
     // (resolvedLocation defaults to undefined and router.load() is skipped
     // in the normal SSR hydration path).
-    router.stores.resolvedLocation.setState(() => router.stores.location.state)
+    router.stores.resolvedLocation.set(() => router.stores.location.get())
     return routeChunkPromise
   }
 
@@ -292,11 +292,11 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         // ensure router is not in status 'pending' anymore
         // this usually happens in Transitioner but if loading synchronously resolves,
         // Transitioner won't be rendered while loading so it cannot track the change from loading:true to loading:false
-        if (router.stores.status.state === 'pending') {
+        if (router.stores.status.get() === 'pending') {
           router.batch(() => {
-            router.stores.status.setState(() => 'idle')
-            router.stores.resolvedLocation.setState(
-              () => router.stores.location.state,
+            router.stores.status.set(() => 'idle')
+            router.stores.resolvedLocation.set(
+              () => router.stores.location.get(),
             )
           })
         }

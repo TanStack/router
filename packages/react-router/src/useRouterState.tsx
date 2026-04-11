@@ -59,7 +59,7 @@ export function useRouterState<
   // Avoid subscribing to the store (and any structural sharing work) on the server.
   const _isServer = isServer ?? router.isServer
   if (_isServer) {
-    const state = router.stores.__store.state as RouterState<
+    const state = router.stores.__store.get() as RouterState<
       TRouter['routeTree']
     >
     return (opts?.select ? opts.select(state) : state) as UseRouterStateResult<

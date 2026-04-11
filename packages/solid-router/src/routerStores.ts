@@ -28,7 +28,7 @@ function initRouterStores(
   ) => RouterReadableStore<TValue>,
 ) {
   stores.childMatchIdByRouteId = createReadonlyStore(() => {
-    const ids = stores.matchesId.state
+    const ids = stores.matchesId.get()
     const obj: Record<string, string> = {}
     for (let i = 0; i < ids.length - 1; i++) {
       const parentStore = stores.activeMatchStoresById.get(ids[i]!)
@@ -40,7 +40,7 @@ function initRouterStores(
   })
 
   stores.pendingRouteIds = createReadonlyStore(() => {
-    const ids = stores.pendingMatchesId.state
+    const ids = stores.pendingMatchesId.get()
     const obj: Record<string, boolean> = {}
     for (const id of ids) {
       const store = stores.pendingMatchStoresById.get(id)
@@ -57,12 +57,7 @@ function createSolidMutableStore<TValue>(
 ): RouterWritableStore<TValue> {
   const [signal, setSignal] = Solid.createSignal(initialValue)
 
-  return {
-    get state() {
-      return signal()
-    },
-    setState: setSignal,
-  }
+  return { get: signal, set: setSignal }
 }
 
 let finalizationRegistry: FinalizationRegistry<() => void> | null = null
@@ -78,11 +73,7 @@ function createSolidReadonlyStore<TValue>(
     dispose = d
     return Solid.createMemo(read)
   })
-  const store = {
-    get state() {
-      return memo()
-    },
-  }
+  const store = { get: memo }
   finalizationRegistry?.register(store, dispose)
   return store
 }

@@ -7,7 +7,7 @@ import type { AnyRouter } from './router'
  */
 export function handleHashScroll(router: AnyRouter) {
   if (typeof document !== 'undefined' && (document as any).querySelector) {
-    const location = router.stores.location.state
+    const location = router.stores.location.get()
     const hashScrollIntoViewOptions =
       location.state.__hashScrollIntoViewOptions ?? true
 

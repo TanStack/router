@@ -96,9 +96,9 @@ function handleRouteUpdate(
   walkReplaceSegmentTree(oldRoute, router.processedTree.segmentTree)
 
   const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
-  const activeMatch = router.stores.activeMatchesSnapshot.state.find(filter)
-  const pendingMatch = router.stores.pendingMatchesSnapshot.state.find(filter)
-  const cachedMatches = router.stores.cachedMatchesSnapshot.state.filter(filter)
+  const activeMatch = router.stores.activeMatchesSnapshot.get().find(filter)
+  const pendingMatch = router.stores.pendingMatchesSnapshot.get().find(filter)
+  const cachedMatches = router.stores.cachedMatchesSnapshot.get().filter(filter)
 
   if (activeMatch || pendingMatch || cachedMatches.length > 0) {
     // Clear stale match data for removed route options BEFORE invalidating.
@@ -122,7 +122,7 @@ function handleRouteUpdate(
             router.stores.activeMatchStoresById.get(matchId) ||
             router.stores.cachedMatchStoresById.get(matchId)
           if (store) {
-            store.setState((prev) => {
+            store.set((prev) => {
               const next: AnyRouteMatchWithPrivateProps = { ...prev }
 
               if (removedKeys.has('loader')) {

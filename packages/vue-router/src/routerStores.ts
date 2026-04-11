@@ -1,4 +1,4 @@
-import { batch, createStore } from '@tanstack/vue-store'
+import { batch, createAtom } from '@tanstack/vue-store'
 import type {
   AnyRoute,
   GetStoreConfig,
@@ -18,16 +18,16 @@ declare module '@tanstack/router-core' {
 
 export const getStoreFactory: GetStoreConfig = (_opts) => {
   return {
-    createMutableStore: createStore,
-    createReadonlyStore: createStore,
+    createMutableStore: createAtom,
+    createReadonlyStore: createAtom,
     batch,
     init: (stores: RouterStores<AnyRoute>) => {
       // Single derived store: one reactive node that maps every active
       // routeId to its child's matchId. Depends only on matchesId +
       // the pool's routeId tags (which are set during reconciliation).
       // Outlet reads the map and then does a direct pool lookup.
-      stores.childMatchIdByRouteId = createStore(() => {
-        const ids = stores.matchesId.state
+      stores.childMatchIdByRouteId = createAtom(() => {
+        const ids = stores.matchesId.get()
         const obj: Record<string, string> = {}
         for (let i = 0; i < ids.length - 1; i++) {
           const parentStore = stores.activeMatchStoresById.get(ids[i]!)
@@ -38,8 +38,8 @@ export const getStoreFactory: GetStoreConfig = (_opts) => {
         return obj
       })
 
-      stores.pendingRouteIds = createStore(() => {
-        const ids = stores.pendingMatchesId.state
+      stores.pendingRouteIds = createAtom(() => {
+        const ids = stores.pendingMatchesId.get()
         const obj: Record<string, boolean> = {}
         for (const id of ids) {
           const store = stores.pendingMatchStoresById.get(id)

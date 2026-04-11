@@ -30,7 +30,7 @@ export const Match = React.memo(function MatchImpl({
   const router = useRouter()
 
   if (isServer ?? router.isServer) {
-    const match = router.stores.activeMatchStoresById.get(matchId)?.state
+    const match = router.stores.activeMatchStoresById.get(matchId)?.get()
     if (!match) {
       if (process.env.NODE_ENV !== 'production') {
         throw new Error(
@@ -49,7 +49,7 @@ export const Match = React.memo(function MatchImpl({
       <MatchView
         router={router}
         matchId={matchId}
-        resetKey={router.stores.loadedAt.state}
+        resetKey={router.stores.loadedAt.get()}
         matchState={{
           routeId,
           ssr: match.ssr,
@@ -243,8 +243,8 @@ function OnRendered({ resetKey }: { resetKey: number }) {
       router.emit({
         type: 'onRendered',
         ...getLocationChangeInfo(
-          router.stores.location.state,
-          router.stores.resolvedLocation.state,
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
         ),
       })
       prevHrefRef.current = currentHref
@@ -278,7 +278,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }
 
   if (isServer ?? router.isServer) {
-    const match = router.stores.activeMatchStoresById.get(matchId)?.state
+    const match = router.stores.activeMatchStoresById.get(matchId)?.get()
     if (!match) {
       if (process.env.NODE_ENV !== 'production') {
         throw new Error(
@@ -504,7 +504,7 @@ export const Outlet = React.memo(function OutletImpl() {
   let childMatchId: string | undefined
 
   if (isServer ?? router.isServer) {
-    const matches = router.stores.activeMatchesSnapshot.state
+    const matches = router.stores.activeMatchesSnapshot.get()
     const parentIndex = matchId
       ? matches.findIndex((match) => match.id === matchId)
       : -1

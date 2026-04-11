@@ -268,8 +268,8 @@ const OnRendered = Vue.defineComponent({
             router.emit({
               type: 'onRendered',
               ...getLocationChangeInfo(
-                router.stores.location.state,
-                router.stores.resolvedLocation.state,
+                router.stores.location.get(),
+                router.stores.resolvedLocation.get(),
               ),
             })
             prevHref = currentHref
@@ -525,7 +525,7 @@ export const Outlet = Vue.defineComponent({
     const childMatchData = Vue.computed(() => {
       const childId = childMatchIdMap.value[parentRouteId]
       if (!childId) return null
-      const child = router.stores.activeMatchStoresById.get(childId)?.state
+      const child = router.stores.activeMatchStoresById.get(childId)?.get()
       if (!child) return null
 
       return {

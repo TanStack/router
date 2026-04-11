@@ -9,13 +9,13 @@ import type { AnyRedirect } from './redirect'
 import type { AnyRouteMatch } from './Matches'
 
 export interface RouterReadableStore<TValue> {
-  readonly state: TValue
+  get: () => TValue
 }
 
 export interface RouterWritableStore<
   TValue,
 > extends RouterReadableStore<TValue> {
-  setState: (updater: (prev: TValue) => TValue) => void
+  set: (updater: (prev: TValue) => TValue) => void
 }
 
 export type RouterBatchFn = (fn: () => void) => void
@@ -49,10 +49,10 @@ export function createNonReactiveMutableStore<TValue>(
   let value = initialValue
 
   return {
-    get state() {
+    get() {
       return value
     },
-    setState(updater: (prev: TValue) => TValue) {
+    set(updater: (prev: TValue) => TValue) {
       value = updater(value)
     },
   }
@@ -63,7 +63,7 @@ export function createNonReactiveReadonlyStore<TValue>(
   read: () => TValue,
 ): RouterReadableStore<TValue> {
   return {
-    get state() {
+    get() {
       return read()
     },
   }
@@ -141,38 +141,38 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
 
   // 1st order derived stores
   const activeMatchesSnapshot = createReadonlyStore(() =>
-    readPoolMatches(activeMatchStoresById, matchesId.state),
+    readPoolMatches(activeMatchStoresById, matchesId.get()),
   )
   const pendingMatchesSnapshot = createReadonlyStore(() =>
-    readPoolMatches(pendingMatchStoresById, pendingMatchesId.state),
+    readPoolMatches(pendingMatchStoresById, pendingMatchesId.get()),
   )
   const cachedMatchesSnapshot = createReadonlyStore(() =>
-    readPoolMatches(cachedMatchStoresById, cachedMatchesId.state),
+    readPoolMatches(cachedMatchStoresById, cachedMatchesId.get()),
   )
-  const firstMatchId = createReadonlyStore(() => matchesId.state[0])
+  const firstMatchId = createReadonlyStore(() => matchesId.get()[0])
   const hasPendingMatches = createReadonlyStore(() =>
-    matchesId.state.some((matchId) => {
+    matchesId.get().some((matchId) => {
       const store = activeMatchStoresById.get(matchId)
-      return store?.state.status === 'pending'
+      return store?.get().status === 'pending'
     }),
   )
   const matchRouteReactivity = createReadonlyStore(() => ({
-    locationHref: location.state.href,
-    resolvedLocationHref: resolvedLocation.state?.href,
-    status: status.state,
+    locationHref: location.get().href,
+    resolvedLocationHref: resolvedLocation.get()?.href,
+    status: status.get(),
   }))
 
   // compatibility "big" state store
   const __store = createReadonlyStore(() => ({
-    status: status.state,
-    loadedAt: loadedAt.state,
-    isLoading: isLoading.state,
-    isTransitioning: isTransitioning.state,
-    matches: activeMatchesSnapshot.state,
-    location: location.state,
-    resolvedLocation: resolvedLocation.state,
-    statusCode: statusCode.state,
-    redirect: redirect.state,
+    status: status.get(),
+    loadedAt: loadedAt.get(),
+    isLoading: isLoading.get(),
+    isTransitioning: isTransitioning.get(),
+    matches: activeMatchesSnapshot.get(),
+    location: location.get(),
+    resolvedLocation: resolvedLocation.get(),
+    statusCode: statusCode.get(),
+    redirect: redirect.get(),
   }))
 
   // Per-routeId computed store cache.
@@ -194,15 +194,15 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     let cached = matchStoreByRouteIdCache.get(routeId)
     if (!cached) {
       cached = createReadonlyStore(() => {
-        // Reading matchesId.state tracks it as a dependency.
+        // Reading matchesId.get() tracks it as a dependency.
         // When matchesId changes (navigation), this computed re-evaluates.
-        const ids = matchesId.state
+        const ids = matchesId.get()
         for (const id of ids) {
           const matchStore = activeMatchStoresById.get(id)
           if (matchStore && matchStore.routeId === routeId) {
-            // Reading matchStore.state tracks it as a dependency.
+            // Reading matchStore.get() tracks it as a dependency.
             // When the match store's state changes, this re-evaluates.
-            return matchStore.state
+            return matchStore.get()
           }
         }
         return undefined
@@ -297,7 +297,7 @@ function readPoolMatches(
   for (const id of ids) {
     const matchStore = pool.get(id)
     if (matchStore) {
-      matches.push(matchStore.state)
+      matches.push(matchStore.get())
     }
   }
   return matches
@@ -330,13 +330,13 @@ function reconcileMatchPool(
       }
 
       existing.routeId = nextMatch.routeId
-      if (existing.state !== nextMatch) {
-        existing.setState(() => nextMatch)
+      if (existing.get() !== nextMatch) {
+        existing.set(() => nextMatch)
       }
     }
 
-    if (!arraysEqual(idStore.state, nextIds)) {
-      idStore.setState(() => nextIds)
+    if (!arraysEqual(idStore.get(), nextIds)) {
+      idStore.set(() => nextIds)
     }
   })
 }

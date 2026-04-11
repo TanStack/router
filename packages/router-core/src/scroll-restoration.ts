@@ -233,7 +233,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   window.addEventListener('pagehide', () => {
     snapshotCurrentScrollTargets(
       getKey(
-        router.stores.resolvedLocation.state ?? router.stores.location.state,
+        router.stores.resolvedLocation.get() ?? router.stores.location.get(),
       ),
     )
     cache.persist()

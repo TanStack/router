@@ -119,7 +119,7 @@ describe('beforeLoad skip or exec', () => {
     const router = setup({ beforeLoad })
     const navigation = router.navigate({ to: '/foo' })
     expect(beforeLoad).toHaveBeenCalledTimes(1)
-    expect(router.stores.pendingMatchesSnapshot.state).toEqual(
+    expect(router.stores.pendingMatchesSnapshot.get()).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await navigation
@@ -141,7 +141,7 @@ describe('beforeLoad skip or exec', () => {
     const beforeLoad = vi.fn()
     const router = setup({ beforeLoad })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.stores.cachedMatchesSnapshot.state).toEqual(
+    expect(router.stores.cachedMatchesSnapshot.get()).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
@@ -155,7 +155,7 @@ describe('beforeLoad skip or exec', () => {
     const router = setup({ beforeLoad })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(router.stores.cachedMatchesSnapshot.state).toEqual(
+    expect(router.stores.cachedMatchesSnapshot.get()).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await router.navigate({ to: '/foo' })
@@ -203,7 +203,7 @@ describe('beforeLoad skip or exec', () => {
     })
     await router.preloadRoute({ to: '/foo' })
     expect(
-      router.stores.cachedMatchesSnapshot.state.some(
+      router.stores.cachedMatchesSnapshot.get().some(
         (d) => d.status === 'redirected',
       ),
     ).toBe(false)
@@ -212,7 +212,7 @@ describe('beforeLoad skip or exec', () => {
 
     expect(router.state.location.pathname).toBe('/foo')
     expect(
-      router.stores.cachedMatchesSnapshot.state.some(
+      router.stores.cachedMatchesSnapshot.get().some(
         (d) => d.status === 'redirected',
       ),
     ).toBe(false)
@@ -230,7 +230,7 @@ describe('beforeLoad skip or exec', () => {
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
     expect(
-      router.stores.cachedMatchesSnapshot.state.some(
+      router.stores.cachedMatchesSnapshot.get().some(
         (d) => d.status === 'redirected',
       ),
     ).toBe(false)
@@ -238,7 +238,7 @@ describe('beforeLoad skip or exec', () => {
 
     expect(router.state.location.pathname).toBe('/foo')
     expect(
-      router.stores.cachedMatchesSnapshot.state.some(
+      router.stores.cachedMatchesSnapshot.get().some(
         (d) => d.status === 'redirected',
       ),
     ).toBe(false)
@@ -359,7 +359,7 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
     const navigation = router.navigate({ to: '/foo' })
     expect(loader).toHaveBeenCalledTimes(1)
-    expect(router.stores.pendingMatchesSnapshot.state).toEqual(
+    expect(router.stores.pendingMatchesSnapshot.get()).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await navigation
@@ -381,7 +381,7 @@ describe('loader skip or exec', () => {
     const loader = vi.fn()
     const router = setup({ loader })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.stores.cachedMatchesSnapshot.state).toEqual(
+    expect(router.stores.cachedMatchesSnapshot.get()).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
@@ -394,7 +394,7 @@ describe('loader skip or exec', () => {
     const loader = vi.fn()
     const router = setup({ loader, staleTime: 1000 })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.stores.cachedMatchesSnapshot.state).toEqual(
+    expect(router.stores.cachedMatchesSnapshot.get()).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
@@ -408,7 +408,7 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(router.stores.cachedMatchesSnapshot.state).toEqual(
+    expect(router.stores.cachedMatchesSnapshot.get()).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await router.navigate({ to: '/foo' })
@@ -456,7 +456,7 @@ describe('loader skip or exec', () => {
     })
     await router.preloadRoute({ to: '/foo' })
     expect(
-      router.stores.cachedMatchesSnapshot.state.some(
+      router.stores.cachedMatchesSnapshot.get().some(
         (d) => d.status === 'redirected',
       ),
     ).toBe(false)
@@ -465,7 +465,7 @@ describe('loader skip or exec', () => {
 
     expect(router.state.location.pathname).toBe('/foo')
     expect(
-      router.stores.cachedMatchesSnapshot.state.some(
+      router.stores.cachedMatchesSnapshot.get().some(
         (d) => d.status === 'redirected',
       ),
     ).toBe(false)
@@ -483,7 +483,7 @@ describe('loader skip or exec', () => {
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
     expect(
-      router.stores.cachedMatchesSnapshot.state.some(
+      router.stores.cachedMatchesSnapshot.get().some(
         (d) => d.status === 'redirected',
       ),
     ).toBe(false)
@@ -491,7 +491,7 @@ describe('loader skip or exec', () => {
 
     expect(router.state.location.pathname).toBe('/bar')
     expect(
-      router.stores.cachedMatchesSnapshot.state.some(
+      router.stores.cachedMatchesSnapshot.get().some(
         (d) => d.status === 'redirected',
       ),
     ).toBe(false)
@@ -503,7 +503,7 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
 
     await router.preloadRoute({ to: '/foo' })
-    expect(router.stores.cachedMatchesSnapshot.state).toEqual(
+    expect(router.stores.cachedMatchesSnapshot.get()).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
 
@@ -513,12 +513,12 @@ describe('loader skip or exec', () => {
     }))
 
     expect(
-      router.stores.cachedMatchesSnapshot.state.some(
+      router.stores.cachedMatchesSnapshot.get().some(
         (d) => d.id === '/foo/foo',
       ),
     ).toBe(false)
     expect(
-      router.stores.cachedMatchesSnapshot.state.some(
+      router.stores.cachedMatchesSnapshot.get().some(
         (d) => d.status === 'redirected',
       ),
     ).toBe(false)
@@ -648,10 +648,10 @@ describe('stale loader reload triggers', () => {
     id: string,
   ) =>
     router.state.matches.find((match) => match.id === id) ??
-    router.stores.pendingMatchesSnapshot.state.find(
+    router.stores.pendingMatchesSnapshot.get().find(
       (match) => match.id === id,
     ) ??
-    router.stores.cachedMatchesSnapshot.state.find((match) => match.id === id)
+    router.stores.cachedMatchesSnapshot.get().find((match) => match.id === id)
 
   const hasActiveMatch = (
     router: RouterCore<any, any, any, any, any>,
@@ -662,7 +662,7 @@ describe('stale loader reload triggers', () => {
     router: RouterCore<any, any, any, any, any>,
     id: string,
   ) =>
-    router.stores.pendingMatchesSnapshot.state.some(
+    router.stores.pendingMatchesSnapshot.get().some(
       (match) => match.id === id,
     ) ?? false
 
@@ -1766,7 +1766,7 @@ describe('head execution', () => {
         }),
       )
 
-      const rootMatch = router.stores.pendingMatchesSnapshot.state.find(
+      const rootMatch = router.stores.pendingMatchesSnapshot.get().find(
         (m) => m.routeId === routes[0].id,
       )
 
@@ -1795,7 +1795,7 @@ describe('head execution', () => {
       const second = await runLoadMatchesAndCapture(router)
       expect(second.error).toBeUndefined()
 
-      const rootMatch = router.stores.pendingMatchesSnapshot.state.find(
+      const rootMatch = router.stores.pendingMatchesSnapshot.get().find(
         (m) => m.routeId === routes[0].id,
       )
 
@@ -1832,7 +1832,7 @@ describe('head execution', () => {
 
       const staleRootNotFound = notFound({ data: { source: 'stale-root' } })
       const currentRootMatchId =
-        router.stores.pendingMatchesSnapshot.state.find(
+        router.stores.pendingMatchesSnapshot.get().find(
           (m) => m.routeId === rootRoute.id,
         )!.id
 
@@ -1862,7 +1862,7 @@ describe('head execution', () => {
 
       expect(rootLoader).toHaveBeenCalledTimes(1)
 
-      const rootMatch = router.stores.pendingMatchesSnapshot.state.find(
+      const rootMatch = router.stores.pendingMatchesSnapshot.get().find(
         (m) => m.routeId === rootRoute.id,
       )
 
@@ -1896,7 +1896,7 @@ describe('params.parse notFound', () => {
 
     await router.load()
 
-    const match = router.stores.activeMatchesSnapshot.state.find(
+    const match = router.stores.activeMatchesSnapshot.get().find(
       (m) => m.routeId === testRoute.id,
     )
 

@@ -202,7 +202,7 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
     {
       'Content-Type': 'text/html; charset=utf-8',
     },
-    ...opts.router.stores.activeMatchesSnapshot.state.map((match) => {
+    ...opts.router.stores.activeMatchesSnapshot.get().map((match) => {
       return match.headers
     }),
   )

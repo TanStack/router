@@ -228,7 +228,7 @@ export function attachRouterServerSsrUtils({
 
         invariant()
       }
-      let matchesToDehydrate = router.stores.activeMatchesSnapshot.state
+      let matchesToDehydrate = router.stores.activeMatchesSnapshot.get()
       if (router.isShell()) {
         // In SPA mode we only want to dehydrate the root match
         matchesToDehydrate = matchesToDehydrate.slice(0, 1)

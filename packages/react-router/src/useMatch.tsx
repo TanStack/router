@@ -21,9 +21,8 @@ import type {
 } from '@tanstack/router-core'
 
 const dummyStore = {
-  state: undefined,
   get: () => undefined,
-  subscribe: () => () => {},
+  subscribe: () => ({ unsubscribe: () => {} }),
 } as any
 
 export interface UseMatchBaseOptions<
@@ -119,7 +118,7 @@ export function useMatch<
     : undefined
 
   if (isServer ?? router.isServer) {
-    const match = matchStore?.state
+    const match = matchStore?.get()
     if ((opts.shouldThrow ?? true) && !match) {
       if (process.env.NODE_ENV !== 'production') {
         throw new Error(

@@ -194,7 +194,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     return buildTagsFromMatches(
       router,
       nonce,
-      router.stores.activeMatchesSnapshot.state,
+      router.stores.activeMatchesSnapshot.get(),
       assetCrossOrigin,
     )
   }

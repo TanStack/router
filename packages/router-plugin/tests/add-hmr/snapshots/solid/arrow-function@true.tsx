@@ -47,9 +47,9 @@ if (import.meta.hot) {
         router.resolvePathCache.clear();
         walkReplaceSegmentTree(oldRoute, router.processedTree.segmentTree);
         const filter = m => m.routeId === oldRoute.id;
-        const activeMatch = router.stores.activeMatchesSnapshot.state.find(filter);
-        const pendingMatch = router.stores.pendingMatchesSnapshot.state.find(filter);
-        const cachedMatches = router.stores.cachedMatchesSnapshot.state.filter(filter);
+        const activeMatch = router.stores.activeMatchesSnapshot.get().find(filter);
+        const pendingMatch = router.stores.pendingMatchesSnapshot.get().find(filter);
+        const cachedMatches = router.stores.cachedMatchesSnapshot.get().filter(filter);
         if (activeMatch || pendingMatch || cachedMatches.length > 0) {
           if (removedKeys.has("loader") || removedKeys.has("beforeLoad")) {
             const matchIds = [activeMatch?.id, pendingMatch?.id, ...cachedMatches.map(match => match.id)].filter(Boolean);
@@ -57,7 +57,7 @@ if (import.meta.hot) {
               for (const matchId of matchIds) {
                 const store = router.stores.pendingMatchStoresById.get(matchId) || router.stores.activeMatchStoresById.get(matchId) || router.stores.cachedMatchStoresById.get(matchId);
                 if (store) {
-                  store.setState(prev => {
+                  store.set(prev => {
                     const next = {
                       ...prev
                     };

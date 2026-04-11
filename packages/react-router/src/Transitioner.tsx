@@ -96,8 +96,8 @@ export function Transitioner() {
       router.emit({
         type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
         ...getLocationChangeInfo(
-          router.stores.location.state,
-          router.stores.resolvedLocation.state,
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
         ),
       })
     }
@@ -109,8 +109,8 @@ export function Transitioner() {
       router.emit({
         type: 'onBeforeRouteMount',
         ...getLocationChangeInfo(
-          router.stores.location.state,
-          router.stores.resolvedLocation.state,
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
         ),
       })
     }
@@ -119,8 +119,8 @@ export function Transitioner() {
   useLayoutEffect(() => {
     if (previousIsAnyPending && !isAnyPending) {
       const changeInfo = getLocationChangeInfo(
-        router.stores.location.state,
-        router.stores.resolvedLocation.state,
+        router.stores.location.get(),
+        router.stores.resolvedLocation.get(),
       )
       router.emit({
         type: 'onResolved',
@@ -128,9 +128,9 @@ export function Transitioner() {
       })
 
       batch(() => {
-        router.stores.status.setState(() => 'idle')
-        router.stores.resolvedLocation.setState(
-          () => router.stores.location.state,
+        router.stores.status.set(() => 'idle')
+        router.stores.resolvedLocation.set(
+          () => router.stores.location.get(),
         )
       })
 

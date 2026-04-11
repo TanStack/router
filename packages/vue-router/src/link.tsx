@@ -186,7 +186,7 @@ export function useLinkProps<
     })
 
     const isActive = getIsActive({
-      loc: router.stores.location.state,
+      loc: router.stores.location.get(),
       nextLoc: next,
       activeOptions: options.activeOptions,
       router,

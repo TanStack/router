@@ -62,17 +62,17 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = () => router.stores.firstMatchId.state
+  const matchId = () => router.stores.firstMatchId.get()
   const routeId = () => (matchId() ? rootRouteId : undefined)
   const match = () =>
     routeId()
-      ? router.stores.getMatchStoreByRouteId(rootRouteId).state
+      ? router.stores.getMatchStoreByRouteId(rootRouteId).get()
       : undefined
   const hasPendingMatch = () =>
     routeId()
-      ? Boolean(router.stores.pendingRouteIds.state[rootRouteId])
+      ? Boolean(router.stores.pendingRouteIds.get()[rootRouteId])
       : false
-  const resetKey = () => router.stores.loadedAt.state
+  const resetKey = () => router.stores.loadedAt.get()
   const nearestMatch = {
     matchId,
     routeId,
@@ -142,7 +142,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
     return Solid.createMemo(() => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-      router.stores.matchRouteReactivity.state
+      router.stores.matchRouteReactivity.get()
       return router.matchRoute(rest as any, {
         pending,
         caseSensitive,
@@ -211,7 +211,7 @@ export function useMatches<
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
   return Solid.createMemo((prev: TSelected | undefined) => {
-    const matches = router.stores.activeMatchesSnapshot.state as Array<
+    const matches = router.stores.activeMatchesSnapshot.get() as Array<
       MakeRouteMatchUnion<TRouter>
     >
     const res = opts?.select ? opts.select(matches) : matches

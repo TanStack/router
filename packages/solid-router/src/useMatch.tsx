@@ -76,7 +76,7 @@ export function useMatch<
 
   const match = () => {
     if (opts.from) {
-      return router.stores.getMatchStoreByRouteId(opts.from).state
+      return router.stores.getMatchStoreByRouteId(opts.from).get()
     }
 
     return nearestMatch?.match()
@@ -88,12 +88,12 @@ export function useMatch<
     }
 
     const hasPendingMatch = opts.from
-      ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
+      ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
       : (nearestMatch?.hasPending() ?? false)
 
     if (
       !hasPendingMatch &&
-      !router.stores.isTransitioning.state &&
+      !router.stores.isTransitioning.get() &&
       (opts.shouldThrow ?? true)
     ) {
       if (process.env.NODE_ENV !== 'production') {

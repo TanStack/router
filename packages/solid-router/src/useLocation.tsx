@@ -28,7 +28,7 @@ export function useLocation<
   const router = useRouter<TRouter>()
 
   if (!opts?.select) {
-    return (() => router.stores.location.state) as Accessor<
+    return (() => router.stores.location.get()) as Accessor<
       UseLocationResult<TRouter, TSelected>
     >
   }
@@ -36,7 +36,7 @@ export function useLocation<
   const select = opts.select
 
   return Solid.createMemo((prev: TSelected | undefined) => {
-    const res = select(router.stores.location.state)
+    const res = select(router.stores.location.get())
     if (prev === undefined) return res
     return replaceEqualDeep(prev, res)
   }) as Accessor<UseLocationResult<TRouter, TSelected>>

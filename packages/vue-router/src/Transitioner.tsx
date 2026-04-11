@@ -60,7 +60,7 @@ export function useTransitionerSetup() {
     isTransitioning.value = true
     // Also update the router state so useMatch knows we're transitioning
     try {
-      router.stores.isTransitioning.setState(() => true)
+      router.stores.isTransitioning.set(() => true)
     } catch {
       // Ignore errors if component is unmounted
     }
@@ -71,7 +71,7 @@ export function useTransitionerSetup() {
       Vue.nextTick(() => {
         try {
           isTransitioning.value = false
-          router.stores.isTransitioning.setState(() => false)
+          router.stores.isTransitioning.set(() => false)
         } catch {
           // Ignore errors if component is unmounted
         }
@@ -140,11 +140,11 @@ export function useTransitionerSetup() {
   Vue.onMounted(() => {
     isMounted.value = true
     if (!isAnyPending.value) {
-      if (router.stores.status.state === 'pending') {
+      if (router.stores.status.get() === 'pending') {
         batch(() => {
-          router.stores.status.setState(() => 'idle')
-          router.stores.resolvedLocation.setState(
-            () => router.stores.location.state,
+          router.stores.status.set(() => 'idle')
+          router.stores.resolvedLocation.set(
+            () => router.stores.location.get(),
           )
         })
       }
@@ -188,8 +188,8 @@ export function useTransitionerSetup() {
           router.emit({
             type: 'onLoad',
             ...getLocationChangeInfo(
-              router.stores.location.state,
-              router.stores.resolvedLocation.state,
+              router.stores.location.get(),
+              router.stores.resolvedLocation.get(),
             ),
           })
         }
@@ -207,8 +207,8 @@ export function useTransitionerSetup() {
         router.emit({
           type: 'onBeforeRouteMount',
           ...getLocationChangeInfo(
-            router.stores.location.state,
-            router.stores.resolvedLocation.state,
+            router.stores.location.get(),
+            router.stores.resolvedLocation.get(),
           ),
         })
       }
@@ -220,11 +220,11 @@ export function useTransitionerSetup() {
   Vue.watch(isAnyPending, (newValue) => {
     if (!isMounted.value) return
     try {
-      if (!newValue && router.stores.status.state === 'pending') {
+      if (!newValue && router.stores.status.get() === 'pending') {
         batch(() => {
-          router.stores.status.setState(() => 'idle')
-          router.stores.resolvedLocation.setState(
-            () => router.stores.location.state,
+          router.stores.status.set(() => 'idle')
+          router.stores.resolvedLocation.set(
+            () => router.stores.location.get(),
           )
         })
       }
@@ -232,8 +232,8 @@ export function useTransitionerSetup() {
       // The router was pending and now it's not
       if (previousIsAnyPending.value.previous && !newValue) {
         const changeInfo = getLocationChangeInfo(
-          router.stores.location.state,
-          router.stores.resolvedLocation.state,
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
         )
         router.emit({
           type: 'onResolved',
