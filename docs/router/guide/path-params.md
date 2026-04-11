@@ -317,7 +317,7 @@ You can combine both prefixes and suffixes to create very specific routing patte
 
 # React
 
-```tsx title="src/routes/users/user-{$userId}.json"
+```tsx title="src/routes/users/user-{$userId}[.]json.tsx"
 export const Route = createFileRoute('/users/user-{$userId}.json')({
   component: UserComponent,
 })
@@ -331,7 +331,7 @@ function UserComponent() {
 
 # Solid
 
-```tsx title="src/routes/users/user-{$userId}.json"
+```tsx title="src/routes/users/user-{$userId}[.]json.tsx"
 export const Route = createFileRoute('/users/user-{$userId}.json')({
   component: UserComponent,
 })
@@ -455,7 +455,7 @@ Optional parameters support prefix and suffix patterns:
 
 # React
 
-```tsx title="src/routes/files/prefix{-$name}.txt"
+```tsx title="src/routes/files/prefix{-$name}[.]txt.tsx"
 // Route: /files/prefix{-$name}.txt
 // Matches: /files/prefix.txt and /files/prefixdocument.txt
 export const Route = createFileRoute('/files/prefix{-$name}.txt')({
@@ -470,7 +470,7 @@ function FileComponent() {
 
 # Solid
 
-```tsx title="src/routes/files/prefix{-$name}.txt"
+```tsx title="src/routes/files/prefix{-$name}[.]txt.tsx"
 // Route: /files/prefix{-$name}.txt
 // Matches: /files/prefix.txt and /files/prefixdocument.txt
 export const Route = createFileRoute('/files/prefix{-$name}.txt')({
