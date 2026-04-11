@@ -238,12 +238,14 @@ export function attachRouterServerSsrUtils({
       const matches = matchesToDehydrate.map(dehydrateMatch)
 
       let manifestToDehydrate: Manifest | undefined = undefined
-      // For currently matched routes, send full manifest (preloads + assets)
-      // For all other routes, only send assets (no preloads as they are handled via dynamic imports)
+      // For currently matched routes, send full manifest (preloads + assets).
+      // For unmatched routes, include assets only when includeUnmatchedRouteAssets
+      // is true; otherwise omit them entirely. Preloads for unmatched routes are
+      // still excluded because they are handled via dynamic imports.
       if (manifest) {
         // Prod-only caching; in dev manifests may be replaced/updated (HMR)
         const currentRouteIdsList = matchesToDehydrate.map((m) => m.routeId)
-        const manifestCacheKey = currentRouteIdsList.join('\0')
+        const manifestCacheKey = `${currentRouteIdsList.join('\0')}\0includeUnmatchedRouteAssets=${includeUnmatchedRouteAssets}`
 
         let filteredRoutes: FilteredRoutes | undefined
 

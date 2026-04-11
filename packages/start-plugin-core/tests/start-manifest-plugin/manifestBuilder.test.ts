@@ -1,5 +1,5 @@
-import { deserialize } from 'seroval'
 import { describe, expect, test } from 'vitest'
+import { deserialize } from 'seroval'
 import {
   appendUniqueAssets,
   appendUniqueStrings,
