@@ -38,6 +38,7 @@ async function compile(opts: {
         kind: 'ClientOnlyJSX',
       },
     ],
+    getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
     },

@@ -42,6 +42,7 @@ async function compile(opts: {
         kind: 'Root',
       },
     ],
+    getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
     },
@@ -93,6 +94,7 @@ describe('createMiddleware compiles correctly', async () => {
           kind: 'Root',
         },
       ],
+      getKnownServerFns: () => ({}),
       resolveId: resolveIdMock,
     })
 
@@ -139,6 +141,7 @@ describe('createMiddleware compiles correctly', async () => {
           kind: 'Root',
         },
       ],
+      getKnownServerFns: () => ({}),
       resolveId: resolveIdMock,
     })
 

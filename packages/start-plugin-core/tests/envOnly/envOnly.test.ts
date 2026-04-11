@@ -39,6 +39,7 @@ async function compile(opts: {
         kind: 'ClientOnlyFn',
       },
     ],
+    getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
     },

@@ -16,7 +16,7 @@ export interface CreateStartCompilerOptions {
   mode: 'dev' | 'build'
   generateFunctionId?: GenerateFunctionIdFnOptional
   onServerFnsById?: (d: Record<string, ServerFn>) => void
-  getKnownServerFns?: () => Record<string, ServerFn>
+  getKnownServerFns: () => Record<string, ServerFn>
   encodeModuleSpecifierInDev?: DevServerFnModuleSpecifierEncoder
   loadModule: (id: string) => Promise<void>
   resolveId: (id: string, importer?: string) => Promise<string | null>

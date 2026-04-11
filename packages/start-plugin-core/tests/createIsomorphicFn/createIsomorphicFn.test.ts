@@ -34,6 +34,7 @@ async function compile(opts: {
         kind: 'IsomorphicFn',
       },
     ],
+    getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
     },

@@ -350,7 +350,7 @@ export class StartCompiler {
        * Returns the currently known server functions from previous builds.
        * Used by server callers to look up canonical extracted filenames.
        */
-      getKnownServerFns?: () => Record<string, ServerFn>
+      getKnownServerFns: () => Record<string, ServerFn>
       devServerFnModuleSpecifierEncoder?: DevServerFnModuleSpecifierEncoder
     },
   ) {
@@ -394,8 +394,18 @@ export class StartCompiler {
     const entryId = `${opts.filename}--${opts.functionName}`
     let functionId = this.entryIdToFunctionId.get(entryId)
     if (functionId === undefined) {
+      const knownFn = Object.values(this.options.getKnownServerFns()).find(
+        (serverFn) =>
+          serverFn.functionName === opts.functionName &&
+          serverFn.extractedFilename === opts.extractedFilename,
+      )
+
+      if (knownFn) {
+        functionId = knownFn.functionId
+      }
+
       if (this.options.generateFunctionId) {
-        functionId = this.options.generateFunctionId({
+        functionId ??= this.options.generateFunctionId({
           filename: opts.filename,
           functionName: opts.functionName,
         })
@@ -920,7 +930,7 @@ export class StartCompiler {
       providerEnvName: this.options.providerEnvName,
 
       generateFunctionId: (opts) => this.generateFunctionId(opts),
-      getKnownServerFns: () => this.options.getKnownServerFns?.() ?? {},
+      getKnownServerFns: this.options.getKnownServerFns,
       onServerFnsById: this.options.onServerFnsById,
     }
 

@@ -62,6 +62,7 @@ function createFullCompiler(env: 'client' | 'server') {
     ...getDefaultTestOptions(env),
     lookupKinds,
     lookupConfigurations,
+    getKnownServerFns: () => ({}),
     loadModule: async () => {},
     resolveId: async (id) => id,
     mode: 'build',
@@ -438,6 +439,7 @@ test('ingestModule handles empty code gracefully', () => {
     ...getDefaultTestOptions('client'),
     lookupKinds: new Set(['ServerFn']),
     lookupConfigurations: [],
+    getKnownServerFns: () => ({}),
     loadModule: async () => {},
     resolveId: async (id) => id,
   })
@@ -521,6 +523,7 @@ describe('calling result of createServerOnlyFn/createClientOnlyFn', () => {
       providerEnvName: 'ssr',
       lookupKinds: new Set(['ServerOnlyFn', 'ClientOnlyFn']),
       lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
       loadModule: async (id) => {
         const code = virtualModules[id]
         if (code) {
@@ -613,6 +616,7 @@ describe('re-export chain resolution', () => {
       providerEnvName: 'ssr',
       lookupKinds,
       lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
       loadModule: async (id) => {
         const code = virtualModules[id]
         if (code) {
@@ -704,6 +708,7 @@ describe('re-export chain resolution', () => {
       providerEnvName: 'ssr',
       lookupKinds: new Set(['IsomorphicFn', 'ServerOnlyFn', 'ClientOnlyFn']),
       lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
       loadModule: async (id) => {
         const code = deeperVirtualModules[id]
         if (code) {
