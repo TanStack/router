@@ -41,7 +41,7 @@ Feature/Capability Key:
 | Data Fetching Library Integration                                 | ✅ (Official TanStack Query, Apollo, etc.)       | 🔶 (manual integration)                       | 🔶 (manual integration)                    |
 | Static Prerendering (SSG)                                         | ✅                                               | ✅                                            | ✅                                         |
 | Incremental Static Regeneration (ISR)                             | ✅ (via Cache-Control headers)                   | ✅ (Proprietary)                              | ✅ (via Cache-Control headers)             |
-| React Server Components                                           | 🛑 (In active development)                       | ✅                                            | 🟡 (Experimental)                          |
+| React Server Components                                           | 🟡 (Experimental)                                | ✅                                            | 🟡 (Experimental)                          |
 | Server Functions                                                  | ✅ (RPC-based)                                   | ✅ (Server Actions)                           | ✅ (Actions)                               |
 | Server Function Client Middleware                                 | ✅                                               | 🛑                                            | 🛑                                         |
 | Server Function Server Middleware                                 | ✅                                               | 🛑                                            | ✅                                         |
@@ -264,10 +264,10 @@ const authMiddleware = createMiddleware({ type: 'function' })
 **Current Status**:
 
 - **Next.js**: Full production support with extensive ecosystem
-- **TanStack Start**: In active development, expected soon
+- **TanStack Start**: Experimental support available
 - **React Router**: Experimental support available
 
-RSC is still evolving, and TanStack Start is taking time to ensure the best possible implementation that aligns with its type-safety-first philosophy.
+TanStack Start's RSC implementation takes a client-led composition approach: server components are treated as data that the client can fetch, cache, and compose. See the [Server Components guide](/start/latest/docs/framework/react/guide/server-components) for details.
 
 ## Performance Considerations
 

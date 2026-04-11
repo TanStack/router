@@ -90,6 +90,10 @@
               "to": "framework/react/guide/server-functions"
             },
             {
+              "label": "Server Components",
+              "to": "framework/react/guide/server-components"
+            },
+            {
               "label": "Static Server Functions",
               "to": "framework/react/guide/static-server-functions"
             },

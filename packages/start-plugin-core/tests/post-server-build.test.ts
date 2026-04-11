@@ -7,7 +7,7 @@ vi.mock('@tanstack/start-server-core', () => ({
   },
 }))
 
-vi.mock('../src/prerender', () => ({
+vi.mock('../src/vite/prerender', () => ({
   prerender: vi.fn(async () => {}),
 }))
 
@@ -32,7 +32,7 @@ describe('postServerBuild', () => {
 
   it('rejects absolute SPA maskPath URLs to avoid external prerendering', async () => {
     // Import after mocks are set up
-    const { postServerBuild } = await import('../src/post-server-build')
+    const { postServerBuild } = await import('../src/vite/post-server-build')
 
     const startConfig = {
       spa: {

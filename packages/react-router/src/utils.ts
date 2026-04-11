@@ -1,3 +1,4 @@
+'use client'
 import * as React from 'react'
 
 // Safe version of React.use() that will not cause compilation errors against

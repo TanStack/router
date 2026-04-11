@@ -116,6 +116,7 @@
       "@tanstack/valibot-adapter": "workspace:*",
       "@tanstack/arktype-adapter": "workspace:*",
       "@tanstack/react-start": "workspace:*",
+      "@tanstack/react-start-rsc": "workspace:*",
       "@tanstack/react-start-client": "workspace:*",
       "@tanstack/react-start-server": "workspace:*",
       "@tanstack/solid-start": "workspace:*",

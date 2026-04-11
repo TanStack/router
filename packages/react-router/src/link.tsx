@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
 import { flushSync } from 'react-dom'
@@ -64,6 +66,7 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
+    preloadIntentProximity: _preloadIntentProximity,
     hashScrollIntoView,
     replace,
     startTransition,
@@ -204,7 +207,7 @@ export function useLinkProps<
     const isActive = (() => {
       if (externalLink) return false
 
-      const currentLocation = router.stores.location.state
+      const currentLocation = router.stores.location.get()
 
       const exact = activeOptions?.exact ?? false
 

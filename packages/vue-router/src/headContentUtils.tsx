@@ -13,10 +13,7 @@ import type {
 
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
-  const matches = useStore(
-    router.stores.activeMatchesSnapshot,
-    (value) => value,
-  )
+  const matches = useStore(router.stores.matches, (value) => value)
 
   const meta = Vue.computed<Array<RouterManagedTag>>(() => {
     const resultMeta: Array<RouterManagedTag> = []

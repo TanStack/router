@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'

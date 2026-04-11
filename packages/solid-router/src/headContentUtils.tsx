@@ -18,9 +18,7 @@ import type {
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const activeMatches = Solid.createMemo(
-    () => router.stores.activeMatchesSnapshot.state,
-  )
+  const activeMatches = Solid.createMemo(() => router.stores.matches.get())
   const routeMeta = Solid.createMemo(() =>
     activeMatches()
       .map((match) => match.meta!)

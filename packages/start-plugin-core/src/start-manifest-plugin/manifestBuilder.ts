@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/prefer-for-of */
 import { joinURL } from 'ufo'
 import { resolveManifestAssetLink, rootRouteId } from '@tanstack/router-core'
-import { tsrSplit } from '@tanstack/router-plugin'
+import {
+  getRouteFilePathsFromModuleIds,
+  normalizeViteClientBuild,
+  normalizeViteClientChunk,
+} from '../vite/start-manifest-plugin/normalized-client-build'
 import type { ManifestAssetLink, RouterManagedTag } from '@tanstack/router-core'
-import type { Rollup } from 'vite'
+import type { NormalizedClientBuild, NormalizedClientChunk } from '../types'
 
 const ROUTER_MANAGED_MODE = 1
 const NON_ROUTE_DYNAMIC_MODE = 2
@@ -19,15 +23,15 @@ type RouteTreeRoute = {
 type RouteTreeRoutes = Record<string, RouteTreeRoute>
 
 interface ScannedClientChunks {
-  entryChunk: Rollup.OutputChunk
-  chunksByFileName: Map<string, Rollup.OutputChunk>
-  routeChunksByFilePath: Map<string, Array<Rollup.OutputChunk>>
-  routeEntryChunks: Set<Rollup.OutputChunk>
+  entryChunk: NormalizedClientChunk
+  chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
+  routeChunksByFilePath: ReadonlyMap<string, Array<NormalizedClientChunk>>
+  routeEntryChunks: ReadonlySet<NormalizedClientChunk>
 }
 
 interface ManifestAssetResolvers {
   getAssetPath: (fileName: string) => string
-  getChunkPreloads: (chunk: Rollup.OutputChunk) => Array<string>
+  getChunkPreloads: (chunk: NormalizedClientChunk) => Array<string>
   getStylesheetAsset: (cssFile: string) => RouterManagedTag
 }
 
@@ -121,9 +125,9 @@ function getAssetIdentity(asset: RouterManagedTag) {
 
 function mergeRouteChunkData(options: {
   route: RouteTreeRoute
-  chunk: Rollup.OutputChunk
-  getChunkCssAssets: (chunk: Rollup.OutputChunk) => Array<RouterManagedTag>
-  getChunkPreloads: (chunk: Rollup.OutputChunk) => Array<string>
+  chunk: NormalizedClientChunk
+  getChunkCssAssets: (chunk: NormalizedClientChunk) => Array<RouterManagedTag>
+  getChunkPreloads: (chunk: NormalizedClientChunk) => Array<string>
 }) {
   const chunkAssets = options.getChunkCssAssets(options.chunk)
   const chunkPreloads = options.getChunkPreloads(options.chunk)
@@ -136,11 +140,11 @@ function mergeRouteChunkData(options: {
 }
 
 export function buildStartManifest(options: {
-  clientBundle: Rollup.OutputBundle
+  clientBuild: NormalizedClientBuild
   routeTreeRoutes: RouteTreeRoutes
   basePath: string
 }) {
-  const scannedChunks = scanClientChunks(options.clientBundle)
+  const scannedChunks = scanClientChunks(options.clientBuild)
   const hashedCssFiles = collectDynamicImportCss(
     scannedChunks.routeEntryChunks,
     scannedChunks.chunksByFileName,
@@ -178,110 +182,52 @@ export function buildStartManifest(options: {
 }
 
 export function scanClientChunks(
-  clientBundle: Rollup.OutputBundle,
+  clientBuild: NormalizedClientBuild,
 ): ScannedClientChunks {
-  let entryChunk: Rollup.OutputChunk | undefined
-  const chunksByFileName = new Map<string, Rollup.OutputChunk>()
-  const routeChunksByFilePath = new Map<string, Array<Rollup.OutputChunk>>()
-  const routeEntryChunks = new Set<Rollup.OutputChunk>()
-
-  for (const fileName in clientBundle) {
-    const bundleEntry = clientBundle[fileName]!
-    if (bundleEntry.type !== 'chunk') {
-      continue
-    }
-
-    chunksByFileName.set(bundleEntry.fileName, bundleEntry)
-
-    if (bundleEntry.isEntry) {
-      if (entryChunk) {
-        throw new Error(
-          `multiple entries detected: ${entryChunk.fileName} ${bundleEntry.fileName}`,
-        )
-      }
-      entryChunk = bundleEntry
-    }
-
-    const routeFilePaths = getRouteFilePathsFromModuleIds(bundleEntry.moduleIds)
-    if (routeFilePaths.length === 0) {
-      continue
-    }
-
-    routeEntryChunks.add(bundleEntry)
-
-    for (let i = 0; i < routeFilePaths.length; i++) {
-      const routeFilePath = routeFilePaths[i]!
-      let chunks = routeChunksByFilePath.get(routeFilePath)
-      if (chunks === undefined) {
-        chunks = []
-        routeChunksByFilePath.set(routeFilePath, chunks)
-      }
-      chunks.push(bundleEntry)
-    }
-  }
+  const entryChunk = clientBuild.chunksByFileName.get(
+    clientBuild.entryChunkFileName,
+  )
 
   if (!entryChunk) {
-    throw new Error('No entry file found')
+    throw new Error(`Missing entry chunk: ${clientBuild.entryChunkFileName}`)
+  }
+
+  const routeEntryChunks = new Set<NormalizedClientChunk>()
+  const routeChunksByFilePath = new Map<string, Array<NormalizedClientChunk>>()
+
+  for (const chunk of clientBuild.chunksByFileName.values()) {
+    if (chunk.routeFilePaths.length > 0) {
+      routeEntryChunks.add(chunk)
+
+      for (const routeFilePath of chunk.routeFilePaths) {
+        let chunks = routeChunksByFilePath.get(routeFilePath)
+        if (chunks === undefined) {
+          chunks = []
+          routeChunksByFilePath.set(routeFilePath, chunks)
+        }
+        chunks.push(chunk)
+      }
+    }
   }
 
   return {
     entryChunk,
-    chunksByFileName,
+    chunksByFileName: clientBuild.chunksByFileName,
     routeChunksByFilePath,
     routeEntryChunks,
   }
 }
 
-export function getRouteFilePathsFromModuleIds(moduleIds: Array<string>) {
-  let routeFilePaths: Array<string> | undefined
-  let seenRouteFilePaths: Set<string> | undefined
-
-  for (const moduleId of moduleIds) {
-    const queryIndex = moduleId.indexOf('?')
-
-    if (queryIndex < 0) {
-      continue
-    }
-
-    const query = moduleId.slice(queryIndex + 1)
-
-    // Fast check before allocating URLSearchParams
-    if (!query.includes(tsrSplit)) {
-      continue
-    }
-
-    if (!new URLSearchParams(query).has(tsrSplit)) {
-      continue
-    }
-
-    const routeFilePath = moduleId.slice(0, queryIndex)
-
-    if (seenRouteFilePaths?.has(routeFilePath)) {
-      continue
-    }
-
-    if (routeFilePaths === undefined) {
-      routeFilePaths = []
-      seenRouteFilePaths = new Set<string>()
-    }
-
-    routeFilePaths.push(routeFilePath)
-    seenRouteFilePaths!.add(routeFilePath)
-  }
-
-  return routeFilePaths ?? []
-}
-
 export function collectDynamicImportCss(
-  routeEntryChunks: Set<Rollup.OutputChunk>,
-  chunksByFileName: Map<string, Rollup.OutputChunk>,
-  entryChunk?: Rollup.OutputChunk,
+  routeEntryChunks: ReadonlySet<NormalizedClientChunk>,
+  chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>,
+  entryChunk?: NormalizedClientChunk,
 ) {
   const routerManagedCssFiles = new Set<string>()
   const nonRouteDynamicCssFiles = new Set<string>()
   const hashedCssFiles = new Set<string>()
-  const visitedByChunk = new Map<Rollup.OutputChunk, number>()
-  const chunkStack: Array<Rollup.OutputChunk> = []
+  const visitedByChunk = new Map<NormalizedClientChunk, number>()
+  const chunkStack: Array<NormalizedClientChunk> = []
   const modeStack: Array<number> = []
 
   for (const routeEntryChunk of routeEntryChunks) {
@@ -306,13 +252,13 @@ export function collectDynamicImportCss(
     visitedByChunk.set(chunk, previousMode | mode)
 
     if ((mode & ROUTER_MANAGED_MODE) !== 0) {
-      for (const cssFile of chunk.viteMetadata?.importedCss ?? []) {
+      for (const cssFile of chunk.css) {
         routerManagedCssFiles.add(cssFile)
       }
     }
 
     if ((mode & NON_ROUTE_DYNAMIC_MODE) !== 0) {
-      for (const cssFile of chunk.viteMetadata?.importedCss ?? []) {
+      for (const cssFile of chunk.css) {
         nonRouteDynamicCssFiles.add(cssFile)
       }
     }
@@ -356,7 +302,7 @@ export function createManifestAssetResolvers(options: {
 }): ManifestAssetResolvers {
   const assetPathByFileName = new Map<string, string>()
   const stylesheetAssetByFileName = new Map<string, RouterManagedTag>()
-  const preloadsByChunk = new Map<Rollup.OutputChunk, Array<string>>()
+  const preloadsByChunk = new Map<NormalizedClientChunk, Array<string>>()
 
   const getAssetPath = (fileName: string) => {
     const cachedPath = assetPathByFileName.get(fileName)
@@ -389,7 +335,7 @@ export function createManifestAssetResolvers(options: {
     return asset
   }
 
-  const getChunkPreloads = (chunk: Rollup.OutputChunk) => {
+  const getChunkPreloads = (chunk: NormalizedClientChunk) => {
     const cachedPreloads = preloadsByChunk.get(chunk)
     if (cachedPreloads) {
       return cachedPreloads
@@ -413,11 +359,14 @@ export function createManifestAssetResolvers(options: {
 }
 
 export function createChunkCssAssetCollector(options: {
-  chunksByFileName: Map<string, Rollup.OutputChunk>
+  chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
   getStylesheetAsset: (cssFile: string) => RouterManagedTag
 }) {
-  const assetsByChunk = new Map<Rollup.OutputChunk, Array<RouterManagedTag>>()
-  const stateByChunk = new Map<Rollup.OutputChunk, number>()
+  const assetsByChunk = new Map<
+    NormalizedClientChunk,
+    Array<RouterManagedTag>
+  >()
+  const stateByChunk = new Map<NormalizedClientChunk, number>()
 
   const appendAsset = (
     assets: Array<RouterManagedTag>,
@@ -434,7 +383,7 @@ export function createChunkCssAssetCollector(options: {
   }
 
   const getChunkCssAssets = (
-    chunk: Rollup.OutputChunk,
+    chunk: NormalizedClientChunk,
   ): Array<RouterManagedTag> => {
     const cachedAssets = assetsByChunk.get(chunk)
     if (cachedAssets) {
@@ -449,7 +398,7 @@ export function createChunkCssAssetCollector(options: {
     const assets: Array<RouterManagedTag> = []
     const seenAssets = new Set<string>()
 
-    for (const cssFile of chunk.viteMetadata?.importedCss ?? []) {
+    for (const cssFile of chunk.css) {
       appendAsset(assets, seenAssets, options.getStylesheetAsset(cssFile))
     }
 
@@ -475,9 +424,12 @@ export function createChunkCssAssetCollector(options: {
 
 export function buildRouteManifestRoutes(options: {
   routeTreeRoutes: RouteTreeRoutes
-  routeChunksByFilePath: Map<string, Array<Rollup.OutputChunk>>
-  chunksByFileName: Map<string, Rollup.OutputChunk>
-  entryChunk: Rollup.OutputChunk
+  routeChunksByFilePath: ReadonlyMap<
+    string,
+    ReadonlyArray<NormalizedClientChunk>
+  >
+  chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
+  entryChunk: NormalizedClientChunk
   assetResolvers: ManifestAssetResolvers
 }) {
   const routes: Record<string, RouteTreeRoute> = {}
@@ -524,6 +476,12 @@ export function buildRouteManifestRoutes(options: {
   })
 
   return routes
+}
+
+export {
+  getRouteFilePathsFromModuleIds,
+  normalizeViteClientBuild,
+  normalizeViteClientChunk,
 }
 
 function dedupeNestedRouteManifestEntries(

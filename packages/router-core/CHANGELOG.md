@@ -1,5 +1,17 @@
 # @tanstack/router-core
 
+## 1.168.11
+
+### Patch Changes
+
+- shorten internal non-minifiable store names for byte shaving ([#7152](https://github.com/TanStack/router/pull/7152))
+
+## 1.168.10
+
+### Patch Changes
+
+- migrate createStore > createAtom for simpler API ([#7150](https://github.com/TanStack/router/pull/7150))
+
 ## 1.168.9
 
 ### Patch Changes

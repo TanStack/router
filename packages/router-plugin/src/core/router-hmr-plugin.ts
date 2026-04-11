@@ -4,6 +4,7 @@ import { getReferenceRouteCompilerPlugins } from './code-splitter/plugins/framew
 import { createRouteHmrStatement } from './route-hmr-statement'
 import { debug, normalizePath } from './utils'
 import { getConfig } from './config'
+import { resolveHmrHotExpression } from './hmr-hot-expression'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
 
@@ -43,16 +44,22 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
 
         if (debug) console.info('Adding HMR handling to route ', normalizedId)
 
+        const hmrHotExpression = resolveHmrHotExpression(
+          userConfig.plugin?.hmr?.hotExpression,
+        )
+
         if (userConfig.target === 'react') {
           const compilerPlugins = getReferenceRouteCompilerPlugins({
             targetFramework: 'react',
             addHmr: true,
+            hmrHotExpression,
           })
           const compiled = compileCodeSplitReferenceRoute({
             code,
             filename: normalizedId,
             id: normalizedId,
             addHmr: true,
+            hmrHotExpression,
             codeSplitGroupings: [],
             targetFramework: 'react',
             compilerPlugins,
@@ -69,7 +76,9 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
         }
 
         const ast = parseAst({ code })
-        ast.program.body.push(createRouteHmrStatement([]))
+        ast.program.body.push(
+          createRouteHmrStatement([], { hotExpression: hmrHotExpression }),
+        )
         const result = generateFromAst(ast, {
           sourceMaps: true,
           filename: normalizedId,

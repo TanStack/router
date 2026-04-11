@@ -7,6 +7,7 @@ export type {
   ConfigOutput,
   CodeSplittingOptions,
   DeletableNodes,
+  HmrOptions,
 } from './core/config'
 export {
   tsrSplit,

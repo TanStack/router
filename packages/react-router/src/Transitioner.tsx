@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { batch, useStore } from '@tanstack/react-store'
 import {
@@ -15,17 +17,14 @@ export function Transitioner() {
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   // Track pending state changes
   const isLoading = useStore(router.stores.isLoading, (value) => value)
-  const hasPendingMatches = useStore(
-    router.stores.hasPendingMatches,
-    (value) => value,
-  )
+  const hasPending = useStore(router.stores.hasPending, (value) => value)
 
   const previousIsLoading = usePrevious(isLoading)
 
-  const isAnyPending = isLoading || isTransitioning || hasPendingMatches
+  const isAnyPending = isLoading || isTransitioning || hasPending
   const previousIsAnyPending = usePrevious(isAnyPending)
 
-  const isPagePending = isLoading || hasPendingMatches
+  const isPagePending = isLoading || hasPending
   const previousIsPagePending = usePrevious(isPagePending)
 
   router.startTransition = (fn: () => void) => {
@@ -94,8 +93,8 @@ export function Transitioner() {
       router.emit({
         type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
         ...getLocationChangeInfo(
-          router.stores.location.state,
-          router.stores.resolvedLocation.state,
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
         ),
       })
     }
@@ -107,8 +106,8 @@ export function Transitioner() {
       router.emit({
         type: 'onBeforeRouteMount',
         ...getLocationChangeInfo(
-          router.stores.location.state,
-          router.stores.resolvedLocation.state,
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
         ),
       })
     }
@@ -117,8 +116,8 @@ export function Transitioner() {
   useLayoutEffect(() => {
     if (previousIsAnyPending && !isAnyPending) {
       const changeInfo = getLocationChangeInfo(
-        router.stores.location.state,
-        router.stores.resolvedLocation.state,
+        router.stores.location.get(),
+        router.stores.resolvedLocation.get(),
       )
       router.emit({
         type: 'onResolved',
@@ -126,10 +125,8 @@ export function Transitioner() {
       })
 
       batch(() => {
-        router.stores.status.setState(() => 'idle')
-        router.stores.resolvedLocation.setState(
-          () => router.stores.location.state,
-        )
+        router.stores.status.set('idle')
+        router.stores.resolvedLocation.set(router.stores.location.get())
       })
 
       if (changeInfo.hrefChanged) {

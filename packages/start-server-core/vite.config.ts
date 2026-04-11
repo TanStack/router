@@ -30,6 +30,7 @@ export default mergeConfig(
       '#tanstack-start-entry',
       '#tanstack-router-entry',
       '#tanstack-start-server-fn-resolver',
+      '#tanstack-start-plugin-adapters',
     ],
     cjs: false,
   }),

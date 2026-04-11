@@ -7,10 +7,19 @@ import {
   createChunkCssAssetCollector,
   createManifestAssetResolvers,
   getRouteFilePathsFromModuleIds,
+  normalizeViteClientBuild,
+  normalizeViteClientChunk,
   scanClientChunks,
 } from '../../src/start-manifest-plugin/manifestBuilder'
-import type { Manifest } from '@tanstack/router-core'
 import type { Rollup } from 'vite'
+
+function normalizeTestBuild(bundle: Rollup.OutputBundle) {
+  return normalizeViteClientBuild(bundle)
+}
+
+function normalizeTestChunk(chunk: Rollup.OutputChunk) {
+  return normalizeViteClientChunk(chunk)
+}
 
 function makeChunk(options: {
   fileName: string
@@ -170,15 +179,22 @@ describe('scanClientChunks', () => {
       moduleIds: ['/routes/posts.tsx?tsr-split=component'],
     })
 
-    const scanned = scanClientChunks({
+    const normalizedBuild = normalizeTestBuild({
       'entry.js': entryChunk,
       'posts.js': routeChunk,
     })
+    const scanned = scanClientChunks(normalizedBuild)
 
-    expect(scanned.entryChunk).toBe(entryChunk)
-    expect(scanned.routeEntryChunks.has(routeChunk)).toBe(true)
+    expect(scanned.entryChunk).toBe(
+      normalizedBuild.chunksByFileName.get('entry.js'),
+    )
+    expect(
+      scanned.routeEntryChunks.has(
+        normalizedBuild.chunksByFileName.get('posts.js')!,
+      ),
+    ).toBe(true)
     expect(scanned.routeChunksByFilePath.get('/routes/posts.tsx')).toEqual([
-      routeChunk,
+      normalizedBuild.chunksByFileName.get('posts.js')!,
     ])
   })
 
@@ -188,9 +204,9 @@ describe('scanClientChunks', () => {
       moduleIds: ['/routes/posts.tsx?tsr-split=component'],
     })
 
-    expect(() => scanClientChunks({ 'posts.js': routeChunk })).toThrow(
-      'No entry file found',
-    )
+    expect(() =>
+      scanClientChunks(normalizeTestBuild({ 'posts.js': routeChunk })),
+    ).toThrow('No entry file found')
   })
 })
 
@@ -210,13 +226,12 @@ describe('collectDynamicImportCss', () => {
       fileName: 'shared.js',
       importedCss: ['shared.css'],
     })
-
     const dynamicCss = collectDynamicImportCss(
-      new Set([routeChunk]),
+      new Set([normalizeTestChunk(routeChunk)]),
       new Map([
-        ['route.js', routeChunk],
-        ['lazy.js', lazyChunk],
-        ['shared.js', sharedChunk],
+        ['route.js', normalizeTestChunk(routeChunk)],
+        ['lazy.js', normalizeTestChunk(lazyChunk)],
+        ['shared.js', normalizeTestChunk(sharedChunk)],
       ]),
     )
 
@@ -238,13 +253,12 @@ describe('collectDynamicImportCss', () => {
       fileName: 'shared.js',
       importedCss: ['shared.css'],
     })
-
     const dynamicCss = collectDynamicImportCss(
-      new Set([routeA, routeB]),
+      new Set([normalizeTestChunk(routeA), normalizeTestChunk(routeB)]),
       new Map([
-        ['routeA.js', routeA],
-        ['routeB.js', routeB],
-        ['shared.js', sharedChunk],
+        ['routeA.js', normalizeTestChunk(routeA)],
+        ['routeB.js', normalizeTestChunk(routeB)],
+        ['shared.js', normalizeTestChunk(sharedChunk)],
       ]),
     )
 
@@ -271,15 +285,16 @@ describe('collectDynamicImportCss', () => {
       importedCss: ['shared.css'],
     })
 
+    const normalizedBuild = normalizeTestBuild({
+      'entry.js': entryChunk,
+      'route.js': routeChunk,
+      'lazy.js': lazyChunk,
+      'shared.js': sharedChunk,
+    })
     const dynamicCss = collectDynamicImportCss(
-      new Set([routeChunk]),
-      new Map([
-        ['entry.js', entryChunk],
-        ['route.js', routeChunk],
-        ['lazy.js', lazyChunk],
-        ['shared.js', sharedChunk],
-      ]),
-      entryChunk,
+      new Set([normalizedBuild.chunksByFileName.get('route.js')!]),
+      normalizedBuild.chunksByFileName,
+      normalizedBuild.chunksByFileName.get('entry.js'),
     )
 
     expect(dynamicCss.has('shared.css')).toBe(true)
@@ -298,8 +313,8 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
       importedCss: ['shared.css'],
     })
     const chunksByFileName = new Map([
-      ['entry.js', entryChunk],
-      ['shared.js', sharedChunk],
+      ['entry.js', normalizeTestChunk(entryChunk)],
+      ['shared.js', normalizeTestChunk(sharedChunk)],
     ])
 
     const resolvers = createManifestAssetResolvers({
@@ -311,7 +326,9 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
       getStylesheetAsset: resolvers.getStylesheetAsset,
     })
 
-    const assets = cssAssetCollector.getChunkCssAssets(entryChunk)
+    const assets = cssAssetCollector.getChunkCssAssets(
+      chunksByFileName.get('entry.js')!,
+    )
 
     expect(assets).toEqual([
       {
@@ -360,10 +377,10 @@ describe('createChunkCssAssetCollector', () => {
       importedCss: ['shared.css'],
     })
     const chunksByFileName = new Map([
-      ['a.js', chunkA],
-      ['b.js', chunkB],
-      ['c.js', chunkC],
-      ['shared.js', sharedChunk],
+      ['a.js', normalizeTestChunk(chunkA)],
+      ['b.js', normalizeTestChunk(chunkB)],
+      ['c.js', normalizeTestChunk(chunkC)],
+      ['shared.js', normalizeTestChunk(sharedChunk)],
     ])
 
     const { getChunkCssAssets } = createChunkCssAssetCollector({
@@ -374,7 +391,7 @@ describe('createChunkCssAssetCollector', () => {
       }),
     })
 
-    const assets = getChunkCssAssets(chunkA)
+    const assets = getChunkCssAssets(chunksByFileName.get('a.js')!)
 
     expect(assets.map((asset: any) => asset.attrs.href)).toEqual([
       '/a.css',
@@ -396,8 +413,8 @@ describe('createChunkCssAssetCollector', () => {
       importedCss: ['b.css'],
     })
     const chunksByFileName = new Map([
-      ['a.js', chunkA],
-      ['b.js', chunkB],
+      ['a.js', normalizeTestChunk(chunkA)],
+      ['b.js', normalizeTestChunk(chunkB)],
     ])
 
     const { getChunkCssAssets } = createChunkCssAssetCollector({
@@ -408,7 +425,7 @@ describe('createChunkCssAssetCollector', () => {
       }),
     })
 
-    const assets = getChunkCssAssets(chunkA)
+    const assets = getChunkCssAssets(chunksByFileName.get('a.js')!)
     const hrefs = assets.map((a: any) => a.attrs.href)
 
     expect(hrefs).toContain('/a.css')
@@ -444,13 +461,13 @@ describe('buildStartManifest', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBundle: {
+      clientBuild: normalizeViteClientBuild({
         'entry.js': entryChunk,
         'route.js': routeChunk,
         'branch-a.js': branchAChunk,
         'branch-b.js': branchBChunk,
         'shared.js': sharedChunk,
-      },
+      }),
       routeTreeRoutes: {
         __root__: { children: ['/about'] } as any,
         '/about': { filePath: '/routes/about.tsx' },
@@ -513,13 +530,13 @@ describe('buildStartManifest', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBundle: {
+      clientBuild: normalizeViteClientBuild({
         'entry.js': entryChunk,
         'route-static.js': routeStaticChunk,
         'route-lazy.js': routeLazyChunk,
         'widget.js': widgetChunk,
         'widget-lazy.js': widgetLazyChunk,
-      },
+      }),
       routeTreeRoutes: {
         __root__: { children: ['/static', '/lazy'] } as any,
         '/static': { filePath: '/routes/static.tsx' },
@@ -573,11 +590,11 @@ describe('buildStartManifest', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBundle: {
+      clientBuild: normalizeViteClientBuild({
         'entry.js': entryChunk,
         'shared.js': sharedChunk,
         'about.js': aboutChunk,
-      },
+      }),
       routeTreeRoutes: {
         __root__: { children: ['/about'] } as any,
         '/about': { filePath: '/routes/about.tsx' },
@@ -629,12 +646,12 @@ describe('buildStartManifest', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBundle: {
+      clientBuild: normalizeViteClientBuild({
         'entry.js': entryChunk,
         'route.js': routeChunk,
         'shared.js': sharedChunk,
         'global-lazy.js': globalLazyChunk,
-      },
+      }),
       routeTreeRoutes: {
         __root__: { children: ['/about'] } as any,
         '/about': { filePath: '/routes/about.tsx' },
@@ -696,7 +713,7 @@ describe('route tree dedupe in buildStartManifest', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBundle: {
+      clientBuild: normalizeViteClientBuild({
         'entry.js': entryChunk,
         'root-shared.js': rootSharedChunk,
         'parent.js': parentChunk,
@@ -705,7 +722,7 @@ describe('route tree dedupe in buildStartManifest', () => {
         'child-only.js': childOnlyChunk,
         'sibling.js': siblingChunk,
         'sibling-only.js': siblingOnlyChunk,
-      },
+      }),
       routeTreeRoutes: {
         __root__: { children: ['/parent', '/sibling'] } as any,
         '/parent': { filePath: '/routes/parent.tsx', children: ['/child'] },
@@ -814,7 +831,7 @@ describe('route tree dedupe in buildStartManifest', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBundle: {
+      clientBuild: normalizeViteClientBuild({
         'entry.js': entryChunk,
         'deep.js': deepChunk,
         'a.js': aChunk,
@@ -822,7 +839,7 @@ describe('route tree dedupe in buildStartManifest', () => {
         'b.js': bChunk,
         'b-child.js': bChildChunk,
         'b-child-only.js': bChildOnlyChunk,
-      },
+      }),
       routeTreeRoutes: {
         __root__: { children: ['/a', '/b'] } as any,
         '/a': { filePath: '/routes/a.tsx', children: ['/a-child'] },
@@ -917,7 +934,7 @@ describe('route tree dedupe in buildStartManifest', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBundle: {
+      clientBuild: normalizeViteClientBuild({
         'entry.js': entryChunk,
         'shared-root.js': sharedRootChunk,
         'level-one.js': levelOneChunk,
@@ -926,7 +943,7 @@ describe('route tree dedupe in buildStartManifest', () => {
         'level-two-only.js': levelTwoOnlyChunk,
         'level-three.js': levelThreeChunk,
         'level-three-only.js': levelThreeOnlyChunk,
-      },
+      }),
       routeTreeRoutes: {
         __root__: { children: ['/level-one'] } as any,
         '/level-one': {
@@ -1016,7 +1033,7 @@ describe('route tree dedupe in buildStartManifest', () => {
 
     expect(() =>
       buildStartManifest({
-        clientBundle: { 'entry.js': entryChunk },
+        clientBuild: normalizeViteClientBuild({ 'entry.js': entryChunk }),
         routeTreeRoutes: {
           __root__: { filePath: '/routes/__root.tsx', children: ['/about'] },
           '/about': {} as any,
@@ -1035,7 +1052,7 @@ describe('route tree dedupe in buildStartManifest', () => {
 
     expect(() =>
       buildStartManifest({
-        clientBundle: { 'entry.js': entryChunk },
+        clientBuild: normalizeViteClientBuild({ 'entry.js': entryChunk }),
         routeTreeRoutes: {
           __root__: { children: ['/about'] } as any,
         },
@@ -1075,13 +1092,13 @@ describe('multi-chunk routes must merge assets and preloads', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBundle: {
+      clientBuild: normalizeViteClientBuild({
         'entry.js': entryChunk,
         'posts-component.js': componentChunk,
         'posts-loader.js': loaderChunk,
         'component-styles.js': componentStylesChunk,
         'loader-dep.js': loaderDepChunk,
-      },
+      }),
       routeTreeRoutes: {
         __root__: { children: ['/posts'] } as any,
         '/posts': { filePath: '/routes/posts.tsx' },
@@ -1125,12 +1142,12 @@ describe('multi-chunk routes must merge assets and preloads', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBundle: {
+      clientBuild: normalizeViteClientBuild({
         'entry.js': entryChunk,
         'shared-dep.js': sharedDep,
         'posts-component.js': componentChunk,
         'posts-loader.js': loaderChunk,
-      },
+      }),
       routeTreeRoutes: {
         __root__: { children: ['/posts'] } as any,
         '/posts': { filePath: '/routes/posts.tsx' },
@@ -1173,11 +1190,11 @@ describe('entry chunk dynamic imports must be scanned for dynamic CSS', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBundle: {
+      clientBuild: normalizeViteClientBuild({
         'entry.js': entryChunk,
         'global-lazy.js': globalLazyChunk,
         'route.js': routeChunk,
-      },
+      }),
       routeTreeRoutes: {
         __root__: { children: ['/home'] } as any,
         '/home': { filePath: '/routes/home.tsx' },
@@ -1205,9 +1222,9 @@ describe('buildStartManifest route pruning', () => {
     })
 
     const manifest = buildStartManifest({
-      clientBundle: {
+      clientBuild: normalizeViteClientBuild({
         'entry.js': entryChunk,
-      },
+      }),
       routeTreeRoutes: {
         __root__: { children: ['/about'] } as any,
         '/about': { filePath: '/routes/about.tsx' },

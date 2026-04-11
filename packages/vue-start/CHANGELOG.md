@@ -1,5 +1,92 @@
 # @tanstack/vue-start
 
+## 1.167.26
+
+### Patch Changes
+
+- Updated dependencies [[`d3f20fb`](https://github.com/TanStack/router/commit/d3f20fbe7acf69c3bd108c5ddc9748ad47690b04)]:
+  - @tanstack/start-plugin-core@1.167.25
+
+## 1.167.25
+
+### Patch Changes
+
+- Updated dependencies [[`6355bb7`](https://github.com/TanStack/router/commit/6355bb75f7637ba77f06a923c18fdaf37720bb48)]:
+  - @tanstack/start-server-core@1.167.15
+  - @tanstack/vue-router@1.168.14
+  - @tanstack/start-plugin-core@1.167.24
+  - @tanstack/vue-start-server@1.166.31
+  - @tanstack/start-client-core@1.167.13
+  - @tanstack/vue-start-client@1.166.30
+
+## 1.167.24
+
+### Patch Changes
+
+- migrate createStore > createAtom for simpler API ([#7150](https://github.com/TanStack/router/pull/7150))
+
+- Updated dependencies [[`459057c`](https://github.com/TanStack/router/commit/459057cd2d90cff20d20e51d4964b0a8c950555e)]:
+  - @tanstack/start-client-core@1.167.12
+  - @tanstack/start-server-core@1.167.14
+  - @tanstack/vue-router@1.168.13
+  - @tanstack/start-plugin-core@1.167.23
+  - @tanstack/vue-start-client@1.166.29
+  - @tanstack/vue-start-server@1.166.30
+
+## 1.167.23
+
+### Patch Changes
+
+- Updated dependencies [[`f8ac427`](https://github.com/TanStack/router/commit/f8ac427000c3fec99225926e72f9f2fc7a37231f)]:
+  - @tanstack/start-server-core@1.167.13
+  - @tanstack/start-client-core@1.167.11
+  - @tanstack/start-plugin-core@1.167.22
+  - @tanstack/vue-start-server@1.166.29
+  - @tanstack/vue-start-client@1.166.28
+
+## 1.167.22
+
+### Patch Changes
+
+- Updated dependencies [[`2d53c05`](https://github.com/TanStack/router/commit/2d53c056ef0b203de8a28bc92c24e8e604205d52)]:
+  - @tanstack/start-server-core@1.167.12
+  - @tanstack/start-plugin-core@1.167.21
+  - @tanstack/vue-start-server@1.166.28
+
+## 1.167.20
+
+### Patch Changes
+
+- Updated dependencies [[`3384abc`](https://github.com/TanStack/router/commit/3384abcffd98a68eb254b11221834bcbcdebec31)]:
+  - @tanstack/start-plugin-core@1.167.19
+
+## 1.167.19
+
+### Patch Changes
+
+- Updated dependencies [[`540d221`](https://github.com/TanStack/router/commit/540d22100d33415a1ddc9eb193f6aeb8184da77f)]:
+  - @tanstack/vue-router@1.168.12
+  - @tanstack/vue-start-client@1.166.27
+  - @tanstack/vue-start-server@1.166.27
+
+## 1.167.18
+
+### Patch Changes
+
+- Updated dependencies [[`b29d64d`](https://github.com/TanStack/router/commit/b29d64de0c400183114c12f82183f80e37d9ea5c)]:
+  - @tanstack/vue-router@1.168.11
+  - @tanstack/vue-start-client@1.166.26
+  - @tanstack/vue-start-server@1.166.26
+
+## 1.167.17
+
+### Patch Changes
+
+- Updated dependencies [[`4b9ed6c`](https://github.com/TanStack/router/commit/4b9ed6c5cb5437df8607c605728c8338dd2eb02c)]:
+  - @tanstack/vue-router@1.168.10
+  - @tanstack/vue-start-client@1.166.25
+  - @tanstack/vue-start-server@1.166.25
+
 ## 1.167.16
 
 ### Patch Changes

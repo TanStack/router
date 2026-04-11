@@ -140,7 +140,7 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
         ...ogMutationCacheConfig,
         onError: (error, ...rest) => {
           if (isRedirect(error)) {
-            error.options._fromLocation = router.stores.location.state
+            error.options._fromLocation = router.stores.location.get()
             return router.navigate(router.resolveRedirect(error).options)
           }
 
@@ -153,7 +153,7 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
         ...ogQueryCacheConfig,
         onError: (error, ...rest) => {
           if (isRedirect(error)) {
-            error.options._fromLocation = router.stores.location.state
+            error.options._fromLocation = router.stores.location.get()
             return router.navigate(router.resolveRedirect(error).options)
           }
 

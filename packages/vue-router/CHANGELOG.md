@@ -1,5 +1,41 @@
 # @tanstack/vue-router
 
+## 1.168.14
+
+### Patch Changes
+
+- shorten internal non-minifiable store names for byte shaving ([#7152](https://github.com/TanStack/router/pull/7152))
+
+- Updated dependencies [[`6355bb7`](https://github.com/TanStack/router/commit/6355bb75f7637ba77f06a923c18fdaf37720bb48)]:
+  - @tanstack/router-core@1.168.11
+
+## 1.168.13
+
+### Patch Changes
+
+- migrate createStore > createAtom for simpler API ([#7150](https://github.com/TanStack/router/pull/7150))
+
+- Updated dependencies [[`459057c`](https://github.com/TanStack/router/commit/459057cd2d90cff20d20e51d4964b0a8c950555e)]:
+  - @tanstack/router-core@1.168.10
+
+## 1.168.12
+
+### Patch Changes
+
+- Fix `MatchRoute` child callback param inference to resolve params from the target `to` route instead of the route path key across React, Solid, and Vue adapters. ([#7139](https://github.com/TanStack/router/pull/7139))
+
+## 1.168.11
+
+### Patch Changes
+
+- Fix redirected pending route transitions so lazy target routes can finish loading without stale redirected matches causing render errors. ([#7137](https://github.com/TanStack/router/pull/7137))
+
+## 1.168.10
+
+### Patch Changes
+
+- Fix `Link` to keep internal routing props like `preloadIntentProximity`, `from`, and `unsafeRelative` from leaking to rendered DOM elements across React, Solid, and Vue. ([#7138](https://github.com/TanStack/router/pull/7138))
+
 ## 1.168.9
 
 ### Patch Changes

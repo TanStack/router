@@ -1,5 +1,11 @@
 import * as template from '@babel/template'
-import type { AnyRoute, AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
+import { createHmrHotExpressionAst } from './hmr-hot-expression'
+import type {
+  AnyRoute,
+  AnyRouteMatch,
+  AnyRouter,
+  RouterWritableStore,
+} from '@tanstack/router-core'
 
 type AnyRouteWithPrivateProps = AnyRoute & {
   options: Record<string, unknown>
@@ -16,24 +22,15 @@ type AnyRouterWithPrivateMaps = AnyRouter & {
   routesById: Record<string, AnyRoute>
   routesByPath: Record<string, AnyRoute>
   stores: AnyRouter['stores'] & {
-    cachedMatchStoresById: Map<
+    cachedMatchStores: Map<
       string,
-      {
-        setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
-      }
+      Pick<RouterWritableStore<AnyRouteMatch>, 'set'>
     >
-    pendingMatchStoresById: Map<
+    pendingMatchStores: Map<
       string,
-      {
-        setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
-      }
+      Pick<RouterWritableStore<AnyRouteMatch>, 'set'>
     >
-    activeMatchStoresById: Map<
-      string,
-      {
-        setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
-      }
-    >
+    matchStores: Map<string, Pick<RouterWritableStore<AnyRouteMatch>, 'set'>>
   }
 }
 
@@ -59,7 +56,7 @@ function handleRouteUpdate(
   // handles hot-updating the function bodies of these components — our job
   // is only to update non-component route options (loader, head, etc.).
   // For code-split (splittable) routes, the lazyRouteComponent wrapper is
-  // already cached in import.meta.hot.data so its identity is stable.
+  // already cached in the bundler hot data so its identity is stable.
   // For unsplittable routes (e.g. root routes), the component is a plain
   // function reference that gets recreated on every module re-execution,
   // so we must explicitly preserve the old reference.
@@ -95,9 +92,9 @@ function handleRouteUpdate(
   walkReplaceSegmentTree(oldRoute, router.processedTree.segmentTree)
 
   const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
-  const activeMatch = router.stores.activeMatchesSnapshot.state.find(filter)
-  const pendingMatch = router.stores.pendingMatchesSnapshot.state.find(filter)
-  const cachedMatches = router.stores.cachedMatchesSnapshot.state.filter(filter)
+  const activeMatch = router.stores.matches.get().find(filter)
+  const pendingMatch = router.stores.pendingMatches.get().find(filter)
+  const cachedMatches = router.stores.cachedMatches.get().filter(filter)
 
   if (activeMatch || pendingMatch || cachedMatches.length > 0) {
     // Clear stale match data for removed route options BEFORE invalidating.
@@ -117,11 +114,11 @@ function handleRouteUpdate(
       router.batch(() => {
         for (const matchId of matchIds) {
           const store =
-            router.stores.pendingMatchStoresById.get(matchId) ||
-            router.stores.activeMatchStoresById.get(matchId) ||
-            router.stores.cachedMatchStoresById.get(matchId)
+            router.stores.pendingMatchStores.get(matchId) ||
+            router.stores.matchStores.get(matchId) ||
+            router.stores.cachedMatchStores.get(matchId)
           if (store) {
-            store.setState((prev) => {
+            store.set((prev) => {
               const next: AnyRouteMatchWithPrivateProps = { ...prev }
 
               if (removedKeys.has('loader')) {
@@ -159,15 +156,20 @@ function handleRouteUpdate(
 
 const handleRouteUpdateStr = handleRouteUpdate.toString()
 
-export function createRouteHmrStatement(stableRouteOptionKeys: Array<string>) {
+export function createRouteHmrStatement(
+  stableRouteOptionKeys: Array<string>,
+  opts?: { hotExpression?: string },
+) {
   return template.statement(
     `
-if (import.meta.hot) {
-  import.meta.hot.accept((newModule) => {
+if (%%hotExpression%%) {
+  const hot = %%hotExpression%%
+  const hotData = hot.data ??= {}
+  hot.accept((newModule) => {
     if (Route && newModule && newModule.Route) {
-      const routeId = import.meta.hot.data['tsr-route-id'] ?? Route.id
+      const routeId = hotData['tsr-route-id'] ?? Route.id
       if (routeId) {
-        import.meta.hot.data['tsr-route-id'] = routeId
+        hotData['tsr-route-id'] = routeId
       }
       (${handleRouteUpdateStr.replace(
         /['"]__TSR_COMPONENT_TYPES__['"]/,
@@ -177,6 +179,10 @@ if (import.meta.hot) {
     })
 }
 `,
-    { placeholderPattern: false },
-  )()
+    {
+      syntacticPlaceholders: true,
+    },
+  )({
+    hotExpression: createHmrHotExpressionAst(opts?.hotExpression),
+  })
 }

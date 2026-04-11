@@ -7,11 +7,13 @@ export const Route = createFileRoute('/posts')({
   component: lazyRouteComponent($$splitComponentImporter, 'component')
 });
 if (import.meta.hot) {
-  import.meta.hot.accept(newModule => {
+  const hot = import.meta.hot;
+  const hotData = hot.data ??= {};
+  hot.accept(newModule => {
     if (Route && newModule && newModule.Route) {
-      const routeId = import.meta.hot.data['tsr-route-id'] ?? Route.id;
+      const routeId = hotData['tsr-route-id'] ?? Route.id;
       if (routeId) {
-        import.meta.hot.data['tsr-route-id'] = routeId;
+        hotData['tsr-route-id'] = routeId;
       }
       (function handleRouteUpdate(routeId, newRoute) {
         const router = window.__TSR_ROUTER__;
@@ -45,17 +47,17 @@ if (import.meta.hot) {
         router.resolvePathCache.clear();
         walkReplaceSegmentTree(oldRoute, router.processedTree.segmentTree);
         const filter = m => m.routeId === oldRoute.id;
-        const activeMatch = router.stores.activeMatchesSnapshot.state.find(filter);
-        const pendingMatch = router.stores.pendingMatchesSnapshot.state.find(filter);
-        const cachedMatches = router.stores.cachedMatchesSnapshot.state.filter(filter);
+        const activeMatch = router.stores.matches.get().find(filter);
+        const pendingMatch = router.stores.pendingMatches.get().find(filter);
+        const cachedMatches = router.stores.cachedMatches.get().filter(filter);
         if (activeMatch || pendingMatch || cachedMatches.length > 0) {
           if (removedKeys.has("loader") || removedKeys.has("beforeLoad")) {
             const matchIds = [activeMatch?.id, pendingMatch?.id, ...cachedMatches.map(match => match.id)].filter(Boolean);
             router.batch(() => {
               for (const matchId of matchIds) {
-                const store = router.stores.pendingMatchStoresById.get(matchId) || router.stores.activeMatchStoresById.get(matchId) || router.stores.cachedMatchStoresById.get(matchId);
+                const store = router.stores.pendingMatchStores.get(matchId) || router.stores.matchStores.get(matchId) || router.stores.cachedMatchStores.get(matchId);
                 if (store) {
-                  store.setState(prev => {
+                  store.set(prev => {
                     const next = {
                       ...prev
                     };

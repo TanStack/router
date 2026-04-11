@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
 import { invariant, replaceEqualDeep } from '@tanstack/router-core'
@@ -19,9 +21,8 @@ import type {
 } from '@tanstack/router-core'
 
 const dummyStore = {
-  state: undefined,
   get: () => undefined,
-  subscribe: () => () => {},
+  subscribe: () => ({ unsubscribe: () => {} }),
 } as any
 
 export interface UseMatchBaseOptions<
@@ -112,12 +113,12 @@ export function useMatch<
   const key = opts.from ?? nearestMatchId
   const matchStore = key
     ? opts.from
-      ? router.stores.getMatchStoreByRouteId(key)
-      : router.stores.activeMatchStoresById.get(key)
+      ? router.stores.getRouteMatchStore(key)
+      : router.stores.matchStores.get(key)
     : undefined
 
   if (isServer ?? router.isServer) {
-    const match = matchStore?.state
+    const match = matchStore?.get()
     if ((opts.shouldThrow ?? true) && !match) {
       if (process.env.NODE_ENV !== 'production') {
         throw new Error(

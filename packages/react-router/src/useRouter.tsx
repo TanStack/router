@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { routerContext } from './routerContext'
 import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'

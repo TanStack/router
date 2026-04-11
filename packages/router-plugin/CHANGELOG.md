@@ -1,5 +1,27 @@
 # @tanstack/router-plugin
 
+## 1.167.14
+
+### Patch Changes
+
+- shorten internal non-minifiable store names for byte shaving ([#7152](https://github.com/TanStack/router/pull/7152))
+
+- Updated dependencies [[`6355bb7`](https://github.com/TanStack/router/commit/6355bb75f7637ba77f06a923c18fdaf37720bb48)]:
+  - @tanstack/react-router@1.168.15
+  - @tanstack/router-core@1.168.11
+  - @tanstack/router-generator@1.166.26
+
+## 1.167.13
+
+### Patch Changes
+
+- migrate createStore > createAtom for simpler API ([#7150](https://github.com/TanStack/router/pull/7150))
+
+- Updated dependencies [[`459057c`](https://github.com/TanStack/router/commit/459057cd2d90cff20d20e51d4964b0a8c950555e)]:
+  - @tanstack/react-router@1.168.14
+  - @tanstack/router-core@1.168.10
+  - @tanstack/router-generator@1.166.25
+
 ## 1.167.12
 
 ### Patch Changes

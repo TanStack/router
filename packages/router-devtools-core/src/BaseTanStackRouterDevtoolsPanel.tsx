@@ -280,44 +280,42 @@ export const BaseTanStackRouterDevtoolsPanel =
     let pendingMatches: Accessor<Array<AnyRouteMatch>>
     let cachedMatches: Accessor<Array<AnyRouteMatch>>
     // subscribable implementation
-    if ('subscribe' in router().stores.pendingMatchesSnapshot) {
-      const [_pendingMatches, setPendingMatches] = createSignal<
-        Array<AnyRouteMatch>
-      >([])
+    if ('subscribe' in router().stores.pendingMatches) {
+      const [_pendingMatches, setPending] = createSignal<Array<AnyRouteMatch>>(
+        [],
+      )
       pendingMatches = _pendingMatches
 
-      const [_cachedMatches, setCachedMatches] = createSignal<
-        Array<AnyRouteMatch>
-      >([])
+      const [_cachedMatches, setCached] = createSignal<Array<AnyRouteMatch>>([])
       cachedMatches = _cachedMatches
 
       type Subscribe = (fn: () => void) => { unsubscribe: () => void }
       createEffect(() => {
-        const pendingMatchesStore = router().stores.pendingMatchesSnapshot
-        setPendingMatches(pendingMatchesStore.state)
+        const pendingMatchesStore = router().stores.pendingMatches
+        setPending(pendingMatchesStore.get())
         const subscription = (
           (pendingMatchesStore as any).subscribe as Subscribe
         )(() => {
-          setPendingMatches(pendingMatchesStore.state)
+          setPending(pendingMatchesStore.get())
         })
         onCleanup(() => subscription.unsubscribe())
       })
 
       createEffect(() => {
-        const cachedMatchesStore = router().stores.cachedMatchesSnapshot
-        setCachedMatches(cachedMatchesStore.state)
+        const cachedMatchesStore = router().stores.cachedMatches
+        setCached(cachedMatchesStore.get())
         const subscription = (
           (cachedMatchesStore as any).subscribe as Subscribe
         )(() => {
-          setCachedMatches(cachedMatchesStore.state)
+          setCached(cachedMatchesStore.get())
         })
         onCleanup(() => subscription.unsubscribe())
       })
     }
     // signal implementation
     else {
-      pendingMatches = () => router().stores.pendingMatchesSnapshot.state
-      cachedMatches = () => router().stores.cachedMatchesSnapshot.state
+      pendingMatches = () => router().stores.pendingMatches.get()
+      cachedMatches = () => router().stores.cachedMatches.get()
     }
 
     createEffect(() => {

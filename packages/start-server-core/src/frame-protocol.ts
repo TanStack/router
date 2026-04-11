@@ -83,134 +83,176 @@ export function encodeErrorFrame(streamId: number, error: unknown): Uint8Array {
 }
 
 /**
+ * Late stream registration for RawStreams discovered after serialization starts.
+ * Used when Promise<RawStream> resolves after the initial synchronous pass.
+ */
+export interface LateStreamRegistration {
+  id: number
+  stream: ReadableStream<Uint8Array>
+}
+
+/**
  * Creates a multiplexed ReadableStream from JSON stream and raw streams.
  *
  * The JSON stream emits NDJSON lines (from seroval's toCrossJSONStream).
  * Raw streams are pumped concurrently, interleaved with JSON frames.
  *
+ * Supports late stream registration for RawStreams discovered after initial
+ * serialization (e.g., from resolved Promises).
+ *
  * @param jsonStream Stream of JSON strings (each string is one NDJSON line)
- * @param rawStreams Map of stream IDs to raw binary streams
+ * @param rawStreams Map of stream IDs to raw binary streams (known at start)
+ * @param lateStreamSource Optional stream of late registrations for streams discovered later
  */
 export function createMultiplexedStream(
   jsonStream: ReadableStream<string>,
   rawStreams: Map<number, ReadableStream<Uint8Array>>,
+  lateStreamSource?: ReadableStream<LateStreamRegistration>,
 ): ReadableStream<Uint8Array> {
-  // Track active pumps for completion
-  let activePumps = 1 + rawStreams.size // 1 for JSON + raw streams
-  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null
-  let cancelled = false as boolean
-  const cancelReaders: Array<() => void> = []
+  // Shared state for the multiplexed stream
+  let controller: ReadableStreamDefaultController<Uint8Array>
+  let cancelled = false
+  const readers: Array<ReadableStreamDefaultReader<any>> = []
 
-  const safeEnqueue = (chunk: Uint8Array) => {
-    if (cancelled || !controllerRef) return
+  // Helper to enqueue a frame, ignoring errors if stream is closed/cancelled
+  const enqueue = (frame: Uint8Array): boolean => {
+    if (cancelled) return false
     try {
-      controllerRef.enqueue(chunk)
+      controller.enqueue(frame)
+      return true
     } catch {
-      // Ignore enqueue after close/cancel
+      return false
     }
   }
 
-  const safeError = (err: unknown) => {
-    if (cancelled || !controllerRef) return
+  // Helper to error the output stream (for fatal errors like JSON stream failure)
+  const errorOutput = (error: unknown): void => {
+    if (cancelled) return
+    cancelled = true
     try {
-      controllerRef.error(err)
+      controller.error(error)
     } catch {
-      // Ignore
+      // Already errored
+    }
+    // Cancel all readers to stop other pumps
+    for (const reader of readers) {
+      reader.cancel().catch(() => {})
     }
   }
 
-  const safeClose = () => {
-    if (cancelled || !controllerRef) return
+  // Pumps a raw stream, sending CHUNK frames and END/ERROR on completion
+  async function pumpRawStream(
+    streamId: number,
+    stream: ReadableStream<Uint8Array>,
+  ): Promise<void> {
+    const reader = stream.getReader()
+    readers.push(reader)
     try {
-      controllerRef.close()
-    } catch {
-      // Ignore
+      while (!cancelled) {
+        const { done, value } = await reader.read()
+        if (done) {
+          enqueue(encodeEndFrame(streamId))
+          return
+        }
+        if (!enqueue(encodeChunkFrame(streamId, value))) return
+      }
+    } catch (error) {
+      // Raw stream error - send ERROR frame, don't fail entire response
+      enqueue(encodeErrorFrame(streamId, error))
+    } finally {
+      reader.releaseLock()
     }
   }
 
-  const checkComplete = () => {
-    activePumps--
-    if (activePumps === 0) {
-      safeClose()
+  // Pumps the JSON stream, sending JSON frames
+  // JSON stream errors are fatal - they error the entire output
+  async function pumpJSON(): Promise<void> {
+    const reader = jsonStream.getReader()
+    readers.push(reader)
+    try {
+      while (!cancelled) {
+        const { done, value } = await reader.read()
+        if (done) return
+        if (!enqueue(encodeJSONFrame(value))) return
+      }
+    } catch (error) {
+      // JSON stream error is fatal - error the entire output
+      errorOutput(error)
+      throw error // Re-throw to signal failure to Promise.all
+    } finally {
+      reader.releaseLock()
     }
+  }
+
+  // Pumps late stream registrations, spawning raw stream pumps as they arrive
+  async function pumpLateStreams(): Promise<Array<Promise<void>>> {
+    if (!lateStreamSource) return []
+
+    const lateStreamPumps: Array<Promise<void>> = []
+    const reader = lateStreamSource.getReader()
+    readers.push(reader)
+    try {
+      while (!cancelled) {
+        const { done, value } = await reader.read()
+        if (done) break
+        // Start pumping this late stream and track it
+        lateStreamPumps.push(pumpRawStream(value.id, value.stream))
+      }
+    } finally {
+      reader.releaseLock()
+    }
+    return lateStreamPumps
   }
 
   return new ReadableStream<Uint8Array>({
-    start(controller) {
-      controllerRef = controller
-      cancelReaders.length = 0
+    async start(ctrl) {
+      controller = ctrl
 
-      // Pump JSON stream (streamId 0)
-      const pumpJSON = async () => {
-        const reader = jsonStream.getReader()
-        cancelReaders.push(() => {
-          // Catch async rejection - reader may already be released
-          reader.cancel().catch(() => {})
-        })
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          while (true) {
-            const { done, value } = await reader.read()
-            // Check cancelled after await - flag may have changed while waiting
-            if (cancelled) break
-            if (done) break
-            safeEnqueue(encodeJSONFrame(value))
-          }
-        } catch (error) {
-          // JSON stream error - fatal, error the whole response
-          safeError(error)
-        } finally {
-          reader.releaseLock()
-          checkComplete()
-        }
-      }
+      // Collect all pump promises
+      const pumps: Array<Promise<void | Array<Promise<void>>>> = [pumpJSON()]
 
-      // Pump a single raw stream with its streamId
-      const pumpRawStream = async (
-        streamId: number,
-        stream: ReadableStream<Uint8Array>,
-      ) => {
-        const reader = stream.getReader()
-        cancelReaders.push(() => {
-          // Catch async rejection - reader may already be released
-          reader.cancel().catch(() => {})
-        })
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          while (true) {
-            const { done, value } = await reader.read()
-            // Check cancelled after await - flag may have changed while waiting
-            if (cancelled) break
-            if (done) {
-              safeEnqueue(encodeEndFrame(streamId))
-              break
-            }
-            safeEnqueue(encodeChunkFrame(streamId, value))
-          }
-        } catch (error) {
-          // Stream error - send ERROR frame (non-fatal, other streams continue)
-          safeEnqueue(encodeErrorFrame(streamId, error))
-        } finally {
-          reader.releaseLock()
-          checkComplete()
-        }
-      }
-
-      // Start all pumps concurrently
-      pumpJSON()
       for (const [streamId, stream] of rawStreams) {
-        pumpRawStream(streamId, stream)
+        pumps.push(pumpRawStream(streamId, stream))
+      }
+
+      // Add late stream pump (returns array of spawned pump promises)
+      if (lateStreamSource) {
+        pumps.push(pumpLateStreams())
+      }
+
+      try {
+        // Wait for initial pumps to complete
+        const results = await Promise.all(pumps)
+
+        // Wait for any late stream pumps that were spawned
+        const latePumps = results.find(Array.isArray) as
+          | Array<Promise<void>>
+          | undefined
+        if (latePumps && latePumps.length > 0) {
+          await Promise.all(latePumps)
+        }
+
+        // All pumps done - close the output stream
+        if (!cancelled) {
+          try {
+            controller.close()
+          } catch {
+            // Already closed
+          }
+        }
+      } catch {
+        // Error already handled by errorOutput in pumpJSON
+        // or was a raw stream error (non-fatal, already sent ERROR frame)
       }
     },
 
     cancel() {
       cancelled = true
-      controllerRef = null
-      // Proactively cancel all underlying readers to stop work quickly.
-      for (const cancelReader of cancelReaders) {
-        cancelReader()
+      // Cancel all readers to stop pumps quickly
+      for (const reader of readers) {
+        reader.cancel().catch(() => {})
       }
-      cancelReaders.length = 0
+      readers.length = 0
     },
   })
 }

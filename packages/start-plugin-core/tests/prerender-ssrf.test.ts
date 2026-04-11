@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { prerender } from '../src/prerender'
+import { prerender } from '../src/vite/prerender'
 import { VITE_ENVIRONMENT_NAMES } from '../src/constants'
 
 vi.mock('../src/utils', async () => {
@@ -10,8 +10,8 @@ vi.mock('../src/utils', async () => {
   }
 })
 
-vi.mock('../src/prerender', async () => {
-  const actual = await vi.importActual<any>('../src/prerender')
+vi.mock('../src/vite/prerender', async () => {
+  const actual = await vi.importActual<any>('../src/vite/prerender')
   return {
     ...actual,
   }

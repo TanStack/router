@@ -6,6 +6,7 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { logDiff } from '@tanstack/router-utils'
 import { getConfig, splitGroupingsSchema } from './config'
+import { resolveHmrHotExpression } from './hmr-hot-expression'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitSharedRoute,
@@ -158,6 +159,9 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const addHmr =
       (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction
+    const hmrHotExpression = resolveHmrHotExpression(
+      userConfig.plugin?.hmr?.hotExpression,
+    )
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
@@ -169,10 +173,12 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         ? new Set(userConfig.codeSplittingOptions.deleteNodes)
         : undefined,
       addHmr,
+      hmrHotExpression,
       sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
       compilerPlugins: getReferenceRouteCompilerPlugins({
         targetFramework: userConfig.target,
         addHmr,
+        hmrHotExpression,
       }),
     })
 
@@ -317,26 +323,14 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         },
       },
 
-      rspack(compiler) {
+      rspack() {
         ROOT = process.cwd()
         initUserConfig()
-
-        if (compiler.options.mode === 'production') {
-          compiler.hooks.done.tap(PLUGIN_NAME, () => {
-            console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
-          })
-        }
       },
 
-      webpack(compiler) {
+      webpack() {
         ROOT = process.cwd()
         initUserConfig()
-
-        if (compiler.options.mode === 'production') {
-          compiler.hooks.done.tap(PLUGIN_NAME, () => {
-            console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
-          })
-        }
       },
     },
     {

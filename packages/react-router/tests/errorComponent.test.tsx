@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
   Link,
@@ -169,5 +169,92 @@ describe.each([true, false])(
         })
       },
     )
+
+    describe('stale route errors do not leak after navigation', () => {
+      test.each([
+        {
+          caller: 'loader' as const,
+          routeOptions: {
+            loader: throwFn,
+          },
+        },
+        {
+          caller: 'render' as const,
+          routeOptions: {
+            component: function RenderErrorComponent() {
+              throwFn()
+            },
+          },
+        },
+      ])(
+        'navigating away from a $caller error does not call the next route errorComponent',
+        async ({ routeOptions }) => {
+          const rootRoute = createRootRoute()
+          const indexErrorComponent = vi.fn(() => <div>Index error</div>)
+
+          const indexRoute = createRoute({
+            getParentRoute: () => rootRoute,
+            path: '/',
+            component: function Home() {
+              return (
+                <div>
+                  <div>Index route content</div>
+                  <Link to="/about">link to about</Link>
+                </div>
+              )
+            },
+            errorComponent: indexErrorComponent,
+          })
+
+          const aboutRoute = createRoute({
+            getParentRoute: () => rootRoute,
+            path: '/about',
+            component: function About() {
+              return <div>About route content</div>
+            },
+            errorComponent: isUsingLazyError ? undefined : MyErrorComponent,
+            ...routeOptions,
+          })
+
+          if (isUsingLazyError) {
+            aboutRoute.lazy(() =>
+              Promise.resolve(
+                createLazyRoute('/about')({
+                  errorComponent: MyErrorComponent,
+                }),
+              ),
+            )
+          }
+
+          const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
+
+          const router = createRouter({
+            routeTree,
+            history,
+          })
+
+          render(<RouterProvider router={router} />)
+
+          const linkToAbout = await screen.findByRole('link', {
+            name: 'link to about',
+          })
+
+          await act(() => fireEvent.click(linkToAbout))
+
+          expect(
+            await screen.findByText('Error: error thrown', undefined, {
+              timeout: 1500,
+            }),
+          ).toBeInTheDocument()
+
+          await act(() => router.navigate({ to: '/' }))
+
+          expect(
+            await screen.findByText('Index route content'),
+          ).toBeInTheDocument()
+          expect(indexErrorComponent).not.toHaveBeenCalled()
+        },
+      )
+    })
   },
 )

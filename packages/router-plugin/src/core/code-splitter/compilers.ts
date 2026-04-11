@@ -18,7 +18,6 @@ import type {
 } from './plugins'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
-import type { Config, DeletableNodes } from '../config'
 import type { SplitNodeMeta } from './types'
 
 const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
@@ -637,16 +636,10 @@ function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
 }
 
 export function compileCodeSplitReferenceRoute(
-  opts: ParseAstOptions & {
-    codeSplitGroupings: CodeSplitGroupings
-    deleteNodes?: Set<DeletableNodes>
-    targetFramework: Config['target']
-    filename: string
-    id: string
-    addHmr?: boolean
-    sharedBindings?: Set<string>
-    compilerPlugins?: Array<ReferenceRouteCompilerPlugin>
-  },
+  opts: ParseAstOptions &
+    CompileCodeSplitReferenceRouteOptions & {
+      compilerPlugins?: Array<ReferenceRouteCompilerPlugin>
+    },
 ): GeneratorResult | null {
   const ast = parseAst(opts)
 
@@ -733,7 +726,9 @@ export function compileCodeSplitReferenceRoute(
 
                 programPath.pushContainer(
                   'body',
-                  createRouteHmrStatement(stableRouteOptionKeys),
+                  createRouteHmrStatement(stableRouteOptionKeys, {
+                    hotExpression: opts.hmrHotExpression,
+                  }),
                 )
                 modified = true
                 hmrAdded = true
@@ -904,6 +899,7 @@ export function compileCodeSplitReferenceRoute(
                               splitNodeMeta,
                               lazyRouteComponentIdent:
                                 LAZY_ROUTE_COMPONENT_IDENT,
+                              opts,
                             },
                           )
 
