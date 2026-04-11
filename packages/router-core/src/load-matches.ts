@@ -37,6 +37,40 @@ type InnerLoadContext = {
   sync?: boolean
 }
 
+const reason = 'Match removed before complete load'
+class MatchLoadCancelledError extends Error {
+  constructor() {
+    super(reason)
+    this.name = 'MatchCancel'
+  }
+}
+
+export const isMatchLoadCancelledError = (
+  err: unknown,
+): err is MatchLoadCancelledError => err instanceof MatchLoadCancelledError
+
+const getMatchOrThrowCancelled = (
+  inner: InnerLoadContext,
+  matchId: string,
+  cleanupMatch?: AnyRouteMatch,
+): AnyRouteMatch => {
+  const match = inner.router.getMatch(matchId)
+  if (match) return match as AnyRouteMatch
+  if (cleanupMatch) {
+    const s = cleanupMatch._nonReactive
+    s.beforeLoadPromise?.resolve()
+    s.loaderPromise?.resolve()
+    s.loadPromise?.resolve()
+    cleanupMatch.abortController.abort(reason)
+    clearTimeout(s.pendingTimeout)
+    s.beforeLoadPromise = undefined
+    s.loaderPromise = undefined
+    s.loadPromise = undefined
+    s.pendingTimeout = undefined
+  }
+  throw new MatchLoadCancelledError()
+}
+
 const triggerOnReady = (inner: InnerLoadContext): void | Promise<void> => {
   if (!inner.rendered) {
     inner.rendered = true
@@ -788,6 +822,8 @@ const loadRouteMatch = async (
   matchPromises: Array<Promise<AnyRouteMatch>>,
   index: number,
 ): Promise<AnyRouteMatch> => {
+  let cleanupMatch: AnyRouteMatch | undefined
+
   async function handleLoader(
     preload: boolean,
     prevMatch: AnyRouteMatch,
@@ -834,18 +870,19 @@ const loadRouteMatch = async (
       shouldReloadInBackground
     ) {
       loaderIsRunningAsync = true
+      const matchForCleanup = prevMatch
       ;(async () => {
         try {
           await runLoader(inner, matchPromises, matchId, index, route)
-          const match = inner.router.getMatch(matchId)!
-          match._nonReactive.loaderPromise?.resolve()
-          match._nonReactive.loadPromise?.resolve()
-          match._nonReactive.loaderPromise = undefined
-          match._nonReactive.loadPromise = undefined
         } catch (err) {
           if (isRedirect(err)) {
             await inner.router.navigate(err.options)
           }
+        } finally {
+          matchForCleanup._nonReactive.loaderPromise?.resolve()
+          matchForCleanup._nonReactive.loadPromise?.resolve()
+          matchForCleanup._nonReactive.loaderPromise = undefined
+          matchForCleanup._nonReactive.loadPromise = undefined
         }
       })()
     } else if (status !== 'success' || loaderShouldRunAsync) {
@@ -867,10 +904,9 @@ const loadRouteMatch = async (
       inner.router.options.defaultStaleReloadMode) !== 'blocking'
 
   if (shouldSkipLoader(inner, matchId)) {
-    const match = inner.router.getMatch(matchId)
-    if (!match) {
-      return inner.matches[index]!
-    }
+    const match = getMatchOrThrowCancelled(inner, matchId, cleanupMatch)
+
+    cleanupMatch = match
 
     syncMatchContext(inner, matchId, index)
 
@@ -878,7 +914,9 @@ const loadRouteMatch = async (
       return inner.router.getMatch(matchId)!
     }
   } else {
-    const prevMatch = inner.router.getMatch(matchId)! // This is where all of the stale-while-revalidate magic happens
+    const prevMatch = getMatchOrThrowCancelled(inner, matchId, cleanupMatch)
+
+    // This is where all of the stale-while-revalidate magic happens
     const activeIdAtIndex = inner.router.stores.matchesId.state[index]
     const activeAtIndex =
       (activeIdAtIndex &&
@@ -906,7 +944,9 @@ const loadRouteMatch = async (
         return prevMatch
       }
       await prevMatch._nonReactive.loaderPromise
-      const match = inner.router.getMatch(matchId)!
+      const match = getMatchOrThrowCancelled(inner, matchId, cleanupMatch)
+      cleanupMatch = match
+
       const error = match._nonReactive.error || match.error
       if (error) {
         handleRedirectAndNotFound(inner, match, error)
@@ -924,7 +964,9 @@ const loadRouteMatch = async (
     } else {
       const nextPreload =
         preload && !inner.router.stores.activeMatchStoresById.has(matchId)
-      const match = inner.router.getMatch(matchId)!
+      const match = getMatchOrThrowCancelled(inner, matchId, cleanupMatch)
+      cleanupMatch = match
+
       match._nonReactive.loaderPromise = createControlledPromise<void>()
       if (nextPreload !== match.preload) {
         inner.updateMatch(matchId, (prev) => ({
@@ -936,7 +978,7 @@ const loadRouteMatch = async (
       await handleLoader(preload, prevMatch, previousRouteMatchId, match, route)
     }
   }
-  const match = inner.router.getMatch(matchId)!
+  const match = getMatchOrThrowCancelled(inner, matchId, cleanupMatch)
   if (!loaderIsRunningAsync) {
     match._nonReactive.loaderPromise?.resolve()
     match._nonReactive.loadPromise?.resolve()
@@ -955,10 +997,8 @@ const loadRouteMatch = async (
       isFetching: nextIsFetching,
       invalid: false,
     }))
-    return inner.router.getMatch(matchId)!
-  } else {
-    return match
   }
+  return match
 }
 
 export async function loadMatches(arg: {
@@ -1024,6 +1064,7 @@ export async function loadMatches(arg: {
 
   let firstNotFound: NotFoundError | undefined
   let firstUnhandledRejection: unknown
+  let firstCancelledMatch: MatchLoadCancelledError | undefined
 
   for (let i = 0; i < maxIndexExclusive; i++) {
     matchPromises.push(loadRouteMatch(inner, matchPromises, i))
@@ -1038,6 +1079,10 @@ export async function loadMatches(arg: {
       if (result.status !== 'rejected') continue
 
       const reason = result.reason
+      if (isMatchLoadCancelledError(reason)) {
+        firstCancelledMatch ??= reason
+        continue
+      }
       if (isRedirect(reason)) {
         throw reason
       }
@@ -1046,6 +1091,10 @@ export async function loadMatches(arg: {
       } else {
         firstUnhandledRejection ??= reason
       }
+    }
+
+    if (firstCancelledMatch) {
+      throw firstCancelledMatch
     }
 
     if (firstUnhandledRejection !== undefined) {
