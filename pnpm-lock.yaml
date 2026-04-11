@@ -12356,8 +12356,8 @@ importers:
         specifier: workspace:*
         version: link:../history
       cookie-es:
-        specifier: ^2.0.0
-        version: 2.0.0
+        specifier: ^3.0.0
+        version: 3.1.1
       seroval:
         specifier: ^1.5.0
         version: 1.5.0
@@ -12950,8 +12950,8 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       h3-v2:
-        specifier: npm:h3@2.0.1-rc.16
-        version: h3@2.0.1-rc.16(crossws@0.4.4(srvx@0.11.15))
+        specifier: npm:h3@2.0.1-rc.20
+        version: h3@2.0.1-rc.20(crossws@0.4.4(srvx@0.11.15))
       seroval:
         specifier: ^1.5.0
         version: 1.5.0
@@ -12966,8 +12966,8 @@ importers:
         specifier: 25.0.9
         version: 25.0.9
       cookie-es:
-        specifier: ^2.0.0
-        version: 2.0.0
+        specifier: ^3.0.0
+        version: 3.1.1
       fetchdts:
         specifier: ^0.1.6
         version: 0.1.7
@@ -20446,6 +20446,9 @@ packages:
 
   cookie-es@2.0.0:
     resolution: {integrity: sha512-RAj4E421UYRgqokKUmotqAwuplYw15qtdXfY+hGzgCJ/MBjCVZcSoHK/kH9kocfjRjcDME7IiDWR/1WX1TM2Pg==}
+
+  cookie-es@3.1.1:
+    resolution: {integrity: sha512-UaXxwISYJPTr9hwQxMFYZ7kNhSXboMXP+Z3TRX6f1/NyaGPfuNUZOWP1pUEb75B2HjfklIYLVRfWiFZJyC6Npg==}
 
   cookie-signature@1.0.6:
     resolution: {integrity: sha512-QADzlaHc8icV8I7vbaJXJwod9HWYp8uCqf1xa4OfNu1T7JVxQIrUgOWtHdNDtPiywmFbiS12VjotIXLrKM3orQ==}
@@ -34385,6 +34388,8 @@ snapshots:
 
   cookie-es@2.0.0: {}
 
+  cookie-es@3.1.1: {}
+
   cookie-signature@1.0.6: {}
 
   cookie-signature@1.2.2: {}
@@ -34911,9 +34916,9 @@ snapshots:
 
   env-runner@0.1.6(miniflare@4.20260317.0):
     dependencies:
-      crossws: 0.4.4(srvx@0.11.12)
+      crossws: 0.4.4(srvx@0.11.15)
       httpxy: 0.3.1
-      srvx: 0.11.12
+      srvx: 0.11.15
     optionalDependencies:
       miniflare: 4.20260317.0
 
@@ -36070,23 +36075,16 @@ snapshots:
   h3@2.0.1-rc.14(crossws@0.4.3(srvx@0.10.1)):
     dependencies:
       rou3: 0.7.12
-      srvx: 0.11.12
+      srvx: 0.11.15
     optionalDependencies:
       crossws: 0.4.3(srvx@0.10.1)
 
   h3@2.0.1-rc.16(crossws@0.4.4(srvx@0.11.12)):
     dependencies:
       rou3: 0.8.1
-      srvx: 0.11.12
+      srvx: 0.11.15
     optionalDependencies:
       crossws: 0.4.4(srvx@0.11.12)
-
-  h3@2.0.1-rc.16(crossws@0.4.4(srvx@0.11.15)):
-    dependencies:
-      rou3: 0.8.1
-      srvx: 0.11.12
-    optionalDependencies:
-      crossws: 0.4.4(srvx@0.11.15)
 
   h3@2.0.1-rc.20(crossws@0.4.4(srvx@0.11.15)):
     dependencies:
