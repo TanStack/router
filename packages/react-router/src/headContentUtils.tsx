@@ -194,14 +194,14 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     return buildTagsFromMatches(
       router,
       nonce,
-      router.stores.activeMatchesSnapshot.get(),
+      router.stores.matches.get(),
       assetCrossOrigin,
     )
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const routeMeta = useStore(
-    router.stores.activeMatchesSnapshot,
+    router.stores.matches,
     (matches) => {
       return matches.map((match) => match.meta!).filter(Boolean)
     },
@@ -282,7 +282,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const links = useStore(
-    router.stores.activeMatchesSnapshot,
+    router.stores.matches,
     (matches) => {
       const constructed = matches
         .map((match) => match.links!)
@@ -327,7 +327,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const preloadLinks = useStore(
-    router.stores.activeMatchesSnapshot,
+    router.stores.matches,
     (matches) => {
       const preloadLinks: Array<RouterManagedTag> = []
 
@@ -359,7 +359,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const styles = useStore(
-    router.stores.activeMatchesSnapshot,
+    router.stores.matches,
     (matches) =>
       (
         matches
@@ -379,7 +379,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const headScripts: Array<RouterManagedTag> = useStore(
-    router.stores.activeMatchesSnapshot,
+    router.stores.matches,
     (matches) =>
       (
         matches

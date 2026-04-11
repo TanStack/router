@@ -58,7 +58,7 @@ export const Scripts = () => {
     )
 
   if (isServer ?? router.isServer) {
-    const activeMatches = router.stores.activeMatchesSnapshot.get()
+    const activeMatches = router.stores.matches.get()
     const assetScripts = getAssetScripts(activeMatches)
     const scripts = getScripts(activeMatches)
     return renderScripts(router, scripts, assetScripts)
@@ -66,13 +66,13 @@ export const Scripts = () => {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const assetScripts = useStore(
-    router.stores.activeMatchesSnapshot,
+    router.stores.matches,
     getAssetScripts,
     deepEqual,
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const scripts = useStore(
-    router.stores.activeMatchesSnapshot,
+    router.stores.matches,
     getScripts,
     deepEqual,
   )

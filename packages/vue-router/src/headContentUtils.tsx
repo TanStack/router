@@ -14,7 +14,7 @@ import type {
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const matches = useStore(
-    router.stores.activeMatchesSnapshot,
+    router.stores.matches,
     (value) => value,
   )
 

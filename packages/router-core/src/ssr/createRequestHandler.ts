@@ -78,7 +78,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }
 
 function getRequestHeaders(opts: { router: AnyRouter }): Headers {
-  const matchHeaders = opts.router.stores.activeMatchesSnapshot
+  const matchHeaders = opts.router.stores.matches
     .get()
     .map<AnyHeaders>((match) => match.headers)
 

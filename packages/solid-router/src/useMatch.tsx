@@ -76,7 +76,7 @@ export function useMatch<
 
   const match = () => {
     if (opts.from) {
-      return router.stores.getMatchStoreByRouteId(opts.from).get()
+      return router.stores.getRouteMatchStore(opts.from).get()
     }
 
     return nearestMatch?.match()

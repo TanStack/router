@@ -24,7 +24,7 @@ export const Match = (props: { matchId: string }) => {
   const match = Solid.createMemo(() => {
     const id = props.matchId
     if (!id) return undefined
-    return router.stores.activeMatchStoresById.get(id)?.get()
+    return router.stores.matchStores.get(id)?.get()
   })
 
   const rawMatchState = Solid.createMemo(() => {
@@ -466,7 +466,7 @@ export const Outlet = () => {
   const childMatchStatus = Solid.createMemo(() => {
     const id = childMatchId()
     if (!id) return undefined
-    return router.stores.activeMatchStoresById.get(id)?.get().status
+    return router.stores.matchStores.get(id)?.get().status
   })
 
   // Only show not-found if we're not in a redirected state

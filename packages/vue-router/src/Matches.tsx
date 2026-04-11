@@ -99,7 +99,7 @@ const MatchesInner = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const matchId = useStore(router.stores.firstMatchId, (id) => id)
+    const matchId = useStore(router.stores.firstId, (id) => id)
     const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
 
     // Create a ref for the match id to provide
@@ -153,7 +153,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
   const routerState = useStore(
-    router.stores.matchRouteReactivity,
+    router.stores.matchRouteDeps,
     (value) => value,
   )
 
@@ -253,7 +253,7 @@ export const MatchRoute = Vue.defineComponent({
   setup(props, { slots }) {
     const router = useRouter()
     const status = useStore(
-      router.stores.matchRouteReactivity,
+      router.stores.matchRouteDeps,
       (value) => value.status,
     )
 
@@ -296,7 +296,7 @@ export function useMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
-  return useStore(router.stores.activeMatchesSnapshot, (matches) => {
+  return useStore(router.stores.matches, (matches) => {
     return opts?.select
       ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
       : (matches as any)

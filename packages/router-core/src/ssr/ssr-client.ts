@@ -162,7 +162,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }
   })
 
-  router.stores.setActiveMatches(matches)
+  router.stores.setMatches(matches)
 
   // Allow the user to handle custom hydration data
   await router.options.hydrate?.(dehydratedData)
@@ -170,7 +170,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // now that all necessary data is hydrated:
   // 1) fully reconstruct the route context
   // 2) execute `head()` and `scripts()` for each match
-  const activeMatches = router.stores.activeMatchesSnapshot.get()
+  const activeMatches = router.stores.matches.get()
   const location = router.stores.location.get()
   await Promise.all(
     activeMatches.map(async (match) => {

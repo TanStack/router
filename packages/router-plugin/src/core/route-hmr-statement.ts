@@ -22,15 +22,15 @@ type AnyRouterWithPrivateMaps = AnyRouter & {
   routesById: Record<string, AnyRoute>
   routesByPath: Record<string, AnyRoute>
   stores: AnyRouter['stores'] & {
-    cachedMatchStoresById: Map<
+    cachedMatchStores: Map<
       string,
       Pick<RouterWritableStore<AnyRouteMatch>, 'set'>
     >
-    pendingMatchStoresById: Map<
+    pendingMatchStores: Map<
       string,
       Pick<RouterWritableStore<AnyRouteMatch>, 'set'>
     >
-    activeMatchStoresById: Map<
+    matchStores: Map<
       string,
       Pick<RouterWritableStore<AnyRouteMatch>, 'set'>
     >
@@ -95,9 +95,9 @@ function handleRouteUpdate(
   walkReplaceSegmentTree(oldRoute, router.processedTree.segmentTree)
 
   const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
-  const activeMatch = router.stores.activeMatchesSnapshot.get().find(filter)
-  const pendingMatch = router.stores.pendingMatchesSnapshot.get().find(filter)
-  const cachedMatches = router.stores.cachedMatchesSnapshot.get().filter(filter)
+  const activeMatch = router.stores.matches.get().find(filter)
+  const pendingMatch = router.stores.pendingMatches.get().find(filter)
+  const cachedMatches = router.stores.cachedMatches.get().filter(filter)
 
   if (activeMatch || pendingMatch || cachedMatches.length > 0) {
     // Clear stale match data for removed route options BEFORE invalidating.
@@ -117,9 +117,9 @@ function handleRouteUpdate(
       router.batch(() => {
         for (const matchId of matchIds) {
           const store =
-            router.stores.pendingMatchStoresById.get(matchId) ||
-            router.stores.activeMatchStoresById.get(matchId) ||
-            router.stores.cachedMatchStoresById.get(matchId)
+            router.stores.pendingMatchStores.get(matchId) ||
+            router.stores.matchStores.get(matchId) ||
+            router.stores.cachedMatchStores.get(matchId)
           if (store) {
             store.set((prev) => {
               const next: AnyRouteMatchWithPrivateProps = { ...prev }

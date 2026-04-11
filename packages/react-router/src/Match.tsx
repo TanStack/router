@@ -30,7 +30,7 @@ export const Match = React.memo(function MatchImpl({
   const router = useRouter()
 
   if (isServer ?? router.isServer) {
-    const match = router.stores.activeMatchStoresById.get(matchId)?.get()
+    const match = router.stores.matchStores.get(matchId)?.get()
     if (!match) {
       if (process.env.NODE_ENV !== 'production') {
         throw new Error(
@@ -64,7 +64,7 @@ export const Match = React.memo(function MatchImpl({
   // The matchId prop is stable for this component's lifetime (set by Outlet),
   // and reconcileMatchPool reuses stores for the same matchId.
 
-  const matchStore = router.stores.activeMatchStoresById.get(matchId)
+  const matchStore = router.stores.matchStores.get(matchId)
   if (!matchStore) {
     if (process.env.NODE_ENV !== 'production') {
       throw new Error(
@@ -278,7 +278,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }
 
   if (isServer ?? router.isServer) {
-    const match = router.stores.activeMatchStoresById.get(matchId)?.get()
+    const match = router.stores.matchStores.get(matchId)?.get()
     if (!match) {
       if (process.env.NODE_ENV !== 'production') {
         throw new Error(
@@ -357,7 +357,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     return out
   }
 
-  const matchStore = router.stores.activeMatchStoresById.get(matchId)
+  const matchStore = router.stores.matchStores.get(matchId)
   if (!matchStore) {
     if (process.env.NODE_ENV !== 'production') {
       throw new Error(
@@ -504,7 +504,7 @@ export const Outlet = React.memo(function OutletImpl() {
   let childMatchId: string | undefined
 
   if (isServer ?? router.isServer) {
-    const matches = router.stores.activeMatchesSnapshot.get()
+    const matches = router.stores.matches.get()
     const parentIndex = matchId
       ? matches.findIndex((match) => match.id === matchId)
       : -1
@@ -517,7 +517,7 @@ export const Outlet = React.memo(function OutletImpl() {
     // Subscribe directly to the match store from the pool instead of
     // the two-level byId → matchStore pattern.
     const parentMatchStore = matchId
-      ? router.stores.activeMatchStoresById.get(matchId)
+      ? router.stores.matchStores.get(matchId)
       : undefined
 
     // eslint-disable-next-line react-hooks/rules-of-hooks

@@ -7,7 +7,7 @@ export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
   const activeMatches = Solid.createMemo(() =>
-    router.stores.activeMatchesSnapshot.get(),
+    router.stores.matches.get(),
   )
   const assetScripts = Solid.createMemo(() => {
     const assetScripts: Array<RouterManagedTag> = []

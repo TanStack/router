@@ -201,7 +201,7 @@ describe('callbacks', () => {
       expect(page2MatchId).toBeDefined()
       expect(page2MatchId).not.toBe(page1MatchId)
       expect(
-        router.stores.cachedMatchesId.get().some((id) => id === page1MatchId),
+        router.stores.cachedIds.get().some((id) => id === page1MatchId),
       ).toBe(true)
 
       await router.navigate({ to: '/foo', search: { page: '1' } })
@@ -226,7 +226,7 @@ describe('callbacks', () => {
       expect(post2MatchId).toBeDefined()
       expect(post2MatchId).not.toBe(post1MatchId)
       expect(
-        router.stores.cachedMatchesId.get().some((id) => id === post1MatchId),
+        router.stores.cachedIds.get().some((id) => id === post1MatchId),
       ).toBe(true)
 
       await router.navigate({ to: '/posts/$postId', params: { postId: '1' } })

@@ -31,7 +31,7 @@ function initRouterStores(
     const ids = stores.matchesId.get()
     const obj: Record<string, string> = {}
     for (let i = 0; i < ids.length - 1; i++) {
-      const parentStore = stores.activeMatchStoresById.get(ids[i]!)
+      const parentStore = stores.matchStores.get(ids[i]!)
       if (parentStore?.routeId) {
         obj[parentStore.routeId] = ids[i + 1]!
       }
@@ -40,10 +40,10 @@ function initRouterStores(
   })
 
   stores.pendingRouteIds = createReadonlyStore(() => {
-    const ids = stores.pendingMatchesId.get()
+    const ids = stores.pendingIds.get()
     const obj: Record<string, boolean> = {}
     for (const id of ids) {
-      const store = stores.pendingMatchStoresById.get(id)
+      const store = stores.pendingMatchStores.get(id)
       if (store?.routeId) {
         obj[store.routeId] = true
       }

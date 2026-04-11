@@ -142,7 +142,7 @@ async function waitForRouteLoaderCrumb(
 async function waitForRouteRemovalReload(page: Page) {
   await page.waitForFunction(() => {
     const router = (window as any).__TSR_ROUTER__
-    const match = router?.stores?.activeMatchesSnapshot
+    const match = router?.stores?.matches
       ?.get()
       ?.find((entry: any) => entry.routeId === '/child')
 

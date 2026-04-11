@@ -62,11 +62,11 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = () => router.stores.firstMatchId.get()
+  const matchId = () => router.stores.firstId.get()
   const routeId = () => (matchId() ? rootRouteId : undefined)
   const match = () =>
     routeId()
-      ? router.stores.getMatchStoreByRouteId(rootRouteId).get()
+      ? router.stores.getRouteMatchStore(rootRouteId).get()
       : undefined
   const hasPendingMatch = () =>
     routeId()
@@ -142,7 +142,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
     return Solid.createMemo(() => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-      router.stores.matchRouteReactivity.get()
+      router.stores.matchRouteDeps.get()
       return router.matchRoute(rest as any, {
         pending,
         caseSensitive,
@@ -211,7 +211,7 @@ export function useMatches<
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
   return Solid.createMemo((prev: TSelected | undefined) => {
-    const matches = router.stores.activeMatchesSnapshot.get() as Array<
+    const matches = router.stores.matches.get() as Array<
       MakeRouteMatchUnion<TRouter>
     >
     const res = opts?.select ? opts.select(matches) : matches

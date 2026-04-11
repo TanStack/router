@@ -37,7 +37,7 @@ export const Match = Vue.defineComponent({
     // Derive routeId from initial props.matchId — stable for this component's
     // lifetime. The routeId never changes for a given route position in the
     // tree, even when matchId changes (loaderDepsHash, etc).
-    const routeId = router.stores.activeMatchStoresById.get(
+    const routeId = router.stores.matchStores.get(
       props.matchId,
     )?.routeId
 
@@ -56,11 +56,11 @@ export const Match = Vue.defineComponent({
     const isChildOfRoot =
       (router.routesById[routeId] as AnyRoute)?.parentRoute?.id === rootRouteId
 
-    // Single stable store subscription — getMatchStoreByRouteId returns a
+    // Single stable store subscription — getRouteMatchStore returns a
     // cached computed store that resolves routeId → current match state
     // through the signal graph. No bridge needed.
     const activeMatch = useStore(
-      router.stores.getMatchStoreByRouteId(routeId),
+      router.stores.getRouteMatchStore(routeId),
       (value) => value,
     )
     const isPendingMatchRef = useStore(
@@ -297,7 +297,7 @@ export const MatchInner = Vue.defineComponent({
     // Use routeId from context (provided by parent Match) — stable string.
     const routeId = Vue.inject(routeIdContext)!
     const activeMatch = useStore(
-      router.stores.getMatchStoreByRouteId(routeId),
+      router.stores.getRouteMatchStore(routeId),
       (value) => value,
     )
 
@@ -500,7 +500,7 @@ export const Outlet = Vue.defineComponent({
 
     // Parent state via stable routeId store — single subscription
     const parentMatch = useStore(
-      router.stores.getMatchStoreByRouteId(parentRouteId),
+      router.stores.getRouteMatchStore(parentRouteId),
       (v) => v,
     )
 
@@ -525,7 +525,7 @@ export const Outlet = Vue.defineComponent({
     const childMatchData = Vue.computed(() => {
       const childId = childMatchIdMap.value[parentRouteId]
       if (!childId) return null
-      const child = router.stores.activeMatchStoresById.get(childId)?.get()
+      const child = router.stores.matchStores.get(childId)?.get()
       if (!child) return null
 
       return {

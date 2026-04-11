@@ -10,7 +10,7 @@ export const Scripts = Vue.defineComponent({
     const router = useRouter()
     const nonce = router.options.ssr?.nonce
     const matches = useStore(
-      router.stores.activeMatchesSnapshot,
+      router.stores.matches,
       (value) => value,
     )
 
