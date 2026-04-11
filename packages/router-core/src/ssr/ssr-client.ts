@@ -295,8 +295,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         if (router.stores.status.get() === 'pending') {
           router.batch(() => {
             router.stores.status.set(() => 'idle')
-            router.stores.resolvedLocation.set(
-              () => router.stores.location.get(),
+            router.stores.resolvedLocation.set(() =>
+              router.stores.location.get(),
             )
           })
         }

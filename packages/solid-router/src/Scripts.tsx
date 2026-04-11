@@ -6,8 +6,8 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const activeMatches = Solid.createMemo(
-    () => router.stores.activeMatchesSnapshot.get(),
+  const activeMatches = Solid.createMemo(() =>
+    router.stores.activeMatchesSnapshot.get(),
   )
   const assetScripts = Solid.createMemo(() => {
     const assetScripts: Array<RouterManagedTag> = []

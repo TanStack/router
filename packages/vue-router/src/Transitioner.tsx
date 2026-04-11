@@ -143,9 +143,7 @@ export function useTransitionerSetup() {
       if (router.stores.status.get() === 'pending') {
         batch(() => {
           router.stores.status.set(() => 'idle')
-          router.stores.resolvedLocation.set(
-            () => router.stores.location.get(),
-          )
+          router.stores.resolvedLocation.set(() => router.stores.location.get())
         })
       }
     }
@@ -223,9 +221,7 @@ export function useTransitionerSetup() {
       if (!newValue && router.stores.status.get() === 'pending') {
         batch(() => {
           router.stores.status.set(() => 'idle')
-          router.stores.resolvedLocation.set(
-            () => router.stores.location.get(),
-          )
+          router.stores.resolvedLocation.set(() => router.stores.location.get())
         })
       }
 

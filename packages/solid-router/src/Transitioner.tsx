@@ -19,8 +19,8 @@ export function Transitioner() {
   const [isSolidTransitioning, startSolidTransition] = Solid.useTransition()
 
   // Track pending state changes
-  const hasPendingMatches = Solid.createMemo(
-    () => router.stores.hasPendingMatches.get(),
+  const hasPendingMatches = Solid.createMemo(() =>
+    router.stores.hasPendingMatches.get(),
   )
 
   const isAnyPending = Solid.createMemo(
@@ -135,9 +135,7 @@ export function Transitioner() {
 
       Solid.batch(() => {
         router.stores.status.set(() => 'idle')
-        router.stores.resolvedLocation.set(
-          () => router.stores.location.get(),
-        )
+        router.stores.resolvedLocation.set(() => router.stores.location.get())
       })
 
       if (changeInfo.hrefChanged) {
