@@ -293,10 +293,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         // this usually happens in Transitioner but if loading synchronously resolves,
         // Transitioner won't be rendered while loading so it cannot track the change from loading:true to loading:false
         if (router.stores.status.get() === 'pending') {
-          router.batch(() => {
-            router.stores.status.set('idle')
-            router.stores.resolvedLocation.set(router.stores.location.get())
-          })
+          router.stores.status.set('idle')
+          router.stores.resolvedLocation.set(router.stores.location.get())
         }
         // hide the pending component once the load is finished
         router.updateMatch(match.id, (prev) => ({

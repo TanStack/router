@@ -58,10 +58,9 @@ export const Scripts = () => {
     )
 
   if (isServer ?? router.isServer) {
-    const assetScripts = getAssetScripts(
-      router.stores.activeMatchesSnapshot.get(),
-    )
-    const scripts = getScripts(router.stores.activeMatchesSnapshot.get())
+    const activeMatches = router.stores.activeMatchesSnapshot.get()
+    const assetScripts = getAssetScripts(activeMatches)
+    const scripts = getScripts(activeMatches)
     return renderScripts(router, scripts, assetScripts)
   }
 

@@ -1,6 +1,11 @@
 import * as template from '@babel/template'
 import { createHmrHotExpressionAst } from './hmr-hot-expression'
-import type { AnyRoute, AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  AnyRouteMatch,
+  AnyRouter,
+  RouterWritableStore,
+} from '@tanstack/router-core'
 
 type AnyRouteWithPrivateProps = AnyRoute & {
   options: Record<string, unknown>
@@ -19,21 +24,15 @@ type AnyRouterWithPrivateMaps = AnyRouter & {
   stores: AnyRouter['stores'] & {
     cachedMatchStoresById: Map<
       string,
-      {
-        setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
-      }
+      Pick<RouterWritableStore<AnyRouteMatch>, 'set'>
     >
     pendingMatchStoresById: Map<
       string,
-      {
-        setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
-      }
+      Pick<RouterWritableStore<AnyRouteMatch>, 'set'>
     >
     activeMatchStoresById: Map<
       string,
-      {
-        setState: (updater: (prev: AnyRouteMatch) => AnyRouteMatch) => void
-      }
+      Pick<RouterWritableStore<AnyRouteMatch>, 'set'>
     >
   }
 }
