@@ -33,6 +33,7 @@ import { Route as RscFormsRouteImport } from './routes/rsc-forms'
 import { Route as RscFlightApiRouteImport } from './routes/rsc-flight-api'
 import { Route as RscExternalRouteImport } from './routes/rsc-external'
 import { Route as RscErrorRouteImport } from './routes/rsc-error'
+import { Route as RscDirectLoaderRouteImport } from './routes/rsc-direct-loader'
 import { Route as RscDeferredComponentRouteImport } from './routes/rsc-deferred-component'
 import { Route as RscDeferredRouteImport } from './routes/rsc-deferred'
 import { Route as RscCssPreloadComplexRouteImport } from './routes/rsc-css-preload-complex'
@@ -171,6 +172,11 @@ const RscErrorRoute = RscErrorRouteImport.update({
   path: '/rsc-error',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RscDirectLoaderRoute = RscDirectLoaderRouteImport.update({
+  id: '/rsc-direct-loader',
+  path: '/rsc-direct-loader',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RscDeferredComponentRoute = RscDeferredComponentRouteImport.update({
   id: '/rsc-deferred-component',
   path: '/rsc-deferred-component',
@@ -270,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/rsc-css-preload-complex': typeof RscCssPreloadComplexRoute
   '/rsc-deferred': typeof RscDeferredRoute
   '/rsc-deferred-component': typeof RscDeferredComponentRoute
+  '/rsc-direct-loader': typeof RscDirectLoaderRoute
   '/rsc-error': typeof RscErrorRoute
   '/rsc-external': typeof RscExternalRoute
   '/rsc-flight-api': typeof RscFlightApiRoute
@@ -313,6 +320,7 @@ export interface FileRoutesByTo {
   '/rsc-css-preload-complex': typeof RscCssPreloadComplexRoute
   '/rsc-deferred': typeof RscDeferredRoute
   '/rsc-deferred-component': typeof RscDeferredComponentRoute
+  '/rsc-direct-loader': typeof RscDirectLoaderRoute
   '/rsc-error': typeof RscErrorRoute
   '/rsc-external': typeof RscExternalRoute
   '/rsc-flight-api': typeof RscFlightApiRoute
@@ -357,6 +365,7 @@ export interface FileRoutesById {
   '/rsc-css-preload-complex': typeof RscCssPreloadComplexRoute
   '/rsc-deferred': typeof RscDeferredRoute
   '/rsc-deferred-component': typeof RscDeferredComponentRoute
+  '/rsc-direct-loader': typeof RscDirectLoaderRoute
   '/rsc-error': typeof RscErrorRoute
   '/rsc-external': typeof RscExternalRoute
   '/rsc-flight-api': typeof RscFlightApiRoute
@@ -402,6 +411,7 @@ export interface FileRouteTypes {
     | '/rsc-css-preload-complex'
     | '/rsc-deferred'
     | '/rsc-deferred-component'
+    | '/rsc-direct-loader'
     | '/rsc-error'
     | '/rsc-external'
     | '/rsc-flight-api'
@@ -445,6 +455,7 @@ export interface FileRouteTypes {
     | '/rsc-css-preload-complex'
     | '/rsc-deferred'
     | '/rsc-deferred-component'
+    | '/rsc-direct-loader'
     | '/rsc-error'
     | '/rsc-external'
     | '/rsc-flight-api'
@@ -488,6 +499,7 @@ export interface FileRouteTypes {
     | '/rsc-css-preload-complex'
     | '/rsc-deferred'
     | '/rsc-deferred-component'
+    | '/rsc-direct-loader'
     | '/rsc-error'
     | '/rsc-external'
     | '/rsc-flight-api'
@@ -532,6 +544,7 @@ export interface RootRouteChildren {
   RscCssPreloadComplexRoute: typeof RscCssPreloadComplexRoute
   RscDeferredRoute: typeof RscDeferredRoute
   RscDeferredComponentRoute: typeof RscDeferredComponentRoute
+  RscDirectLoaderRoute: typeof RscDirectLoaderRoute
   RscErrorRoute: typeof RscErrorRoute
   RscExternalRoute: typeof RscExternalRoute
   RscFlightApiRoute: typeof RscFlightApiRoute
@@ -733,6 +746,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RscErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rsc-direct-loader': {
+      id: '/rsc-direct-loader'
+      path: '/rsc-direct-loader'
+      fullPath: '/rsc-direct-loader'
+      preLoaderRoute: typeof RscDirectLoaderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rsc-deferred-component': {
       id: '/rsc-deferred-component'
       path: '/rsc-deferred-component'
@@ -868,6 +888,7 @@ const rootRouteChildren: RootRouteChildren = {
   RscCssPreloadComplexRoute: RscCssPreloadComplexRoute,
   RscDeferredRoute: RscDeferredRoute,
   RscDeferredComponentRoute: RscDeferredComponentRoute,
+  RscDirectLoaderRoute: RscDirectLoaderRoute,
   RscErrorRoute: RscErrorRoute,
   RscExternalRoute: RscExternalRoute,
   RscFlightApiRoute: RscFlightApiRoute,

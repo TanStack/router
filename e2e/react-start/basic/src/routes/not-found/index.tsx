@@ -28,16 +28,6 @@ export const Route = createFileRoute('/not-found/')({
         <div className="mb-2">
           <Link
             from={Route.fullPath}
-            to="./proxy-loader"
-            preload={preload}
-            data-testid="proxy-loader"
-          >
-            proxy-loader
-          </Link>
-        </div>
-        <div className="mb-2">
-          <Link
-            from={Route.fullPath}
             to="./via-beforeLoad-target-root"
             preload={preload}
             data-testid="via-beforeLoad-target-root"

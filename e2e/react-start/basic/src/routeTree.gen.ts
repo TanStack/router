@@ -50,7 +50,6 @@ import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
 import { Route as NotFoundViaBeforeLoadTargetRootRouteImport } from './routes/not-found/via-beforeLoad-target-root'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
-import { Route as NotFoundProxyLoaderRouteImport } from './routes/not-found/proxy-loader'
 import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
 import { Route as ApiUsersRouteImport } from './routes/api.users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
@@ -287,11 +286,6 @@ const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
   path: '/via-beforeLoad',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
-const NotFoundProxyLoaderRoute = NotFoundProxyLoaderRouteImport.update({
-  id: '/proxy-loader',
-  path: '/proxy-loader',
-  getParentRoute: () => NotFoundRouteRoute,
-} as any)
 const MultiCookieRedirectTargetRoute =
   MultiCookieRedirectTargetRouteImport.update({
     id: '/multi-cookie-redirect/target',
@@ -460,7 +454,6 @@ export interface FileRoutesByFullPath {
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
-  '/not-found/proxy-loader': typeof NotFoundProxyLoaderRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
@@ -522,7 +515,6 @@ export interface FileRoutesByTo {
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
-  '/not-found/proxy-loader': typeof NotFoundProxyLoaderRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
@@ -592,7 +584,6 @@ export interface FileRoutesById {
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
-  '/not-found/proxy-loader': typeof NotFoundProxyLoaderRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
@@ -663,7 +654,6 @@ export interface FileRouteTypes {
     | '/specialChars/malformed'
     | '/api/users'
     | '/multi-cookie-redirect/target'
-    | '/not-found/proxy-loader'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
@@ -725,7 +715,6 @@ export interface FileRouteTypes {
     | '/specialChars/malformed'
     | '/api/users'
     | '/multi-cookie-redirect/target'
-    | '/not-found/proxy-loader'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
@@ -794,7 +783,6 @@ export interface FileRouteTypes {
     | '/_layout/_layout-2'
     | '/api/users'
     | '/multi-cookie-redirect/target'
-    | '/not-found/proxy-loader'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
@@ -1158,13 +1146,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotFoundViaBeforeLoadRouteImport
       parentRoute: typeof NotFoundRouteRoute
     }
-    '/not-found/proxy-loader': {
-      id: '/not-found/proxy-loader'
-      path: '/proxy-loader'
-      fullPath: '/not-found/proxy-loader'
-      preLoaderRoute: typeof NotFoundProxyLoaderRouteImport
-      parentRoute: typeof NotFoundRouteRoute
-    }
     '/multi-cookie-redirect/target': {
       id: '/multi-cookie-redirect/target'
       path: '/multi-cookie-redirect/target'
@@ -1412,7 +1393,6 @@ const NotFoundParentBoundaryRouteRouteWithChildren =
 interface NotFoundRouteRouteChildren {
   NotFoundDeepRouteRoute: typeof NotFoundDeepRouteRouteWithChildren
   NotFoundParentBoundaryRouteRoute: typeof NotFoundParentBoundaryRouteRouteWithChildren
-  NotFoundProxyLoaderRoute: typeof NotFoundProxyLoaderRoute
   NotFoundViaBeforeLoadRoute: typeof NotFoundViaBeforeLoadRoute
   NotFoundViaBeforeLoadTargetRootRoute: typeof NotFoundViaBeforeLoadTargetRootRoute
   NotFoundViaLoaderRoute: typeof NotFoundViaLoaderRoute
@@ -1423,7 +1403,6 @@ const NotFoundRouteRouteChildren: NotFoundRouteRouteChildren = {
   NotFoundDeepRouteRoute: NotFoundDeepRouteRouteWithChildren,
   NotFoundParentBoundaryRouteRoute:
     NotFoundParentBoundaryRouteRouteWithChildren,
-  NotFoundProxyLoaderRoute: NotFoundProxyLoaderRoute,
   NotFoundViaBeforeLoadRoute: NotFoundViaBeforeLoadRoute,
   NotFoundViaBeforeLoadTargetRootRoute: NotFoundViaBeforeLoadTargetRootRoute,
   NotFoundViaLoaderRoute: NotFoundViaLoaderRoute,
