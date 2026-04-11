@@ -203,18 +203,14 @@ describe('beforeLoad skip or exec', () => {
     })
     await router.preloadRoute({ to: '/foo' })
     expect(
-      router.stores.cachedMatches
-        .get()
-        .some((d) => d.status === 'redirected'),
+      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
     ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
     expect(
-      router.stores.cachedMatches
-        .get()
-        .some((d) => d.status === 'redirected'),
+      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
     ).toBe(false)
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
@@ -230,17 +226,13 @@ describe('beforeLoad skip or exec', () => {
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
     expect(
-      router.stores.cachedMatches
-        .get()
-        .some((d) => d.status === 'redirected'),
+      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
     ).toBe(false)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
     expect(
-      router.stores.cachedMatches
-        .get()
-        .some((d) => d.status === 'redirected'),
+      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
     ).toBe(false)
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
@@ -456,18 +448,14 @@ describe('loader skip or exec', () => {
     })
     await router.preloadRoute({ to: '/foo' })
     expect(
-      router.stores.cachedMatches
-        .get()
-        .some((d) => d.status === 'redirected'),
+      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
     ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
     expect(
-      router.stores.cachedMatches
-        .get()
-        .some((d) => d.status === 'redirected'),
+      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
     ).toBe(false)
     expect(loader).toHaveBeenCalledTimes(2)
   })
@@ -483,17 +471,13 @@ describe('loader skip or exec', () => {
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
     expect(
-      router.stores.cachedMatches
-        .get()
-        .some((d) => d.status === 'redirected'),
+      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
     ).toBe(false)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/bar')
     expect(
-      router.stores.cachedMatches
-        .get()
-        .some((d) => d.status === 'redirected'),
+      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
     ).toBe(false)
     expect(loader).toHaveBeenCalledTimes(1)
   })
@@ -513,14 +497,10 @@ describe('loader skip or exec', () => {
     }))
 
     expect(
-      router.stores.cachedMatches
-        .get()
-        .some((d) => d.id === '/foo/foo'),
+      router.stores.cachedMatches.get().some((d) => d.id === '/foo/foo'),
     ).toBe(false)
     expect(
-      router.stores.cachedMatches
-        .get()
-        .some((d) => d.status === 'redirected'),
+      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
     ).toBe(false)
   })
 
@@ -648,9 +628,7 @@ describe('stale loader reload triggers', () => {
     id: string,
   ) =>
     router.state.matches.find((match) => match.id === id) ??
-    router.stores.pendingMatches
-      .get()
-      .find((match) => match.id === id) ??
+    router.stores.pendingMatches.get().find((match) => match.id === id) ??
     router.stores.cachedMatches.get().find((match) => match.id === id)
 
   const hasActiveMatch = (
@@ -662,9 +640,7 @@ describe('stale loader reload triggers', () => {
     router: RouterCore<any, any, any, any, any>,
     id: string,
   ) =>
-    router.stores.pendingMatches
-      .get()
-      .some((match) => match.id === id) ?? false
+    router.stores.pendingMatches.get().some((match) => match.id === id) ?? false
 
   const setup = ({
     loader,

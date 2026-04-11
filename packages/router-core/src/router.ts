@@ -1717,8 +1717,7 @@ export class RouterCore<
     // Determine params: reuse from state if possible, otherwise parse
     const lastStateMatchId = last(this.stores.matchesId.get())
     const lastStateMatch =
-      lastStateMatchId &&
-      this.stores.matchStores.get(lastStateMatchId)?.get()
+      lastStateMatchId && this.stores.matchStores.get(lastStateMatchId)?.get()
     const canReuseParams =
       lastStateMatch &&
       lastStateMatch.routeId === lastRoute.id &&
@@ -2428,11 +2427,9 @@ export class RouterCore<
                   let hookStayingMatches: Array<AnyRouteMatch> | null = null
 
                   this.batch(() => {
-                    const pendingMatches =
-                      this.stores.pendingMatches.get()
+                    const pendingMatches = this.stores.pendingMatches.get()
                     const mountPending = pendingMatches.length
-                    const currentMatches =
-                      this.stores.matches.get()
+                    const currentMatches = this.stores.matches.get()
 
                     exitingMatches = mountPending
                       ? currentMatches.filter(
@@ -2527,9 +2524,7 @@ export class RouterCore<
             ? redirect.status
             : notFound
               ? 404
-              : this.stores.matches
-                    .get()
-                    .some((d) => d.status === 'error')
+              : this.stores.matches.get().some((d) => d.status === 'error')
                 ? 500
                 : 200
 
@@ -2563,9 +2558,7 @@ export class RouterCore<
     let newStatusCode: number | undefined = undefined
     if (this.hasNotFoundMatch()) {
       newStatusCode = 404
-    } else if (
-      this.stores.matches.get().some((d) => d.status === 'error')
-    ) {
+    } else if (this.stores.matches.get().some((d) => d.status === 'error')) {
       newStatusCode = 500
     }
     if (newStatusCode !== undefined) {
@@ -2698,15 +2691,9 @@ export class RouterCore<
     }
 
     this.batch(() => {
-      this.stores.setMatches(
-        this.stores.matches.get().map(invalidate),
-      )
-      this.stores.setCached(
-        this.stores.cachedMatches.get().map(invalidate),
-      )
-      this.stores.setPending(
-        this.stores.pendingMatches.get().map(invalidate),
-      )
+      this.stores.setMatches(this.stores.matches.get().map(invalidate))
+      this.stores.setCached(this.stores.cachedMatches.get().map(invalidate))
+      this.stores.setPending(this.stores.pendingMatches.get().map(invalidate))
     })
 
     this.shouldViewTransition = false

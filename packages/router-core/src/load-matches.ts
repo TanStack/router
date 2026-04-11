@@ -51,9 +51,7 @@ const hasForcePendingActiveMatch = (router: AnyRouter): boolean => {
 }
 
 const resolvePreload = (inner: InnerLoadContext, matchId: string): boolean => {
-  return !!(
-    inner.preload && !inner.router.stores.matchStores.has(matchId)
-  )
+  return !!(inner.preload && !inner.router.stores.matchStores.has(matchId))
 }
 
 /**
@@ -887,9 +885,8 @@ const loadRouteMatch = async (
     const previousRouteMatchId =
       activeAtIndex?.routeId === routeId
         ? activeIdAtIndex
-        : inner.router.stores.matches
-            .get()
-            .find((d) => d.routeId === routeId)?.id
+        : inner.router.stores.matches.get().find((d) => d.routeId === routeId)
+            ?.id
     const preload = resolvePreload(inner, matchId)
 
     // there is a loaderPromise, so we are in the middle of a load

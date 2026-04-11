@@ -17,10 +17,7 @@ export function Transitioner() {
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   // Track pending state changes
   const isLoading = useStore(router.stores.isLoading, (value) => value)
-  const hasPending = useStore(
-    router.stores.hasPending,
-    (value) => value,
-  )
+  const hasPending = useStore(router.stores.hasPending, (value) => value)
 
   const previousIsLoading = usePrevious(isLoading)
 

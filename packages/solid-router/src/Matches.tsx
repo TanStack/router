@@ -65,9 +65,7 @@ function MatchesInner() {
   const matchId = () => router.stores.firstId.get()
   const routeId = () => (matchId() ? rootRouteId : undefined)
   const match = () =>
-    routeId()
-      ? router.stores.getRouteMatchStore(rootRouteId).get()
-      : undefined
+    routeId() ? router.stores.getRouteMatchStore(rootRouteId).get() : undefined
   const hasPendingMatch = () =>
     routeId()
       ? Boolean(router.stores.pendingRouteIds.get()[rootRouteId])

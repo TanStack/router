@@ -30,10 +30,7 @@ type AnyRouterWithPrivateMaps = AnyRouter & {
       string,
       Pick<RouterWritableStore<AnyRouteMatch>, 'set'>
     >
-    matchStores: Map<
-      string,
-      Pick<RouterWritableStore<AnyRouteMatch>, 'set'>
-    >
+    matchStores: Map<string, Pick<RouterWritableStore<AnyRouteMatch>, 'set'>>
   }
 }
 

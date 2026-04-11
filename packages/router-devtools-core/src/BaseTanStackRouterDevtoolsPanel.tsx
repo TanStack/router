@@ -281,14 +281,12 @@ export const BaseTanStackRouterDevtoolsPanel =
     let cachedMatches: Accessor<Array<AnyRouteMatch>>
     // subscribable implementation
     if ('subscribe' in router().stores.pendingMatches) {
-      const [_pendingMatches, setPending] = createSignal<
-        Array<AnyRouteMatch>
-      >([])
+      const [_pendingMatches, setPending] = createSignal<Array<AnyRouteMatch>>(
+        [],
+      )
       pendingMatches = _pendingMatches
 
-      const [_cachedMatches, setCached] = createSignal<
-        Array<AnyRouteMatch>
-      >([])
+      const [_cachedMatches, setCached] = createSignal<Array<AnyRouteMatch>>([])
       cachedMatches = _cachedMatches
 
       type Subscribe = (fn: () => void) => { unsubscribe: () => void }

@@ -201,16 +201,12 @@ describe('granular stores', () => {
 
     const postsStore = router.stores.getRouteMatchStore('/posts/$postId')
 
-    expect(router.stores.getRouteMatchStore('/posts/$postId')).toBe(
-      postsStore,
-    )
+    expect(router.stores.getRouteMatchStore('/posts/$postId')).toBe(postsStore)
     expect(postsStore.get()?.routeId).toBe('/posts/$postId')
 
     await router.navigate({ to: '/about' })
 
-    expect(router.stores.getRouteMatchStore('/posts/$postId')).toBe(
-      postsStore,
-    )
+    expect(router.stores.getRouteMatchStore('/posts/$postId')).toBe(postsStore)
     expect(postsStore.get()).toBeUndefined()
   })
 
@@ -290,9 +286,7 @@ describe('granular stores', () => {
     const pendingStore = router.stores.pendingMatchStores.get(activeLeaf.id)
 
     expect(pendingStore).toBeDefined()
-    expect(router.stores.matchStores.get(activeLeaf.id)).toBe(
-      activeStore,
-    )
+    expect(router.stores.matchStores.get(activeLeaf.id)).toBe(activeStore)
 
     if (!pendingStore) {
       throw new Error('Expected pending leaf store to exist')
@@ -343,9 +337,9 @@ describe('granular stores', () => {
       ),
     )
 
-    expect(
-      router.stores.matchStores.get(duplicatedId)?.get().status,
-    ).toBe('error')
+    expect(router.stores.matchStores.get(duplicatedId)?.get().status).toBe(
+      'error',
+    )
     expect(
       router.stores.getRouteMatchStore(activeLeaf.routeId).get()?.status,
     ).toBe('error')
@@ -353,9 +347,7 @@ describe('granular stores', () => {
     expect(
       router.stores.pendingMatchStores.get(duplicatedId)?.get().status,
     ).toBe('pending')
-    expect(router.stores.pendingMatches.get()[0]?.status).toBe(
-      'pending',
-    )
+    expect(router.stores.pendingMatches.get()[0]?.status).toBe('pending')
     expect(router.stores.cachedMatches.get()[0]?.status).toBe('success')
     expect(router.getMatch(duplicatedId)?.status).toBe('success')
   })

@@ -71,11 +71,7 @@ export const Scripts = () => {
     deepEqual,
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const scripts = useStore(
-    router.stores.matches,
-    getScripts,
-    deepEqual,
-  )
+  const scripts = useStore(router.stores.matches, getScripts, deepEqual)
 
   return renderScripts(router, scripts, assetScripts)
 }

@@ -19,17 +19,13 @@ export function Transitioner() {
   const [isSolidTransitioning, startSolidTransition] = Solid.useTransition()
 
   // Track pending state changes
-  const hasPending = Solid.createMemo(() =>
-    router.stores.hasPending.get(),
-  )
+  const hasPending = Solid.createMemo(() => router.stores.hasPending.get())
 
   const isAnyPending = Solid.createMemo(
     () => isLoading() || isSolidTransitioning() || hasPending(),
   )
 
-  const isPagePending = Solid.createMemo(
-    () => isLoading() || hasPending(),
-  )
+  const isPagePending = Solid.createMemo(() => isLoading() || hasPending())
 
   router.startTransition = (fn: () => void | Promise<void>) => {
     Solid.startTransition(() => {

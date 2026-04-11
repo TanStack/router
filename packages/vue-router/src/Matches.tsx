@@ -152,10 +152,7 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  const routerState = useStore(
-    router.stores.matchRouteDeps,
-    (value) => value,
-  )
+  const routerState = useStore(router.stores.matchRouteDeps, (value) => value)
 
   return <
     const TFrom extends string = string,
