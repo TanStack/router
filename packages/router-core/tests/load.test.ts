@@ -82,6 +82,42 @@ describe('redirect resolution', () => {
   )
 })
 
+describe('notFound detection', () => {
+  test('does not treat arbitrary proxy property access as notFound', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader: () =>
+        new Proxy(
+          {},
+          {
+            get(_target, prop) {
+              if (prop === 'isNotFound') return 'truthy-but-not-true'
+              return undefined
+            },
+            has() {
+              return true
+            },
+          },
+        ),
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/foo'] }),
+      isServer: true,
+    })
+
+    await router.load()
+
+    expect(router.state.matches.at(-1)?.status).toBe('success')
+    expect(router.state.matches.at(-1)?.error).toBeUndefined()
+  })
+})
+
 describe('beforeLoad skip or exec', () => {
   const setup = ({ beforeLoad }: { beforeLoad?: BeforeLoad }) => {
     const rootRoute = new BaseRootRoute({})

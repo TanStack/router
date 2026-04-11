@@ -37,5 +37,5 @@ export function notFound(options: NotFoundError = {}) {
 
 /** Determine if a value is a TanStack Router not-found error. */
 export function isNotFound(obj: any): obj is NotFoundError {
-  return !!obj?.isNotFound
+  return obj?.isNotFound === true
 }

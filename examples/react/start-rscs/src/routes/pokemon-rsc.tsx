@@ -4,13 +4,13 @@ import { getPokemonList } from '~/pokemon/server-functions'
 export const Route = createFileRoute('/pokemon-rsc')({
   loader: async () => {
     const { Renderable } = await getPokemonList()
-    return { PokemonList: Renderable }
+    return Renderable
   },
   component: PokemonPage,
 })
 
 function PokemonPage() {
-  const { PokemonList } = Route.useLoaderData()
+  const PokemonList = Route.useLoaderData()
 
   return (
     <div className="py-10">
