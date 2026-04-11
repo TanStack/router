@@ -173,10 +173,12 @@ export function attachRouterServerSsrUtils({
   router,
   manifest,
   getRequestAssets,
+  includeUnmatchedRouteAssets = true,
 }: {
   router: AnyRouter
   manifest: Manifest | undefined
   getRequestAssets?: () => Array<RouterManagedTag> | undefined
+  includeUnmatchedRouteAssets?: boolean
 }) {
   router.ssr = {
     get manifest() {
@@ -258,6 +260,7 @@ export function attachRouterServerSsrUtils({
             if (currentRouteIds.has(routeId)) {
               nextFilteredRoutes[routeId] = routeManifest
             } else if (
+              includeUnmatchedRouteAssets &&
               routeManifest.assets &&
               routeManifest.assets.length > 0
             ) {

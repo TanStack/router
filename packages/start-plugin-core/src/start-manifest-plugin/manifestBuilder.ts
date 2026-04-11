@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/prefer-for-of */
+import { serialize } from 'seroval'
 import { joinURL } from 'ufo'
 import { resolveManifestAssetLink, rootRouteId } from '@tanstack/router-core'
 import {
@@ -39,6 +40,11 @@ type DedupeRoute = {
   preloads?: Array<ManifestAssetLink>
   assets?: Array<RouterManagedTag>
   children?: Array<string>
+}
+
+export interface StartManifest {
+  routes: Record<string, RouteTreeRoute>
+  clientEntry: string
 }
 
 export function appendUniqueStrings(
@@ -143,7 +149,7 @@ export function buildStartManifest(options: {
   clientBuild: NormalizedClientBuild
   routeTreeRoutes: RouteTreeRoutes
   basePath: string
-}) {
+}): StartManifest {
   const scannedChunks = scanClientChunks(options.clientBuild)
   const hashedCssFiles = collectDynamicImportCss(
     scannedChunks.routeEntryChunks,
@@ -179,6 +185,10 @@ export function buildStartManifest(options: {
     routes,
     clientEntry: assetResolvers.getAssetPath(scannedChunks.entryChunk.fileName),
   }
+}
+
+export function serializeStartManifest(startManifest: StartManifest) {
+  return serialize(startManifest)
 }
 
 export function scanClientChunks(

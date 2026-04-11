@@ -2,7 +2,10 @@ import { joinURL } from 'ufo'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { resolveViteId } from '../../utils'
 import { ENTRY_POINTS, START_ENVIRONMENT_NAMES } from '../../constants'
-import { buildStartManifest } from '../../start-manifest-plugin/manifestBuilder'
+import {
+  buildStartManifest,
+  serializeStartManifest,
+} from '../../start-manifest-plugin/manifestBuilder'
 import type { GetConfigFn, NormalizedClientBuild } from '../../types'
 import type { PluginOption } from 'vite'
 
@@ -59,7 +62,7 @@ export function startManifestPlugin(opts: {
             basePath: resolvedStartConfig.basePaths.publicBase,
           })
 
-          return `export const tsrStartManifest = () => (${JSON.stringify(startManifest)})`
+          return `export const tsrStartManifest = () => (${serializeStartManifest(startManifest)})`
         }
 
         return undefined
