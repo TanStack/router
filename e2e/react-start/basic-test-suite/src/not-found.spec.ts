@@ -70,6 +70,22 @@ test.describe('not-found', () => {
       })
     })
 
+    test('direct visit: proxy loader data does not trigger notFound handling', async ({
+      page,
+    }) => {
+      const response = await page.goto('/not-found/proxy-loader')
+      await page.waitForLoadState('networkidle')
+
+      expect(response?.status()).toBe(200)
+
+      await expect(page.getByTestId('proxy-loader-route-component')).toHaveText(
+        'proxied loader data rendered successfully',
+      )
+      await expect(page.getByTestId('default-not-found-component')).toHaveCount(
+        0,
+      )
+    })
+
     test('direct visit: child beforeLoad notFound with routeId renders parent boundary with parent loader data', async ({
       page,
     }) => {
