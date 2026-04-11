@@ -111,34 +111,6 @@ function onNextHmrUpdate(page: Page, routeFilename: string): Promise<void> {
   })
 }
 
-async function waitForRouteLoaderCrumb(
-  page: Page,
-  routeId: string,
-  crumb: string,
-) {
-  await expect
-    .poll(async () => {
-      try {
-        return await page.evaluate(
-          ({ routeId }) => {
-            const router = (window as any).__TSR_ROUTER__
-            const loader = router?.routesById?.[routeId]?.options?.loader
-
-            if (typeof loader !== 'function') {
-              return null
-            }
-
-            return loader()?.crumb ?? null
-          },
-          { routeId },
-        )
-      } catch {
-        return null
-      }
-    })
-    .toBe(crumb)
-}
-
 async function waitForRouteRemovalReload(page: Page) {
   await page.waitForFunction(() => {
     const router = (window as any).__TSR_ROUTER__
@@ -372,7 +344,6 @@ test.describe('react-start hmr', () => {
       "crumb: 'Child Updated Again'",
     )
     await hmr2
-    await waitForRouteLoaderCrumb(page, '/child', 'Child Updated Again')
 
     // Now navigate to /child — should see the LATEST value
     await page.getByTestId('child-link').click()

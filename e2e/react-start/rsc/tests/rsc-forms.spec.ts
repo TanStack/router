@@ -1,5 +1,16 @@
-import { expect } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+
+async function getTodoCount(page: Page) {
+  const countText = await page.getByTestId('rsc-todo-count').textContent()
+  const match = countText?.match(/\d+\/(\d+) completed/)
+
+  if (!match) {
+    throw new Error(`Unexpected todo count text: ${countText}`)
+  }
+
+  return Number(match[1])
+}
 
 test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Page loads with todo list visible', async ({ page }) => {
@@ -43,24 +54,19 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
     await page.waitForURL('/rsc-forms')
     await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
-    // Get initial timestamp
-    const initialTimestamp = await page
-      .getByTestId('loader-timestamp')
-      .textContent()
+    const initialCount = await getTodoCount(page)
 
     // Add a new todo
     const todoText = `Test Todo ${Date.now()}`
     await page.getByTestId('todo-input').fill(todoText)
     await page.getByTestId('add-todo-btn').click()
 
-    // Wait for the RSC to refetch (router.invalidate())
+    // Wait for the mutation and route invalidation to settle.
     await expect(page.getByTestId('todo-input')).toHaveValue('')
-
-    // Verify timestamp changed (RSC refetched)
-    const newTimestamp = await page
-      .getByTestId('loader-timestamp')
-      .textContent()
-    expect(Number(newTimestamp)).toBeGreaterThan(Number(initialTimestamp))
+    await expect(page.getByTestId('rsc-todo-list')).toContainText(todoText)
+    await expect(page.getByTestId('rsc-todo-count')).toContainText(
+      `/${initialCount + 1} completed`,
+    )
 
     // Verify input is cleared after submission
     await expect(page.getByTestId('todo-input')).toHaveValue('')
@@ -86,22 +92,18 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
     await page.waitForURL('/rsc-forms')
     await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
-    // Get initial timestamp
-    const initialTimestamp = await page
-      .getByTestId('loader-timestamp')
-      .textContent()
+    const initialCount = await getTodoCount(page)
 
     // Type and press Enter
-    await page.getByTestId('todo-input').fill('Enter key todo')
+    const todoText = `Enter key todo ${Date.now()}`
+    await page.getByTestId('todo-input').fill(todoText)
     await page.getByTestId('todo-input').press('Enter')
 
     await expect(page.getByTestId('todo-input')).toHaveValue('')
-
-    // Verify RSC refetched
-    const newTimestamp = await page
-      .getByTestId('loader-timestamp')
-      .textContent()
-    expect(Number(newTimestamp)).toBeGreaterThan(Number(initialTimestamp))
+    await expect(page.getByTestId('rsc-todo-list')).toContainText(todoText)
+    await expect(page.getByTestId('rsc-todo-count')).toContainText(
+      `/${initialCount + 1} completed`,
+    )
 
     // Input should be cleared
     await expect(page.getByTestId('todo-input')).toHaveValue('')
@@ -112,37 +114,40 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
     await page.waitForURL('/rsc-forms')
     await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
 
+    let expectedCount = await getTodoCount(page)
+
     // Add first todo
-    await page.getByTestId('todo-input').fill('First todo')
+    const firstTodo = `First todo ${Date.now()}`
+    await page.getByTestId('todo-input').fill(firstTodo)
     await page.getByTestId('add-todo-btn').click()
     await expect(page.getByTestId('todo-input')).toHaveValue('')
-
-    const firstTimestamp = await page
-      .getByTestId('loader-timestamp')
-      .textContent()
+    expectedCount += 1
+    await expect(page.getByTestId('rsc-todo-list')).toContainText(firstTodo)
+    await expect(page.getByTestId('rsc-todo-count')).toContainText(
+      `/${expectedCount} completed`,
+    )
 
     // Add second todo
-    await page.getByTestId('todo-input').fill('Second todo')
+    const secondTodo = `Second todo ${Date.now()}`
+    await page.getByTestId('todo-input').fill(secondTodo)
     await page.getByTestId('add-todo-btn').click()
     await expect(page.getByTestId('todo-input')).toHaveValue('')
-
-    const secondTimestamp = await page
-      .getByTestId('loader-timestamp')
-      .textContent()
-
-    // Verify each addition triggered a refetch
-    expect(Number(secondTimestamp)).toBeGreaterThan(Number(firstTimestamp))
+    expectedCount += 1
+    await expect(page.getByTestId('rsc-todo-list')).toContainText(secondTodo)
+    await expect(page.getByTestId('rsc-todo-count')).toContainText(
+      `/${expectedCount} completed`,
+    )
 
     // Add third todo
-    await page.getByTestId('todo-input').fill('Third todo')
+    const thirdTodo = `Third todo ${Date.now()}`
+    await page.getByTestId('todo-input').fill(thirdTodo)
     await page.getByTestId('add-todo-btn').click()
     await expect(page.getByTestId('todo-input')).toHaveValue('')
-
-    const thirdTimestamp = await page
-      .getByTestId('loader-timestamp')
-      .textContent()
-
-    expect(Number(thirdTimestamp)).toBeGreaterThan(Number(secondTimestamp))
+    expectedCount += 1
+    await expect(page.getByTestId('rsc-todo-list')).toContainText(thirdTodo)
+    await expect(page.getByTestId('rsc-todo-count')).toContainText(
+      `/${expectedCount} completed`,
+    )
   })
 
   test('Whitespace-only input does not submit', async ({ page }) => {
