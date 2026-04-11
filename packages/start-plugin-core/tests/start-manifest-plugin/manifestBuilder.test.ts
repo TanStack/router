@@ -703,12 +703,13 @@ describe('buildStartManifest', () => {
       serializeStartManifest(manifest),
     )
 
-    expect(evaluated.routes['/a'].assets[0]).toBe(
-      evaluated.routes['/b'].assets[0],
-    )
-    expect(evaluated.routes['/b'].assets[0]).toBe(
-      evaluated.routes['/c'].assets[0],
-    )
+    const aAsset = evaluated.routes['/a']?.assets?.[0]
+    const bAsset = evaluated.routes['/b']?.assets?.[0]
+    const cAsset = evaluated.routes['/c']?.assets?.[0]
+
+    expect(aAsset).toBeDefined()
+    expect(aAsset).toBe(bAsset)
+    expect(bAsset).toBe(cAsset)
   })
 
   test('serializeStartManifest preserves non-asset fields unchanged', () => {
