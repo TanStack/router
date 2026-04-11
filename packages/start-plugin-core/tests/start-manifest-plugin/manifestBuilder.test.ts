@@ -10,6 +10,7 @@ import {
   normalizeViteClientBuild,
   normalizeViteClientChunk,
   scanClientChunks,
+  serializeStartManifestAsModule,
 } from '../../src/start-manifest-plugin/manifestBuilder'
 import type { Rollup } from 'vite'
 
@@ -1235,5 +1236,117 @@ describe('buildStartManifest route pruning', () => {
     // /about has no matching chunks, so no assets or preloads.
     // It should be pruned from the manifest.
     expect(manifest.routes['/about']).toBeUndefined()
+  })
+})
+
+// Evaluates the generated module source via `new Function` so each test
+// gets its own scope for the `__tsr_aN` consts.
+function evaluateManifestModule(source: string) {
+  const body = `${source.replace(
+    'export const tsrStartManifest',
+    'const tsrStartManifest',
+  )}\nreturn tsrStartManifest();`
+  return new Function(body)() as {
+    routes: Record<string, any>
+    clientEntry: string
+  }
+}
+
+describe('serializeStartManifestAsModule', () => {
+  test('preserves object-reference identity across routes that share an asset', () => {
+    const sharedAsset = {
+      tag: 'link' as const,
+      attrs: {
+        rel: 'stylesheet',
+        href: '/assets/shared.css',
+        type: 'text/css',
+      },
+    }
+    const uniqueToA = {
+      tag: 'link' as const,
+      attrs: {
+        rel: 'stylesheet',
+        href: '/assets/only-a.css',
+        type: 'text/css',
+      },
+    }
+
+    const source = serializeStartManifestAsModule({
+      routes: {
+        __root__: { assets: [sharedAsset] },
+        '/a': {
+          filePath: '/routes/a.tsx',
+          assets: [sharedAsset, uniqueToA],
+        },
+        '/b': {
+          filePath: '/routes/b.tsx',
+          assets: [sharedAsset],
+        },
+      },
+      clientEntry: '/assets/entry.js',
+    })
+
+    const manifest = evaluateManifestModule(source)
+
+    // Shared assets must be the same object across routes so downstream
+    // TSON serialization can emit back-references instead of re-inlining.
+    expect(manifest.routes.__root__.assets[0]).toBe(
+      manifest.routes['/a'].assets[0],
+    )
+    expect(manifest.routes['/a'].assets[0]).toBe(
+      manifest.routes['/b'].assets[0],
+    )
+    // Non-shared assets remain distinct objects.
+    expect(manifest.routes['/a'].assets[1]).not.toBe(
+      manifest.routes['/a'].assets[0],
+    )
+  })
+
+  test('preserves filePath, children, preloads, and clientEntry fields', () => {
+    const asset = {
+      tag: 'link' as const,
+      attrs: {
+        rel: 'stylesheet',
+        href: '/assets/main.css',
+        type: 'text/css',
+      },
+    }
+
+    const source = serializeStartManifestAsModule({
+      routes: {
+        __root__: { children: ['/a'], assets: [asset] },
+        '/a': {
+          filePath: '/routes/a.tsx',
+          assets: [asset],
+          preloads: ['/assets/a.js', '/assets/vendor.js'],
+        },
+      },
+      clientEntry: '/assets/entry.js',
+    })
+
+    const manifest = evaluateManifestModule(source)
+    expect(manifest.clientEntry).toBe('/assets/entry.js')
+    expect(manifest.routes.__root__.children).toEqual(['/a'])
+    expect(manifest.routes['/a'].filePath).toBe('/routes/a.tsx')
+    expect(manifest.routes['/a'].preloads).toEqual([
+      '/assets/a.js',
+      '/assets/vendor.js',
+    ])
+  })
+
+  test('handles manifests where no route carries any assets', () => {
+    const source = serializeStartManifestAsModule({
+      routes: {
+        __root__: { children: ['/a'] },
+        '/a': { filePath: '/routes/a.tsx' },
+      },
+      clientEntry: '/assets/entry.js',
+    })
+
+    const manifest = evaluateManifestModule(source)
+    expect(manifest.clientEntry).toBe('/assets/entry.js')
+    expect(manifest.routes.__root__.children).toEqual(['/a'])
+    expect(manifest.routes['/a'].filePath).toBe('/routes/a.tsx')
+    expect(manifest.routes['/a'].assets).toBeUndefined()
   })
 })

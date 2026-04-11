@@ -181,6 +181,44 @@ export function buildStartManifest(options: {
   }
 }
 
+/**
+ * Serializes the manifest as a JS module that declares each unique asset
+ * once and references it by variable name, preserving object-reference
+ * sharing so downstream serializers can dedupe shared assets in the SSR HTML.
+ */
+export function serializeStartManifestAsModule(manifest: {
+  routes: Record<string, RouteTreeRoute>
+  clientEntry: string
+}): string {
+  const varNameByIdentity = new Map<string, string>()
+  const assetDecls: Array<string> = []
+
+  for (const route of Object.values(manifest.routes)) {
+    for (const asset of route.assets ?? []) {
+      const identity = getAssetIdentity(asset)
+      if (varNameByIdentity.has(identity)) continue
+      const varName = `__tsr_a${varNameByIdentity.size}`
+      varNameByIdentity.set(identity, varName)
+      assetDecls.push(`const ${varName}=${JSON.stringify(asset)};`)
+    }
+  }
+
+  // Replace each asset with a sentinel string, then strip the quotes so the
+  // generated source references the shared const by identifier.
+  const body = JSON.stringify(manifest, (key, value) => {
+    if (key === 'assets' && Array.isArray(value)) {
+      return (value as Array<RouterManagedTag>).map(
+        (asset) =>
+          `@@TSR_ASSET_REF@@${varNameByIdentity.get(getAssetIdentity(asset))!}`,
+      )
+    }
+    return value
+  }).replace(/"@@TSR_ASSET_REF@@(__tsr_a\d+)"/g, '$1')
+
+  return `${assetDecls.join('\n')}
+export const tsrStartManifest = () => (${body});`
+}
+
 export function scanClientChunks(
   clientBuild: NormalizedClientBuild,
 ): ScannedClientChunks {
