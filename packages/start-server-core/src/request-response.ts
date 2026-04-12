@@ -158,8 +158,7 @@ export function getRequest(): Request {
 }
 
 export function getRequestHeaders(): TypedHeaders<RequestHeaderMap> {
-  // TODO `as any` not needed when fetchdts is updated
-  return getH3Event().req.headers as any
+  return getH3Event().req.headers
 }
 
 export function getRequestHeader(name: RequestHeaderName): string | undefined {
