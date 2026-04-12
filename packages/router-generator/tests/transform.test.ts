@@ -52,6 +52,26 @@ describe('transform', () => {
     expect(result.result).toBe('not-modified')
   })
 
+  it('does not treat createRootRoute exported via export { Route } as missing Route exports', async () => {
+    const result = await transform({
+      source: [
+        "import { createRootRoute } from '@tanstack/react-router'",
+        '',
+        'const Route = createRootRoute()({})',
+        '',
+        'export { Route }',
+      ].join('\n'),
+      ctx: {
+        target: 'react',
+        routeId: '/',
+        lazy: false,
+      },
+      node: makeNode('__root'),
+    })
+
+    expect(result.result).toBe('not-modified')
+  })
+
   it('returns an error result for parse failures', async () => {
     const result = await transform({
       source: "export const Route = createFileRoute('/broken')(",
