@@ -456,7 +456,7 @@ export class StartCompiler {
     return cache
   }
 
-  private async init() {
+  private init() {
     // Register internal stub package exports for recognition.
     // These don't need module resolution - only the knownRootImports fast path.
     this.knownRootImports.set(

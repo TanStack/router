@@ -8,9 +8,7 @@
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "vite",
-    "test:e2e:verbose-routes:true": "rm -rf port*.txt; VERBOSE_FILE_ROUTES=1 playwright test --project=chromium",
-    "test:e2e:verbose-routes:false": "rm -rf port*.txt; VERBOSE_FILE_ROUTES=0 playwright test --project=chromium",
-    "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:verbose-routes:true && pnpm run test:e2e:verbose-routes:false"
+    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",

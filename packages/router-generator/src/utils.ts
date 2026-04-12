@@ -686,22 +686,6 @@ export const getResolvedRouteNodeVariableName = (
 }
 
 /**
- * Checks if a given RouteNode is valid for augmenting it with typing based on conditions.
- * Also asserts that the RouteNode is defined.
- *
- * @param routeNode - The RouteNode to check.
- * @returns A boolean indicating whether the RouteNode is defined.
- */
-export function isRouteNodeValidForAugmentation(
-  routeNode?: RouteNode,
-): routeNode is RouteNode {
-  if (!routeNode || routeNode.isVirtual) {
-    return false
-  }
-  return true
-}
-
-/**
  * Infers the path for use by TS
  */
 export const inferPath = (routeNode: RouteNode): string => {

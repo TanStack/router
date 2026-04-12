@@ -77,13 +77,9 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              config.verboseFileRoutes === false
-                ? ''
-                : "import { createFileRoute } from '@tanstack/react-router';",
+              "import { createFileRoute } from '@tanstack/react-router';",
             tsrExportStart: (routePath) =>
-              config.verboseFileRoutes === false
-                ? 'export const Route = createFileRoute('
-                : `export const Route = createFileRoute('${routePath}')(`,
+              `export const Route = createFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -97,13 +93,9 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              config.verboseFileRoutes === false
-                ? ''
-                : "import { createLazyFileRoute } from '@tanstack/react-router';",
+              "import { createLazyFileRoute } from '@tanstack/react-router';",
             tsrExportStart: (routePath) =>
-              config.verboseFileRoutes === false
-                ? 'export const Route = createLazyFileRoute('
-                : `export const Route = createLazyFileRoute('${routePath}')(`,
+              `export const Route = createLazyFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -138,13 +130,9 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              config.verboseFileRoutes === false
-                ? ''
-                : "import { createFileRoute } from '@tanstack/solid-router';",
+              "import { createFileRoute } from '@tanstack/solid-router';",
             tsrExportStart: (routePath) =>
-              config.verboseFileRoutes === false
-                ? 'export const Route = createFileRoute('
-                : `export const Route = createFileRoute('${routePath}')(`,
+              `export const Route = createFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -158,14 +146,10 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              config.verboseFileRoutes === false
-                ? ''
-                : "import { createLazyFileRoute } from '@tanstack/solid-router';",
+              "import { createLazyFileRoute } from '@tanstack/solid-router';",
 
             tsrExportStart: (routePath) =>
-              config.verboseFileRoutes === false
-                ? 'export const Route = createLazyFileRoute('
-                : `export const Route = createLazyFileRoute('${routePath}')(`,
+              `export const Route = createLazyFileRoute('${routePath}')(`,
 
             tsrExportEnd: () => ');',
           },
@@ -202,13 +186,9 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              config.verboseFileRoutes === false
-                ? ''
-                : "import { createFileRoute } from '@tanstack/vue-router';",
+              "import { createFileRoute } from '@tanstack/vue-router';",
             tsrExportStart: (routePath) =>
-              config.verboseFileRoutes === false
-                ? 'export const Route = createFileRoute('
-                : `export const Route = createFileRoute('${routePath}')(`,
+              `export const Route = createFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -223,14 +203,10 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              config.verboseFileRoutes === false
-                ? ''
-                : "import { createLazyFileRoute } from '@tanstack/vue-router';",
+              "import { createLazyFileRoute } from '@tanstack/vue-router';",
 
             tsrExportStart: (routePath) =>
-              config.verboseFileRoutes === false
-                ? 'export const Route = createLazyFileRoute('
-                : `export const Route = createLazyFileRoute('${routePath}')(`,
+              `export const Route = createLazyFileRoute('${routePath}')(`,
 
             tsrExportEnd: () => ');',
           },

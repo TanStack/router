@@ -9,16 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
-import type {
-  CreateFileRoute,
-  CreateLazyFileRoute,
-  FileRoutesByPath,
-} from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as testTemplateLiteralRouteImport } from './routes/(test)/template-literal'
 import { Route as testInitiallyLazyRouteImport } from './routes/(test)/initiallyLazy'
 import { Route as testInitiallyEmptyRouteImport } from './routes/(test)/initiallyEmpty'
 import { Route as testFooRouteImport } from './routes/(test)/foo'
+import { Route as testDuplicateImportRouteImport } from './routes/(test)/duplicate-import'
+import { Route as testDoubleQuotesRouteImport } from './routes/(test)/double-quotes'
 import { Route as testFooBarRouteImport } from './routes/(test)/foo.bar'
 
 const testBarLazyRouteImport = createFileRoute('/(test)/bar')()
@@ -30,6 +28,11 @@ const testBarLazyRoute = testBarLazyRouteImport
     getParentRoute: () => rootRouteImport,
   } as any)
   .lazy(() => import('./routes/(test)/bar.lazy').then((d) => d.Route))
+const testTemplateLiteralRoute = testTemplateLiteralRouteImport.update({
+  id: '/(test)/template-literal',
+  path: '/template-literal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const testInitiallyLazyRoute = testInitiallyLazyRouteImport.update({
   id: '/(test)/initiallyLazy',
   path: '/initiallyLazy',
@@ -49,6 +52,16 @@ const testFooRoute = testFooRouteImport.update({
   path: '/foo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const testDuplicateImportRoute = testDuplicateImportRouteImport.update({
+  id: '/(test)/duplicate-import',
+  path: '/duplicate-import',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testDoubleQuotesRoute = testDoubleQuotesRouteImport.update({
+  id: '/(test)/double-quotes',
+  path: '/double-quotes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const testFooBarRoute = testFooBarRouteImport.update({
   id: '/bar',
   path: '/bar',
@@ -56,45 +69,76 @@ const testFooBarRoute = testFooBarRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/double-quotes': typeof testDoubleQuotesRoute
+  '/duplicate-import': typeof testDuplicateImportRoute
   '/foo': typeof testFooRouteWithChildren
   '/initiallyEmpty': typeof testInitiallyEmptyRoute
   '/initiallyLazy': typeof testInitiallyLazyRoute
+  '/template-literal': typeof testTemplateLiteralRoute
   '/bar': typeof testBarLazyRoute
   '/foo/bar': typeof testFooBarRoute
 }
 export interface FileRoutesByTo {
+  '/double-quotes': typeof testDoubleQuotesRoute
+  '/duplicate-import': typeof testDuplicateImportRoute
   '/foo': typeof testFooRouteWithChildren
   '/initiallyEmpty': typeof testInitiallyEmptyRoute
   '/initiallyLazy': typeof testInitiallyLazyRoute
+  '/template-literal': typeof testTemplateLiteralRoute
   '/bar': typeof testBarLazyRoute
   '/foo/bar': typeof testFooBarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/(test)/double-quotes': typeof testDoubleQuotesRoute
+  '/(test)/duplicate-import': typeof testDuplicateImportRoute
   '/(test)/foo': typeof testFooRouteWithChildren
   '/(test)/initiallyEmpty': typeof testInitiallyEmptyRoute
   '/(test)/initiallyLazy': typeof testInitiallyLazyRoute
+  '/(test)/template-literal': typeof testTemplateLiteralRoute
   '/(test)/bar': typeof testBarLazyRoute
   '/(test)/foo/bar': typeof testFooBarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar' | '/foo/bar'
+  fullPaths:
+    | '/double-quotes'
+    | '/duplicate-import'
+    | '/foo'
+    | '/initiallyEmpty'
+    | '/initiallyLazy'
+    | '/template-literal'
+    | '/bar'
+    | '/foo/bar'
   fileRoutesByTo: FileRoutesByTo
-  to: '/foo' | '/initiallyEmpty' | '/initiallyLazy' | '/bar' | '/foo/bar'
+  to:
+    | '/double-quotes'
+    | '/duplicate-import'
+    | '/foo'
+    | '/initiallyEmpty'
+    | '/initiallyLazy'
+    | '/template-literal'
+    | '/bar'
+    | '/foo/bar'
   id:
     | '__root__'
+    | '/(test)/double-quotes'
+    | '/(test)/duplicate-import'
     | '/(test)/foo'
     | '/(test)/initiallyEmpty'
     | '/(test)/initiallyLazy'
+    | '/(test)/template-literal'
     | '/(test)/bar'
     | '/(test)/foo/bar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  testDoubleQuotesRoute: typeof testDoubleQuotesRoute
+  testDuplicateImportRoute: typeof testDuplicateImportRoute
   testFooRoute: typeof testFooRouteWithChildren
   testInitiallyEmptyRoute: typeof testInitiallyEmptyRoute
   testInitiallyLazyRoute: typeof testInitiallyLazyRoute
+  testTemplateLiteralRoute: typeof testTemplateLiteralRoute
   testBarLazyRoute: typeof testBarLazyRoute
 }
 
@@ -105,6 +149,13 @@ declare module '@tanstack/react-router' {
       path: '/bar'
       fullPath: '/bar'
       preLoaderRoute: typeof testBarLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(test)/template-literal': {
+      id: '/(test)/template-literal'
+      path: '/template-literal'
+      fullPath: '/template-literal'
+      preLoaderRoute: typeof testTemplateLiteralRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(test)/initiallyLazy': {
@@ -128,6 +179,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof testFooRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(test)/duplicate-import': {
+      id: '/(test)/duplicate-import'
+      path: '/duplicate-import'
+      fullPath: '/duplicate-import'
+      preLoaderRoute: typeof testDuplicateImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(test)/double-quotes': {
+      id: '/(test)/double-quotes'
+      path: '/double-quotes'
+      fullPath: '/double-quotes'
+      preLoaderRoute: typeof testDoubleQuotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(test)/foo/bar': {
       id: '/(test)/foo/bar'
       path: '/bar'
@@ -136,53 +201,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof testFooRoute
     }
   }
-}
-
-declare module './routes/(test)/foo' {
-  const createFileRoute: CreateFileRoute<
-    '/(test)/foo',
-    FileRoutesByPath['/(test)/foo']['parentRoute'],
-    FileRoutesByPath['/(test)/foo']['id'],
-    FileRoutesByPath['/(test)/foo']['path'],
-    FileRoutesByPath['/(test)/foo']['fullPath']
-  >
-}
-declare module './routes/(test)/initiallyEmpty' {
-  const createFileRoute: CreateFileRoute<
-    '/(test)/initiallyEmpty',
-    FileRoutesByPath['/(test)/initiallyEmpty']['parentRoute'],
-    FileRoutesByPath['/(test)/initiallyEmpty']['id'],
-    FileRoutesByPath['/(test)/initiallyEmpty']['path'],
-    FileRoutesByPath['/(test)/initiallyEmpty']['fullPath']
-  >
-}
-declare module './routes/(test)/initiallyLazy' {
-  const createFileRoute: CreateFileRoute<
-    '/(test)/initiallyLazy',
-    FileRoutesByPath['/(test)/initiallyLazy']['parentRoute'],
-    FileRoutesByPath['/(test)/initiallyLazy']['id'],
-    FileRoutesByPath['/(test)/initiallyLazy']['path'],
-    FileRoutesByPath['/(test)/initiallyLazy']['fullPath']
-  >
-}
-declare module './routes/(test)/bar.lazy' {
-  const createLazyFileRoute: CreateLazyFileRoute<
-    FileRoutesByPath['/(test)/bar']['preLoaderRoute']
-  >
-}
-declare module './routes/(test)/initiallyEmpty.lazy' {
-  const createLazyFileRoute: CreateLazyFileRoute<
-    FileRoutesByPath['/(test)/initiallyEmpty']['preLoaderRoute']
-  >
-}
-declare module './routes/(test)/foo.bar' {
-  const createFileRoute: CreateFileRoute<
-    '/(test)/foo/bar',
-    FileRoutesByPath['/(test)/foo/bar']['parentRoute'],
-    FileRoutesByPath['/(test)/foo/bar']['id'],
-    FileRoutesByPath['/(test)/foo/bar']['path'],
-    FileRoutesByPath['/(test)/foo/bar']['fullPath']
-  >
 }
 
 interface testFooRouteChildren {
@@ -197,9 +215,12 @@ const testFooRouteWithChildren =
   testFooRoute._addFileChildren(testFooRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  testDoubleQuotesRoute: testDoubleQuotesRoute,
+  testDuplicateImportRoute: testDuplicateImportRoute,
   testFooRoute: testFooRouteWithChildren,
   testInitiallyEmptyRoute: testInitiallyEmptyRoute,
   testInitiallyLazyRoute: testInitiallyLazyRoute,
+  testTemplateLiteralRoute: testTemplateLiteralRoute,
   testBarLazyRoute: testBarLazyRoute,
 }
 export const routeTree = rootRouteImport

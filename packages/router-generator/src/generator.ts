@@ -28,7 +28,6 @@ import {
   getImportPath,
   getResolvedRouteNodeVariableName,
   hasParentRoute,
-  isRouteNodeValidForAugmentation,
   isSegmentPathless,
   mergeImportDeclarations,
   multiSortBy,
@@ -658,38 +657,6 @@ export class Generator {
       }
       imports.push(runtimeImport)
     }
-    if (config.verboseFileRoutes === false) {
-      const typeImport: ImportDeclaration = {
-        specifiers: [],
-        source: this.targetTemplate.fullPkg,
-        importKind: 'type',
-      }
-      let needsCreateFileRoute = false
-      let needsCreateLazyFileRoute = false
-      for (const node of sortedRouteNodes) {
-        if (isRouteNodeValidForAugmentation(node)) {
-          if (node._fsRouteType !== 'lazy') {
-            needsCreateFileRoute = true
-          }
-          if (acc.routePiecesByPath[node.routePath!]?.lazy) {
-            needsCreateLazyFileRoute = true
-          }
-        }
-        if (needsCreateFileRoute && needsCreateLazyFileRoute) break
-      }
-      if (needsCreateFileRoute) {
-        typeImport.specifiers.push({ imported: 'CreateFileRoute' })
-      }
-      if (needsCreateLazyFileRoute) {
-        typeImport.specifiers.push({ imported: 'CreateLazyFileRoute' })
-      }
-
-      if (typeImport.specifiers.length > 0) {
-        typeImport.specifiers.push({ imported: 'FileRoutesByPath' })
-        imports.push(typeImport)
-      }
-    }
-
     const routeTreeConfig = buildRouteTreeConfig(
       acc.routeTree,
       config.disableTypes,
@@ -963,36 +930,6 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
     const importStatements = mergedImports.map(buildImportString)
 
-    let moduleAugmentation = ''
-    if (config.verboseFileRoutes === false && !config.disableTypes) {
-      moduleAugmentation = opts.routeFileResult
-        .map((node) => {
-          const getModuleDeclaration = (routeNode?: RouteNode) => {
-            if (!isRouteNodeValidForAugmentation(routeNode)) {
-              return ''
-            }
-            let moduleAugmentation = ''
-            if (routeNode._fsRouteType === 'lazy') {
-              moduleAugmentation = `const createLazyFileRoute: CreateLazyFileRoute<FileRoutesByPath['${routeNode.routePath}']['preLoaderRoute']>`
-            } else {
-              moduleAugmentation = `const createFileRoute: CreateFileRoute<'${routeNode.routePath}',
-                  FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
-                  FileRoutesByPath['${routeNode.routePath}']['id'],
-                  FileRoutesByPath['${routeNode.routePath}']['path'],
-                  FileRoutesByPath['${routeNode.routePath}']['fullPath']
-                >
-              `
-            }
-
-            return `declare module './${getImportPath(routeNode, config, this.generatedRouteTreePath)}' {
-                      ${moduleAugmentation}
-                    }`
-          }
-          return getModuleDeclaration(node)
-        })
-        .join('\n')
-    }
-
     const rootRouteImport = getImportForRouteNode(
       rootRouteNode,
       config,
@@ -1020,7 +957,6 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       createUpdateRoutes.join('\n'),
       fileRoutesByFullPath,
       fileRoutesByPathInterface,
-      moduleAugmentation,
       routeTreeConfig.join('\n'),
       routeTree,
       ...footer,
@@ -1138,7 +1074,6 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           target: this.config.target,
           routeId: escapedRoutePath,
           lazy: node._fsRouteType === 'lazy',
-          verboseFileRoutes: !(this.config.verboseFileRoutes === false),
         },
         node,
       })

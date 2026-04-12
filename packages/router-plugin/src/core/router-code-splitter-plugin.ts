@@ -31,7 +31,6 @@ import type {
   TransformResult as UnpluginTransformResult,
 } from 'unplugin'
 
-const PLUGIN_NAME = 'unplugin:router-code-splitter'
 const CODE_SPLITTER_PLUGIN_NAME =
   'tanstack-router:code-splitter:compile-reference-file'
 

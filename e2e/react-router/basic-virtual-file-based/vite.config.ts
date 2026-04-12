@@ -11,7 +11,6 @@ export default defineConfig({
     tanstackRouter({
       target: 'react',
       autoCodeSplitting: true,
-      verboseFileRoutes: false,
       virtualRouteConfig: routes,
     }),
     react(),

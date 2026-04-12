@@ -22,7 +22,6 @@ export default defineConfig({
     tanstackRouter({
       target: 'solid',
       autoCodeSplitting: true,
-      verboseFileRoutes: false,
     }),
     solid(),
   ],

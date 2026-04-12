@@ -1,8 +1,8 @@
 // @ts-nocheck
 
-import { Link } from '@tanstack/react-router'
+import { createLazyFileRoute, Link } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createLazyFileRoute('/foo/bar')({
   component: () => {
     const post = Route.useLoaderData()
 

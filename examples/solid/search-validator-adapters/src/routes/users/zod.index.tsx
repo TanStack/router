@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/solid-router'
+import { useNavigate, createFileRoute } from '@tanstack/solid-router'
 import { fallback, zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 import { Suspense } from 'solid-js'
@@ -29,7 +29,7 @@ const Zod = () => {
   )
 }
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users/zod/')({
   validateSearch: zodValidator(
     z.object({
       search: fallback(z.string().optional(), undefined),

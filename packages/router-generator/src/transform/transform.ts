@@ -1,529 +1,712 @@
+import MagicString from 'magic-string'
+import * as t from '@babel/types'
 import { parseAst } from '@tanstack/router-utils'
-import { parse, print, types, visit } from 'recast'
-import { SourceMapConsumer } from 'source-map'
-import { mergeImportDeclarations } from '../utils'
-import { ensureStringArgument } from './utils'
-import type { ImportDeclaration } from '../types'
-import type { RawSourceMap } from 'source-map'
 import type { TransformOptions, TransformResult } from './types'
 
-const b = types.builders
+const routeConstructors = ['createFileRoute', 'createLazyFileRoute'] as const
+
+type RouteConstructorName = (typeof routeConstructors)[number]
+type SupportedRouteId = t.StringLiteral | t.TemplateLiteral
+type NamedImport = {
+  imported: string
+  local: string
+}
+
+type ParsedImportDeclaration = {
+  declaration: t.ImportDeclaration
+  defaultImport?: string
+  namespace?: string
+  named: Array<NamedImport>
+  moduleName: string
+  quote: '"' | "'"
+  semicolon: boolean
+}
+
+type RouteImportAnalysis =
+  | { kind: 'ok' }
+  | {
+      kind: 'rename'
+      imported: t.Identifier
+      local: t.Identifier
+      next: RouteConstructorName
+    }
+  | { kind: 'normalize' }
+
+type RouteCall = {
+  callee: t.Identifier & { name: RouteConstructorName }
+  routeIdArg: SupportedRouteId
+  optionsArg: t.CallExpression['arguments'][number] | undefined
+}
+
+type RouteCallAnalysis = {
+  calls: Array<RouteCall>
+  hasUnsupportedRouteId: boolean
+  hasMalformedRouteCall: boolean
+}
 
 export async function transform({
   ctx,
   source,
   node,
 }: TransformOptions): Promise<TransformResult> {
-  let appliedChanges = false as boolean
-  let ast: types.namedTypes.File
+  let ast: ReturnType<typeof parseAst>
+
   try {
-    ast = parse(source, {
-      sourceFileName: 'output.ts',
-      parser: {
-        parse(code: string) {
-          return parseAst({
-            code,
-            // we need to instruct babel to produce tokens,
-            // otherwise recast will try to generate the tokens via its own parser and will fail
-            tokens: true,
-          })
-        },
-      },
-    })
-  } catch (e) {
-    console.error('Error parsing code', ctx.routeId, source, e)
+    ast = parseAst({ code: source })
+  } catch (error) {
     return {
       result: 'error',
-      error: e,
+      error,
     }
   }
 
-  const preferredQuote = detectPreferredQuoteStyle(ast)
+  const exportedRouteNames = getExportedRouteNames(ast.program.body)
 
-  let routeExportHandled = false as boolean
-  function onExportFound(decl: types.namedTypes.VariableDeclarator) {
-    if (decl.init?.type === 'CallExpression') {
-      const callExpression = decl.init
-      const firstArgument = callExpression.arguments[0]
-      if (firstArgument) {
-        if (firstArgument.type === 'ObjectExpression') {
-          const staticProperties = firstArgument.properties.flatMap((p) => {
-            if (p.type === 'ObjectProperty' && p.key.type === 'Identifier') {
-              return p.key.name
-            }
-            return []
-          })
-          node.createFileRouteProps = new Set(staticProperties)
-        }
-      }
-      let identifier: types.namedTypes.Identifier | undefined
-      // `const Route = createFileRoute({ ... })`
-      if (callExpression.callee.type === 'Identifier') {
-        identifier = callExpression.callee
-        if (ctx.verboseFileRoutes) {
-          // we need to add the string literal via another CallExpression
-          callExpression.callee = b.callExpression(identifier, [
-            b.stringLiteral(ctx.routeId),
-          ])
-          appliedChanges = true
-        }
-      }
-      // `const Route = createFileRoute('/path')({ ... })`
-      else if (
-        callExpression.callee.type === 'CallExpression' &&
-        callExpression.callee.callee.type === 'Identifier'
-      ) {
-        identifier = callExpression.callee.callee
-        if (!ctx.verboseFileRoutes) {
-          // we need to remove the route id
-          callExpression.callee = identifier
-          appliedChanges = true
-        } else {
-          // check if the route id is correct
-          appliedChanges = ensureStringArgument(
-            callExpression.callee,
-            ctx.routeId,
-            ctx.preferredQuote,
-          )
-        }
-      }
-      if (identifier === undefined) {
-        throw new Error(
-          `expected identifier to be present in ${ctx.routeId} for export "Route"`,
-        )
-      }
-      if (identifier.name === 'createFileRoute' && ctx.lazy) {
-        identifier.name = 'createLazyFileRoute'
-        appliedChanges = true
-      } else if (identifier.name === 'createLazyFileRoute' && !ctx.lazy) {
-        identifier.name = 'createFileRoute'
-        appliedChanges = true
-      }
-    } else {
-      throw new Error(
-        `expected "Route" export to be initialized by a CallExpression`,
-      )
-    }
-    routeExportHandled = true
+  if (exportedRouteNames.size === 0) {
+    return { result: 'no-route-export' }
   }
 
-  const program: types.namedTypes.Program = ast.program
-  // first pass: find Route export
-  for (const n of program.body) {
-    if (n.type === 'ExportNamedDeclaration') {
-      // direct export of a variable declaration, e.g. `export const Route = createFileRoute('/path')`
-      if (n.declaration?.type === 'VariableDeclaration') {
-        const decl = n.declaration.declarations[0]
-        if (
-          decl &&
-          decl.type === 'VariableDeclarator' &&
-          decl.id.type === 'Identifier'
-        ) {
-          if (decl.id.name === 'Route') {
-            onExportFound(decl)
-          }
-        }
-      }
-      // this is an export without a declaration, e.g. `export { Route }`
-      else if (n.declaration === null && n.specifiers) {
-        for (const spec of n.specifiers) {
-          if (typeof spec.exported.name === 'string') {
-            if (spec.exported.name === 'Route') {
-              const variableName = spec.local?.name || spec.exported.name
-              // find the matching variable declaration by iterating over the top-level declarations
-              for (const decl of program.body) {
-                if (
-                  decl.type === 'VariableDeclaration' &&
-                  decl.declarations[0]
-                ) {
-                  const variable = decl.declarations[0]
-                  if (
-                    variable.type === 'VariableDeclarator' &&
-                    variable.id.type === 'Identifier' &&
-                    variable.id.name === variableName
-                  ) {
-                    onExportFound(variable)
-                    break
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    if (routeExportHandled) {
-      break
-    }
-  }
+  const {
+    calls: routeCalls,
+    hasUnsupportedRouteId,
+    hasMalformedRouteCall,
+  } = findExportedRouteCalls(ast.program.body, exportedRouteNames)
 
-  if (!routeExportHandled) {
+  if (routeCalls.length === 0 && hasMalformedRouteCall) {
     return {
-      result: 'no-route-export',
+      result: 'error',
+      error: new Error(
+        `expected Route export in ${ctx.routeId} to use createFileRoute('/path')({...}) or createLazyFileRoute('/path')({...})`,
+      ),
     }
   }
 
-  const imports: {
-    required: Array<ImportDeclaration>
-    banned: Array<ImportDeclaration>
-  } = {
-    required: [],
-    banned: [],
+  if (routeCalls.length === 0 && hasUnsupportedRouteId) {
+    return {
+      result: 'error',
+      error: new Error(
+        `expected route id to be a string literal or plain template literal in ${ctx.routeId}`,
+      ),
+    }
   }
 
+  if (routeCalls.length === 0) {
+    return { result: 'not-modified' }
+  }
+
+  if (routeCalls.length > 1) {
+    return {
+      result: 'error',
+      error: new Error(
+        `expected exactly one createFileRoute/createLazyFileRoute call in ${ctx.routeId}`,
+      ),
+    }
+  }
+
+  const routeCall = routeCalls[0]!
+  const routeIdQuote = getRouteIdQuote(source, routeCall.routeIdArg)
+
+  const createFileRouteProps = getCreateFileRouteProps(routeCall.optionsArg)
+  if (createFileRouteProps) {
+    node.createFileRouteProps = createFileRouteProps
+  }
+
+  const expectedCallee = getExpectedRouteConstructor(ctx.lazy)
+  const expectedRouteId = `${routeIdQuote}${ctx.routeId}${routeIdQuote}`
+  const currentRouteId = source.slice(
+    routeCall.routeIdArg.start!,
+    routeCall.routeIdArg.end!,
+  )
   const targetModule = `@tanstack/${ctx.target}-router`
-  if (ctx.verboseFileRoutes === false) {
-    imports.banned = [
-      {
-        source: targetModule,
-        specifiers: [
-          { imported: 'createLazyFileRoute' },
-          { imported: 'createFileRoute' },
-        ],
-      },
-    ]
-  } else {
-    if (ctx.lazy) {
-      imports.required = [
-        {
-          source: targetModule,
-          specifiers: [{ imported: 'createLazyFileRoute' }],
-        },
-      ]
-      imports.banned = [
-        {
-          source: targetModule,
-          specifiers: [{ imported: 'createFileRoute' }],
-        },
-      ]
-    } else {
-      imports.required = [
-        {
-          source: targetModule,
-          specifiers: [{ imported: 'createFileRoute' }],
-        },
-      ]
-      imports.banned = [
-        {
-          source: targetModule,
-          specifiers: [{ imported: 'createLazyFileRoute' }],
-        },
-      ]
-    }
+  const imports = parseTargetImports(ast.program.body, source, targetModule)
+
+  const s = new MagicString(source)
+  let modified = false
+
+  if (routeCall.callee.name !== expectedCallee) {
+    s.update(routeCall.callee.start!, routeCall.callee.end!, expectedCallee)
+    modified = true
   }
 
-  imports.required = mergeImportDeclarations(imports.required)
-  imports.banned = mergeImportDeclarations(imports.banned)
-
-  const importStatementCandidates: Array<types.namedTypes.ImportDeclaration> =
-    []
-  const importDeclarationsToRemove: Array<types.namedTypes.ImportDeclaration> =
-    []
-
-  // second pass: apply import rules, but only if a matching export for the plugin was found
-  for (const n of program.body) {
-    const findImport =
-      (opts: { source: string; importKind?: 'type' | 'value' | 'typeof' }) =>
-      (i: ImportDeclaration) => {
-        if (i.source === opts.source) {
-          const importKind = i.importKind || 'value'
-          const expectedImportKind = opts.importKind || 'value'
-          return expectedImportKind === importKind
-        }
-        return false
-      }
-    if (n.type === 'ImportDeclaration' && typeof n.source.value === 'string') {
-      const filterImport = findImport({
-        source: n.source.value,
-        importKind: n.importKind,
-      })
-      let requiredImports = imports.required.filter(filterImport)[0]
-
-      const bannedImports = imports.banned.filter(filterImport)[0]
-      if (!requiredImports && !bannedImports) {
-        continue
-      }
-      const importSpecifiersToRemove: types.namedTypes.ImportDeclaration['specifiers'] =
-        []
-      if (n.specifiers) {
-        for (const spec of n.specifiers) {
-          if (!requiredImports && !bannedImports) {
-            break
-          }
-          if (
-            spec.type === 'ImportSpecifier' &&
-            typeof spec.imported.name === 'string'
-          ) {
-            if (requiredImports) {
-              const requiredImportIndex = requiredImports.specifiers.findIndex(
-                (imp) => imp.imported === spec.imported.name,
-              )
-              if (requiredImportIndex !== -1) {
-                // import is already present, remove it from requiredImports
-                requiredImports.specifiers.splice(requiredImportIndex, 1)
-                if (requiredImports.specifiers.length === 0) {
-                  imports.required = imports.required.splice(
-                    imports.required.indexOf(requiredImports),
-                    1,
-                  )
-                  requiredImports = undefined
-                }
-              } else {
-                // add the import statement to the candidates
-                importStatementCandidates.push(n)
-              }
-            }
-            if (bannedImports) {
-              const bannedImportIndex = bannedImports.specifiers.findIndex(
-                (imp) => imp.imported === spec.imported.name,
-              )
-              if (bannedImportIndex !== -1) {
-                importSpecifiersToRemove.push(spec)
-              }
-            }
-          }
-        }
-        if (importSpecifiersToRemove.length > 0) {
-          appliedChanges = true
-          n.specifiers = n.specifiers.filter(
-            (spec) => !importSpecifiersToRemove.includes(spec),
-          )
-
-          // mark the import statement as to be deleted if it is now empty
-          if (n.specifiers.length === 0) {
-            importDeclarationsToRemove.push(n)
-          }
-        }
-      }
-    }
-  }
-  imports.required.forEach((requiredImport) => {
-    if (requiredImport.specifiers.length > 0) {
-      appliedChanges = true
-      if (importStatementCandidates.length > 0) {
-        // find the first import statement that matches both the module and the import kind
-        const importStatement = importStatementCandidates.find(
-          (importStatement) => {
-            if (importStatement.source.value === requiredImport.source) {
-              const importKind = importStatement.importKind || 'value'
-              const requiredImportKind = requiredImport.importKind || 'value'
-              return importKind === requiredImportKind
-            }
-            return false
-          },
-        )
-        if (importStatement) {
-          if (importStatement.specifiers === undefined) {
-            importStatement.specifiers = []
-          }
-          const importSpecifiersToAdd = requiredImport.specifiers.map((spec) =>
-            b.importSpecifier(
-              b.identifier(spec.imported),
-              b.identifier(spec.imported),
-            ),
-          )
-          importStatement.specifiers = [
-            ...importStatement.specifiers,
-            ...importSpecifiersToAdd,
-          ]
-          return
-        }
-      }
-      const importStatement = b.importDeclaration(
-        requiredImport.specifiers.map((spec) =>
-          b.importSpecifier(
-            b.identifier(spec.imported),
-            spec.local ? b.identifier(spec.local) : null,
-          ),
-        ),
-        b.stringLiteral(requiredImport.source),
-      )
-      program.body.unshift(importStatement)
-    }
-  })
-  if (importDeclarationsToRemove.length > 0) {
-    appliedChanges = true
-    for (const importDeclaration of importDeclarationsToRemove) {
-      // check if the import declaration is still empty
-      if (importDeclaration.specifiers?.length === 0) {
-        const index = program.body.indexOf(importDeclaration)
-        if (index !== -1) {
-          program.body.splice(index, 1)
-        }
-      }
-    }
+  if (currentRouteId !== expectedRouteId) {
+    s.update(
+      routeCall.routeIdArg.start!,
+      routeCall.routeIdArg.end!,
+      expectedRouteId,
+    )
+    modified = true
   }
 
-  if (!appliedChanges) {
-    return {
-      result: 'not-modified',
-    }
-  }
-
-  const printResult = print(ast, {
-    reuseWhitespace: true,
-    sourceMapName: 'output.map',
-  })
-  let transformedCode = printResult.code
-  if (printResult.map) {
-    const fixedOutput = await fixTransformedOutputText({
-      originalCode: source,
-      transformedCode,
-      sourceMap: printResult.map as RawSourceMap,
-      preferredQuote,
+  if (
+    updateRouteImports({
+      imports,
+      source,
+      s,
+      targetModule,
+      required: expectedCallee,
+      lineEnding: getLineEnding(source),
     })
-    transformedCode = fixedOutput
+  ) {
+    modified = true
   }
+
+  if (!modified) {
+    return { result: 'not-modified' }
+  }
+
   return {
     result: 'modified',
-    output: transformedCode,
+    output: s.toString(),
   }
 }
 
-async function fixTransformedOutputText({
-  originalCode,
-  transformedCode,
-  sourceMap,
-  preferredQuote,
-}: {
-  originalCode: string
-  transformedCode: string
-  sourceMap: RawSourceMap
-  preferredQuote: '"' | "'"
-}) {
-  const originalLines = originalCode.split('\n')
-  const transformedLines = transformedCode.split('\n')
+function getExportedRouteNames(body: Array<t.Statement>) {
+  const exportedRouteNames = new Set<string>()
 
-  const defaultUsesSemicolons = detectSemicolonUsage(originalCode)
+  for (const statement of body) {
+    if (!t.isExportNamedDeclaration(statement) || statement.source) {
+      continue
+    }
 
-  const consumer = await new SourceMapConsumer(sourceMap)
-
-  const fixedLines = transformedLines.map((line, i) => {
-    const transformedLineNum = i + 1
-
-    let origLineText: string | undefined = undefined
-
-    for (let col = 0; col < line.length; col++) {
-      const mapped = consumer.originalPositionFor({
-        line: transformedLineNum,
-        column: col,
-      })
-      if (mapped.line != null && mapped.line > 0) {
-        origLineText = originalLines[mapped.line - 1]
-        break
+    if (t.isVariableDeclaration(statement.declaration)) {
+      for (const declarator of statement.declaration.declarations) {
+        if (t.isIdentifier(declarator.id) && declarator.id.name === 'Route') {
+          exportedRouteNames.add('Route')
+        }
       }
     }
 
-    if (origLineText !== undefined) {
-      if (origLineText === line) {
-        return origLineText
+    for (const specifier of statement.specifiers) {
+      if (
+        !t.isExportSpecifier(specifier) ||
+        getExportedName(specifier.exported) !== 'Route'
+      ) {
+        continue
       }
-      return fixLine(line, {
-        originalLine: origLineText,
-        useOriginalSemicolon: true,
-        useOriginalQuotes: true,
-        fallbackQuote: preferredQuote,
-      })
-    } else {
-      return fixLine(line, {
-        originalLine: null,
-        useOriginalSemicolon: false,
-        useOriginalQuotes: false,
-        fallbackQuote: preferredQuote,
-        fallbackSemicolon: defaultUsesSemicolons,
-      })
-    }
-  })
 
-  return fixedLines.join('\n')
+      const localName = getLocalBindingName(specifier.local)
+      if (localName) {
+        exportedRouteNames.add(localName)
+      }
+    }
+  }
+
+  return exportedRouteNames
 }
 
-function fixLine(
-  line: string,
-  {
-    originalLine,
-    useOriginalSemicolon,
-    useOriginalQuotes,
-    fallbackQuote,
-    fallbackSemicolon = true,
-  }: {
-    originalLine: string | null
-    useOriginalSemicolon: boolean
-    useOriginalQuotes: boolean
-    fallbackQuote: string
-    fallbackSemicolon?: boolean
-  },
+function findExportedRouteCalls(
+  body: Array<t.Statement>,
+  exportedRouteNames: Set<string>,
+): RouteCallAnalysis {
+  const calls: Array<RouteCall> = []
+  let hasUnsupportedRouteId = false
+  let hasMalformedRouteCall = false
+
+  for (const statement of body) {
+    const declaration = getVariableDeclaration(statement)
+    if (!declaration) {
+      continue
+    }
+
+    for (const declarator of declaration.declarations) {
+      if (
+        !t.isIdentifier(declarator.id) ||
+        !exportedRouteNames.has(declarator.id.name)
+      ) {
+        continue
+      }
+
+      const init = getRouteConstructorInit(declarator.init)
+      if (!init) {
+        if (isDirectRouteConstructorCall(declarator.init)) {
+          hasMalformedRouteCall = true
+        }
+        continue
+      }
+
+      const routeIdArg = init.innerCall.arguments[0]
+      if (isSupportedRouteId(routeIdArg)) {
+        calls.push({
+          callee: init.callee,
+          routeIdArg,
+          optionsArg: init.outerCall.arguments[0],
+        })
+      } else {
+        hasUnsupportedRouteId = true
+      }
+    }
+  }
+
+  return { calls, hasUnsupportedRouteId, hasMalformedRouteCall }
+}
+
+function getVariableDeclaration(statement: t.Statement) {
+  const declaration = t.isExportNamedDeclaration(statement)
+    ? statement.declaration
+    : statement
+
+  return t.isVariableDeclaration(declaration) ? declaration : null
+}
+
+function getExportedName(node: t.Identifier | t.StringLiteral) {
+  return t.isIdentifier(node) ? node.name : node.value
+}
+
+function getLocalBindingName(node: t.Identifier | t.StringLiteral) {
+  return t.isIdentifier(node) ? node.name : null
+}
+
+function getRouteConstructorInit(expression: t.Expression | null | undefined) {
+  if (!expression || !t.isCallExpression(expression)) {
+    return null
+  }
+
+  if (!t.isCallExpression(expression.callee)) {
+    return null
+  }
+
+  const innerCall = expression.callee
+
+  if (
+    !t.isIdentifier(innerCall.callee) ||
+    !isRouteConstructor(innerCall.callee)
+  ) {
+    return null
+  }
+
+  return {
+    callee: innerCall.callee,
+    outerCall: expression,
+    innerCall,
+  }
+}
+
+function isDirectRouteConstructorCall(
+  expression: t.Expression | null | undefined,
 ) {
-  let result = line
-
-  if (useOriginalQuotes && originalLine) {
-    result = fixQuotes(result, originalLine, fallbackQuote)
-  } else if (!useOriginalQuotes && fallbackQuote) {
-    result = fixQuotesToPreferred(result, fallbackQuote)
-  }
-
-  if (useOriginalSemicolon && originalLine) {
-    const hadSemicolon = originalLine.trimEnd().endsWith(';')
-    const hasSemicolon = result.trimEnd().endsWith(';')
-    if (hadSemicolon && !hasSemicolon) result += ';'
-    if (!hadSemicolon && hasSemicolon) result = result.replace(/;\s*$/, '')
-  } else if (!useOriginalSemicolon) {
-    const hasSemicolon = result.trimEnd().endsWith(';')
-    if (!fallbackSemicolon && hasSemicolon) result = result.replace(/;\s*$/, '')
-    if (fallbackSemicolon && !hasSemicolon && result.trim()) result += ';'
-  }
-
-  return result
-}
-
-function fixQuotes(line: string, originalLine: string, fallbackQuote: string) {
-  let originalQuote = detectQuoteFromLine(originalLine)
-  if (!originalQuote) {
-    originalQuote = fallbackQuote
-  }
-  return fixQuotesToPreferred(line, originalQuote)
-}
-
-function fixQuotesToPreferred(line: string, quote: string) {
-  // Replace existing quotes with preferred quote
-  return line.replace(
-    /(['"`])([^'"`\\]*(?:\\.[^'"`\\]*)*)\1/g,
-    (_, q, content) => {
-      const escaped = content.replaceAll(quote, `\\${quote}`)
-      return `${quote}${escaped}${quote}`
-    },
+  return (
+    !!expression &&
+    t.isCallExpression(expression) &&
+    t.isIdentifier(expression.callee) &&
+    isRouteConstructor(expression.callee)
   )
 }
 
-function detectQuoteFromLine(line: string) {
-  const match = line.match(/(['"`])(?:\\.|[^\\])*?\1/)
-  return match ? match[1] : null
+function isRouteConstructor(callee: t.Identifier): callee is t.Identifier & {
+  name: RouteConstructorName
+} {
+  return routeConstructors.includes(callee.name as RouteConstructorName)
 }
 
-function detectSemicolonUsage(code: string) {
-  const lines = code.split('\n').map((l) => l.trim())
-  const total = lines.length
-  const withSemis = lines.filter((l) => l.endsWith(';')).length
-  return withSemis > total / 2
+function isSupportedRouteId(
+  arg: t.CallExpression['arguments'][number] | undefined,
+): arg is SupportedRouteId {
+  return (
+    !!arg &&
+    (t.isStringLiteral(arg) ||
+      (t.isTemplateLiteral(arg) && arg.expressions.length === 0))
+  )
 }
 
-export function detectPreferredQuoteStyle(ast: types.ASTNode): "'" | '"' {
-  let single = 0
-  let double = 0
+function getRouteIdQuote(
+  source: string,
+  arg: SupportedRouteId,
+): '"' | "'" | '`' {
+  const raw = source.slice(arg.start!, arg.end!)
 
-  visit(ast, {
-    visitStringLiteral(path) {
-      if (path.parent.node.type !== 'JSXAttribute') {
-        const raw = path.node.extra?.raw
-        if (raw?.startsWith("'")) single++
-        else if (raw?.startsWith('"')) double++
-      }
-      return false
-    },
-  })
+  if (raw.startsWith("'")) return "'"
+  if (raw.startsWith('"')) return '"'
+  return '`'
+}
 
-  if (single >= double) {
-    return "'"
+function getCreateFileRouteProps(
+  arg: t.CallExpression['arguments'][number] | undefined,
+) {
+  if (!arg || !t.isObjectExpression(arg)) {
+    return undefined
   }
-  return '"'
+
+  const props = new Set<string>()
+
+  for (const property of arg.properties) {
+    if (!t.isObjectProperty(property) || property.computed) {
+      continue
+    }
+
+    if (t.isIdentifier(property.key)) {
+      props.add(property.key.name)
+      continue
+    }
+
+    if (t.isStringLiteral(property.key)) {
+      props.add(property.key.value)
+    }
+  }
+
+  return props
+}
+
+function parseTargetImports(
+  body: Array<t.Statement>,
+  source: string,
+  targetModule: string,
+) {
+  const imports: Array<ParsedImportDeclaration> = []
+
+  for (const statement of body) {
+    if (
+      !t.isImportDeclaration(statement) ||
+      statement.importKind === 'type' ||
+      statement.source.value !== targetModule
+    ) {
+      continue
+    }
+
+    const rawSource = source.slice(
+      statement.source.start!,
+      statement.source.end!,
+    )
+    const importStatement = source.slice(statement.start!, statement.end!)
+
+    imports.push({
+      declaration: statement,
+      defaultImport: statement.specifiers.find((specifier) =>
+        t.isImportDefaultSpecifier(specifier),
+      )?.local.name,
+      namespace: statement.specifiers.find((specifier) =>
+        t.isImportNamespaceSpecifier(specifier),
+      )?.local.name,
+      named: statement.specifiers
+        .filter((specifier): specifier is t.ImportSpecifier =>
+          t.isImportSpecifier(specifier),
+        )
+        .map((specifier) => ({
+          imported: t.isIdentifier(specifier.imported)
+            ? specifier.imported.name
+            : specifier.imported.value,
+          local: specifier.local.name,
+        })),
+      moduleName: statement.source.value,
+      quote: rawSource[0] as '"' | "'",
+      semicolon: importStatement.trimEnd().endsWith(';'),
+    })
+  }
+
+  return imports
+}
+
+function updateRouteImports({
+  imports,
+  source,
+  s,
+  targetModule,
+  required,
+  lineEnding,
+}: {
+  imports: Array<ParsedImportDeclaration>
+  source: string
+  s: MagicString
+  targetModule: string
+  required: RouteConstructorName
+  lineEnding: '\r\n' | '\n' | '\r'
+}) {
+  const analysis = analyzeRouteImports(imports, required)
+
+  if (analysis.kind === 'ok') {
+    return false
+  }
+
+  if (analysis.kind === 'rename') {
+    s.update(analysis.imported.start!, analysis.imported.end!, analysis.next)
+    s.update(analysis.local.start!, analysis.local.end!, analysis.next)
+    return true
+  }
+
+  return normalizeRouteImports({
+    imports,
+    source,
+    s,
+    targetModule,
+    required,
+    lineEnding,
+  })
+}
+
+function analyzeRouteImports(
+  imports: Array<ParsedImportDeclaration>,
+  required: RouteConstructorName,
+): RouteImportAnalysis {
+  const opposite = getOtherRouteConstructor(required)
+  let requiredCount = 0
+  let oppositeCount = 0
+  let renameCandidate:
+    | {
+        imported: t.Identifier
+        local: t.Identifier
+        next: RouteConstructorName
+      }
+    | undefined
+
+  for (const declaration of imports) {
+    for (const specifier of declaration.declaration.specifiers) {
+      if (!t.isImportSpecifier(specifier)) {
+        continue
+      }
+
+      const imported = specifier.imported
+      if (!t.isIdentifier(imported)) {
+        return { kind: 'normalize' }
+      }
+
+      if (!isRouteConstructorName(imported.name)) {
+        continue
+      }
+
+      if (specifier.local.name !== imported.name) {
+        return { kind: 'normalize' }
+      }
+
+      if (imported.name === required) {
+        requiredCount++
+        continue
+      }
+
+      if (imported.name === opposite) {
+        oppositeCount++
+        renameCandidate = {
+          imported,
+          local: specifier.local,
+          next: required,
+        }
+      }
+    }
+  }
+
+  if (requiredCount === 1 && oppositeCount === 0) {
+    return { kind: 'ok' }
+  }
+
+  if (requiredCount === 0 && oppositeCount === 1 && renameCandidate) {
+    return {
+      kind: 'rename',
+      ...renameCandidate,
+    }
+  }
+
+  return { kind: 'normalize' }
+}
+
+function normalizeRouteImports({
+  imports,
+  source,
+  s,
+  targetModule,
+  required,
+  lineEnding,
+}: {
+  imports: Array<ParsedImportDeclaration>
+  source: string
+  s: MagicString
+  targetModule: string
+  required: RouteConstructorName
+  lineEnding: '\r\n' | '\n' | '\r'
+}) {
+  const owner =
+    imports.find((declaration) =>
+      hasNamedImport(declaration.named, required),
+    ) ?? imports.find((declaration) => !declaration.namespace)
+
+  let modified = false
+
+  for (const declaration of imports) {
+    const named = normalizeNamedImports({
+      named: declaration.named,
+      required,
+      isOwner: declaration === owner,
+    })
+
+    if (sameNamedImports(declaration.named, named)) {
+      continue
+    }
+
+    const replacement = renderImportDeclaration({
+      ...declaration,
+      named,
+    })
+
+    if (replacement === null) {
+      s.remove(
+        declaration.declaration.start!,
+        getRemovalEnd(source, declaration.declaration.end!),
+      )
+      modified = true
+      continue
+    }
+
+    s.update(
+      declaration.declaration.start!,
+      declaration.declaration.end!,
+      replacement,
+    )
+    modified = true
+  }
+
+  if (!owner) {
+    const quote = imports[0]?.quote ?? "'"
+    const semicolon = imports[0]?.semicolon ?? false
+    s.prepend(
+      `import { ${required} } from ${quote}${targetModule}${quote}${semicolon ? ';' : ''}${lineEnding}`,
+    )
+    modified = true
+  }
+
+  return modified
+}
+
+function normalizeNamedImports({
+  named,
+  required,
+  isOwner,
+}: {
+  named: Array<NamedImport>
+  required: RouteConstructorName
+  isOwner: boolean
+}) {
+  const banned = getOtherRouteConstructor(required)
+  const nextNamed: Array<NamedImport> = []
+  const seen = new Set<string>()
+
+  for (const specifier of named) {
+    if (specifier.imported === banned) {
+      continue
+    }
+
+    if (
+      specifier.local === required &&
+      (specifier.imported !== required || !isOwner)
+    ) {
+      continue
+    }
+
+    const key = `${specifier.imported}:${specifier.local}`
+    if (seen.has(key)) {
+      continue
+    }
+
+    seen.add(key)
+    nextNamed.push(specifier)
+  }
+
+  if (isOwner && !hasNamedImport(nextNamed, required)) {
+    nextNamed.push({ imported: required, local: required })
+  }
+
+  return nextNamed
+}
+
+function getExpectedRouteConstructor(lazy: boolean): RouteConstructorName {
+  return lazy ? 'createLazyFileRoute' : 'createFileRoute'
+}
+
+function getOtherRouteConstructor(
+  constructor: RouteConstructorName,
+): RouteConstructorName {
+  return constructor === 'createFileRoute'
+    ? 'createLazyFileRoute'
+    : 'createFileRoute'
+}
+
+function hasNamedImport(
+  named: Array<NamedImport>,
+  required: RouteConstructorName,
+) {
+  return named.some(
+    (specifier) =>
+      specifier.imported === required && specifier.local === required,
+  )
+}
+
+function sameNamedImports(left: Array<NamedImport>, right: Array<NamedImport>) {
+  return (
+    left.length === right.length &&
+    left.every(
+      (specifier, index) =>
+        specifier.imported === right[index]?.imported &&
+        specifier.local === right[index]?.local,
+    )
+  )
+}
+
+function isRouteConstructorName(value: string): value is RouteConstructorName {
+  return routeConstructors.includes(value as RouteConstructorName)
+}
+
+function renderImportDeclaration(importDeclaration: {
+  defaultImport?: string
+  namespace?: string
+  named: Array<NamedImport>
+  moduleName: string
+  quote: '"' | "'"
+  semicolon: boolean
+}) {
+  const parts: Array<string> = []
+
+  if (importDeclaration.defaultImport) {
+    parts.push(importDeclaration.defaultImport)
+  }
+
+  if (importDeclaration.namespace) {
+    parts.push(`* as ${importDeclaration.namespace}`)
+  }
+
+  if (importDeclaration.named.length > 0) {
+    parts.push(
+      `{ ${importDeclaration.named
+        .map((specifier) =>
+          specifier.imported === specifier.local
+            ? specifier.imported
+            : `${specifier.imported} as ${specifier.local}`,
+        )
+        .join(', ')} }`,
+    )
+  }
+
+  if (parts.length === 0) {
+    return null
+  }
+
+  return `import ${parts.join(', ')} from ${importDeclaration.quote}${importDeclaration.moduleName}${importDeclaration.quote}${importDeclaration.semicolon ? ';' : ''}`
+}
+
+function getLineEnding(source: string): '\r\n' | '\n' | '\r' {
+  if (source.includes('\r\n')) {
+    return '\r\n'
+  }
+
+  if (source.includes('\n')) {
+    return '\n'
+  }
+
+  if (source.includes('\r')) {
+    return '\r'
+  }
+
+  return '\n'
+}
+
+function getRemovalEnd(source: string, end: number) {
+  let pos = end
+  while (pos < source.length && (source[pos] === ' ' || source[pos] === '\t')) {
+    pos++
+  }
+
+  if (source[pos] === '\r' && source[pos + 1] === '\n') {
+    return pos + 2
+  }
+
+  if (source[pos] === '\n' || source[pos] === '\r') {
+    return pos + 1
+  }
+
+  return end
 }

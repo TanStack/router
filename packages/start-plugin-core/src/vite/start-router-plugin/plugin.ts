@@ -1,6 +1,5 @@
 import {
   tanStackRouterCodeSplitter,
-  tanstackRouterAutoImport,
   tanstackRouterGenerator,
 } from '@tanstack/router-plugin/vite'
 import path from 'pathe'
@@ -182,6 +181,5 @@ export function tanStackStartRouter(
         },
       }
     }),
-    tanstackRouterAutoImport(startPluginOpts.router),
   ]
 }

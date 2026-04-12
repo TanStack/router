@@ -4,12 +4,7 @@ import { configSchema } from './core/config'
 import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-plugin'
 import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
-import { unpluginRouteAutoImportFactory } from './core/route-autoimport-plugin'
 import type { CodeSplittingOptions, Config, getConfig } from './core/config'
-
-const tanstackRouterAutoImport = createVitePlugin(
-  unpluginRouteAutoImportFactory,
-)
 
 /**
  * @example
@@ -55,7 +50,6 @@ export default tanstackRouter
 export {
   configSchema,
   getConfig,
-  tanstackRouterAutoImport,
   tanStackRouterCodeSplitter,
   tanstackRouterGenerator,
   TanStackRouterVite,

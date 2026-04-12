@@ -1,5 +1,6 @@
 import * as template from '@babel/template'
 import { createHmrHotExpressionAst } from './hmr-hot-expression'
+import type * as t from '@babel/types'
 import type {
   AnyRoute,
   AnyRouteMatch,
@@ -159,7 +160,7 @@ const handleRouteUpdateStr = handleRouteUpdate.toString()
 export function createRouteHmrStatement(
   stableRouteOptionKeys: Array<string>,
   opts?: { hotExpression?: string },
-) {
+): t.Statement {
   return template.statement(
     `
 if (%%hotExpression%%) {

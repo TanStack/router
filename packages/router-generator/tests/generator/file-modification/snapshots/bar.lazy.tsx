@@ -5,9 +5,10 @@ import {
   ErrorComponent,
   ErrorComponentProps,
   Link,
+  createLazyFileRoute,
 } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createLazyFileRoute('/(test)/bar')({
   loader: async ({ params: { postId } }) => ({
     postId,
     title: 'title',

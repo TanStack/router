@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/solid-router'
+import { useNavigate, createFileRoute } from '@tanstack/solid-router'
 import * as v from 'valibot'
 import { Suspense } from 'solid-js'
 import { Header } from '../../components/Header'
@@ -26,7 +26,7 @@ const Valibot = () => {
   )
 }
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users/valibot/')({
   validateSearch: v.object({
     search: v.fallback(v.optional(v.string(), ''), ''),
   }),

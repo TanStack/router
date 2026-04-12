@@ -4,7 +4,7 @@ import { configSchema, getConfig } from '@tanstack/router-plugin'
 import type { CompileStartFrameworkOptions } from './types'
 
 const tsrConfig = configSchema
-  .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
+  .omit({ autoCodeSplitting: true, target: true })
   .partial()
 
 // --- Import Protection Schema ---
