@@ -25,7 +25,6 @@ import {
   findParent,
   format,
   getImportForRouteNode,
-  getImportPath,
   getResolvedRouteNodeVariableName,
   hasParentRoute,
   isSegmentPathless,

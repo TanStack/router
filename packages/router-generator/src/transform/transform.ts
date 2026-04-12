@@ -44,11 +44,11 @@ type RouteCallAnalysis = {
   hasMalformedRouteCall: boolean
 }
 
-export async function transform({
+export function transform({
   ctx,
   source,
   node,
-}: TransformOptions): Promise<TransformResult> {
+}: TransformOptions): TransformResult {
   let ast: ReturnType<typeof parseAst>
 
   try {
@@ -631,8 +631,8 @@ function sameNamedImports(left: Array<NamedImport>, right: Array<NamedImport>) {
     left.length === right.length &&
     left.every(
       (specifier, index) =>
-        specifier.imported === right[index]?.imported &&
-        specifier.local === right[index]?.local,
+        specifier.imported === right[index]!.imported &&
+        specifier.local === right[index]!.local,
     )
   )
 }
