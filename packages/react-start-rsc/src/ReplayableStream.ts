@@ -37,6 +37,20 @@ export interface ReplayableStreamOptions {
   signal?: AbortSignal
 }
 
+interface Waiter<T> {
+  promise: Promise<T>
+  resolve: (value: T | PromiseLike<T>) => void
+}
+
+function createWaiter<T>(): Waiter<T> {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+
+  return { promise, resolve }
+}
+
 // Use Symbol.for to ensure the same symbol across different module instances
 export const REPLAYABLE_STREAM_MARKER = Symbol.for(
   'tanstack.rsc.ReplayableStream',
@@ -49,7 +63,7 @@ export class ReplayableStream<T = Uint8Array> {
   private chunks: Array<T> = []
   private done = false
   private error: unknown = null
-  private waiter: PromiseWithResolvers<void> | null = null
+  private waiter: Waiter<void> | null = null
   private aborted = false
   private released = false
 
@@ -165,7 +179,7 @@ export class ReplayableStream<T = Uint8Array> {
   private wait(): Promise<void> {
     if (this.done || this.released) return Promise.resolve()
     if (!this.waiter) {
-      this.waiter = Promise.withResolvers<void>()
+      this.waiter = createWaiter<void>()
     }
     return this.waiter.promise
   }
