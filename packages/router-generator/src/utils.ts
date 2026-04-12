@@ -13,7 +13,6 @@ import type { ImportDeclaration, RouteNode } from './types'
  */
 export class RoutePrefixMap {
   private prefixToRoute: Map<string, RouteNode> = new Map()
-  private layoutRoutes: Array<RouteNode> = []
 
   constructor(routes: Array<RouteNode>) {
     for (const route of routes) {
@@ -34,20 +33,7 @@ export class RoutePrefixMap {
 
       // Index by exact path for direct lookups
       this.prefixToRoute.set(route.routePath, route)
-
-      if (
-        route._fsRouteType === 'pathless_layout' ||
-        route._fsRouteType === 'layout' ||
-        route._fsRouteType === '__root'
-      ) {
-        this.layoutRoutes.push(route)
-      }
     }
-
-    // Sort by path length descending for longest-match-first
-    this.layoutRoutes.sort(
-      (a, b) => (b.routePath?.length ?? 0) - (a.routePath?.length ?? 0),
-    )
   }
 
   /**
@@ -482,7 +468,7 @@ export function createTokenRegex(
   }
 }
 
-export function isBracketWrappedSegment(segment: string): boolean {
+function isBracketWrappedSegment(segment: string): boolean {
   return segment.startsWith('[') && segment.endsWith(']')
 }
 
@@ -688,7 +674,7 @@ export const getResolvedRouteNodeVariableName = (
 /**
  * Infers the path for use by TS
  */
-export const inferPath = (routeNode: RouteNode): string => {
+const inferPath = (routeNode: RouteNode): string => {
   if (routeNode.cleanedPath === '/') {
     return routeNode.cleanedPath ?? ''
   }
@@ -795,7 +781,7 @@ export const createRouteNodesById = (
 /**
  * Infers to path
  */
-export const inferTo = (routeNode: RouteNode): string => {
+const inferTo = (routeNode: RouteNode): string => {
   const fullPath = inferFullPath(routeNode)
 
   if (fullPath === '/') return fullPath
@@ -806,7 +792,7 @@ export const inferTo = (routeNode: RouteNode): string => {
 /**
  * Dedupes branches and index routes
  */
-export const dedupeBranchesAndIndexRoutes = (
+const dedupeBranchesAndIndexRoutes = (
   routes: Array<RouteNode>,
 ): Array<RouteNode> => {
   return routes.filter((route) => {
@@ -928,14 +914,6 @@ export function buildImportString(
     : ''
 }
 
-export function lowerCaseFirstChar(value: string) {
-  if (!value[0]) {
-    return value
-  }
-
-  return value[0].toLowerCase() + value.slice(1)
-}
-
 export function mergeImportDeclarations(
   imports: Array<ImportDeclaration>,
 ): Array<ImportDeclaration> {
@@ -1006,7 +984,7 @@ export function buildFileRoutesByPathInterface(opts: {
 }`
 }
 
-export function getImportPath(
+function getImportPath(
   node: RouteNode,
   config: Config,
   generatedRouteTreePath: string,
