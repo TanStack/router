@@ -10,6 +10,7 @@ type SupportedRouteId = t.StringLiteral | t.TemplateLiteral
 type NamedImport = {
   imported: string
   local: string
+  importKind?: 'type' | 'typeof' | 'value'
 }
 
 type ParsedImportDeclaration = {
@@ -385,6 +386,7 @@ function parseTargetImports(
             ? specifier.imported.name
             : specifier.imported.value,
           local: specifier.local.name,
+          importKind: specifier.importKind ?? undefined,
         })),
       moduleName: statement.source.value,
       quote: rawSource[0] as '"' | "'",
@@ -588,7 +590,7 @@ function normalizeNamedImports({
       continue
     }
 
-    const key = `${specifier.imported}:${specifier.local}`
+    const key = `${specifier.importKind ?? 'value'}:${specifier.imported}:${specifier.local}`
     if (seen.has(key)) {
       continue
     }
@@ -622,7 +624,9 @@ function hasNamedImport(
 ) {
   return named.some(
     (specifier) =>
-      specifier.imported === required && specifier.local === required,
+      specifier.imported === required &&
+      specifier.local === required &&
+      specifier.importKind !== 'type',
   )
 }
 
@@ -632,7 +636,8 @@ function sameNamedImports(left: Array<NamedImport>, right: Array<NamedImport>) {
     left.every(
       (specifier, index) =>
         specifier.imported === right[index]!.imported &&
-        specifier.local === right[index]!.local,
+        specifier.local === right[index]!.local &&
+        specifier.importKind === right[index]!.importKind,
     )
   )
 }
@@ -662,10 +667,9 @@ function renderImportDeclaration(importDeclaration: {
   if (importDeclaration.named.length > 0) {
     parts.push(
       `{ ${importDeclaration.named
-        .map((specifier) =>
-          specifier.imported === specifier.local
-            ? specifier.imported
-            : `${specifier.imported} as ${specifier.local}`,
+        .map(
+          (specifier) =>
+            `${specifier.importKind === 'type' ? 'type ' : ''}${specifier.imported === specifier.local ? specifier.imported : `${specifier.imported} as ${specifier.local}`}`,
         )
         .join(', ')} }`,
     )

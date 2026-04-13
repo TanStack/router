@@ -497,4 +497,29 @@ describe('transform', () => {
     )
     expect(result.output).not.toContain('createLazyFileRoute')
   })
+
+  it('preserves type import specifiers when normalizing route imports', async () => {
+    const result = await transform({
+      source: [
+        "import { type LinkProps, createLazyFileRoute } from '@tanstack/react-router'",
+        '',
+        "export const Route = createLazyFileRoute('/old')({})",
+      ].join('\n'),
+      ctx: {
+        target: 'react',
+        routeId: '/new',
+        lazy: false,
+      },
+      node: makeNode(),
+    })
+
+    expect(result.result).toBe('modified')
+    if (result.result !== 'modified') {
+      throw new Error(`expected modified result, got ${result.result}`)
+    }
+    expect(result.output).toContain(
+      "import { type LinkProps, createFileRoute } from '@tanstack/react-router'",
+    )
+    expect(result.output).not.toContain('createLazyFileRoute')
+  })
 })

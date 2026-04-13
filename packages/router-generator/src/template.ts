@@ -44,6 +44,10 @@ export type TargetTemplate = {
   }
 }
 
+function serializeRoutePath(routePath: string) {
+  return JSON.stringify(routePath)
+}
+
 export function getTargetTemplate(config: Config): TargetTemplate {
   const target = config.target
   switch (target) {
@@ -79,7 +83,7 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             tsrImports: () =>
               "import { createFileRoute } from '@tanstack/react-router';",
             tsrExportStart: (routePath) =>
-              `export const Route = createFileRoute('${routePath}')(`,
+              `export const Route = createFileRoute(${serializeRoutePath(routePath)})(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -95,7 +99,7 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             tsrImports: () =>
               "import { createLazyFileRoute } from '@tanstack/react-router';",
             tsrExportStart: (routePath) =>
-              `export const Route = createLazyFileRoute('${routePath}')(`,
+              `export const Route = createLazyFileRoute(${serializeRoutePath(routePath)})(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -132,7 +136,7 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             tsrImports: () =>
               "import { createFileRoute } from '@tanstack/solid-router';",
             tsrExportStart: (routePath) =>
-              `export const Route = createFileRoute('${routePath}')(`,
+              `export const Route = createFileRoute(${serializeRoutePath(routePath)})(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -149,7 +153,7 @@ export function getTargetTemplate(config: Config): TargetTemplate {
               "import { createLazyFileRoute } from '@tanstack/solid-router';",
 
             tsrExportStart: (routePath) =>
-              `export const Route = createLazyFileRoute('${routePath}')(`,
+              `export const Route = createLazyFileRoute(${serializeRoutePath(routePath)})(`,
 
             tsrExportEnd: () => ');',
           },
@@ -188,7 +192,7 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             tsrImports: () =>
               "import { createFileRoute } from '@tanstack/vue-router';",
             tsrExportStart: (routePath) =>
-              `export const Route = createFileRoute('${routePath}')(`,
+              `export const Route = createFileRoute(${serializeRoutePath(routePath)})(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -206,7 +210,7 @@ export function getTargetTemplate(config: Config): TargetTemplate {
               "import { createLazyFileRoute } from '@tanstack/vue-router';",
 
             tsrExportStart: (routePath) =>
-              `export const Route = createLazyFileRoute('${routePath}')(`,
+              `export const Route = createLazyFileRoute(${serializeRoutePath(routePath)})(`,
 
             tsrExportEnd: () => ');',
           },
