@@ -203,6 +203,13 @@ const examples = linkOptions([
     icon: '🖌️',
   },
   {
+    to: '/rsc-request-headers',
+    title: 'RSC Request Headers',
+    description:
+      'Loader calls a server function that reads the incoming Cookie header in the RSC environment',
+    icon: '🍪',
+  },
+  {
     to: '/rsc-react-cache',
     title: 'RSC React.cache',
     description:

@@ -305,6 +305,14 @@ function RootComponent() {
             Global CSS
           </Link>
           <Link
+            to="/rsc-request-headers"
+            className="nav-link"
+            activeProps={{ className: 'nav-link active' }}
+            data-testid="nav-request-headers"
+          >
+            Request Headers
+          </Link>
+          <Link
             to="/rsc-react-cache"
             className="nav-link"
             activeProps={{ className: 'nav-link active' }}

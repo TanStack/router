@@ -19,6 +19,7 @@ import { Route as RscSsrFalseRouteImport } from './routes/rsc-ssr-false'
 import { Route as RscSsrDataOnlyRouteImport } from './routes/rsc-ssr-data-only'
 import { Route as RscSlotsRouteImport } from './routes/rsc-slots'
 import { Route as RscSlotJsxArgsRouteImport } from './routes/rsc-slot-jsx-args'
+import { Route as RscRequestHeadersRouteImport } from './routes/rsc-request-headers'
 import { Route as RscReactCacheRouteImport } from './routes/rsc-react-cache'
 import { Route as RscParallelRouteImport } from './routes/rsc-parallel'
 import { Route as RscNestedStructureRouteImport } from './routes/rsc-nested-structure'
@@ -100,6 +101,11 @@ const RscSlotsRoute = RscSlotsRouteImport.update({
 const RscSlotJsxArgsRoute = RscSlotJsxArgsRouteImport.update({
   id: '/rsc-slot-jsx-args',
   path: '/rsc-slot-jsx-args',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscRequestHeadersRoute = RscRequestHeadersRouteImport.update({
+  id: '/rsc-request-headers',
+  path: '/rsc-request-headers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RscReactCacheRoute = RscReactCacheRouteImport.update({
@@ -291,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/rsc-nested-structure': typeof RscNestedStructureRoute
   '/rsc-parallel': typeof RscParallelRoute
   '/rsc-react-cache': typeof RscReactCacheRoute
+  '/rsc-request-headers': typeof RscRequestHeadersRoute
   '/rsc-slot-jsx-args': typeof RscSlotJsxArgsRoute
   '/rsc-slots': typeof RscSlotsRoute
   '/rsc-ssr-data-only': typeof RscSsrDataOnlyRoute
@@ -335,6 +342,7 @@ export interface FileRoutesByTo {
   '/rsc-nested-structure': typeof RscNestedStructureRoute
   '/rsc-parallel': typeof RscParallelRoute
   '/rsc-react-cache': typeof RscReactCacheRoute
+  '/rsc-request-headers': typeof RscRequestHeadersRoute
   '/rsc-slot-jsx-args': typeof RscSlotJsxArgsRoute
   '/rsc-slots': typeof RscSlotsRoute
   '/rsc-ssr-data-only': typeof RscSsrDataOnlyRoute
@@ -380,6 +388,7 @@ export interface FileRoutesById {
   '/rsc-nested-structure': typeof RscNestedStructureRoute
   '/rsc-parallel': typeof RscParallelRoute
   '/rsc-react-cache': typeof RscReactCacheRoute
+  '/rsc-request-headers': typeof RscRequestHeadersRoute
   '/rsc-slot-jsx-args': typeof RscSlotJsxArgsRoute
   '/rsc-slots': typeof RscSlotsRoute
   '/rsc-ssr-data-only': typeof RscSsrDataOnlyRoute
@@ -426,6 +435,7 @@ export interface FileRouteTypes {
     | '/rsc-nested-structure'
     | '/rsc-parallel'
     | '/rsc-react-cache'
+    | '/rsc-request-headers'
     | '/rsc-slot-jsx-args'
     | '/rsc-slots'
     | '/rsc-ssr-data-only'
@@ -470,6 +480,7 @@ export interface FileRouteTypes {
     | '/rsc-nested-structure'
     | '/rsc-parallel'
     | '/rsc-react-cache'
+    | '/rsc-request-headers'
     | '/rsc-slot-jsx-args'
     | '/rsc-slots'
     | '/rsc-ssr-data-only'
@@ -514,6 +525,7 @@ export interface FileRouteTypes {
     | '/rsc-nested-structure'
     | '/rsc-parallel'
     | '/rsc-react-cache'
+    | '/rsc-request-headers'
     | '/rsc-slot-jsx-args'
     | '/rsc-slots'
     | '/rsc-ssr-data-only'
@@ -559,6 +571,7 @@ export interface RootRouteChildren {
   RscNestedStructureRoute: typeof RscNestedStructureRoute
   RscParallelRoute: typeof RscParallelRoute
   RscReactCacheRoute: typeof RscReactCacheRoute
+  RscRequestHeadersRoute: typeof RscRequestHeadersRoute
   RscSlotJsxArgsRoute: typeof RscSlotJsxArgsRoute
   RscSlotsRoute: typeof RscSlotsRoute
   RscSsrDataOnlyRoute: typeof RscSsrDataOnlyRoute
@@ -646,6 +659,13 @@ declare module '@tanstack/react-router' {
       path: '/rsc-slot-jsx-args'
       fullPath: '/rsc-slot-jsx-args'
       preLoaderRoute: typeof RscSlotJsxArgsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-request-headers': {
+      id: '/rsc-request-headers'
+      path: '/rsc-request-headers'
+      fullPath: '/rsc-request-headers'
+      preLoaderRoute: typeof RscRequestHeadersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rsc-react-cache': {
@@ -903,6 +923,7 @@ const rootRouteChildren: RootRouteChildren = {
   RscNestedStructureRoute: RscNestedStructureRoute,
   RscParallelRoute: RscParallelRoute,
   RscReactCacheRoute: RscReactCacheRoute,
+  RscRequestHeadersRoute: RscRequestHeadersRoute,
   RscSlotJsxArgsRoute: RscSlotJsxArgsRoute,
   RscSlotsRoute: RscSlotsRoute,
   RscSsrDataOnlyRoute: RscSsrDataOnlyRoute,

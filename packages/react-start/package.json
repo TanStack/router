@@ -55,6 +55,10 @@
       }
     },
     "./server": {
+      "react-server": {
+        "types": "./dist/esm/server.rsc.d.ts",
+        "default": "./dist/esm/server.rsc.js"
+      },
       "import": {
         "types": "./dist/esm/server.d.ts",
         "default": "./dist/esm/server.js"
