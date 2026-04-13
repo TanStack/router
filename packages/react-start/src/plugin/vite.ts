@@ -1,8 +1,10 @@
 import {
   START_ENVIRONMENT_NAMES,
   tanStackStartVite,
-  type TanStackStartViteInputConfig,
-  type TanStackStartVitePluginCoreOptions,
+} from '@tanstack/start-plugin-core'
+import type {
+  TanStackStartViteInputConfig,
+  TanStackStartVitePluginCoreOptions,
 } from '@tanstack/start-plugin-core'
 import {
   configureRsc,
