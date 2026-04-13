@@ -1,6 +1,7 @@
 import path from 'node:path'
 import * as fsp from 'node:fs/promises'
 import {
+  cleanPath,
   determineInitialRoutePath,
   escapeRegExp,
   hasEscapedLeadingUnderscore,
@@ -125,15 +126,17 @@ export async function getRouteNodes(
         const filePath = replaceBackslash(
           path.join(normalizedDir, node.filePath),
         )
-        const routePath = `/${normalizedDir}${node.routePath}`
+        const routePath = cleanPath(`/${normalizedDir}${node.routePath}`)
 
         node.variableName = routePathToVariable(
-          `${normalizedDir}/${removeExt(node.filePath)}`,
+          cleanPath(`/${normalizedDir}/${removeExt(node.filePath)}`),
         )
         node.routePath = routePath
         // Keep originalRoutePath aligned with routePath for escape detection
         if (node.originalRoutePath) {
-          node.originalRoutePath = `/${normalizedDir}${node.originalRoutePath}`
+          node.originalRoutePath = cleanPath(
+            `/${normalizedDir}${node.originalRoutePath}`,
+          )
         }
         node.filePath = filePath
         // Virtual subtree nodes (from __virtual.ts) are embedded in a

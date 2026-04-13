@@ -10,26 +10,26 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as nestedCallbackRouteImport } from './routes/nested/callback'
-import { Route as nestedAuthRouteImport } from './routes/nested/auth'
-import { Route as nestedHomeRouteImport } from './routes/nested/home'
+import { Route as NestedCallbackRouteImport } from './routes/nested/callback'
+import { Route as NestedAuthRouteImport } from './routes/nested/auth'
+import { Route as NestedHomeRouteImport } from './routes/nested/home'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const nestedCallbackRoute = nestedCallbackRouteImport.update({
+const NestedCallbackRoute = NestedCallbackRouteImport.update({
   id: '/nested/_callback',
   path: '/nested/_callback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const nestedAuthRoute = nestedAuthRouteImport.update({
+const NestedAuthRoute = NestedAuthRouteImport.update({
   id: '/nested/_auth',
   path: '/nested/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const nestedHomeRoute = nestedHomeRouteImport.update({
+const NestedHomeRoute = NestedHomeRouteImport.update({
   id: '/nested/',
   path: '/nested/',
   getParentRoute: () => rootRouteImport,
@@ -37,22 +37,22 @@ const nestedHomeRoute = nestedHomeRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/nested/': typeof nestedHomeRoute
-  '/nested/_auth': typeof nestedAuthRoute
-  '/nested/_callback': typeof nestedCallbackRoute
+  '/nested/': typeof NestedHomeRoute
+  '/nested/_auth': typeof NestedAuthRoute
+  '/nested/_callback': typeof NestedCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/nested': typeof nestedHomeRoute
-  '/nested/_auth': typeof nestedAuthRoute
-  '/nested/_callback': typeof nestedCallbackRoute
+  '/nested': typeof NestedHomeRoute
+  '/nested/_auth': typeof NestedAuthRoute
+  '/nested/_callback': typeof NestedCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/nested/': typeof nestedHomeRoute
-  '/nested/_auth': typeof nestedAuthRoute
-  '/nested/_callback': typeof nestedCallbackRoute
+  '/nested/': typeof NestedHomeRoute
+  '/nested/_auth': typeof NestedAuthRoute
+  '/nested/_callback': typeof NestedCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -64,9 +64,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  nestedHomeRoute: typeof nestedHomeRoute
-  nestedAuthRoute: typeof nestedAuthRoute
-  nestedCallbackRoute: typeof nestedCallbackRoute
+  NestedHomeRoute: typeof NestedHomeRoute
+  NestedAuthRoute: typeof NestedAuthRoute
+  NestedCallbackRoute: typeof NestedCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,21 +82,21 @@ declare module '@tanstack/react-router' {
       id: '/nested/_callback'
       path: '/nested/_callback'
       fullPath: '/nested/_callback'
-      preLoaderRoute: typeof nestedCallbackRouteImport
+      preLoaderRoute: typeof NestedCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nested/_auth': {
       id: '/nested/_auth'
       path: '/nested/_auth'
       fullPath: '/nested/_auth'
-      preLoaderRoute: typeof nestedAuthRouteImport
+      preLoaderRoute: typeof NestedAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nested/': {
       id: '/nested/'
       path: '/nested'
       fullPath: '/nested/'
-      preLoaderRoute: typeof nestedHomeRouteImport
+      preLoaderRoute: typeof NestedHomeRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -104,9 +104,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  nestedHomeRoute: nestedHomeRoute,
-  nestedAuthRoute: nestedAuthRoute,
-  nestedCallbackRoute: nestedCallbackRoute,
+  NestedHomeRoute: NestedHomeRoute,
+  NestedAuthRoute: NestedAuthRoute,
+  NestedCallbackRoute: NestedCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
