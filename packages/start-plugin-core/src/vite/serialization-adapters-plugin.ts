@@ -15,7 +15,7 @@ export function serializationAdaptersPlugin(opts: {
     name: 'tanstack-start:plugin-adapters',
     moduleId: VIRTUAL_MODULES.pluginAdapters,
     enforce: 'pre',
-    load(this: { environment: { name: string } }) {
+    load() {
       const adapters = opts.adapters
       if (!adapters || adapters.length === 0) {
         return EMPTY_SERIALIZATION_ADAPTERS_MODULE
