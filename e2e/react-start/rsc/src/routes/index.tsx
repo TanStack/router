@@ -210,6 +210,20 @@ const examples = linkOptions([
     icon: '🍪',
   },
   {
+    to: '/rsc-server-not-found',
+    title: 'RSC Server Not Found',
+    description:
+      'A server function throws notFound() and the route-level notFoundComponent handles it for both SSR and client navigation',
+    icon: '🚧',
+  },
+  {
+    to: '/rsc-server-redirect',
+    title: 'RSC Server Redirect',
+    description:
+      'A server function throws redirect() and navigation lands on the redirected route for both SSR and client navigation',
+    icon: '↪',
+  },
+  {
     to: '/rsc-react-cache',
     title: 'RSC React.cache',
     description:

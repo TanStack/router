@@ -19,6 +19,8 @@ import { Route as RscSsrFalseRouteImport } from './routes/rsc-ssr-false'
 import { Route as RscSsrDataOnlyRouteImport } from './routes/rsc-ssr-data-only'
 import { Route as RscSlotsRouteImport } from './routes/rsc-slots'
 import { Route as RscSlotJsxArgsRouteImport } from './routes/rsc-slot-jsx-args'
+import { Route as RscServerRedirectRouteImport } from './routes/rsc-server-redirect'
+import { Route as RscServerNotFoundRouteImport } from './routes/rsc-server-not-found'
 import { Route as RscRequestHeadersRouteImport } from './routes/rsc-request-headers'
 import { Route as RscReactCacheRouteImport } from './routes/rsc-react-cache'
 import { Route as RscParallelRouteImport } from './routes/rsc-parallel'
@@ -101,6 +103,16 @@ const RscSlotsRoute = RscSlotsRouteImport.update({
 const RscSlotJsxArgsRoute = RscSlotJsxArgsRouteImport.update({
   id: '/rsc-slot-jsx-args',
   path: '/rsc-slot-jsx-args',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscServerRedirectRoute = RscServerRedirectRouteImport.update({
+  id: '/rsc-server-redirect',
+  path: '/rsc-server-redirect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscServerNotFoundRoute = RscServerNotFoundRouteImport.update({
+  id: '/rsc-server-not-found',
+  path: '/rsc-server-not-found',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RscRequestHeadersRoute = RscRequestHeadersRouteImport.update({
@@ -298,6 +310,8 @@ export interface FileRoutesByFullPath {
   '/rsc-parallel': typeof RscParallelRoute
   '/rsc-react-cache': typeof RscReactCacheRoute
   '/rsc-request-headers': typeof RscRequestHeadersRoute
+  '/rsc-server-not-found': typeof RscServerNotFoundRoute
+  '/rsc-server-redirect': typeof RscServerRedirectRoute
   '/rsc-slot-jsx-args': typeof RscSlotJsxArgsRoute
   '/rsc-slots': typeof RscSlotsRoute
   '/rsc-ssr-data-only': typeof RscSsrDataOnlyRoute
@@ -343,6 +357,8 @@ export interface FileRoutesByTo {
   '/rsc-parallel': typeof RscParallelRoute
   '/rsc-react-cache': typeof RscReactCacheRoute
   '/rsc-request-headers': typeof RscRequestHeadersRoute
+  '/rsc-server-not-found': typeof RscServerNotFoundRoute
+  '/rsc-server-redirect': typeof RscServerRedirectRoute
   '/rsc-slot-jsx-args': typeof RscSlotJsxArgsRoute
   '/rsc-slots': typeof RscSlotsRoute
   '/rsc-ssr-data-only': typeof RscSsrDataOnlyRoute
@@ -389,6 +405,8 @@ export interface FileRoutesById {
   '/rsc-parallel': typeof RscParallelRoute
   '/rsc-react-cache': typeof RscReactCacheRoute
   '/rsc-request-headers': typeof RscRequestHeadersRoute
+  '/rsc-server-not-found': typeof RscServerNotFoundRoute
+  '/rsc-server-redirect': typeof RscServerRedirectRoute
   '/rsc-slot-jsx-args': typeof RscSlotJsxArgsRoute
   '/rsc-slots': typeof RscSlotsRoute
   '/rsc-ssr-data-only': typeof RscSsrDataOnlyRoute
@@ -436,6 +454,8 @@ export interface FileRouteTypes {
     | '/rsc-parallel'
     | '/rsc-react-cache'
     | '/rsc-request-headers'
+    | '/rsc-server-not-found'
+    | '/rsc-server-redirect'
     | '/rsc-slot-jsx-args'
     | '/rsc-slots'
     | '/rsc-ssr-data-only'
@@ -481,6 +501,8 @@ export interface FileRouteTypes {
     | '/rsc-parallel'
     | '/rsc-react-cache'
     | '/rsc-request-headers'
+    | '/rsc-server-not-found'
+    | '/rsc-server-redirect'
     | '/rsc-slot-jsx-args'
     | '/rsc-slots'
     | '/rsc-ssr-data-only'
@@ -526,6 +548,8 @@ export interface FileRouteTypes {
     | '/rsc-parallel'
     | '/rsc-react-cache'
     | '/rsc-request-headers'
+    | '/rsc-server-not-found'
+    | '/rsc-server-redirect'
     | '/rsc-slot-jsx-args'
     | '/rsc-slots'
     | '/rsc-ssr-data-only'
@@ -572,6 +596,8 @@ export interface RootRouteChildren {
   RscParallelRoute: typeof RscParallelRoute
   RscReactCacheRoute: typeof RscReactCacheRoute
   RscRequestHeadersRoute: typeof RscRequestHeadersRoute
+  RscServerNotFoundRoute: typeof RscServerNotFoundRoute
+  RscServerRedirectRoute: typeof RscServerRedirectRoute
   RscSlotJsxArgsRoute: typeof RscSlotJsxArgsRoute
   RscSlotsRoute: typeof RscSlotsRoute
   RscSsrDataOnlyRoute: typeof RscSsrDataOnlyRoute
@@ -659,6 +685,20 @@ declare module '@tanstack/react-router' {
       path: '/rsc-slot-jsx-args'
       fullPath: '/rsc-slot-jsx-args'
       preLoaderRoute: typeof RscSlotJsxArgsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-server-redirect': {
+      id: '/rsc-server-redirect'
+      path: '/rsc-server-redirect'
+      fullPath: '/rsc-server-redirect'
+      preLoaderRoute: typeof RscServerRedirectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-server-not-found': {
+      id: '/rsc-server-not-found'
+      path: '/rsc-server-not-found'
+      fullPath: '/rsc-server-not-found'
+      preLoaderRoute: typeof RscServerNotFoundRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rsc-request-headers': {
@@ -924,6 +964,8 @@ const rootRouteChildren: RootRouteChildren = {
   RscParallelRoute: RscParallelRoute,
   RscReactCacheRoute: RscReactCacheRoute,
   RscRequestHeadersRoute: RscRequestHeadersRoute,
+  RscServerNotFoundRoute: RscServerNotFoundRoute,
+  RscServerRedirectRoute: RscServerRedirectRoute,
   RscSlotJsxArgsRoute: RscSlotJsxArgsRoute,
   RscSlotsRoute: RscSlotsRoute,
   RscSsrDataOnlyRoute: RscSsrDataOnlyRoute,

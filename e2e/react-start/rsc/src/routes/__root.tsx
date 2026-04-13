@@ -313,6 +313,22 @@ function RootComponent() {
             Request Headers
           </Link>
           <Link
+            to="/rsc-server-not-found"
+            className="nav-link"
+            activeProps={{ className: 'nav-link active' }}
+            data-testid="nav-server-not-found"
+          >
+            Server Not Found
+          </Link>
+          <Link
+            to="/rsc-server-redirect"
+            className="nav-link"
+            activeProps={{ className: 'nav-link active' }}
+            data-testid="nav-server-redirect"
+          >
+            Server Redirect
+          </Link>
+          <Link
             to="/rsc-react-cache"
             className="nav-link"
             activeProps={{ className: 'nav-link active' }}

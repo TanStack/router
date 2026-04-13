@@ -48,6 +48,10 @@
   "module": "dist/esm/index.js",
   "exports": {
     ".": {
+      "react-server": {
+        "types": "./dist/esm/index.rsc.d.ts",
+        "default": "./dist/esm/index.rsc.js"
+      },
       "import": {
         "types": "./dist/esm/index.d.ts",
         "development": "./dist/esm/index.dev.js",
