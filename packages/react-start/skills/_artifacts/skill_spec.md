@@ -11,7 +11,7 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 | Middleware and Context   | Request/function middleware, context, global middleware       | middleware       |
 | Execution Model          | Isomorphic defaults, environment boundaries, env vars         | execution-model  |
 | Server Routes            | API endpoints, HTTP handlers, handler middleware              | server-routes    |
-| Deployment and Rendering | Hosting, selective SSR, prerendering, SEO                     | deployment       |
+| Deployment and Rendering | Hosting, selective SSR, prerendering, SEO                     | deployment, server-components |
 
 ## Skill Inventory
 
@@ -23,6 +23,7 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 | execution-model     | core      | execution-model          | Isomorphic defaults, environment functions, env vars    | 4             |
 | server-routes       | core      | server-routes            | server property, HTTP handlers, createHandlers          | 2             |
 | deployment          | core      | deployment-and-rendering | Hosting, SSR modes, prerendering, SEO                   | 3             |
+| server-components   | sub-skill | deployment-and-rendering | React Server Components, cache ownership, selective SSR | 3             |
 | react-start         | framework | project-setup            | React bindings, useServerFn, full setup                 | 3             |
 | migrate-from-nextjs | lifecycle | project-setup            | Next.js App Router migration checklist                  | 3             |
 
@@ -76,6 +77,14 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 | 1   | Missing nodejs_compat flag for Cloudflare Workers | HIGH     | docs/guide/hosting       |
 | 2   | Bun deployment with React 18                      | MEDIUM   | docs/guide/hosting       |
 | 3   | Child route loosening parent SSR config           | MEDIUM   | docs/guide/selective-ssr |
+
+### server-components (3 failure modes)
+
+| #   | Mistake                                                        | Priority | Source                      |
+| --- | -------------------------------------------------------------- | -------- | --------------------------- |
+| 1   | Using renderServerComponent when the UI needs slots            | HIGH     | docs/guide/server-components |
+| 2   | Omitting structuralSharing: false for Query-cached RSC values | HIGH     | docs/guide/server-components |
+| 3   | Copying stale renderRsc or .validator examples                 | MEDIUM   | docs/guide/server-functions |
 
 ## Tensions
 
