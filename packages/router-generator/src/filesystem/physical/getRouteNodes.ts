@@ -121,16 +121,19 @@ export async function getRouteNodes(
         )
       allPhysicalDirectories.push(...physicalDirectories)
       virtualRouteNodes.forEach((node) => {
-        const filePath = replaceBackslash(path.join(dir, node.filePath))
-        const routePath = `/${dir}${node.routePath}`
+        const normalizedDir = dir === './' ? '' : dir
+        const filePath = replaceBackslash(
+          path.join(normalizedDir, node.filePath),
+        )
+        const routePath = `/${normalizedDir}${node.routePath}`
 
         node.variableName = routePathToVariable(
-          `${dir}/${removeExt(node.filePath)}`,
+          `${normalizedDir}/${removeExt(node.filePath)}`,
         )
         node.routePath = routePath
         // Keep originalRoutePath aligned with routePath for escape detection
         if (node.originalRoutePath) {
-          node.originalRoutePath = `/${dir}${node.originalRoutePath}`
+          node.originalRoutePath = `/${normalizedDir}${node.originalRoutePath}`
         }
         node.filePath = filePath
         // Virtual subtree nodes (from __virtual.ts) are embedded in a

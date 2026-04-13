@@ -1,5 +1,6 @@
 import path, { join, resolve } from 'node:path'
 import {
+  cleanPath,
   determineInitialRoutePath,
   removeExt,
   removeLeadingSlash,
@@ -164,10 +165,14 @@ export async function getRouteNodesRecursive(
           subtreeNode.variableName = routePathToVariable(
             `${node.pathPrefix}/${removeExt(subtreeNode.filePath)}`,
           )
-          subtreeNode.routePath = `${parent?.routePath ?? ''}${node.pathPrefix}${subtreeNode.routePath}`
+          subtreeNode.routePath = cleanPath(
+            `${parent?.routePath ?? ''}${node.pathPrefix}${subtreeNode.routePath}`,
+          )
           // Keep originalRoutePath aligned with routePath for escape detection
           if (subtreeNode.originalRoutePath) {
-            subtreeNode.originalRoutePath = `${parent?.routePath ?? ''}${node.pathPrefix}${subtreeNode.originalRoutePath}`
+            subtreeNode.originalRoutePath = cleanPath(
+              `${parent?.routePath ?? ''}${node.pathPrefix}${subtreeNode.originalRoutePath}`,
+            )
           }
           subtreeNode.filePath = `${node.directory}/${subtreeNode.filePath}`
         })
