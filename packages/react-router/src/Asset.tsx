@@ -28,7 +28,17 @@ export function Asset({
     case 'meta':
       return <meta {...attrs} suppressHydrationWarning />
     case 'link':
-      return <link {...attrs} nonce={nonce} suppressHydrationWarning />
+      return (
+        <link
+          {...attrs}
+          precedence={
+            attrs?.precedence ??
+            (attrs?.rel === 'stylesheet' ? 'default' : undefined)
+          }
+          nonce={nonce}
+          suppressHydrationWarning
+        />
+      )
     case 'style':
       return (
         <style

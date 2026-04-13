@@ -10,6 +10,7 @@ test.skip(process.env.MODE === 'dev', 'Prod-only manifest dehydration coverage')
 const ROOT_SHELL_COLOR = 'rgb(22, 101, 52)'
 const ROUTE_ONE_COLOR = 'rgb(30, 64, 175)'
 const ROUTE_TWO_COLOR = 'rgb(126, 34, 206)'
+const SHARED_CARD_BG = 'rgb(252, 231, 243)'
 
 const buildUrl = (baseURL: string, pathname: string) =>
   baseURL.replace(/\/$/, '') + pathname
@@ -18,6 +19,12 @@ async function getColor(testId: string, page: Page) {
   return page
     .getByTestId(testId)
     .evaluate((element) => getComputedStyle(element).color)
+}
+
+async function getBackgroundColor(testId: string, page: Page) {
+  return page
+    .getByTestId(testId)
+    .evaluate((element) => getComputedStyle(element).backgroundColor)
 }
 
 function getStylesheetHrefsFromHtml(html: string) {
@@ -312,4 +319,31 @@ test('built start manifest preserves shared layout asset identity across sibling
   expect(sharedAAsset).toBeTruthy()
   expect(sharedAAsset).toBe(sharedBAsset)
   expect(sharedBAsset).toBe(sharedCAsset)
+})
+
+test('shared CSS chunk persists across client-side nav', async ({
+  page,
+  baseURL,
+}) => {
+  await page.goto(buildUrl(baseURL!, '/a'))
+
+  await expect(page.getByTestId('page-a')).toBeVisible()
+  await expect(page.getByTestId('shared-card')).toBeVisible()
+  await expect
+    .poll(() => getBackgroundColor('shared-card', page))
+    .toBe(SHARED_CARD_BG)
+  await expect(
+    page.locator('head link[rel="stylesheet"][href*="SharedCard"]'),
+  ).toHaveCount(1)
+
+  await page.getByTestId('nav-/b').click()
+  await page.waitForURL('**/b')
+  await expect(page.getByTestId('page-b')).toBeVisible()
+
+  await expect(
+    page.locator('head link[rel="stylesheet"][href*="SharedCard"]'),
+  ).toHaveCount(1)
+  await expect
+    .poll(() => getBackgroundColor('shared-card', page))
+    .toBe(SHARED_CARD_BG)
 })

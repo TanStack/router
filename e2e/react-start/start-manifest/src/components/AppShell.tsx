@@ -3,6 +3,8 @@ import styles from '~/styles/root-shell.module.css'
 
 const ROUTES = linkOptions([
   { to: '/', label: 'home' },
+  { to: '/a', label: '/a' },
+  { to: '/b', label: '/b' },
   { to: '/r1', label: '/r1' },
   { to: '/r2', label: '/r2' },
   { to: '/shared-a', label: '/shared-a' },
