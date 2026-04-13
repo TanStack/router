@@ -1,6 +1,11 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
+type Point = {
+  x: number
+  y: number
+}
+
 // This warning can occur during rapid navigation/hydration cycles and doesn't affect functionality
 // It's a React development mode warning about async state updates during mounting
 test.use({
@@ -18,6 +23,31 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
       localStorage.removeItem('drawing-canvas-data')
       localStorage.removeItem('drawing-stroke-count')
     })
+  }
+
+  async function drawStroke(page: any, start: Point, end: Point) {
+    await page.getByTestId('drawing-canvas').evaluate(
+      (
+        canvas: HTMLCanvasElement,
+        { start, end }: { start: Point; end: Point },
+      ) => {
+        const rect = canvas.getBoundingClientRect()
+
+        const createMouseEvent = (type: string, point: Point) =>
+          new MouseEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            clientX: rect.left + point.x,
+            clientY: rect.top + point.y,
+          })
+
+        canvas.dispatchEvent(createMouseEvent('mousedown', start))
+        canvas.dispatchEvent(createMouseEvent('mousemove', start))
+        canvas.dispatchEvent(createMouseEvent('mousemove', end))
+        canvas.dispatchEvent(createMouseEvent('mouseup', end))
+      },
+      { start, end },
+    )
   }
 
   test('Page renders with RSC content after initial client load', async ({
@@ -117,33 +147,21 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
 
     await expect(page.getByTestId('canvas-container')).toBeVisible()
 
-    const canvas = page.getByTestId('drawing-canvas')
-    const box = await canvas.boundingBox()
-    expect(box).not.toBeNull()
-
     // Draw a stroke
-    await page.mouse.move(box!.x + 50, box!.y + 50)
-    await page.mouse.down()
-    await page.mouse.move(box!.x + 150, box!.y + 100)
-    await page.mouse.up()
+    await drawStroke(page, { x: 50, y: 50 }, { x: 150, y: 100 })
 
     // Verify stroke count increased
-    const containerText = await page
-      .getByTestId('canvas-container')
-      .textContent()
-    expect(containerText).toContain('Strokes: 1')
+    await expect(page.getByTestId('canvas-container')).toContainText(
+      'Strokes: 1',
+    )
 
     // Draw another stroke
-    await page.mouse.move(box!.x + 100, box!.y + 30)
-    await page.mouse.down()
-    await page.mouse.move(box!.x + 200, box!.y + 80)
-    await page.mouse.up()
+    await drawStroke(page, { x: 100, y: 30 }, { x: 200, y: 80 })
 
     // Verify stroke count increased again
-    const containerText2 = await page
-      .getByTestId('canvas-container')
-      .textContent()
-    expect(containerText2).toContain('Strokes: 2')
+    await expect(page.getByTestId('canvas-container')).toContainText(
+      'Strokes: 2',
+    )
   })
 
   test('Clear canvas button works', async ({ page }) => {
@@ -153,26 +171,21 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
 
     await expect(page.getByTestId('canvas-container')).toBeVisible()
 
-    const canvas = page.getByTestId('drawing-canvas')
-    const box = await canvas.boundingBox()
-    expect(box).not.toBeNull()
-
     // Draw a stroke
-    await page.mouse.move(box!.x + 50, box!.y + 50)
-    await page.mouse.down()
-    await page.mouse.move(box!.x + 150, box!.y + 100)
-    await page.mouse.up()
+    await drawStroke(page, { x: 50, y: 50 }, { x: 150, y: 100 })
 
     // Verify stroke was recorded
-    let containerText = await page.getByTestId('canvas-container').textContent()
-    expect(containerText).toContain('Strokes: 1')
+    await expect(page.getByTestId('canvas-container')).toContainText(
+      'Strokes: 1',
+    )
 
     // Clear canvas
     await page.getByTestId('clear-canvas-btn').click()
 
     // Verify stroke count reset
-    containerText = await page.getByTestId('canvas-container').textContent()
-    expect(containerText).toContain('Strokes: 0')
+    await expect(page.getByTestId('canvas-container')).toContainText(
+      'Strokes: 0',
+    )
   })
 
   test('Save controls are visible and functional', async ({ page }) => {
@@ -313,18 +326,12 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
     await page.getByTestId('clear-canvas-btn').click()
 
     // Draw something
-    const canvas = page.getByTestId('drawing-canvas')
-    const box = await canvas.boundingBox()
-    expect(box).not.toBeNull()
-
-    await page.mouse.move(box!.x + 50, box!.y + 50)
-    await page.mouse.down()
-    await page.mouse.move(box!.x + 150, box!.y + 100)
-    await page.mouse.up()
+    await drawStroke(page, { x: 50, y: 50 }, { x: 150, y: 100 })
 
     // Verify stroke was counted
-    let containerText = await page.getByTestId('canvas-container').textContent()
-    expect(containerText).toContain('Strokes: 1')
+    await expect(page.getByTestId('canvas-container')).toContainText(
+      'Strokes: 1',
+    )
 
     // Reload page
     await page.reload()
@@ -340,7 +347,8 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
     )
 
     // Verify stroke count was also restored
-    containerText = await page.getByTestId('canvas-container').textContent()
-    expect(containerText).toContain('Strokes: 1')
+    await expect(page.getByTestId('canvas-container')).toContainText(
+      'Strokes: 1',
+    )
   })
 })

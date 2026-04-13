@@ -298,6 +298,7 @@ function RscSsrFalseComponent() {
 
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const hasMounted = React.useRef(false)
+  const isDrawingRef = React.useRef(false)
   const [isDrawing, setIsDrawing] = React.useState(false)
   const [brushSize, setBrushSize] = React.useState(tools.brushSizes[1])
   // Initialize color from localStorage if available, otherwise use default
@@ -362,6 +363,7 @@ function RscSsrFalseComponent() {
     const canvas = canvasRef.current
     if (!canvas) return
 
+    isDrawingRef.current = true
     setIsDrawing(true)
     const rect = canvas.getBoundingClientRect()
     const ctx = canvas.getContext('2d')
@@ -372,7 +374,7 @@ function RscSsrFalseComponent() {
   }
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return
+    if (!isDrawingRef.current) return
 
     const canvas = canvasRef.current
     if (!canvas) return
@@ -389,7 +391,8 @@ function RscSsrFalseComponent() {
   }
 
   const stopDrawing = () => {
-    if (isDrawing) {
+    if (isDrawingRef.current) {
+      isDrawingRef.current = false
       setStrokeCount((c) => {
         const newCount = c + 1
         // Save stroke count to localStorage
