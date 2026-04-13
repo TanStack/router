@@ -10,13 +10,13 @@ There are 2 uses for not-found errors in TanStack Router:
 
 - **Non-matching route paths**: When a path does not match any known route matching pattern **OR** when it partially matches a route, but with extra path segments
   - The **router** will automatically throw a not-found error when a path does not match any known route matching pattern
-  - If the router's `notFoundMode` is set to `fuzzy`, the nearest parent route with a `notFoundComponent` will handle the error. If the router's `notFoundMode` is set to `root`, the root route will handle the error.
+  - If the router's `notFoundMode` is set to `fuzzy`, the nearest matching route with a `notFoundComponent` will handle the error. If the router's `notFoundMode` is set to `root`, the root route will handle the error.
   - Examples:
     - Attempting to access `/users` when there is no `/users` route
     - Attempting to access `/posts/1/edit` when the route tree only handles `/posts/$postId`
 - **Missing resources**: When a resource cannot be found, such as a post with a given ID or any asynchronous data that is not available or does not exist
   - **You, the developer** must throw a not-found error when a resource cannot be found. This can be done in the `beforeLoad` or `loader` functions using the `notFound` utility.
-  - Will be handled by the nearest parent route with a `notFoundComponent` (when `notFound` is called within `loader`) or the root route.
+  - Will be handled by the nearest matching route with a `notFoundComponent` (when `notFound` is called within `loader`) or the root route.
   - Examples:
     - Attempting to access `/posts/1` when the post with ID 1 does not exist
     - Attempting to access `/docs/path/to/document` when the document does not exist
@@ -34,13 +34,12 @@ Depending on the `notFoundMode` option, the router will handle these automatic e
 
 ### `notFoundMode: 'fuzzy'`
 
-By default, the router's `notFoundMode` is set to `fuzzy`, which indicates that if a pathname doesn't match any known route, the router will attempt to use the closest matching route with children/(an outlet) and a configured not found component.
+By default, the router's `notFoundMode` is set to `fuzzy`, which indicates that if a pathname doesn't match any known route, the router will attempt to use the closest matching route with a configured `notFoundComponent`.
 
 > **❓ Why is this the default?** Fuzzy matching to preserve as much parent layout as possible for the user gives them more context to navigate to a useful location based on where they thought they would arrive.
 
 The nearest suitable route is found using the following criteria:
 
-- The route must have children and therefore an `Outlet` to render the `notFoundComponent`
 - The route must have a `notFoundComponent` configured or the router must have a `defaultNotFoundComponent` configured
 
 For example, consider the following route tree:
@@ -53,9 +52,10 @@ If provided the path of `/posts/1/edit`, the following component structure will 
 
 - `<Root>`
   - `<Posts>`
-    - `<Posts.notFoundComponent>`
+    - `<Post>`
+      - `<Post.notFoundComponent>`
 
-The `notFoundComponent` of the `posts` route will be rendered because it is the **nearest suitable parent route with children (and therefore an outlet) and a `notFoundComponent` configured**.
+The `notFoundComponent` of the `$postId` route will be rendered because it is the **nearest matching route with a `notFoundComponent` configured**.
 
 ### `notFoundMode: 'root'`
 
