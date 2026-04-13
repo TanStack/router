@@ -11,7 +11,7 @@
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@solidjs/web": "^2.0.0-beta.6",
+    "@solidjs/web": "2.0.0-beta.6",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-query": "^6.0.0-beta.3",
     "@tanstack/solid-query-devtools": "^6.0.0-beta.3",

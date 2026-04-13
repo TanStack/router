@@ -14,7 +14,7 @@
     "@tanstack/solid-router-devtools": "^2.0.0-beta.9",
     "@tanstack/solid-virtual": "^3.13.0",
     "solid-js": "2.0.0-beta.6",
-    "@solidjs/web": "^2.0.0-beta.6",
+    "@solidjs/web": "2.0.0-beta.6",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

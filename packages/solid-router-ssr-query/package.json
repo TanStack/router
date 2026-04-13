@@ -67,7 +67,7 @@
     "@tanstack/router-ssr-query-core": "workspace:*"
   },
   "devDependencies": {
-    "@solidjs/web": "^2.0.0-beta.6",
+    "@solidjs/web": "2.0.0-beta.6",
     "@tanstack/solid-query": "^6.0.0-beta.3",
     "@tanstack/solid-router": "workspace:*",
     "eslint-plugin-solid": "^0.14.5",
