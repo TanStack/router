@@ -1,9 +1,9 @@
 import { fileURLToPath } from 'node:url'
 import path from 'pathe'
-import {
-  createVirtualModule,
-  type TanStackStartVitePluginCoreOptions,
-  type ViteRscForwardSsrResolverStrategy,
+import { createVirtualModule } from '@tanstack/start-plugin-core'
+import type {
+  TanStackStartVitePluginCoreOptions,
+  ViteRscForwardSsrResolverStrategy,
 } from '@tanstack/start-plugin-core'
 import type { PluginOption, UserConfig } from 'vite'
 
