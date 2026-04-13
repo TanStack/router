@@ -4,13 +4,13 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 
 ## Domains
 
-| Domain                   | Description                                                   | Skills           |
-| ------------------------ | ------------------------------------------------------------- | ---------------- |
-| Project Setup            | Scaffolding, Vite plugin, router factory, root route, entries | start-setup      |
-| Server Functions         | Type-safe RPCs with createServerFn, validation, streaming     | server-functions |
-| Middleware and Context   | Request/function middleware, context, global middleware       | middleware       |
-| Execution Model          | Isomorphic defaults, environment boundaries, env vars         | execution-model  |
-| Server Routes            | API endpoints, HTTP handlers, handler middleware              | server-routes    |
+| Domain                   | Description                                                   | Skills                        |
+| ------------------------ | ------------------------------------------------------------- | ----------------------------- |
+| Project Setup            | Scaffolding, Vite plugin, router factory, root route, entries | start-setup                   |
+| Server Functions         | Type-safe RPCs with createServerFn, validation, streaming     | server-functions              |
+| Middleware and Context   | Request/function middleware, context, global middleware       | middleware                    |
+| Execution Model          | Isomorphic defaults, environment boundaries, env vars         | execution-model               |
+| Server Routes            | API endpoints, HTTP handlers, handler middleware              | server-routes                 |
 | Deployment and Rendering | Hosting, selective SSR, prerendering, SEO                     | deployment, server-components |
 
 ## Skill Inventory
@@ -80,11 +80,11 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 
 ### server-components (3 failure modes)
 
-| #   | Mistake                                                        | Priority | Source                      |
-| --- | -------------------------------------------------------------- | -------- | --------------------------- |
-| 1   | Using renderServerComponent when the UI needs slots            | HIGH     | docs/guide/server-components |
+| #   | Mistake                                                       | Priority | Source                       |
+| --- | ------------------------------------------------------------- | -------- | ---------------------------- |
+| 1   | Using renderServerComponent when the UI needs slots           | HIGH     | docs/guide/server-components |
 | 2   | Omitting structuralSharing: false for Query-cached RSC values | HIGH     | docs/guide/server-components |
-| 3   | Copying stale renderRsc or .validator examples                 | MEDIUM   | docs/guide/server-functions |
+| 3   | Copying stale renderRsc or .validator examples                | MEDIUM   | docs/guide/server-functions  |
 
 ## Tensions
 

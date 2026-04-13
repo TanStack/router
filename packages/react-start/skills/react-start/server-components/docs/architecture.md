@@ -21,7 +21,7 @@ Use these boundaries instead:
 - `createServerOnlyFn`: utility that must never run on the client
 - route `loader`: orchestration layer that runs on the server for the initial SSR request and in the browser on client navigation unless the route is `ssr: false`
 
-Practical rule: loaders decide *when* to fetch. Server functions decide *what* must stay on the server.
+Practical rule: loaders decide _when_ to fetch. Server functions decide _what_ must stay on the server.
 
 ## What still works inside RSCs
 

@@ -64,5 +64,9 @@ function ResponsiveChart(props: {
   data: Array<{ x: number; y: number }>
   width: number
 }) {
-  return <pre>{JSON.stringify({ width: props.width, points: props.data.length })}</pre>
+  return (
+    <pre>
+      {JSON.stringify({ width: props.width, points: props.data.length })}
+    </pre>
+  )
 }

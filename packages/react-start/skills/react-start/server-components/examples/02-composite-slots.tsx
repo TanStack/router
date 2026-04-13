@@ -38,19 +38,18 @@ const getPostCard = createServerFn({ method: 'GET' })
 
     const src = await createCompositeComponent<{
       children?: ReactNode
-      renderActions?: (args: {
-        postId: string
-        authorId: string
-      }) => ReactNode
+      renderActions?: (args: { postId: string; authorId: string }) => ReactNode
     }>((props) => (
       <article className="card">
         <h1>{post.title}</h1>
         <p>{post.body}</p>
 
-        <footer>{props.renderActions?.({
-          postId: post.id,
-          authorId: post.authorId,
-        })}</footer>
+        <footer>
+          {props.renderActions?.({
+            postId: post.id,
+            authorId: post.authorId,
+          })}
+        </footer>
 
         <section>{props.children}</section>
       </article>
@@ -60,7 +59,8 @@ const getPostCard = createServerFn({ method: 'GET' })
   })
 
 export const Route = createFileRoute('/posts/$postId')({
-  loader: async ({ params }) => getPostCard({ data: { postId: params.postId } }),
+  loader: async ({ params }) =>
+    getPostCard({ data: { postId: params.postId } }),
   component: PostPage,
 })
 
@@ -84,7 +84,11 @@ function Comments() {
 }
 
 function PostActions(props: { postId: string; authorId: string }) {
-  return <button type="button">Moderate {props.postId} / {props.authorId}</button>
+  return (
+    <button type="button">
+      Moderate {props.postId} / {props.authorId}
+    </button>
+  )
 }
 
 // Component-prop slot variant
@@ -108,7 +112,11 @@ const getProductCard = createServerFn({ method: 'GET' })
   })
 
 function AddToCartButton(props: { productId: string; price: number }) {
-  return <button type="button">Add {props.productId} at {props.price}</button>
+  return (
+    <button type="button">
+      Add {props.productId} at {props.price}
+    </button>
+  )
 }
 
 // Example usage somewhere else:

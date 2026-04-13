@@ -19,7 +19,10 @@ declare const db: {
       title: string
       body: string
     }>
-    update(postId: string, patch: { title?: string; body?: string }): Promise<void>
+    update(
+      postId: string,
+      patch: { title?: string; body?: string },
+    ): Promise<void>
   }
 }
 
@@ -42,11 +45,13 @@ const getPostRsc = createServerFn({ method: 'GET' })
   })
 
 const updatePost = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({
-    postId: z.string(),
-    title: z.string().optional(),
-    body: z.string().optional(),
-  }))
+  .inputValidator(
+    z.object({
+      postId: z.string(),
+      title: z.string().optional(),
+      body: z.string().optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     await db.posts.update(data.postId, {
       title: data.title,

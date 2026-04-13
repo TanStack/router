@@ -467,7 +467,7 @@ skills:
       - Query-owned RSC caching
       - Refresh ownership (router.invalidate, invalidateQueries, refetchQueries)
       - "Selective SSR modes (ssr: 'data-only', ssr: false)"
-      - "structuralSharing: false for Query-cached RSC values"
+      - 'structuralSharing: false for Query-cached RSC values'
     tasks:
       - 'Implement route-owned React Server Components'
       - 'Choose between renderServerComponent and createCompositeComponent'
