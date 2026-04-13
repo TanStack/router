@@ -136,9 +136,11 @@ const handleRedirectAndNotFound = (
       ...prev,
       status: isRedirect(err)
         ? 'redirected'
-        : prev.status === 'pending'
-          ? 'success'
-          : prev.status,
+        : isNotFound(err)
+          ? 'notFound'
+          : prev.status === 'pending'
+            ? 'success'
+            : prev.status,
       context: buildMatchContext(inner, match.index),
       isFetching: false,
       error: err,
