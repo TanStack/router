@@ -2,7 +2,7 @@ import { isRunnableDevEnvironment } from 'vite'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../../constants'
-import { resolveViteId } from '../../utils'
+import { createVirtualModule } from '../createVirtualModule'
 import { extractHtmlScripts } from './extract-html-scripts'
 import {
   CSS_MODULES_REGEX,
@@ -248,27 +248,17 @@ export function devServerPlugin({
         }
       },
     },
-    {
+    createVirtualModule({
       name: 'tanstack-start-core:dev-server:injected-head-scripts',
       sharedDuringBuild: true,
       applyToEnvironment: (env) => env.config.consumer === 'server',
-      resolveId: {
-        filter: { id: new RegExp(VIRTUAL_MODULES.injectedHeadScripts) },
-        handler(_id) {
-          return resolveViteId(VIRTUAL_MODULES.injectedHeadScripts)
-        },
-      },
-      load: {
-        filter: {
-          id: new RegExp(resolveViteId(VIRTUAL_MODULES.injectedHeadScripts)),
-        },
-        handler() {
-          const mod = `
+      moduleId: VIRTUAL_MODULES.injectedHeadScripts,
+      load() {
+        const mod = `
         export const injectedHeadScripts = ${JSON.stringify(injectedHeadScripts) || 'undefined'}`
-          return mod
-        },
+        return mod
       },
-    },
+    }),
   ]
 }
 

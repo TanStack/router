@@ -25,6 +25,7 @@ import {
   createCaptureClientBuildPlugin,
   createDevBaseRewritePlugin,
   createPostBuildPlugin,
+  createVirtualClientEntryPlugin,
 } from './plugins'
 import { parseStartConfig } from './schema'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
@@ -237,6 +238,9 @@ export function tanStackStartVite(
     }),
     tanStackStartRouter(normalizedStartPluginOpts, getConfig, corePluginOpts),
     loadEnvPlugin(),
+    createVirtualClientEntryPlugin({
+      getClientEntry: () => configContext.resolveEntries().entryPaths.client,
+    }),
     startManifestPlugin({
       getClientBuild: () => getClientBuild(START_ENVIRONMENT_NAMES.client),
       getConfig,

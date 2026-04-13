@@ -19,6 +19,8 @@ import {
   createViteDevServerFnModuleSpecifierEncoder,
   decodeViteDevServerModuleSpecifier,
 } from './module-specifier'
+import { createVirtualModule } from '../createVirtualModule'
+import { resolveViteId } from '../../utils'
 import type { CompileStartFrameworkOptions } from '../../types'
 import type {
   GenerateFunctionIdFnOptional,
@@ -28,10 +30,6 @@ import type { PluginOption } from 'vite'
 
 // Re-export from shared constants for backwards compatibility
 export { SERVER_FN_LOOKUP }
-
-function resolveViteId(id: string) {
-  return `\0${id}`
-}
 
 const validateServerFnIdVirtualModule = `virtual:tanstack-start-validate-server-fn-id`
 
@@ -90,10 +88,6 @@ export function startCompilerPlugin(
   }
 
   let root = process.cwd()
-  const resolvedResolverVirtualImportId = resolveViteId(
-    VIRTUAL_MODULES.serverFnResolver,
-  )
-
   // Determine which environments need the resolver (getServerFnById)
   // SSR environment always needs the resolver for server-side calls
   // Provider environment needs it for the actual implementation
@@ -294,52 +288,41 @@ export function startCompilerPlugin(
       },
     },
     // Manifest plugin for server environments
-    {
+    createVirtualModule({
       name: 'tanstack-start-core:server-fn-resolver',
+      moduleId: VIRTUAL_MODULES.serverFnResolver,
       enforce: 'pre',
       applyToEnvironment: (env) => {
         return appliedResolverEnvironments.has(env.name)
       },
-      configResolved(config) {
-        root = config.root
-      },
-      resolveId: {
-        filter: { id: new RegExp(VIRTUAL_MODULES.serverFnResolver) },
-        handler() {
-          return resolvedResolverVirtualImportId
-        },
-      },
-      load: {
-        filter: { id: new RegExp(resolvedResolverVirtualImportId) },
-        handler() {
-          if (this.environment.name !== opts.providerEnvName) {
-            const mod = opts.environments.find(
-              (e) => e.name === this.environment.name,
-            )?.getServerFnById
-            if (mod) {
-              return mod
-            } else {
-              this.error(
-                `No getServerFnById implementation found for caller environment: ${this.environment.name}`,
-              )
-            }
+      load() {
+        if (this.environment.name !== opts.providerEnvName) {
+          const mod = opts.environments.find(
+            (e) => e.name === this.environment.name,
+          )?.getServerFnById
+          if (mod) {
+            return mod
           }
 
-          if (this.environment.mode !== 'build') {
-            return getDevServerFnValidatorModule()
-          }
+          this.error(
+            `No getServerFnById implementation found for caller environment: ${this.environment.name}`,
+          )
+        }
 
-          // When SSR is the provider, server-only-referenced functions aren't in the manifest,
-          // so no isClientReferenced check is needed.
-          // When SSR is NOT the provider (custom provider env), server-only-referenced
-          // functions ARE in the manifest and need the isClientReferenced check to
-          // block direct client HTTP requests to server-only-referenced functions.
-          return generateServerFnResolverModule({
-            serverFnsById,
-            includeClientReferencedCheck: !ssrIsProvider,
-          })
-        },
+        if (this.environment.mode !== 'build') {
+          return getDevServerFnValidatorModule()
+        }
+
+        // When SSR is the provider, server-only-referenced functions aren't in the manifest,
+        // so no isClientReferenced check is needed.
+        // When SSR is NOT the provider (custom provider env), server-only-referenced
+        // functions ARE in the manifest and need the isClientReferenced check to
+        // block direct client HTTP requests to server-only-referenced functions.
+        return generateServerFnResolverModule({
+          serverFnsById,
+          includeClientReferencedCheck: !ssrIsProvider,
+        })
       },
-    },
+    }),
   ]
 }

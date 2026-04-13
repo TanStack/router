@@ -56,11 +56,6 @@
         "default": "./dist/esm/utils.js"
       }
     },
-    "./vite/types": {
-      "import": {
-        "types": "./dist/esm/vite/types.d.ts"
-      }
-    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

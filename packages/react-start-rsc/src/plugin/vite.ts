@@ -1,48 +1,14 @@
 import { fileURLToPath } from 'node:url'
 import path from 'pathe'
-import { resolveViteId } from '@tanstack/start-plugin-core/utils'
-import type {
-  TanStackStartVitePluginCoreOptions,
-  ViteRscForwardSsrResolverStrategy,
-} from '@tanstack/start-plugin-core/vite/types'
-import type { Plugin, PluginOption, UserConfig } from 'vite'
+import {
+  createVirtualModule,
+  type TanStackStartVitePluginCoreOptions,
+  type ViteRscForwardSsrResolverStrategy,
+} from '@tanstack/start-plugin-core'
+import type { PluginOption, UserConfig } from 'vite'
 
-type VirtualModuleLoadHandler = (this: {
-  environment: { name: string }
-}) => string
 const isClientEnvironment = (env: { config: { consumer: string } }) =>
   env.config.consumer === 'client'
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function createVirtualModule(opts: {
-  name: string
-  moduleId: string
-  load: VirtualModuleLoadHandler
-  apply?: Plugin['apply']
-  applyToEnvironment?: Plugin['applyToEnvironment']
-}): Plugin {
-  const resolvedId = resolveViteId(opts.moduleId)
-  const idFilter = { id: new RegExp(escapeRegExp(opts.moduleId)) }
-
-  return {
-    name: opts.name,
-    apply: opts.apply,
-    applyToEnvironment: opts.applyToEnvironment,
-    resolveId: {
-      filter: idFilter,
-      handler() {
-        return resolvedId
-      },
-    },
-    load: {
-      filter: idFilter,
-      handler: opts.load,
-    },
-  }
-}
 
 // Virtual module ids used by the React Start RSC runtime.
 const RSC_HMR_VIRTUAL_ID = 'virtual:tanstack-rsc-hmr'

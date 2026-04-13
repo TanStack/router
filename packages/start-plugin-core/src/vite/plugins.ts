@@ -1,4 +1,6 @@
-import { START_ENVIRONMENT_NAMES } from '../constants'
+import { normalizePath } from 'vite'
+import { ENTRY_POINTS, START_ENVIRONMENT_NAMES } from '../constants'
+import { createVirtualModule } from './createVirtualModule'
 import { normalizeViteClientBuild } from './start-manifest-plugin/normalized-client-build'
 import type {
   GetConfigFn,
@@ -7,6 +9,19 @@ import type {
 } from '../types'
 import type { StartEnvironmentName } from '../constants'
 import type { PluginOption, ViteBuilder } from 'vite'
+
+export function createVirtualClientEntryPlugin(opts: {
+  getClientEntry: () => string
+}): PluginOption {
+  return createVirtualModule({
+    name: 'tanstack-start-core:virtual-client-entry',
+    moduleId: ENTRY_POINTS.client,
+    enforce: 'pre',
+    load() {
+      return `import ${JSON.stringify(normalizePath(opts.getClientEntry()).replaceAll('\\', '/'))}`
+    },
+  })
+}
 
 export function createPostBuildPlugin(opts: {
   getConfig: GetConfigFn
