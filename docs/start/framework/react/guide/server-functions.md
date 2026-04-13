@@ -52,7 +52,7 @@ Call server functions from:
 ```tsx
 // In a route loader
 export const Route = createFileRoute('/posts')({
-  loader: () => getPosts(),
+  loader: () => getServerPosts(),
 })
 
 // In a component
