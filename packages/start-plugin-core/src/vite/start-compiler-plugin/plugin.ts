@@ -15,12 +15,12 @@ import {
 import { loadModuleForViteCompiler } from '../../start-compiler/load-module'
 import { generateServerFnResolverModule } from '../../start-compiler/server-fn-resolver-module'
 import { cleanId } from '../../start-compiler/utils'
+import { createVirtualModule } from '../createVirtualModule'
+import { resolveViteId } from '../../utils'
 import {
   createViteDevServerFnModuleSpecifierEncoder,
   decodeViteDevServerModuleSpecifier,
 } from './module-specifier'
-import { createVirtualModule } from '../createVirtualModule'
-import { resolveViteId } from '../../utils'
 import type { CompileStartFrameworkOptions } from '../../types'
 import type {
   GenerateFunctionIdFnOptional,
