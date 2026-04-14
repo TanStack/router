@@ -4716,6 +4716,9 @@ importers:
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      srvx:
+        specifier: ^0.11.9
+        version: 0.11.15
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
@@ -6583,6 +6586,9 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
         version: 5.1.5(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@6.0.2))
+      srvx:
+        specifier: ^0.11.9
+        version: 0.11.15
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
