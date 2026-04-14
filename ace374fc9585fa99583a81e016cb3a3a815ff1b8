@@ -1,0 +1,23 @@
+scripts/nx/playwright-plugin.md
+  058884a3b7c941da 1-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "ace374fc9585fa99583a81e016cb3a3a815ff1b8",
+  "prompts": {
+    "058884a3b7c941da": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_274fe2441ffeKVgmaEmspvcnfb",
+        "model": "openai/gpt-5.4"
+      },
+      "human_author": "Nicolas Beaussart",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 161,
+      "overriden_lines": 0
+    }
+  }
+}
