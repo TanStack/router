@@ -111,25 +111,25 @@ export function appendUniqueAssets(
 }
 
 function getAssetIdentity(asset: RouterManagedTag) {
-  if (asset.tag === 'link') {
-    const attrs = asset.attrs ?? {}
+  return JSON.stringify({
+    tag: asset.tag,
+    attrs: normalizeAssetAttrs(asset.attrs),
+    children: 'children' in asset ? (asset.children ?? null) : null,
+  })
+}
 
-    // Stylesheet links dominate this manifest, so keep their identity cheap.
-    if (attrs.rel === 'stylesheet') {
-      return `link|stylesheet|${String(attrs.href ?? '')}|${String(attrs.type ?? '')}`
-    }
-
-    return `link|${String(attrs.href ?? '')}|${String(attrs.rel ?? '')}|${String(
-      attrs.type ?? '',
-    )}|`
+function normalizeAssetAttrs(attrs: Record<string, any> | undefined) {
+  if (!attrs) {
+    return null
   }
 
-  if (asset.tag === 'script') {
-    const attrs = asset.attrs ?? {}
-    return `script|${String(attrs.src ?? '')}|${String(attrs.type ?? '')}|${asset.children ?? ''}`
+  const entries = Object.entries(attrs)
+  if (entries.length === 0) {
+    return null
   }
 
-  return JSON.stringify(asset)
+  entries.sort(([left], [right]) => left.localeCompare(right))
+  return Object.fromEntries(entries)
 }
 
 function mergeRouteChunkData(options: {

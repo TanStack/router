@@ -175,6 +175,53 @@ describe('appendUniqueAssets', () => {
       ]),
     ).toBe(target)
   })
+
+  test('keeps distinct link assets with different attributes', () => {
+    const stylesheetA = {
+      tag: 'link' as const,
+      attrs: {
+        rel: 'stylesheet',
+        href: '/assets/a.css',
+        media: 'screen',
+        type: 'text/css',
+      },
+    }
+    const stylesheetB = {
+      tag: 'link' as const,
+      attrs: {
+        rel: 'stylesheet',
+        href: '/assets/a.css',
+        media: 'print',
+        type: 'text/css',
+      },
+    }
+
+    expect(appendUniqueAssets([stylesheetA], [stylesheetB])).toEqual([
+      stylesheetA,
+      stylesheetB,
+    ])
+  })
+
+  test('keeps distinct script assets with different attributes', () => {
+    const scriptA = {
+      tag: 'script' as const,
+      attrs: {
+        src: '/assets/app.js',
+        type: 'module',
+        async: true,
+      },
+    }
+    const scriptB = {
+      tag: 'script' as const,
+      attrs: {
+        src: '/assets/app.js',
+        type: 'module',
+        defer: true,
+      },
+    }
+
+    expect(appendUniqueAssets([scriptA], [scriptB])).toEqual([scriptA, scriptB])
+  })
 })
 
 describe('scanClientChunks', () => {
