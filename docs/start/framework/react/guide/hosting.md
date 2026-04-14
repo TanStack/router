@@ -287,13 +287,13 @@ npm run start
 
 ### Azure Static Web App
 
-Azure SWA uses [`Nitro`](#nitro) for deployment, but the Nitro preset `azure-swa` needs to be extended for it to work proporly.
+Azure SWA uses [`Nitro`](#nitro) for deployment, but the Nitro preset `azure-swa` needs to be extended for it to work properly.
 
 After installing Nitro:
 
 1. Copy this custom nitro preset [`azure-swa-custom`](https://github.com/Xiang-CH/tanstack-azure-swa-template/tree/main/nitro) (the entire directory) in to your project root.
 
-2. Update you `vite.config.ts` with the following Nitro configuration:
+2. Update your `vite.config.ts` with the following Nitro configuration:
     ```ts
     // vite.config.ts
     const config = defineConfig({
@@ -321,7 +321,7 @@ After installing Nitro:
     - API location: `.output/server`
     - Output location: `.output/public`
     
-4. If you App location is not the project root the build config should be the following:
+4. If your App location is not the project root the build config should be the following:
     - App location: `/<path-to-app>`
     - API location: `/<path-to-app>/.output/server`
     - Output location: `.output/public`
