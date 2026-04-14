@@ -79,7 +79,7 @@
   },
   "plugins": [
     {
-      "name": "Playwright",
+      "name": "Playwright Sharding Plugin",
       "plugin": "./scripts/nx/playwright-plugin.ts"
     }
   ],
