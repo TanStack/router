@@ -431,22 +431,38 @@ const executeBeforeLoad = (
     }))
   }
 
-  const resolve = () => {
+  const completeBeforeLoad = (beforeLoadContext: any) => {
+    if (isPending) {
+      inner.updateMatch(matchId, (prev) => ({
+        ...prev,
+        ...(beforeLoadContext !== undefined
+          ? { __beforeLoadContext: beforeLoadContext }
+          : null),
+        isFetching: false,
+      }))
+    } else if (
+      beforeLoadContext !== undefined ||
+      route.options.loader ||
+      route.options.beforeLoad
+    ) {
+      inner.updateMatch(matchId, (prev) => ({
+        ...prev,
+        abortController,
+        fetchCount: prev.fetchCount + 1,
+        ...(beforeLoadContext !== undefined
+          ? { __beforeLoadContext: beforeLoadContext }
+          : null),
+      }))
+    }
+
     match._nonReactive.beforeLoadPromise?.resolve()
     match._nonReactive.beforeLoadPromise = undefined
-    inner.updateMatch(matchId, (prev) => ({
-      ...prev,
-      isFetching: false,
-    }))
   }
 
-  // if there is no `beforeLoad` option, just mark as pending and resolve
-  // Context will be updated later in loadRouteMatch after loader completes
+  // Routes without beforeLoad still need pending timeout setup for loaders, but
+  // they do not need to publish a synthetic beforeLoad fetch cycle.
   if (!route.options.beforeLoad) {
-    inner.router.batch(() => {
-      pending()
-      resolve()
-    })
+    completeBeforeLoad(undefined)
     return
   }
 
@@ -491,10 +507,7 @@ const executeBeforeLoad = (
 
   const updateContext = (beforeLoadContext: any) => {
     if (beforeLoadContext === undefined) {
-      inner.router.batch(() => {
-        pending()
-        resolve()
-      })
+      completeBeforeLoad(undefined)
       return
     }
     if (isRedirect(beforeLoadContext) || isNotFound(beforeLoadContext)) {
@@ -502,14 +515,7 @@ const executeBeforeLoad = (
       handleSerialError(inner, index, beforeLoadContext, 'BEFORE_LOAD')
     }
 
-    inner.router.batch(() => {
-      pending()
-      inner.updateMatch(matchId, (prev) => ({
-        ...prev,
-        __beforeLoadContext: beforeLoadContext,
-      }))
-      resolve()
-    })
+    completeBeforeLoad(beforeLoadContext)
   }
 
   let beforeLoadContext
@@ -670,6 +676,7 @@ const runLoader = async (
         getLoaderContext(inner, matchPromises, matchId, index, route),
       )
       const loaderResultIsPromise = !!loader && isPromise(loaderResult)
+      let loaderData: unknown = undefined
 
       const willLoadSomething = !!(
         loaderResultIsPromise ||
@@ -689,9 +696,7 @@ const runLoader = async (
       }
 
       if (loader) {
-        const loaderData = loaderResultIsPromise
-          ? await loaderResult
-          : loaderResult
+        loaderData = loaderResultIsPromise ? await loaderResult : loaderResult
 
         handleRedirectAndNotFound(
           inner,
@@ -699,10 +704,12 @@ const runLoader = async (
           loaderData,
         )
         if (loaderData !== undefined) {
-          inner.updateMatch(matchId, (prev) => ({
-            ...prev,
-            loaderData,
-          }))
+          if (willLoadSomething) {
+            inner.updateMatch(matchId, (prev) => ({
+              ...prev,
+              loaderData,
+            }))
+          }
         }
       }
 
@@ -718,6 +725,9 @@ const runLoader = async (
       if (route._componentsPromise) await route._componentsPromise
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
+        ...(!willLoadSomething && loaderData !== undefined
+          ? { loaderData }
+          : null),
         error: undefined,
         context: buildMatchContext(inner, index),
         status: 'success',

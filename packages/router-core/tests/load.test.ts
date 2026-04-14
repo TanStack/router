@@ -1167,6 +1167,55 @@ test('cancelMatches after pending timeout', async () => {
   expect(cancelledFooMatch?._nonReactive.pendingTimeout).toBeUndefined()
 })
 
+test('cancelMatches aborts sync beforeLoad controller while component preload is pending', async () => {
+  const onAbortMock = vi.fn()
+  let resolveBeforeLoadStarted!: () => void
+  const beforeLoadStarted = new Promise<void>((resolve) => {
+    resolveBeforeLoadStarted = resolve
+  })
+  let resolveComponentPreloadStarted!: () => void
+  const componentPreloadStarted = new Promise<void>((resolve) => {
+    resolveComponentPreloadStarted = resolve
+  })
+  let resolveComponentPreload!: () => void
+
+  const rootRoute = new BaseRootRoute({})
+  const fooRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/foo',
+    beforeLoad: ({ abortController }) => {
+      abortController.signal.addEventListener('abort', () => {
+        onAbortMock()
+      })
+      resolveBeforeLoadStarted()
+    },
+    component: {
+      preload: () => {
+        resolveComponentPreloadStarted()
+        return new Promise<void>((resolve) => {
+          resolveComponentPreload = resolve
+        })
+      },
+    } as any,
+  })
+  const routeTree = rootRoute.addChildren([fooRoute])
+  const router = createTestRouter({ routeTree, history: createMemoryHistory() })
+
+  await router.load()
+
+  const navigation = router.navigate({ to: '/foo' })
+
+  await beforeLoadStarted
+  await componentPreloadStarted
+
+  router.cancelMatches()
+
+  expect(onAbortMock).toHaveBeenCalledTimes(1)
+
+  resolveComponentPreload()
+  await navigation
+})
+
 describe('head execution', () => {
   const setupBeforeLoadNotFoundHierarchy = (throwAtIndex: 1 | 2 | 3) => {
     const loaderResolvers: Array<(() => void) | undefined> = []
