@@ -1,0 +1,29 @@
+e2e/react-start/rsc/tests/setup/global.teardown.ts
+  058884a3b7c941da 5
+e2e/react-start/rsc/playwright.config.ts
+  058884a3b7c941da 1,6-15,31
+e2e/react-start/rsc/tests/setup/global.setup.ts
+  058884a3b7c941da 5
+scripts/nx/playwright-plugin.ts
+  058884a3b7c941da 2-6,31,45-50,56-60,71,84,87,89,91-93,135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "37259f014a7d62fcc0c4d6ec1a609fcd1347c7e2",
+  "prompts": {
+    "058884a3b7c941da": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_274fe2441ffeKVgmaEmspvcnfb",
+        "model": "openai/gpt-5.4"
+      },
+      "human_author": "Nicolas Beaussart",
+      "messages": [],
+      "total_additions": 43,
+      "total_deletions": 17,
+      "accepted_lines": 39,
+      "overriden_lines": 1
+    }
+  }
+}
