@@ -77,7 +77,7 @@
       "inputs": ["production"]
     }
   },
-  "bust": 1,
+  "bust": 2,
   "plugins": [
     {
       "name": "Playwright Sharding Plugin",
