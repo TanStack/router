@@ -440,7 +440,7 @@ test('shared widget CSS persists after navigating away from lazy and back', asyn
   await expect(page.getByTestId('shared-widget')).toBeVisible()
 
   await page.getByTestId('nav-home').click()
-  await page.waitForURL(/\/([^/]*)(\/)?($|\?)/)
+  await page.waitForURL((url) => url.pathname === '/')
 
   await page.getByTestId('nav-/lazy-css-lazy').click()
   await page.waitForURL('**/lazy-css-lazy')
