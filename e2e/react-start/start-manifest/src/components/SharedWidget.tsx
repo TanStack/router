@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import styles from '~/styles/shared-widget.module.css'
 
 export function SharedWidget() {
@@ -8,7 +7,7 @@ export function SharedWidget() {
         Shared widget styles
       </div>
       <div className={styles.content} data-testid="shared-widget-content">
-        This widget uses a CSS module shared by a static route and a lazy route.
+        This widget uses CSS shared by a static route and a lazy route.
       </div>
     </div>
   )

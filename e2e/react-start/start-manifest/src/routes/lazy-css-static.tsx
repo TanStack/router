@@ -1,5 +1,5 @@
 import { ClientOnly, createFileRoute } from '@tanstack/react-router'
-import { SharedWidget } from '~/components/shared-widget'
+import { SharedWidget } from '~/components/SharedWidget'
 
 export const Route = createFileRoute('/lazy-css-static')({
   component: LazyCssStaticRoute,
@@ -7,7 +7,7 @@ export const Route = createFileRoute('/lazy-css-static')({
 
 function LazyCssStaticRoute() {
   return (
-    <div>
+    <section>
       <h1>Lazy CSS Repro - Static Route</h1>
       <p>
         This route statically imports the shared widget so its CSS is present in
@@ -19,6 +19,6 @@ function LazyCssStaticRoute() {
       </ClientOnly>
 
       <SharedWidget />
-    </div>
+    </section>
   )
 }
