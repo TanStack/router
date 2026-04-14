@@ -47,11 +47,11 @@ function countMatchingStylesheetHrefs(hrefs: Array<string>, pattern: string) {
 }
 
 async function loadBuiltStartManifest() {
-  const serverDir = path.resolve(import.meta.dirname, '../.output/server')
+  const serverDir = path.resolve(import.meta.dirname, '../dist/server/assets')
   const entries = await readdir(serverDir)
   const manifestFile = entries.find(
     (entry) =>
-      entry.startsWith('_tanstack-start-manifest_v-') && entry.endsWith('.mjs'),
+      entry.startsWith('_tanstack-start-manifest_v-') && entry.endsWith('.js'),
   )
 
   expect(manifestFile).toBeTruthy()

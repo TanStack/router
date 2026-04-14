@@ -42,16 +42,20 @@ async function getHeadStylesheetHrefs(page: Page) {
   })
 }
 
+function hasMatchingStylesheetHref(hrefs: Array<string>, pattern: string) {
+  return hrefs.some((href) => href.includes(pattern))
+}
+
 function countMatchingStylesheetHrefs(hrefs: Array<string>, pattern: string) {
   return hrefs.filter((href) => href.includes(pattern)).length
 }
 
 async function loadBuiltStartManifest() {
-  const serverDir = path.resolve(import.meta.dirname, '../.output/server')
+  const serverDir = path.resolve(import.meta.dirname, '../dist/server/assets')
   const entries = await readdir(serverDir)
   const manifestFile = entries.find(
     (entry) =>
-      entry.startsWith('_tanstack-start-manifest_v-') && entry.endsWith('.mjs'),
+      entry.startsWith('_tanstack-start-manifest_v-') && entry.endsWith('.js'),
   )
 
   expect(manifestFile).toBeTruthy()
@@ -115,9 +119,9 @@ async function expectDirectEntry({
   await expect
     .poll(async () => {
       const hrefs = await getHeadStylesheetHrefs(page)
-      return countMatchingStylesheetHrefs(hrefs, expectedStylesheetPattern)
+      return hasMatchingStylesheetHref(hrefs, expectedStylesheetPattern)
     })
-    .toBe(1)
+    .toBe(true)
   await expect
     .poll(async () => {
       const hrefs = await getHeadStylesheetHrefs(page)
@@ -161,9 +165,9 @@ test('SSR and client navigation keep CSS module styles correct without hydration
   await expect
     .poll(async () => {
       const hrefs = await getHeadStylesheetHrefs(page)
-      return countMatchingStylesheetHrefs(hrefs, 'r1-')
+      return hasMatchingStylesheetHref(hrefs, 'r1-')
     })
-    .toBe(1)
+    .toBe(true)
   await expect
     .poll(async () => {
       const hrefs = await getHeadStylesheetHrefs(page)
@@ -183,9 +187,9 @@ test('SSR and client navigation keep CSS module styles correct without hydration
   await expect
     .poll(async () => {
       const hrefs = await getHeadStylesheetHrefs(page)
-      return countMatchingStylesheetHrefs(hrefs, 'r2-')
+      return hasMatchingStylesheetHref(hrefs, 'r2-')
     })
-    .toBe(1)
+    .toBe(true)
 
   await expect
     .poll(() => getColor('root-shell-marker', page))
@@ -199,9 +203,9 @@ test('SSR and client navigation keep CSS module styles correct without hydration
   await expect
     .poll(async () => {
       const hrefs = await getHeadStylesheetHrefs(page)
-      return countMatchingStylesheetHrefs(hrefs, 'r1-')
+      return hasMatchingStylesheetHref(hrefs, 'r1-')
     })
-    .toBe(1)
+    .toBe(true)
 
   await expect
     .poll(() => getColor('root-shell-marker', page))
