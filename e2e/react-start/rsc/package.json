@@ -9,7 +9,12 @@
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e-full": "pnpm build && sh -c 'rm -f \"port-${E2E_PORT_KEY:-$npm_package_name}.txt\" \"port-${E2E_PORT_KEY:-$npm_package_name}-external.txt\"' && playwright test --project=chromium"
+  },
+  "nx": {
+    "metadata": {
+      "playwrightShards": 6
+    }
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",

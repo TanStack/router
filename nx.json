@@ -76,5 +76,12 @@
       "dependsOn": ["build"],
       "inputs": ["production"]
     }
-  }
+  },
+  "plugins": [
+    {
+      "name": "Playwright",
+      "plugin": "./scripts/nx/playwright-plugin.ts"
+    }
+  ],
+  "analytics": true
 }
