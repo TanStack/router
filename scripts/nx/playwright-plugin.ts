@@ -9,10 +9,6 @@ import type {
 export const createNodesV2: CreateNodesV2 = [
   '**/package.json',
   async (configFiles, options, context) => {
-    console.log(
-      'Processing package.json files for Playwright plugin',
-      configFiles,
-    )
     return await createNodesFromFiles(
       (configFile, options, context) =>
         createNodesInternal(configFile, context),
@@ -33,7 +29,6 @@ async function createNodesInternal(
   }>(configFilePath)
   const root = dirname(configFilePath)
 
-  console.log(root, projectConfiguration)
   if (!projectConfiguration.nx?.metadata?.playwrightShards) {
     return {
       projects: {

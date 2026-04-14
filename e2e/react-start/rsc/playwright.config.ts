@@ -5,11 +5,13 @@ import packageJson from './package.json' with { type: 'json' }
 
 const e2ePortKey = process.env.E2E_PORT_KEY ?? packageJson.name
 
-for (const portFile of [
-  `port-${e2ePortKey}.txt`,
-  `port-${e2ePortKey}-external.txt`,
-]) {
-  fs.rmSync(portFile, { force: true })
+if (process.env.TEST_WORKER_INDEX === undefined) {
+  for (const portFile of [
+    `port-${e2ePortKey}.txt`,
+    `port-${e2ePortKey}-external.txt`,
+  ]) {
+    fs.rmSync(portFile, { force: true })
+  }
 }
 
 const PORT = await getTestServerPort(e2ePortKey)
