@@ -1,0 +1,23 @@
+e2e/react-start/rsc/playwright.config.ts
+  058884a3b7c941da 8-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "c4f95f03b39f2e707abad38e8ffe271dc6490228",
+  "prompts": {
+    "058884a3b7c941da": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_274fe2441ffeKVgmaEmspvcnfb",
+        "model": "openai/gpt-5.4"
+      },
+      "human_author": "Nicolas Beaussart",
+      "messages": [],
+      "total_additions": 17,
+      "total_deletions": 5,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    }
+  }
+}
