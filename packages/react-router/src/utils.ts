@@ -5,6 +5,7 @@ import * as React from 'react'
 // React 18 with Webpack, which statically analyzes imports and fails when it
 // sees React.use referenced (since 'use' is not exported from React 18).
 // This uses a dynamic string lookup to avoid the static analysis.
+// eslint-disable-next-line prefer-const -- Must be `let` to prevent bundler constant-folding
 let REACT_USE = 'use'
 
 /**
