@@ -1,4 +1,4 @@
-import { isAbsolute, join, normalize } from 'node:path'
+import { isAbsolute, join, normalize, relative } from 'node:path'
 import { Generator, resolveConfigPath } from '@tanstack/router-generator'
 import { getConfig } from './config'
 
@@ -11,13 +11,17 @@ const PLUGIN_NAME = 'unplugin:router-generator'
 
 // Physical mounts that point outside `routesDirectory` — their files aren't
 // covered by the bundler's own watcher.
+function isInside(parent: string, child: string): boolean {
+  const rel = relative(parent, child)
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+}
 function getExternalPhysicalDirs(
   generator: Generator,
   routesDirectoryPath: string,
 ): Array<string> {
   return generator
     .getPhysicalDirectories()
-    .filter((dir) => !dir.startsWith(routesDirectoryPath))
+    .filter((dir) => !isInside(routesDirectoryPath, dir))
 }
 
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
@@ -100,7 +104,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         }
         const onEvent =
           (event: 'create' | 'update' | 'delete') => (file: string) => {
-            if (!external.some((dir) => file.startsWith(dir))) return
+            if (!external.some((dir) => isInside(dir, file))) return
             void generate({ file, event })
           }
         server.watcher.on('add', onEvent('create'))
