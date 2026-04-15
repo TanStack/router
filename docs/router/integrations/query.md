@@ -89,16 +89,6 @@ const { data } = useSuspenseQuery(postsQuery)
 const { data, isLoading } = useQuery(postsQuery)
 ```
 
-# Solid
-
-```tsx
-// Suspense: executes on server and streams
-const { data } = useSuspenseQuery(postsQuery)
-
-// Non-suspense: executes only on client
-const { data, isLoading } = useQuery(postsQuery)
-```
-
 <!-- ::end:framework -->
 
 ### Preload with a loader and read with a hook
