@@ -112,19 +112,20 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
+    "@tanstack/solid-router": "workspace:*",
     "@tanstack/solid-start-client": "workspace:*",
     "@tanstack/solid-start-server": "workspace:*",
-    "@tanstack/start-plugin-core": "workspace:*",
-    "@tanstack/solid-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
+    "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
     "pathe": "^2.0.3"
   },
   "devDependencies": {
+    "@rsbuild/core": "^2.0.0-rc.3",
     "@tanstack/intent": "^0.0.14",
     "@tanstack/router-utils": "workspace:*",
-    "vite": "*",
-    "@types/node": ">=20"
+    "@types/node": ">=20",
+    "vite": "*"
   },
   "peerDependencies": {
     "@rsbuild/core": "^2.0.0-0",

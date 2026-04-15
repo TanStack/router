@@ -11,9 +11,4 @@ export default defineConfig({
     pluginSolid(),
     tanstackStart(),
   ],
-  performance: {
-    chunkSplit: {
-      strategy: 'split-by-experience',
-    },
-  } as Record<string, unknown>,
 })
