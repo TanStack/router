@@ -22,7 +22,6 @@ import {
 import { devServerPlugin } from './dev-server-plugin/plugin'
 import { previewServerPlugin } from './preview-server-plugin/plugin'
 import {
-  createCaptureClientBuildPlugin,
   createDevBaseRewritePlugin,
   createPostBuildPlugin,
   createVirtualClientEntryPlugin,
@@ -36,12 +35,10 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
-import type { NormalizedClientBuild } from '../types'
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,
 } from './types'
-import type { StartEnvironmentName } from '../constants'
 import type { TanStackStartViteInputConfig } from './schema'
 import type { PluginOption } from 'vite'
 
@@ -63,16 +60,6 @@ export function tanStackStartVite(
   // When the router basepath and vite base are misaligned during dev,
   // we install a URL rewrite middleware instead of erroring.
   let needsDevBaseRewrite = false
-
-  const capturedClientBuild: Partial<
-    Record<StartEnvironmentName, NormalizedClientBuild>
-  > = {}
-
-  function getClientBuild(
-    envName: StartEnvironmentName,
-  ): NormalizedClientBuild | undefined {
-    return capturedClientBuild[envName]
-  }
 
   const environments: Array<{
     name: string
@@ -242,7 +229,6 @@ export function tanStackStartVite(
       getClientEntry: () => configContext.resolveEntries().entryPaths.client,
     }),
     startManifestPlugin({
-      getClientBuild: () => getClientBuild(START_ENVIRONMENT_NAMES.client),
       getConfig,
     }),
     // When the vite base and router basepath are misaligned (e.g. base: '/_ui/', basepath: '/'),
@@ -265,9 +251,6 @@ export function tanStackStartVite(
     previewServerPlugin(),
     serializationAdaptersPlugin({
       adapters: corePluginOpts.serializationAdapters,
-    }),
-    createCaptureClientBuildPlugin({
-      capturedClientBuild,
     }),
   ]
 }

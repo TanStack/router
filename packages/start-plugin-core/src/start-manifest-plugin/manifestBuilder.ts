@@ -152,6 +152,9 @@ export function buildStartManifest(options: {
   clientBuild: NormalizedClientBuild
   routeTreeRoutes: RouteTreeRoutes
   basePath: string
+  additionalRouteAssets?: Partial<
+    Record<string, ReadonlyArray<RouterManagedTag>>
+  >
 }): StartManifest {
   const scannedChunks = scanClientChunks(options.clientBuild)
   const assetResolvers = createManifestAssetResolvers(options.basePath)
@@ -162,6 +165,7 @@ export function buildStartManifest(options: {
     chunksByFileName: scannedChunks.chunksByFileName,
     entryChunk: scannedChunks.entryChunk,
     assetResolvers,
+    additionalRouteAssets: options.additionalRouteAssets,
   })
 
   dedupeNestedRouteManifestEntries(rootRouteId, routes[rootRouteId]!, routes)
@@ -352,6 +356,9 @@ export function buildRouteManifestRoutes(options: {
   chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
   entryChunk: NormalizedClientChunk
   assetResolvers: ManifestAssetResolvers
+  additionalRouteAssets?: Partial<
+    Record<string, ReadonlyArray<RouterManagedTag>>
+  >
 }) {
   const routes: Record<string, RouteTreeRoute> = {}
   const getChunkCssAssets = createChunkCssAssetCollector({
@@ -395,6 +402,19 @@ export function buildRouteManifestRoutes(options: {
     getChunkCssAssets,
     getChunkPreloads: options.assetResolvers.getChunkPreloads,
   })
+
+  if (options.additionalRouteAssets) {
+    for (const [routeId, assets] of Object.entries(
+      options.additionalRouteAssets,
+    )) {
+      if (!assets || assets.length === 0) {
+        continue
+      }
+
+      const route = (routes[routeId] = routes[routeId] || {})
+      route.assets = appendUniqueAssets(route.assets, [...assets])
+    }
+  }
 
   return routes
 }

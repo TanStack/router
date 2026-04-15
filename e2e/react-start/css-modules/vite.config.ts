@@ -5,8 +5,10 @@ import viteReact from '@vitejs/plugin-react'
 // Environment variables for different test configurations:
 // - VITE_BASE_PATH: Set to '/my-app' for basepath testing
 // - VITE_USE_NITRO: Set to 'true' to enable Nitro server
+// - VITE_CSS_CODE_SPLIT: Set to 'false' to disable CSS code splitting in prod
 const basePath = process.env.VITE_BASE_PATH
 const useNitro = process.env.VITE_USE_NITRO === 'true'
+const cssCodeSplit = process.env.VITE_CSS_CODE_SPLIT !== 'false'
 
 export default defineConfig(async () => {
   // Dynamically import nitro only when needed to avoid loading it when not used
@@ -17,6 +19,9 @@ export default defineConfig(async () => {
     base: basePath,
     server: {
       port: 3000,
+    },
+    build: {
+      cssCodeSplit,
     },
     plugins: [
       // Nitro is placed BEFORE tanstackStart to test that our CSS middleware
