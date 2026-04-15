@@ -85,9 +85,7 @@ describe('router-generator-plugin vite watcher', () => {
     }
 
     await viteHooks.configResolved({ root: fixtureDir })
-    await waitUntil(() =>
-      routeTreeIncludes(generatedRouteTree, "'/ext/alpha'"),
-    )
+    await waitUntil(() => routeTreeIncludes(generatedRouteTree, "'/ext/alpha'"))
 
     watcher = chokidar.watch(routesDir, { ignoreInitial: true })
     await new Promise((resolve) => watcher!.once('ready', resolve))
@@ -101,8 +99,8 @@ describe('router-generator-plugin vite watcher', () => {
 
     // Removing the file should likewise trigger regeneration.
     await rm(betaPath)
-    await waitUntil(async () =>
-      !(await routeTreeIncludes(generatedRouteTree, "'/ext/beta'")),
+    await waitUntil(
+      async () => !(await routeTreeIncludes(generatedRouteTree, "'/ext/beta'")),
     )
   })
 })

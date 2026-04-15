@@ -129,10 +129,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
           .on('add', (file) => generate({ file, event: 'create' }))
 
         // External physical() mounts are outside rspack's file graph.
-        const external = getExternalPhysicalDirs(
-          generator,
-          routesDirectoryPath,
-        )
+        const external = getExternalPhysicalDirs(generator, routesDirectoryPath)
         if (external.length > 0) {
           externalHandle = chokidar
             .watch(external, { ignoreInitial: true })
@@ -170,10 +167,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
           .on('add', (file) => generate({ file, event: 'create' }))
 
         // External physical() mounts are outside webpack's file graph.
-        const external = getExternalPhysicalDirs(
-          generator,
-          routesDirectoryPath,
-        )
+        const external = getExternalPhysicalDirs(generator, routesDirectoryPath)
         if (external.length > 0) {
           externalHandle = chokidar
             .watch(external, { ignoreInitial: true })
