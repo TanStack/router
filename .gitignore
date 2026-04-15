@@ -84,3 +84,4 @@ vite.config.ts.timestamp_*
 **/llms
 
 **/.tanstack
+*.tsbuildinfo
