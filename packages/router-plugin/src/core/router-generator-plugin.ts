@@ -9,6 +9,17 @@ import type { Config } from './config'
 
 const PLUGIN_NAME = 'unplugin:router-generator'
 
+// Physical mounts that point outside `routesDirectory` — their files aren't
+// covered by the bundler's own watcher.
+function getExternalPhysicalDirs(
+  generator: Generator,
+  routesDirectoryPath: string,
+): Array<string> {
+  return generator
+    .getPhysicalDirectories()
+    .filter((dir) => !dir.startsWith(routesDirectoryPath))
+}
+
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
 > = (options = {}) => {
@@ -78,11 +89,30 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         initConfigAndGenerator({ root: config.root })
         await generate()
       },
+      configureServer(server) {
+        const external = getExternalPhysicalDirs(
+          generator,
+          getRoutesDirectoryPath(),
+        )
+        if (external.length === 0) return
+        for (const dir of external) {
+          server.watcher.add(dir)
+        }
+        const onEvent =
+          (event: 'create' | 'update' | 'delete') => (file: string) => {
+            if (!external.some((dir) => file.startsWith(dir))) return
+            void generate({ file, event })
+          }
+        server.watcher.on('add', onEvent('create'))
+        server.watcher.on('change', onEvent('update'))
+        server.watcher.on('unlink', onEvent('delete'))
+      },
     },
     rspack(compiler) {
       initConfigAndGenerator()
 
       let handle: FSWatcher | null = null
+      let externalHandle: FSWatcher | null = null
 
       compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => generate())
 
@@ -98,19 +128,32 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
           .watch(routesDirectoryPath, { ignoreInitial: true })
           .on('add', (file) => generate({ file, event: 'create' }))
 
+        // External physical() mounts are outside rspack's file graph.
+        const external = getExternalPhysicalDirs(
+          generator,
+          routesDirectoryPath,
+        )
+        if (external.length > 0) {
+          externalHandle = chokidar
+            .watch(external, { ignoreInitial: true })
+            .on('add', (file) => generate({ file, event: 'create' }))
+            .on('change', (file) => generate({ file, event: 'update' }))
+            .on('unlink', (file) => generate({ file, event: 'delete' }))
+        }
+
         await generate()
       })
 
       compiler.hooks.watchClose.tap(PLUGIN_NAME, async () => {
-        if (handle) {
-          await handle.close()
-        }
+        if (handle) await handle.close()
+        if (externalHandle) await externalHandle.close()
       })
     },
     webpack(compiler) {
       initConfigAndGenerator()
 
       let handle: FSWatcher | null = null
+      let externalHandle: FSWatcher | null = null
 
       compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => generate())
 
@@ -126,13 +169,25 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
           .watch(routesDirectoryPath, { ignoreInitial: true })
           .on('add', (file) => generate({ file, event: 'create' }))
 
+        // External physical() mounts are outside webpack's file graph.
+        const external = getExternalPhysicalDirs(
+          generator,
+          routesDirectoryPath,
+        )
+        if (external.length > 0) {
+          externalHandle = chokidar
+            .watch(external, { ignoreInitial: true })
+            .on('add', (file) => generate({ file, event: 'create' }))
+            .on('change', (file) => generate({ file, event: 'update' }))
+            .on('unlink', (file) => generate({ file, event: 'delete' }))
+        }
+
         await generate()
       })
 
       compiler.hooks.watchClose.tap(PLUGIN_NAME, async () => {
-        if (handle) {
-          await handle.close()
-        }
+        if (handle) await handle.close()
+        if (externalHandle) await externalHandle.close()
       })
 
       compiler.hooks.done.tap(PLUGIN_NAME, () => {
