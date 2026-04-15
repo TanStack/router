@@ -70,9 +70,11 @@ test.describe('CSS modules with cssCodeSplit disabled', () => {
     const card = page.getByTestId('module-card')
     await expect(card).toBeVisible()
 
-    backgroundColor = await card.evaluate(
-      (el) => getComputedStyle(el).backgroundColor,
-    )
-    expect(backgroundColor).toBe('rgb(240, 253, 244)')
+    await expect(async () => {
+      const backgroundColor = await card.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(240, 253, 244)')
+    }).toPass({ timeout: 5000 })
   })
 })
