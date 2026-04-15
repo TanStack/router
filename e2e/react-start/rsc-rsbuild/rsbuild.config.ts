@@ -11,12 +11,4 @@ export default defineConfig({
       },
     }),
   ],
-  // Workaround: @rsbuild/plugin-react@2.0.0-alpha.3 accesses
-  // config.performance.chunkSplit.strategy which is no longer defaulted
-  // in rsbuild v2. Provide it explicitly to avoid the crash.
-  performance: {
-    chunkSplit: {
-      strategy: 'split-by-experience',
-    },
-  } as Record<string, unknown>,
 })

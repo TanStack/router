@@ -13,9 +13,4 @@ export default defineConfig({
     pluginVueJsx(),
     tanstackStart(),
   ],
-  performance: {
-    chunkSplit: {
-      strategy: 'split-by-experience',
-    },
-  } as Record<string, unknown>,
 })

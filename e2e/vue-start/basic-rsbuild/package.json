@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@rsbuild/core": "2.0.0-beta.10",
+    "@rsbuild/core": "2.0.0-rc.3",
     "@rsbuild/plugin-babel": "^1.0.5",
     "@rsbuild/plugin-vue": "^1.2.2",
     "@rsbuild/plugin-vue-jsx": "^1.1.1",
