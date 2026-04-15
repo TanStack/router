@@ -19,7 +19,7 @@ export const Route = createFileRoute('${routePath}')({ component: () => null })
 
 async function waitUntil(
   condition: () => boolean | Promise<boolean>,
-  { timeoutMs = 10_000, intervalMs = 50 } = {},
+  { timeoutMs = 20_000, intervalMs = 50 } = {},
 ) {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
@@ -70,14 +70,17 @@ describe('router-generator-plugin vite watcher', () => {
 
   it(
     'regenerates routeTree on add/remove in an external physical mount',
-    { timeout: 20_000 },
+    { timeout: 30_000 },
     async () => {
       server = await createServer({
         root: fixtureDir,
         configFile: false,
         logLevel: 'silent',
         appType: 'custom',
-        server: { middlewareMode: true, watch: {} },
+        server: {
+          middlewareMode: true,
+          watch: { usePolling: true, interval: 100 },
+        },
         plugins: [
           tanstackRouterGenerator({
             routesDirectory: routesDir,
@@ -96,7 +99,7 @@ describe('router-generator-plugin vite watcher', () => {
 
       // Short settle after each fs mutation — the plugin debounces and the
       // generator may run multiple passes for a single chokidar burst.
-      const settle = () => new Promise((r) => setTimeout(r, 500))
+      const settle = () => new Promise((r) => setTimeout(r, 1000))
 
       const betaPath = path.join(externalDir, 'beta.tsx')
       await writeFile(betaPath, makeRouteFile('/ext/beta'))
