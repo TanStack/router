@@ -14,9 +14,14 @@ import * as React from 'react'
  * React.use if available (React 19+), undefined otherwise.
  * Use dynamic lookup to avoid Webpack compilation errors with React 18.
  */
+const _reactUseCandidate = Reflect.get(React, 'use')
+
 export const reactUse:
   | (<T>(usable: Promise<T> | React.Context<T>) => T)
-  | undefined = Reflect.get(React, 'use')
+  | undefined =
+  typeof _reactUseCandidate === 'function'
+    ? (_reactUseCandidate as <T>(usable: Promise<T> | React.Context<T>) => T)
+    : undefined
 
 export function useStableCallback<T extends (...args: Array<any>) => any>(
   fn: T,
