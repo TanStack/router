@@ -52,7 +52,7 @@ export function startManifestPlugin(opts: {
         )
 
         if (this.environment.name !== START_ENVIRONMENT_NAMES.server) {
-          return 'export default {}'
+          return getEmptyStartManifestModule(clientEntry)
         }
 
         if (this.environment.config.command === 'serve') {

@@ -411,6 +411,12 @@ export function buildRouteManifestRoutes(options: {
         continue
       }
 
+      if (!(routeId in options.routeTreeRoutes)) {
+        throw new Error(
+          `expected additionalRouteAssets routeId to exist in routeTreeRoutes: ${routeId}`,
+        )
+      }
+
       const route = (routes[routeId] = routes[routeId] || {})
       route.assets = appendUniqueAssets(route.assets, [...assets])
     }
