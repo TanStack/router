@@ -1,5 +1,5 @@
 import { normalizePath } from 'vite'
-import { ENTRY_POINTS, START_ENVIRONMENT_NAMES } from '../constants'
+import { ENTRY_POINTS } from '../constants'
 import { createVirtualModule } from './createVirtualModule'
 import type { GetConfigFn, ResolvedStartConfig } from '../types'
 import type { PluginOption, ViteBuilder } from 'vite'
