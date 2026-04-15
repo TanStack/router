@@ -77,6 +77,10 @@ By default, the integration wraps your router with a `QueryClientProvider`. If y
 - `useSuspenseQuery`: runs on the server during SSR when its data is required and will be streamed to the client as it resolves.
 - `useQuery`: does not execute on the server; it will fetch on the client after hydration. Use this for data that is not required for SSR.
 
+<!-- ::start:framework -->
+
+# React
+
 ```tsx
 // Suspense: executes on server and streams
 const { data } = useSuspenseQuery(postsQuery)
@@ -85,9 +89,7 @@ const { data } = useSuspenseQuery(postsQuery)
 const { data, isLoading } = useQuery(postsQuery)
 ```
 
-<!-- ::start:framework -->
-
-# React
+# Solid
 
 ```tsx
 // Suspense: executes on server and streams
