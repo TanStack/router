@@ -15,3 +15,15 @@ test('layout with useQuery renders child after client navigation', async ({
   })
   await expect(page.getByTestId('layout-content')).toBeVisible()
 })
+
+// SSR page with loader -> dynamic first segment route
+test('navigate from SSR index (with loader) to /$slug', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByTestId('index-content')).toBeVisible()
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('index-link-to-slug').click()
+
+  await expect(page.getByTestId('slug-index')).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByTestId('slug-index')).toContainText('my-slug')
+})

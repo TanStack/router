@@ -6,6 +6,7 @@ export function getRouter() {
   const queryClient = new QueryClient()
   return createRouter({
     routeTree,
+    defaultPreload: 'intent',
     Wrap: (props) => (
       <QueryClientProvider client={queryClient}>
         {props.children}

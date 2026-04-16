@@ -22,7 +22,11 @@ function RootDocument() {
       <body>
         <HeadContent />
         <nav>
-          <Link to="/">Home</Link> <Link to="/layout/page2">👉 To page2</Link>
+          <Link to="/">Home</Link>{' '}
+          <Link to="/layout/page2">👉 To page2</Link>{' '}
+          <Link to="/$slug" params={{ slug: 'foo' }} data-testid="link-to-slug">
+            Slug
+          </Link>
         </nav>
         <Suspense>
           <Outlet />

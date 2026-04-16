@@ -2474,8 +2474,16 @@ export class RouterCore<
                      * or reloads re-run their loaders instead of reusing the failed/not-found data.
                      */
                     if (mountPending) {
-                      this.stores.setMatches(pendingMatches)
-                      this.stores.setPending([])
+                      // Hand off the pending pool's stores to the active
+                      // pool (preserving store identity) and clear the
+                      // pending pool atomically. This avoids a race where
+                      // a late write to a pending store — which can happen
+                      // when a deferred framework transition flushes a
+                      // loader completion — would otherwise be dropped by
+                      // `setPending([])` before `setMatches()` had a chance
+                      // to observe it, leaving the new active store stuck
+                      // on a stale `'pending'` snapshot.
+                      this.stores.commitPending(pendingMatches)
                       this.stores.setCached([
                         ...this.stores.cachedMatches.get(),
                         ...exitingMatches!.filter(

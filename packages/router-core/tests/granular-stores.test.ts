@@ -307,6 +307,181 @@ describe('granular stores', () => {
     await reloadPromise
   })
 
+  test('hasPending reads the pending pool, not just active statuses', async () => {
+    const router = createRouter()
+    await router.navigate({ to: '/posts/123' })
+
+    // Nothing in-flight: hasPending is false.
+    expect(router.stores.hasPending.get()).toBe(false)
+
+    // A non-empty pending pool flips hasPending to true even when every
+    // active match has a terminal status.
+    const activeLeaf = router.state.matches[1]!
+    router.stores.setPending([
+      {
+        ...activeLeaf,
+        id: `${activeLeaf.id}__pending`,
+        status: 'pending' as const,
+      },
+    ])
+
+    expect(router.stores.hasPending.get()).toBe(true)
+
+    // Draining the pending pool flips it back to false, even if we leave the
+    // active pool untouched.
+    router.stores.setPending([])
+    expect(router.stores.hasPending.get()).toBe(false)
+
+    // An active match stuck at status 'pending' with an empty pending pool
+    // still flips hasPending to true — this is the existing behavior and
+    // must not regress.
+    router.updateMatch(activeLeaf.id, (prev) => ({
+      ...prev,
+      status: 'pending' as const,
+    }))
+    expect(router.stores.hasPending.get()).toBe(true)
+  })
+
+  test('commitPending hands pending stores to the active pool, preserving identity', async () => {
+    const router = createRouter()
+    await router.navigate({ to: '/posts/123' })
+
+    // Capture a leaf match to reuse its routeId, then empty the active pool
+    // so the pending pool is the sole source of the next active commit
+    // (simulates a fresh navigation to a brand-new match id, like /$slug).
+    const leaf = router.state.matches[1]!
+    router.stores.setMatches([])
+    expect(router.stores.matchesId.get()).toEqual([])
+
+    const pending = {
+      ...leaf,
+      id: `${leaf.id}__handoff`,
+      status: 'pending' as const,
+    }
+
+    router.stores.setPending([pending])
+    const pendingStore = router.stores.pendingMatchStores.get(pending.id)
+    expect(pendingStore).toBeDefined()
+
+    router.stores.commitPending([pending])
+
+    // The pending store is now the active store (same reference).
+    expect(router.stores.matchStores.get(pending.id)).toBe(pendingStore)
+    // Pending pool is drained and pendingIds is empty.
+    expect(router.stores.pendingMatchStores.get(pending.id)).toBeUndefined()
+    expect(router.stores.pendingIds.get()).toEqual([])
+    // Active pool is populated.
+    expect(router.stores.matchesId.get()).toEqual([pending.id])
+  })
+
+  test('commitPending applies writes that landed on the pending store after the caller snapshotted pendingMatches', async () => {
+    const router = createRouter()
+    await router.navigate({ to: '/posts/123' })
+
+    const leaf = router.state.matches[1]!
+    router.stores.setMatches([])
+
+    const pending = {
+      ...leaf,
+      id: `${leaf.id}__race`,
+      status: 'pending' as const,
+    }
+    router.stores.setPending([pending])
+
+    // Caller snapshots the pending pool (what router.ts does before commit).
+    const snapshot = router.stores.pendingMatches.get()
+
+    // Simulate a late write to the pending store — e.g. a loader completion
+    // resolving inside a framework transition right after the snapshot.
+    const lateValue = {
+      ...pending,
+      status: 'success' as const,
+      loaderData: { version: 'late-write' },
+    }
+    router.stores.pendingMatchStores.get(pending.id)!.set(lateValue)
+
+    // Commit using the stale snapshot (this is what the old
+    // setMatches(snapshot) + setPending([]) path would have seen).
+    router.stores.commitPending(snapshot)
+
+    // The active store reflects the LATE write, not the stale snapshot.
+    // Previously this would have been 'pending' (the snapshot's status), and
+    // the Transitioner's hasPending gate could never flip.
+    const activeStore = router.stores.matchStores.get(pending.id)!
+    expect(activeStore.get().status).toBe('success')
+    expect(activeStore.get().loaderData).toEqual({ version: 'late-write' })
+    // And hasPending correctly flips to false.
+    expect(router.stores.hasPending.get()).toBe(false)
+  })
+
+  test('commitPending preserves the existing active store when active and pending share an id', async () => {
+    const router = createRouter()
+    await router.navigate({ to: '/posts/123' })
+
+    const activeLeaf = router.state.matches[1]!
+    const activeStoreBefore = router.stores.matchStores.get(activeLeaf.id)!
+    expect(activeStoreBefore).toBeDefined()
+
+    // Populate a pending entry that re-uses the active id (happens during a
+    // reload of the same route).
+    router.stores.setPending([
+      {
+        ...activeLeaf,
+        status: 'pending' as const,
+      },
+    ])
+    const pendingStore = router.stores.pendingMatchStores.get(activeLeaf.id)!
+    expect(pendingStore).not.toBe(activeStoreBefore)
+
+    const committedValue = {
+      ...activeLeaf,
+      status: 'success' as const,
+      loaderData: { version: 'committed' },
+    }
+    // Pending store holds the latest value.
+    pendingStore.set(committedValue)
+
+    router.stores.commitPending([committedValue])
+
+    // The active store reference is preserved (its existing subscribers stay
+    // bound), but its value is updated to the pending store's latest value.
+    const activeStoreAfter = router.stores.matchStores.get(activeLeaf.id)
+    expect(activeStoreAfter).toBe(activeStoreBefore)
+    expect(activeStoreAfter!.get().status).toBe('success')
+    expect(activeStoreAfter!.get().loaderData).toEqual({ version: 'committed' })
+    // Pending pool is fully drained.
+    expect(router.stores.pendingMatchStores.get(activeLeaf.id)).toBeUndefined()
+    expect(router.stores.pendingIds.get()).toEqual([])
+  })
+
+  test('commitPending drops ids that are no longer in the commit list', async () => {
+    const router = createRouter()
+    await router.navigate({ to: '/posts/123' })
+
+    const activeMatchesBefore = router.state.matches
+    const staleId = activeMatchesBefore[1]!.id
+
+    const nextMatches = [
+      activeMatchesBefore[0]!,
+      {
+        ...activeMatchesBefore[1]!,
+        id: `${staleId}__renamed`,
+      },
+    ]
+    router.stores.setPending([nextMatches[1]!])
+
+    router.stores.commitPending(nextMatches)
+
+    // Old id is evicted from the active pool.
+    expect(router.stores.matchStores.get(staleId)).toBeUndefined()
+    // New id is in the active pool.
+    expect(router.stores.matchStores.get(nextMatches[1]!.id)).toBeDefined()
+    expect(router.stores.matchesId.get()).toEqual(
+      nextMatches.map((match) => match.id),
+    )
+    expect(router.stores.pendingIds.get()).toEqual([])
+  })
+
   test('supports duplicate ids across pools without cross-pool contamination', async () => {
     const router = createRouter()
     await router.navigate({ to: '/posts/123' })
