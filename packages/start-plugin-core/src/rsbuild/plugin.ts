@@ -24,7 +24,6 @@ import type { ServerFn } from '../start-compiler/types'
 import type { TanStackStartRsbuildPluginCoreOptions } from './types'
 import type {
   ModifyRspackConfigFn,
-  RsbuildConfig,
   RsbuildDevServer,
   RsbuildPlugin,
   RsbuildPluginAPI,
@@ -73,7 +72,7 @@ export function tanStackStartRsbuild(
       // ---------------------------------------------------------------
       // 1. modifyRsbuildConfig — resolve config, set up environments
       // ---------------------------------------------------------------
-      api.modifyRsbuildConfig((rsbuildConfig): RsbuildConfig => {
+      api.modifyRsbuildConfig((rsbuildConfig, { mergeRsbuildConfig }) => {
         const root =
           typeof rsbuildConfig.root === 'string'
             ? rsbuildConfig.root
@@ -134,9 +133,6 @@ export function tanStackStartRsbuild(
           environmentOverrides: corePluginOpts.rsbuild?.environments,
           rsc: rscOpts,
         })
-        const currentEnvironments: NonNullable<RsbuildConfig['environments']> =
-          rsbuildConfig.environments ?? {}
-
         const serverFnBase = createServerFnBasePath({
           routerBasepath,
           serverFnBase: startConfig.serverFns.base,
@@ -144,12 +140,9 @@ export function tanStackStartRsbuild(
 
         const isDev = api.context.action === 'dev'
 
-        return {
-          ...rsbuildConfig,
+        return mergeRsbuildConfig(rsbuildConfig, {
           source: {
-            ...(rsbuildConfig.source ?? {}),
             define: {
-              ...(rsbuildConfig.source?.define ?? {}),
               'process.env.TSS_SERVER_FN_BASE': JSON.stringify(serverFnBase),
               'import.meta.env.TSS_SERVER_FN_BASE':
                 JSON.stringify(serverFnBase),
@@ -176,7 +169,6 @@ export function tanStackStartRsbuild(
             },
           },
           server: {
-            ...rsbuildConfig.server,
             // SSR apps render every route on the server — disable HTML
             // fallback so rsbuild doesn't intercept /_serverFn/ URLs.
             htmlFallback: false,
@@ -193,28 +185,19 @@ export function tanStackStartRsbuild(
           ...(isDev
             ? {
                 dev: {
-                  ...(rsbuildConfig.dev ?? {}),
                   lazyCompilation: false,
                   ...(rscEnabled ? { liveReload: false } : {}),
                 },
               }
             : {}),
-          environments: {
-            ...currentEnvironments,
-            ...environmentPlan.environments,
-          },
+          environments: environmentPlan.environments,
           resolve: {
-            ...(rsbuildConfig.resolve ?? {}),
-            alias: {
-              ...(rsbuildConfig.resolve?.alias ?? {}),
-              ...environmentPlan.alias,
-            },
+            alias: environmentPlan.alias,
           },
           output: {
-            ...(rsbuildConfig.output ?? {}),
             distPath: 'dist',
           },
-        }
+        })
       })
 
       // ---------------------------------------------------------------
