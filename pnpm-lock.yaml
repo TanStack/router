@@ -4666,6 +4666,40 @@ importers:
         specifier: ^2.11.11
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
+  e2e/solid-start/solid-query-layout-suspense:
+    dependencies:
+      '@tanstack/solid-query':
+        specifier: ^5.99.0
+        version: 5.99.0(solid-js@1.9.12)
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-start':
+        specifier: workspace:*
+        version: link:../../../packages/solid-start
+      solid-js:
+        specifier: 1.9.12
+        version: 1.9.12
+      vite:
+        specifier: ^8.0.0
+        version: 8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.58.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+      vite-plugin-solid:
+        specifier: ^2.11.11
+        version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+
   e2e/solid-start/spa-mode:
     dependencies:
       '@tanstack/solid-router':

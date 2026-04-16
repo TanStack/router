@@ -9,13 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UseQueryRouteImport } from './routes/useQuery'
+import { Route as LayoutRouteImport } from './routes/layout'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as LoaderFetchQueryTypeRouteImport } from './routes/loader-fetchQuery/$type'
+import { Route as LayoutPage2RouteImport } from './routes/layout.page2'
 
-const UseQueryRoute = UseQueryRouteImport.update({
-  id: '/useQuery',
-  path: '/useQuery',
+const LayoutRoute = LayoutRouteImport.update({
+  id: '/layout',
+  path: '/layout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -23,49 +23,48 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoaderFetchQueryTypeRoute = LoaderFetchQueryTypeRouteImport.update({
-  id: '/loader-fetchQuery/$type',
-  path: '/loader-fetchQuery/$type',
-  getParentRoute: () => rootRouteImport,
+const LayoutPage2Route = LayoutPage2RouteImport.update({
+  id: '/page2',
+  path: '/page2',
+  getParentRoute: () => LayoutRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/useQuery': typeof UseQueryRoute
-  '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/layout': typeof LayoutRouteWithChildren
+  '/layout/page2': typeof LayoutPage2Route
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/useQuery': typeof UseQueryRoute
-  '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/layout': typeof LayoutRouteWithChildren
+  '/layout/page2': typeof LayoutPage2Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/useQuery': typeof UseQueryRoute
-  '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/layout': typeof LayoutRouteWithChildren
+  '/layout/page2': typeof LayoutPage2Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/useQuery' | '/loader-fetchQuery/$type'
+  fullPaths: '/' | '/layout' | '/layout/page2'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/useQuery' | '/loader-fetchQuery/$type'
-  id: '__root__' | '/' | '/useQuery' | '/loader-fetchQuery/$type'
+  to: '/' | '/layout' | '/layout/page2'
+  id: '__root__' | '/' | '/layout' | '/layout/page2'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  UseQueryRoute: typeof UseQueryRoute
-  LoaderFetchQueryTypeRoute: typeof LoaderFetchQueryTypeRoute
+  LayoutRoute: typeof LayoutRouteWithChildren
 }
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/useQuery': {
-      id: '/useQuery'
-      path: '/useQuery'
-      fullPath: '/useQuery'
-      preLoaderRoute: typeof UseQueryRouteImport
+    '/layout': {
+      id: '/layout'
+      path: '/layout'
+      fullPath: '/layout'
+      preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -75,20 +74,30 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/loader-fetchQuery/$type': {
-      id: '/loader-fetchQuery/$type'
-      path: '/loader-fetchQuery/$type'
-      fullPath: '/loader-fetchQuery/$type'
-      preLoaderRoute: typeof LoaderFetchQueryTypeRouteImport
-      parentRoute: typeof rootRouteImport
+    '/layout/page2': {
+      id: '/layout/page2'
+      path: '/page2'
+      fullPath: '/layout/page2'
+      preLoaderRoute: typeof LayoutPage2RouteImport
+      parentRoute: typeof LayoutRoute
     }
   }
 }
 
+interface LayoutRouteChildren {
+  LayoutPage2Route: typeof LayoutPage2Route
+}
+
+const LayoutRouteChildren: LayoutRouteChildren = {
+  LayoutPage2Route: LayoutPage2Route,
+}
+
+const LayoutRouteWithChildren =
+  LayoutRoute._addFileChildren(LayoutRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  UseQueryRoute: UseQueryRoute,
-  LoaderFetchQueryTypeRoute: LoaderFetchQueryTypeRoute,
+  LayoutRoute: LayoutRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

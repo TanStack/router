@@ -52,7 +52,6 @@ export const Match = (props: { matchId: string }) => {
       ? Boolean(router.stores.pendingRouteIds.get()[currentRouteId])
       : false
   })
-
   const nearestMatch = {
     matchId: () => rawMatchState()?.matchId,
     routeId: () => rawMatchState()?.routeId,
@@ -474,13 +473,6 @@ export const Outlet = () => {
   const shouldShowNotFound = () =>
     childMatchStatus() !== 'redirected' && parentGlobalNotFound()
 
-  // Only show not-found if we're not in a redirected state
-  // Use a keyed <Show> for the child route rendering.
-  // Solid's non-keyed <Show> can fail to mount its children during
-  // transitions when a sibling createResource (e.g. from useQuery) triggers
-  // Suspense in the same user component that contains this Outlet.
-  // A keyed <Show> destroys and recreates children when the value changes,
-  // which correctly establishes new reactive scopes for each child route.
   return (
     <Solid.Show
       when={!shouldShowNotFound() && childMatchId()}
