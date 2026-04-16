@@ -45,19 +45,20 @@
     "metadata": {
       "playwrightModes": [
         {
-          "bundler": "vite",
-          "mode": "ssr"
+          "toolchain": "vite",
+          "mode": "ssr",
+          "shards": 4
         },
         {
-          "bundler": "vite",
+          "toolchain": "vite",
           "mode": "spa"
         },
         {
-          "bundler": "vite",
+          "toolchain": "vite",
           "mode": "prerender"
         },
         {
-          "bundler": "vite",
+          "toolchain": "vite",
           "mode": "preview"
         }
       ]

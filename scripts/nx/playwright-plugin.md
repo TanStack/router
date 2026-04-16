@@ -18,10 +18,10 @@ When `playwrightModes` is present, it takes precedence.
   "nx": {
     "metadata": {
       "playwrightModes": [
-        { "bundler": "vite", "mode": "ssr" },
-        { "bundler": "vite", "mode": "spa", "shards": 4 },
-        { "bundler": "vite", "mode": "prerender", "shards": 4 },
-        { "bundler": "vite", "mode": "preview" }
+        { "toolchain": "vite", "mode": "ssr" },
+        { "toolchain": "vite", "mode": "spa", "shards": 4 },
+        { "toolchain": "vite", "mode": "prerender", "shards": 4 },
+        { "toolchain": "vite", "mode": "preview" }
       ]
     }
   }
@@ -37,24 +37,21 @@ Supported modes:
 
 `shards` is optional and defaults to `1`.
 
-Supported bundlers:
+Supported toolchains:
 
 - `vite`
-- `webpack`
-- `rspack`
-- `esbuild`
 
 ## 2. What targets are generated
 
-For each `{ bundler, mode }` entry, the plugin generates:
+For each `{ toolchain, mode }` entry, the plugin generates:
 
-- `build:e2e--<bundler>-<mode>`
-- `test:e2e--<bundler>-<mode>`
+- `build:e2e--<toolchain>-<mode>`
+- `test:e2e--<toolchain>-<mode>`
 
 If `shards > 1`, it also generates:
 
-- `test:e2e--<bundler>-<mode>--shard-1-of-N` ... `--shard-N-of-N`
-- `test:e2e--<bundler>-<mode>` as a parent noop target depending on all shards
+- `test:e2e--<toolchain>-<mode>--shard-1-of-N` ... `--shard-N-of-N`
+- `test:e2e--<toolchain>-<mode>` as a parent noop target depending on all shards
 
 Finally, it generates:
 
@@ -65,32 +62,32 @@ Finally, it generates:
 Each inferred `build:e2e:*` and `test:e2e:*` target sets:
 
 - `MODE=<mode>`
-- `BUNDLER=<bundler>`
-- `E2E_BUNDLER=<bundler>`
-- `E2E_DIST=dist-<bundler>-<mode>`
-- `E2E_DIST_DIR=dist-<bundler>-<mode>`
+- `TOOLCHAIN=<toolchain>`
+- `E2E_TOOLCHAIN=<toolchain>`
+- `E2E_DIST=dist-<toolchain>-<mode>`
+- `E2E_DIST_DIR=dist-<toolchain>-<mode>`
 
 Each inferred `test:e2e:*` target also sets:
 
-- `E2E_PORT_KEY=<package-name>-<bundler>-<mode>`
-- For shard targets: `E2E_PORT_KEY=<package-name>-<bundler>-<mode>-shard-<index>-of-<count>`
+- `E2E_PORT_KEY=<package-name>-<toolchain>-<mode>`
+- For shard targets: `E2E_PORT_KEY=<package-name>-<toolchain>-<mode>-shard-<index>-of-<count>`
 
 ## 4. Build behavior and webServer command
 
-Each inferred e2e target depends on the inferred `build:e2e--<bundler>-<mode>`
+Each inferred e2e target depends on the inferred `build:e2e--<toolchain>-<mode>`
 target, which runs:
 
 ```sh
-pnpm build
+vite build && tsc --noEmit
 ```
 
-with the mode/bundler env above.
+with the mode/toolchain env above.
 
 The inferred build target also hashes these env vars as target inputs:
 
 - `MODE`
-- `BUNDLER`
-- `E2E_BUNDLER`
+- `TOOLCHAIN`
+- `E2E_TOOLCHAIN`
 - `E2E_DIST`
 - `E2E_DIST_DIR`
 

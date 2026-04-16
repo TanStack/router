@@ -94,26 +94,28 @@ function createNodesInternal(
 const CI_TARGET_NAME = 'test:e2e'
 const MODE_TARGET_SEPARATOR = '--'
 
-const PLAYWRIGHT_BUNDLERS = ['vite', 'webpack', 'rspack', 'esbuild'] as const
+const PLAYWRIGHT_TOOLCHAINS = ['vite'] as const
 const PLAYWRIGHT_MODES = ['ssr', 'spa', 'prerender', 'preview'] as const
 
-type PlaywrightBundler = (typeof PLAYWRIGHT_BUNDLERS)[number]
+type PlaywrightToolchain = (typeof PLAYWRIGHT_TOOLCHAINS)[number]
 type PlaywrightMode = (typeof PLAYWRIGHT_MODES)[number]
 
 type PlaywrightModeMetadata = {
-  bundler: PlaywrightBundler
+  toolchain: PlaywrightToolchain
   mode: PlaywrightMode
   shards?: number
 }
 
 type RawPlaywrightModeMetadata = {
-  bundler?: string
+  toolchain?: string
   mode?: string
   shards?: number
 }
 
-function isPlaywrightBundler(bundler: string): bundler is PlaywrightBundler {
-  return PLAYWRIGHT_BUNDLERS.includes(bundler as PlaywrightBundler)
+function isPlaywrightToolchain(
+  toolchain: string,
+): toolchain is PlaywrightToolchain {
+  return PLAYWRIGHT_TOOLCHAINS.includes(toolchain as PlaywrightToolchain)
 }
 
 function isPlaywrightMode(mode: string): mode is PlaywrightMode {
@@ -129,16 +131,22 @@ function withEnvInputs(
   return [...baseInputs, ...envNames.map((env) => ({ env }))]
 }
 
-function getDistDirName({ bundler, mode }: PlaywrightModeMetadata): string {
-  return `dist-${bundler}-${mode}`
+function getDistDirName({ toolchain, mode }: PlaywrightModeMetadata): string {
+  return `dist-${toolchain}-${mode}`
 }
 
-function getBuildTargetName({ bundler, mode }: PlaywrightModeMetadata): string {
-  return `build:e2e--${bundler}-${mode}`
+function getBuildTargetName({
+  toolchain,
+  mode,
+}: PlaywrightModeMetadata): string {
+  return `build:e2e--${toolchain}-${mode}`
 }
 
-function getModeTargetName({ bundler, mode }: PlaywrightModeMetadata): string {
-  return `${CI_TARGET_NAME}--${bundler}-${mode}`
+function getModeTargetName({
+  toolchain,
+  mode,
+}: PlaywrightModeMetadata): string {
+  return `${CI_TARGET_NAME}--${toolchain}-${mode}`
 }
 
 function getModeEnv(
@@ -148,8 +156,8 @@ function getModeEnv(
 
   return {
     MODE: modeMetadata.mode,
-    BUNDLER: modeMetadata.bundler,
-    E2E_BUNDLER: modeMetadata.bundler,
+    TOOLCHAIN: modeMetadata.toolchain,
+    E2E_TOOLCHAIN: modeMetadata.toolchain,
     E2E_DIST: distDir,
     E2E_DIST_DIR: distDir,
   }
@@ -161,7 +169,7 @@ function getModePortKey(
   shardIndex?: number,
   shardCount?: number,
 ): string {
-  const modePortKey = `${packageName}-${modeMetadata.bundler}-${modeMetadata.mode}`
+  const modePortKey = `${packageName}-${modeMetadata.toolchain}-${modeMetadata.mode}`
 
   if (shardIndex === undefined || shardCount === undefined) {
     return modePortKey
@@ -194,19 +202,19 @@ function validateModeMetadata(
   modeMetadata: RawPlaywrightModeMetadata,
   index: number,
 ): PlaywrightModeMetadata {
-  const targetName = `${modeMetadata.bundler ?? '<missing bundler>'}:${modeMetadata.mode ?? '<missing mode>'}`
+  const targetName = `${modeMetadata.toolchain ?? '<missing toolchain>'}:${modeMetadata.mode ?? '<missing mode>'}`
 
-  if (!modeMetadata.bundler || !modeMetadata.mode) {
+  if (!modeMetadata.toolchain || !modeMetadata.mode) {
     throw new Error(
       `[Playwright Sharding Plugin] Invalid playwrightModes[${index}] entry: ` +
-        `${JSON.stringify(modeMetadata)}. Both "bundler" and "mode" are required.`,
+        `${JSON.stringify(modeMetadata)}. Both "toolchain" and "mode" are required.`,
     )
   }
 
-  if (!isPlaywrightBundler(modeMetadata.bundler)) {
+  if (!isPlaywrightToolchain(modeMetadata.toolchain)) {
     throw new Error(
-      `[Playwright Sharding Plugin] Invalid bundler for playwrightModes[${index}]: ` +
-        `${modeMetadata.bundler}. Supported bundlers: ${PLAYWRIGHT_BUNDLERS.join(', ')}.`,
+      `[Playwright Sharding Plugin] Invalid toolchain for playwrightModes[${index}]: ` +
+        `${modeMetadata.toolchain}. Supported toolchains: ${PLAYWRIGHT_TOOLCHAINS.join(', ')}.`,
     )
   }
 
@@ -220,7 +228,7 @@ function validateModeMetadata(
   normalizeShardCount(modeMetadata.shards, targetName)
 
   return {
-    bundler: modeMetadata.bundler,
+    toolchain: modeMetadata.toolchain,
     mode: modeMetadata.mode,
     shards: modeMetadata.shards,
   }
@@ -251,13 +259,13 @@ function buildModeTargets(
     const shardCount = normalizeShardCount(modeMetadata.shards, modeTargetName)
     const modeEnv = getModeEnv(modeMetadata)
     const modePortKey = getModePortKey(packageName, modeMetadata)
-    const modeDescription = `${modeMetadata.bundler}/${modeMetadata.mode}`
+    const modeDescription = `${modeMetadata.toolchain}/${modeMetadata.mode}`
     const modeShardTargets: Array<string> = []
 
     targets[buildTargetName] = {
       executor: 'nx:run-commands',
       options: {
-        command: 'pnpm build',
+        command: 'vite build && tsc --noEmit',
         cwd: projectRoot,
         env: modeEnv,
       },
@@ -265,8 +273,8 @@ function buildModeTargets(
       cache: true,
       inputs: withEnvInputs(buildInputs, [
         'MODE',
-        'BUNDLER',
-        'E2E_BUNDLER',
+        'TOOLCHAIN',
+        'E2E_TOOLCHAIN',
         'E2E_DIST',
         'E2E_DIST_DIR',
       ]),
