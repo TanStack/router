@@ -16,8 +16,8 @@ overrides:
   vite: ^8.0.0
   '@types/node': 25.0.9
   '@playwright/test': ^1.57.0
-  '@tanstack/react-query': ^5.90.19
-  '@tanstack/query-core': ^5.90.19
+  '@tanstack/react-query': ^5.99.0
+  '@tanstack/query-core': ^5.99.0
   '@tanstack/history': workspace:*
   '@tanstack/router-core': workspace:*
   '@tanstack/react-router': workspace:*
@@ -90,11 +90,14 @@ importers:
         specifier: 0.4.0
         version: 0.4.0(@typescript-eslint/utils@8.57.1(eslint@9.22.0(jiti@2.6.1))(typescript@6.0.2))(eslint-import-resolver-node@0.3.9)(eslint@9.22.0(jiti@2.6.1))(typescript@6.0.2)
       '@tanstack/query-core':
-        specifier: ^5.90.19
-        version: 5.90.20
+        specifier: ^5.99.0
+        version: 5.99.0
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
+      '@tanstack/solid-query':
+        specifier: ^5.99.0
+        version: 5.99.0(solid-js@1.9.12)
       '@tanstack/vite-config':
         specifier: 0.5.2
         version: 0.5.2(@types/node@25.0.9)(typescript@6.0.2)(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -626,11 +629,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -675,11 +678,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1552,11 +1555,11 @@ importers:
   e2e/react-start/basic-react-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2179,11 +2182,11 @@ importers:
   e2e/react-start/query-integration:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2301,11 +2304,11 @@ importers:
   e2e/react-start/rsc-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2530,8 +2533,8 @@ importers:
   e2e/react-start/server-functions:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2655,8 +2658,8 @@ importers:
   e2e/react-start/server-routes:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2958,8 +2961,8 @@ importers:
   e2e/react-start/streaming-ssr:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -4848,11 +4851,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/vue-query':
-        specifier: ^5.90.0
-        version: 5.92.0(vue@3.5.25(typescript@5.8.3))
+        specifier: ^5.99.0
+        version: 5.99.0(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-query-devtools':
-        specifier: ^6.1.2
-        version: 6.1.2(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
+        specifier: ^6.1.16
+        version: 6.1.16(@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../../../packages/vue-router
@@ -5169,11 +5172,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
       '@tanstack/vue-query':
-        specifier: ^5.90.0
-        version: 5.92.0(vue@3.5.25(typescript@5.8.3))
+        specifier: ^5.99.0
+        version: 5.99.0(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-query-devtools':
-        specifier: ^6.1.2
-        version: 6.1.2(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
+        specifier: ^6.1.16
+        version: 6.1.16(@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../../../packages/vue-router
@@ -5224,11 +5227,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
       '@tanstack/vue-query':
-        specifier: ^5.90.0
-        version: 5.92.0(vue@3.5.25(typescript@5.8.3))
+        specifier: ^5.99.0
+        version: 5.99.0(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-query-devtools':
-        specifier: ^6.1.2
-        version: 6.1.2(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
+        specifier: ^6.1.16
+        version: 6.1.16(@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../../../packages/vue-router
@@ -5273,11 +5276,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/vue-query':
-        specifier: ^5.90.0
-        version: 5.92.0(vue@3.5.25(typescript@5.8.3))
+        specifier: ^5.99.0
+        version: 5.99.0(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-query-devtools':
-        specifier: ^6.1.2
-        version: 6.1.2(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
+        specifier: ^6.1.16
+        version: 6.1.16(@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../../../packages/vue-router
@@ -5325,11 +5328,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/vue-query':
-        specifier: ^5.90.0
-        version: 5.92.0(vue@3.5.25(typescript@5.8.3))
+        specifier: ^5.99.0
+        version: 5.99.0(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-query-devtools':
-        specifier: ^6.1.2
-        version: 6.1.2(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
+        specifier: ^6.1.16
+        version: 6.1.16(@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../../../packages/vue-router
@@ -5426,11 +5429,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/vue-query':
-        specifier: ^5.90.0
-        version: 5.92.0(vue@3.5.25(typescript@6.0.2))
+        specifier: ^5.99.0
+        version: 5.99.0(vue@3.5.25(typescript@6.0.2))
       '@tanstack/vue-query-devtools':
-        specifier: ^6.1.2
-        version: 6.1.2(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@6.0.2)))(vue@3.5.25(typescript@6.0.2))
+        specifier: ^6.1.16
+        version: 6.1.16(@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@6.0.2)))(vue@3.5.25(typescript@6.0.2))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../../../packages/vue-router
@@ -5683,11 +5686,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/vue-query':
-        specifier: ^5.90.0
-        version: 5.92.0(vue@3.5.25(typescript@5.8.3))
+        specifier: ^5.99.0
+        version: 5.99.0(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-query-devtools':
-        specifier: ^6.1.2
-        version: 6.1.2(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
+        specifier: ^6.1.16
+        version: 6.1.16(@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../../../packages/vue-router
@@ -6018,8 +6021,8 @@ importers:
         specifier: ^5.92.1
         version: 5.92.1(vue@3.5.25(typescript@6.0.2))
       '@tanstack/vue-query-devtools':
-        specifier: ^6.1.2
-        version: 6.1.2(@tanstack/vue-query@5.92.1(vue@3.5.25(typescript@6.0.2)))(vue@3.5.25(typescript@6.0.2))
+        specifier: ^6.1.16
+        version: 6.1.16(@tanstack/vue-query@5.92.1(vue@3.5.25(typescript@6.0.2)))(vue@3.5.25(typescript@6.0.2))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../../../packages/vue-router
@@ -6177,11 +6180,11 @@ importers:
   e2e/vue-start/query-integration:
     dependencies:
       '@tanstack/vue-query':
-        specifier: ^5.90.0
-        version: 5.92.0(vue@3.5.25(typescript@6.0.2))
+        specifier: ^5.99.0
+        version: 5.99.0(vue@3.5.25(typescript@6.0.2))
       '@tanstack/vue-query-devtools':
-        specifier: ^5.90.0
-        version: 5.91.0(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@6.0.2)))(vue@3.5.25(typescript@6.0.2))
+        specifier: ^6.1.16
+        version: 6.1.16(@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@6.0.2)))(vue@3.5.25(typescript@6.0.2))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../../../packages/vue-router
@@ -6856,8 +6859,8 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -6902,8 +6905,8 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query-devtools':
-        specifier: ^5.67.2
-        version: 5.67.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -7031,11 +7034,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -7077,11 +7080,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -7506,11 +7509,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -7558,11 +7561,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -7613,8 +7616,8 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -7665,8 +7668,8 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -7708,8 +7711,8 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -7954,11 +7957,11 @@ importers:
   examples/react/router-monorepo-react-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -8009,8 +8012,8 @@ importers:
         specifier: workspace:*
         version: link:../router
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -8055,8 +8058,8 @@ importers:
         specifier: workspace:*
         version: link:../router
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -8086,8 +8089,8 @@ importers:
   examples/react/router-monorepo-react-query/packages/post-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -8114,8 +8117,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../packages/history
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../../../packages/react-router
@@ -8289,8 +8292,8 @@ importers:
         specifier: workspace:*
         version: link:../router
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -8526,8 +8529,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/arktype-adapter
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -8844,11 +8847,11 @@ importers:
   examples/react/start-basic-react-query:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -9086,13 +9089,13 @@ importers:
     dependencies:
       '@convex-dev/react-query':
         specifier: 0.0.0-alpha.8
-        version: 0.0.0-alpha.8(@tanstack/react-query@5.90.20(react@19.2.3))(convex@1.19.0(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
+        version: 0.0.0-alpha.8(@tanstack/react-query@5.99.0(react@19.2.3))(convex@1.19.0(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -9250,8 +9253,8 @@ importers:
   examples/react/start-large:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -9559,11 +9562,11 @@ importers:
   examples/react/start-trellaux:
     dependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -9822,11 +9825,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-query-devtools':
-        specifier: ^5.90.0
-        version: 5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -9844,7 +9847,7 @@ importers:
         version: 11.4.3(typescript@6.0.2)
       '@trpc/tanstack-react-query':
         specifier: ^11.4.3
-        version: 11.4.3(@tanstack/react-query@5.90.20(react@19.2.3))(@trpc/client@11.4.3(@trpc/server@11.4.3(typescript@6.0.2))(typescript@6.0.2))(@trpc/server@11.4.3(typescript@6.0.2))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@6.0.2)
+        version: 11.4.3(@tanstack/react-query@5.99.0(react@19.2.3))(@trpc/client@11.4.3(@trpc/server@11.4.3(typescript@6.0.2))(typescript@6.0.2))(@trpc/server@11.4.3(typescript@6.0.2))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@6.0.2)
       express:
         specifier: ^4.21.2
         version: 4.21.2
@@ -12266,15 +12269,15 @@ importers:
   packages/react-router-ssr-query:
     dependencies:
       '@tanstack/query-core':
-        specifier: ^5.90.19
-        version: 5.90.20
+        specifier: ^5.99.0
+        version: 5.99.0
       '@tanstack/router-ssr-query-core':
         specifier: workspace:*
         version: link:../router-ssr-query-core
     devDependencies:
       '@tanstack/react-query':
-        specifier: ^5.90.19
-        version: 5.90.20(react@19.2.3)
+        specifier: ^5.99.0
+        version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
@@ -12670,8 +12673,8 @@ importers:
   packages/router-ssr-query-core:
     devDependencies:
       '@tanstack/query-core':
-        specifier: ^5.90.19
-        version: 5.90.20
+        specifier: ^5.99.0
+        version: 5.99.0
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -12815,8 +12818,8 @@ importers:
   packages/solid-router-ssr-query:
     dependencies:
       '@tanstack/query-core':
-        specifier: ^5.90.19
-        version: 5.90.20
+        specifier: ^5.99.0
+        version: 5.99.0
       '@tanstack/router-ssr-query-core':
         specifier: workspace:*
         version: link:../router-ssr-query-core
@@ -13249,15 +13252,15 @@ importers:
   packages/vue-router-ssr-query:
     dependencies:
       '@tanstack/query-core':
-        specifier: ^5.90.19
-        version: 5.90.20
+        specifier: ^5.99.0
+        version: 5.99.0
       '@tanstack/router-ssr-query-core':
         specifier: workspace:*
         version: link:../router-ssr-query-core
     devDependencies:
       '@tanstack/vue-query':
-        specifier: ^5.92.0
-        version: 5.92.0(vue@3.5.25(typescript@6.0.2))
+        specifier: ^5.99.0
+        version: 5.99.0(vue@3.5.25(typescript@6.0.2))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../vue-router
@@ -13999,7 +14002,7 @@ packages:
   '@convex-dev/react-query@0.0.0-alpha.8':
     resolution: {integrity: sha512-Rv/q7/CplU75f7ckBd2vh+HoeeQ0tOrjwMl14Hk7D/03e55oUIU0TV5JYYzC79ZQyyAtoj7CmCo5ZxcmtKNv1Q==}
     peerDependencies:
-      '@tanstack/react-query': ^5.90.19
+      '@tanstack/react-query': ^5.99.0
       convex: ^1.17.0
 
   '@cspotcode/source-map-support@0.8.1':
@@ -18770,17 +18773,8 @@ packages:
     resolution: {integrity: sha512-Wo1iKt2b9OT7d+YGhvEPD3DXvPv2etTusIMhMUoG7fbhmxcXCtIjJDEygy91Y2JFlwGyjqiBPRozme7UD8hoqg==}
     engines: {node: '>=12'}
 
-  '@tanstack/query-core@5.90.20':
-    resolution: {integrity: sha512-OMD2HLpNouXEfZJWcKeVKUgQ5n+n3A2JFmBaScpNDUqSrQSjiveC7dKMe53uJUg1nDG16ttFPz2xfilz6i2uVg==}
-
-  '@tanstack/query-devtools@5.67.2':
-    resolution: {integrity: sha512-O4QXFFd7xqp6EX7sdvc9tsVO8nm4lpWBqwpgjpVLW5g7IeOY6VnS/xvs/YzbRhBVkKTMaJMOUGU7NhSX+YGoNg==}
-
-  '@tanstack/query-devtools@5.90.1':
-    resolution: {integrity: sha512-GtINOPjPUH0OegJExZ70UahT9ykmAhmtNVcmtdnOZbxLwT7R5OmRztR5Ahe3/Cu7LArEmR6/588tAycuaWb1xQ==}
-
-  '@tanstack/query-devtools@5.91.1':
-    resolution: {integrity: sha512-l8bxjk6BMsCaVQH6NzQEE/bEgFy1hAs5qbgXl0xhzezlaQbPk6Mgz9BqEg2vTLPOHD8N4k+w/gdgCbEzecGyNg==}
+  '@tanstack/query-core@5.99.0':
+    resolution: {integrity: sha512-3Jv3WQG0BCcH7G+7lf/bP8QyBfJOXeY+T08Rin3GZ1bshvwlbPt7NrDHMEzGdKIOmOzvIQmxjk28YEQX60k7pQ==}
 
   '@tanstack/query-devtools@5.99.0':
     resolution: {integrity: sha512-m4ufXaJ8FjWXw7xDtyzE/6fkZAyQFg9WrbMrUpt8ZecRJx58jiFOZ2lxZMphZdIpAnIeto/S8stbwLKLusyckQ==}
@@ -18794,20 +18788,14 @@ packages:
       react: ^19.2.3
       react-dom: ^19.2.3
 
-  '@tanstack/react-query-devtools@5.67.2':
-    resolution: {integrity: sha512-cmj2DxBc+/9btQ66n5xI8wTtAma2BLVa403K7zIYiguzJ/kV201jnGensYqJeu1Rd8uRMLLRM74jLVMLDWNRJA==}
+  '@tanstack/react-query-devtools@5.99.0':
+    resolution: {integrity: sha512-CqqX7LCU9yOfCY/vBURSx2YSD83ryfX+QkfkaKionTfg1s2Hdm572Ro99gW3QPoJjzvsj1HM4pnN4nbDy3MXKA==}
     peerDependencies:
-      '@tanstack/react-query': ^5.90.19
+      '@tanstack/react-query': ^5.99.0
       react: ^19.2.3
 
-  '@tanstack/react-query-devtools@5.90.2':
-    resolution: {integrity: sha512-vAXJzZuBXtCQtrY3F/yUNJCV4obT/A/n81kb3+YqLbro5Z2+phdAbceO+deU3ywPw8B42oyJlp4FhO0SoivDFQ==}
-    peerDependencies:
-      '@tanstack/react-query': ^5.90.19
-      react: ^19.2.3
-
-  '@tanstack/react-query@5.90.20':
-    resolution: {integrity: sha512-vXBxa+qeyveVO7OA0jX1z+DeyCA4JKnThKv411jd5SORpBKgkcVnYKCiBgECvADvniBX7tobwBmg01qq9JmMJw==}
+  '@tanstack/react-query@5.99.0':
+    resolution: {integrity: sha512-OY2bCqPemT1LlqJ8Y2CUau4KELnIhhG9Ol3ZndPbdnB095pRbPo1cHuXTndg8iIwtoHTgwZjyaDnQ0xD0mYwAw==}
     peerDependencies:
       react: ^19.2.3
 
@@ -18868,16 +18856,10 @@ packages:
     peerDependencies:
       vite: ^8.0.0
 
-  '@tanstack/vue-query-devtools@5.91.0':
-    resolution: {integrity: sha512-Kn6p5ffEKUj+YGEP+BapoPI8kUiPtNnFDyzjTvUx6GHbyfzfefQPhYoRtFiWeyrGHjUB/Mvtnr7Rosbzs/ngVg==}
+  '@tanstack/vue-query-devtools@6.1.16':
+    resolution: {integrity: sha512-2Q+LnHSWwd8wkR/uoSmuziAmkDK4ISbMt8Naabpts8Nf4nMIKF6YfiMhbPjpTAHoBeBREfsq9G62lYYAGChVXw==}
     peerDependencies:
-      '@tanstack/vue-query': ^5.90.5
-      vue: ^3.3.0
-
-  '@tanstack/vue-query-devtools@6.1.2':
-    resolution: {integrity: sha512-1E886RHorY432aOJU3dyzLbI67PhqQzvAPQyp8hU6UR4EVXKZSVzVT0O0utmTT2jnBpbbUiCFt2uNSs8W3grHw==}
-    peerDependencies:
-      '@tanstack/vue-query': ^5.92.0
+      '@tanstack/vue-query': ^5.99.0
       vue: ^3.3.0
 
   '@tanstack/vue-query@5.92.0':
@@ -18891,6 +18873,15 @@ packages:
 
   '@tanstack/vue-query@5.92.1':
     resolution: {integrity: sha512-m672jBiwK6sv1HHFF7Q3XsLUVKejzjEAMDqhFgLXIVtmwSayUo0WnhNQmlBlcHRKCR/Lw5jmIh6iu08ZXBh4ag==}
+    peerDependencies:
+      '@vue/composition-api': ^1.1.2
+      vue: ^2.6.0 || ^3.3.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
+
+  '@tanstack/vue-query@5.99.0':
+    resolution: {integrity: sha512-okrHNkouasL5cjo7O8hUxul22DiIL335KUQus/cfoAdCOUytF/OIv3BpNDevfqE6zHqqJ651Fb9OkUJPUCL0ZQ==}
     peerDependencies:
       '@vue/composition-api': ^1.1.2
       vue: ^2.6.0 || ^3.3.0
@@ -18978,7 +18969,7 @@ packages:
   '@trpc/tanstack-react-query@11.4.3':
     resolution: {integrity: sha512-aYPp12wE9IrakccGWoQU/waZuWr3FLw9RtagsqJmX9NKHpQOVzoDvHA1W0amwyTQSAfL98Bn5rWmD7KTdr5AWg==}
     peerDependencies:
-      '@tanstack/react-query': ^5.90.19
+      '@tanstack/react-query': ^5.99.0
       '@trpc/client': 11.4.3
       '@trpc/server': 11.4.3
       react: ^19.2.3
@@ -27466,9 +27457,9 @@ snapshots:
       - hono
       - typescript
 
-  '@convex-dev/react-query@0.0.0-alpha.8(@tanstack/react-query@5.90.20(react@19.2.3))(convex@1.19.0(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))':
+  '@convex-dev/react-query@0.0.0-alpha.8(@tanstack/react-query@5.99.0(react@19.2.3))(convex@1.19.0(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))':
     dependencies:
-      '@tanstack/react-query': 5.90.20(react@19.2.3)
+      '@tanstack/react-query': 5.99.0(react@19.2.3)
       convex: 1.19.0(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
 
   '@cspotcode/source-map-support@0.8.1':
@@ -32099,13 +32090,7 @@ snapshots:
     dependencies:
       remove-accents: 0.5.0
 
-  '@tanstack/query-core@5.90.20': {}
-
-  '@tanstack/query-devtools@5.67.2': {}
-
-  '@tanstack/query-devtools@5.90.1': {}
-
-  '@tanstack/query-devtools@5.91.1': {}
+  '@tanstack/query-core@5.99.0': {}
 
   '@tanstack/query-devtools@5.99.0': {}
 
@@ -32122,21 +32107,15 @@ snapshots:
       - solid-js
       - utf-8-validate
 
-  '@tanstack/react-query-devtools@5.67.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)':
+  '@tanstack/react-query-devtools@5.99.0(@tanstack/react-query@5.99.0(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@tanstack/query-devtools': 5.67.2
-      '@tanstack/react-query': 5.90.20(react@19.2.3)
+      '@tanstack/query-devtools': 5.99.0
+      '@tanstack/react-query': 5.99.0(react@19.2.3)
       react: 19.2.3
 
-  '@tanstack/react-query-devtools@5.90.2(@tanstack/react-query@5.90.20(react@19.2.3))(react@19.2.3)':
+  '@tanstack/react-query@5.99.0(react@19.2.3)':
     dependencies:
-      '@tanstack/query-devtools': 5.90.1
-      '@tanstack/react-query': 5.90.20(react@19.2.3)
-      react: 19.2.3
-
-  '@tanstack/react-query@5.90.20(react@19.2.3)':
-    dependencies:
-      '@tanstack/query-core': 5.90.20
+      '@tanstack/query-core': 5.99.0
       react: 19.2.3
 
   '@tanstack/react-store@0.9.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
@@ -32169,12 +32148,12 @@ snapshots:
 
   '@tanstack/solid-query@5.90.9(solid-js@1.9.12)':
     dependencies:
-      '@tanstack/query-core': 5.90.20
+      '@tanstack/query-core': 5.99.0
       solid-js: 1.9.12
 
   '@tanstack/solid-query@5.99.0(solid-js@1.9.12)':
     dependencies:
-      '@tanstack/query-core': 5.90.20
+      '@tanstack/query-core': 5.99.0
       solid-js: 1.9.12
 
   '@tanstack/solid-virtual@3.13.12(solid-js@1.9.12)':
@@ -32202,42 +32181,28 @@ snapshots:
       - supports-color
       - typescript
 
-  '@tanstack/vue-query-devtools@5.91.0(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@6.0.2)))(vue@3.5.25(typescript@6.0.2))':
+  '@tanstack/vue-query-devtools@6.1.16(@tanstack/vue-query@5.92.1(vue@3.5.25(typescript@6.0.2)))(vue@3.5.25(typescript@6.0.2))':
     dependencies:
-      '@tanstack/query-devtools': 5.90.1
-      '@tanstack/vue-query': 5.92.0(vue@3.5.25(typescript@6.0.2))
-      vue: 3.5.25(typescript@6.0.2)
-
-  '@tanstack/vue-query-devtools@6.1.2(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))':
-    dependencies:
-      '@tanstack/query-devtools': 5.91.1
-      '@tanstack/vue-query': 5.92.0(vue@3.5.25(typescript@5.8.3))
-      vue: 3.5.25(typescript@5.8.3)
-
-  '@tanstack/vue-query-devtools@6.1.2(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@6.0.2)))(vue@3.5.25(typescript@6.0.2))':
-    dependencies:
-      '@tanstack/query-devtools': 5.91.1
-      '@tanstack/vue-query': 5.92.0(vue@3.5.25(typescript@6.0.2))
-      vue: 3.5.25(typescript@6.0.2)
-
-  '@tanstack/vue-query-devtools@6.1.2(@tanstack/vue-query@5.92.1(vue@3.5.25(typescript@6.0.2)))(vue@3.5.25(typescript@6.0.2))':
-    dependencies:
-      '@tanstack/query-devtools': 5.91.1
+      '@tanstack/query-devtools': 5.99.0
       '@tanstack/vue-query': 5.92.1(vue@3.5.25(typescript@6.0.2))
       vue: 3.5.25(typescript@6.0.2)
 
-  '@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@5.8.3))':
+  '@tanstack/vue-query-devtools@6.1.16(@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@5.8.3)))(vue@3.5.25(typescript@5.8.3))':
     dependencies:
-      '@tanstack/match-sorter-utils': 8.19.4
-      '@tanstack/query-core': 5.90.20
-      '@vue/devtools-api': 6.6.4
+      '@tanstack/query-devtools': 5.99.0
+      '@tanstack/vue-query': 5.99.0(vue@3.5.25(typescript@5.8.3))
       vue: 3.5.25(typescript@5.8.3)
-      vue-demi: 0.14.10(vue@3.5.25(typescript@5.8.3))
+
+  '@tanstack/vue-query-devtools@6.1.16(@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@6.0.2)))(vue@3.5.25(typescript@6.0.2))':
+    dependencies:
+      '@tanstack/query-devtools': 5.99.0
+      '@tanstack/vue-query': 5.99.0(vue@3.5.25(typescript@6.0.2))
+      vue: 3.5.25(typescript@6.0.2)
 
   '@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@6.0.2))':
     dependencies:
       '@tanstack/match-sorter-utils': 8.19.4
-      '@tanstack/query-core': 5.90.20
+      '@tanstack/query-core': 5.99.0
       '@vue/devtools-api': 6.6.4
       vue: 3.5.25(typescript@6.0.2)
       vue-demi: 0.14.10(vue@3.5.25(typescript@6.0.2))
@@ -32245,7 +32210,23 @@ snapshots:
   '@tanstack/vue-query@5.92.1(vue@3.5.25(typescript@6.0.2))':
     dependencies:
       '@tanstack/match-sorter-utils': 8.19.4
-      '@tanstack/query-core': 5.90.20
+      '@tanstack/query-core': 5.99.0
+      '@vue/devtools-api': 6.6.4
+      vue: 3.5.25(typescript@6.0.2)
+      vue-demi: 0.14.10(vue@3.5.25(typescript@6.0.2))
+
+  '@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@5.8.3))':
+    dependencies:
+      '@tanstack/match-sorter-utils': 8.19.4
+      '@tanstack/query-core': 5.99.0
+      '@vue/devtools-api': 6.6.4
+      vue: 3.5.25(typescript@5.8.3)
+      vue-demi: 0.14.10(vue@3.5.25(typescript@5.8.3))
+
+  '@tanstack/vue-query@5.99.0(vue@3.5.25(typescript@6.0.2))':
+    dependencies:
+      '@tanstack/match-sorter-utils': 8.19.4
+      '@tanstack/query-core': 5.99.0
       '@vue/devtools-api': 6.6.4
       vue: 3.5.25(typescript@6.0.2)
       vue-demi: 0.14.10(vue@3.5.25(typescript@6.0.2))
@@ -32331,9 +32312,9 @@ snapshots:
     dependencies:
       typescript: 6.0.2
 
-  '@trpc/tanstack-react-query@11.4.3(@tanstack/react-query@5.90.20(react@19.2.3))(@trpc/client@11.4.3(@trpc/server@11.4.3(typescript@6.0.2))(typescript@6.0.2))(@trpc/server@11.4.3(typescript@6.0.2))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@6.0.2)':
+  '@trpc/tanstack-react-query@11.4.3(@tanstack/react-query@5.99.0(react@19.2.3))(@trpc/client@11.4.3(@trpc/server@11.4.3(typescript@6.0.2))(typescript@6.0.2))(@trpc/server@11.4.3(typescript@6.0.2))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@6.0.2)':
     dependencies:
-      '@tanstack/react-query': 5.90.20(react@19.2.3)
+      '@tanstack/react-query': 5.99.0(react@19.2.3)
       '@trpc/client': 11.4.3(@trpc/server@11.4.3(typescript@6.0.2))(typescript@6.0.2)
       '@trpc/server': 11.4.3(typescript@6.0.2)
       react: 19.2.3

@@ -13,8 +13,8 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-plugin": "workspace:^",
-    "@tanstack/vue-query": "^5.90.0",
-    "@tanstack/vue-query-devtools": "^6.1.2",
+    "@tanstack/vue-query": "^5.99.0",
+    "@tanstack/vue-query-devtools": "^6.1.16",
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "redaxios": "^0.5.1",

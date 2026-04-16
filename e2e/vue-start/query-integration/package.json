@@ -12,8 +12,8 @@
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/vue-query": "^5.90.0",
-    "@tanstack/vue-query-devtools": "^5.90.0",
+    "@tanstack/vue-query": "^5.99.0",
+    "@tanstack/vue-query-devtools": "^6.1.16",
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-router-ssr-query": "workspace:^",
