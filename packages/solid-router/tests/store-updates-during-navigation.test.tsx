@@ -136,7 +136,9 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(8)
+    // Note: Outlet uses keyed Show which adds 1 update vs non-keyed (required
+    // to fix Solid's Show not mounting children during transitions with Suspense)
+    expect(updates).toBe(9)
   })
 
   test('redirection in preload', async () => {
@@ -171,8 +173,10 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has different update counts than React due to different reactivity
-    expect(updates).toBe(4)
+    // Note: Solid has different update counts than React due to different reactivity.
+    // Outlet uses keyed Show which adds 1 update vs non-keyed (required
+    // to fix Solid's Show not mounting children during transitions with Suspense)
+    expect(updates).toBe(5)
   })
 
   test('nothing', async () => {

@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UseQueryRouteImport } from './routes/useQuery'
+import { Route as SlowLayoutRouteImport } from './routes/slow-layout'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SlowLayoutChildRouteImport } from './routes/slow-layout.child'
 import { Route as LoaderFetchQueryTypeRouteImport } from './routes/loader-fetchQuery/$type'
 
 const UseQueryRoute = UseQueryRouteImport.update({
@@ -18,10 +20,20 @@ const UseQueryRoute = UseQueryRouteImport.update({
   path: '/useQuery',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SlowLayoutRoute = SlowLayoutRouteImport.update({
+  id: '/slow-layout',
+  path: '/slow-layout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SlowLayoutChildRoute = SlowLayoutChildRouteImport.update({
+  id: '/child',
+  path: '/child',
+  getParentRoute: () => SlowLayoutRoute,
 } as any)
 const LoaderFetchQueryTypeRoute = LoaderFetchQueryTypeRouteImport.update({
   id: '/loader-fetchQuery/$type',
@@ -31,30 +43,53 @@ const LoaderFetchQueryTypeRoute = LoaderFetchQueryTypeRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/slow-layout': typeof SlowLayoutRouteWithChildren
   '/useQuery': typeof UseQueryRoute
   '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/slow-layout/child': typeof SlowLayoutChildRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/slow-layout': typeof SlowLayoutRouteWithChildren
   '/useQuery': typeof UseQueryRoute
   '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/slow-layout/child': typeof SlowLayoutChildRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/slow-layout': typeof SlowLayoutRouteWithChildren
   '/useQuery': typeof UseQueryRoute
   '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/slow-layout/child': typeof SlowLayoutChildRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/useQuery' | '/loader-fetchQuery/$type'
+  fullPaths:
+    | '/'
+    | '/slow-layout'
+    | '/useQuery'
+    | '/loader-fetchQuery/$type'
+    | '/slow-layout/child'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/useQuery' | '/loader-fetchQuery/$type'
-  id: '__root__' | '/' | '/useQuery' | '/loader-fetchQuery/$type'
+  to:
+    | '/'
+    | '/slow-layout'
+    | '/useQuery'
+    | '/loader-fetchQuery/$type'
+    | '/slow-layout/child'
+  id:
+    | '__root__'
+    | '/'
+    | '/slow-layout'
+    | '/useQuery'
+    | '/loader-fetchQuery/$type'
+    | '/slow-layout/child'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SlowLayoutRoute: typeof SlowLayoutRouteWithChildren
   UseQueryRoute: typeof UseQueryRoute
   LoaderFetchQueryTypeRoute: typeof LoaderFetchQueryTypeRoute
 }
@@ -68,12 +103,26 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof UseQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/slow-layout': {
+      id: '/slow-layout'
+      path: '/slow-layout'
+      fullPath: '/slow-layout'
+      preLoaderRoute: typeof SlowLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/slow-layout/child': {
+      id: '/slow-layout/child'
+      path: '/child'
+      fullPath: '/slow-layout/child'
+      preLoaderRoute: typeof SlowLayoutChildRouteImport
+      parentRoute: typeof SlowLayoutRoute
     }
     '/loader-fetchQuery/$type': {
       id: '/loader-fetchQuery/$type'
@@ -85,8 +134,21 @@ declare module '@tanstack/solid-router' {
   }
 }
 
+interface SlowLayoutRouteChildren {
+  SlowLayoutChildRoute: typeof SlowLayoutChildRoute
+}
+
+const SlowLayoutRouteChildren: SlowLayoutRouteChildren = {
+  SlowLayoutChildRoute: SlowLayoutChildRoute,
+}
+
+const SlowLayoutRouteWithChildren = SlowLayoutRoute._addFileChildren(
+  SlowLayoutRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SlowLayoutRoute: SlowLayoutRouteWithChildren,
   UseQueryRoute: UseQueryRoute,
   LoaderFetchQueryTypeRoute: LoaderFetchQueryTypeRoute,
 }
