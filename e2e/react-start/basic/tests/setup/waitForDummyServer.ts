@@ -1,11 +1,11 @@
 import { getDummyServerPort } from '@tanstack/router-e2e-utils'
-import { getPackageName } from '../utils/getPackageName.ts'
+import { getE2EPortKey } from '../utils/getE2EPortKey.ts'
 
 const timeoutMs = 10_000
 const retryIntervalMs = 100
 
 export default async function waitForDummyServer() {
-  const port = await getDummyServerPort(getPackageName())
+  const port = await getDummyServerPort(getE2EPortKey())
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
