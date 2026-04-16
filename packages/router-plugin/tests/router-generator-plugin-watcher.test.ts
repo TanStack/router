@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, it } from 'vitest'
 import { createServer } from 'vite'
@@ -19,7 +19,7 @@ export const Route = createFileRoute('${routePath}')({ component: () => null })
 
 async function waitUntil(
   condition: () => boolean | Promise<boolean>,
-  { timeoutMs = 20_000, intervalMs = 50 } = {},
+  { timeoutMs = 10_000, intervalMs = 50 } = {},
 ) {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
@@ -46,7 +46,12 @@ describe('router-generator-plugin vite watcher', () => {
   let server: ViteDevServer | undefined
 
   beforeEach(async () => {
-    fixtureDir = await mkdtemp(path.join(tmpdir(), 'tsr-plugin-watcher-'))
+    // Use a directory within the package to avoid cross-device rename errors:
+    // the generator writes temp files to .tanstack/tmp/ then does an atomic
+    // rename(), which fails with EXDEV when tmpdir() is on another device.
+    fixtureDir = await mkdtemp(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), 'tmp-watcher-'),
+    )
     routesDir = path.join(fixtureDir, 'routes')
     externalDir = path.join(fixtureDir, 'external')
     generatedRouteTree = path.join(fixtureDir, 'routeTree.gen.ts')
@@ -77,10 +82,7 @@ describe('router-generator-plugin vite watcher', () => {
         configFile: false,
         logLevel: 'silent',
         appType: 'custom',
-        server: {
-          middlewareMode: true,
-          watch: { usePolling: true, interval: 100 },
-        },
+        server: { middlewareMode: true, watch: {} },
         plugins: [
           tanstackRouterGenerator({
             routesDirectory: routesDir,
@@ -99,7 +101,7 @@ describe('router-generator-plugin vite watcher', () => {
 
       // Short settle after each fs mutation — the plugin debounces and the
       // generator may run multiple passes for a single chokidar burst.
-      const settle = () => new Promise((r) => setTimeout(r, 1000))
+      const settle = () => new Promise((r) => setTimeout(r, 500))
 
       const betaPath = path.join(externalDir, 'beta.tsx')
       await writeFile(betaPath, makeRouteFile('/ext/beta'))
