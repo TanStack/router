@@ -20,7 +20,7 @@
     "@tanstack/solid-router-ssr-query": "^1.166.11",
     "@tanstack/solid-start": "^1.167.36",
     "@tanstack/router-plugin": "^1.167.22",
-    "solid-js": "^1.9.10",
+    "solid-js": "^1.9.12",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

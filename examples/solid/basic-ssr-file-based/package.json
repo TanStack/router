@@ -17,7 +17,7 @@
     "express": "^4.21.2",
     "get-port": "^7.1.0",
     "node-fetch": "^3.3.2",
-    "solid-js": "^1.9.10"
+    "solid-js": "^1.9.12"
   },
   "devDependencies": {
     "@tanstack/solid-router-devtools": "^1.166.13",

@@ -117,14 +117,14 @@
     "@testing-library/jest-dom": "^6.6.3",
     "combinate": "^1.1.11",
     "eslint-plugin-solid": "^0.14.5",
-    "solid-js": "^1.9.10",
+    "solid-js": "^1.9.12",
     "vite": "*",
     "vite-plugin-solid": "^2.11.10",
     "zod": "^3.23.8",
     "@types/node": ">=20"
   },
   "peerDependencies": {
-    "solid-js": "^1.9.10"
+    "solid-js": "^1.9.12"
   },
   "bin": {
     "intent": "./bin/intent.js"

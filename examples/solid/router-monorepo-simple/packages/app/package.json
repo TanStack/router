@@ -11,7 +11,7 @@
   "dependencies": {
     "@router-solid-mono-simple/post-feature": "workspace:*",
     "@router-solid-mono-simple/router": "workspace:*",
-    "solid-js": "^1.9.10"
+    "solid-js": "^1.9.12"
   },
   "devDependencies": {
     "vite-plugin-solid": "^2.11.11",
