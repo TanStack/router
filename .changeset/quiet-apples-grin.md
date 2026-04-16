@@ -6,6 +6,7 @@
 '@tanstack/solid-router': patch
 '@tanstack/solid-start': patch
 '@tanstack/solid-start-client': patch
+'@tanstack/vue-router-ssr-query': patch
 ---
 
-chore: bump solid-js, vite-plugin-solid and solid-query
+chore: bump solid-js, vite-plugin-solid and query
