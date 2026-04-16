@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module'
+import { mergeRsbuildConfig } from '@rsbuild/core'
 import { ENTRY_POINTS } from '../constants'
 import type { EnvironmentConfig } from '@rsbuild/core'
 import type { ResolvedStartEntryPlan } from '../planning'
@@ -82,7 +83,7 @@ export function createRsbuildEnvironmentPlan(opts: {
 
   return {
     environments: {
-      [RSBUILD_ENVIRONMENT_NAMES.client]: mergeEnvironmentConfig(
+      [RSBUILD_ENVIRONMENT_NAMES.client]: mergeRsbuildConfig(
         {
           source: {
             entry: {
@@ -118,7 +119,7 @@ export function createRsbuildEnvironmentPlan(opts: {
         environmentOverrides.all,
         environmentOverrides.client,
       ),
-      [RSBUILD_ENVIRONMENT_NAMES.server]: mergeEnvironmentConfig(
+      [RSBUILD_ENVIRONMENT_NAMES.server]: mergeRsbuildConfig(
         {
           source: {
             entry: {
@@ -155,7 +156,7 @@ export function createRsbuildEnvironmentPlan(opts: {
       ...(opts.serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
       !opts.rsc
         ? {
-            [opts.serverFnProviderEnv]: mergeEnvironmentConfig(
+            [opts.serverFnProviderEnv]: mergeRsbuildConfig(
               {
                 source: {
                   entry: {
@@ -183,42 +184,6 @@ export function createRsbuildEnvironmentPlan(opts: {
     },
     alias,
   }
-}
-
-function mergeEnvironmentConfig(
-  base: EnvironmentConfig,
-  ...overrides: Array<EnvironmentConfig | undefined>
-): EnvironmentConfig {
-  return overrides.reduce<EnvironmentConfig>((acc, override) => {
-    if (!override) {
-      return acc
-    }
-
-    return {
-      ...acc,
-      ...override,
-      source: {
-        ...(acc.source ?? {}),
-        ...(override.source ?? {}),
-      },
-      output: {
-        ...(acc.output ?? {}),
-        ...(override.output ?? {}),
-      },
-      resolve: {
-        ...(acc.resolve ?? {}),
-        ...(override.resolve ?? {}),
-      },
-      performance: {
-        ...(acc.performance ?? {}),
-        ...(override.performance ?? {}),
-      },
-      tools: {
-        ...(acc.tools ?? {}),
-        ...(override.tools ?? {}),
-      },
-    }
-  }, base)
 }
 
 function normalizeEntryPath(path: string) {
