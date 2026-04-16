@@ -1,0 +1,76 @@
+e2e/solid-start/basic-test-suite/src/setup/waitForDummyServer.ts
+  a4243e697aa4094f 2,8
+e2e/vue-start/basic-test-suite/src/setup/waitForDummyServer.ts
+  a4243e697aa4094f 2,8
+e2e/vue-start/basic/playwright.config.ts
+  a4243e697aa4094f 1,9-25,27-30,44,49,55-56
+e2e/vue-start/basic-test-suite/src/setup/global.setup.ts
+  a4243e697aa4094f 2,5
+e2e/solid-start/basic/playwright.config.ts
+  a4243e697aa4094f 1,9-25,27-30,44,49,55-56
+e2e/vue-start/basic-test-suite/src/setup/global.teardown.ts
+  a4243e697aa4094f 2,6
+e2e/vue-start/basic-test-suite/src/utils/getE2EPortKey.ts
+  a4243e697aa4094f 1-5
+e2e/solid-start/basic-test-suite/src/redirect.spec.ts
+  a4243e697aa4094f 9,14-16
+e2e/vue-start/basic/server.js
+  a4243e697aa4094f 12-14,17,24,56,59
+e2e/vue-start/basic/.gitignore
+  a4243e697aa4094f 21
+e2e/vue-start/basic-test-suite/src/redirect.spec.ts
+  a4243e697aa4094f 9,14-16
+e2e/solid-start/basic-test-suite/src/utils/getE2EPortKey.ts
+  a4243e697aa4094f 1-5
+e2e/solid-start/basic/server.js
+  a4243e697aa4094f 12-14,17,24,56,59
+package.json
+  a4243e697aa4094f 40
+e2e/solid-start/basic/package.json
+  a4243e697aa4094f 14,43-62
+e2e/vue-start/basic/package.json
+  a4243e697aa4094f 14,44-63
+e2e/solid-start/basic/.gitignore
+  a4243e697aa4094f 21
+e2e/solid-start/basic-test-suite/src/setup/global.setup.ts
+  a4243e697aa4094f 2,5
+e2e/solid-start/basic-test-suite/src/setup/global.teardown.ts
+  a4243e697aa4094f 2,6
+e2e/vue-start/basic/vite.config.ts
+  a4243e697aa4094f 33-34,37-39
+e2e/solid-start/basic/vite.config.ts
+  a4243e697aa4094f 33-34,37-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "3e06cf04e95484eb1df8dbf50248196aebcfd5a4",
+  "prompts": {
+    "860c1d3826f771e6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_267b338a5ffeWyN2wEpFe0oRRH",
+        "model": "openai/gpt-5.3-codex"
+      },
+      "human_author": "Nicolas Beaussart",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "a4243e697aa4094f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_268116a96ffeF8jjjokgfqjvef",
+        "model": "openai/gpt-5.3-codex"
+      },
+      "human_author": "Nicolas Beaussart",
+      "messages": [],
+      "total_additions": 151,
+      "total_deletions": 55,
+      "accepted_lines": 2339,
+      "overriden_lines": 0
+    }
+  }
+}
