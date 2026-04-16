@@ -6,14 +6,14 @@ import {
   getTestServerPort,
   test,
 } from '@tanstack/router-e2e-utils'
-import { getPackageName } from './utils/getPackageName.ts'
+import { getE2EPortKey } from './utils/getE2EPortKey.ts'
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
-const packageName = getPackageName()
-const PORT = await getTestServerPort(packageName)
-const EXTERNAL_HOST_PORT = await getDummyServerPort(packageName)
+const e2ePortKey = getE2EPortKey()
+const PORT = await getTestServerPort(e2ePortKey)
+const EXTERNAL_HOST_PORT = await getDummyServerPort(e2ePortKey)
 
 test.describe('redirects', () => {
   const internalNavigationTestMatrix = combinate({

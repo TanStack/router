@@ -1,8 +1,8 @@
 import { e2eStopDummyServer } from '@tanstack/router-e2e-utils'
-import { getPackageName } from '../utils/getPackageName.ts'
+import { getE2EPortKey } from '../utils/getE2EPortKey.ts'
 
 export default async function teardown() {
   try {
-    await e2eStopDummyServer(getPackageName())
+    await e2eStopDummyServer(getE2EPortKey())
   } catch {}
 }
