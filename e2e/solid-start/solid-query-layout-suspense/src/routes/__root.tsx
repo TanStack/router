@@ -22,8 +22,7 @@ function RootDocument() {
       <body>
         <HeadContent />
         <nav>
-          <Link to="/">Home</Link>{' '}
-          <Link to="/layout/page2">👉 To page2</Link>
+          <Link to="/">Home</Link> <Link to="/layout/page2">👉 To page2</Link>
         </nav>
         <Suspense>
           <Outlet />

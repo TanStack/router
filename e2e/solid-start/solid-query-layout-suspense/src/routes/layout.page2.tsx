@@ -11,5 +11,9 @@ function RouteComponent() {
     queryFn: async () => ({ data: 'page2-data' }),
   }))
 
-  return <div data-testid="page2-content">Page data: {JSON.stringify(query.data)}</div>
+  return (
+    <div data-testid="page2-content">
+      Page data: {JSON.stringify(query.data)}
+    </div>
+  )
 }
