@@ -27,7 +27,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
     "@solidjs/testing-library": "^0.8.10",
-    "vite-plugin-solid": "^2.11.11",
+    "vite-plugin-solid": "^2.11.12",
     "typescript": "^6.0.2",
     "vite": "^8.0.0"
   }

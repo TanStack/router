@@ -119,7 +119,7 @@
     "eslint-plugin-solid": "^0.14.5",
     "solid-js": "^1.9.12",
     "vite": "*",
-    "vite-plugin-solid": "^2.11.10",
+    "vite-plugin-solid": "^2.11.12",
     "zod": "^3.23.8",
     "@types/node": ">=20"
   },
