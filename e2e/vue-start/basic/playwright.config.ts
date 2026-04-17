@@ -30,11 +30,11 @@ const commandByMode =
     : `pnpm run test:e2e:startDummyServer && pnpm start`
 
 export default defineConfig({
-  testDir: '../basic-test-suite/src',
+  testDir: './tests',
   workers: 1,
   reporter: [['line']],
 
-  globalTeardown: '../basic-test-suite/src/setup/global.teardown.ts',
+  globalTeardown: './tests/setup/global.teardown.ts',
 
   use: {
     baseURL,
