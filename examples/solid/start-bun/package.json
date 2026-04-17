@@ -34,7 +34,7 @@
     "prettier": "^3.6.2",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.4",
     "web-vitals": "^5.1.0"
   }
 }
