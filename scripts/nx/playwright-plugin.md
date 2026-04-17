@@ -87,15 +87,10 @@ This command is intentionally fixed (it does not call `pnpm build`). This avoids
 accidentally selecting the wrong build path in projects that include multiple
 toolchains.
 
-The inferred build target also hashes these env vars as target inputs:
-
-- `MODE`
-- `TOOLCHAIN`
-- `E2E_TOOLCHAIN`
-- `E2E_DIST`
-- `E2E_DIST_DIR`
-
-This keeps Nx cache entries distinct when dist output folders differ by mode.
+The inferred build target uses standard production inputs and explicit mode-
+specific outputs (`dist-<toolchain>-<mode>`). Mode env values are passed through
+the target command env, so they do not need to be duplicated as target input
+env hashes.
 
 Because of this, Playwright `webServer.command` should only start the app.
 

@@ -42,8 +42,6 @@ function createNodesInternal(
       root,
       packageName,
       playwrightModes,
-      ['default', '^production'],
-      ['production', '^production'],
     )
 
     return {
@@ -73,7 +71,6 @@ function createNodesInternal(
     root,
     packageName,
     projectConfiguration.nx.metadata.playwrightShards,
-    ['default', '^production'],
   )
   // Project configuration to be merged into the rest of the Nx configuration
   return {
@@ -93,6 +90,11 @@ function createNodesInternal(
 
 const CI_TARGET_NAME = 'test:e2e'
 const MODE_TARGET_SEPARATOR = '--'
+const TEST_INPUTS: TargetConfiguration['inputs'] = ['default', '^production']
+const BUILD_INPUTS: TargetConfiguration['inputs'] = [
+  'production',
+  '^production',
+]
 
 const PLAYWRIGHT_TOOLCHAINS = ['vite'] as const
 const PLAYWRIGHT_MODES = ['ssr', 'spa', 'prerender', 'preview'] as const
@@ -112,92 +114,6 @@ type RawPlaywrightModeMetadata = {
   shards?: number
 }
 
-function isPlaywrightToolchain(
-  toolchain: string,
-): toolchain is PlaywrightToolchain {
-  return PLAYWRIGHT_TOOLCHAINS.includes(toolchain as PlaywrightToolchain)
-}
-
-function isPlaywrightMode(mode: string): mode is PlaywrightMode {
-  return PLAYWRIGHT_MODES.includes(mode as PlaywrightMode)
-}
-
-function withEnvInputs(
-  inputs: TargetConfiguration['inputs'],
-  envNames: Array<string>,
-): TargetConfiguration['inputs'] {
-  const baseInputs = inputs ?? []
-
-  return [...baseInputs, ...envNames.map((env) => ({ env }))]
-}
-
-function getDistDirName({ toolchain, mode }: PlaywrightModeMetadata): string {
-  return `dist-${toolchain}-${mode}`
-}
-
-function getBuildTargetName({
-  toolchain,
-  mode,
-}: PlaywrightModeMetadata): string {
-  return `build:e2e--${toolchain}-${mode}`
-}
-
-function getModeTargetName({
-  toolchain,
-  mode,
-}: PlaywrightModeMetadata): string {
-  return `${CI_TARGET_NAME}--${toolchain}-${mode}`
-}
-
-function getModeEnv(
-  modeMetadata: PlaywrightModeMetadata,
-): Record<string, string> {
-  const distDir = getDistDirName(modeMetadata)
-
-  return {
-    MODE: modeMetadata.mode,
-    TOOLCHAIN: modeMetadata.toolchain,
-    E2E_TOOLCHAIN: modeMetadata.toolchain,
-    E2E_DIST: distDir,
-    E2E_DIST_DIR: distDir,
-  }
-}
-
-function getModePortKey(
-  packageName: string,
-  modeMetadata: PlaywrightModeMetadata,
-  shardIndex?: number,
-  shardCount?: number,
-): string {
-  const modePortKey = `${packageName}-${modeMetadata.toolchain}-${modeMetadata.mode}`
-
-  if (shardIndex === undefined || shardCount === undefined) {
-    return modePortKey
-  }
-
-  return `${modePortKey}-shard-${shardIndex}-of-${shardCount}`
-}
-
-function normalizeShardCount(
-  shards: number | undefined,
-  targetName: string,
-): number {
-  if (shards === undefined) {
-    return 1
-  }
-
-  const shardCount = Number(shards)
-
-  if (!Number.isInteger(shardCount) || shardCount < 1) {
-    throw new Error(
-      `[Playwright Sharding Plugin] Invalid shard count for ${targetName}: ${shards}. ` +
-        `Expected a positive integer.`,
-    )
-  }
-
-  return shardCount
-}
-
 function validateModeMetadata(
   modeMetadata: RawPlaywrightModeMetadata,
   index: number,
@@ -211,25 +127,38 @@ function validateModeMetadata(
     )
   }
 
-  if (!isPlaywrightToolchain(modeMetadata.toolchain)) {
+  if (
+    !PLAYWRIGHT_TOOLCHAINS.includes(
+      modeMetadata.toolchain as PlaywrightToolchain,
+    )
+  ) {
     throw new Error(
       `[Playwright Sharding Plugin] Invalid toolchain for playwrightModes[${index}]: ` +
         `${modeMetadata.toolchain}. Supported toolchains: ${PLAYWRIGHT_TOOLCHAINS.join(', ')}.`,
     )
   }
 
-  if (!isPlaywrightMode(modeMetadata.mode)) {
+  if (!PLAYWRIGHT_MODES.includes(modeMetadata.mode as PlaywrightMode)) {
     throw new Error(
       `[Playwright Sharding Plugin] Invalid mode for playwrightModes[${index}]: ` +
         `${modeMetadata.mode}. Supported modes: ${PLAYWRIGHT_MODES.join(', ')}.`,
     )
   }
 
-  normalizeShardCount(modeMetadata.shards, targetName)
+  if (modeMetadata.shards !== undefined) {
+    const shardCount = Number(modeMetadata.shards)
+
+    if (!Number.isInteger(shardCount) || shardCount < 1) {
+      throw new Error(
+        `[Playwright Sharding Plugin] Invalid shard count for ${targetName}: ${modeMetadata.shards}. ` +
+          `Expected a positive integer.`,
+      )
+    }
+  }
 
   return {
-    toolchain: modeMetadata.toolchain,
-    mode: modeMetadata.mode,
+    toolchain: modeMetadata.toolchain as PlaywrightToolchain,
+    mode: modeMetadata.mode as PlaywrightMode,
     shards: modeMetadata.shards,
   }
 }
@@ -238,8 +167,6 @@ function buildModeTargets(
   projectRoot: string,
   packageName: string,
   modes: Array<RawPlaywrightModeMetadata>,
-  testInputs: TargetConfiguration['inputs'],
-  buildInputs: TargetConfiguration['inputs'],
 ): {
   targets: Record<string, TargetConfiguration>
   targetGroupEntries: Array<string>
@@ -254,11 +181,18 @@ function buildModeTargets(
 
   for (const [index, rawModeMetadata] of modes.entries()) {
     const modeMetadata = validateModeMetadata(rawModeMetadata, index)
-    const modeTargetName = getModeTargetName(modeMetadata)
-    const buildTargetName = getBuildTargetName(modeMetadata)
-    const shardCount = normalizeShardCount(modeMetadata.shards, modeTargetName)
-    const modeEnv = getModeEnv(modeMetadata)
-    const modePortKey = getModePortKey(packageName, modeMetadata)
+    const modeTargetName = `${CI_TARGET_NAME}--${modeMetadata.toolchain}-${modeMetadata.mode}`
+    const buildTargetName = `build:e2e--${modeMetadata.toolchain}-${modeMetadata.mode}`
+    const shardCount = modeMetadata.shards ?? 1
+    const distDir = `dist-${modeMetadata.toolchain}-${modeMetadata.mode}`
+    const modeEnv = {
+      MODE: modeMetadata.mode,
+      TOOLCHAIN: modeMetadata.toolchain,
+      E2E_TOOLCHAIN: modeMetadata.toolchain,
+      E2E_DIST: distDir,
+      E2E_DIST_DIR: distDir,
+    }
+    const modePortKey = `${packageName}-${modeMetadata.toolchain}-${modeMetadata.mode}`
     const modeDescription = `${modeMetadata.toolchain}/${modeMetadata.mode}`
     const modeShardTargets: Array<string> = []
 
@@ -271,20 +205,15 @@ function buildModeTargets(
       },
       parallelism: false,
       cache: true,
-      inputs: withEnvInputs(buildInputs, [
-        'MODE',
-        'TOOLCHAIN',
-        'E2E_TOOLCHAIN',
-        'E2E_DIST',
-        'E2E_DIST_DIR',
-      ]),
+      inputs: BUILD_INPUTS,
       dependsOn: ['^build'],
-      outputs: [`{projectRoot}/${getDistDirName(modeMetadata)}`],
+      outputs: [`{projectRoot}/${distDir}`],
       metadata: {
         technologies: ['playwright'],
         description: `Build artifacts for ${modeDescription} e2e tests`,
       },
     }
+    targetGroup.push(buildTargetName)
 
     if (shardCount === 1) {
       targets[modeTargetName] = {
@@ -298,22 +227,18 @@ function buildModeTargets(
           },
         },
         cache: true,
-        inputs: testInputs,
+        inputs: TEST_INPUTS,
         dependsOn: [buildTargetName],
         metadata: {
           technologies: ['playwright'],
           description: `Run Playwright tests for ${modeDescription}`,
         },
       }
+      targetGroup.push(modeTargetName)
     } else {
       for (let shardIndex = 1; shardIndex <= shardCount; shardIndex++) {
         const shardTargetName = `${modeTargetName}${MODE_TARGET_SEPARATOR}shard-${shardIndex}-of-${shardCount}`
-        const shardPortKey = getModePortKey(
-          packageName,
-          modeMetadata,
-          shardIndex,
-          shardCount,
-        )
+        const shardPortKey = `${modePortKey}-shard-${shardIndex}-of-${shardCount}`
 
         targets[shardTargetName] = {
           executor: 'nx:run-commands',
@@ -326,7 +251,7 @@ function buildModeTargets(
             },
           },
           cache: true,
-          inputs: testInputs,
+          inputs: TEST_INPUTS,
           dependsOn: [buildTargetName],
           metadata: {
             technologies: ['playwright'],
@@ -343,12 +268,13 @@ function buildModeTargets(
         }
 
         modeShardTargets.push(shardTargetName)
+        targetGroup.push(shardTargetName)
       }
 
       targets[modeTargetName] = {
         executor: 'nx:noop',
         cache: true,
-        inputs: testInputs,
+        inputs: TEST_INPUTS,
         dependsOn: modeShardTargets.map((shardTargetName) => ({
           target: shardTargetName,
           projects: 'self' as const,
@@ -359,6 +285,7 @@ function buildModeTargets(
           description: `Run all Playwright ${modeDescription} shards (${shardCount} shards)`,
         },
       }
+      targetGroup.push(modeTargetName)
     }
 
     ciDependsOnTargets.push({
@@ -366,13 +293,12 @@ function buildModeTargets(
       projects: 'self',
       params: 'forward',
     })
-    targetGroup.push(modeTargetName)
   }
 
   targets[CI_TARGET_NAME] = {
     executor: 'nx:noop',
     cache: true,
-    inputs: testInputs,
+    inputs: TEST_INPUTS,
     dependsOn: ciDependsOnTargets,
     metadata: {
       technologies: ['playwright'],
@@ -390,7 +316,6 @@ function buildShardedTargets(
   projectRoot: string,
   packageName: string,
   shardCount: number,
-  testInputs: TargetConfiguration['inputs'],
 ): {
   targets: Record<string, TargetConfiguration>
   targetGroupEntries: Array<string>
@@ -413,7 +338,7 @@ function buildShardedTargets(
         },
       },
       cache: true,
-      inputs: testInputs,
+      inputs: TEST_INPUTS,
       dependsOn: [`^build`, 'build'],
       metadata: {
         technologies: ['playwright'],
@@ -436,7 +361,7 @@ function buildShardedTargets(
   targets[CI_TARGET_NAME] = {
     executor: 'nx:noop',
     cache: true,
-    inputs: testInputs,
+    inputs: TEST_INPUTS,
     dependsOn: targetGroup.map((shardTargetName) => ({
       target: shardTargetName,
       projects: 'self' as const,
