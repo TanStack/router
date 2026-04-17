@@ -290,52 +290,33 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   }
 
   function commitPending(nextMatches: Array<AnyRouteMatch>) {
-    const nextIds = nextMatches.map((d) => d.id)
-    const nextIdSet = new Set(nextIds)
-
     batch(() => {
-      for (const id of matchStores.keys()) {
-        if (!nextIdSet.has(id)) matchStores.delete(id)
-      }
-
+      const reconciledMatches: Array<AnyRouteMatch> = []
       for (const nextMatch of nextMatches) {
         const pendingStore = pendingMatchStores.get(nextMatch.id)
-        const existingActive = matchStores.get(nextMatch.id)
-
         if (pendingStore) {
-          // Prefer the store's current value over the caller's snapshot:
-          // a write may have landed after the snapshot was taken.
-          const pendingValue = pendingStore.get()
-          const latest = pendingValue !== nextMatch ? pendingValue : nextMatch
-
-          if (existingActive && existingActive !== pendingStore) {
-            existingActive.routeId = nextMatch.routeId
-            if (existingActive.get() !== latest) existingActive.set(latest)
-          } else {
-            pendingStore.routeId = nextMatch.routeId
-            if (pendingValue !== latest) pendingStore.set(latest)
+          const existingActive = matchStores.get(nextMatch.id)
+          if (!existingActive || existingActive === pendingStore) {
             matchStores.set(nextMatch.id, pendingStore)
           }
-
           pendingMatchStores.delete(nextMatch.id)
-          continue
-        }
-
-        if (!existingActive) {
-          const matchStore = createMutableStore(nextMatch) as MatchStore
-          matchStore.routeId = nextMatch.routeId
-          matchStores.set(nextMatch.id, matchStore)
+          reconciledMatches.push(pendingStore.get())
         } else {
-          existingActive.routeId = nextMatch.routeId
-          if (existingActive.get() !== nextMatch) existingActive.set(nextMatch)
+          reconciledMatches.push(nextMatch)
         }
       }
+
+      reconcileMatchPool(
+        reconciledMatches,
+        matchStores,
+        matchesId,
+        createMutableStore,
+        batch,
+      )
 
       for (const id of pendingMatchStores.keys()) {
         pendingMatchStores.delete(id)
       }
-
-      if (!arraysEqual(matchesId.get(), nextIds)) matchesId.set(nextIds)
       if (pendingIds.get().length !== 0) pendingIds.set([])
     })
   }
