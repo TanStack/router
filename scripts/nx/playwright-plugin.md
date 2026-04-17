@@ -83,6 +83,10 @@ vite build && tsc --noEmit
 
 with the mode/toolchain env above.
 
+This command is intentionally fixed (it does not call `pnpm build`). This avoids
+accidentally selecting the wrong build path in projects that include multiple
+toolchains.
+
 The inferred build target also hashes these env vars as target inputs:
 
 - `MODE`
@@ -100,6 +104,17 @@ Good:
 ```ts
 webServer: {
   command: `PORT=${PORT} pnpm start`,
+  url: baseURL,
+}
+```
+
+For preview mode, pass the inferred dist folder:
+
+```ts
+const distDir = process.env.E2E_DIST_DIR ?? 'dist'
+
+webServer: {
+  command: `pnpm preview --outDir ${distDir} --port ${PORT}`,
   url: baseURL,
 }
 ```
@@ -152,12 +167,16 @@ const e2ePortKey = process.env.E2E_PORT_KEY ?? packageJson.name
 if (process.env.TEST_WORKER_INDEX === undefined) {
   for (const portFile of [
     `port-${e2ePortKey}.txt`,
+    `port-${e2ePortKey}_start.txt`,
     `port-${e2ePortKey}-external.txt`,
   ]) {
     fs.rmSync(portFile, { force: true })
   }
 }
 ```
+
+Include the `*_start` file only if your test setup allocates a separate
+`START_PORT` key.
 
 Avoid broad cleanup such as `rm -rf port*.txt` in shared shard runs.
 
