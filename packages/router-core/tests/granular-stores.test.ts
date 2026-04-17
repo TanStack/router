@@ -397,9 +397,7 @@ describe('granular stores', () => {
     const activeStoreBefore = router.stores.matchStores.get(activeLeaf.id)!
     expect(activeStoreBefore).toBeDefined()
 
-    router.stores.setPending([
-      { ...activeLeaf, status: 'pending' as const },
-    ])
+    router.stores.setPending([{ ...activeLeaf, status: 'pending' as const }])
     const pendingStore = router.stores.pendingMatchStores.get(activeLeaf.id)!
     expect(pendingStore).not.toBe(activeStoreBefore)
 
