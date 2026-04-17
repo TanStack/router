@@ -114,19 +114,8 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   setPending: (nextMatches: Array<AnyRouteMatch>) => void
   setCached: (nextMatches: Array<AnyRouteMatch>) => void
   /**
-   * Atomically promote the pending pool into the active pool and clear pending.
-   *
-   * Unlike `setMatches(pendingMatches) + setPending([])`, which snapshots match
-   * values out of the pending stores and creates fresh stores in the active
-   * pool, this preserves store identity: the pending store becomes the active
-   * store. That ensures any writes that happened to the pending store are
-   * visible in the active pool (no drift from stale snapshots), and reactive
-   * subscribers on the pending store continue to work after promotion.
-   *
-   * `nextMatches` is the list of match values to commit (typically
-   * `pendingMatches.get()`). Only ids present in the existing pending pool are
-   * transferred — any id not already in the pending pool falls back to the
-   * plain `setMatches` path for that id.
+   * Move pending-pool stores into the active pool, preserving store identity
+   * and their latest values, and clear the pending pool.
    */
   commitPending: (nextMatches: Array<AnyRouteMatch>) => void
 }
@@ -166,20 +155,10 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     readPoolMatches(cachedMatchStores, cachedIds.get()),
   )
   const firstId = createReadonlyStore(() => matchesId.get()[0])
-  // `hasPending` gates `onResolved` / `onBeforeRouteMount` in the framework
-  // Transitioners. It is true whenever navigation is still in-flight:
-  //   1) the pending pool is non-empty (a navigation is being loaded), or
-  //   2) an already-committed active match is still `status: 'pending'`
-  //      (e.g. `pendingMs` elapsed and we committed before the loader
-  //      resolved).
-  // Reading the pending pool — and not only the active pool — avoids the
-  // failure mode where an active match's status is stuck on `'pending'` but
-  // the pending pool is empty, which previously left `hasPending` pinned to
-  // `true` and blocked `onResolved` from ever firing.
+  // True while a navigation is in-flight: pending pool is non-empty, or
+  // an active match is still `status: 'pending'`.
   const hasPending = createReadonlyStore(() => {
-    if (pendingIds.get().length > 0) {
-      return true
-    }
+    if (pendingIds.get().length > 0) return true
     return matchesId.get().some((matchId) => {
       const store = matchStores.get(matchId)
       return store?.get().status === 'pending'
@@ -316,32 +295,13 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     )
   }
 
-  /**
-   * Atomically promote the pending pool into the active pool.
-   *
-   * For each id that exists in both `nextMatches` and the pending pool, the
-   * pending store is moved into the active pool (preserving store identity
-   * and the latest value). Any remaining entries in the pending pool are
-   * cleared. Entries that only live in `nextMatches` (not in the pending
-   * pool) get fresh active stores via the regular reconcile path.
-   *
-   * This avoids a subtle race: with `setMatches(pendingMatches.get()) +
-   * setPending([])`, the active pool gets a fresh store initialized from a
-   * snapshot value, and any pending-store write that is only observed AFTER
-   * the snapshot (e.g. a loader completion that resolves inside a framework
-   * transition) is lost when `setPending([])` discards the pending store.
-   * Handing off the store itself guarantees those writes remain visible.
-   */
   function commitPending(nextMatches: Array<AnyRouteMatch>) {
     const nextIds = nextMatches.map((d) => d.id)
     const nextIdSet = new Set(nextIds)
 
     batch(() => {
-      // Drop active stores whose id isn't in the next commit.
       for (const id of matchStores.keys()) {
-        if (!nextIdSet.has(id)) {
-          matchStores.delete(id)
-        }
+        if (!nextIdSet.has(id)) matchStores.delete(id)
       }
 
       for (const nextMatch of nextMatches) {
@@ -349,27 +309,18 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
         const existingActive = matchStores.get(nextMatch.id)
 
         if (pendingStore) {
-          // Prefer the pending store's current value over the caller's
-          // snapshot — pendingStore.get() reflects any write that landed
-          // after the caller read pendingMatches.get().
+          // Use the pending store's current value, not the caller's
+          // snapshot — writes may have landed since it was read.
           const pendingValue = pendingStore.get()
           const latest = pendingValue !== nextMatch ? pendingValue : nextMatch
 
           if (existingActive && existingActive !== pendingStore) {
-            // Active already has a (different) store for this id. Update it
-            // in place to preserve its subscribers, then drop the pending
-            // store. We do NOT reuse the pending store here because the
-            // active store may already have reactive consumers bound to it.
+            // Keep the active store (preserves its subscribers).
             existingActive.routeId = nextMatch.routeId
-            if (existingActive.get() !== latest) {
-              existingActive.set(latest)
-            }
+            if (existingActive.get() !== latest) existingActive.set(latest)
           } else {
-            // Move the pending store into the active pool.
             pendingStore.routeId = nextMatch.routeId
-            if (pendingValue !== latest) {
-              pendingStore.set(latest)
-            }
+            if (pendingValue !== latest) pendingStore.set(latest)
             matchStores.set(nextMatch.id, pendingStore)
           }
 
@@ -377,31 +328,22 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
           continue
         }
 
-        // No pending store for this id — fall back to the regular path.
         if (!existingActive) {
           const matchStore = createMutableStore(nextMatch) as MatchStore
           matchStore.routeId = nextMatch.routeId
           matchStores.set(nextMatch.id, matchStore)
         } else {
           existingActive.routeId = nextMatch.routeId
-          if (existingActive.get() !== nextMatch) {
-            existingActive.set(nextMatch)
-          }
+          if (existingActive.get() !== nextMatch) existingActive.set(nextMatch)
         }
       }
 
-      // Any ids that were in pending but aren't in the commit list are
-      // orphans — remove them so the pending pool is fully drained.
       for (const id of pendingMatchStores.keys()) {
         pendingMatchStores.delete(id)
       }
 
-      if (!arraysEqual(matchesId.get(), nextIds)) {
-        matchesId.set(nextIds)
-      }
-      if (pendingIds.get().length !== 0) {
-        pendingIds.set([])
-      }
+      if (!arraysEqual(matchesId.get(), nextIds)) matchesId.set(nextIds)
+      if (pendingIds.get().length !== 0) pendingIds.set([])
     })
   }
 

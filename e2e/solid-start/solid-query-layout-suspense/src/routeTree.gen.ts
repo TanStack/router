@@ -14,7 +14,6 @@ import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SlugIndexRouteImport } from './routes/$slug.index'
 import { Route as LayoutPage2RouteImport } from './routes/layout.page2'
-import { Route as SlugChildRouteImport } from './routes/$slug.$child'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/layout',
@@ -41,24 +40,17 @@ const LayoutPage2Route = LayoutPage2RouteImport.update({
   path: '/page2',
   getParentRoute: () => LayoutRoute,
 } as any)
-const SlugChildRoute = SlugChildRouteImport.update({
-  id: '/$child',
-  path: '/$child',
-  getParentRoute: () => SlugRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$slug': typeof SlugRouteWithChildren
   '/layout': typeof LayoutRouteWithChildren
-  '/$slug/$child': typeof SlugChildRoute
   '/layout/page2': typeof LayoutPage2Route
   '/$slug/': typeof SlugIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/layout': typeof LayoutRouteWithChildren
-  '/$slug/$child': typeof SlugChildRoute
   '/layout/page2': typeof LayoutPage2Route
   '/$slug': typeof SlugIndexRoute
 }
@@ -67,29 +59,15 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/$slug': typeof SlugRouteWithChildren
   '/layout': typeof LayoutRouteWithChildren
-  '/$slug/$child': typeof SlugChildRoute
   '/layout/page2': typeof LayoutPage2Route
   '/$slug/': typeof SlugIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/$slug'
-    | '/layout'
-    | '/$slug/$child'
-    | '/layout/page2'
-    | '/$slug/'
+  fullPaths: '/' | '/$slug' | '/layout' | '/layout/page2' | '/$slug/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/layout' | '/$slug/$child' | '/layout/page2' | '/$slug'
-  id:
-    | '__root__'
-    | '/'
-    | '/$slug'
-    | '/layout'
-    | '/$slug/$child'
-    | '/layout/page2'
-    | '/$slug/'
+  to: '/' | '/layout' | '/layout/page2' | '/$slug'
+  id: '__root__' | '/' | '/$slug' | '/layout' | '/layout/page2' | '/$slug/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -135,23 +113,14 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof LayoutPage2RouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/$slug/$child': {
-      id: '/$slug/$child'
-      path: '/$child'
-      fullPath: '/$slug/$child'
-      preLoaderRoute: typeof SlugChildRouteImport
-      parentRoute: typeof SlugRoute
-    }
   }
 }
 
 interface SlugRouteChildren {
-  SlugChildRoute: typeof SlugChildRoute
   SlugIndexRoute: typeof SlugIndexRoute
 }
 
 const SlugRouteChildren: SlugRouteChildren = {
-  SlugChildRoute: SlugChildRoute,
   SlugIndexRoute: SlugIndexRoute,
 }
 
