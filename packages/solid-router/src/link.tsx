@@ -119,7 +119,6 @@ export function useLinkProps<
 
   const currentLocation = Solid.createMemo(
     () => router.stores.location.state,
-    undefined,
     { equals: (prev, next) => prev?.href === next?.href },
   )
 
@@ -179,7 +178,7 @@ export function useLinkProps<
         return undefined
       }
       return to
-    } catch {}
+    } catch { }
     return undefined
   })
 
@@ -573,11 +572,11 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    | Solid.JSX.Element
-    | ((state: {
-        isActive: boolean
-        isTransitioning: boolean
-      }) => Solid.JSX.Element)
+  | Solid.JSX.Element
+  | ((state: {
+    isActive: boolean
+    isTransitioning: boolean
+  }) => Solid.JSX.Element)
 }
 
 type LinkComponentSolidProps<TComp> = TComp extends Solid.ValidComponent
@@ -712,8 +711,8 @@ export type LinkOptionsFnOptions<
   TRouter extends AnyRouter = RegisteredRouter,
 > =
   TOptions extends ReadonlyArray<any>
-    ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
-    : ValidateLinkOptions<TRouter, TOptions, string, TComp>
+  ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
+  : ValidateLinkOptions<TRouter, TOptions, string, TComp>
 
 export type LinkOptionsFn<TComp> = <
   const TOptions,

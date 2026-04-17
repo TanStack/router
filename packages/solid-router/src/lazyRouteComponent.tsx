@@ -74,17 +74,14 @@ export function lazyRouteComponent<
     }
 
     if (!comp) {
-      const compResource = createMemo(load, {
-        initialValue: comp,
-        ssrLoadFrom: 'initial',
-      })
+      const compResource = createMemo(load)
       return <Dynamic component={compResource()} {...props} />
     }
 
     return <Dynamic component={comp} {...props} />
   }
 
-  ;(lazyComp as any).preload = load
+    ; (lazyComp as any).preload = load
 
   return lazyComp as any
 }
