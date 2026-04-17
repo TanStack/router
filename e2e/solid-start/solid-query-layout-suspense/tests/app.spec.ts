@@ -16,7 +16,6 @@ test('layout with useQuery renders child after client navigation', async ({
   await expect(page.getByTestId('layout-content')).toBeVisible()
 })
 
-// SSR page with loader -> dynamic first segment route
 test('navigate from SSR index (with loader) to /$slug', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByTestId('index-content')).toBeVisible()

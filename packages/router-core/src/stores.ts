@@ -113,10 +113,6 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   setMatches: (nextMatches: Array<AnyRouteMatch>) => void
   setPending: (nextMatches: Array<AnyRouteMatch>) => void
   setCached: (nextMatches: Array<AnyRouteMatch>) => void
-  /**
-   * Move pending-pool stores into the active pool, preserving store identity
-   * and their latest values, and clear the pending pool.
-   */
   commitPending: (nextMatches: Array<AnyRouteMatch>) => void
 }
 
@@ -155,8 +151,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     readPoolMatches(cachedMatchStores, cachedIds.get()),
   )
   const firstId = createReadonlyStore(() => matchesId.get()[0])
-  // True while a navigation is in-flight: pending pool is non-empty, or
-  // an active match is still `status: 'pending'`.
   const hasPending = createReadonlyStore(() => {
     if (pendingIds.get().length > 0) return true
     return matchesId.get().some((matchId) => {
@@ -309,13 +303,12 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
         const existingActive = matchStores.get(nextMatch.id)
 
         if (pendingStore) {
-          // Use the pending store's current value, not the caller's
-          // snapshot — writes may have landed since it was read.
+          // Prefer the store's current value over the caller's snapshot:
+          // a write may have landed after the snapshot was taken.
           const pendingValue = pendingStore.get()
           const latest = pendingValue !== nextMatch ? pendingValue : nextMatch
 
           if (existingActive && existingActive !== pendingStore) {
-            // Keep the active store (preserves its subscribers).
             existingActive.routeId = nextMatch.routeId
             if (existingActive.get() !== latest) existingActive.set(latest)
           } else {

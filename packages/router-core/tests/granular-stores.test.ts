@@ -326,7 +326,6 @@ describe('granular stores', () => {
     router.stores.setPending([])
     expect(router.stores.hasPending.get()).toBe(false)
 
-    // Existing behavior: an active match stuck at 'pending' also counts.
     router.updateMatch(activeLeaf.id, (prev) => ({
       ...prev,
       status: 'pending' as const,
@@ -375,7 +374,6 @@ describe('granular stores', () => {
 
     const snapshot = router.stores.pendingMatches.get()
 
-    // Simulate a write landing on the pending store after the snapshot.
     const lateValue = {
       ...pending,
       status: 'success' as const,
