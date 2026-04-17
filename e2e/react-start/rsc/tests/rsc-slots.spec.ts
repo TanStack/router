@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC Slot Tests - Client-side slot changes without RSC reload', () => {
   test('SSR HTML includes modulepreload links for composite route client modules', async ({
@@ -23,7 +24,7 @@ test.describe('RSC Slot Tests - Client-side slot changes without RSC reload', ()
   test('Changing child content does not reload RSC', async ({ page }) => {
     await page.goto('/rsc-slots')
     await page.waitForURL('/rsc-slots')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial RSC timestamp
     const initialRscTimestamp = await page
@@ -53,7 +54,7 @@ test.describe('RSC Slot Tests - Client-side slot changes without RSC reload', ()
   test('Changing footer render prop does not reload RSC', async ({ page }) => {
     await page.goto('/rsc-slots')
     await page.waitForURL('/rsc-slots')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial RSC timestamp and footer value
     const initialRscTimestamp = await page
@@ -81,7 +82,7 @@ test.describe('RSC Slot Tests - Client-side slot changes without RSC reload', ()
   test('Adding/removing extra child does not reload RSC', async ({ page }) => {
     await page.goto('/rsc-slots')
     await page.waitForURL('/rsc-slots')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial RSC timestamp
     const initialRscTimestamp = await page
@@ -120,7 +121,7 @@ test.describe('RSC Slot Tests - Client-side slot changes without RSC reload', ()
   }) => {
     await page.goto('/rsc-slots')
     await page.waitForURL('/rsc-slots')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial RSC timestamp
     const initialRscTimestamp = await page

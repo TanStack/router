@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 /**
  * RSC Parallel Flash Prevention Tests
@@ -78,7 +79,7 @@ test.describe('RSC Parallel Flash Prevention', () => {
     await expect(page.getByTestId('rsc-basic-content')).toBeVisible({
       timeout: 10000,
     })
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate to parallel route and monitor for flash
     const flashDetected = await monitorForFlash(
@@ -102,7 +103,7 @@ test.describe('RSC Parallel Flash Prevention', () => {
     page,
   }) => {
     await page.goto('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     await page.getByTestId('nav-parallel').click()
     await page.waitForURL('/rsc-parallel')
@@ -133,7 +134,7 @@ test.describe('RSC Parallel Flash Prevention', () => {
     await expect(page.getByTestId('rsc-basic-content')).toBeVisible({
       timeout: 10000,
     })
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Monitor all three RSC elements for flash
     const flashADetected = await monitorForFlash(
@@ -151,7 +152,7 @@ test.describe('RSC Parallel Flash Prevention', () => {
     await page.getByTestId('nav-basic').click()
     await page.waitForURL('/rsc-basic')
     await expect(page.getByTestId('rsc-basic-content')).toBeVisible()
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     const flashBDetected = await monitorForFlash(
       page,

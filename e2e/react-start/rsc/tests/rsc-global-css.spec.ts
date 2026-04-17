@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC Global CSS Tests', () => {
   test('RSC with global CSS hydrates without errors', async ({ page }) => {
@@ -13,7 +14,7 @@ test.describe('RSC Global CSS Tests', () => {
 
     await page.goto('/rsc-global-css')
     await page.waitForURL('/rsc-global-css')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify content is visible
     await expect(page.getByTestId('rsc-global-css-content')).toBeVisible()
@@ -42,7 +43,7 @@ test.describe('RSC Global CSS Tests', () => {
     // Start from home
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate to RSC global CSS page via nav bar
     await page.getByTestId('nav-global-css').click()
@@ -133,7 +134,7 @@ test.describe('RSC Global CSS Tests', () => {
     // Start from home
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate to RSC global CSS page via nav bar
     await page.getByTestId('nav-global-css').click()

@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC CSS Modules Tests', () => {
   test('RSC with CSS modules hydrates without errors', async ({ page }) => {
@@ -13,7 +14,7 @@ test.describe('RSC CSS Modules Tests', () => {
 
     await page.goto('/rsc-css-modules')
     await page.waitForURL('/rsc-css-modules')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify content is visible
     await expect(page.getByTestId('rsc-css-modules-content')).toBeVisible()
@@ -106,7 +107,7 @@ test.describe('RSC CSS Modules Tests', () => {
   }) => {
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     await page.getByTestId('nav-css-modules').click()
     await page.waitForURL('/rsc-css-modules')

@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC SSR Data-Only Tests - Loader on server, component on client', () => {
   test('Page renders with RSC content after initial load', async ({ page }) => {
@@ -122,7 +123,7 @@ test.describe('RSC SSR Data-Only Tests - Loader on server, component on client',
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate to the page via nav bar
     await page.getByTestId('nav-ssr-data-only').click()

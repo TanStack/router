@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC Context Tests - React Context interaction', () => {
   test('Page loads with context controls visible', async ({ page }) => {
@@ -25,7 +26,7 @@ test.describe('RSC Context Tests - React Context interaction', () => {
   test('Theme toggle changes context', async ({ page }) => {
     await page.goto('/rsc-context')
     await page.waitForURL('/rsc-context')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify initial theme
     await expect(page.getByTestId('current-theme')).toContainText(
@@ -53,7 +54,7 @@ test.describe('RSC Context Tests - React Context interaction', () => {
   test('Notifications toggle works correctly', async ({ page }) => {
     await page.goto('/rsc-context')
     await page.waitForURL('/rsc-context')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify initial notifications state is ON
     await expect(page.getByTestId('toggle-notifications-btn')).toContainText(
@@ -83,7 +84,7 @@ test.describe('RSC Context Tests - React Context interaction', () => {
   test('Theme changes do not refetch RSC', async ({ page }) => {
     await page.goto('/rsc-context')
     await page.waitForURL('/rsc-context')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial timestamp
     const initialTimestamp = await page
@@ -121,7 +122,7 @@ test.describe('RSC Context Tests - React Context interaction', () => {
   }) => {
     await page.goto('/rsc-context')
     await page.waitForURL('/rsc-context')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify context consumer is visible
     await expect(page.getByTestId('context-consumer')).toBeVisible()
@@ -144,7 +145,7 @@ test.describe('RSC Context Tests - React Context interaction', () => {
   test('Multiple context changes work correctly', async ({ page }) => {
     await page.goto('/rsc-context')
     await page.waitForURL('/rsc-context')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Change both theme and notifications
     await page.getByTestId('toggle-theme-btn').click()

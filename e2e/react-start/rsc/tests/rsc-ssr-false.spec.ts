@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 type Point = {
   x: number
@@ -96,7 +97,7 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
   test('Canvas is rendered and visible', async ({ page }) => {
     await page.goto('/rsc-ssr-false')
     await page.waitForURL('/rsc-ssr-false')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify canvas container
     await expect(page.getByTestId('canvas-container')).toBeVisible()
@@ -108,7 +109,7 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
   test('Brush size selection works', async ({ page }) => {
     await page.goto('/rsc-ssr-false')
     await page.waitForURL('/rsc-ssr-false')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     await expect(page.getByTestId('canvas-container')).toBeVisible()
 
@@ -125,7 +126,7 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
   test('Color selection works', async ({ page }) => {
     await page.goto('/rsc-ssr-false')
     await page.waitForURL('/rsc-ssr-false')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     await expect(page.getByTestId('canvas-container')).toBeVisible()
 
@@ -143,7 +144,7 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
   test('Drawing on canvas updates stroke count', async ({ page }) => {
     await page.goto('/rsc-ssr-false')
     await page.waitForURL('/rsc-ssr-false')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     await expect(page.getByTestId('canvas-container')).toBeVisible()
 
@@ -167,7 +168,7 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
   test('Clear canvas button works', async ({ page }) => {
     await page.goto('/rsc-ssr-false')
     await page.waitForURL('/rsc-ssr-false')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     await expect(page.getByTestId('canvas-container')).toBeVisible()
 
@@ -191,7 +192,7 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
   test('Save controls are visible and functional', async ({ page }) => {
     await page.goto('/rsc-ssr-false')
     await page.waitForURL('/rsc-ssr-false')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify save controls section exists
     await expect(page.getByTestId('save-controls')).toBeVisible()
@@ -219,7 +220,7 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
   }) => {
     await page.goto('/rsc-ssr-false')
     await page.waitForURL('/rsc-ssr-false')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     await expect(page.getByTestId('rsc-ssr-false-content')).toBeVisible()
 
@@ -248,7 +249,7 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate to the page via nav bar
     await page.getByTestId('nav-ssr-false').click()
@@ -272,7 +273,7 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
     // First visit - clear any previous state and save a name
     await page.goto('/rsc-ssr-false')
     await page.waitForURL('/rsc-ssr-false')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Clear canvas to reset state
     await page.getByTestId('clear-canvas-btn').click()
@@ -292,12 +293,12 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
     // Navigate away
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate back
     await page.goto('/rsc-ssr-false')
     await page.waitForURL('/rsc-ssr-false')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify saved name is restored
     await expect(page.getByTestId('rsc-saved-name')).toBeVisible()
@@ -317,7 +318,7 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
   test('Full page reload works correctly', async ({ page }) => {
     await page.goto('/rsc-ssr-false')
     await page.waitForURL('/rsc-ssr-false')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify initial load
     await expect(page.getByTestId('rsc-ssr-false-content')).toBeVisible()
@@ -336,7 +337,7 @@ test.describe('RSC SSR False Tests - Both loader and component on client', () =>
     // Reload page
     await page.reload()
     await page.waitForURL('/rsc-ssr-false')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify content reloads and drawing was restored from localStorage
     await expect(page.getByTestId('rsc-ssr-false-content')).toBeVisible()
