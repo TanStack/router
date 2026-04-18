@@ -78,15 +78,12 @@ function AnchorComponent() {
   const [selectedHash, setSelectedHash] = createSignal(
     location().hash || anchors[0].id,
   )
-  const [scrollBehavior, setScrollBehavior] = createSignal<ScrollBehavior>(
-    'instant',
-  )
-  const [scrollBlock, setScrollBlock] = createSignal<ScrollLogicalPosition>(
-    'start',
-  )
-  const [scrollInline, setScrollInline] = createSignal<ScrollLogicalPosition>(
-    'nearest',
-  )
+  const [scrollBehavior, setScrollBehavior] =
+    createSignal<ScrollBehavior>('instant')
+  const [scrollBlock, setScrollBlock] =
+    createSignal<ScrollLogicalPosition>('start')
+  const [scrollInline, setScrollInline] =
+    createSignal<ScrollLogicalPosition>('nearest')
 
   return (
     <div class="flex flex-col w-full">
@@ -143,9 +140,7 @@ function AnchorComponent() {
                 class="border border-opacity-50 rounded-sm p-2 w-full"
                 data-testid="hash-select"
                 value={selectedHash()}
-                onChange={(event) =>
-                  setSelectedHash(event.currentTarget.value)
-                }
+                onChange={(event) => setSelectedHash(event.currentTarget.value)}
                 name="hash"
               >
                 {anchors.map((anchor) => (

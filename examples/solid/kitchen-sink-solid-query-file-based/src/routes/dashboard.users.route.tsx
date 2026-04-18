@@ -50,8 +50,8 @@ function UsersComponent() {
     return !sortBy
       ? users
       : [...users].sort((a, b) => {
-        return a[sortBy] > b[sortBy] ? 1 : -1
-      })
+          return a[sortBy] > b[sortBy] ? 1 : -1
+        })
   })
 
   const filteredUsers = Solid.createMemo(() => {
@@ -135,7 +135,9 @@ function UsersComponent() {
                     }}
                     pending
                   >
-                    {(match) => <Spinner show={() => !!match} wait="delay-50" />}
+                    {(match) => (
+                      <Spinner show={() => !!match} wait="delay-50" />
+                    )}
                   </MatchRoute>
                 </pre>
               </Link>
