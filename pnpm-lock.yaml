@@ -3955,6 +3955,18 @@ importers:
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.58.0
+      '@rsbuild/core':
+        specifier: 2.0.0-rc.3
+        version: 2.0.0-rc.3(core-js@3.40.0)
+      '@rsbuild/plugin-babel':
+        specifier: ^1.0.5
+        version: 1.0.6(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))
+      '@rsbuild/plugin-solid':
+        specifier: ^1.0.6
+        version: 1.0.6(@babel/core@7.29.0)(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))(solid-js@1.9.12)
+      '@tailwindcss/postcss':
+        specifier: ^4.2.2
+        version: 4.2.2
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -5822,6 +5834,21 @@ importers:
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.58.0
+      '@rsbuild/core':
+        specifier: 2.0.0-rc.3
+        version: 2.0.0-rc.3(core-js@3.40.0)
+      '@rsbuild/plugin-babel':
+        specifier: ^1.0.5
+        version: 1.0.6(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))
+      '@rsbuild/plugin-vue':
+        specifier: ^1.2.2
+        version: 1.2.2(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))(@swc/core@1.10.15(@swc/helpers@0.5.21))(esbuild@0.27.4)(vue@3.5.25(typescript@6.0.2))
+      '@rsbuild/plugin-vue-jsx':
+        specifier: ^1.1.1
+        version: 1.1.1(@babel/core@7.29.0)(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))
+      '@tailwindcss/postcss':
+        specifier: ^4.2.2
+        version: 4.2.2
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -33509,7 +33536,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.1.0
-      vitest: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(typescript@6.0.2))(vite@8.0.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      vitest: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@6.0.2))(vite@8.0.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   '@vitest/utils@4.1.4':
     dependencies:

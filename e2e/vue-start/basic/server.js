@@ -1,4 +1,5 @@
 import { toNodeHandler } from 'srvx/node'
+import fs from 'node:fs'
 import path from 'node:path'
 import express from 'express'
 import { createProxyMiddleware } from 'http-proxy-middleware'
@@ -11,9 +12,23 @@ const isSpaMode = process.env.MODE === 'spa'
 const isPrerender = process.env.MODE === 'prerender'
 const distDir = process.env.E2E_DIST_DIR || 'dist'
 const distClientDir = path.resolve(distDir, 'client')
-const distServerEntryPath = path.resolve(distDir, 'server', 'server.js')
+
+function resolveDistServerEntryPath() {
+  const serverJsPath = path.resolve(distDir, 'server', 'server.js')
+  if (fs.existsSync(serverJsPath)) {
+    return serverJsPath
+  }
+
+  const indexJsPath = path.resolve(distDir, 'server', 'index.js')
+  if (fs.existsSync(indexJsPath)) {
+    return indexJsPath
+  }
+
+  return serverJsPath
+}
 
 export async function createStartServer() {
+  const distServerEntryPath = resolveDistServerEntryPath()
   const server = (await import(distServerEntryPath)).default
   const nodeHandler = toNodeHandler(server.fetch)
 
