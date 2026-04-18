@@ -12,7 +12,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.90.0",
     "@tanstack/react-query-devtools": "^5.90.0",
-    "@tanstack/react-router": "^1.168.22",
+    "@tanstack/react-router": "^1.168.23",
     "@tanstack/react-router-devtools": "^1.166.13",
     "@tanstack/router-plugin": "^1.167.22",
     "react": "^19.0.0",

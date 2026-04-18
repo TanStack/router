@@ -1,5 +1,11 @@
 # @tanstack/react-router
 
+## 1.168.23
+
+### Patch Changes
+
+- fix(react-router): prevent webpack static analysis of `React.use` with let binding ([#7182](https://github.com/TanStack/router/pull/7182))
+
 ## 1.168.22
 
 ### Patch Changes
