@@ -15,10 +15,10 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-devtools": "^0.7.0",
-    "@tanstack/solid-router": "^1.168.19",
+    "@tanstack/solid-router": "^1.168.20",
     "@tanstack/solid-router-devtools": "^1.166.13",
     "@tanstack/solid-router-ssr-query": "^1.166.11",
-    "@tanstack/solid-start": "^1.167.36",
+    "@tanstack/solid-start": "^1.167.37",
     "@tanstack/router-plugin": "^1.167.22",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.2.2"
@@ -34,7 +34,7 @@
     "prettier": "^3.6.2",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.4",
     "web-vitals": "^5.1.0"
   }
 }

@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC React.cache Tests', () => {
   test('Page loads with React.cache test button', async ({ page }) => {
@@ -96,7 +97,7 @@ test.describe('RSC React.cache Tests', () => {
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate to React.cache page via nav bar
     await page.getByTestId('nav-react-cache').click()

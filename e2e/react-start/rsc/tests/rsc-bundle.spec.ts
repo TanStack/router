@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC Bundle Tests - Multiple RSCs from single server function', () => {
   test('All bundled RSCs render correctly on initial load', async ({
@@ -49,7 +50,7 @@ test.describe('RSC Bundle Tests - Multiple RSCs from single server function', ()
   test('Client slots in bundled RSCs work correctly', async ({ page }) => {
     await page.goto('/rsc-bundle')
     await page.waitForURL('/rsc-bundle')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify client actions area is rendered
     await expect(page.getByTestId('content-actions')).toBeVisible()
@@ -81,7 +82,7 @@ test.describe('RSC Bundle Tests - Multiple RSCs from single server function', ()
   test('Client interactions do not reload bundled RSCs', async ({ page }) => {
     await page.goto('/rsc-bundle')
     await page.waitForURL('/rsc-bundle')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial timestamp
     const initialTimestamp = await page
@@ -120,7 +121,7 @@ test.describe('RSC Bundle Tests - Multiple RSCs from single server function', ()
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate to bundle page via nav bar (use exact match to avoid 'Async Bundle')
     await page.getByTestId('nav-bundle').click()
@@ -145,7 +146,7 @@ test.describe('RSC Bundle Tests - Multiple RSCs from single server function', ()
     // Navigate away
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Second visit (force reload)
     await page.goto('/rsc-bundle')

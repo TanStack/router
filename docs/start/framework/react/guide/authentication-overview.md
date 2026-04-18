@@ -227,7 +227,7 @@ Build your own authentication system using TanStack Start's server functions and
 **Implementation Guides:**
 
 - [Authentication Patterns](./authentication.md)
-- [Router Authentication Guide](/router/latest/docs/framework/react/guide/authenticated-routes.md)
+- [Router Authentication Guide](/router/latest/docs/framework/react/guide/authenticated-routes)
 
 **Foundation Concepts:**
 

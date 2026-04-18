@@ -62,8 +62,8 @@
     "@types/node": "25.0.9",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
-    "@vitest/browser": "^4.0.17",
-    "@vitest/ui": "^4.0.17",
+    "@vitest/browser": "^4.1.4",
+    "@vitest/ui": "^4.1.4",
     "eslint": "^9.22.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-unused-imports": "^4.1.4",
@@ -84,7 +84,7 @@
     "typescript58": "npm:typescript@5.8",
     "typescript59": "npm:typescript@5.9",
     "vite": "^8.0.0",
-    "vitest": "^4.0.17"
+    "vitest": "^4.1.4"
   },
   "pnpm": {
     "overrides": {

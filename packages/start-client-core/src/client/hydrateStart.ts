@@ -1,14 +1,14 @@
 import { hydrate } from '@tanstack/router-core/ssr/client'
 
-import { ServerFunctionSerializationAdapter } from './ServerFunctionSerializationAdapter'
-import type { AnyRouter, AnySerializationAdapter } from '@tanstack/router-core'
-import type { AnyStartInstanceOptions } from '../createStart'
 import { startInstance } from '#tanstack-start-entry'
 import {
   hasPluginAdapters,
   pluginSerializationAdapters,
 } from '#tanstack-start-plugin-adapters'
 import { getRouter } from '#tanstack-router-entry'
+import { ServerFunctionSerializationAdapter } from './ServerFunctionSerializationAdapter'
+import type { AnyRouter, AnySerializationAdapter } from '@tanstack/router-core'
+import type { AnyStartInstanceOptions } from '../createStart'
 
 export async function hydrateStart(): Promise<AnyRouter> {
   const router = await getRouter()

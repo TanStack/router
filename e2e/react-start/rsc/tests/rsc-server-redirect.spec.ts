@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC Server Redirect Tests', () => {
   test('SSR follows route redirect when a server function throws redirect', async ({
@@ -17,7 +18,7 @@ test.describe('RSC Server Redirect Tests', () => {
   }) => {
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     await page.getByTestId('nav-server-redirect').click()
     await page.waitForURL('/rsc-basic')

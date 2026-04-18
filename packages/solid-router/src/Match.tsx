@@ -469,13 +469,20 @@ export const Outlet = () => {
     return router.stores.matchStores.get(id)?.get().status
   })
 
-  // Only show not-found if we're not in a redirected state
   const shouldShowNotFound = () =>
     childMatchStatus() !== 'redirected' && parentGlobalNotFound()
 
+  const childRouteKey = Solid.createMemo(() => {
+    if (shouldShowNotFound()) return undefined
+    const cid = childMatchId()
+    if (!cid) return undefined
+    return router.stores.matchStores.get(cid)?.routeId ?? cid
+  })
+
   return (
     <Solid.Show
-      when={!shouldShowNotFound() && childMatchId()}
+      when={childRouteKey()}
+      keyed
       fallback={
         <Solid.Show when={shouldShowNotFound() && route()}>
           {(resolvedRoute) =>
@@ -484,20 +491,18 @@ export const Outlet = () => {
         </Solid.Show>
       }
     >
-      {(childMatchIdAccessor) => {
-        const currentMatchId = Solid.createMemo(() => childMatchIdAccessor())
-
+      {(_routeKey: string) => {
         return (
           <Solid.Show
             when={routeId() === rootRouteId}
-            fallback={<Match matchId={currentMatchId()} />}
+            fallback={<Match matchId={childMatchId()!} />}
           >
             <Solid.Suspense
               fallback={
                 <Dynamic component={router.options.defaultPendingComponent} />
               }
             >
-              <Match matchId={currentMatchId()} />
+              <Match matchId={childMatchId()!} />
             </Solid.Suspense>
           </Solid.Show>
         )

@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC Hydration Tests - Hydration mismatch detection', () => {
   test('Page loads with hydration status visible', async ({ page }) => {
@@ -105,7 +106,7 @@ test.describe('RSC Hydration Tests - Hydration mismatch detection', () => {
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate to hydration page via nav
     await page.getByTestId('nav-hydration').click()
