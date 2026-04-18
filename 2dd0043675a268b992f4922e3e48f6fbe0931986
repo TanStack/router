@@ -1,0 +1,88 @@
+scripts/nx/playwright-plugin.ts
+  cc9d79188c6ee825 190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "2dd0043675a268b992f4922e3e48f6fbe0931986",
+  "prompts": {
+    "28b8640be033629e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_25d79e268ffeCT1uJOIDHjiJJ8",
+        "model": "openai/gpt-5.3-codex"
+      },
+      "human_author": "Nicolas Beaussart",
+      "messages": [],
+      "total_additions": 98,
+      "total_deletions": 86,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    },
+    "3975652e9db5bf9a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_265604614ffecAy9aRkRXjUNlT",
+        "model": "openai/gpt-5.3-codex"
+      },
+      "human_author": "Nicolas Beaussart",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1058,
+      "overriden_lines": 0
+    },
+    "8df6c4bcb84af2b2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_2658f0c4dffecY4iZl89Q3qSua",
+        "model": "openai/gpt-5.3-codex"
+      },
+      "human_author": "Nicolas Beaussart",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1143,
+      "overriden_lines": 0
+    },
+    "99fa6b7709d7a3c4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_25da07c77ffeGJyPR3Udg8Zvgt",
+        "model": "openai/gpt-5.3-codex"
+      },
+      "human_author": "Nicolas Beaussart",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 0,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    },
+    "a4243e697aa4094f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_268116a96ffeF8jjjokgfqjvef",
+        "model": "openai/gpt-5.3-codex"
+      },
+      "human_author": "Nicolas Beaussart",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2178,
+      "overriden_lines": 0
+    },
+    "cc9d79188c6ee825": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_25d7918a2ffePkXcCW9Saxa6tJ",
+        "model": "openai/gpt-5.3-codex"
+      },
+      "human_author": "Nicolas Beaussart",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
