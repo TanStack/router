@@ -1603,49 +1603,6 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
-  e2e/react-start/basic-rsbuild:
-    dependencies:
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../../../packages/react-router
-      '@tanstack/react-start':
-        specifier: workspace:*
-        version: link:../../../packages/react-start
-      react:
-        specifier: ^19.2.3
-        version: 19.2.3
-      react-dom:
-        specifier: ^19.2.3
-        version: 19.2.3(react@19.2.3)
-    devDependencies:
-      '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
-      '@rsbuild/core':
-        specifier: 2.0.0-rc.3
-        version: 2.0.0-rc.3(core-js@3.40.0)
-      '@rsbuild/plugin-react':
-        specifier: 2.0.0-rc.3
-        version: 2.0.0-rc.3(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))(@rspack/core@2.0.0-rc.2(@swc/helpers@0.5.21))
-      '@tanstack/router-e2e-utils':
-        specifier: workspace:^
-        version: link:../../e2e-utils
-      '@types/node':
-        specifier: 25.0.9
-        version: 25.0.9
-      '@types/react':
-        specifier: ^19.2.8
-        version: 19.2.9
-      '@types/react-dom':
-        specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.9)
-      srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
-      typescript:
-        specifier: ^6.0.2
-        version: 6.0.2
-
   e2e/react-start/basic-tsr-config:
     dependencies:
       '@tanstack/react-router':
@@ -4105,43 +4062,6 @@ importers:
         specifier: ^4.74.0
         version: 4.75.0
 
-  e2e/solid-start/basic-rsbuild:
-    dependencies:
-      '@tanstack/solid-router':
-        specifier: workspace:^
-        version: link:../../../packages/solid-router
-      '@tanstack/solid-start':
-        specifier: workspace:*
-        version: link:../../../packages/solid-start
-      solid-js:
-        specifier: 1.9.12
-        version: 1.9.12
-    devDependencies:
-      '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
-      '@rsbuild/core':
-        specifier: 2.0.0-rc.3
-        version: 2.0.0-rc.3(core-js@3.40.0)
-      '@rsbuild/plugin-babel':
-        specifier: ^1.0.5
-        version: 1.0.6(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))
-      '@rsbuild/plugin-solid':
-        specifier: ^1.0.6
-        version: 1.0.6(@babel/core@7.29.0)(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))(solid-js@1.9.12)
-      '@tanstack/router-e2e-utils':
-        specifier: workspace:^
-        version: link:../../e2e-utils
-      '@types/node':
-        specifier: 25.0.9
-        version: 25.0.9
-      srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
-      typescript:
-        specifier: ^6.0.2
-        version: 6.0.2
-
   e2e/solid-start/basic-solid-query:
     dependencies:
       '@tanstack/solid-query':
@@ -5995,46 +5915,6 @@ importers:
       wrangler:
         specifier: ^4.74.0
         version: 4.75.0
-
-  e2e/vue-start/basic-rsbuild:
-    dependencies:
-      '@tanstack/vue-router':
-        specifier: workspace:*
-        version: link:../../../packages/vue-router
-      '@tanstack/vue-start':
-        specifier: workspace:*
-        version: link:../../../packages/vue-start
-      vue:
-        specifier: ^3.5.16
-        version: 3.5.25(typescript@6.0.2)
-    devDependencies:
-      '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
-      '@rsbuild/core':
-        specifier: 2.0.0-rc.3
-        version: 2.0.0-rc.3(core-js@3.40.0)
-      '@rsbuild/plugin-babel':
-        specifier: ^1.0.5
-        version: 1.0.6(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))
-      '@rsbuild/plugin-vue':
-        specifier: ^1.2.2
-        version: 1.2.2(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))(@swc/core@1.10.15(@swc/helpers@0.5.21))(esbuild@0.27.4)(vue@3.5.25(typescript@6.0.2))
-      '@rsbuild/plugin-vue-jsx':
-        specifier: ^1.1.1
-        version: 1.1.1(@babel/core@7.29.0)(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))
-      '@tanstack/router-e2e-utils':
-        specifier: workspace:^
-        version: link:../../e2e-utils
-      '@types/node':
-        specifier: 25.0.9
-        version: 25.0.9
-      srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
-      typescript:
-        specifier: ^6.0.2
-        version: 6.0.2
 
   e2e/vue-start/basic-tsr-config:
     dependencies:
