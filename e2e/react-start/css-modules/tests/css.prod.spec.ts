@@ -1,140 +1,80 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
-test.skip(process.env.MODE === 'dev', 'Prod-only repro')
+test.skip(process.env.MODE !== 'prod', 'Prod-only coverage')
+test.skip(
+  process.env.VITE_CSS_CODE_SPLIT !== 'false',
+  'Requires cssCodeSplit=false mode',
+)
 
-test.describe('CSS styles in SSR (prod only)', () => {
-  const buildUrl = (baseURL: string, path: string) => {
-    return baseURL.replace(/\/$/, '') + path
-  }
+test.describe('CSS modules with cssCodeSplit disabled', () => {
+  test.describe('with JavaScript disabled', () => {
+    test.use({ javaScriptEnabled: false })
 
-  test('CSS modules stay applied when navigating from static to lazy route', async ({
+    test('CSS modules are applied on initial page load', async ({ page }) => {
+      await page.goto('/modules')
+
+      const card = page.getByTestId('module-card')
+      await expect(card).toBeVisible()
+
+      const className = await card.getAttribute('class')
+      expect(className).toBeTruthy()
+      expect(className).not.toBe('card')
+      expect(className!.length).toBeGreaterThan(5)
+
+      const backgroundColor = await card.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(240, 253, 244)')
+
+      const padding = await card.evaluate((el) => getComputedStyle(el).padding)
+      expect(padding).toBe('16px')
+
+      const borderRadius = await card.evaluate(
+        (el) => getComputedStyle(el).borderRadius,
+      )
+      expect(borderRadius).toBe('8px')
+    })
+  })
+
+  test('CSS modules styles persist after hydration', async ({ page }) => {
+    await page.goto('/modules')
+
+    const card = page.getByTestId('module-card')
+    await expect(card).toBeVisible()
+
+    await expect(async () => {
+      const backgroundColor = await card.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(240, 253, 244)')
+    }).toPass({ timeout: 5000 })
+  })
+
+  test('styles work correctly after client-side navigation', async ({
     page,
-    baseURL,
   }) => {
-    await page.goto(buildUrl(baseURL!, '/lazy-css-static'))
+    await page.goto('/')
 
-    const widget = page.getByTestId('shared-widget')
-    await expect(widget).toBeVisible()
+    const globalElement = page.getByTestId('global-styled')
+    await expect(globalElement).toBeVisible()
 
-    const backgroundColor = await widget.evaluate(
+    let backgroundColor = await globalElement.evaluate(
       (el) => getComputedStyle(el).backgroundColor,
     )
-    expect(backgroundColor).toBe('rgb(255, 247, 237)')
+    expect(backgroundColor).toBe('rgb(59, 130, 246)')
 
-    const borderTopColor = await widget.evaluate(
-      (el) => getComputedStyle(el).borderTopColor,
-    )
-    expect(borderTopColor).toBe('rgb(249, 115, 22)')
+    await page.getByTestId('nav-modules').click()
+    await page.waitForURL('**/modules')
 
-    await expect(page.getByTestId('lazy-css-static-hydrated')).toBeVisible()
+    const card = page.getByTestId('module-card')
+    await expect(card).toBeVisible()
 
-    await page.getByTestId('nav-lazy-css-lazy').click()
-    await page.waitForURL('**/lazy-css-lazy')
-    await expect(page.getByTestId('lazy-css-lazy-heading')).toBeVisible()
-
-    const lazyWidget = page.getByTestId('shared-widget')
-    await expect(lazyWidget).toBeVisible()
-
-    await expect
-      .poll(
-        () => lazyWidget.evaluate((el) => getComputedStyle(el).backgroundColor),
-        { timeout: 5_000 },
+    await expect(async () => {
+      const backgroundColor = await card.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
       )
-      .toBe('rgb(255, 247, 237)')
-  })
-
-  test('CSS modules stay applied when navigating from lazy to static route', async ({
-    page,
-    baseURL,
-  }) => {
-    await page.goto(buildUrl(baseURL!, '/lazy-css-lazy'))
-    await expect(page.getByTestId('lazy-css-lazy-heading')).toBeVisible()
-
-    // Wait for lazy widget to load
-    const lazyWidget = page.getByTestId('shared-widget')
-    await expect(lazyWidget).toBeVisible()
-
-    await expect
-      .poll(
-        () => lazyWidget.evaluate((el) => getComputedStyle(el).backgroundColor),
-        { timeout: 5_000 },
-      )
-      .toBe('rgb(255, 247, 237)')
-
-    // Navigate to static route
-    await page.getByTestId('nav-lazy-css-static').click()
-    await page.waitForURL('**/lazy-css-static')
-
-    const staticWidget = page.getByTestId('shared-widget')
-    await expect(staticWidget).toBeVisible()
-
-    await expect
-      .poll(
-        () =>
-          staticWidget.evaluate((el) => getComputedStyle(el).backgroundColor),
-        { timeout: 5_000 },
-      )
-      .toBe('rgb(255, 247, 237)')
-
-    const borderTopColor = await staticWidget.evaluate(
-      (el) => getComputedStyle(el).borderTopColor,
-    )
-    expect(borderTopColor).toBe('rgb(249, 115, 22)')
-  })
-
-  test('CSS modules applied on direct navigation to lazy route', async ({
-    page,
-    baseURL,
-  }) => {
-    // Navigate directly to the lazy route (cold start, no prior static route)
-    await page.goto(buildUrl(baseURL!, '/lazy-css-lazy'))
-    await expect(page.getByTestId('lazy-css-lazy-heading')).toBeVisible()
-
-    const widget = page.getByTestId('shared-widget')
-    await expect(widget).toBeVisible()
-
-    await expect
-      .poll(
-        () => widget.evaluate((el) => getComputedStyle(el).backgroundColor),
-        { timeout: 5_000 },
-      )
-      .toBe('rgb(255, 247, 237)')
-
-    const borderTopColor = await widget.evaluate(
-      (el) => getComputedStyle(el).borderTopColor,
-    )
-    expect(borderTopColor).toBe('rgb(249, 115, 22)')
-  })
-
-  test('CSS persists after navigating away from lazy and back', async ({
-    page,
-    baseURL,
-  }) => {
-    await page.goto(buildUrl(baseURL!, '/lazy-css-static'))
-    await expect(page.getByTestId('lazy-css-static-hydrated')).toBeVisible()
-
-    // Navigate to lazy
-    await page.getByTestId('nav-lazy-css-lazy').click()
-    await page.waitForURL('**/lazy-css-lazy')
-    await expect(page.getByTestId('shared-widget')).toBeVisible()
-
-    // Navigate away to home
-    await page.getByTestId('nav-home').click()
-    await page.waitForURL(/\/([^/]*)(\/)?($|\?)/)
-
-    // Navigate back to lazy
-    await page.getByTestId('nav-lazy-css-lazy').click()
-    await page.waitForURL('**/lazy-css-lazy')
-
-    const widget = page.getByTestId('shared-widget')
-    await expect(widget).toBeVisible()
-
-    await expect
-      .poll(
-        () => widget.evaluate((el) => getComputedStyle(el).backgroundColor),
-        { timeout: 5_000 },
-      )
-      .toBe('rgb(255, 247, 237)')
+      expect(backgroundColor).toBe('rgb(240, 253, 244)')
+    }).toPass({ timeout: 5000 })
   })
 })

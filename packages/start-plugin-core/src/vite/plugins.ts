@@ -1,13 +1,7 @@
 import { normalizePath } from 'vite'
-import { ENTRY_POINTS, START_ENVIRONMENT_NAMES } from '../constants'
+import { ENTRY_POINTS } from '../constants'
 import { createVirtualModule } from './createVirtualModule'
-import { normalizeViteClientBuild } from './start-manifest-plugin/normalized-client-build'
-import type {
-  GetConfigFn,
-  NormalizedClientBuild,
-  ResolvedStartConfig,
-} from '../types'
-import type { StartEnvironmentName } from '../constants'
+import type { GetConfigFn, ResolvedStartConfig } from '../types'
 import type { PluginOption, ViteBuilder } from 'vite'
 
 export function createVirtualClientEntryPlugin(opts: {
@@ -66,31 +60,6 @@ export function createDevBaseRewritePlugin(opts: {
 
         next()
       })
-    },
-  }
-}
-
-export function createCaptureClientBuildPlugin(opts: {
-  capturedClientBuild: Partial<
-    Record<StartEnvironmentName, NormalizedClientBuild>
-  >
-}): PluginOption {
-  return {
-    name: 'tanstack-start:core:capture-bundle',
-    applyToEnvironment(environment) {
-      return environment.name === START_ENVIRONMENT_NAMES.client
-    },
-    enforce: 'post',
-    generateBundle(_options, bundle) {
-      const environment = this.environment.name as StartEnvironmentName
-
-      if (environment !== START_ENVIRONMENT_NAMES.client) {
-        throw new Error(
-          `Unexpected environment for client build capture: ${environment}`,
-        )
-      }
-
-      opts.capturedClientBuild[environment] = normalizeViteClientBuild(bundle)
     },
   }
 }

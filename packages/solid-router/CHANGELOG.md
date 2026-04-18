@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 1.168.20
+
+### Patch Changes
+
+- fix: use keyed Show in Outlet to fix child route rendering with useQuery ([#7204](https://github.com/TanStack/router/pull/7204))
+
 ## 1.168.19
 
 ### Patch Changes

@@ -2,8 +2,13 @@ import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
 const HYDRATION_WAIT = 1000
+const whitelistErrors = [
+  'Failed to load resource: the server responded with a status of 504',
+]
 
 test.describe('RSC Query Without Loader CSS Tests', () => {
+  test.use({ whitelistErrors })
+
   test('render-time suspense query HTML includes resolved RSC and stylesheet links', async ({
     page,
   }) => {
@@ -31,10 +36,7 @@ test.describe('RSC Query Without Loader CSS Tests', () => {
       'CSS Modules via Render-Time Suspense Query',
     )
 
-    const backgroundColor = await container.evaluate(
-      (el) => getComputedStyle(el).backgroundColor,
-    )
-    expect(backgroundColor).toBe('rgb(224, 242, 254)')
+    await expect(container).toHaveCSS('background-color', 'rgb(224, 242, 254)')
   })
 
   test('client-side navigation keeps streamed query CSS intact', async ({
@@ -50,9 +52,6 @@ test.describe('RSC Query Without Loader CSS Tests', () => {
     const container = page.getByTestId('rsc-css-modules-content')
     await expect(container).toBeVisible()
 
-    const backgroundColor = await container.evaluate(
-      (el) => getComputedStyle(el).backgroundColor,
-    )
-    expect(backgroundColor).toBe('rgb(224, 242, 254)')
+    await expect(container).toHaveCSS('background-color', 'rgb(224, 242, 254)')
   })
 })

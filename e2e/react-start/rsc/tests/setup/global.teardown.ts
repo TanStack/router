@@ -2,5 +2,5 @@ import { e2eStopDummyServer } from '@tanstack/router-e2e-utils'
 import packageJson from '../../package.json' with { type: 'json' }
 
 export default async function teardown() {
-  await e2eStopDummyServer(packageJson.name)
+  await e2eStopDummyServer(process.env.E2E_PORT_KEY ?? packageJson.name)
 }

@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 async function getTodoCount(page: Page) {
   const countText = await page.getByTestId('rsc-todo-count').textContent()
@@ -31,7 +32,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Add todo button is disabled when input is empty', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify button is disabled with empty input
     await expect(page.getByTestId('add-todo-btn')).toBeDisabled()
@@ -52,7 +53,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Adding a todo refreshes the RSC', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     const initialCount = await getTodoCount(page)
 
@@ -75,7 +76,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Todo input clears after successful submission', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Type and submit
     await page.getByTestId('todo-input').fill('Clear test todo')
@@ -90,7 +91,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Form submission works via Enter key', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     const initialCount = await getTodoCount(page)
 
@@ -112,7 +113,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Multiple todos can be added in sequence', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     let expectedCount = await getTodoCount(page)
 
@@ -153,7 +154,7 @@ test.describe('RSC Forms Tests - Todo list with mutations', () => {
   test('Whitespace-only input does not submit', async ({ page }) => {
     await page.goto('/rsc-forms')
     await page.waitForURL('/rsc-forms')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Type whitespace only
     await page.getByTestId('todo-input').fill('   ')

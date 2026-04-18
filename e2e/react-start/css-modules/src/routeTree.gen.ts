@@ -12,8 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SassMixinRouteImport } from './routes/sass-mixin'
 import { Route as QuotesRouteImport } from './routes/quotes'
 import { Route as ModulesRouteImport } from './routes/modules'
-import { Route as LazyCssStaticRouteImport } from './routes/lazy-css-static'
-import { Route as LazyCssLazyRouteImport } from './routes/lazy-css-lazy'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SassMixinRoute = SassMixinRouteImport.update({
@@ -31,16 +29,6 @@ const ModulesRoute = ModulesRouteImport.update({
   path: '/modules',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LazyCssStaticRoute = LazyCssStaticRouteImport.update({
-  id: '/lazy-css-static',
-  path: '/lazy-css-static',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LazyCssLazyRoute = LazyCssLazyRouteImport.update({
-  id: '/lazy-css-lazy',
-  path: '/lazy-css-lazy',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -49,16 +37,12 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/lazy-css-lazy': typeof LazyCssLazyRoute
-  '/lazy-css-static': typeof LazyCssStaticRoute
   '/modules': typeof ModulesRoute
   '/quotes': typeof QuotesRoute
   '/sass-mixin': typeof SassMixinRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/lazy-css-lazy': typeof LazyCssLazyRoute
-  '/lazy-css-static': typeof LazyCssStaticRoute
   '/modules': typeof ModulesRoute
   '/quotes': typeof QuotesRoute
   '/sass-mixin': typeof SassMixinRoute
@@ -66,43 +50,20 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/lazy-css-lazy': typeof LazyCssLazyRoute
-  '/lazy-css-static': typeof LazyCssStaticRoute
   '/modules': typeof ModulesRoute
   '/quotes': typeof QuotesRoute
   '/sass-mixin': typeof SassMixinRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/lazy-css-lazy'
-    | '/lazy-css-static'
-    | '/modules'
-    | '/quotes'
-    | '/sass-mixin'
+  fullPaths: '/' | '/modules' | '/quotes' | '/sass-mixin'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/lazy-css-lazy'
-    | '/lazy-css-static'
-    | '/modules'
-    | '/quotes'
-    | '/sass-mixin'
-  id:
-    | '__root__'
-    | '/'
-    | '/lazy-css-lazy'
-    | '/lazy-css-static'
-    | '/modules'
-    | '/quotes'
-    | '/sass-mixin'
+  to: '/' | '/modules' | '/quotes' | '/sass-mixin'
+  id: '__root__' | '/' | '/modules' | '/quotes' | '/sass-mixin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LazyCssLazyRoute: typeof LazyCssLazyRoute
-  LazyCssStaticRoute: typeof LazyCssStaticRoute
   ModulesRoute: typeof ModulesRoute
   QuotesRoute: typeof QuotesRoute
   SassMixinRoute: typeof SassMixinRoute
@@ -131,20 +92,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModulesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lazy-css-static': {
-      id: '/lazy-css-static'
-      path: '/lazy-css-static'
-      fullPath: '/lazy-css-static'
-      preLoaderRoute: typeof LazyCssStaticRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lazy-css-lazy': {
-      id: '/lazy-css-lazy'
-      path: '/lazy-css-lazy'
-      fullPath: '/lazy-css-lazy'
-      preLoaderRoute: typeof LazyCssLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -157,8 +104,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  LazyCssLazyRoute: LazyCssLazyRoute,
-  LazyCssStaticRoute: LazyCssStaticRoute,
   ModulesRoute: ModulesRoute,
   QuotesRoute: QuotesRoute,
   SassMixinRoute: SassMixinRoute,

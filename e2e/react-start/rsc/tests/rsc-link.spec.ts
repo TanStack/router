@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC Link Tests', () => {
   test('RSC renders with Link component', async ({ page }) => {
@@ -24,7 +25,7 @@ test.describe('RSC Link Tests', () => {
   test('Link inside RSC navigates correctly on click', async ({ page }) => {
     await page.goto('/rsc-link')
     await page.waitForURL('/rsc-link')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify we're on the RSC link page
     await expect(page.getByTestId('rsc-link-title')).toBeVisible()
@@ -49,7 +50,7 @@ test.describe('RSC Link Tests', () => {
     // Start from home page
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate to RSC link page via nav bar (need to be specific to avoid matching example cards)
     await page.getByTestId('nav-link').click()
@@ -72,7 +73,7 @@ test.describe('RSC Link Tests', () => {
   }) => {
     await page.goto('/rsc-link')
     await page.waitForURL('/rsc-link')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Set a marker in window to detect full page reload
     await page.evaluate(() => {

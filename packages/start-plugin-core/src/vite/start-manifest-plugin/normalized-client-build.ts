@@ -42,6 +42,8 @@ export function normalizeViteClientBuild(
   const cssFilesBySourcePath = new Map<string, Array<string>>()
 
   for (const chunk of chunksByFileName.values()) {
+    const bundleEntry = clientBundle[chunk.fileName] as Rollup.OutputChunk
+
     if (chunk.isEntry) {
       if (entryChunkFileName) {
         throw new Error(
@@ -60,22 +62,19 @@ export function normalizeViteClientBuild(
       chunkFileNames.push(chunk.fileName)
     }
 
-    const bundleEntry = clientBundle[chunk.fileName]
-    if (bundleEntry?.type === 'chunk') {
-      for (const moduleId of bundleEntry.moduleIds) {
-        const queryIndex = moduleId.indexOf('?')
-        const sourcePath =
-          queryIndex >= 0 ? moduleId.slice(0, queryIndex) : moduleId
-        if (!sourcePath) continue
+    for (const moduleId of bundleEntry.moduleIds) {
+      const queryIndex = moduleId.indexOf('?')
+      const sourcePath =
+        queryIndex >= 0 ? moduleId.slice(0, queryIndex) : moduleId
+      if (!sourcePath) continue
 
-        const existing = cssFilesBySourcePath.get(sourcePath)
-        cssFilesBySourcePath.set(
-          sourcePath,
-          existing
-            ? Array.from(new Set([...existing, ...chunk.css]))
-            : chunk.css.slice(),
-        )
-      }
+      const existing = cssFilesBySourcePath.get(sourcePath)
+      cssFilesBySourcePath.set(
+        sourcePath,
+        existing
+          ? Array.from(new Set([...existing, ...chunk.css]))
+          : chunk.css.slice(),
+      )
     }
   }
 

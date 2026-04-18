@@ -9,16 +9,19 @@ const startPort = process.env.START_PORT || 3001
 
 const isSpaMode = process.env.MODE === 'spa'
 const isPrerender = process.env.MODE === 'prerender'
+const distDir = process.env.E2E_DIST_DIR || 'dist'
+const distClientDir = path.resolve(distDir, 'client')
+const distServerEntryPath = path.resolve(distDir, 'server', 'server.js')
 
 export async function createStartServer() {
-  const server = (await import('./dist/server/server.js')).default
+  const server = (await import(distServerEntryPath)).default
   const nodeHandler = toNodeHandler(server.fetch)
 
   const app = express()
 
   // to keep testing uniform stop express from redirecting /posts to /posts/
   // when serving pre-rendered pages
-  app.use(express.static('./dist/client', { redirect: !isPrerender }))
+  app.use(express.static(distClientDir, { redirect: !isPrerender }))
 
   app.use(async (req, res, next) => {
     try {
@@ -50,10 +53,10 @@ export async function createSpaServer() {
     }),
   )
 
-  app.use(express.static('./dist/client'))
+  app.use(express.static(distClientDir))
 
   app.get('/{*splat}', (req, res) => {
-    res.sendFile(path.resolve('./dist/client/index.html'))
+    res.sendFile(path.resolve(distClientDir, 'index.html'))
   })
 
   return { app }

@@ -18,6 +18,10 @@ import { Route as R4RouteImport } from './routes/r4'
 import { Route as R3RouteImport } from './routes/r3'
 import { Route as R2RouteImport } from './routes/r2'
 import { Route as R1RouteImport } from './routes/r1'
+import { Route as LazyCssStaticRouteImport } from './routes/lazy-css-static'
+import { Route as LazyCssLazyRouteImport } from './routes/lazy-css-lazy'
+import { Route as BRouteImport } from './routes/b'
+import { Route as ARouteImport } from './routes/a'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SharedCRoute = SharedCRouteImport.update({
@@ -65,6 +69,26 @@ const R1Route = R1RouteImport.update({
   path: '/r1',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LazyCssStaticRoute = LazyCssStaticRouteImport.update({
+  id: '/lazy-css-static',
+  path: '/lazy-css-static',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LazyCssLazyRoute = LazyCssLazyRouteImport.update({
+  id: '/lazy-css-lazy',
+  path: '/lazy-css-lazy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BRoute = BRouteImport.update({
+  id: '/b',
+  path: '/b',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ARoute = ARouteImport.update({
+  id: '/a',
+  path: '/a',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -73,6 +97,10 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/a': typeof ARoute
+  '/b': typeof BRoute
+  '/lazy-css-lazy': typeof LazyCssLazyRoute
+  '/lazy-css-static': typeof LazyCssStaticRoute
   '/r1': typeof R1Route
   '/r2': typeof R2Route
   '/r3': typeof R3Route
@@ -85,6 +113,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/a': typeof ARoute
+  '/b': typeof BRoute
+  '/lazy-css-lazy': typeof LazyCssLazyRoute
+  '/lazy-css-static': typeof LazyCssStaticRoute
   '/r1': typeof R1Route
   '/r2': typeof R2Route
   '/r3': typeof R3Route
@@ -98,6 +130,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/a': typeof ARoute
+  '/b': typeof BRoute
+  '/lazy-css-lazy': typeof LazyCssLazyRoute
+  '/lazy-css-static': typeof LazyCssStaticRoute
   '/r1': typeof R1Route
   '/r2': typeof R2Route
   '/r3': typeof R3Route
@@ -112,6 +148,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/a'
+    | '/b'
+    | '/lazy-css-lazy'
+    | '/lazy-css-static'
     | '/r1'
     | '/r2'
     | '/r3'
@@ -124,6 +164,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/a'
+    | '/b'
+    | '/lazy-css-lazy'
+    | '/lazy-css-static'
     | '/r1'
     | '/r2'
     | '/r3'
@@ -136,6 +180,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/a'
+    | '/b'
+    | '/lazy-css-lazy'
+    | '/lazy-css-static'
     | '/r1'
     | '/r2'
     | '/r3'
@@ -149,6 +197,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ARoute: typeof ARoute
+  BRoute: typeof BRoute
+  LazyCssLazyRoute: typeof LazyCssLazyRoute
+  LazyCssStaticRoute: typeof LazyCssStaticRoute
   R1Route: typeof R1Route
   R2Route: typeof R2Route
   R3Route: typeof R3Route
@@ -225,6 +277,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof R1RouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lazy-css-static': {
+      id: '/lazy-css-static'
+      path: '/lazy-css-static'
+      fullPath: '/lazy-css-static'
+      preLoaderRoute: typeof LazyCssStaticRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lazy-css-lazy': {
+      id: '/lazy-css-lazy'
+      path: '/lazy-css-lazy'
+      fullPath: '/lazy-css-lazy'
+      preLoaderRoute: typeof LazyCssLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/b': {
+      id: '/b'
+      path: '/b'
+      fullPath: '/b'
+      preLoaderRoute: typeof BRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/a': {
+      id: '/a'
+      path: '/a'
+      fullPath: '/a'
+      preLoaderRoute: typeof ARouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -237,6 +317,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ARoute: ARoute,
+  BRoute: BRoute,
+  LazyCssLazyRoute: LazyCssLazyRoute,
+  LazyCssStaticRoute: LazyCssStaticRoute,
   R1Route: R1Route,
   R2Route: R2Route,
   R3Route: R3Route,

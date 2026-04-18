@@ -1,8 +1,20 @@
+import fs from 'node:fs'
 import { defineConfig, devices } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
-const PORT = await getTestServerPort(packageJson.name)
+const e2ePortKey = process.env.E2E_PORT_KEY ?? packageJson.name
+
+if (process.env.TEST_WORKER_INDEX === undefined) {
+  for (const portFile of [
+    `port-${e2ePortKey}.txt`,
+    `port-${e2ePortKey}-external.txt`,
+  ]) {
+    fs.rmSync(portFile, { force: true })
+  }
+}
+
+const PORT = await getTestServerPort(e2ePortKey)
 const baseURL = `http://localhost:${PORT}`
 
 export default defineConfig({
@@ -18,7 +30,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `PORT=${PORT} pnpm build && PORT=${PORT} pnpm start`,
+    command: `PORT=${PORT} pnpm start`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',

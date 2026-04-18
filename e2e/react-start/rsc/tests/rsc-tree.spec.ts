@@ -1,11 +1,12 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC Tree Restructuring - Moving RSC without reload', () => {
   test('Changing parent element type does not reload RSC', async ({ page }) => {
     await page.goto('/rsc-tree')
     await page.waitForURL('/rsc-tree')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial RSC timestamp and instance ID
     const initialRscTimestamp = await page
@@ -60,7 +61,7 @@ test.describe('RSC Tree Restructuring - Moving RSC without reload', () => {
   test('Adding wrapper elements does not reload RSC', async ({ page }) => {
     await page.goto('/rsc-tree')
     await page.waitForURL('/rsc-tree')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial RSC timestamp
     const initialRscTimestamp = await page
@@ -95,7 +96,7 @@ test.describe('RSC Tree Restructuring - Moving RSC without reload', () => {
   test('Removing wrapper elements does not reload RSC', async ({ page }) => {
     await page.goto('/rsc-tree')
     await page.waitForURL('/rsc-tree')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Add some wrappers first
     await page.getByTestId('add-wrapper').click()
@@ -131,7 +132,7 @@ test.describe('RSC Tree Restructuring - Moving RSC without reload', () => {
   }) => {
     await page.goto('/rsc-tree')
     await page.waitForURL('/rsc-tree')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial RSC timestamp
     const initialRscTimestamp = await page
@@ -160,7 +161,7 @@ test.describe('RSC Tree Restructuring - Moving RSC without reload', () => {
   test('RSC position prop updates without reload', async ({ page }) => {
     await page.goto('/rsc-tree')
     await page.waitForURL('/rsc-tree')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial RSC timestamp
     const initialRscTimestamp = await page

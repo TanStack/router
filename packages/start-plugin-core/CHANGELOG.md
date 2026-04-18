@@ -1,5 +1,11 @@
 # @tanstack/start-plugin-core
 
+## 1.167.35
+
+### Patch Changes
+
+- Fix missing CSS module assets in TanStack Start production manifests when Vite `build.cssCodeSplit` is disabled. ([#7191](https://github.com/TanStack/router/pull/7191))
+
 ## 1.167.34
 
 ### Patch Changes

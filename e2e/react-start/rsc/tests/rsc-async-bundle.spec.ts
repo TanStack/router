@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC Async Bundle Tests - Multiple RSC Promises with React.use()', () => {
   test('Loading states appear for each RSC before they resolve', async ({
@@ -222,7 +223,7 @@ test.describe('RSC Async Bundle Tests - Multiple RSC Promises with React.use()',
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate to async bundle page via link (if nav exists) or direct navigation
     await page.goto('/rsc-async-bundle')
@@ -265,7 +266,7 @@ test.describe('RSC Async Bundle Tests - Multiple RSC Promises with React.use()',
     // Navigate away
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Second visit (force new request)
     await page.goto('/rsc-async-bundle')

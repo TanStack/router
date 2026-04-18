@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC Caching Tests - staleTime behavior', () => {
   test('Page loads with cache controls visible', async ({ page }) => {
@@ -24,7 +25,7 @@ test.describe('RSC Caching Tests - staleTime behavior', () => {
   test('Force refresh button triggers RSC refetch', async ({ page }) => {
     await page.goto('/rsc-caching')
     await page.waitForURL('/rsc-caching')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial timestamp
     const initialTimestamp = await page
@@ -51,7 +52,7 @@ test.describe('RSC Caching Tests - staleTime behavior', () => {
   test('Multiple force refreshes increment counter', async ({ page }) => {
     await page.goto('/rsc-caching')
     await page.waitForURL('/rsc-caching')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Click force refresh multiple times
     await page.getByTestId('force-refresh-btn').click()
@@ -75,7 +76,7 @@ test.describe('RSC Caching Tests - staleTime behavior', () => {
   }) => {
     await page.goto('/rsc-caching')
     await page.waitForURL('/rsc-caching')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Get initial timestamp
     const initialTimestamp = await page
@@ -104,7 +105,7 @@ test.describe('RSC Caching Tests - staleTime behavior', () => {
   test('Each force refresh updates the timestamp', async ({ page }) => {
     await page.goto('/rsc-caching')
     await page.waitForURL('/rsc-caching')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     const timestamps: number[] = []
 
@@ -148,7 +149,7 @@ test.describe('RSC Caching Tests - staleTime behavior', () => {
     // Start at home
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Navigate to caching page via nav bar
     await page.getByTestId('nav-caching').click()

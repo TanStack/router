@@ -7,8 +7,8 @@ import {
 } from '#tanstack-start-plugin-adapters'
 import { getRouter } from '#tanstack-router-entry'
 import { ServerFunctionSerializationAdapter } from './ServerFunctionSerializationAdapter'
-import type { AnyStartInstanceOptions } from '../createStart'
 import type { AnyRouter, AnySerializationAdapter } from '@tanstack/router-core'
+import type { AnyStartInstanceOptions } from '../createStart'
 
 export async function hydrateStart(): Promise<AnyRouter> {
   const router = await getRouter()

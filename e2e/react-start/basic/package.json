@@ -7,13 +7,11 @@
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "build:spa": "MODE=spa vite build && tsc --noEmit",
-    "build:prerender": "MODE=prerender vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "node server.js",
-    "test:e2e:startDummyServer": "node -e 'import(\"../basic-test-suite/src/setup/global.setup.ts\").then(m => m.default())' & node -e 'import(\"../basic-test-suite/src/setup/waitForDummyServer.ts\").then(m => m.default())'",
-    "test:e2e:stopDummyServer": "node -e 'import(\"../basic-test-suite/src/setup/global.teardown.ts\").then(m => m.default())'",
-    "test:e2e": "rm -rf dist; rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e:startDummyServer": "node -e 'import(\"./tests/setup/global.setup.ts\").then(m => m.default())' & node -e 'import(\"./tests/setup/waitForDummyServer.ts\").then(m => m.default())'",
+    "test:e2e:stopDummyServer": "node -e 'import(\"./tests/setup/global.teardown.ts\").then(m => m.default())'",
+    "test:e2e:local": "playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -31,7 +29,6 @@
     "@playwright/test": "^1.50.1",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "tanstack-react-start-e2e-basic-test-suite": "workspace:*",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
@@ -45,10 +42,25 @@
     "zod": "^3.24.2"
   },
   "nx": {
-    "targets": {
-      "test:e2e": {
-        "parallelism": false
-      }
+    "metadata": {
+      "playwrightModes": [
+        {
+          "toolchain": "vite",
+          "mode": "ssr"
+        },
+        {
+          "toolchain": "vite",
+          "mode": "spa"
+        },
+        {
+          "toolchain": "vite",
+          "mode": "prerender"
+        },
+        {
+          "toolchain": "vite",
+          "mode": "preview"
+        }
+      ]
     }
   }
 }

@@ -24,17 +24,26 @@ import {
 import { Scripts } from '../src/Scripts'
 import type { Manifest } from '@tanstack/router-core'
 
-const createTestManifest = (routeId: string) =>
+// React 19 keeps stylesheet resources keyed by href alive for the lifetime of
+// the test module, so these tests use explicit asset URLs to avoid collisions
+// between cases even though Testing Library cleanup runs after each test.
+const createTestManifest = (
+  routeId: string,
+  options?: {
+    stylesheetHref?: string
+    preloadHref?: string
+  },
+) =>
   ({
     routes: {
       [routeId]: {
-        preloads: ['/main.js'],
+        preloads: [options?.preloadHref ?? '/main.js'],
         assets: [
           {
             tag: 'link',
             attrs: {
               rel: 'stylesheet',
-              href: '/main.css',
+              href: options?.stylesheetHref ?? '/main.css',
             },
           },
         ],
@@ -373,6 +382,7 @@ describe('ssr HeadContent', () => {
 
   test('keeps manifest stylesheet links mounted when history state changes', async () => {
     const history = createTestBrowserHistory()
+    const stylesheetHref = '/history-state.css'
 
     const rootRoute = createRootRoute({
       component: () => {
@@ -408,7 +418,9 @@ describe('ssr HeadContent', () => {
     })
 
     router.ssr = {
-      manifest: createTestManifest(rootRoute.id),
+      manifest: createTestManifest(rootRoute.id, {
+        stylesheetHref,
+      }),
     }
 
     await router.load()
@@ -417,7 +429,7 @@ describe('ssr HeadContent', () => {
 
     const getStylesheetLink = () =>
       Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
-        (link) => link.getAttribute('href') === '/main.css',
+        (link) => link.getAttribute('href') === stylesheetHref,
       )
 
     await waitFor(() => {
@@ -438,13 +450,15 @@ describe('ssr HeadContent', () => {
     expect(getStylesheetLink()).toBe(initialLink)
     expect(
       Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(
-        (link) => link.getAttribute('href') === '/main.css',
+        (link) => link.getAttribute('href') === stylesheetHref,
       ),
     ).toHaveLength(1)
   })
 
   test('applies assetCrossOrigin to manifest assets and preloads', async () => {
     const history = createTestBrowserHistory()
+    const stylesheetHref = '/asset-cross-origin.css'
+    const preloadHref = '/asset-cross-origin.js'
 
     const rootRoute = createRootRoute({
       component: () => {
@@ -477,7 +491,10 @@ describe('ssr HeadContent', () => {
     })
 
     router.ssr = {
-      manifest: createTestManifest(rootRoute.id),
+      manifest: createTestManifest(rootRoute.id, {
+        stylesheetHref,
+        preloadHref,
+      }),
     }
 
     await router.load()
@@ -485,26 +502,34 @@ describe('ssr HeadContent', () => {
     await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => {
-      expect(document.head.querySelector('link[rel="stylesheet"]')).toBeTruthy()
       expect(
-        document.head.querySelector('link[rel="modulepreload"]'),
+        document.head.querySelector(
+          `link[rel="stylesheet"][href="${stylesheetHref}"]`,
+        ),
+      ).toBeTruthy()
+      expect(
+        document.head.querySelector(
+          `link[rel="modulepreload"][href="${preloadHref}"]`,
+        ),
       ).toBeTruthy()
     })
 
     expect(
       document.head
-        .querySelector('link[rel="stylesheet"]')
+        .querySelector(`link[rel="stylesheet"][href="${stylesheetHref}"]`)
         ?.getAttribute('crossorigin'),
     ).toBe('use-credentials')
     expect(
       document.head
-        .querySelector('link[rel="modulepreload"]')
+        .querySelector(`link[rel="modulepreload"][href="${preloadHref}"]`)
         ?.getAttribute('crossorigin'),
     ).toBe('anonymous')
   })
 
   test('assetCrossOrigin overrides manifest crossOrigin values', async () => {
     const history = createTestBrowserHistory()
+    const stylesheetHref = '/override-cross-origin.css'
+    const preloadHref = '/override-cross-origin.js'
 
     const rootRoute = createRootRoute({
       component: () => {
@@ -536,14 +561,14 @@ describe('ssr HeadContent', () => {
         routes: {
           [rootRoute.id]: {
             preloads: [
-              { href: '/main.js', crossOrigin: 'use-credentials' as const },
+              { href: preloadHref, crossOrigin: 'use-credentials' as const },
             ],
             assets: [
               {
                 tag: 'link',
                 attrs: {
                   rel: 'stylesheet',
-                  href: '/main.css',
+                  href: stylesheetHref,
                   crossOrigin: 'use-credentials',
                 },
               },
@@ -558,26 +583,33 @@ describe('ssr HeadContent', () => {
     await act(() => render(<RouterProvider router={router} />))
 
     await waitFor(() => {
-      expect(document.head.querySelector('link[rel="stylesheet"]')).toBeTruthy()
       expect(
-        document.head.querySelector('link[rel="modulepreload"]'),
+        document.head.querySelector(
+          `link[rel="stylesheet"][href="${stylesheetHref}"]`,
+        ),
+      ).toBeTruthy()
+      expect(
+        document.head.querySelector(
+          `link[rel="modulepreload"][href="${preloadHref}"]`,
+        ),
       ).toBeTruthy()
     })
 
     expect(
       document.head
-        .querySelector('link[rel="stylesheet"]')
+        .querySelector(`link[rel="stylesheet"][href="${stylesheetHref}"]`)
         ?.getAttribute('crossorigin'),
     ).toBe('anonymous')
     expect(
       document.head
-        .querySelector('link[rel="modulepreload"]')
+        .querySelector(`link[rel="modulepreload"][href="${preloadHref}"]`)
         ?.getAttribute('crossorigin'),
     ).toBe('anonymous')
   })
 
   test('keeps manifest stylesheet links mounted across repeated Link navigations', async () => {
     const history = createTestBrowserHistory()
+    const stylesheetHref = '/repeated-nav.css'
 
     const rootRoute = createRootRoute({
       component: () => {
@@ -608,7 +640,9 @@ describe('ssr HeadContent', () => {
     })
 
     router.ssr = {
-      manifest: createTestManifest(rootRoute.id),
+      manifest: createTestManifest(rootRoute.id, {
+        stylesheetHref,
+      }),
     }
 
     await router.load()
@@ -617,7 +651,7 @@ describe('ssr HeadContent', () => {
 
     const getStylesheetLink = () =>
       Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find(
-        (link) => link.getAttribute('href') === '/main.css',
+        (link) => link.getAttribute('href') === stylesheetHref,
       )
 
     await waitFor(() => {
@@ -648,7 +682,7 @@ describe('ssr HeadContent', () => {
     expect(getStylesheetLink()).toBe(initialLink)
     expect(
       Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(
-        (link) => link.getAttribute('href') === '/main.css',
+        (link) => link.getAttribute('href') === stylesheetHref,
       ),
     ).toHaveLength(1)
   })

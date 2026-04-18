@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 test.describe('RSC CSS Modules Tests', () => {
   test('RSC with CSS modules hydrates without errors', async ({ page }) => {
@@ -13,7 +14,7 @@ test.describe('RSC CSS Modules Tests', () => {
 
     await page.goto('/rsc-css-modules')
     await page.waitForURL('/rsc-css-modules')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Verify content is visible
     await expect(page.getByTestId('rsc-css-modules-content')).toBeVisible()
@@ -106,7 +107,7 @@ test.describe('RSC CSS Modules Tests', () => {
   }) => {
     await page.goto('/')
     await page.waitForURL('/')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     await page.getByTestId('nav-css-modules').click()
     await page.waitForURL('/rsc-css-modules')
@@ -121,5 +122,34 @@ test.describe('RSC CSS Modules Tests', () => {
       (el) => getComputedStyle(el).backgroundColor,
     )
     expect(backgroundColor).toBe('rgb(224, 242, 254)')
+  })
+
+  test('RSC CSS module styles persist across sibling client-side navigation', async ({
+    page,
+  }) => {
+    await page.goto('/rsc-css-modules')
+    await page.waitForURL('/rsc-css-modules')
+
+    const cssModulesContent = page.getByTestId('rsc-css-modules-content')
+    await expect(cssModulesContent).toBeVisible()
+
+    const initialBackgroundColor = await cssModulesContent.evaluate(
+      (el) => getComputedStyle(el).backgroundColor,
+    )
+    expect(initialBackgroundColor).toBe('rgb(224, 242, 254)')
+
+    await page.getByTestId('nav-global-css').click()
+    await page.waitForURL('/rsc-global-css')
+    await expect(page.getByTestId('rsc-global-css-content')).toBeVisible()
+
+    await page.getByTestId('nav-css-modules').click()
+    await page.waitForURL('/rsc-css-modules')
+
+    await expect(cssModulesContent).toBeVisible()
+
+    const finalBackgroundColor = await cssModulesContent.evaluate(
+      (el) => getComputedStyle(el).backgroundColor,
+    )
+    expect(finalBackgroundColor).toBe('rgb(224, 242, 254)')
   })
 })

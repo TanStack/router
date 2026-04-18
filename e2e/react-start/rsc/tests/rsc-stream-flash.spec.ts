@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 /**
  * RSC Stream Flash Prevention Tests
@@ -57,7 +58,7 @@ test.describe('RSC Stream Flash Prevention', () => {
   test('no flash when RSCs stream via ReadableStream', async ({ page }) => {
     await page.goto('/rsc-stream-readable')
     await page.waitForURL('/rsc-stream-readable')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Start streaming and monitor for flash on notification elements
     const flashDetected = await monitorElementsForFlash(
@@ -82,7 +83,7 @@ test.describe('RSC Stream Flash Prevention', () => {
   test('no flash when RSCs stream via async generator', async ({ page }) => {
     await page.goto('/rsc-stream-generator')
     await page.waitForURL('/rsc-stream-generator')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     const flashDetected = await monitorElementsForFlash(
       page,
@@ -124,7 +125,7 @@ test.describe('RSC Stream Flash Prevention', () => {
   test('streamed RSCs have SERVER COMPONENT badge', async ({ page }) => {
     await page.goto('/rsc-stream-readable')
     await page.waitForURL('/rsc-stream-readable')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Start streaming
     await page.getByTestId('start-stream-btn').click()
@@ -147,7 +148,7 @@ test.describe('RSC Stream Flash Prevention', () => {
   test('client interactivity works on streamed RSCs', async ({ page }) => {
     await page.goto('/rsc-stream-readable')
     await page.waitForURL('/rsc-stream-readable')
-    await expect(page.getByTestId('app-hydrated')).toHaveText('hydrated')
+    await waitForHydration(page)
 
     // Start streaming
     await page.getByTestId('start-stream-btn').click()
