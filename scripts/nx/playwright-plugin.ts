@@ -96,11 +96,16 @@ const BUILD_INPUTS: TargetConfiguration['inputs'] = [
   '^production',
 ]
 
-const PLAYWRIGHT_TOOLCHAINS = ['vite'] as const
+const PLAYWRIGHT_TOOLCHAINS = ['vite', 'rsbuild'] as const
 const PLAYWRIGHT_MODES = ['ssr', 'spa', 'prerender', 'preview'] as const
 
 type PlaywrightToolchain = (typeof PLAYWRIGHT_TOOLCHAINS)[number]
 type PlaywrightMode = (typeof PLAYWRIGHT_MODES)[number]
+
+const PLAYWRIGHT_BUILD_COMMANDS: Record<PlaywrightToolchain, string> = {
+  vite: 'vite build && tsc --noEmit',
+  rsbuild: 'rsbuild build && tsc --noEmit',
+}
 
 type PlaywrightModeMetadata = {
   toolchain: PlaywrightToolchain
@@ -199,7 +204,7 @@ function buildModeTargets(
     targets[buildTargetName] = {
       executor: 'nx:run-commands',
       options: {
-        command: 'vite build && tsc --noEmit',
+        command: PLAYWRIGHT_BUILD_COMMANDS[modeMetadata.toolchain],
         cwd: projectRoot,
         env: modeEnv,
       },
