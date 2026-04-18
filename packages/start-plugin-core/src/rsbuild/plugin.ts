@@ -11,6 +11,7 @@ import {
   RSBUILD_RSC_LAYERS,
   createRsbuildEnvironmentPlan,
   createRsbuildResolvedEntryAliases,
+  resolveRsbuildOutputDirectory,
 } from './planning'
 import { registerStartCompilerTransforms } from './start-compiler-host'
 import {
@@ -87,6 +88,7 @@ export function tanStackStartRsbuild(
               ? assetPrefix
               : undefined,
         )
+        const rootDistPath = rsbuildConfig.output?.distPath
         const clientDistPath =
           rsbuildConfig.environments?.[RSBUILD_ENVIRONMENT_NAMES.client]?.output
             ?.distPath
@@ -98,18 +100,18 @@ export function tanStackStartRsbuild(
           resolvedStartConfig,
           root,
           publicBase,
-          clientOutputDirectory:
-            typeof clientDistPath === 'string'
-              ? clientDistPath
-              : typeof clientDistPath?.root === 'string'
-                ? clientDistPath.root
-                : 'dist/client',
-          serverOutputDirectory:
-            typeof serverDistPath === 'string'
-              ? serverDistPath
-              : typeof serverDistPath?.root === 'string'
-                ? serverDistPath.root
-                : 'dist/server',
+          clientOutputDirectory: resolveRsbuildOutputDirectory({
+            distPath: clientDistPath,
+            rootDistPath,
+            fallback: 'dist/client',
+            subdirectory: 'client',
+          }),
+          serverOutputDirectory: resolveRsbuildOutputDirectory({
+            distPath: serverDistPath,
+            rootDistPath,
+            fallback: 'dist/server',
+            subdirectory: 'server',
+          }),
         })
 
         const { startConfig } = getConfig()
@@ -193,9 +195,6 @@ export function tanStackStartRsbuild(
           environments: environmentPlan.environments,
           resolve: {
             alias: environmentPlan.alias,
-          },
-          output: {
-            distPath: 'dist',
           },
         })
       })

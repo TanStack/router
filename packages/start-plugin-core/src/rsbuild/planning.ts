@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module'
+import { join } from 'pathe'
 import { mergeRsbuildConfig } from '@rsbuild/core'
 import { ENTRY_POINTS } from '../constants'
 import type { EnvironmentConfig } from '@rsbuild/core'
@@ -25,6 +26,8 @@ export const RSBUILD_RSC_LAYERS = {
 
 export type RsbuildEnvironmentName =
   (typeof RSBUILD_ENVIRONMENT_NAMES)[keyof typeof RSBUILD_ENVIRONMENT_NAMES]
+
+type RsbuildDistPath = NonNullable<EnvironmentConfig['output']>['distPath']
 
 export interface RsbuildResolvedEntryAliases {
   client: string
@@ -184,6 +187,31 @@ export function createRsbuildEnvironmentPlan(opts: {
     },
     alias,
   }
+}
+
+export function resolveRsbuildOutputDirectory(opts: {
+  distPath: RsbuildDistPath | undefined
+  rootDistPath: RsbuildDistPath | undefined
+  fallback: string
+  subdirectory: string
+}): string {
+  if (typeof opts.distPath === 'string') {
+    return opts.distPath
+  }
+
+  if (typeof opts.distPath?.root === 'string') {
+    return opts.distPath.root
+  }
+
+  if (typeof opts.rootDistPath === 'string') {
+    return join(opts.rootDistPath, opts.subdirectory)
+  }
+
+  if (typeof opts.rootDistPath?.root === 'string') {
+    return join(opts.rootDistPath.root, opts.subdirectory)
+  }
+
+  return opts.fallback
 }
 
 function normalizeEntryPath(path: string) {
