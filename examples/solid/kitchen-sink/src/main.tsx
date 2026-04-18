@@ -477,9 +477,9 @@ function UsersLayoutComponent() {
     return !sortBy
       ? users()
       : [...users()].sort((a, b) => {
-          return a[sortBy] > b[sortBy] ? 1 : -1
-        })
-  }, [users, sortBy])
+        return a[sortBy] > b[sortBy] ? 1 : -1
+      })
+  })
 
   const filteredUsers = createMemo(() => {
     if (!filterBy) return sortedUsers()
@@ -487,7 +487,7 @@ function UsersLayoutComponent() {
     return sortedUsers().filter((user) =>
       user.name.toLowerCase().includes(filterBy.toLowerCase()),
     )
-  }, [sortedUsers, filterBy])
+  })
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
@@ -996,11 +996,10 @@ type Auth = {
 function Spinner({ show, wait }: { show?: boolean; wait?: `delay-${number}` }) {
   return (
     <div
-      class={`inline-block animate-spin px-3 transition ${
-        (show ?? true)
-          ? `opacity-100 duration-500 ${wait ?? 'delay-300'}`
-          : 'duration-500 opacity-0 delay-0'
-      }`}
+      class={`inline-block animate-spin px-3 transition ${(show ?? true)
+        ? `opacity-100 duration-500 ${wait ?? 'delay-300'}`
+        : 'duration-500 opacity-0 delay-0'
+        }`}
     >
       ⍥
     </div>
