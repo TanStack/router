@@ -46,8 +46,7 @@
       "playwrightModes": [
         {
           "toolchain": "vite",
-          "mode": "ssr",
-          "shards": 4
+          "mode": "ssr"
         },
         {
           "toolchain": "vite",
