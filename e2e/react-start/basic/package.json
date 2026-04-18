@@ -27,6 +27,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
+    "@rsbuild/core": "2.0.0-rc.3",
+    "@rsbuild/plugin-react": "2.0.0-rc.3",
+    "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/js-cookie": "^3.0.6",
@@ -59,6 +62,10 @@
         {
           "toolchain": "vite",
           "mode": "preview"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr"
         }
       ]
     }
