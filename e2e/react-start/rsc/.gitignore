@@ -13,6 +13,8 @@ yarn.lock
 /server/build
 /public/build
 /dist/
+/dist-vite-*/
+/dist-rsbuild-*/
 /test-results/
 /playwright-report/
 /blob-report/
