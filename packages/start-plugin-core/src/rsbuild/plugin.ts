@@ -441,15 +441,16 @@ export function tanStackStartRsbuild(
       }
 
       // ---------------------------------------------------------------
-      // 8b. RSC manifest asset replacement (build only)
-      //     In production layered RSC mode the server bundle is emitted before
-      //     client stats exist, so the manifest module cannot be finalized
-      //     during module loading. Emit a simple sentinel string, then swap
-      //     just that serialized value once the client build is available.
+      // 8b. Manifest asset replacement (build only)
+      //     The server manifest virtual module is created before the client
+      //     build stats are guaranteed to exist, so production server bundles
+      //     can otherwise retain the placeholder manifest literal. Emit a
+      //     sentinel string first, then swap just that serialized value once
+      //     the client build has been captured.
       //     In dev we instead rewrite the virtual module and let rspack
       //     recompile the server bundle.
       // ---------------------------------------------------------------
-      if (rscEnabled && api.context.action !== 'dev') {
+      if (api.context.action !== 'dev') {
         const manifestPlaceholderLiteral = JSON.stringify(
           START_MANIFEST_PLACEHOLDER,
         )
