@@ -66,6 +66,14 @@
         {
           "toolchain": "rsbuild",
           "mode": "ssr"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "spa"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "prerender"
         }
       ]
     }

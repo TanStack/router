@@ -5,6 +5,8 @@ import { pluginVueJsx } from '@rsbuild/plugin-vue-jsx'
 import { tanstackStart } from '@tanstack/vue-start/plugin/rsbuild'
 import { isPrerender } from './tests/utils/isPrerender'
 
+const outDir = process.env.E2E_DIST_DIR ?? 'dist'
+
 export default defineConfig({
   plugins: [
     pluginBabel({
@@ -22,6 +24,11 @@ export default defineConfig({
   source: {
     define: {
       __TSR_PRERENDER__: JSON.stringify(isPrerender),
+    },
+  },
+  output: {
+    distPath: {
+      root: outDir,
     },
   },
 })

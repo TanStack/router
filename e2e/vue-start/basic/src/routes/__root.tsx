@@ -11,7 +11,7 @@ import {
 
 import { TanStackRouterDevtoolsInProd } from '@tanstack/vue-router-devtools'
 import { NotFound } from '~/components/NotFound'
-import appCss from '~/styles/app.css?url'
+import '~/styles/app.css'
 import { seo } from '~/utils/seo'
 
 export const Route = createRootRoute({
@@ -28,7 +28,6 @@ export const Route = createRootRoute({
       }),
     ],
     links: [
-      { rel: 'stylesheet', href: appCss },
       {
         rel: 'apple-touch-icon',
         sizes: '180x180',
