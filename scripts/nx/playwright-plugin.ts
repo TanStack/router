@@ -187,7 +187,7 @@ function buildModeTargets(
   for (const [index, rawModeMetadata] of modes.entries()) {
     const modeMetadata = validateModeMetadata(rawModeMetadata, index)
     const modeTargetName = `${CI_TARGET_NAME}--${modeMetadata.toolchain}-${modeMetadata.mode}`
-    const buildTargetName = `build:e2e--${modeMetadata.toolchain}-${modeMetadata.mode}`
+    const buildTargetName = `build:${modeMetadata.toolchain}:${modeMetadata.mode}`
     const shardCount = modeMetadata.shards ?? 1
     const distDir = `dist-${modeMetadata.toolchain}-${modeMetadata.mode}`
     const modeEnv = {
