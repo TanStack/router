@@ -10,6 +10,35 @@ test.describe('selective ssr', () => {
     await expect(page.getByTestId('test-count')).toHaveText(`${testCount}`)
   })
 
+  test('nested inherited ssr false shows pending fallback during client nav', async ({
+    page,
+  }) => {
+    await page.goto('/')
+
+    await expect(page.getByTestId('test-count')).toHaveText(`${testCount}`)
+
+    await page.getByTestId('nested-inherit-ssr-false-link').click()
+
+    await expect(page.getByTestId('posts-heading')).toContainText('posts')
+    await expect(page.getByTestId('router-status')).toContainText('pending')
+    await page.waitForTimeout(100)
+    await expect(page.getByTestId('pending-inherit-fallback')).toBeVisible()
+  })
+
+  test('nested inherited data-only shows pending fallback during client nav', async ({
+    page,
+  }) => {
+    await page.goto('/')
+
+    await expect(page.getByTestId('test-count')).toHaveText(`${testCount}`)
+
+    await page.getByTestId('nested-inherit-data-only-link').click()
+
+    await expect(page.getByTestId('posts-heading')).toContainText('posts')
+    await page.waitForTimeout(100)
+    await expect(page.getByTestId('pending-data-only-fallback')).toBeVisible()
+  })
+
   for (let i = 0; i < testCount; i++) {
     test(`run test ${i}`, async ({ page }) => {
       await page.goto('/')
