@@ -21,6 +21,7 @@ import {
 import { createServerSetup } from './dev-server'
 import { registerClientBuildCapture } from './normalized-client-build'
 import { registerRouterPlugins } from './start-router-plugin'
+import { postBuildWithRsbuild } from './post-build'
 import type { ServerFn } from '../start-compiler/types'
 import type { TanStackStartRsbuildPluginCoreOptions } from './types'
 import type {
@@ -517,6 +518,18 @@ export function tanStackStartRsbuild(
           virtualModuleState.updateManifest(clientBuild)
         }
       })
+
+      if (api.context.action === 'build') {
+        api.onAfterBuild(async () => {
+          const { startConfig } = getConfig()
+
+          await postBuildWithRsbuild({
+            startConfig,
+            clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
+            serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
+          })
+        })
+      }
     },
   }
 }

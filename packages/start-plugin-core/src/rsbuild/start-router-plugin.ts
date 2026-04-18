@@ -1,5 +1,6 @@
 import path from 'pathe'
 import { routesManifestPlugin } from '../start-router-plugin/generator-plugins/routes-manifest-plugin'
+import { prerenderRoutesPlugin } from '../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../start-router-plugin/route-tree-footer'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI } from '@rsbuild/core'
@@ -46,7 +47,12 @@ export function registerRouterPlugins(
               corePluginOpts: opts.corePluginOpts,
             })
           },
-          plugins: [routesManifestPlugin()],
+          plugins: [
+            routesManifestPlugin(),
+            ...(opts.startPluginOpts.prerender?.enabled === true
+              ? [prerenderRoutesPlugin()]
+              : []),
+          ],
         })
         utils.appendPlugins(generatorPlugin as any)
       } catch {
