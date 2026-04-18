@@ -2310,58 +2310,6 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
 
-  e2e/react-start/rsc-rsbuild:
-    dependencies:
-      '@tanstack/react-query':
-        specifier: ^5.99.0
-        version: 5.99.0(react@19.2.3)
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../../../packages/react-router
-      '@tanstack/react-start':
-        specifier: workspace:*
-        version: link:../../../packages/react-start
-      '@tanstack/react-start-rsc':
-        specifier: workspace:*
-        version: link:../../../packages/react-start-rsc
-      react:
-        specifier: ^19.2.3
-        version: 19.2.3
-      react-dom:
-        specifier: ^19.2.3
-        version: 19.2.3(react@19.2.3)
-      react-server-dom-rspack:
-        specifier: ^0.0.2
-        version: 0.0.2(@rspack/core@2.0.0-rc.2(@swc/helpers@0.5.21))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-    devDependencies:
-      '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
-      '@rsbuild/core':
-        specifier: 2.0.0-rc.3
-        version: 2.0.0-rc.3(core-js@3.40.0)
-      '@rsbuild/plugin-react':
-        specifier: 2.0.0-rc.3
-        version: 2.0.0-rc.3(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))(@rspack/core@2.0.0-rc.2(@swc/helpers@0.5.21))
-      '@tanstack/router-e2e-utils':
-        specifier: workspace:^
-        version: link:../../e2e-utils
-      '@types/node':
-        specifier: 25.0.9
-        version: 25.0.9
-      '@types/react':
-        specifier: ^19.2.8
-        version: 19.2.9
-      '@types/react-dom':
-        specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.9)
-      srvx:
-        specifier: ^0.11.9
-        version: 0.11.15
-      typescript:
-        specifier: ^6.0.2
-        version: 6.0.2
-
   e2e/react-start/scroll-restoration:
     dependencies:
       '@tanstack/react-router':
@@ -2575,6 +2523,12 @@ importers:
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.58.0
+      '@rsbuild/core':
+        specifier: 2.0.0-rc.3
+        version: 2.0.0-rc.3(core-js@3.40.0)
+      '@rsbuild/plugin-react':
+        specifier: 2.0.0-rc.3
+        version: 2.0.0-rc.3(@rsbuild/core@2.0.0-rc.3(core-js@3.40.0))(@rspack/core@2.0.0-rc.2(@swc/helpers@0.5.21))
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -38895,12 +38849,6 @@ snapshots:
   react-server-dom-rspack@0.0.2(@rspack/core@..+rsbuild+rspack+packages+rspack)(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
       '@rspack/core': link:../../rsbuild/rspack/packages/rspack
-      react: 19.2.3
-      react-dom: 19.2.3(react@19.2.3)
-
-  react-server-dom-rspack@0.0.2(@rspack/core@2.0.0-rc.2(@swc/helpers@0.5.21))(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
-    dependencies:
-      '@rspack/core': 2.0.0-rc.2(@swc/helpers@0.5.21)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
