@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { rewriteDeniedImports } from '../../src/import-protection-plugin/rewriteDeniedImports'
+import { rewriteDeniedImports } from '../../src/import-protection/rewrite'
 
 const MOCK_SUBSTR = 'tanstack-start-import-protection:mock'
 
@@ -95,6 +95,23 @@ describe('rewriteDeniedImports', () => {
     ])
     expect(out).toContain('const __tss_reexport_foo = __tss_deny_0.foo')
     expect(out).toContain('__tss_reexport_foo as myFoo')
+  })
+
+  test('rewrites string-literal import names with computed access', () => {
+    const out = rewrite(
+      `import { "foo-bar" as fooBar } from './secret.server';`,
+      ['./secret.server'],
+    )
+    expect(out).toContain('const fooBar = __tss_deny_0["foo-bar"]')
+  })
+
+  test('rewrites string-literal re-export names with computed access', () => {
+    const out = rewrite(
+      `export { "foo-bar" as exposed } from './secret.server';`,
+      ['./secret.server'],
+    )
+    expect(out).toContain('const __tss_reexport_0 = __tss_deny_0["foo-bar"]')
+    expect(out).toContain('__tss_reexport_0 as exposed')
   })
 
   test('removes export * from "denied"', () => {

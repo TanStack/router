@@ -9,6 +9,10 @@ import { extractViolationsFromLog } from './violations.utils'
 import type { FullConfig } from '@playwright/test'
 import type { Violation } from './violations.utils'
 
+const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+const e2ePortKey =
+  process.env.E2E_PORT_KEY ?? `${packageJson.name}-${toolchain}`
+
 async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now()
 
@@ -32,7 +36,13 @@ async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
 }
 
 function startDevServer(cwd: string, port: number): ReturnType<typeof spawn> {
-  return spawn('pnpm', ['exec', 'vite', 'dev', '--port', String(port)], {
+  const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+  const command =
+    toolchain === 'rsbuild'
+      ? ['exec', 'rsbuild', 'dev', '--port', String(port)]
+      : ['exec', 'vite', 'dev', '--port', String(port)]
+
+  return spawn('pnpm', command, {
     cwd,
     env: {
       ...process.env,
@@ -170,9 +180,10 @@ async function runDevPass(
  *      modules are pre-transformed so resolveId/transform paths differ.
  */
 async function captureDevViolations(cwd: string): Promise<void> {
-  const port = await getTestServerPort(`${packageJson.name}_dev`)
-
-  const coldViolations = await runDevPass(cwd, port)
+  const coldViolations = await runDevPass(
+    cwd,
+    await getTestServerPort(`${e2ePortKey}-violations-cold`),
+  )
 
   fs.writeFileSync(
     path.resolve(cwd, 'violations.dev.json'),
@@ -184,7 +195,10 @@ async function captureDevViolations(cwd: string): Promise<void> {
   )
 
   // Warm pass: the .vite cache from the cold run is still on disk.
-  const warmViolations = await runDevPass(cwd, port)
+  const warmViolations = await runDevPass(
+    cwd,
+    await getTestServerPort(`${e2ePortKey}-violations-warm`),
+  )
 
   fs.writeFileSync(
     path.resolve(cwd, 'violations.dev.warm.json'),

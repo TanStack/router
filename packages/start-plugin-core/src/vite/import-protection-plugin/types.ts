@@ -1,12 +1,12 @@
-import type { CompileStartFrameworkOptions, GetConfigFn } from '../types'
-import type { ImportProtectionBehavior } from '../schema'
-import type { CompiledMatcher } from './matchers'
-import type { ImportGraph, ViolationInfo } from './trace'
+import type { CompileStartFrameworkOptions, GetConfigFn } from '../../types'
+import type { ImportProtectionBehavior } from '../../schema'
+import type { CompiledMatcher } from '../../import-protection/matchers'
+import type { ImportGraph, ViolationInfo } from '../../import-protection/trace'
 import type {
   ImportLocCache,
   TransformResult,
   TransformResultProvider,
-} from './sourceLocation'
+} from '../../import-protection/sourceLocation'
 
 /** Compiled deny/exclude patterns for one environment (client or server). */
 export interface EnvRules {

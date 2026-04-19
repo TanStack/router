@@ -4,10 +4,10 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --port 3000",
-    "dev:e2e": "vite dev",
-    "build": "vite build && tsc --noEmit",
-    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
+    "dev": "sh -c 'if [ \"${E2E_TOOLCHAIN:-vite}\" = \"rsbuild\" ]; then pnpm exec rsbuild dev --port 3000; else pnpm exec vite dev --port 3000; fi'",
+    "dev:e2e": "pnpm dev",
+    "build": "sh -c 'if [ \"${E2E_TOOLCHAIN:-vite}\" = \"rsbuild\" ]; then pnpm exec rsbuild build && tsc --noEmit; else vite build && tsc --noEmit; fi'",
+    "start": "node -e 'import(\"./server.js\").then(m => process.stdout.write(m.resolveStartCommand()))' | sh",
     "test:e2e:mockMode": "rm -rf node_modules/.vite; rm -rf port*.txt; playwright test --project=chromium",
     "test:e2e:errorMode": "rm -rf node_modules/.vite; rm -rf port*.txt; BEHAVIOR=error playwright test --project=chromium",
     "test:e2e": "pnpm run test:e2e:mockMode && pnpm run test:e2e:errorMode"
@@ -22,11 +22,28 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
+    "@rsbuild/core": "2.0.0-rc.3",
+    "@rsbuild/plugin-react": "2.0.0-rc.3",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^6.0.1",
     "srvx": "^0.11.9",
     "typescript": "^6.0.2"
+  },
+  "nx": {
+    "metadata": {
+      "playwrightModes": [
+        {
+          "toolchain": "vite",
+          "mode": "ssr"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr"
+        }
+      ]
+    }
   }
 }

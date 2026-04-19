@@ -5,7 +5,7 @@ title: Import Protection
 
 > **Experimental:** Import protection is experimental and subject to change.
 
-Import protection prevents server-only code from leaking into client bundles and client-only code from leaking into server bundles. It runs as a Vite plugin and is enabled by default in TanStack Start.
+Import protection prevents server-only code from leaking into client bundles and client-only code from leaking into server bundles. It runs inside TanStack Start and is enabled by default.
 
 ## How It Works
 
@@ -364,11 +364,56 @@ If you see an import-protection violation for a file you expected to be "compile
 
 ## False Positives: Dev vs Build
 
-In **build mode**, the plugin defers violation checks until after tree-shaking. If an import is eliminated from the final bundle (e.g., a barrel re-exports a `.server` module but no client code actually uses that export), no violation is reported. This means build-time violations are definitive — if the build flags it, the import truly survived.
+In **build mode**, import protection defers violation checks until after tree-shaking. If an import is eliminated from the final bundle, no violation is reported. Build-time violations are definitive: if the build flags it, the import truly survived.
 
-In **dev mode**, there is no tree-shaking. The plugin uses graph reachability to filter violations, but it cannot determine whether individual bindings are unused. This means barrel re-exports of `.server` or marker-protected modules may produce warnings even when the server-only exports would be tree-shaken away in production. These dev warnings are informational — run a build to confirm whether the violation is real.
+In **dev mode**, tree-shaking may be incomplete or unavailable, so import protection can report false positives for imports that would later be compiled away.
 
-The same applies to marker-protected files (`import '@tanstack/react-start/server-only'`). If a marked file is re-exported through a barrel but never consumed by client code, the build correctly suppresses the violation while dev may still warn.
+If a warning appears in dev but not build, that usually means the unsafe edge existed before tree-shaking but did not survive the final bundle. Even so, prefer changing the import structure so that edge does not exist in the first place.
+
+## Mixed Barrels and Split Entry Points
+
+Barrels are not inherently a false positive. The risky pattern is a barrel that mixes safe exports with environment-restricted ones from the same entry point.
+
+Depending on what survives after compilation and tree-shaking, that can show up as either a real violation or a dev-only false positive. The safer structure is to split safe and restricted exports into separate entry points.
+
+For example, avoid mixed barrels like this:
+
+```ts
+// src/lib/index.ts
+export { fetchUsers } from './fetchUsers'
+export { getDb } from './db.server'
+```
+
+```ts
+// src/routes/users.tsx
+import { fetchUsers } from '../lib'
+```
+
+Even if the client only uses `fetchUsers`, that import path still goes through a module that re-exports `getDb`.
+
+Prefer splitting safe and server-only exports into separate entry points:
+
+```ts
+// src/lib/index.ts
+export { fetchUsers } from './fetchUsers'
+```
+
+```ts
+// src/lib/server.ts
+export { getDb } from './db.server'
+```
+
+```ts
+// src/routes/users.tsx
+import { fetchUsers } from '../lib'
+```
+
+```ts
+// src/server/worker.ts
+import { getDb } from '../lib/server'
+```
+
+The same applies to marker-protected files (`import '@tanstack/react-start/server-only'`). If a marked file is re-exported through a mixed barrel but never consumed by client code, production may suppress the warning after tree-shaking, but the better fix is still to avoid exposing that server-only edge to client-reachable code at all.
 
 ## The `onViolation` Callback
 
@@ -384,8 +429,7 @@ importProtection: {
     // info.importer -- absolute path of the importing file
     // info.resolved -- absolute path of the resolved target (if available)
     // info.trace -- array of { file, line?, column?, specifier? } objects
-    // info.snippet -- { lines, location } with the source code snippet (if available)
-    // info.message -- the formatted diagnostic message
+    // info.snippet -- { lines, highlightLine, location } with the source code snippet (if available)
 
     // Return false (or Promise<false>) to allow this specific import (override the denial)
     if (info.specifier === 'some-special-case') {

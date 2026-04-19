@@ -2,10 +2,7 @@ import { parseStartConfig as parseCoreStartConfig } from '../schema'
 import type { TanStackStartInputConfig } from '../schema'
 import type { CompileStartFrameworkOptions } from '../types'
 
-export type TanStackStartRsbuildInputConfig = Omit<
-  TanStackStartInputConfig,
-  'importProtection'
->
+export type TanStackStartRsbuildInputConfig = TanStackStartInputConfig
 
 export function parseStartConfig(
   opts: TanStackStartRsbuildInputConfig | undefined,

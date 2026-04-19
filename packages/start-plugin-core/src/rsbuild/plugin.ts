@@ -14,6 +14,7 @@ import {
   resolveRsbuildOutputDirectory,
 } from './planning'
 import { registerStartCompilerTransforms } from './start-compiler-host'
+import { registerImportProtection } from './import-protection'
 import {
   START_MANIFEST_PLACEHOLDER,
   registerVirtualModules,
@@ -122,6 +123,7 @@ export function tanStackStartRsbuild(
         })
 
         const resolvedEntryPlan = configContext.resolveEntries()
+        const isDev = api.context.action === 'dev'
 
         const entryAliases = createRsbuildResolvedEntryAliases({
           entryPaths: resolvedEntryPlan.entryPaths,
@@ -135,13 +137,12 @@ export function tanStackStartRsbuild(
           serverFnProviderEnv,
           environmentOverrides: corePluginOpts.rsbuild?.environments,
           rsc: rscOpts,
+          dev: isDev,
         })
         const serverFnBase = createServerFnBasePath({
           routerBasepath,
           serverFnBase: startConfig.serverFns.base,
         })
-
-        const isDev = api.context.action === 'dev'
 
         return mergeRsbuildConfig(rsbuildConfig, {
           source: {
@@ -213,6 +214,19 @@ export function tanStackStartRsbuild(
         onServerFnsByIdChange: () => {
           updateServerFnResolver?.()
         },
+      })
+
+      registerImportProtection(api, {
+        getConfig,
+        framework: corePluginOpts.framework,
+        environments: [
+          { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' },
+          { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' },
+          ...(serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
+          !rscEnabled
+            ? [{ name: serverFnProviderEnv, type: 'server' as const }]
+            : []),
+        ],
       })
 
       // ---------------------------------------------------------------
@@ -570,7 +584,7 @@ function enableSwcReactServerComponents(
       )
 
       const hasSwcLoader = getRuleLoaders(rule).some((loader) =>
-        getLoaderPath(loader)?.includes('swc-loader'),
+        getLoaderPath(loader).includes('swc-loader'),
       )
       if (!hasSwcLoader) continue
 

@@ -1,8 +1,19 @@
 import { describe, expect, test } from 'vitest'
-import { findPostCompileUsagePos } from '../../src/import-protection-plugin/postCompileUsage'
+import {
+  findOriginalUnsafeUsagePos,
+  findPostCompileUsagePos,
+} from '../../src/import-protection/analysis'
 
 function pos(code: string, source: string) {
   return findPostCompileUsagePos(code, source)
+}
+
+function originalPos(
+  code: string,
+  source: string,
+  envType: 'client' | 'server',
+) {
+  return findOriginalUnsafeUsagePos(code, source, envType)
 }
 
 describe('findPostCompileUsagePos', () => {
@@ -179,5 +190,92 @@ describe('findPostCompileUsagePos', () => {
     )
     expect(p).toBeDefined()
     expect(p!.line).toBe(6)
+  })
+})
+
+describe('findOriginalUnsafeUsagePos', () => {
+  test('skips createServerFn handler usage in client env and finds later unsafe usage', () => {
+    const p = originalPos(
+      [
+        `import { createServerFn } from '@tanstack/react-start';`,
+        `import { getSecret } from './secret.server';`,
+        `export const safeServerFn = createServerFn().handler(async () => {`,
+        `  return getSecret();`,
+        `});`,
+        `export function leakyReference() {`,
+        `  return getSecret();`,
+        `}`,
+      ].join('\n'),
+      './secret.server',
+      'client',
+    )
+
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(7)
+  })
+
+  test('returns undefined when usage is only inside createServerOnlyFn in client env', () => {
+    const p = originalPos(
+      [
+        `import { createServerOnlyFn } from '@tanstack/react-start';`,
+        `import { getSecret } from './secret.server';`,
+        `export const safeServerOnly = createServerOnlyFn(() => {`,
+        `  return getSecret();`,
+        `});`,
+      ].join('\n'),
+      './secret.server',
+      'client',
+    )
+
+    expect(p).toBeUndefined()
+  })
+
+  test('returns undefined when usage is only inside createMiddleware.server in client env', () => {
+    const p = originalPos(
+      [
+        `import { createMiddleware } from '@tanstack/react-start';`,
+        `import { getSecret } from './secret.server';`,
+        `const middleware = createMiddleware({ type: 'function' }).server(({ next }) => {`,
+        `  const secret = getSecret();`,
+        `  return next({ context: { secret } });`,
+        `});`,
+      ].join('\n'),
+      './secret.server',
+      'client',
+    )
+
+    expect(p).toBeUndefined()
+  })
+
+  test('returns undefined when usage is only inside createIsomorphicFn.server in client env', () => {
+    const p = originalPos(
+      [
+        `import { createIsomorphicFn } from '@tanstack/react-start';`,
+        `import { getSecret } from './secret.server';`,
+        `export const safeIsomorphic = createIsomorphicFn().server(() => {`,
+        `  return getSecret();`,
+        `});`,
+      ].join('\n'),
+      './secret.server',
+      'client',
+    )
+
+    expect(p).toBeUndefined()
+  })
+
+  test('returns undefined when usage is only inside createClientOnlyFn in server env', () => {
+    const p = originalPos(
+      [
+        `import { createClientOnlyFn } from '@tanstack/react-start';`,
+        `import { readWindow } from './browser.client';`,
+        `export const safeClientOnly = createClientOnlyFn(() => {`,
+        `  return readWindow();`,
+        `});`,
+      ].join('\n'),
+      './browser.client',
+      'server',
+    )
+
+    expect(p).toBeUndefined()
   })
 })

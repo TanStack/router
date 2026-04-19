@@ -19,6 +19,10 @@ import type { FullConfig } from '@playwright/test'
  *    `error-dev-result.json`.
  */
 
+const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+const e2ePortKey =
+  process.env.E2E_PORT_KEY ?? `${packageJson.name}-${toolchain}`
+
 async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now()
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -114,12 +118,18 @@ async function captureDev(cwd: string): Promise<void> {
     if (fs.existsSync(p)) fs.unlinkSync(p)
   }
 
-  const port = await getTestServerPort(`${packageJson.name}_error_dev`)
+  const port = await getTestServerPort(`${e2ePortKey}-error-dev`)
   const baseURL = `http://localhost:${port}`
   const logFile = path.resolve(cwd, 'error-dev.log')
 
   const out = fs.createWriteStream(logFile)
-  const child = spawn('pnpm', ['exec', 'vite', 'dev', '--port', String(port)], {
+  const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+  const command =
+    toolchain === 'rsbuild'
+      ? ['exec', 'rsbuild', 'dev', '--port', String(port)]
+      : ['exec', 'vite', 'dev', '--port', String(port)]
+
+  const child = spawn('pnpm', command, {
     cwd,
     env: {
       ...process.env,

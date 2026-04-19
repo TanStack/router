@@ -1,34 +1,47 @@
 import { normalizePath } from 'vite'
 
-import { resolveViteId } from '../utils'
-import { VITE_ENVIRONMENT_NAMES } from '../constants'
-import { ImportGraph, buildTrace, formatViolation } from './trace'
+import { resolveViteId } from '../../utils'
+import { VITE_ENVIRONMENT_NAMES } from '../../constants'
+import {
+  ImportGraph,
+  buildTrace,
+  formatViolation,
+} from '../../import-protection/trace'
 import {
   getDefaultImportProtectionRules,
   getMarkerSpecifiers,
-} from './defaults'
-import { compileMatchers, matchesAny } from './matchers'
+} from '../../import-protection/defaults'
+import { compileMatchers, matchesAny } from '../../import-protection/matchers'
+import {
+  getImportProtectionEnvType,
+  getImportProtectionRelativePath,
+  getImportProtectionRulesForEnvironment,
+  shouldCheckImportProtectionImporter,
+} from '../../import-protection/adapterUtils'
 import {
   buildResolutionCandidates,
   buildSourceCandidates,
   canonicalizeResolvedId,
+  checkFileDenial,
   clearNormalizeFilePathCache,
+  dedupeViolationKey,
   debugLog,
   dedupePatterns,
   escapeRegExp,
-  extractImportSources,
   getOrCreate,
   isInsideDirectory,
+  isFileExcluded,
   matchesDebugFilter,
   normalizeFilePath,
   relativizePath,
   shouldDeferViolation,
-} from './utils'
+} from '../../import-protection/utils'
 import {
-  collectMockExportNamesBySource,
-  collectNamedExports,
-  rewriteDeniedImports,
-} from './rewriteDeniedImports'
+  getImportSources,
+  getMockExportNamesBySource,
+  getNamedExports,
+} from '../../import-protection/analysis'
+import { rewriteDeniedImports } from '../../import-protection/rewrite'
 import {
   MOCK_BUILD_PREFIX,
   generateDevSelfDenialModule,
@@ -40,30 +53,35 @@ import {
   resolveInternalVirtualModuleId,
   resolvedMarkerVirtualModuleId,
 } from './virtualModules'
-import { ExtensionlessAbsoluteIdResolver } from './extensionlessAbsoluteIdResolver'
+import { ExtensionlessAbsoluteIdResolver } from '../../import-protection/extensionlessAbsoluteIdResolver'
 import {
   IMPORT_PROTECTION_DEBUG,
   SERVER_FN_LOOKUP_QUERY,
   VITE_BROWSER_VIRTUAL_PREFIX,
-} from './constants'
+} from '../../import-protection/constants'
 import {
+  createImportSpecifierLocationIndex,
   ImportLocCache,
   addTraceImportLocations,
   buildCodeSnippet,
   buildLineIndex,
   findImportStatementLocationFromTransformed,
   findPostCompileUsageLocation,
+  normalizeSourceMap,
   pickOriginalCodeFromSourcesContent,
-} from './sourceLocation'
+} from '../../import-protection/sourceLocation'
 import type { PluginOption, ViteDevServer } from 'vite'
-import type { CompiledMatcher } from './matchers'
-import type { Loc, TraceStep, ViolationInfo } from './trace'
+import type {
+  Loc,
+  TraceStep,
+  ViolationInfo,
+} from '../../import-protection/trace'
 import type {
   SourceMapLike,
   TransformResult,
   TransformResultProvider,
-} from './sourceLocation'
-import type { ImportProtectionOptions } from '../schema'
+} from '../../import-protection/sourceLocation'
+import type { ImportProtectionOptions } from '../../schema'
 import type {
   EnvRules,
   EnvState,
@@ -85,31 +103,7 @@ export function importProtectionPlugin(
   const extensionlessIdResolver = new ExtensionlessAbsoluteIdResolver()
   const resolveExtensionlessAbsoluteId = (id: string) =>
     extensionlessIdResolver.resolve(id)
-
-  const importPatternCache = new Map<string, Array<RegExp>>()
-
-  function findFirstImportSpecifierIndex(code: string, source: string): number {
-    let patterns = importPatternCache.get(source)
-    if (!patterns) {
-      const escaped = escapeRegExp(source)
-      patterns = [
-        new RegExp(`\\bimport\\s+(['"])${escaped}\\1`),
-        new RegExp(`\\bfrom\\s+(['"])${escaped}\\1`),
-        new RegExp(`\\bimport\\s*\\(\\s*(['"])${escaped}\\1\\s*\\)`),
-      ]
-      importPatternCache.set(source, patterns)
-    }
-
-    let best = -1
-    for (const re of patterns) {
-      const m = re.exec(code)
-      if (!m) continue
-      const idx = m.index + m[0].indexOf(source)
-      if (idx === -1) continue
-      if (best === -1 || idx < best) best = idx
-    }
-    return best
-  }
+  const importSpecifierLocationIndex = createImportSpecifierLocationIndex()
 
   /**
    * Build an import trace using Vite's per-environment module graph, which
@@ -265,7 +259,7 @@ export function importProtectionPlugin(
       provider,
       trace,
       env.importLocCache,
-      findFirstImportSpecifierIndex,
+      importSpecifierLocationIndex.find,
     )
 
     if (trace.length > 0) {
@@ -361,7 +355,7 @@ export function importProtectionPlugin(
           importer,
           candidate,
           env.importLocCache,
-          findFirstImportSpecifierIndex,
+          importSpecifierLocationIndex.find,
         ))
       if (loc) return loc
     }
@@ -383,7 +377,6 @@ export function importProtectionPlugin(
     importer: string,
     source: string,
     resolvedId: string,
-    relativePath: string,
     traceOverride?: Array<TraceStep>,
   ): Promise<ViolationInfo | undefined> {
     const normalizedResolvedId = normalizeFilePath(resolvedId)
@@ -406,19 +399,9 @@ export function importProtectionPlugin(
       {
         type: 'marker',
         resolved: normalizedResolvedId,
-        message: buildMarkerViolationMessage(relativePath, markerKind),
       },
       traceOverride,
     )
-  }
-
-  function buildMarkerViolationMessage(
-    relativePath: string,
-    markerKind: 'server' | 'client' | undefined,
-  ): string {
-    return markerKind === 'server'
-      ? `Module "${relativePath}" is marked server-only but is imported in the client environment`
-      : `Module "${relativePath}" is marked client-only but is imported in the server environment`
   }
 
   async function buildFileViolationInfo(
@@ -433,8 +416,6 @@ export function importProtectionPlugin(
     pattern: string | RegExp,
     traceOverride?: Array<TraceStep>,
   ): Promise<ViolationInfo> {
-    const relativePath = getRelativePath(resolvedPath)
-
     return buildViolationInfo(
       provider,
       env,
@@ -447,44 +428,13 @@ export function importProtectionPlugin(
         type: 'file',
         pattern,
         resolved: resolvedPath,
-        message: `Import "${source}" (resolved to "${relativePath}") is denied in the ${envType} environment`,
       },
       traceOverride,
     )
   }
 
-  function getEnvType(envName: string): 'client' | 'server' {
-    return config.envTypeMap.get(envName) ?? 'server'
-  }
-
   function getRulesForEnvironment(envName: string): EnvRules {
-    const type = getEnvType(envName)
-    return type === 'client'
-      ? config.compiledRules.client
-      : config.compiledRules.server
-  }
-
-  /**
-   * Check if a relative path matches any denied file pattern for the given
-   * environment, respecting `excludeFiles`.  Returns the matching pattern
-   * or `undefined` if the file is not denied.
-   */
-  function checkFileDenial(
-    relativePath: string,
-    matchers: {
-      files: Array<CompiledMatcher>
-      excludeFiles: Array<CompiledMatcher>
-    },
-  ): CompiledMatcher | undefined {
-    if (
-      matchers.excludeFiles.length > 0 &&
-      matchesAny(relativePath, matchers.excludeFiles)
-    ) {
-      return undefined
-    }
-    return matchers.files.length > 0
-      ? matchesAny(relativePath, matchers.files)
-      : undefined
+    return getImportProtectionRulesForEnvironment(config, envName) as EnvRules
   }
 
   const environmentNames = new Set<string>([
@@ -589,7 +539,7 @@ export function importProtectionPlugin(
         return []
 
       try {
-        parsedBySource = collectMockExportNamesBySource(importerCode)
+        parsedBySource = getMockExportNamesBySource(importerCode)
 
         // Also index by resolved physical IDs so later lookups match.
         await recordMockExportsForImporter(
@@ -680,16 +630,21 @@ export function importProtectionPlugin(
 
     if (namesBySource.size === 0) return
 
+    const resolvedAliases = new Map<string, Array<string>>()
     for (const [source, names] of namesBySource) {
       try {
         const resolvedId = await resolveSource(source)
         if (!resolvedId) continue
 
-        namesBySource.set(normalizeFilePath(resolvedId), names)
-        namesBySource.set(resolveExtensionlessAbsoluteId(resolvedId), names)
+        resolvedAliases.set(normalizeFilePath(resolvedId), names)
+        resolvedAliases.set(resolveExtensionlessAbsoluteId(resolvedId), names)
       } catch {
         // Best-effort only
       }
+    }
+
+    for (const [source, names] of resolvedAliases) {
+      namesBySource.set(source, names)
     }
 
     const existing = env.mockExportsByImporter.get(importerFile)
@@ -712,34 +667,15 @@ export function importProtectionPlugin(
 
   const shouldCheckImporterCache = new Map<string, boolean>()
   function shouldCheckImporter(importer: string): boolean {
-    let result = shouldCheckImporterCache.get(importer)
-    if (result !== undefined) return result
-
-    const relativePath = relativizePath(importer, config.root)
-
-    // Excluded or ignored importers are never checked.
-    const excluded =
-      (config.excludeMatchers.length > 0 &&
-        matchesAny(relativePath, config.excludeMatchers)) ||
-      (config.ignoreImporterMatchers.length > 0 &&
-        matchesAny(relativePath, config.ignoreImporterMatchers))
-
-    if (excluded) {
-      result = false
-    } else if (config.includeMatchers.length > 0) {
-      result = !!matchesAny(relativePath, config.includeMatchers)
-    } else if (config.srcDirectory) {
-      result = isInsideDirectory(importer, config.srcDirectory)
-    } else {
-      result = true
-    }
-
-    shouldCheckImporterCache.set(importer, result)
-    return result
+    return shouldCheckImportProtectionImporter(
+      config,
+      importer,
+      shouldCheckImporterCache,
+    )
   }
 
   function dedupeKey(info: ViolationInfo): string {
-    return `${info.type}:${info.importer}:${info.specifier}:${info.resolved ?? ''}`
+    return dedupeViolationKey(info)
   }
 
   function hasSeen(env: EnvState, key: string): boolean {
@@ -750,7 +686,7 @@ export function importProtectionPlugin(
   }
 
   function getRelativePath(absolutePath: string): string {
-    return relativizePath(normalizePath(absolutePath), config.root)
+    return getImportProtectionRelativePath(config.root, absolutePath)
   }
 
   /** Reset all caches on an EnvState (called from buildStart). */
@@ -1354,7 +1290,6 @@ export function importProtectionPlugin(
         // Clear memoization caches that grow unboundedly across builds
         clearNormalizeFilePathCache()
         extensionlessIdResolver.clear()
-        importPatternCache.clear()
         shouldCheckImporterCache.clear()
 
         // Clear per-env caches
@@ -1391,7 +1326,7 @@ export function importProtectionPlugin(
       async resolveId(source, importer, _options) {
         const envName = this.environment.name
         const env = getEnv(envName)
-        const envType = getEnvType(envName)
+        const envType = getImportProtectionEnvType(config, envName)
         const provider = env.transformResultProvider
         const isScanResolve = !!(_options as Record<string, unknown>).scan
 
@@ -1500,10 +1435,6 @@ export function importProtectionPlugin(
               source,
               {
                 type: 'marker',
-                message: buildMarkerViolationMessage(
-                  getRelativePath(normalizedImporter),
-                  markerKind,
-                ),
               },
             )
             const markerResult = await reportOrDeferViolation(
@@ -1563,7 +1494,6 @@ export function importProtectionPlugin(
                   importerFile,
                   specifier,
                   normalizedImporter,
-                  getRelativePath(normalizedImporter),
                 )
                 if (markerInfo) {
                   deferViolation(
@@ -1610,7 +1540,6 @@ export function importProtectionPlugin(
             {
               type: 'specifier',
               pattern: specifierMatch.pattern,
-              message: `Import "${source}" is denied in the ${envType} environment`,
             },
           )
 
@@ -1678,15 +1607,10 @@ export function importProtectionPlugin(
           // exports `index.client.js`) are not treated as user-authored
           // environment boundaries.  Users can override `excludeFiles` per
           // environment to narrow or widen this exclusion.
-          const isExcludedFile =
-            matchers.excludeFiles.length > 0 &&
-            matchesAny(relativePath, matchers.excludeFiles)
+          const isExcludedFile = isFileExcluded(relativePath, matchers)
 
           if (!isExcludedFile) {
-            const fileMatch =
-              matchers.files.length > 0
-                ? matchesAny(relativePath, matchers.files)
-                : undefined
+            const fileMatch = checkFileDenial(relativePath, matchers)
 
             if (fileMatch) {
               const info = await buildFileViolationInfo(
@@ -1719,7 +1643,6 @@ export function importProtectionPlugin(
               importer,
               source,
               resolved,
-              relativePath,
             )
             if (markerInfo) {
               return reportOrDeferViolation(
@@ -1891,7 +1814,7 @@ export function importProtectionPlugin(
         async handler(code, id) {
           const envName = this.environment.name
           const file = normalizeFilePath(id)
-          const envType = getEnvType(envName)
+          const envType = getImportProtectionEnvType(config, envName)
           const matchers = getRulesForEnvironment(envName)
           const isBuild = config.command === 'build'
 
@@ -1930,7 +1853,7 @@ export function importProtectionPlugin(
             // Falls back to empty list on non-standard syntax.
             let exportNames: Array<string> = []
             try {
-              exportNames = collectNamedExports(code)
+              exportNames = getNamedExports(code)
             } catch {
               // Parsing may fail on non-standard syntax
             }
@@ -1952,7 +1875,6 @@ export function importProtectionPlugin(
                 specifier: relativizePath(file, config.root),
                 resolved: file,
                 pattern: selfFileMatch.pattern,
-                message: `File "${relativizePath(file, config.root)}" is denied in the ${envType} environment`,
                 trace: [],
               },
               config.mockAccess,
@@ -2009,7 +1931,7 @@ export function importProtectionPlugin(
           // Dev mode: resolve imports, populate graph, detect violations,
           // and rewrite denied imports.
           const isDevMock = config.effectiveBehavior === 'mock'
-          const importSources = extractImportSources(code)
+          const importSources = getImportSources(code)
           const resolvedChildren = new Set<string>()
           const deniedSourceReplacements = new Map<string, string>()
           for (const src of importSources) {
@@ -2116,14 +2038,7 @@ export function importProtectionPlugin(
               }
 
               const normalizedMap = rewritten.map
-                ? {
-                    ...rewritten.map,
-                    version: Number(rewritten.map.version),
-                    sourcesContent:
-                      rewritten.map.sourcesContent?.map(
-                        (s: string | null) => s ?? '',
-                      ) ?? [],
-                  }
+                ? normalizeSourceMap(rewritten.map)
                 : {
                     version: 3,
                     file: id,

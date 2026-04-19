@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   getDefaultImportProtectionRules,
   getMarkerSpecifiers,
-} from '../../src/import-protection-plugin/defaults'
+} from '../../src/import-protection/defaults'
 
 describe('getDefaultImportProtectionRules', () => {
   test('returns client rules with all framework specifiers', () => {
