@@ -202,6 +202,7 @@ export interface RegisterVirtualModulesOptions {
   root: string
   getConfig: GetConfigFn
   serverFnsById: Record<string, ServerFn>
+  providerEnvName: string
   ssrIsProvider: boolean
   serializationAdapters: Array<SerializationAdapterConfig> | undefined
   /**
@@ -251,7 +252,40 @@ export function registerVirtualModules(
   const pendingWrites = new Map<string, Map<string, string>>()
 
   let clientBuild: NormalizedClientBuild | undefined
-  let lastResolverContent: string | undefined
+  const lastResolverContentByEnvironment: Record<string, string | undefined> =
+    {}
+  const hasSeparateProviderEnvironment =
+    !opts.rscEnabled &&
+    opts.providerEnvName !== RSBUILD_ENVIRONMENT_NAMES.server
+
+  function isProviderEnvironment(environmentName: string): boolean {
+    return environmentName === opts.providerEnvName
+  }
+
+  function needsServerFnResolver(environmentName: string): boolean {
+    return (
+      environmentName === RSBUILD_ENVIRONMENT_NAMES.server ||
+      (hasSeparateProviderEnvironment && isProviderEnvironment(environmentName))
+    )
+  }
+
+  function generateResolverContent(environmentName: string): string {
+    return generateServerFnResolverModule({
+      serverFnsById: opts.serverFnsById,
+      includeClientReferencedCheck: !isProviderEnvironment(environmentName),
+      useStaticImports: Boolean(opts.rscEnabled && isDev),
+    })
+  }
+
+  function writeResolverContent(environmentName: string, content: string) {
+    if (
+      !isDev ||
+      content !== lastResolverContentByEnvironment[environmentName]
+    ) {
+      lastResolverContentByEnvironment[environmentName] = content
+      tryWriteModule(environmentName, paths.serverFnResolver, content)
+    }
+  }
 
   function queuePendingWrite(
     environmentName: string,
@@ -335,17 +369,9 @@ export function registerVirtualModules(
     // Injected head scripts — only server
     content[paths.injectedHeadScripts] = generateInjectedHeadScripts()
 
-    // Server fn resolver — only server
-    if (isServerEnv) {
-      const resolverContent = generateServerFnResolverModule({
-        serverFnsById: opts.serverFnsById,
-        includeClientReferencedCheck: !(opts.rscEnabled
-          ? true
-          : opts.ssrIsProvider),
-        useStaticImports: Boolean(opts.rscEnabled && isDev),
-      })
-
-      content[paths.serverFnResolver] = resolverContent
+    // Server fn resolver — SSR and provider environments
+    if (needsServerFnResolver(environmentName)) {
+      content[paths.serverFnResolver] = generateResolverContent(environmentName)
     } else {
       // Client doesn't need the resolver but needs a valid module
       content[paths.serverFnResolver] = 'export {}'
@@ -463,11 +489,9 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     vmPlugins,
 
     generateCurrentResolverContent(forProvider?: boolean): string {
-      return generateServerFnResolverModule({
-        serverFnsById: opts.serverFnsById,
-        includeClientReferencedCheck: !(forProvider ?? opts.ssrIsProvider),
-        useStaticImports: Boolean(opts.rscEnabled && isDev),
-      })
+      return generateResolverContent(
+        forProvider ? opts.providerEnvName : RSBUILD_ENVIRONMENT_NAMES.server,
+      )
     },
 
     generateManifestContent(newClientBuild: NormalizedClientBuild): string {
@@ -509,26 +533,24 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     },
 
     updateServerFnResolver() {
-      const content = generateServerFnResolverModule({
-        serverFnsById: opts.serverFnsById,
-        includeClientReferencedCheck: !(opts.rscEnabled
-          ? true
-          : opts.ssrIsProvider),
-        useStaticImports: Boolean(opts.rscEnabled && isDev),
-      })
+      for (const environmentName of new Set([
+        RSBUILD_ENVIRONMENT_NAMES.server,
+        ...(hasSeparateProviderEnvironment ? [opts.providerEnvName] : []),
+      ])) {
+        if (!needsServerFnResolver(environmentName)) {
+          continue
+        }
 
-      if (!isDev || content !== lastResolverContent) {
-        lastResolverContent = content
-        tryWriteModule(
-          RSBUILD_ENVIRONMENT_NAMES.server,
-          paths.serverFnResolver,
-          content,
+        writeResolverContent(
+          environmentName,
+          generateResolverContent(environmentName),
         )
       }
     },
 
     tryUpdateServerFnResolver(content: string) {
-      lastResolverContent = content
+      lastResolverContentByEnvironment[RSBUILD_ENVIRONMENT_NAMES.server] =
+        content
       tryWriteModule(
         RSBUILD_ENVIRONMENT_NAMES.server,
         paths.serverFnResolver,

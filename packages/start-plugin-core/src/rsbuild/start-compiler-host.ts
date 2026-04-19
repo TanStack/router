@@ -32,7 +32,7 @@ const rsbuildDevServerFnModuleSpecifierEncoder: DevServerFnModuleSpecifierEncode
 
 export interface StartCompilerHostOptions {
   framework: CompileStartFrameworkOptions
-  root: string
+  root: string | (() => string)
   providerEnvName: string
   generateFunctionId?: GenerateFunctionIdFnOptional
   serverFnsById?: Record<string, ServerFn>
@@ -53,6 +53,8 @@ export function registerStartCompilerTransforms(
 } {
   const compilers = new Map<string, ReturnType<typeof createStartCompiler>>()
   const serverFnsById = opts.serverFnsById ?? {}
+  const getRoot = () =>
+    typeof opts.root === 'function' ? opts.root() : opts.root
 
   const onServerFnsById = (d: Record<string, ServerFn>) => {
     mergeServerFnsById(serverFnsById, d)
@@ -96,10 +98,12 @@ export function registerStartCompilerTransforms(
 
         let compiler = compilers.get(env.name)
         if (!compiler) {
+          const root = getRoot()
+
           compiler = createStartCompiler({
             env: env.type,
             envName: env.name,
-            root: opts.root,
+            root,
             mode,
             framework: opts.framework,
             providerEnvName: opts.providerEnvName,
@@ -121,7 +125,7 @@ export function registerStartCompilerTransforms(
             ): Promise<string | null> => {
               const context = importer
                 ? importer.replace(/[/\\][^/\\]*$/, '')
-                : opts.root
+                : root
 
               return await new Promise((resolve, reject) => {
                 ctx.resolve(context, source, (error, resolved) => {
