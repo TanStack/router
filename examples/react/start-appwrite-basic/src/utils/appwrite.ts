@@ -3,7 +3,7 @@ import {
   getCookie,
   setCookie,
 } from '@tanstack/react-start/server'
-import { Account, Client } from 'node-appwrite'
+import { Account, Client, Users } from 'node-appwrite'
 
 export const APPWRITE_SESSION_COOKIE = 'appwrite-session'
 
@@ -28,17 +28,24 @@ export function createSessionClient() {
   }
 }
 
-export function createAdminClient() {
-  const client = new Client()
+function adminClient() {
+  return new Client()
     .setEndpoint(getEndpoint())
     .setProject(process.env.APPWRITE_PROJECT_ID!)
     .setKey(process.env.APPWRITE_API_KEY!)
+}
 
+export function createAdminClient() {
+  const client = adminClient()
   return {
     get account() {
       return new Account(client)
     },
   }
+}
+
+export function createAdminUsers() {
+  return new Users(adminClient())
 }
 
 export function setAppwriteSessionCookie(secret: string) {

@@ -1,10 +1,11 @@
-import { redirect, createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { ID } from 'node-appwrite'
 import { useMutation } from '../hooks/useMutation'
 import { Auth } from '../components/Auth'
 import {
   createAdminClient,
+  createAdminUsers,
   setAppwriteSessionCookie,
 } from '../utils/appwrite'
 
@@ -13,23 +14,34 @@ export const signupFn = createServerFn({ method: 'POST' })
     (d: { email: string; password: string; redirectUrl?: string }) => d,
   )
   .handler(async ({ data }) => {
+    const { account } = createAdminClient()
+    const userId = ID.unique()
+
     try {
-      const { account } = createAdminClient()
       await account.create({
-        userId: ID.unique(),
+        userId,
         email: data.email,
         password: data.password,
       })
+    } catch (error) {
+      return { error: true, message: (error as Error).message }
+    }
+
+    try {
       const session = await account.createEmailPasswordSession({
         email: data.email,
         password: data.password,
       })
       setAppwriteSessionCookie(session.secret)
     } catch (error) {
-      return {
-        error: true,
-        message: (error as Error).message,
+      // Roll back the just-created user so a retry with the same email
+      // doesn't hit `user_already_exists` and leave the caller stuck.
+      try {
+        await createAdminUsers().delete({ userId })
+      } catch {
+        // best-effort; surface the original session error either way
       }
+      return { error: true, message: (error as Error).message }
     }
 
     // Redirect to the prev page stored in the "redirect" search param
