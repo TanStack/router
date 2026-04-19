@@ -1,10 +1,10 @@
 import * as t from '@babel/types'
 
-import type { ParsedAst } from './ast'
 import { parseImportProtectionAst } from './ast'
-import type { LineIndex, TransformResult } from './sourceLocation'
 import { buildLineIndex } from './sourceLocation'
 import { getOrCreate } from './utils'
+import type { LineIndex, TransformResult } from './sourceLocation'
+import type { ParsedAst } from './ast'
 
 export type UsagePos = { line: number; column0: number }
 
@@ -624,7 +624,7 @@ function findUsagePosInAnalysis(
   envType?: BoundaryEnv,
 ): UsagePos | undefined {
   const analysis = getOrCreateImportAnalysis(result)
-  const cacheKey = `${envType ?? 'post'}::${source}` as UsageCacheKey
+  const cacheKey: UsageCacheKey = `${envType ?? 'post'}::${source}`
   if (analysis.usageByKey.has(cacheKey)) {
     return analysis.usageByKey.get(cacheKey) ?? undefined
   }
@@ -690,9 +690,7 @@ function findUsagePosInAnalysis(
           ? [...ctx.scopeStack, bindings]
           : ctx.scopeStack,
       }
-      if (node.body) {
-        visit(node.body, nextCtx)
-      }
+      visit(node.body, nextCtx)
       return
     }
 

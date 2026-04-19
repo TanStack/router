@@ -22,11 +22,11 @@ import {
 } from '../import-protection/analysis'
 import { rewriteDeniedImports } from '../import-protection/rewrite'
 import {
-  createImportSpecifierLocationIndex,
   ImportLocCache,
   addTraceImportLocations,
   buildCodeSnippet,
   buildLineIndex,
+  createImportSpecifierLocationIndex,
   findImportStatementLocationFromTransformed,
   findOriginalUsageLocation,
   findPostCompileUsageLocation,
@@ -48,13 +48,13 @@ import {
   loadSilentMockModule,
 } from '../import-protection/virtualModules'
 import {
-  buildSourceCandidates,
   buildResolutionCandidates,
+  buildSourceCandidates,
   canonicalizeResolvedId,
   checkFileDenial,
   clearNormalizeFilePathCache,
-  dedupeViolationKey,
   dedupePatterns,
+  dedupeViolationKey,
   isFileExcluded,
   normalizeFilePath,
 } from '../import-protection/utils'
@@ -437,7 +437,7 @@ function getModuleResource(module: RspackModule): string | undefined {
   }
 
   return (
-    candidate.nameForCondition?.() ??
+    candidate.nameForCondition() ??
     candidate.resourceResolveData?.resource ??
     candidate.resource ??
     candidate.userRequest ??
@@ -1074,7 +1074,7 @@ export function registerImportProtection(
                   transformInputFileSystem,
                   target,
                 )
-            : async () => undefined
+            : () => Promise.resolve(undefined)
         const originalCode =
           config.command === 'build'
             ? await loadOriginalCode(
@@ -1356,7 +1356,7 @@ export function registerImportProtection(
                   context.compilation.inputFileSystem!,
                   target,
                 )
-            : async () => undefined,
+            : () => Promise.resolve(undefined),
         )
       const allModules = Array.from(context.compilation.modules)
       const relevantModules = allModules

@@ -2,12 +2,13 @@ import { SourceMapConsumer } from 'source-map'
 import * as path from 'pathe'
 
 import {
-  getImportSpecifierLocationFromResult,
   findOriginalUnsafeUsagePosFromResult,
   findPostCompileUsagePosFromResult,
+  getImportSpecifierLocationFromResult,
 } from './analysis'
-import type { ParsedAst } from './ast'
 import { getOrCreate, normalizeFilePath } from './utils'
+import type { ImportAnalysis } from './analysis'
+import type { ParsedAst } from './ast'
 import type { Loc } from './trace'
 import type { RawSourceMap } from 'source-map'
 
@@ -36,7 +37,7 @@ export interface TransformResult {
   /** Precomputed line index for `code` (index → line/col). */
   lineIndex?: LineIndex
   parsedAst?: ParsedAst
-  analysis?: import('./analysis').ImportAnalysis
+  analysis?: ImportAnalysis
 }
 
 /**

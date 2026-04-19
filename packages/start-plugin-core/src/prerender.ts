@@ -7,9 +7,9 @@ import { Queue } from './queue'
 import type { Page, TanStackStartOutputConfig } from './schema'
 
 export interface PrerenderHandler {
-  getClientOutputDirectory(): string
-  request(path: string, options?: RequestInit): Promise<Response>
-  close?(): Promise<void>
+  getClientOutputDirectory: () => string
+  request: (path: string, options?: RequestInit) => Promise<Response>
+  close?: () => Promise<void>
 }
 
 export async function prerender({

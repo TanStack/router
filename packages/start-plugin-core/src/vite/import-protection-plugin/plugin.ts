@@ -24,13 +24,13 @@ import {
   canonicalizeResolvedId,
   checkFileDenial,
   clearNormalizeFilePathCache,
-  dedupeViolationKey,
   debugLog,
   dedupePatterns,
+  dedupeViolationKey,
   escapeRegExp,
   getOrCreate,
-  isInsideDirectory,
   isFileExcluded,
+  isInsideDirectory,
   matchesDebugFilter,
   normalizeFilePath,
   relativizePath,
@@ -42,6 +42,23 @@ import {
   getNamedExports,
 } from '../../import-protection/analysis'
 import { rewriteDeniedImports } from '../../import-protection/rewrite'
+import { ExtensionlessAbsoluteIdResolver } from '../../import-protection/extensionlessAbsoluteIdResolver'
+import {
+  IMPORT_PROTECTION_DEBUG,
+  SERVER_FN_LOOKUP_QUERY,
+  VITE_BROWSER_VIRTUAL_PREFIX,
+} from '../../import-protection/constants'
+import {
+  ImportLocCache,
+  addTraceImportLocations,
+  buildCodeSnippet,
+  buildLineIndex,
+  createImportSpecifierLocationIndex,
+  findImportStatementLocationFromTransformed,
+  findPostCompileUsageLocation,
+  normalizeSourceMap,
+  pickOriginalCodeFromSourcesContent,
+} from '../../import-protection/sourceLocation'
 import {
   MOCK_BUILD_PREFIX,
   generateDevSelfDenialModule,
@@ -53,23 +70,6 @@ import {
   resolveInternalVirtualModuleId,
   resolvedMarkerVirtualModuleId,
 } from './virtualModules'
-import { ExtensionlessAbsoluteIdResolver } from '../../import-protection/extensionlessAbsoluteIdResolver'
-import {
-  IMPORT_PROTECTION_DEBUG,
-  SERVER_FN_LOOKUP_QUERY,
-  VITE_BROWSER_VIRTUAL_PREFIX,
-} from '../../import-protection/constants'
-import {
-  createImportSpecifierLocationIndex,
-  ImportLocCache,
-  addTraceImportLocations,
-  buildCodeSnippet,
-  buildLineIndex,
-  findImportStatementLocationFromTransformed,
-  findPostCompileUsageLocation,
-  normalizeSourceMap,
-  pickOriginalCodeFromSourcesContent,
-} from '../../import-protection/sourceLocation'
 import type { PluginOption, ViteDevServer } from 'vite'
 import type {
   Loc,
