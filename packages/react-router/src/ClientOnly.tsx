@@ -2,17 +2,6 @@
 
 import React from 'react'
 
-let hydrated = false
-const listeners = new Set<() => void>()
-
-function markHydrated() {
-  if (hydrated) return
-  hydrated = true
-  for (const listener of listeners) {
-    listener()
-  }
-}
-
 export interface ClientOnlyProps {
   /**
    * The children to render when the JS is loaded.
@@ -69,22 +58,15 @@ export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
  * @returns True if the JS has been hydrated already, false otherwise.
  */
 export function useHydrated(): boolean {
-  const value = React.useSyncExternalStore(
+  return React.useSyncExternalStore(
     subscribe,
-    () => hydrated,
+    () => true,
     () => false,
   )
-
-  React.useEffect(() => {
-    markHydrated()
-  }, [])
-
-  return value
 }
 
-function subscribe(listener: () => void) {
-  listeners.add(listener)
+function subscribe() {
   return () => {
-    listeners.delete(listener)
+    // noop
   }
 }

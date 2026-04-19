@@ -92,7 +92,6 @@ function StreamReader({
   testId,
 }: {
   stream: ReadableStream<Uint8Array> | RawStream
-  stream: ReadableStream<Uint8Array> | RawStream
   testId: string
 }) {
   const [result, setResult] = useState<string | null>(null)

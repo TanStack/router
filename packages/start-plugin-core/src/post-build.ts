@@ -3,8 +3,8 @@ import { buildSitemap } from './build-sitemap'
 import type { TanStackStartOutputConfig } from './schema'
 
 export interface StartPostBuildAdapter {
-  getClientOutputDirectory(): string
-  prerender(startConfig: TanStackStartOutputConfig): Promise<void>
+  getClientOutputDirectory: () => string
+  prerender: (startConfig: TanStackStartOutputConfig) => Promise<void>
 }
 
 export async function postBuild({
