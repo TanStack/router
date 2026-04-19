@@ -222,7 +222,7 @@ export function startCompilerPlugin(
         },
         handler(code, id) {
           const compiler = compilers.get(this.environment.name)
-          compiler?.ingestModule({ code, id: cleanId(id) })
+          compiler?.cacheModuleInfo({ code, id: cleanId(id) })
         },
       },
     },

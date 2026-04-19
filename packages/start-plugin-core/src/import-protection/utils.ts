@@ -26,6 +26,41 @@ export function dedupePatterns(patterns: Array<Pattern>): Array<Pattern> {
   return out
 }
 
+export interface FileMatchers {
+  files: Array<{ pattern: Pattern; test: (value: string) => boolean }>
+  excludeFiles: Array<{ pattern: Pattern; test: (value: string) => boolean }>
+}
+
+export function isFileExcluded(
+  relativePath: string,
+  matchers: Pick<FileMatchers, 'excludeFiles'>,
+): boolean {
+  return (
+    matchers.excludeFiles.length > 0 &&
+    matchers.excludeFiles.some((matcher) => matcher.test(relativePath))
+  )
+}
+
+export function checkFileDenial(
+  relativePath: string,
+  matchers: FileMatchers,
+): FileMatchers['files'][number] | undefined {
+  if (isFileExcluded(relativePath, matchers)) {
+    return undefined
+  }
+
+  return matchers.files.find((matcher) => matcher.test(relativePath))
+}
+
+export function dedupeViolationKey(info: {
+  type: string
+  importer: string
+  specifier: string
+  resolved?: string
+}): string {
+  return `${info.type}:${info.importer}:${info.specifier}:${info.resolved ?? ''}`
+}
+
 /** Strip both `?query` and `#hash` from a module ID. */
 export function stripQueryAndHash(id: string): string {
   const q = id.indexOf('?')
@@ -57,15 +92,6 @@ export function clearNormalizeFilePathCache(): void {
   normalizeFilePathCache.clear()
 }
 
-/**
- * Lightweight regex to extract all import/re-export source strings from
- * post-transform code.  Matches:
- *   - `from "..."` / `from '...'`   (static import/export)
- *   - `import("...")` / `import('...')` (dynamic import)
- */
-const importSourceRe =
-  /\bfrom\s+(?:"([^"]+)"|'([^']+)')|import\s*\(\s*(?:"([^"]+)"|'([^']+)')\s*\)/g
-
 export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -91,17 +117,6 @@ export function relativizePath(p: string, root: string): string {
   // Must be followed by a separator or end-of-string to be a true child
   if (ch !== 47 && !Number.isNaN(ch)) return p
   return ch === 47 ? p.slice(root.length + 1) : p.slice(root.length)
-}
-
-export function extractImportSources(code: string): Array<string> {
-  const sources: Array<string> = []
-  let m: RegExpExecArray | null
-  importSourceRe.lastIndex = 0
-  while ((m = importSourceRe.exec(code)) !== null) {
-    const src = m[1] ?? m[2] ?? m[3] ?? m[4]
-    if (src) sources.push(src)
-  }
-  return sources
 }
 
 /** Log import-protection debug output when debug mode is enabled. */

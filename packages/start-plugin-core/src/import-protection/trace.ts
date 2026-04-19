@@ -166,7 +166,6 @@ export interface ViolationInfo {
   importerLoc?: Loc
   resolved?: string
   trace: Array<TraceStep>
-  message: string
   /** Vitest-style code snippet showing the offending usage in the leaf module. */
   snippet?: {
     lines: Array<string>

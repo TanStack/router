@@ -72,6 +72,7 @@ export function createRsbuildEnvironmentPlan(opts: {
   serverFnProviderEnv: string
   environmentOverrides?: RsbuildEnvironmentOverrides
   rsc?: boolean | undefined
+  dev?: boolean | undefined
 }): RsbuildEnvironmentPlanResult {
   const alias = {
     ...opts.entryAliases.alias,
@@ -135,6 +136,10 @@ export function createRsbuildEnvironmentPlan(opts: {
           },
           output: {
             target: 'node',
+            // Rsbuild's dev `loadBundle()` path evaluates ESM via vm.SourceTextModule,
+            // which requires `--experimental-vm-modules`. Emit CJS for the dev
+            // server bundle so SSR works without extra Node flags.
+            ...(opts.dev ? { module: false } : {}),
             distPath: {
               root: opts.serverOutputDirectory,
             },
@@ -171,6 +176,7 @@ export function createRsbuildEnvironmentPlan(opts: {
                 },
                 output: {
                   target: 'node',
+                  ...(opts.dev ? { module: false } : {}),
                   distPath: {
                     root: `${opts.serverOutputDirectory}/${opts.serverFnProviderEnv}`,
                   },

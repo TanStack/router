@@ -11,8 +11,8 @@ import {
   loadSilentMockModule,
   makeMockEdgeModuleId,
   mockRuntimeModuleIdFromViolation,
-} from '../../src/import-protection-plugin/virtualModules'
-import type { ViolationInfo } from '../../src/import-protection-plugin/trace'
+} from '../../src/vite/import-protection-plugin/virtualModules'
+import type { ViolationInfo } from '../../src/import-protection/trace'
 
 describe('loadSilentMockModule', () => {
   test('returns mock code', () => {
@@ -137,7 +137,6 @@ describe('mockRuntimeModuleIdFromViolation', () => {
       { file: '/project/src/main.tsx' },
       { file: '/project/src/routes/index.tsx', specifier: './secret.server' },
     ],
-    message: 'Import denied',
   }
 
   test('returns MOCK_MODULE_ID when mode is off', () => {

@@ -1,21 +1,26 @@
 import { describe, expect, test } from 'vitest'
+import { getImportSources } from '../../src/import-protection/analysis'
 
 import {
   buildResolutionCandidates,
   buildSourceCandidates,
   canonicalizeResolvedId,
+  checkFileDenial,
+  dedupeViolationKey,
   dedupePatterns,
   escapeRegExp,
-  extractImportSources,
   getOrCreate,
   isInsideDirectory,
+  isFileExcluded,
   normalizeFilePath,
   relativizePath,
   shouldDeferViolation,
   stripQuery,
   stripQueryAndHash,
   withoutKnownExtension,
-} from '../../src/import-protection-plugin/utils'
+} from '../../src/import-protection/utils'
+import { compileMatchers } from '../../src/import-protection/matchers'
+import { formatViolation } from '../../src/import-protection/trace'
 
 describe('dedupePatterns', () => {
   test('dedupes strings and preserves first occurrence order', () => {
@@ -90,6 +95,50 @@ describe('buildSourceCandidates', () => {
   })
 })
 
+describe('checkFileDenial', () => {
+  test('returns matching file matcher when file is denied', () => {
+    const matchers = {
+      files: compileMatchers(['**/*.server.*']),
+      excludeFiles: compileMatchers([]),
+    }
+
+    const result = checkFileDenial('src/secret.server.ts', matchers)
+
+    expect(result?.pattern).toBe('**/*.server.*')
+  })
+
+  test('returns undefined when file is excluded', () => {
+    const matchers = {
+      files: compileMatchers(['**/*.server.*']),
+      excludeFiles: compileMatchers(['**/node_modules/**']),
+    }
+
+    expect(
+      checkFileDenial('node_modules/pkg/index.server.js', matchers),
+    ).toBeUndefined()
+  })
+})
+
+describe('isFileExcluded', () => {
+  test('returns true when exclude matcher matches', () => {
+    const matchers = {
+      excludeFiles: compileMatchers(['**/node_modules/**']),
+    }
+
+    expect(isFileExcluded('node_modules/pkg/index.server.js', matchers)).toBe(
+      true,
+    )
+  })
+
+  test('returns false when exclude matcher does not match', () => {
+    const matchers = {
+      excludeFiles: compileMatchers(['**/node_modules/**']),
+    }
+
+    expect(isFileExcluded('src/secret.server.ts', matchers)).toBe(false)
+  })
+})
+
 describe('buildResolutionCandidates', () => {
   test('returns deduped id variants', () => {
     expect(buildResolutionCandidates('/a/b.ts?x=1')).toEqual([
@@ -130,6 +179,29 @@ describe('shouldDeferViolation', () => {
     expect(shouldDeferViolation({ isBuild: false, isDevMock: false })).toBe(
       false,
     )
+  })
+})
+
+describe('dedupeViolationKey', () => {
+  test('includes resolved path when present', () => {
+    expect(
+      dedupeViolationKey({
+        type: 'file',
+        importer: '/app/src/a.ts',
+        specifier: './secret.server',
+        resolved: '/app/src/secret.server.ts',
+      }),
+    ).toBe('file:/app/src/a.ts:./secret.server:/app/src/secret.server.ts')
+  })
+
+  test('uses empty resolved segment when resolved is absent', () => {
+    expect(
+      dedupeViolationKey({
+        type: 'specifier',
+        importer: '/app/src/a.ts',
+        specifier: '@tanstack/react-start/server',
+      }),
+    ).toBe('specifier:/app/src/a.ts:@tanstack/react-start/server:')
   })
 })
 
@@ -179,20 +251,20 @@ describe('normalizeFilePath', () => {
   })
 })
 
-describe('extractImportSources', () => {
+describe('getImportSources', () => {
   test('extracts static import sources', () => {
     const code = `import { foo } from 'bar'\nimport baz from "qux"`
-    expect(extractImportSources(code)).toEqual(['bar', 'qux'])
+    expect(getImportSources(code)).toEqual(['bar', 'qux'])
   })
 
   test('extracts re-export sources', () => {
     const code = `export { a } from './mod'\nexport * from "./other"`
-    expect(extractImportSources(code)).toEqual(['./mod', './other'])
+    expect(getImportSources(code)).toEqual(['./mod', './other'])
   })
 
   test('extracts dynamic import sources', () => {
     const code = `const m = import('./lazy')\nconst n = import("./lazy2")`
-    expect(extractImportSources(code)).toEqual(['./lazy', './lazy2'])
+    expect(getImportSources(code)).toEqual(['./lazy', './lazy2'])
   })
 
   test('handles mixed import styles', () => {
@@ -201,26 +273,37 @@ describe('extractImportSources', () => {
       `export { b } from './reexport'`,
       `const c = import('./dynamic')`,
     ].join('\n')
-    expect(extractImportSources(code)).toEqual([
+    expect(getImportSources(code)).toEqual([
       'static',
       './reexport',
       './dynamic',
     ])
   })
 
+  test('extracts imports from decorated modules', () => {
+    const code = [
+      `@sealed class Example {}`,
+      `import { value } from 'broken'`,
+    ].join('\n')
+    expect(getImportSources(code)).toEqual(['broken'])
+  })
+
   test('returns empty array for code with no imports', () => {
-    expect(extractImportSources('const x = 1')).toEqual([])
+    expect(getImportSources('const x = 1')).toEqual([])
   })
 
   test('handles empty string', () => {
-    expect(extractImportSources('')).toEqual([])
+    expect(getImportSources('')).toEqual([])
   })
 
   test('does not match import in comments or strings', () => {
-    // The regex is intentionally lightweight and will match inside strings/comments.
-    // This test documents the actual behavior.
     const code = `// import { x } from 'commented'`
-    expect(extractImportSources(code)).toEqual(['commented'])
+    expect(getImportSources(code)).toEqual([])
+  })
+
+  test('extracts import attributes syntax', () => {
+    const code = `import data from './data.json' with { type: 'json' }`
+    expect(getImportSources(code)).toEqual(['./data.json'])
   })
 })
 

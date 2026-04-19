@@ -1,7 +1,12 @@
 import { SourceMapConsumer } from 'source-map'
 import * as path from 'pathe'
 
-import { findPostCompileUsagePos } from './postCompileUsage'
+import {
+  getImportSpecifierLocationFromResult,
+  findOriginalUnsafeUsagePosFromResult,
+  findPostCompileUsagePosFromResult,
+} from './analysis'
+import type { ParsedAst } from './ast'
 import { getOrCreate, normalizeFilePath } from './utils'
 import type { Loc } from './trace'
 import type { RawSourceMap } from 'source-map'
@@ -27,8 +32,11 @@ export interface TransformResult {
   code: string
   map: SourceMapLike | undefined
   originalCode: string | undefined
+  originalResult?: TransformResult
   /** Precomputed line index for `code` (index → line/col). */
   lineIndex?: LineIndex
+  parsedAst?: ParsedAst
+  analysis?: import('./analysis').ImportAnalysis
 }
 
 /**
@@ -39,6 +47,10 @@ export interface TransformResult {
  */
 export interface TransformResultProvider {
   getTransformResult: (id: string) => TransformResult | undefined
+}
+
+export interface ImportSpecifierLocationIndex {
+  find: FindImportSpecifierLocationIndex
 }
 
 // Index → line/column conversion
@@ -79,6 +91,42 @@ function indexToLineColWithIndex(
 
   const lineStart = offsets[lineIdx] ?? 0
   return { line, column0: Math.max(0, idx - lineStart) }
+}
+
+export function indexToLineColumn(
+  lineIndex: LineIndex,
+  idx: number,
+): { line: number; column: number } {
+  const { line, column0 } = indexToLineColWithIndex(lineIndex, idx)
+  return {
+    line,
+    column: column0 + 1,
+  }
+}
+
+export function normalizeSourceMap(map: SourceMapLike | null | undefined):
+  | {
+      version: number
+      file: string
+      sourceRoot?: string
+      sources: Array<string>
+      names: Array<string>
+      sourcesContent?: Array<string>
+      mappings: string
+    }
+  | undefined {
+  if (!map) {
+    return undefined
+  }
+
+  return {
+    ...map,
+    version: Number(map.version),
+    file: map.file ?? '',
+    names: Array.isArray(map.names) ? map.names : [],
+    sourcesContent:
+      map.sourcesContent?.map((value) => value ?? '') ?? undefined,
+  }
 }
 
 /**
@@ -271,7 +319,40 @@ export class ImportLocCache {
   }
 }
 
-export type FindImportSpecifierIndex = (code: string, source: string) => number
+export type FindImportSpecifierLocationIndex = (
+  result: TransformResult,
+  source: string,
+) => number
+
+export function getOrCreateOriginalTransformResult(
+  result: TransformResult,
+): TransformResult | undefined {
+  if (!result.originalCode) {
+    return undefined
+  }
+
+  if (!result.originalResult) {
+    result.originalResult = {
+      code: result.originalCode,
+      map: undefined,
+      originalCode: result.originalCode,
+    }
+  }
+
+  return result.originalResult
+}
+
+export function createImportSpecifierLocationIndex(): ImportSpecifierLocationIndex {
+  return {
+    find(result: TransformResult, source: string): number {
+      if (!result.code.includes(source)) {
+        return -1
+      }
+
+      return getImportSpecifierLocationFromResult(result, source)
+    },
+  }
+}
 
 /**
  * Find the location of an import statement in a transformed module
@@ -283,7 +364,7 @@ export async function findImportStatementLocationFromTransformed(
   importerId: string,
   source: string,
   importLocCache: ImportLocCache,
-  findImportSpecifierIndex: FindImportSpecifierIndex,
+  findImportSpecifierLocationIndex: FindImportSpecifierLocationIndex,
 ): Promise<Loc | undefined> {
   const importerFile = normalizeFilePath(importerId)
   const cacheKey = `${importerFile}::${source}`
@@ -298,11 +379,12 @@ export async function findImportStatementLocationFromTransformed(
       return undefined
     }
 
-    const { code, map } = res
+    const { map } = res
 
-    const lineIndex = res.lineIndex ?? buildLineIndex(code)
+    const lineIndex =
+      res.lineIndex ?? (res.lineIndex = buildLineIndex(res.code))
 
-    const idx = findImportSpecifierIndex(code, source)
+    const idx = findImportSpecifierLocationIndex(res, source)
     if (idx === -1) {
       importLocCache.set(cacheKey, null)
       return undefined
@@ -338,10 +420,43 @@ export async function findPostCompileUsageLocation(
       res.lineIndex = buildLineIndex(code)
     }
 
-    const pos = findPostCompileUsagePos(code, source)
+    const pos = findPostCompileUsagePosFromResult(res, source)
     if (!pos) return undefined
 
     return await mapGeneratedToOriginal(map, pos, importerFile)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Best-effort original-source usage lookup for cases where a later transform
+ * removes or rewrites the import from emitted code but preserves the original
+ * source in `sourcesContent`.
+ */
+export function findOriginalUsageLocation(
+  provider: TransformResultProvider,
+  importerId: string,
+  source: string,
+  envType?: 'client' | 'server',
+): Loc | undefined {
+  try {
+    const importerFile = normalizeFilePath(importerId)
+    const res = provider.getTransformResult(importerId)
+    if (!res) return undefined
+    const originalResult = getOrCreateOriginalTransformResult(res)
+    if (!originalResult) return undefined
+
+    const pos = envType
+      ? findOriginalUnsafeUsagePosFromResult(originalResult, source, envType)
+      : findPostCompileUsagePosFromResult(originalResult, source)
+    if (!pos) return undefined
+
+    return {
+      file: importerFile,
+      line: pos.line,
+      column: pos.column0 + 1,
+    }
   } catch {
     return undefined
   }
@@ -360,7 +475,7 @@ export async function addTraceImportLocations(
     column?: number
   }>,
   importLocCache: ImportLocCache,
-  findImportSpecifierIndex: FindImportSpecifierIndex,
+  findImportSpecifierLocationIndex: FindImportSpecifierLocationIndex,
 ): Promise<void> {
   for (const step of trace) {
     if (!step.specifier) continue
@@ -370,7 +485,7 @@ export async function addTraceImportLocations(
       step.file,
       step.specifier,
       importLocCache,
-      findImportSpecifierIndex,
+      findImportSpecifierLocationIndex,
     )
     if (!loc) continue
     step.line = loc.line

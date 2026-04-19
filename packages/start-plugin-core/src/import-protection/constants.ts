@@ -2,6 +2,13 @@ import { SERVER_FN_LOOKUP } from '../constants'
 
 export const SERVER_FN_LOOKUP_QUERY = `?${SERVER_FN_LOOKUP}`
 
+export const MOCK_MODULE_ID = 'tanstack-start-import-protection:mock'
+export const MOCK_BUILD_PREFIX = 'tanstack-start-import-protection:mock:build:'
+export const MOCK_EDGE_PREFIX = 'tanstack-start-import-protection:mock-edge:'
+export const MOCK_RUNTIME_PREFIX =
+  'tanstack-start-import-protection:mock-runtime:'
+export const MARKER_PREFIX = 'tanstack-start-import-protection:marker:'
+
 export const IMPORT_PROTECTION_DEBUG =
   process.env.TSR_IMPORT_PROTECTION_DEBUG === '1' ||
   process.env.TSR_IMPORT_PROTECTION_DEBUG === 'true'
