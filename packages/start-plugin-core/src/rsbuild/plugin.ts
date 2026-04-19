@@ -255,6 +255,44 @@ export function tanStackStartRsbuild(
       const { getClientBuild } = registerClientBuildCapture(api)
 
       // ---------------------------------------------------------------
+      // 4b. Server manifest module generation (build only)
+      //     For ordinary multi-environment builds, Rsbuild can compile the
+      //     server environment after the client environment finishes. Generate
+      //     the final manifest as module source in that phase instead of
+      //     patching emitted server assets afterwards.
+      // ---------------------------------------------------------------
+      if (api.context.action !== 'dev') {
+        const manifestPathPattern = new RegExp(
+          `^${escapeRegExp(virtualModuleState.manifestPath)}$`,
+        )
+
+        api.transform(
+          {
+            test: manifestPathPattern,
+            environments: [RSBUILD_ENVIRONMENT_NAMES.server],
+          },
+          ({ code }) => {
+            const clientBuild = getClientBuild()
+
+            if (clientBuild) {
+              return virtualModuleState.generateManifestContent(clientBuild)
+            }
+
+            if (!rscEnabled) {
+              throw new Error(
+                'TanStack Start could not generate the rsbuild server manifest before the client build completed',
+              )
+            }
+
+            // RSC builds cannot express the required client -> server ordering
+            // through MultiCompiler dependencies, so keep the placeholder for
+            // the RSC-only asset-patching fallback below.
+            return code
+          },
+        )
+      }
+
+      // ---------------------------------------------------------------
       // 5. Router plugin wiring (generator + code splitter)
       // ---------------------------------------------------------------
       registerRouterPlugins(api, {
@@ -459,16 +497,15 @@ export function tanStackStartRsbuild(
       }
 
       // ---------------------------------------------------------------
-      // 8b. Manifest asset replacement (build only)
-      //     The server manifest virtual module is created before the client
-      //     build stats are guaranteed to exist, so production server bundles
-      //     can otherwise retain the placeholder manifest literal. Emit a
-      //     sentinel string first, then swap just that serialized value once
-      //     the client build has been captured.
-      //     In dev we instead rewrite the virtual module and let rspack
-      //     recompile the server bundle.
+      // 8b. Manifest asset replacement fallback (RSC build only)
+      //     Rsbuild's RSC coordinator interleaves the server and client
+      //     compilers, so the server manifest module can still compile before
+      //     client build stats exist. Keep the placeholder replacement only for
+      //     that RSC-specific path until rspack exposes a cleaner environment-
+      //     level handoff for interleaved builds. Non-RSC builds generate the
+      //     final manifest module source in the transform hook above.
       // ---------------------------------------------------------------
-      if (api.context.action !== 'dev') {
+      if (api.context.action !== 'dev' && rscEnabled) {
         const manifestPlaceholderLiteral = JSON.stringify(
           START_MANIFEST_PLACEHOLDER,
         )
@@ -550,6 +587,10 @@ export function tanStackStartRsbuild(
       }
     },
   }
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 /**
