@@ -326,6 +326,10 @@
               "to": "framework/react/examples/start-supabase-basic"
             },
             {
+              "label": "Basic + Appwrite Auth",
+              "to": "framework/react/examples/start-appwrite-basic"
+            },
+            {
               "label": "Trellaux + Convex",
               "to": "framework/react/examples/start-convex-trellaux"
             },

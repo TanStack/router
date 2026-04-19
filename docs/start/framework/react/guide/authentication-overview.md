@@ -176,6 +176,7 @@ Build your own authentication system using TanStack Start's server functions and
 
 - [Basic Auth with Prisma](https://github.com/TanStack/router/tree/main/examples/react/start-basic-auth)
 - [Supabase Auth](https://github.com/TanStack/router/tree/main/examples/react/start-supabase-basic)
+- [Appwrite Auth](https://github.com/TanStack/router/tree/main/examples/react/start-appwrite-basic)
 
 **Client-Side Examples:**
 
