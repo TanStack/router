@@ -1,5 +1,7 @@
 import { resolve as resolvePath } from 'node:path'
 
+import { extname } from 'node:path'
+
 import { normalizePath } from 'vite'
 
 import {
@@ -449,6 +451,33 @@ function getModuleFile(module: RspackModule): string {
   return normalizeFilePath(getModuleResource(module) ?? module.identifier())
 }
 
+const IMPORT_PROTECTION_PARSEABLE_EXTENSIONS = new Set([
+  '.ts',
+  '.tsx',
+  '.mts',
+  '.cts',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+])
+
+function isImportProtectionSourceFile(file: string | undefined): boolean {
+  if (!file) {
+    return false
+  }
+
+  const extension = extname(normalizeFilePath(file))
+  return (
+    extension.length > 0 &&
+    IMPORT_PROTECTION_PARSEABLE_EXTENSIONS.has(extension)
+  )
+}
+
+function isImportProtectionSourceModule(module: RspackModule): boolean {
+  return isImportProtectionSourceFile(getModuleResource(module))
+}
+
 function addTransformResult(
   cache: Map<string, TransformResult>,
   key: string,
@@ -790,6 +819,10 @@ async function getMarkerKindForFile(opts: {
   markerKindCache: Map<string, Promise<'server' | 'client' | undefined>>
   file: string
 }): Promise<'server' | 'client' | undefined> {
+  if (!isImportProtectionSourceFile(opts.file)) {
+    return undefined
+  }
+
   let cached = opts.markerKindCache.get(opts.file)
   if (!cached) {
     cached = (async () => {
@@ -1359,7 +1392,7 @@ export function registerImportProtection(
             : () => Promise.resolve(undefined),
         )
       const allModules = Array.from(context.compilation.modules)
-      const relevantModules = allModules
+      const relevantModules = allModules.filter(isImportProtectionSourceModule)
 
       const provider = await buildTransformResultProvider({
         modules: relevantModules,

@@ -206,7 +206,10 @@ export function tanStackStartRsbuild(
       // ---------------------------------------------------------------
       registerStartCompilerTransforms(api, {
         framework: corePluginOpts.framework,
-        root: resolvedStartConfig.root || process.cwd(),
+        // modifyRsbuildConfig copies rsbuildConfig.root into resolvedStartConfig.root,
+        // so defer this read until transform time instead of falling back to
+        // process.cwd() during plugin setup.
+        root: () => resolvedStartConfig.root || process.cwd(),
         providerEnvName: serverFnProviderEnv,
         generateFunctionId:
           normalizedStartPluginOpts.serverFns?.generateFunctionId,
@@ -237,6 +240,7 @@ export function tanStackStartRsbuild(
         root: resolvedStartConfig.root || process.cwd(),
         getConfig,
         serverFnsById,
+        providerEnvName: serverFnProviderEnv,
         ssrIsProvider,
         serializationAdapters: corePluginOpts.serializationAdapters,
         getDevClientEntryUrl: (publicBase: string) =>
