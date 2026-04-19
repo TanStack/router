@@ -1,0 +1,25 @@
+{
+  "name": "tanstack-router-react-example-quickstart-rspack-lazy-based-tauri",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "rsbuild dev --port 3000",
+    "build": "rsbuild build && tsc --noEmit",
+    "preview": "rsbuild preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.168.23",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "^1.2.4",
+    "@rsbuild/plugin-react": "^1.1.0",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3"
+  }
+}
