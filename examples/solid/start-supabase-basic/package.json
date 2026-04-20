@@ -15,9 +15,9 @@
     "@solidjs/web": "2.0.0-beta.7",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
-    "@tanstack/solid-router": "^2.0.0-beta.13",
-    "@tanstack/solid-router-devtools": "^2.0.0-beta.10",
-    "@tanstack/solid-start": "^2.0.0-beta.14",
+    "@tanstack/solid-router": "^2.0.0-beta.14",
+    "@tanstack/solid-router-devtools": "^2.0.0-beta.11",
+    "@tanstack/solid-start": "^2.0.0-beta.15",
     "redaxios": "^0.5.1",
     "solid-js": "2.0.0-beta.7"
   },

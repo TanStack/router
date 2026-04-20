@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 2.0.0-beta.14
+
+### Patch Changes
+
+- chore: bump solid 2 to beta.7 ([#7210](https://github.com/TanStack/router/pull/7210))
+
 ## 2.0.0-beta.13
 
 ### Patch Changes

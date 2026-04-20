@@ -1,5 +1,14 @@
 # @tanstack/solid-start-server
 
+## 2.0.0-beta.14
+
+### Patch Changes
+
+- chore: bump solid 2 to beta.7 ([#7210](https://github.com/TanStack/router/pull/7210))
+
+- Updated dependencies [[`2332fb2`](https://github.com/TanStack/router/commit/2332fb26f960ec859b164e12f94b69fe49e9425f)]:
+  - @tanstack/solid-router@2.0.0-beta.14
+
 ## 2.0.0-beta.13
 
 ### Patch Changes
