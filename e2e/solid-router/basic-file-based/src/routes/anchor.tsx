@@ -75,6 +75,15 @@ function AnchorComponent() {
   const navigate = useNavigate()
   const location = useLocation()
   const [withScroll, setWithScroll] = createSignal(true)
+  const [selectedHash, setSelectedHash] = createSignal(
+    location().hash || anchors[0].id,
+  )
+  const [scrollBehavior, setScrollBehavior] =
+    createSignal<ScrollBehavior>('instant')
+  const [scrollBlock, setScrollBlock] =
+    createSignal<ScrollLogicalPosition>('start')
+  const [scrollInline, setScrollInline] =
+    createSignal<ScrollLogicalPosition>('nearest')
 
   return (
     <div class="flex flex-col w-full">
@@ -114,9 +123,9 @@ function AnchorComponent() {
 
             const hashScrollIntoView = withScroll()
               ? ({
-                  behavior: formData.get('scrollBehavior') as ScrollBehavior,
-                  block: formData.get('scrollBlock') as ScrollLogicalPosition,
-                  inline: formData.get('scrollInline') as ScrollLogicalPosition,
+                  behavior: scrollBehavior(),
+                  block: scrollBlock(),
+                  inline: scrollInline(),
                 } satisfies ScrollIntoViewOptions)
               : false
 
@@ -130,7 +139,8 @@ function AnchorComponent() {
               <select
                 class="border border-opacity-50 rounded-sm p-2 w-full"
                 data-testid="hash-select"
-                value={location().hash || anchors[0].id}
+                value={selectedHash()}
+                onChange={(event) => setSelectedHash(event.currentTarget.value)}
                 name="hash"
               >
                 {anchors.map((anchor) => (
@@ -158,7 +168,12 @@ function AnchorComponent() {
                   <select
                     class="border border-opacity-50 rounded-sm p-2 w-full"
                     data-testid="behavior-select"
-                    value="instant"
+                    value={scrollBehavior()}
+                    onChange={(event) =>
+                      setScrollBehavior(
+                        event.currentTarget.value as ScrollBehavior,
+                      )
+                    }
                     name="scrollBehavior"
                   >
                     <option value="instant">instant</option>
@@ -174,7 +189,12 @@ function AnchorComponent() {
                   <select
                     class="border border-opacity-50 rounded-sm p-2 w-full"
                     data-testid="block-select"
-                    value="start"
+                    value={scrollBlock()}
+                    onChange={(event) =>
+                      setScrollBlock(
+                        event.currentTarget.value as ScrollLogicalPosition,
+                      )
+                    }
                     name="scrollBlock"
                   >
                     <option value="start">start</option>
@@ -191,7 +211,12 @@ function AnchorComponent() {
                   <select
                     class="border border-opacity-50 rounded-sm p-2 w-full"
                     data-testid="inline-select"
-                    value="nearest"
+                    value={scrollInline()}
+                    onChange={(event) =>
+                      setScrollInline(
+                        event.currentTarget.value as ScrollLogicalPosition,
+                      )
+                    }
                     name="scrollInline"
                   >
                     <option value="start">start</option>

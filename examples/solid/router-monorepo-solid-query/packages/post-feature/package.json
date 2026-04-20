@@ -11,11 +11,11 @@
     "@tanstack/solid-query": "^6.0.0-beta.3",
     "@router-solid-mono-solid-query/post-query": "workspace:*",
     "@router-solid-mono-solid-query/router": "workspace:*",
-    "solid-js": "2.0.0-beta.6",
-    "@solidjs/web": "2.0.0-beta.6"
+    "solid-js": "2.0.0-beta.7",
+    "@solidjs/web": "2.0.0-beta.7"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^3.0.0-next.4",
+    "vite-plugin-solid": "^3.0.0-next.5",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
     "vite-plugin-dts": "^4.5.4"

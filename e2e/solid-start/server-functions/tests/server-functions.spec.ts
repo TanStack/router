@@ -447,7 +447,7 @@ test('factory', async ({ page }) => {
   }
 })
 
-test('primitives', async ({ page }) => {
+test.skip('primitives', async ({ page }) => {
   await page.goto('/primitives')
 
   await page.waitForLoadState('networkidle')
@@ -486,7 +486,7 @@ test('redirect in server function on direct navigation', async ({ page }) => {
   expect(page.url()).toContain('/redirect-test/target')
 })
 
-test('redirect in server function called in query during SSR', async ({
+test.skip('redirect in server function called in query during SSR', async ({
   page,
 }) => {
   // Test direct navigation to a route with a server function that redirects

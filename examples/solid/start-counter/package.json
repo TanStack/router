@@ -13,15 +13,15 @@
     "@tanstack/solid-router": "^2.0.0-beta.13",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.10",
     "@tanstack/solid-start": "^2.0.0-beta.14",
-    "solid-js": "2.0.0-beta.6",
-    "@solidjs/web": "2.0.0-beta.6",
+    "solid-js": "2.0.0-beta.7",
+    "@solidjs/web": "2.0.0-beta.7",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "vite-plugin-solid": "^3.0.0-next.4",
+    "vite-plugin-solid": "^3.0.0-next.5",
     "combinate": "^1.1.11",
     "typescript": "^6.0.2",
     "vite": "^8.0.0"

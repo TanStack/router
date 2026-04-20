@@ -479,7 +479,7 @@ function UsersLayoutComponent() {
       : [...users()].sort((a, b) => {
           return a[sortBy] > b[sortBy] ? 1 : -1
         })
-  }, [users, sortBy])
+  })
 
   const filteredUsers = createMemo(() => {
     if (!filterBy) return sortedUsers()
@@ -487,7 +487,7 @@ function UsersLayoutComponent() {
     return sortedUsers().filter((user) =>
       user.name.toLowerCase().includes(filterBy.toLowerCase()),
     )
-  }, [sortedUsers, filterBy])
+  })
 
   const setSortBy = (sortBy: UsersViewSortBy) =>
     navigate({
