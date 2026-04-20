@@ -1,7 +1,7 @@
-import { expect } from '@playwright/test'
-import { test } from '@tanstack/router-e2e-utils'
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { expect } from '@playwright/test'
+import { test } from '@tanstack/router-e2e-utils'
 import { waitForHydration } from './hydration'
 
 type CssCase = {
