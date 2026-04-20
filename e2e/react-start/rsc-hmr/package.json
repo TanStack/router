@@ -1,7 +1,9 @@
 {
   "name": "tanstack-react-start-e2e-rsc-hmr",
   "private": true,
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3000",
