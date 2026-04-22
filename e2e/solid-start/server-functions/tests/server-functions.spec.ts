@@ -447,7 +447,7 @@ test('factory', async ({ page }) => {
   }
 })
 
-test.skip('primitives', async ({ page }) => {
+test('primitives', async ({ page }) => {
   await page.goto('/primitives')
 
   await page.waitForLoadState('networkidle')

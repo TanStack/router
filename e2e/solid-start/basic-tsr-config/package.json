@@ -14,8 +14,8 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
-    "solid-js": "2.0.0-beta.7",
-    "@solidjs/web": "2.0.0-beta.7",
+    "solid-js": "2.0.0-beta.8",
+    "@solidjs/web": "2.0.0-beta.8",
     "vite": "^8.0.0"
   },
   "devDependencies": {
