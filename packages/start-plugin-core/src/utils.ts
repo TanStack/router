@@ -17,3 +17,7 @@ export function createLogger(prefix: string) {
     error: (...args: any) => console.error(label, ...args),
   }
 }
+
+export function normalizePath(path: string): string {
+  return path.replace(/\\/g, '/')
+}
