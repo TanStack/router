@@ -4,6 +4,7 @@ import {
   applyResolvedRouterBasepath,
   createStartConfigContext,
 } from '../config-context'
+import { normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
 import { parseStartConfig } from './schema'
 import {
@@ -178,7 +179,9 @@ export function tanStackStartRsbuild(
             htmlFallback: false,
             // server.setup returned callback runs after built-in middleware
             // but BEFORE fallback middleware — the ideal slot for SSR.
-            ...(isDev
+            ...(isDev &&
+            normalizedStartPluginOpts.rsbuild?.installDevServerMiddleware !==
+              false
               ? {
                   setup: createServerSetup({
                     serverFnBasePath: serverFnBase,
@@ -262,13 +265,15 @@ export function tanStackStartRsbuild(
       //     patching emitted server assets afterwards.
       // ---------------------------------------------------------------
       if (api.context.action !== 'dev') {
-        const manifestPathPattern = new RegExp(
-          `^${escapeRegExp(virtualModuleState.manifestPath)}$`,
+        const normalizedManifestPath = normalizePath(
+          virtualModuleState.manifestPath,
         )
+        const matchesManifestPath = (id: string) =>
+          normalizePath(id) === normalizedManifestPath
 
         api.transform(
           {
-            test: manifestPathPattern,
+            test: (id: string) => matchesManifestPath(id),
             environments: [RSBUILD_ENVIRONMENT_NAMES.server],
           },
           ({ code }) => {
@@ -587,10 +592,6 @@ export function tanStackStartRsbuild(
       }
     },
   }
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 /**
