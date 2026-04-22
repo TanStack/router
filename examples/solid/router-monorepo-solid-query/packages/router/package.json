@@ -9,14 +9,14 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@tanstack/history": "^1.161.6",
-    "@tanstack/solid-query": "^6.0.0-beta.3",
+    "@tanstack/solid-query": "^6.0.0-beta.4",
     "@tanstack/solid-router": "^2.0.0-beta.14",
     "@tanstack/router-plugin": "^1.167.12",
     "@router-solid-mono-solid-query/post-query": "workspace:*",
     "redaxios": "^0.5.1",
     "zod": "^3.24.2",
-    "solid-js": "2.0.0-beta.7",
-    "@solidjs/web": "2.0.0-beta.7"
+    "solid-js": "2.0.0-beta.8",
+    "@solidjs/web": "2.0.0-beta.8"
   },
   "devDependencies": {
     "vite-plugin-solid": "^3.0.0-next.5",

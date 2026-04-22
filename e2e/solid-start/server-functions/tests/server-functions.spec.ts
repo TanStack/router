@@ -266,52 +266,52 @@ test.describe('server function sets cookies', () => {
     await runCookieTest(page, expectedCookieValue)
   })
 })
-;['GET', 'POST'].forEach((method) => {
-  test.describe(`aborting a server function call: method ${method}`, () => {
-    test('without aborting', async ({ page }) => {
-      await page.goto('/abort-signal/' + method)
+  ;['GET', 'POST'].forEach((method) => {
+    test.describe(`aborting a server function call: method ${method}`, () => {
+      test('without aborting', async ({ page }) => {
+        await page.goto('/abort-signal/' + method)
 
-      await page.waitForLoadState('networkidle')
+        await page.waitForLoadState('networkidle')
 
-      await page.getByTestId('run-without-abort-btn').click()
-      await page.waitForLoadState('networkidle')
-      await page.waitForSelector(
-        '[data-testid="result"]:has-text("server function result")',
-      )
-      await page.waitForSelector(
-        '[data-testid="errorMessage"]:has-text("$undefined")',
-      )
+        await page.getByTestId('run-without-abort-btn').click()
+        await page.waitForLoadState('networkidle')
+        await page.waitForSelector(
+          '[data-testid="result"]:has-text("server function result")',
+        )
+        await page.waitForSelector(
+          '[data-testid="errorMessage"]:has-text("$undefined")',
+        )
 
-      const result = (await page.getByTestId('result').textContent()) || ''
-      expect(result).toBe('server function result')
+        const result = (await page.getByTestId('result').textContent()) || ''
+        expect(result).toBe('server function result')
 
-      const errorMessage =
-        (await page.getByTestId('errorMessage').textContent()) || ''
-      expect(errorMessage).toBe('$undefined')
-    })
+        const errorMessage =
+          (await page.getByTestId('errorMessage').textContent()) || ''
+        expect(errorMessage).toBe('$undefined')
+      })
 
-    test('aborting', async ({ page }) => {
-      await page.goto('/abort-signal/' + method)
-      await page.waitForLoadState('networkidle')
+      test('aborting', async ({ page }) => {
+        await page.goto('/abort-signal/' + method)
+        await page.waitForLoadState('networkidle')
 
-      await page.getByTestId('run-with-abort-btn').click()
-      await page.waitForLoadState('networkidle')
-      await page.waitForSelector(
-        '[data-testid="result"]:has-text("$undefined")',
-      )
-      await page.waitForSelector(
-        '[data-testid="errorMessage"]:has-text("aborted")',
-      )
+        await page.getByTestId('run-with-abort-btn').click()
+        await page.waitForLoadState('networkidle')
+        await page.waitForSelector(
+          '[data-testid="result"]:has-text("$undefined")',
+        )
+        await page.waitForSelector(
+          '[data-testid="errorMessage"]:has-text("aborted")',
+        )
 
-      const result = (await page.getByTestId('result').textContent()) || ''
-      expect(result).toBe('$undefined')
+        const result = (await page.getByTestId('result').textContent()) || ''
+        expect(result).toBe('$undefined')
 
-      const errorMessage =
-        (await page.getByTestId('errorMessage').textContent()) || ''
-      expect(errorMessage).toContain('abort')
+        const errorMessage =
+          (await page.getByTestId('errorMessage').textContent()) || ''
+        expect(errorMessage).toContain('abort')
+      })
     })
   })
-})
 
 test('raw response', async ({ page }) => {
   await page.goto('/raw-response')
@@ -447,7 +447,7 @@ test('factory', async ({ page }) => {
   }
 })
 
-test.skip('primitives', async ({ page }) => {
+test('primitives', async ({ page }) => {
   await page.goto('/primitives')
 
   await page.waitForLoadState('networkidle')
