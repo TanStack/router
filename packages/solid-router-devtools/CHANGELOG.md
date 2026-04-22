@@ -1,5 +1,14 @@
 # @tanstack/solid-router-devtools
 
+## 2.0.0-beta.12
+
+### Patch Changes
+
+- Update to solid v2 beta 8 ([#7241](https://github.com/TanStack/router/pull/7241))
+
+- Updated dependencies [[`b3fedfc`](https://github.com/TanStack/router/commit/b3fedfcd4ee5b199c438a5c58df4d3331901d012)]:
+  - @tanstack/solid-router@2.0.0-beta.15
+
 ## 2.0.0-beta.11
 
 ### Patch Changes
