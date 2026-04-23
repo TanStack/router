@@ -69,6 +69,8 @@ async function killChild(child: ReturnType<typeof spawn>): Promise<void> {
 }
 
 function captureBuild(cwd: string): void {
+  const buildCommand =
+    toolchain === 'rsbuild' ? 'pnpm build:rsbuild' : 'pnpm build:vite'
   const outFile = path.resolve(cwd, 'error-build-result.json')
   for (const f of ['error-build-result.json', 'error-build.log']) {
     const p = path.resolve(cwd, f)
@@ -80,7 +82,7 @@ function captureBuild(cwd: string): void {
   let exitCode = 0
 
   try {
-    const output = execSync('pnpm build', {
+    const output = execSync(buildCommand, {
       cwd,
       env: { ...process.env, BEHAVIOR: 'error' },
       encoding: 'utf-8',

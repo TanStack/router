@@ -65,6 +65,7 @@ export interface RsbuildEnvironmentPlanResult {
 }
 
 export function createRsbuildEnvironmentPlan(opts: {
+  root: string
   entryAliases: RsbuildResolvedEntryAliases
   clientOutputDirectory: string
   serverOutputDirectory: string
@@ -78,8 +79,10 @@ export function createRsbuildEnvironmentPlan(opts: {
     ...opts.entryAliases.alias,
     ...(opts.rsc
       ? {
-          'react-server-dom-rspack/server$':
-            require.resolve('react-server-dom-rspack/server.node'),
+          'react-server-dom-rspack/server$': resolveFromRoot(
+            'react-server-dom-rspack/server.node',
+            opts.root,
+          ),
         }
       : {}),
   }
@@ -222,4 +225,10 @@ export function resolveRsbuildOutputDirectory(opts: {
 
 function normalizeEntryPath(path: string) {
   return path.replaceAll('\\', '/')
+}
+
+function resolveFromRoot(specifier: string, root: string): string {
+  return require.resolve(specifier, {
+    paths: [root],
+  })
 }

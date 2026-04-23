@@ -12,6 +12,7 @@ export interface CompilationContext {
   readonly id: string
   readonly env: 'client' | 'server'
   readonly envName: string
+  readonly mode: 'dev' | 'build'
   readonly root: string
   /** The framework being used (e.g., 'react', 'solid') */
   readonly framework: CompileStartFrameworkOptions

@@ -275,7 +275,7 @@ for (const mode of ['build', 'dev'] as const) {
         x.envType === 'client' &&
         (x.specifier.includes('secret.server') ||
           x.resolved?.includes('secret.server')) &&
-        !!x.snippet,
+        x.snippet?.lines.join('\n').includes('getSecret'),
     )
     expect(v).toBeDefined()
     expect(v!.snippet).toBeDefined()

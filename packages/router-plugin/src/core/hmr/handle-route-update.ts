@@ -1,6 +1,3 @@
-import * as template from '@babel/template'
-import { createHmrHotExpressionAst } from './hmr-hot-expression'
-import type * as t from '@babel/types'
 import type {
   AnyRoute,
   AnyRouteMatch,
@@ -37,6 +34,8 @@ type AnyRouterWithPrivateMaps = AnyRouter & {
 
 type AnyRouteMatchWithPrivateProps = AnyRouteMatch & {
   __beforeLoadContext?: unknown
+  __routeContext?: Record<string, unknown>
+  context?: Record<string, unknown>
 }
 
 function handleRouteUpdate(
@@ -69,14 +68,21 @@ function handleRouteUpdate(
     }
   })
 
+  const oldHasShellComponent = 'shellComponent' in oldRoute.options
+  const newHasShellComponent = 'shellComponent' in newRoute.options
+  const preserveComponentIdentity =
+    oldHasShellComponent === newHasShellComponent
+
   // Preserve component identity so React doesn't remount.
   // React Fast Refresh patches the function bodies in-place.
   const componentKeys = '__TSR_COMPONENT_TYPES__' as unknown as Array<string>
-  componentKeys.forEach((key) => {
-    if (key in oldRoute.options && key in newRoute.options) {
-      newRoute.options[key] = oldRoute.options[key]
-    }
-  })
+  if (preserveComponentIdentity) {
+    componentKeys.forEach((key) => {
+      if (key in oldRoute.options && key in newRoute.options) {
+        newRoute.options[key] = oldRoute.options[key]
+      }
+    })
+  }
 
   oldRoute.options = newRoute.options
   oldRoute.update(newRoute.options)
@@ -127,6 +133,10 @@ function handleRouteUpdate(
               }
               if (removedKeys.has('beforeLoad')) {
                 next.__beforeLoadContext = undefined
+                next.context = {
+                  ...(next.context ?? {}),
+                  ...(next.__routeContext ?? {}),
+                }
               }
 
               return next
@@ -157,33 +167,9 @@ function handleRouteUpdate(
 
 const handleRouteUpdateStr = handleRouteUpdate.toString()
 
-export function createRouteHmrStatement(
-  stableRouteOptionKeys: Array<string>,
-  opts?: { hotExpression?: string },
-): t.Statement {
-  return template.statement(
-    `
-if (%%hotExpression%%) {
-  const hot = %%hotExpression%%
-  const hotData = hot.data ??= {}
-  hot.accept((newModule) => {
-    if (Route && newModule && newModule.Route) {
-      const routeId = hotData['tsr-route-id'] ?? Route.id
-      if (routeId) {
-        hotData['tsr-route-id'] = routeId
-      }
-      (${handleRouteUpdateStr.replace(
-        /['"]__TSR_COMPONENT_TYPES__['"]/,
-        JSON.stringify(stableRouteOptionKeys),
-      )})(routeId, newModule.Route)
-    }
-    })
-}
-`,
-    {
-      syntacticPlaceholders: true,
-    },
-  )({
-    hotExpression: createHmrHotExpressionAst(opts?.hotExpression),
-  })
+export function getHandleRouteUpdateCode(stableRouteOptionKeys: Array<string>) {
+  return handleRouteUpdateStr.replace(
+    /['"]__TSR_COMPONENT_TYPES__['"]/,
+    JSON.stringify(stableRouteOptionKeys),
+  )
 }

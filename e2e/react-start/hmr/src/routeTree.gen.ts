@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ServerFnHmrRouteImport } from './routes/server-fn-hmr'
 import { Route as InputsRouteImport } from './routes/inputs'
 import { Route as ComponentHmrNamedSplitRouteImport } from './routes/component-hmr-named-split'
 import { Route as ComponentHmrNamedNosplitRouteImport } from './routes/component-hmr-named-nosplit'
@@ -20,6 +21,11 @@ import { Route as ComponentHmrRouteImport } from './routes/component-hmr'
 import { Route as ChildRouteImport } from './routes/child'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ServerFnHmrRoute = ServerFnHmrRouteImport.update({
+  id: '/server-fn-hmr',
+  path: '/server-fn-hmr',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InputsRoute = InputsRouteImport.update({
   id: '/inputs',
   path: '/inputs',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/component-hmr-named-nosplit': typeof ComponentHmrNamedNosplitRoute
   '/component-hmr-named-split': typeof ComponentHmrNamedSplitRoute
   '/inputs': typeof InputsRoute
+  '/server-fn-hmr': typeof ServerFnHmrRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/component-hmr-named-nosplit': typeof ComponentHmrNamedNosplitRoute
   '/component-hmr-named-split': typeof ComponentHmrNamedSplitRoute
   '/inputs': typeof InputsRoute
+  '/server-fn-hmr': typeof ServerFnHmrRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/component-hmr-named-nosplit': typeof ComponentHmrNamedNosplitRoute
   '/component-hmr-named-split': typeof ComponentHmrNamedSplitRoute
   '/inputs': typeof InputsRoute
+  '/server-fn-hmr': typeof ServerFnHmrRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/component-hmr-named-nosplit'
     | '/component-hmr-named-split'
     | '/inputs'
+    | '/server-fn-hmr'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/component-hmr-named-nosplit'
     | '/component-hmr-named-split'
     | '/inputs'
+    | '/server-fn-hmr'
   id:
     | '__root__'
     | '/'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/component-hmr-named-nosplit'
     | '/component-hmr-named-split'
     | '/inputs'
+    | '/server-fn-hmr'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -162,10 +174,18 @@ export interface RootRouteChildren {
   ComponentHmrNamedNosplitRoute: typeof ComponentHmrNamedNosplitRoute
   ComponentHmrNamedSplitRoute: typeof ComponentHmrNamedSplitRoute
   InputsRoute: typeof InputsRoute
+  ServerFnHmrRoute: typeof ServerFnHmrRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/server-fn-hmr': {
+      id: '/server-fn-hmr'
+      path: '/server-fn-hmr'
+      fullPath: '/server-fn-hmr'
+      preLoaderRoute: typeof ServerFnHmrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/inputs': {
       id: '/inputs'
       path: '/inputs'
@@ -250,6 +270,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentHmrNamedNosplitRoute: ComponentHmrNamedNosplitRoute,
   ComponentHmrNamedSplitRoute: ComponentHmrNamedSplitRoute,
   InputsRoute: InputsRoute,
+  ServerFnHmrRoute: ServerFnHmrRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

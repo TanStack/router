@@ -4,7 +4,8 @@ import { getTestServerPort, test } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 import type { Page } from '@playwright/test'
 
-const PORT = await getTestServerPort(packageJson.name)
+const e2ePortKey = process.env.E2E_PORT_KEY ?? packageJson.name
+const PORT = await getTestServerPort(e2ePortKey)
 
 test('Server function URLs correctly include explicit ids', async ({
   page,

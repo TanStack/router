@@ -729,4 +729,245 @@ describe('re-export chain resolution', () => {
     expect(result!.code).toContain('deep-client')
     expect(result!.code).not.toContain('deep-server')
   })
+
+  test('ingestModule populates module metadata for later resolution', async () => {
+    const compiler: StartCompiler = new StartCompiler({
+      env: 'server',
+      envName: 'ssr',
+      root: '/test',
+      framework: 'react' as const,
+      providerEnvName: 'ssr',
+      lookupKinds: new Set(['ServerOnlyFn']),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      loadModule: async () => {},
+      resolveId: async (id) => {
+        return id === '@tanstack/start-client-core' ? id : null
+      },
+      mode: 'build',
+    })
+
+    compiler.ingestModule({
+      id: '@tanstack/start-client-core',
+      code: `
+        export { createServerOnlyFn } from '@tanstack/start-fn-stubs'
+      `,
+    })
+
+    const result = await compiler.compile({
+      id: 'cached-module-test.ts',
+      code: `
+        import { createServerOnlyFn } from '@tanstack/start-client-core'
+        const myFn = createServerOnlyFn(() => 'cached-server-only-value')
+      `,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('cached-server-only-value')
+  })
+
+  test('invalidateModule clears cached module resolution state', async () => {
+    const virtualModules: Record<string, string> = {
+      './factory': `
+        export { createServerOnlyFn } from './factory-inner'
+      `,
+      './factory-inner': `
+        export { createServerOnlyFn } from '@tanstack/start-fn-stubs'
+      `,
+    }
+
+    const compiler: StartCompiler = new StartCompiler({
+      env: 'server',
+      envName: 'ssr',
+      root: '/test',
+      framework: 'react' as const,
+      providerEnvName: 'ssr',
+      lookupKinds: new Set(['ServerOnlyFn', 'ClientOnlyFn']),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      resolveId: async (id) => {
+        return virtualModules[id] ? id : null
+      },
+      mode: 'build',
+    })
+
+    const source = `
+      import { createServerOnlyFn } from './factory'
+      const myFn = createServerOnlyFn(() => 'server-only-value')
+    `
+
+    const initialResult = await compiler.compile({
+      id: 'transitive-invalidation-test.ts',
+      code: source,
+    })
+
+    expect(initialResult).not.toBeNull()
+    expect(initialResult!.code).toContain('server-only-value')
+    expect(initialResult!.code).not.toContain('throw new Error')
+
+    virtualModules['./factory-inner'] = `
+      export { createClientOnlyFn as createServerOnlyFn } from '@tanstack/start-fn-stubs'
+    `
+
+    expect(compiler.invalidateModule('./factory-inner')).toBe(true)
+
+    const updatedResult = await compiler.compile({
+      id: 'transitive-invalidation-test.ts',
+      code: source,
+    })
+
+    expect(updatedResult).not.toBeNull()
+    expect(updatedResult!.code).toContain('throw new Error')
+    expect(updatedResult!.code).not.toContain('server-only-value')
+  })
+
+  test('invalidateModule preserves root lookup metadata while clearing importer memoization', async () => {
+    const virtualModules: Record<string, string> = {
+      './factory': `
+        export { createServerOnlyFn } from './factory-inner'
+      `,
+      './factory-inner': `
+        export { createServerOnlyFn } from '@tanstack/start-fn-stubs'
+      `,
+    }
+
+    const compiler: StartCompiler = new StartCompiler({
+      env: 'server',
+      envName: 'ssr',
+      root: '/test',
+      framework: 'react' as const,
+      providerEnvName: 'ssr',
+      lookupKinds: new Set(['ServerOnlyFn', 'ClientOnlyFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerOnlyFn',
+          kind: 'ServerOnlyFn',
+        },
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createClientOnlyFn',
+          kind: 'ClientOnlyFn',
+        },
+      ],
+      getKnownServerFns: () => ({}),
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      resolveId: async (id) => {
+        return virtualModules[id] ? id : null
+      },
+    })
+
+    const source = `
+      import { createServerOnlyFn } from './factory'
+      const myFn = createServerOnlyFn(() => 'server-only-value')
+    `
+
+    const initialResult = await compiler.compile({
+      id: 'memoized-invalidation-test.ts',
+      code: source,
+    })
+
+    expect(initialResult).not.toBeNull()
+    expect(initialResult!.code).toContain('server-only-value')
+
+    virtualModules['./factory-inner'] = `
+      export { createClientOnlyFn as createServerOnlyFn } from '@tanstack/start-fn-stubs'
+    `
+
+    expect(compiler.invalidateModule('./factory-inner')).toBe(true)
+
+    const updatedResult = await compiler.compile({
+      id: 'memoized-invalidation-test.ts',
+      code: source,
+    })
+
+    expect(updatedResult).not.toBeNull()
+    expect(updatedResult!.code).toContain('throw new Error')
+    expect(updatedResult!.code).not.toContain('server-only-value')
+  })
+
+  test('recompiles aliased env-only direct calls when only server function syntax is detected', async () => {
+    const virtualModules: Record<string, string> = {
+      './factory': `
+        export { createServerOnlyFn } from '@tanstack/start-fn-stubs'
+      `,
+    }
+
+    const compiler: StartCompiler = new StartCompiler({
+      env: 'server',
+      envName: 'ssr',
+      root: '/test',
+      framework: 'react' as const,
+      providerEnvName: 'ssr',
+      mode: 'build',
+      lookupKinds: new Set(['ServerFn', 'ServerOnlyFn', 'ClientOnlyFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      getKnownServerFns: () => ({}),
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      resolveId: async (id) => {
+        return virtualModules[id] ? id : null
+      },
+    })
+
+    const source = `
+      import { createServerFn } from '@tanstack/react-start'
+      import { createServerOnlyFn as createServerFnHmrFactory } from './factory'
+
+      const serverOnlyImpl = createServerFnHmrFactory(() => 'server-only-value')
+
+      export const serverFn = createServerFn().handler(async () => {
+        return serverOnlyImpl()
+      })
+    `
+
+    const providerId = 'aliased-env-only-server-fn.ts?tss-serverfn-split'
+
+    const initialResult = await compiler.compile({
+      id: providerId,
+      code: source,
+      detectedKinds: new Set(['ServerFn']),
+    })
+
+    expect(initialResult).not.toBeNull()
+    expect(initialResult!.code).toContain('server-only-value')
+    expect(initialResult!.code).not.toContain('throw new Error')
+
+    virtualModules['./factory'] = `
+      export { createClientOnlyFn as createServerOnlyFn } from '@tanstack/start-fn-stubs'
+    `
+
+    expect(compiler.invalidateModule('./factory')).toBe(true)
+
+    const updatedResult = await compiler.compile({
+      id: providerId,
+      code: source,
+      detectedKinds: new Set(['ServerFn']),
+    })
+
+    expect(updatedResult).not.toBeNull()
+    expect(updatedResult!.code).toContain('throw new Error')
+    expect(updatedResult!.code).not.toContain('server-only-value')
+  })
 })

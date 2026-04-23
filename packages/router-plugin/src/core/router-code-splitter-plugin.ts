@@ -6,7 +6,6 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { logDiff } from '@tanstack/router-utils'
 import { getConfig, splitGroupingsSchema } from './config'
-import { resolveHmrHotExpression } from './hmr-hot-expression'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitSharedRoute,
@@ -129,7 +128,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     const userShouldSplitFn = getShouldSplitFn()
 
     const pluginSplitBehavior = userShouldSplitFn?.({
-      routeId: generatorNodeInfo.routePath,
+      routeId: generatorNodeInfo.routeId,
     }) as CodeSplitGroupings | undefined
 
     if (pluginSplitBehavior) {
@@ -158,9 +157,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const addHmr =
       (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction
-    const hmrHotExpression = resolveHmrHotExpression(
-      userConfig.plugin?.hmr?.hotExpression,
-    )
+    const hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
@@ -172,12 +169,13 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         ? new Set(userConfig.codeSplittingOptions.deleteNodes)
         : undefined,
       addHmr,
-      hmrHotExpression,
+      hmrStyle,
+      hmrRouteId: generatorNodeInfo.routeId,
       sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
       compilerPlugins: getReferenceRouteCompilerPlugins({
         targetFramework: userConfig.target,
         addHmr,
-        hmrHotExpression,
+        hmrStyle,
       }),
     })
 

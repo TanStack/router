@@ -1,3 +1,6 @@
+import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { joinURL } from 'ufo'
 import {
   applyResolvedBaseAndOutput,
@@ -23,6 +26,7 @@ import { createServerSetup } from './dev-server'
 import { registerClientBuildCapture } from './normalized-client-build'
 import { registerRouterPlugins } from './start-router-plugin'
 import { postBuildWithRsbuild } from './post-build'
+import { enableSwcReactServerComponents } from './swc-rsc'
 import type { ServerFn } from '../start-compiler/types'
 import type { TanStackStartRsbuildPluginCoreOptions } from './types'
 import type {
@@ -35,6 +39,20 @@ import type {
 } from '@rsbuild/core'
 import type { TanStackStartRsbuildInputConfig } from './schema'
 
+// Detect whether this plugin source is running from inside the TanStack
+// Router monorepo (packages/start-plugin-core/src/rsbuild/plugin.ts). When
+// installed from npm in a user app, the path structure is different and
+// this evaluates to false. Used to gate dev-only workarounds that only
+// matter when workspace package dists are symlinked into node_modules.
+const currentDir = dirname(fileURLToPath(import.meta.url))
+const isInsideRouterMonoRepo = (() => {
+  // src layout: <repo>/packages/start-plugin-core/src/rsbuild → 4 levels up
+  // dist layout (CJS/ESM): <repo>/packages/start-plugin-core/dist/<fmt>/rsbuild
+  //   → also 4 levels up
+  const candidate = resolve(currentDir, '../../../../')
+  return candidate.endsWith('/packages') || candidate.endsWith('\\packages')
+})()
+
 type RspackNamespace = typeof rspackNamespaceType
 type RscPluginPair = ReturnType<
   NonNullable<RspackNamespace['experiments']['rsc']>['createPlugins']
@@ -42,19 +60,17 @@ type RscPluginPair = ReturnType<
 type RspackConfig = Parameters<ModifyRspackConfigFn>[0]
 type RspackCompiler = Rspack.Compiler
 type RspackCompilationExtended = Rspack.Compilation
-type RspackRule = Rspack.RuleSetRule
 
 export function tanStackStartRsbuild(
   corePluginOpts: TanStackStartRsbuildPluginCoreOptions,
-  startPluginOpts: TanStackStartRsbuildInputConfig | undefined,
+  startPluginOpts: TanStackStartRsbuildInputConfig = {},
 ): RsbuildPlugin {
-  const normalizedStartPluginOpts = startPluginOpts ?? {}
   const rscOpts = corePluginOpts.rsc
   const rscEnabled = Boolean(rscOpts)
 
   const configContext = createStartConfigContext({
     corePluginOpts,
-    startPluginOpts: normalizedStartPluginOpts,
+    startPluginOpts,
     parseConfig: parseStartConfig,
   })
   const { getConfig, resolvedStartConfig } = configContext
@@ -130,6 +146,7 @@ export function tanStackStartRsbuild(
         })
 
         const environmentPlan = createRsbuildEnvironmentPlan({
+          root,
           entryAliases,
           clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
@@ -211,8 +228,7 @@ export function tanStackStartRsbuild(
         // process.cwd() during plugin setup.
         root: () => resolvedStartConfig.root || process.cwd(),
         providerEnvName: serverFnProviderEnv,
-        generateFunctionId:
-          normalizedStartPluginOpts.serverFns?.generateFunctionId,
+        generateFunctionId: startPluginOpts.serverFns?.generateFunctionId,
         serverFnsById,
         onServerFnsByIdChange: () => {
           updateServerFnResolver?.()
@@ -298,7 +314,7 @@ export function tanStackStartRsbuild(
       registerRouterPlugins(api, {
         getConfig,
         corePluginOpts,
-        startPluginOpts: normalizedStartPluginOpts,
+        startPluginOpts,
       })
 
       // ---------------------------------------------------------------
@@ -306,6 +322,52 @@ export function tanStackStartRsbuild(
       //    modifyRsbuildConfig above (returned callback runs after
       //    built-ins but before fallback middleware)
       // ---------------------------------------------------------------
+
+      // ---------------------------------------------------------------
+      // 6b. Dev watcher: ignore workspace package `dist/**` directories.
+      //
+      //     In a real user app, `@tanstack/react-router` and friends live
+      //     inside `node_modules/` and are ignored by Rspack's default
+      //     watcher. In this monorepo, pnpm symlinks them to
+      //     `packages/*/dist` (realpath outside node_modules), so the
+      //     watcher follows them and treats their dist files as live
+      //     sources. If anything rewrites those files during dev, Rspack
+      //     sees transient half-written modules and fails to resolve
+      //     relative imports between them.
+      //
+      //     Only apply this in monorepo development. In user apps this
+      //     is a no-op — their `node_modules/@tanstack/*/dist/**` is
+      //     already ignored by Rspack's default watchOptions.
+      // ---------------------------------------------------------------
+      if (isInsideRouterMonoRepo && api.context.action === 'dev') {
+        api.modifyRspackConfig((config) => {
+          const workspaceDistRealpaths = resolveWorkspacePackageDistRealpaths()
+          if (workspaceDistRealpaths.length === 0) return
+
+          const workspaceDistIgnored = new RegExp(
+            workspaceDistRealpaths
+              .map((path) => `^${escapeRegExp(path)}(?:[\\\\/]|$)`)
+              .join('|'),
+          )
+          const ignored = config.watchOptions?.ignored
+
+          config.watchOptions = {
+            ...(config.watchOptions ?? {}),
+            ignored:
+              ignored == null
+                ? new RegExp(
+                    `${defaultRspackWatchIgnored.source}|${workspaceDistIgnored.source}`,
+                  )
+                : typeof ignored === 'string'
+                  ? [ignored, ...workspaceDistRealpaths]
+                  : Array.isArray(ignored)
+                    ? [...ignored, ...workspaceDistRealpaths]
+                    : new RegExp(
+                        `${ignored.source}|${workspaceDistIgnored.source}`,
+                      ),
+          }
+        })
+      }
 
       // ---------------------------------------------------------------
       // 7. RSC: rspack layer rules + native RSC plugins
@@ -331,7 +393,6 @@ export function tanStackStartRsbuild(
             // --- issuerLayer rule: modules imported from RSC layer
             // get react-server resolve condition ---
             const moduleRules = (config.module.rules ??= [])
-            const resolveModules = (config.resolve.modules ??= [])
             const root = resolvedStartConfig.root || process.cwd()
 
             // Split server-fn provider modules are the actual RSC execution
@@ -368,12 +429,7 @@ export function tanStackStartRsbuild(
             // outside the app root, so relying on the default relative
             // `node_modules` lookup is not enough. Seed resolve.modules with the
             // app root explicitly, without package-manager-specific heuristics.
-            if (!resolveModules.includes(`${root}/node_modules`)) {
-              resolveModules.push(`${root}/node_modules`)
-            }
-            if (!resolveModules.includes('node_modules')) {
-              resolveModules.push('node_modules')
-            }
+            seedResolveModules(config, [`${root}/node_modules`, 'node_modules'])
 
             // Add ServerPlugin with HMR callback
             config.plugins.push(
@@ -383,11 +439,9 @@ export function tanStackStartRsbuild(
                 injectSsrModulesToEntries: ['index'],
                 onServerComponentChanges: () => {
                   // Send rsc:update to connected clients for HMR
-                  if (devServerRef) {
-                    devServerRef.sockWrite('custom', {
-                      event: 'rsc:update',
-                    })
-                  }
+                  devServerRef?.sockWrite('custom', {
+                    event: 'rsc:update',
+                  })
                 },
               }),
             )
@@ -406,37 +460,49 @@ export function tanStackStartRsbuild(
 
                     const resolverContent =
                       virtualModuleState.generateCurrentResolverContent(true)
-                    const resolverPath = virtualModuleState.serverFnResolverPath
                     virtualModuleState.tryUpdateServerFnResolver(
                       resolverContent,
                     )
 
-                    const modulesToRebuild = Array.from(
-                      compilation.modules,
-                    ).filter((mod) => mod.identifier().includes(resolverPath))
-
-                    if (modulesToRebuild.length === 0) {
-                      return
-                    }
-
-                    await Promise.all(
-                      modulesToRebuild.map(
-                        (mod) =>
-                          new Promise<void>((resolve, reject) => {
-                            compilation.rebuildModule(
-                              mod,
-                              (err: Error | null) => {
-                                if (err) reject(err)
-                                else resolve()
-                              },
-                            )
-                          }),
-                      ),
+                    await rebuildModulesContaining(
+                      compilation,
+                      virtualModuleState.serverFnResolverPath,
                     )
                   },
                 )
               },
             })
+
+            if (api.context.action !== 'dev') {
+              config.plugins.push({
+                apply(compiler: RspackCompiler) {
+                  compiler.hooks.finishMake.tapPromise(
+                    {
+                      name: 'TanStackStartRscManifestRebuild',
+                      // The native RSC ServerPlugin completes the client-entry
+                      // handoff during its finishMake hook. Rebuild the manifest
+                      // after that point so the transform hook can emit the final
+                      // manifest source instead of the placeholder.
+                      stage: 10,
+                    },
+                    async (compilation: RspackCompilationExtended) => {
+                      const clientBuild = getClientBuild()
+
+                      if (!clientBuild) {
+                        return
+                      }
+
+                      virtualModuleState.updateManifest(clientBuild)
+
+                      await rebuildModulesContaining(
+                        compilation,
+                        virtualModuleState.manifestPath,
+                      )
+                    },
+                  )
+                },
+              })
+            }
           }
 
           if (isClientEnv) {
@@ -483,12 +549,11 @@ export function tanStackStartRsbuild(
         api.onAfterCreateCompiler(({ compiler }) => {
           // MultiCompiler has a `compilers` array; single compiler does not
           if ('compilers' in compiler) {
-            const multi = compiler
-            const serverCompiler = multi.compilers.find(
+            const serverCompiler = compiler.compilers.find(
               (c) => c.name === RSBUILD_ENVIRONMENT_NAMES.server,
             )
             if (serverCompiler) {
-              multi.setDependencies(serverCompiler, [
+              compiler.setDependencies(serverCompiler, [
                 RSBUILD_ENVIRONMENT_NAMES.client,
               ])
             }
@@ -498,12 +563,11 @@ export function tanStackStartRsbuild(
 
       // ---------------------------------------------------------------
       // 8b. Manifest asset replacement fallback (RSC build only)
-      //     Rsbuild's RSC coordinator interleaves the server and client
-      //     compilers, so the server manifest module can still compile before
-      //     client build stats exist. Keep the placeholder replacement only for
-      //     that RSC-specific path until rspack exposes a cleaner environment-
-      //     level handoff for interleaved builds. Non-RSC builds generate the
-      //     final manifest module source in the transform hook above.
+      //     Rsbuild's native RSC coordinator interleaves server and client
+      //     compilers, so the server manifest module can compile before Start's
+      //     normalized client build stats exist. Keep final replacement in the
+      //     server asset pipeline, after the client processAssets capture has a
+      //     chance to run.
       // ---------------------------------------------------------------
       if (api.context.action !== 'dev' && rscEnabled) {
         const manifestPlaceholderLiteral = JSON.stringify(
@@ -526,21 +590,35 @@ export function tanStackStartRsbuild(
                           .PROCESS_ASSETS_STAGE_OPTIMIZE_SIZE,
                     },
                     () => {
+                      const assetsWithPlaceholder = compilation
+                        .getAssets()
+                        .flatMap((asset) => {
+                          if (!asset.name.endsWith('.js')) return []
+
+                          const sourceStr = String(asset.source.source())
+                          return sourceStr.includes(manifestPlaceholderLiteral)
+                            ? [{ asset, sourceStr }]
+                            : []
+                        })
+
+                      if (assetsWithPlaceholder.length === 0) return
+
                       const clientBuild = getClientBuild()
-                      if (!clientBuild) return
+                      if (!clientBuild) {
+                        throw new Error(
+                          'TanStack Start could not replace the rsbuild RSC server manifest placeholder because the client build was unavailable',
+                        )
+                      }
 
                       const manifestValueLiteral =
                         virtualModuleState.generateManifestValueLiteral(
                           clientBuild,
                         )
 
-                      for (const asset of compilation.getAssets()) {
-                        if (!asset.name.endsWith('.js')) continue
-                        const sourceStr = String(asset.source.source())
-                        if (!sourceStr.includes(manifestPlaceholderLiteral)) {
-                          continue
-                        }
-
+                      for (const {
+                        asset,
+                        sourceStr,
+                      } of assetsWithPlaceholder) {
                         compilation.updateAsset(
                           asset.name,
                           new utils.rspack.sources.RawSource(
@@ -593,105 +671,80 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-/**
- * Walk the rspack config's module.rules and inject
- * `rspackExperiments.reactServerComponents: true` into SWC loaders.
- *
- * Recurses into `oneOf` arrays because rsbuild nests the main SWC loader
- * inside a `oneOf` rule (e.g. separate branches for asset/source vs
- * javascript/auto). Without recursion, only the mimetype-based fallback
- * SWC rule gets the flag — leaving most .js/.ts files without RSC
- * directive detection.
- */
-function enableSwcReactServerComponents(
+const defaultRspackWatchIgnored = /[\\/](?:\.git|node_modules)[\\/]/
+
+function seedResolveModules(
   config: RspackConfig,
-  scope: 'all' | 'rsc-subtree',
+  entries: Array<string>,
 ): void {
-  const isRspackRule = (
-    rule: NonNullable<RspackConfig['module']['rules']>[number],
-  ): rule is RspackRule => !!rule && rule !== '...'
-  const getRuleLoaders = (rule: RspackRule) => {
-    const { use } = rule
-    if (!use) {
-      return []
+  const resolveModules = (config.resolve.modules ??= [])
+
+  for (const entry of entries) {
+    if (!resolveModules.includes(entry)) {
+      resolveModules.push(entry)
     }
-
-    return typeof use === 'function' ? [] : Array.isArray(use) ? use : [use]
   }
-  const getLoaderPath = (loader: ReturnType<typeof getRuleLoaders>[number]) =>
-    typeof loader === 'string' ? loader : loader.loader
-  const rootRules = (config.module.rules ??= []).filter(isRspackRule)
+}
 
-  function processRules(rules = rootRules): void {
-    for (const rule of rules) {
-      processRules(
-        Array.isArray(rule.oneOf) ? rule.oneOf.filter(isRspackRule) : [],
-      )
+function rebuildModulesContaining(
+  compilation: RspackCompilationExtended,
+  identifierFragment: string,
+): Promise<void> {
+  const modulesToRebuild = Array.from(compilation.modules).filter((mod) =>
+    mod.identifier().includes(identifierFragment),
+  )
 
-      const hasSwcLoader = getRuleLoaders(rule).some((loader) =>
-        getLoaderPath(loader).includes('swc-loader'),
-      )
-      if (!hasSwcLoader) continue
+  if (modulesToRebuild.length === 0) {
+    return Promise.resolve()
+  }
 
-      const enableReactServerComponentsOnRule = (nextRule: RspackRule) => {
-        for (const loader of getRuleLoaders(nextRule)) {
-          if (typeof loader === 'string') {
-            continue
-          }
+  return Promise.all(
+    modulesToRebuild.map(
+      (mod) =>
+        new Promise<void>((resolve, reject) => {
+          compilation.rebuildModule(mod, (err: Error | null) => {
+            if (err) reject(err)
+            else resolve()
+          })
+        }),
+    ),
+  ).then(() => undefined)
+}
 
-          const loaderPath = getLoaderPath(loader)
-          if (!loaderPath || !loaderPath.includes('swc-loader')) {
-            continue
-          }
+/**
+ * Return the realpath of every packages/<name>/dist directory in the
+ * TanStack Router monorepo. Only meaningful when called from inside the
+ * monorepo — in user apps, callers should guard with
+ * `isInsideRouterMonoRepo` before invoking this.
+ */
+function resolveWorkspacePackageDistRealpaths(): Array<string> {
+  // currentDir points at either <repo>/packages/start-plugin-core/src/rsbuild
+  // or <repo>/packages/start-plugin-core/dist/<fmt>/rsbuild. Four levels up
+  // lands on <repo>/packages in both layouts.
+  const packagesDir = resolve(currentDir, '../../../../')
+  if (!existsSync(packagesDir)) return []
 
-          const options =
-            loader.options && typeof loader.options === 'object'
-              ? loader.options
-              : (loader.options = {})
-          const experiments =
-            options.rspackExperiments &&
-            typeof options.rspackExperiments === 'object'
-              ? options.rspackExperiments
-              : (options.rspackExperiments = {})
-          const current = experiments.reactServerComponents
+  let entries: Array<string>
+  try {
+    entries = readdirSync(packagesDir)
+  } catch {
+    return []
+  }
 
-          experiments.reactServerComponents =
-            current === true || current == null
-              ? {}
-              : typeof current === 'object' &&
-                  current !== null &&
-                  !Array.isArray(current)
-                ? { ...current }
-                : {}
-        }
-      }
-
-      if (scope === 'all') {
-        enableReactServerComponentsOnRule(rule)
-        continue
-      }
-
-      const originalRule = structuredClone(rule)
-      const providerRule = structuredClone(originalRule)
-      providerRule.resourceQuery = /(?:^|[?&])tss-serverfn-split(?:&|$)/
-      enableReactServerComponentsOnRule(providerRule)
-
-      const routeSplitRule = structuredClone(originalRule)
-      routeSplitRule.resourceQuery = /(?:^|[?&])tsr-split(?:=|&|$)/
-      routeSplitRule.resolve = {
-        conditionNames: ['...'],
-      }
-
-      const subtreeRule = structuredClone(originalRule)
-      subtreeRule.issuerLayer = RSBUILD_RSC_LAYERS.rsc
-      enableReactServerComponentsOnRule(subtreeRule)
-
-      for (const key of Object.keys(rule) as Array<keyof RspackRule>) {
-        delete rule[key]
-      }
-      rule.oneOf = [providerRule, routeSplitRule, subtreeRule, originalRule]
+  const dists: Array<string> = []
+  for (const entry of entries) {
+    const distPath = join(packagesDir, entry, 'dist')
+    try {
+      if (!statSync(distPath).isDirectory()) continue
+    } catch {
+      continue
+    }
+    try {
+      dists.push(realpathSync(distPath))
+    } catch {
+      dists.push(distPath)
     }
   }
 
-  processRules()
+  return dists
 }

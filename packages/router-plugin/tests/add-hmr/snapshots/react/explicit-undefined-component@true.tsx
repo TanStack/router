@@ -47,12 +47,18 @@ if (import.meta.hot) {
             delete oldRoute.options[key];
           }
         });
+        const oldHasShellComponent = "shellComponent" in oldRoute.options;
+        const newHasShellComponent = "shellComponent" in newRoute.options;
+        const preserveComponentIdentity = oldHasShellComponent === newHasShellComponent;
         const componentKeys = ["component", "shellComponent", "pendingComponent", "errorComponent", "notFoundComponent"];
-        componentKeys.forEach(key => {
-          if (key in oldRoute.options && key in newRoute.options) {
-            newRoute.options[key] = oldRoute.options[key];
-          }
-        });
+        if (preserveComponentIdentity) {
+          componentKeys.forEach(key => {
+            if (key in oldRoute.options && key in newRoute.options) {
+              newRoute.options[key] = oldRoute.options[key];
+            }
+          });
+        }
+        ;
         oldRoute.options = newRoute.options;
         oldRoute.update(newRoute.options);
         oldRoute._componentsPromise = undefined;
@@ -85,6 +91,10 @@ if (import.meta.hot) {
                     ;
                     if (removedKeys.has("beforeLoad")) {
                       next.__beforeLoadContext = undefined;
+                      next.context = {
+                        ...(next.context ?? {}),
+                        ...(next.__routeContext ?? {})
+                      };
                     }
                     ;
                     return next;

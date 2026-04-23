@@ -9,6 +9,8 @@ const e2ePortKey =
 const distDir = process.env.E2E_DIST_DIR ?? 'dist'
 const PORT = await getTestServerPort(e2ePortKey)
 const baseURL = `http://localhost:${PORT}`
+const buildCommand =
+  toolchain === 'rsbuild' ? 'pnpm build:rsbuild' : 'pnpm build:vite'
 
 console.log('running in error mode:', isErrorMode.toString())
 
@@ -32,7 +34,7 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: `rm -f webserver-build.log webserver-dev.log violations.build.json violations.dev.json && VITE_SERVER_PORT=${PORT} PORT=${PORT} pnpm build > webserver-build.log 2>&1 && PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`,
+          command: `rm -f webserver-build.log webserver-dev.log violations.build.json violations.dev.json && VITE_SERVER_PORT=${PORT} PORT=${PORT} ${buildCommand} > webserver-build.log 2>&1 && PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`,
           url: baseURL,
           reuseExistingServer: !process.env.CI,
           stdout: 'pipe',

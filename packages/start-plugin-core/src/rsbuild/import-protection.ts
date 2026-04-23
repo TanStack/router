@@ -1,6 +1,4 @@
-import { resolve as resolvePath } from 'node:path'
-
-import { extname } from 'node:path'
+import { extname, resolve as resolvePath } from 'node:path'
 
 import { normalizePath } from 'vite'
 
@@ -91,6 +89,11 @@ type TransformContext = Parameters<
 >[0]
 type RspackCompilation = Rspack.Compilation
 type RspackModule = Rspack.Module
+type RspackModuleGraphConnection = {
+  module?: RspackModule | null
+  dependency?: unknown
+  getActiveState?: (runtime: string | Array<string> | undefined) => unknown
+}
 type OriginalCodeLoader = (file: string) => Promise<string | undefined>
 const importSpecifierLocationIndex = createImportSpecifierLocationIndex()
 
@@ -616,7 +619,7 @@ function buildCompilationGraph(opts: {
 
     for (const connection of connections) {
       if (!connection.module) continue
-      if (connection.getActiveState(undefined) !== true) continue
+      if (!isActiveConnection(connection)) continue
 
       const resolved = getModuleFile(connection.module)
       const specifier = getConnectionRequest(connection.dependency)
@@ -626,6 +629,14 @@ function buildCompilationGraph(opts: {
   }
 
   return { graph, edges }
+}
+
+function isActiveConnection(connection: RspackModuleGraphConnection): boolean {
+  if (typeof connection.getActiveState !== 'function') {
+    return true
+  }
+
+  return connection.getActiveState(undefined) === true
 }
 
 function findImportLocationInOriginalCode(

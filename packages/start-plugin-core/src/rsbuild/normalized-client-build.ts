@@ -57,12 +57,31 @@ function getRouteFilePathsFromModules(
 }
 
 /**
+ * Returns true for Rspack/webpack HMR runtime chunks that should never be
+ * surfaced to the Start manifest. These files are emitted on every rebuild
+ * (e.g. `index.<hash>.hot-update.mjs`) and must not be treated as the entry
+ * chunk, route preloads, or sibling imports.
+ */
+function isHotUpdateAsset(file: string): boolean {
+  return file.includes('.hot-update.')
+}
+
+/**
+ * True for any JS/MJS asset that should be included in the manifest.
+ * Excludes HMR runtime patches.
+ */
+function isManifestJsAsset(file: string): boolean {
+  if (!file.endsWith('.js') && !file.endsWith('.mjs')) return false
+  return !isHotUpdateAsset(file)
+}
+
+/**
  * Get all JS file names from a chunk.
  */
 function getChunkJsFiles(chunk: RspackCompilationChunk): Array<string> {
   const jsFiles: Array<string> = []
   for (const file of chunk.files) {
-    if (file.endsWith('.js') || file.endsWith('.mjs')) {
+    if (isManifestJsAsset(file)) {
       jsFiles.push(file)
     }
   }
@@ -86,10 +105,7 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
     for (const childGroup of group.childrenIterable) {
       for (const childChunk of childGroup.chunks) {
         for (const file of childChunk.files) {
-          if (
-            (file.endsWith('.js') || file.endsWith('.mjs')) &&
-            !seen.has(file)
-          ) {
+          if (isManifestJsAsset(file) && !seen.has(file)) {
             seen.add(file)
             dynamicImportFiles.push(file)
           }
@@ -123,10 +139,7 @@ function computeAsyncChunkImports(
   for (const group of chunk.groupsIterable) {
     for (const siblingChunk of group.chunks) {
       for (const file of siblingChunk.files) {
-        if (
-          (file.endsWith('.js') || file.endsWith('.mjs')) &&
-          !seen.has(file)
-        ) {
+        if (isManifestJsAsset(file) && !seen.has(file)) {
           seen.add(file)
           imports.push(file)
         }
@@ -160,7 +173,7 @@ export function normalizeRspackClientBuild(
     for (const chunk of entrypoint.chunks) {
       entryChunkSet.add(chunk)
       for (const file of chunk.files) {
-        if (file.endsWith('.js') || file.endsWith('.mjs')) {
+        if (isManifestJsAsset(file)) {
           initialJsFileNames.push(file)
         }
       }

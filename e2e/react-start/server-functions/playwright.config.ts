@@ -2,7 +2,10 @@ import { defineConfig, devices } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
-export const PORT = await getTestServerPort(packageJson.name)
+const e2ePortKey = process.env.E2E_PORT_KEY ?? packageJson.name
+const distDir = process.env.E2E_DIST_DIR ?? 'dist'
+
+export const PORT = await getTestServerPort(e2ePortKey)
 const baseURL = `http://localhost:${PORT}`
 
 /**
@@ -20,10 +23,16 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `VITE_SERVER_PORT=${PORT} pnpm build && PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`,
+    command: `PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
+    env: {
+      PORT: String(PORT),
+      VITE_SERVER_PORT: String(PORT),
+      E2E_DIST_DIR: distDir,
+      E2E_PORT_KEY: e2ePortKey,
+    },
   },
 
   projects: [

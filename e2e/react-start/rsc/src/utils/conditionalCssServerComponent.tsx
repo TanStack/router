@@ -12,7 +12,6 @@ export const getConditionalCssServerComponent = createServerFn({
 
     return renderServerComponent(
       <>
-        {import.meta.viteRsc.loadCss()}
         {branch === 'violet' ? (
           <ConditionalVioletPanel />
         ) : (

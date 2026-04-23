@@ -1,6 +1,6 @@
 import type babel from '@babel/core'
 import type * as t from '@babel/types'
-import type { Config, DeletableNodes } from '../config'
+import type { Config, DeletableNodes, HmrStyle } from '../config'
 import type { CodeSplitGroupings } from '../constants'
 import type { SplitNodeMeta } from './types'
 
@@ -11,7 +11,8 @@ export type CompileCodeSplitReferenceRouteOptions = {
   filename: string
   id: string
   addHmr?: boolean
-  hmrHotExpression?: string
+  hmrStyle?: HmrStyle
+  hmrRouteId?: string
   sharedBindings?: Set<string>
 }
 

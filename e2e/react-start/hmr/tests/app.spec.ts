@@ -1,5 +1,4 @@
 import { expect } from '@playwright/test'
-import type { ConsoleMessage } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -10,27 +9,84 @@ const whitelistErrors = [
   'Failed to load resource: the server responded with a status of 504',
 ]
 
-const routeFilenames = {
-  index: 'index.tsx',
-  root: '__root.tsx',
-  child: 'child.tsx',
-  inputs: 'inputs.tsx',
-  componentHmrInlineSplit: 'component-hmr-inline-split.tsx',
-  componentHmrInlineNosplit: 'component-hmr-inline-nosplit.tsx',
-  componentHmrNamedSplit: 'component-hmr-named-split.tsx',
-  componentHmrNamedNosplit: 'component-hmr-named-nosplit.tsx',
-  componentHmrInlineErrorSplit: 'component-hmr-inline-error-split.tsx',
-  componentHmrNamedErrorSplit: 'component-hmr-named-error-split.tsx',
+const routeFilePaths = {
+  index: 'routes/index.tsx',
+  root: 'routes/__root.tsx',
+  child: 'routes/child.tsx',
+  inputs: 'routes/inputs.tsx',
+  componentHmrInlineSplit: 'routes/component-hmr-inline-split.tsx',
+  componentHmrInlineNosplit: 'routes/component-hmr-inline-nosplit.tsx',
+  componentHmrNamedSplit: 'routes/component-hmr-named-split.tsx',
+  componentHmrNamedNosplit: 'routes/component-hmr-named-nosplit.tsx',
+  componentHmrInlineErrorSplit: 'routes/component-hmr-inline-error-split.tsx',
+  componentHmrNamedErrorSplit: 'routes/component-hmr-named-error-split.tsx',
+  serverFnHmr: 'routes/server-fn-hmr.tsx',
+  serverFnHmrFactory: 'hmr/server-fn-hmr-factory.ts',
 } as const
 
-type RouteFileKey = keyof typeof routeFilenames
+type RouteFileKey = keyof typeof routeFilePaths
 
 const routeFiles = Object.fromEntries(
-  Object.entries(routeFilenames).map(([key, filename]) => [
+  Object.entries(routeFilePaths).map(([key, relativePath]) => [
     key,
-    path.join(process.cwd(), 'src/routes', filename),
+    path.join(process.cwd(), 'src', relativePath),
   ]),
 ) as Record<RouteFileKey, string>
+
+const routeFileRestoreChecks: Partial<
+  Record<
+    RouteFileKey,
+    {
+      url: string
+      testId: string
+      text: string
+    }
+  >
+> = {
+  index: { url: '/', testId: 'marker', text: 'baseline' },
+  root: {
+    url: '/',
+    testId: 'root-component-marker',
+    text: 'root-component-baseline',
+  },
+  child: { url: '/child', testId: 'child-greeting', text: 'Hello' },
+  inputs: { url: '/inputs', testId: 'inputs-marker', text: 'inputs-baseline' },
+  componentHmrInlineSplit: {
+    url: '/component-hmr-inline-split',
+    testId: 'component-hmr-marker',
+    text: 'component-hmr-inline-split-baseline',
+  },
+  componentHmrInlineNosplit: {
+    url: '/component-hmr-inline-nosplit',
+    testId: 'component-hmr-marker',
+    text: 'component-hmr-inline-nosplit-baseline',
+  },
+  componentHmrNamedSplit: {
+    url: '/component-hmr-named-split',
+    testId: 'component-hmr-marker',
+    text: 'component-hmr-named-split-baseline',
+  },
+  componentHmrNamedNosplit: {
+    url: '/component-hmr-named-nosplit',
+    testId: 'component-hmr-marker',
+    text: 'component-hmr-named-nosplit-baseline',
+  },
+  componentHmrInlineErrorSplit: {
+    url: '/component-hmr-inline-error-split',
+    testId: 'component-hmr-marker',
+    text: 'component-hmr-inline-error-split-baseline',
+  },
+  componentHmrNamedErrorSplit: {
+    url: '/component-hmr-named-error-split',
+    testId: 'component-hmr-marker',
+    text: 'component-hmr-named-error-split-baseline',
+  },
+  serverFnHmrFactory: {
+    url: '/server-fn-hmr',
+    testId: 'server-fn-hmr-marker',
+    text: 'server-fn-hmr-baseline',
+  },
+}
 
 // Capture original file contents once so beforeEach can restore them
 const originalContents: Partial<Record<RouteFileKey, string>> = {}
@@ -90,25 +146,32 @@ async function rewriteRouteFile(
 }
 
 /**
- * Returns a promise that resolves once Vite logs a client HMR update
- * for the given route filename. Must be called BEFORE the file write
- * so the listener is in place when the message arrives.
+ * Waits for the router to observe the latest route module after an edit.
+ * This avoids bundler-specific HMR console message matching.
  */
-function onNextHmrUpdate(page: Page, routeFilename: string): Promise<void> {
-  return new Promise<void>((resolve) => {
-    const handler = (msg: ConsoleMessage) => {
-      const text = msg.text()
-      if (
-        text.includes('[vite]') &&
-        text.includes(routeFilename) &&
-        (text.includes('hot updated') || text.includes('hmr update'))
-      ) {
-        page.off('console', handler)
-        resolve()
+async function waitForRouteModuleUpdate(
+  page: Page,
+  routeId: string,
+  expectedCrumb: string,
+) {
+  await page.waitForFunction(
+    ([nextRouteId, nextCrumb]) => {
+      const router = (window as any).__TSR_ROUTER__
+      const route = router?.routesById?.[nextRouteId]
+      if (!route) {
+        return false
       }
-    }
-    page.on('console', handler)
-  })
+
+      const loader = route.options?.loader
+      if (typeof loader !== 'function') {
+        return false
+      }
+
+      const loaderResult = loader()
+      return loaderResult?.crumb === nextCrumb
+    },
+    [routeId, expectedCrumb],
+  )
 }
 
 async function waitForRouteRemovalReload(page: Page) {
@@ -135,6 +198,49 @@ async function reloadPageAndWaitForText(
 ) {
   await reloadPageAndWait(page, url)
   await expect(page.getByTestId(testId)).toHaveText(text)
+}
+
+async function waitForServerFnHmrReady(page: Page) {
+  await page.getByTestId('hydrated').waitFor({ state: 'visible' })
+  await expect(page.getByTestId('invoke-server-fn-hmr')).toBeVisible()
+}
+
+async function waitForServerFnHmrMarker(page: Page, text: string) {
+  await waitForServerFnHmrReady(page)
+  await expect(page.getByTestId('server-fn-hmr-marker')).toHaveText(text)
+  await expect(page.getByTestId('server-fn-hmr-result')).toBeVisible()
+}
+
+async function waitForRestoredRouteFile(
+  page: Page,
+  routeFileKey: RouteFileKey,
+) {
+  const restoreCheck = routeFileRestoreChecks[routeFileKey]
+
+  if (!restoreCheck) {
+    return
+  }
+
+  // Restores happen immediately after a previous edit, so poll until the dev
+  // server has actually observed the restored file before the next test starts.
+  const deadline = Date.now() + 10_000
+  let lastError: unknown
+
+  while (Date.now() < deadline) {
+    try {
+      await reloadPageAndWait(page, restoreCheck.url)
+      await expect(page.getByTestId(restoreCheck.testId)).toHaveText(
+        restoreCheck.text,
+        { timeout: 500 },
+      )
+      return
+    } catch (error) {
+      lastError = error
+      await page.waitForTimeout(150)
+    }
+  }
+
+  throw lastError
 }
 
 async function seedHomeState(page: Page) {
@@ -170,8 +276,10 @@ async function expectComponentHmrStatePreserved(page: Page) {
 test.describe('react-start hmr', () => {
   test.use({ whitelistErrors })
 
-  test.beforeEach(async () => {
+  test.beforeEach(async ({ page }) => {
     await capturePromise
+    const restoredRouteKeys: Array<RouteFileKey> = []
+
     for (const [key, filePath] of Object.entries(routeFiles) as Array<
       [RouteFileKey, string]
     >) {
@@ -180,7 +288,12 @@ test.describe('react-start hmr', () => {
       const current = await readFile(filePath, 'utf8')
       if (current !== content) {
         await writeFile(filePath, content)
+        restoredRouteKeys.push(key)
       }
+    }
+
+    for (const routeFileKey of restoredRouteKeys) {
+      await waitForRestoredRouteFile(page, routeFileKey)
     }
   })
 
@@ -332,18 +445,16 @@ test.describe('react-start hmr', () => {
     await page.getByTestId('hydrated').waitFor({ state: 'visible' })
 
     // First edit: change child loader while on /
-    const hmr1 = onNextHmrUpdate(page, 'child.tsx')
     await replaceRouteText('child', "crumb: 'Child'", "crumb: 'Child Updated'")
-    await hmr1
+    await waitForRouteModuleUpdate(page, '/child', 'Child Updated')
 
     // Second edit: change child loader again while still on /
-    const hmr2 = onNextHmrUpdate(page, 'child.tsx')
     await replaceRouteText(
       'child',
       "crumb: 'Child Updated'",
       "crumb: 'Child Updated Again'",
     )
-    await hmr2
+    await waitForRouteModuleUpdate(page, '/child', 'Child Updated Again')
 
     // Now navigate to /child — should see the LATEST value
     await page.getByTestId('child-link').click()
@@ -729,5 +840,53 @@ test.describe('react-start hmr', () => {
     )
 
     await expectComponentHmrStatePreserved(page)
+  })
+
+  test('invalidates transitive server function compiler state during HMR', async ({
+    page,
+  }) => {
+    await page.goto('/server-fn-hmr')
+    await waitForServerFnHmrMarker(page, 'server-fn-hmr-baseline')
+    await page.getByTestId('invoke-server-fn-hmr').click()
+    await expect(page.getByTestId('server-fn-hmr-result')).toHaveText(
+      'server-fn-hmr-baseline-result',
+    )
+    await expect(page.getByTestId('server-fn-hmr-error')).toHaveText('none')
+
+    await replaceRouteText(
+      'serverFnHmrFactory',
+      "createServerOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-baseline'",
+      "createClientOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-client-only'",
+    )
+    await reloadPageAndWaitForText(
+      page,
+      '/server-fn-hmr',
+      'server-fn-hmr-marker',
+      'server-fn-hmr-client-only',
+    )
+
+    await page.getByTestId('invoke-server-fn-hmr').click()
+    await expect(page.getByTestId('server-fn-hmr-result')).toHaveText('idle')
+    await expect(page.getByTestId('server-fn-hmr-error')).toContainText(
+      'createClientOnlyFn() functions can only be called on the client!',
+    )
+
+    await replaceRouteText(
+      'serverFnHmrFactory',
+      "createClientOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-client-only'",
+      "createServerOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-baseline'",
+    )
+    await reloadPageAndWaitForText(
+      page,
+      '/server-fn-hmr',
+      'server-fn-hmr-marker',
+      'server-fn-hmr-baseline',
+    )
+
+    await page.getByTestId('invoke-server-fn-hmr').click()
+    await expect(page.getByTestId('server-fn-hmr-result')).toHaveText(
+      'server-fn-hmr-baseline-result',
+    )
+    await expect(page.getByTestId('server-fn-hmr-error')).toHaveText('none')
   })
 })

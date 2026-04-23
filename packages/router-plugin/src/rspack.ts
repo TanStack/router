@@ -1,11 +1,31 @@
 import { createRspackPlugin } from 'unplugin'
 
 import { configSchema } from './core/config'
-import { withHmrHotExpression } from './core/hmr-hot-expression'
 import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-plugin'
 import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
 import type { CodeSplittingOptions, Config } from './core/config'
+
+/**
+ * Rspack uses webpack-compatible `module.hot` / `import.meta.webpackHot` HMR.
+ * Force `plugin.hmr.style = 'webpack'` so the router HMR adapter emits
+ * `module.hot`-style accept/dispose code instead of Vite's callback-receive
+ * variant, regardless of what the user passes (or doesn't pass).
+ */
+function withWebpackHmrStyle(
+  options: Partial<Config> | undefined,
+): Partial<Config> {
+  return {
+    ...options,
+    plugin: {
+      ...options?.plugin,
+      hmr: {
+        ...options?.plugin?.hmr,
+        style: 'webpack',
+      },
+    },
+  }
+}
 
 /**
  * @example
@@ -40,10 +60,7 @@ const TanStackRouterGeneratorRspack = /* #__PURE__ */ createRspackPlugin(
 const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
   (options, meta) =>
     unpluginRouterCodeSplitterFactory(
-      withHmrHotExpression(
-        options as Partial<Config> | undefined,
-        'import.meta.webpackHot',
-      ),
+      withWebpackHmrStyle(options as Partial<Config> | undefined),
       meta,
     ),
 )
@@ -64,10 +81,7 @@ const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
 const TanStackRouterRspack = /* #__PURE__ */ createRspackPlugin(
   (options, meta) =>
     unpluginRouterComposedFactory(
-      withHmrHotExpression(
-        options as Partial<Config> | undefined,
-        'import.meta.webpackHot',
-      ),
+      withWebpackHmrStyle(options as Partial<Config> | undefined),
       meta,
     ),
 )

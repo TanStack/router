@@ -8,7 +8,7 @@ import {
   parseAst,
 } from '@tanstack/router-utils'
 import { tsrShared, tsrSplit } from '../constants'
-import { createRouteHmrStatement } from '../route-hmr-statement'
+import { createRouteHmrStatement } from '../hmr'
 import { getObjectPropertyKeyName } from '../utils'
 import { createIdentifier } from './path-ids'
 import { getFrameworkOptions } from './framework-options'
@@ -727,7 +727,9 @@ export function compileCodeSplitReferenceRoute(
                 programPath.pushContainer(
                   'body',
                   createRouteHmrStatement(stableRouteOptionKeys, {
-                    hotExpression: opts.hmrHotExpression,
+                    hmrStyle: opts.hmrStyle ?? 'vite',
+                    targetFramework: opts.targetFramework,
+                    routeId: opts.hmrRouteId,
                   }),
                 )
                 modified = true
