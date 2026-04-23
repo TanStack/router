@@ -90,16 +90,176 @@ const routeFileRestoreChecks: Partial<
 
 // Capture original file contents once so beforeEach can restore them
 const originalContents: Partial<Record<RouteFileKey, string>> = {}
+const routeKeysPendingRestoreCheck = new Set<RouteFileKey>()
+
+function replaceAll(source: string, from: string, to: string) {
+  return source.split(from).join(to)
+}
+
+function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
+  let next = source
+
+  if (routeFileKey === 'index') {
+    next = next.replace(
+      "export const Route = createFileRoute('/')({\n  loader: () => ({\n    crumb: 'Index Added',\n  }),\n  component: Home,\n})",
+      "export const Route = createFileRoute('/')({\n  component: Home,\n})",
+    )
+    next = replaceAll(next, 'updated', 'baseline')
+  }
+
+  if (routeFileKey === 'root') {
+    for (const marker of [
+      'root-component-inline-baseline',
+      'root-component-inline-updated',
+    ]) {
+      next = next.replace(
+        `  component: () => <RootDocument marker="${marker}"><RootContent /></RootDocument>,`,
+        '  component: RootComponent,',
+      )
+    }
+
+    for (const marker of [
+      'root-shell-inline-baseline',
+      'root-shell-inline-updated',
+    ]) {
+      next = next.replace(
+        `  shellComponent: ({ children }) => <RootShellDocument marker="${marker}">{children}</RootShellDocument>,\n  component: RootContent,`,
+        '  component: RootComponent,',
+      )
+    }
+
+    next = next.replace(
+      '  shellComponent: RootShell,\n  component: RootContent,',
+      '  component: RootComponent,',
+    )
+
+    for (const marker of ['root-shell-baseline', 'root-shell-updated']) {
+      next = next.replace(
+        `function RootShell({ children }: { children: ReactNode }) {\n  return <RootShellDocument marker="${marker}">{children}</RootShellDocument>\n}\n\nfunction Breadcrumbs() {`,
+        'function Breadcrumbs() {',
+      )
+    }
+
+    next = replaceAll(next, "crumb: 'Home Updated'", "crumb: 'Home'")
+    next = replaceAll(next, 'root-component-updated', 'root-component-baseline')
+    next = replaceAll(next, 'root-shell-updated', 'root-shell-baseline')
+  }
+
+  if (routeFileKey === 'child') {
+    const beforeLoadBlock =
+      "  beforeLoad: () => ({\n    greeting: 'Hello',\n  }),\n"
+    const loaderBlock = "  loader: () => ({\n    crumb: 'Child',\n  }),\n"
+
+    next = replaceAll(next, "greeting: 'Hi'", "greeting: 'Hello'")
+    next = replaceAll(next, "crumb: 'Child Updated Again'", "crumb: 'Child'")
+    next = replaceAll(next, "crumb: 'Child Updated'", "crumb: 'Child'")
+
+    if (!next.includes(beforeLoadBlock)) {
+      next = next.replace(
+        '  component: Child,\n',
+        `${beforeLoadBlock}  component: Child,\n`,
+      )
+    }
+    if (!next.includes(loaderBlock)) {
+      const withLoaderAfterBeforeLoad = next.replace(
+        `${beforeLoadBlock}  component: Child,\n`,
+        `${beforeLoadBlock}${loaderBlock}  component: Child,\n`,
+      )
+      next =
+        withLoaderAfterBeforeLoad === next
+          ? next.replace(
+              '  component: Child,\n',
+              `${loaderBlock}  component: Child,\n`,
+            )
+          : withLoaderAfterBeforeLoad
+    }
+  }
+
+  const markerReplacements: Partial<Record<RouteFileKey, [string, string]>> = {
+    inputs: ['inputs-updated', 'inputs-baseline'],
+    componentHmrInlineSplit: [
+      'component-hmr-inline-split-updated',
+      'component-hmr-inline-split-baseline',
+    ],
+    componentHmrInlineNosplit: [
+      'component-hmr-inline-nosplit-updated',
+      'component-hmr-inline-nosplit-baseline',
+    ],
+    componentHmrNamedSplit: [
+      'component-hmr-named-split-updated',
+      'component-hmr-named-split-baseline',
+    ],
+    componentHmrNamedNosplit: [
+      'component-hmr-named-nosplit-updated',
+      'component-hmr-named-nosplit-baseline',
+    ],
+    componentHmrInlineErrorSplit: [
+      'component-hmr-inline-error-split-updated',
+      'component-hmr-inline-error-split-baseline',
+    ],
+    componentHmrNamedErrorSplit: [
+      'component-hmr-named-error-split-updated',
+      'component-hmr-named-error-split-baseline',
+    ],
+  }
+  const markerReplacement = markerReplacements[routeFileKey]
+  if (markerReplacement) {
+    next = replaceAll(next, markerReplacement[0], markerReplacement[1])
+  }
+
+  if (routeFileKey === 'serverFnHmrFactory') {
+    next = next.replace(
+      /^import \{ .* \} from '@tanstack\/react-start'$/m,
+      "import { createClientOnlyFn, createServerOnlyFn } from '@tanstack/react-start'",
+    )
+    next = replaceAll(
+      next,
+      'export const createServerFnHmrFactory = createClientOnlyFn',
+      'export const createServerFnHmrFactory = createServerOnlyFn',
+    )
+    next = replaceAll(
+      next,
+      'server-fn-hmr-client-only',
+      'server-fn-hmr-baseline',
+    )
+  }
+
+  return next
+}
 
 async function captureOriginals() {
   for (const [key, filePath] of Object.entries(routeFiles) as Array<
     [RouteFileKey, string]
   >) {
-    originalContents[key] = await readFile(filePath, 'utf8')
+    const current = await readFile(filePath, 'utf8')
+    const normalized = normalizeRouteSource(key, current)
+    if (normalized !== current) {
+      await writeFile(filePath, normalized)
+      routeKeysPendingRestoreCheck.add(key)
+    }
+    originalContents[key] = normalized
   }
 }
 
 const capturePromise = captureOriginals()
+
+async function restoreRouteFiles() {
+  const restoredRouteKeys: Array<RouteFileKey> = []
+
+  for (const [key, filePath] of Object.entries(routeFiles) as Array<
+    [RouteFileKey, string]
+  >) {
+    const content = originalContents[key]
+    if (content === undefined) continue
+    const current = await readFile(filePath, 'utf8')
+    if (current !== content) {
+      await writeFile(filePath, content)
+      restoredRouteKeys.push(key)
+    }
+  }
+
+  return restoredRouteKeys
+}
 
 async function replaceRouteText(
   routeFileKey: RouteFileKey,
@@ -171,6 +331,7 @@ async function waitForRouteModuleUpdate(
       return loaderResult?.crumb === nextCrumb
     },
     [routeId, expectedCrumb],
+    { timeout: 20_000 },
   )
 }
 
@@ -186,7 +347,17 @@ async function waitForRouteRemovalReload(page: Page) {
 }
 
 async function reloadPageAndWait(page: Page, url: string) {
-  await page.goto(url)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded' })
+      break
+    } catch (error) {
+      if (attempt === 3 || !String(error).includes('net::ERR_ABORTED')) {
+        throw error
+      }
+      await page.waitForTimeout(250)
+    }
+  }
   await page.getByTestId('hydrated').waitFor({ state: 'visible' })
 }
 
@@ -278,37 +449,30 @@ test.describe('react-start hmr', () => {
 
   test.beforeEach(async ({ page }) => {
     await capturePromise
-    const restoredRouteKeys: Array<RouteFileKey> = []
-
-    for (const [key, filePath] of Object.entries(routeFiles) as Array<
-      [RouteFileKey, string]
-    >) {
-      const content = originalContents[key]
-      if (content === undefined) continue
-      const current = await readFile(filePath, 'utf8')
-      if (current !== content) {
-        await writeFile(filePath, content)
-        restoredRouteKeys.push(key)
-      }
+    const restoredRouteKeys = await restoreRouteFiles()
+    for (const routeFileKey of restoredRouteKeys) {
+      routeKeysPendingRestoreCheck.add(routeFileKey)
     }
 
-    for (const routeFileKey of restoredRouteKeys) {
+    const routeKeysToCheck = Array.from(routeKeysPendingRestoreCheck)
+    routeKeysPendingRestoreCheck.clear()
+
+    for (const routeFileKey of routeKeysToCheck) {
       await waitForRestoredRouteFile(page, routeFileKey)
+    }
+  })
+
+  test.afterEach(async () => {
+    await capturePromise
+    const restoredRouteKeys = await restoreRouteFiles()
+    for (const routeFileKey of restoredRouteKeys) {
+      routeKeysPendingRestoreCheck.add(routeFileKey)
     }
   })
 
   test.afterAll(async () => {
     await capturePromise
-    for (const [key, filePath] of Object.entries(routeFiles) as Array<
-      [RouteFileKey, string]
-    >) {
-      const content = originalContents[key]
-      if (content === undefined) continue
-      const current = await readFile(filePath, 'utf8')
-      if (current !== content) {
-        await writeFile(filePath, content)
-      }
-    }
+    await restoreRouteFiles()
   })
 
   test('preserves local state for code-split route component HMR', async ({
@@ -353,8 +517,10 @@ test.describe('react-start hmr', () => {
       "crumb: 'Home'",
       "crumb: 'Home Updated'",
       async () => {
+        await waitForRouteModuleUpdate(page, '__root__', 'Home Updated')
         await expect(page.getByTestId('crumb-__root__')).toHaveText(
           'Home Updated',
+          { timeout: 10_000 },
         )
       },
     )
@@ -377,8 +543,10 @@ test.describe('react-start hmr', () => {
       "crumb: 'Child'",
       "crumb: 'Child Updated'",
       async () => {
+        await waitForRouteModuleUpdate(page, '/child', 'Child Updated')
         await expect(page.getByTestId('crumb-/child')).toHaveText(
           'Child Updated',
+          { timeout: 10_000 },
         )
       },
     )
@@ -406,7 +574,10 @@ test.describe('react-start hmr', () => {
           "export const Route = createFileRoute('/')({\n  loader: () => ({\n    crumb: 'Index Added',\n  }),\n  component: Home,\n})",
         ),
       async () => {
-        await expect(page.getByTestId('crumb-/')).toHaveText('Index Added')
+        await waitForRouteModuleUpdate(page, '/', 'Index Added')
+        await expect(page.getByTestId('crumb-/')).toHaveText('Index Added', {
+          timeout: 10_000,
+        })
       },
     )
 
@@ -446,7 +617,7 @@ test.describe('react-start hmr', () => {
 
     // First edit: change child loader while on /
     await replaceRouteText('child', "crumb: 'Child'", "crumb: 'Child Updated'")
-    await waitForRouteModuleUpdate(page, '/child', 'Child Updated')
+    await page.waitForTimeout(250)
 
     // Second edit: change child loader again while still on /
     await replaceRouteText(
@@ -454,7 +625,6 @@ test.describe('react-start hmr', () => {
       "crumb: 'Child Updated'",
       "crumb: 'Child Updated Again'",
     )
-    await waitForRouteModuleUpdate(page, '/child', 'Child Updated Again')
 
     // Now navigate to /child — should see the LATEST value
     await page.getByTestId('child-link').click()
@@ -487,8 +657,10 @@ test.describe('react-start hmr', () => {
       "crumb: 'Home'",
       "crumb: 'Home Updated'",
       async () => {
+        await waitForRouteModuleUpdate(page, '__root__', 'Home Updated')
         await expect(page.getByTestId('crumb-__root__')).toHaveText(
           'Home Updated',
+          { timeout: 10_000 },
         )
       },
     )

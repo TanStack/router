@@ -12,8 +12,15 @@ import type * as t from '@babel/types'
  */
 export function createViteHmrStatement(
   stableRouteOptionKeys: Array<string>,
+  opts: {
+    routeId?: string
+  } = {},
 ): Array<t.Statement> {
   const handleRouteUpdateCode = getHandleRouteUpdateCode(stableRouteOptionKeys)
+  // The replacement Route object can be uninitialized; keep a generated id as
+  // fallback for the existing router route we need to patch.
+  const routeIdFallback =
+    typeof opts.routeId === 'string' ? JSON.stringify(opts.routeId) : 'Route.id'
 
   return [
     template.statement(
@@ -23,7 +30,7 @@ if (import.meta.hot) {
   const hotData = hot.data ??= {}
   hot.accept((newModule) => {
     if (Route && newModule && newModule.Route) {
-      const routeId = hotData['tsr-route-id'] ?? Route.id
+      const routeId = hotData['tsr-route-id'] ?? ${routeIdFallback}
       if (routeId) {
         hotData['tsr-route-id'] = routeId
       }

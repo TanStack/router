@@ -18,11 +18,15 @@ export function createRouteHmrStatement(
   stableRouteOptionKeys: Array<string>,
   opts: CreateRouteHmrStatementOpts,
 ): Array<t.Statement> {
+  const routeId = opts.routeId === '/__root' ? '__root__' : opts.routeId
+
   if (opts.hmrStyle === 'webpack') {
     return createWebpackHmrStatement(stableRouteOptionKeys, {
       targetFramework: opts.targetFramework,
-      routeId: opts.routeId,
+      routeId,
     })
   }
-  return createViteHmrStatement(stableRouteOptionKeys)
+  return createViteHmrStatement(stableRouteOptionKeys, {
+    routeId,
+  })
 }

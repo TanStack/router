@@ -13,7 +13,7 @@
     "build:rsbuild": "rsbuild build && tsc --noEmit",
     "preview": "vite preview",
     "start": "node server.js",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e": "rm -rf port*.txt && pnpm build && playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.0",

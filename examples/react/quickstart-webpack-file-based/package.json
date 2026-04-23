@@ -18,6 +18,7 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "html-webpack-plugin": "^5.6.3",
+    "react-refresh": "^0.18.0",
     "swc-loader": "^0.2.6",
     "typescript": "^6.0.2",
     "webpack": "^5.97.1",

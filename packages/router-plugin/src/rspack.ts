@@ -6,6 +6,8 @@ import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
 import type { CodeSplittingOptions, Config } from './core/config'
 
+type RspackRouterPluginOptions = Partial<Config> | (() => Partial<Config>)
+
 /**
  * Rspack uses webpack-compatible `module.hot` / `import.meta.webpackHot` HMR.
  * Force `plugin.hmr.style = 'webpack'` so the router HMR adapter emits
@@ -13,18 +15,26 @@ import type { CodeSplittingOptions, Config } from './core/config'
  * variant, regardless of what the user passes (or doesn't pass).
  */
 function withWebpackHmrStyle(
-  options: Partial<Config> | undefined,
-): Partial<Config> {
-  return {
-    ...options,
+  options: RspackRouterPluginOptions | undefined,
+): RspackRouterPluginOptions {
+  const mergeHmrStyle = (
+    config: Partial<Config> | undefined,
+  ): Partial<Config> => ({
+    ...config,
     plugin: {
-      ...options?.plugin,
+      ...config?.plugin,
       hmr: {
-        ...options?.plugin?.hmr,
+        ...config?.plugin?.hmr,
         style: 'webpack',
       },
     },
+  })
+
+  if (typeof options === 'function') {
+    return () => mergeHmrStyle(options())
   }
+
+  return mergeHmrStyle(options)
 }
 
 /**
@@ -60,7 +70,9 @@ const TanStackRouterGeneratorRspack = /* #__PURE__ */ createRspackPlugin(
 const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
   (options, meta) =>
     unpluginRouterCodeSplitterFactory(
-      withWebpackHmrStyle(options as Partial<Config> | undefined),
+      withWebpackHmrStyle(
+        options as RspackRouterPluginOptions | undefined,
+      ) as Partial<Config | (() => Config)>,
       meta,
     ),
 )
@@ -81,7 +93,9 @@ const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
 const TanStackRouterRspack = /* #__PURE__ */ createRspackPlugin(
   (options, meta) =>
     unpluginRouterComposedFactory(
-      withWebpackHmrStyle(options as Partial<Config> | undefined),
+      withWebpackHmrStyle(
+        options as RspackRouterPluginOptions | undefined,
+      ) as Partial<Config | (() => Config)>,
       meta,
     ),
 )

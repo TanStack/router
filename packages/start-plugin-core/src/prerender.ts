@@ -6,6 +6,8 @@ import { createLogger } from './utils'
 import { Queue } from './queue'
 import type { Page, TanStackStartOutputConfig } from './schema'
 
+const DEFAULT_RETRY_DELAY = 500
+
 export interface PrerenderHandler {
   getClientOutputDirectory: () => string
   request: (path: string, options?: RequestInit) => Promise<Response>
@@ -211,10 +213,11 @@ export async function prerender({
           }
         } catch (error) {
           if (retries < (prerenderOptions.retryCount ?? 0)) {
-            logger.warn(`Encountered error, retrying: ${page.path} in 500ms`)
-            await new Promise((resolve) =>
-              setTimeout(resolve, prerenderOptions.retryDelay),
+            const retryDelay = normalizeRetryDelay(prerenderOptions.retryDelay)
+            logger.warn(
+              `Encountered error, retrying: ${page.path} in ${retryDelay}ms`,
             )
+            await new Promise((resolve) => setTimeout(resolve, retryDelay))
             retriesByPath.set(page.path, retries + 1)
             addCrawlPageTask(page)
           } else if (prerenderOptions.failOnError ?? true) {
@@ -223,6 +226,16 @@ export async function prerender({
         }
       })
     }
+  }
+
+  function normalizeRetryDelay(value: number | undefined): number {
+    const retryDelay = Number(value)
+
+    if (!Number.isFinite(retryDelay) || retryDelay < 0) {
+      return DEFAULT_RETRY_DELAY
+    }
+
+    return Math.trunc(retryDelay)
   }
 
   async function requestWithRedirects(

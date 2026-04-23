@@ -141,8 +141,14 @@ export function enableSwcReactServerComponents(
 
       const routeSplitRule = cloneRspackRule(originalRule)
       routeSplitRule.resourceQuery = /(?:^|[?&])tsr-split(?:=|&|$)/
+      const routeSplitConditionNames = originalRule.resolve?.conditionNames
       routeSplitRule.resolve = {
-        conditionNames: ['...'],
+        ...originalRule.resolve,
+        conditionNames: Array.isArray(routeSplitConditionNames)
+          ? routeSplitConditionNames.includes('...')
+            ? [...routeSplitConditionNames]
+            : ['...', ...routeSplitConditionNames]
+          : ['...'],
       }
 
       const subtreeRule = cloneRspackRule(originalRule)

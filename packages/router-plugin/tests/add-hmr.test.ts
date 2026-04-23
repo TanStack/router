@@ -126,4 +126,28 @@ describe('add-hmr works', () => {
     expect(output).not.toContain('webpackHot')
     expect(output).toContain('newModule')
   })
+
+  it('uses a generated route id fallback for Vite HMR', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'vite',
+      targetFramework: 'react',
+      routeId: '/posts',
+    })
+    const output = JSON.stringify(statement)
+
+    expect(output).toContain('tsr-route-id')
+    expect(output).toContain('/posts')
+  })
+
+  it('normalizes the generated root route id for Vite HMR', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'vite',
+      targetFramework: 'react',
+      routeId: '/__root',
+    })
+    const output = JSON.stringify(statement)
+
+    expect(output).toContain('__root__')
+    expect(output).not.toContain('/__root')
+  })
 })

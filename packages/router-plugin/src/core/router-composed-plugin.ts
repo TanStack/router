@@ -6,12 +6,17 @@ import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
 export const unpluginRouterComposedFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  Partial<Config | (() => Config)> | undefined
 > = (options = {}, meta) => {
   const ROOT: string = process.cwd()
-  const userConfig = getConfig(options, ROOT)
+  const userConfig = getConfig(
+    (typeof options === 'function' ? options() : options) as Partial<Config>,
+    ROOT,
+  )
 
-  const getPlugin = (pluginFactory: UnpluginFactory<Partial<Config>>) => {
+  const getPlugin = (
+    pluginFactory: UnpluginFactory<Partial<Config | (() => Config)>>,
+  ) => {
     const plugin = pluginFactory(options, meta)
     if (!Array.isArray(plugin)) {
       return [plugin]

@@ -312,7 +312,9 @@ export function startCompilerPlugin(
                 if (importer.id) {
                   idsToInvalidate.add(importer.id)
                   importerModulesToInvalidate.add(importer)
-                  compiler?.invalidateModule(importer.id)
+                  transitiveCompilerImportersToInvalidate.add(
+                    cleanId(importer.id),
+                  )
                 }
               })
             }
