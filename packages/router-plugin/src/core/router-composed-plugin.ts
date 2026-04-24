@@ -3,7 +3,29 @@ import { unpluginRouterGeneratorFactory } from './router-generator-plugin'
 import { unpluginRouterCodeSplitterFactory } from './router-code-splitter-plugin'
 import { unpluginRouterHmrFactory } from './router-hmr-plugin'
 import type { Config } from './config'
-import type { UnpluginFactory } from 'unplugin'
+import type {
+  RspackCompiler,
+  UnpluginFactory,
+  UnpluginOptions,
+  WebpackCompiler,
+} from 'unplugin'
+
+const INLINE_CSS_DEFAULT_DEFINES = {
+  'process.env.TSS_INLINE_CSS_ENABLED': JSON.stringify('false'),
+  'import.meta.env.TSS_INLINE_CSS_ENABLED': JSON.stringify('false'),
+}
+
+type EsbuildOptionsWithDefine = Parameters<
+  NonNullable<NonNullable<UnpluginOptions['esbuild']>['config']>
+>[0]
+
+function applyWebpackInlineCssDefaultDefinePlugin(compiler: WebpackCompiler) {
+  new compiler.webpack.DefinePlugin(INLINE_CSS_DEFAULT_DEFINES).apply(compiler)
+}
+
+function applyRspackInlineCssDefaultDefinePlugin(compiler: RspackCompiler) {
+  new compiler.webpack.DefinePlugin(INLINE_CSS_DEFAULT_DEFINES).apply(compiler)
+}
 
 export const unpluginRouterComposedFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
@@ -34,9 +56,22 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
         config() {
           return {
             define: {
-              'process.env.TSS_INLINE_CSS_ENABLED': JSON.stringify('false'),
-              'import.meta.env.TSS_INLINE_CSS_ENABLED': JSON.stringify('false'),
+              ...INLINE_CSS_DEFAULT_DEFINES,
             },
+          }
+        },
+      },
+      webpack(compiler: WebpackCompiler) {
+        applyWebpackInlineCssDefaultDefinePlugin(compiler)
+      },
+      rspack(compiler: RspackCompiler) {
+        applyRspackInlineCssDefaultDefinePlugin(compiler)
+      },
+      esbuild: {
+        config(options: EsbuildOptionsWithDefine) {
+          options.define = {
+            ...INLINE_CSS_DEFAULT_DEFINES,
+            ...options.define,
           }
         },
       },
