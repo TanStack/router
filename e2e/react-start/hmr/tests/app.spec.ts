@@ -351,6 +351,47 @@ async function waitForRouteRemovalReload(page: Page) {
   })
 }
 
+async function waitForServerRenderedText(
+  page: Page,
+  url: string,
+  text: string,
+) {
+  const deadline = Date.now() + 20_000
+  let lastError: unknown
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await page.request.get(url)
+      const body = await response.text()
+
+      if (response.ok() && body.includes(text)) {
+        return
+      }
+
+      lastError = new Error(
+        `Expected server HTML for ${url} to include ${JSON.stringify(text)}`,
+      )
+    } catch (error) {
+      lastError = error
+    }
+
+    await page.waitForTimeout(150)
+  }
+
+  throw lastError
+}
+
+async function waitForHydrationSafeReload(
+  page: Page,
+  url: string,
+  text: string,
+) {
+  await waitForServerRenderedText(page, url, text)
+  // The client and SSR compilers can finish in different ticks. Give the
+  // browser-side module graph a quiet window after SSR has the expected HTML.
+  await page.waitForTimeout(750)
+}
+
 async function reloadPageAndWait(page: Page, url: string) {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -372,6 +413,7 @@ async function reloadPageAndWaitForText(
   testId: string,
   text: string,
 ) {
+  await waitForHydrationSafeReload(page, url, text)
   await reloadPageAndWait(page, url)
   await hmrExpect(page.getByTestId(testId)).toHaveText(text)
 }
@@ -404,6 +446,11 @@ async function waitForRestoredRouteFile(
 
   while (Date.now() < deadline) {
     try {
+      await waitForHydrationSafeReload(
+        page,
+        restoreCheck.url,
+        restoreCheck.text,
+      )
       await reloadPageAndWait(page, restoreCheck.url)
       await expect(page.getByTestId(restoreCheck.testId)).toHaveText(
         restoreCheck.text,
@@ -622,14 +669,25 @@ test.describe('react-start hmr', () => {
     await page.getByTestId('hydrated').waitFor({ state: 'visible' })
 
     // First edit: change child loader while on /
-    await replaceRouteText('child', "crumb: 'Child'", "crumb: 'Child Updated'")
-    await page.waitForTimeout(250)
+    await replaceRouteTextAndWait(
+      page,
+      'child',
+      "crumb: 'Child'",
+      "crumb: 'Child Updated'",
+      async () => {
+        await waitForRouteModuleUpdate(page, '/child', 'Child Updated')
+      },
+    )
 
     // Second edit: change child loader again while still on /
-    await replaceRouteText(
+    await replaceRouteTextAndWait(
+      page,
       'child',
       "crumb: 'Child Updated'",
       "crumb: 'Child Updated Again'",
+      async () => {
+        await waitForRouteModuleUpdate(page, '/child', 'Child Updated Again')
+      },
     )
 
     // Now navigate to /child — should see the LATEST value
