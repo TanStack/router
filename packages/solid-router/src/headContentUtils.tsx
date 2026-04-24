@@ -2,7 +2,6 @@ import * as Solid from 'solid-js'
 import {
   escapeHtml,
   getAssetCrossOrigin,
-  replaceEqualDeep,
   resolveManifestAssetLink,
 } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
@@ -211,8 +210,34 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     if (prev === undefined) {
       return next
     }
-    return replaceEqualDeep(prev, next)
+    return replaceEqualTags(prev, next)
   })
+}
+
+function replaceEqualTags(
+  prev: Array<RouterManagedTag>,
+  next: Array<RouterManagedTag>,
+) {
+  const prevByKey = new Map<string, RouterManagedTag>()
+  for (const tag of prev) {
+    prevByKey.set(JSON.stringify(tag), tag)
+  }
+
+  let isEqual = prev.length === next.length
+  const result = next.map((tag, index) => {
+    const existing = prevByKey.get(JSON.stringify(tag))
+    if (existing) {
+      if (existing !== prev[index]) {
+        isEqual = false
+      }
+      return existing
+    }
+
+    isEqual = false
+    return tag
+  })
+
+  return isEqual ? prev : result
 }
 
 export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
