@@ -46,11 +46,11 @@ function InlineCssStyle({
 }) {
   const isInlineCssPlaceholder = children === undefined
   const html = isInlineCssPlaceholder
-    ? (typeof document === 'undefined'
-        ? ''
-        : (document.querySelector<HTMLStyleElement>(
-            `style[${INLINE_CSS_HYDRATION_ATTR}]`,
-          )?.textContent ?? ''))
+    ? typeof document === 'undefined'
+      ? ''
+      : (document.querySelector<HTMLStyleElement>(
+          `style[${INLINE_CSS_HYDRATION_ATTR}]`,
+        )?.textContent ?? '')
     : (children ?? '')
 
   return (

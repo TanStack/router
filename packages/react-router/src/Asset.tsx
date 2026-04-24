@@ -16,13 +16,12 @@ interface ScriptAttrs {
   suppressHydrationWarning?: boolean
 }
 
-export function Asset({
-  tag,
-  attrs,
-  children,
-  nonce,
-}: RouterManagedTag & { nonce?: string }): React.ReactElement | null {
-  switch (tag) {
+export function Asset(
+  asset: RouterManagedTag & { nonce?: string },
+): React.ReactElement | null {
+  const { attrs, children, nonce } = asset
+
+  switch (asset.tag) {
     case 'title':
       return (
         <title {...attrs} suppressHydrationWarning>
