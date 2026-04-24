@@ -19,6 +19,7 @@ test('GET server function resolves on the client', async ({ page }) => {
 
 test('POST server function resolves on the client', async ({ page }) => {
   await page.goto('/')
+  await expect(page.getByTestId('loader-greeting')).toHaveText('Hello, Loader!')
 
   await page.getByRole('button', { name: 'Call postMessage' }).click()
 

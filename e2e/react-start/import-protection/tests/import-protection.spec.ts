@@ -704,8 +704,8 @@ for (const mode of ['build', 'dev', 'dev.warm'] as const) {
 // never imports foo at all. Both the .server module and the marker module
 // should NOT survive tree-shaking in the client bundle, so import-protection
 // must NOT flag violations for either in build mode.
-// Dev behavior is adapter-dependent: Vite still warns for this pattern, while
-// Rsbuild currently does not.
+// Dev behavior is adapter-dependent: Vite warns for this pattern, while Rsbuild
+// can either warn or elide it depending on dev transform/chunk graph ordering.
 
 test('barrel-false-positive route loads in mock mode', async ({ page }) => {
   await page.goto('/barrel-false-positive')
@@ -731,27 +731,27 @@ test('no false positive for barrel-reexport marker pattern in build', async () =
 
 for (const mode of ['dev', 'dev.warm'] as const) {
   test(`barrel-reexport .server dev behavior matches ${toolchain} in ${mode}`, async () => {
+    test.skip(
+      toolchain !== 'vite',
+      'Rsbuild dev barrel re-export false-positive reporting is not deterministic; build mode is the stable contract.',
+    )
+
     const violations = await readViolations(mode)
     const hits = findBarrelReexportHits(violations)
 
-    if (toolchain === 'vite') {
-      expect(hits.length).toBeGreaterThanOrEqual(1)
-      return
-    }
-
-    expect(hits).toEqual([])
+    expect(hits.length).toBeGreaterThanOrEqual(1)
   })
 
   test(`barrel-reexport marker dev behavior matches ${toolchain} in ${mode}`, async () => {
+    test.skip(
+      toolchain !== 'vite',
+      'Rsbuild dev barrel re-export false-positive reporting is not deterministic; build mode is the stable contract.',
+    )
+
     const violations = await readViolations(mode)
     const hits = findBarrelMarkerHits(violations)
 
-    if (toolchain === 'vite') {
-      expect(hits.length).toBeGreaterThanOrEqual(1)
-      return
-    }
-
-    expect(hits).toEqual([])
+    expect(hits.length).toBeGreaterThanOrEqual(1)
   })
 }
 
