@@ -112,7 +112,8 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
           }
 
           return (
-            (ogClientOptions.dehydrate?.shouldDehydrateQuery?.(query) ?? true) &&
+            (ogClientOptions.dehydrate?.shouldDehydrateQuery?.(query) ??
+              true) &&
             (dehydrateOptions?.shouldDehydrateQuery?.(query) ?? true)
           )
         },
