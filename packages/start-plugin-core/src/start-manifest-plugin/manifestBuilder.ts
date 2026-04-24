@@ -323,10 +323,6 @@ export function createChunkCssAssetCollector(options: {
     const assets: Array<RouterManagedTag> = []
     const seenAssets = new Set<RouterManagedTag>()
 
-    for (const cssFile of chunk.css) {
-      appendAsset(assets, seenAssets, options.getStylesheetAsset(cssFile))
-    }
-
     for (let i = 0; i < chunk.imports.length; i++) {
       const importedChunk = options.chunksByFileName.get(chunk.imports[i]!)
       if (!importedChunk) {
@@ -337,6 +333,10 @@ export function createChunkCssAssetCollector(options: {
       for (let j = 0; j < importedAssets.length; j++) {
         appendAsset(assets, seenAssets, importedAssets[j]!)
       }
+    }
+
+    for (const cssFile of chunk.css) {
+      appendAsset(assets, seenAssets, options.getStylesheetAsset(cssFile))
     }
 
     stateByChunk.delete(chunk)

@@ -289,7 +289,7 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/entry.css',
+          href: '/assets/shared.css',
           type: 'text/css',
         },
       },
@@ -297,7 +297,7 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/shared.css',
+          href: '/assets/entry.css',
           type: 'text/css',
         },
       },
@@ -348,10 +348,10 @@ describe('createChunkCssAssetCollector', () => {
     const assets = getChunkCssAssets(chunksByFileName.get('a.js')!)
 
     expect(assets.map((asset: any) => asset.attrs.href)).toEqual([
-      '/a.css',
-      '/b.css',
       '/shared.css',
+      '/b.css',
       '/c.css',
+      '/a.css',
     ])
   })
 
@@ -497,7 +497,7 @@ describe('buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/branch-a.css',
+          href: '/assets/shared.css',
           type: 'text/css',
         },
       },
@@ -505,7 +505,7 @@ describe('buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/shared.css',
+          href: '/assets/branch-a.css',
           type: 'text/css',
         },
       },
@@ -518,6 +518,44 @@ describe('buildStartManifest', () => {
         },
       },
     ])
+  })
+
+  test('orders imported chunk css before route chunk css', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+    })
+    const routeChunk = makeChunk({
+      fileName: 'field-detail-panel.js',
+      imports: ['tabs.js'],
+      importedCss: ['field-detail-panel.css'],
+      moduleIds: ['/routes/field-detail-panel.tsx?tsr-split=component'],
+    })
+    const tabsChunk = makeChunk({
+      fileName: 'tabs.js',
+      importedCss: ['tabs.css'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'field-detail-panel.js': routeChunk,
+        'tabs.js': tabsChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/field-detail-panel'] } as any,
+        '/field-detail-panel': {
+          filePath: '/routes/field-detail-panel.tsx',
+        },
+      },
+      basePath: '/assets',
+    })
+
+    expect(
+      manifest.routes['/field-detail-panel']!.assets!.map(
+        (asset: any) => asset.attrs.href,
+      ),
+    ).toEqual(['/assets/tabs.css', '/assets/field-detail-panel.css'])
   })
 
   test('dedupes route css already owned by ancestor routes', () => {
@@ -725,7 +763,7 @@ describe('route tree dedupe in buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/root.css',
+          href: '/assets/shared.css',
           type: 'text/css',
         },
       },
@@ -733,7 +771,7 @@ describe('route tree dedupe in buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/shared.css',
+          href: '/assets/root.css',
           type: 'text/css',
         },
       },
@@ -952,7 +990,7 @@ describe('route tree dedupe in buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/root.css',
+          href: '/assets/shared-root.css',
           type: 'text/css',
         },
       },
@@ -960,7 +998,7 @@ describe('route tree dedupe in buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/shared-root.css',
+          href: '/assets/root.css',
           type: 'text/css',
         },
       },
