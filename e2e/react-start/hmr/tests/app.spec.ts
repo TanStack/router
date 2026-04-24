@@ -780,8 +780,12 @@ test.describe('react-start hmr', () => {
   })
 
   test('preserves uncontrolled input state during HMR', async ({ page }) => {
-    await page.goto('/inputs')
-    await page.getByTestId('hydrated').waitFor({ state: 'visible' })
+    await reloadPageAndWaitForText(
+      page,
+      '/inputs',
+      'inputs-marker',
+      'inputs-baseline',
+    )
 
     // Type into both uncontrolled inputs
     await page.getByTestId('input-first').fill('first value')
