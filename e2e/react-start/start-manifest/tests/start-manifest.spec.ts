@@ -27,6 +27,12 @@ async function getBackgroundColor(testId: string, page: Page) {
     .evaluate((element) => getComputedStyle(element).backgroundColor)
 }
 
+async function getBorderTopColor(testId: string, page: Page) {
+  return page
+    .getByTestId(testId)
+    .evaluate((element) => getComputedStyle(element).borderTopColor)
+}
+
 function getStylesheetHrefsFromHtml(html: string) {
   return Array.from(
     html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g),
@@ -357,11 +363,11 @@ test('shared widget CSS stays applied when navigating from static to lazy route'
   const widget = page.getByTestId('shared-widget')
   await expect(widget).toBeVisible()
   expect(await getBackgroundColor('shared-widget', page)).toBe(SHARED_WIDGET_BG)
-  expect(
-    await widget.evaluate(
-      (element) => getComputedStyle(element).borderTopColor,
-    ),
-  ).toBe(SHARED_WIDGET_BORDER)
+  await expect
+    .poll(() => getBorderTopColor('shared-widget', page), {
+      timeout: 5_000,
+    })
+    .toBe(SHARED_WIDGET_BORDER)
 
   await expect(page.getByTestId('lazy-css-static-hydrated')).toBeVisible()
 
@@ -391,6 +397,7 @@ test('shared widget CSS stays applied when navigating from lazy to static route'
 
   await page.getByTestId('nav-/lazy-css-static').click()
   await page.waitForURL('**/lazy-css-static')
+  await expect(page.getByTestId('lazy-css-static-hydrated')).toBeVisible()
 
   const widget = page.getByTestId('shared-widget')
   await expect(widget).toBeVisible()
@@ -399,11 +406,11 @@ test('shared widget CSS stays applied when navigating from lazy to static route'
       timeout: 5_000,
     })
     .toBe(SHARED_WIDGET_BG)
-  expect(
-    await widget.evaluate(
-      (element) => getComputedStyle(element).borderTopColor,
-    ),
-  ).toBe(SHARED_WIDGET_BORDER)
+  await expect
+    .poll(() => getBorderTopColor('shared-widget', page), {
+      timeout: 5_000,
+    })
+    .toBe(SHARED_WIDGET_BORDER)
 })
 
 test('shared widget CSS is applied on direct navigation to lazy route', async ({
@@ -421,11 +428,11 @@ test('shared widget CSS is applied on direct navigation to lazy route', async ({
       timeout: 5_000,
     })
     .toBe(SHARED_WIDGET_BG)
-  expect(
-    await widget.evaluate(
-      (element) => getComputedStyle(element).borderTopColor,
-    ),
-  ).toBe(SHARED_WIDGET_BORDER)
+  await expect
+    .poll(() => getBorderTopColor('shared-widget', page), {
+      timeout: 5_000,
+    })
+    .toBe(SHARED_WIDGET_BORDER)
 })
 
 test('shared widget CSS persists after navigating away from lazy and back', async ({

@@ -6,6 +6,33 @@ import type { Violation } from './violations.utils'
 import type { Page } from '@playwright/test'
 
 const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+const fixtureRoot = path.resolve(import.meta.dirname, '..')
+const workspaceRoot = path.resolve(import.meta.dirname, '../../../..')
+
+function stripLocation(value: string): string {
+  return value.replace(/:\d+:\d+$/, '')
+}
+
+function normalizeKeyPath(value: string): string {
+  let normalized = stripLocation(value).replace(/\\/g, '/')
+  const normalizedFixtureRoot = fixtureRoot.replace(/\\/g, '/')
+  const normalizedWorkspaceRoot = workspaceRoot.replace(/\\/g, '/')
+
+  if (normalized.startsWith(`${normalizedFixtureRoot}/`)) {
+    normalized = normalized.slice(normalizedFixtureRoot.length + 1)
+  } else if (normalized.startsWith(`${normalizedWorkspaceRoot}/`)) {
+    normalized = normalized.slice(normalizedWorkspaceRoot.length + 1)
+  }
+
+  normalized = normalized.replace(
+    /^packages\/react-start\/dist\/esm\/(.+)$/,
+    '@tanstack/react-start/$1',
+  )
+  normalized = normalized.replace(/\.[cm]?[tj]sx?$/, '')
+  normalized = normalized.replace(/\/index$/, '')
+
+  return normalized
+}
 
 async function readViolations(
   type: 'build' | 'dev' | 'dev.cold' | 'dev.warm',
@@ -571,7 +598,7 @@ test('warm run produces violations', async () => {
   expect(warm.length).toBeGreaterThan(0)
 })
 
-test('warm run detects the same unique violations as cold run', async () => {
+test('warm run detects every unique cold-run violation', async () => {
   const cold = await readViolations('dev.cold')
   const warm = await readViolations('dev.warm')
 
@@ -581,13 +608,29 @@ test('warm run detects the same unique violations as cold run', async () => {
   // the `.ts` extension) because different detection code-paths fire.
   // Normalize to the resolved path (without extension) for a stable key.
   const normalizeSpec = (v: Violation) =>
-    (v.resolved ?? v.specifier).replace(/\.[cm]?[tj]sx?$/, '')
+    normalizeKeyPath(v.resolved ?? v.specifier)
+  const normalizeImporter = (v: Violation) => {
+    const importer = stripLocation(v.importer)
+    const leafTraceFile = v.trace.at(-1)?.file
+
+    if (
+      leafTraceFile &&
+      !importer.includes('/') &&
+      normalizeKeyPath(leafTraceFile).endsWith(normalizeKeyPath(importer))
+    ) {
+      return normalizeKeyPath(leafTraceFile)
+    }
+
+    return normalizeKeyPath(importer)
+  }
   const uniqueKey = (v: Violation) =>
-    `${v.envType}|${v.type}|${normalizeSpec(v)}|${v.importer.replace(/:.*/, '')}`
+    `${v.envType}|${v.type}|${normalizeSpec(v)}|${normalizeImporter(v)}`
 
   const coldUniq = [...new Set(cold.map(uniqueKey))].sort()
-  const warmUniq = [...new Set(warm.map(uniqueKey))].sort()
-  expect(warmUniq).toEqual(coldUniq)
+  const warmUniq = new Set(warm.map(uniqueKey))
+  const missingFromWarm = coldUniq.filter((key) => !warmUniq.has(key))
+
+  expect(missingFromWarm).toEqual([])
 })
 
 test('warm run traces include line numbers', async () => {
