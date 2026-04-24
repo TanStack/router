@@ -1,10 +1,8 @@
-import {
-  START_ENVIRONMENT_NAMES,
-  tanStackStartRsbuild,
-} from '@tanstack/start-plugin-core'
+import { START_ENVIRONMENT_NAMES } from '@tanstack/start-plugin-core'
+import { tanStackStartRsbuild } from '@tanstack/start-plugin-core/rsbuild'
 import { vueStartDefaultEntryPaths } from './shared'
 import type { TanStackStartRsbuildPluginCoreOptions } from '@tanstack/start-plugin-core/rsbuild/types'
-import type { TanStackStartRsbuildInputConfig } from '@tanstack/start-plugin-core'
+import type { TanStackStartRsbuildInputConfig } from '@tanstack/start-plugin-core/rsbuild'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
 export function tanstackStart(
