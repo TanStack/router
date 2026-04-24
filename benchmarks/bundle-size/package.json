@@ -17,6 +17,8 @@
     "vue": "^3.5.16"
   },
   "devDependencies": {
+    "@rsbuild/core": "^2.0.1",
+    "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/router-plugin": "workspace:^",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",

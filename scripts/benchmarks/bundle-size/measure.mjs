@@ -2,8 +2,9 @@
 
 import fs from 'node:fs'
 import { promises as fsp } from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs as parseNodeArgs } from 'node:util'
 import { brotliCompressSync, gzipSync } from 'node:zlib'
 import { execSync } from 'node:child_process'
@@ -65,6 +66,24 @@ const SCENARIOS = [
   {
     id: 'react-start.full',
     dir: 'react-start-full',
+    framework: 'react',
+    packageName: '@tanstack/react-start',
+    case: 'full',
+  },
+  {
+    id: 'react-start.rsbuild.minimal',
+    dir: 'react-start-minimal',
+    outDir: 'react-start-rsbuild-minimal',
+    toolchain: 'rsbuild',
+    framework: 'react',
+    packageName: '@tanstack/react-start',
+    case: 'minimal',
+  },
+  {
+    id: 'react-start.rsbuild.full',
+    dir: 'react-start-full',
+    outDir: 'react-start-rsbuild-full',
+    toolchain: 'rsbuild',
     framework: 'react',
     packageName: '@tanstack/react-start',
     case: 'full',
@@ -329,6 +348,153 @@ async function resolveManifestAndEntry(outDir, scenarioId) {
   )
 }
 
+async function importFromRoot(root, specifier) {
+  const requireFromRoot = createRequire(
+    path.join(root, 'bundle-size.config.cjs'),
+  )
+  return import(pathToFileURL(requireFromRoot.resolve(specifier)).href)
+}
+
+async function buildViteScenario({ root, outDir }) {
+  const configFile = path.join(root, 'vite.config.ts')
+
+  await build({
+    root,
+    configFile,
+    logLevel: 'silent',
+    define: {
+      'process.env.NODE_ENV': '"production"',
+    },
+    build: {
+      outDir,
+      emptyOutDir: true,
+      target: 'es2022',
+      minify: 'esbuild',
+      sourcemap: false,
+      reportCompressedSize: false,
+      manifest: true,
+    },
+  })
+}
+
+async function buildRsbuildScenario({ root, outDir }) {
+  const configFile = path.join(root, 'rsbuild.config.ts')
+  const { createRsbuild, loadConfig } = await importFromRoot(
+    root,
+    '@rsbuild/core',
+  )
+  const previousOutDir = process.env.BUNDLE_SIZE_DIST_DIR
+
+  process.env.BUNDLE_SIZE_DIST_DIR = outDir
+
+  try {
+    const { content } = await loadConfig({
+      cwd: root,
+      path: configFile,
+      envMode: 'production',
+    })
+    const rsbuild = await createRsbuild({
+      cwd: root,
+      callerName: 'bundle-size-benchmark',
+      config: content,
+    })
+    const result = await rsbuild.build()
+    await result.close()
+  } finally {
+    if (previousOutDir === undefined) {
+      delete process.env.BUNDLE_SIZE_DIST_DIR
+    } else {
+      process.env.BUNDLE_SIZE_DIST_DIR = previousOutDir
+    }
+  }
+}
+
+async function buildScenario({ root, outDir, scenario }) {
+  const previousCwd = process.cwd()
+  process.chdir(root)
+
+  try {
+    if (scenario.toolchain === 'rsbuild') {
+      await buildRsbuildScenario({ root, outDir })
+      return
+    }
+
+    await buildViteScenario({ root, outDir })
+  } finally {
+    process.chdir(previousCwd)
+  }
+}
+
+async function resolveRsbuildManifest(outDir, scenarioId) {
+  const manifestPath = path.join(outDir, 'client', 'manifest.json')
+
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error(
+      `No Rsbuild manifest file found for scenario: ${scenarioId}`,
+    )
+  }
+
+  const manifest = readJson(manifestPath)
+  const entryName = manifest.entries?.index
+    ? 'index'
+    : Object.keys(manifest.entries || {})[0]
+
+  if (!entryName) {
+    throw new Error(
+      `Could not determine Rsbuild manifest entry for scenario: ${scenarioId}`,
+    )
+  }
+
+  return {
+    manifest,
+    entryKey: entryName,
+    manifestPath,
+    manifestOutDir: path.dirname(manifestPath),
+  }
+}
+
+function collectRsbuildInitialJsFiles(manifest, entryKey) {
+  const files = manifest.entries?.[entryKey]?.initial?.js
+
+  if (!Array.isArray(files)) {
+    return []
+  }
+
+  return files
+    .filter(
+      (file) =>
+        typeof file === 'string' &&
+        (file.endsWith('.js') || file.endsWith('.mjs')),
+    )
+    .sort()
+}
+
+async function resolveBundleFiles({ outDir, scenario }) {
+  if (scenario.toolchain === 'rsbuild') {
+    const manifestInfo = await resolveRsbuildManifest(outDir, scenario.id)
+    const jsFiles = collectRsbuildInitialJsFiles(
+      manifestInfo.manifest,
+      manifestInfo.entryKey,
+    )
+
+    return {
+      ...manifestInfo,
+      jsFiles,
+    }
+  }
+
+  const manifestInfo = await resolveManifestAndEntry(outDir, scenario.id)
+  const jsFiles = collectInitialJsFiles(
+    manifestInfo.manifest,
+    manifestInfo.entryKey,
+  )
+
+  return {
+    ...manifestInfo,
+    jsFiles,
+  }
+}
+
 function getCurrentSha(providedSha) {
   if (providedSha) {
     return providedSha
@@ -417,51 +583,23 @@ async function main() {
 
   for (const scenario of SCENARIOS) {
     const root = path.join(scenariosRoot, scenario.dir)
-    const outDir = path.join(distDir, scenario.dir)
-    const configFile = path.join(root, 'vite.config.ts')
+    const outDir = path.join(distDir, scenario.outDir || scenario.dir)
 
-    const previousCwd = process.cwd()
-    process.chdir(root)
+    await buildScenario({ root, outDir, scenario })
 
-    try {
-      await build({
-        root,
-        configFile,
-        logLevel: 'silent',
-        define: {
-          'process.env.NODE_ENV': '"production"',
-        },
-        build: {
-          outDir,
-          emptyOutDir: true,
-          target: 'es2022',
-          minify: 'esbuild',
-          sourcemap: false,
-          reportCompressedSize: false,
-          manifest: true,
-        },
-      })
-    } finally {
-      process.chdir(previousCwd)
-    }
-
-    const manifestInfo = await resolveManifestAndEntry(outDir, scenario.id)
-
-    const jsFiles = collectInitialJsFiles(
-      manifestInfo.manifest,
-      manifestInfo.entryKey,
-    )
-    const sizes = bytesForFiles(manifestInfo.manifestOutDir, jsFiles)
+    const bundleInfo = await resolveBundleFiles({ outDir, scenario })
+    const sizes = bytesForFiles(bundleInfo.manifestOutDir, bundleInfo.jsFiles)
 
     metrics.push({
       id: scenario.id,
       scenarioDir: scenario.dir,
+      toolchain: scenario.toolchain || 'vite',
       framework: scenario.framework,
       packageName: scenario.packageName,
       case: scenario.case,
-      entryKey: manifestInfo.entryKey,
-      manifestPath: path.relative(outDir, manifestInfo.manifestPath),
-      jsFiles,
+      entryKey: bundleInfo.entryKey,
+      manifestPath: path.relative(outDir, bundleInfo.manifestPath),
+      jsFiles: bundleInfo.jsFiles,
       ...sizes,
     })
   }

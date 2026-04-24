@@ -8,7 +8,7 @@ This workspace contains deterministic bundle-size fixtures for:
 - `@tanstack/react-start`
 - `@tanstack/solid-start`
 
-Each package has two scenarios:
+Each package has `minimal` and `full` scenarios:
 
 - `minimal`: Small route app with `__root` + index route that renders `hello world`
 - `full`: Same route shape plus a broad root-level harness that imports/uses the full hooks/components surface
@@ -18,7 +18,8 @@ Each package has two scenarios:
 
 - Scenarios use file-based routing as the default app style.
 - Router scenarios use `@tanstack/router-plugin/vite` with `autoCodeSplitting: true`.
-- Start scenarios use `@tanstack/<framework>-start/plugin/vite` with router code-splitting enabled.
+- Start Vite scenarios use `@tanstack/<framework>-start/plugin/vite` with router code-splitting enabled.
+- React Start also includes Rsbuild scenarios using `@tanstack/react-start/plugin/rsbuild`.
 - Full-surface coverage is manually maintained (no strict export-coverage gate).
 - Metrics are measured from initial-load JS graph only and reported as raw/gzip/brotli bytes.
 - Gzip is the primary tracking signal for PR deltas and historical charting.
