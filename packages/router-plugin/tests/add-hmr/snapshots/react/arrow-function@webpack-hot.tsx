@@ -153,12 +153,12 @@ if (import.meta.webpackHot) {
     try {
       if (!tsrRefreshState.refreshScheduled) {
         tsrRefreshState.refreshScheduled = true;
-        queueMicrotask(() => {
+        setTimeout(() => {
           tsrRefreshState.refreshScheduled = false;
           try {
             __tsr_performReactRefresh();
           } catch (_e) {}
-        });
+        }, 30);
       }
     } catch (_err) {}
   }

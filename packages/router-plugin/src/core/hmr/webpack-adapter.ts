@@ -46,16 +46,10 @@ export function createWebpackHmrStatement(
   // resolves to the same singleton the plugin itself uses and shares the
   // registry React was patched against.
   //
-  // We defer via `queueMicrotask` so sibling modules in the same HMR batch
-  // (e.g. a route + its split-component chunk) finish running their loader
-  // footers and registering new component families via `$RefreshReg$` before
-  // we trigger the refresh. Rspack's hot runtime re-executes all disposed
-  // modules synchronously within a single task; microtasks drain at the end
-  // of that task, after every `register()` call has landed. A same-tick
-  // synchronous call races those registrations and no-ops.
-  //
-  // (`@rspack/plugin-react-refresh` itself uses `setTimeout(..., 30)` for
-  // historical reasons; a microtask is strictly tighter and sufficient.)
+  // Use the same delayed refresh style as Rspack's React Refresh runtime.
+  // Route modules and their split component chunks can arrive in separate HMR
+  // steps under CI load; a microtask can run before the split chunk registers
+  // its new component family, causing the refresh to no-op or remount.
   //
   // For non-React frameworks we skip this entirely.
   const reactRefreshCall =
@@ -65,10 +59,10 @@ export function createWebpackHmrStatement(
     try {
       if (!tsrRefreshState.refreshScheduled) {
         tsrRefreshState.refreshScheduled = true
-        queueMicrotask(() => {
+        setTimeout(() => {
           tsrRefreshState.refreshScheduled = false
           try { __tsr_performReactRefresh() } catch (_e) { /* noop */ }
-        })
+        }, 30)
       }
     } catch (_err) { /* noop */ }`
       : ''

@@ -413,9 +413,24 @@ async function reloadPageAndWaitForText(
   testId: string,
   text: string,
 ) {
-  await waitForHydrationSafeReload(page, url, text)
-  await reloadPageAndWait(page, url)
-  await hmrExpect(page.getByTestId(testId)).toHaveText(text)
+  const deadline = Date.now() + 20_000
+  let lastError: unknown
+
+  while (Date.now() < deadline) {
+    try {
+      await waitForHydrationSafeReload(page, url, text)
+      await reloadPageAndWait(page, url)
+      await expect(page.getByTestId(testId)).toHaveText(text, {
+        timeout: 1_000,
+      })
+      return
+    } catch (error) {
+      lastError = error
+      await page.waitForTimeout(150)
+    }
+  }
+
+  throw lastError
 }
 
 async function waitForServerFnHmrReady(page: Page) {
