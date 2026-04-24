@@ -5,6 +5,7 @@ import {
   invariant,
   isNotFound,
   isRedirect,
+  markMatchPendingVisible,
   rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -21,7 +22,11 @@ import {
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { VNode } from 'vue'
-import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  AnyRouteMatch,
+  RootRouteOptions,
+} from '@tanstack/router-core'
 
 export const Match = Vue.defineComponent({
   name: 'Match',
@@ -93,10 +98,6 @@ export const Match = Vue.defineComponent({
         router?.options?.defaultPendingComponent,
     )
 
-    const pendingElement = Vue.computed(() =>
-      PendingComponent.value ? Vue.h(PendingComponent.value) : undefined,
-    )
-
     const routeErrorComponent = Vue.computed(
       () =>
         route.value?.options?.errorComponent ??
@@ -154,7 +155,10 @@ export const Match = Vue.defineComponent({
           ? Vue.h(
               ClientOnly,
               {
-                fallback: pendingElement.value,
+                fallback: Vue.h(PendingRouteMatch, {
+                  matchId: actualMatchId,
+                  pendingComponent: PendingComponent.value,
+                }),
               },
               {
                 default: () => matchInner,
@@ -281,6 +285,33 @@ const OnRendered = Vue.defineComponent({
   },
 })
 
+const PendingRouteMatch = Vue.defineComponent({
+  name: 'PendingRouteMatch',
+  props: {
+    matchId: {
+      type: String,
+      required: true,
+    },
+    pendingComponent: {
+      type: [Object, Function] as Vue.PropType<any>,
+      required: false,
+      default: undefined,
+    },
+  },
+  setup(props) {
+    const router = useRouter()
+
+    Vue.onMounted(() => {
+      const match = router.getMatch(props.matchId)
+      if (match) {
+        markMatchPendingVisible(match)
+      }
+    })
+
+    return () => (props.pendingComponent ? Vue.h(props.pendingComponent) : null)
+  },
+})
+
 export const MatchInner = Vue.defineComponent({
   name: 'MatchInner',
   props: {
@@ -328,15 +359,7 @@ export const MatchInner = Vue.defineComponent({
 
       return {
         routeId: matchRouteId,
-        match: {
-          id: match.id,
-          status: match.status,
-          error: match.error,
-          ssr: match.ssr,
-          _forcePending: match._forcePending,
-          _displayPending: match._displayPending,
-          _nonReactive: match._nonReactive,
-        },
+        match,
         remountKey,
       }
     })
@@ -350,18 +373,20 @@ export const MatchInner = Vue.defineComponent({
     const remountKey = Vue.computed(() => combinedState.value?.remountKey)
 
     const getMatchPromise = (
-      match: {
-        id: string
-        _nonReactive: {
-          displayPendingPromise?: Promise<void>
-          minPendingPromise?: Promise<void>
-          loadPromise?: Promise<void>
-        }
-      },
+      match: AnyRouteMatch,
       key: 'displayPendingPromise' | 'minPendingPromise' | 'loadPromise',
     ) => {
       return (
-        router.getMatch(match.id)?._nonReactive[key] ?? match._nonReactive[key]
+        router.getMatch(match.id)?._nonReactive[key] ??
+        match._nonReactive[key] ??
+        router.latestLoadPromise
+      )
+    }
+
+    const getRetainedPendingPromise = (match: AnyRouteMatch) => {
+      return (
+        router.getMatch(match.id)?._nonReactive.retainedPendingPromise ??
+        match._nonReactive.retainedPendingPromise
       )
     }
 
@@ -375,7 +400,10 @@ export const MatchInner = Vue.defineComponent({
           route.value.options.pendingComponent ??
           router.options.defaultPendingComponent
 
-        return PendingComponent ? Vue.h(PendingComponent) : null
+        return Vue.h(PendingRouteMatch, {
+          matchId: match.value.id,
+          pendingComponent: PendingComponent,
+        })
       }
 
       if (match.value._forcePending) {
@@ -383,7 +411,10 @@ export const MatchInner = Vue.defineComponent({
           route.value.options.pendingComponent ??
           router.options.defaultPendingComponent
 
-        return PendingComponent ? Vue.h(PendingComponent) : null
+        return Vue.h(PendingRouteMatch, {
+          matchId: match.value.id,
+          pendingComponent: PendingComponent,
+        })
       }
 
       if (match.value.status === 'notFound') {
@@ -405,7 +436,19 @@ export const MatchInner = Vue.defineComponent({
 
           invariant()
         }
-        throw getMatchPromise(match.value, 'loadPromise')
+
+        const promise = getMatchPromise(match.value, 'loadPromise')
+        if (promise) {
+          throw promise
+        }
+
+        const retainedPendingPromise = getRetainedPendingPromise(match.value)
+
+        if (retainedPendingPromise) {
+          throw retainedPendingPromise
+        }
+
+        return null
       }
 
       if (match.value.status === 'error') {
@@ -464,7 +507,10 @@ export const MatchInner = Vue.defineComponent({
           router.options.defaultPendingComponent
 
         if (PendingComponent) {
-          return Vue.h(PendingComponent)
+          return Vue.h(PendingRouteMatch, {
+            matchId: match.value.id,
+            pendingComponent: PendingComponent,
+          })
         }
 
         // If no pending component, return null while loading

@@ -8,6 +8,7 @@ import {
   invariant,
   isNotFound,
   isRedirect,
+  markMatchPendingVisible,
   rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -20,7 +21,11 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
 import { useLayoutEffect } from './utils'
-import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  AnyRouteMatch,
+  RootRouteOptions,
+} from '@tanstack/router-core'
 
 export const Match = React.memo(function MatchImpl({
   matchId,
@@ -160,10 +165,18 @@ function MatchView({
   const ShellComponent = route.isRoot
     ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
     : SafeFragment
+
   return (
     <ShellComponent>
       <matchContext.Provider value={matchId}>
-        <ResolvedSuspenseBoundary fallback={pendingElement}>
+        <ResolvedSuspenseBoundary
+          fallback={
+            <PendingRouteMatch
+              matchId={matchId}
+              pendingElement={pendingElement}
+            />
+          }
+        >
           <ResolvedCatchBoundary
             getResetKey={() => resetKey}
             errorComponent={routeErrorComponent || ErrorComponent}
@@ -196,7 +209,14 @@ function MatchView({
               }}
             >
               {resolvedNoSsr || matchState._displayPending ? (
-                <ClientOnly fallback={pendingElement}>
+                <ClientOnly
+                  fallback={
+                    <PendingRouteMatch
+                      matchId={matchId}
+                      pendingElement={pendingElement}
+                    />
+                  }
+                >
                   <MatchInner matchId={matchId} />
                 </ClientOnly>
               ) : (
@@ -216,6 +236,25 @@ function MatchView({
       ) : null}
     </ShellComponent>
   )
+}
+
+function PendingRouteMatch({
+  matchId,
+  pendingElement,
+}: {
+  matchId: string
+  pendingElement: React.ReactNode
+}) {
+  const router = useRouter()
+
+  useLayoutEffect(() => {
+    const match = router.getMatch(matchId)
+    if (match) {
+      markMatchPendingVisible(match)
+    }
+  }, [matchId, router])
+
+  return pendingElement
 }
 
 // On Rendered can't happen above the root layout because it needs to run after
@@ -261,23 +300,18 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 }): any {
   const router = useRouter()
 
-  const getMatchPromise = (
-    match: {
-      id: string
-      _nonReactive: {
-        displayPendingPromise?: Promise<void>
-        minPendingPromise?: Promise<void>
-        loadPromise?: Promise<void>
-      }
-    },
-    key: 'displayPendingPromise' | 'minPendingPromise' | 'loadPromise',
-  ) => {
-    return (
-      router.getMatch(match.id)?._nonReactive[key] ?? match._nonReactive[key]
-    )
-  }
-
   if (isServer ?? router.isServer) {
+    const throwMatchPromise = (
+      match: AnyRouteMatch,
+      key: 'displayPendingPromise' | 'minPendingPromise' | 'loadPromise',
+    ) => {
+      throw (
+        router.getMatch(match.id)?._nonReactive[key] ??
+        match._nonReactive[key] ??
+        router.latestLoadPromise
+      )
+    }
+
     const match = router.stores.matchStores.get(matchId)?.get()
     if (!match) {
       if (process.env.NODE_ENV !== 'production') {
@@ -305,15 +339,15 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     const out = Comp ? <Comp key={key} /> : <Outlet />
 
     if (match._displayPending) {
-      throw getMatchPromise(match, 'displayPendingPromise')
+      throwMatchPromise(match, 'displayPendingPromise')
     }
 
     if (match._forcePending) {
-      throw getMatchPromise(match, 'minPendingPromise')
+      throwMatchPromise(match, 'minPendingPromise')
     }
 
     if (match.status === 'pending') {
-      throw getMatchPromise(match, 'loadPromise')
+      throwMatchPromise(match, 'loadPromise')
     }
 
     if (match.status === 'notFound') {
@@ -335,7 +369,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
         invariant()
       }
-      throw getMatchPromise(match, 'loadPromise')
+      throwMatchPromise(match, 'loadPromise')
     }
 
     if (match.status === 'error') {
@@ -401,12 +435,39 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     return <Outlet />
   }, [key, route.options.component, router.options.defaultComponent])
 
-  if (match._displayPending) {
-    throw getMatchPromise(match, 'displayPendingPromise')
+  const pendingKey = match._displayPending
+    ? 'displayPendingPromise'
+    : match._forcePending
+      ? 'minPendingPromise'
+      : undefined
+
+  const suspendOrKeepPending = (
+    key: 'displayPendingPromise' | 'minPendingPromise' | 'loadPromise',
+  ) => {
+    const routerMatch = router.getMatch(match.id)
+
+    const promise =
+      routerMatch?._nonReactive[key] ??
+      match._nonReactive[key] ??
+      router.latestLoadPromise
+
+    if (promise) {
+      throw promise
+    }
+
+    const retainedPendingPromise =
+      routerMatch?._nonReactive.retainedPendingPromise ??
+      match._nonReactive.retainedPendingPromise
+
+    if (retainedPendingPromise) {
+      throw retainedPendingPromise
+    }
+
+    return null
   }
 
-  if (match._forcePending) {
-    throw getMatchPromise(match, 'minPendingPromise')
+  if (pendingKey) {
+    return suspendOrKeepPending(pendingKey)
   }
 
   // see also hydrate() in packages/router-core/src/ssr/ssr-client.ts
@@ -431,7 +492,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         }
       }
     }
-    throw getMatchPromise(match, 'loadPromise')
+    return suspendOrKeepPending('loadPromise')
   }
 
   if (match.status === 'notFound') {
@@ -458,7 +519,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       invariant()
     }
 
-    throw getMatchPromise(match, 'loadPromise')
+    return suspendOrKeepPending('loadPromise')
   }
 
   if (match.status === 'error') {

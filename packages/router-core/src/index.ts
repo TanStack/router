@@ -76,7 +76,7 @@ export type {
   ManifestAssetLink,
 } from './manifest'
 export { getAssetCrossOrigin, resolveManifestAssetLink } from './manifest'
-export { isMatch } from './Matches'
+export { isMatch, markMatchPendingVisible } from './Matches'
 export type {
   AnyMatchAndValue,
   FindValueByIndex,

@@ -5,6 +5,7 @@ import {
   invariant,
   isNotFound,
   isRedirect,
+  markMatchPendingVisible,
   rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -16,7 +17,29 @@ import { nearestMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  AnyRouteMatch,
+  RootRouteOptions,
+} from '@tanstack/router-core'
+
+const PendingRouteMatch = (props: {
+  matchId: string
+  pendingComponent: unknown
+}) => {
+  const router = useRouter()
+
+  Solid.onMount(() => {
+    const match = router.getMatch(props.matchId)
+    if (match) {
+      markMatchPendingVisible(match)
+    }
+  })
+
+  return props.pendingComponent ? (
+    <Dynamic component={props.pendingComponent as any} />
+  ) : null
+}
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
@@ -69,6 +92,16 @@ export const Match = (props: { matchId: string }) => {
           route().options.pendingComponent ??
           router.options.defaultPendingComponent
 
+        const renderPending = () => {
+          const PendingComponent = resolvePendingComponent()
+          return (
+            <PendingRouteMatch
+              matchId={currentMatchState().matchId}
+              pendingComponent={PendingComponent}
+            />
+          )
+        }
+
         const routeErrorComponent = () =>
           route().options.errorComponent ?? router.options.defaultErrorComponent
 
@@ -107,7 +140,10 @@ export const Match = (props: { matchId: string }) => {
                 fallback={
                   // Don't show fallback on server when using no-ssr mode to avoid hydration mismatch
                   (isServer ?? router.isServer) && resolvedNoSsr ? undefined : (
-                    <Dynamic component={resolvePendingComponent()} />
+                    <PendingRouteMatch
+                      matchId={currentMatchState().matchId}
+                      pendingComponent={resolvePendingComponent()}
+                    />
                   )
                 }
               >
@@ -273,19 +309,37 @@ export const MatchInner = (): any => {
           return <Outlet />
         }
 
+        const renderPending = () => {
+          const PendingComponent =
+            route().options.pendingComponent ??
+            router.options.defaultPendingComponent
+
+          return (
+            <PendingRouteMatch
+              matchId={currentMatch().id}
+              pendingComponent={PendingComponent}
+            />
+          )
+        }
+
         const getLoadPromise = (
           matchId: string,
-          fallbackMatch:
-            | {
-                _nonReactive: {
-                  loadPromise?: Promise<void>
-                }
-              }
-            | undefined,
+          fallbackMatch: AnyRouteMatch | undefined,
         ) => {
           return (
             router.getMatch(matchId)?._nonReactive.loadPromise ??
-            fallbackMatch?._nonReactive.loadPromise
+            fallbackMatch?._nonReactive.loadPromise ??
+            router.latestLoadPromise
+          )
+        }
+
+        const getRetainedPendingPromise = (
+          matchId: string,
+          fallbackMatch: AnyRouteMatch | undefined,
+        ) => {
+          return (
+            router.getMatch(matchId)?._nonReactive.retainedPendingPromise ??
+            fallbackMatch?._nonReactive.retainedPendingPromise
           )
         }
 
@@ -305,7 +359,7 @@ export const MatchInner = (): any => {
                       .displayPendingPromise,
                 )
 
-                return <>{displayPendingResult()}</>
+                return <>{displayPendingResult() ?? renderPending()}</>
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch()._forcePending}>
@@ -316,7 +370,7 @@ export const MatchInner = (): any => {
                       .minPendingPromise,
                 )
 
-                return <>{minPendingResult()}</>
+                return <>{minPendingResult() ?? renderPending()}</>
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'pending'}>
@@ -353,18 +407,7 @@ export const MatchInner = (): any => {
                     .loadPromise
                 })
 
-                const FallbackComponent =
-                  route().options.pendingComponent ??
-                  router.options.defaultPendingComponent
-
-                return (
-                  <>
-                    {FallbackComponent && pendingMinMs > 0 ? (
-                      <Dynamic component={FallbackComponent} />
-                    ) : null}
-                    {loaderResult()}
-                  </>
-                )
+                return <>{loaderResult() ?? renderPending()}</>
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'notFound'}>
@@ -409,7 +452,14 @@ export const MatchInner = (): any => {
                   return getLoadPromise(matchId, routerMatch)
                 })
 
-                return <>{loaderResult()}</>
+                const [retainedPendingResult] = Solid.createResource(
+                  async () => {
+                    await new Promise((r) => setTimeout(r, 0))
+                    return getRetainedPendingPromise(matchId, routerMatch)
+                  },
+                )
+
+                return <>{loaderResult() ?? retainedPendingResult()}</>
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'error'}>

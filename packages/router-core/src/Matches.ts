@@ -105,6 +105,12 @@ export const isMatch = <TMatch, TPath extends string>(
   return value != null
 }
 
+const retainedPendingPromise = new Promise<void>(() => {})
+
+export const markMatchPendingVisible = (match: AnyRouteMatch) => {
+  match._nonReactive.retainedPendingPromise ??= retainedPendingPromise
+}
+
 export interface DefaultRouteMatchExtensions {
   scripts?: unknown
   links?: unknown
@@ -147,6 +153,7 @@ export interface RouteMatch<
     loadPromise?: ControlledPromise<void>
     displayPendingPromise?: Promise<void>
     minPendingPromise?: ControlledPromise<void>
+    retainedPendingPromise?: Promise<void>
     dehydrated?: boolean
     /** @internal */
     error?: unknown

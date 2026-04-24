@@ -128,10 +128,12 @@ describe('redirect', () => {
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
         history: createMemoryHistory({ initialEntries: ['/'] }),
+        defaultViewTransition: true,
       })
 
       render(<RouterProvider router={router} />)
 
+      expect(await screen.findByTestId('pending')).toBeInTheDocument()
       // The lazy target route adds the async boundary that exposes the stale
       // redirected-match render path this regression is guarding.
       expect(await screen.findByTestId('lazy-route-page')).toBeInTheDocument()

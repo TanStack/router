@@ -44,6 +44,10 @@ const triggerOnReady = (inner: InnerLoadContext): void | Promise<void> => {
   }
 }
 
+const clearRetainedPending = (match: AnyRouteMatch) => {
+  match._nonReactive.retainedPendingPromise = undefined
+}
+
 const hasForcePendingActiveMatch = (router: AnyRouter): boolean => {
   return router.stores.matchesId.get().some((matchId) => {
     return router.stores.matchStores.get(matchId)?.get()._forcePending
@@ -125,6 +129,7 @@ const handleRedirectAndNotFound = (
 
   // in case of a redirecting match during preload, the match does not exist
   if (match) {
+    clearRetainedPending(match)
     match._nonReactive.beforeLoadPromise?.resolve()
     match._nonReactive.loaderPromise?.resolve()
     match._nonReactive.beforeLoadPromise = undefined
@@ -231,6 +236,7 @@ const handleSerialError = (
   }
 
   inner.updateMatch(matchId, (prev) => {
+    clearRetainedPending(prev)
     prev._nonReactive.beforeLoadPromise?.resolve()
     prev._nonReactive.beforeLoadPromise = undefined
     prev._nonReactive.loadPromise?.resolve()
@@ -838,6 +844,7 @@ const loadRouteMatch = async (
         try {
           await runLoader(inner, matchPromises, matchId, index, route)
           const match = inner.router.getMatch(matchId)!
+          clearRetainedPending(match)
           match._nonReactive.loaderPromise?.resolve()
           match._nonReactive.loadPromise?.resolve()
           match._nonReactive.loaderPromise = undefined
@@ -937,6 +944,7 @@ const loadRouteMatch = async (
   }
   const match = inner.router.getMatch(matchId)!
   if (!loaderIsRunningAsync) {
+    clearRetainedPending(match)
     match._nonReactive.loaderPromise?.resolve()
     match._nonReactive.loadPromise?.resolve()
     match._nonReactive.loadPromise = undefined
