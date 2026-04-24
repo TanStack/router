@@ -736,11 +736,7 @@ test.describe('react-start hmr', () => {
         await waitForRouteModuleUpdate(page, '/child', 'Child Updated Again')
       },
     )
-    await waitForHydrationSafeReload(
-      page,
-      '/child',
-      'Child Updated Again',
-    )
+    await waitForHydrationSafeReload(page, '/child', 'Child Updated Again')
 
     // Now navigate to /child — should see the LATEST value
     await page.getByTestId('child-link').click()
