@@ -7,8 +7,6 @@ import type { JSX } from 'solid-js'
 
 const INLINE_CSS_HYDRATION_ATTR = 'data-tsr-inline-css'
 
-declare const TSS_INLINE_CSS_ENABLED: boolean | undefined
-
 export function Asset(asset: RouterManagedTag): JSX.Element | null {
   const { tag, attrs, children } = asset
 
@@ -22,9 +20,8 @@ export function Asset(asset: RouterManagedTag): JSX.Element | null {
     case 'style':
       if (
         asset.inlineCss &&
-        ((typeof TSS_INLINE_CSS_ENABLED === 'undefined' && isServer) ||
-          (typeof TSS_INLINE_CSS_ENABLED !== 'undefined' &&
-            TSS_INLINE_CSS_ENABLED))
+        (process.env.TSS_INLINE_CSS_ENABLED === 'true' ||
+          (process.env.TSS_INLINE_CSS_ENABLED === undefined && isServer))
       ) {
         return <InlineCssStyle attrs={attrs}>{children}</InlineCssStyle>
       }

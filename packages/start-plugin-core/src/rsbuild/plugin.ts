@@ -195,7 +195,6 @@ export function tanStackStartRsbuild(
               'import.meta.env.TSS_INLINE_CSS_ENABLED': JSON.stringify(
                 inlineCssEnabled ? 'true' : 'false',
               ),
-              TSS_INLINE_CSS_ENABLED: JSON.stringify(inlineCssEnabled),
             },
           },
           server: {

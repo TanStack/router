@@ -27,7 +27,22 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
   const routerGenerator = getPlugin(unpluginRouterGeneratorFactory)
   const routerCodeSplitter = getPlugin(unpluginRouterCodeSplitterFactory)
 
-  const result = [...routerGenerator]
+  const result = [
+    {
+      name: 'tanstack:router-inline-css-defaults',
+      vite: {
+        config() {
+          return {
+            define: {
+              'process.env.TSS_INLINE_CSS_ENABLED': JSON.stringify('false'),
+              'import.meta.env.TSS_INLINE_CSS_ENABLED': JSON.stringify('false'),
+            },
+          }
+        },
+      },
+    },
+    ...routerGenerator,
+  ]
   if (userConfig.autoCodeSplitting) {
     result.push(...routerCodeSplitter)
   }

@@ -8,8 +8,6 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 
 const INLINE_CSS_HYDRATION_ATTR = 'data-tsr-inline-css'
 
-declare const TSS_INLINE_CSS_ENABLED: boolean | undefined
-
 interface ScriptAttrs {
   [key: string]: string | boolean | undefined
   src?: string
@@ -45,9 +43,8 @@ export function Asset(
     case 'style':
       if (
         asset.inlineCss &&
-        ((typeof TSS_INLINE_CSS_ENABLED === 'undefined' && isServer) ||
-          (typeof TSS_INLINE_CSS_ENABLED !== 'undefined' &&
-            TSS_INLINE_CSS_ENABLED))
+        (process.env.TSS_INLINE_CSS_ENABLED === 'true' ||
+          (process.env.TSS_INLINE_CSS_ENABLED === undefined && isServer))
       ) {
         return (
           <InlineCssStyle attrs={attrs} nonce={nonce}>

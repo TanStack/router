@@ -161,7 +161,6 @@ export function createViteDefineConfig(opts: {
       'TSS_INLINE_CSS_ENABLED',
       opts.inlineCssEnabled ? 'true' : 'false',
     ),
-    TSS_INLINE_CSS_ENABLED: JSON.stringify(opts.inlineCssEnabled),
     ...(opts.command === 'build' && opts.staticNodeEnv
       ? {
           'process.env.NODE_ENV': JSON.stringify(
