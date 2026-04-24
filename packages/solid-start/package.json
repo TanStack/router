@@ -121,7 +121,7 @@
     "pathe": "^2.0.3"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.0",
+    "@rsbuild/core": "^2.0.1",
     "@tanstack/intent": "^0.0.14",
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",

@@ -179,7 +179,7 @@
     }
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.0",
+    "@rsbuild/core": "^2.0.1",
     "@tanstack/intent": "^0.0.14",
     "@types/node": ">=20"
   },
