@@ -96,7 +96,7 @@ function InlineCssStyle({
     <style
       {...attrs}
       {...{ [INLINE_CSS_HYDRATION_ATTR]: '' }}
-      dangerouslySetInnerHTML={{ __html: html as string }}
+      dangerouslySetInnerHTML={{ __html: html }}
       nonce={nonce}
       suppressHydrationWarning
     />
