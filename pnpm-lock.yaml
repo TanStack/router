@@ -1764,10 +1764,10 @@ importers:
         version: 1.58.0
       '@rsbuild/core':
         specifier: ^2.0.0
-        version: 2.0.0(core-js@3.40.0)
+        version: 2.0.1(core-js@3.40.0)
       '@rsbuild/plugin-react':
         specifier: ^2.0.0
-        version: 2.0.0(@rsbuild/core@2.0.0(core-js@3.40.0))(@rspack/core@2.0.0(@swc/helpers@0.5.21))
+        version: 2.0.0(@rsbuild/core@2.0.1(core-js@3.40.0))(@rspack/core@2.0.0(@swc/helpers@0.5.21))
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
