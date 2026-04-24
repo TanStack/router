@@ -62,6 +62,7 @@ export async function getStartManifest(
   }
 
   const manifest = {
+    inlineCss: startManifest.inlineCss,
     routes: Object.fromEntries(
       Object.entries(startManifest.routes).flatMap(([k, v]) => {
         const result = {} as {

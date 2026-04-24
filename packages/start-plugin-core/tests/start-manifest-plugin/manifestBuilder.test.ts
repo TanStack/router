@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { deserialize } from 'seroval'
+import { shouldRebaseInlineCssUrls } from '../../src/start-manifest-plugin/inlineCss'
 import {
   appendUniqueAssets,
   appendUniqueStrings,
@@ -58,6 +59,18 @@ function makeChunk(options: {
       importedAssets: new Set(),
     },
   } as unknown as Rollup.OutputChunk
+}
+
+function makeCssAsset(fileName: string, source: string): Rollup.OutputAsset {
+  return {
+    type: 'asset',
+    fileName,
+    name: fileName,
+    names: [fileName],
+    source,
+    needsCodeReference: false,
+    originalFileNames: [],
+  } as unknown as Rollup.OutputAsset
 }
 
 describe('getRouteFilePathsFromModuleIds', () => {
@@ -389,6 +402,81 @@ describe('createChunkCssAssetCollector', () => {
 })
 
 describe('buildStartManifest', () => {
+  test('skips inline CSS transforms when no relative URLs need rebasing', () => {
+    expect(shouldRebaseInlineCssUrls('.root {\n  color: red;\n}')).toBe(false)
+    expect(shouldRebaseInlineCssUrls('.root{background:url(/dot.svg)}')).toBe(
+      false,
+    )
+    expect(
+      shouldRebaseInlineCssUrls(
+        '.root{background:url(data:image/svg+xml,foo)}',
+      ),
+    ).toBe(false)
+    expect(shouldRebaseInlineCssUrls('.card{background:url(./dot.svg)}')).toBe(
+      true,
+    )
+    expect(shouldRebaseInlineCssUrls('@import "../theme.css";')).toBe(true)
+  })
+
+  test('embeds rebased inline CSS content when enabled', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      importedCss: ['root.css'],
+    })
+    const routeChunk = makeChunk({
+      fileName: 'dashboard.js',
+      importedCss: ['dashboard.css'],
+      moduleIds: ['/routes/dashboard.tsx?tsr-split=component'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeTestBuild({
+        'entry.js': entryChunk,
+        'dashboard.js': routeChunk,
+        'root.css': makeCssAsset('root.css', '.root{color:red}'),
+        'dashboard.css': makeCssAsset(
+          'dashboard.css',
+          '.card{background:url("./dot.svg")}',
+        ),
+      }),
+      routeTreeRoutes: {
+        __root__: {},
+        '/dashboard': { filePath: '/routes/dashboard.tsx' },
+      },
+      basePath: '/assets',
+      inlineCss: true,
+    })
+
+    expect(manifest.inlineCss?.styles['/assets/root.css']).toBe(
+      '.root{color:red}',
+    )
+    expect(manifest.inlineCss?.styles['/assets/dashboard.css']).toBe(
+      '.card{background:url(/assets/dot.svg)}',
+    )
+  })
+
+  test('throws when inline CSS content is missing for a stylesheet asset', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      importedCss: ['root.css'],
+    })
+
+    expect(() =>
+      buildStartManifest({
+        clientBuild: normalizeTestBuild({
+          'entry.js': entryChunk,
+        }),
+        routeTreeRoutes: {
+          __root__: {},
+        },
+        basePath: '/assets',
+        inlineCss: true,
+      }),
+    ).toThrow('could not find CSS content')
+  })
+
   test('allows callers to attach additional route assets', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',

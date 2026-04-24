@@ -76,33 +76,39 @@ export const tsrStartManifest = () => globalThis[${JSON.stringify(DEV_START_MANI
 function buildStartManifestData(
   clientBuild: NormalizedClientBuild,
   publicBase: string,
+  inlineCss: boolean,
 ) {
   const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
   return buildStartManifest({
     clientBuild,
     routeTreeRoutes,
     basePath: publicBase,
+    inlineCss,
   })
 }
 
 function serializeStartManifestData(
   clientBuild: NormalizedClientBuild,
   publicBase: string,
+  inlineCss: boolean,
 ): string {
-  return JSON.stringify(buildStartManifestData(clientBuild, publicBase))
+  return JSON.stringify(
+    buildStartManifestData(clientBuild, publicBase, inlineCss),
+  )
 }
 
 function generateManifestModuleBuild(
   clientBuild: NormalizedClientBuild | undefined,
   publicBase: string,
   _devClientEntryUrl: string,
+  inlineCss: boolean,
 ): string {
   if (!clientBuild) {
     return `const tsrStartManifestData = ${JSON.stringify(START_MANIFEST_PLACEHOLDER)}
 export const tsrStartManifest = () => tsrStartManifestData`
   }
 
-  return `export const tsrStartManifest = () => (${serializeStartManifestData(clientBuild, publicBase)})`
+  return `export const tsrStartManifest = () => (${serializeStartManifestData(clientBuild, publicBase, inlineCss)})`
 }
 
 // ---------------------------------------------------------------------------
@@ -345,7 +351,7 @@ export function registerVirtualModules(
   // Generate initial content for each virtual module per environment
   function getInitialContent(environmentName: string): Record<string, string> {
     // Safe to call getConfig() here — this runs inside modifyRspackConfig
-    const { resolvedStartConfig } = opts.getConfig()
+    const { resolvedStartConfig, startConfig } = opts.getConfig()
     const isServerEnv = environmentName === RSBUILD_ENVIRONMENT_NAMES.server
     const isClientEnv = environmentName === RSBUILD_ENVIRONMENT_NAMES.client
     const content: Record<string, string> = {}
@@ -361,6 +367,7 @@ export function registerVirtualModules(
             clientBuild,
             resolvedStartConfig.basePaths.publicBase,
             devClientEntryUrl,
+            startConfig.server.build.inlineCss,
           )
     } else {
       content[paths.manifest] = 'export default {}'
@@ -495,7 +502,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     },
 
     generateManifestContent(newClientBuild: NormalizedClientBuild): string {
-      const { resolvedStartConfig } = opts.getConfig()
+      const { resolvedStartConfig, startConfig } = opts.getConfig()
       const devClientEntryUrl = opts.getDevClientEntryUrl(
         resolvedStartConfig.basePaths.publicBase,
       )
@@ -503,16 +510,18 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
         newClientBuild,
         resolvedStartConfig.basePaths.publicBase,
         devClientEntryUrl,
+        !isDev && startConfig.server.build.inlineCss,
       )
     },
 
     generateManifestValueLiteral(
       newClientBuild: NormalizedClientBuild,
     ): string {
-      const { resolvedStartConfig } = opts.getConfig()
+      const { resolvedStartConfig, startConfig } = opts.getConfig()
       return serializeStartManifestData(
         newClientBuild,
         resolvedStartConfig.basePaths.publicBase,
+        !isDev && startConfig.server.build.inlineCss,
       )
     },
 
@@ -528,6 +537,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
         )[DEV_START_MANIFEST_GLOBAL] = buildStartManifestData(
           clientBuild,
           resolvedStartConfig.basePaths.publicBase,
+          false,
         )
       }
     },

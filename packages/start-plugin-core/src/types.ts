@@ -47,6 +47,7 @@ export interface NormalizedClientBuild {
   chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
   chunkFileNamesByRouteFilePath: ReadonlyMap<string, ReadonlyArray<string>>
   cssFilesBySourcePath: ReadonlyMap<string, ReadonlyArray<string>>
+  cssContentByFileName?: ReadonlyMap<string, string>
 }
 
 export interface TanStackStartCoreOptions {

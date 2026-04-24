@@ -1,12 +1,17 @@
 /* eslint-disable @typescript-eslint/prefer-for-of */
 import { serialize } from 'seroval'
 import { joinURL } from 'ufo'
-import { resolveManifestAssetLink, rootRouteId } from '@tanstack/router-core'
+import {
+  getStylesheetHref,
+  resolveManifestAssetLink,
+  rootRouteId,
+} from '@tanstack/router-core'
 import {
   getRouteFilePathsFromModuleIds,
   normalizeViteClientBuild,
   normalizeViteClientChunk,
 } from '../vite/start-manifest-plugin/normalized-client-build'
+import { rebaseInlineCssUrls } from './inlineCss'
 import type { ManifestAssetLink, RouterManagedTag } from '@tanstack/router-core'
 import type { NormalizedClientBuild, NormalizedClientChunk } from '../types'
 
@@ -42,6 +47,9 @@ type DedupeRoute = {
 export interface StartManifest {
   routes: Record<string, RouteTreeRoute>
   clientEntry: string
+  inlineCss?: {
+    styles: Record<string, string>
+  }
 }
 
 export function appendUniqueStrings(
@@ -152,6 +160,7 @@ export function buildStartManifest(options: {
   clientBuild: NormalizedClientBuild
   routeTreeRoutes: RouteTreeRoutes
   basePath: string
+  inlineCss?: boolean
   additionalRouteAssets?: Partial<
     Record<string, ReadonlyArray<RouterManagedTag>>
   >
@@ -180,10 +189,20 @@ export function buildStartManifest(options: {
     }
   }
 
-  return {
+  const result: StartManifest = {
     routes,
     clientEntry: assetResolvers.getAssetPath(scannedChunks.entryChunk.fileName),
   }
+
+  if (options.inlineCss) {
+    result.inlineCss = buildInlineCssManifestData({
+      routes,
+      basePath: options.basePath,
+      cssContentByFileName: options.clientBuild.cssContentByFileName,
+    })
+  }
+
+  return result
 }
 
 export function serializeStartManifest(startManifest: StartManifest) {
@@ -345,6 +364,57 @@ export function createChunkCssAssetCollector(options: {
   }
 
   return { getChunkCssAssets }
+}
+
+function buildInlineCssManifestData(options: {
+  routes: Record<string, RouteTreeRoute>
+  basePath: string
+  cssContentByFileName: ReadonlyMap<string, string> | undefined
+}): StartManifest['inlineCss'] {
+  const stylesheetHrefs = new Set<string>()
+
+  for (const route of Object.values(options.routes)) {
+    for (const asset of route.assets ?? []) {
+      const href = getStylesheetHref(asset)
+      if (href) {
+        stylesheetHrefs.add(href)
+      }
+    }
+  }
+
+  if (stylesheetHrefs.size === 0) {
+    return { styles: {} }
+  }
+
+  if (!options.cssContentByFileName) {
+    throw new Error(
+      'TanStack Start inlineCss is enabled, but the client build did not provide CSS content',
+    )
+  }
+
+  const { getAssetPath } = createManifestAssetResolvers(options.basePath)
+  const styles: Record<string, string> = {}
+  const missingHrefs = new Set(stylesheetHrefs)
+
+  for (const [cssFile, css] of options.cssContentByFileName) {
+    const cssHref = getAssetPath(cssFile)
+    if (!stylesheetHrefs.has(cssHref)) {
+      continue
+    }
+
+    styles[cssHref] = rebaseInlineCssUrls({ css, cssHref })
+    missingHrefs.delete(cssHref)
+  }
+
+  if (missingHrefs.size > 0) {
+    throw new Error(
+      `TanStack Start inlineCss could not find CSS content for: ${Array.from(
+        missingHrefs,
+      ).join(', ')}`,
+    )
+  }
+
+  return { styles }
 }
 
 export function buildRouteManifestRoutes(options: {
