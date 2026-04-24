@@ -135,6 +135,9 @@
   "peerDependenciesMeta": {
     "@rsbuild/core": {
       "optional": true
+    },
+    "vite": {
+      "optional": true
     }
   },
   "bin": {

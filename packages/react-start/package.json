@@ -176,6 +176,9 @@
     },
     "@vitejs/plugin-rsc": {
       "optional": true
+    },
+    "vite": {
+      "optional": true
     }
   },
   "devDependencies": {

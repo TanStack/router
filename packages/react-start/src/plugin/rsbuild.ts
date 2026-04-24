@@ -1,10 +1,12 @@
 import {
-  START_ENVIRONMENT_NAMES,
+  RSBUILD_ENVIRONMENT_NAMES,
   tanStackStartRsbuild,
-} from '@tanstack/start-plugin-core'
+} from '@tanstack/start-plugin-core/rsbuild'
 import { reactStartDefaultEntryPaths } from './shared'
-import type { TanStackStartRsbuildPluginCoreOptions } from '@tanstack/start-plugin-core/rsbuild/types'
-import type { TanStackStartRsbuildInputConfig } from '@tanstack/start-plugin-core'
+import type {
+  TanStackStartRsbuildInputConfig,
+  TanStackStartRsbuildPluginCoreOptions,
+} from '@tanstack/start-plugin-core/rsbuild'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
 export function tanstackStart(
@@ -15,7 +17,7 @@ export function tanstackStart(
   let corePluginOpts: TanStackStartRsbuildPluginCoreOptions = {
     framework: 'react',
     defaultEntryPaths: reactStartDefaultEntryPaths,
-    providerEnvironmentName: START_ENVIRONMENT_NAMES.server,
+    providerEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,
     ssrIsProvider: true,
   }
 
@@ -47,7 +49,7 @@ function configureRscRsbuild(): {
   serializationAdapters: TanStackStartRsbuildPluginCoreOptions['serializationAdapters']
 } {
   return {
-    providerEnvironmentName: START_ENVIRONMENT_NAMES.server,
+    providerEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,
     serializationAdapters: [
       {
         client: {

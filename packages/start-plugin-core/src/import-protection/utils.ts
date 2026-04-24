@@ -4,7 +4,7 @@ import {
   relative,
   resolve as resolvePath,
 } from 'node:path'
-import { normalizePath } from 'vite'
+import { normalizePath } from '../utils'
 
 import {
   IMPORT_PROTECTION_DEBUG,

@@ -1,11 +1,11 @@
 import {
   START_ENVIRONMENT_NAMES,
   tanStackStartVite,
-} from '@tanstack/start-plugin-core'
+} from '@tanstack/start-plugin-core/vite'
 import type {
   TanStackStartViteInputConfig,
   TanStackStartVitePluginCoreOptions,
-} from '@tanstack/start-plugin-core'
+} from '@tanstack/start-plugin-core/vite'
 import { vueStartDefaultEntryPaths } from './shared'
 import type { PluginOption } from 'vite'
 

@@ -1,11 +1,10 @@
 import { extname, resolve as resolvePath } from 'node:path'
 
-import { normalizePath } from 'vite'
-
 import {
   getDefaultImportProtectionRules,
   getMarkerSpecifiers,
 } from '../import-protection/defaults'
+import { normalizePath } from '../utils'
 import { ExtensionlessAbsoluteIdResolver } from '../import-protection/extensionlessAbsoluteIdResolver'
 import { compileMatchers, matchesAny } from '../import-protection/matchers'
 import {

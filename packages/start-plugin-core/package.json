@@ -56,6 +56,18 @@
         "default": "./dist/esm/utils.js"
       }
     },
+    "./vite": {
+      "import": {
+        "types": "./dist/esm/vite/index.d.ts",
+        "default": "./dist/esm/vite/index.js"
+      }
+    },
+    "./rsbuild": {
+      "import": {
+        "types": "./dist/esm/rsbuild/index.d.ts",
+        "default": "./dist/esm/rsbuild/index.js"
+      }
+    },
     "./rsbuild/types": {
       "import": {
         "types": "./dist/esm/rsbuild/types.d.ts",
@@ -110,6 +122,9 @@
   },
   "peerDependenciesMeta": {
     "@rsbuild/core": {
+      "optional": true
+    },
+    "vite": {
       "optional": true
     }
   }
