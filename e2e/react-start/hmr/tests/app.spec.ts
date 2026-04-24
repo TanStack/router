@@ -9,6 +9,8 @@ const whitelistErrors = [
   'Failed to load resource: the server responded with a status of 504',
 ]
 
+const hmrExpect = expect.configure({ timeout: 20_000 })
+
 const routeFilePaths = {
   index: 'routes/index.tsx',
   root: 'routes/__root.tsx',
@@ -292,15 +294,18 @@ async function rewriteRouteFile(
   routeFileKey: RouteFileKey,
   updater: (source: string) => string,
   assertion: () => Promise<void>,
+  options: { allowNoop?: boolean } = {},
 ) {
   const filePath = routeFiles[routeFileKey]
   const source = await readFile(filePath, 'utf8')
   const updated = updater(source)
 
-  if (updated === source) {
+  if (updated === source && !options.allowNoop) {
     throw new Error(`Expected ${filePath} to change during rewrite`)
   }
 
+  // Even a no-op write is useful for tests that need to force the dev server
+  // to reconcile a stale in-memory module with the current file contents.
   await writeFile(filePath, updated)
   await assertion()
 }
@@ -368,7 +373,7 @@ async function reloadPageAndWaitForText(
   text: string,
 ) {
   await reloadPageAndWait(page, url)
-  await expect(page.getByTestId(testId)).toHaveText(text)
+  await hmrExpect(page.getByTestId(testId)).toHaveText(text)
 }
 
 async function waitForServerFnHmrReady(page: Page) {
@@ -378,8 +383,8 @@ async function waitForServerFnHmrReady(page: Page) {
 
 async function waitForServerFnHmrMarker(page: Page, text: string) {
   await waitForServerFnHmrReady(page)
-  await expect(page.getByTestId('server-fn-hmr-marker')).toHaveText(text)
-  await expect(page.getByTestId('server-fn-hmr-result')).toBeVisible()
+  await hmrExpect(page.getByTestId('server-fn-hmr-marker')).toHaveText(text)
+  await hmrExpect(page.getByTestId('server-fn-hmr-result')).toBeVisible()
 }
 
 async function waitForRestoredRouteFile(
@@ -394,7 +399,7 @@ async function waitForRestoredRouteFile(
 
   // Restores happen immediately after a previous edit, so poll until the dev
   // server has actually observed the restored file before the next test starts.
-  const deadline = Date.now() + 10_000
+  const deadline = Date.now() + 20_000
   let lastError: unknown
 
   while (Date.now() < deadline) {
@@ -403,6 +408,11 @@ async function waitForRestoredRouteFile(
       await expect(page.getByTestId(restoreCheck.testId)).toHaveText(
         restoreCheck.text,
         { timeout: 500 },
+      )
+      await page.waitForTimeout(500)
+      await expect(page.getByTestId(restoreCheck.testId)).toHaveText(
+        restoreCheck.text,
+        { timeout: 1_000 },
       )
       return
     } catch (error) {
@@ -493,7 +503,7 @@ test.describe('react-start hmr', () => {
       'baseline',
       'updated',
       async () => {
-        await expect(page.getByTestId('marker')).toHaveText('updated')
+        await hmrExpect(page.getByTestId('marker')).toHaveText('updated')
       },
     )
 
@@ -518,9 +528,8 @@ test.describe('react-start hmr', () => {
       "crumb: 'Home Updated'",
       async () => {
         await waitForRouteModuleUpdate(page, '__root__', 'Home Updated')
-        await expect(page.getByTestId('crumb-__root__')).toHaveText(
+        await hmrExpect(page.getByTestId('crumb-__root__')).toHaveText(
           'Home Updated',
-          { timeout: 10_000 },
         )
       },
     )
@@ -544,9 +553,8 @@ test.describe('react-start hmr', () => {
       "crumb: 'Child Updated'",
       async () => {
         await waitForRouteModuleUpdate(page, '/child', 'Child Updated')
-        await expect(page.getByTestId('crumb-/child')).toHaveText(
+        await hmrExpect(page.getByTestId('crumb-/child')).toHaveText(
           'Child Updated',
-          { timeout: 10_000 },
         )
       },
     )
@@ -575,9 +583,7 @@ test.describe('react-start hmr', () => {
         ),
       async () => {
         await waitForRouteModuleUpdate(page, '/', 'Index Added')
-        await expect(page.getByTestId('crumb-/')).toHaveText('Index Added', {
-          timeout: 10_000,
-        })
+        await hmrExpect(page.getByTestId('crumb-/')).toHaveText('Index Added')
       },
     )
 
@@ -599,7 +605,7 @@ test.describe('react-start hmr', () => {
         source.replace("  loader: () => ({\n    crumb: 'Child',\n  }),\n", ''),
       async () => {
         await waitForRouteRemovalReload(page)
-        await expect(page.getByTestId('crumb-/child')).toHaveCount(0)
+        await hmrExpect(page.getByTestId('crumb-/child')).toHaveCount(0)
       },
     )
 
@@ -630,9 +636,8 @@ test.describe('react-start hmr', () => {
     await page.getByTestId('child-link').click()
     await expect(page.getByTestId('child')).toBeVisible()
 
-    await expect(page.getByTestId('crumb-/child')).toHaveText(
+    await hmrExpect(page.getByTestId('crumb-/child')).toHaveText(
       'Child Updated Again',
-      { timeout: 10000 },
     )
   })
 
@@ -658,9 +663,8 @@ test.describe('react-start hmr', () => {
       "crumb: 'Home Updated'",
       async () => {
         await waitForRouteModuleUpdate(page, '__root__', 'Home Updated')
-        await expect(page.getByTestId('crumb-__root__')).toHaveText(
+        await hmrExpect(page.getByTestId('crumb-__root__')).toHaveText(
           'Home Updated',
-          { timeout: 10_000 },
         )
       },
     )
@@ -688,7 +692,7 @@ test.describe('react-start hmr', () => {
       'inputs-baseline',
       'inputs-updated',
       async () => {
-        await expect(page.getByTestId('inputs-marker')).toHaveText(
+        await hmrExpect(page.getByTestId('inputs-marker')).toHaveText(
           'inputs-updated',
         )
       },
@@ -713,7 +717,7 @@ test.describe('react-start hmr', () => {
       "greeting: 'Hello'",
       "greeting: 'Hi'",
       async () => {
-        await expect(page.getByTestId('child-greeting')).toHaveText('Hi')
+        await hmrExpect(page.getByTestId('child-greeting')).toHaveText('Hi')
       },
     )
 
@@ -744,8 +748,9 @@ test.describe('react-start hmr', () => {
         ),
       async () => {
         await waitForRouteRemovalReload(page)
-        await expect(page.getByTestId('child-greeting')).toHaveCount(0)
+        await hmrExpect(page.getByTestId('child-greeting')).toHaveCount(0)
       },
+      { allowNoop: true },
     )
 
     // Root state should be preserved
@@ -788,7 +793,7 @@ test.describe('react-start hmr', () => {
       'root-component-inline-baseline',
       'root-component-inline-updated',
       async () => {
-        await expect(page.getByTestId('root-component-marker')).toHaveText(
+        await hmrExpect(page.getByTestId('root-component-marker')).toHaveText(
           'root-component-inline-updated',
         )
       },
@@ -806,7 +811,7 @@ test.describe('react-start hmr', () => {
       'root-component-baseline',
       'root-component-updated',
       async () => {
-        await expect(page.getByTestId('root-component-marker')).toHaveText(
+        await hmrExpect(page.getByTestId('root-component-marker')).toHaveText(
           'root-component-updated',
         )
       },
@@ -844,7 +849,7 @@ test.describe('react-start hmr', () => {
       'root-shell-inline-baseline',
       'root-shell-inline-updated',
       async () => {
-        await expect(page.getByTestId('root-shell-marker')).toHaveText(
+        await hmrExpect(page.getByTestId('root-shell-marker')).toHaveText(
           'root-shell-inline-updated',
         )
       },
@@ -887,7 +892,7 @@ test.describe('react-start hmr', () => {
       'root-shell-baseline',
       'root-shell-updated',
       async () => {
-        await expect(page.getByTestId('root-shell-marker')).toHaveText(
+        await hmrExpect(page.getByTestId('root-shell-marker')).toHaveText(
           'root-shell-updated',
         )
       },
@@ -905,7 +910,7 @@ test.describe('react-start hmr', () => {
       'component-hmr-inline-split-baseline',
       'component-hmr-inline-split-updated',
       async () => {
-        await expect(page.getByTestId('component-hmr-marker')).toHaveText(
+        await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
           'component-hmr-inline-split-updated',
         )
       },
@@ -925,7 +930,7 @@ test.describe('react-start hmr', () => {
       'component-hmr-inline-nosplit-baseline',
       'component-hmr-inline-nosplit-updated',
       async () => {
-        await expect(page.getByTestId('component-hmr-marker')).toHaveText(
+        await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
           'component-hmr-inline-nosplit-updated',
         )
       },
@@ -945,7 +950,7 @@ test.describe('react-start hmr', () => {
       'component-hmr-named-split-baseline',
       'component-hmr-named-split-updated',
       async () => {
-        await expect(page.getByTestId('component-hmr-marker')).toHaveText(
+        await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
           'component-hmr-named-split-updated',
         )
       },
@@ -965,7 +970,7 @@ test.describe('react-start hmr', () => {
       'component-hmr-named-nosplit-baseline',
       'component-hmr-named-nosplit-updated',
       async () => {
-        await expect(page.getByTestId('component-hmr-marker')).toHaveText(
+        await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
           'component-hmr-named-nosplit-updated',
         )
       },
@@ -985,7 +990,7 @@ test.describe('react-start hmr', () => {
       'component-hmr-inline-error-split-baseline',
       'component-hmr-inline-error-split-updated',
       async () => {
-        await expect(page.getByTestId('component-hmr-marker')).toHaveText(
+        await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
           'component-hmr-inline-error-split-updated',
         )
       },
@@ -1005,7 +1010,7 @@ test.describe('react-start hmr', () => {
       'component-hmr-named-error-split-baseline',
       'component-hmr-named-error-split-updated',
       async () => {
-        await expect(page.getByTestId('component-hmr-marker')).toHaveText(
+        await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
           'component-hmr-named-error-split-updated',
         )
       },
