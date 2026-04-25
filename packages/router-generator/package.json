@@ -69,9 +69,9 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/virtual-file-routes": "workspace:*",
+    "jiti": "^2.6.1",
     "magic-string": "^0.30.21",
     "prettier": "^3.5.0",
-    "tsx": "^4.19.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
