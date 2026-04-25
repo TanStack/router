@@ -1,5 +1,13 @@
 # @tanstack/solid-router
 
+## 1.168.22
+
+### Patch Changes
+
+- fix server middleware type in solid-router ([#7260](https://github.com/TanStack/router/pull/7260))
+
+- Enhanced internal tag comparison logic to optimize stylesheet persistence during route navigation. ([#7250](https://github.com/TanStack/router/pull/7250))
+
 ## 1.168.21
 
 ### Patch Changes

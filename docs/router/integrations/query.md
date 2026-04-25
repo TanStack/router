@@ -64,6 +64,61 @@ export function getRouter() {
 
 By default, the integration wraps your router with a `QueryClientProvider`. If you already provide your own provider, pass `wrapQueryClient: false` and keep your custom wrapper.
 
+You can also pass `dehydrateOptions` and `hydrateOptions` to customize how TanStack Query serializes SSR payloads and restores them on the client.
+
+```tsx
+setupRouterSsrQueryIntegration({
+  router,
+  queryClient,
+  dehydrateOptions: {
+    shouldDehydrateQuery: (query) => query.meta?.ssr !== false,
+  },
+  hydrateOptions: {
+    defaultOptions: {
+      queries: {
+        gcTime: 60_000,
+      },
+    },
+  },
+})
+```
+
+Common uses for these options:
+
+- Set `hydrateOptions.defaultOptions.queries.gcTime` to control how long hydrated SSR queries stay in the client cache before garbage collection.
+- Set `dehydrateOptions.shouldDehydrateQuery` to exclude queries you do not want serialized into the HTML payload.
+- Set `dehydrateOptions.serializeData` and `hydrateOptions.defaultOptions.deserializeData` when your SSR payload needs custom serialization.
+
+```tsx title="src/router.tsx"
+import { QueryClient } from '@tanstack/react-query'
+import { createRouter } from '@tanstack/react-router'
+import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
+import { routeTree } from './routeTree.gen'
+
+export function getRouter() {
+  const queryClient = new QueryClient()
+
+  const router = createRouter({
+    routeTree,
+    context: { queryClient },
+  })
+
+  setupRouterSsrQueryIntegration({
+    router,
+    queryClient,
+    hydrateOptions: {
+      defaultOptions: {
+        queries: {
+          gcTime: 5 * 60 * 1000,
+        },
+      },
+    },
+  })
+
+  return router
+}
+```
+
 ## SSR behavior and streaming
 
 - During server render, the integration dehydrates initial queries and streams any subsequent queries that resolve while rendering.

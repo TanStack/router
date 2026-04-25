@@ -13,9 +13,9 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-query": "^5.90.9",
-    "@tanstack/solid-router": "^1.168.21",
+    "@tanstack/solid-router": "^1.168.22",
     "@tanstack/solid-router-devtools": "^1.166.13",
-    "@tanstack/router-plugin": "^1.167.26",
+    "@tanstack/router-plugin": "^1.167.27",
     "solid-js": "^1.9.10",
     "redaxios": "^0.5.1",
     "tailwindcss": "^4.2.2",

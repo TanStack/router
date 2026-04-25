@@ -1,5 +1,12 @@
 # @tanstack/vue-start
 
+## 1.167.43
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-plugin-core@1.169.5
+
 ## 1.167.42
 
 ### Patch Changes
