@@ -159,28 +159,29 @@ test('when creating a file route with middleware options', () => {
     },
   })
 
-  type ExtractMiddlewares<TRoute> = TRoute extends Route<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    infer TMiddlewares,
-    any
-  >
-    ? TMiddlewares
-    : never
+  type ExtractMiddlewares<TRoute> =
+    TRoute extends Route<
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      infer TMiddlewares,
+      any
+    >
+      ? TMiddlewares
+      : never
 
   expectTypeOf<ExtractMiddlewares<typeof route>>().toEqualTypeOf<
     readonly [Middleware]
