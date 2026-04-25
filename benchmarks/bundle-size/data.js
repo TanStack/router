@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777080971962,
+  "lastUpdate": 1777082971958,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -12518,6 +12518,102 @@ window.BENCHMARK_DATA = {
             "value": 107257,
             "unit": "bytes",
             "extra": "raw=344387; brotli=92078"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50733,
+            "unit": "bytes",
+            "extra": "raw=156202; brotli=44721"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56563,
+            "unit": "bytes",
+            "extra": "raw=173162; brotli=49761"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "33615041+SeanCassiere@users.noreply.github.com",
+            "name": "Sean Cassiere",
+            "username": "SeanCassiere"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b97002af3f6d15204e60c55d3f5735b78bd7efe",
+          "message": "refactor(router-plugin): upgrade unplugin to `v3` (#7258)\n\n* refactor(router-plugin): upgrade unplugin to `v3`\n\n* refactor(start-client-core): use a more explicit typing to `CustomFetch` type\n\n* chore(examples): runtime enforce for needing the `VITE_CONVEX_URL`",
+          "timestamp": "2026-04-25T14:07:00+12:00",
+          "tree_id": "8c8bf643e565506fa8338169350e36c56cab3059",
+          "url": "https://github.com/TanStack/router/commit/8b97002af3f6d15204e60c55d3f5735b78bd7efe"
+        },
+        "date": 1777082970307,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89442,
+            "unit": "bytes",
+            "extra": "raw=281190; brotli=77791"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92953,
+            "unit": "bytes",
+            "extra": "raw=292981; brotli=80794"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36400,
+            "unit": "bytes",
+            "extra": "raw=109275; brotli=32723"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41144,
+            "unit": "bytes",
+            "extra": "raw=123475; brotli=36910"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54582,
+            "unit": "bytes",
+            "extra": "raw=155655; brotli=49026"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59844,
+            "unit": "bytes",
+            "extra": "raw=172223; brotli=53599"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104361,
+            "unit": "bytes",
+            "extra": "raw=330512; brotli=90297"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107883,
+            "unit": "bytes",
+            "extra": "raw=341091; brotli=93203"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 103868,
+            "unit": "bytes",
+            "extra": "raw=333433; brotli=89213"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 107257,
+            "unit": "bytes",
+            "extra": "raw=344385; brotli=92091"
           },
           {
             "name": "solid-start.minimal",
