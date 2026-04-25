@@ -33,3 +33,15 @@ test('streaming loader data', async ({ page }) => {
   await expect(page.getByTestId('promise-data')).toContainText('promise-data')
   await expect(page.getByTestId('stream-data')).toContainText('stream-data')
 })
+
+test('streams Await fallback for server function loader promises', async ({
+  page,
+}) => {
+  const response = await page.request.get('/issue-6715')
+  const html = await response.text()
+
+  expect(html).toContain('data-testid="issue-6715-loading"')
+
+  await page.goto('/issue-6715')
+  await expect(page.getByTestId('issue-6715-data')).not.toBeEmpty()
+})

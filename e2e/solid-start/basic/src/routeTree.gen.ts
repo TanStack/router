@@ -15,6 +15,7 @@ import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as RawStreamRouteImport } from './routes/raw-stream'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LinksRouteImport } from './routes/links'
+import { Route as Issue6715RouteImport } from './routes/issue-6715'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as LayoutRouteImport } from './routes/_layout'
@@ -97,6 +98,11 @@ const PostsRoute = PostsRouteImport.update({
 const LinksRoute = LinksRouteImport.update({
   id: '/links',
   path: '/links',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Issue6715Route = Issue6715RouteImport.update({
+  id: '/issue-6715',
+  path: '/issue-6715',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InlineScriptsRoute = InlineScriptsRouteImport.update({
@@ -387,6 +393,7 @@ export interface FileRoutesByFullPath {
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
+  '/issue-6715': typeof Issue6715Route
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/raw-stream': typeof RawStreamRouteWithChildren
@@ -444,6 +451,7 @@ export interface FileRoutesByTo {
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
+  '/issue-6715': typeof Issue6715Route
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
@@ -501,6 +509,7 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
+  '/issue-6715': typeof Issue6715Route
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/raw-stream': typeof RawStreamRouteWithChildren
@@ -563,6 +572,7 @@ export interface FileRouteTypes {
     | '/specialChars'
     | '/deferred'
     | '/inline-scripts'
+    | '/issue-6715'
     | '/links'
     | '/posts'
     | '/raw-stream'
@@ -620,6 +630,7 @@ export interface FileRouteTypes {
     | '/specialChars'
     | '/deferred'
     | '/inline-scripts'
+    | '/issue-6715'
     | '/links'
     | '/scripts'
     | '/stream'
@@ -676,6 +687,7 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/deferred'
     | '/inline-scripts'
+    | '/issue-6715'
     | '/links'
     | '/posts'
     | '/raw-stream'
@@ -738,6 +750,7 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
+  Issue6715Route: typeof Issue6715Route
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
   RawStreamRoute: typeof RawStreamRouteWithChildren
@@ -796,6 +809,13 @@ declare module '@tanstack/solid-router' {
       path: '/links'
       fullPath: '/links'
       preLoaderRoute: typeof LinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/issue-6715': {
+      id: '/issue-6715'
+      path: '/issue-6715'
+      fullPath: '/issue-6715'
+      preLoaderRoute: typeof Issue6715RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inline-scripts': {
@@ -1378,6 +1398,7 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
   InlineScriptsRoute: InlineScriptsRoute,
+  Issue6715Route: Issue6715Route,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,
   RawStreamRoute: RawStreamRouteWithChildren,
