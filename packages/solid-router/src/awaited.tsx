@@ -59,7 +59,10 @@ function AwaitInner<T>(
     children: (result: T) => SolidNode
   },
 ) {
-  const [resource] = Solid.createResource(() => defer(props.promise), (p) => p)
+  const [resource] = Solid.createResource(
+    () => defer(props.promise),
+    (p) => p,
+  )
 
   return props.children(resource() as T)
 }
