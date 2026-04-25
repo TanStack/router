@@ -104,9 +104,11 @@ test('when creating a folder group', () => {
 })
 
 test('when creating a file route with server middleware', () => {
-  const middleware = createMiddleware({ type: 'request' }).server(({ next }) => {
-    return next({ context: { supportsGzip: true } })
-  })
+  const middleware = createMiddleware({ type: 'request' }).server(
+    ({ next }) => {
+      return next({ context: { supportsGzip: true } })
+    },
+  )
 
   createFileRoute('/invoices')({
     server: {
