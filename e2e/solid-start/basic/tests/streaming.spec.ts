@@ -46,5 +46,7 @@ test('streams Await fallback for server function loader promises', async ({
   expect(html).toContain('data-testid="deferred-without-suspense-loading"')
 
   await page.goto('/deferred-without-suspense')
-  await expect(page.getByTestId('deferred-without-suspense-data')).not.toBeEmpty()
+  await expect(
+    page.getByTestId('deferred-without-suspense-data'),
+  ).not.toBeEmpty()
 })
