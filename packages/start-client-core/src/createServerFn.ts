@@ -380,7 +380,13 @@ export interface RequiredFetcher<
   ): Promise<Awaited<TResponse>>
 }
 
-export type CustomFetch = typeof globalThis.fetch
+// Ideally, this type should just be `export type CustomFetch = typeof globalThis.fetch`, but that conflicts with the type overrides the `bun-types` package - a dependency of unplugin.
+// Relevant bun issues:
+// - https://github.com/oven-sh/bun/issues/23500
+// - https://github.com/oven-sh/bun/issues/23741
+export type CustomFetch = typeof fetch extends (...args: infer A) => infer R
+  ? (...args: A) => R
+  : never
 
 export type FetcherBaseOptions = {
   headers?: HeadersInit
