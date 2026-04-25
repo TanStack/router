@@ -1,5 +1,7 @@
 import { expectTypeOf, test } from 'vitest'
+import '../../start-client-core/src/serverRoute'
 import { createFileRoute, createRootRoute } from '../src'
+import { createMiddleware } from '../../start-client-core/src/createMiddleware'
 
 const rootRoute = createRootRoute()
 
@@ -99,4 +101,23 @@ test('when creating a folder group', () => {
   expectTypeOf<'/protected'>(protectedRoute.fullPath)
   expectTypeOf<'(auth)/protected'>(protectedRoute.path)
   expectTypeOf<'/protected'>(protectedRoute.id)
+})
+
+test('when creating a file route with server middleware', () => {
+  const middleware = createMiddleware({ type: 'request' }).server(({ next }) => {
+    return next({ context: { supportsGzip: true } })
+  })
+
+  createFileRoute('/invoices')({
+    server: {
+      middleware: [middleware],
+      handlers: {
+        GET: ({ context }) => {
+          expectTypeOf(context).toEqualTypeOf<{ supportsGzip: boolean }>()
+
+          return Response.json(context)
+        },
+      },
+    },
+  })
 })

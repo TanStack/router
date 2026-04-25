@@ -81,7 +81,7 @@ export class FileRoute<
     TLoaderFn = undefined,
     TChildren = unknown,
     TSSR = unknown,
-    TMiddlewares = unknown,
+    const TMiddlewares = unknown,
     THandlers = undefined,
   >(
     options?: FileBaseRouteOptions<
