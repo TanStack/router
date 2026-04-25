@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { isSpaMode } from './utils/isSpaMode'
 
 test('Navigating to deferred route', async ({ page }) => {
   await page.goto('/')
@@ -37,11 +38,13 @@ test('streaming loader data', async ({ page }) => {
 test('streams Await fallback for server function loader promises', async ({
   page,
 }) => {
-  const response = await page.request.get('/issue-6715')
+  test.skip(isSpaMode, 'SPA mode does not render streamed SSR HTML')
+
+  const response = await page.request.get('/deferred-without-suspense')
   const html = await response.text()
 
-  expect(html).toContain('data-testid="issue-6715-loading"')
+  expect(html).toContain('data-testid="deferred-without-suspense-loading"')
 
-  await page.goto('/issue-6715')
-  await expect(page.getByTestId('issue-6715-data')).not.toBeEmpty()
+  await page.goto('/deferred-without-suspense')
+  await expect(page.getByTestId('deferred-without-suspense-data')).not.toBeEmpty()
 })

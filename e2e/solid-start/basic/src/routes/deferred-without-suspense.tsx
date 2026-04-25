@@ -6,7 +6,7 @@ const promise = createServerFn().handler(async () => {
   return crypto.randomUUID()
 })
 
-export const Route = createFileRoute('/issue-6715')({
+export const Route = createFileRoute('/deferred-without-suspense')({
   component: RouteComponent,
   loader() {
     return { promise: promise() }
@@ -19,10 +19,14 @@ function RouteComponent() {
     <>
       data{' '}
       <Await
-        fallback={<p data-testid="issue-6715-loading">Loading...</p>}
+        fallback={
+          <p data-testid="deferred-without-suspense-loading">Loading...</p>
+        }
         promise={data().promise}
       >
-        {(data) => <span data-testid="issue-6715-data">{data}</span>}
+        {(data) => (
+          <span data-testid="deferred-without-suspense-data">{data}</span>
+        )}
       </Await>
     </>
   )
