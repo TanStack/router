@@ -114,7 +114,10 @@ export function useMatch<
         ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
         : (nearestMatch?.hasPending() ?? false)
 
-      if (prev !== undefined && (hasPendingMatch || router.stores.isTransitioning.get())) {
+      if (
+        prev !== undefined &&
+        (hasPendingMatch || router.stores.isTransitioning.get())
+      ) {
         return prev
       }
 

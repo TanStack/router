@@ -769,7 +769,9 @@ test('useLoaderData retains previous data while route match is pending', async (
 
   expect(await screen.findByTestId('combined')).toHaveTextContent('6:0')
 
-  const appMatch = router.state.matches.find((match) => match.routeId === '/app')
+  const appMatch = router.state.matches.find(
+    (match) => match.routeId === '/app',
+  )
 
   expect(appMatch).toBeDefined()
 
