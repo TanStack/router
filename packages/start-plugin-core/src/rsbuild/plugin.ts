@@ -161,6 +161,7 @@ export function tanStackStartRsbuild(
           routerBasepath,
           serverFnBase: startConfig.serverFns.base,
         })
+        const inlineCssEnabled = !isDev && startConfig.server.build.inlineCss
 
         return mergeRsbuildConfig(rsbuildConfig, {
           source: {
@@ -187,6 +188,12 @@ export function tanStackStartRsbuild(
               ),
               'import.meta.env.TSS_DEV_SSR_STYLES_BASEPATH': JSON.stringify(
                 resolvedStartConfig.basePaths.publicBase,
+              ),
+              'process.env.TSS_INLINE_CSS_ENABLED': JSON.stringify(
+                inlineCssEnabled ? 'true' : 'false',
+              ),
+              'import.meta.env.TSS_INLINE_CSS_ENABLED': JSON.stringify(
+                inlineCssEnabled ? 'true' : 'false',
               ),
             },
           },

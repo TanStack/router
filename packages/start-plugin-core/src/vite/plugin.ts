@@ -185,6 +185,8 @@ export function tanStackStartVite(
             devSsrStylesBasepath:
               startConfig.dev.ssrStyles.basepath ??
               resolvedStartConfig.basePaths.publicBase,
+            inlineCssEnabled:
+              command === 'build' && startConfig.server.build.inlineCss,
             staticNodeEnv: startConfig.server.build.staticNodeEnv,
           }),
           builder: {

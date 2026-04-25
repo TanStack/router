@@ -1,4 +1,5 @@
 import { tsrSplit } from '@tanstack/router-plugin'
+import { getCssAssetSource } from '../../start-manifest-plugin/inlineCss'
 import type { Rollup } from 'vite'
 import type { NormalizedClientBuild, NormalizedClientChunk } from '../../types'
 
@@ -40,6 +41,7 @@ export function normalizeViteClientBuild(
   const chunksByFileName = normalizeViteClientChunks(clientBundle)
   const chunkFileNamesByRouteFilePath = new Map<string, Array<string>>()
   const cssFilesBySourcePath = new Map<string, Array<string>>()
+  const cssContentByFileName = new Map<string, string>()
 
   for (const chunk of chunksByFileName.values()) {
     const bundleEntry = clientBundle[chunk.fileName] as Rollup.OutputChunk
@@ -78,6 +80,22 @@ export function normalizeViteClientBuild(
     }
   }
 
+  for (const fileName in clientBundle) {
+    if (!fileName.endsWith('.css')) {
+      continue
+    }
+
+    const bundleEntry = clientBundle[fileName]!
+    if (bundleEntry.type !== 'asset') {
+      continue
+    }
+
+    const css = getCssAssetSource(bundleEntry.source)
+    if (css !== undefined) {
+      cssContentByFileName.set(fileName, css)
+    }
+  }
+
   if (!entryChunkFileName) {
     throw new Error('No entry file found')
   }
@@ -87,6 +105,7 @@ export function normalizeViteClientBuild(
     chunksByFileName,
     chunkFileNamesByRouteFilePath,
     cssFilesBySourcePath,
+    cssContentByFileName,
   }
 }
 

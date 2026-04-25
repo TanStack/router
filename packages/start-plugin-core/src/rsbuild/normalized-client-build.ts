@@ -1,4 +1,5 @@
 import { tsrSplit } from '@tanstack/router-plugin'
+import { getCssAssetSource } from '../start-manifest-plugin/inlineCss'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 import type { NormalizedClientBuild, NormalizedClientChunk } from '../types'
@@ -162,6 +163,7 @@ export function normalizeRspackClientBuild(
   const chunksByFileName = new Map<string, NormalizedClientChunk>()
   const chunkFileNamesByRouteFilePath = new Map<string, Array<string>>()
   const cssFilesBySourcePath = new Map<string, Array<string>>()
+  const cssContentByFileName = new Map<string, string>()
   let entryChunkFileName: string | undefined
 
   // Collect all initial JS file names from the main entry for computing
@@ -272,6 +274,17 @@ export function normalizeRspackClientBuild(
     throw new Error('No entry file found in rspack client build')
   }
 
+  for (const asset of compilation.getAssets()) {
+    if (!asset.name.endsWith('.css')) {
+      continue
+    }
+
+    const css = getCssAssetSource(asset.source.source())
+    if (css !== undefined) {
+      cssContentByFileName.set(asset.name, css)
+    }
+  }
+
   // In RSC mode, CSS from server components is associated with the 'rsc'
   // client entry chunk (not the main 'index' entry). The manifest builder
   // merges the entry chunk's CSS into __root__, so by appending RSC CSS
@@ -299,6 +312,7 @@ export function normalizeRspackClientBuild(
     chunksByFileName,
     chunkFileNamesByRouteFilePath,
     cssFilesBySourcePath,
+    cssContentByFileName,
   }
 }
 

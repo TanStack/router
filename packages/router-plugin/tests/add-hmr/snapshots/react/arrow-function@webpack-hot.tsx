@@ -15,7 +15,6 @@ export const Route = createFileRoute('/posts')({
   loader: fetchPosts,
   component: TSRSplitComponent
 });
-import { performReactRefresh as __tsr_performReactRefresh } from 'react-refresh/runtime';
 if (import.meta.webpackHot) {
   const hot = import.meta.webpackHot;
   const hotData = hot.data ??= {};
@@ -149,16 +148,11 @@ if (import.meta.webpackHot) {
         };
       }
     })(routeId, Route);
-    const tsrRefreshState = globalThis.__TSR_HMR__ ??= {};
     try {
-      if (!tsrRefreshState.refreshScheduled) {
-        tsrRefreshState.refreshScheduled = true;
-        setTimeout(() => {
-          tsrRefreshState.refreshScheduled = false;
-          try {
-            __tsr_performReactRefresh();
-          } catch (_e) {}
-        }, 30);
+      const tsrReactRefreshUtils = typeof __react_refresh_utils__ !== 'undefined' ? __react_refresh_utils__ : undefined;
+      const tsrEnqueueUpdate = tsrReactRefreshUtils && typeof tsrReactRefreshUtils.enqueueUpdate === 'function' ? tsrReactRefreshUtils.enqueueUpdate : undefined;
+      if (tsrEnqueueUpdate) {
+        tsrEnqueueUpdate(() => {});
       }
     } catch (_err) {}
   }

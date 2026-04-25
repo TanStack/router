@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { deserialize } from 'seroval'
+import { shouldRebaseInlineCssUrls } from '../../src/start-manifest-plugin/inlineCss'
 import {
   appendUniqueAssets,
   appendUniqueStrings,
@@ -58,6 +59,18 @@ function makeChunk(options: {
       importedAssets: new Set(),
     },
   } as unknown as Rollup.OutputChunk
+}
+
+function makeCssAsset(fileName: string, source: string): Rollup.OutputAsset {
+  return {
+    type: 'asset',
+    fileName,
+    name: fileName,
+    names: [fileName],
+    source,
+    needsCodeReference: false,
+    originalFileNames: [],
+  } as unknown as Rollup.OutputAsset
 }
 
 describe('getRouteFilePathsFromModuleIds', () => {
@@ -289,7 +302,7 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/entry.css',
+          href: '/assets/shared.css',
           type: 'text/css',
         },
       },
@@ -297,7 +310,7 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/shared.css',
+          href: '/assets/entry.css',
           type: 'text/css',
         },
       },
@@ -348,10 +361,10 @@ describe('createChunkCssAssetCollector', () => {
     const assets = getChunkCssAssets(chunksByFileName.get('a.js')!)
 
     expect(assets.map((asset: any) => asset.attrs.href)).toEqual([
-      '/a.css',
-      '/b.css',
       '/shared.css',
+      '/b.css',
       '/c.css',
+      '/a.css',
     ])
   })
 
@@ -389,6 +402,81 @@ describe('createChunkCssAssetCollector', () => {
 })
 
 describe('buildStartManifest', () => {
+  test('skips inline CSS transforms when no relative URLs need rebasing', () => {
+    expect(shouldRebaseInlineCssUrls('.root {\n  color: red;\n}')).toBe(false)
+    expect(shouldRebaseInlineCssUrls('.root{background:url(/dot.svg)}')).toBe(
+      false,
+    )
+    expect(
+      shouldRebaseInlineCssUrls(
+        '.root{background:url(data:image/svg+xml,foo)}',
+      ),
+    ).toBe(false)
+    expect(shouldRebaseInlineCssUrls('.card{background:url(./dot.svg)}')).toBe(
+      true,
+    )
+    expect(shouldRebaseInlineCssUrls('@import "../theme.css";')).toBe(true)
+  })
+
+  test('embeds rebased inline CSS content when enabled', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      importedCss: ['root.css'],
+    })
+    const routeChunk = makeChunk({
+      fileName: 'dashboard.js',
+      importedCss: ['dashboard.css'],
+      moduleIds: ['/routes/dashboard.tsx?tsr-split=component'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeTestBuild({
+        'entry.js': entryChunk,
+        'dashboard.js': routeChunk,
+        'root.css': makeCssAsset('root.css', '.root{color:red}'),
+        'dashboard.css': makeCssAsset(
+          'dashboard.css',
+          '.card{background:url("./dot.svg")}',
+        ),
+      }),
+      routeTreeRoutes: {
+        __root__: {},
+        '/dashboard': { filePath: '/routes/dashboard.tsx' },
+      },
+      basePath: '/assets',
+      inlineCss: true,
+    })
+
+    expect(manifest.inlineCss?.styles['/assets/root.css']).toBe(
+      '.root{color:red}',
+    )
+    expect(manifest.inlineCss?.styles['/assets/dashboard.css']).toBe(
+      '.card{background:url(/assets/dot.svg)}',
+    )
+  })
+
+  test('throws when inline CSS content is missing for a stylesheet asset', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      importedCss: ['root.css'],
+    })
+
+    expect(() =>
+      buildStartManifest({
+        clientBuild: normalizeTestBuild({
+          'entry.js': entryChunk,
+        }),
+        routeTreeRoutes: {
+          __root__: {},
+        },
+        basePath: '/assets',
+        inlineCss: true,
+      }),
+    ).toThrow('could not find CSS content')
+  })
+
   test('allows callers to attach additional route assets', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
@@ -497,7 +585,7 @@ describe('buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/branch-a.css',
+          href: '/assets/shared.css',
           type: 'text/css',
         },
       },
@@ -505,7 +593,7 @@ describe('buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/shared.css',
+          href: '/assets/branch-a.css',
           type: 'text/css',
         },
       },
@@ -518,6 +606,44 @@ describe('buildStartManifest', () => {
         },
       },
     ])
+  })
+
+  test('orders imported chunk css before route chunk css', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+    })
+    const routeChunk = makeChunk({
+      fileName: 'field-detail-panel.js',
+      imports: ['tabs.js'],
+      importedCss: ['field-detail-panel.css'],
+      moduleIds: ['/routes/field-detail-panel.tsx?tsr-split=component'],
+    })
+    const tabsChunk = makeChunk({
+      fileName: 'tabs.js',
+      importedCss: ['tabs.css'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'field-detail-panel.js': routeChunk,
+        'tabs.js': tabsChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/field-detail-panel'] } as any,
+        '/field-detail-panel': {
+          filePath: '/routes/field-detail-panel.tsx',
+        },
+      },
+      basePath: '/assets',
+    })
+
+    expect(
+      manifest.routes['/field-detail-panel']!.assets!.map(
+        (asset: any) => asset.attrs.href,
+      ),
+    ).toEqual(['/assets/tabs.css', '/assets/field-detail-panel.css'])
   })
 
   test('dedupes route css already owned by ancestor routes', () => {
@@ -725,7 +851,7 @@ describe('route tree dedupe in buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/root.css',
+          href: '/assets/shared.css',
           type: 'text/css',
         },
       },
@@ -733,7 +859,7 @@ describe('route tree dedupe in buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/shared.css',
+          href: '/assets/root.css',
           type: 'text/css',
         },
       },
@@ -952,7 +1078,7 @@ describe('route tree dedupe in buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/root.css',
+          href: '/assets/shared-root.css',
           type: 'text/css',
         },
       },
@@ -960,7 +1086,7 @@ describe('route tree dedupe in buildStartManifest', () => {
         tag: 'link',
         attrs: {
           rel: 'stylesheet',
-          href: '/assets/shared-root.css',
+          href: '/assets/root.css',
           type: 'text/css',
         },
       },

@@ -13,9 +13,7 @@ import type * as t from '@babel/types'
  * `routeId` out of `hot.data`. `hot.dispose` stashes it for the next run, and
  * `hot.accept()` (no callback) enrolls us as a self-accepting boundary.
  *
- * Returns an array of statements so that for React we can prepend an
- * `import { performReactRefresh } from 'react-refresh/runtime'` hoisted to the
- * top of the module.
+ * Returns an array of statements that patches route definitions during HMR.
  */
 export function createWebpackHmrStatement(
   stableRouteOptionKeys: Array<string>,
@@ -30,21 +28,16 @@ export function createWebpackHmrStatement(
       ? JSON.stringify(opts.routeId)
       : 'undefined'
 
-  const statements: Array<t.Statement> = []
-
   // React-only: route modules aren't React Refresh "boundaries" (they export
   // a non-component `Route`), so the bundler's react-refresh runtime won't
   // call `performReactRefresh` for us. We kick it manually after swapping
   // route options so newly-registered component bodies get patched into live
   // fibers.
   //
-  // We import `performReactRefresh` directly from `react-refresh/runtime` —
-  // the canonical public API — rather than relying on the ProvidePlugin-
-  // injected `__react_refresh_utils__` global, whose name is an internal
-  // detail of `@rspack/plugin-react-refresh`. The rspack plugin aliases
-  // `react-refresh` → its bundled runtime (getRefreshRuntimeDirPath), so this
-  // resolves to the same singleton the plugin itself uses and shares the
-  // registry React was patched against.
+  // Webpack and Rspack refresh plugins inject `__react_refresh_utils__` via
+  // ProvidePlugin. Use it when present instead of importing
+  // `react-refresh/runtime`, because Rsbuild apps may use React without the
+  // React plugin and therefore may not have that optional dependency installed.
   //
   // Use the same delayed refresh style as Rspack's React Refresh runtime.
   // Route modules and their split component chunks can arrive in separate HMR
@@ -55,27 +48,22 @@ export function createWebpackHmrStatement(
   const reactRefreshCall =
     opts.targetFramework === 'react'
       ? `
-    const tsrRefreshState = globalThis.__TSR_HMR__ ??= {}
     try {
-      if (!tsrRefreshState.refreshScheduled) {
-        tsrRefreshState.refreshScheduled = true
-        setTimeout(() => {
-          tsrRefreshState.refreshScheduled = false
-          try { __tsr_performReactRefresh() } catch (_e) { /* noop */ }
-        }, 30)
+      const tsrReactRefreshUtils =
+        typeof __react_refresh_utils__ !== 'undefined'
+          ? __react_refresh_utils__
+          : undefined
+      const tsrEnqueueUpdate =
+        tsrReactRefreshUtils && typeof tsrReactRefreshUtils.enqueueUpdate === 'function'
+          ? tsrReactRefreshUtils.enqueueUpdate
+          : undefined
+      if (tsrEnqueueUpdate) {
+        tsrEnqueueUpdate(() => {})
       }
     } catch (_err) { /* noop */ }`
       : ''
 
-  if (opts.targetFramework === 'react') {
-    statements.push(
-      template.statement(
-        `import { performReactRefresh as __tsr_performReactRefresh } from 'react-refresh/runtime'`,
-      )(),
-    )
-  }
-
-  statements.push(
+  return [
     template.statement(
       `
 if (import.meta.webpackHot) {
@@ -104,7 +92,5 @@ if (import.meta.webpackHot) {
         syntacticPlaceholders: true,
       },
     )(),
-  )
-
-  return statements
+  ]
 }

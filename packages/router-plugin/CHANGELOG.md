@@ -1,5 +1,26 @@
 # @tanstack/router-plugin
 
+## 1.167.26
+
+### Patch Changes
+
+- refactor(router-plugin): upgrade unplugin to `v3` ([#7258](https://github.com/TanStack/router/pull/7258))
+
+## 1.167.25
+
+### Patch Changes
+
+- Fix React route HMR for webpack and rspack so it no longer imports `react-refresh/runtime`, avoiding failures when that optional dependency is not installed. ([#7255](https://github.com/TanStack/router/pull/7255))
+
+## 1.167.24
+
+### Patch Changes
+
+- Updated dependencies [[`4d864ee`](https://github.com/TanStack/router/commit/4d864eebbd184265eabb563d326ab409c93feb17)]:
+  - @tanstack/react-router@1.168.24
+  - @tanstack/router-core@1.168.16
+  - @tanstack/router-generator@1.166.34
+
 ## 1.167.23
 
 ### Patch Changes

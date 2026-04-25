@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-start",
-  "version": "1.167.39",
+  "version": "1.167.43",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -121,7 +121,7 @@
     "pathe": "^2.0.3"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.0",
+    "@rsbuild/core": "^2.0.1",
     "@tanstack/intent": "^0.0.14",
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",

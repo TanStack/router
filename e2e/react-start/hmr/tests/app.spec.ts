@@ -42,16 +42,40 @@ const routeFileRestoreChecks: Partial<
       url: string
       testId: string
       text: string
+      assert?: (page: Page) => Promise<void>
     }
   >
 > = {
-  index: { url: '/', testId: 'marker', text: 'baseline' },
+  index: {
+    url: '/',
+    testId: 'marker',
+    text: 'baseline',
+    assert: async (page) => {
+      await expect(page.getByTestId('crumb-/')).toHaveCount(0, {
+        timeout: 500,
+      })
+    },
+  },
   root: {
     url: '/',
     testId: 'root-component-marker',
     text: 'root-component-baseline',
+    assert: async (page) => {
+      await expect(page.getByTestId('crumb-__root__')).toHaveText('Home', {
+        timeout: 500,
+      })
+    },
   },
-  child: { url: '/child', testId: 'child-greeting', text: 'Hello' },
+  child: {
+    url: '/child',
+    testId: 'child-greeting',
+    text: 'Hello',
+    assert: async (page) => {
+      await expect(page.getByTestId('crumb-/child')).toHaveText('Child', {
+        timeout: 500,
+      })
+    },
+  },
   inputs: { url: '/inputs', testId: 'inputs-marker', text: 'inputs-baseline' },
   componentHmrInlineSplit: {
     url: '/component-hmr-inline-split',
@@ -245,7 +269,10 @@ async function captureOriginals() {
 
 const capturePromise = captureOriginals()
 
-async function restoreRouteFiles() {
+async function restoreRouteFiles(
+  forceRouteFileKeys: Iterable<RouteFileKey> = [],
+) {
+  const forceRestoreKeys = new Set(forceRouteFileKeys)
   const restoredRouteKeys: Array<RouteFileKey> = []
 
   for (const [key, filePath] of Object.entries(routeFiles) as Array<
@@ -254,7 +281,9 @@ async function restoreRouteFiles() {
     const content = originalContents[key]
     if (content === undefined) continue
     const current = await readFile(filePath, 'utf8')
-    if (current !== content) {
+    // Re-emit pending restores in case the watcher coalesced the previous
+    // restore write and the dev server is still serving stale route options.
+    if (current !== content || forceRestoreKeys.has(key)) {
       await writeFile(filePath, content)
       restoredRouteKeys.push(key)
     }
@@ -471,11 +500,13 @@ async function waitForRestoredRouteFile(
         restoreCheck.text,
         { timeout: 500 },
       )
+      await restoreCheck.assert?.(page)
       await page.waitForTimeout(500)
       await expect(page.getByTestId(restoreCheck.testId)).toHaveText(
         restoreCheck.text,
         { timeout: 1_000 },
       )
+      await restoreCheck.assert?.(page)
       return
     } catch (error) {
       lastError = error
@@ -521,7 +552,8 @@ test.describe('react-start hmr', () => {
 
   test.beforeEach(async ({ page }) => {
     await capturePromise
-    const restoredRouteKeys = await restoreRouteFiles()
+    const pendingRouteKeys = Array.from(routeKeysPendingRestoreCheck)
+    const restoredRouteKeys = await restoreRouteFiles(pendingRouteKeys)
     for (const routeFileKey of restoredRouteKeys) {
       routeKeysPendingRestoreCheck.add(routeFileKey)
     }
@@ -704,6 +736,7 @@ test.describe('react-start hmr', () => {
         await waitForRouteModuleUpdate(page, '/child', 'Child Updated Again')
       },
     )
+    await waitForHydrationSafeReload(page, '/child', 'Child Updated Again')
 
     // Now navigate to /child — should see the LATEST value
     await page.getByTestId('child-link').click()
@@ -747,8 +780,12 @@ test.describe('react-start hmr', () => {
   })
 
   test('preserves uncontrolled input state during HMR', async ({ page }) => {
-    await page.goto('/inputs')
-    await page.getByTestId('hydrated').waitFor({ state: 'visible' })
+    await reloadPageAndWaitForText(
+      page,
+      '/inputs',
+      'inputs-marker',
+      'inputs-baseline',
+    )
 
     // Type into both uncontrolled inputs
     await page.getByTestId('input-first').fill('first value')

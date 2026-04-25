@@ -35,6 +35,9 @@ export function resolveManifestAssetLink(link: ManifestAssetLink) {
 }
 
 export type Manifest = {
+  inlineCss?: {
+    styles: Record<string, string>
+  }
   routes: Record<
     string,
     {
@@ -65,4 +68,47 @@ export type RouterManagedTag =
       tag: 'style'
       attrs?: Record<string, any>
       children?: string
+      inlineCss?: true
     }
+
+export function getStylesheetHref(asset: RouterManagedTag) {
+  if (asset.tag !== 'link') return undefined
+
+  const rel = asset.attrs?.rel
+  const href = asset.attrs?.href
+  if (typeof href !== 'string') return undefined
+
+  const relTokens = typeof rel === 'string' ? rel.split(/\s+/) : []
+  if (!relTokens.includes('stylesheet')) return undefined
+
+  return href
+}
+
+export function isInlinableStylesheet(
+  manifest: Manifest | undefined,
+  asset: RouterManagedTag,
+) {
+  const href = getStylesheetHref(asset)
+  return !!href && manifest?.inlineCss?.styles[href] !== undefined
+}
+
+export function createInlineCssStyleAsset(css: string): RouterManagedTag {
+  return {
+    tag: 'style',
+    attrs: {
+      suppressHydrationWarning: true,
+    },
+    inlineCss: true,
+    children: css,
+  }
+}
+
+export function createInlineCssPlaceholderAsset(): RouterManagedTag {
+  return {
+    tag: 'style',
+    attrs: {
+      suppressHydrationWarning: true,
+    },
+    inlineCss: true,
+  }
+}

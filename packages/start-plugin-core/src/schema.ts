@@ -209,6 +209,12 @@ export const tanstackStartOptionsObjectSchema = z.object({
       build: z
         .object({
           staticNodeEnv: z.boolean().optional().default(true),
+          /**
+           * Inline route CSS into the server-rendered HTML response.
+           *
+           * @experimental This option is experimental!
+           */
+          inlineCss: z.boolean().optional().default(false),
         })
         .optional()
         .default({}),
