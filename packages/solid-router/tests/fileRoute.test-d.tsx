@@ -149,18 +149,9 @@ test('when creating a folder group', () => {
   expectTypeOf<'/protected'>(protectedRoute.id)
 })
 
-<<<<<<< Updated upstream
-test('when creating a file route with server middleware', () => {
-  const middleware = createMiddleware({ type: 'request' }).server(
-    ({ next }) => {
-      return next({ context: { supportsGzip: true } })
-    },
-  )
-=======
 test('when creating a file route with middleware options', () => {
   type Middleware = { readonly middleware: 'middleware' }
   const middleware = { middleware: 'middleware' } as const
->>>>>>> Stashed changes
 
   const route = createFileRoute('/invoices')({
     server: {
