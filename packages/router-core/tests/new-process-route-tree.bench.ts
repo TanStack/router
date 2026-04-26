@@ -1,8 +1,5 @@
 import { bench, describe } from 'vitest'
-import {
-  findRouteMatch,
-  processRouteTree,
-} from '../src/new-process-route-tree'
+import { findRouteMatch, processRouteTree } from '../src/new-process-route-tree'
 
 type BenchRoute = {
   id: string
