@@ -86,9 +86,10 @@ export const Match = (props: { matchId: string }) => {
           currentMatchState().ssr === false ||
           currentMatchState().ssr === 'data-only'
 
-        const shouldSkipSuspenseFallback = (isServer ?? router.isServer)
-          ? resolvedNoSsr
-          : currentMatchState().ssr === 'data-only'
+        const shouldSkipSuspenseFallback =
+          (isServer ?? router.isServer)
+            ? resolvedNoSsr
+            : currentMatchState().ssr === 'data-only'
 
         const ResolvedSuspenseBoundary = () => Solid.Suspense
 
