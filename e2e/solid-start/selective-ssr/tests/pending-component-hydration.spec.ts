@@ -7,16 +7,17 @@ test.describe('pending component hydration', () => {
   }) => {
     const browserErrors = collectBrowserErrors(page)
 
-    await page.goto('/mre-data-only')
+    await page.goto('/data-only-pending-component')
 
-    await expect(page).toHaveURL(/mre-data-only/)
+    await expect(page).toHaveURL(/data-only-pending-component/)
 
-    await expect(page.getByTestId('mre-data-only-pending')).toBeAttached()
+    await expect(
+      page.getByTestId('data-only-pending-component-pending'),
+    ).toBeAttached()
 
-    await expect(page.getByTestId('mre-data-only-ready-label')).toHaveText(
-      'OK - loader finished',
-      { timeout: 10_000 },
-    )
+    await expect(
+      page.getByTestId('data-only-pending-component-ready-label'),
+    ).toHaveText('OK - loader finished', { timeout: 10_000 })
 
     expect(browserErrors).toEqual([])
     expect(browserErrors).not.toContainEqual(
