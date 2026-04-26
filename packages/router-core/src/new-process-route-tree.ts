@@ -1186,15 +1186,14 @@ function getNodeMatch<T extends RouteLike>(
           if (casePart !== suffix) continue
         }
         // wildcard matches consume the rest of the URL and cannot have children
-        const consumed = partsLength - index
         stack.push({
           node: segment,
           index: partsLength,
           skipped,
           depth: depth + 1,
-          statics: shiftScore(statics, consumed),
-          dynamics: shiftScore(dynamics, consumed),
-          optionals: shiftScore(optionals, consumed),
+          statics,
+          dynamics,
+          optionals,
           extract,
           rawParams,
           parsedParams,
@@ -1238,9 +1237,9 @@ function getNodeMatch<T extends RouteLike>(
             index: index + 1,
             skipped,
             depth: nextDepth,
-            statics: shiftScore(statics),
-            dynamics: shiftScore(dynamics),
-            optionals: shiftScore(optionals) + 1,
+            statics,
+            dynamics,
+            optionals: optionals + segmentScore(partsLength, index),
             extract,
             rawParams,
             parsedParams,
@@ -1266,9 +1265,9 @@ function getNodeMatch<T extends RouteLike>(
           index: index + 1,
           skipped,
           depth: depth + 1,
-          statics: shiftScore(statics),
-          dynamics: shiftScore(dynamics) + 1,
-          optionals: shiftScore(optionals),
+          statics,
+          dynamics: dynamics + segmentScore(partsLength, index),
+          optionals,
           extract,
           rawParams,
           parsedParams,
@@ -1287,9 +1286,9 @@ function getNodeMatch<T extends RouteLike>(
           index: index + 1,
           skipped,
           depth: depth + 1,
-          statics: shiftScore(statics) + 1,
-          dynamics: shiftScore(dynamics),
-          optionals: shiftScore(optionals),
+          statics: statics + segmentScore(partsLength, index),
+          dynamics,
+          optionals,
           extract,
           rawParams,
           parsedParams,
@@ -1306,9 +1305,9 @@ function getNodeMatch<T extends RouteLike>(
           index: index + 1,
           skipped,
           depth: depth + 1,
-          statics: shiftScore(statics) + 1,
-          dynamics: shiftScore(dynamics),
-          optionals: shiftScore(optionals),
+          statics: statics + segmentScore(partsLength, index),
+          dynamics,
+          optionals,
           extract,
           rawParams,
           parsedParams,
@@ -1353,8 +1352,13 @@ function getNodeMatch<T extends RouteLike>(
   return null
 }
 
-function shiftScore(score: number, amount = 1): number {
-  return score * 2 ** amount
+function segmentScore(partsLength: number, index: number): number {
+  // The specificity scores are bitmasks over consumed URL segments. Earlier
+  // URL segments should dominate later ones when comparing scores, so the
+  // first real segment gets the highest bit and the last gets bit 0. Since
+  // `parts[0]` is the empty string before the leading slash, real URL segments
+  // are [1, partsLength), making this segment's bit `partsLength - index - 1`.
+  return 2 ** (partsLength - index - 1)
 }
 
 function isPerfectStaticMatch(statics: number, partsLength: number): boolean {
