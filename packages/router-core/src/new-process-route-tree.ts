@@ -1081,6 +1081,18 @@ function getNodeMatch<T extends RouteLike>(
     const { node, index, skipped, depth, statics, dynamics, optionals } = frame
     let { extract, rawParams, parsedParams } = frame
 
+    // Wildcard candidates are pushed speculatively as fallbacks in case a
+    // higher-priority wildcard later fails params.parse. If a better wildcard
+    // has already validated and become bestMatch, lower-priority wildcard
+    // fallbacks cannot win anymore and should not run params.parse.
+    if (
+      node.kind === SEGMENT_TYPE_WILDCARD &&
+      node.route &&
+      !isFrameMoreSpecific(bestMatch, frame)
+    ) {
+      continue
+    }
+
     if (node.skipOnParamError) {
       const result = validateMatchParams(path, parts, frame)
       if (!result) continue
@@ -1157,7 +1169,8 @@ function getNodeMatch<T extends RouteLike>(
 
     // 5. Try wildcard match
     if (node.wildcard) {
-      for (const segment of node.wildcard) {
+      for (let i = node.wildcard.length - 1; i >= 0; i--) {
+        const segment = node.wildcard[i]!
         const { prefix, suffix } = segment
         if (prefix) {
           if (isBeyondPath) continue
@@ -1172,10 +1185,9 @@ function getNodeMatch<T extends RouteLike>(
           const casePart = segment.caseSensitive ? end : end.toLowerCase()
           if (casePart !== suffix) continue
         }
-        // the first wildcard match is the highest priority one
         // wildcard matches consume the rest of the URL and cannot have children
         const consumed = partsLength - index
-        const frame = {
+        stack.push({
           node: segment,
           index: partsLength,
           skipped,
@@ -1186,13 +1198,7 @@ function getNodeMatch<T extends RouteLike>(
           extract,
           rawParams,
           parsedParams,
-        }
-        if (segment.skipOnParamError) {
-          const result = validateMatchParams(path, parts, frame)
-          if (!result) continue
-        }
-        stack.push(frame)
-        break
+        })
       }
     }
 

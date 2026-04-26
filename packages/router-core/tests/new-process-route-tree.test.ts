@@ -257,6 +257,12 @@ describe('findRouteMatch', () => {
         const tree = makeTree(['/a/$b/c', '/a/$b/$'])
         expect(findRouteMatch('/a/b/c', tree)?.route.id).toBe('/a/$b/c')
       })
+      it('prefix+suffix wildcard wins over prefix wildcard and plain wildcard', () => {
+        const tree = makeTree(['/a/foo{$}bar', '/a/foo{$}', '/a/$'])
+        expect(findRouteMatch('/a/fooxbar', tree)?.route.id).toBe(
+          '/a/foo{$}bar',
+        )
+      })
       it('skipped optional keeps later static priority over wildcard', () => {
         const tree = makeTree(['/{-$a}/b/c', '/b/$'])
         expect(findRouteMatch('/b/c', tree)?.route.id).toBe('/{-$a}/b/c')
@@ -812,6 +818,13 @@ describe('findRouteMatch', () => {
       const actualMatch = findRouteMatch('/dashboard', processed.processedTree)
       expect(actualMatch?.route.id).toBe('/dashboard/')
     })
+
+    it('uses an exact wildcard match instead of a fuzzy layout match', () => {
+      const tree = makeTree(['/a', '/a/$'])
+      const match = findRouteMatch('/a/b/c', tree, true)
+      expect(match?.route.id).toBe('/a/$')
+      expect(match?.rawParams).toEqual({ '*': 'b/c', _splat: 'b/c' })
+    })
   })
 
   describe('param extraction', () => {
@@ -921,6 +934,153 @@ describe('findRouteMatch', () => {
         const result = findRouteMatch(`/bar/rest`, processedTree)
         expect(result?.route.id).toBe('/{-$foo}/bar/$')
         expect(result?.rawParams).toEqual({ '*': 'rest', _splat: 'rest' })
+      })
+      it('validates a stacked wildcard route once', () => {
+        let calls = 0
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/a/$',
+              fullPath: '/a/$',
+              path: 'a/$',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    calls++
+                    return params
+                  },
+                },
+                skipRouteOnParseError: { params: true },
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/a/rest', processedTree)
+        expect(result?.route.id).toBe('/a/$')
+        expect(result?.rawParams).toEqual({ '*': 'rest', _splat: 'rest' })
+        expect(calls).toBe(1)
+      })
+      it('can fall back to a lower-priority wildcard when wildcard param parsing fails', () => {
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/a/foo{$}',
+              fullPath: '/a/foo{$}',
+              path: 'a/foo{$}',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: () => {
+                    throw new Error('skip')
+                  },
+                },
+                skipRouteOnParseError: { params: true },
+              },
+            },
+            {
+              id: '/a/$',
+              fullPath: '/a/$',
+              path: 'a/$',
+              isRoot: false,
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/a/foobar', processedTree)
+        expect(result?.route.id).toBe('/a/$')
+        expect(result?.rawParams).toEqual({ '*': 'foobar', _splat: 'foobar' })
+      })
+      it('does not validate a lower-priority wildcard after a better wildcard matches', () => {
+        let higherPriorityCalls = 0
+        let lowerPriorityCalls = 0
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/a/foo{$}',
+              fullPath: '/a/foo{$}',
+              path: 'a/foo{$}',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    higherPriorityCalls++
+                    return params
+                  },
+                },
+                skipRouteOnParseError: { params: true, priority: 1 },
+              },
+            },
+            {
+              id: '/a/$',
+              fullPath: '/a/$',
+              path: 'a/$',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    lowerPriorityCalls++
+                    return params
+                  },
+                },
+                skipRouteOnParseError: { params: true },
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/a/foobar', processedTree)
+        expect(result?.route.id).toBe('/a/foo{$}')
+        expect(result?.rawParams).toEqual({ '*': 'bar', _splat: 'bar' })
+        expect(higherPriorityCalls).toBe(1)
+        expect(lowerPriorityCalls).toBe(0)
+      })
+      it('preserves parsed params from a stacked wildcard route', () => {
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/a/$',
+              fullPath: '/a/$',
+              path: 'a/$',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => ({
+                    length: params._splat!.length,
+                  }),
+                },
+                skipRouteOnParseError: { params: true },
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/a/foo/bar', processedTree)
+        expect(result?.route.id).toBe('/a/$')
+        expect(result?.rawParams).toEqual({ '*': 'foo/bar', _splat: 'foo/bar' })
+        expect(result?.parsedParams).toEqual({ length: 7 })
       })
     })
   })
