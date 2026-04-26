@@ -233,6 +233,18 @@ describe('findRouteMatch', () => {
         const treeWithIndex = makeTree(['/a/', '/a/{-$b}'])
         expect(findRouteMatch('/a', treeWithIndex)?.route.id).toBe('/a/')
       })
+      it('optional+static vs static+wildcard', () => {
+        const tree = makeTree(['/{-$a}/b', '/a/$'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/$')
+      })
+      it('dynamic+static vs static+wildcard', () => {
+        const tree = makeTree(['/$a/b', '/a/$'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/$')
+      })
+      it('optional+static vs static+optional', () => {
+        const tree = makeTree(['/{-$a}/b', '/a/{-$b}'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/{-$b}')
+      })
     })
   })
 

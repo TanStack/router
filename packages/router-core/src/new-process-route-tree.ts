@@ -1010,6 +1010,10 @@ function buildBranch<T extends RouteLike>(node: AnySegmentNode<T>) {
   return list
 }
 
+function appendStaticMask(staticMask: number, index: number) {
+  return (staticMask | (1 << index)) >>> 0
+}
+
 type MatchStackFrame<T extends RouteLike> = {
   node: AnySegmentNode<T>
   /** index of the segment of path */
@@ -1024,6 +1028,8 @@ type MatchStackFrame<T extends RouteLike> = {
    */
   skipped: number
   statics: number
+  /** Bitmask of static match path indexes, used to prefer earlier static segments. Limited to 32 segments by JS bitwise ops. */
+  staticMask: number
   dynamics: number
   optionals: number
   /** intermediary state for param extraction */
@@ -1067,6 +1073,7 @@ function getNodeMatch<T extends RouteLike>(
       skipped: 0,
       depth: 1,
       statics: 1,
+      staticMask: 0,
       dynamics: 0,
       optionals: 0,
     },
@@ -1078,7 +1085,16 @@ function getNodeMatch<T extends RouteLike>(
 
   while (stack.length) {
     const frame = stack.pop()!
-    const { node, index, skipped, depth, statics, dynamics, optionals } = frame
+    const {
+      node,
+      index,
+      skipped,
+      depth,
+      statics,
+      staticMask,
+      dynamics,
+      optionals,
+    } = frame
     let { extract, rawParams, parsedParams } = frame
 
     if (node.skipOnParamError) {
@@ -1120,6 +1136,7 @@ function getNodeMatch<T extends RouteLike>(
         skipped,
         depth: depth + 1,
         statics,
+        staticMask,
         dynamics,
         optionals,
         extract,
@@ -1169,6 +1186,7 @@ function getNodeMatch<T extends RouteLike>(
           skipped,
           depth,
           statics,
+          staticMask,
           dynamics,
           optionals,
           extract,
@@ -1197,6 +1215,7 @@ function getNodeMatch<T extends RouteLike>(
           skipped: nextSkipped,
           depth: nextDepth,
           statics,
+          staticMask,
           dynamics,
           optionals,
           extract,
@@ -1221,6 +1240,7 @@ function getNodeMatch<T extends RouteLike>(
             skipped,
             depth: nextDepth,
             statics,
+            staticMask,
             dynamics,
             optionals: optionals + 1,
             extract,
@@ -1249,6 +1269,7 @@ function getNodeMatch<T extends RouteLike>(
           skipped,
           depth: depth + 1,
           statics,
+          staticMask,
           dynamics: dynamics + 1,
           optionals,
           extract,
@@ -1270,6 +1291,7 @@ function getNodeMatch<T extends RouteLike>(
           skipped,
           depth: depth + 1,
           statics: statics + 1,
+          staticMask: appendStaticMask(staticMask, index),
           dynamics,
           optionals,
           extract,
@@ -1289,6 +1311,7 @@ function getNodeMatch<T extends RouteLike>(
           skipped,
           depth: depth + 1,
           statics: statics + 1,
+          staticMask: appendStaticMask(staticMask, index),
           dynamics,
           optionals,
           extract,
@@ -1309,6 +1332,7 @@ function getNodeMatch<T extends RouteLike>(
           skipped,
           depth: nextDepth,
           statics,
+          staticMask,
           dynamics,
           optionals,
           extract,
@@ -1371,17 +1395,21 @@ function isFrameMoreSpecific(
   next: MatchStackFrame<any>,
 ): boolean {
   if (!prev) return true
+  if (next.statics !== prev.statics) return next.statics > prev.statics
+  if (next.staticMask !== prev.staticMask) {
+    const diff = (next.staticMask ^ prev.staticMask) >>> 0
+    const firstDifferentPosition = diff & -diff
+    return (next.staticMask & firstDifferentPosition) !== 0
+  }
   return (
-    next.statics > prev.statics ||
-    (next.statics === prev.statics &&
-      (next.dynamics > prev.dynamics ||
-        (next.dynamics === prev.dynamics &&
-          (next.optionals > prev.optionals ||
-            (next.optionals === prev.optionals &&
-              ((next.node.kind === SEGMENT_TYPE_INDEX) >
-                (prev.node.kind === SEGMENT_TYPE_INDEX) ||
-                ((next.node.kind === SEGMENT_TYPE_INDEX) ===
-                  (prev.node.kind === SEGMENT_TYPE_INDEX) &&
-                  next.depth > prev.depth)))))))
+    next.dynamics > prev.dynamics ||
+    (next.dynamics === prev.dynamics &&
+      (next.optionals > prev.optionals ||
+        (next.optionals === prev.optionals &&
+          ((next.node.kind === SEGMENT_TYPE_INDEX) >
+            (prev.node.kind === SEGMENT_TYPE_INDEX) ||
+            ((next.node.kind === SEGMENT_TYPE_INDEX) ===
+              (prev.node.kind === SEGMENT_TYPE_INDEX) &&
+              next.depth > prev.depth)))))
   )
 }
