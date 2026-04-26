@@ -5,18 +5,16 @@ import packageJson from './package.json' with { type: 'json' }
 const PORT = await getTestServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
 
-const mode = process.env.MODE ?? 'dev'
-const isDev = mode === 'dev'
-
+// #6151 only reproduces in dev — `@tanstack/solid-query` ships separate
+// development/production builds. Production builds use a single file, so the
+// dual-context bug can't manifest. This e2e is dev-only.
 export default defineConfig({
   testDir: './tests',
   workers: 1,
   reporter: [['line']],
   use: { baseURL },
   webServer: {
-    command: isDev
-      ? `PORT=${PORT} pnpm dev:e2e`
-      : `pnpm build && PORT=${PORT} pnpm start`,
+    command: `PORT=${PORT} pnpm dev:e2e`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
