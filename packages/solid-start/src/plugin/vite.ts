@@ -28,13 +28,6 @@ export function tanstackStart(
       config() {
         return {
           ssr: {
-            // `@tanstack/solid-query` ships separate `development`/production
-            // builds with their own `QueryClientContext` Symbol per file. If a
-            // SSR-externalized package (e.g. `@tanstack/solid-router-ssr-query`)
-            // imports it via Node's resolver while user source imports it via
-            // Vite's resolver, they pick different files → two contexts →
-            // `useQueryClient()` returns undefined. Force these through Vite's
-            // pipeline so resolution is consistent. See #6151.
             noExternal: [
               '@tanstack/solid-router-ssr-query',
               '@tanstack/solid-query',
