@@ -1,12 +1,11 @@
 import * as template from '@babel/template'
 import * as t from '@babel/types'
-import { createHmrHotExpressionAst } from '../../hmr-hot-expression'
 import { getUniqueProgramIdentifier } from '../../utils'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
 
 const buildReactRefreshIgnoredRouteExportsStatements = template.statements(
   `
-const hot = %%hotExpression%%
+const hot = import.meta.hot
 if (hot && typeof window !== 'undefined') {
   ;(hot.data ??= {})
   const tsrReactRefresh = window.__TSR_REACT_REFRESH__ ??= (() => {
@@ -41,9 +40,7 @@ const buildRefreshAnchorStatement = template.statement(
   { syntacticPlaceholders: true },
 )
 
-export function createReactRefreshIgnoredRouteExportsPlugin(opts?: {
-  hotExpression?: string
-}): ReferenceRouteCompilerPlugin {
+export function createReactRefreshIgnoredRouteExportsPlugin(): ReferenceRouteCompilerPlugin {
   return {
     name: 'react-refresh-ignored-route-exports',
     onAddHmr(ctx) {
@@ -55,9 +52,6 @@ export function createReactRefreshIgnoredRouteExportsPlugin(opts?: {
       ctx.programPath.pushContainer(
         'body',
         buildReactRefreshIgnoredRouteExportsStatements({
-          hotExpression: createHmrHotExpressionAst(
-            opts?.hotExpression ?? ctx.opts.hmrHotExpression,
-          ),
           moduleId: t.stringLiteral(ctx.opts.id),
         }),
       )

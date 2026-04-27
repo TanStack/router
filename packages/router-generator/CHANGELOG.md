@@ -1,5 +1,25 @@
 # @tanstack/router-generator
 
+## 1.166.35
+
+### Patch Changes
+
+- Use jiti instead of tsx to load virtual route config files. ([#7261](https://github.com/TanStack/router/pull/7261))
+
+## 1.166.34
+
+### Patch Changes
+
+- Updated dependencies [[`4d864ee`](https://github.com/TanStack/router/commit/4d864eebbd184265eabb563d326ab409c93feb17)]:
+  - @tanstack/router-core@1.168.16
+
+## 1.166.33
+
+### Patch Changes
+
+- Updated dependencies [[`91a7089`](https://github.com/TanStack/router/commit/91a708989d00537a21911e74ff60bbfec8266295)]:
+  - @tanstack/router-utils@1.161.7
+
 ## 1.166.32
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.168.16
+
+### Patch Changes
+
+- Add TanStack Start inline CSS manifest support for SSR so route styles can be embedded in the HTML response and hydrated without duplicate stylesheet links. ([#7253](https://github.com/TanStack/router/pull/7253))
+
 ## 1.168.15
 
 ### Patch Changes

@@ -3,7 +3,6 @@ import { renderToReadableStream } from 'virtual:tanstack-rsc-runtime'
 import { getRequest } from '@tanstack/start-server-core'
 import { getStartContext } from '@tanstack/start-storage-context'
 import { sanitizeSlotArgs } from './slotUsageSanitizer'
-
 import { ReplayableStream } from './ReplayableStream'
 import { ClientSlot } from './ClientSlot'
 import {
@@ -103,12 +102,11 @@ export async function createCompositeComponent<TComp>(
     // For SSR we know decode fully consumed the Flight stream.
     slotUsagesEmitter?.close()
 
-    const proxy = ssrHandler.createCompositeProxy(
+    return ssrHandler.createCompositeProxy(
       stream,
       decoded,
       slotUsagesEmitter?.stream,
-    )
-    return proxy as CompositeComponentResult<TComp>
+    ) as CompositeComponentResult<TComp>
   }
 
   // Server function call path:

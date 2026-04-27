@@ -1,5 +1,36 @@
 # @tanstack/solid-router
 
+## 1.168.24
+
+### Patch Changes
+
+- Fix hydration mismatch for ssr='data-only' with pendingComponent ([#7266](https://github.com/TanStack/router/pull/7266))
+
+## 1.168.23
+
+### Patch Changes
+
+- Fix for useLoaderData sometimes going undefined ([#7265](https://github.com/TanStack/router/pull/7265))
+
+- Fix streaming when using Await component ([#7264](https://github.com/TanStack/router/pull/7264))
+
+## 1.168.22
+
+### Patch Changes
+
+- fix server middleware type in solid-router ([#7260](https://github.com/TanStack/router/pull/7260))
+
+- Enhanced internal tag comparison logic to optimize stylesheet persistence during route navigation. ([#7250](https://github.com/TanStack/router/pull/7250))
+
+## 1.168.21
+
+### Patch Changes
+
+- Add TanStack Start inline CSS manifest support for SSR so route styles can be embedded in the HTML response and hydrated without duplicate stylesheet links. ([#7253](https://github.com/TanStack/router/pull/7253))
+
+- Updated dependencies [[`4d864ee`](https://github.com/TanStack/router/commit/4d864eebbd184265eabb563d326ab409c93feb17)]:
+  - @tanstack/router-core@1.168.16
+
 ## 1.168.20
 
 ### Patch Changes

@@ -13,6 +13,7 @@ import { handleCreateMiddleware } from './handleCreateMiddleware'
 import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
 import { handleEnvOnlyFn } from './handleEnvOnly'
 import { handleClientOnlyJSX } from './handleClientOnlyJSX'
+import { cleanId } from './utils'
 import type {
   CompilationContext,
   DevServerFnModuleSpecifierEncoder,
@@ -259,6 +260,19 @@ function isNestedDirectCallCandidate(node: t.CallExpression): boolean {
   return calleeName !== undefined && DirectCallFactoryNames.has(calleeName)
 }
 
+function isSimpleDirectCallExpression(node: t.CallExpression): boolean {
+  return (
+    t.isIdentifier(node.callee) ||
+    (t.isMemberExpression(node.callee) &&
+      t.isIdentifier(node.callee.object) &&
+      t.isIdentifier(node.callee.property))
+  )
+}
+
+function isTopLevelDirectCallCandidateNode(node: t.CallExpression): boolean {
+  return isSimpleDirectCallExpression(node)
+}
+
 /**
  * Checks if a CallExpression path is a top-level direct-call candidate.
  * Top-level means the call is the init of a VariableDeclarator at program level.
@@ -272,13 +286,7 @@ function isTopLevelDirectCallCandidate(
   const node = path.node
 
   // Must be a simple identifier call or namespace call
-  const isSimpleCall =
-    t.isIdentifier(node.callee) ||
-    (t.isMemberExpression(node.callee) &&
-      t.isIdentifier(node.callee.object) &&
-      t.isIdentifier(node.callee.property))
-
-  if (!isSimpleCall) {
+  if (!isSimpleDirectCallExpression(node)) {
     return false
   }
 
@@ -292,6 +300,12 @@ function isTopLevelDirectCallCandidate(
     return false
   }
   return t.isProgram(path.parentPath.parentPath?.parent)
+}
+
+function isDirectCallCandidateForKind(
+  kind: Exclude<LookupKind, 'ClientOnlyJSX'>,
+): boolean {
+  return LookupSetup[kind].type === 'directCall'
 }
 
 export class StartCompiler {
@@ -530,7 +544,6 @@ export class StartCompiler {
 
   /**
    * Extracts bindings and exports from an already-parsed AST.
-   * This is the core logic shared by ingestModule and ingestModuleFromAst.
    */
   private extractModuleInfo(
     ast: ReturnType<typeof parseAst>,
@@ -642,10 +655,105 @@ export class StartCompiler {
   }
 
   public invalidateModule(id: string) {
-    // Note: Resolution caches (resolveIdCache, exportResolutionCache) are only
-    // used in build mode where there's no HMR. In dev mode, caching is disabled,
-    // so we only need to invalidate the moduleCache here.
-    return this.moduleCache.delete(id)
+    const normalizedId = cleanId(id)
+    let hasCachedModule = false
+
+    for (const moduleId of Array.from(this.moduleCache.keys())) {
+      if (cleanId(moduleId) === normalizedId) {
+        this.moduleCache.delete(moduleId)
+        hasCachedModule = true
+      }
+    }
+
+    // Root import metadata is synthetic compiler state and should survive HMR.
+    // The stale dev state lives in per-module resolvedKind memoization.
+    for (const [moduleId, moduleInfo] of this.moduleCache) {
+      if (this.knownRootImports.has(moduleId)) {
+        continue
+      }
+
+      for (const binding of moduleInfo.bindings.values()) {
+        binding.resolvedKind = undefined
+      }
+    }
+
+    // Build-mode caches are cheap to rebuild and may point at removed entries.
+    this.resolveIdCache.clear()
+    this.exportResolutionCache.clear()
+
+    return hasCachedModule
+  }
+
+  public async getTransitiveImporters(id: string): Promise<Set<string>> {
+    const discoveredImporters = new Set<string>()
+    const pendingTargets = [cleanId(id)]
+    const visitedTargets = new Set<string>()
+    const resolveCache = new Map<string, Promise<string | null>>()
+
+    const resolveSource = (source: string, importer: string) => {
+      const cacheKey = `${importer}::${source}`
+      let resolved = resolveCache.get(cacheKey)
+
+      if (!resolved) {
+        resolved = this.resolveIdCached(source, importer)
+        resolveCache.set(cacheKey, resolved)
+      }
+
+      return resolved
+    }
+
+    while (pendingTargets.length > 0) {
+      const targetId = pendingTargets.pop()!
+
+      if (visitedTargets.has(targetId)) {
+        continue
+      }
+
+      visitedTargets.add(targetId)
+
+      const importerIds = await Promise.all(
+        Array.from(this.moduleCache.values()).map(async (moduleInfo) => {
+          if (this.knownRootImports.has(moduleInfo.id)) {
+            return null
+          }
+
+          const moduleId = cleanId(moduleInfo.id)
+
+          if (moduleId === targetId) {
+            return null
+          }
+
+          const importSources = new Set(moduleInfo.reExportAllSources)
+
+          for (const binding of moduleInfo.bindings.values()) {
+            if (binding.type === 'import') {
+              importSources.add(binding.source)
+            }
+          }
+
+          for (const source of importSources) {
+            const resolved = await resolveSource(source, moduleInfo.id)
+
+            if (resolved && cleanId(resolved) === targetId) {
+              return moduleId
+            }
+          }
+
+          return null
+        }),
+      )
+
+      for (const importerId of importerIds) {
+        if (!importerId || discoveredImporters.has(importerId)) {
+          continue
+        }
+
+        discoveredImporters.add(importerId)
+        pendingTargets.push(importerId)
+      }
+    }
+
+    return discoveredImporters
   }
 
   public async compile({
@@ -719,7 +827,10 @@ export class StartCompiler {
         if (declarations) {
           for (const decl of declarations) {
             if (decl.init && t.isCallExpression(decl.init)) {
-              if (isMethodChainCandidate(decl.init, fileKinds)) {
+              if (
+                isMethodChainCandidate(decl.init, fileKinds) ||
+                isTopLevelDirectCallCandidateNode(decl.init)
+              ) {
                 candidateIndices.push(i)
                 break // Only need to mark this statement once
               }
@@ -760,6 +871,11 @@ export class StartCompiler {
                 // Method chain pattern
                 if (isMethodChainCandidate(node, fileKinds)) {
                   candidatePaths.push(path)
+                  return
+                }
+
+                if (isTopLevelDirectCallCandidate(path)) {
+                  candidatePaths.push(path)
                 }
               },
             })
@@ -792,11 +908,14 @@ export class StartCompiler {
             return
           }
 
+          if (isTopLevelDirectCallCandidate(path)) {
+            candidatePaths.push(path)
+            return
+          }
+
           // Pattern 2: Direct call pattern
           if (checkDirectCalls) {
-            if (isTopLevelDirectCallCandidate(path)) {
-              candidatePaths.push(path)
-            } else if (isNestedDirectCallCandidate(node)) {
+            if (isNestedDirectCallCandidate(node)) {
               candidatePaths.push(path)
             }
           }
@@ -845,9 +964,23 @@ export class StartCompiler {
     )
 
     // Filter to valid candidates
-    const validCandidates = resolvedCandidates.filter(({ kind }) =>
-      this.validLookupKinds.has(kind as Exclude<LookupKind, 'ClientOnlyJSX'>),
-    ) as Array<{
+    const validCandidates = resolvedCandidates.filter(({ path, kind }) => {
+      if (
+        !this.validLookupKinds.has(kind as Exclude<LookupKind, 'ClientOnlyJSX'>)
+      ) {
+        return false
+      }
+
+      if (
+        isLookupKind(kind) &&
+        kind !== 'ClientOnlyJSX' &&
+        !isMethodChainCandidate(path.node, fileKinds)
+      ) {
+        return isDirectCallCandidateForKind(kind)
+      }
+
+      return true
+    }) as Array<{
       path: babel.NodePath<t.CallExpression>
       kind: Exclude<LookupKind, 'ClientOnlyJSX'>
     }>
@@ -925,6 +1058,7 @@ export class StartCompiler {
       code,
       env: this.options.env,
       envName: this.options.envName,
+      mode: this.mode,
       root: this.options.root,
       framework: this.options.framework,
       providerEnvName: this.options.providerEnvName,

@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@auth/core": "^0.41.1",
-    "@tanstack/solid-router": "^1.168.20",
+    "@tanstack/solid-router": "^1.168.24",
     "@tanstack/solid-router-devtools": "^1.166.13",
-    "@tanstack/solid-start": "^1.167.37",
+    "@tanstack/solid-start": "^1.167.47",
     "start-authjs": "^1.0.0",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0"

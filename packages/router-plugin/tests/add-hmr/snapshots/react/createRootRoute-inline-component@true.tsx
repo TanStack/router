@@ -48,12 +48,18 @@ if (import.meta.hot) {
             delete oldRoute.options[key];
           }
         });
+        const oldHasShellComponent = "shellComponent" in oldRoute.options;
+        const newHasShellComponent = "shellComponent" in newRoute.options;
+        const preserveComponentIdentity = oldHasShellComponent === newHasShellComponent;
         const componentKeys = ["component", "shellComponent", "pendingComponent", "errorComponent", "notFoundComponent"];
-        componentKeys.forEach(key => {
-          if (key in oldRoute.options && key in newRoute.options) {
-            newRoute.options[key] = oldRoute.options[key];
-          }
-        });
+        if (preserveComponentIdentity) {
+          componentKeys.forEach(key => {
+            if (key in oldRoute.options && key in newRoute.options) {
+              newRoute.options[key] = oldRoute.options[key];
+            }
+          });
+        }
+        ;
         oldRoute.options = newRoute.options;
         oldRoute.update(newRoute.options);
         oldRoute._componentsPromise = undefined;
@@ -86,6 +92,7 @@ if (import.meta.hot) {
                     ;
                     if (removedKeys.has("beforeLoad")) {
                       next.__beforeLoadContext = undefined;
+                      next.context = rebuildMatchContextWithoutBeforeLoad(next);
                     }
                     ;
                     return next;
@@ -109,6 +116,46 @@ if (import.meta.hot) {
           node.dynamic?.forEach(child => walkReplaceSegmentTree(route, child));
           node.optional?.forEach(child => walkReplaceSegmentTree(route, child));
           node.wildcard?.forEach(child => walkReplaceSegmentTree(route, child));
+        }
+        function getStoreMatch(matchId) {
+          return router.stores.pendingMatchStores.get(matchId)?.get() || router.stores.matchStores.get(matchId)?.get() || router.stores.cachedMatchStores.get(matchId)?.get();
+        }
+        function getMatchList(matchId) {
+          const pendingMatches = router.stores.pendingMatches.get();
+          if (pendingMatches.some(match => match.id === matchId)) {
+            return pendingMatches;
+          }
+          ;
+          const activeMatches = router.stores.matches.get();
+          if (activeMatches.some(match => match.id === matchId)) {
+            return activeMatches;
+          }
+          ;
+          const cachedMatches = router.stores.cachedMatches.get();
+          if (cachedMatches.some(match => match.id === matchId)) {
+            return cachedMatches;
+          }
+          ;
+          return [];
+        }
+        function getParentMatch(match) {
+          const matchList = getMatchList(match.id);
+          const matchIndex = matchList.findIndex(item => item.id === match.id);
+          if (matchIndex <= 0) {
+            return undefined;
+          }
+          ;
+          const parentMatch = matchList[matchIndex - 1];
+          return getStoreMatch(parentMatch.id) || parentMatch;
+        }
+        function rebuildMatchContextWithoutBeforeLoad(match) {
+          const parentMatch = getParentMatch(match);
+          const getParentContext = router.getParentContext;
+          const parentContext = getParentContext ? getParentContext.call(router, parentMatch) : parentMatch?.context ?? router.options.context;
+          return {
+            ...(parentContext ?? {}),
+            ...(match.__routeContext ?? {})
+          };
         }
       })(routeId, newModule.Route);
     }

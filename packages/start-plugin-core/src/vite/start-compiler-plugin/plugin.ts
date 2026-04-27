@@ -1,4 +1,3 @@
-import assert from 'node:assert'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { resolve as resolvePath } from 'pathe'
 import {
@@ -12,7 +11,6 @@ import {
   createStartCompiler,
   mergeServerFnsById,
 } from '../../start-compiler/host'
-import { loadModuleForViteCompiler } from '../../start-compiler/load-module'
 import { generateServerFnResolverModule } from '../../start-compiler/server-fn-resolver-module'
 import { cleanId } from '../../start-compiler/utils'
 import { createVirtualModule } from '../createVirtualModule'
@@ -21,17 +19,116 @@ import {
   createViteDevServerFnModuleSpecifierEncoder,
   decodeViteDevServerModuleSpecifier,
 } from './module-specifier'
+import { mergeHotUpdateModules } from './hot-update'
 import type { CompileStartFrameworkOptions } from '../../types'
 import type {
   GenerateFunctionIdFnOptional,
   ServerFn,
 } from '../../start-compiler/types'
-import type { PluginOption } from 'vite'
+import type { EnvironmentModuleNode, PluginOption } from 'vite'
 
 // Re-export from shared constants for backwards compatibility
 export { SERVER_FN_LOOKUP }
 
 const validateServerFnIdVirtualModule = `virtual:tanstack-start-validate-server-fn-id`
+const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
+
+type ModuleInvalidationEnvironment = {
+  moduleGraph: {
+    getModulesByFile: (file: string) => Set<EnvironmentModuleNode> | undefined
+    invalidateModule: (
+      mod: EnvironmentModuleNode,
+      seen?: Set<EnvironmentModuleNode>,
+    ) => void
+  }
+}
+
+function invalidateMatchingFileModules(
+  environment: ModuleInvalidationEnvironment,
+  ids: Iterable<string>,
+  shouldInvalidate: (mod: EnvironmentModuleNode) => boolean,
+) {
+  const seen = new Set<EnvironmentModuleNode>()
+  const invalidatedModules: Array<EnvironmentModuleNode> = []
+
+  for (const id of ids) {
+    const fileModules = environment.moduleGraph.getModulesByFile(cleanId(id))
+
+    if (!fileModules) {
+      continue
+    }
+
+    for (const fileModule of fileModules) {
+      if (!shouldInvalidate(fileModule)) {
+        continue
+      }
+
+      environment.moduleGraph.invalidateModule(fileModule, seen)
+      invalidatedModules.push(fileModule)
+    }
+  }
+
+  return invalidatedModules
+}
+
+function invalidateServerFnProviderModules(
+  environment: {
+    moduleGraph: {
+      getModulesByFile: (file: string) => Set<EnvironmentModuleNode> | undefined
+      invalidateModule: (
+        mod: EnvironmentModuleNode,
+        seen?: Set<EnvironmentModuleNode>,
+      ) => void
+    }
+  },
+  ids: Iterable<string>,
+) {
+  return invalidateMatchingFileModules(
+    environment,
+    ids,
+    (fileModule) => fileModule.id?.includes(TSS_SERVERFN_SPLIT_PARAM) ?? false,
+  )
+}
+
+function invalidateServerFnLookupModules(
+  environment: ModuleInvalidationEnvironment,
+  ids: Iterable<string>,
+) {
+  invalidateMatchingFileModules(
+    environment,
+    ids,
+    (fileModule) => fileModule.id?.includes(SERVER_FN_LOOKUP) ?? false,
+  )
+}
+
+function getServerFnProviderIds(ids: Iterable<string>) {
+  const providerIds = new Set<string>()
+
+  for (const id of ids) {
+    const cleanedId = cleanId(id)
+    providerIds.add(`${cleanedId}?${TSS_SERVERFN_SPLIT_PARAM}`)
+  }
+
+  return providerIds
+}
+
+function invalidateModuleNodes(
+  environment: {
+    moduleGraph: {
+      invalidateModule: (
+        mod: EnvironmentModuleNode,
+        seen?: Set<EnvironmentModuleNode>,
+      ) => void
+    }
+  },
+  modules: Iterable<EnvironmentModuleNode>,
+) {
+  const seen = new Set<EnvironmentModuleNode>()
+
+  for (const mod of modules) {
+    environment.moduleGraph.invalidateModule(mod, seen)
+  }
+}
 
 function getDevServerFnValidatorModule(): string {
   return `
@@ -148,16 +245,23 @@ export function startCompilerPlugin(
                   ? createViteDevServerFnModuleSpecifierEncoder(root)
                   : undefined,
               loadModule: async (id: string) => {
-                await loadModuleForViteCompiler({
-                  compiler: compiler!,
-                  mode: this.environment.mode,
-                  fetchModule:
-                    this.environment.mode === 'dev'
-                      ? this.environment.fetchModule.bind(this.environment)
-                      : undefined,
-                  loadModule: this.load.bind(this),
-                  id,
-                })
+                if (mode === 'build') {
+                  const loaded = await this.load({ id })
+                  const code = loaded.code ?? ''
+
+                  compiler!.ingestModule({ code, id })
+                  return
+                }
+
+                if (this.environment.mode !== 'dev') {
+                  this.error(
+                    `could not load module ${id}: unknown environment mode ${this.environment.mode}`,
+                  )
+                }
+
+                await this.environment.transformRequest(
+                  `${id}?${SERVER_FN_LOOKUP}`,
+                )
               },
 
               resolveId: async (source: string, importer?: string) => {
@@ -190,19 +294,85 @@ export function startCompilerPlugin(
 
       hotUpdate(ctx) {
         const compiler = compilers.get(this.environment.name)
+        const idsToInvalidate = new Set<string>()
+        const transitiveCompilerImportersToInvalidate = new Set<string>()
+        const importerModulesToInvalidate = new Set<EnvironmentModuleNode>()
 
         ctx.modules.forEach((m) => {
           if (m.id) {
+            idsToInvalidate.add(m.id)
             const deleted = compiler?.invalidateModule(m.id)
+
+            if (deleted) {
+              transitiveCompilerImportersToInvalidate.add(cleanId(m.id))
+            }
+
             if (deleted) {
               m.importers.forEach((importer) => {
                 if (importer.id) {
-                  compiler?.invalidateModule(importer.id)
+                  idsToInvalidate.add(importer.id)
+                  importerModulesToInvalidate.add(importer)
+                  transitiveCompilerImportersToInvalidate.add(
+                    cleanId(importer.id),
+                  )
                 }
               })
             }
           }
         })
+
+        const finishHotUpdate = async () => {
+          if (environment.type === 'server' && compiler) {
+            const pendingImporters = [
+              ...transitiveCompilerImportersToInvalidate,
+            ]
+            const seenImporters = new Set(pendingImporters)
+
+            while (pendingImporters.length > 0) {
+              const importerId = pendingImporters.pop()!
+              const nestedImporters =
+                await compiler.getTransitiveImporters(importerId)
+
+              for (const nestedImporterId of nestedImporters) {
+                if (seenImporters.has(nestedImporterId)) {
+                  continue
+                }
+
+                seenImporters.add(nestedImporterId)
+                pendingImporters.push(nestedImporterId)
+              }
+            }
+
+            for (const importerId of seenImporters) {
+              idsToInvalidate.add(importerId)
+              compiler.invalidateModule(importerId)
+            }
+          }
+
+          invalidateModuleNodes(this.environment, importerModulesToInvalidate)
+          invalidateServerFnLookupModules(this.environment, idsToInvalidate)
+
+          if (environment.type !== 'server') {
+            return
+          }
+
+          invalidateModuleNodes(this.environment, ctx.modules)
+
+          const providerIdsToInvalidate =
+            getServerFnProviderIds(idsToInvalidate)
+          for (const providerId of providerIdsToInvalidate) {
+            compiler?.invalidateModule(providerId)
+          }
+
+          const providerModules = invalidateServerFnProviderModules(
+            this.environment,
+            [...idsToInvalidate, ...providerIdsToInvalidate],
+          )
+
+          return mergeHotUpdateModules(ctx.modules, providerModules)
+        }
+
+        return finishHotUpdate()
       },
     }
   }
@@ -267,10 +437,15 @@ export function startCompilerPlugin(
                   // Trigger transform of the source file in this environment,
                   // which will compile createServerFn calls and populate
                   // serverFnsById as a side effect.
-                  // This plugin only runs in dev (apply: 'serve'), so mode
-                  // must be 'dev' — assert to narrow to DevEnvironment.
-                  assert(this.environment.mode === 'dev')
-                  await this.environment.fetchModule(absPath)
+                  if (this.environment.mode !== 'dev') {
+                    this.error(
+                      `could not validate server function ID ${fnId}: unknown environment mode ${this.environment.mode}`,
+                    )
+                  }
+
+                  await this.environment.transformRequest(
+                    `${absPath}?${SERVER_FN_LOOKUP}`,
+                  )
 
                   // Re-check after lazy compilation
                   if (serverFnsById[fnId]) {

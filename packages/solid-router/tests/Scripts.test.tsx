@@ -223,6 +223,97 @@ describe('ssr scripts', () => {
     ).toHaveLength(1)
   })
 
+  test('keeps manifest stylesheet links mounted when preload counts change', async () => {
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <HeadContent />
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const aRoute = createRoute({
+      path: '/a',
+      getParentRoute: () => rootRoute,
+      component: () => <Link to="/b">Go to B</Link>,
+    })
+
+    const bRoute = createRoute({
+      path: '/b',
+      getParentRoute: () => rootRoute,
+      component: () => <Link to="/a">Go to A</Link>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([aRoute, bRoute]),
+    })
+
+    router.ssr = {
+      manifest: {
+        routes: {
+          [rootRoute.id]: {
+            preloads: ['/root.js'],
+            assets: [
+              {
+                tag: 'link',
+                attrs: {
+                  rel: 'stylesheet',
+                  href: '/main.css',
+                },
+              },
+            ],
+          },
+          [aRoute.id]: {
+            preloads: ['/a.js'],
+            assets: [],
+          },
+          [bRoute.id]: {
+            preloads: ['/b.js', '/b-child.js'],
+            assets: [],
+          },
+        },
+      },
+    }
+
+    await router.navigate({ to: '/a' })
+    await router.load()
+
+    render(() => <RouterProvider router={router} />)
+
+    const getStylesheetLink = () =>
+      Array.from(document.head.querySelectorAll('link[rel="stylesheet"]')).find(
+        (link) => link.getAttribute('href') === '/main.css',
+      )
+
+    await waitFor(() => {
+      expect(getStylesheetLink()).toBeInstanceOf(HTMLLinkElement)
+    })
+
+    const initialLink = getStylesheetLink()
+    expect(initialLink).toBeInstanceOf(HTMLLinkElement)
+
+    fireEvent.click(screen.getByRole('link', { name: 'Go to B' }))
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/b')
+    })
+
+    await screen.findByRole('link', { name: 'Go to A' })
+
+    expect(getStylesheetLink()).toBe(initialLink)
+    expect(
+      Array.from(
+        document.head.querySelectorAll('link[rel="stylesheet"]'),
+      ).filter((link) => link.getAttribute('href') === '/main.css'),
+    ).toHaveLength(1)
+  })
+
   test('applies assetCrossOrigin to manifest assets and preloads', async () => {
     const history = createTestBrowserHistory()
 

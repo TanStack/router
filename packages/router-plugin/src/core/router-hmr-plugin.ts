@@ -1,10 +1,9 @@
 import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import { compileCodeSplitReferenceRoute } from './code-splitter/compilers'
 import { getReferenceRouteCompilerPlugins } from './code-splitter/plugins/framework-plugins'
-import { createRouteHmrStatement } from './route-hmr-statement'
+import { createRouteHmrStatement } from './hmr'
 import { debug, normalizePath } from './utils'
 import { getConfig } from './config'
-import { resolveHmrHotExpression } from './hmr-hot-expression'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
 
@@ -38,28 +37,28 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
       },
       handler(code, id) {
         const normalizedId = normalizePath(id)
-        if (!globalThis.TSR_ROUTES_BY_ID_MAP?.has(normalizedId)) {
+        const routeEntry = globalThis.TSR_ROUTES_BY_ID_MAP?.get(normalizedId)
+        if (!routeEntry) {
           return null
         }
 
         if (debug) console.info('Adding HMR handling to route ', normalizedId)
 
-        const hmrHotExpression = resolveHmrHotExpression(
-          userConfig.plugin?.hmr?.hotExpression,
-        )
+        const hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
 
         if (userConfig.target === 'react') {
           const compilerPlugins = getReferenceRouteCompilerPlugins({
             targetFramework: 'react',
             addHmr: true,
-            hmrHotExpression,
+            hmrStyle,
           })
           const compiled = compileCodeSplitReferenceRoute({
             code,
             filename: normalizedId,
             id: normalizedId,
             addHmr: true,
-            hmrHotExpression,
+            hmrStyle,
+            hmrRouteId: routeEntry.routeId,
             codeSplitGroupings: [],
             targetFramework: 'react',
             compilerPlugins,
@@ -77,7 +76,11 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
 
         const ast = parseAst({ code })
         ast.program.body.push(
-          createRouteHmrStatement([], { hotExpression: hmrHotExpression }),
+          ...createRouteHmrStatement([], {
+            hmrStyle,
+            targetFramework: userConfig.target,
+            routeId: routeEntry.routeId,
+          }),
         )
         const result = generateFromAst(ast, {
           sourceMaps: true,

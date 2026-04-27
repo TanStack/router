@@ -1,10 +1,10 @@
 import { fileURLToPath } from 'node:url'
 import path from 'pathe'
-import { createVirtualModule } from '@tanstack/start-plugin-core'
+import { createVirtualModule } from '@tanstack/start-plugin-core/vite'
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,
-} from '@tanstack/start-plugin-core'
+} from '@tanstack/start-plugin-core/vite'
 import type { PluginOption, UserConfig } from 'vite'
 
 const isClientEnvironment = (env: { config: { consumer: string } }) =>

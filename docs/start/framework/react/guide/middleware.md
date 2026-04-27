@@ -225,7 +225,7 @@ The `.client` method is used to define client-side logic that the middleware wil
 import { createMiddleware } from '@tanstack/react-start'
 
 const loggingMiddleware = createMiddleware({ type: 'function' }).client(
-  async ({ next, context, request }) => {
+  async ({ next, context }) => {
     const result = await next() // <-- This will execute the next middleware in the chain and eventually, the RPC to the server
     return result
   },

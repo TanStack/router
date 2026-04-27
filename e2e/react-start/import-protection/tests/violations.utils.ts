@@ -29,6 +29,11 @@ export function stripAnsi(input: string): string {
 export function extractViolationsFromLog(text: string): Array<Violation> {
   const out: Array<Violation> = []
   const lines = stripAnsi(text).split(/\r?\n/)
+  const stripBoxPrefix = (line: string) =>
+    line
+      .replace(/^\s*│\s?/, '')
+      .replace(/^\s*\|\s?/, '')
+      .trimEnd()
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? ''
@@ -48,11 +53,15 @@ export function extractViolationsFromLog(text: string): Array<Violation> {
       block.push(l)
     }
 
-    const importerLine = block.find((b) =>
+    const normalizedBlock = block.map(stripBoxPrefix)
+
+    const importerLine = normalizedBlock.find((b) =>
       b.trimStart().startsWith('Importer:'),
     )
-    const specLine = block.find((b) => b.trimStart().startsWith('Import:'))
-    const resolvedLine = block.find((b) =>
+    const specLine = normalizedBlock.find((b) =>
+      b.trimStart().startsWith('Import:'),
+    )
+    const resolvedLine = normalizedBlock.find((b) =>
       b.trimStart().startsWith('Resolved:'),
     )
 
@@ -66,7 +75,9 @@ export function extractViolationsFromLog(text: string): Array<Violation> {
       ? resolvedLine.split('Resolved:')[1]!.trim()
       : undefined
 
-    const typeLine = block.find((b) => b.trimStart().startsWith('Denied by'))
+    const typeLine = normalizedBlock.find((b) =>
+      b.trimStart().startsWith('Denied by'),
+    )
     const type = typeLine?.includes('marker')
       ? 'marker'
       : typeLine?.includes('specifier')
@@ -76,10 +87,10 @@ export function extractViolationsFromLog(text: string): Array<Violation> {
           : 'unknown'
 
     const trace: Array<TraceStep> = []
-    const traceStart = block.findIndex((b) => b.trim() === 'Trace:')
+    const traceStart = normalizedBlock.findIndex((b) => b.trim() === 'Trace:')
     if (traceStart !== -1) {
-      for (let k = traceStart + 1; k < block.length; k++) {
-        const l = block[k] ?? ''
+      for (let k = traceStart + 1; k < normalizedBlock.length; k++) {
+        const l = normalizedBlock[k] ?? ''
         const m = l.match(
           /^\s*\d+\.\s+(.*?)(?:\s+\(entry\))?\s*(?:\(import "(.*)"\))?\s*$/,
         )
@@ -108,12 +119,12 @@ export function extractViolationsFromLog(text: string): Array<Violation> {
 
     // Parse Code: snippet block
     let snippet: CodeSnippet | undefined
-    const codeStart = block.findIndex((b) => b.trim() === 'Code:')
+    const codeStart = normalizedBlock.findIndex((b) => b.trim() === 'Code:')
     if (codeStart !== -1) {
       const snippetLines: Array<string> = []
       let location: string | undefined
-      for (let k = codeStart + 1; k < block.length; k++) {
-        const l = block[k] ?? ''
+      for (let k = codeStart + 1; k < normalizedBlock.length; k++) {
+        const l = normalizedBlock[k] ?? ''
         // Snippet lines start with ">  " or "   " (marker + gutter + pipe)
         if (/^\s*[> ]\s*\d+\s*\|/.test(l) || /^\s+\|/.test(l)) {
           snippetLines.push(l)

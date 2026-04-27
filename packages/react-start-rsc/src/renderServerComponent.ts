@@ -1,7 +1,6 @@
 import { renderToReadableStream } from 'virtual:tanstack-rsc-runtime'
 import { getRequest } from '@tanstack/start-server-core'
 import { getStartContext } from '@tanstack/start-storage-context'
-
 import { ReplayableStream } from './ReplayableStream'
 import { RENDERABLE_RSC, SERVER_COMPONENT_STREAM } from './ServerComponentTypes'
 import type {
@@ -59,7 +58,6 @@ export function isRenderableRscHandle(
 export async function renderServerComponent<TNode>(
   node: ValidateRenderableServerComponent<TNode>,
 ): Promise<RenderableServerComponentBuilder<TNode>> {
-  // Render the element directly to a Flight stream
   const flightStream = renderToReadableStream(node)
 
   // Check if this is an SSR request (router) or a direct server function call

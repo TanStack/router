@@ -5,11 +5,11 @@ import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { JSX } from 'solid-js'
 
-export function Asset({
-  tag,
-  attrs,
-  children,
-}: RouterManagedTag): JSX.Element | null {
+const INLINE_CSS_HYDRATION_ATTR = 'data-tsr-inline-css'
+
+export function Asset(asset: RouterManagedTag): JSX.Element | null {
+  const { tag, attrs, children } = asset
+
   switch (tag) {
     case 'title':
       return <Title {...attrs}>{children}</Title>
@@ -18,12 +18,43 @@ export function Asset({
     case 'link':
       return <Link {...attrs} />
     case 'style':
+      if (
+        asset.inlineCss &&
+        (process.env.TSS_INLINE_CSS_ENABLED === 'true' ||
+          (process.env.TSS_INLINE_CSS_ENABLED === undefined && isServer))
+      ) {
+        return <InlineCssStyle attrs={attrs}>{children}</InlineCssStyle>
+      }
+
       return <Style {...attrs}>{children}</Style>
     case 'script':
       return <Script attrs={attrs}>{children}</Script>
     default:
       return null
   }
+}
+
+function InlineCssStyle({
+  attrs,
+  children,
+}: {
+  attrs?: Record<string, any>
+  children?: RouterManagedTag['children']
+}) {
+  const isInlineCssPlaceholder = children === undefined
+  const html = isInlineCssPlaceholder
+    ? typeof document === 'undefined'
+      ? ''
+      : (document.querySelector<HTMLStyleElement>(
+          `style[${INLINE_CSS_HYDRATION_ATTR}]`,
+        )?.textContent ?? '')
+    : (children ?? '')
+
+  return (
+    <Style {...attrs} {...{ [INLINE_CSS_HYDRATION_ATTR]: '' }}>
+      {html}
+    </Style>
+  )
 }
 
 interface ScriptAttrs {

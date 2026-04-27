@@ -4,6 +4,7 @@ import {
   deepEqual,
   escapeHtml,
   getAssetCrossOrigin,
+  isInlinableStylesheet,
   resolveManifestAssetLink,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -103,21 +104,43 @@ function buildTagsFromMatches(
     .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
     .filter(Boolean)
     .flat(1)
-    .filter((asset) => asset.tag === 'link')
-    .map(
-      (asset) =>
-        ({
-          tag: 'link',
-          attrs: {
-            ...asset.attrs,
-            crossOrigin:
-              getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
-              asset.attrs?.crossOrigin,
-            suppressHydrationWarning: true,
-            nonce,
+    .flatMap((asset): Array<RouterManagedTag> => {
+      if (asset.tag === 'link') {
+        if (isInlinableStylesheet(manifest, asset)) {
+          return []
+        }
+
+        return [
+          {
+            tag: 'link',
+            attrs: {
+              ...asset.attrs,
+              crossOrigin:
+                getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+                asset.attrs?.crossOrigin,
+              suppressHydrationWarning: true,
+              nonce,
+            },
           },
-        }) satisfies RouterManagedTag,
-    )
+        ]
+      }
+
+      if (asset.tag === 'style') {
+        return [
+          {
+            tag: 'style',
+            attrs: {
+              ...asset.attrs,
+              nonce,
+            },
+            children: asset.children,
+            ...(asset.inlineCss ? { inlineCss: true as const } : {}),
+          },
+        ]
+      }
+
+      return []
+    })
 
   const preloadLinks: Array<RouterManagedTag> = []
   matches
@@ -304,21 +327,43 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
         .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
         .filter(Boolean)
         .flat(1)
-        .filter((asset) => asset.tag === 'link')
-        .map(
-          (asset) =>
-            ({
-              tag: 'link',
-              attrs: {
-                ...asset.attrs,
-                crossOrigin:
-                  getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
-                  asset.attrs?.crossOrigin,
-                suppressHydrationWarning: true,
-                nonce,
+        .flatMap((asset): Array<RouterManagedTag> => {
+          if (asset.tag === 'link') {
+            if (isInlinableStylesheet(manifest, asset)) {
+              return []
+            }
+
+            return [
+              {
+                tag: 'link',
+                attrs: {
+                  ...asset.attrs,
+                  crossOrigin:
+                    getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+                    asset.attrs?.crossOrigin,
+                  suppressHydrationWarning: true,
+                  nonce,
+                },
               },
-            }) satisfies RouterManagedTag,
-        )
+            ]
+          }
+
+          if (asset.tag === 'style') {
+            return [
+              {
+                tag: 'style',
+                attrs: {
+                  ...asset.attrs,
+                  nonce,
+                },
+                children: asset.children,
+                ...(asset.inlineCss ? { inlineCss: true as const } : {}),
+              },
+            ]
+          }
+
+          return []
+        })
 
       return [...constructed, ...assets]
     },

@@ -314,7 +314,7 @@ export const Route = createFileRoute('/file/$')({
 
 ## Handling requests with a body
 
-To handle POST requests,you can add a `POST` handler to the route object. The handler will receive the request object as the first argument, and you can access the request body using the `request.json()` method.
+To handle POST requests, you can add a `POST` handler to the route object. The handler will receive the request object as the first argument, and you can access the request body using the `request.json()` method.
 
 ```ts
 // routes/hello.ts

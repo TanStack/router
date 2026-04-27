@@ -86,6 +86,11 @@ export const Match = (props: { matchId: string }) => {
           currentMatchState().ssr === false ||
           currentMatchState().ssr === 'data-only'
 
+        const shouldSkipSuspenseFallback =
+          (isServer ?? router.isServer)
+            ? resolvedNoSsr
+            : currentMatchState().ssr === 'data-only'
+
         const ResolvedSuspenseBoundary = () => Solid.Suspense
 
         const ResolvedCatchBoundary = () =>
@@ -105,8 +110,9 @@ export const Match = (props: { matchId: string }) => {
               <Dynamic
                 component={ResolvedSuspenseBoundary()}
                 fallback={
-                  // Don't show fallback on server when using no-ssr mode to avoid hydration mismatch
-                  (isServer ?? router.isServer) && resolvedNoSsr ? undefined : (
+                  // Data-only SSR renders the inner fallback on the server, so
+                  // avoid adding an extra suspense fallback on the client.
+                  shouldSkipSuspenseFallback ? undefined : (
                     <Dynamic component={resolvePendingComponent()} />
                   )
                 }

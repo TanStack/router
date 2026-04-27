@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import { getReferenceRouteCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
-import { createRouteHmrStatement } from '../src/core/route-hmr-statement'
+import { createRouteHmrStatement } from '../src/core/hmr'
 import { frameworks } from './constants'
 
 function getFrameworkDir(framework: string) {
@@ -83,13 +83,13 @@ describe('add-hmr works', () => {
       filename,
       id: filename,
       addHmr: true,
-      hmrHotExpression: 'import.meta.webpackHot',
+      hmrStyle: 'webpack',
       codeSplitGroupings: defaultCodeSplitGroupings,
       targetFramework: framework,
       compilerPlugins: getReferenceRouteCompilerPlugins({
         targetFramework: framework,
         addHmr: true,
-        hmrHotExpression: 'import.meta.webpackHot',
+        hmrStyle: 'webpack',
       }),
     })
 
@@ -103,10 +103,51 @@ describe('add-hmr works', () => {
 
   it('supports configurable webpackHot unsplittable HMR generation', async () => {
     const statement = createRouteHmrStatement([], {
-      hotExpression: 'import.meta.webpackHot',
+      hmrStyle: 'webpack',
+      targetFramework: 'react',
     })
+    const output = JSON.stringify(statement)
 
-    expect(JSON.stringify(statement)).toContain('webpackHot')
-    expect(JSON.stringify(statement)).not.toContain('import.meta.hot')
+    expect(output).toContain('webpackHot')
+    expect(output).not.toContain('import.meta.hot')
+    expect(output).toContain('oldHasShellComponent')
+    expect(output).toContain('__routeContext')
+  })
+
+  it('supports configurable Vite unsplittable HMR generation', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'vite',
+      targetFramework: 'react',
+    })
+    const output = JSON.stringify(statement)
+
+    expect(output).toContain('MetaProperty')
+    expect(output).toContain('hot')
+    expect(output).not.toContain('webpackHot')
+    expect(output).toContain('newModule')
+  })
+
+  it('uses a generated route id fallback for Vite HMR', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'vite',
+      targetFramework: 'react',
+      routeId: '/posts',
+    })
+    const output = JSON.stringify(statement)
+
+    expect(output).toContain('tsr-route-id')
+    expect(output).toContain('/posts')
+  })
+
+  it('normalizes the generated root route id for Vite HMR', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'vite',
+      targetFramework: 'react',
+      routeId: '/__root',
+    })
+    const output = JSON.stringify(statement)
+
+    expect(output).toContain('__root__')
+    expect(output).not.toContain('/__root')
   })
 })

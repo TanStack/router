@@ -28,6 +28,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
+    "@rsbuild/core": "^2.0.1",
+    "@rsbuild/plugin-babel": "^1.0.5",
+    "@rsbuild/plugin-vue": "^1.2.2",
+    "@rsbuild/plugin-vue-jsx": "^1.1.1",
+    "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/js-cookie": "^3.0.6",
@@ -58,6 +63,10 @@
         {
           "toolchain": "vite",
           "mode": "preview"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr"
         }
       ]
     }

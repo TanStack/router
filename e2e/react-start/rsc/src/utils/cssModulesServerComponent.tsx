@@ -13,7 +13,6 @@ export const getCssModulesServerComponent = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     return renderServerComponent(
       <>
-        {import.meta.viteRsc.loadCss()}
         <CssModulesContent data={data} />
       </>,
     )

@@ -1,5 +1,12 @@
 # @tanstack/react-router-ssr-query
 
+## 1.166.12
+
+### Patch Changes
+
+- Updated dependencies [[`b12f57b`](https://github.com/TanStack/router/commit/b12f57bbb44e47d5452d46e9e67ea4d63cdb5b55)]:
+  - @tanstack/router-ssr-query-core@1.168.0
+
 ## 1.166.11
 
 ### Patch Changes

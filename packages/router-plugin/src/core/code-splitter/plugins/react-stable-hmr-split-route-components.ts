@@ -1,7 +1,7 @@
 import * as template from '@babel/template'
 import * as t from '@babel/types'
-import { createHmrHotExpressionAst } from '../../hmr-hot-expression'
 import { getUniqueProgramIdentifier } from '../../utils'
+import type { HmrStyle } from '../../config'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
 
 function capitalizeIdentifier(str: string) {
@@ -28,8 +28,14 @@ const buildStableSplitComponentStatements = template.statements(
   },
 )
 
-export function createReactStableHmrSplitRouteComponentsPlugin(opts?: {
-  hotExpression?: string
+function hotExpressionAstFor(hmrStyle: HmrStyle): t.Expression {
+  return template.expression.ast(
+    hmrStyle === 'webpack' ? 'import.meta.webpackHot' : 'import.meta.hot',
+  )
+}
+
+export function createReactStableHmrSplitRouteComponentsPlugin(opts: {
+  hmrStyle: HmrStyle
 }): ReferenceRouteCompilerPlugin {
   return {
     name: 'react-stable-hmr-split-route-components',
@@ -49,9 +55,7 @@ export function createReactStableHmrSplitRouteComponentsPlugin(opts?: {
         buildStableSplitComponentStatements({
           stableComponentIdent,
           hotDataKey: t.stringLiteral(hotDataKey),
-          hotExpression: createHmrHotExpressionAst(
-            opts?.hotExpression ?? ctx.opts.hmrHotExpression,
-          ),
+          hotExpression: hotExpressionAstFor(opts.hmrStyle),
           lazyRouteComponentIdent: t.identifier(ctx.lazyRouteComponentIdent),
           localImporterIdent: t.identifier(
             ctx.splitNodeMeta.localImporterIdent,

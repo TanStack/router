@@ -7,6 +7,20 @@ import type { CompileStartFrameworkOptions } from '../types'
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
 
+const providerHmrAcceptTemplate = babel.template.statements(
+  `
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {})
+}
+if (import.meta.webpackHot) {
+  import.meta.webpackHot.accept(() => {})
+}
+`,
+  {
+    placeholderPattern: false,
+  },
+)
+
 // ============================================================================
 // Pre-compiled babel templates (compiled once at module load time)
 // ============================================================================
@@ -413,6 +427,10 @@ export function handleCreateServerFn(
           ),
         ),
       )
+    }
+
+    if (context.mode === 'dev') {
+      context.ast.program.body.push(...providerHmrAcceptTemplate())
     }
   }
 

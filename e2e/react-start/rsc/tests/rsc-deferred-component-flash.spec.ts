@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { waitForHydration } from './hydration'
 
 /**
  * RSC Deferred Component Flash Prevention Tests
@@ -73,7 +74,7 @@ test.describe('RSC Deferred Component Flash Prevention', () => {
     await expect(page.getByTestId('rsc-basic-content')).toBeVisible({
       timeout: 10000,
     })
-    await page.waitForTimeout(500)
+    await waitForHydration(page)
 
     // Navigate to deferred component route
     await page.getByTestId('nav-deferred-component').click()
@@ -147,11 +148,20 @@ test.describe('RSC Deferred Component Flash Prevention', () => {
   }) => {
     // Start at home
     await page.goto('/')
-    await page.waitForTimeout(500)
+    await page.waitForURL('/')
+    await waitForHydration(page)
+
+    await page.evaluate(() => {
+      ;(window as any).__navigation_marker__ = 'client-side-navigation'
+    })
 
     // Navigate via client-side navigation
     await page.getByTestId('nav-deferred-component').click()
     await page.waitForURL('/rsc-deferred-component')
+
+    expect(
+      await page.evaluate(() => (window as any).__navigation_marker__),
+    ).toBe('client-side-navigation')
 
     // Monitor for flash on the deferred RSC
     const flashDetected = await monitorForFlash(

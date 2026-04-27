@@ -1,5 +1,67 @@
 # @tanstack/start-plugin-core
 
+## 1.169.5
+
+### Patch Changes
+
+- Updated dependencies [[`a2ad394`](https://github.com/TanStack/router/commit/a2ad394598e2079ab4050ebb16bb03b31d69c32a)]:
+  - @tanstack/router-generator@1.166.35
+  - @tanstack/router-plugin@1.167.27
+
+## 1.169.4
+
+### Patch Changes
+
+- Updated dependencies [[`8b97002`](https://github.com/TanStack/router/commit/8b97002af3f6d15204e60c55d3f5735b78bd7efe), [`8b97002`](https://github.com/TanStack/router/commit/8b97002af3f6d15204e60c55d3f5735b78bd7efe)]:
+  - @tanstack/start-client-core@1.167.19
+  - @tanstack/router-plugin@1.167.26
+  - @tanstack/start-server-core@1.167.21
+
+## 1.169.3
+
+### Patch Changes
+
+- Updated dependencies [[`1e371b6`](https://github.com/TanStack/router/commit/1e371b60f1832c158ff4953a4ae6c5ccfe8460b3)]:
+  - @tanstack/router-plugin@1.167.25
+
+## 1.169.2
+
+### Patch Changes
+
+- Add TanStack Start inline CSS manifest support for SSR so route styles can be embedded in the HTML response and hydrated without duplicate stylesheet links. ([#7253](https://github.com/TanStack/router/pull/7253))
+
+- Updated dependencies [[`4d864ee`](https://github.com/TanStack/router/commit/4d864eebbd184265eabb563d326ab409c93feb17)]:
+  - @tanstack/router-core@1.168.16
+  - @tanstack/start-server-core@1.167.20
+  - @tanstack/router-generator@1.166.34
+  - @tanstack/router-plugin@1.167.24
+  - @tanstack/start-client-core@1.167.18
+
+## 1.169.1
+
+### Patch Changes
+
+- Fix CSS asset ordering so styles from imported chunks are emitted before route chunk styles. ([#7251](https://github.com/TanStack/router/pull/7251))
+
+## 1.169.0
+
+### Minor Changes
+
+- Split Start plugin core bundler APIs into explicit Vite and Rsbuild subpaths so projects only need the bundler they use. Mark both `vite` and `@rsbuild/core` peers as optional where Start exposes both integrations. ([#7249](https://github.com/TanStack/router/pull/7249))
+
+## 1.168.0
+
+### Minor Changes
+
+- rsbuild ([#7228](https://github.com/TanStack/router/pull/7228))
+
+### Patch Changes
+
+- Updated dependencies [[`91a7089`](https://github.com/TanStack/router/commit/91a708989d00537a21911e74ff60bbfec8266295)]:
+  - @tanstack/router-plugin@1.167.23
+  - @tanstack/router-utils@1.161.7
+  - @tanstack/router-generator@1.166.33
+
 ## 1.167.35
 
 ### Patch Changes

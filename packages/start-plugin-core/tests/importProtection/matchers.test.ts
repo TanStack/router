@@ -3,7 +3,7 @@ import {
   compileMatcher,
   compileMatchers,
   matchesAny,
-} from '../../src/import-protection-plugin/matchers'
+} from '../../src/import-protection/matchers'
 
 describe('compileMatcher', () => {
   test('matches exact strings', () => {

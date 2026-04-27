@@ -163,6 +163,7 @@ test.describe('RSC Client Component Preload Tests', () => {
     // Verify the HTML contains the client widget with a CSS module class
     expect(html).toContain('data-testid="client-widget"')
     // The class should be a hashed CSS module class (contains underscore from module hash)
-    expect(html).toMatch(/class="[^"]*_widget_[^"]*"/)
+    // Accept Vite `_widget_xxx` or Rspack `widget-xxx` scoped CSS module names
+    expect(html).toMatch(/class="[^"]*(?:_widget_|widget[-_])[\w-]+[^"]*"/)
   })
 })

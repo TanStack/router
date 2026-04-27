@@ -1,5 +1,11 @@
 # @tanstack/router-ssr-query-core
 
+## 1.168.0
+
+### Minor Changes
+
+- Add support for custom `dehydrateOptions` and `hydrateOptions` in the SSR query integration ([#7246](https://github.com/TanStack/router/pull/7246))
+
 ## 1.167.1
 
 ### Patch Changes

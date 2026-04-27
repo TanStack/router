@@ -3,16 +3,21 @@ import type { DevServerFnModuleSpecifierEncoder } from '../../start-compiler/typ
 export function createViteDevServerFnModuleSpecifierEncoder(
   root: string,
 ): DevServerFnModuleSpecifierEncoder {
-  const rootWithTrailingSlash = root.endsWith('/') ? root : `${root}/`
+  const normalizedRoot = root.replace(/\\/g, '/')
+  const rootWithTrailingSlash = normalizedRoot.endsWith('/')
+    ? normalizedRoot
+    : `${normalizedRoot}/`
 
   return ({ extractedFilename }) => {
-    let file = extractedFilename
+    const normalizedFile = extractedFilename.replace(/\\/g, '/')
 
-    if (file.startsWith(rootWithTrailingSlash)) {
-      file = file.slice(rootWithTrailingSlash.length)
+    if (normalizedFile.startsWith(rootWithTrailingSlash)) {
+      return `/${normalizedFile.slice(rootWithTrailingSlash.length)}`
     }
 
-    return `/@id/${file}`
+    return normalizedFile.startsWith('/')
+      ? `/@fs${normalizedFile}`
+      : `/@fs/${normalizedFile}`
   }
 }
 
@@ -23,6 +28,11 @@ export function decodeViteDevServerModuleSpecifier(
 
   if (sourceFile.startsWith('/@id/')) {
     sourceFile = sourceFile.slice('/@id/'.length)
+  } else if (sourceFile.startsWith('/@fs/')) {
+    sourceFile = sourceFile.slice('/@fs'.length)
+    sourceFile = sourceFile.replace(/^\/([A-Za-z]:\/)/, '$1')
+  } else if (sourceFile.startsWith('/')) {
+    sourceFile = sourceFile.slice(1)
   }
 
   const queryIndex = sourceFile.indexOf('?')

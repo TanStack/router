@@ -109,7 +109,21 @@ export function useMatch<
   return Solid.createMemo((prev: TSelected | undefined) => {
     const selectedMatch = match()
 
-    if (selectedMatch === undefined) return undefined
+    if (selectedMatch === undefined) {
+      const hasPendingMatch = opts.from
+        ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
+        : (nearestMatch?.hasPending() ?? false)
+
+      if (
+        prev !== undefined &&
+        (hasPendingMatch || router.stores.isTransitioning.get())
+      ) {
+        return prev
+      }
+
+      return undefined
+    }
+
     const res = opts.select ? opts.select(selectedMatch as any) : selectedMatch
     if (prev === undefined) return res as TSelected
     return replaceEqualDeep(prev, res) as TSelected

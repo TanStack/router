@@ -1,5 +1,11 @@
 # @tanstack/router-utils
 
+## 1.161.7
+
+### Patch Changes
+
+- rsbuild ([#7228](https://github.com/TanStack/router/pull/7228))
+
 ## 1.161.6
 
 ### Patch Changes

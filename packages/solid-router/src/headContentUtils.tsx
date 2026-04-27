@@ -2,7 +2,7 @@ import * as Solid from 'solid-js'
 import {
   escapeHtml,
   getAssetCrossOrigin,
-  replaceEqualDeep,
+  isInlinableStylesheet,
   resolveManifestAssetLink,
 } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
@@ -117,20 +117,42 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
       .filter(Boolean)
       .flat(1)
-      .filter((asset) => asset.tag === 'link')
-      .map(
-        (asset) =>
-          ({
-            tag: 'link',
-            attrs: {
-              ...asset.attrs,
-              crossOrigin:
-                getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
-                asset.attrs?.crossOrigin,
-              nonce,
+      .flatMap((asset): Array<RouterManagedTag> => {
+        if (asset.tag === 'link') {
+          if (isInlinableStylesheet(manifest, asset)) {
+            return []
+          }
+
+          return [
+            {
+              tag: 'link',
+              attrs: {
+                ...asset.attrs,
+                crossOrigin:
+                  getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+                  asset.attrs?.crossOrigin,
+                nonce,
+              },
             },
-          }) satisfies RouterManagedTag,
-      )
+          ]
+        }
+
+        if (asset.tag === 'style') {
+          return [
+            {
+              tag: 'style',
+              attrs: {
+                ...asset.attrs,
+                nonce,
+              },
+              children: asset.children,
+              ...(asset.inlineCss ? { inlineCss: true as const } : {}),
+            },
+          ]
+        }
+
+        return []
+      })
 
     return [...constructed, ...assets]
   })
@@ -211,8 +233,34 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     if (prev === undefined) {
       return next
     }
-    return replaceEqualDeep(prev, next)
+    return replaceEqualTags(prev, next)
   })
+}
+
+function replaceEqualTags(
+  prev: Array<RouterManagedTag>,
+  next: Array<RouterManagedTag>,
+) {
+  const prevByKey = new Map<string, RouterManagedTag>()
+  for (const tag of prev) {
+    prevByKey.set(JSON.stringify(tag), tag)
+  }
+
+  let isEqual = prev.length === next.length
+  const result = next.map((tag, index) => {
+    const existing = prevByKey.get(JSON.stringify(tag))
+    if (existing) {
+      if (existing !== prev[index]) {
+        isEqual = false
+      }
+      return existing
+    }
+
+    isEqual = false
+    return tag
+  })
+
+  return isEqual ? prev : result
 }
 
 export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {

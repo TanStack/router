@@ -5,12 +5,12 @@ import {
   createStartConfigContext,
 } from '../config-context'
 import { START_ENVIRONMENT_NAMES } from '../constants'
-import { importProtectionPlugin } from '../import-protection-plugin/plugin'
 import {
   createServerFnBasePath,
   normalizePublicBase,
   shouldRewriteDevBasepath,
 } from '../planning'
+import { importProtectionPlugin } from './import-protection-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import {
@@ -185,6 +185,8 @@ export function tanStackStartVite(
             devSsrStylesBasepath:
               startConfig.dev.ssrStyles.basepath ??
               resolvedStartConfig.basePaths.publicBase,
+            inlineCssEnabled:
+              command === 'build' && startConfig.server.build.inlineCss,
             staticNodeEnv: startConfig.server.build.staticNodeEnv,
           }),
           builder: {

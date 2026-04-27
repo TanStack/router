@@ -16,7 +16,15 @@ export type ParseAstOptions = ParserOptions & {
 export type ParseAstResult = ParseResult<_babel_types.File>
 export function parseAst({ code, ...opts }: ParseAstOptions): ParseAstResult {
   return parse(code, {
-    plugins: ['jsx', 'typescript', 'explicitResourceManagement'],
+    plugins: [
+      'jsx',
+      'typescript',
+      'explicitResourceManagement',
+      'importAttributes',
+      'deprecatedImportAssert',
+      ['decorators', { decoratorsBeforeExport: true }],
+      'decoratorAutoAccessors',
+    ],
     sourceType: 'module',
     ...opts,
   })

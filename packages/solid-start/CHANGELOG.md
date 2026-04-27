@@ -1,5 +1,94 @@
 # @tanstack/solid-start
 
+## 1.167.47
+
+### Patch Changes
+
+- Updated dependencies [[`944b155`](https://github.com/TanStack/router/commit/944b1558965bf038eaf3c0dfb9e1ac3800d6fd3a)]:
+  - @tanstack/solid-router@1.168.24
+  - @tanstack/solid-start-client@1.166.41
+  - @tanstack/solid-start-server@1.166.42
+
+## 1.167.46
+
+### Patch Changes
+
+- Don't externalize `@tanstack/solid-query` during SSR to avoid duplicate `QueryClientContext` instances ([#7267](https://github.com/TanStack/router/pull/7267))
+
+## 1.167.45
+
+### Patch Changes
+
+- Updated dependencies [[`41e37f8`](https://github.com/TanStack/router/commit/41e37f8a9c3d2a6e00e4ca6faabb6a596bc36a98), [`e054474`](https://github.com/TanStack/router/commit/e054474cd1df6f93cd69dd5d255013840441438e)]:
+  - @tanstack/solid-router@1.168.23
+  - @tanstack/solid-start-client@1.166.40
+  - @tanstack/solid-start-server@1.166.41
+
+## 1.167.44
+
+### Patch Changes
+
+- Updated dependencies [[`b732c8a`](https://github.com/TanStack/router/commit/b732c8ac26bd3b316e95b026ca2fc7c2c78a1ddd), [`d20c878`](https://github.com/TanStack/router/commit/d20c87813559ff00d0b4810c4b600d47b47eff2f)]:
+  - @tanstack/solid-router@1.168.22
+  - @tanstack/start-plugin-core@1.169.5
+  - @tanstack/solid-start-client@1.166.39
+  - @tanstack/solid-start-server@1.166.40
+
+## 1.167.43
+
+### Patch Changes
+
+- Updated dependencies [[`8b97002`](https://github.com/TanStack/router/commit/8b97002af3f6d15204e60c55d3f5735b78bd7efe)]:
+  - @tanstack/start-client-core@1.167.19
+  - @tanstack/solid-start-client@1.166.38
+  - @tanstack/solid-start-server@1.166.39
+  - @tanstack/start-plugin-core@1.169.4
+  - @tanstack/start-server-core@1.167.21
+
+## 1.167.42
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-plugin-core@1.169.3
+
+## 1.167.41
+
+### Patch Changes
+
+- Updated dependencies [[`4d864ee`](https://github.com/TanStack/router/commit/4d864eebbd184265eabb563d326ab409c93feb17)]:
+  - @tanstack/solid-router@1.168.21
+  - @tanstack/start-plugin-core@1.169.2
+  - @tanstack/start-server-core@1.167.20
+  - @tanstack/solid-start-client@1.166.37
+  - @tanstack/solid-start-server@1.166.38
+  - @tanstack/start-client-core@1.167.18
+
+## 1.167.40
+
+### Patch Changes
+
+- Updated dependencies [[`9252206`](https://github.com/TanStack/router/commit/9252206e5aeafe53e31eb7baa491d07a597c4dc6)]:
+  - @tanstack/start-plugin-core@1.169.1
+
+## 1.167.39
+
+### Patch Changes
+
+- Split Start plugin core bundler APIs into explicit Vite and Rsbuild subpaths so projects only need the bundler they use. Mark both `vite` and `@rsbuild/core` peers as optional where Start exposes both integrations. ([#7249](https://github.com/TanStack/router/pull/7249))
+
+- Updated dependencies [[`dda463c`](https://github.com/TanStack/router/commit/dda463c8b571519165d3adbc337db7a0b8be1072)]:
+  - @tanstack/start-plugin-core@1.169.0
+
+## 1.167.38
+
+### Patch Changes
+
+- rsbuild ([#7228](https://github.com/TanStack/router/pull/7228))
+
+- Updated dependencies [[`91a7089`](https://github.com/TanStack/router/commit/91a708989d00537a21911e74ff60bbfec8266295)]:
+  - @tanstack/start-plugin-core@1.168.0
+
 ## 1.167.37
 
 ### Patch Changes

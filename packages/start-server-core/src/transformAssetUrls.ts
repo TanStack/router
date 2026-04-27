@@ -410,7 +410,7 @@ export async function transformManifestAssets(
       )
     }
 
-    if (route.assets) {
+    if (route.assets && !source.manifest.inlineCss) {
       for (const asset of route.assets) {
         if (asset.tag === 'link' && asset.attrs?.href) {
           const rel = asset.attrs.rel
@@ -481,5 +481,5 @@ export function buildManifestWithClientEntry(
     },
   }
 
-  return { routes }
+  return { inlineCss: source.manifest.inlineCss, routes }
 }

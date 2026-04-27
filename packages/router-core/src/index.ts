@@ -75,7 +75,13 @@ export type {
   AssetCrossOriginConfig,
   ManifestAssetLink,
 } from './manifest'
-export { getAssetCrossOrigin, resolveManifestAssetLink } from './manifest'
+export {
+  createInlineCssStyleAsset,
+  getAssetCrossOrigin,
+  getStylesheetHref,
+  isInlinableStylesheet,
+  resolveManifestAssetLink,
+} from './manifest'
 export { isMatch } from './Matches'
 export type {
   AnyMatchAndValue,
