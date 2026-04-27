@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777276671103,
+  "lastUpdate": 1777317654389,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -13417,6 +13417,102 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/493148bc5378b7f9de1544d87f6aaa425c12eb34"
         },
         "date": 1777276669704,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89400,
+            "unit": "bytes",
+            "extra": "raw=281268; brotli=77651"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92977,
+            "unit": "bytes",
+            "extra": "raw=293055; brotli=80891"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36399,
+            "unit": "bytes",
+            "extra": "raw=109514; brotli=32739"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41243,
+            "unit": "bytes",
+            "extra": "raw=124068; brotli=37025"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54577,
+            "unit": "bytes",
+            "extra": "raw=155742; brotli=49028"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59847,
+            "unit": "bytes",
+            "extra": "raw=172310; brotli=53582"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104367,
+            "unit": "bytes",
+            "extra": "raw=330586; brotli=90172"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107871,
+            "unit": "bytes",
+            "extra": "raw=341165; brotli=93165"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 103887,
+            "unit": "bytes",
+            "extra": "raw=333597; brotli=89209"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 107272,
+            "unit": "bytes",
+            "extra": "raw=344549; brotli=92033"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50738,
+            "unit": "bytes",
+            "extra": "raw=156441; brotli=44725"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56661,
+            "unit": "bytes",
+            "extra": "raw=173755; brotli=49882"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "birk.skyum@pm.me",
+            "name": "Birk Skyum",
+            "username": "birkskyum"
+          },
+          "committer": {
+            "email": "birk.skyum@pm.me",
+            "name": "Birk Skyum",
+            "username": "birkskyum"
+          },
+          "distinct": true,
+          "id": "b0024d6310f123736ea18a7f8692b45265cdee74",
+          "message": "Revert \"fix(solid-router): enable route component HMR for Solid\"\n\nThis reverts commit b86b06125364a2ec8207f599fb5a5130f9d16cc7.",
+          "timestamp": "2026-04-27T21:18:08+02:00",
+          "tree_id": "bb509ba99606e70769199c9ca202e9b6a28d3629",
+          "url": "https://github.com/TanStack/router/commit/b0024d6310f123736ea18a7f8692b45265cdee74"
+        },
+        "date": 1777317653280,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
