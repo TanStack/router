@@ -236,9 +236,9 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   }
 
   const includedCode = [
-    'createFileRoute(',
-    'createRootRoute(',
-    'createRootRouteWithContext(',
+    /createFileRoute[(<]/,
+    /createRootRoute[(<]/,
+    /createRootRouteWithContext[(<]/,
   ]
   return [
     {
@@ -262,7 +262,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
             globalThis.TSR_ROUTES_BY_ID_MAP?.get(normalizedId)
           if (
             generatorFileInfo &&
-            includedCode.some((included) => code.includes(included))
+            includedCode.some((included) => included.test(code))
           ) {
             return handleCompilingReferenceFile(
               code,

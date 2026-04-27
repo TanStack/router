@@ -14,9 +14,9 @@ import type { Config } from './config'
  */
 
 const includeCode = [
-  'createFileRoute(',
-  'createRootRoute(',
-  'createRootRouteWithContext(',
+  /createFileRoute[(<]/,
+  /createRootRoute[(<]/,
+  /createRootRouteWithContext[(<]/,
 ]
 export const unpluginRouterHmrFactory: UnpluginFactory<
   Partial<Config> | undefined
