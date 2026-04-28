@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777317654389,
+  "lastUpdate": 1777402840236,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -13513,6 +13513,102 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/b0024d6310f123736ea18a7f8692b45265cdee74"
         },
         "date": 1777317653280,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89400,
+            "unit": "bytes",
+            "extra": "raw=281268; brotli=77651"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92977,
+            "unit": "bytes",
+            "extra": "raw=293055; brotli=80891"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36399,
+            "unit": "bytes",
+            "extra": "raw=109514; brotli=32739"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41243,
+            "unit": "bytes",
+            "extra": "raw=124068; brotli=37025"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54577,
+            "unit": "bytes",
+            "extra": "raw=155742; brotli=49028"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59847,
+            "unit": "bytes",
+            "extra": "raw=172310; brotli=53582"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104367,
+            "unit": "bytes",
+            "extra": "raw=330586; brotli=90172"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107871,
+            "unit": "bytes",
+            "extra": "raw=341165; brotli=93165"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 103887,
+            "unit": "bytes",
+            "extra": "raw=333597; brotli=89209"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 107272,
+            "unit": "bytes",
+            "extra": "raw=344549; brotli=92033"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50738,
+            "unit": "bytes",
+            "extra": "raw=156441; brotli=44725"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56661,
+            "unit": "bytes",
+            "extra": "raw=173755; brotli=49882"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "kevenarroyo@microsoft.com",
+            "name": "Keven Arroyo",
+            "username": "dake3601"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d6decca41807e9ca28279e2db6640e7a8bdc1229",
+          "message": "fix(react-start-rsc): re-export renderable types from public entries (#7278)\n\n* fix(react-start-rsc): re-export renderable types from public entries\n\n* changeset - patch",
+          "timestamp": "2026-04-28T20:58:05+02:00",
+          "tree_id": "4b4cd6c54db0e67b9daab204218b3f99793791b0",
+          "url": "https://github.com/TanStack/router/commit/d6decca41807e9ca28279e2db6640e7a8bdc1229"
+        },
+        "date": 1777402838684,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
