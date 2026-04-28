@@ -11,12 +11,12 @@
   },
   "dependencies": {
     "@auth/core": "^0.41.1",
+    "@solidjs/web": "2.0.0-beta.9",
     "@tanstack/solid-router": "^2.0.0-beta.15",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.12",
     "@tanstack/solid-start": "^2.0.0-beta.16",
+    "solid-js": "2.0.0-beta.9",
     "start-authjs": "^1.0.0",
-    "solid-js": "2.0.0-beta.8",
-    "@solidjs/web": "2.0.0-beta.8",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {

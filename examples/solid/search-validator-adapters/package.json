@@ -10,26 +10,26 @@
     "test:unit": "vitest"
   },
   "dependencies": {
+    "@solidjs/web": "2.0.0-beta.9",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/arktype-adapter": "^1.166.9",
+    "@tanstack/router-plugin": "^1.167.12",
     "@tanstack/solid-query": "^6.0.0-beta.4",
     "@tanstack/solid-router": "^2.0.0-beta.15",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.12",
-    "@tanstack/router-plugin": "^1.167.12",
     "@tanstack/valibot-adapter": "^1.166.9",
     "@tanstack/zod-adapter": "^1.166.9",
     "arktype": "^2.1.7",
-    "solid-js": "2.0.0-beta.8",
-    "@solidjs/web": "2.0.0-beta.8",
+    "solid-js": "2.0.0-beta.9",
     "tailwindcss": "^4.2.2",
     "valibot": "1.0.0-beta.15",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
     "@solidjs/testing-library": "^0.8.10",
-    "vite-plugin-solid": "^3.0.0-next.5",
+    "@testing-library/jest-dom": "^6.6.3",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0"
+    "vite": "^8.0.0",
+    "vite-plugin-solid": "^3.0.0-next.5"
   }
 }

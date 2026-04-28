@@ -106,25 +106,25 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
+    "@tanstack/solid-router": "workspace:*",
     "@tanstack/solid-start-client": "workspace:*",
     "@tanstack/solid-start-server": "workspace:*",
-    "@tanstack/start-plugin-core": "workspace:*",
-    "@tanstack/solid-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
+    "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
     "pathe": "^2.0.3"
   },
   "devDependencies": {
-    "@solidjs/web": "2.0.0-beta.8",
+    "@solidjs/web": "2.0.0-beta.9",
     "@tanstack/intent": "^0.0.14",
     "@tanstack/router-utils": "workspace:*",
-    "solid-js": "2.0.0-beta.8",
-    "vite": "*",
-    "@types/node": ">=20"
+    "@types/node": ">=20",
+    "solid-js": "2.0.0-beta.9",
+    "vite": "*"
   },
   "peerDependencies": {
-    "solid-js": ">=2.0.0-0 <3.0.0",
     "@solidjs/web": ">=2.0.0-0 <3.0.0",
+    "solid-js": ">=2.0.0-0 <3.0.0",
     "vite": ">=7.0.0"
   },
   "bin": {
