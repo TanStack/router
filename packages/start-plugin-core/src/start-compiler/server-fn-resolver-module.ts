@@ -16,7 +16,7 @@ interface GenerateServerFnResolverModuleOptions {
 function getResolverManifestEntries(
   serverFnsById: Record<string, ServerFn>,
 ): Array<ResolverManifestEntry> {
-  return Object.entries(serverFnsById).map(([id, fn]) => ({
+  return Object.entries(serverFnsById).sort(([a], [b]) => a.localeCompare(b)).map(([id, fn]) => ({
     id,
     functionName: fn.functionName,
     extractedFilename: fn.extractedFilename,
