@@ -26,7 +26,7 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitejs/plugin-rsc": "^0.5.20",
+    "@vitejs/plugin-rsc": "^0.5.23",
     "nitro": "npm:nitro-nightly@latest",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",

@@ -44,7 +44,7 @@
     "@types/react-dom": "^19.0.3",
     "@typescript-eslint/parser": "^8.23.0",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitejs/plugin-rsc": "^0.5.20",
+    "@vitejs/plugin-rsc": "^0.5.23",
     "eslint": "^9.22.0",
     "srvx": "^0.10.0",
     "typescript": "^5.7.2",
