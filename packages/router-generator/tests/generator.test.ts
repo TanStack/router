@@ -122,6 +122,7 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         makeFolderDir(folderName) + `/routeTree.gen.js`
       break
     case 'isolated-declarations':
+    case 'isolated-declarations-nested':
       config.isolatedDeclarations = true
       break
     case 'custom-scaffolding':
