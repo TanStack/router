@@ -4,6 +4,7 @@ import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useTags } from './headContentUtils'
 import type { AssetCrossOriginConfig } from '@tanstack/router-core'
+import { HydrationScript } from '@solidjs/web'
 
 export interface HeadContentProps {
   assetCrossOrigin?: AssetCrossOriginConfig
@@ -20,17 +21,23 @@ export function HeadContent(props: HeadContentProps) {
   const router = useRouter()
 
   const content = () => (
-    <For each={tags()}>
-      {(tag) => {
-        const t = tag() as any
-        return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
-      }}
-    </For>
+    <>
+      <HydrationScript />
+      <For each={tags()}>
+        {(tag) => {
+          const t = tag() as any
+          return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
+        }}
+      </For>
+    </>
   )
 
   return (isServer ?? router.isServer) ? (
     content()
   ) : (
-    <Portal mount={document.head}>{content()}</Portal>
+    <>
+      <HydrationScript />
+      <Portal mount={document.head}>{content()}</Portal>
+    </>
   )
 }

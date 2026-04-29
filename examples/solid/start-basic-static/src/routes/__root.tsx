@@ -7,7 +7,6 @@ import {
   createRootRoute,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import { HydrationScript } from '@solidjs/web'
 import type * as Solid from 'solid-js'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
@@ -76,10 +75,9 @@ function RootLayout({ children }: { children: Solid.JSX.Element }) {
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"

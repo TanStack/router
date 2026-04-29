@@ -6,7 +6,6 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/solid-router'
-import { HydrationScript } from '@solidjs/web'
 import type { JSX } from 'solid-js'
 import appCss from '~/styles/app.css?url'
 
@@ -29,10 +28,9 @@ function RootDocument({ children }: { children: JSX.Element }) {
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         {children}
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
