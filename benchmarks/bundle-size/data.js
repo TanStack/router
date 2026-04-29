@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777493893534,
+  "lastUpdate": 1777494314199,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -13705,6 +13705,102 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/b5c4183ab8b44be8a75647b7f7b588ad7c146ece"
         },
         "date": 1777493892525,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89400,
+            "unit": "bytes",
+            "extra": "raw=281268; brotli=77651"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92977,
+            "unit": "bytes",
+            "extra": "raw=293055; brotli=80891"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36399,
+            "unit": "bytes",
+            "extra": "raw=109514; brotli=32739"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41243,
+            "unit": "bytes",
+            "extra": "raw=124068; brotli=37025"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54577,
+            "unit": "bytes",
+            "extra": "raw=155742; brotli=49028"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59847,
+            "unit": "bytes",
+            "extra": "raw=172310; brotli=53582"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104367,
+            "unit": "bytes",
+            "extra": "raw=330586; brotli=90172"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107871,
+            "unit": "bytes",
+            "extra": "raw=341165; brotli=93165"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 101918,
+            "unit": "bytes",
+            "extra": "raw=324772; brotli=87679"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105312,
+            "unit": "bytes",
+            "extra": "raw=335455; brotli=90528"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50738,
+            "unit": "bytes",
+            "extra": "raw=156441; brotli=44725"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56661,
+            "unit": "bytes",
+            "extra": "raw=173755; brotli=49882"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "manuel.schiller@caligano.de",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7fa0f39cabf4407aa1cb99e369566e8ea85554a2",
+          "message": "fix: fix exports for react-start so useServerFn is available with RSC (#7292)\n\nCo-authored-by: nx-cloud[bot] <71083854+nx-cloud[bot]@users.noreply.github.com>",
+          "timestamp": "2026-04-29T22:22:15+02:00",
+          "tree_id": "af02dbfa869114d08bd45d625fa8aee84faf0920",
+          "url": "https://github.com/TanStack/router/commit/7fa0f39cabf4407aa1cb99e369566e8ea85554a2"
+        },
+        "date": 1777494312445,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
