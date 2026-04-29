@@ -165,6 +165,19 @@ export function getRouter() {
 }
 ```
 
+Then register the router's type by augmenting the `Register` interface from `@tanstack/react-router`. This makes `<Link>`, `useNavigate`, and the [route hooks](/router/latest/docs/framework/react/guide/type-safety) aware of your routes, params, and search schemas:
+
+```tsx
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: ReturnType<typeof getRouter>
+  }
+}
+```
+
+> [!NOTE]
+> `Register` is a TypeScript-only construct. Skipping this declaration doesn't break the build, but `<Link to="...">` will accept any string and route data hooks will lose their inferred types.
+
 ## The Root of Your Application
 
 Finally, we need to create the root of our application. This is the entry point for all other routes. The code in this file will wrap all other routes in the application.
