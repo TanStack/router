@@ -34,8 +34,8 @@
   "exports": {
     ".": {
       "react-server": {
-        "types": "./dist/esm/index.rsc.d.ts",
-        "default": "./dist/esm/index.rsc.js"
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
       },
       "import": {
         "types": "./dist/esm/index.d.ts",

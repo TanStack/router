@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RscUseServerFnRouteImport } from './routes/rsc-use-server-fn'
 import { Route as RscTreeRouteImport } from './routes/rsc-tree'
 import { Route as RscSuspenseRouteImport } from './routes/rsc-suspense'
 import { Route as RscStreamingRouteImport } from './routes/rsc-streaming'
@@ -55,6 +56,11 @@ import { Route as RscParamIdRouteImport } from './routes/rsc-param/$id'
 import { Route as RscCssConditionalBranchRouteImport } from './routes/rsc-css-conditional.$branch'
 import { Route as ApiRscFlightRouteImport } from './routes/api.rsc-flight'
 
+const RscUseServerFnRoute = RscUseServerFnRouteImport.update({
+  id: '/rsc-use-server-fn',
+  path: '/rsc-use-server-fn',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RscTreeRoute = RscTreeRouteImport.update({
   id: '/rsc-tree',
   path: '/rsc-tree',
@@ -322,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/rsc-streaming': typeof RscStreamingRoute
   '/rsc-suspense': typeof RscSuspenseRoute
   '/rsc-tree': typeof RscTreeRoute
+  '/rsc-use-server-fn': typeof RscUseServerFnRoute
   '/api/rsc-flight': typeof ApiRscFlightRoute
   '/rsc-css-conditional/$branch': typeof RscCssConditionalBranchRoute
   '/rsc-param/$id': typeof RscParamIdRoute
@@ -369,6 +376,7 @@ export interface FileRoutesByTo {
   '/rsc-streaming': typeof RscStreamingRoute
   '/rsc-suspense': typeof RscSuspenseRoute
   '/rsc-tree': typeof RscTreeRoute
+  '/rsc-use-server-fn': typeof RscUseServerFnRoute
   '/api/rsc-flight': typeof ApiRscFlightRoute
   '/rsc-css-conditional/$branch': typeof RscCssConditionalBranchRoute
   '/rsc-param/$id': typeof RscParamIdRoute
@@ -417,6 +425,7 @@ export interface FileRoutesById {
   '/rsc-streaming': typeof RscStreamingRoute
   '/rsc-suspense': typeof RscSuspenseRoute
   '/rsc-tree': typeof RscTreeRoute
+  '/rsc-use-server-fn': typeof RscUseServerFnRoute
   '/api/rsc-flight': typeof ApiRscFlightRoute
   '/rsc-css-conditional/$branch': typeof RscCssConditionalBranchRoute
   '/rsc-param/$id': typeof RscParamIdRoute
@@ -466,6 +475,7 @@ export interface FileRouteTypes {
     | '/rsc-streaming'
     | '/rsc-suspense'
     | '/rsc-tree'
+    | '/rsc-use-server-fn'
     | '/api/rsc-flight'
     | '/rsc-css-conditional/$branch'
     | '/rsc-param/$id'
@@ -513,6 +523,7 @@ export interface FileRouteTypes {
     | '/rsc-streaming'
     | '/rsc-suspense'
     | '/rsc-tree'
+    | '/rsc-use-server-fn'
     | '/api/rsc-flight'
     | '/rsc-css-conditional/$branch'
     | '/rsc-param/$id'
@@ -560,6 +571,7 @@ export interface FileRouteTypes {
     | '/rsc-streaming'
     | '/rsc-suspense'
     | '/rsc-tree'
+    | '/rsc-use-server-fn'
     | '/api/rsc-flight'
     | '/rsc-css-conditional/$branch'
     | '/rsc-param/$id'
@@ -608,6 +620,7 @@ export interface RootRouteChildren {
   RscStreamingRoute: typeof RscStreamingRoute
   RscSuspenseRoute: typeof RscSuspenseRoute
   RscTreeRoute: typeof RscTreeRoute
+  RscUseServerFnRoute: typeof RscUseServerFnRoute
   ApiRscFlightRoute: typeof ApiRscFlightRoute
   RscCssConditionalBranchRoute: typeof RscCssConditionalBranchRoute
   RscParamIdRoute: typeof RscParamIdRoute
@@ -617,6 +630,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/rsc-use-server-fn': {
+      id: '/rsc-use-server-fn'
+      path: '/rsc-use-server-fn'
+      fullPath: '/rsc-use-server-fn'
+      preLoaderRoute: typeof RscUseServerFnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rsc-tree': {
       id: '/rsc-tree'
       path: '/rsc-tree'
@@ -976,6 +996,7 @@ const rootRouteChildren: RootRouteChildren = {
   RscStreamingRoute: RscStreamingRoute,
   RscSuspenseRoute: RscSuspenseRoute,
   RscTreeRoute: RscTreeRoute,
+  RscUseServerFnRoute: RscUseServerFnRoute,
   ApiRscFlightRoute: ApiRscFlightRoute,
   RscCssConditionalBranchRoute: RscCssConditionalBranchRoute,
   RscParamIdRoute: RscParamIdRoute,
