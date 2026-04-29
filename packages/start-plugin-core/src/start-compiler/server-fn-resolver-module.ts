@@ -17,6 +17,9 @@ function getResolverManifestEntries(
   serverFnsById: Record<string, ServerFn>,
 ): Array<ResolverManifestEntry> {
   return Object.entries(serverFnsById)
+    // Sort entries by ID so that the generated manifest has a stable, deterministic order. 
+    // Non-deterministic ordering causes the compiled hash of the same source file to change 
+    // between builds, breaking content-addressed caching and reproducible deployments.
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([id, fn]) => ({
       id,
