@@ -672,7 +672,7 @@ export class Generator {
 
       return [
         [
-          `const ${node.variableName}Route = ${node.variableName}RouteImport.update({
+          `const ${node.variableName}Route${config.isolatedDeclarations && !config.disableTypes ? ': any' : ''} = ${node.variableName}RouteImport.update({
             ${[
               `id: '${node.path}'`,
               !node.isNonPath ||
