@@ -10,9 +10,9 @@ const config = defineConfig({
   build: {
     rolldownOptions: {
       output: {
-        topLevelVar: false
-      }
-    }
+        topLevelVar: false,
+      },
+    },
   },
   test: {
     name: packageJson.name,
