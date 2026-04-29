@@ -2020,8 +2020,24 @@ export class RouterCore<
           publicHref = rewrittenUrl.href
           external = true
         } else {
+          // Apply trailingSlash config to the rewritten pathname so that the
+          // publicHref is canonical before it is compared to the incoming URL
+          // in the SSR redirect check. Without this, visiting the bare basepath
+          // (e.g. /preview) always produces publicHref = /preview/ from the
+          // rewrite output and triggers a spurious 308 redirect even when
+          // trailingSlash is 'never'. See: https://github.com/TanStack/router/issues/7291
+          const trailingSlashOpt = this.options.trailingSlash ?? 'never'
+          let rewrittenPathname = rewrittenUrl.pathname
+          if (trailingSlashOpt === 'never') {
+            rewrittenPathname = trimPathRight(rewrittenPathname)
+          } else if (
+            trailingSlashOpt === 'always' &&
+            !rewrittenPathname.endsWith('/')
+          ) {
+            rewrittenPathname += '/'
+          }
           publicHref =
-            rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash
+            rewrittenPathname + rewrittenUrl.search + rewrittenUrl.hash
         }
       } else {
         // Fast path: no rewrite, skip URL construction entirely
