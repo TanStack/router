@@ -1,10 +1,9 @@
 import { For } from 'solid-js'
-import { Portal, isServer } from '@solidjs/web'
+import { HydrationScript, Portal, isServer } from '@solidjs/web'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useTags } from './headContentUtils'
 import type { AssetCrossOriginConfig } from '@tanstack/router-core'
-import { HydrationScript } from '@solidjs/web'
 
 export interface HeadContentProps {
   assetCrossOrigin?: AssetCrossOriginConfig
