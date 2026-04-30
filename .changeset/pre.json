@@ -45,6 +45,7 @@
   },
   "changesets": [
     "brave-pans-create",
+    "clever-apples-jog",
     "clever-bears-stand",
     "clever-vans-yawn",
     "cuddly-drinks-count",
