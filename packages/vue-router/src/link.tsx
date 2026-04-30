@@ -2,6 +2,7 @@ import * as Vue from 'vue'
 import {
   deepEqual,
   exactPathTest,
+  hasKeys,
   isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
@@ -498,7 +499,7 @@ function resolveStyleProps({
     Object.assign(result, resolvedInactiveProps.style)
   }
 
-  const resolvedStyle = Object.keys(result).length > 0 ? result : undefined
+  const resolvedStyle = hasKeys(result) ? result : undefined
   return {
     resolvedActiveProps,
     resolvedInactiveProps,

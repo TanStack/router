@@ -8,12 +8,14 @@ import {
   encodePathLikeUrl,
   findLast,
   functionalUpdate,
+  hasKeys,
   isDangerousProtocol,
   last,
   nullReplaceEqualDeep,
   replaceEqualDeep,
 } from './utils'
 import {
+  buildRouteBranch,
   findFlatMatch,
   findRouteMatch,
   findSingleMatch,
@@ -732,8 +734,6 @@ export type GetMatchRoutesFn = (pathname: string) => {
   matchedRoutes: ReadonlyArray<AnyRoute>
   /** exhaustive params, still in their string form */
   routeParams: Record<string, string>
-  /** partial params, parsed from routeParams during matching */
-  parsedParams: Record<string, unknown> | undefined
   foundRoute: AnyRoute | undefined
   parseError?: unknown
 }
@@ -972,6 +972,7 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: LRUCache<string, string>
+  private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1343,15 +1344,23 @@ export class RouterCore<
     return location
   }
 
-  /** Resolve a path against the router basepath and trailing-slash policy. */
+  /** Resolve a path using the router's trailing-slash policy. */
   resolvePathWithBase = (from: string, path: string) => {
-    const resolvedPath = resolvePath({
+    return resolvePath({
       base: from,
-      to: cleanPath(path),
+      to: path.includes('//') ? cleanPath(path) : path,
       trailingSlash: this.options.trailingSlash,
       cache: this.resolvePathCache,
     })
-    return resolvedPath
+  }
+
+  private getRouteBranch(route: AnyRoute) {
+    let branch = this.routeBranchCache.get(route)
+    if (!branch) {
+      branch = buildRouteBranch(route)
+      this.routeBranchCache.set(route, branch)
+    }
+    return branch
   }
 
   get looseRoutesById() {
@@ -1391,7 +1400,7 @@ export class RouterCore<
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
     const matchedRoutesResult = this.getMatchedRoutes(next.pathname)
-    const { foundRoute, routeParams, parsedParams } = matchedRoutesResult
+    const { foundRoute, routeParams } = matchedRoutesResult
     let { matchedRoutes } = matchedRoutesResult
     let isGlobalNotFound = false
 
@@ -1517,7 +1526,7 @@ export class RouterCore<
 
       if (!existingMatch) {
         try {
-          extractStrictParams(route, usedParams, parsedParams!, strictParams)
+          extractStrictParams(route, strictParams)
         } catch (err: any) {
           if (isNotFound(err) || isRedirect(err)) {
             paramsError = err
@@ -1687,7 +1696,7 @@ export class RouterCore<
     search: Record<string, unknown>
     params: Record<string, unknown>
   } {
-    const { matchedRoutes, routeParams, parsedParams } = this.getMatchedRoutes(
+    const { matchedRoutes, routeParams } = this.getMatchedRoutes(
       location.pathname,
     )
     const lastRoute = last(matchedRoutes)!
@@ -1734,12 +1743,7 @@ export class RouterCore<
       )
       for (const route of matchedRoutes) {
         try {
-          extractStrictParams(
-            route,
-            routeParams,
-            parsedParams ?? {},
-            strictParams,
-          )
+          extractStrictParams(route, strictParams)
         } catch {
           // Ignore errors, we're not actually routing
         }
@@ -1835,9 +1839,7 @@ export class RouterCore<
         dest.unsafeRelative === 'path'
           ? currentLocation.pathname
           : (dest.from ?? lightweightResult.fullPath)
-
-      // ensure this includes the basePath if set
-      const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
+      const destTo = dest.to ? `${dest.to}` : undefined
 
       // From search should always use the current location
       const fromSearch = lightweightResult.search
@@ -1847,11 +1849,15 @@ export class RouterCore<
         lightweightResult.params,
       )
 
-      // Resolve the next to
-      // ensure this includes the basePath if set
-      const nextTo = dest.to
-        ? this.resolvePathWithBase(fromPath, `${dest.to}`)
-        : this.resolvePathWithBase(fromPath, '.')
+      const isAbsoluteTo = destTo?.charCodeAt(0) === 47
+      const sourcePath = isAbsoluteTo
+        ? '/'
+        : this.resolvePathWithBase(defaultedFromPath, '.')
+
+      // Resolve the destination. Absolute destinations don't need the source path.
+      const nextTo = destTo
+        ? this.resolvePathWithBase(sourcePath, destTo)
+        : sourcePath
 
       // Resolve the next params
       const nextParams =
@@ -1864,24 +1870,33 @@ export class RouterCore<
                 functionalUpdate(dest.params as any, fromParams),
               )
 
-      // Use lightweight getMatchedRoutes instead of matchRoutesInternal
-      // This avoids creating full match objects (AbortController, ControlledPromise, etc.)
-      // which are expensive and not needed for buildLocation
-      const destMatchResult = this.getMatchedRoutes(nextTo)
-      let destRoutes = destMatchResult.matchedRoutes
+      const destRoute = this.routesByPath[
+        trimPathRight(nextTo) as keyof typeof this.routesByPath
+      ] as AnyRoute | undefined
 
-      // Compute globalNotFoundRouteId using the same logic as matchRoutesInternal
-      const isGlobalNotFound =
-        !destMatchResult.foundRoute ||
-        (destMatchResult.foundRoute.path !== '/' &&
-          destMatchResult.routeParams['**'])
+      let destRoutes: ReadonlyArray<AnyRoute>
+      if (destRoute) {
+        destRoutes = this.getRouteBranch(destRoute)
+      } else if (nextTo.includes('$')) {
+        // Route templates must match routesByPath exactly. A miss here is a
+        // typed destination mismatch, not a concrete URL to route-match.
+        destRoutes = []
+      } else {
+        const destMatchResult = this.getMatchedRoutes(nextTo)
+        destRoutes = destMatchResult.matchedRoutes
 
-      if (isGlobalNotFound && this.options.notFoundRoute) {
-        destRoutes = [...destRoutes, this.options.notFoundRoute]
+        if (
+          this.options.notFoundRoute &&
+          (!destMatchResult.foundRoute ||
+            (destMatchResult.foundRoute.path !== '/' &&
+              destMatchResult.routeParams['**']))
+        ) {
+          destRoutes = [...destRoutes, this.options.notFoundRoute]
+        }
       }
 
       // If there are any params, we need to stringify them
-      if (Object.keys(nextParams).length > 0) {
+      if (destRoutes.length && hasKeys(nextParams)) {
         for (const route of destRoutes) {
           const fn =
             route.options.params?.stringify ?? route.options.stringifyParams
@@ -1900,8 +1915,7 @@ export class RouterCore<
       }
 
       const nextPathname = opts.leaveParams
-        ? // Use the original template path for interpolation
-          // This preserves the original parameter syntax including optional parameters
+        ? // Keep path params uninterpolated for matchRoute/template matching.
           nextTo
         : decodePath(
             interpolatePath({
@@ -1911,6 +1925,24 @@ export class RouterCore<
               server: this.isServer,
             }).interpolatedPath,
           ).path
+
+      if (
+        process.env.NODE_ENV !== 'production' &&
+        destRoute &&
+        !opts.leaveParams
+      ) {
+        try {
+          const roundTrip = this.getMatchedRoutes(nextPathname)
+          if (roundTrip.foundRoute?.id !== destRoute.id) {
+            console.warn(
+              `Generated path "${nextPathname}" for route "${destRoute.id}" did not match the same route after params.stringify.`,
+            )
+          }
+        } catch {
+          // Ignore roundtrip validation errors. The generated location will be
+          // handled by the normal navigation flow.
+        }
+      }
 
       // Resolve the next search
       let nextSearch = fromSearch
@@ -3015,17 +3047,15 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   const trimmedPath = trimPathRight(pathname)
 
   let foundRoute: TRouteLike | undefined = undefined
-  let parsedParams: Record<string, unknown> | undefined = undefined
   const match = findRouteMatch<TRouteLike>(trimmedPath, processedTree, true)
   if (match) {
     foundRoute = match.route
     Object.assign(routeParams, match.rawParams) // Copy params, because they're cached
-    parsedParams = Object.assign(Object.create(null), match.parsedParams)
   }
 
   const matchedRoutes = match?.branch || [routesById[rootRouteId]!]
 
-  return { matchedRoutes, routeParams, foundRoute, parsedParams }
+  return { matchedRoutes, routeParams, foundRoute }
 }
 
 /**
@@ -3177,22 +3207,14 @@ function findGlobalNotFoundRouteId(
 
 function extractStrictParams(
   route: AnyRoute,
-  referenceParams: Record<string, unknown>,
-  parsedParams: Record<string, unknown>,
   accumulatedParams: Record<string, unknown>,
 ) {
   const parseParams = route.options.params?.parse ?? route.options.parseParams
   if (parseParams) {
-    if (route.options.skipRouteOnParseError) {
-      // Use pre-parsed params from route matching for skipRouteOnParseError routes
-      for (const key in referenceParams) {
-        if (key in parsedParams) {
-          accumulatedParams[key] = parsedParams[key]
-        }
-      }
-    } else {
-      const result = parseParams(accumulatedParams as Record<string, string>)
-      Object.assign(accumulatedParams, result)
+    const result = parseParams(accumulatedParams as Record<string, string>)
+    if (result === false) {
+      throw new Error('Route params.parse returned false for a matched route')
     }
+    Object.assign(accumulatedParams, result)
   }
 }

@@ -7,6 +7,7 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
+  hasKeys,
   isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
@@ -246,11 +247,11 @@ export function useLinkProps<
           const currentSearchEmpty =
             !currentLocation.search ||
             (typeof currentLocation.search === 'object' &&
-              Object.keys(currentLocation.search).length === 0)
+              !hasKeys(currentLocation.search))
           const nextSearchEmpty =
             !next.search ||
             (typeof next.search === 'object' &&
-              Object.keys(next.search).length === 0)
+              !hasKeys(next.search as Record<string, unknown>))
 
           if (!(currentSearchEmpty && nextSearchEmpty)) {
             const searchTest = deepEqual(currentLocation.search, next.search, {

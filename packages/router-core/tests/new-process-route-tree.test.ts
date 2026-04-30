@@ -22,6 +22,44 @@ function makeTree(routes: Array<string>) {
 }
 
 describe('findRouteMatch', () => {
+  describe('routesByPath', () => {
+    it('uses exact route-template keys while matching duplicate bare aliases by insertion order', () => {
+      const routeTree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/$id',
+            fullPath: '/$id',
+            path: '$id',
+          },
+          {
+            id: '/{$id}',
+            fullPath: '/{$id}',
+            path: '{$id}',
+          },
+          {
+            id: '/prefix{$id}',
+            fullPath: '/prefix{$id}',
+            path: 'prefix{$id}',
+          },
+        ],
+      }
+
+      const { processedTree, routesByPath } = processRouteTree(routeTree)
+
+      expect(routesByPath['/$id']?.id).toBe('/$id')
+      expect(routesByPath['/{$id}']?.id).toBe('/{$id}')
+      expect(routesByPath['/prefix{$id}']?.id).toBe('/prefix{$id}')
+      expect(findRouteMatch('/value', processedTree)?.route.id).toBe('/$id')
+      expect(findRouteMatch('/prefixvalue', processedTree)?.route.id).toBe(
+        '/prefix{$id}',
+      )
+    })
+  })
+
   describe('priority', () => {
     describe('basic permutations priorities', () => {
       it('/static/static vs /static/dynamic', () => {
@@ -842,7 +880,7 @@ describe('findRouteMatch', () => {
       expect(match?.rawParams).toEqual({ '*': 'b/c', _splat: 'b/c' })
     })
 
-    it('falls back to fuzzy layout matching when wildcard param parsing fails', () => {
+    it('falls back to fuzzy layout matching when wildcard params.parse returns false', () => {
       const tree = {
         id: '__root__',
         fullPath: '/',
@@ -862,10 +900,9 @@ describe('findRouteMatch', () => {
             options: {
               params: {
                 parse: () => {
-                  throw new Error('skip')
+                  return false
                 },
               },
-              skipRouteOnParseError: { params: true },
             },
           },
         ],
@@ -876,7 +913,7 @@ describe('findRouteMatch', () => {
       expect(match?.rawParams).toEqual({ '**': 'b/c' })
     })
 
-    it('falls back to exact layout matching when empty wildcard param parsing fails', () => {
+    it('falls back to exact layout matching when empty wildcard params.parse returns false', () => {
       const tree = {
         id: '__root__',
         fullPath: '/',
@@ -896,10 +933,9 @@ describe('findRouteMatch', () => {
             options: {
               params: {
                 parse: () => {
-                  throw new Error('skip')
+                  return false
                 },
               },
-              skipRouteOnParseError: { params: true },
             },
           },
         ],
@@ -1038,7 +1074,6 @@ describe('findRouteMatch', () => {
                     return params
                   },
                 },
-                skipRouteOnParseError: { params: true },
               },
             },
           ],
@@ -1049,7 +1084,7 @@ describe('findRouteMatch', () => {
         expect(result?.rawParams).toEqual({ '*': 'rest', _splat: 'rest' })
         expect(calls).toBe(1)
       })
-      it('can fall back to a lower-priority wildcard when wildcard param parsing fails', () => {
+      it('can fall back to a lower-priority wildcard when wildcard params.parse returns false', () => {
         const tree = {
           id: '__root__',
           fullPath: '/',
@@ -1065,10 +1100,9 @@ describe('findRouteMatch', () => {
               options: {
                 params: {
                   parse: () => {
-                    throw new Error('skip')
+                    return false
                   },
                 },
-                skipRouteOnParseError: { params: true },
               },
             },
             {
@@ -1085,7 +1119,7 @@ describe('findRouteMatch', () => {
         expect(result?.route.id).toBe('/a/$')
         expect(result?.rawParams).toEqual({ '*': 'foobar', _splat: 'foobar' })
       })
-      it('falls back to the next matching wildcard by priority when the best wildcard parse fails', () => {
+      it('falls back to the next matching wildcard by priority when the best wildcard params.parse returns false', () => {
         const tree = {
           id: '__root__',
           fullPath: '/',
@@ -1101,10 +1135,9 @@ describe('findRouteMatch', () => {
               options: {
                 params: {
                   parse: () => {
-                    throw new Error('skip')
+                    return false
                   },
                 },
-                skipRouteOnParseError: { params: true },
               },
             },
             {
@@ -1150,7 +1183,6 @@ describe('findRouteMatch', () => {
                     return params
                   },
                 },
-                skipRouteOnParseError: { params: true, priority: 1 },
               },
             },
             {
@@ -1165,7 +1197,6 @@ describe('findRouteMatch', () => {
                     return params
                   },
                 },
-                skipRouteOnParseError: { params: true },
               },
             },
           ],
@@ -1205,7 +1236,6 @@ describe('findRouteMatch', () => {
                     return params
                   },
                 },
-                skipRouteOnParseError: { params: true },
               },
             },
           ],
@@ -1243,7 +1273,6 @@ describe('findRouteMatch', () => {
                     return params
                   },
                 },
-                skipRouteOnParseError: { params: true },
               },
             },
           ],
@@ -1253,7 +1282,8 @@ describe('findRouteMatch', () => {
         expect(result?.route.id).toBe('/a/')
         expect(calls).toBe(0)
       })
-      it('preserves parsed params from a stacked wildcard route', () => {
+      it('passes wildcard raw params to params.parse', () => {
+        let parsedParams: Record<string, string> | undefined
         const tree = {
           id: '__root__',
           fullPath: '/',
@@ -1268,11 +1298,11 @@ describe('findRouteMatch', () => {
               isRoot: false,
               options: {
                 params: {
-                  parse: (params: Record<string, string>) => ({
-                    length: params._splat!.length,
-                  }),
+                  parse: (params: Record<string, string>) => {
+                    parsedParams = params
+                    return { length: params._splat!.length }
+                  },
                 },
-                skipRouteOnParseError: { params: true },
               },
             },
           ],
@@ -1281,7 +1311,7 @@ describe('findRouteMatch', () => {
         const result = findRouteMatch('/a/foo/bar', processedTree)
         expect(result?.route.id).toBe('/a/$')
         expect(result?.rawParams).toEqual({ '*': 'foo/bar', _splat: 'foo/bar' })
-        expect(result?.parsedParams).toEqual({ length: 7 })
+        expect(parsedParams).toEqual({ '*': 'foo/bar', _splat: 'foo/bar' })
       })
     })
   })
@@ -1334,10 +1364,7 @@ describe('findRouteMatch', () => {
             path: '$foo',
             fullPath: '/$foo',
             options: {
-              params: { parse: () => {} },
-              skipRouteOnParseError: {
-                params: true,
-              },
+              params: { parse: (params: Record<string, string>) => params },
             },
             children: [
               {
@@ -1377,7 +1404,6 @@ describe('findRouteMatch', () => {
               "optional": null,
               "parent": [Circular],
               "parse": null,
-              "parsingPriority": 0,
               "pathless": [
                 {
                   "depth": 2,
@@ -1392,7 +1418,6 @@ describe('findRouteMatch', () => {
                     "optional": null,
                     "parent": [Circular],
                     "parse": null,
-                    "parsingPriority": 0,
                     "pathless": null,
                     "route": {
                       "fullPath": "/$foo/",
@@ -1400,7 +1425,6 @@ describe('findRouteMatch', () => {
                       "options": {},
                       "path": "/",
                     },
-                    "skipOnParamError": false,
                     "static": null,
                     "staticInsensitive": null,
                     "wildcard": null,
@@ -1409,7 +1433,6 @@ describe('findRouteMatch', () => {
                   "optional": null,
                   "parent": [Circular],
                   "parse": [Function],
-                  "parsingPriority": 0,
                   "pathless": null,
                   "route": {
                     "children": [
@@ -1432,13 +1455,9 @@ describe('findRouteMatch', () => {
                       "params": {
                         "parse": [Function],
                       },
-                      "skipRouteOnParseError": {
-                        "params": true,
-                      },
                     },
                     "path": "$foo",
                   },
-                  "skipOnParamError": true,
                   "static": null,
                   "staticInsensitive": Map {
                     "bar" => {
@@ -1450,7 +1469,6 @@ describe('findRouteMatch', () => {
                       "optional": null,
                       "parent": [Circular],
                       "parse": null,
-                      "parsingPriority": 0,
                       "pathless": null,
                       "route": {
                         "fullPath": "/$foo/bar",
@@ -1458,7 +1476,6 @@ describe('findRouteMatch', () => {
                         "options": {},
                         "path": "bar",
                       },
-                      "skipOnParamError": false,
                       "static": null,
                       "staticInsensitive": null,
                       "wildcard": null,
@@ -1469,7 +1486,6 @@ describe('findRouteMatch', () => {
               ],
               "prefix": undefined,
               "route": null,
-              "skipOnParamError": false,
               "static": null,
               "staticInsensitive": Map {
                 "hello" => {
@@ -1481,7 +1497,6 @@ describe('findRouteMatch', () => {
                   "optional": null,
                   "parent": [Circular],
                   "parse": null,
-                  "parsingPriority": 0,
                   "pathless": null,
                   "route": {
                     "fullPath": "/$foo/hello",
@@ -1489,7 +1504,6 @@ describe('findRouteMatch', () => {
                     "options": {},
                     "path": "$foo/hello",
                   },
-                  "skipOnParamError": false,
                   "static": null,
                   "staticInsensitive": null,
                   "wildcard": null,
@@ -1509,7 +1523,6 @@ describe('findRouteMatch', () => {
             "optional": null,
             "parent": [Circular],
             "parse": null,
-            "parsingPriority": 0,
             "pathless": null,
             "route": {
               "fullPath": "/",
@@ -1517,7 +1530,6 @@ describe('findRouteMatch', () => {
               "options": {},
               "path": "/",
             },
-            "skipOnParamError": false,
             "static": null,
             "staticInsensitive": null,
             "wildcard": null,
@@ -1526,10 +1538,8 @@ describe('findRouteMatch', () => {
           "optional": null,
           "parent": null,
           "parse": null,
-          "parsingPriority": 0,
           "pathless": null,
           "route": null,
-          "skipOnParamError": false,
           "static": null,
           "staticInsensitive": null,
           "wildcard": null,
@@ -1552,7 +1562,6 @@ describe('findRouteMatch', () => {
                 parse: (params: Record<string, string>) => params,
               },
               // force the creation of a pathless node
-              skipRouteOnParseError: { params: true },
             },
             children: [
               {
@@ -1586,7 +1595,6 @@ describe('findRouteMatch', () => {
                 parse: (params: Record<string, string>) => params,
               },
               // force the creation of a pathless node
-              skipRouteOnParseError: { params: true },
             },
             children: [
               {
