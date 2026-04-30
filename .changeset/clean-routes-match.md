@@ -5,4 +5,4 @@
 '@tanstack/vue-router': minor
 ---
 
-Replace the experimental `skipRouteOnParseError` route option with `params.match` and `params.matchPriority` for route selection. `params.match` now gates matching with raw path params, while `params.parse` remains responsible for typed params and `params.stringify` remains responsible for URL generation.
+Allow `params.parse` to experimentally return `false` to skip an incoming route candidate during path matching. Thrown parse errors still surface on the selected match instead of falling through, and outgoing typed route-template links continue to use exact route lookup followed by `params.stringify` for URL generation.

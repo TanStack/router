@@ -207,7 +207,8 @@ function parseSegments<TRouteLike extends RouteLike>(
     const path = route.fullPath ?? route.from
     const length = path.length
     const caseSensitive = route.options?.caseSensitive ?? defaultCaseSensitive
-    const parseParams = route.options?.params?.parse ?? route.options?.parseParams
+    const parseParams =
+      route.options?.params?.parse ?? route.options?.parseParams
     while (cursor < length) {
       const segment = parseSegment(path, cursor, data)
       let nextNode: AnySegmentNode<TRouteLike>

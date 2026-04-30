@@ -436,11 +436,7 @@ export function handleCreateServerFn(
   }
 
   // Notify about discovered functions (only for non-provider files)
-  if (
-    !isProviderFile &&
-    hasKeys(serverFnsById) &&
-    context.onServerFnsById
-  ) {
+  if (!isProviderFile && hasKeys(serverFnsById) && context.onServerFnsById) {
     context.onServerFnsById(serverFnsById)
   }
 

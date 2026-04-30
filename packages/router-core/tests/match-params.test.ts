@@ -25,16 +25,16 @@ const root = (children: Array<TestRoute>): TestRoute => ({
   children,
 })
 
-const parseWhen = (
-  predicate: (params: Record<string, string>) => boolean,
-) => {
-  return (params: Record<string, string>) => (predicate(params) ? params : false)
+const parseWhen = (predicate: (params: Record<string, string>) => boolean) => {
+  return (params: Record<string, string>) =>
+    predicate(params) ? params : false
 }
 
-const integerParse = (key: string) => parseWhen((params) => {
-  const value = Number(params[key])
-  return Number.isInteger(value)
-})
+const integerParse = (key: string) =>
+  parseWhen((params) => {
+    const value = Number(params[key])
+    return Number.isInteger(value)
+  })
 
 describe('params.parse route selection', () => {
   describe('basic matching', () => {
@@ -543,7 +543,9 @@ describe('params.parse route selection', () => {
             path: '{-$lang}/home',
             options: {
               params: {
-                parse: parseWhen(({ lang }) => !lang || validLangs.includes(lang)),
+                parse: parseWhen(
+                  ({ lang }) => !lang || validLangs.includes(lang),
+                ),
               },
             },
           },
@@ -574,7 +576,9 @@ describe('params.parse route selection', () => {
             path: '{-$lang}',
             options: {
               params: {
-                parse: parseWhen(({ lang }) => !lang || validLangs.includes(lang)),
+                parse: parseWhen(
+                  ({ lang }) => !lang || validLangs.includes(lang),
+                ),
               },
             },
           },
