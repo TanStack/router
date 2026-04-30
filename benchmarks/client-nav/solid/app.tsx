@@ -1,16 +1,17 @@
 import { For, createRenderEffect } from 'solid-js'
 import { render } from '@solidjs/web'
 import {
-  Link,
   Outlet,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
+  useRouter,
   useParams,
   useSearch,
 } from '@tanstack/solid-router'
+import type { JSX } from '@solidjs/web'
 
 function runPerfSelectorComputation(seed: number) {
   let value = Math.trunc(seed) | 0
@@ -35,6 +36,46 @@ const noop = () => {}
 const rootSelectors = Array.from({ length: 10 }, (_, index) => index)
 const routeSelectors = Array.from({ length: 6 }, (_, index) => index)
 const linkGroups = Array.from({ length: 4 }, (_, index) => index)
+
+function BasicLink(props: {
+  children: JSX.Element
+  'data-testid'?: string
+  from?: string
+  to: string
+  params?: unknown
+  search?: unknown
+  replace?: boolean
+}) {
+  const router = useRouter()
+
+  const handleClick = (event: MouseEvent) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey
+    ) {
+      return
+    }
+
+    event.preventDefault()
+    router.navigate({
+      from: props.from as never,
+      to: props.to as never,
+      params: props.params as never,
+      search: props.search as never,
+      replace: props.replace,
+    })
+  }
+
+  return (
+    <a data-testid={props['data-testid']} href="#" onClick={handleClick}>
+      {props.children}
+    </a>
+  )
+}
 
 function PerfValue(props: { value: () => number }) {
   createRenderEffect(
@@ -74,48 +115,40 @@ function LinkPanel() {
 
           return (
             <div>
-              <Link
+              <BasicLink
                 data-testid={groupIndex === 0 ? 'go-items-1' : undefined}
                 to="/items/$id"
                 params={{ id: itemsId }}
                 replace
-                activeOptions={{ exact: true }}
-                activeProps={{ class: 'active-link' }}
-                inactiveProps={{ class: 'inactive-link' }}
               >
                 {`Items ${itemsId}`}
-              </Link>
-              <Link
+              </BasicLink>
+              <BasicLink
                 data-testid={groupIndex === 0 ? 'go-items-2' : undefined}
                 to="/items/$id"
                 params={{ id: 2 }}
                 replace
-                activeOptions={{ includeSearch: false }}
               >
                 {`Items 2 alt ${groupIndex}`}
-              </Link>
-              <Link
+              </BasicLink>
+              <BasicLink
                 data-testid={groupIndex === 0 ? 'go-search' : undefined}
                 to="/search"
                 search={{ page: 1, filter: 'all', junk: `group-${groupIndex}` }}
                 replace
-                activeOptions={{ includeSearch: true }}
-                activeProps={{ class: 'active-link' }}
-                inactiveProps={{ class: 'inactive-link' }}
               >
                 {`Search ${groupIndex}`}
-              </Link>
-              <Link
+              </BasicLink>
+              <BasicLink
                 data-testid={groupIndex === 0 ? 'go-ctx' : undefined}
                 to="/ctx/$id"
                 params={{ id: ctxId }}
                 search={true}
                 replace
-                activeOptions={{ includeSearch: false }}
               >
                 {`Context ${ctxId}`}
-              </Link>
-              <Link
+              </BasicLink>
+              <BasicLink
                 from={searchRoute.fullPath}
                 to="/search"
                 search={(prev: { page: number; filter: string }) => ({
@@ -123,14 +156,9 @@ function LinkPanel() {
                   filter: prev.filter,
                   junk: `updater-${groupIndex}`,
                 })}
-                activeOptions={{ includeSearch: true }}
               >
-                {({ isActive }) =>
-                  isActive
-                    ? `Search updater active ${groupIndex}`
-                    : `Search updater inactive ${groupIndex}`
-                }
-              </Link>
+                {`Search updater ${groupIndex}`}
+              </BasicLink>
             </div>
           )
         }}
@@ -274,22 +302,21 @@ function ItemsPage() {
   return (
     <>
       <For each={routeSelectors}>{() => <ItemParamsSubscriber />}</For>
-      <Link
+      <BasicLink
         data-testid="items-details"
         from={itemsRoute.fullPath}
         to="./details"
         replace
       >
         Details
-      </Link>
-      <Link
+      </BasicLink>
+      <BasicLink
         from={itemsRoute.fullPath}
         to="."
         search={true}
-        activeOptions={{ includeSearch: true }}
       >
         Preserve search on item
-      </Link>
+      </BasicLink>
       <Outlet />
     </>
   )
@@ -299,15 +326,14 @@ function ItemDetailsPage() {
   return (
     <>
       <For each={routeSelectors}>{() => <ItemParamsSubscriber />}</For>
-      <Link
+      <BasicLink
         data-testid="items-parent"
         from={itemDetailsRoute.fullPath}
         to=".."
         replace
-        activeOptions={{ exact: true }}
       >
         Back to item
-      </Link>
+      </BasicLink>
     </>
   )
 }
@@ -318,7 +344,7 @@ function SearchPage() {
       <For each={routeSelectors}>{() => <SearchStateSubscriber />}</For>
       <For each={routeSelectors}>{() => <SearchLoaderDepsSubscriber />}</For>
       <For each={routeSelectors}>{() => <SearchLoaderDataSubscriber />}</For>
-      <Link
+      <BasicLink
         data-testid="search-next-page"
         from={searchRoute.fullPath}
         to="."
@@ -328,12 +354,9 @@ function SearchPage() {
           filter: prev.filter,
           junk: 'local-updater',
         })}
-        activeOptions={{ includeSearch: true }}
-        activeProps={{ class: 'active-link' }}
-        inactiveProps={{ class: 'inactive-link' }}
       >
         Next page
-      </Link>
+      </BasicLink>
     </>
   )
 }
