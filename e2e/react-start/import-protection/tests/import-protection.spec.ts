@@ -901,7 +901,9 @@ test('non-alias-namespace-leak does not expose real secret after hydration', asy
   ).not.toContainText('super-secret-server-key-12345')
 })
 
-test('type-only protected import route loads in mock mode', async ({ page }) => {
+test('type-only protected import route loads in mock mode', async ({
+  page,
+}) => {
   await expectRouteHeading(
     page,
     '/type-only-protected-import',
