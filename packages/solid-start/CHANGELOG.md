@@ -1,5 +1,16 @@
 # @tanstack/solid-start
 
+## 2.0.0-beta.18
+
+### Patch Changes
+
+- Upgrade to solid v2 beta 10 ([#7284](https://github.com/TanStack/router/pull/7284))
+
+- Updated dependencies [[`401272e`](https://github.com/TanStack/router/commit/401272e306218defaa2406c4bb9f00766bd9027e)]:
+  - @tanstack/solid-start-client@2.0.0-beta.17
+  - @tanstack/solid-start-server@2.0.0-beta.17
+  - @tanstack/solid-router@2.0.0-beta.17
+
 ## 2.0.0-beta.17
 
 ### Patch Changes
