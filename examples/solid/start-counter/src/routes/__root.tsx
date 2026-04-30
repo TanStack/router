@@ -6,7 +6,7 @@ import {
   createRootRoute,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRoute({
@@ -16,7 +16,7 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 })
 
-function RootDocument(props: { children: Solid.JSX.Element }) {
+function RootDocument(props: { children: JSX.Element }) {
   return (
     <html>
       <head>

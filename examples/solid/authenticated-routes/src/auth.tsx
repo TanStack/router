@@ -1,4 +1,5 @@
 import * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 import { sleep } from './utils'
 
@@ -25,7 +26,7 @@ function setStoredUser(user: string | null) {
   }
 }
 
-export function AuthProvider(props: { children: Solid.JSX.Element }) {
+export function AuthProvider(props: { children: JSX.Element }) {
   const [user, setUser] = Solid.createSignal<string | null>(getStoredUser())
   const isAuthenticated = () => !!user()
 

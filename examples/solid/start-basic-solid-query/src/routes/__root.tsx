@@ -9,7 +9,7 @@ import {
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { isServer } from '@solidjs/web'
-import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { QueryClient } from '@tanstack/solid-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
@@ -76,7 +76,7 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: { children: Solid.JSX.Element }) {
+function RootDocument({ children }: { children: JSX.Element }) {
   return (
     <html>
       <head>

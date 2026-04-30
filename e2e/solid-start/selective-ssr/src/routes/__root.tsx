@@ -9,7 +9,7 @@ import {
   useRouterState,
 } from '@tanstack/solid-router'
 import { z } from 'zod'
-import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { ssrSchema } from '~/search'
 import appCss from '~/styles/app.css?url'
 
@@ -110,7 +110,7 @@ export const Route = createRootRoute({
   },
 })
 
-function RootDocument({ children }: { children: Solid.JSX.Element }) {
+function RootDocument({ children }: { children: JSX.Element }) {
   const routerState = useRouterState({
     select: (state) => ({ isLoading: state.isLoading, status: state.status }),
   })
