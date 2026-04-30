@@ -1860,15 +1860,19 @@ export class RouterCore<
         : sourcePath
 
       // Resolve the next params
-      const nextParams =
-        dest.params === false || dest.params === null
-          ? Object.create(null)
-          : (dest.params ?? true) === true
-            ? fromParams
-            : Object.assign(
-                fromParams,
-                functionalUpdate(dest.params as any, fromParams),
-              )
+      const inheritParams =
+        dest.from || dest.params === true || typeof dest.params === 'function'
+      const baseParams = inheritParams ? fromParams : Object.create(null)
+      const nextParams = inheritParams
+        ? dest.params === true
+          ? baseParams
+          : Object.assign(
+              baseParams,
+              functionalUpdate(dest.params as any, fromParams),
+            )
+        : dest.params
+          ? Object.assign(baseParams, dest.params)
+          : baseParams
 
       const destRoute = this.routesByPath[
         trimPathRight(nextTo) as keyof typeof this.routesByPath

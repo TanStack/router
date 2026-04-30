@@ -1036,6 +1036,141 @@ describe('buildLocation - params edge cases', () => {
     expect(location.pathname).toBe('/users/456')
   })
 
+  test('omitted params should not inherit current params without from', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const orgRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/orgs/$orgId',
+    })
+    const userRoute = new BaseRoute({
+      getParentRoute: () => orgRoute,
+      path: '/users/$userId',
+    })
+
+    const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/orgs/abc/users/123'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/orgs/$orgId/users/$userId',
+    })
+
+    expect(location.pathname).toBe('/orgs/undefined/users/undefined')
+  })
+
+  test('omitted params should not inherit current optional params without from', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const optRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/{-$foo}/bar',
+    })
+
+    const routeTree = rootRoute.addChildren([optRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/foo/bar'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/{-$foo}/bar',
+    })
+
+    expect(location.pathname).toBe('/bar')
+  })
+
+  test('params as object should not merge current params without from', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const orgRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/orgs/$orgId',
+    })
+    const userRoute = new BaseRoute({
+      getParentRoute: () => orgRoute,
+      path: '/users/$userId',
+    })
+
+    const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/orgs/abc/users/123'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/orgs/$orgId/users/$userId',
+      params: { userId: '456' },
+    })
+
+    expect(location.pathname).toBe('/orgs/undefined/users/456')
+  })
+
+  test('omitted params should inherit params with explicit from', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const orgRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/orgs/$orgId',
+    })
+    const userRoute = new BaseRoute({
+      getParentRoute: () => orgRoute,
+      path: '/users/$userId',
+    })
+
+    const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/orgs/abc/users/123'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      from: '/orgs/$orgId/users/$userId',
+      to: '/orgs/$orgId/users/$userId',
+    })
+
+    expect(location.pathname).toBe('/orgs/abc/users/123')
+  })
+
+  test('params as object should merge params with explicit from', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const orgRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/orgs/$orgId',
+    })
+    const userRoute = new BaseRoute({
+      getParentRoute: () => orgRoute,
+      path: '/users/$userId',
+    })
+
+    const routeTree = rootRoute.addChildren([orgRoute.addChildren([userRoute])])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/orgs/abc/users/123'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      from: '/orgs/$orgId/users/$userId',
+      to: '/orgs/$orgId/users/$userId',
+      params: { userId: '456' },
+    })
+
+    expect(location.pathname).toBe('/orgs/abc/users/456')
+  })
+
   test('params as object should merge with current params', async () => {
     const rootRoute = new BaseRootRoute({})
     const orgRoute = new BaseRoute({
