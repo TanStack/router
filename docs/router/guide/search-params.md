@@ -145,7 +145,7 @@ export const Route = createFileRoute('/shop/products')({
 
 `.catch()` swaps in a fallback value instead of throwing when validation fails — appropriate when you'd rather absorb a malformed param than interrupt the user with an error screen. Use `.default()` instead if you want the route's `errorComponent` to render on bad input.
 
-If your schema uses `.default(...)` to fill in missing values, the `input` type for navigation will require those fields while the `output` type for reading them won't:
+When your schema uses `.default(...)` to fill in missing values, navigation and reading get the right types automatically:
 
 ```tsx
 const productSearchSchema = z.object({
@@ -154,8 +154,11 @@ const productSearchSchema = z.object({
   sort: z.enum(['newest', 'oldest', 'price']).default('newest'),
 })
 
-// page/filter/sort are required when navigating, optional when reading
-<Link to="/shop/products" search={{ page: 1, filter: '', sort: 'newest' }} />
+// page/filter/sort are optional when navigating (defaults fill in)…
+<Link to="/shop/products" />
+
+// …and guaranteed present when reading.
+const { page, filter, sort } = Route.useSearch()
 ```
 
 ##### Zod v3
