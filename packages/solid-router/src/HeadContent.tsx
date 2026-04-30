@@ -1,5 +1,5 @@
 import { For } from 'solid-js'
-import { Portal, isServer } from '@solidjs/web'
+import { HydrationScript, Portal, isServer } from '@solidjs/web'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useTags } from './headContentUtils'
@@ -20,17 +20,23 @@ export function HeadContent(props: HeadContentProps) {
   const router = useRouter()
 
   const content = () => (
-    <For each={tags()}>
-      {(tag) => {
-        const t = tag() as any
-        return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
-      }}
-    </For>
+    <>
+      <HydrationScript />
+      <For each={tags()}>
+        {(tag) => {
+          const t = tag() as any
+          return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
+        }}
+      </For>
+    </>
   )
 
   return (isServer ?? router.isServer) ? (
     content()
   ) : (
-    <Portal mount={document.head}>{content()}</Portal>
+    <>
+      <HydrationScript />
+      <Portal mount={document.head}>{content()}</Portal>
+    </>
   )
 }
