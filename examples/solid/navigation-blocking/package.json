@@ -12,7 +12,7 @@
     "@solidjs/web": "2.0.0-beta.10",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-query": "^6.0.0-beta.4",
-    "@tanstack/solid-router": "^2.0.0-beta.15",
+    "@tanstack/solid-router": "^2.0.0-beta.16",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.12",
     "redaxios": "^0.5.1",
     "solid-js": "2.0.0-beta.10",

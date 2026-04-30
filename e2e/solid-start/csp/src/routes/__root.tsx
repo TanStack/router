@@ -4,7 +4,6 @@ import {
   Outlet,
   Scripts,
 } from '@tanstack/solid-router'
-import { HydrationScript } from '@solidjs/web'
 
 export const Route = createRootRoute({
   headers: ({ ssr }) => {
@@ -37,7 +36,6 @@ function RootComponent() {
   return (
     <html>
       <head>
-        <HydrationScript />
         <HeadContent />
       </head>
       <body>

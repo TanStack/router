@@ -17,10 +17,10 @@
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-plugin": "^1.167.12",
     "@tanstack/solid-devtools": "^0.7.0",
-    "@tanstack/solid-router": "^2.0.0-beta.15",
+    "@tanstack/solid-router": "^2.0.0-beta.16",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.12",
     "@tanstack/solid-router-ssr-query": "^2.0.0-beta.17",
-    "@tanstack/solid-start": "^2.0.0-beta.16",
+    "@tanstack/solid-start": "^2.0.0-beta.17",
     "solid-js": "2.0.0-beta.10",
     "tailwindcss": "^4.2.2"
   },

@@ -8,7 +8,7 @@ import {
 } from '@tanstack/solid-router'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import { HydrationScript, isServer } from '@solidjs/web'
+import { isServer } from '@solidjs/web'
 import type * as Solid from 'solid-js'
 import type { QueryClient } from '@tanstack/solid-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
@@ -80,10 +80,9 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"

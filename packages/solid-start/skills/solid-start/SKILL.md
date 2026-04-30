@@ -115,7 +115,6 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/solid-router'
-import { HydrationScript } from 'solid-js/web'
 import { Suspense } from 'solid-js'
 
 export const Route = createRootRoute({
@@ -134,10 +133,9 @@ function RootDocument(props: { children: any }) {
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <Suspense>{props.children}</Suspense>
         <Scripts />
       </body>

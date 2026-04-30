@@ -164,7 +164,6 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/solid-router'
-import { HydrationScript } from '@solidjs/web'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -196,10 +195,9 @@ function RootDocument({ children }: Readonly<{ children: Solid.JSX.Element }>) {
   return (
     <html>
       <head>
-        <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <Solid.Suspense>{children}</Solid.Suspense>
         <Scripts />
       </body>

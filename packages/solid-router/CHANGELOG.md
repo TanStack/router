@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 2.0.0-beta.16
+
+### Patch Changes
+
+- fix: move HydrationScript to HeadContent ([#7296](https://github.com/TanStack/router/pull/7296))
+
 ## 2.0.0-beta.15
 
 ### Patch Changes
