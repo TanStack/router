@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "paths": {
       "solid-js/web": ["./node_modules/@solidjs/web/types/index.d.ts"]
     },

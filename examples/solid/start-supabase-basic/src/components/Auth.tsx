@@ -1,10 +1,10 @@
-import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export function Auth(props: {
   actionText: string
   onSubmit: (e: Event) => void
   status: 'pending' | 'idle' | 'success' | 'error'
-  afterSubmit?: Solid.JSX.Element
+  afterSubmit?: JSX.Element
 }) {
   return (
     <div class="fixed inset-0 bg-white dark:bg-black flex items-start justify-center p-8">

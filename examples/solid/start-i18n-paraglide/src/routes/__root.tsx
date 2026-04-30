@@ -7,7 +7,7 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/solid-router-devtools'
 import { TanStackDevtools } from '@tanstack/solid-devtools'
 import styles from '../styles.css?url'
-import type { JSX } from 'solid-js/jsx-runtime'
+import type { JSX } from '@solidjs/web'
 import { getLocale, locales, setLocale } from '@/paraglide/runtime'
 import { m } from '@/paraglide/messages'
 

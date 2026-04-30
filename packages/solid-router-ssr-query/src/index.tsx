@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/solid-query'
 import { setupCoreRouterSsrQueryIntegration } from '@tanstack/router-ssr-query-core'
 import type { RouterSsrQueryOptions } from '@tanstack/router-ssr-query-core'
 import type { AnyRouter } from '@tanstack/solid-router'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export type Options<TRouter extends AnyRouter> =
   RouterSsrQueryOptions<TRouter> & {

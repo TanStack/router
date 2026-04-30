@@ -13,28 +13,28 @@
     "check": "prettier --write . && eslint --fix"
   },
   "dependencies": {
+    "@solidjs/web": "2.0.0-beta.10",
     "@tailwindcss/vite": "^4.2.2",
+    "@tanstack/router-plugin": "^1.167.12",
     "@tanstack/solid-devtools": "^0.7.0",
     "@tanstack/solid-router": "^2.0.0-beta.16",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.12",
     "@tanstack/solid-router-ssr-query": "^2.0.0-beta.17",
     "@tanstack/solid-start": "^2.0.0-beta.17",
-    "@tanstack/router-plugin": "^1.167.12",
-    "solid-js": "2.0.0-beta.8",
-    "@solidjs/web": "2.0.0-beta.8",
+    "solid-js": "2.0.0-beta.10",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
+    "@solidjs/testing-library": "^0.8.10",
     "@tanstack/eslint-config": "^0.3.2",
     "@testing-library/dom": "^10.4.1",
-    "@solidjs/testing-library": "^0.8.10",
     "@types/bun": "^1.2.22",
     "@types/node": "22.10.2",
-    "vite-plugin-solid": "^3.0.0-next.5",
     "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
+    "vite-plugin-solid": "^3.0.0-next.5",
     "vitest": "^3.2.4",
     "web-vitals": "^5.1.0"
   }

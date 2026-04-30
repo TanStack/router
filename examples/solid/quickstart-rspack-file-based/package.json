@@ -8,12 +8,12 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
+    "@solidjs/web": "2.0.0-beta.10",
     "@tailwindcss/postcss": "^4.2.2",
     "@tanstack/solid-router": "^2.0.0-beta.16",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.12",
     "postcss": "^8.5.1",
-    "solid-js": "2.0.0-beta.8",
-    "@solidjs/web": "2.0.0-beta.8",
+    "solid-js": "2.0.0-beta.10",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

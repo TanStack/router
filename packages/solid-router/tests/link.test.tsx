@@ -40,6 +40,7 @@ import {
   sleep,
 } from './utils'
 import type { RouterHistory } from '../src'
+import type { JSX } from '@solidjs/web'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
@@ -5350,7 +5351,7 @@ describe('createLink', () => {
   it('should respect target attribute set by custom component', async () => {
     const CustomLinkWithTarget = (props: {
       href?: string
-      children?: Solid.JSX.Element
+      children?: JSX.Element
       ref?: (el: HTMLAnchorElement) => void
     }) => (
       <a ref={props.ref} {...props} target="_blank" rel="noopener noreferrer" />
@@ -5410,7 +5411,7 @@ describe('createLink', () => {
   it('should allow override of target prop even when custom component sets it', async () => {
     const CustomLinkWithDefaultTarget = (props: {
       href?: string
-      children?: Solid.JSX.Element
+      children?: JSX.Element
       target?: string
       ref?: (el: HTMLAnchorElement) => void
     }) => <a ref={props.ref} target="_blank" {...props} />

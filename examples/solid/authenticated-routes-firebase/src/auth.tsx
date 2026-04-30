@@ -3,6 +3,7 @@ import * as Solid from 'solid-js'
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import { auth } from './firebase/config'
 import type { AuthProvider, User } from 'firebase/auth'
+import type { JSX } from '@solidjs/web'
 
 export type AuthContextType = {
   isAuthenticated: () => boolean
@@ -14,7 +15,7 @@ export type AuthContextType = {
 
 const AuthContext = Solid.createContext<AuthContextType | null>(null)
 
-export function AuthContextProvider(props: { children: Solid.JSX.Element }) {
+export function AuthContextProvider(props: { children: JSX.Element }) {
   const [user, setUser] = Solid.createSignal<User | null>(auth.currentUser)
   const [isInitialLoading, setIsInitialLoading] = Solid.createSignal(true)
   const isAuthenticated = () => !!user()

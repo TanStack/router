@@ -7,7 +7,7 @@ import {
   createRootRoute,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -71,7 +71,7 @@ function RootComponent() {
   )
 }
 
-function RootLayout({ children }: { children: Solid.JSX.Element }) {
+function RootLayout({ children }: { children: JSX.Element }) {
   return (
     <html>
       <head>

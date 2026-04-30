@@ -8,7 +8,7 @@ import {
 } from '@router-solid-mono-simple/post-feature'
 import { RootComponent } from './rootComponent'
 import type { RouterIds } from '@router-solid-mono-simple/router'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import './style.css'
 // Not lazy loaded for simplicity, but you could expose from your library component
 // individually, and enforce here to use solid lazy components via typings

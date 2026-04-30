@@ -1,7 +1,7 @@
 import * as Solid from '@solidjs/web'
 import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/router-core'
-import type { JSXElement } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export const renderRouterToString = ({
   router,
@@ -10,7 +10,7 @@ export const renderRouterToString = ({
 }: {
   router: AnyRouter
   responseHeaders: Headers
-  children: () => JSXElement
+  children: () => JSX.Element
 }) => {
   try {
     const serializationAdapters =

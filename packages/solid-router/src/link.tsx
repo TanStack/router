@@ -27,6 +27,7 @@ import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
+import type { ComponentProps, JSX, ValidComponent } from '@solidjs/web'
 
 function mergeRefs<T>(
   ...refs: Array<((el: T) => void) | undefined>
@@ -63,7 +64,7 @@ export function useLinkProps<
   TMaskTo extends string = '',
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-): Solid.ComponentProps<'a'> {
+): ComponentProps<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
   const shouldHydrateHash = !isServer && !!router.options.ssr
@@ -417,8 +418,8 @@ export function useLinkProps<
     handleTouchStart,
   )
 
-  type ResolvedLinkStateProps = Omit<Solid.ComponentProps<'a'>, 'style'> & {
-    style?: Solid.JSX.CSSProperties
+  type ResolvedLinkStateProps = Omit<ComponentProps<'a'>, 'style'> & {
+    style?: JSX.CSSProperties
   }
 
   const resolvedProps = Solid.createMemo(() => {
@@ -500,7 +501,7 @@ const STATIC_TRANSITIONING_ATTRIBUTES = {
 /** Call a JSX.EventHandlerUnion with the event. */
 function callHandler<T, TEvent extends Event>(
   event: TEvent & { currentTarget: T; target: Element },
-  handler: Solid.JSX.EventHandlerUnion<T, TEvent>,
+  handler: JSX.EventHandlerUnion<T, TEvent>,
 ) {
   if (typeof handler === 'function') {
     handler(event)
@@ -511,7 +512,7 @@ function callHandler<T, TEvent extends Event>(
 }
 
 function createComposedHandler<T, TEvent extends Event>(
-  getHandler: () => Solid.JSX.EventHandlerUnion<T, TEvent> | undefined,
+  getHandler: () => JSX.EventHandlerUnion<T, TEvent> | undefined,
   fallback: (event: TEvent) => void,
 ) {
   return (event: TEvent & { currentTarget: T; target: Element }) => {
@@ -527,7 +528,7 @@ export type UseLinkPropsOptions<
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
 > = ActiveLinkOptions<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
-  Omit<Solid.ComponentProps<'a'>, 'style'> & { style?: Solid.JSX.CSSProperties }
+  Omit<ComponentProps<'a'>, 'style'> & { style?: JSX.CSSProperties }
 
 export type ActiveLinkOptions<
   TComp = 'a',
@@ -571,15 +572,12 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    | Solid.JSX.Element
-    | ((state: {
-        isActive: boolean
-        isTransitioning: boolean
-      }) => Solid.JSX.Element)
+    | JSX.Element
+    | ((state: { isActive: boolean; isTransitioning: boolean }) => JSX.Element)
 }
 
-type LinkComponentSolidProps<TComp> = TComp extends Solid.ValidComponent
-  ? Omit<Solid.ComponentProps<TComp>, keyof CreateLinkProps>
+type LinkComponentSolidProps<TComp> = TComp extends ValidComponent
+  ? Omit<ComponentProps<TComp>, keyof CreateLinkProps>
   : never
 
 export type LinkComponentProps<
@@ -612,7 +610,7 @@ export type LinkComponent<
   const TMaskTo extends string = '',
 >(
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-) => Solid.JSX.Element
+) => JSX.Element
 
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
@@ -631,11 +629,11 @@ export interface LinkComponentRoute<
       this['defaultFrom'],
       TMaskTo
     >,
-  ): Solid.JSX.Element
+  ): JSX.Element
 }
 
 export function createLink<const TComp>(
-  Comp: Constrain<TComp, any, (props: CreateLinkProps) => Solid.JSX.Element>,
+  Comp: Constrain<TComp, any, (props: CreateLinkProps) => JSX.Element>,
 ): LinkComponent<TComp> {
   return (props) => <Link {...props} _asChild={Comp} />
 }
@@ -653,9 +651,7 @@ export const Link: LinkComponent<'a'> = (props) => {
   // Resolve children once using Solid.children to avoid
   // re-accessing the children getter (which in Solid 2.0 would
   // re-invoke createComponent each time for JSX children).
-  const resolvedChildren = Solid.children(
-    () => local.children as Solid.JSX.Element,
-  )
+  const resolvedChildren = Solid.children(() => local.children as JSX.Element)
 
   const children = () => {
     const ch = resolvedChildren()
@@ -687,7 +683,7 @@ export const Link: LinkComponent<'a'> = (props) => {
   }
 
   return (
-    <Dynamic component={local._asChild as Solid.ValidComponent} {...linkProps}>
+    <Dynamic component={local._asChild as ValidComponent} {...linkProps}>
       {children()}
     </Dynamic>
   )

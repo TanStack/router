@@ -13,7 +13,7 @@ import { NotFound } from '../components/NotFound'
 import appCss from '../styles/app.css?url'
 import { seo } from '../utils/seo'
 import { getSupabaseServerClient } from '../utils/supabase'
-import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()
@@ -93,7 +93,7 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: { children: Solid.JSX.Element }) {
+function RootDocument({ children }: { children: JSX.Element }) {
   const { user } = Route.useRouteContext()()
 
   return (
