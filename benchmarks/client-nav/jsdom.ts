@@ -35,7 +35,7 @@ setGlobal(
   'requestAnimationFrame',
   window.requestAnimationFrame?.bind(window) ??
     ((callback: (time: number) => void) =>
-      setTimeout(() => callback(performance.now()), 16)),
+      setTimeout(() => callback(performance.now()), 0)),
 )
 
 setGlobal(
