@@ -2,7 +2,7 @@ import { isServer } from '@tanstack/router-core/isServer'
 import { createEffect } from 'solid-js'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export function Asset({
   tag,

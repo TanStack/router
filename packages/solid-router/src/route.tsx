@@ -44,9 +44,9 @@ import type { UseMatchRoute } from './useMatch'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
-import type * as Solid from 'solid-js'
 import type { UseRouteContextRoute } from './useRouteContext'
 import type { LinkComponentRoute } from './link'
+import type { JSX } from '@solidjs/web'
 
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
@@ -57,11 +57,7 @@ declare module '@tanstack/router-core' {
   }
 
   export interface RootRouteOptionsExtensions {
-    shellComponent?: ({
-      children,
-    }: {
-      children: Solid.JSX.Element
-    }) => Solid.JSX.Element
+    shellComponent?: ({ children }: { children: JSX.Element }) => JSX.Element
   }
 
   export interface RouteExtensions<
@@ -537,7 +533,7 @@ export function createRouteMask<
   return opts as any
 }
 
-export type SolidNode = Solid.JSX.Element
+export type SolidNode = JSX.Element
 
 export interface DefaultRouteTypes<TProps> {
   component: (props: TProps) => any

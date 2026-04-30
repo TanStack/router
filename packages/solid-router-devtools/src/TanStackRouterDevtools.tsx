@@ -2,7 +2,8 @@ import { useRouter, useRouterState } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
 import { createEffect, createSignal, onCleanup } from 'solid-js'
 import type { AnyRouter } from '@tanstack/solid-router'
-import type { Component, JSX } from 'solid-js'
+import type { Component } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export interface TanStackRouterDevtoolsOptions {
   /**

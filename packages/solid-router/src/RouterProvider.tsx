@@ -7,6 +7,7 @@ import type {
   RegisteredRouter,
   RouterOptions,
 } from '@tanstack/router-core'
+import type { JSX } from '@solidjs/web'
 
 const RouterContext = routerContext as unknown as Solid.Component<{
   value: any
@@ -21,7 +22,7 @@ export function RouterContextProvider<
   children,
   ...rest
 }: RouterProps<TRouter, TDehydrated> & {
-  children: () => Solid.JSX.Element
+  children: () => JSX.Element
 }) {
   if (Object.keys(rest).length > 0) {
     Solid.runWithOwner(null, () => {

@@ -8,7 +8,7 @@ import type {
   ValidateNavigateOptions,
   ValidateRedirectOptions,
 } from '@tanstack/solid-router'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export function customRedirect<TRouter extends RegisteredRouter, TOptions>(
   options: ValidateRedirectOptions<TRouter, TOptions>,

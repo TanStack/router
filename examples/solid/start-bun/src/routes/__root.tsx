@@ -6,7 +6,7 @@ import { HydrationScript } from '@solidjs/web'
 import Header from '../components/Header'
 
 import appCss from '../styles.css?url'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export const Route = createRootRoute({
   head: () => ({

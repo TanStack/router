@@ -7,4 +7,4 @@
 '@tanstack/solid-start': patch
 ---
 
-Upgrade to solid v2 beta 9
+Upgrade to solid v2 beta 10

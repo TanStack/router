@@ -33,7 +33,7 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 {
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "moduleResolution": "Bundler",
     "module": "ESNext",
     "target": "ES2022",

@@ -1,14 +1,15 @@
 import * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export interface ClientOnlyProps {
   /**
    * The children to render when the JS is loaded.
    */
-  children: Solid.JSX.Element
+  children: JSX.Element
   /**
    * The fallback component to render if the JS is not yet loaded.
    */
-  fallback?: Solid.JSX.Element
+  fallback?: JSX.Element
 }
 
 /**

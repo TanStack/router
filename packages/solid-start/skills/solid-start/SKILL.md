@@ -66,7 +66,7 @@ npm i -D vite vite-plugin-solid typescript
 {
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "moduleResolution": "Bundler",
     "module": "ESNext",
     "target": "ES2022",

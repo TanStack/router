@@ -24,6 +24,7 @@ import type {
   RouteByPath,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
+import type { JSX } from '@solidjs/web'
 
 const NearestMatchContext = nearestMatchContext as unknown as Solid.Component<{
   value: any
@@ -32,11 +33,11 @@ const NearestMatchContext = nearestMatchContext as unknown as Solid.Component<{
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
-    meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
-    links?: Array<Solid.JSX.IntrinsicElements['link'] | undefined>
-    scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
-    styles?: Array<Solid.JSX.IntrinsicElements['style'] | undefined>
-    headScripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
+    meta?: Array<JSX.IntrinsicElements['meta'] | undefined>
+    links?: Array<JSX.IntrinsicElements['link'] | undefined>
+    scripts?: Array<JSX.IntrinsicElements['script'] | undefined>
+    styles?: Array<JSX.IntrinsicElements['style'] | undefined>
+    headScripts?: Array<JSX.IntrinsicElements['script'] | undefined>
   }
 }
 
@@ -183,8 +184,8 @@ export type MakeMatchRouteOptions<
           TRouter['routeTree'],
           ResolveRelativePath<TFrom, NoInfer<TTo>>
         >['types']['allParams'],
-      ) => Solid.JSX.Element)
-    | Solid.JSX.Element
+      ) => JSX.Element)
+    | JSX.Element
 }
 
 export function MatchRoute<

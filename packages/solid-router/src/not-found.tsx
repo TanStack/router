@@ -3,6 +3,7 @@ import * as Solid from 'solid-js'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import type { NotFoundError } from '@tanstack/router-core'
+import type { JSX } from '@solidjs/web'
 
 // Solid wraps non-Error throws in an Error and stores the original thrown value
 // on `cause`, so component-thrown `notFound()` needs one extra unwrapping step.
@@ -21,9 +22,9 @@ export function getNotFound(
 }
 
 export function CatchNotFound(props: {
-  fallback?: (error: NotFoundError) => Solid.JSX.Element
+  fallback?: (error: NotFoundError) => JSX.Element
   onCatch?: (error: NotFoundError) => void
-  children: Solid.JSX.Element
+  children: JSX.Element
 }) {
   const router = useRouter()
   // TODO: Some way for the user to programmatically reset the not-found boundary?

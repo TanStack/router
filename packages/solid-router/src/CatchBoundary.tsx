@@ -1,11 +1,12 @@
 import * as Solid from 'solid-js'
 import { Dynamic } from '@solidjs/web'
 import type { ErrorRouteComponent } from './route'
+import type { JSX } from '@solidjs/web'
 
 export function CatchBoundary(
   props: {
     getResetKey: () => number | string
-    children: Solid.JSX.Element
+    children: JSX.Element
     errorComponent?: ErrorRouteComponent
     onCatch?: (error: Error) => void
   } & Solid.ParentProps,

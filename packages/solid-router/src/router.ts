@@ -12,7 +12,7 @@ import type {
   NotFoundRouteComponent,
   RouteComponent,
 } from './route'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 declare module '@tanstack/router-core' {
   export interface RouterOptionsExtensions {

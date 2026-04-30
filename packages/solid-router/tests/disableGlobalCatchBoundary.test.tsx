@@ -8,7 +8,7 @@ import {
   createRoute,
   createRouter,
 } from '../src'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { RouterHistory } from '../src'
 
 let history: RouterHistory

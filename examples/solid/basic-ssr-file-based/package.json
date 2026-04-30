@@ -11,14 +11,14 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.9",
+    "@solidjs/web": "2.0.0-beta.10",
     "@tanstack/router-plugin": "^1.167.12",
     "@tanstack/solid-router": "^2.0.0-beta.15",
     "compression": "^1.8.0",
     "express": "^4.21.2",
     "get-port": "^7.1.0",
     "node-fetch": "^3.3.2",
-    "solid-js": "2.0.0-beta.9"
+    "solid-js": "2.0.0-beta.10"
   },
   "devDependencies": {
     "@tanstack/solid-router-devtools": "^2.0.0-beta.12",

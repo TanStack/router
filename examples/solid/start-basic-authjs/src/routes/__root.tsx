@@ -13,7 +13,7 @@ import { getRequest } from '@tanstack/solid-start/server'
 import { HydrationScript } from '@solidjs/web'
 import { Show } from 'solid-js'
 import { getSession } from 'start-authjs'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { authConfig } from '~/utils/auth'
 import appCss from '~/styles/app.css?url'
 
