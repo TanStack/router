@@ -109,11 +109,11 @@ title: Authentication
 
 ### 🛠️ DIY Authentication
 
-Build your own authentication system using TanStack Start's server functions and session management:
+Build your own authentication system using TanStack Start's server functions and session management. Start with the [Authentication Server Primitives](./authentication-server-primitives.md) guide — it covers session cookies (`HttpOnly`/`Secure`/`SameSite`/`__Host-`), session lookup as middleware, OAuth `state` + PKCE, password-reset enumeration defense, CSRF, rate limiting, and session rotation, with the WRONG/CORRECT patterns that catch the common mistakes.
 
 - **Full Control**: Complete customization over authentication flow
-- **Server Functions**: Secure authentication logic on the server
-- **Session Management**: Built-in session handling with HTTP-only cookies
+- **Server Primitives**: Sessions, OAuth, CSRF, rate limiting — see [Authentication Server Primitives](./authentication-server-primitives.md)
+- **Session Management**: HTTP-only cookies via `setResponseHeader`, read with `getRequestHeader`
 - **Type Safety**: End-to-end type safety for authentication state
 
 ### 🌐 Other Excellent Options
@@ -226,6 +226,7 @@ Build your own authentication system using TanStack Start's server functions and
 
 **Implementation Guides:**
 
+- [Authentication Server Primitives](./authentication-server-primitives.md) — sessions, cookies, OAuth, CSRF, rate limiting (the server half)
 - [Authentication Patterns](./authentication.md)
 - [Router Authentication Guide](/router/latest/docs/framework/react/guide/authenticated-routes)
 

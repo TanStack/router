@@ -57,6 +57,8 @@ export default defineConfig({
 
 Deploy: `npx wrangler login && pnpm run deploy`
 
+> **Worker env is per-request.** Cloudflare Workers (and other edge SSR runtimes) inject env vars at request time. `process.env.X` at module scope evaluates to `undefined` even on the server — the file is loaded before the env exists. Always read env inside `.handler()`, middleware `.server()`, or another per-request function. See [start-core/execution-model](../execution-model/SKILL.md) for the full rule.
+
 ### Netlify
 
 ```bash
