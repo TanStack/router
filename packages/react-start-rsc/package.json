@@ -69,6 +69,12 @@
         "default": "./dist/esm/plugin/vite.js"
       }
     },
+    "./plugin/rscCssTransform": {
+      "import": {
+        "types": "./dist/esm/src/plugin/rscCssTransform.d.ts",
+        "default": "./dist/esm/plugin/rscCssTransform.js"
+      }
+    },
     "./rsbuild/ssr-decode": {
       "import": {
         "types": "./dist/esm/src/rsbuild/ssr-decode.d.ts",

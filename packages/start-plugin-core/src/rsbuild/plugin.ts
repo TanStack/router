@@ -239,6 +239,7 @@ export function tanStackStartRsbuild(
         root: () => resolvedStartConfig.root || process.cwd(),
         providerEnvName: serverFnProviderEnv,
         generateFunctionId: startPluginOpts.serverFns?.generateFunctionId,
+        compilerTransforms: corePluginOpts.compilerTransforms,
         serverFnsById,
         onServerFnsByIdChange: () => {
           updateServerFnResolver?.()

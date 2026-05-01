@@ -20,7 +20,10 @@ import {
   decodeViteDevServerModuleSpecifier,
 } from './module-specifier'
 import { mergeHotUpdateModules } from './hot-update'
-import type { CompileStartFrameworkOptions } from '../../types'
+import type {
+  CompileStartFrameworkOptions,
+  StartCompilerImportTransform,
+} from '../../types'
 import type {
   GenerateFunctionIdFnOptional,
   ServerFn,
@@ -166,6 +169,7 @@ export interface StartCompilerPluginOptions {
    * Custom function ID generator (optional).
    */
   generateFunctionId?: GenerateFunctionIdFnOptional
+  compilerTransforms?: Array<StartCompilerImportTransform> | undefined
   /**
    * The Vite environment name for the server function provider.
    */
@@ -202,8 +206,14 @@ export function startCompilerPlugin(
     name: string
     type: 'client' | 'server'
   }): PluginOption {
+    const compilerTransforms =
+      environment.name === opts.providerEnvName
+        ? opts.compilerTransforms
+        : undefined
     // Derive transform code filter from KindDetectionPatterns (single source of truth)
-    const transformCodeFilter = getTransformCodeFilterForEnv(environment.type)
+    const transformCodeFilter = getTransformCodeFilterForEnv(environment.type, {
+      compilerTransforms,
+    })
     return {
       name: `tanstack-start-core::server-fn:${environment.name}`,
       enforce: 'pre',
@@ -238,6 +248,7 @@ export function startCompilerPlugin(
               framework: opts.framework,
               providerEnvName: opts.providerEnvName,
               generateFunctionId: opts.generateFunctionId,
+              compilerTransforms,
               onServerFnsById,
               getKnownServerFns: () => serverFnsById,
               encodeModuleSpecifierInDev:
@@ -281,7 +292,9 @@ export function startCompilerPlugin(
           }
 
           // Detect which kinds are present in this file before parsing
-          const detectedKinds = detectKindsInCode(code, environment.type)
+          const detectedKinds = detectKindsInCode(code, environment.type, {
+            compilerTransforms,
+          })
 
           const result = await compiler.compile({
             id,

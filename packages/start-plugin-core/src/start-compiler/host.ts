@@ -1,6 +1,9 @@
-import { LookupKindsPerEnv, StartCompiler } from './compiler'
+import { StartCompiler, getLookupKindsForEnv } from './compiler'
 import { getLookupConfigurationsForEnv } from './config'
-import type { CompileStartFrameworkOptions } from '../types'
+import type {
+  CompileStartFrameworkOptions,
+  StartCompilerImportTransform,
+} from '../types'
 import type {
   DevServerFnModuleSpecifierEncoder,
   GenerateFunctionIdFnOptional,
@@ -15,6 +18,7 @@ export interface CreateStartCompilerOptions {
   providerEnvName: string
   mode: 'dev' | 'build'
   generateFunctionId?: GenerateFunctionIdFnOptional
+  compilerTransforms?: Array<StartCompilerImportTransform> | undefined
   onServerFnsById?: (d: Record<string, ServerFn>) => void
   getKnownServerFns: () => Record<string, ServerFn>
   encodeModuleSpecifierInDev?: DevServerFnModuleSpecifierEncoder
@@ -29,16 +33,20 @@ export function createStartCompiler(
     env: options.env,
     envName: options.envName,
     root: options.root,
-    lookupKinds: LookupKindsPerEnv[options.env],
+    lookupKinds: getLookupKindsForEnv(options.env, {
+      compilerTransforms: options.compilerTransforms,
+    }),
     lookupConfigurations: getLookupConfigurationsForEnv(
       options.env,
       options.framework,
+      { compilerTransforms: options.compilerTransforms },
     ),
     mode: options.mode,
     framework: options.framework,
     providerEnvName: options.providerEnvName,
     generateFunctionId: options.generateFunctionId,
     onServerFnsById: options.onServerFnsById,
+    compilerTransforms: options.compilerTransforms,
     getKnownServerFns: options.getKnownServerFns,
     devServerFnModuleSpecifierEncoder: options.encodeModuleSpecifierInDev,
     loadModule: options.loadModule,

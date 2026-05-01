@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import path from 'pathe'
 import { createVirtualModule } from '@tanstack/start-plugin-core/vite'
+import { createRscCssCompilerTransforms } from './rscCssTransform'
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,
@@ -26,6 +27,7 @@ export function configureRsc(): {
   providerEnvironmentName: TanStackStartVitePluginCoreOptions['providerEnvironmentName']
   ssrResolverStrategy: TanStackStartVitePluginCoreOptions['ssrResolverStrategy']
   serializationAdapters: TanStackStartVitePluginCoreOptions['serializationAdapters']
+  compilerTransforms: TanStackStartVitePluginCoreOptions['compilerTransforms']
 } {
   const serializationAdapters: TanStackStartVitePluginCoreOptions['serializationAdapters'] =
     [
@@ -56,6 +58,9 @@ export function configureRsc(): {
     providerEnvironmentName: RSC_ENV_NAME,
     ssrResolverStrategy,
     serializationAdapters,
+    compilerTransforms: createRscCssCompilerTransforms({
+      loadCssExpression: 'import.meta.viteRsc.loadCss()',
+    }),
   }
 }
 export function reactStartRscVitePlugin(): PluginOption {
@@ -118,6 +123,32 @@ export function reactStartRscVitePlugin(): PluginOption {
             cssLinkPrecedence?: boolean
           }
         }
+      },
+    },
+
+    {
+      name: 'tanstack-react-start:rsc-scan-virtual-fallback',
+      apply: 'build',
+      applyToEnvironment(env) {
+        return env.name === RSC_ENV_NAME
+      },
+      load: {
+        filter: {
+          id: /^(virtual:tanstack-rsc-runtime|virtual:vite-rsc\/encryption-key)$/,
+        },
+        handler(id) {
+          if (this.environment.config.build.write !== false) return
+
+          if (id === RSC_RUNTIME_VIRTUAL_ID) {
+            return `export { renderToReadableStream, createFromReadableStream, createTemporaryReferenceSet, decodeReply, loadServerAction, decodeAction, decodeFormState } from '@vitejs/plugin-rsc/rsc'`
+          }
+
+          if (id === 'virtual:vite-rsc/encryption-key') {
+            return `export default () => ''`
+          }
+
+          return undefined
+        },
       },
     },
 
