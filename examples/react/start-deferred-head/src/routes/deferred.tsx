@@ -96,9 +96,8 @@ export const Route = createFileRoute('/deferred')({
       ]),
     ],
   }),
-  // Body scripts are deferrable too: useful for analytics or third-party
-  // tags that need an id from the loader (ex.: multitenant pages)
-  // Streamed for users, awaited for crawlers — same semantics as head() entries.
+  // Body scripts can be deferred too — useful for multitenant pages where
+  // each tenant has its own analytics ID or for third-party configuration
   scripts: ({ loaderData }) => [
     loaderData?.dataPromise.then((data) => [
       {

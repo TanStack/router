@@ -26,22 +26,6 @@ export type DeferredPromiseState<T> =
       error: unknown
     }
 
-/**
- * Resolve promises in a deferrable descriptor array — the four `head()`
- * fields (`meta`, `links`, `scripts`, `styles`) and body `scripts` from
- * `route.options.scripts`. Entries may be plain descriptors or promises
- * resolving to descriptors, useful when a tag depends on a deferred loader
- * value.
- *
- * When `shouldAwait` is true (SSR for crawlers, or the client re-eval pass)
- * promises are awaited so the resolved values land in the result. When
- * false, promises are filtered out and surface later via a client
- * re-evaluation pass.
- *
- * Returns synchronously when nothing actually went async — the input has no
- * promise entries, or `shouldAwait` is false (so the deferred entries are
- * filtered out).
- */
 function processDeferredArr(
   matchId: string,
   arr: Array<unknown>,
@@ -57,11 +41,6 @@ function processDeferredArr(
   return arr
 }
 
-/**
- * Build a copy of `arr` with promise entries dropped. Each dropped promise
- * gets a `.catch` to silence the unhandled-rejection warning on what would
- * otherwise be an orphan — the re-eval pass picks up the next snapshot.
- */
 function filterPromisesSync(
   matchId: string,
   arr: Array<unknown>,
@@ -75,6 +54,8 @@ function filterPromisesSync(
       result.push(entry)
       continue
     }
+    // .catch silences the unhandled-rejection warning on entries we drop here;
+    // the re-eval pass picks up the resolved value from the next snapshot.
     entry.catch((err) => {
       console.error(
         `Deferred ${field} promise rejected for "${matchId}|${field}|${i}":`,
@@ -85,11 +66,6 @@ function filterPromisesSync(
   return result
 }
 
-/**
- * Async tail: await each remaining promise, flattening resolved arrays into
- * the surrounding array via {@link pushResolved}. Rejections are logged and
- * dropped so one failed deferred doesn't poison the rest of the head.
- */
 async function resolveAsyncTail(
   matchId: string,
   arr: Array<unknown>,
@@ -106,6 +82,7 @@ async function resolveAsyncTail(
     try {
       pushResolved(result, await entry)
     } catch (err) {
+      // Drop the entry on rejection so one bad deferred doesn't poison the rest of the head.
       console.error(
         `Deferred ${field} promise rejected for "${matchId}|${field}|${i}":`,
         err,
@@ -115,12 +92,6 @@ async function resolveAsyncTail(
   return result
 }
 
-/**
- * Shape produced by `head()` and `route.options.scripts()` once the framework
- * type augmentation in each `Matches.tsx` is applied: the four head-array
- * fields (`meta`, `links`, `headScripts`, `styles`) plus body `scripts`.
- * Each entry can be a descriptor or a `Promise` resolving to one or many.
- */
 interface DeferrableFields {
   meta?: Array<unknown>
   links?: Array<unknown>
@@ -144,13 +115,8 @@ function arrayHasPromise(arr: Array<unknown>): boolean {
   return false
 }
 
-/**
- * Resolve every deferrable field. Returns synchronously when no field went
- * async — i.e. either no promises at all (static head) or all promises were
- * filtered out (`shouldAwait=false` path) — so the common path doesn't pay
- * for a `Promise.all` of five async wrappers per match. Only allocates a
- * Promise when at least one field actually awaited work.
- */
+// Returns sync when no field actually went async, so the common path skips the
+// Promise.all over five wrappers per match.
 function processAllDeferredFields(
   router: RouterCore<any, any, any, any>,
   matchId: string,
@@ -198,22 +164,9 @@ function processAllDeferredFields(
   )
 }
 
-/**
- * Schedule a client-side re-evaluation of `head()` and
- * `route.options.scripts()` once the pending deferred promises in `fields`
- * have settled, committing the resolved values via `router.updateMatch` so
- * `<HeadContent />` and `<Scripts />` subscribers re-render.
- *
- * The re-eval is single-shot: if the second `head()` invocation returns
- * another unresolved promise, it is awaited inline (via `awaitClient=true`)
- * and committed in the same pass. Without this bound, a `head()` that
- * produces fresh deferred promises on every call would loop forever.
- *
- * @param matchesSnapshot Hierarchy from the load that scheduled the re-eval.
- * Passed back to `head()` instead of the live store because the user may
- * have navigated away by the time the promises settle.
- * @param source "load" or "hydrate" — only used to disambiguate error logs.
- */
+// Single-shot: any deferred promise produced by the second `head()` call is
+// awaited inline (awaitClient=true) instead of scheduling another pass, so a
+// `head()` that returns fresh promises on every call can't loop forever.
 function scheduleDeferredReEval(
   router: RouterCore<any, any, any, any>,
   matchId: string,
@@ -275,17 +228,6 @@ function scheduleDeferredReEval(
   })
 }
 
-/**
- * Builds the deferrable fields from `head()` and
- * `route.options.scripts()` results, resolves them (sync or async), and on
- * the client schedules a re-evaluation when any field has deferred entries
- * so the load and hydrate paths commit deferred values the same way.
- *
- * Returns synchronously when no field carries a deferred promise (the
- * common static-head case), keeping that path allocation-free.
- *
- * @internal
- */
 export function resolveDeferredHead(
   router: RouterCore<any, any, any, any>,
   matchId: string,
@@ -303,8 +245,8 @@ export function resolveDeferredHead(
   const stylesArr = asArray(headFnContent?.styles)
   const scriptsArr = asArray(scriptsRaw)
 
-  // Fast path: no deferred promises in any field. Skip resolve + re-eval,
-  // both no-ops here but each costs allocations per match.
+  // Fast path: skip resolve + re-eval. Each is a no-op when no field has a
+  // deferred entry, but they still allocate per match.
   if (
     !(metaArr && arrayHasPromise(metaArr)) &&
     !(linksArr && arrayHasPromise(linksArr)) &&
@@ -321,12 +263,9 @@ export function resolveDeferredHead(
     }
   }
 
-  // At least one field has a deferred entry. On the client, schedule a
-  // re-eval so the resolved values land via the store once the originals
-  // settle (no-op on the server since the response is already in flight).
-  // We schedule even when the resolve below returns synchronously: on a
-  // non-bot SSR / client load the deferred entries are filtered out for
-  // the initial result and only surface via this re-eval pass.
+  // On non-bot SSR / client loads the deferred entries are filtered out of the
+  // initial result and only surface via the client-side re-eval pass. Server
+  // skips: the response is already in flight.
   const fields: DeferrableFields = {
     meta: metaArr,
     links: linksArr,
