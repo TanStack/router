@@ -315,7 +315,7 @@ export function NavItem(props: NavItemProps): React.ReactNode {
 
 ### `ValidateNavigateOptions` and `ValidateRedirectOptions`
 
-Same pattern as `ValidateLinkOptions` above, for `useNavigate` and `redirect`:
+Same pattern as `ValidateLinkOptions` above, for `useNavigate` and `redirect`. Use a generic public signature plus a non-generic implementation signature so the call site stays narrowed and the body works without casts:
 
 ```tsx
 import {
@@ -329,19 +329,19 @@ import {
 export function useDelayedNavigate<
   TRouter extends RegisteredRouter = RegisteredRouter,
   TOptions = unknown,
->(options: ValidateNavigateOptions<TRouter, TOptions>, delayMs: number) {
+>(options: ValidateNavigateOptions<TRouter, TOptions>, delayMs: number): () => void
+export function useDelayedNavigate(options: ValidateNavigateOptions, delayMs: number) {
   const navigate = useNavigate()
-  return () =>
-    setTimeout(() => navigate(options as ValidateNavigateOptions), delayMs)
+  return () => setTimeout(() => navigate(options), delayMs)
 }
 
 export async function fetchOrRedirect<
   TRouter extends RegisteredRouter = RegisteredRouter,
   TOptions = unknown,
->(url: string, redirectOptions: ValidateRedirectOptions<TRouter, TOptions>) {
+>(url: string, redirectOptions: ValidateRedirectOptions<TRouter, TOptions>): Promise<unknown>
+export async function fetchOrRedirect(url: string, redirectOptions: ValidateRedirectOptions) {
   const response = await fetch(url)
-  if (response.status === 401)
-    throw redirect(redirectOptions as ValidateRedirectOptions)
+  if (response.status === 401) throw redirect(redirectOptions)
   return response.json()
 }
 ```

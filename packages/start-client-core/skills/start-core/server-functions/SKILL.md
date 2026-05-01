@@ -428,18 +428,21 @@ setResponseHeaders({ 'Cache-Control': 'no-store' })
 
 Rule of thumb: if the handler reads a session/cookie/auth header or branches on identity, the response is **not** `public`. Default to `private` (or `no-store` for sensitive data); reach for `public` only on responses that are byte-for-byte identical regardless of who asks. See also [start-core/deployment](../deployment/SKILL.md) for ISR/Cache-Control on full pages.
 
-### 8. MEDIUM: Not using useServerFn for component calls
+### 8. MEDIUM: When to wrap with `useServerFn`
 
-When calling server functions from event handlers in components, use `useServerFn` to get proper React integration:
+`useServerFn` is **required** when the server function uses `throw redirect()` or `throw notFound()` — the hook wires the throw into the router so the redirect actually navigates. For server functions that just return data (call them directly or via `useMutation`/`useQuery`), the hook is optional.
 
 ```tsx
-// WRONG — direct call doesn't integrate with React lifecycle
+// Plain data — direct call is fine (also fine to pass to useMutation/useQuery)
 <button onClick={() => deletePost({ data: { id } })}>Delete</button>
+useMutation({ mutationFn: deletePost })
 
-// CORRECT — useServerFn integrates with React
-const deletePostFn = useServerFn(deletePost)
-<button onClick={() => deletePostFn({ data: { id } })}>Delete</button>
+// Throws redirect/notFound — MUST wrap with useServerFn so the router handles the throw
+const signupFn = useServerFn(signup) // signup throws redirect on success
+<button onClick={() => signupFn({ data: form })}>Sign up</button>
 ```
+
+If in doubt: wrap with `useServerFn`. It's a no-op for plain-data functions and the safe default when a function might later add a redirect.
 
 ## Cross-References
 

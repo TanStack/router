@@ -138,6 +138,7 @@ export const login = createServerFn({ method: 'POST' })
     if (!ok) throw new Error('Invalid email or password')
 
     // ROTATE on privilege change: destroy any existing session, then issue fresh.
+    await db.sessions.revokeAllForUser(user.id)
     const token = await db.sessions.create({ userId: user.id })
     setSessionCookie(token)
     return { ok: true }
@@ -309,6 +310,7 @@ Whenever the user's privileges change — login, logout, role change, password c
 
 ```tsx
 // In the login handler (already shown above): destroy any pre-login session, then create a fresh one.
+await db.sessions.revokeAllForUser(user.id)
 const token = await db.sessions.create({ userId: user.id })
 setSessionCookie(token)
 ```
