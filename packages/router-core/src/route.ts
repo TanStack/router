@@ -183,7 +183,9 @@ export type ParamsOptions<in out TPath extends string, in out TParams> = {
   params?: {
     parse?: Constrain<
       ParseParamsFn<TPath, TParams>,
-      (rawParams: Expand<ResolveParams<TPath>>) => ResolveParams<TPath, any> | false
+      (
+        rawParams: Expand<ResolveParams<TPath>>,
+      ) => ResolveParams<TPath, any> | false
     >
     stringify?: StringifyParamsFn<TPath, TParams>
   }
@@ -193,7 +195,9 @@ export type ParamsOptions<in out TPath extends string, in out TParams> = {
   */
   parseParams?: Constrain<
     ParseParamsFn<TPath, TParams>,
-    (rawParams: Expand<ResolveParams<TPath>>) => ResolveParams<TPath, any> | false
+    (
+      rawParams: Expand<ResolveParams<TPath>>,
+    ) => ResolveParams<TPath, any> | false
   >
 
   /** 
