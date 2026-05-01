@@ -1,7 +1,6 @@
 import { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import * as Vue from 'vue'
 import { pipeToWebWritable, renderToString } from 'vue/server-renderer'
-import { isbot } from 'isbot'
 import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Component } from 'vue'
@@ -49,7 +48,7 @@ export const renderRouterToStream = async ({
 }) => {
   const app = Vue.createSSRApp(App, { router })
 
-  if (isbot(request.headers.get('User-Agent'))) {
+  if (router.serverSsr?.isBot) {
     let fullHtml = await renderToString(app)
 
     const htmlOpenIndex = fullHtml.indexOf('<html')

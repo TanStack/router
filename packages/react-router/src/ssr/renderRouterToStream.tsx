@@ -1,6 +1,5 @@
 import { PassThrough } from 'node:stream'
 import ReactDOMServer from 'react-dom/server'
-import { isbot } from 'isbot'
 import {
   transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
@@ -27,7 +26,7 @@ export const renderRouterToStream = async ({
       progressiveChunkSize: Number.POSITIVE_INFINITY,
     })
 
-    if (isbot(request.headers.get('User-Agent'))) {
+    if (router.serverSsr?.isBot) {
       await stream.allReady
     }
 
@@ -48,7 +47,7 @@ export const renderRouterToStream = async ({
       const pipeable = ReactDOMServer.renderToPipeableStream(children, {
         nonce: router.options.ssr?.nonce,
         progressiveChunkSize: Number.POSITIVE_INFINITY,
-        ...(isbot(request.headers.get('User-Agent'))
+        ...(router.serverSsr?.isBot
           ? {
               onAllReady() {
                 pipeable.pipe(reactAppPassthrough)

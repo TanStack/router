@@ -698,6 +698,7 @@ export function createStartHandler<TRegister = Register>(
         attachRouterServerSsrUtils({
           router: routerInstance,
           manifest,
+          request,
           getRequestAssets: () =>
             getStartContext({ throwIfNotFound: false })?.requestAssets,
           includeUnmatchedRouteAssets: false,

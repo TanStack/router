@@ -1,5 +1,11 @@
 import { invariant } from '../invariant'
 import { isNotFound } from '../not-found'
+import {
+  hasAnyDeferred,
+  processAllDeferredFields,
+  scheduleDeferredReEval,
+  toResolvedArray,
+} from '../defer'
 import { createControlledPromise } from '../utils'
 import { hydrateSsrMatchId } from './ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
@@ -218,15 +224,57 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           params: match.params,
           loaderData: match.loaderData,
         }
-        const headFnContent = await route.options.head?.(assetContext)
+        const [headFnContent, scriptsRaw] = await Promise.all([
+          route.options.head?.(assetContext),
+          route.options.scripts?.(assetContext),
+        ])
 
-        const scripts = await route.options.scripts?.(assetContext)
+        const fields = {
+          meta: headFnContent?.meta,
+          links: headFnContent?.links,
+          headScripts: headFnContent?.scripts,
+          styles: headFnContent?.styles,
+          scripts: scriptsRaw,
+        }
 
-        match.meta = headFnContent?.meta
-        match.links = headFnContent?.links
-        match.headScripts = headFnContent?.scripts
-        match.styles = headFnContent?.styles
+        // Fast path: no deferred promises in any field — skip the
+        // processAllDeferredFields Promise.all and the re-eval scheduling.
+        if (!hasAnyDeferred(fields)) {
+          match.meta = toResolvedArray(fields.meta)
+          match.links = toResolvedArray(fields.links)
+          match.headScripts = toResolvedArray(fields.headScripts)
+          match.styles = toResolvedArray(fields.styles)
+          match.scripts = toResolvedArray(fields.scripts)
+          return
+        }
+
+        // First pass: commit static entries only and skip pending
+        // promises so hydration never blocks. Start's streaming SSR
+        // typically inlines the resolved loader value before the
+        // client entry runs, but a non-Start consumer may hand us a
+        // still-pending promise — in either case the page becomes
+        // interactive immediately and the resolved values land via
+        // the re-evaluation pass below.
+        const { meta, links, headScripts, styles, scripts } =
+          await processAllDeferredFields(router, match.id, fields)
+
+        match.meta = meta
+        match.links = links
+        match.headScripts = headScripts
+        match.styles = styles
         match.scripts = scripts
+
+        // Schedule a re-evaluation once the deferred promises settle.
+        // Shared with `executeHead` so the load and hydrate paths commit
+        // deferred values the same way.
+        scheduleDeferredReEval(
+          router,
+          match.id,
+          route,
+          activeMatches,
+          fields,
+          'hydrate',
+        )
       } catch (err) {
         if (isNotFound(err)) {
           match.error = { isNotFound: true }

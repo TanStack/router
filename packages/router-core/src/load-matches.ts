@@ -4,6 +4,12 @@ import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
+import {
+  hasAnyDeferred,
+  processAllDeferredFields,
+  scheduleDeferredReEval,
+  toResolvedArray,
+} from './defer'
 import type { NotFoundError } from './not-found'
 import type { ParsedLocation } from './location'
 import type {
@@ -589,20 +595,47 @@ const executeHead = (
     route.options.head?.(assetContext),
     route.options.scripts?.(assetContext),
     route.options.headers?.(assetContext),
-  ]).then(([headFnContent, scripts, headers]) => {
-    const meta = headFnContent?.meta
-    const links = headFnContent?.links
-    const headScripts = headFnContent?.scripts
-    const styles = headFnContent?.styles
-
-    return {
-      meta,
-      links,
-      headScripts,
-      headers,
-      scripts,
-      styles,
+  ]).then(async ([headFnContent, scriptsRaw, headers]) => {
+    const fields = {
+      meta: headFnContent?.meta,
+      links: headFnContent?.links,
+      headScripts: headFnContent?.scripts,
+      styles: headFnContent?.styles,
+      scripts: scriptsRaw,
     }
+
+    // Fast path: no deferred promises in any field. Skip the
+    // processAllDeferredFields Promise.all and the re-eval scheduling —
+    // both are no-ops in this case but each costs allocations per match.
+    if (!hasAnyDeferred(fields)) {
+      return {
+        meta: toResolvedArray(fields.meta),
+        links: toResolvedArray(fields.links),
+        headScripts: toResolvedArray(fields.headScripts),
+        styles: toResolvedArray(fields.styles),
+        scripts: toResolvedArray(fields.scripts),
+        headers,
+      }
+    }
+
+    const { meta, links, headScripts, styles, scripts } =
+      await processAllDeferredFields(inner.router, matchId, fields)
+
+    // On the client, schedule a re-evaluation once the deferred promises
+    // resolve so tags update without blocking navigation. Body scripts
+    // are checked alongside head fields.
+    if (!inner.router.serverSsr) {
+      scheduleDeferredReEval(
+        inner.router,
+        matchId,
+        route,
+        inner.matches,
+        fields,
+        'load',
+      )
+    }
+
+    return { meta, links, headScripts, styles, scripts, headers }
   })
 }
 

@@ -22,6 +22,17 @@ import type {
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 
+/**
+ * Entry in a `head()` input array: a descriptor, or a promise that
+ * resolves to one or many descriptors (deferred head loading). The
+ * router resolves the promises before values reach the match, which is
+ * why `RouteMatchExtensions` doesn't include them.
+ */
+type SolidHeadEntry<T> =
+  | T
+  | Promise<T | Array<T> | null | undefined>
+  | undefined
+
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
     meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
@@ -29,6 +40,12 @@ declare module '@tanstack/router-core' {
     scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
     styles?: Array<Solid.JSX.IntrinsicElements['style'] | undefined>
     headScripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
+  }
+  export interface HeadFnReturn {
+    meta?: Array<SolidHeadEntry<Solid.JSX.IntrinsicElements['meta']>>
+    links?: Array<SolidHeadEntry<Solid.JSX.IntrinsicElements['link']>>
+    scripts?: Array<SolidHeadEntry<Solid.JSX.IntrinsicElements['script']>>
+    styles?: Array<SolidHeadEntry<Solid.JSX.IntrinsicElements['style']>>
   }
 }
 

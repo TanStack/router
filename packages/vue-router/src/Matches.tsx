@@ -23,12 +23,28 @@ import type {
 // Define a type for the error component function
 type ErrorRouteComponentType = (props: ErrorComponentProps) => Vue.VNode
 
+/**
+ * Entry in a `head()` input array: a descriptor, or a promise that
+ * resolves to one or many descriptors (deferred head loading). The
+ * router resolves the promises before values reach the match, which is
+ * why `RouteMatchExtensions` doesn't include them.
+ */
+type VueHeadEntry<T> =
+  | T
+  | Promise<T | Array<T> | null | undefined>
+  | undefined
+
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
     meta?: Array<Vue.ComponentOptions['meta'] | undefined>
     links?: Array<Vue.ComponentOptions['link'] | undefined>
     scripts?: Array<Vue.ComponentOptions['script'] | undefined>
     headScripts?: Array<Vue.ComponentOptions['script'] | undefined>
+  }
+  export interface HeadFnReturn {
+    meta?: Array<VueHeadEntry<Vue.ComponentOptions['meta']>>
+    links?: Array<VueHeadEntry<Vue.ComponentOptions['link']>>
+    scripts?: Array<VueHeadEntry<Vue.ComponentOptions['script']>>
   }
 }
 

@@ -32,6 +32,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
       attachRouterServerSsrUtils({
         router,
         manifest: await getRouterManifest?.(),
+        request,
       })
 
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
