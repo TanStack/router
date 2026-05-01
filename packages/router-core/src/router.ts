@@ -1861,10 +1861,11 @@ export class RouterCore<
 
       // Resolve the next params
       const inheritParams =
-        !isAbsoluteTo ||
-        dest.from ||
         dest.params === true ||
-        typeof dest.params === 'function'
+        typeof dest.params === 'function' ||
+        ((dest.from || !isAbsoluteTo) &&
+          dest.params !== false &&
+          dest.params !== null)
       const baseParams = inheritParams ? fromParams : Object.create(null)
       const nextParams = inheritParams
         ? dest.params === true
