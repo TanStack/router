@@ -19,7 +19,6 @@ sources:
 
 Server functions are type-safe RPCs created with `createServerFn`. They run exclusively on the server but can be called from anywhere — loaders, components, hooks, event handlers, or other server functions.
 
-> **CRITICAL**: Import `createServerFn` from `@tanstack/<framework>-start` (e.g. `@tanstack/react-start`). NOT from `@tanstack/react-router` and NOT from `@tanstack/start` (no such package). Wrong path produces `createServerFn is not a function`.
 > **CRITICAL**: Server functions are RPC endpoints. They are reachable by direct POST regardless of which route renders the calling UI. **Auth must be enforced inside the handler (or via middleware) — a route `beforeLoad` does NOT protect the RPC.** See [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md) for the session/middleware pattern.
 > **CRITICAL**: Loaders are ISOMORPHIC — they run on BOTH client and server. Database queries, file system access, and secret API keys MUST go inside `createServerFn`, NOT in loaders directly.
 > **CRITICAL**: Do not use `"use server"` directives, `getServerSideProps`, or any Next.js/Remix server patterns. TanStack Start uses `createServerFn` exclusively.
@@ -269,25 +268,7 @@ Static imports of server functions are safe — the build replaces implementatio
 
 ## Common Mistakes
 
-### 1. HIGH: Wrong import path for `createServerFn`
-
-`createServerFn` lives in the framework-scoped Start package, not in the router or a non-existent generic `@tanstack/start`. The wrong path looks plausible but throws `createServerFn is not a function` at runtime.
-
-```tsx
-// WRONG — does not export createServerFn
-import { createServerFn } from '@tanstack/react-router'
-
-// WRONG — package does not exist
-import { createServerFn } from '@tanstack/start'
-
-// CORRECT — framework-scoped start package
-import { createServerFn } from '@tanstack/react-start'
-// (or @tanstack/solid-start, @tanstack/vue-start)
-```
-
-Server-context utilities (`getRequest`, `getRequestHeader`, `setResponseHeader`, etc.) live at `@tanstack/<framework>-start/server` — same framework prefix.
-
-### 2. CRITICAL: Relying on a route guard to protect a server function
+### 1. CRITICAL: Relying on a route guard to protect a server function
 
 A `beforeLoad` redirect protects the **route's UI**, not the **RPC**. `createServerFn` exposes a callable endpoint that an attacker can hit directly — no need to load the route at all. Auth on the route is necessary but not sufficient.
 
@@ -313,7 +294,7 @@ const getMyOrders = createServerFn({ method: 'GET' })
 
 Apply `authMiddleware` (or an equivalent in-handler check) to **every** `createServerFn` that needs auth. See [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md) for the full session/middleware pattern and [start-core/middleware](../middleware/SKILL.md) for composing the factory.
 
-### 3. CRITICAL: Putting server-only code in loaders
+### 2. CRITICAL: Putting server-only code in loaders
 
 ```tsx
 // WRONG — loader is ISOMORPHIC, runs on BOTH client and server
@@ -335,7 +316,7 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
-### 4. CRITICAL: Using Next.js / Remix / React Router DOM patterns
+### 3. CRITICAL: Using Next.js / Remix / React Router DOM patterns
 
 If the file lives at `src/pages/`, `app/layout.tsx`, `_app/`, or imports anything from `react-router-dom` or `next/`, it is wrong-framework code. TanStack Start uses `src/routes/` + `createFileRoute` + `createServerFn`.
 
@@ -375,7 +356,7 @@ export const Route = createFileRoute('/users/$id')({
 
 If you see `src/pages/`, `app/layout.tsx`, or `react-router-dom` in agent output, the agent is generating for the wrong framework. Build will fail or routes will conflict at runtime.
 
-### 5. HIGH: Dynamic imports for server functions
+### 4. HIGH: Dynamic imports for server functions
 
 ```tsx
 // WRONG — can cause bundler issues
@@ -385,7 +366,7 @@ const { getUser } = await import('~/utils/users.functions')
 import { getUser } from '~/utils/users.functions'
 ```
 
-### 6. HIGH: Awaiting server function without calling it
+### 5. HIGH: Awaiting server function without calling it
 
 `createServerFn` returns a function — it must be invoked with `()`:
 
@@ -400,7 +381,7 @@ const data = await getItems()
 const data = await getItems({ data: { id: '1' } })
 ```
 
-### 7. CRITICAL: Caching authenticated responses with `Cache-Control: public`
+### 6. CRITICAL: Caching authenticated responses with `Cache-Control: public`
 
 `Cache-Control: public, max-age=N` tells every CDN, proxy, and shared cache between you and the user that this response can be served to anyone. If the response depends on the session (user, tenant, role), the first user's response gets cached and replayed to the next user — a cross-tenant data leak.
 
@@ -428,7 +409,7 @@ setResponseHeaders({ 'Cache-Control': 'no-store' })
 
 Rule of thumb: if the handler reads a session/cookie/auth header or branches on identity, the response is **not** `public`. Default to `private` (or `no-store` for sensitive data); reach for `public` only on responses that are byte-for-byte identical regardless of who asks. See also [start-core/deployment](../deployment/SKILL.md) for ISR/Cache-Control on full pages.
 
-### 8. MEDIUM: When to wrap with `useServerFn`
+### 7. MEDIUM: When to wrap with `useServerFn`
 
 `useServerFn` is **required** when the server function uses `throw redirect()` or `throw notFound()` — the hook wires the throw into the router so the redirect actually navigates. For server functions that just return data (call them directly or via `useMutation`/`useQuery`), the hook is optional.
 

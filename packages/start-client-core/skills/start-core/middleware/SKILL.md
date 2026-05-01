@@ -20,7 +20,6 @@ sources:
 
 Middleware customizes the behavior of server functions and server routes. It is composable — middleware can depend on other middleware to form a chain.
 
-> **CRITICAL**: Import `createMiddleware` from `@tanstack/<framework>-start` (e.g. `@tanstack/react-start`). NOT from `@tanstack/react-router` and NOT from `@tanstack/start` (no such package). Wrong path produces `createMiddleware is not a function`.
 > **CRITICAL**: TypeScript enforces method order: `middleware()` → `inputValidator()` → `client()` → `server()`. Wrong order causes type errors.
 > **CRITICAL**: Validating the _shape_ of `sendContext` (e.g. `z.string().uuid().parse(...)`) is NOT authorization. A parsed identifier is a well-formed identifier, not an authorized one. Always re-check access against the session principal before using a client-sent ID as a query key, filter, or path parameter.
 
@@ -304,25 +303,7 @@ Fetch precedence (highest to lowest): call site → later middleware → earlier
 
 ## Common Mistakes
 
-### 1. HIGH: Wrong import path for `createMiddleware`
-
-`createMiddleware` lives in the framework-scoped Start package, not in the router or a non-existent generic `@tanstack/start`. The wrong path looks plausible but throws `createMiddleware is not a function` at runtime.
-
-```tsx
-// WRONG — does not export createMiddleware
-import { createMiddleware } from '@tanstack/react-router'
-
-// WRONG — package does not exist
-import { createMiddleware } from '@tanstack/start'
-
-// CORRECT — framework-scoped start package
-import { createMiddleware } from '@tanstack/react-start'
-// (or @tanstack/solid-start, @tanstack/vue-start)
-```
-
-Same applies to `createStart` and other Start runtime exports.
-
-### 2. CRITICAL: Trusting client sendContext — shape check is not access check
+### 1. CRITICAL: Trusting client sendContext — shape check is not access check
 
 `sendContext` from a client middleware arrives on the server as untrusted client input. Most agents stop after parsing the shape with Zod and assume the value is safe. It isn't: a parsed UUID is _some_ workspace, not the requesting user's workspace. Without a membership check against the session principal, you've built a tenant-walking endpoint.
 
@@ -366,11 +347,11 @@ Same applies to `createStart` and other Start runtime exports.
 
 The session itself must come from a server-trusted source (the cookie + DB lookup in `authMiddleware`), never from `sendContext` — anything the client can send, the client can lie about. See [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md).
 
-### 3. MEDIUM: Confusing request vs server function middleware
+### 2. MEDIUM: Confusing request vs server function middleware
 
 Request middleware runs on ALL requests (SSR, routes, functions). Server function middleware runs only for `createServerFn` calls and has `.client()` method.
 
-### 4. HIGH: Browser APIs in .client() crash during SSR
+### 3. HIGH: Browser APIs in .client() crash during SSR
 
 During SSR, `.client()` callbacks run on the server. Browser-only APIs like `localStorage` or `window` will throw `ReferenceError`:
 
@@ -393,7 +374,7 @@ const middleware = createMiddleware({ type: 'function' }).client(
 )
 ```
 
-### 5. MEDIUM: Wrong method order
+### 4. MEDIUM: Wrong method order
 
 ```tsx
 // WRONG — type error
