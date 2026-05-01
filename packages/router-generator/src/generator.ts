@@ -275,6 +275,10 @@ export class Generator {
     )
   }
 
+  public getPhysicalDirectories(): Array<string> {
+    return [...this.physicalDirectories]
+  }
+
   public async run(event?: GeneratorEvent): Promise<void> {
     if (
       event &&

@@ -388,6 +388,39 @@ describe('generator works', async () => {
     })
   })
 
+  it('physical() accepts a path outside routesDirectory', async () => {
+    const folderName = 'virtual-physical-external-abs'
+    const dir = makeFolderDir(folderName)
+    const externalDir = path.join(dir, 'external-target')
+    const config = await setupConfig(folderName, {
+      virtualRouteConfig: rootRoute('__root.tsx', [
+        index('index.tsx'),
+        physical('/external', externalDir),
+      ]),
+    })
+
+    const { routeNodes, physicalDirectories } = await virtualGetRouteNodes(
+      config,
+      dir,
+      {
+        indexTokenSegmentRegex: /^(?:index)$/,
+        routeTokenSegmentRegex: /^(?:route)$/,
+      },
+    )
+
+    expect(physicalDirectories).toContain(externalDir)
+    expect(routeNodes.map((n) => n.routePath).sort()).toEqual([
+      '/',
+      '/external/bar',
+      '/external/foo',
+    ])
+
+    const externalFoo = routeNodes.find((n) => n.routePath === '/external/foo')!
+    expect(path.resolve(config.routesDirectory, externalFoo.filePath)).toBe(
+      path.join(externalDir, 'foo.tsx'),
+    )
+  })
+
   it.each(folderNames)(
     'should create directory for routeTree if it does not exist',
     async () => {
