@@ -6005,9 +6005,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           return (
             <>
               <h1>B Route</h1>
-              <Link to=".." params={true}>
-                Link to Parent
-              </Link>
+              <Link to="..">Link to Parent</Link>
             </>
           )
         },
@@ -6045,7 +6043,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
               <Link from={paramARoute.fullPath} to="..">
                 Link to .. from /param/foo/a
               </Link>
-              <Link to=".." params={true} data-testid={'link-to-previous'}>
+              <Link to=".." data-testid={'link-to-previous'}>
                 Link to .. from current active route
               </Link>
               <Outlet />
@@ -6061,9 +6059,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           return (
             <>
               <h1>Param B Route</h1>
-              <Link to=".." params={true}>
-                Link to Parent
-              </Link>
+              <Link to="..">Link to Parent</Link>
               <Link to="." params={{ param: 'bar' }}>
                 Link to . with param:bar
               </Link>
@@ -6890,10 +6886,10 @@ describe('relative links to from route', () => {
         return (
           <>
             <h1 data-testid="post-detail-index-heading">Post Detail</h1>
-            <Link data-testid="post-info-link" to="info" params={true}>
+            <Link data-testid="post-info-link" to="info">
               To post info
             </Link>
-            <Link data-testid="post-notes-link" to="notes" params={true}>
+            <Link data-testid="post-notes-link" to="notes">
               To post notes
             </Link>
             <Link

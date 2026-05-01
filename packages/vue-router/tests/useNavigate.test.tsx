@@ -1558,7 +1558,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
                 Link to .. from /param/foo/a
               </button>
               <button
-                onClick={() => navigate({ to: '..', params: true })}
+                onClick={() => navigate({ to: '..' })}
                 data-testid={'link-to-previous'}
               >
                 Link to .. from current active route
@@ -1577,7 +1577,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           return (
             <>
               <h1>Param B Route</h1>
-              <button onClick={() => navigate({ to: '..', params: true })}>
+              <button onClick={() => navigate({ to: '..' })}>
                 Link to Parent
               </button>
               <button
@@ -2036,7 +2036,6 @@ describe('relative navigate to current route', () => {
         const setModal = (open: boolean) => {
           navigate({
             to: '.',
-            params: true,
             search: (prev: {}) => ({
               ...prev,
               [`_${name}`]: open ? true : undefined,
