@@ -1,7 +1,8 @@
 import { getConfig } from '@tanstack/router-generator'
-import { unpluginRouterGeneratorFactory } from './router-generator-plugin'
-import { unpluginRouterCodeSplitterFactory } from './router-code-splitter-plugin'
-import { unpluginRouterHmrFactory } from './router-hmr-plugin'
+import { createRouterGeneratorPlugin } from './router-generator-plugin'
+import { createRouterCodeSplitterPlugin } from './router-code-splitter-plugin'
+import { createRouterHmrPlugin } from './router-hmr-plugin'
+import { createRouterPluginContext } from './router-plugin-context'
 import type { Config } from './config'
 import type {
   RspackCompiler,
@@ -29,25 +30,27 @@ function applyRspackInlineCssDefaultDefinePlugin(compiler: RspackCompiler) {
 
 export const unpluginRouterComposedFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
-> = (options = {}, meta) => {
+> = (options = {}, _meta) => {
   const ROOT: string = process.cwd()
   const userConfig = getConfig(
     (typeof options === 'function' ? options() : options) as Partial<Config>,
     ROOT,
   )
+  const routerPluginContext = createRouterPluginContext()
 
-  const getPlugin = (
-    pluginFactory: UnpluginFactory<Partial<Config | (() => Config)>>,
-  ) => {
-    const plugin = pluginFactory(options, meta)
+  const getPlugin = (plugin: ReturnType<UnpluginFactory<any>>) => {
     if (!Array.isArray(plugin)) {
       return [plugin]
     }
     return plugin
   }
 
-  const routerGenerator = getPlugin(unpluginRouterGeneratorFactory)
-  const routerCodeSplitter = getPlugin(unpluginRouterCodeSplitterFactory)
+  const routerGenerator = getPlugin(
+    createRouterGeneratorPlugin(options, routerPluginContext),
+  )
+  const routerCodeSplitter = getPlugin(
+    createRouterCodeSplitterPlugin(options, routerPluginContext),
+  )
 
   const result = [
     {
@@ -85,7 +88,9 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
   const isProduction = process.env.NODE_ENV === 'production'
 
   if (!isProduction && !userConfig.autoCodeSplitting) {
-    const routerHmr = getPlugin(unpluginRouterHmrFactory)
+    const routerHmr = getPlugin(
+      createRouterHmrPlugin(options, routerPluginContext),
+    )
     result.push(...routerHmr)
   }
   return result

@@ -1,10 +1,12 @@
 import { createRspackPlugin } from 'unplugin'
 
 import { configSchema } from './core/config'
-import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-plugin'
-import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
+import { createRouterCodeSplitterPlugin } from './core/router-code-splitter-plugin'
+import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
+import { defaultRouterPluginContext } from './core/router-plugin-context'
 import type { CodeSplittingOptions, Config } from './core/config'
+import type { RouterPluginContext } from './core/router-plugin-context'
 
 type RspackRouterPluginOptions = Partial<Config> | (() => Partial<Config>)
 
@@ -50,9 +52,17 @@ function withWebpackHmrStyle(
  * })
  * ```
  */
-const TanStackRouterGeneratorRspack = /* #__PURE__ */ createRspackPlugin(
-  unpluginRouterGeneratorFactory,
-)
+const TanStackRouterGeneratorRspack = (
+  options?: RspackRouterPluginOptions,
+  routerPluginContext: RouterPluginContext = defaultRouterPluginContext,
+) => {
+  return createRspackPlugin((pluginOptions) =>
+    createRouterGeneratorPlugin(
+      pluginOptions as Partial<Config | (() => Config)> | undefined,
+      routerPluginContext,
+    ),
+  )(options)
+}
 
 /**
  * @example
@@ -67,15 +77,19 @@ const TanStackRouterGeneratorRspack = /* #__PURE__ */ createRspackPlugin(
  * })
  * ```
  */
-const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
-  (options, meta) =>
-    unpluginRouterCodeSplitterFactory(
+const TanStackRouterCodeSplitterRspack = (
+  options?: RspackRouterPluginOptions,
+  routerPluginContext: RouterPluginContext = defaultRouterPluginContext,
+) => {
+  return createRspackPlugin((pluginOptions) =>
+    createRouterCodeSplitterPlugin(
       withWebpackHmrStyle(
-        options as RspackRouterPluginOptions | undefined,
+        pluginOptions as RspackRouterPluginOptions | undefined,
       ) as Partial<Config | (() => Config)>,
-      meta,
+      routerPluginContext,
     ),
-)
+  )(options)
+}
 
 /**
  * @example
@@ -108,4 +122,4 @@ export {
   TanStackRouterCodeSplitterRspack,
   tanstackRouter,
 }
-export type { Config, CodeSplittingOptions }
+export type { Config, CodeSplittingOptions, RouterPluginContext }

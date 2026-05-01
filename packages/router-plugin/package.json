@@ -63,6 +63,16 @@
         "default": "./dist/cjs/vite.cjs"
       }
     },
+    "./context": {
+      "import": {
+        "types": "./dist/esm/context.d.ts",
+        "default": "./dist/esm/context.js"
+      },
+      "require": {
+        "types": "./dist/cjs/context.d.cts",
+        "default": "./dist/cjs/context.cjs"
+      }
+    },
     "./rspack": {
       "import": {
         "types": "./dist/esm/rspack.d.ts",
