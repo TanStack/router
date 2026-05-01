@@ -315,15 +315,13 @@ export function NavItem(props: NavItemProps): React.ReactNode {
 
 ### `ValidateNavigateOptions` and `ValidateRedirectOptions`
 
-Same pattern as `ValidateLinkOptions` above, for `useNavigate` and `redirect`. Use a generic public signature plus a non-generic implementation signature so the call site stays narrowed and the body works without casts:
+Same pattern as `ValidateLinkOptions` above, for `useNavigate` and `redirect`. Declare a generic public overload plus a non-generic implementation signature so the call site stays narrowed and the body works without casts:
 
 ```tsx
 import {
   useNavigate,
-  redirect,
   type RegisteredRouter,
   type ValidateNavigateOptions,
-  type ValidateRedirectOptions,
 } from '@tanstack/react-router'
 
 export function useDelayedNavigate<
@@ -340,23 +338,9 @@ export function useDelayedNavigate(
   const navigate = useNavigate()
   return () => setTimeout(() => navigate(options), delayMs)
 }
-
-export async function fetchOrRedirect<
-  TRouter extends RegisteredRouter = RegisteredRouter,
-  TOptions = unknown,
->(
-  url: string,
-  redirectOptions: ValidateRedirectOptions<TRouter, TOptions>,
-): Promise<unknown>
-export async function fetchOrRedirect(
-  url: string,
-  redirectOptions: ValidateRedirectOptions,
-) {
-  const response = await fetch(url)
-  if (response.status === 401) throw redirect(redirectOptions)
-  return response.json()
-}
 ```
+
+`ValidateRedirectOptions` works identically — declare a generic overload accepting `ValidateRedirectOptions<TRouter, TOptions>` and an impl signature accepting `ValidateRedirectOptions`, then call `redirect(options)` in the body.
 
 ### Render Props for Maximum Performance
 
