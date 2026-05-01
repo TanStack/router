@@ -27,7 +27,6 @@ Whichever you choose, the cookie flags matter:
 
 ```ts
 // src/server/session.ts
-import '@tanstack/react-start/server-only'
 import {
   getRequestHeader,
   setResponseHeader,

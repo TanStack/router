@@ -34,7 +34,6 @@ The recommended session storage is an HTTP-only cookie holding either an opaque 
 
 ```tsx
 // src/server/session.ts
-import '@tanstack/react-start/server-only'
 import {
   getRequestHeader,
   setResponseHeader,
