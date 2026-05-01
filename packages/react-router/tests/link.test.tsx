@@ -5335,13 +5335,14 @@ describe('Link', () => {
       path: '/',
       component: () => <p>index</p>,
     })
+    const OptRouteComponent = () => {
+      const params = useParams({ strict: false })
+      return <pre>{JSON.stringify(params)}</pre>
+    }
     const optRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/{-$foo}/bar',
-      component: () => {
-        const params = useParams({ strict: false })
-        return <pre>{JSON.stringify(params)}</pre>
-      },
+      component: OptRouteComponent,
     })
 
     const router = createRouter({
