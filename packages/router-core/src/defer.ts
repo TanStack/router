@@ -33,64 +33,111 @@ export type DeferredPromiseState<T> =
  * resolving to descriptors, useful when a tag depends on a deferred loader
  * value.
  *
- * On SSR for crawlers (`serverSsr.isBot` true), promises are awaited so the
- * tags land in the initial HTML. Otherwise promises are skipped here and
- * surface later via a client re-evaluation pass.
+ * When `shouldAwait` is true (SSR for crawlers, or the client re-eval pass)
+ * promises are awaited so the resolved values land in the result. When
+ * false, promises are filtered out and surface later via a client
+ * re-evaluation pass.
  *
- * @param awaitClient Forces awaiting on the client. Used by the re-eval
- * pass and hydration, where the originals have already settled.
+ * Returns synchronously when nothing actually went async — the input has no
+ * promise entries, or `shouldAwait` is false (so the deferred entries are
+ * filtered out).
+ *
  * @internal Exported only for unit tests. Internal callers should use
- * {@link processAllDeferredFields}.
+ * {@link applyHead}.
  */
-export async function processDeferredField(
-  router: RouterCore<any, any, any, any>,
+export function processDeferredArr(
   matchId: string,
-  arr: Array<unknown> | unknown,
+  arr: Array<unknown>,
   field: string,
-  awaitClient?: boolean,
-): Promise<Array<unknown> | undefined> {
-  if (!Array.isArray(arr)) return undefined
-  if (!arrayHasPromise(arr)) return arr
-
-  const shouldAwait = router.serverSsr
-    ? router.serverSsr.isBot
-    : !!awaitClient
-
-  const result: Array<unknown> = []
-
+  shouldAwait: boolean,
+): Array<unknown> | Promise<Array<unknown>> {
   for (let i = 0; i < arr.length; i++) {
+    if (!(arr[i] instanceof Promise)) continue
+    return shouldAwait
+      ? resolveAsyncTail(matchId, arr, field, i)
+      : filterPromisesSync(matchId, arr, field, i)
+  }
+  return arr
+}
+
+/**
+ * Build a copy of `arr` with promise entries dropped. Each dropped promise
+ * gets a `.catch` to silence the unhandled-rejection warning on what would
+ * otherwise be an orphan — the re-eval pass picks up the next snapshot.
+ */
+function filterPromisesSync(
+  matchId: string,
+  arr: Array<unknown>,
+  field: string,
+  start: number,
+): Array<unknown> {
+  const result = arr.slice(0, start)
+  for (let i = start; i < arr.length; i++) {
     const entry = arr[i]
     if (!(entry instanceof Promise)) {
       result.push(entry)
       continue
     }
+    entry.catch((err) => {
+      console.error(
+        `Deferred ${field} promise rejected for "${matchId}|${field}|${i}":`,
+        err,
+      )
+    })
+  }
+  return result
+}
 
-    const id = matchId + '|' + field + '|' + i
-    const resolved$ = Promise.resolve(entry)
-
-    if (shouldAwait) {
-      try {
-        const resolved = await resolved$
-        pushResolved(result, resolved)
-      } catch (err) {
-        console.error(
-          `Deferred ${field} promise rejected for "${id}":`,
-          err,
-        )
-      }
-    } else {
-      // Skip: the caller schedules a re-eval once the original settles.
-      // The catch silences unhandled-rejection warnings on what would
-      // otherwise be an orphan promise.
-      resolved$.catch((err) => {
-        console.error(
-          `Deferred ${field} promise rejected for "${id}":`,
-          err,
-        )
-      })
+/**
+ * Async tail: await each remaining promise, flattening resolved arrays into
+ * the surrounding array via {@link pushResolved}. Rejections are logged and
+ * dropped so one failed deferred doesn't poison the rest of the head.
+ */
+async function resolveAsyncTail(
+  matchId: string,
+  arr: Array<unknown>,
+  field: string,
+  start: number,
+): Promise<Array<unknown>> {
+  const result = arr.slice(0, start)
+  for (let i = start; i < arr.length; i++) {
+    const entry = arr[i]
+    if (!(entry instanceof Promise)) {
+      result.push(entry)
+      continue
+    }
+    try {
+      pushResolved(result, await entry)
+    } catch (err) {
+      console.error(
+        `Deferred ${field} promise rejected for "${matchId}|${field}|${i}":`,
+        err,
+      )
     }
   }
   return result
+}
+
+/**
+ * Shape produced by `head()` and `route.options.scripts()` once the framework
+ * type augmentation in each `Matches.tsx` is applied: the four head-array
+ * fields (`meta`, `links`, `headScripts`, `styles`) plus body `scripts`.
+ * Each entry can be a descriptor or a `Promise` resolving to one or many.
+ */
+interface DeferrableFields {
+  meta?: Array<unknown>
+  links?: Array<unknown>
+  headScripts?: Array<unknown>
+  styles?: Array<unknown>
+  scripts?: Array<unknown>
+}
+
+interface ResolvedFields {
+  meta: Array<unknown> | undefined
+  links: Array<unknown> | undefined
+  headScripts: Array<unknown> | undefined
+  styles: Array<unknown> | undefined
+  scripts: Array<unknown> | undefined
 }
 
 function arrayHasPromise(arr: Array<unknown>): boolean {
@@ -101,91 +148,58 @@ function arrayHasPromise(arr: Array<unknown>): boolean {
 }
 
 /**
- * Sync probe: does any field in `fields` carry a deferred Promise entry?
- *
- * Lets callers skip the deferred-resolution Promise.all and the
- * re-evaluation scheduling entirely on the (common) static-head path,
- * without paying for a full {@link processAllDeferredFields} sweep.
+ * Resolve every deferrable field. Returns synchronously when no field went
+ * async — i.e. either no promises at all (static head) or all promises were
+ * filtered out (`shouldAwait=false` path) — so the common path doesn't pay
+ * for a `Promise.all` of five async wrappers per match. Only allocates a
+ * Promise when at least one field actually awaited work.
  */
-export function hasAnyDeferred(fields: DeferrableFields | undefined): boolean {
-  if (!fields) return false
-  return (
-    (Array.isArray(fields.meta) && arrayHasPromise(fields.meta)) ||
-    (Array.isArray(fields.links) && arrayHasPromise(fields.links)) ||
-    (Array.isArray(fields.headScripts) && arrayHasPromise(fields.headScripts)) ||
-    (Array.isArray(fields.styles) && arrayHasPromise(fields.styles)) ||
-    (Array.isArray(fields.scripts) && arrayHasPromise(fields.scripts))
-  )
-}
-
-/**
- * Mirrors `processDeferredField`'s no-promise return shape: the array
- * if `v` is one, otherwise `undefined`. Used by the fast path so static
- * descriptors land on the match without a promise round-trip.
- */
-export function toResolvedArray(
-  v: unknown,
-): Array<unknown> | undefined {
-  return Array.isArray(v) ? v : undefined
-}
-
-/**
- * Shape produced by `head()` and `route.options.scripts()` once the framework
- * type augmentation in each `Matches.tsx` is applied: the four head-array
- * fields (`meta`, `links`, `headScripts`, `styles`) plus body `scripts`.
- * Each entry can be a descriptor or a `Promise` resolving to one or many.
- */
-interface DeferrableFields {
-  meta?: unknown
-  links?: unknown
-  headScripts?: unknown
-  styles?: unknown
-  scripts?: unknown
-}
-
-export function processAllDeferredFields(
+function processAllDeferredFields(
   router: RouterCore<any, any, any, any>,
   matchId: string,
-  fields: DeferrableFields | undefined,
+  fields: DeferrableFields,
   awaitClient?: boolean,
-): Promise<{
-  meta: Array<unknown> | undefined
-  links: Array<unknown> | undefined
-  headScripts: Array<unknown> | undefined
-  styles: Array<unknown> | undefined
-  scripts: Array<unknown> | undefined
-}> {
-  return Promise.all([
-    processDeferredField(router, matchId, fields?.meta, 'meta', awaitClient),
-    processDeferredField(router, matchId, fields?.links, 'links', awaitClient),
-    processDeferredField(
-      router,
-      matchId,
-      fields?.headScripts,
-      'headScripts',
-      awaitClient,
-    ),
-    processDeferredField(
-      router,
-      matchId,
-      fields?.styles,
-      'styles',
-      awaitClient,
-    ),
-    processDeferredField(
-      router,
-      matchId,
-      fields?.scripts,
-      'scripts',
-      awaitClient,
-    ),
-  ]).then(([meta, links, headScripts, styles, scripts]) => ({
-    meta,
-    links,
-    headScripts,
-    styles,
-    scripts,
-  }))
+): ResolvedFields | Promise<ResolvedFields> {
+  // Hoist once: every field would otherwise recompute the same boolean.
+  const shouldAwait = router.serverSsr
+    ? !!router.serverSsr.isBot
+    : !!awaitClient
+
+  const meta = fields.meta
+    ? processDeferredArr(matchId, fields.meta, 'meta', shouldAwait)
+    : undefined
+  const links = fields.links
+    ? processDeferredArr(matchId, fields.links, 'links', shouldAwait)
+    : undefined
+  const headScripts = fields.headScripts
+    ? processDeferredArr(matchId, fields.headScripts, 'headScripts', shouldAwait)
+    : undefined
+  const styles = fields.styles
+    ? processDeferredArr(matchId, fields.styles, 'styles', shouldAwait)
+    : undefined
+  const scripts = fields.scripts
+    ? processDeferredArr(matchId, fields.scripts, 'scripts', shouldAwait)
+    : undefined
+
+  if (
+    !(meta instanceof Promise) &&
+    !(links instanceof Promise) &&
+    !(headScripts instanceof Promise) &&
+    !(styles instanceof Promise) &&
+    !(scripts instanceof Promise)
+  ) {
+    return { meta, links, headScripts, styles, scripts }
+  }
+
+  return Promise.all([meta, links, headScripts, styles, scripts]).then(
+    ([m, l, hs, st, sc]) => ({
+      meta: m,
+      links: l,
+      headScripts: hs,
+      styles: st,
+      scripts: sc,
+    }),
+  )
 }
 
 /**
@@ -203,6 +217,8 @@ export function processAllDeferredFields(
  * Passed back to `head()` instead of the live store because the user may
  * have navigated away by the time the promises settle.
  * @param source "load" or "hydrate" — only used to disambiguate error logs.
+ * 
+ * @internal
  */
 export function scheduleDeferredReEval(
   router: RouterCore<any, any, any, any>,
@@ -212,13 +228,12 @@ export function scheduleDeferredReEval(
   fields: DeferrableFields,
   source: 'load' | 'hydrate',
 ): void {
-  const promises: Array<Promise<unknown>> = [
-    ...promisesIn(fields.meta),
-    ...promisesIn(fields.links),
-    ...promisesIn(fields.headScripts),
-    ...promisesIn(fields.styles),
-    ...promisesIn(fields.scripts),
-  ]
+  const promises: Array<Promise<unknown>> = []
+  collectPromises(promises, fields.meta)
+  collectPromises(promises, fields.links)
+  collectPromises(promises, fields.headScripts)
+  collectPromises(promises, fields.styles)
+  collectPromises(promises, fields.scripts)
   if (promises.length === 0) return
 
   Promise.allSettled(promises).then(async () => {
@@ -232,22 +247,22 @@ export function scheduleDeferredReEval(
       loaderData: freshMatch.loaderData,
     }
     try {
-      const [freshHead, freshScripts] = await Promise.all([
-        route.options.head?.(freshContext),
-        route.options.scripts?.(freshContext),
-      ])
-      const resolved = await processAllDeferredFields(
-        router,
-        matchId,
-        {
-          meta: freshHead?.meta,
-          links: freshHead?.links,
-          headScripts: freshHead?.scripts,
-          styles: freshHead?.styles,
-          scripts: freshScripts,
-        },
-        true,
-      )
+      const headRaw = route.options.head?.(freshContext)
+      const scriptsRaw = route.options.scripts?.(freshContext)
+      const freshHead =
+        headRaw instanceof Promise ? await headRaw : headRaw
+      const freshScripts =
+        scriptsRaw instanceof Promise ? await scriptsRaw : scriptsRaw
+
+      const fields: DeferrableFields = {
+        meta: asArray(freshHead?.meta),
+        links: asArray(freshHead?.links),
+        headScripts: asArray(freshHead?.scripts),
+        styles: asArray(freshHead?.styles),
+        scripts: asArray(freshScripts),
+      }
+      const result = processAllDeferredFields(router, matchId, fields, true)
+      const resolved = result instanceof Promise ? await result : result
       if (!router.getMatch(matchId)) return
       router.updateMatch(matchId, (prev) => ({
         ...prev,
@@ -266,18 +281,87 @@ export function scheduleDeferredReEval(
   })
 }
 
-/** Return the Promise entries of `v` if it's an array, otherwise empty. */
-function promisesIn(v: unknown): Array<Promise<unknown>> {
-  if (!Array.isArray(v)) return []
-  const out: Array<Promise<unknown>> = []
-  for (let i = 0; i < v.length; i++) {
-    const e = v[i]
-    if (e instanceof Promise) out.push(e)
+/**
+ * Builds the deferrable fields from `head()` and
+ * `route.options.scripts()` results, resolves them (sync or async), and on
+ * the client schedules a re-evaluation when any field has deferred entries
+ * so the load and hydrate paths commit deferred values the same way.
+ *
+ * Returns synchronously when no field carries a deferred promise (the
+ * common static-head case), keeping that path allocation-free.
+ *
+ * @internal
+ */
+export function applyHead(
+  router: RouterCore<any, any, any, any>,
+  matchId: string,
+  route: AnyRoute,
+  matches: Array<AnyRouteMatch>,
+  headFnContent:
+    | { meta?: unknown; links?: unknown; scripts?: unknown; styles?: unknown }
+    | undefined,
+  scriptsRaw: unknown,
+  source: 'load' | 'hydrate',
+): ResolvedFields | Promise<ResolvedFields> {
+  const metaArr = asArray(headFnContent?.meta)
+  const linksArr = asArray(headFnContent?.links)
+  const headScriptsArr = asArray(headFnContent?.scripts)
+  const stylesArr = asArray(headFnContent?.styles)
+  const scriptsArr = asArray(scriptsRaw)
+
+  // Fast path: no deferred promises in any field. Skip resolve + re-eval,
+  // both no-ops here but each costs allocations per match.
+  if (
+    !(metaArr && arrayHasPromise(metaArr)) &&
+    !(linksArr && arrayHasPromise(linksArr)) &&
+    !(headScriptsArr && arrayHasPromise(headScriptsArr)) &&
+    !(stylesArr && arrayHasPromise(stylesArr)) &&
+    !(scriptsArr && arrayHasPromise(scriptsArr))
+  ) {
+    return {
+      meta: metaArr,
+      links: linksArr,
+      headScripts: headScriptsArr,
+      styles: stylesArr,
+      scripts: scriptsArr,
+    }
   }
-  return out
+
+  // At least one field has a deferred entry. On the client, schedule a
+  // re-eval so the resolved values land via the store once the originals
+  // settle (no-op on the server since the response is already in flight).
+  // We schedule even when the resolve below returns synchronously: on a
+  // non-bot SSR / client load the deferred entries are filtered out for
+  // the initial result and only surface via this re-eval pass.
+  const fields: DeferrableFields = {
+    meta: metaArr,
+    links: linksArr,
+    headScripts: headScriptsArr,
+    styles: stylesArr,
+    scripts: scriptsArr,
+  }
+  if (!router.serverSsr) {
+    scheduleDeferredReEval(router, matchId, route, matches, fields, source)
+  }
+
+  return processAllDeferredFields(router, matchId, fields)
 }
 
-/** Push resolved value(s) into result array, flattening arrays. */
+function collectPromises(
+  out: Array<Promise<unknown>>,
+  arr: Array<unknown> | undefined,
+): void {
+  if (!arr) return
+  for (let i = 0; i < arr.length; i++) {
+    const e = arr[i]
+    if (e instanceof Promise) out.push(e)
+  }
+}
+
+function asArray(v: unknown): Array<unknown> | undefined {
+  return Array.isArray(v) ? v : undefined
+}
+
 function pushResolved(result: Array<unknown>, resolved: unknown): void {
   if (resolved == null) return
   if (Array.isArray(resolved)) {

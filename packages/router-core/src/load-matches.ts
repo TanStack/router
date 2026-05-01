@@ -4,12 +4,7 @@ import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
-import {
-  hasAnyDeferred,
-  processAllDeferredFields,
-  scheduleDeferredReEval,
-  toResolvedArray,
-} from './defer'
+import { applyHead } from './defer'
 import type { NotFoundError } from './not-found'
 import type { ParsedLocation } from './location'
 import type {
@@ -565,16 +560,25 @@ const handleBeforeLoad = (
   return serverSsr()
 }
 
+type ExecuteHeadResult = Pick<
+  AnyRouteMatch,
+  'meta' | 'links' | 'headScripts' | 'headers' | 'scripts' | 'styles'
+>
+
+const attachHeaders = (
+  head: Awaited<ReturnType<typeof applyHead>>,
+  headers: unknown,
+): ExecuteHeadResult => {
+  const result = head as ExecuteHeadResult
+  result.headers = headers as ExecuteHeadResult['headers']
+  return result
+}
+
 const executeHead = (
   inner: InnerLoadContext,
   matchId: string,
   route: AnyRoute,
-): void | Promise<
-  Pick<
-    AnyRouteMatch,
-    'meta' | 'links' | 'headScripts' | 'headers' | 'scripts' | 'styles'
-  >
-> => {
+): void | ExecuteHeadResult | Promise<ExecuteHeadResult> => {
   const match = inner.router.getMatch(matchId)
   // in case of a redirecting match during preload, the match does not exist
   if (!match) {
@@ -591,52 +595,45 @@ const executeHead = (
     loaderData: match.loaderData,
   }
 
-  return Promise.all([
-    route.options.head?.(assetContext),
-    route.options.scripts?.(assetContext),
-    route.options.headers?.(assetContext),
-  ]).then(async ([headFnContent, scriptsRaw, headers]) => {
-    const fields = {
-      meta: headFnContent?.meta,
-      links: headFnContent?.links,
-      headScripts: headFnContent?.scripts,
-      styles: headFnContent?.styles,
-      scripts: scriptsRaw,
-    }
+  const headRaw = route.options.head?.(assetContext)
+  const scriptsRaw = route.options.scripts?.(assetContext)
+  const headersRaw = route.options.headers?.(assetContext)
 
-    // Fast path: no deferred promises in any field. Skip the
-    // processAllDeferredFields Promise.all and the re-eval scheduling —
-    // both are no-ops in this case but each costs allocations per match.
-    if (!hasAnyDeferred(fields)) {
-      return {
-        meta: toResolvedArray(fields.meta),
-        links: toResolvedArray(fields.links),
-        headScripts: toResolvedArray(fields.headScripts),
-        styles: toResolvedArray(fields.styles),
-        scripts: toResolvedArray(fields.scripts),
-        headers,
-      }
-    }
+  if (
+    !(headRaw instanceof Promise) &&
+    !(scriptsRaw instanceof Promise) &&
+    !(headersRaw instanceof Promise)
+  ) {
+    const head = applyHead(
+      inner.router,
+      matchId,
+      route,
+      inner.matches,
+      headRaw,
+      scriptsRaw,
+      'load',
+    )
+    return head instanceof Promise
+      ? head.then((h) => attachHeaders(h, headersRaw))
+      : attachHeaders(head, headersRaw)
+  }
 
-    const { meta, links, headScripts, styles, scripts } =
-      await processAllDeferredFields(inner.router, matchId, fields)
-
-    // On the client, schedule a re-evaluation once the deferred promises
-    // resolve so tags update without blocking navigation. Body scripts
-    // are checked alongside head fields.
-    if (!inner.router.serverSsr) {
-      scheduleDeferredReEval(
+  return Promise.all([headRaw, scriptsRaw, headersRaw]).then(
+    ([headFnContent, scriptsResolved, headers]) => {
+      const head = applyHead(
         inner.router,
         matchId,
         route,
         inner.matches,
-        fields,
+        headFnContent,
+        scriptsResolved,
         'load',
       )
-    }
-
-    return { meta, links, headScripts, styles, scripts, headers }
-  })
+      return head instanceof Promise
+        ? head.then((h) => attachHeaders(h, headers))
+        : attachHeaders(head, headers)
+    },
+  )
 }
 
 const getLoaderContext = (
@@ -1192,7 +1189,7 @@ export async function loadMatches(arg: {
     try {
       const headResult = executeHead(inner, matchId, route)
       if (headResult) {
-        const head = await headResult
+        const head = headResult instanceof Promise ? await headResult : headResult
         inner.updateMatch(matchId, (prev) => ({
           ...prev,
           ...head,

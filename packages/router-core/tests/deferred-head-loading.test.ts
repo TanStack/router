@@ -1,38 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
-import { processDeferredField, scheduleDeferredReEval } from '../src/defer'
+import { processDeferredArr, scheduleDeferredReEval } from '../src/defer'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { hydrate } from '../src/ssr/client'
 import { createTestRouter } from './routerTestUtils'
 import type { TsrSsrGlobal } from '../src/ssr/types'
-import type { ServerSsr } from '../src/router'
 
-function createServerRouter(opts: { isBot: boolean }) {
-  const router = createTestRouter({
-    routeTree: new BaseRootRoute({}),
-    history: createMemoryHistory(),
-    isServer: true,
-  })
-  const serverSsr = {
-    injectHtml: vi.fn(),
-    isBot: opts.isBot,
-  } as unknown as ServerSsr
-  return Object.assign(router, { serverSsr })
-}
-
-function createClientRouter() {
-  return createTestRouter({
-    routeTree: new BaseRootRoute({}),
-    history: createMemoryHistory(),
-  })
-}
-
-describe('processDeferredField', () => {
-  describe('SSR: non-bot users', () => {
+describe('processDeferredArr', () => {
+  describe('shouldAwait=false (non-bot SSR or client load)', () => {
     it('skips deferred entries from the initial result (client re-eval will surface them)', async () => {
-      const router = createServerRouter({ isBot: false })
-
       const meta = [
         { name: 'twitter:site', content: '@mysite' },
         Promise.resolve([
@@ -41,22 +18,20 @@ describe('processDeferredField', () => {
         ]),
       ]
 
-      const result = await processDeferredField(
-        router,
-        '/product/shoe',
-        meta,
-        'meta',
-      )
+      const result = await processDeferredArr('/product/shoe', meta, 'meta', false)
 
       expect(result).toEqual([{ name: 'twitter:site', content: '@mysite' }])
-      expect(router.serverSsr.injectHtml).not.toHaveBeenCalled()
+    })
+
+    it('returns the array unchanged when no entries are promises', async () => {
+      const meta = [{ title: 'Hello' }, { name: 'desc', content: 'World' }]
+      const result = await processDeferredArr('/p', meta, 'meta', false)
+      expect(result).toEqual(meta)
     })
   })
 
-  describe('SSR: bot crawlers', () => {
+  describe('shouldAwait=true (bot SSR or client re-eval)', () => {
     it('awaits promises and returns resolved values inline (Googlebot)', async () => {
-      const router = createServerRouter({ isBot: true })
-
       const meta = [
         { name: 'robots', content: 'index' },
         Promise.resolve([
@@ -65,26 +40,16 @@ describe('processDeferredField', () => {
         ]),
       ]
 
-      const result = await processDeferredField(
-        router,
-        '/product/1',
-        meta,
-        'meta',
-      )
+      const result = await processDeferredArr('/product/1', meta, 'meta', true)
 
       expect(result).toEqual([
         { name: 'robots', content: 'index' },
         { title: 'Product Name' },
         { property: 'og:title', content: 'OG Product' },
       ])
-
-      // Bots receive everything in the initial render. No streaming.
-      expect(router.serverSsr.injectHtml).not.toHaveBeenCalled()
     })
 
     it('flattens resolved arrays into the surrounding head array (Twitterbot)', async () => {
-      const router = createServerRouter({ isBot: true })
-
       const links = [
         { rel: 'icon', href: '/icon.png' },
         Promise.resolve([
@@ -97,12 +62,7 @@ describe('processDeferredField', () => {
         ]),
       ]
 
-      const result = await processDeferredField(
-        router,
-        '/page',
-        links,
-        'links',
-      )
+      const result = await processDeferredArr('/page', links, 'links', true)
 
       expect(result).toEqual([
         { rel: 'icon', href: '/icon.png' },
@@ -114,34 +74,11 @@ describe('processDeferredField', () => {
         },
       ])
     })
-  })
 
-  describe('client navigation (non-blocking)', () => {
-    it('skips deferred entries and returns only the static ones', async () => {
-      const router = createClientRouter()
-
-      const meta = [
-        { name: 'viewport', content: 'width=device-width' },
-        Promise.resolve([{ title: 'Deferred' }]),
-      ]
-
-      const result = await processDeferredField(
-        router,
-        '/page',
-        meta,
-        'meta',
-      )
-
-      expect(result).toEqual([
-        { name: 'viewport', content: 'width=device-width' },
-      ])
-    })
-
-    it('awaitClient: includes resolved deferred values in the result', async () => {
+    it('includes resolved deferred values in the result (client re-eval pass)', async () => {
       // Re-evaluation pass after the original loader promise has settled.
       // The new `.then()` chain in head() resolves on the next microtask,
       // and we need its value in match.meta so the UI updates.
-      const router = createClientRouter()
       const dataPromise = Promise.resolve({ title: 'Loaded' })
       await dataPromise
 
@@ -153,13 +90,7 @@ describe('processDeferredField', () => {
         ]),
       ]
 
-      const result = await processDeferredField(
-        router,
-        '/p',
-        meta,
-        'meta',
-        true,
-      )
+      const result = await processDeferredArr('/p', meta, 'meta', true)
 
       expect(result).toEqual([
         { name: 'twitter:site', content: '@mysite' },
@@ -167,23 +98,18 @@ describe('processDeferredField', () => {
         { name: 'description', content: 'desc' },
       ])
     })
+  })
 
-    it('awaitClient: logs and skips a rejected promise but keeps other entries', async () => {
+  describe('error handling', () => {
+    it('logs and skips a rejected promise but keeps other entries (shouldAwait=true)', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const router = createClientRouter()
 
       const meta = [
         { name: 'static', content: 'present' },
         Promise.reject(new Error('upstream down')),
       ]
 
-      const result = await processDeferredField(
-        router,
-        '/p',
-        meta,
-        'meta',
-        true,
-      )
+      const result = await processDeferredArr('/p', meta, 'meta', true)
 
       expect(result).toEqual([{ name: 'static', content: 'present' }])
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -194,62 +120,16 @@ describe('processDeferredField', () => {
     })
   })
 
-  describe('error handling', () => {
-    it('logs and skips the rejected entry without losing the rest (SSR bots)', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const router = createServerRouter({ isBot: true })
-
-      const links = [
-        { rel: 'icon', href: '/icon.png' },
-        Promise.reject(new Error('upstream down')),
-      ]
-
-      const result = await processDeferredField(
-        router,
-        '/page',
-        links,
-        'links',
-      )
-
-      expect(result).toEqual([{ rel: 'icon', href: '/icon.png' }])
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Deferred links promise rejected'),
-        expect.any(Error),
-      )
-      consoleSpy.mockRestore()
-    })
-
-  })
-
   describe('edge cases', () => {
-    it('returns undefined when input is not an array', async () => {
-      const router = createClientRouter()
-      expect(
-        await processDeferredField(router, '/p', undefined, 'meta'),
-      ).toBeUndefined()
-      expect(
-        await processDeferredField(router, '/p', 'not an array', 'links'),
-      ).toBeUndefined()
-    })
-
-    it('returns the array unchanged when no entries are promises', async () => {
-      const router = createServerRouter({ isBot: false })
-      const meta = [{ title: 'Hello' }, { name: 'desc', content: 'World' }]
-      const result = await processDeferredField(router, '/p', meta, 'meta')
-      expect(result).toEqual(meta)
-    })
-
     it('drops null resolved values', async () => {
-      const router = createServerRouter({ isBot: true })
       const arr = [Promise.resolve(null)]
-      const result = await processDeferredField(router, '/p', arr, 'links')
+      const result = await processDeferredArr('/p', arr, 'links', true)
       expect(result).toHaveLength(0)
     })
 
     it('accepts a promise that resolves to a single descriptor (no array)', async () => {
-      const router = createServerRouter({ isBot: true })
       const arr = [Promise.resolve({ rel: 'stylesheet', href: '/single.css' })]
-      const result = await processDeferredField(router, '/p', arr, 'links')
+      const result = await processDeferredArr('/p', arr, 'links', true)
       expect(result).toEqual([{ rel: 'stylesheet', href: '/single.css' }])
     })
   })
@@ -685,55 +565,6 @@ describe('executeHead: deferred body scripts', () => {
 
     const fastMatch = router.state.matches.find((m) => m.routeId === '/fast')!
     expect(fastMatch.scripts).toEqual([{ children: 'console.log("fast")' }])
-  })
-})
-
-// `processDeferredField`'s server branch keys off `router.serverSsr.isBot`
-// and ignores the `awaitClient` argument: SSR semantics are determined by the
-// request, not the caller. These tests pin that asymmetry so it doesn't drift.
-describe('processDeferredField: awaitClient is ignored on the server', () => {
-  it('ignores awaitClient=true when serverSsr.isBot is false (skips deferred entry)', async () => {
-    const router = createServerRouter({ isBot: false })
-
-    const meta = [
-      { name: 'static', content: 'present' },
-      Promise.resolve([{ title: 'Deferred' }]),
-    ]
-
-    const result = await processDeferredField(
-      router,
-      '/p',
-      meta,
-      'meta',
-      true,
-    )
-
-    // Even though awaitClient=true was passed, the server branch wins and the
-    // deferred entry is skipped because the request is not a bot.
-    expect(result).toEqual([{ name: 'static', content: 'present' }])
-  })
-
-  it('awaits when serverSsr.isBot is true regardless of awaitClient=false', async () => {
-    const router = createServerRouter({ isBot: true })
-
-    const meta = [
-      { name: 'static', content: 'present' },
-      Promise.resolve([{ title: 'Resolved' }]),
-    ]
-
-    const result = await processDeferredField(
-      router,
-      '/p',
-      meta,
-      'meta',
-      false,
-    )
-
-    // isBot wins regardless of awaitClient.
-    expect(result).toEqual([
-      { name: 'static', content: 'present' },
-      { title: 'Resolved' },
-    ])
   })
 })
 
