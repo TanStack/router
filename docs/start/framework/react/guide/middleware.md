@@ -7,7 +7,7 @@ title: Middleware
 
 Middleware allows you to customize the behavior of both server routes like GET/POST/etc (including requests to SSR your application) and server functions created with `createServerFn`. Middleware is composable and can even depend on other middleware to create a chain of operations that are executed hierarchically and in order.
 
-> **Import path**: `createMiddleware` (and `createStart`) are exported from `@tanstack/<framework>-start` (for example `@tanstack/react-start`). They are **not** exported from `@tanstack/react-router`, and there is no `@tanstack/start` package — wrong paths fail at runtime with `createMiddleware is not a function`.
+> **Import path**: `createMiddleware` (and `createStart`) are exported from `@tanstack/react-start`. They are **not** exported from `@tanstack/react-router`, and there is no `@tanstack/start` package — wrong paths fail at runtime with `createMiddleware is not a function`.
 
 ### What kinds of things can I do with Middleware?
 

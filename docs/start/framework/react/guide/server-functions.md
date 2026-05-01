@@ -7,7 +7,7 @@ title: Server Functions
 
 Server functions let you define server-only logic that can be called from anywhere in your application - loaders, components, hooks, or other server functions. They run on the server but can be invoked from client code seamlessly.
 
-> **Import path**: `createServerFn` is exported from `@tanstack/<framework>-start` (for example `@tanstack/react-start`, `@tanstack/solid-start`, `@tanstack/vue-start`). It is **not** exported from `@tanstack/react-router`, and there is no `@tanstack/start` package — both common wrong paths fail at runtime with `createServerFn is not a function`.
+> **Import path**: `createServerFn` is exported from `@tanstack/react-start`. It is **not** exported from `@tanstack/react-router`, and there is no `@tanstack/start` package — both common wrong paths fail at runtime with `createServerFn is not a function`.
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'

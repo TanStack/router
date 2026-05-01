@@ -298,7 +298,7 @@ export function savePreferences(prefs: Record<string, string>) {
 }
 ```
 
-Use the framework-scoped path that matches your stack: `@tanstack/solid-start/...`, `@tanstack/vue-start/...`. Both markers in the same file is an error. Type-only imports are ignored. See the [Import Protection guide](./import-protection.md) for the full reference, including dev vs build behavior, configuring deny rules, and reading violation traces.
+Both markers in the same file is an error. Type-only imports are ignored. See the [Import Protection guide](./import-protection.md) for the full reference, including dev vs build behavior, configuring deny rules, and reading violation traces.
 
 ## Architecture Decision Framework
 

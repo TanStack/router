@@ -114,26 +114,6 @@ Deploy your application to Cloudflare Workers using their one-click deployment p
 
 A full TanStack Start example for Cloudflare Workers is available [here](https://github.com/TanStack/router/tree/main/examples/react/start-basic-cloudflare).
 
-#### Reading environment variables on Workers
-
-Cloudflare Workers inject environment variables at request time, not at module load. This has one important consequence: `process.env.X` at the top of a file evaluates to `undefined` even on the server. Always read env inside a per-request callback — `.handler()`, middleware `.server()`, server-route handlers, etc.
-
-```tsx
-// ❌ Wrong — runs at module load, before the env exists. `apiKey` is `undefined` under Worker SSR.
-const apiKey = process.env.API_KEY
-const fetchData = createServerFn().handler(async () => {
-  return fetch(url, { headers: { Authorization: apiKey } })
-})
-
-// ✅ Correct — read per-request inside the handler
-const fetchData = createServerFn().handler(async () => {
-  const apiKey = process.env.API_KEY
-  return fetch(url, { headers: { Authorization: apiKey } })
-})
-```
-
-The same rule applies to other edge SSR runtimes. See the [Environment Variables guide](./environment-variables.md) for the full picture.
-
 ### Netlify ⭐ _Official Partner_
 
 <a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
