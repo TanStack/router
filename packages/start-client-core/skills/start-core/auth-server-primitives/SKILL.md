@@ -257,7 +257,9 @@ export const csrfMiddleware = createMiddleware().server(async ({ next }) => {
   const request = getRequest()
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     const origin = request.headers.get('origin')
-    if (!origin || new URL(origin).host !== process.env.APP_HOST) {
+    // Compare the FULL origin (scheme + host + port) — host alone lets
+    // http://example.com pass a check meant for https://example.com.
+    if (!origin || new URL(origin).origin !== process.env.APP_ORIGIN) {
       throw new Error('Origin check failed')
     }
   }
