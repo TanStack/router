@@ -1861,15 +1861,15 @@ export class RouterCore<
 
       // Resolve the next params
       const inheritParams =
-        dest.from || dest.params === true || typeof dest.params === 'function'
+        !isAbsoluteTo ||
+        dest.from ||
+        dest.params === true ||
+        typeof dest.params === 'function'
       const baseParams = inheritParams ? fromParams : Object.create(null)
       const nextParams = inheritParams
         ? dest.params === true
           ? baseParams
-          : Object.assign(
-              baseParams,
-              functionalUpdate(dest.params as any, fromParams),
-            )
+          : Object.assign(baseParams, functionalUpdate(dest.params, fromParams))
         : dest.params
           ? Object.assign(baseParams, dest.params)
           : baseParams
