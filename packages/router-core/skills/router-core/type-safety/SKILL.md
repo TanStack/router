@@ -336,7 +336,9 @@ export function useDelayedNavigate(
   delayMs: number,
 ) {
   const navigate = useNavigate()
-  return () => setTimeout(() => navigate(options), delayMs)
+  return () => {
+    setTimeout(() => navigate(options), delayMs)
+  }
 }
 ```
 
