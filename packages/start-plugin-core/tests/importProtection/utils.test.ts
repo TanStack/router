@@ -257,9 +257,41 @@ describe('getImportSources', () => {
     expect(getImportSources(code)).toEqual(['bar', 'qux'])
   })
 
+  test('skips type-only static import sources', () => {
+    const code = [
+      `import type { Foo } from './foo.server'`,
+      `import { type Bar } from './bar.server'`,
+    ].join('\n')
+    expect(getImportSources(code)).toEqual([])
+  })
+
+  test('keeps mixed type and value static import sources', () => {
+    const code = `import { type Foo, bar } from './mixed.server'`
+    expect(getImportSources(code)).toEqual(['./mixed.server'])
+  })
+
+  test('keeps side-effect import sources', () => {
+    const code = `import './setup.server'`
+    expect(getImportSources(code)).toEqual(['./setup.server'])
+  })
+
   test('extracts re-export sources', () => {
     const code = `export { a } from './mod'\nexport * from "./other"`
     expect(getImportSources(code)).toEqual(['./mod', './other'])
+  })
+
+  test('skips type-only re-export sources', () => {
+    const code = [
+      `export type { Foo } from './foo.server'`,
+      `export { type Bar } from './bar.server'`,
+      `export type * from './baz.server'`,
+    ].join('\n')
+    expect(getImportSources(code)).toEqual([])
+  })
+
+  test('keeps mixed type and value re-export sources', () => {
+    const code = `export { type Foo, bar } from './mixed.server'`
+    expect(getImportSources(code)).toEqual(['./mixed.server'])
   })
 
   test('extracts dynamic import sources', () => {

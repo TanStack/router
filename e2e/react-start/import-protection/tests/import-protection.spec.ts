@@ -103,6 +103,24 @@ function findBarrelMarkerHits(violations: Array<Violation>): Array<Violation> {
   )
 }
 
+function findTypeOnlyProtectedImportHits(
+  violations: Array<Violation>,
+): Array<Violation> {
+  return violations.filter(
+    (v) =>
+      v.envType === 'client' &&
+      (v.importer.includes('type-only-protected-import') ||
+        v.importer.includes('type-only.server') ||
+        v.specifier.includes('type-only.server') ||
+        v.resolved?.includes('type-only.server') ||
+        v.trace.some(
+          (s) =>
+            s.file.includes('type-only-protected-import') ||
+            s.file.includes('type-only.server'),
+        )),
+  )
+}
+
 test.use({
   // The mock proxy returns undefined-ish values, which may cause
   // React rendering warnings — whitelist those
@@ -882,6 +900,25 @@ test('non-alias-namespace-leak does not expose real secret after hydration', asy
     page.getByTestId('non-alias-namespace-leak-secret-client'),
   ).not.toContainText('super-secret-server-key-12345')
 })
+
+test('type-only protected import route loads in mock mode', async ({
+  page,
+}) => {
+  await expectRouteHeading(
+    page,
+    '/type-only-protected-import',
+    'type-only-protected-import-heading',
+    'Type-Only Protected Import',
+  )
+})
+
+for (const mode of ['build', 'dev', 'dev.warm'] as const) {
+  test(`type-only protected imports do not trigger violations in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    expect(findTypeOnlyProtectedImportHits(violations)).toEqual([])
+  })
+}
 
 for (const mode of ['build', 'dev'] as const) {
   test(`no false positive for noExternal react-tweet (.client entry) in ${mode}`, async () => {

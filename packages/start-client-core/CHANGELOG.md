@@ -1,5 +1,19 @@
 # @tanstack/start-client-core
 
+## 1.168.1
+
+### Patch Changes
+
+- Updated dependencies [[`4a1e63f`](https://github.com/TanStack/router/commit/4a1e63f1d1230b1ed8234609acad4639d8982c13)]:
+  - @tanstack/router-core@1.169.1
+  - @tanstack/start-storage-context@1.166.34
+
+## 1.168.0
+
+### Minor Changes
+
+- Add a `strict` option to `createServerFn` for type-level server function serialization checks. Use `strict: false` to opt out for input and output values, or `strict: { output: false }` to opt out for return values only. ([#7277](https://github.com/TanStack/router/pull/7277))
+
 ## 1.167.22
 
 ### Patch Changes

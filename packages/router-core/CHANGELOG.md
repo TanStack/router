@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.169.1
+
+### Patch Changes
+
+- Fix params.parse inference for discriminated union path params while preserving path key validation. ([#7306](https://github.com/TanStack/router/pull/7306))
+
 ## 1.169.0
 
 ### Minor Changes

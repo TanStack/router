@@ -1,5 +1,44 @@
 # @tanstack/start-plugin-core
 
+## 1.169.13
+
+### Patch Changes
+
+- Add compiler-driven RSC CSS auto-injection for Start RSC render APIs and wire it into the React Start Vite and Rsbuild adapters. This ensures same-file CSS module dependencies are discovered for `renderServerComponent`, `createCompositeComponent`, and JSX-based `renderToReadableStream` calls. ([#7310](https://github.com/TanStack/router/pull/7310))
+
+  Also add a configurable server function provider module directive hook used by the React Rsbuild RSC adapter to emit `"use server-entry"` only for extracted provider files.
+
+## 1.169.12
+
+### Patch Changes
+
+- Updated dependencies [[`4a1e63f`](https://github.com/TanStack/router/commit/4a1e63f1d1230b1ed8234609acad4639d8982c13)]:
+  - @tanstack/router-core@1.169.1
+  - @tanstack/router-generator@1.166.39
+  - @tanstack/router-plugin@1.167.31
+  - @tanstack/start-client-core@1.168.1
+  - @tanstack/start-server-core@1.167.26
+
+## 1.169.11
+
+### Patch Changes
+
+- Updated dependencies [[`82b0613`](https://github.com/TanStack/router/commit/82b06132af776f74603ab27977cc277d6219a845)]:
+  - @tanstack/start-client-core@1.168.0
+  - @tanstack/start-server-core@1.167.25
+
+## 1.169.10
+
+### Patch Changes
+
+- Ignore fully type-only imports and re-exports when collecting import-protection sources so type-only references to protected modules do not trigger violations. ([#7305](https://github.com/TanStack/router/pull/7305))
+
+## 1.169.9
+
+### Patch Changes
+
+- Sort server function manifest entries by ID before emitting the resolver module. The `serverFnsById` map is populated in source-file scan order, which varies across machines and incremental builds, producing non-deterministic key ordering in the emitted `__tanstack-start-server-fn-resolver-*.mjs` artifact. Stable alphabetic sorting ensures reproducible builds, consistent content hashes, and clean `git diff` on committed artifacts. ([#7287](https://github.com/TanStack/router/pull/7287))
+
 ## 1.169.8
 
 ### Patch Changes

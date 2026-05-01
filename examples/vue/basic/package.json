@@ -9,7 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/vue-router": "^1.169.0",
+    "@tanstack/vue-router": "^1.169.1",
     "@tanstack/vue-router-devtools": "^1.166.13",
     "redaxios": "^0.5.1",
     "vue": "^3.5.13",
