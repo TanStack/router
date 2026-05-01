@@ -26,70 +26,49 @@ export type DeferredPromiseState<T> =
       error: unknown
     }
 
-function processDeferredArr(
-  matchId: string,
-  arr: Array<unknown>,
-  field: string,
-  shouldAwait: boolean,
-): Array<unknown> | Promise<Array<unknown>> {
-  for (let i = 0; i < arr.length; i++) {
-    if (!(arr[i] instanceof Promise)) continue
-    return shouldAwait
-      ? resolveAsyncTail(matchId, arr, field, i)
-      : filterPromisesSync(matchId, arr, field, i)
-  }
-  return arr
+export type DeferredPromise<T> = Promise<T> & {
+  [TSR_DEFERRED_PROMISE]: DeferredPromiseState<T>
 }
 
-function filterPromisesSync(
-  matchId: string,
-  arr: Array<unknown>,
-  field: string,
-  start: number,
-): Array<unknown> {
-  const result = arr.slice(0, start)
-  for (let i = start; i < arr.length; i++) {
-    const entry = arr[i]
-    if (!(entry instanceof Promise)) {
-      result.push(entry)
-      continue
-    }
-    // .catch silences the unhandled-rejection warning on entries we drop here;
-    // the re-eval pass picks up the resolved value from the next snapshot.
-    entry.catch((err) => {
-      console.error(
-        `Deferred ${field} promise rejected for "${matchId}|${field}|${i}":`,
-        err,
-      )
+/**
+ * Wrap a promise with a deferred state for use with `<Await>` and `useAwaited`.
+ *
+ * The returned promise is augmented with internal state (status/data/error)
+ * so UI can read progress or suspend until it settles.
+ *
+ * @param _promise The promise to wrap.
+ * @param options Optional config. Provide `serializeError` to customize how
+ * errors are serialized for transfer.
+ * @returns The same promise with attached deferred metadata.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/deferFunction
+ */
+export function defer<T>(
+  _promise: Promise<T>,
+  options?: {
+    serializeError?: typeof defaultSerializeError
+  },
+) {
+  const promise = _promise as DeferredPromise<T>
+  // this is already deferred promise
+  if ((promise as any)[TSR_DEFERRED_PROMISE]) {
+    return promise
+  }
+  promise[TSR_DEFERRED_PROMISE] = { status: 'pending' }
+
+  promise
+    .then((data) => {
+      promise[TSR_DEFERRED_PROMISE].status = 'success'
+      promise[TSR_DEFERRED_PROMISE].data = data
     })
-  }
-  return result
-}
+    .catch((error) => {
+      promise[TSR_DEFERRED_PROMISE].status = 'error'
+      ;(promise[TSR_DEFERRED_PROMISE] as any).error = {
+        data: (options?.serializeError ?? defaultSerializeError)(error),
+        __isServerError: true,
+      }
+    })
 
-async function resolveAsyncTail(
-  matchId: string,
-  arr: Array<unknown>,
-  field: string,
-  start: number,
-): Promise<Array<unknown>> {
-  const result = arr.slice(0, start)
-  for (let i = start; i < arr.length; i++) {
-    const entry = arr[i]
-    if (!(entry instanceof Promise)) {
-      result.push(entry)
-      continue
-    }
-    try {
-      pushResolved(result, await entry)
-    } catch (err) {
-      // Drop the entry on rejection so one bad deferred doesn't poison the rest of the head.
-      console.error(
-        `Deferred ${field} promise rejected for "${matchId}|${field}|${i}":`,
-        err,
-      )
-    }
-  }
-  return result
+  return promise
 }
 
 interface DeferrableFields {
@@ -108,11 +87,65 @@ interface ResolvedFields {
   scripts: Array<unknown> | undefined
 }
 
-function arrayHasPromise(arr: Array<unknown>): boolean {
-  for (const e of arr) {
-    if (e instanceof Promise) return true
+/**
+ * Resolve the deferred entries inside a route's `head()` and `scripts()` output
+ * for a single match.
+ *
+ * Returns the synchronous entries immediately. On the server the result is
+ * awaited only for bots; otherwise deferred promises are filtered out of the
+ * initial response and a re-evaluation pass is scheduled to update the match
+ * once they settle.
+ */
+export function resolveDeferredHead(
+  router: RouterCore<any, any, any, any>,
+  matchId: string,
+  route: AnyRoute,
+  matches: Array<AnyRouteMatch>,
+  headFnContent:
+    | { meta?: unknown; links?: unknown; scripts?: unknown; styles?: unknown }
+    | undefined,
+  scriptsRaw: unknown,
+  source: 'load' | 'hydrate',
+): ResolvedFields | Promise<ResolvedFields> {
+  const metaArr = asArray(headFnContent?.meta)
+  const linksArr = asArray(headFnContent?.links)
+  const headScriptsArr = asArray(headFnContent?.scripts)
+  const stylesArr = asArray(headFnContent?.styles)
+  const scriptsArr = asArray(scriptsRaw)
+
+  // Fast path: skip resolve + re-eval. Each is a no-op when no field has a
+  // deferred entry, but they still allocate per match.
+  if (
+    !(metaArr && arrayHasPromise(metaArr)) &&
+    !(linksArr && arrayHasPromise(linksArr)) &&
+    !(headScriptsArr && arrayHasPromise(headScriptsArr)) &&
+    !(stylesArr && arrayHasPromise(stylesArr)) &&
+    !(scriptsArr && arrayHasPromise(scriptsArr))
+  ) {
+    return {
+      meta: metaArr,
+      links: linksArr,
+      headScripts: headScriptsArr,
+      styles: stylesArr,
+      scripts: scriptsArr,
+    }
   }
-  return false
+
+  // On non-bot SSR / client loads the deferred entries are filtered out of the
+  // initial result and only surface via the client-side re-eval pass. Server
+  // skips: the response is already in flight.
+  const fields: DeferrableFields = {
+    meta: metaArr,
+    links: linksArr,
+    headScripts: headScriptsArr,
+    styles: stylesArr,
+    scripts: scriptsArr,
+  }
+  if (!router.serverSsr) {
+    scheduleDeferredReEval(router, matchId, route, matches, fields, source)
+  }
+
+  return processAllDeferredFields(router, matchId, fields)
 }
 
 // Returns sync when no field actually went async, so the common path skips the
@@ -228,56 +261,77 @@ function scheduleDeferredReEval(
   })
 }
 
-export function resolveDeferredHead(
-  router: RouterCore<any, any, any, any>,
+function processDeferredArr(
   matchId: string,
-  route: AnyRoute,
-  matches: Array<AnyRouteMatch>,
-  headFnContent:
-    | { meta?: unknown; links?: unknown; scripts?: unknown; styles?: unknown }
-    | undefined,
-  scriptsRaw: unknown,
-  source: 'load' | 'hydrate',
-): ResolvedFields | Promise<ResolvedFields> {
-  const metaArr = asArray(headFnContent?.meta)
-  const linksArr = asArray(headFnContent?.links)
-  const headScriptsArr = asArray(headFnContent?.scripts)
-  const stylesArr = asArray(headFnContent?.styles)
-  const scriptsArr = asArray(scriptsRaw)
+  arr: Array<unknown>,
+  field: string,
+  shouldAwait: boolean,
+): Array<unknown> | Promise<Array<unknown>> {
+  for (let i = 0; i < arr.length; i++) {
+    if (!(arr[i] instanceof Promise)) continue
+    return shouldAwait
+      ? resolveAsyncTail(matchId, arr, field, i)
+      : filterPromisesSync(matchId, arr, field, i)
+  }
+  return arr
+}
 
-  // Fast path: skip resolve + re-eval. Each is a no-op when no field has a
-  // deferred entry, but they still allocate per match.
-  if (
-    !(metaArr && arrayHasPromise(metaArr)) &&
-    !(linksArr && arrayHasPromise(linksArr)) &&
-    !(headScriptsArr && arrayHasPromise(headScriptsArr)) &&
-    !(stylesArr && arrayHasPromise(stylesArr)) &&
-    !(scriptsArr && arrayHasPromise(scriptsArr))
-  ) {
-    return {
-      meta: metaArr,
-      links: linksArr,
-      headScripts: headScriptsArr,
-      styles: stylesArr,
-      scripts: scriptsArr,
+function filterPromisesSync(
+  matchId: string,
+  arr: Array<unknown>,
+  field: string,
+  start: number,
+): Array<unknown> {
+  const result = arr.slice(0, start)
+  for (let i = start; i < arr.length; i++) {
+    const entry = arr[i]
+    if (!(entry instanceof Promise)) {
+      result.push(entry)
+      continue
+    }
+    // .catch silences the unhandled-rejection warning on entries we drop here;
+    // the re-eval pass picks up the resolved value from the next snapshot.
+    entry.catch((err) => {
+      console.error(
+        `Deferred ${field} promise rejected for "${matchId}|${field}|${i}":`,
+        err,
+      )
+    })
+  }
+  return result
+}
+
+async function resolveAsyncTail(
+  matchId: string,
+  arr: Array<unknown>,
+  field: string,
+  start: number,
+): Promise<Array<unknown>> {
+  const result = arr.slice(0, start)
+  for (let i = start; i < arr.length; i++) {
+    const entry = arr[i]
+    if (!(entry instanceof Promise)) {
+      result.push(entry)
+      continue
+    }
+    try {
+      pushResolved(result, await entry)
+    } catch (err) {
+      // Drop the entry on rejection so one bad deferred doesn't poison the rest of the head.
+      console.error(
+        `Deferred ${field} promise rejected for "${matchId}|${field}|${i}":`,
+        err,
+      )
     }
   }
+  return result
+}
 
-  // On non-bot SSR / client loads the deferred entries are filtered out of the
-  // initial result and only surface via the client-side re-eval pass. Server
-  // skips: the response is already in flight.
-  const fields: DeferrableFields = {
-    meta: metaArr,
-    links: linksArr,
-    headScripts: headScriptsArr,
-    styles: stylesArr,
-    scripts: scriptsArr,
+function arrayHasPromise(arr: Array<unknown>): boolean {
+  for (const e of arr) {
+    if (e instanceof Promise) return true
   }
-  if (!router.serverSsr) {
-    scheduleDeferredReEval(router, matchId, route, matches, fields, source)
-  }
-
-  return processAllDeferredFields(router, matchId, fields)
+  return false
 }
 
 function collectPromises(
@@ -303,49 +357,4 @@ function pushResolved(result: Array<unknown>, resolved: unknown): void {
   } else {
     result.push(resolved)
   }
-}
-
-export type DeferredPromise<T> = Promise<T> & {
-  [TSR_DEFERRED_PROMISE]: DeferredPromiseState<T>
-}
-
-/**
- * Wrap a promise with a deferred state for use with `<Await>` and `useAwaited`.
- *
- * The returned promise is augmented with internal state (status/data/error)
- * so UI can read progress or suspend until it settles.
- *
- * @param _promise The promise to wrap.
- * @param options Optional config. Provide `serializeError` to customize how
- * errors are serialized for transfer.
- * @returns The same promise with attached deferred metadata.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/deferFunction
- */
-export function defer<T>(
-  _promise: Promise<T>,
-  options?: {
-    serializeError?: typeof defaultSerializeError
-  },
-) {
-  const promise = _promise as DeferredPromise<T>
-  // this is already deferred promise
-  if ((promise as any)[TSR_DEFERRED_PROMISE]) {
-    return promise
-  }
-  promise[TSR_DEFERRED_PROMISE] = { status: 'pending' }
-
-  promise
-    .then((data) => {
-      promise[TSR_DEFERRED_PROMISE].status = 'success'
-      promise[TSR_DEFERRED_PROMISE].data = data
-    })
-    .catch((error) => {
-      promise[TSR_DEFERRED_PROMISE].status = 'error'
-      ;(promise[TSR_DEFERRED_PROMISE] as any).error = {
-        data: (options?.serializeError ?? defaultSerializeError)(error),
-        __isServerError: true,
-      }
-    })
-
-  return promise
 }
