@@ -1,139 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
-import { processDeferredArr, scheduleDeferredReEval } from '../src/defer'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { hydrate } from '../src/ssr/client'
 import { createTestRouter } from './routerTestUtils'
 import type { TsrSsrGlobal } from '../src/ssr/types'
-
-describe('processDeferredArr', () => {
-  describe('shouldAwait=false (non-bot SSR or client load)', () => {
-    it('skips deferred entries from the initial result (client re-eval will surface them)', async () => {
-      const meta = [
-        { name: 'twitter:site', content: '@mysite' },
-        Promise.resolve([
-          { title: 'Async Title' },
-          { property: 'og:title', content: 'OG Title' },
-        ]),
-      ]
-
-      const result = await processDeferredArr('/product/shoe', meta, 'meta', false)
-
-      expect(result).toEqual([{ name: 'twitter:site', content: '@mysite' }])
-    })
-
-    it('returns the array unchanged when no entries are promises', async () => {
-      const meta = [{ title: 'Hello' }, { name: 'desc', content: 'World' }]
-      const result = await processDeferredArr('/p', meta, 'meta', false)
-      expect(result).toEqual(meta)
-    })
-  })
-
-  describe('shouldAwait=true (bot SSR or client re-eval)', () => {
-    it('awaits promises and returns resolved values inline (Googlebot)', async () => {
-      const meta = [
-        { name: 'robots', content: 'index' },
-        Promise.resolve([
-          { title: 'Product Name' },
-          { property: 'og:title', content: 'OG Product' },
-        ]),
-      ]
-
-      const result = await processDeferredArr('/product/1', meta, 'meta', true)
-
-      expect(result).toEqual([
-        { name: 'robots', content: 'index' },
-        { title: 'Product Name' },
-        { property: 'og:title', content: 'OG Product' },
-      ])
-    })
-
-    it('flattens resolved arrays into the surrounding head array (Twitterbot)', async () => {
-      const links = [
-        { rel: 'icon', href: '/icon.png' },
-        Promise.resolve([
-          { rel: 'canonical', href: 'https://example.com/page' },
-          {
-            rel: 'alternate',
-            hrefLang: 'es',
-            href: 'https://example.com/es/page',
-          },
-        ]),
-      ]
-
-      const result = await processDeferredArr('/page', links, 'links', true)
-
-      expect(result).toEqual([
-        { rel: 'icon', href: '/icon.png' },
-        { rel: 'canonical', href: 'https://example.com/page' },
-        {
-          rel: 'alternate',
-          hrefLang: 'es',
-          href: 'https://example.com/es/page',
-        },
-      ])
-    })
-
-    it('includes resolved deferred values in the result (client re-eval pass)', async () => {
-      // Re-evaluation pass after the original loader promise has settled.
-      // The new `.then()` chain in head() resolves on the next microtask,
-      // and we need its value in match.meta so the UI updates.
-      const dataPromise = Promise.resolve({ title: 'Loaded' })
-      await dataPromise
-
-      const meta = [
-        { name: 'twitter:site', content: '@mysite' },
-        dataPromise.then((data) => [
-          { title: data.title },
-          { name: 'description', content: 'desc' },
-        ]),
-      ]
-
-      const result = await processDeferredArr('/p', meta, 'meta', true)
-
-      expect(result).toEqual([
-        { name: 'twitter:site', content: '@mysite' },
-        { title: 'Loaded' },
-        { name: 'description', content: 'desc' },
-      ])
-    })
-  })
-
-  describe('error handling', () => {
-    it('logs and skips a rejected promise but keeps other entries (shouldAwait=true)', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-      const meta = [
-        { name: 'static', content: 'present' },
-        Promise.reject(new Error('upstream down')),
-      ]
-
-      const result = await processDeferredArr('/p', meta, 'meta', true)
-
-      expect(result).toEqual([{ name: 'static', content: 'present' }])
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Deferred meta promise rejected'),
-        expect.any(Error),
-      )
-      consoleSpy.mockRestore()
-    })
-  })
-
-  describe('edge cases', () => {
-    it('drops null resolved values', async () => {
-      const arr = [Promise.resolve(null)]
-      const result = await processDeferredArr('/p', arr, 'links', true)
-      expect(result).toHaveLength(0)
-    })
-
-    it('accepts a promise that resolves to a single descriptor (no array)', async () => {
-      const arr = [Promise.resolve({ rel: 'stylesheet', href: '/single.css' })]
-      const result = await processDeferredArr('/p', arr, 'links', true)
-      expect(result).toEqual([{ rel: 'stylesheet', href: '/single.css' }])
-    })
-  })
-})
 
 describe('executeHead: client re-evaluation through loadMatches', () => {
   it('first pass returns only static entries; deferred entries land on match after the re-eval', async () => {
@@ -828,118 +699,87 @@ describe('hydrate: deferred head loading', () => {
   })
 })
 
-describe('scheduleDeferredReEval', () => {
-  it('is a no-op when no field carries a Promise', async () => {
-    const headFn = vi.fn(() => ({ meta: [{ name: 'static' }] }))
-    const rootRoute = new BaseRootRoute({})
-    const indexRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      head: headFn,
-    })
-    rootRoute.addChildren([indexRoute])
-
-    const router = createTestRouter({
-      routeTree: rootRoute,
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-    await router.load()
-    headFn.mockClear()
-
-    scheduleDeferredReEval(
-      router as any,
-      router.state.matches.find((m) => m.routeId === '/')!.id,
-      router.looseRoutesById['/'] as any,
-      router.state.matches as any,
-      { meta: [{ name: 'static' }] },
-      'load',
-    )
-
-    await new Promise((r) => setTimeout(r, 10))
-    expect(headFn).not.toHaveBeenCalled()
-  })
-
-  it('logs a re-eval error to console.error', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    const rootRoute = new BaseRootRoute({})
-    let callCount = 0
-    const indexRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      head: () => {
-        callCount++
-        if (callCount === 1) {
-          // First pass: include a promise so re-eval gets scheduled.
-          return { meta: [Promise.resolve([{ title: 'first' }])] }
-        }
-        // Re-eval pass: throw synchronously so the catch in
-        // scheduleDeferredReEval fires.
-        throw new Error('re-eval boom')
-      },
-    })
-    rootRoute.addChildren([indexRoute])
-
-    const router = createTestRouter({
-      routeTree: rootRoute,
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-
-    await router.load()
-    await new Promise((r) => setTimeout(r, 20))
-
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Error re-evaluating deferred head/scripts (load)',
-      ),
-      expect.any(Error),
-    )
-    consoleSpy.mockRestore()
-  })
-
-  it('disambiguates load vs hydrate in error messages via the source argument', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+// Bot SSR (`serverSsr.isBot=true`) is the inverse of the client/non-bot path:
+// deferred head entries must be awaited inline on the first `resolveDeferredHead` so the
+// HTML rendered for the crawler already contains the resolved tags.
+describe('bot SSR: awaits deferred head entries inline', () => {
+  it('inlines resolved deferred meta on the first load (Googlebot)', async () => {
+    const dataPromise = createControlledPromise<{ title: string }>()
 
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      head: () => ({ meta: [{ name: 'static' }] }),
+      loader: () => ({ dataPromise }),
+      head: ({ loaderData }: { loaderData?: any }) => ({
+        meta: [
+          { name: 'twitter:site', content: '@mysite' },
+          loaderData?.dataPromise.then((d: { title: string }) => [
+            { title: d.title },
+            { name: 'description', content: 'deferred' },
+          ]),
+        ],
+      }),
     })
     rootRoute.addChildren([indexRoute])
 
-    const router = createTestRouter({
+    const router: any = createTestRouter({
       routeTree: rootRoute,
       history: createMemoryHistory({ initialEntries: ['/'] }),
+      isServer: true,
     })
-    // Load so the router has a real match for '/' to look up; otherwise
-    // scheduleDeferredReEval's `getMatch` guard returns early before logging.
-    await router.load()
-    const matchId = router.state.matches.find((m) => m.routeId === '/')!.id
-
-    // Drive the helper directly with `source: 'hydrate'` and a synthetic
-    // route whose head() throws synchronously, so we assert the label
-    // without simulating a full hydrate cycle.
-    scheduleDeferredReEval(
-      router as any,
-      matchId,
-      {
-        options: {
-          head: () => {
-            throw new Error('hydrate-boom')
-          },
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      request: new Request('http://localhost/', {
+        headers: {
+          'user-agent':
+            'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
         },
-      } as any,
-      router.state.matches as any,
-      { meta: [Promise.resolve([{ title: 'x' }])] },
-      'hydrate',
-    )
-    await new Promise((r) => setTimeout(r, 20))
+      }),
+    })
 
+    dataPromise.resolve({ title: 'Loaded' })
+    await router.load()
+
+    const match = router.state.matches.find((m: any) => m.routeId === '/')!
+    expect(match.meta).toEqual([
+      { name: 'twitter:site', content: '@mysite' },
+      { title: 'Loaded' },
+      { name: 'description', content: 'deferred' },
+    ])
+  })
+})
+
+describe('rejected deferred head promises', () => {
+  it('keeps static entries and logs the rejection without crashing the load', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        meta: [
+          { name: 'static', content: 'present' },
+          Promise.reject(new Error('upstream down')),
+        ],
+      }),
+    })
+    rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    await new Promise((r) => setTimeout(r, 10))
+
+    const match = router.state.matches.find((m) => m.routeId === '/')!
+    expect(match.meta).toEqual([{ name: 'static', content: 'present' }])
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Error re-evaluating deferred head/scripts (hydrate)',
-      ),
+      expect.stringContaining('Deferred meta promise rejected'),
       expect.any(Error),
     )
     consoleSpy.mockRestore()

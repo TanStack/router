@@ -234,28 +234,10 @@ type LdJsonValue = LdJsonPrimitive | LdJsonObject | LdJsonArray
 
 export type RouteLinkEntry = {}
 
-/**
- * Return shape of `route.options.head()`. Augmented per-framework with
- * concrete element types (e.g. `React.JSX.IntrinsicElements['meta']`).
- *
- * Distinct from {@link RouteMatchExtensions} because the input allows
- * `Promise` entries (deferred head loading), but those are resolved
- * away before values land in `match.meta`.
- */
-export interface HeadFnReturn {
-  meta?: unknown
-  links?: unknown
-  scripts?: unknown
-  styles?: unknown
-}
-
-/**
- * Return shape of `route.options.scripts()` (body scripts). Reuses
- * {@link HeadFnReturn}'s `scripts` field so a `Promise` can be returned for
- * deferred body scripts, the same way head() fields can be deferred. The
- * router resolves the promises before values land in `match.scripts`.
- */
-export type BodyScriptsFnReturn = HeadFnReturn['scripts']
+export type DeferredHeadEntries<T> =
+  T extends Array<infer U>
+    ? Array<U | Promise<U | Array<U> | null | undefined>>
+    : T
 
 export type SearchValidator<TInput, TOutput> =
   | ValidatorObj<TInput, TOutput>
@@ -1393,7 +1375,12 @@ export interface UpdatableRouteOptions<
       TBeforeLoadFn,
       TLoaderDeps
     >,
-  ) => Awaitable<HeadFnReturn>
+  ) => Awaitable<{
+    links?: DeferredHeadEntries<AnyRouteMatch['links']>
+    scripts?: DeferredHeadEntries<AnyRouteMatch['headScripts']>
+    meta?: DeferredHeadEntries<AnyRouteMatch['meta']>
+    styles?: DeferredHeadEntries<AnyRouteMatch['styles']>
+  }>
   scripts?: (
     ctx: AssetFnContextOptions<
       TRouteId,
@@ -1407,7 +1394,7 @@ export interface UpdatableRouteOptions<
       TBeforeLoadFn,
       TLoaderDeps
     >,
-  ) => Awaitable<BodyScriptsFnReturn>
+  ) => Awaitable<DeferredHeadEntries<AnyRouteMatch['scripts']>>
   codeSplitGroupings?: Array<
     Array<
       | 'loader'

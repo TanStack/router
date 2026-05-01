@@ -4,7 +4,7 @@ import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
-import { applyHead } from './defer'
+import { resolveDeferredHead } from './defer'
 import type { NotFoundError } from './not-found'
 import type { ParsedLocation } from './location'
 import type {
@@ -566,7 +566,7 @@ type ExecuteHeadResult = Pick<
 >
 
 const attachHeaders = (
-  head: Awaited<ReturnType<typeof applyHead>>,
+  head: Awaited<ReturnType<typeof resolveDeferredHead>>,
   headers: unknown,
 ): ExecuteHeadResult => {
   const result = head as ExecuteHeadResult
@@ -604,7 +604,7 @@ const executeHead = (
     !(scriptsRaw instanceof Promise) &&
     !(headersRaw instanceof Promise)
   ) {
-    const head = applyHead(
+    const head = resolveDeferredHead(
       inner.router,
       matchId,
       route,
@@ -620,7 +620,7 @@ const executeHead = (
 
   return Promise.all([headRaw, scriptsRaw, headersRaw]).then(
     ([headFnContent, scriptsResolved, headers]) => {
-      const head = applyHead(
+      const head = resolveDeferredHead(
         inner.router,
         matchId,
         route,

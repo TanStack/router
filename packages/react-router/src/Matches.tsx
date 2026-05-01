@@ -29,17 +29,6 @@ import type {
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 
-/**
- * Entry in a `head()` input array: a descriptor, or a promise that
- * resolves to one or many descriptors (deferred head loading). The
- * router resolves the promises before values reach the match, which is
- * why `RouteMatchExtensions` doesn't include them.
- */
-type ReactHeadEntry<T> =
-  | T
-  | Promise<T | Array<T> | null | undefined>
-  | undefined
-
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
     meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
@@ -47,12 +36,6 @@ declare module '@tanstack/router-core' {
     scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
     styles?: Array<React.JSX.IntrinsicElements['style'] | undefined>
     headScripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
-  }
-  export interface HeadFnReturn {
-    meta?: Array<ReactHeadEntry<React.JSX.IntrinsicElements['meta']>>
-    links?: Array<ReactHeadEntry<React.JSX.IntrinsicElements['link']>>
-    scripts?: Array<ReactHeadEntry<React.JSX.IntrinsicElements['script']>>
-    styles?: Array<ReactHeadEntry<React.JSX.IntrinsicElements['style']>>
   }
 }
 

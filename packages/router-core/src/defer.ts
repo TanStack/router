@@ -41,11 +41,8 @@ export type DeferredPromiseState<T> =
  * Returns synchronously when nothing actually went async — the input has no
  * promise entries, or `shouldAwait` is false (so the deferred entries are
  * filtered out).
- *
- * @internal Exported only for unit tests. Internal callers should use
- * {@link applyHead}.
  */
-export function processDeferredArr(
+function processDeferredArr(
   matchId: string,
   arr: Array<unknown>,
   field: string,
@@ -141,8 +138,8 @@ interface ResolvedFields {
 }
 
 function arrayHasPromise(arr: Array<unknown>): boolean {
-  for (let i = 0; i < arr.length; i++) {
-    if (arr[i] instanceof Promise) return true
+  for (const e of arr) {
+    if (e instanceof Promise) return true
   }
   return false
 }
@@ -160,7 +157,6 @@ function processAllDeferredFields(
   fields: DeferrableFields,
   awaitClient?: boolean,
 ): ResolvedFields | Promise<ResolvedFields> {
-  // Hoist once: every field would otherwise recompute the same boolean.
   const shouldAwait = router.serverSsr
     ? !!router.serverSsr.isBot
     : !!awaitClient
@@ -217,10 +213,8 @@ function processAllDeferredFields(
  * Passed back to `head()` instead of the live store because the user may
  * have navigated away by the time the promises settle.
  * @param source "load" or "hydrate" — only used to disambiguate error logs.
- * 
- * @internal
  */
-export function scheduleDeferredReEval(
+function scheduleDeferredReEval(
   router: RouterCore<any, any, any, any>,
   matchId: string,
   route: AnyRoute,
@@ -292,7 +286,7 @@ export function scheduleDeferredReEval(
  *
  * @internal
  */
-export function applyHead(
+export function resolveDeferredHead(
   router: RouterCore<any, any, any, any>,
   matchId: string,
   route: AnyRoute,
@@ -352,8 +346,7 @@ function collectPromises(
   arr: Array<unknown> | undefined,
 ): void {
   if (!arr) return
-  for (let i = 0; i < arr.length; i++) {
-    const e = arr[i]
+  for (const e of arr) {
     if (e instanceof Promise) out.push(e)
   }
 }

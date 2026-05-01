@@ -1,6 +1,6 @@
 import { invariant } from '../invariant'
 import { isNotFound } from '../not-found'
-import { applyHead } from '../defer'
+import { resolveDeferredHead } from '../defer'
 import { createControlledPromise } from '../utils'
 import { hydrateSsrMatchId } from './ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
@@ -226,7 +226,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         const scriptsResolved =
           scriptsRaw instanceof Promise ? await scriptsRaw : scriptsRaw
 
-        const head = applyHead(
+        const head = resolveDeferredHead(
           router,
           match.id,
           route,
