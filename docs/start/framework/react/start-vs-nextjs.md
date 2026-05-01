@@ -211,7 +211,7 @@ Server Actions integrate with forms and transitions. They're convenient for simp
 
 ```tsx
 export const createPost = createServerFn({ method: 'POST' })
-  .validator(z.object({ title: z.string().min(1) }))
+  .inputValidator(z.object({ title: z.string().min(1) }))
   .middleware([authMiddleware])
   .handler(async ({ data, context }) => {
     // data is typed and validated
