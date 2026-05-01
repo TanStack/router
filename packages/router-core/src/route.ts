@@ -232,12 +232,12 @@ type LdJsonArray = Array<LdJsonValue> | ReadonlyArray<LdJsonValue>
 type LdJsonPrimitive = string | number | boolean | null
 type LdJsonValue = LdJsonPrimitive | LdJsonObject | LdJsonArray
 
-export type RouteLinkEntry = {}
-
-export type DeferredHeadEntries<T> =
+type DeferredHeadEntries<T> =
   T extends Array<infer U>
     ? Array<U | Promise<U | Array<U> | null | undefined>>
     : T
+
+export type RouteLinkEntry = {}
 
 export type SearchValidator<TInput, TOutput> =
   | ValidatorObj<TInput, TOutput>
