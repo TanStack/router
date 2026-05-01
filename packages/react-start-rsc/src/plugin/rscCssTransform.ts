@@ -7,7 +7,9 @@ const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
 const RSC_CSS_OPTIONS_KEY = '__tanstackStartRscCss'
 
 type BabelTypes = StartCompilerTransformContext['types']
-type BabelExpression = ReturnType<StartCompilerTransformContext['parseExpression']>
+type BabelExpression = ReturnType<
+  StartCompilerTransformContext['parseExpression']
+>
 
 type RscCssTransformKind =
   | 'renderServerComponent'

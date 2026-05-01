@@ -154,7 +154,9 @@ export const LookupKindsPerEnv: Record<
 
 export function getLookupKindsForEnv(
   env: 'client' | 'server',
-  opts?: { compilerTransforms?: Array<StartCompilerImportTransform> | undefined },
+  opts?: {
+    compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  },
 ): Set<LookupKind> {
   const kinds: Set<LookupKind> = new Set(LookupKindsPerEnv[env])
   for (const transform of opts?.compilerTransforms ?? []) {
@@ -193,18 +195,12 @@ const BuiltInKindHandlers: Record<
 
 const BuiltInKindHandlerOrder: Array<
   Exclude<BuiltInLookupKind, 'ClientOnlyJSX'>
-> = [
-  'ServerFn',
-  'Middleware',
-  'IsomorphicFn',
-  'ServerOnlyFn',
-  'ClientOnlyFn',
-]
+> = ['ServerFn', 'Middleware', 'IsomorphicFn', 'ServerOnlyFn', 'ClientOnlyFn']
 
 // All lookup kinds as an array for iteration with proper typing
-const AllBuiltInLookupKinds = Object.keys(BuiltInLookupSetup) as Array<
-  BuiltInLookupKind
->
+const AllBuiltInLookupKinds = Object.keys(
+  BuiltInLookupSetup,
+) as Array<BuiltInLookupKind>
 
 /**
  * Detects which LookupKinds are present in the code using string matching.
@@ -213,7 +209,9 @@ const AllBuiltInLookupKinds = Object.keys(BuiltInLookupSetup) as Array<
 export function detectKindsInCode(
   code: string,
   env: 'client' | 'server',
-  opts?: { compilerTransforms?: Array<StartCompilerImportTransform> | undefined },
+  opts?: {
+    compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  },
 ): Set<LookupKind> {
   const detected = new Set<LookupKind>()
   const validForEnv = getLookupKindsForEnv(env, opts)

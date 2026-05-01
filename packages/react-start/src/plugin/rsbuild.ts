@@ -52,8 +52,7 @@ function configureRscRsbuild(): {
   providerEnvironmentName: TanStackStartRsbuildPluginCoreOptions['providerEnvironmentName']
   serializationAdapters: TanStackStartRsbuildPluginCoreOptions['serializationAdapters']
   compilerTransforms: TanStackStartRsbuildPluginCoreOptions['compilerTransforms']
-  serverFnProviderModuleDirectives:
-    TanStackStartRsbuildPluginCoreOptions['serverFnProviderModuleDirectives']
+  serverFnProviderModuleDirectives: TanStackStartRsbuildPluginCoreOptions['serverFnProviderModuleDirectives']
 } {
   return {
     providerEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,

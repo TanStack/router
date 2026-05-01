@@ -12,7 +12,9 @@ import type {
 
 export function getTransformCodeFilterForEnv(
   env: 'client' | 'server',
-  opts?: { compilerTransforms?: Array<StartCompilerImportTransform> | undefined },
+  opts?: {
+    compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  },
 ): Array<RegExp> {
   const validKinds = getLookupKindsForEnv(env, opts)
   const patterns: Array<RegExp> = []
@@ -37,7 +39,9 @@ export function getTransformCodeFilterForEnv(
 export function getLookupConfigurationsForEnv(
   env: 'client' | 'server',
   framework: CompileStartFrameworkOptions,
-  opts?: { compilerTransforms?: Array<StartCompilerImportTransform> | undefined },
+  opts?: {
+    compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  },
 ): Array<LookupConfig> {
   const commonConfigs: Array<LookupConfig> = [
     {

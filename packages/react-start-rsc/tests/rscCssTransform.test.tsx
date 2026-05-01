@@ -151,9 +151,8 @@ describe('RSC CSS compiler transforms', () => {
       export const renderable = renderServerComponent(<Card />)
     `
 
-    expect(
-      detectKindsInCode(code, 'server', { compilerTransforms }),
-    ).toMatchInlineSnapshot(`
+    expect(detectKindsInCode(code, 'server', { compilerTransforms }))
+      .toMatchInlineSnapshot(`
       Set {
         "External:react-rsc-render-server-component-css",
       }

@@ -48,8 +48,7 @@ export function createStartCompiler(
     generateFunctionId: options.generateFunctionId,
     onServerFnsById: options.onServerFnsById,
     compilerTransforms: options.compilerTransforms,
-    serverFnProviderModuleDirectives:
-      options.serverFnProviderModuleDirectives,
+    serverFnProviderModuleDirectives: options.serverFnProviderModuleDirectives,
     getKnownServerFns: options.getKnownServerFns,
     devServerFnModuleSpecifierEncoder: options.encodeModuleSpecifierInDev,
     loadModule: options.loadModule,

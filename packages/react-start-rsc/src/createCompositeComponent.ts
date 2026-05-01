@@ -79,7 +79,10 @@ export async function createCompositeComponent<TComp>(
 
   // Wrapper that renders the user's component inside Flight render context
   async function ServerComponentWrapper() {
-    return createRscCssEnvelope(await (component as React.FC)(proxyProps), options)
+    return createRscCssEnvelope(
+      await (component as React.FC)(proxyProps),
+      options,
+    )
   }
 
   // Render using createElement so React calls our component during Flight rendering
