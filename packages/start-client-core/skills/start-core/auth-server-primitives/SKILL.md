@@ -68,8 +68,10 @@ export function readSessionToken(): string | null {
   const header = getRequestHeader('cookie')
   if (!header) return null
   for (const part of header.split(/;\s*/)) {
-    const [name, value] = part.split('=')
-    if (name === SESSION_COOKIE) return value ?? null
+    // Split only on the FIRST '=' — signed/base64 values often contain '='.
+    const eq = part.indexOf('=')
+    if (eq === -1) continue
+    if (part.slice(0, eq) === SESSION_COOKIE) return part.slice(eq + 1)
   }
   return null
 }
@@ -130,11 +132,13 @@ export const login = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ email: z.string().email(), password: z.string() }))
   .handler(async ({ data }) => {
     const user = await db.users.findByEmail(data.email)
-    // Constant-time compare — don't short-circuit on user-not-found vs wrong-password,
-    // both branches must take the same time and return the same error.
-    const ok =
-      user != null &&
-      (await verifyPasswordHash(user.passwordHash, data.password))
+    // Always run verifyPasswordHash — even when the user doesn't exist —
+    // so the user-not-found branch takes the same time as wrong-password.
+    // DUMMY_PASSWORD_HASH is a hash of any throwaway password computed once
+    // at startup with the same algorithm/cost as real password hashes.
+    const hashToCheck = user?.passwordHash ?? DUMMY_PASSWORD_HASH
+    const passwordMatches = await verifyPasswordHash(hashToCheck, data.password)
+    const ok = user != null && passwordMatches
     if (!ok) throw new Error('Invalid email or password')
 
     // ROTATE on privilege change: destroy any existing session, then issue fresh.

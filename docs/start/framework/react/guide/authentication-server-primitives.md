@@ -61,8 +61,10 @@ export function readSessionToken(): string | null {
   const header = getRequestHeader('cookie')
   if (!header) return null
   for (const part of header.split(/;\s*/)) {
-    const [name, value] = part.split('=')
-    if (name === SESSION_COOKIE) return value ?? null
+    // Split only on the FIRST '=' — signed/base64 values often contain '='.
+    const eq = part.indexOf('=')
+    if (eq === -1) continue
+    if (part.slice(0, eq) === SESSION_COOKIE) return part.slice(eq + 1)
   }
   return null
 }
@@ -121,9 +123,13 @@ export const login = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ email: z.string().email(), password: z.string() }))
   .handler(async ({ data }) => {
     const user = await db.users.findByEmail(data.email)
-    const ok =
-      user != null &&
-      (await verifyPasswordHash(user.passwordHash, data.password))
+    // Always run verifyPasswordHash — even when the user doesn't exist —
+    // so the user-not-found branch takes the same time as wrong-password.
+    // DUMMY_PASSWORD_HASH is a hash of any throwaway password computed once
+    // at startup with the same algorithm/cost as real password hashes.
+    const hashToCheck = user?.passwordHash ?? DUMMY_PASSWORD_HASH
+    const passwordMatches = await verifyPasswordHash(hashToCheck, data.password)
+    const ok = user != null && passwordMatches
     if (!ok) throw new Error('Invalid email or password')
 
     // Rotate: destroy any existing session, then issue fresh.
@@ -134,7 +140,7 @@ export const login = createServerFn({ method: 'POST' })
   })
 ```
 
-The `Invalid email or password` message is identical for "user not found" and "wrong password". Don't leak which one it was; the constant-time `verifyPasswordHash` should also keep the timing similar.
+The `Invalid email or password` message is identical for "user not found" and "wrong password". The dummy-hash technique above also makes the timing identical: without it, the no-user branch returns instantly while the wrong-password branch spends ~100ms on the hash compare, leaking account existence over the wire.
 
 ## Logout
 
