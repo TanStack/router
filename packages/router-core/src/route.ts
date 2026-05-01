@@ -175,27 +175,26 @@ export type ParseParamsFn<in out TPath extends string, in out TParams> = (
   rawParams: Expand<ResolveParams<TPath>>,
 ) => TParams | false
 
-type ValidateParsedParams<TPath extends string, TParams> = [TParams] extends [
-  ResolveParams<TPath, any>,
-]
-  ? unknown
-  : never
-
 export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
   params: TParams,
 ) => ResolveParams<TPath>
 
 export type ParamsOptions<in out TPath extends string, in out TParams> = {
   params?: {
-    parse?: ParseParamsFn<TPath, TParams> & ValidateParsedParams<TPath, TParams>
+    parse?: Constrain<
+      ParseParamsFn<TPath, TParams>,
+      (rawParams: Expand<ResolveParams<TPath>>) => ResolveParams<TPath, any> | false
+    >
     stringify?: StringifyParamsFn<TPath, TParams>
   }
 
   /** 
   @deprecated Use params.parse instead
   */
-  parseParams?: ParseParamsFn<TPath, TParams> &
-    ValidateParsedParams<TPath, TParams>
+  parseParams?: Constrain<
+    ParseParamsFn<TPath, TParams>,
+    (rawParams: Expand<ResolveParams<TPath>>) => ResolveParams<TPath, any> | false
+  >
 
   /** 
   @deprecated Use params.stringify instead
