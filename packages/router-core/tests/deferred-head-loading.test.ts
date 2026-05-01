@@ -236,8 +236,6 @@ describe('executeHead: client re-evaluation through loadMatches', () => {
           ],
         }
       }
-      // Re-eval pass returns a brand-new unresolved promise that the
-      // awaitClient=true path must await before updating the match.
       return {
         meta: [{ name: 'static', content: 'present' }, secondPromise],
       }
@@ -261,20 +259,14 @@ describe('executeHead: client re-evaluation through loadMatches', () => {
 
     const indexMatchId = router.state.matches.find((m) => m.routeId === '/')!.id
 
-    // Trigger re-evaluation by resolving the original deferred promise.
     originalPromise.resolve({ title: 'unused' })
-    // Yield enough microtasks for the re-eval to start and call head() again,
-    // but not enough for it to finish (secondPromise is still pending).
     await new Promise((r) => setTimeout(r, 10))
 
     expect(headFn).toHaveBeenCalledTimes(2)
-    // Match should still hold the first-pass static entries; re-eval is
-    // blocked on secondPromise.
     expect(router.getMatch(indexMatchId)!.meta).toEqual([
       { name: 'static', content: 'present' },
     ])
 
-    // Resolve the new promise — re-eval should now finish and commit it.
     secondPromise.resolve([{ title: 'second-pass' }])
     await new Promise((r) => setTimeout(r, 10))
 
@@ -489,8 +481,7 @@ describe('attachRouterServerSsrUtils: automatic bot detection', () => {
       manifest: undefined,
       request: new Request('http://localhost/'),
     })
-    // isbot only flags a UA when it matches a known crawler signature;
-    // an absent/empty UA is treated as a non-bot client.
+    // isbot treats an absent/empty UA as a non-bot client.
     expect(router.serverSsr.isBot).toBe(false)
   })
 
@@ -501,11 +492,9 @@ describe('attachRouterServerSsrUtils: automatic bot detection', () => {
   })
 })
 
-// `hydrate` mirrors `executeHead`: the first pass commits only static head
-// entries so hydration is never blocked by a pending loader promise. If any
-// field carried a promise, a `Promise.allSettled`-driven re-evaluation pass
-// re-runs head()/scripts() and commits the resolved values through the store
-// so `<HeadContent />` / `<Scripts />` subscribers see them.
+// Mirrors `executeHead`: first pass commits only static entries so hydration
+// is never blocked by a pending promise. A re-evaluation pass commits resolved
+// values through the store once deferred promises settle.
 describe('hydrate: deferred head loading', () => {
   let mockWindow: { $_TSR?: TsrSsrGlobal }
   let dataPromise: ReturnType<
@@ -592,9 +581,6 @@ describe('hydrate: deferred head loading', () => {
   }
 
   it('does not block hydration on a still-pending deferred head promise', async () => {
-    // A non-Start consumer hands hydrate a loader whose deferred promise
-    // has not yet settled. Hydrate must complete immediately and let the
-    // re-evaluation pass commit the resolved values when they arrive.
     const mockMatches = setupDehydrated({ dataPromise })
 
     let hydrationDone = false
@@ -608,8 +594,6 @@ describe('hydrate: deferred head loading', () => {
     expect(hydrationDone).toBe(true)
     await hydratePromise
 
-    // First pass committed static entries only — re-eval is queued behind
-    // the still-pending dataPromise.
     expect(mockMatches[0].meta).toEqual([
       { name: 'static', content: 'present' },
     ])

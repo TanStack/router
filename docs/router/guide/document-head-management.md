@@ -219,7 +219,7 @@ export const Route = createFileRoute('/product/$slug')({
           }),
         },
       ]),
-    ]),
+    ],
   }),
   // Body scripts can be deferred too — useful when the script's URL or
   // payload depends on loader data, e.g. a tenant-specific analytics ID
