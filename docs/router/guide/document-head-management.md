@@ -177,7 +177,6 @@ When head data depends on an async source, awaiting it inside your loader blocks
 - Await the promise for crawlers so resolved tags appear in the initial response for correct indexing and social previews
 - Re-evaluate `head()` and `scripts()` on the client once the promise settles, so the resolved tags are committed via `<HeadContent />` and `<Scripts />` without blocking navigation
 
-
 To defer a tag, return the promise from your loader and pass it directly into any head array (or the body scripts array), alongside any static entries you already have. The promise can resolve to a single descriptor or an array of them — the router flattens the result into the surrounding array:
 
 ```tsx
