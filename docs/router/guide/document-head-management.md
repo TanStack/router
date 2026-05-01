@@ -221,8 +221,8 @@ export const Route = createFileRoute('/product/$slug')({
       ]),
     ]),
   }),
-  // Body scripts can be deferred too — useful for analytics or third-party
-  // tags that depend on data fetched in the loader
+  // Body scripts can be deferred too — useful for multitenant pages where
+  // each tenant has its own analytics ID or for third-party configuration
   scripts: ({ loaderData }) => [
     loaderData.dataPromise.then((data) => [
       { src: `/analytics.js?id=${data.analyticsId}`, async: true },
