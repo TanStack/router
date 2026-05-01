@@ -329,8 +329,14 @@ import {
 export function useDelayedNavigate<
   TRouter extends RegisteredRouter = RegisteredRouter,
   TOptions = unknown,
->(options: ValidateNavigateOptions<TRouter, TOptions>, delayMs: number): () => void
-export function useDelayedNavigate(options: ValidateNavigateOptions, delayMs: number) {
+>(
+  options: ValidateNavigateOptions<TRouter, TOptions>,
+  delayMs: number,
+): () => void
+export function useDelayedNavigate(
+  options: ValidateNavigateOptions,
+  delayMs: number,
+) {
   const navigate = useNavigate()
   return () => setTimeout(() => navigate(options), delayMs)
 }
@@ -338,8 +344,14 @@ export function useDelayedNavigate(options: ValidateNavigateOptions, delayMs: nu
 export async function fetchOrRedirect<
   TRouter extends RegisteredRouter = RegisteredRouter,
   TOptions = unknown,
->(url: string, redirectOptions: ValidateRedirectOptions<TRouter, TOptions>): Promise<unknown>
-export async function fetchOrRedirect(url: string, redirectOptions: ValidateRedirectOptions) {
+>(
+  url: string,
+  redirectOptions: ValidateRedirectOptions<TRouter, TOptions>,
+): Promise<unknown>
+export async function fetchOrRedirect(
+  url: string,
+  redirectOptions: ValidateRedirectOptions,
+) {
   const response = await fetch(url)
   if (response.status === 401) throw redirect(redirectOptions)
   return response.json()
