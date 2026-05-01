@@ -25,7 +25,7 @@ sources:
 This skill covers the **server half** of authentication: session storage, cookie issuance, OAuth flow, password-reset hardening, CSRF, rate limiting. For the **routing half** (`_authenticated` layout, `beforeLoad` redirects, RBAC checks), see [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md).
 
 > **CRITICAL**: A route guard does NOT protect a `createServerFn` on that route. Server functions are RPC endpoints reachable by direct POST regardless of which route renders them. Auth must be enforced **inside the handler** (or via middleware), not on the calling route.
-> **CRITICAL**: Validating the *shape* of a client-supplied identifier (`z.string().uuid().parse(...)`) is not authorization. A parsed UUID is still *some* tenant — re-check membership against the session principal before using it.
+> **CRITICAL**: Validating the _shape_ of a client-supplied identifier (`z.string().uuid().parse(...)`) is not authorization. A parsed UUID is still _some_ tenant — re-check membership against the session principal before using it.
 > **CRITICAL**: Read session/cookies inside `.handler()` or middleware `.server()`, not at module scope. Module-level reads run before requests exist (and are also undefined on Cloudflare Workers).
 
 ## Session Cookies
@@ -48,10 +48,10 @@ export function setSessionCookie(token: string) {
     'Set-Cookie',
     [
       `${SESSION_COOKIE}=${token}`,
-      `HttpOnly`,            // not readable from JS — defeats XSS exfiltration
-      `Secure`,              // HTTPS only (required for __Host- prefix)
-      `SameSite=Lax`,        // sent on top-level navigations, blocks most CSRF
-      `Path=/`,              // required for __Host- prefix
+      `HttpOnly`, // not readable from JS — defeats XSS exfiltration
+      `Secure`, // HTTPS only (required for __Host- prefix)
+      `SameSite=Lax`, // sent on top-level navigations, blocks most CSRF
+      `Path=/`, // required for __Host- prefix
       `Max-Age=${ONE_DAY}`,
     ].join('; '),
   )
@@ -274,7 +274,11 @@ A login endpoint without rate limiting is a credential-stuffing target. Limit pe
 import { createMiddleware } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
 
-function rateLimitMiddleware(opts: { key: string; max: number; windowMs: number }) {
+function rateLimitMiddleware(opts: {
+  key: string
+  max: number
+  windowMs: number
+}) {
   return createMiddleware().server(async ({ next }) => {
     const request = getRequest()
     const ip =
@@ -282,16 +286,21 @@ function rateLimitMiddleware(opts: { key: string; max: number; windowMs: number 
       request.headers.get('x-forwarded-for')?.split(',')[0] ??
       'unknown'
     const bucketKey = `rl:${opts.key}:${ip}`
-    const allowed = await rateLimiter.consume(bucketKey, opts.max, opts.windowMs)
+    const allowed = await rateLimiter.consume(
+      bucketKey,
+      opts.max,
+      opts.windowMs,
+    )
     if (!allowed) throw new Error('Too many requests')
     return next()
   })
 }
 
 // On the login server function:
-export const login = createServerFn({ method: 'POST' })
-  .middleware([rateLimitMiddleware({ key: 'login', max: 5, windowMs: 60_000 })])
-  // ...
+export const login = createServerFn({ method: 'POST' }).middleware([
+  rateLimitMiddleware({ key: 'login', max: 5, windowMs: 60_000 }),
+])
+// ...
 ```
 
 ## Session Rotation on Privilege Change
@@ -336,7 +345,7 @@ const getMyOrders = createServerFn({ method: 'GET' })
 
 ### CRITICAL: Treating shape validation as authorization
 
-A parsed UUID is *some* workspace, not an *authorized* workspace.
+A parsed UUID is _some_ workspace, not an _authorized_ workspace.
 
 ```tsx
 // WRONG — UUID is well-formed but the user may not be a member

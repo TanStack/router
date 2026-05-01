@@ -22,7 +22,7 @@ Middleware customizes the behavior of server functions and server routes. It is 
 
 > **CRITICAL**: Import `createMiddleware` from `@tanstack/<framework>-start` (e.g. `@tanstack/react-start`). NOT from `@tanstack/react-router` and NOT from `@tanstack/start` (no such package). Wrong path produces `createMiddleware is not a function`.
 > **CRITICAL**: TypeScript enforces method order: `middleware()` → `inputValidator()` → `client()` → `server()`. Wrong order causes type errors.
-> **CRITICAL**: Validating the *shape* of `sendContext` (e.g. `z.string().uuid().parse(...)`) is NOT authorization. A parsed identifier is a well-formed identifier, not an authorized one. Always re-check access against the session principal before using a client-sent ID as a query key, filter, or path parameter.
+> **CRITICAL**: Validating the _shape_ of `sendContext` (e.g. `z.string().uuid().parse(...)`) is NOT authorization. A parsed identifier is a well-formed identifier, not an authorized one. Always re-check access against the session principal before using a client-sent ID as a query key, filter, or path parameter.
 
 ## Two Types of Middleware
 
@@ -324,7 +324,7 @@ Same applies to `createStart` and other Start runtime exports.
 
 ### 2. CRITICAL: Trusting client sendContext — shape check is not access check
 
-`sendContext` from a client middleware arrives on the server as untrusted client input. Most agents stop after parsing the shape with Zod and assume the value is safe. It isn't: a parsed UUID is *some* workspace, not the requesting user's workspace. Without a membership check against the session principal, you've built a tenant-walking endpoint.
+`sendContext` from a client middleware arrives on the server as untrusted client input. Most agents stop after parsing the shape with Zod and assume the value is safe. It isn't: a parsed UUID is _some_ workspace, not the requesting user's workspace. Without a membership check against the session principal, you've built a tenant-walking endpoint.
 
 **Layer 1 — WRONG (no validation):**
 

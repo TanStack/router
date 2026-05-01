@@ -350,7 +350,7 @@ const requestLogger = createMiddleware({ type: 'function' })
 
 You may have noticed that in the example above while client-sent context is type-safe, it is not required to be validated at runtime. If you pass dynamic user-generated data via context, that could pose a security concern, so **if you are sending dynamic data from the client to the server via context, you should validate it in the server-side middleware before using it.**
 
-> **Shape validation is not authorization.** A parsed UUID/number is a *well-formed* identifier, not an *authorized* one. If the value is going to be used as a query key, filter, or path parameter — anything that selects which row(s) get read or written — you must also verify the session principal has access to it. Otherwise a logged-in user can rewrite the value in their own request and walk other tenants' data.
+> **Shape validation is not authorization.** A parsed UUID/number is a _well-formed_ identifier, not an _authorized_ one. If the value is going to be used as a query key, filter, or path parameter — anything that selects which row(s) get read or written — you must also verify the session principal has access to it. Otherwise a logged-in user can rewrite the value in their own request and walk other tenants' data.
 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'

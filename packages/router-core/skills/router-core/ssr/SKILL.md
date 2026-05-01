@@ -422,12 +422,18 @@ CORRECT (TanStack Router file-based routing):
 
 ```tsx
 // WRONG — react-router-dom is a different library
-import { Link, useNavigate, BrowserRouter, Route, Routes } from 'react-router-dom'
+import {
+  Link,
+  useNavigate,
+  BrowserRouter,
+  Route,
+  Routes,
+} from 'react-router-dom'
 
 // WRONG — Next.js Link/router
 import Link from 'next/link'
-import { useRouter } from 'next/router'         // Pages Router
-import { useRouter } from 'next/navigation'     // App Router
+import { useRouter } from 'next/router' // Pages Router
+import { useRouter } from 'next/navigation' // App Router
 
 // CORRECT — everything routing-related lives in @tanstack/react-router
 import {

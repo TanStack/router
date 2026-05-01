@@ -68,14 +68,14 @@ export function readSessionToken(): string | null {
 }
 ```
 
-| Flag | Why |
-|---|---|
-| `HttpOnly` | JavaScript can't read the cookie. An XSS bug can't exfiltrate the session. |
-| `Secure` | HTTPS only. Required when using the `__Host-` prefix. |
-| `SameSite=Lax` | Sent on top-level navigations; blocks most cross-site CSRF on POST. Use `Strict` for higher-risk apps where loss of cross-site GET navigation is acceptable. |
-| `__Host-` prefix | Binds the cookie to the exact origin. No `Domain` attribute, `Path=/`, `Secure` required. Defeats subdomain-takeover session fixation. |
-| `Path=/` | Required by `__Host-`. |
-| `Max-Age` | Bounded lifetime. Pair with server-side rotation. |
+| Flag             | Why                                                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `HttpOnly`       | JavaScript can't read the cookie. An XSS bug can't exfiltrate the session.                                                                                   |
+| `Secure`         | HTTPS only. Required when using the `__Host-` prefix.                                                                                                        |
+| `SameSite=Lax`   | Sent on top-level navigations; blocks most cross-site CSRF on POST. Use `Strict` for higher-risk apps where loss of cross-site GET navigation is acceptable. |
+| `__Host-` prefix | Binds the cookie to the exact origin. No `Domain` attribute, `Path=/`, `Secure` required. Defeats subdomain-takeover session fixation.                       |
+| `Path=/`         | Required by `__Host-`.                                                                                                                                       |
+| `Max-Age`        | Bounded lifetime. Pair with server-side rotation.                                                                                                            |
 
 ## Session Lookup as Middleware
 
@@ -273,7 +273,11 @@ A login endpoint without rate limiting is a credential-stuffing target. Limit pe
 import { createMiddleware } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
 
-function rateLimitMiddleware(opts: { key: string; max: number; windowMs: number }) {
+function rateLimitMiddleware(opts: {
+  key: string
+  max: number
+  windowMs: number
+}) {
   return createMiddleware().server(async ({ next }) => {
     const request = getRequest()
     const ip =
@@ -290,9 +294,10 @@ function rateLimitMiddleware(opts: { key: string; max: number; windowMs: number 
   })
 }
 
-export const login = createServerFn({ method: 'POST' })
-  .middleware([rateLimitMiddleware({ key: 'login', max: 5, windowMs: 60_000 })])
-  // ...
+export const login = createServerFn({ method: 'POST' }).middleware([
+  rateLimitMiddleware({ key: 'login', max: 5, windowMs: 60_000 }),
+])
+// ...
 ```
 
 ## Session Rotation

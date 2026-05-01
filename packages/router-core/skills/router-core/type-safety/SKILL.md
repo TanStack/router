@@ -331,7 +331,8 @@ export function useDelayedNavigate<
   TOptions = unknown,
 >(options: ValidateNavigateOptions<TRouter, TOptions>, delayMs: number) {
   const navigate = useNavigate()
-  return () => setTimeout(() => navigate(options as ValidateNavigateOptions), delayMs)
+  return () =>
+    setTimeout(() => navigate(options as ValidateNavigateOptions), delayMs)
 }
 
 export async function fetchOrRedirect<
@@ -339,7 +340,8 @@ export async function fetchOrRedirect<
   TOptions = unknown,
 >(url: string, redirectOptions: ValidateRedirectOptions<TRouter, TOptions>) {
   const response = await fetch(url)
-  if (response.status === 401) throw redirect(redirectOptions as ValidateRedirectOptions)
+  if (response.status === 401)
+    throw redirect(redirectOptions as ValidateRedirectOptions)
   return response.json()
 }
 ```
@@ -460,7 +462,15 @@ import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 
 // CORRECT — all routing exports come from @tanstack/react-router
-import { Link, Outlet, useNavigate, useRouter, useLocation, useParams, redirect } from '@tanstack/react-router'
+import {
+  Link,
+  Outlet,
+  useNavigate,
+  useRouter,
+  useLocation,
+  useParams,
+  redirect,
+} from '@tanstack/react-router'
 ```
 
 ```tsx

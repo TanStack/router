@@ -27,16 +27,16 @@ Understanding where code runs is fundamental to TanStack Start. This skill cover
 
 ## Execution Control APIs
 
-| API                                              | Use Case                            | Client Behavior           | Server Behavior       |
-| ------------------------------------------------ | ----------------------------------- | ------------------------- | --------------------- |
-| `createServerFn()`                               | RPC calls, data mutations           | Network request to server | Direct execution      |
-| `createServerOnlyFn(fn)`                         | Utility functions                   | Throws error              | Direct execution      |
-| `createClientOnlyFn(fn)`                         | Browser utilities                   | Direct execution          | Throws error          |
-| `createIsomorphicFn()`                           | Different impl per env              | Uses `.client()` impl     | Uses `.server()` impl |
-| `<ClientOnly>`                                   | Browser-only components             | Renders children          | Renders fallback      |
-| `useHydrated()`                                  | Hydration-dependent logic           | `true` after hydration    | `false`               |
-| `import '@tanstack/<fw>-start/server-only'`      | Mark whole file server-only         | Import denied             | Allowed               |
-| `import '@tanstack/<fw>-start/client-only'`      | Mark whole file client-only         | Allowed                   | Import denied         |
+| API                                         | Use Case                    | Client Behavior           | Server Behavior       |
+| ------------------------------------------- | --------------------------- | ------------------------- | --------------------- |
+| `createServerFn()`                          | RPC calls, data mutations   | Network request to server | Direct execution      |
+| `createServerOnlyFn(fn)`                    | Utility functions           | Throws error              | Direct execution      |
+| `createClientOnlyFn(fn)`                    | Browser utilities           | Direct execution          | Throws error          |
+| `createIsomorphicFn()`                      | Different impl per env      | Uses `.client()` impl     | Uses `.server()` impl |
+| `<ClientOnly>`                              | Browser-only components     | Renders children          | Renders fallback      |
+| `useHydrated()`                             | Hydration-dependent logic   | `true` after hydration    | `false`               |
+| `import '@tanstack/<fw>-start/server-only'` | Mark whole file server-only | Import denied             | Allowed               |
+| `import '@tanstack/<fw>-start/client-only'` | Mark whole file client-only | Allowed                   | Import denied         |
 
 ## Server-Only Execution
 
