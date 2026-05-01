@@ -4,7 +4,7 @@ import { configSchema, getConfig } from './core/config'
 import { createRouterCodeSplitterPlugin } from './core/router-code-splitter-plugin'
 import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
-import { defaultRouterPluginContext } from './core/router-plugin-context'
+import { createRouterPluginContext } from './core/router-plugin-context'
 import type { CodeSplittingOptions, Config } from './core/config'
 import type { RouterPluginContext } from './core/router-plugin-context'
 
@@ -21,10 +21,11 @@ type RouterPluginOptions = Partial<Config | (() => Config)> | undefined
  */
 const tanstackRouterGenerator = (
   options?: RouterPluginOptions,
-  routerPluginContext: RouterPluginContext = defaultRouterPluginContext,
+  routerPluginContext?: RouterPluginContext,
 ) => {
+  const pluginContext = routerPluginContext ?? createRouterPluginContext()
   return createVitePlugin((pluginOptions: RouterPluginOptions) =>
-    createRouterGeneratorPlugin(pluginOptions, routerPluginContext),
+    createRouterGeneratorPlugin(pluginOptions, pluginContext),
   )(options)
 }
 
@@ -39,10 +40,11 @@ const tanstackRouterGenerator = (
  */
 const tanStackRouterCodeSplitter = (
   options?: RouterPluginOptions,
-  routerPluginContext: RouterPluginContext = defaultRouterPluginContext,
+  routerPluginContext?: RouterPluginContext,
 ) => {
+  const pluginContext = routerPluginContext ?? createRouterPluginContext()
   return createVitePlugin((pluginOptions: RouterPluginOptions) =>
-    createRouterCodeSplitterPlugin(pluginOptions, routerPluginContext),
+    createRouterCodeSplitterPlugin(pluginOptions, pluginContext),
   )(options)
 }
 

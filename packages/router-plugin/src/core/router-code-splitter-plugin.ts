@@ -22,7 +22,7 @@ import {
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
 import { debug, normalizePath } from './utils'
-import { defaultRouterPluginContext } from './router-plugin-context'
+import { createRouterPluginContext } from './router-plugin-context'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
 import type { Config } from './config'
@@ -409,5 +409,5 @@ export function createRouterCodeSplitterPlugin(
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
 > = (options = {}) => {
-  return createRouterCodeSplitterPlugin(options, defaultRouterPluginContext)
+  return createRouterCodeSplitterPlugin(options, createRouterPluginContext())
 }

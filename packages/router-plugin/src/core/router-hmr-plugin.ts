@@ -4,7 +4,7 @@ import { getReferenceRouteCompilerPlugins } from './code-splitter/plugins/framew
 import { createRouteHmrStatement } from './hmr'
 import { debug, normalizePath } from './utils'
 import { getConfig } from './config'
-import { defaultRouterPluginContext } from './router-plugin-context'
+import { createRouterPluginContext } from './router-plugin-context'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
 import type { RouterPluginContext } from './router-plugin-context'
@@ -26,9 +26,12 @@ export function createRouterHmrPlugin(
   routerPluginContext: RouterPluginContext,
 ): ReturnType<UnpluginFactory<Partial<Config> | undefined>> {
   let ROOT: string = process.cwd()
-  let userConfig = (
-    typeof options === 'function' ? options() : options
-  ) as Config
+
+  const resolveUserConfig = () => {
+    return getConfig(typeof options === 'function' ? options() : options, ROOT)
+  }
+
+  let userConfig = resolveUserConfig()
 
   return {
     name: 'tanstack-router:hmr',
@@ -103,10 +106,7 @@ export function createRouterHmrPlugin(
     vite: {
       configResolved(config) {
         ROOT = config.root
-        userConfig = getConfig(
-          typeof options === 'function' ? options() : options,
-          ROOT,
-        )
+        userConfig = resolveUserConfig()
       },
       applyToEnvironment(environment) {
         if (userConfig.plugin?.vite?.environmentName) {
@@ -121,5 +121,5 @@ export function createRouterHmrPlugin(
 export const unpluginRouterHmrFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}) => {
-  return createRouterHmrPlugin(options, defaultRouterPluginContext)
+  return createRouterHmrPlugin(options, createRouterPluginContext())
 }

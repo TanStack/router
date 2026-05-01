@@ -3,6 +3,7 @@ import * as t from '@babel/types'
 import { describe, expect, it } from 'vitest'
 import { parseAst } from '@tanstack/router-utils'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
+import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
 import type { Config } from '../src/core/config'
@@ -143,5 +144,38 @@ export const Route = createFileRoute('/owned')({
     )
 
     expect(secondResult).toBeNull()
+  })
+
+  it('normalizes HMR options before the first transform', async () => {
+    const routeFile = normalizePath(
+      path.join(process.cwd(), 'src/routes/owned.tsx'),
+    )
+
+    const routeCode = `
+import { createFileRoute } from '@tanstack/react-router'
+
+function Component() {
+  return <div>Hello</div>
+}
+
+export const Route = createFileRoute('/owned')({
+  component: Component,
+})
+`
+
+    const context = createRouterPluginContext()
+    context.routesByFile.set(routeFile, { routeId: '/owned' })
+
+    const hmrPlugin = createRouterHmrPlugin({}, context)
+    const hmrResult = await transformReferenceRoute(
+      Array.isArray(hmrPlugin) ? hmrPlugin[0]! : hmrPlugin,
+      routeCode,
+      routeFile,
+    )
+
+    const hmrCode = getCode(hmrResult)
+
+    expect(hmrCode).not.toBeNull()
+    expect(hmrCode).toContain('TSRFastRefreshAnchor')
   })
 })

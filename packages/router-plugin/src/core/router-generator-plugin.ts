@@ -1,7 +1,7 @@
 import { isAbsolute, join, normalize } from 'node:path'
 import { Generator, resolveConfigPath } from '@tanstack/router-generator'
 import { getConfig } from './config'
-import { defaultRouterPluginContext } from './router-plugin-context'
+import { createRouterPluginContext } from './router-plugin-context'
 
 import type { GeneratorEvent } from '@tanstack/router-generator'
 import type { FSWatcher } from 'chokidar'
@@ -153,5 +153,5 @@ export function createRouterGeneratorPlugin(
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
 > = (options = {}) => {
-  return createRouterGeneratorPlugin(options, defaultRouterPluginContext)
+  return createRouterGeneratorPlugin(options, createRouterPluginContext())
 }

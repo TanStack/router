@@ -4,7 +4,7 @@ import { configSchema } from './core/config'
 import { createRouterCodeSplitterPlugin } from './core/router-code-splitter-plugin'
 import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
-import { defaultRouterPluginContext } from './core/router-plugin-context'
+import { createRouterPluginContext } from './core/router-plugin-context'
 import type { CodeSplittingOptions, Config } from './core/config'
 import type { RouterPluginContext } from './core/router-plugin-context'
 
@@ -54,12 +54,13 @@ function withWebpackHmrStyle(
  */
 const TanStackRouterGeneratorRspack = (
   options?: RspackRouterPluginOptions,
-  routerPluginContext: RouterPluginContext = defaultRouterPluginContext,
+  routerPluginContext?: RouterPluginContext,
 ) => {
+  const pluginContext = routerPluginContext ?? createRouterPluginContext()
   return createRspackPlugin((pluginOptions) =>
     createRouterGeneratorPlugin(
       pluginOptions as Partial<Config | (() => Config)> | undefined,
-      routerPluginContext,
+      pluginContext,
     ),
   )(options)
 }
@@ -79,14 +80,15 @@ const TanStackRouterGeneratorRspack = (
  */
 const TanStackRouterCodeSplitterRspack = (
   options?: RspackRouterPluginOptions,
-  routerPluginContext: RouterPluginContext = defaultRouterPluginContext,
+  routerPluginContext?: RouterPluginContext,
 ) => {
+  const pluginContext = routerPluginContext ?? createRouterPluginContext()
   return createRspackPlugin((pluginOptions) =>
     createRouterCodeSplitterPlugin(
       withWebpackHmrStyle(
         pluginOptions as RspackRouterPluginOptions | undefined,
       ) as Partial<Config | (() => Config)>,
-      routerPluginContext,
+      pluginContext,
     ),
   )(options)
 }

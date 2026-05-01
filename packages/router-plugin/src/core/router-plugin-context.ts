@@ -9,5 +9,3 @@ export function createRouterPluginContext(): RouterPluginContext {
     routesByFile: new Map(),
   }
 }
-
-export const defaultRouterPluginContext = createRouterPluginContext()
