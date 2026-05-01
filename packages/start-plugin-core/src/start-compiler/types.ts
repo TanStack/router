@@ -11,6 +11,8 @@ export interface CompilationContext extends StartCompilerTransformContext {
   generateFunctionId: GenerateFunctionIdFn
   /** Get known server functions from previous builds (e.g., client build) */
   getKnownServerFns: () => Record<string, ServerFn>
+  /** Module-level directives to add to extracted server function provider files. */
+  serverFnProviderModuleDirectives: ReadonlyArray<string> | undefined
 
   /**
    * Callback when server functions are discovered.

@@ -103,6 +103,7 @@ export interface TanStackStartCoreOptions {
   ssrIsProvider: boolean
   serializationAdapters?: Array<SerializationAdapterConfig> | undefined
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
 }
 
 export interface ResolvedStartConfig {

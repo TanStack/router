@@ -511,6 +511,7 @@ export class StartCompiler {
        */
       onServerFnsById?: (d: Record<string, ServerFn>) => void
       compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+      serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
       /**
        * Returns the currently known server functions from previous builds.
        * Used by server callers to look up canonical extracted filenames.
@@ -1351,6 +1352,8 @@ export class StartCompiler {
 
       generateFunctionId: (opts) => this.generateFunctionId(opts),
       getKnownServerFns: this.options.getKnownServerFns,
+      serverFnProviderModuleDirectives:
+        this.options.serverFnProviderModuleDirectives,
       onServerFnsById: this.options.onServerFnsById,
     }
 

@@ -30,6 +30,8 @@ export function tanstackStart(
       ssrIsProvider: false,
       serializationAdapters: rscConfig.serializationAdapters,
       compilerTransforms: rscConfig.compilerTransforms,
+      serverFnProviderModuleDirectives:
+        rscConfig.serverFnProviderModuleDirectives,
       rsc: true,
     }
   }
@@ -50,6 +52,8 @@ function configureRscRsbuild(): {
   providerEnvironmentName: TanStackStartRsbuildPluginCoreOptions['providerEnvironmentName']
   serializationAdapters: TanStackStartRsbuildPluginCoreOptions['serializationAdapters']
   compilerTransforms: TanStackStartRsbuildPluginCoreOptions['compilerTransforms']
+  serverFnProviderModuleDirectives:
+    TanStackStartRsbuildPluginCoreOptions['serverFnProviderModuleDirectives']
 } {
   return {
     providerEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,
@@ -71,5 +75,6 @@ function configureRscRsbuild(): {
       loadCssExpression: 'import.meta.rspackRsc.loadCss()',
       serverFnProviderOnly: true,
     }),
+    serverFnProviderModuleDirectives: ['use server-entry'],
   }
 }

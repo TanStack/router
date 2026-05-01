@@ -170,6 +170,7 @@ export interface StartCompilerPluginOptions {
    */
   generateFunctionId?: GenerateFunctionIdFnOptional
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
   /**
    * The Vite environment name for the server function provider.
    */
@@ -210,6 +211,10 @@ export function startCompilerPlugin(
       environment.name === opts.providerEnvName
         ? opts.compilerTransforms
         : undefined
+    const serverFnProviderModuleDirectives =
+      environment.name === opts.providerEnvName
+        ? opts.serverFnProviderModuleDirectives
+        : undefined
     // Derive transform code filter from KindDetectionPatterns (single source of truth)
     const transformCodeFilter = getTransformCodeFilterForEnv(environment.type, {
       compilerTransforms,
@@ -249,6 +254,7 @@ export function startCompilerPlugin(
               providerEnvName: opts.providerEnvName,
               generateFunctionId: opts.generateFunctionId,
               compilerTransforms,
+              serverFnProviderModuleDirectives,
               onServerFnsById,
               getKnownServerFns: () => serverFnsById,
               encodeModuleSpecifierInDev:

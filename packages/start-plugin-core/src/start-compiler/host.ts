@@ -19,6 +19,7 @@ export interface CreateStartCompilerOptions {
   mode: 'dev' | 'build'
   generateFunctionId?: GenerateFunctionIdFnOptional
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
   onServerFnsById?: (d: Record<string, ServerFn>) => void
   getKnownServerFns: () => Record<string, ServerFn>
   encodeModuleSpecifierInDev?: DevServerFnModuleSpecifierEncoder
@@ -47,6 +48,8 @@ export function createStartCompiler(
     generateFunctionId: options.generateFunctionId,
     onServerFnsById: options.onServerFnsById,
     compilerTransforms: options.compilerTransforms,
+    serverFnProviderModuleDirectives:
+      options.serverFnProviderModuleDirectives,
     getKnownServerFns: options.getKnownServerFns,
     devServerFnModuleSpecifierEncoder: options.encodeModuleSpecifierInDev,
     loadModule: options.loadModule,

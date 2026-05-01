@@ -240,6 +240,8 @@ export function tanStackStartRsbuild(
         providerEnvName: serverFnProviderEnv,
         generateFunctionId: startPluginOpts.serverFns?.generateFunctionId,
         compilerTransforms: corePluginOpts.compilerTransforms,
+        serverFnProviderModuleDirectives:
+          corePluginOpts.serverFnProviderModuleDirectives,
         serverFnsById,
         onServerFnsByIdChange: () => {
           updateServerFnResolver?.()

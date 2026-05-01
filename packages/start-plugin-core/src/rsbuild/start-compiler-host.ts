@@ -40,6 +40,7 @@ export interface StartCompilerHostOptions {
   providerEnvName: string
   generateFunctionId?: GenerateFunctionIdFnOptional
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
   serverFnsById?: Record<string, ServerFn>
   onServerFnsByIdChange?: () => void
 }
@@ -94,6 +95,10 @@ export function registerStartCompilerTransforms(
       env.name === RSBUILD_ENVIRONMENT_NAMES.server
         ? opts.compilerTransforms
         : undefined
+    const serverFnProviderModuleDirectives =
+      env.name === opts.providerEnvName
+        ? opts.serverFnProviderModuleDirectives
+        : undefined
 
     api.transform(
       {
@@ -124,6 +129,7 @@ export function registerStartCompilerTransforms(
               providerEnvName: opts.providerEnvName,
               generateFunctionId: opts.generateFunctionId,
               compilerTransforms,
+              serverFnProviderModuleDirectives,
               onServerFnsById,
               getKnownServerFns: () => serverFnsById,
               encodeModuleSpecifierInDev: isDev

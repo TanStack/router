@@ -20,7 +20,12 @@ function getDefaultTestOptions(env: 'client' | 'server') {
 }
 
 // Helper to create a compiler with all kinds enabled
-function createFullCompiler(env: 'client' | 'server') {
+function createFullCompiler(
+  env: 'client' | 'server',
+  opts?: {
+    serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
+  },
+) {
   const lookupKinds: Set<LookupKind> =
     env === 'client'
       ? new Set([
@@ -69,6 +74,7 @@ function createFullCompiler(env: 'client' | 'server') {
     loadModule: async () => {},
     resolveId: async (id) => id,
     mode: 'build',
+    serverFnProviderModuleDirectives: opts?.serverFnProviderModuleDirectives,
   })
 }
 
@@ -482,6 +488,48 @@ describe('compiler handles external import transforms', () => {
     })
 
     expect(result).toBeNull()
+  })
+})
+
+describe('server function provider module directives', () => {
+  const code = `
+    import { createServerFn } from '@tanstack/react-start'
+
+    export const getMessage = createServerFn({ method: 'GET' }).handler(() => {
+      return 'hello'
+    })
+  `
+
+  test('does not add module directives without compiler configuration', async () => {
+    const compiler = createFullCompiler('server')
+
+    const result = await compiler.compile({
+      code,
+      id: '/test/src/routes/message.tsx?tss-serverfn-split',
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).not.toContain('"use server-entry"')
+  })
+
+  test('adds configured module directives to provider files only', async () => {
+    const compiler = createFullCompiler('server', {
+      serverFnProviderModuleDirectives: ['use server-entry'],
+    })
+
+    const providerResult = await compiler.compile({
+      code,
+      id: '/test/src/routes/message.tsx?tss-serverfn-split',
+    })
+    const callerResult = await compiler.compile({
+      code,
+      id: '/test/src/routes/message.tsx',
+    })
+
+    expect(providerResult).not.toBeNull()
+    expect(providerResult!.code).toContain('"use server-entry";')
+    expect(callerResult).not.toBeNull()
+    expect(callerResult!.code).not.toContain('"use server-entry"')
   })
 })
 
