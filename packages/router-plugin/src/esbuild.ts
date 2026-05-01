@@ -11,6 +11,8 @@ import type { RouterPluginContext } from './core/router-plugin-context'
 
 type RouterPluginOptions = Partial<Config | (() => Config)> | undefined
 
+const defaultRouterPluginContext = createRouterPluginContext()
+
 /**
  * @example
  * ```ts
@@ -24,7 +26,7 @@ const TanStackRouterGeneratorEsbuild = (
   options?: RouterPluginOptions,
   routerPluginContext?: RouterPluginContext,
 ) => {
-  const pluginContext = routerPluginContext ?? createRouterPluginContext()
+  const pluginContext = routerPluginContext ?? defaultRouterPluginContext
   return createEsbuildPlugin((pluginOptions: RouterPluginOptions) =>
     createRouterGeneratorPlugin(pluginOptions, pluginContext),
   )(options)
@@ -43,7 +45,7 @@ const TanStackRouterCodeSplitterEsbuild = (
   options?: RouterPluginOptions,
   routerPluginContext?: RouterPluginContext,
 ) => {
-  const pluginContext = routerPluginContext ?? createRouterPluginContext()
+  const pluginContext = routerPluginContext ?? defaultRouterPluginContext
   return createEsbuildPlugin((pluginOptions: RouterPluginOptions) =>
     createRouterCodeSplitterPlugin(pluginOptions, pluginContext),
   )(options)

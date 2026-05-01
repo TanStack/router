@@ -10,6 +10,8 @@ import type { RouterPluginContext } from './core/router-plugin-context'
 
 type RspackRouterPluginOptions = Partial<Config> | (() => Partial<Config>)
 
+const defaultRouterPluginContext = createRouterPluginContext()
+
 /**
  * Rspack uses webpack-compatible `module.hot` / `import.meta.webpackHot` HMR.
  * Force `plugin.hmr.style = 'webpack'` so the router HMR adapter emits
@@ -56,7 +58,7 @@ const TanStackRouterGeneratorRspack = (
   options?: RspackRouterPluginOptions,
   routerPluginContext?: RouterPluginContext,
 ) => {
-  const pluginContext = routerPluginContext ?? createRouterPluginContext()
+  const pluginContext = routerPluginContext ?? defaultRouterPluginContext
   return createRspackPlugin((pluginOptions) =>
     createRouterGeneratorPlugin(
       pluginOptions as Partial<Config | (() => Config)> | undefined,
@@ -82,7 +84,7 @@ const TanStackRouterCodeSplitterRspack = (
   options?: RspackRouterPluginOptions,
   routerPluginContext?: RouterPluginContext,
 ) => {
-  const pluginContext = routerPluginContext ?? createRouterPluginContext()
+  const pluginContext = routerPluginContext ?? defaultRouterPluginContext
   return createRspackPlugin((pluginOptions) =>
     createRouterCodeSplitterPlugin(
       withWebpackHmrStyle(

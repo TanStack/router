@@ -8,6 +8,8 @@ import { createRouterPluginContext } from './core/router-plugin-context'
 import type { CodeSplittingOptions, Config } from './core/config'
 import type { RouterPluginContext } from './core/router-plugin-context'
 
+const defaultRouterPluginContext = createRouterPluginContext()
+
 /**
  * Webpack uses `module.hot` / `import.meta.webpackHot` HMR. Force
  * `plugin.hmr.style = 'webpack'` so the router HMR adapter emits the correct
@@ -41,7 +43,7 @@ const TanStackRouterGeneratorWebpack = (
   options?: Partial<Config>,
   routerPluginContext?: RouterPluginContext,
 ) => {
-  const pluginContext = routerPluginContext ?? createRouterPluginContext()
+  const pluginContext = routerPluginContext ?? defaultRouterPluginContext
   return createWebpackPlugin((pluginOptions: Partial<Config> | undefined) =>
     createRouterGeneratorPlugin(pluginOptions, pluginContext),
   )(options)
@@ -60,7 +62,7 @@ const TanStackRouterCodeSplitterWebpack = (
   options?: Partial<Config>,
   routerPluginContext?: RouterPluginContext,
 ) => {
-  const pluginContext = routerPluginContext ?? createRouterPluginContext()
+  const pluginContext = routerPluginContext ?? defaultRouterPluginContext
   return createWebpackPlugin((pluginOptions: Partial<Config> | undefined) =>
     createRouterCodeSplitterPlugin(
       withWebpackHmrStyle(pluginOptions),
