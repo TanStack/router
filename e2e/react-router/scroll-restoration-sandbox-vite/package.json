@@ -6,7 +6,7 @@
     "dev": "vite --port 3000",
     "dev:hash": "VITE_APP_HISTORY=hash vite --port 3000",
     "dev:e2e": "vite",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "vite",
     "test:e2e:browser": "VITE_APP_HISTORY=browser playwright test --config=playwright.browser.config.ts --project=chromium",

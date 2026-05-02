@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "pnpm tsx ./src/server/server.ts --watch",
     "build": "pnpm run build:server && pnpm run build:client",
-    "build:client": "vite build && tsc --noEmit",
+    "build:client": "vite build && tsgo --noEmit",
     "build:server": "vite build --mode server",
     "start": "NODE_ENV=production node dist/server/server.js"
   },

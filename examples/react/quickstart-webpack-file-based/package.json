@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "webpack serve --port 3001 --no-open",
-    "build": "webpack build && tsc --noEmit"
+    "build": "webpack build && tsgo --noEmit"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.169.1",
@@ -20,7 +20,7 @@
     "html-webpack-plugin": "^5.6.3",
     "react-refresh": "^0.18.0",
     "swc-loader": "^0.2.6",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "webpack": "^5.97.1",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^5.2.0"

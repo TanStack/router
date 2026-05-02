@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "manual:cdn": "CDN_PORT=3002 node tests/cdn-server.mjs",
     "manual:app": "pnpm build && PORT=3000 CDN_ORIGIN=http://localhost:3002 pnpm start",
@@ -49,7 +49,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
     "srvx": "^0.11.9",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0"
   }
 }

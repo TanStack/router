@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "rsbuild dev --port 3000",
-    "build": "rsbuild build && tsc --noEmit",
+    "build": "rsbuild build && tsgo --noEmit",
     "preview": "rsbuild preview",
     "start": "rsbuild preview",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
@@ -26,6 +26,6 @@
     "@tanstack/virtual-file-routes": "workspace:^",
     "postcss": "^8.5.1",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2"
+    "typescript": "npm:@typescript/native-preview@beta"
   }
 }

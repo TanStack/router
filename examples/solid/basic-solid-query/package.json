@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "vite"
   },
@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@tanstack/router-plugin": "^1.167.32",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0",
     "vite-plugin-solid": "^2.11.11"
   }

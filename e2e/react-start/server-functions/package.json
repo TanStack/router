@@ -9,8 +9,8 @@
     "dev:vite": "vite dev",
     "dev:rsbuild": "rsbuild dev",
     "build": "pnpm build:vite",
-    "build:vite": "vite build && tsc --noEmit",
-    "build:rsbuild": "rsbuild build && tsc --noEmit",
+    "build:vite": "vite build && tsgo --noEmit",
+    "build:rsbuild": "rsbuild build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "node server.js",
     "test:e2e": "rm -rf port*.txt && pnpm build && playwright test --project=chromium"
@@ -44,7 +44,7 @@
     "combinate": "^1.1.11",
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2"
+    "typescript": "npm:@typescript/native-preview@beta"
   },
   "nx": {
     "metadata": {

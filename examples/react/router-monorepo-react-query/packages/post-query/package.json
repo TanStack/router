@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build && tsc --noEmit"
+    "build": "vite build && tsgo --noEmit"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0"
   }
 }

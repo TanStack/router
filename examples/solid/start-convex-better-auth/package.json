@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "convex:dev": "convex dev",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
@@ -29,7 +29,7 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "combinate": "^1.1.11",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0",
     "vite-plugin-solid": "^2.11.11"
   }

@@ -11,7 +11,7 @@
     "dev:e2e:nitro": "VITE_USE_NITRO=true vite dev --port $PORT",
     "dev:e2e:disabled:nitro": "SSR_STYLES=disabled VITE_USE_NITRO=true vite dev --port $PORT",
     "dev:e2e:custom-basepath:nitro": "SSR_STYLES=custom-basepath VITE_USE_NITRO=true vite dev --port $PORT",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "test:e2e:dev": "MODE=dev playwright test --project=chromium",
     "test:e2e:dev:disabled": "MODE=dev SSR_STYLES=disabled playwright test --project=chromium",
@@ -37,7 +37,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "nitro": "^3.0.260311-beta",
     "srvx": "^0.11.9",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0",
     "zod": "^3.24.2"
   }

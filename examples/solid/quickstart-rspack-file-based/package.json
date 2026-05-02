@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "rsbuild dev --port 3000",
-    "build": "rsbuild build && tsc --noEmit",
+    "build": "rsbuild build && tsgo --noEmit",
     "preview": "rsbuild preview"
   },
   "dependencies": {
@@ -20,6 +20,6 @@
     "@rsbuild/plugin-babel": "^1.1.2",
     "@rsbuild/plugin-solid": "^1.1.1",
     "@tanstack/router-plugin": "^1.167.32",
-    "typescript": "^6.0.2"
+    "typescript": "npm:@typescript/native-preview@beta"
   }
 }

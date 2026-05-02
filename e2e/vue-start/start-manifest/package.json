@@ -4,7 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "test:e2e": "playwright test --project=chromium"
@@ -20,7 +20,7 @@
     "@types/node": "^22.10.2",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "srvx": "^0.11.9",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0"
   },
   "nx": {

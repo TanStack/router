@@ -32,7 +32,7 @@
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js -p tsconfig.legacy.json",
     "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js -p tsconfig.legacy.json",
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js -p tsconfig.legacy.json",
-    "test:types:ts60": "tsc -p tsconfig.legacy.json",
+    "test:types:ts60": "tsgo -p tsconfig.legacy.json",
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
     "test:perf": "vitest bench",
@@ -40,7 +40,7 @@
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "pnpm run build:lib && pnpm run build:llm",
     "build:lib": "vite build",
-    "build:llm": "node ../../scripts/llms-generate.mjs react-router && tsc -p ./llms/tsconfig.json"
+    "build:llm": "node ../../scripts/llms-generate.mjs react-router && tsgo -p ./llms/tsconfig.json"
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",

@@ -12,7 +12,7 @@
     "dev:e2e:basepath": "VITE_BASE_PATH=/my-app vite dev --port $PORT",
     "dev:cloudflare": "echo 'Cloudflare dev mode has React duplication issues - use build+preview instead' && exit 1",
     "dev:e2e:cloudflare": "echo 'Cloudflare dev mode has React duplication issues - use build+preview instead' && exit 1",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "test:e2e:dev": "MODE=dev playwright test --project=chromium",
@@ -44,7 +44,7 @@
     "nitro": "^3.0.260311-beta",
     "sass": "^1.97.2",
     "srvx": "^0.11.9",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0",
     "wrangler": "^4.74.0"
   }

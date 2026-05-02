@@ -78,7 +78,7 @@ Each inferred e2e target depends on the inferred `build:e2e--<toolchain>-<mode>`
 target, which runs:
 
 ```sh
-vite build && tsc --noEmit
+vite build && tsgo --noEmit
 ```
 
 with the mode/toolchain env above.

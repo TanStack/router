@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "gen": "node ./src/createRoutes.mjs",
-    "test:types": "tsc --extendedDiagnostics"
+    "test:types": "tsgo --extendedDiagnostics"
   },
   "dependencies": {
     "@tanstack/solid-query": "^5.90.9",
@@ -26,7 +26,7 @@
     "@types/node": "^22.5.4",
     "vite-plugin-solid": "^2.11.11",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0"
   },
   "keywords": [],

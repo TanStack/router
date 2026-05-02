@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsr generate && vite --port 3000",
     "dev:e2e": "tsr generate && vite",
-    "build": "tsr generate && vite build && tsc --noEmit",
+    "build": "tsr generate && vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "tsr generate && vite",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"

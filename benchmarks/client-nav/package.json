@@ -14,9 +14,9 @@
     "test:perf:solid": "NODE_ENV=production vitest bench --config ./solid/vite.config.ts ./solid/speed.bench.ts",
     "test:perf:vue": "NODE_ENV=production vitest bench --config ./vue/vite.config.ts ./vue/speed.bench.ts",
     "test:types": "pnpm run test:types:react && pnpm run test:types:solid && pnpm run test:types:vue",
-    "test:types:react": "tsc -p ./react/tsconfig.json --noEmit",
-    "test:types:solid": "tsc -p ./solid/tsconfig.json --noEmit",
-    "test:types:vue": "tsc -p ./vue/tsconfig.json --noEmit"
+    "test:types:react": "tsgo -p ./react/tsconfig.json --noEmit",
+    "test:types:solid": "tsgo -p ./solid/tsconfig.json --noEmit",
+    "test:types:vue": "tsgo -p ./vue/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -36,7 +36,7 @@
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "@types/jsdom": "28.0.0",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0",
     "vite-plugin-solid": "^2.11.11",
     "vitest": "^4.1.4"

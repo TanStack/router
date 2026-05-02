@@ -4,11 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "vite",
     "gen": "node ./src/createRoutes.mjs",
-    "test:types": "tsc --extendedDiagnostics"
+    "test:types": "tsgo --extendedDiagnostics"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -26,7 +26,7 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0"
   }
 }

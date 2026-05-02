@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3001",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "vite"
   },
@@ -20,7 +20,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0",
     "vite-plugin-dts": "^4.5.4",
     "@tailwindcss/vite": "^4.2.2"

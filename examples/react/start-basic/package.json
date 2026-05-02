@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs"
   },
@@ -26,7 +26,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "nitro": "^3.0.260311-beta",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0"
   }
 }

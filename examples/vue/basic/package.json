@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000",
-    "build": "vite build && vue-tsc --noEmit",
+    "build": "vite build && vue-tsgo --noEmit",
     "serve": "vite preview",
     "start": "vite"
   },
@@ -16,7 +16,7 @@
     "tailwindcss": "4.1.18"
   },
   "devDependencies": {
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0",
     "vue-tsc": "^3.1.5",
     "@vitejs/plugin-vue": "^6.0.5",

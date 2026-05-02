@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
@@ -29,7 +29,7 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite-plugin-solid": "^2.11.11"
   }
 }

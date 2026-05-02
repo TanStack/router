@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev --port $PORT",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "test:e2e:dev": "MODE=dev playwright test --project=chromium",
@@ -24,7 +24,7 @@
     "@types/node": "^22.10.2",
     "sass": "^1.97.2",
     "srvx": "^0.11.9",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0",
     "vite-plugin-solid": "^2.11.11"
   }

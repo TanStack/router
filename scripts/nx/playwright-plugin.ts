@@ -103,8 +103,8 @@ type PlaywrightToolchain = (typeof PLAYWRIGHT_TOOLCHAINS)[number]
 type PlaywrightMode = (typeof PLAYWRIGHT_MODES)[number]
 
 const PLAYWRIGHT_BUILD_COMMANDS: Record<PlaywrightToolchain, string> = {
-  vite: 'vite build && tsc --noEmit',
-  rsbuild: 'rsbuild build && tsc --noEmit',
+  vite: 'vite build && tsgo --noEmit',
+  rsbuild: 'rsbuild build && tsgo --noEmit',
 }
 
 type PlaywrightModeMetadata = {

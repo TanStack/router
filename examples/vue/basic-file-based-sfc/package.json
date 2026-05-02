@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000",
-    "build": "vite build && vue-tsc --noEmit",
+    "build": "vite build && vue-tsgo --noEmit",
     "preview": "vite preview",
     "start": "vite"
   },

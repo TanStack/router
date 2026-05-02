@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx express-server.ts",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "tsx express-server.ts",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
@@ -32,7 +32,7 @@
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.20.3",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0"
   }
 }

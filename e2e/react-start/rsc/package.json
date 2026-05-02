@@ -8,9 +8,9 @@
     "dev:e2e": "pnpm dev:vite --port $PORT",
     "dev:vite": "vite dev",
     "dev:rsbuild": "rsbuild dev",
-    "build:rsbuild": "rsbuild build && tsc --noEmit",
+    "build:rsbuild": "rsbuild build && tsgo --noEmit",
     "build": "pnpm build:vite",
-    "build:vite": "vite build && tsc --noEmit",
+    "build:vite": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "node server.js",
     "test:e2e-full": "pnpm build && sh -c 'rm -f \"port-${E2E_PORT_KEY:-$npm_package_name}.txt\" \"port-${E2E_PORT_KEY:-$npm_package_name}-external.txt\"' && playwright test --project=chromium"

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "npx serve dist/client",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
@@ -25,7 +25,7 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "^8.0.0"
   }
 }

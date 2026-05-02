@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && tsgo --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "test:e2e": "playwright test --project=chromium"
@@ -33,7 +33,7 @@
     "combinate": "^1.1.11",
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5"
   }

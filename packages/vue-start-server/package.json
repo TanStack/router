@@ -34,7 +34,7 @@
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
     "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js",
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js",
-    "test:types:ts60": "tsc",
+    "test:types:ts60": "tsgo",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
@@ -66,7 +66,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue-jsx": "^4.1.2",
-    "typescript": "^6.0.2",
+    "typescript": "npm:@typescript/native-preview@beta",
     "vite": "*",
     "vue": "^3.5.25"
   },
