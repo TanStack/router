@@ -713,7 +713,7 @@ const runLoader = async (
       const pendingPromise = match._nonReactive.minPendingPromise
       if (pendingPromise) await pendingPromise
 
-      // Last but not least, wait for the the components
+      // Last but not least, wait for the components
       // to be preloaded before we resolve the match
       if (route._componentsPromise) await route._componentsPromise
       inner.updateMatch(matchId, (prev) => ({
