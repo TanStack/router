@@ -12,11 +12,34 @@ const uninitializedHandler: StartRequestHandler = {
 let handler = uninitializedHandler
 
 async function setup() {
-  const module = (await import(appModulePath)) as {
-    default: StartRequestHandler
+  const start = performance.now()
+  const timer = setInterval(() => {
+    console.error(
+      `[react ssr benchmark] still importing ${appModulePath} after ${Math.round(
+        performance.now() - start,
+      )}ms`,
+    )
+  }, 1_000)
+
+  if (typeof timer === 'object') {
+    timer.unref?.()
   }
 
-  handler = module.default
+  try {
+    const module = (await import(appModulePath)) as {
+      default: StartRequestHandler
+    }
+
+    console.error(
+      `[react ssr benchmark] imported ${appModulePath} in ${Math.round(
+        performance.now() - start,
+      )}ms`,
+    )
+
+    handler = module.default
+  } finally {
+    clearInterval(timer)
+  }
 }
 
 function teardown() {
@@ -33,7 +56,7 @@ describe('ssr', () => {
    *
    * So it looks like we're setting up in duplicate, but in reality, it's only running once per environment, as intended.
    */
-  beforeAll(setup)
+  beforeAll(setup, 60_000)
   afterAll(teardown)
 
   bench(
