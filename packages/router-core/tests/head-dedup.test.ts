@@ -4,39 +4,39 @@ import { buildMetaTags, dedupByLastKey } from '../src'
 describe('dedupByLastKey', () => {
   it('keeps the last occurrence of each keyed entry', () => {
     const items = [
-      { key: 'canonical', href: '/first' },
-      { key: 'canonical', href: '/second' },
-      { key: 'canonical', href: '/third' },
+      { key: 'icon', rel: 'icon', href: '/first.png' },
+      { key: 'icon', rel: 'icon', href: '/second.png' },
+      { key: 'icon', rel: 'icon', href: '/third.png' },
     ]
     expect(dedupByLastKey(items)).toEqual([
-      { key: 'canonical', href: '/third' },
+      { key: 'icon', rel: 'icon', href: '/third.png' },
     ])
   })
 
   it('preserves keyless entries while deduplicating keyed ones', () => {
     const items = [
-      { href: '/favicon.ico' },
-      { key: 'canonical', href: '/fallback' },
-      { href: '/another-keyless' },
-      { key: 'canonical', href: '/resolved' },
+      { rel: 'manifest', href: '/manifest.json' },
+      { key: 'icon', rel: 'icon', href: '/favicon.ico' },
+      { rel: 'apple-touch-icon', href: '/touch-icon.png' },
+      { key: 'icon', rel: 'icon', href: '/tenant-icon.png' },
     ]
     expect(dedupByLastKey(items)).toEqual([
-      { href: '/favicon.ico' },
-      { href: '/another-keyless' },
-      { key: 'canonical', href: '/resolved' },
+      { rel: 'manifest', href: '/manifest.json' },
+      { rel: 'apple-touch-icon', href: '/touch-icon.png' },
+      { key: 'icon', rel: 'icon', href: '/tenant-icon.png' },
     ])
   })
 
   it('deduplicates each key independently', () => {
     const items = [
-      { key: 'canonical', href: '/canonical-old' },
-      { key: 'alt-es', href: '/alt-old' },
-      { key: 'canonical', href: '/canonical-new' },
-      { key: 'alt-es', href: '/alt-new' },
+      { key: 'icon', rel: 'icon', href: '/icon-old.png' },
+      { key: 'apple-icon', rel: 'apple-touch-icon', href: '/apple-old.png' },
+      { key: 'icon', rel: 'icon', href: '/icon-new.png' },
+      { key: 'apple-icon', rel: 'apple-touch-icon', href: '/apple-new.png' },
     ]
     expect(dedupByLastKey(items)).toEqual([
-      { key: 'canonical', href: '/canonical-new' },
-      { key: 'alt-es', href: '/alt-new' },
+      { key: 'icon', rel: 'icon', href: '/icon-new.png' },
+      { key: 'apple-icon', rel: 'apple-touch-icon', href: '/apple-new.png' },
     ])
   })
 

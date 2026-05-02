@@ -248,15 +248,17 @@ export const Route = createFileRoute('/product/$slug')({
     meta: [
       // title and name/property meta dedupe automatically — no key needed
       { title: 'Loading...' },
+      { name: 'theme-color', content: '#00b8db' },
       loaderData.dataPromise.then((data) => [
         { title: data.title },
+        { name: 'theme-color', content: data.brandColor },
       ]),
     ],
     links: [
-      // Use key so the fallback canonical is replaced by the resolved one
-      { rel: 'canonical', href: '/fallback-url', key: 'canonical' },
+      // Use key so the fallback favicon is replaced by the resolved one
+      { rel: 'icon', href: '/favicon.ico', key: 'icon' },
       loaderData.dataPromise.then((data) => [
-        { rel: 'canonical', href: data.canonicalUrl, key: 'canonical' },
+        { rel: 'icon', href: data.iconUrl, key: 'icon' },
       ]),
     ],
   }),
@@ -266,7 +268,7 @@ export const Route = createFileRoute('/product/$slug')({
 
 In this example:
 
-1. **Before the promise resolves**, the page renders with the fallback `title` and the fallback canonical link
+1. **Before the promise resolves**, the page renders with the fallback `title`, the fallback `theme-color`, and the fallback favicon link
 2. **After the promise resolves**, `head()` is re-evaluated. The deferred entries now resolve immediately and appear after the fallback entries in the array. Since they share the same `key` (or `name`/`property`/`title`), deduplication keeps only the last occurrence — the resolved one
 
 ## Managing Body Scripts

@@ -778,7 +778,7 @@ describe('rejected deferred head promises', () => {
 
 describe('deferred fallbacks: key-based replacement at render time', () => {
   it('keyed link fallback is replaced by the deferred resolution', async () => {
-    const dataPromise = createControlledPromise<{ canonical: string }>()
+    const dataPromise = createControlledPromise<{ iconUrl: string }>()
 
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({
@@ -787,9 +787,9 @@ describe('deferred fallbacks: key-based replacement at render time', () => {
       loader: () => ({ dataPromise }),
       head: ({ loaderData }: { loaderData?: any }) => ({
         links: [
-          { rel: 'canonical', href: '/fallback', key: 'canonical' },
-          loaderData?.dataPromise.then((d: { canonical: string }) => [
-            { rel: 'canonical', href: d.canonical, key: 'canonical' },
+          { rel: 'icon', href: '/favicon.ico', key: 'icon' },
+          loaderData?.dataPromise.then((d: { iconUrl: string }) => [
+            { rel: 'icon', href: d.iconUrl, key: 'icon' },
           ]),
         ],
       }),
@@ -806,28 +806,28 @@ describe('deferred fallbacks: key-based replacement at render time', () => {
     const matchId = router.state.matches.find((m) => m.routeId === '/')!.id
     let match = router.getMatch(matchId)!
     expect(match.links).toEqual([
-      { rel: 'canonical', href: '/fallback', key: 'canonical' },
+      { rel: 'icon', href: '/favicon.ico', key: 'icon' },
     ])
     expect(dedupByLastKey(match.links as any)).toEqual([
-      { rel: 'canonical', href: '/fallback', key: 'canonical' },
+      { rel: 'icon', href: '/favicon.ico', key: 'icon' },
     ])
 
-    dataPromise.resolve({ canonical: '/resolved' })
+    dataPromise.resolve({ iconUrl: '/tenant-icon.png' })
     await new Promise((r) => setTimeout(r, 10))
 
     // Both entries are present in match data — render-time dedup picks the last.
     match = router.getMatch(matchId)!
     expect(match.links).toEqual([
-      { rel: 'canonical', href: '/fallback', key: 'canonical' },
-      { rel: 'canonical', href: '/resolved', key: 'canonical' },
+      { rel: 'icon', href: '/favicon.ico', key: 'icon' },
+      { rel: 'icon', href: '/tenant-icon.png', key: 'icon' },
     ])
     expect(dedupByLastKey(match.links as any)).toEqual([
-      { rel: 'canonical', href: '/resolved', key: 'canonical' },
+      { rel: 'icon', href: '/tenant-icon.png', key: 'icon' },
     ])
   })
 
   it('without a key, fallback and resolved links both survive — demonstrates why the key exists', async () => {
-    const dataPromise = createControlledPromise<{ canonical: string }>()
+    const dataPromise = createControlledPromise<{ iconUrl: string }>()
 
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({
@@ -836,9 +836,9 @@ describe('deferred fallbacks: key-based replacement at render time', () => {
       loader: () => ({ dataPromise }),
       head: ({ loaderData }: { loaderData?: any }) => ({
         links: [
-          { rel: 'canonical', href: '/fallback' },
-          loaderData?.dataPromise.then((d: { canonical: string }) => [
-            { rel: 'canonical', href: d.canonical },
+          { rel: 'icon', href: '/favicon.ico' },
+          loaderData?.dataPromise.then((d: { iconUrl: string }) => [
+            { rel: 'icon', href: d.iconUrl },
           ]),
         ],
       }),
@@ -851,14 +851,14 @@ describe('deferred fallbacks: key-based replacement at render time', () => {
     })
     await router.load()
 
-    dataPromise.resolve({ canonical: '/resolved' })
+    dataPromise.resolve({ iconUrl: '/tenant-icon.png' })
     await new Promise((r) => setTimeout(r, 10))
 
     const match = router.state.matches.find((m) => m.routeId === '/')!
     // dedupByLastKey is a no-op without keys — both links survive.
     expect(dedupByLastKey(match.links as any)).toEqual([
-      { rel: 'canonical', href: '/fallback' },
-      { rel: 'canonical', href: '/resolved' },
+      { rel: 'icon', href: '/favicon.ico' },
+      { rel: 'icon', href: '/tenant-icon.png' },
     ])
   })
 
