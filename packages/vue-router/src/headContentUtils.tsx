@@ -117,6 +117,21 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     return preloadMeta
   })
 
+  const styles = Vue.computed<Array<RouterManagedTag>>(() =>
+    (
+      matches.value
+        .map((match) => match.styles!)
+        .flat(1)
+        .filter(Boolean) as Array<RouterManagedTag>
+    ).map(({ children, ...style }) => ({
+      tag: 'style',
+      attrs: {
+        ...style,
+      },
+      children,
+    })),
+  )
+
   const headScripts = Vue.computed<Array<RouterManagedTag>>(() =>
     (
       matches.value
@@ -182,6 +197,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
         ...meta.value,
         ...preloadMeta.value,
         ...links.value,
+        ...styles.value,
         ...headScripts.value,
       ] as Array<RouterManagedTag>,
       (d) => {
