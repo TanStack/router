@@ -194,7 +194,7 @@ export function buildMetaTags(
           const json = JSON.stringify(m['script:ld+json'])
           resultMeta.push({
             tag: 'script',
-            attrs: { type: 'application/ld+json' },
+            attrs: { type: 'application/ld+json', nonce },
             children: escapeHtml(json),
             key: m.key,
           })

@@ -8,7 +8,9 @@ describe('dedupByLastKey', () => {
       { key: 'canonical', href: '/second' },
       { key: 'canonical', href: '/third' },
     ]
-    expect(dedupByLastKey(items)).toEqual([{ key: 'canonical', href: '/third' }])
+    expect(dedupByLastKey(items)).toEqual([
+      { key: 'canonical', href: '/third' },
+    ])
   })
 
   it('preserves keyless entries while deduplicating keyed ones', () => {
@@ -153,7 +155,12 @@ describe('buildMetaTags', () => {
 
   it('appends a csp-nonce meta tag and propagates the nonce to meta attrs', () => {
     const tags = buildMetaTags(
-      [[{ name: 'description', content: 'hello' }]],
+      [
+        [
+          { name: 'description', content: 'hello' },
+          { 'script:ld+json': { '@context': 'https://schema.org' } },
+        ],
+      ],
       'abc123',
     )
 
@@ -161,6 +168,12 @@ describe('buildMetaTags', () => {
       (t) => t.tag === 'meta' && t.attrs?.name === 'description',
     )!
     expect(descMeta.attrs).toMatchObject({ nonce: 'abc123' })
+
+    const ldScript = tags.find((t) => t.tag === 'script')!
+    expect(ldScript.attrs).toMatchObject({
+      type: 'application/ld+json',
+      nonce: 'abc123',
+    })
 
     const cspMeta = tags.find(
       (t) => t.tag === 'meta' && t.attrs?.property === 'csp-nonce',
