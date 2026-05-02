@@ -28,6 +28,11 @@ import {
   resolveTransformAssetsConfig,
   transformManifestAssets,
 } from './transformAssetUrls'
+import {
+  collectDynamicHintsFromMatches,
+  collectStaticHintsFromManifest,
+  createEarlyHintsEvent,
+} from './early-hints'
 
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
@@ -41,6 +46,7 @@ import type {
   StartEntry,
 } from '@tanstack/start-client-core'
 import type { RequestHandler } from './request-handler'
+import type { EarlyHint, EarlyHintsPhase, OnEarlyHints } from './early-hints'
 import type {
   AnyRoute,
   AnyRouter,
@@ -207,6 +213,28 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
     }),
   )
   return headers
+}
+
+function sendEarlyHintsEvent(opts: {
+  phase: EarlyHintsPhase
+  hints: ReadonlyArray<EarlyHint>
+  onEarlyHints: OnEarlyHints
+  sentLinks: Set<string>
+  sentHints: Array<EarlyHint>
+}) {
+  const event = createEarlyHintsEvent(opts)
+  if (!event) return
+
+  try {
+    const result = opts.onEarlyHints(event)
+    if (result) {
+      void Promise.resolve(result).catch((err) => {
+        console.error(`Error sending ${opts.phase} early hints:`, err)
+      })
+    }
+  } catch (err) {
+    console.error(`Error sending ${opts.phase} early hints:`, err)
+  }
 }
 
 interface PluginAdaptersEntry {
@@ -693,6 +721,31 @@ export function createStartHandler<TRegister = Register>(
           await getTransformFn({ warmup: false, request }),
           cache,
         )
+
+        const onEarlyHints =
+          process.env.TSS_DEV_SERVER === 'true'
+            ? undefined
+            : requestOpts?.onEarlyHints
+        const earlyHintsSentLinks = onEarlyHints ? new Set<string>() : undefined
+        const earlyHintsSentHints = onEarlyHints
+          ? new Array<EarlyHint>()
+          : undefined
+
+        if (
+          onEarlyHints &&
+          earlyHintsSentLinks &&
+          earlyHintsSentHints &&
+          matchedRoutes?.length
+        ) {
+          sendEarlyHintsEvent({
+            phase: 'static',
+            hints: collectStaticHintsFromManifest(manifest, matchedRoutes),
+            onEarlyHints,
+            sentLinks: earlyHintsSentLinks,
+            sentHints: earlyHintsSentHints,
+          })
+        }
+
         const routerInstance = await getRouter()
 
         attachRouterServerSsrUtils({
@@ -708,6 +761,17 @@ export function createStartHandler<TRegister = Register>(
 
         if (routerInstance.state.redirect) {
           return routerInstance.state.redirect
+        }
+
+        if (onEarlyHints && earlyHintsSentLinks && earlyHintsSentHints) {
+          const loadedMatches = routerInstance.stores.matches.get()
+          sendEarlyHintsEvent({
+            phase: 'dynamic',
+            hints: collectDynamicHintsFromMatches(loadedMatches),
+            onEarlyHints,
+            sentLinks: earlyHintsSentLinks,
+            sentHints: earlyHintsSentHints,
+          })
         }
 
         // Pass request-scoped assets to dehydrate for manifest injection
