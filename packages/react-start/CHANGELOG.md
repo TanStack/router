@@ -1,5 +1,114 @@
 # @tanstack/react-start
 
+## 1.167.59
+
+### Patch Changes
+
+- Updated dependencies [[`96818b8`](https://github.com/TanStack/router/commit/96818b8ba5ead6f1f027094841330182aff415b2)]:
+  - @tanstack/start-plugin-core@1.169.14
+  - @tanstack/react-start-rsc@0.0.38
+
+## 1.167.58
+
+### Patch Changes
+
+- Add compiler-driven RSC CSS auto-injection for Start RSC render APIs and wire it into the React Start Vite and Rsbuild adapters. This ensures same-file CSS module dependencies are discovered for `renderServerComponent`, `createCompositeComponent`, and JSX-based `renderToReadableStream` calls. ([#7310](https://github.com/TanStack/router/pull/7310))
+
+  Also add a configurable server function provider module directive hook used by the React Rsbuild RSC adapter to emit `"use server-entry"` only for extracted provider files.
+
+- Updated dependencies [[`ae453b7`](https://github.com/TanStack/router/commit/ae453b78624cac1b574f0d1efbfbf6ca03922c6c)]:
+  - @tanstack/react-start-rsc@0.0.37
+  - @tanstack/start-plugin-core@1.169.13
+
+## 1.167.57
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-router@1.169.1
+  - @tanstack/react-start-client@1.166.47
+  - @tanstack/react-start-rsc@0.0.36
+  - @tanstack/react-start-server@1.166.48
+  - @tanstack/start-client-core@1.168.1
+  - @tanstack/start-plugin-core@1.169.12
+  - @tanstack/start-server-core@1.167.26
+
+## 1.167.56
+
+### Patch Changes
+
+- Updated dependencies [[`82b0613`](https://github.com/TanStack/router/commit/82b06132af776f74603ab27977cc277d6219a845)]:
+  - @tanstack/start-client-core@1.168.0
+  - @tanstack/react-start-client@1.166.46
+  - @tanstack/react-start-rsc@0.0.35
+  - @tanstack/react-start-server@1.166.47
+  - @tanstack/start-plugin-core@1.169.11
+  - @tanstack/start-server-core@1.167.25
+
+## 1.167.55
+
+### Patch Changes
+
+- Updated dependencies [[`c4256c2`](https://github.com/TanStack/router/commit/c4256c2c857f392d2031cf87821e4c36a92d0382)]:
+  - @tanstack/start-plugin-core@1.169.10
+  - @tanstack/react-start-rsc@0.0.34
+
+## 1.167.54
+
+### Patch Changes
+
+- Updated dependencies [[`761fcc0`](https://github.com/TanStack/router/commit/761fcc0c96dd96721b533a1fd9e2c972f222ef94)]:
+  - @tanstack/start-plugin-core@1.169.9
+  - @tanstack/react-start-rsc@0.0.33
+
+## 1.167.53
+
+### Patch Changes
+
+- fix exports for react-start so useServerFn is available with RSC ([#7292](https://github.com/TanStack/router/pull/7292))
+
+- Updated dependencies [[`c992495`](https://github.com/TanStack/router/commit/c992495bf4010ff4c3597bb1f3b1ba02594e857e)]:
+  - @tanstack/react-router@1.169.0
+  - @tanstack/react-start-client@1.166.45
+  - @tanstack/react-start-rsc@0.0.32
+  - @tanstack/react-start-server@1.166.46
+  - @tanstack/start-client-core@1.167.22
+  - @tanstack/start-plugin-core@1.169.8
+  - @tanstack/start-server-core@1.167.24
+
+## 1.167.52
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-router@1.168.26
+  - @tanstack/react-start-client@1.166.44
+  - @tanstack/react-start-rsc@0.0.31
+  - @tanstack/react-start-server@1.166.45
+  - @tanstack/start-client-core@1.167.21
+  - @tanstack/start-plugin-core@1.169.7
+  - @tanstack/start-server-core@1.167.23
+
+## 1.167.51
+
+### Patch Changes
+
+- Updated dependencies [[`d6decca`](https://github.com/TanStack/router/commit/d6decca41807e9ca28279e2db6640e7a8bdc1229)]:
+  - @tanstack/react-start-rsc@0.0.30
+
+## 1.167.50
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-router@1.168.25
+  - @tanstack/react-start-client@1.166.43
+  - @tanstack/react-start-rsc@0.0.29
+  - @tanstack/react-start-server@1.166.44
+  - @tanstack/start-client-core@1.167.20
+  - @tanstack/start-plugin-core@1.169.6
+  - @tanstack/start-server-core@1.167.22
+
 ## 1.167.49
 
 ### Patch Changes

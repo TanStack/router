@@ -17,6 +17,7 @@ export default mergeConfig(
     tsconfigPath: './tsconfig.build.json',
     entry: [
       './src/index.ts',
+      './src/context.ts',
       './src/vite.ts',
       './src/rspack.ts',
       './src/webpack.ts',

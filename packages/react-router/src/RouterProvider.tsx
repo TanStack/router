@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { hasKeys } from '@tanstack/router-core'
 import { Matches } from './Matches'
 import { routerContext } from './routerContext'
 import type {
@@ -23,7 +24,7 @@ export function RouterContextProvider<
 }: RouterProps<TRouter, TDehydrated> & {
   children: React.ReactNode
 }) {
-  if (Object.keys(rest).length > 0) {
+  if (hasKeys(rest)) {
     // Allow the router to update options on the router instance
     router.update({
       ...router.options,

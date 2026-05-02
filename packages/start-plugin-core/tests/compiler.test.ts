@@ -2,8 +2,11 @@ import { describe, expect, test } from 'vitest'
 import {
   StartCompiler,
   detectKindsInCode,
+  getLookupKindsForEnv,
 } from '../src/start-compiler/compiler'
+import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
 import type { LookupConfig, LookupKind } from '../src/start-compiler/compiler'
+import type { StartCompilerImportTransform } from '../src/types'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -17,7 +20,12 @@ function getDefaultTestOptions(env: 'client' | 'server') {
 }
 
 // Helper to create a compiler with all kinds enabled
-function createFullCompiler(env: 'client' | 'server') {
+function createFullCompiler(
+  env: 'client' | 'server',
+  opts?: {
+    serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
+  },
+) {
   const lookupKinds: Set<LookupKind> =
     env === 'client'
       ? new Set([
@@ -66,6 +74,55 @@ function createFullCompiler(env: 'client' | 'server') {
     loadModule: async () => {},
     resolveId: async (id) => id,
     mode: 'build',
+    serverFnProviderModuleDirectives: opts?.serverFnProviderModuleDirectives,
+  })
+}
+
+function createExternalTransformCompiler() {
+  const compilerTransforms: Array<StartCompilerImportTransform> = [
+    {
+      name: 'test-render-option-injection',
+      environment: 'server',
+      imports: [
+        {
+          libName: '@example/runtime',
+          rootExport: 'renderThing',
+        },
+      ],
+      detect: /\brenderThing\b/,
+      transform: (candidates, context) => {
+        const t = context.types
+        for (const candidate of candidates) {
+          const args = candidate.path.node.arguments
+          if (args.length !== 1) continue
+          args.push(
+            t.objectExpression([
+              t.objectProperty(
+                t.identifier('injected'),
+                context.parseExpression('loadThing()'),
+              ),
+            ]),
+          )
+        }
+      },
+    },
+  ]
+
+  return new StartCompiler({
+    env: 'server',
+    envName: 'server',
+    root: '/test',
+    framework: 'react',
+    providerEnvName: 'server',
+    lookupKinds: getLookupKindsForEnv('server', { compilerTransforms }),
+    lookupConfigurations: getLookupConfigurationsForEnv('server', 'react', {
+      compilerTransforms,
+    }),
+    getKnownServerFns: () => ({}),
+    loadModule: async () => {},
+    resolveId: async (id) => id,
+    mode: 'build',
+    compilerTransforms,
   })
 }
 
@@ -374,6 +431,105 @@ describe('compiler handles multiple files with different kinds', () => {
     })
     // Should return null since Middleware is not valid on server
     expect(result).toBeNull()
+  })
+})
+
+describe('compiler handles external import transforms', () => {
+  test('runs configured direct-call transforms before server function extraction', async () => {
+    const compiler = createExternalTransformCompiler()
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        import { renderThing as renderAlias } from '@example/runtime'
+
+        export const getComponent = createServerFn({ method: 'GET' }).handler(async () => {
+          return renderAlias(<ServerCard />)
+        })
+      `,
+      id: '/test/src/routes/card.tsx?tss-serverfn-split',
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('injected: loadThing()')
+    expect(result!.code).toContain('renderAlias(<ServerCard />,')
+  })
+
+  test('runs configured direct-call transforms for namespace imports', async () => {
+    const compiler = createExternalTransformCompiler()
+
+    const result = await compiler.compile({
+      code: `
+        import * as runtime from '@example/runtime'
+
+        export const component = runtime.renderThing(<ServerCard />)
+      `,
+      id: '/test/src/routes/card.tsx',
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('injected: loadThing()')
+    expect(result!.code).toContain('runtime.renderThing(<ServerCard />,')
+  })
+
+  test('does not run external transforms for shadowed import names', async () => {
+    const compiler = createExternalTransformCompiler()
+
+    const result = await compiler.compile({
+      code: `
+        import { renderThing } from '@example/runtime'
+
+        export function component() {
+          const renderThing = (node: React.ReactNode) => node
+          return renderThing(<LocalCard />)
+        }
+      `,
+      id: '/test/src/routes/card.tsx',
+    })
+
+    expect(result).toBeNull()
+  })
+})
+
+describe('server function provider module directives', () => {
+  const code = `
+    import { createServerFn } from '@tanstack/react-start'
+
+    export const getMessage = createServerFn({ method: 'GET' }).handler(() => {
+      return 'hello'
+    })
+  `
+
+  test('does not add module directives without compiler configuration', async () => {
+    const compiler = createFullCompiler('server')
+
+    const result = await compiler.compile({
+      code,
+      id: '/test/src/routes/message.tsx?tss-serverfn-split',
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).not.toContain('"use server-entry"')
+  })
+
+  test('adds configured module directives to provider files only', async () => {
+    const compiler = createFullCompiler('server', {
+      serverFnProviderModuleDirectives: ['use server-entry'],
+    })
+
+    const providerResult = await compiler.compile({
+      code,
+      id: '/test/src/routes/message.tsx?tss-serverfn-split',
+    })
+    const callerResult = await compiler.compile({
+      code,
+      id: '/test/src/routes/message.tsx',
+    })
+
+    expect(providerResult).not.toBeNull()
+    expect(providerResult!.code).toContain('"use server-entry";')
+    expect(callerResult).not.toBeNull()
+    expect(callerResult!.code).not.toContain('"use server-entry"')
   })
 })
 

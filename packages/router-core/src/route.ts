@@ -173,9 +173,13 @@ export type ResolveParams<
 
 export type ParseParamsFn<in out TPath extends string, in out TParams> = (
   rawParams: Expand<ResolveParams<TPath>>,
-) => TParams extends ResolveParams<TPath, any>
-  ? TParams
-  : ResolveParams<TPath, any>
+) => TParams | false
+
+type ValidateParsedParams<TPath extends string, TParams> = [TParams] extends [
+  ResolveParams<TPath, any>,
+]
+  ? unknown
+  : never
 
 export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
   params: TParams,
@@ -183,14 +187,15 @@ export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
 
 export type ParamsOptions<in out TPath extends string, in out TParams> = {
   params?: {
-    parse?: ParseParamsFn<TPath, TParams>
+    parse?: ParseParamsFn<TPath, TParams> & ValidateParsedParams<TPath, TParams>
     stringify?: StringifyParamsFn<TPath, TParams>
   }
 
   /** 
   @deprecated Use params.parse instead
   */
-  parseParams?: ParseParamsFn<TPath, TParams>
+  parseParams?: ParseParamsFn<TPath, TParams> &
+    ValidateParsedParams<TPath, TParams>
 
   /** 
   @deprecated Use params.stringify instead
@@ -1248,37 +1253,6 @@ export interface UpdatableRouteOptions<
   in out TBeforeLoadFn,
 >
   extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
-  /**
-   * Options to control route matching behavior with runtime code.
-   *
-   * @experimental 🚧 this feature is subject to change
-   *
-   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouteOptionsType
-   */
-  skipRouteOnParseError?: {
-    /**
-     * If `true`, skip this route during matching if `params.parse` fails.
-     *
-     * Without this option, a `/$param` route could match *any* value for `param`,
-     * and only later during the route lifecycle would `params.parse` run and potentially
-     * show the `errorComponent` if validation failed.
-     *
-     * With this option enabled, the route will only match if `params.parse` succeeds.
-     * If it fails, the router will continue trying to match other routes, potentially
-     * finding a different route that works, or ultimately showing the `notFoundComponent`.
-     *
-     * @default false
-     */
-    params?: boolean
-    /**
-     * In cases where multiple routes would need to run `params.parse` during matching
-     * to determine which route to pick, this priority number can be used as a tie-breaker
-     * for which route to try first. Higher number = higher priority.
-     *
-     * @default 0
-     */
-    priority?: number
-  }
   /**
    * If true, this route will be matched as case-sensitive
    *

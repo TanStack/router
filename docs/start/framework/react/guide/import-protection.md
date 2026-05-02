@@ -42,6 +42,24 @@ By default, files inside `node_modules` are excluded from resolved-target deny c
 
 These defaults mean you can use the `.server.ts` / `.client.ts` naming convention to restrict files to a single environment without any configuration. To also deny entire directories (e.g. `server/` or `client/`), add them via `files` in your [deny rules configuration](#configuring-deny-rules) — for example `files: ['**/*.server.*', '**/server/**']` for the client environment.
 
+## Type-Only Imports
+
+Type-only imports and re-exports are ignored by import protection because they are erased from the runtime bundle and cannot leak environment-specific code.
+
+```ts
+import type { User } from './db.server'
+import { type RequestHandler } from '@tanstack/react-start/server'
+
+export type { User } from './db.server'
+```
+
+Mixed imports still count when they include at least one runtime value. Split the type and value imports if only the type is safe to cross the environment boundary.
+
+```ts
+// This is still checked because `getUsers` is a runtime value.
+import { type User, getUsers } from './db.server'
+```
+
 ## File Markers
 
 You can explicitly mark a module as server-only or client-only by adding a side-effect import at the top of the file:

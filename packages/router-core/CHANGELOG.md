@@ -1,5 +1,29 @@
 # @tanstack/router-core
 
+## 1.169.1
+
+### Patch Changes
+
+- Fix params.parse inference for discriminated union path params while preserving path key validation. ([#7306](https://github.com/TanStack/router/pull/7306))
+
+## 1.169.0
+
+### Minor Changes
+
+- Allow `params.parse` to experimentally return `false` to skip an incoming route candidate during path matching. Thrown parse errors still surface on the selected match instead of falling through, and outgoing typed route-template links continue to use exact route lookup followed by `params.stringify` for URL generation. ([#7263](https://github.com/TanStack/router/pull/7263))
+
+## 1.168.18
+
+### Patch Changes
+
+- prevent isServer exports from being transformed to top-level vars so rspack can dead-code eliminate them ([#7293](https://github.com/TanStack/router/pull/7293))
+
+## 1.168.17
+
+### Patch Changes
+
+- wildcard nodes have the same priority rules as other nodes in route matching ([#7273](https://github.com/TanStack/router/pull/7273))
+
 ## 1.168.16
 
 ### Patch Changes

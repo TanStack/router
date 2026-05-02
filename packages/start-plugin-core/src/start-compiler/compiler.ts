@@ -21,7 +21,11 @@ import type {
   RewriteCandidate,
   ServerFn,
 } from './types'
-import type { CompileStartFrameworkOptions } from '../types'
+import type {
+  CompileStartFrameworkOptions,
+  StartCompilerEnvironment,
+  StartCompilerImportTransform,
+} from '../types'
 
 type Binding =
   | {
@@ -38,13 +42,17 @@ type Binding =
 
 type Kind = 'None' | `Root` | `Builder` | LookupKind
 
-export type LookupKind =
+export type BuiltInLookupKind =
   | 'ServerFn'
   | 'Middleware'
   | 'IsomorphicFn'
   | 'ServerOnlyFn'
   | 'ClientOnlyFn'
   | 'ClientOnlyJSX'
+
+export type ExternalLookupKind = `External:${string}`
+
+export type LookupKind = BuiltInLookupKind | ExternalLookupKind
 
 // Detection strategy for each kind
 type MethodChainSetup = {
@@ -54,16 +62,37 @@ type MethodChainSetup = {
 type DirectCallSetup = {
   type: 'directCall'
   // The factory function name used to create this kind (e.g., 'createServerOnlyFn')
-  factoryName: string
+  factoryNames: Set<string>
 }
 type JSXSetup = { type: 'jsx'; componentName: string }
 
 function isLookupKind(kind: Kind): kind is LookupKind {
-  return kind in LookupSetup
+  return kind in BuiltInLookupSetup || isExternalLookupKind(kind)
 }
 
-const LookupSetup: Record<
-  LookupKind,
+export function getExternalLookupKind(
+  transform: StartCompilerImportTransform,
+): ExternalLookupKind {
+  return `External:${transform.name}`
+}
+
+function isExternalLookupKind(kind: Kind): kind is ExternalLookupKind {
+  return typeof kind === 'string' && kind.startsWith('External:')
+}
+
+export function isCompilerTransformEnabledForEnv(
+  transform: StartCompilerImportTransform,
+  env: StartCompilerEnvironment,
+): boolean {
+  if (!transform.environment) return true
+  if (Array.isArray(transform.environment)) {
+    return transform.environment.includes(env)
+  }
+  return transform.environment === env
+}
+
+const BuiltInLookupSetup: Record<
+  BuiltInLookupKind,
   MethodChainSetup | DirectCallSetup | JSXSetup
 > = {
   ServerFn: {
@@ -78,8 +107,14 @@ const LookupSetup: Record<
     type: 'methodChain',
     candidateCallIdentifier: new Set(['server', 'client']),
   },
-  ServerOnlyFn: { type: 'directCall', factoryName: 'createServerOnlyFn' },
-  ClientOnlyFn: { type: 'directCall', factoryName: 'createClientOnlyFn' },
+  ServerOnlyFn: {
+    type: 'directCall',
+    factoryNames: new Set(['createServerOnlyFn']),
+  },
+  ClientOnlyFn: {
+    type: 'directCall',
+    factoryNames: new Set(['createClientOnlyFn']),
+  },
   ClientOnlyJSX: { type: 'jsx', componentName: 'ClientOnly' },
 }
 
@@ -87,7 +122,7 @@ const LookupSetup: Record<
 // These patterns are used for:
 // 1. Pre-scanning code to determine which kinds to look for (before AST parsing)
 // 2. Deriving the plugin's transform code filter
-export const KindDetectionPatterns: Record<LookupKind, RegExp> = {
+export const KindDetectionPatterns: Record<BuiltInLookupKind, RegExp> = {
   ServerFn: /\bcreateServerFn\b|\.\s*handler\s*\(/,
   Middleware: /createMiddleware/,
   IsomorphicFn: /createIsomorphicFn/,
@@ -97,7 +132,10 @@ export const KindDetectionPatterns: Record<LookupKind, RegExp> = {
 }
 
 // Which kinds are valid for each environment
-export const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
+export const LookupKindsPerEnv: Record<
+  'client' | 'server',
+  Set<BuiltInLookupKind>
+> = {
   client: new Set([
     'Middleware',
     'ServerFn',
@@ -114,6 +152,21 @@ export const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
   ] as const),
 }
 
+export function getLookupKindsForEnv(
+  env: 'client' | 'server',
+  opts?: {
+    compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  },
+): Set<LookupKind> {
+  const kinds: Set<LookupKind> = new Set(LookupKindsPerEnv[env])
+  for (const transform of opts?.compilerTransforms ?? []) {
+    if (isCompilerTransformEnabledForEnv(transform, env)) {
+      kinds.add(getExternalLookupKind(transform))
+    }
+  }
+  return kinds
+}
+
 /**
  * Handler type for processing candidates of a specific kind.
  * The kind is passed as the third argument to allow shared handlers (like handleEnvOnlyFn).
@@ -121,15 +174,15 @@ export const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
 type KindHandler = (
   candidates: Array<RewriteCandidate>,
   context: CompilationContext,
-  kind: LookupKind,
+  kind: BuiltInLookupKind,
 ) => void
 
 /**
  * Registry mapping each LookupKind to its handler function.
  * When adding a new kind, add its handler here.
  */
-const KindHandlers: Record<
-  Exclude<LookupKind, 'ClientOnlyJSX'>,
+const BuiltInKindHandlers: Record<
+  Exclude<BuiltInLookupKind, 'ClientOnlyJSX'>,
   KindHandler
 > = {
   ServerFn: handleCreateServerFn,
@@ -140,8 +193,14 @@ const KindHandlers: Record<
   // ClientOnlyJSX is handled separately via JSX traversal, not here
 }
 
+const BuiltInKindHandlerOrder: Array<
+  Exclude<BuiltInLookupKind, 'ClientOnlyJSX'>
+> = ['ServerFn', 'Middleware', 'IsomorphicFn', 'ServerOnlyFn', 'ClientOnlyFn']
+
 // All lookup kinds as an array for iteration with proper typing
-const AllLookupKinds = Object.keys(LookupSetup) as Array<LookupKind>
+const AllBuiltInLookupKinds = Object.keys(
+  BuiltInLookupSetup,
+) as Array<BuiltInLookupKind>
 
 /**
  * Detects which LookupKinds are present in the code using string matching.
@@ -150,13 +209,23 @@ const AllLookupKinds = Object.keys(LookupSetup) as Array<LookupKind>
 export function detectKindsInCode(
   code: string,
   env: 'client' | 'server',
+  opts?: {
+    compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  },
 ): Set<LookupKind> {
   const detected = new Set<LookupKind>()
-  const validForEnv = LookupKindsPerEnv[env]
+  const validForEnv = getLookupKindsForEnv(env, opts)
 
-  for (const kind of AllLookupKinds) {
+  for (const kind of AllBuiltInLookupKinds) {
     if (validForEnv.has(kind) && KindDetectionPatterns[kind].test(code)) {
       detected.add(kind)
+    }
+  }
+
+  for (const transform of opts?.compilerTransforms ?? []) {
+    if (!isCompilerTransformEnabledForEnv(transform, env)) continue
+    if (transform.detect.test(code)) {
+      detected.add(getExternalLookupKind(transform))
     }
   }
 
@@ -166,8 +235,8 @@ export function detectKindsInCode(
 // Pre-computed map: identifier name -> Set<LookupKind> for fast candidate detection (method chain only)
 // Multiple kinds can share the same identifier (e.g., 'server' and 'client' are used by both Middleware and IsomorphicFn)
 const IdentifierToKinds = new Map<string, Set<LookupKind>>()
-for (const kind of AllLookupKinds) {
-  const setup = LookupSetup[kind]
+for (const kind of AllBuiltInLookupKinds) {
+  const setup = BuiltInLookupSetup[kind]
   if (setup.type === 'methodChain') {
     for (const id of setup.candidateCallIdentifier) {
       let kinds = IdentifierToKinds.get(id)
@@ -180,15 +249,19 @@ for (const kind of AllLookupKinds) {
   }
 }
 
-// Factory function names for direct call patterns.
-// Used to filter nested candidates - we only want to include actual factory calls,
-// not invocations of already-created functions (e.g., `myServerFn()` should NOT be a candidate)
-const DirectCallFactoryNames = new Set<string>()
-for (const kind of AllLookupKinds) {
-  const setup = LookupSetup[kind]
-  if (setup.type === 'directCall') {
-    DirectCallFactoryNames.add(setup.factoryName)
+function getLookupSetup(
+  kind: LookupKind,
+  externalLookupSetup?: Map<ExternalLookupKind, DirectCallSetup>,
+): MethodChainSetup | DirectCallSetup | JSXSetup | undefined {
+  if (kind in BuiltInLookupSetup) {
+    return BuiltInLookupSetup[kind as BuiltInLookupKind]
   }
+
+  if (isExternalLookupKind(kind)) {
+    return externalLookupSetup?.get(kind)
+  }
+
+  return undefined
 }
 
 export type LookupConfig = {
@@ -207,19 +280,6 @@ interface ModuleInfo {
 }
 
 /**
- * Computes whether any file kinds need direct-call candidate detection.
- * This applies to directCall types (ServerOnlyFn, ClientOnlyFn).
- */
-function needsDirectCallDetection(kinds: Set<LookupKind>): boolean {
-  for (const kind of kinds) {
-    if (LookupSetup[kind].type === 'directCall') {
-      return true
-    }
-  }
-  return false
-}
-
-/**
  * Checks if all kinds in the set are guaranteed to be top-level only.
  * Only ServerFn is always declared at module level (must be assigned to a variable).
  * Middleware, IsomorphicFn, ServerOnlyFn, ClientOnlyFn can be nested inside functions.
@@ -232,9 +292,12 @@ function areAllKindsTopLevelOnly(kinds: Set<LookupKind>): boolean {
 /**
  * Checks if we need to detect JSX elements (e.g., <ClientOnly>).
  */
-function needsJSXDetection(kinds: Set<LookupKind>): boolean {
+function needsJSXDetection(
+  kinds: Set<LookupKind>,
+  externalLookupSetup?: Map<ExternalLookupKind, DirectCallSetup>,
+): boolean {
   for (const kind of kinds) {
-    if (LookupSetup[kind].type === 'jsx') {
+    if (getLookupSetup(kind, externalLookupSetup)?.type === 'jsx') {
       return true
     }
   }
@@ -247,7 +310,11 @@ function needsJSXDetection(kinds: Set<LookupKind>): boolean {
  * This is stricter than top-level detection because we need to filter out
  * invocations of existing server functions (e.g., `myServerFn()`).
  */
-function isNestedDirectCallCandidate(node: t.CallExpression): boolean {
+function isNestedDirectCallCandidate(
+  node: t.CallExpression,
+  lookupKinds: Set<LookupKind>,
+  externalLookupSetup?: Map<ExternalLookupKind, DirectCallSetup>,
+): boolean {
   let calleeName: string | undefined
   if (t.isIdentifier(node.callee)) {
     calleeName = node.callee.name
@@ -257,7 +324,15 @@ function isNestedDirectCallCandidate(node: t.CallExpression): boolean {
   ) {
     calleeName = node.callee.property.name
   }
-  return calleeName !== undefined && DirectCallFactoryNames.has(calleeName)
+  if (!calleeName) return false
+  for (const kind of lookupKinds) {
+    if (isExternalLookupKind(kind)) continue
+    const setup = getLookupSetup(kind, externalLookupSetup)
+    if (setup?.type === 'directCall' && setup.factoryNames.has(calleeName)) {
+      return true
+    }
+  }
+  return false
 }
 
 function isSimpleDirectCallExpression(node: t.CallExpression): boolean {
@@ -304,14 +379,87 @@ function isTopLevelDirectCallCandidate(
 
 function isDirectCallCandidateForKind(
   kind: Exclude<LookupKind, 'ClientOnlyJSX'>,
+  externalLookupSetup?: Map<ExternalLookupKind, DirectCallSetup>,
 ): boolean {
-  return LookupSetup[kind].type === 'directCall'
+  return getLookupSetup(kind, externalLookupSetup)?.type === 'directCall'
+}
+
+function hasBuiltInDirectCallKinds(kinds: Set<LookupKind>): boolean {
+  for (const kind of kinds) {
+    if (isExternalLookupKind(kind)) continue
+    if (BuiltInLookupSetup[kind].type === 'directCall') return true
+  }
+  return false
+}
+
+function hasExternalLookupKinds(kinds: Set<LookupKind>): boolean {
+  for (const kind of kinds) {
+    if (isExternalLookupKind(kind)) return true
+  }
+  return false
+}
+
+interface ExternalDirectCallCandidates {
+  identifiers: Map<string, ExternalLookupKind>
+  namespaces: Map<string, Map<string, ExternalLookupKind>>
+}
+
+interface CallExpressionCandidate {
+  path: babel.NodePath<t.CallExpression>
+  /** Set when import scanning already proved the call's lookup kind. */
+  kind?: Exclude<LookupKind, 'ClientOnlyJSX'>
+}
+
+function hasExternalDirectCallCandidates(
+  candidates: ExternalDirectCallCandidates,
+): boolean {
+  return candidates.identifiers.size > 0 || candidates.namespaces.size > 0
+}
+
+function getExternalDirectCallCandidateKind(
+  path: babel.NodePath<t.CallExpression>,
+  candidates: ExternalDirectCallCandidates,
+): ExternalLookupKind | undefined {
+  const node = path.node
+
+  if (t.isIdentifier(node.callee)) {
+    const kind = candidates.identifiers.get(node.callee.name)
+    if (!kind) return undefined
+
+    const binding = path.scope.getBinding(node.callee.name)
+    return binding?.path.isImportSpecifier() ? kind : undefined
+  }
+
+  if (
+    t.isMemberExpression(node.callee) &&
+    t.isIdentifier(node.callee.object) &&
+    t.isIdentifier(node.callee.property)
+  ) {
+    const kind = candidates.namespaces
+      .get(node.callee.object.name)
+      ?.get(node.callee.property.name)
+    if (!kind) return undefined
+
+    const binding = path.scope.getBinding(node.callee.object.name)
+    return binding?.path.isImportNamespaceSpecifier() ? kind : undefined
+  }
+
+  return undefined
 }
 
 export class StartCompiler {
   private moduleCache = new Map<string, ModuleInfo>()
   private initialized = false
   private validLookupKinds: Set<LookupKind>
+  private externalTransformsByKind = new Map<
+    ExternalLookupKind,
+    StartCompilerImportTransform
+  >()
+  private externalLookupSetup = new Map<ExternalLookupKind, DirectCallSetup>()
+  private externalDirectCallKindsBySource = new Map<
+    string,
+    Map<string, ExternalLookupKind>
+  >()
   private resolveIdCache = new Map<string, string | null>()
   private exportResolutionCache = new Map<
     string,
@@ -360,6 +508,8 @@ export class StartCompiler {
        * Called after each file is compiled with its new functions.
        */
       onServerFnsById?: (d: Record<string, ServerFn>) => void
+      compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+      serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
       /**
        * Returns the currently known server functions from previous builds.
        * Used by server callers to look up canonical extracted filenames.
@@ -369,6 +519,31 @@ export class StartCompiler {
     },
   ) {
     this.validLookupKinds = options.lookupKinds
+    for (const transform of options.compilerTransforms ?? []) {
+      const kind = getExternalLookupKind(transform)
+      if (!this.validLookupKinds.has(kind)) continue
+
+      this.externalTransformsByKind.set(kind, transform)
+
+      const factoryNames = new Set<string>()
+      for (const entry of transform.imports) {
+        factoryNames.add(entry.rootExport)
+
+        let rootExports = this.externalDirectCallKindsBySource.get(
+          entry.libName,
+        )
+        if (!rootExports) {
+          rootExports = new Map()
+          this.externalDirectCallKindsBySource.set(entry.libName, rootExports)
+        }
+        rootExports.set(entry.rootExport, kind)
+      }
+
+      this.externalLookupSetup.set(kind, {
+        type: 'directCall',
+        factoryNames,
+      })
+    }
   }
 
   /**
@@ -446,6 +621,46 @@ export class StartCompiler {
     return this.options.mode ?? 'dev'
   }
 
+  private getExternalDirectCallCandidates(
+    kinds: Set<LookupKind>,
+    moduleInfo: ModuleInfo,
+  ): ExternalDirectCallCandidates {
+    const identifiers = new Map<string, ExternalLookupKind>()
+    const namespaces = new Map<string, Map<string, ExternalLookupKind>>()
+
+    if (this.externalDirectCallKindsBySource.size === 0) {
+      return { identifiers, namespaces }
+    }
+
+    for (const [localName, binding] of moduleInfo.bindings) {
+      if (binding.type !== 'import') continue
+
+      const rootExports = this.externalDirectCallKindsBySource.get(
+        binding.source,
+      )
+      if (!rootExports) continue
+
+      if (binding.importedName === '*') {
+        const namespaceExports = new Map<string, ExternalLookupKind>()
+        for (const [rootExport, kind] of rootExports) {
+          if (kinds.has(kind)) {
+            namespaceExports.set(rootExport, kind)
+          }
+        }
+        if (namespaceExports.size > 0) {
+          namespaces.set(localName, namespaceExports)
+        }
+      } else {
+        const kind = rootExports.get(binding.importedName)
+        if (kind && kinds.has(kind)) {
+          identifiers.set(localName, kind)
+        }
+      }
+    }
+
+    return { identifiers, namespaces }
+  }
+
   private async resolveIdCached(id: string, importer?: string) {
     if (this.mode === 'dev') {
       return this.options.resolveId(id, importer)
@@ -482,7 +697,7 @@ export class StartCompiler {
       ]),
     )
 
-    // Register start-client-core exports for internal package usage (e.g., react-start-rsc).
+    // Register start-client-core exports for internal package usage.
     // These don't need module resolution - only the knownRootImports fast path.
     this.knownRootImports.set(
       '@tanstack/start-client-core',
@@ -506,8 +721,8 @@ export class StartCompiler {
       // For JSX lookups (e.g., ClientOnlyJSX), we only need the knownRootImports
       // fast path to verify imports. Skip synthetic root module setup.
       if (config.kind !== 'Root') {
-        const setup = LookupSetup[config.kind]
-        if (setup.type === 'jsx') {
+        const setup = getLookupSetup(config.kind, this.externalLookupSetup)
+        if (setup?.type === 'jsx') {
           continue
         }
       }
@@ -780,7 +995,12 @@ export class StartCompiler {
       return null
     }
 
-    const checkDirectCalls = needsDirectCallDetection(fileKinds)
+    const hasExternalKinds = hasExternalLookupKinds(fileKinds)
+    const checkDirectCalls =
+      hasBuiltInDirectCallKinds(fileKinds) ||
+      (fileKinds.has('ServerFn') &&
+        !hasExternalKinds &&
+        hasBuiltInDirectCallKinds(this.validLookupKinds))
     // Optimization: ServerFn is always a top-level declaration (must be assigned to a variable).
     // If the file only has ServerFn, we can skip full AST traversal and only visit
     // the specific top-level declarations that have candidates.
@@ -793,7 +1013,7 @@ export class StartCompiler {
     // Single-pass traversal to:
     // 1. Collect candidate paths (only candidates, not all CallExpressions)
     // 2. Build a map for looking up paths of nested calls in method chains
-    const candidatePaths: Array<babel.NodePath<t.CallExpression>> = []
+    const candidatePaths: Array<CallExpressionCandidate> = []
     // Map for nested chain lookup - only populated for CallExpressions that are
     // part of a method chain (callee.object is a CallExpression)
     const chainCallPaths = new Map<
@@ -803,9 +1023,16 @@ export class StartCompiler {
 
     // JSX candidates (e.g., <ClientOnly>)
     const jsxCandidatePaths: Array<babel.NodePath<t.JSXElement>> = []
-    const checkJSX = needsJSXDetection(fileKinds)
+    const checkJSX = needsJSXDetection(fileKinds, this.externalLookupSetup)
     // Get module info that was just cached by ingestModule
     const moduleInfo = this.moduleCache.get(id)!
+    const externalDirectCallCandidates = this.getExternalDirectCallCandidates(
+      fileKinds,
+      moduleInfo,
+    )
+    const checkExternalDirectCalls = hasExternalDirectCallCandidates(
+      externalDirectCallCandidates,
+    )
 
     if (canUseFastPath) {
       // Fast path: only visit top-level statements that have potential candidates
@@ -829,7 +1056,8 @@ export class StartCompiler {
             if (decl.init && t.isCallExpression(decl.init)) {
               if (
                 isMethodChainCandidate(decl.init, fileKinds) ||
-                isTopLevelDirectCallCandidateNode(decl.init)
+                (checkDirectCalls &&
+                  isTopLevelDirectCallCandidateNode(decl.init))
               ) {
                 candidateIndices.push(i)
                 break // Only need to mark this statement once
@@ -870,12 +1098,23 @@ export class StartCompiler {
 
                 // Method chain pattern
                 if (isMethodChainCandidate(node, fileKinds)) {
-                  candidatePaths.push(path)
+                  candidatePaths.push({ path })
                   return
                 }
 
+                if (checkExternalDirectCalls) {
+                  const kind = getExternalDirectCallCandidateKind(
+                    path,
+                    externalDirectCallCandidates,
+                  )
+                  if (kind) {
+                    candidatePaths.push({ path, kind })
+                    return
+                  }
+                }
+
                 if (isTopLevelDirectCallCandidate(path)) {
-                  candidatePaths.push(path)
+                  candidatePaths.push({ path })
                 }
               },
             })
@@ -904,19 +1143,39 @@ export class StartCompiler {
 
           // Pattern 1: Method chain pattern (.handler(), .server(), .client(), etc.)
           if (isMethodChainCandidate(node, fileKinds)) {
-            candidatePaths.push(path)
+            candidatePaths.push({ path })
             return
           }
 
-          if (isTopLevelDirectCallCandidate(path)) {
-            candidatePaths.push(path)
+          // External direct-call transforms are import-bound. Direct imports
+          // already identify the transform kind, so skip async import tracing.
+          if (checkExternalDirectCalls) {
+            const kind = getExternalDirectCallCandidateKind(
+              path,
+              externalDirectCallCandidates,
+            )
+            if (kind) {
+              candidatePaths.push({ path, kind })
+              return
+            }
+          }
+
+          if (checkDirectCalls && isTopLevelDirectCallCandidate(path)) {
+            candidatePaths.push({ path })
             return
           }
 
           // Pattern 2: Direct call pattern
           if (checkDirectCalls) {
-            if (isNestedDirectCallCandidate(node)) {
-              candidatePaths.push(path)
+            if (
+              isNestedDirectCallCandidate(
+                node,
+                fileKinds,
+                this.externalLookupSetup,
+              )
+            ) {
+              candidatePaths.push({ path })
+              return
             }
           }
         },
@@ -955,13 +1214,34 @@ export class StartCompiler {
       return null
     }
 
-    // Resolve all candidates in parallel to determine their kinds
-    const resolvedCandidates = await Promise.all(
-      candidatePaths.map(async (path) => ({
-        path,
-        kind: await this.resolveExprKind(path.node, id),
-      })),
-    )
+    // Resolve only candidates whose import scan did not already prove the kind.
+    const resolvedCandidates: Array<{
+      path: babel.NodePath<t.CallExpression>
+      kind: Kind
+    }> = []
+    const unresolvedCandidates: Array<CallExpressionCandidate> = []
+
+    for (const candidate of candidatePaths) {
+      if (candidate.kind) {
+        resolvedCandidates.push({
+          path: candidate.path,
+          kind: candidate.kind,
+        })
+      } else {
+        unresolvedCandidates.push(candidate)
+      }
+    }
+
+    if (unresolvedCandidates.length > 0) {
+      resolvedCandidates.push(
+        ...(await Promise.all(
+          unresolvedCandidates.map(async (candidate) => ({
+            path: candidate.path,
+            kind: await this.resolveExprKind(candidate.path.node, id),
+          })),
+        )),
+      )
+    }
 
     // Filter to valid candidates
     const validCandidates = resolvedCandidates.filter(({ path, kind }) => {
@@ -976,7 +1256,7 @@ export class StartCompiler {
         kind !== 'ClientOnlyJSX' &&
         !isMethodChainCandidate(path.node, fileKinds)
       ) {
-        return isDirectCallCandidateForKind(kind)
+        return isDirectCallCandidateForKind(kind, this.externalLookupSetup)
       }
 
       return true
@@ -1062,9 +1342,16 @@ export class StartCompiler {
       root: this.options.root,
       framework: this.options.framework,
       providerEnvName: this.options.providerEnvName,
+      types: t,
+      parseExpression: (expressionCode) =>
+        babel.template.expression(expressionCode, {
+          placeholderPattern: false,
+        })() as t.Expression,
 
       generateFunctionId: (opts) => this.generateFunctionId(opts),
       getKnownServerFns: this.options.getKnownServerFns,
+      serverFnProviderModuleDirectives:
+        this.options.serverFnProviderModuleDirectives,
       onServerFnsById: this.options.onServerFnsById,
     }
 
@@ -1084,11 +1371,18 @@ export class StartCompiler {
       }
     }
 
-    // Process each kind using its registered handler
-    for (const [kind, candidates] of candidatesByKind) {
-      const handler = KindHandlers[kind]
+    // External transforms run before built-ins by default so they can augment
+    // user handlers before server function extraction clones provider bodies.
+    this.runExternalTransforms('pre', candidatesByKind, context)
+
+    for (const kind of BuiltInKindHandlerOrder) {
+      const candidates = candidatesByKind.get(kind)
+      if (!candidates) continue
+      const handler = BuiltInKindHandlers[kind]
       handler(candidates, context, kind)
     }
+
+    this.runExternalTransforms('post', candidatesByKind, context)
 
     // Handle JSX candidates (e.g., <ClientOnly>)
     // Validation was already done during traversal - just call the handler
@@ -1114,6 +1408,24 @@ export class StartCompiler {
     }
 
     return result
+  }
+
+  private runExternalTransforms(
+    order: 'pre' | 'post',
+    candidatesByKind: Map<
+      Exclude<LookupKind, 'ClientOnlyJSX'>,
+      Array<RewriteCandidate>
+    >,
+    context: CompilationContext,
+  ) {
+    for (const [kind, transform] of this.externalTransformsByKind) {
+      if ((transform.order ?? 'pre') !== order) continue
+
+      const candidates = candidatesByKind.get(kind)
+      if (!candidates) continue
+
+      transform.transform(candidates, context)
+    }
   }
 
   private async resolveIdentifierKind(
@@ -1293,7 +1605,8 @@ export class StartCompiler {
     // `const createSO = createServerOnlyFn` should still propagate the kind.
     if (
       isLookupKind(resolvedKind) &&
-      LookupSetup[resolvedKind].type === 'directCall' &&
+      getLookupSetup(resolvedKind, this.externalLookupSetup)?.type ===
+        'directCall' &&
       binding.init &&
       t.isCallExpression(binding.init)
     ) {
@@ -1420,6 +1733,12 @@ export class StartCompiler {
           binding.type === 'import' &&
           binding.importedName === '*'
         ) {
+          const knownExports = this.knownRootImports.get(binding.source)
+          const knownKind = knownExports?.get(callee.property.name)
+          if (knownKind) {
+            return knownKind
+          }
+
           // resolve the property from the target module
           const targetModuleId = await this.resolveIdCached(
             binding.source,

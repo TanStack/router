@@ -6,6 +6,7 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
+  hasKeys,
   isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
@@ -465,7 +466,7 @@ export function useLinkProps<
       ...activeProps,
       ...inactiveProps,
       ...base,
-      ...(Object.keys(style).length ? { style } : undefined),
+      ...(hasKeys(style) ? { style } : undefined),
       ...(className ? { class: className } : undefined),
       ...(active && STATIC_ACTIVE_ATTRIBUTES),
     } as ResolvedLinkStateProps

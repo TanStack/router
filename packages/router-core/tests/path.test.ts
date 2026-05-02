@@ -15,6 +15,7 @@ import {
   parseSegment,
   processRouteTree,
 } from '../src/new-process-route-tree'
+import { createLRUCache } from '../src/lru-cache'
 import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
@@ -240,6 +241,29 @@ describe('resolvePath', () => {
       })
     },
   )
+
+  it('preserves explicit route-template param syntax', () => {
+    expect(
+      resolvePath({
+        base: '/{$language}',
+        to: '.',
+      }),
+    ).toBe('/{$language}')
+
+    expect(
+      resolvePath({
+        base: '/{$language}/posts',
+        to: '../{$language}',
+      }),
+    ).toBe('/{$language}/{$language}')
+  })
+
+  it('caches route-template paths without changing param syntax', () => {
+    const cache = createLRUCache<string, string>(10)
+
+    expect(resolvePath({ base: '/', to: '/{$id}', cache })).toBe('/{$id}')
+    expect(resolvePath({ base: '/', to: '/$id', cache })).toBe('/$id')
+  })
 })
 
 describe.each([{ server: true }, { server: false }])(
