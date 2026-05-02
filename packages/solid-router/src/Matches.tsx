@@ -24,11 +24,21 @@ import type {
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
-    meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
-    links?: Array<Solid.JSX.IntrinsicElements['link'] | undefined>
-    scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
-    styles?: Array<Solid.JSX.IntrinsicElements['style'] | undefined>
-    headScripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
+    meta?: Array<
+      (Solid.JSX.IntrinsicElements['meta'] & { key?: string }) | undefined
+    >
+    links?: Array<
+      (Solid.JSX.IntrinsicElements['link'] & { key?: string }) | undefined
+    >
+    scripts?: Array<
+      (Solid.JSX.IntrinsicElements['script'] & { key?: string }) | undefined
+    >
+    styles?: Array<
+      (Solid.JSX.IntrinsicElements['style'] & { key?: string }) | undefined
+    >
+    headScripts?: Array<
+      (Solid.JSX.IntrinsicElements['script'] & { key?: string }) | undefined
+    >
   }
 }
 

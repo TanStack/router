@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  buildMetaTags,
+  createControlledPromise,
+  dedupByLastKey,
+} from '../src'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { hydrate } from '../src/ssr/client'
 import { createTestRouter } from './routerTestUtils'
@@ -767,5 +773,177 @@ describe('rejected deferred head promises', () => {
       expect.any(Error),
     )
     consoleSpy.mockRestore()
+  })
+})
+
+describe('deferred fallbacks: key-based replacement at render time', () => {
+  it('keyed link fallback is replaced by the deferred resolution', async () => {
+    const dataPromise = createControlledPromise<{ canonical: string }>()
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loader: () => ({ dataPromise }),
+      head: ({ loaderData }: { loaderData?: any }) => ({
+        links: [
+          { rel: 'canonical', href: '/fallback', key: 'canonical' },
+          loaderData?.dataPromise.then((d: { canonical: string }) => [
+            { rel: 'canonical', href: d.canonical, key: 'canonical' },
+          ]),
+        ],
+      }),
+    })
+    rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+
+    // Fallback only — promise hasn't resolved yet.
+    const matchId = router.state.matches.find((m) => m.routeId === '/')!.id
+    let match = router.getMatch(matchId)!
+    expect(match.links).toEqual([
+      { rel: 'canonical', href: '/fallback', key: 'canonical' },
+    ])
+    expect(dedupByLastKey(match.links as any)).toEqual([
+      { rel: 'canonical', href: '/fallback', key: 'canonical' },
+    ])
+
+    dataPromise.resolve({ canonical: '/resolved' })
+    await new Promise((r) => setTimeout(r, 10))
+
+    // Both entries are present in match data — render-time dedup picks the last.
+    match = router.getMatch(matchId)!
+    expect(match.links).toEqual([
+      { rel: 'canonical', href: '/fallback', key: 'canonical' },
+      { rel: 'canonical', href: '/resolved', key: 'canonical' },
+    ])
+    expect(dedupByLastKey(match.links as any)).toEqual([
+      { rel: 'canonical', href: '/resolved', key: 'canonical' },
+    ])
+  })
+
+  it('without a key, fallback and resolved links both survive — demonstrates why the key exists', async () => {
+    const dataPromise = createControlledPromise<{ canonical: string }>()
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loader: () => ({ dataPromise }),
+      head: ({ loaderData }: { loaderData?: any }) => ({
+        links: [
+          { rel: 'canonical', href: '/fallback' },
+          loaderData?.dataPromise.then((d: { canonical: string }) => [
+            { rel: 'canonical', href: d.canonical },
+          ]),
+        ],
+      }),
+    })
+    rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+
+    dataPromise.resolve({ canonical: '/resolved' })
+    await new Promise((r) => setTimeout(r, 10))
+
+    const match = router.state.matches.find((m) => m.routeId === '/')!
+    // dedupByLastKey is a no-op without keys — both links survive.
+    expect(dedupByLastKey(match.links as any)).toEqual([
+      { rel: 'canonical', href: '/fallback' },
+      { rel: 'canonical', href: '/resolved' },
+    ])
+  })
+
+  it('keyed body-script fallback is replaced by the deferred resolution', async () => {
+    const dataPromise = createControlledPromise<{ src: string }>()
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loader: () => ({ dataPromise }),
+      scripts: ({ loaderData }: { loaderData?: any }) => [
+        { src: '/analytics-fallback.js', key: 'analytics' },
+        loaderData?.dataPromise.then((d: { src: string }) => [
+          { src: d.src, key: 'analytics' },
+        ]),
+      ],
+    } as any)
+    rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+
+    dataPromise.resolve({ src: '/analytics-resolved.js' })
+    await new Promise((r) => setTimeout(r, 10))
+
+    const match = router.state.matches.find((m) => m.routeId === '/')!
+    expect(match.scripts).toEqual([
+      { src: '/analytics-fallback.js', key: 'analytics' },
+      { src: '/analytics-resolved.js', key: 'analytics' },
+    ])
+    expect(dedupByLastKey(match.scripts as any)).toEqual([
+      { src: '/analytics-resolved.js', key: 'analytics' },
+    ])
+  })
+
+  it('keyed JSON-LD fallback is replaced by the deferred resolution at render time', async () => {
+    const dataPromise = createControlledPromise<{ name: string }>()
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loader: () => ({ dataPromise }),
+      head: ({ loaderData }: { loaderData?: any }) => ({
+        meta: [
+          {
+            'script:ld+json': { '@context': 'https://schema.org', name: '...' },
+            key: 'product-ld',
+          },
+          loaderData?.dataPromise.then((d: { name: string }) => [
+            {
+              'script:ld+json': {
+                '@context': 'https://schema.org',
+                name: d.name,
+              },
+              key: 'product-ld',
+            },
+          ]),
+        ],
+      }),
+    })
+    rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+
+    dataPromise.resolve({ name: 'Resolved Product' })
+    await new Promise((r) => setTimeout(r, 10))
+
+    const match = router.state.matches.find((m) => m.routeId === '/')!
+    // The raw match.meta still has both entries — the fallback drops out only
+    // when the entries are normalized into rendered tags.
+    expect(match.meta).toHaveLength(2)
+
+    const tags = buildMetaTags([match.meta as any])
+    const ldScripts = tags.filter((t) => t.tag === 'script')
+    expect(ldScripts).toHaveLength(1)
+    expect(ldScripts[0]!.children).toContain('Resolved Product')
+    expect(ldScripts[0]!.children).not.toContain('"name":"...')
   })
 })

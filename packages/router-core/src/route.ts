@@ -216,14 +216,18 @@ export type UpdatableStaticRouteOption = {} extends StaticDataRouteOption
   : RequiredStaticDataRouteOption
 
 export type MetaDescriptor =
-  | { charSet: 'utf-8' }
-  | { title: string }
-  | { name: string; content: string }
-  | { property: string; content: string }
-  | { httpEquiv: string; content: string }
-  | { 'script:ld+json': LdJsonObject }
-  | { tagName: 'meta' | 'link'; [name: string]: string }
-  | Record<string, unknown>
+  | { charSet: 'utf-8'; key?: string }
+  | { title: string; key?: string }
+  | { name: string; content: string; key?: string }
+  | { property: string; content: string; key?: string }
+  | { httpEquiv: string; content: string; key?: string }
+  | { 'script:ld+json': LdJsonObject; key?: string }
+  | {
+      tagName: 'meta' | 'link'
+      key?: string
+      [name: string]: string | undefined
+    }
+  | (Record<string, unknown> & { key?: string })
 
 type LdJsonObject = { [Key in string]: LdJsonValue } & {
   [Key in string]?: LdJsonValue | undefined

@@ -232,6 +232,43 @@ export const Route = createFileRoute('/product/$slug')({
 })
 ```
 
+### Deferred Fallbacks
+
+When using deferred head loading, you may want to show fallback tags immediately while the deferred data is loading. For `title` and `meta` tags with `name` or `property`, this works automatically — the static entry is rendered first, and the deferred entry replaces it via built-in deduplication once the promise resolves.
+
+However, for **additive** tags like `links`, `scripts` and `styles` that don't have built-in deduplication attributes, the fallback and resolved entries would both appear in the document head. Use `key` to tie a fallback to its deferred replacement:
+
+```tsx
+export const Route = createFileRoute('/product/$slug')({
+  loader: ({ params }) => {
+    const dataPromise = fetchPageData(params.slug)
+    return { dataPromise }
+  },
+  head: ({ loaderData }) => ({
+    meta: [
+      // title and name/property meta dedupe automatically — no key needed
+      { title: 'Loading...' },
+      loaderData.dataPromise.then((data) => [
+        { title: data.title },
+      ]),
+    ],
+    links: [
+      // Use key so the fallback canonical is replaced by the resolved one
+      { rel: 'canonical', href: '/fallback-url', key: 'canonical' },
+      loaderData.dataPromise.then((data) => [
+        { rel: 'canonical', href: data.canonicalUrl, key: 'canonical' },
+      ]),
+    ],
+  }),
+  component: ProductPage,
+})
+```
+
+In this example:
+
+1. **Before the promise resolves**, the page renders with the fallback `title` and the fallback canonical link
+2. **After the promise resolves**, `head()` is re-evaluated. The deferred entries now resolve immediately and appear after the fallback entries in the array. Since they share the same `key` (or `name`/`property`/`title`), deduplication keeps only the last occurrence — the resolved one
+
 ## Managing Body Scripts
 
 In addition to scripts that can be rendered in the `<head>` tag, you can also render scripts in the `<body>` tag using the `routeOptions.scripts` property. This is useful for loading scripts (even inline scripts) that require the DOM to be loaded, but before the main entry point of your application (which includes hydration if you're using Start or a full-stack implementation of TanStack Router).
