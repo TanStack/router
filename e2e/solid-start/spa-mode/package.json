@@ -22,7 +22,8 @@
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
     "tailwindcss": "^4.2.2",
-    "typescript": "npm:@typescript/native-preview@beta",
+    "@typescript/native-preview": "beta",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0",
     "vite-plugin-solid": "^2.11.11"
   }

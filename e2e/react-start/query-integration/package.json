@@ -33,6 +33,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
     "tailwindcss": "^4.2.2",
-    "typescript": "npm:@typescript/native-preview@beta"
+    "@typescript/native-preview": "beta",
+    "typescript": "^6.0.2"
   }
 }

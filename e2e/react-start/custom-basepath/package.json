@@ -32,7 +32,8 @@
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.20.3",
-    "typescript": "npm:@typescript/native-preview@beta",
+    "@typescript/native-preview": "beta",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0"
   }
 }

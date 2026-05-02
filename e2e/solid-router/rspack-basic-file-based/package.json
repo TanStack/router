@@ -25,6 +25,7 @@
     "@tanstack/router-plugin": "workspace:^",
     "postcss": "^8.5.1",
     "tailwindcss": "^4.2.2",
-    "typescript": "npm:@typescript/native-preview@beta"
+    "@typescript/native-preview": "beta",
+    "typescript": "^6.0.2"
   }
 }

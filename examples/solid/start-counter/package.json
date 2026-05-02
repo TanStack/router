@@ -22,7 +22,8 @@
     "@types/node": "^22.10.2",
     "vite-plugin-solid": "^2.11.11",
     "combinate": "^1.1.11",
-    "typescript": "npm:@typescript/native-preview@beta",
+    "@typescript/native-preview": "beta",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0"
   }
 }

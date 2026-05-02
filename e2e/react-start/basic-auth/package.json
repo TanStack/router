@@ -36,6 +36,7 @@
     "dotenv": "^17.2.3",
     "prisma": "^7.0.0",
     "tailwindcss": "^4.2.2",
-    "typescript": "npm:@typescript/native-preview@beta"
+    "@typescript/native-preview": "beta",
+    "typescript": "^6.0.2"
   }
 }

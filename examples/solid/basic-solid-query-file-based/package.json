@@ -22,7 +22,8 @@
   },
   "devDependencies": {
     "@tanstack/router-plugin": "^1.167.32",
-    "typescript": "npm:@typescript/native-preview@beta",
+    "@typescript/native-preview": "beta",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0",
     "vite-plugin-solid": "^2.11.11"
   }

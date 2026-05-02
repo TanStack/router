@@ -67,7 +67,8 @@
   },
   "devDependencies": {
     "solid-js": "^1.9.10",
-    "typescript": "npm:@typescript/native-preview@beta",
+    "@typescript/native-preview": "beta",
+    "typescript": "^6.0.2",
     "vite": "*",
     "vite-plugin-solid": "^2.11.10"
   },

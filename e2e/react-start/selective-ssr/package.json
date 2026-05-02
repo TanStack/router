@@ -29,6 +29,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
-    "typescript": "npm:@typescript/native-preview@beta"
+    "@typescript/native-preview": "beta",
+    "typescript": "^6.0.2"
   }
 }
