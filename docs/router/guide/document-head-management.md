@@ -171,7 +171,7 @@ const rootRoute = createRootRoute({
 
 ### Deferred Head Loading
 
-When head data depends on an async source, awaiting it inside your loader blocks the entire page render — even though users don't need meta tags to interact with the page. To avoid that, you can return a **Promise** in any of `meta`, `links`, and `scripts` from `head()`, and TanStack Router will:
+When head data depends on an async source, awaiting it inside your loader blocks the entire page render — even though users don't need meta tags to interact with the page. To avoid that, you can return a **Promise** in any of `meta`, `links`, `scripts`, and `styles` from `head()`, and TanStack Router will:
 
 - Render the page immediately for users without blocking on the promise
 - Await the promise for crawlers so resolved tags appear in the initial response for correct indexing and social previews
