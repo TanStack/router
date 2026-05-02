@@ -171,13 +171,13 @@ const rootRoute = createRootRoute({
 
 ### Deferred Head Loading
 
-When head data depends on an async source, awaiting it inside your loader blocks the entire page render — even though users don't need meta tags to interact with the page. To avoid that, you can return a **Promise** in any of `meta`, `links`, `scripts`, and `styles` from `head()`, and TanStack Router will:
+When head data depends on an async source, awaiting it inside your loader blocks the entire page render, even though users don't need meta tags to interact with the page. To avoid that, you can return a **Promise** in any of `meta`, `links`, `scripts`, and `styles` from `head()`, and TanStack Router will:
 
 - Render the page immediately for users without blocking on the promise
 - Await the promise for crawlers so resolved tags appear in the initial response for correct indexing and social previews
 - Re-evaluate `head()` and `scripts()` on the client once the promise settles, so the resolved tags are committed via `<HeadContent />` and `<Scripts />` without blocking navigation
 
-To defer a tag, return the promise from your loader and pass it directly into any head array (or the body scripts array), alongside any static entries you already have. The promise can resolve to a single descriptor or an array of them — the router flattens the result into the surrounding array:
+To defer a tag, return the promise from your loader and pass it directly into any head array (or the body scripts array), alongside any static entries you already have. The promise can resolve to a single descriptor or an array of them, and the router flattens the result into the surrounding array:
 
 ```tsx
 export const Route = createFileRoute('/product/$slug')({
@@ -188,10 +188,10 @@ export const Route = createFileRoute('/product/$slug')({
   },
   head: ({ loaderData }) => ({
     meta: [
-      // Static — present in the initial response
+      // Static (present in the initial response)
       { property: 'og:type', content: 'website' },
       { name: 'twitter:site', content: '@mysite' },
-      // Deferred — streamed for users, awaited for bots
+      // Deferred (streamed for users, awaited for bots)
       loaderData.dataPromise.then((data) => [
         { title: data.title },
         { name: 'description', content: data.description },
@@ -221,8 +221,8 @@ export const Route = createFileRoute('/product/$slug')({
       ]),
     ],
   }),
-  // Body scripts can be deferred too — useful when the script's URL or
-  // payload depends on loader data, e.g. a tenant-specific analytics ID
+  // Body scripts can be deferred too. This is useful when the script's URL
+  // or payload depends on loader data, e.g. a tenant-specific analytics ID
   scripts: ({ loaderData }) => [
     loaderData.dataPromise.then((data) => [
       { src: `/analytics.js?id=${data.analyticsId}`, async: true },
@@ -234,42 +234,44 @@ export const Route = createFileRoute('/product/$slug')({
 
 ### Deferred Fallbacks
 
-When using deferred head loading, you may want to show fallback tags immediately while the deferred data is loading. For `title` and `meta` tags with `name` or `property`, this works automatically — the static entry is rendered first, and the deferred entry replaces it via built-in deduplication once the promise resolves.
+When using deferred head loading, you may want to show fallback tags immediately while the deferred data is loading. For `title` and `meta` tags with `name` or `property`, this works automatically: the static entry is rendered first, and the deferred entry replaces it via built-in deduplication once the promise resolves.
 
 However, for **additive** tags like `links`, `scripts` and `styles` that don't have built-in deduplication attributes, the fallback and resolved entries would both appear in the document head. Use `key` to tie a fallback to its deferred replacement:
 
 ```tsx
-export const Route = createFileRoute('/product/$slug')({
-  loader: ({ params }) => {
-    const dataPromise = fetchPageData(params.slug)
-    return { dataPromise }
+export const Route = createFileRoute('/inbox')({
+  loader: () => {
+    const notificationsPromise = fetchUnreadNotifications()
+    return { notificationsPromise }
   },
   head: ({ loaderData }) => ({
     meta: [
-      // title and name/property meta dedupe automatically — no key needed
-      { title: 'Loading...' },
-      { name: 'theme-color', content: '#00b8db' },
-      loaderData.dataPromise.then((data) => [
-        { title: data.title },
-        { name: 'theme-color', content: data.brandColor },
-      ]),
+      // title dedupes automatically (no key needed)
+      { title: 'Inbox' },
+      loaderData.notificationsPromise.then((n) =>
+        n.unreadCount > 0 ? [{ title: `Inbox (${n.unreadCount} unread)` }] : [],
+      ),
     ],
     links: [
-      // Use key so the fallback favicon is replaced by the resolved one
+      // Use key so the fallback favicon is replaced by the badged one
       { rel: 'icon', href: '/favicon.ico', key: 'icon' },
-      loaderData.dataPromise.then((data) => [
-        { rel: 'icon', href: data.iconUrl, key: 'icon' },
-      ]),
+      loaderData.notificationsPromise.then((n) =>
+        n.unreadCount > 0
+          ? [{ rel: 'icon', href: `/favicon-badge-${n.unreadCount}.ico`, key: 'icon' }]
+          : [],
+      ),
     ],
   }),
-  component: ProductPage,
+  component: InboxPage,
 })
 ```
 
 In this example:
 
-1. **Before the promise resolves**, the page renders with the fallback `title`, the fallback `theme-color`, and the fallback favicon link
-2. **After the promise resolves**, `head()` is re-evaluated. The deferred entries now resolve immediately and appear after the fallback entries in the array. Since they share the same `key` (or `name`/`property`/`title`), deduplication keeps only the last occurrence — the resolved one
+1. **Before the promise resolves**, the page renders with the default `Inbox` title and the default favicon, which are useful, neutral defaults that match what the user expects on first paint
+2. **After the promise resolves**, `head()` is re-evaluated. The deferred entries now resolve immediately and appear after the fallback entries in the array. Since they share the same `key` (or `title`), deduplication keeps only the last occurrence (the resolved one), so the title gains the unread count and the favicon swaps for a badged variant
+
+Fallbacks work best when the default value is meaningful on its own and the deferred value enriches it (a count, a status hint, a personalized variant). For values that have no sensible default (like a tenant-specific `theme-color` or brand identity), it's fine to skip the fallback entirely and let the tag appear only once the deferred data resolves, rather than flashing a placeholder that's guaranteed to be wrong.
 
 ## Managing Body Scripts
 
