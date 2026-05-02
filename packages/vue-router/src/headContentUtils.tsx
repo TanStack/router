@@ -18,9 +18,13 @@ import type {
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const matches = useStore(router.stores.matches, (value) => value)
+  const nonce = router.options.ssr?.nonce
 
   const meta = Vue.computed<Array<RouterManagedTag>>(() =>
-    buildMetaTags(matches.value.map((match) => match.meta!).filter(Boolean)),
+    buildMetaTags(
+      matches.value.map((match) => match.meta!).filter(Boolean),
+      nonce,
+    ),
   )
 
   const links = Vue.computed<Array<RouterManagedTag>>(
@@ -36,6 +40,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
           tag: 'link',
           attrs: {
             ...attrs,
+            nonce,
           },
           key,
         }
@@ -60,6 +65,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
                 crossOrigin:
                   getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
                   preloadLink.crossOrigin,
+                nonce,
               },
             })
           }),
@@ -78,6 +84,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       tag: 'script',
       attrs: {
         ...script,
+        nonce,
       },
       children,
       key,
@@ -105,6 +112,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
                 crossOrigin:
                   getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
                   asset.attrs?.crossOrigin,
+                nonce,
               },
             },
           ]
@@ -114,7 +122,10 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
           return [
             {
               tag: 'style',
-              attrs: asset.attrs,
+              attrs: {
+                ...asset.attrs,
+                nonce,
+              },
               children: asset.children,
               ...(asset.inlineCss ? { inlineCss: true as const } : {}),
             },
