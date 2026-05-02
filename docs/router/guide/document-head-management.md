@@ -7,7 +7,7 @@ Document head management is the process of managing the head, title, meta, link,
 - Automatic deduping of `title` and `meta` tags
 - Automatic loading/unloading of tags based on route visibility
 - A composable way to merge `title` and `meta` tags from nested routes
-- Deferred loading of `title`, `meta`, `links`, and `scripts` tags without blocking the initial page render
+- Deferred loading of `title`, `meta`, `links`, `styles` and `scripts` tags without blocking the initial page render
 
 For full-stack applications that use Start, and even for single-page applications that use TanStack Router, managing the document head is a crucial part of any application for the following reasons:
 

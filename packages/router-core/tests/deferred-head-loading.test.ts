@@ -587,7 +587,7 @@ describe('hydrate: deferred head loading', () => {
   }
 
   it('does not block hydration on a still-pending deferred head promise', async () => {
-    const mockMatches = setupDehydrated({ dataPromise })
+    setupDehydrated({ dataPromise })
 
     let hydrationDone = false
     const hydratePromise = hydrate(mockRouter).then(() => {
@@ -600,10 +600,10 @@ describe('hydrate: deferred head loading', () => {
     expect(hydrationDone).toBe(true)
     await hydratePromise
 
-    expect(mockMatches[0].meta).toEqual([
+    expect(mockRouter.getMatch('/')!.meta).toEqual([
       { name: 'static', content: 'present' },
     ])
-    expect(mockMatches[0].scripts).toEqual([
+    expect(mockRouter.getMatch('/')!.scripts).toEqual([
       { children: 'console.log("static")' },
     ])
     expect(headFn).toHaveBeenCalledTimes(1)
