@@ -33,6 +33,20 @@ export type EarlyHintsEvent = {
 
 export type OnEarlyHints = (event: EarlyHintsEvent) => void | Promise<void>
 
+export type ResponseLinkHeaderEntry = {
+  phase: EarlyHintsPhase
+  hint: EarlyHint
+  link: string
+}
+
+export type ResponseLinkHeaderFilter = (
+  entry: ResponseLinkHeaderEntry,
+) => boolean
+
+export type ResponseLinkHeaderOptions = {
+  filter?: ResponseLinkHeaderFilter
+}
+
 const LINK_PARAM_TOKEN_RE = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
 const PRELOAD_AS_VALUES = new Set<EarlyHint['as']>([
   'fetch',
@@ -238,5 +252,44 @@ export function createEarlyHintsEvent(opts: {
     links: nextLinks,
     allHints: opts.sentHints.slice(),
     allLinks: Array.from(opts.sentLinks),
+  }
+}
+
+export function createResponseLinkHeaderEntries(opts: {
+  phase: EarlyHintsPhase
+  hints: ReadonlyArray<EarlyHint>
+  sentLinks: Set<string>
+  entries: Array<ResponseLinkHeaderEntry>
+}) {
+  for (const hint of opts.hints) {
+    const link = serializeEarlyHint(hint)
+    if (opts.sentLinks.has(link)) continue
+
+    opts.sentLinks.add(link)
+    opts.entries.push({ phase: opts.phase, hint, link })
+  }
+}
+
+export function getResponseLinkHeaderEntries(opts: {
+  entries: ReadonlyArray<ResponseLinkHeaderEntry>
+  filter?: ResponseLinkHeaderFilter
+}): Array<string> {
+  if (!opts.filter) {
+    return opts.entries.map((entry) => entry.link)
+  }
+
+  try {
+    const links: Array<string> = []
+
+    for (const entry of opts.entries) {
+      if (opts.filter(entry)) {
+        links.push(entry.link)
+      }
+    }
+
+    return links
+  } catch (err) {
+    console.error('Error filtering response Link headers:', err)
+    return []
   }
 }

@@ -1,4 +1,4 @@
-import type { OnEarlyHints } from './early-hints'
+import type { OnEarlyHints, ResponseLinkHeaderOptions } from './early-hints'
 
 type BaseContext = {
   nonce?: string
@@ -32,6 +32,17 @@ type EarlyHintsOptions = {
    * ```
    */
   onEarlyHints?: OnEarlyHints
+  /**
+   * Append collected Early Hints `Link` values to the final HTML response's
+   * `Link` header. This is useful as a fallback when the runtime cannot write
+   * `103` responses, or for CDNs that generate Early Hints from response
+   * `Link` headers.
+   *
+   * `true` appends all collected static and dynamic links after Start confirms
+   * the request is not a redirect. Use `filter` to remove links that are not
+   * public and cache-safe for your deployment.
+   */
+  responseLinkHeader?: boolean | ResponseLinkHeaderOptions
 }
 
 export type RequestOptions<TRegister> = EarlyHintsOptions &

@@ -7,6 +7,7 @@ export default {
     const serverRequest = request as ServerRequest
 
     return handler.fetch(request, {
+      responseLinkHeader: true,
       onEarlyHints: ({ allLinks, phase }) => {
         if (phase !== 'dynamic') return
 

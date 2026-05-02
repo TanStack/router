@@ -143,10 +143,19 @@ test.describe('Early Hints - HTTP/2 Protocol', () => {
     expect(link).toContain('<https://early-hints.test>; rel=preconnect')
   })
 
+  test('response Link header includes static and dynamic links', async () => {
+    const response = await makeRequest(baseURL, '/')
+    const link = linkHeader(response.finalHeaders)
+
+    expect(link).toContain('rel=modulepreload; as=script')
+    expect(link).toContain('<https://early-hints.test>; rel=preconnect')
+  })
+
   test('coalesced hints are skipped for redirects', async () => {
     const response = await makeRequest(baseURL, '/redirect')
 
     expect(response.earlyHints.length).toBe(0)
     expect(response.finalHeaders[':status']).toBe(307)
+    expect(linkHeader(response.finalHeaders)).toBe('')
   })
 })

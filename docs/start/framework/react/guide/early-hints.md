@@ -129,18 +129,18 @@ export const Route = createFileRoute('/posts/$postId')({
 
 The `dynamic` phase is skipped when `router.load()` produces a redirect.
 
-## Final `Link` Headers and CDNs
+## Response `Link` Header and CDNs
 
-You can also attach the same serialized values to the final HTML response as HTTP `Link` headers. A final `Link` header does not hide server think time like a `103` response does, but the browser receives it before parsing the HTML body, so it can still start supported preloads and preconnects somewhat earlier.
+You can also attach the same serialized values to the HTML response's HTTP `Link` header. A response `Link` header does not hide server think time like a `103` response does, but the browser receives it before parsing the HTML body, so it can still start supported preloads and preconnects somewhat earlier.
 
-Final `Link` headers are also useful for CDNs that generate their own Early Hints. For example, [Cloudflare Early Hints](https://developers.cloudflare.com/cache/advanced-configuration/early-hints/) can read `Link` headers from HTML responses, cache them, and emit `103` responses for later requests.
+Response `Link` headers are also useful for CDNs that generate their own Early Hints. For example, [Cloudflare Early Hints](https://developers.cloudflare.com/cache/advanced-configuration/early-hints/) can read `Link` headers from HTML responses, cache them, and emit `103` responses for later requests.
 
-Start does not add final `Link` headers automatically. It cannot know whether those headers will be used only by the browser for the current response, stored by a shared cache, or replayed later as CDN-generated Early Hints.
+Start does not add response `Link` headers automatically. It cannot know whether those headers will be used only by the browser for the current response, stored by a shared cache, or replayed later as CDN-generated Early Hints.
 
-Final `Link` headers are most useful when:
+Response `Link` headers are most useful when:
 
 - You need a fallback for runtimes that cannot write `103` responses
-- Your CDN can generate Early Hints from final response `Link` headers
+- Your CDN can generate Early Hints from response `Link` headers
 
 Good links to include are public and cache-stable for the response's cache boundary, such as:
 
@@ -157,49 +157,32 @@ Avoid or filter links before they reach a shared cache or CDN when they are:
 
 Cloudflare documents several important caveats: its Early Hints cache ignores query strings, it can emit cached hints before reaching your origin or Worker, and it only generates hints from selected final response status codes and `Link` relations.
 
-Because of those cache semantics, prefer public static links for CDN-generated Early Hints. Use `allLinks` only when every dynamic `head().links` entry is public and cache-stable for the request URI.
+Because of those cache semantics, use response `Link` headers only when every emitted static or dynamic link is public and cache-stable for the request URI. Use `responseLinkHeader.filter` to remove links that are not safe for your cache boundary.
 
-This example appends static links to the final HTML response. It gives non-`103` runtimes a fallback and lets CDNs such as Cloudflare generate Early Hints from public route assets:
+This example appends all collected static and dynamic links to non-redirect HTML responses. It gives non-`103` runtimes a fallback and lets CDNs such as Cloudflare generate Early Hints from route assets and `head().links` entries that are public and cache-safe:
 
 ```tsx
 // src/server.ts
 import handler, { createServerEntry } from '@tanstack/react-start/server-entry'
 
 export default createServerEntry({
-  async fetch(request) {
-    let finalLinks: Array<string> = []
-
-    const response = await handler.fetch(request, {
-      onEarlyHints: ({ phase, links }) => {
-        if (phase === 'static') {
-          finalLinks = links
-        }
-      },
-    })
-
-    if (
-      !finalLinks.length ||
-      !response.headers.get('content-type')?.includes('text/html')
-    ) {
-      return response
-    }
-
-    const headers = new Headers(response.headers)
-
-    for (const link of finalLinks) {
-      headers.append('Link', link)
-    }
-
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
+  fetch(request) {
+    return handler.fetch(request, {
+      responseLinkHeader: true,
     })
   },
 })
 ```
 
-If your dynamic links are also public and cache-stable, collect `allLinks` in the `dynamic` phase instead of `links` in the `static` phase.
+Use `filter` to keep only links that are safe for your deployment. For example, this keeps only static manifest assets:
+
+```tsx
+handler.fetch(request, {
+  responseLinkHeader: {
+    filter: ({ phase }) => phase === 'static',
+  },
+})
+```
 
 ## Runtime Example: Node
 
@@ -260,7 +243,7 @@ export default {
 ## Limitations
 
 - Early Hints are skipped in the Start dev server.
-- Start does not mutate the final response `Link` header.
+- Start only mutates the response `Link` header when `responseLinkHeader` is enabled.
 - Browsers generally process only the first `103` response for a navigation.
 - Static hints can be sent before `beforeLoad` redirects are known.
 - The runtime or proxy in front of your app must support HTTP `103` responses.

@@ -41,4 +41,7 @@ export type {
   EarlyHintsEvent,
   EarlyHintsPhase,
   OnEarlyHints,
+  ResponseLinkHeaderEntry,
+  ResponseLinkHeaderFilter,
+  ResponseLinkHeaderOptions,
 } from './early-hints'

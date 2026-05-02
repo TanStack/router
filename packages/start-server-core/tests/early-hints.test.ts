@@ -3,6 +3,7 @@ import {
   collectDynamicHintsFromMatches,
   collectStaticHintsFromManifest,
   createEarlyHintsEvent,
+  getResponseLinkHeaderEntries,
   serializeEarlyHint,
 } from '../src/early-hints'
 import type { EarlyHint } from '../src/early-hints'
@@ -287,5 +288,50 @@ describe('early hints', () => {
         sentHints,
       }),
     ).toBeUndefined()
+  })
+
+  it('returns response Link header entries with optional filtering', () => {
+    const entries = [
+      {
+        phase: 'static' as const,
+        hint: { href: '/assets/app.js', rel: 'modulepreload' as const },
+        link: '</assets/app.js>; rel=modulepreload',
+      },
+      {
+        phase: 'dynamic' as const,
+        hint: { href: 'https://example.com', rel: 'preconnect' as const },
+        link: '<https://example.com>; rel=preconnect',
+      },
+    ]
+
+    expect(getResponseLinkHeaderEntries({ entries })).toEqual([
+      '</assets/app.js>; rel=modulepreload',
+      '<https://example.com>; rel=preconnect',
+    ])
+    expect(
+      getResponseLinkHeaderEntries({
+        entries,
+        filter: ({ phase }) => phase === 'static',
+      }),
+    ).toEqual(['</assets/app.js>; rel=modulepreload'])
+  })
+
+  it('skips all response Link header entries when filtering throws', () => {
+    const entries = [
+      {
+        phase: 'dynamic' as const,
+        hint: { href: 'https://example.com', rel: 'preconnect' as const },
+        link: '<https://example.com>; rel=preconnect',
+      },
+    ]
+
+    expect(
+      getResponseLinkHeaderEntries({
+        entries,
+        filter: () => {
+          throw new Error('filter failed')
+        },
+      }),
+    ).toEqual([])
   })
 })
