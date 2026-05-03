@@ -30,6 +30,20 @@ function HomeComponent() {
           </p>
         </div>
       ))}
+      <div className="border p-2">
+        <h4>scroll restoration repro routes</h4>
+        <p>
+          <Link to="/hash-scroll-repro">/hash-scroll-repro</Link>
+        </p>
+        <p>
+          <Link to="/nested-scroll-carry-over-a">
+            /nested-scroll-carry-over-a
+          </Link>
+        </p>
+        <p>
+          <Link to="/nested-scroll-search">/nested-scroll-search</Link>
+        </p>
+      </div>
     </div>
   )
 }
