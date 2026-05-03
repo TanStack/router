@@ -1,7 +1,14 @@
-import { expect } from '@playwright/test'
-import { test } from '@tanstack/router-e2e-utils'
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { expect } from '@playwright/test'
+import {
+  ensureHmrObserver,
+  getHmrObserverTime,
+  installHmrObserver,
+  test,
+  waitForHmrEvent,
+  waitForHmrIdle,
+} from '@tanstack/router-e2e-utils'
 import type { Page } from '@playwright/test'
 
 const whitelistErrors = [
@@ -307,6 +314,41 @@ async function replaceRouteText(
   await writeFile(filePath, source.replace(from, to))
 }
 
+/**
+ * The CI flake fix:
+ *
+ * Vite/Rsbuild file watchers can coalesce closely-spaced writes into one HMR
+ * batch on slow CI machines. When that happens, the second write's HMR event
+ * is dropped, the page never sees the new code, and the assertion times out
+ * polling stale "baseline" content for 20s.
+ *
+ * To make the writes deterministic, we wait for the dev server to be idle
+ * (no in-flight HMR/WebSocket activity) BEFORE writing. That guarantees the
+ * watcher will treat our write as a fresh event rather than coalescing it
+ * with leftover work from the previous test or restore.
+ */
+async function settleBeforeWrite(page: Page, quietWindowMs = 750) {
+  await ensureHmrObserver(page)
+  await waitForHmrIdle(page, { quietWindowMs, timeoutMs: 20_000 })
+}
+
+async function waitForHmrAfterWrite(page: Page, since: number) {
+  const hmrActivityKind =
+    /^(ws:message|vite:beforeUpdate|vite:afterUpdate|vite:beforeFullReload|navigate)$/
+
+  await waitForHmrEvent(page, {
+    since,
+    // Vite emits typed window events with structured detail. Rsbuild/Rspack
+    // does not expose equivalent browser lifecycle events, so WebSocket frames
+    // are the common cross-toolchain signal. Full reloads are recorded as a
+    // fresh navigate event by the init script on the new document.
+    kind: hmrActivityKind,
+    match: /.+/,
+    timeoutMs: 20_000,
+  })
+  await waitForHmrIdle(page, { quietWindowMs: 750, timeoutMs: 20_000 })
+}
+
 async function replaceRouteTextAndWait(
   page: Page,
   routeFileKey: RouteFileKey,
@@ -314,7 +356,10 @@ async function replaceRouteTextAndWait(
   to: string,
   assertion: () => Promise<void>,
 ) {
+  await settleBeforeWrite(page)
+  const since = await getHmrObserverTime(page)
   await replaceRouteText(routeFileKey, from, to)
+  await waitForHmrAfterWrite(page, since)
   await assertion()
 }
 
@@ -333,9 +378,12 @@ async function rewriteRouteFile(
     throw new Error(`Expected ${filePath} to change during rewrite`)
   }
 
+  await settleBeforeWrite(page)
+  const since = await getHmrObserverTime(page)
   // Even a no-op write is useful for tests that need to force the dev server
   // to reconcile a stale in-memory module with the current file contents.
   await writeFile(filePath, updated)
+  await waitForHmrAfterWrite(page, since)
   await assertion()
 }
 
@@ -551,6 +599,13 @@ test.describe('react-start hmr', () => {
   test.use({ whitelistErrors })
 
   test.beforeEach(async ({ page }) => {
+    // Install the HMR/WebSocket observer BEFORE any navigation so we can
+    // detect when the dev server is idle between writes. This is the
+    // single biggest contributor to CI flakiness — without an idle barrier,
+    // closely-spaced file writes get coalesced by the watcher and the
+    // second HMR event is silently dropped.
+    await installHmrObserver(page)
+
     await capturePromise
     const pendingRouteKeys = Array.from(routeKeysPendingRestoreCheck)
     const restoredRouteKeys = await restoreRouteFiles(pendingRouteKeys)
@@ -564,6 +619,14 @@ test.describe('react-start hmr', () => {
     for (const routeFileKey of routeKeysToCheck) {
       await waitForRestoredRouteFile(page, routeFileKey)
     }
+
+    // After restoring files, give the dev server a chance to drain any HMR
+    // work triggered by those writes. Without this barrier, the test's first
+    // edit can race with leftover HMR processing and the watcher coalesces
+    // both into one event (dropping the test's edit). A 1s quiet window is
+    // generous enough for slow CI workers and adds <1s to the total run.
+    await ensureHmrObserver(page)
+    await waitForHmrIdle(page, { quietWindowMs: 1_000, timeoutMs: 20_000 })
   })
 
   test.afterEach(async () => {
@@ -1140,11 +1203,14 @@ test.describe('react-start hmr', () => {
     )
     await expect(page.getByTestId('server-fn-hmr-error')).toHaveText('none')
 
+    await settleBeforeWrite(page)
+    const clientOnlySince = await getHmrObserverTime(page)
     await replaceRouteText(
       'serverFnHmrFactory',
       "createServerOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-baseline'",
       "createClientOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-client-only'",
     )
+    await waitForHmrAfterWrite(page, clientOnlySince)
     await reloadPageAndWaitForText(
       page,
       '/server-fn-hmr',
@@ -1158,11 +1224,14 @@ test.describe('react-start hmr', () => {
       'createClientOnlyFn() functions can only be called on the client!',
     )
 
+    await settleBeforeWrite(page)
+    const baselineSince = await getHmrObserverTime(page)
     await replaceRouteText(
       'serverFnHmrFactory',
       "createClientOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-client-only'",
       "createServerOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-baseline'",
     )
+    await waitForHmrAfterWrite(page, baselineSince)
     await reloadPageAndWaitForText(
       page,
       '/server-fn-hmr',

@@ -6,3 +6,17 @@ export { e2eStartDummyServer, e2eStopDummyServer } from './e2eSetupTeardown'
 export { preOptimizeDevServer, waitForServer } from './devServerWarmup'
 export type { Post } from './posts'
 export { collectBrowserErrors, test } from './fixture'
+export {
+  ensureHmrObserver,
+  getHmrLastActivityAt,
+  getHmrObserverTime,
+  installHmrObserver,
+  waitForHmrEvent,
+  waitForHmrIdle,
+} from './hmrIdle'
+export type {
+  HmrObserverEvent,
+  HmrObserverState,
+  WaitForHmrEventOptions,
+  WaitForHmrIdleOptions,
+} from './hmrIdle'
