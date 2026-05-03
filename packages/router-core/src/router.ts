@@ -2436,11 +2436,15 @@ export class RouterCore<
           this.beforeLoad()
           // Stamp action onto the location instance via symbol key so downstream
           // emitters of locationChangeInfo (e.g. onRendered from Match) can read
-          // it. Cleared on no-action loads (invalidate, same-URL commit, SSR
-          // hydration) since action describes the load event, not the URL.
-          ;(this.latestLocation as ParsedLocationWithHistoryAction)[
-            historyActionKey
-          ] = historyAction
+          // it. Only set when an action is present; no-action loads (invalidate,
+          // same-URL commit, SSR hydration) leave the key absent so that
+          // deep-equality checks (e.g. toEqual) on location objects are not
+          // affected by an extraneous Symbol → undefined entry.
+          if (historyAction !== undefined) {
+            ;(this.latestLocation as ParsedLocationWithHistoryAction)[
+              historyActionKey
+            ] = historyAction
+          }
           const next = this.latestLocation
           const prevLocation = this.stores.resolvedLocation.get()
           const locationChangeInfo = getLocationChangeInfo(next, prevLocation)
