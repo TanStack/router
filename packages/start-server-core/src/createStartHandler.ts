@@ -903,8 +903,8 @@ async function handleServerRoutes({
     // Priority for HEAD: explicit HEAD handler → GET → ANY (last resort).
     const handler =
       requestMethod === 'HEAD'
-        ? handlers['HEAD'] ?? handlers['GET'] ?? handlers['ANY']
-        : handlers[requestMethod] ?? handlers['ANY']
+        ? (handlers['HEAD'] ?? handlers['GET'] ?? handlers['ANY'])
+        : (handlers[requestMethod] ?? handlers['ANY'])
     isHeadFallback =
       requestMethod === 'HEAD' && handler !== undefined && !handlers['HEAD']
 
