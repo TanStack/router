@@ -122,7 +122,6 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tanstack/intent": "^0.0.14",
     "@types/babel__core": "^7.20.5",
     "@types/babel__template": "^7.4.4",
     "@types/babel__traverse": "^7.28.0",

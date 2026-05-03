@@ -113,7 +113,6 @@
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
-    "@tanstack/intent": "^0.0.14",
     "@testing-library/jest-dom": "^6.6.3",
     "combinate": "^1.1.11",
     "eslint-plugin-solid": "^0.14.5",

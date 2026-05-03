@@ -81,7 +81,6 @@
     "jsesc": "^3.0.2"
   },
   "devDependencies": {
-    "@tanstack/intent": "^0.0.14",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/vue": "^8.1.0",
     "@types/jsesc": "^3.0.3",

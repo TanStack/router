@@ -122,7 +122,6 @@
   },
   "devDependencies": {
     "@rsbuild/core": "^2.0.1",
-    "@tanstack/intent": "^0.0.14",
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",
     "@vitejs/plugin-vue-jsx": "^4.1.2",

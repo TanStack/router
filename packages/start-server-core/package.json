@@ -87,7 +87,6 @@
   },
   "devDependencies": {
     "@standard-schema/spec": "^1.0.0",
-    "@tanstack/intent": "^0.0.14",
     "cookie-es": "^3.0.0",
     "fetchdts": "^0.1.6",
     "vite": "*",
