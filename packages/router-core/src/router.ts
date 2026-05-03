@@ -574,7 +574,6 @@ export interface BuildNextOptions {
 type NavigationEventInfo = {
   fromLocation?: ParsedLocation
   toLocation: ParsedLocation
-  historyAction?: HistoryAction
   pathChanged: boolean
   hrefChanged: boolean
   hashChanged: boolean
@@ -882,25 +881,23 @@ export function getLocationChangeInfo(
 ) {
   const fromLocation = resolvedLocation
   const toLocation = location
-  const historyAction = (toLocation as ParsedLocationWithHistoryAction)[
-    historyActionKey
-  ]
   const pathChanged = fromLocation?.pathname !== toLocation.pathname
   const hrefChanged = fromLocation?.href !== toLocation.href
   const hashChanged = fromLocation?.hash !== toLocation.hash
-  return {
-    fromLocation,
-    toLocation,
-    historyAction,
-    pathChanged,
-    hrefChanged,
-    hashChanged,
-  }
+  return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
 
-const historyActionKey: unique symbol = Symbol()
+/**
+ * Symbol-keyed slot on ParsedLocation carrying the HistoryAction that
+ * triggered the current load. Read by the scroll-restoration listener to
+ * decide whether to skip stale window scroll restoration in favor of hash
+ * navigation. Symbol keys are excluded from Object.keys/JSON/spread, so this
+ * is invisible to user code.
+ * @private
+ */
+export const historyActionKey: unique symbol = Symbol()
 
-type ParsedLocationWithHistoryAction = ParsedLocation & {
+export type ParsedLocationWithHistoryAction = ParsedLocation & {
   [historyActionKey]?: HistoryAction
 }
 
@@ -2437,21 +2434,13 @@ export class RouterCore<
       this.startTransition(async () => {
         try {
           this.beforeLoad()
-          // Stamp action onto the location instance (non-enumerable, symbol-keyed)
-          // so downstream emitters of locationChangeInfo (e.g. onRendered from Match)
-          // can read it. Cleared on no-action loads (invalidate, same-URL commit,
-          // SSR hydration) since the action describes the load event, not the URL.
-          const locationWithAction = this
-            .latestLocation as ParsedLocationWithHistoryAction
-          if (historyAction) {
-            Object.defineProperty(locationWithAction, historyActionKey, {
-              value: historyAction,
-              enumerable: false,
-              configurable: true,
-            })
-          } else {
-            delete locationWithAction[historyActionKey]
-          }
+          // Stamp action onto the location instance via symbol key so downstream
+          // emitters of locationChangeInfo (e.g. onRendered from Match) can read
+          // it. Cleared on no-action loads (invalidate, same-URL commit, SSR
+          // hydration) since action describes the load event, not the URL.
+          ;(this.latestLocation as ParsedLocationWithHistoryAction)[
+            historyActionKey
+          ] = historyAction
           const next = this.latestLocation
           const prevLocation = this.stores.resolvedLocation.get()
           const locationChangeInfo = getLocationChangeInfo(next, prevLocation)

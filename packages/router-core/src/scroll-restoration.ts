@@ -1,6 +1,7 @@
 import { isServer } from '@tanstack/router-core/isServer'
 import { functionalUpdate, isPlainObject } from './utils'
-import type { AnyRouter } from './router'
+import { historyActionKey } from './router'
+import type { AnyRouter, ParsedLocationWithHistoryAction } from './router'
 import type { ParsedLocation } from './location'
 import type { NonNullableUpdater } from './utils'
 
@@ -256,10 +257,13 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       const hash = event.toLocation.hash
       const hashScrollIntoViewOptions =
         event.toLocation.state.__hashScrollIntoViewOptions ?? true
+      const action = (event.toLocation as ParsedLocationWithHistoryAction)[
+        historyActionKey
+      ]
       const skipWindowRestore =
         hash &&
         hashScrollIntoViewOptions &&
-        (event.historyAction === 'PUSH' || event.historyAction === 'REPLACE')
+        (action === 'PUSH' || action === 'REPLACE')
       const elementEntries = router.isScrollRestoring
         ? scrollRestorationCache?.state[cacheKey]
         : undefined
@@ -313,10 +317,9 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       if (!windowRestored) {
         if (hash) {
           if (hashScrollIntoViewOptions) {
-            const el = document.getElementById(hash)
-            if (el) {
-              el.scrollIntoView(hashScrollIntoViewOptions)
-            }
+            document
+              .getElementById(hash)
+              ?.scrollIntoView(hashScrollIntoViewOptions)
           }
         } else {
           const scrollOptions = {
