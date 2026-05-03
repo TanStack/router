@@ -406,11 +406,8 @@ export {
   defaultGetScrollRestorationKey,
   getElementScrollRestorationEntry,
   storageKey,
-  scrollRestorationCache,
   setupScrollRestoration,
 } from './scroll-restoration'
-
-export { handleHashScroll } from './hash-scroll'
 
 export type {
   ScrollRestorationOptions,

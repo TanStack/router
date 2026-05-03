@@ -52,6 +52,7 @@ import type {
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
+  HistoryAction,
   HistoryLocation,
   HistoryState,
   ParsedHistoryState,
@@ -573,6 +574,7 @@ export interface BuildNextOptions {
 type NavigationEventInfo = {
   fromLocation?: ParsedLocation
   toLocation: ParsedLocation
+  historyAction?: HistoryAction
   pathChanged: boolean
   hrefChanged: boolean
   hashChanged: boolean
@@ -740,7 +742,10 @@ export type GetMatchRoutesFn = (pathname: string) => {
 
 export type EmitFn = (routerEvent: RouterEvent) => void
 
-export type LoadFn = (opts?: { sync?: boolean }) => Promise<void>
+export type LoadFn = (opts?: {
+  sync?: boolean
+  action?: { type: HistoryAction }
+}) => Promise<void>
 
 export type CommitLocationFn = ({
   viewTransition,
@@ -877,10 +882,31 @@ export function getLocationChangeInfo(
 ) {
   const fromLocation = resolvedLocation
   const toLocation = location
+  const historyAction = locationHistoryActions.get(toLocation)
   const pathChanged = fromLocation?.pathname !== toLocation.pathname
   const hrefChanged = fromLocation?.href !== toLocation.href
   const hashChanged = fromLocation?.hash !== toLocation.hash
-  return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
+  return {
+    fromLocation,
+    toLocation,
+    historyAction,
+    pathChanged,
+    hrefChanged,
+    hashChanged,
+  }
+}
+
+const locationHistoryActions = new WeakMap<ParsedLocation, HistoryAction>()
+
+function setLocationHistoryAction(
+  location: ParsedLocation,
+  action: HistoryAction | undefined,
+) {
+  if (action) {
+    locationHistoryActions.set(location, action)
+  } else {
+    locationHistoryActions.delete(location)
+  }
 }
 
 export type CreateRouterFn = <
@@ -2403,7 +2429,8 @@ export class RouterCore<
     })
   }
 
-  load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
+  load: LoadFn = async (opts): Promise<void> => {
+    const historyAction = opts?.action?.type
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
     let loadPromise: Promise<void>
@@ -2415,6 +2442,7 @@ export class RouterCore<
       this.startTransition(async () => {
         try {
           this.beforeLoad()
+          setLocationHistoryAction(this.latestLocation, historyAction)
           const next = this.latestLocation
           const prevLocation = this.stores.resolvedLocation.get()
           const locationChangeInfo = getLocationChangeInfo(next, prevLocation)
