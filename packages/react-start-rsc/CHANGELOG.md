@@ -1,5 +1,110 @@
 # @tanstack/react-start-rsc
 
+## 0.0.40
+
+### Patch Changes
+
+- Updated dependencies [[`709627f`](https://github.com/TanStack/router/commit/709627f3dbc6d97daa547a1401ef42a53bc4be32)]:
+  - @tanstack/start-server-core@1.167.28
+  - @tanstack/react-start-server@1.166.50
+  - @tanstack/start-plugin-core@1.169.16
+
+## 0.0.39
+
+### Patch Changes
+
+- Updated dependencies [[`238ea4a`](https://github.com/TanStack/router/commit/238ea4a4998ab3a7fd528b317e1935766ac65df8)]:
+  - @tanstack/start-server-core@1.167.27
+  - @tanstack/react-start-server@1.166.49
+  - @tanstack/start-plugin-core@1.169.15
+
+## 0.0.38
+
+### Patch Changes
+
+- Updated dependencies [[`96818b8`](https://github.com/TanStack/router/commit/96818b8ba5ead6f1f027094841330182aff415b2)]:
+  - @tanstack/start-plugin-core@1.169.14
+
+## 0.0.37
+
+### Patch Changes
+
+- Add compiler-driven RSC CSS auto-injection for Start RSC render APIs and wire it into the React Start Vite and Rsbuild adapters. This ensures same-file CSS module dependencies are discovered for `renderServerComponent`, `createCompositeComponent`, and JSX-based `renderToReadableStream` calls. ([#7310](https://github.com/TanStack/router/pull/7310))
+
+  Also add a configurable server function provider module directive hook used by the React Rsbuild RSC adapter to emit `"use server-entry"` only for extracted provider files.
+
+- Updated dependencies [[`ae453b7`](https://github.com/TanStack/router/commit/ae453b78624cac1b574f0d1efbfbf6ca03922c6c)]:
+  - @tanstack/start-plugin-core@1.169.13
+
+## 0.0.36
+
+### Patch Changes
+
+- Updated dependencies [[`4a1e63f`](https://github.com/TanStack/router/commit/4a1e63f1d1230b1ed8234609acad4639d8982c13)]:
+  - @tanstack/router-core@1.169.1
+  - @tanstack/react-router@1.169.1
+  - @tanstack/react-start-server@1.166.48
+  - @tanstack/start-client-core@1.168.1
+  - @tanstack/start-plugin-core@1.169.12
+  - @tanstack/start-server-core@1.167.26
+  - @tanstack/start-storage-context@1.166.34
+
+## 0.0.35
+
+### Patch Changes
+
+- Updated dependencies [[`82b0613`](https://github.com/TanStack/router/commit/82b06132af776f74603ab27977cc277d6219a845)]:
+  - @tanstack/start-client-core@1.168.0
+  - @tanstack/react-start-server@1.166.47
+  - @tanstack/start-plugin-core@1.169.11
+  - @tanstack/start-server-core@1.167.25
+
+## 0.0.34
+
+### Patch Changes
+
+- Updated dependencies [[`c4256c2`](https://github.com/TanStack/router/commit/c4256c2c857f392d2031cf87821e4c36a92d0382)]:
+  - @tanstack/start-plugin-core@1.169.10
+
+## 0.0.33
+
+### Patch Changes
+
+- Updated dependencies [[`761fcc0`](https://github.com/TanStack/router/commit/761fcc0c96dd96721b533a1fd9e2c972f222ef94)]:
+  - @tanstack/start-plugin-core@1.169.9
+
+## 0.0.32
+
+### Patch Changes
+
+- Updated dependencies [[`c992495`](https://github.com/TanStack/router/commit/c992495bf4010ff4c3597bb1f3b1ba02594e857e)]:
+  - @tanstack/router-core@1.169.0
+  - @tanstack/react-router@1.169.0
+  - @tanstack/react-start-server@1.166.46
+  - @tanstack/start-client-core@1.167.22
+  - @tanstack/start-plugin-core@1.169.8
+  - @tanstack/start-server-core@1.167.24
+  - @tanstack/start-storage-context@1.166.33
+
+## 0.0.31
+
+### Patch Changes
+
+- Updated dependencies [[`b5c4183`](https://github.com/TanStack/router/commit/b5c4183ab8b44be8a75647b7f7b588ad7c146ece)]:
+  - @tanstack/router-core@1.168.18
+  - @tanstack/react-router@1.168.26
+  - @tanstack/react-start-server@1.166.45
+  - @tanstack/start-client-core@1.167.21
+  - @tanstack/start-plugin-core@1.169.7
+  - @tanstack/start-server-core@1.167.23
+  - @tanstack/start-storage-context@1.166.32
+
+## 0.0.30
+
+### Patch Changes
+
+- Re-export `RenderableServerComponent`, `RenderableServerComponentAttributes`, `RenderableServerComponentBuilder`, and `AnyRenderableServerComponent` from the package's public entries. Without these, consumers with `declaration: true` hit TS2742 on `renderServerComponent` calls and are forced to annotate handlers as `Promise<any>`. ([#7278](https://github.com/TanStack/router/pull/7278))
+
 ## 0.0.29
 
 ### Patch Changes

@@ -1,28 +1,18 @@
 import type * as babel from '@babel/core'
 import type * as t from '@babel/types'
-import type { CompileStartFrameworkOptions } from '../types'
+import type { StartCompilerTransformContext } from '../types'
 
 /**
  * Context passed to all plugin handlers during compilation.
  * Contains both read-only input data and mutable state that handlers update.
  */
-export interface CompilationContext {
-  readonly ast: t.File
-  readonly code: string
-  readonly id: string
-  readonly env: 'client' | 'server'
-  readonly envName: string
-  readonly mode: 'dev' | 'build'
-  readonly root: string
-  /** The framework being used (e.g., 'react', 'solid') */
-  readonly framework: CompileStartFrameworkOptions
-  /** The Vite environment name for the server function provider */
-  readonly providerEnvName: string
-
+export interface CompilationContext extends StartCompilerTransformContext {
   /** Generate a unique function ID */
   generateFunctionId: GenerateFunctionIdFn
   /** Get known server functions from previous builds (e.g., client build) */
   getKnownServerFns: () => Record<string, ServerFn>
+  /** Module-level directives to add to extracted server function provider files. */
+  serverFnProviderModuleDirectives: ReadonlyArray<string> | undefined
 
   /**
    * Callback when server functions are discovered.
@@ -30,6 +20,7 @@ export interface CompilationContext {
    */
   onServerFnsById: ((d: Record<string, ServerFn>) => void) | undefined
 }
+
 /**
  * Batched plugin handler signature.
  * Receives ALL candidates of a specific kind in one call.

@@ -1,5 +1,6 @@
 import * as t from '@babel/types'
 import babel from '@babel/core'
+import { hasKeys } from '@tanstack/router-core'
 import path from 'pathe'
 import { cleanId, codeFrameError, stripMethodCall } from './utils'
 import type { CompilationContext, RewriteCandidate, ServerFn } from './types'
@@ -195,6 +196,13 @@ export function handleCreateServerFn(
   }
 
   const isProviderFile = context.id.includes(TSS_SERVERFN_SPLIT_PARAM)
+  if (isProviderFile && context.serverFnProviderModuleDirectives) {
+    ensureDirectivePrologue(
+      context.ast,
+      context.serverFnProviderModuleDirectives,
+    )
+  }
+
   // Get environment-specific configuration
   const envConfig = getEnvConfig(context, isProviderFile)
 
@@ -435,11 +443,7 @@ export function handleCreateServerFn(
   }
 
   // Notify about discovered functions (only for non-provider files)
-  if (
-    !isProviderFile &&
-    Object.keys(serverFnsById).length > 0 &&
-    context.onServerFnsById
-  ) {
+  if (!isProviderFile && hasKeys(serverFnsById) && context.onServerFnsById) {
     context.onServerFnsById(serverFnsById)
   }
 
@@ -506,4 +510,26 @@ function safeRemoveExports(ast: t.File): void {
     }
     return node
   })
+}
+
+function ensureDirectivePrologue(
+  ast: t.File,
+  directiveValues: ReadonlyArray<string>,
+): void {
+  const directives = ast.program.directives
+  const existingDirectives = new Set(
+    directives.map((directive) => directive.value.value),
+  )
+  const missingDirectives: Array<string> = []
+
+  for (const directiveValue of directiveValues) {
+    if (!directiveValue || existingDirectives.has(directiveValue)) continue
+
+    existingDirectives.add(directiveValue)
+    missingDirectives.push(directiveValue)
+  }
+
+  for (let i = missingDirectives.length - 1; i >= 0; i--) {
+    directives.unshift(t.directive(t.directiveLiteral(missingDirectives[i]!)))
+  }
 }

@@ -22,9 +22,11 @@ import {
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
 import { debug, normalizePath } from './utils'
+import { createRouterPluginContext } from './router-plugin-context'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
 import type { Config } from './config'
+import type { RouterPluginContext } from './router-plugin-context'
 import type {
   UnpluginFactory,
   TransformResult as UnpluginTransformResult,
@@ -76,9 +78,10 @@ const TRANSFORMATION_PLUGINS_BY_FRAMEWORK: Record<
   ],
 }
 
-export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
-  Partial<Config | (() => Config)> | undefined
-> = (options = {}, { framework: _framework }) => {
+export function createRouterCodeSplitterPlugin(
+  options: Partial<Config | (() => Config)> | undefined = {},
+  routerPluginContext: RouterPluginContext,
+): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
 
@@ -259,7 +262,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         handler(code, id) {
           const normalizedId = normalizePath(id)
           const generatorFileInfo =
-            globalThis.TSR_ROUTES_BY_ID_MAP?.get(normalizedId)
+            routerPluginContext.routesByFile.get(normalizedId)
           if (
             generatorFileInfo &&
             includedCode.some((included) => code.includes(included))
@@ -401,4 +404,10 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       },
     },
   ]
+}
+
+export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
+  Partial<Config | (() => Config)> | undefined
+> = (options = {}) => {
+  return createRouterCodeSplitterPlugin(options, createRouterPluginContext())
 }

@@ -148,7 +148,7 @@ export class FileRoute<
 
 /**
   @deprecated It's recommended not to split loaders into separate files.
-  Instead, place the loader function in the the main route file, inside the
+  Instead, place the loader function in the main route file, inside the
   `createFileRoute('/path/to/file)(options)` options.
 */
 export function FileRouteLoader<
@@ -173,7 +173,7 @@ export function FileRouteLoader<
 ) => TLoaderFn {
   if (process.env.NODE_ENV !== 'production') {
     console.warn(
-      `Warning: FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
+      `Warning: FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
     )
   }
   return (loaderFn) => loaderFn as any

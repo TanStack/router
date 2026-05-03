@@ -1,18 +1,35 @@
-import { KindDetectionPatterns, LookupKindsPerEnv } from './compiler'
-import type { LookupConfig, LookupKind } from './compiler'
-import type { CompileStartFrameworkOptions } from '../types'
+import {
+  KindDetectionPatterns,
+  getExternalLookupKind,
+  getLookupKindsForEnv,
+  isCompilerTransformEnabledForEnv,
+} from './compiler'
+import type { BuiltInLookupKind, LookupConfig } from './compiler'
+import type {
+  CompileStartFrameworkOptions,
+  StartCompilerImportTransform,
+} from '../types'
 
 export function getTransformCodeFilterForEnv(
   env: 'client' | 'server',
+  opts?: {
+    compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  },
 ): Array<RegExp> {
-  const validKinds = LookupKindsPerEnv[env]
+  const validKinds = getLookupKindsForEnv(env, opts)
   const patterns: Array<RegExp> = []
 
   for (const [kind, pattern] of Object.entries(KindDetectionPatterns) as Array<
-    [LookupKind, RegExp]
+    [BuiltInLookupKind, RegExp]
   >) {
     if (validKinds.has(kind)) {
       patterns.push(pattern)
+    }
+  }
+
+  for (const transform of opts?.compilerTransforms ?? []) {
+    if (isCompilerTransformEnabledForEnv(transform, env)) {
+      patterns.push(transform.detect)
     }
   }
 
@@ -22,6 +39,9 @@ export function getTransformCodeFilterForEnv(
 export function getLookupConfigurationsForEnv(
   env: 'client' | 'server',
   framework: CompileStartFrameworkOptions,
+  opts?: {
+    compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  },
 ): Array<LookupConfig> {
   const commonConfigs: Array<LookupConfig> = [
     {
@@ -46,6 +66,20 @@ export function getLookupConfigurationsForEnv(
     },
   ]
 
+  const externalConfigs: Array<LookupConfig> = []
+  for (const transform of opts?.compilerTransforms ?? []) {
+    if (!isCompilerTransformEnabledForEnv(transform, env)) continue
+
+    const kind = getExternalLookupKind(transform)
+    for (const imported of transform.imports) {
+      externalConfigs.push({
+        libName: imported.libName,
+        rootExport: imported.rootExport,
+        kind,
+      })
+    }
+  }
+
   if (env === 'client') {
     return [
       {
@@ -59,10 +93,11 @@ export function getLookupConfigurationsForEnv(
         kind: 'Root',
       },
       ...commonConfigs,
+      ...externalConfigs,
     ]
   }
 
-  return [
+  const serverConfigs: Array<LookupConfig> = [
     ...commonConfigs,
     {
       libName: `@tanstack/${framework}-router`,
@@ -70,4 +105,6 @@ export function getLookupConfigurationsForEnv(
       kind: 'ClientOnlyJSX',
     },
   ]
+
+  return [...serverConfigs, ...externalConfigs]
 }

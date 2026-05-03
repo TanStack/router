@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-plugin",
-  "version": "1.167.28",
+  "version": "1.167.32",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -61,6 +61,16 @@
       "require": {
         "types": "./dist/cjs/vite.d.cts",
         "default": "./dist/cjs/vite.cjs"
+      }
+    },
+    "./context": {
+      "import": {
+        "types": "./dist/esm/context.d.ts",
+        "default": "./dist/esm/context.js"
+      },
+      "require": {
+        "types": "./dist/cjs/context.d.cts",
+        "default": "./dist/cjs/context.cjs"
       }
     },
     "./rspack": {

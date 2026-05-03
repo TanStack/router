@@ -11,7 +11,10 @@ import {
 import { cleanId } from '../start-compiler/utils'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
-import type { CompileStartFrameworkOptions } from '../types'
+import type {
+  CompileStartFrameworkOptions,
+  StartCompilerImportTransform,
+} from '../types'
 import type {
   DevServerFnModuleSpecifierEncoder,
   GenerateFunctionIdFnOptional,
@@ -36,6 +39,8 @@ export interface StartCompilerHostOptions {
   root: string | (() => string)
   providerEnvName: string
   generateFunctionId?: GenerateFunctionIdFnOptional
+  compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
   serverFnsById?: Record<string, ServerFn>
   onServerFnsByIdChange?: () => void
 }
@@ -79,11 +84,21 @@ export function registerStartCompilerTransforms(
   // Pre-compute code filter patterns per environment type
   const codeFilters: Record<'client' | 'server', Array<RegExp>> = {
     client: getTransformCodeFilterForEnv('client'),
-    server: getTransformCodeFilterForEnv('server'),
+    server: getTransformCodeFilterForEnv('server', {
+      compilerTransforms: opts.compilerTransforms,
+    }),
   }
 
   for (const env of environments) {
     const envCodeFilters = codeFilters[env.type]
+    const compilerTransforms =
+      env.name === RSBUILD_ENVIRONMENT_NAMES.server
+        ? opts.compilerTransforms
+        : undefined
+    const serverFnProviderModuleDirectives =
+      env.name === opts.providerEnvName
+        ? opts.serverFnProviderModuleDirectives
+        : undefined
 
     api.transform(
       {
@@ -113,6 +128,8 @@ export function registerStartCompilerTransforms(
               framework: opts.framework,
               providerEnvName: opts.providerEnvName,
               generateFunctionId: opts.generateFunctionId,
+              compilerTransforms,
+              serverFnProviderModuleDirectives,
               onServerFnsById,
               getKnownServerFns: () => serverFnsById,
               encodeModuleSpecifierInDev: isDev
@@ -180,7 +197,9 @@ export function registerStartCompilerTransforms(
             compilers.set(env.name, compiler)
           }
 
-          const detectedKinds = detectKindsInCode(code, env.type)
+          const detectedKinds = detectKindsInCode(code, env.type, {
+            compilerTransforms,
+          })
           const result = await compiler.compile({ id, code, detectedKinds })
 
           if (!result) {
