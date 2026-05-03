@@ -118,8 +118,9 @@ function hmrObserverInitScript() {
     window.addEventListener(evt, function (ev) {
       let detail = ''
       try {
-        detail = JSON.stringify(ev instanceof CustomEvent ? ev.detail : null)
-          .slice(0, 200)
+        detail = JSON.stringify(
+          ev instanceof CustomEvent ? ev.detail : null,
+        ).slice(0, 200)
       } catch {
         detail = '[unserializable]'
       }
@@ -272,7 +273,11 @@ export async function waitForHmrEvent(
     if (observer) {
       sawObserver = true
       for (const evt of observer.events) {
-        if (evt.at >= opts.since && matchesKind(evt.kind) && matches(evt.detail)) {
+        if (
+          evt.at >= opts.since &&
+          matchesKind(evt.kind) &&
+          matches(evt.detail)
+        ) {
           return
         }
       }
