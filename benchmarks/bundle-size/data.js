@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777826210316,
+  "lastUpdate": 1777827401610,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -15049,6 +15049,102 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/9902eb4c61b079a8da0ec098fae1c474d37c0f27"
         },
         "date": 1777826209256,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89245,
+            "unit": "bytes",
+            "extra": "raw=280511; brotli=77521"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92857,
+            "unit": "bytes",
+            "extra": "raw=292296; brotli=80600"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36234,
+            "unit": "bytes",
+            "extra": "raw=108799; brotli=32577"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41065,
+            "unit": "bytes",
+            "extra": "raw=123353; brotli=36910"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54430,
+            "unit": "bytes",
+            "extra": "raw=155022; brotli=48879"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59678,
+            "unit": "bytes",
+            "extra": "raw=171585; brotli=53437"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104203,
+            "unit": "bytes",
+            "extra": "raw=329827; brotli=90077"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107712,
+            "unit": "bytes",
+            "extra": "raw=340406; brotli=93141"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 101714,
+            "unit": "bytes",
+            "extra": "raw=324065; brotli=87508"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105097,
+            "unit": "bytes",
+            "extra": "raw=334748; brotli=90403"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50584,
+            "unit": "bytes",
+            "extra": "raw=155726; brotli=44648"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56520,
+            "unit": "bytes",
+            "extra": "raw=173040; brotli=49670"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "zelys@dfkhelper.com",
+            "name": "Zelys",
+            "username": "Zelys-DFKH"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "afa40ef46c273c53646ba33f607fc618a07ffede",
+          "message": "fix(start-server-core): fall back to GET handler for HEAD requests (RFC 9110 §9.3.2) (#7325)\n\nCo-authored-by: autofix-ci[bot] <114827586+autofix-ci[bot]@users.noreply.github.com>",
+          "timestamp": "2026-05-03T18:54:24+02:00",
+          "tree_id": "9efa9031c690da8084a83e78cdb8c8454da583fb",
+          "url": "https://github.com/TanStack/router/commit/afa40ef46c273c53646ba33f607fc618a07ffede"
+        },
+        "date": 1777827400452,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
