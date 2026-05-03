@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777785231045,
+  "lastUpdate": 1777826210316,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -14953,6 +14953,102 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/35261948496a4899c1718032b574a9f89374077a"
         },
         "date": 1777785229907,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89245,
+            "unit": "bytes",
+            "extra": "raw=280511; brotli=77521"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92857,
+            "unit": "bytes",
+            "extra": "raw=292296; brotli=80600"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36234,
+            "unit": "bytes",
+            "extra": "raw=108799; brotli=32577"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41065,
+            "unit": "bytes",
+            "extra": "raw=123353; brotli=36910"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54430,
+            "unit": "bytes",
+            "extra": "raw=155022; brotli=48879"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59678,
+            "unit": "bytes",
+            "extra": "raw=171585; brotli=53437"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104203,
+            "unit": "bytes",
+            "extra": "raw=329827; brotli=90077"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107712,
+            "unit": "bytes",
+            "extra": "raw=340406; brotli=93141"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 101714,
+            "unit": "bytes",
+            "extra": "raw=324065; brotli=87508"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105097,
+            "unit": "bytes",
+            "extra": "raw=334748; brotli=90403"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50584,
+            "unit": "bytes",
+            "extra": "raw=155726; brotli=44648"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56520,
+            "unit": "bytes",
+            "extra": "raw=173040; brotli=49670"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "hello@sarahgerrard.me",
+            "name": "Sarah Gerrard",
+            "username": "LadyBluenotes"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9902eb4c61b079a8da0ec098fae1c474d37c0f27",
+          "message": "remove old intent artifacts (#7333)",
+          "timestamp": "2026-05-03T18:34:20+02:00",
+          "tree_id": "e510b74cb8cbccd65e21506edb1d4d1aa5ee43fb",
+          "url": "https://github.com/TanStack/router/commit/9902eb4c61b079a8da0ec098fae1c474d37c0f27"
+        },
+        "date": 1777826209256,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
