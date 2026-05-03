@@ -947,11 +947,7 @@ async function handleServerRoutes({
       request,
       getRouter,
     )
-    return new Response(null, {
-      status: resolved.status,
-      statusText: resolved.statusText,
-      headers: resolved.headers,
-    })
+    return new Response(null, resolved)
   }
 
   return ctx.response
