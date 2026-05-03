@@ -6,6 +6,7 @@ import { createFromReadableStream as browserDecode } from 'virtual:tanstack-rsc-
 
 import { awaitLazyElements } from './awaitLazyElements'
 import { createRscProxy } from './createRscProxy'
+import { unwrapRscCssEnvelope } from './rscCssEnvelope'
 import type {
   AnyCompositeComponent,
   RscSlotUsageEvent,
@@ -80,9 +81,9 @@ function setupStreamDecode(stream: ReadableStream<Uint8Array>): {
       await awaitLazyElements(result, (href) => {
         cssHrefs.add(href)
       })
-      cachedTree = result
+      cachedTree = unwrapRscCssEnvelope(result)
       cacheReady = true
-      return result
+      return cachedTree
     },
   )
 

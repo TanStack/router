@@ -53,6 +53,30 @@ function getStringLiteralValueStart(node: t.StringLiteral): number {
   return node.start
 }
 
+function isTypeOnlyImportDeclaration(node: t.ImportDeclaration): boolean {
+  if (node.importKind === 'type') return true
+  if (node.specifiers.length === 0) return false
+
+  return node.specifiers.every(
+    (specifier) =>
+      t.isImportSpecifier(specifier) && specifier.importKind === 'type',
+  )
+}
+
+function isTypeOnlyExportNamedDeclaration(
+  node: t.ExportNamedDeclaration,
+): boolean {
+  if (node.exportKind === 'type') return true
+  if (!node.source || node.declaration || node.specifiers.length === 0) {
+    return false
+  }
+
+  return node.specifiers.every(
+    (specifier) =>
+      t.isExportSpecifier(specifier) && specifier.exportKind === 'type',
+  )
+}
+
 function collectIdentifiersFromPattern(
   pattern: t.LVal,
   add: (name: string) => void,
@@ -149,8 +173,9 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
 
   const visit = (node: t.Node): void => {
     if (t.isImportDeclaration(node)) {
-      addSpecifierLocation(node.source)
-      if (node.importKind !== 'type') {
+      const isTypeOnly = isTypeOnlyImportDeclaration(node)
+      if (!isTypeOnly) {
+        addSpecifierLocation(node.source)
         const source = node.source.value
         const bindingInfo = getBindingInfo(source)
         for (const specifier of node.specifiers) {
@@ -177,11 +202,12 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
         }
       }
     } else if (t.isExportNamedDeclaration(node)) {
-      if (node.source && t.isStringLiteral(node.source)) {
+      const isTypeOnly = isTypeOnlyExportNamedDeclaration(node)
+      if (!isTypeOnly && node.source && t.isStringLiteral(node.source)) {
         addSpecifierLocation(node.source)
       }
 
-      if (node.exportKind !== 'type' && node.source?.value) {
+      if (!isTypeOnly && node.source?.value) {
         const source = node.source.value
         for (const specifier of node.specifiers) {
           if (!t.isExportSpecifier(specifier)) continue
@@ -190,7 +216,7 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
         }
       }
 
-      if (node.exportKind !== 'type') {
+      if (!isTypeOnly) {
         if (node.declaration) {
           const decl = node.declaration
           if (t.isFunctionDeclaration(decl) || t.isClassDeclaration(decl)) {
@@ -210,7 +236,9 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
         }
       }
     } else if (t.isExportAllDeclaration(node)) {
-      addSpecifierLocation(node.source)
+      if (node.exportKind !== 'type') {
+        addSpecifierLocation(node.source)
+      }
     } else if (t.isImportExpression(node)) {
       if (t.isStringLiteral(node.source)) {
         addSpecifierLocation(node.source)

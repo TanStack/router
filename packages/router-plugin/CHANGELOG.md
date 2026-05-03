@@ -1,5 +1,38 @@
 # @tanstack/router-plugin
 
+## 1.167.32
+
+### Patch Changes
+
+- Replace global route metadata with explicit router plugin contexts so multiple router plugin instances cannot cross-transform route files. ([#7313](https://github.com/TanStack/router/pull/7313))
+
+## 1.167.31
+
+### Patch Changes
+
+- Updated dependencies [[`4a1e63f`](https://github.com/TanStack/router/commit/4a1e63f1d1230b1ed8234609acad4639d8982c13)]:
+  - @tanstack/router-core@1.169.1
+  - @tanstack/react-router@1.169.1
+  - @tanstack/router-generator@1.166.39
+
+## 1.167.30
+
+### Patch Changes
+
+- Updated dependencies [[`c992495`](https://github.com/TanStack/router/commit/c992495bf4010ff4c3597bb1f3b1ba02594e857e)]:
+  - @tanstack/router-core@1.169.0
+  - @tanstack/react-router@1.169.0
+  - @tanstack/router-generator@1.166.38
+
+## 1.167.29
+
+### Patch Changes
+
+- Updated dependencies [[`b5c4183`](https://github.com/TanStack/router/commit/b5c4183ab8b44be8a75647b7f7b588ad7c146ece)]:
+  - @tanstack/router-core@1.168.18
+  - @tanstack/react-router@1.168.26
+  - @tanstack/router-generator@1.166.37
+
 ## 1.167.28
 
 ### Patch Changes

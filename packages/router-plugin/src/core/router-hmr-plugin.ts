@@ -4,8 +4,10 @@ import { getReferenceRouteCompilerPlugins } from './code-splitter/plugins/framew
 import { createRouteHmrStatement } from './hmr'
 import { debug, normalizePath } from './utils'
 import { getConfig } from './config'
+import { createRouterPluginContext } from './router-plugin-context'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
+import type { RouterPluginContext } from './router-plugin-context'
 
 /**
  * This plugin adds HMR support for file routes.
@@ -18,11 +20,18 @@ const includeCode = [
   'createRootRoute(',
   'createRootRouteWithContext(',
 ]
-export const unpluginRouterHmrFactory: UnpluginFactory<
-  Partial<Config> | undefined
-> = (options = {}) => {
+
+export function createRouterHmrPlugin(
+  options: Partial<Config | (() => Config)> | undefined = {},
+  routerPluginContext: RouterPluginContext,
+): ReturnType<UnpluginFactory<Partial<Config> | undefined>> {
   let ROOT: string = process.cwd()
-  let userConfig = options as Config
+
+  const resolveUserConfig = () => {
+    return getConfig(typeof options === 'function' ? options() : options, ROOT)
+  }
+
+  let userConfig = resolveUserConfig()
 
   return {
     name: 'tanstack-router:hmr',
@@ -37,7 +46,7 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
       },
       handler(code, id) {
         const normalizedId = normalizePath(id)
-        const routeEntry = globalThis.TSR_ROUTES_BY_ID_MAP?.get(normalizedId)
+        const routeEntry = routerPluginContext.routesByFile.get(normalizedId)
         if (!routeEntry) {
           return null
         }
@@ -97,7 +106,7 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
     vite: {
       configResolved(config) {
         ROOT = config.root
-        userConfig = getConfig(options, ROOT)
+        userConfig = resolveUserConfig()
       },
       applyToEnvironment(environment) {
         if (userConfig.plugin?.vite?.environmentName) {
@@ -107,4 +116,10 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
       },
     },
   }
+}
+
+export const unpluginRouterHmrFactory: UnpluginFactory<
+  Partial<Config> | undefined
+> = (options = {}) => {
+  return createRouterHmrPlugin(options, createRouterPluginContext())
 }

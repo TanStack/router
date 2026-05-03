@@ -3,12 +3,14 @@ import { getRequest } from '@tanstack/start-server-core'
 import { getStartContext } from '@tanstack/start-storage-context'
 import { ReplayableStream } from './ReplayableStream'
 import { RENDERABLE_RSC, SERVER_COMPONENT_STREAM } from './ServerComponentTypes'
+import { createRscCssEnvelope } from './rscCssEnvelope'
 import type {
   AnyRenderableServerComponent,
   RenderableServerComponentBuilder,
   ServerComponentStream,
   ValidateRenderableServerComponent,
 } from './ServerComponentTypes'
+import type { RscCssEnvelopeOptions } from './rscCssEnvelope'
 
 import './rscSsrHandler'
 // Import for global declaration side effect
@@ -57,8 +59,11 @@ export function isRenderableRscHandle(
  */
 export async function renderServerComponent<TNode>(
   node: ValidateRenderableServerComponent<TNode>,
+  options?: RscCssEnvelopeOptions,
 ): Promise<RenderableServerComponentBuilder<TNode>> {
-  const flightStream = renderToReadableStream(node)
+  const flightStream = renderToReadableStream(
+    createRscCssEnvelope(node, options),
+  )
 
   // Check if this is an SSR request (router) or a direct server function call
   const ctx = getStartContext({ throwIfNotFound: false })

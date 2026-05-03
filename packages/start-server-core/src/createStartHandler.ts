@@ -28,6 +28,13 @@ import {
   resolveTransformAssetsConfig,
   transformManifestAssets,
 } from './transformAssetUrls'
+import {
+  collectDynamicHintsFromMatches,
+  collectStaticHintsFromManifest,
+  createEarlyHintsEvent,
+  createResponseLinkHeaderEntries,
+  getResponseLinkHeaderEntries,
+} from './early-hints'
 
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
@@ -41,6 +48,15 @@ import type {
   StartEntry,
 } from '@tanstack/start-client-core'
 import type { RequestHandler } from './request-handler'
+import type {
+  EarlyHint,
+  EarlyHintsEvent,
+  EarlyHintsPhase,
+  OnEarlyHints,
+  ResponseLinkHeaderEntry,
+  ResponseLinkHeaderFilter,
+  ResponseLinkHeaderOptions,
+} from './early-hints'
 import type {
   AnyRoute,
   AnyRouter,
@@ -207,6 +223,106 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
     }),
   )
   return headers
+}
+
+function notifyEarlyHints(
+  phase: EarlyHintsPhase,
+  event: EarlyHintsEvent,
+  onEarlyHints: OnEarlyHints,
+) {
+  try {
+    const result = onEarlyHints(event)
+    if (result) {
+      void Promise.resolve(result).catch((err) => {
+        console.error(`Error sending ${phase} early hints:`, err)
+      })
+    }
+  } catch (err) {
+    console.error(`Error sending ${phase} early hints:`, err)
+  }
+}
+
+function getResponseLinkHeaderFilter(
+  responseLinkHeader: boolean | ResponseLinkHeaderOptions | undefined,
+): ResponseLinkHeaderFilter | undefined {
+  if (typeof responseLinkHeader !== 'object') {
+    return undefined
+  }
+
+  return responseLinkHeader.filter
+}
+
+function appendResponseLinkHeaders(opts: {
+  responseHeaders: Headers
+  entries: ReadonlyArray<ResponseLinkHeaderEntry>
+  filter?: ResponseLinkHeaderFilter
+}) {
+  if (!opts.filter) {
+    for (const entry of opts.entries) {
+      opts.responseHeaders.append('Link', entry.link)
+    }
+    return
+  }
+
+  const links = getResponseLinkHeaderEntries(opts)
+
+  for (const link of links) {
+    opts.responseHeaders.append('Link', link)
+  }
+}
+
+function collectResponseLinkHeaderEntries(opts: {
+  phase: EarlyHintsPhase
+  event: EarlyHintsEvent
+  entries: Array<ResponseLinkHeaderEntry>
+}) {
+  for (let index = 0; index < opts.event.hints.length; index++) {
+    opts.entries.push({
+      phase: opts.phase,
+      hint: opts.event.hints[index]!,
+      link: opts.event.links[index]!,
+    })
+  }
+}
+
+function handleCollectedEarlyHints(opts: {
+  phase: EarlyHintsPhase
+  hints: ReadonlyArray<EarlyHint>
+  sentLinks: Set<string>
+  sentHints?: Array<EarlyHint>
+  onEarlyHints?: OnEarlyHints
+  responseLinkHeaderEntries?: Array<ResponseLinkHeaderEntry>
+}) {
+  const event = opts.onEarlyHints
+    ? createEarlyHintsEvent({
+        phase: opts.phase,
+        hints: opts.hints,
+        sentLinks: opts.sentLinks,
+        sentHints: opts.sentHints!,
+      })
+    : undefined
+
+  if (event) {
+    notifyEarlyHints(opts.phase, event, opts.onEarlyHints!)
+  }
+
+  if (!opts.responseLinkHeaderEntries) return
+
+  if (event) {
+    collectResponseLinkHeaderEntries({
+      phase: opts.phase,
+      event,
+      entries: opts.responseLinkHeaderEntries,
+    })
+    return
+  }
+
+  createResponseLinkHeaderEntries({
+    phase: opts.phase,
+    hints: opts.hints,
+    sentLinks: opts.sentLinks,
+    entries: opts.responseLinkHeaderEntries,
+  })
 }
 
 interface PluginAdaptersEntry {
@@ -693,6 +809,40 @@ export function createStartHandler<TRegister = Register>(
           await getTransformFn({ warmup: false, request }),
           cache,
         )
+
+        const onEarlyHints = requestOpts?.onEarlyHints
+        const responseLinkHeader = requestOpts?.responseLinkHeader
+        const shouldCollectEarlyHints =
+          process.env.TSS_DEV_SERVER !== 'true' &&
+          (!!onEarlyHints || !!responseLinkHeader)
+        const sentEarlyHintLinks = shouldCollectEarlyHints
+          ? new Set<string>()
+          : undefined
+        const sentEarlyHints = onEarlyHints ? new Array<EarlyHint>() : undefined
+        const responseLinkHeaderEntries =
+          shouldCollectEarlyHints && responseLinkHeader
+            ? new Array<ResponseLinkHeaderEntry>()
+            : undefined
+        const responseLinkHeaderFilter = shouldCollectEarlyHints
+          ? getResponseLinkHeaderFilter(responseLinkHeader)
+          : undefined
+
+        if (
+          shouldCollectEarlyHints &&
+          sentEarlyHintLinks &&
+          matchedRoutes?.length
+        ) {
+          const hints = collectStaticHintsFromManifest(manifest, matchedRoutes)
+          handleCollectedEarlyHints({
+            phase: 'static',
+            hints,
+            sentLinks: sentEarlyHintLinks,
+            sentHints: sentEarlyHints,
+            onEarlyHints,
+            responseLinkHeaderEntries,
+          })
+        }
+
         const routerInstance = await getRouter()
 
         attachRouterServerSsrUtils({
@@ -710,6 +860,19 @@ export function createStartHandler<TRegister = Register>(
           return routerInstance.state.redirect
         }
 
+        if (shouldCollectEarlyHints && sentEarlyHintLinks) {
+          const loadedMatches = routerInstance.stores.matches.get()
+          const hints = collectDynamicHintsFromMatches(loadedMatches)
+          handleCollectedEarlyHints({
+            phase: 'dynamic',
+            hints,
+            sentLinks: sentEarlyHintLinks,
+            sentHints: sentEarlyHints,
+            onEarlyHints,
+            responseLinkHeaderEntries,
+          })
+        }
+
         // Pass request-scoped assets to dehydrate for manifest injection
         const ctx = getStartContext({ throwIfNotFound: false })
         await routerInstance.serverSsr!.dehydrate({
@@ -719,6 +882,13 @@ export function createStartHandler<TRegister = Register>(
         const responseHeaders = getStartResponseHeaders({
           router: routerInstance,
         })
+        if (responseLinkHeaderEntries?.length) {
+          appendResponseLinkHeaders({
+            responseHeaders,
+            entries: responseLinkHeaderEntries,
+            filter: responseLinkHeaderFilter,
+          })
+        }
         cbWillCleanup = true
 
         return cb({

@@ -348,9 +348,10 @@ const requestLogger = createMiddleware({ type: 'function' })
 
 You may have noticed that in the example above while client-sent context is type-safe, it is not required to be validated at runtime. If you pass dynamic user-generated data via context, that could pose a security concern, so **if you are sending dynamic data from the client to the server via context, you should validate it in the server-side middleware before using it.**
 
+> **Shape validation is not authorization.** A parsed UUID/number is a _well-formed_ identifier, not an _authorized_ one. If the value is going to be used as a query key, filter, or path parameter — anything that selects which row(s) get read or written — you must also verify the session principal has access to it. Otherwise a logged-in user can rewrite the value in their own request and walk other tenants' data.
+
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
-import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const requestLogger = createMiddleware({ type: 'function' })
@@ -361,13 +362,22 @@ const requestLogger = createMiddleware({ type: 'function' })
       },
     })
   })
-  .server(async ({ next, data, context }) => {
-    // Validate the workspace ID before using it
-    const workspaceId = zodValidator(z.number()).parse(context.workspaceId)
-    console.log('Workspace ID:', workspaceId)
-    return next()
+  .middleware([authMiddleware]) // session loaded server-side, NOT from sendContext
+  .server(async ({ next, context }) => {
+    // 1. Validate shape
+    const workspaceId = z.string().uuid().parse(context.workspaceId)
+    // 2. Validate access — does this session principal have membership?
+    const member = await db.memberships.find({
+      userId: context.session.userId,
+      workspaceId,
+    })
+    if (!member) throw new Error('Not a member of this workspace')
+    // 3. Now safe to use as a query key.
+    return next({ context: { workspaceId } })
   })
 ```
+
+Always derive the session itself from a server-trusted source (a cookie + DB lookup in `authMiddleware`), never from `sendContext`. Anything the client can send, the client can lie about.
 
 ### Sending Server Context to the Client
 
@@ -766,6 +776,8 @@ Static middlewares are created once and reused across routes. A middleware facto
 **Authentication (Static Base Middleware) Example:**
 
 This middleware validates the session and injects it into `context` for downstream middlewares.
+
+> **Attach `authMiddleware` to every `createServerFn` that needs auth.** A route `beforeLoad` redirect protects the page experience but does NOT protect the RPC — server functions are reachable via direct POST regardless of which route renders them. Pair routing-side guards with handler-level enforcement here. See [Authentication Server Primitives](./authentication-server-primitives.md).
 
 ```tsx
 // middleware.ts

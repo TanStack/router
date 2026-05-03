@@ -24,13 +24,14 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 
 ## Sub-Skills
 
-| Task                                         | Sub-Skill                                                           |
-| -------------------------------------------- | ------------------------------------------------------------------- |
-| Type-safe RPCs, data fetching, mutations     | [start-core/server-functions/SKILL.md](./server-functions/SKILL.md) |
-| Request/function middleware, context, auth   | [start-core/middleware/SKILL.md](./middleware/SKILL.md)             |
-| Isomorphic execution, environment boundaries | [start-core/execution-model/SKILL.md](./execution-model/SKILL.md)   |
-| REST API endpoints alongside app routes      | [start-core/server-routes/SKILL.md](./server-routes/SKILL.md)       |
-| Hosting, SSR modes, prerendering, SEO        | [start-core/deployment/SKILL.md](./deployment/SKILL.md)             |
+| Task                                             | Sub-Skill                                                                       |
+| ------------------------------------------------ | ------------------------------------------------------------------------------- |
+| Type-safe RPCs, data fetching, mutations         | [start-core/server-functions/SKILL.md](./server-functions/SKILL.md)             |
+| Request/function middleware, context, auth       | [start-core/middleware/SKILL.md](./middleware/SKILL.md)                         |
+| Server-side auth: sessions, cookies, OAuth, CSRF | [start-core/auth-server-primitives/SKILL.md](./auth-server-primitives/SKILL.md) |
+| Isomorphic execution, environment boundaries     | [start-core/execution-model/SKILL.md](./execution-model/SKILL.md)               |
+| REST API endpoints alongside app routes          | [start-core/server-routes/SKILL.md](./server-routes/SKILL.md)                   |
+| Hosting, SSR modes, prerendering, SEO            | [start-core/deployment/SKILL.md](./deployment/SKILL.md)                         |
 
 ## Quick Decision Tree
 
@@ -40,6 +41,9 @@ Need to run code exclusively on the server (DB, secrets)?
 
 Need auth checks, logging, or shared logic across server functions?
   → start-core/middleware
+
+Need to add login, sessions, OAuth, CSRF, password reset?
+  → start-core/auth-server-primitives
 
 Need to understand where code runs (server vs client)?
   → start-core/execution-model

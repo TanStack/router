@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start",
-  "version": "1.167.50",
+  "version": "1.167.61",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -34,8 +34,8 @@
   "exports": {
     ".": {
       "react-server": {
-        "types": "./dist/esm/index.rsc.d.ts",
-        "default": "./dist/esm/index.rsc.js"
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
       },
       "import": {
         "types": "./dist/esm/index.d.ts",

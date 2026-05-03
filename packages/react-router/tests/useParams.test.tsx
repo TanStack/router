@@ -189,7 +189,8 @@ test('useParams must return parsed result if applicable.', async () => {
 
   expect(window.location.pathname).toBe('/posts/category_first')
   expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
-  expect(mockedfn).not.toHaveBeenCalled()
+  // Dev-only buildLocation roundtrip validation uses normal matching for links.
+  expect(mockedfn).toHaveBeenCalled()
 
   mockedfn.mockClear()
   await act(() => fireEvent.click(firstPostLink))

@@ -14,6 +14,7 @@ import {
 } from './ServerComponentTypes'
 import { createRscProxy } from './createRscProxy'
 import { awaitLazyElements } from './awaitLazyElements'
+import { unwrapRscCssEnvelope } from './rscCssEnvelope'
 import type {
   AnyCompositeComponent,
   ServerComponentStream,
@@ -62,11 +63,12 @@ setOnClientReference(
     if (!ctx || runtime === 'rsbuild') return
 
     if (!ctx.requestAssets) ctx.requestAssets = []
-    const seenHrefs = new Set(
-      ctx.requestAssets
-        .filter((a) => a.tag === 'link' && a.attrs?.href)
-        .map((a) => a.attrs!.href as string),
-    )
+    const seenHrefs = new Set<string>()
+    for (const asset of ctx.requestAssets) {
+      if (asset.tag === 'link' && asset.attrs?.href) {
+        seenHrefs.add(asset.attrs.href as string)
+      }
+    }
 
     for (const href of deps.js) {
       if (seenHrefs.has(href)) continue
@@ -100,13 +102,13 @@ const ssrHandler: RscSsrHandler = {
 
     return decodeCollectorStorage.run(cssCollector, async () => {
       return jsCollectorStorage.run(jsCollector, async () => {
-        const tree = await ssrDecode(readableStream)
-        await awaitLazyElements(tree, (href) => {
+        const decodedTree = await ssrDecode(readableStream)
+        await awaitLazyElements(decodedTree, (href) => {
           cssCollector.add(href)
         })
 
         return {
-          tree,
+          tree: unwrapRscCssEnvelope(decodedTree),
           cssHrefs: cssCollector.size > 0 ? cssCollector : undefined,
           jsPreloads: jsCollector.size > 0 ? jsCollector : undefined,
         }
