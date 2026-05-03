@@ -903,8 +903,8 @@ async function handleServerRoutes({
     // Priority for HEAD: explicit HEAD handler → GET → ANY (last resort).
     const handler =
       requestMethod === 'HEAD'
-        ? (handlers['HEAD'] ?? handlers['GET'] ?? handlers['ANY'])
-        : (handlers[requestMethod] ?? handlers['ANY'])
+        ? handlers['HEAD'] ?? handlers['GET'] ?? handlers['ANY']
+        : handlers[requestMethod] ?? handlers['ANY']
     isHeadFallback =
       requestMethod === 'HEAD' && handler !== undefined && !handlers['HEAD']
 
@@ -942,8 +942,12 @@ async function handleServerRoutes({
   // RFC 9110 §9.3.2: HEAD must carry the same header fields as GET but no body.
   // Resolve any redirect before stripping so the Location header survives.
   if (isHeadFallback) {
+    if (!ctx.response) {
+      throwRouteHandlerError()
+    }
+
     const resolved = await handleRedirectResponse(
-      ctx.response as Response,
+      ctx.response,
       request,
       getRouter,
     )
