@@ -12377,9 +12377,6 @@ importers:
       '@rsbuild/core':
         specifier: ^2.0.1
         version: 2.0.1(core-js@3.40.0)
-      '@tanstack/intent':
-        specifier: ^0.0.14
-        version: 0.0.14
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -12538,9 +12535,6 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0(seroval@1.5.0)
     devDependencies:
-      '@tanstack/intent':
-        specifier: ^0.0.14
-        version: 0.0.14
       '@tanstack/store':
         specifier: ^0.9.3
         version: 0.9.3
@@ -12704,9 +12698,6 @@ importers:
         specifier: ^3.24.2
         version: 3.25.57
     devDependencies:
-      '@tanstack/intent':
-        specifier: ^0.0.14
-        version: 0.0.14
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
@@ -12812,9 +12803,6 @@ importers:
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(solid-js@1.9.12)
-      '@tanstack/intent':
-        specifier: ^0.0.14
-        version: 0.0.14
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -12923,9 +12911,6 @@ importers:
       '@rsbuild/core':
         specifier: ^2.0.1
         version: 2.0.1(core-js@3.40.0)
-      '@tanstack/intent':
-        specifier: ^0.0.14
-        version: 0.0.14
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
@@ -13013,9 +12998,6 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
     devDependencies:
-      '@tanstack/intent':
-        specifier: ^0.0.14
-        version: 0.0.14
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -13144,9 +13126,6 @@ importers:
       '@standard-schema/spec':
         specifier: ^1.0.0
         version: 1.0.0
-      '@tanstack/intent':
-        specifier: ^0.0.14
-        version: 0.0.14
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -13221,9 +13200,6 @@ importers:
 
   packages/virtual-file-routes:
     devDependencies:
-      '@tanstack/intent':
-        specifier: ^0.0.14
-        version: 0.0.14
       vite:
         specifier: ^8.0.0
         version: 8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.6.1)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -13249,9 +13225,6 @@ importers:
         specifier: ^3.0.2
         version: 3.1.0
     devDependencies:
-      '@tanstack/intent':
-        specifier: ^0.0.14
-        version: 0.0.14
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -13360,9 +13333,6 @@ importers:
       '@rsbuild/core':
         specifier: ^2.0.1
         version: 2.0.1(core-js@3.40.0)
-      '@tanstack/intent':
-        specifier: ^0.0.14
-        version: 0.0.14
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
@@ -18792,10 +18762,6 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       eslint: ^9.22.0
-
-  '@tanstack/intent@0.0.14':
-    resolution: {integrity: sha512-83cjen+tYll6z0MIN0JC9GuMljUkfYfHFDOLhmROz4XMmbD/0ZjvKNOsFgpO7eq957XHB/qyK+hCO+3OS/D6HQ==}
-    hasBin: true
 
   '@tanstack/match-sorter-utils@8.19.4':
     resolution: {integrity: sha512-Wo1iKt2b9OT7d+YGhvEPD3DXvPv2etTusIMhMUoG7fbhmxcXCtIjJDEygy91Y2JFlwGyjqiBPRozme7UD8hoqg==}
@@ -32115,10 +32081,6 @@ snapshots:
       - eslint-import-resolver-node
       - supports-color
       - typescript
-
-  '@tanstack/intent@0.0.14':
-    dependencies:
-      yaml: 2.8.1
 
   '@tanstack/match-sorter-utils@8.19.4':
     dependencies:
