@@ -882,7 +882,9 @@ export function getLocationChangeInfo(
 ) {
   const fromLocation = resolvedLocation
   const toLocation = location
-  const historyAction = locationHistoryActions.get(toLocation)
+  const historyAction = (toLocation as ParsedLocationWithHistoryAction)[
+    historyActionKey
+  ]
   const pathChanged = fromLocation?.pathname !== toLocation.pathname
   const hrefChanged = fromLocation?.href !== toLocation.href
   const hashChanged = fromLocation?.hash !== toLocation.hash
@@ -896,17 +898,10 @@ export function getLocationChangeInfo(
   }
 }
 
-const locationHistoryActions = new WeakMap<ParsedLocation, HistoryAction>()
+const historyActionKey: unique symbol = Symbol()
 
-function setLocationHistoryAction(
-  location: ParsedLocation,
-  action: HistoryAction | undefined,
-) {
-  if (action) {
-    locationHistoryActions.set(location, action)
-  } else {
-    locationHistoryActions.delete(location)
-  }
+type ParsedLocationWithHistoryAction = ParsedLocation & {
+  [historyActionKey]?: HistoryAction
 }
 
 export type CreateRouterFn = <
@@ -2442,7 +2437,21 @@ export class RouterCore<
       this.startTransition(async () => {
         try {
           this.beforeLoad()
-          setLocationHistoryAction(this.latestLocation, historyAction)
+          // Stamp action onto the location instance (non-enumerable, symbol-keyed)
+          // so downstream emitters of locationChangeInfo (e.g. onRendered from Match)
+          // can read it. Cleared on no-action loads (invalidate, same-URL commit,
+          // SSR hydration) since the action describes the load event, not the URL.
+          const locationWithAction = this
+            .latestLocation as ParsedLocationWithHistoryAction
+          if (historyAction) {
+            Object.defineProperty(locationWithAction, historyActionKey, {
+              value: historyAction,
+              enumerable: false,
+              configurable: true,
+            })
+          } else {
+            delete locationWithAction[historyActionKey]
+          }
           const next = this.latestLocation
           const prevLocation = this.stores.resolvedLocation.get()
           const locationChangeInfo = getLocationChangeInfo(next, prevLocation)
