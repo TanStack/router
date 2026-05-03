@@ -941,8 +941,12 @@ async function handleServerRoutes({
 
   // RFC 9110 §9.3.2: HEAD must carry the same header fields as GET but no body.
   // Resolve any redirect before stripping so the Location header survives.
-  if (isHeadFallback && ctx.response instanceof Response) {
-    const resolved = await handleRedirectResponse(ctx.response, request, getRouter)
+  if (isHeadFallback) {
+    const resolved = await handleRedirectResponse(
+      ctx.response as Response,
+      request,
+      getRouter,
+    )
     return new Response(null, {
       status: resolved.status,
       statusText: resolved.statusText,
