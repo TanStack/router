@@ -7,6 +7,7 @@ export function getRouter() {
   const router = createRouter({
     routeTree,
     scrollRestoration: true,
+    scrollToTopSelectors: ['[data-scroll-restoration-id="carry-over-reset"]'],
     getScrollRestorationKey: (location) => {
       if (location.pathname === '/hash-scroll-repro') {
         return location.pathname
