@@ -92,8 +92,5 @@
     "fetchdts": "^0.1.6",
     "vite": "*",
     "@types/node": ">=20"
-  },
-  "bin": {
-    "intent": "./bin/intent.js"
   }
 }

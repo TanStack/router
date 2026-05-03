@@ -125,8 +125,5 @@
   },
   "peerDependencies": {
     "solid-js": "^1.9.10"
-  },
-  "bin": {
-    "intent": "./bin/intent.js"
   }
 }

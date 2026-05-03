@@ -94,8 +94,5 @@
     "@tanstack/intent": "^0.0.14",
     "vite": "*",
     "@types/node": ">=20"
-  },
-  "bin": {
-    "intent": "./bin/intent.js"
   }
 }

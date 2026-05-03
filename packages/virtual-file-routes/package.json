@@ -60,8 +60,5 @@
   "devDependencies": {
     "@tanstack/intent": "^0.0.14",
     "vite": "*"
-  },
-  "bin": {
-    "intent": "./bin/intent.js"
   }
 }

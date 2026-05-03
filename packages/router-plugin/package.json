@@ -151,8 +151,5 @@
     "webpack": {
       "optional": true
     }
-  },
-  "bin": {
-    "intent": "./bin/intent.js"
   }
 }
