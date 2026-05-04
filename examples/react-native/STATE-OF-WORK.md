@@ -1,103 +1,89 @@
 # React Native + TanStack Router/Start — state of work
 
-Living doc. Delete once the RN work is fully merged and shipped.
+Living doc tracking the unified RN branch. Delete once the work is
+merged and shipped.
 
 ## Branch: `taren/rn-unified` (off `origin/main`)
 
-The result of the rebase exercise: feat/react-native + the example
-matrix work + the Phase 2 Start adapter all replayed onto a fresh main
-base. Logically all the RN work is in one place now.
+Single source of truth. All the RN router + Phase 1 (Metro file routing)
++ Phase 2 (Start RPC transform) work is here, sitting on a fresh main base.
+Both `taren/mystifying-nash-aa11f2` and `taren/start-metro` are now
+superseded and can be deleted.
 
 ## Status
 
-- ✅ Examples scaffold (bare, expo-go, expo-dev-client, _start-server)
-- ✅ Phase 1 plugin (`@tanstack/router-plugin/metro` sync)
-- ✅ Phase 2 plugins (`@tanstack/start-plugin-core/metro`,
-  `@tanstack/react-start/plugin/metro`)
-- ✅ Defensive gesture-handler probe
-- ✅ Unit tests for Phase 1
+- ✅ `@tanstack/react-native-router` builds against main's signal-based
+  router-core (migration commit: `81430ac8bf`)
+- ✅ Phase 1 — `@tanstack/router-plugin/metro` sync `withTanStackRouter`
+- ✅ Phase 2 — `@tanstack/start-plugin-core/metro` + `@tanstack/react-start/plugin/metro`
+  with worker-safe env-var option passing (commit `ccf607e4bc`)
+- ✅ 3-example matrix: bare (RN+Router+Start), expo-go (Router only),
+  expo-dev-client (RN+Router+Start)
+- ✅ Shared `_start-server` (Vite+Start backend) ready to consume RPCs
 - ✅ Maestro flow skeletons
 - ✅ Docs + sidebar registration
-- ❌ **`@tanstack/react-native-router` doesn't compile against main's
-  router-core** — 10 TS errors, see below
+- ✅ Defensive gesture-handler TurboModule probe
+- ✅ Unit tests (router-plugin/metro: 4 new, react-native-router: 6 pre-existing)
 
-## The blocker
+## End-to-end Start RPC verified at the bundle level
 
-The RN router was written against an earlier router-core API. Main has
-since moved through:
+Running `npx react-native start` (bare) and `expo start` (expo-dev-client)
+each produce iOS bundles containing:
 
-- The signal-based core refactor (#6704)
-- Removal of `pendingMatches` / `cachedMatches` from `RouterState`
-- Moving `router.__store` → `router.stores.__store`
-- Router constructor adding a required `getStoreConfig` parameter
-- `getLocationChangeInfo` signature change
+- `createClientRpc` references for each `createServerFn` call site
+- Deterministic SHA-256 function ids: `c299b00d...` (listPosts) and
+  `d4f35c53...` (getPost)
 
-The errors at `pnpm --filter @tanstack/react-native-router build`:
+Identical IDs across both clients prove the deterministic hashing —
+a single deployed Start server can serve both bundlers without any
+per-client manifest exchange.
 
-```
-src/Matches.tsx:447:5   Object literal may only specify known properties,
-                        and 'pendingMatches' does not exist in type
-                        'RouterState<...>'
-src/Matches.tsx:447:27  Property 'pendingMatches' does not exist
-src/Matches.tsx:447:48  Parameter 'match' implicitly has an 'any' type
-src/Matches.tsx:448:26  Property 'cachedMatches' does not exist
-src/Matches.tsx:448:45  Parameter 'match' implicitly has an 'any' type
-src/Matches.tsx:495:38  Property 'pendingMatches' does not exist
-src/Matches.tsx:497:45  Property 'pendingMatches' does not exist
-src/router.ts:88:5      Expected 2 arguments, but got 1
-                        (Router constructor needs getStoreConfig)
-src/Transitioner.tsx:71:34  Argument of type 'RouterState<...>' is not
-                            assignable to parameter of type
-                            'ParsedLocation<{}>'
-                            (getLocationChangeInfo signature changed)
-src/useRouterState.tsx:51:26  Property '__store' does not exist on type
-                              'TRouter' (use router.stores.__store)
-```
+What's NOT verified yet: actually running the iOS app and confirming
+RPC roundtrips against `_start-server`. The bundle-level proof is
+mechanical (the transformer is wiring through correctly). The runtime
+test would be: `cd _start-server && npm run dev` (port 3050), launch
+either RN client in the sim, navigate to /posts, expect data from the
+local server.
 
-## Migration work (remaining)
+## Example matrix
 
-These are real engineering tasks, not mechanical drift:
+| Example | Bundler | Native | Router | Start |
+|---|---|---|---|---|
+| `bare` | Metro vanilla | iOS + Android (committed) | ✓ | ✓ |
+| `expo-go` | Metro (Expo) | Expo Go | ✓ | n/a |
+| `expo-dev-client` | Metro (Expo) | Expo prebuild | ✓ | ✓ |
+| `_start-server` | Vite (Start) | n/a | n/a | ✓ |
 
-1. **Matches.tsx pending-matches rendering** — the RN router renders the
-   `pendingMatches` array during transitions (so the new screen shows
-   while the old one is still active). With `pendingMatches` removed
-   from `RouterState`, this logic needs redesigning against the new
-   state model. Look at how main's react-router handles transitions for
-   the pattern to copy.
+## Known things the rebase exposed
 
-2. **useRouterState.tsx** — change `router.__store` to
-   `router.stores.__store`. Mechanical.
+(All resolved in this branch — listing for handoff context.)
 
-3. **router.ts** — supply `getStoreConfig` to the Router constructor.
-   Look at react-router's `createRouter` for the pattern.
+1. `@tanstack/config/vite` was renamed to `@tanstack/vite-config` on
+   main. RN router's `vite.config.ts` updated.
+2. `verboseFileRoutes` config was removed from main's router-generator.
+   The `react-native` target in `template.ts` now uses the same
+   `serializeRoutePath()` pattern as react/solid/vue.
+3. `RouterState` lost `pendingMatches` and `cachedMatches`; they're now
+   separate stores on `router.stores`. The RN router's transition
+   rendering subscribes to `router.stores.pendingMatches` via
+   `useStore` and combines with the routerState selector.
+4. `router.__store` moved to `router.stores.__store`.
+5. `getLocationChangeInfo` signature changed — now takes
+   `ParsedLocation` arguments, not a full `RouterState`.
+6. Metro's transformer worker pool doesn't share module-level state
+   with the main process. Phase 2's transformer.cjs was reworked to
+   pass options through `process.env.TSR_START_METRO_OPTIONS` (env
+   vars DO propagate to jest-worker children).
 
-4. **Transitioner.tsx** — `getLocationChangeInfo` now takes a
-   `ParsedLocation`, not a full `RouterState`. Update the call to pass
-   `state.location` (or whatever property contains the parsed location).
+## What's left before merge
 
-5. **Implicit-any** — the cleanup of (1) will resolve the implicit `any`
-   on `match` parameters automatically (they were inferred from the
-   removed types).
-
-## What's clean
-
-The Phase 1 + Phase 2 Metro work is independent of these errors. Both
-plugins build cleanly:
-
-```bash
-pnpm --filter @tanstack/router-plugin build       # green
-pnpm --filter @tanstack/start-plugin-core build   # green
-pnpm --filter @tanstack/react-start build         # green
-```
-
-The example scaffolds are also intact at the file level — they'll
-compile once `@tanstack/react-native-router` does.
-
-## Other branches (now redundant)
-
-- `taren/mystifying-nash-aa11f2` — superseded by this branch. The work
-  here was preserved via cherry-pick.
-- `taren/start-metro` — superseded by this branch. The Phase 2 commits
-  are now here.
-
-Once `taren/rn-unified` merges, both source branches can be deleted.
+- Run the actual RPC roundtrip in the simulator (mechanical; needs
+  `_start-server` brought up + Maestro flow update to assert real data
+  is rendered).
+- Address pre-existing eslint warnings on `react-native-router` (37
+  errors, 6 warnings — all stylistic, none functional). These existed
+  on `feat/react-native` and didn't get cleaned up before the merge.
+- Decide on the `expo-go` story for actually working in Expo Go —
+  currently bundles cleanly but real-app testing hit native module
+  version drift. Defensive probes help, but the example is more useful
+  as documentation of what's possible than as a recommended path.
