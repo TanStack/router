@@ -27,6 +27,113 @@ import { NativeRouterProvider } from '@tanstack/react-native-router'
 ;<NativeRouterProvider router={router} />
 ```
 
+## File-Based Routing (Metro Plugin)
+
+`@tanstack/router-plugin/metro` wraps your Metro config so the route tree
+generates on startup and regenerates as you edit routes. Works for both
+stock React Native and Expo (Expo Go and Expo Dev Client) — Expo's
+bundler is Metro.
+
+Install:
+
+```bash
+npm install --save-dev @tanstack/router-plugin @tanstack/router-cli
+```
+
+`@tanstack/router-cli` is required because the plugin shells out to it for
+the initial blocking route generation when Metro starts.
+
+### Expo
+
+```js
+// metro.config.js
+const { getDefaultConfig } = require('expo/metro-config')
+const { withTanStackRouter } = require('@tanstack/router-plugin/metro')
+
+const config = getDefaultConfig(__dirname)
+// ...any other Metro customizations...
+
+module.exports = withTanStackRouter(config)
+```
+
+### Stock React Native
+
+```js
+// metro.config.js
+const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config')
+const { withTanStackRouter } = require('@tanstack/router-plugin/metro')
+
+const defaultConfig = getDefaultConfig(__dirname)
+
+module.exports = withTanStackRouter(
+  mergeConfig(defaultConfig, {
+    // any custom Metro config...
+  }),
+)
+```
+
+Add a `tsr.config.json` at the project root:
+
+```json
+{
+  "target": "react-native",
+  "routesDirectory": "./src/routes",
+  "generatedRouteTree": "./src/routeTree.gen.ts"
+}
+```
+
+That's it — `expo start` (or `npx react-native start`) now generates the
+route tree before bundling and watches `routesDirectory` for changes.
+You don't need to run `tanstack-router-cli watch` separately.
+
+### Options
+
+`withTanStackRouter` accepts a second argument:
+
+```js
+module.exports = withTanStackRouter(config, {
+  // Override tsr.config.json values inline:
+  config: { routesDirectory: './app/routes' },
+
+  // Project root (defaults to process.cwd()):
+  root: __dirname,
+
+  // Skip the file watcher (defaults to dev only):
+  watch: false,
+
+  // Skip the blocking initial generate (defaults to true). Use this if
+  // you generate routes out-of-band, e.g. as a CI step:
+  initialGenerate: false,
+})
+```
+
+### Behavior notes
+
+- **Synchronous return.** The function returns the (unmodified) config
+  object immediately. This matters for Expo's Metro CLI, which reads
+  config fields synchronously before awaiting promises.
+- **Initial generation is blocking.** The plugin spawns a subprocess of
+  `@tanstack/router-cli generate` and waits for it. This typically adds
+  ~300ms to the first metro config load.
+- **Watch mode is async.** Started in the background in dev. Route file
+  changes regenerate the tree; Metro's own watcher then triggers a fast
+  refresh.
+
+## Reference Examples
+
+The matrix of supported runtime combinations lives at
+[`examples/react-native/`](https://github.com/TanStack/router/tree/main/examples/react-native):
+
+- **`bare`** — stock React Native + Metro (no Expo). Real native iOS
+  project committed.
+- **`expo-go`** — Expo with the Expo Go app (no custom native build).
+  Router only.
+- **`expo-dev-client`** — Expo with `expo run:ios` custom dev client.
+  Recommended for most apps. Supports the full Router + Start matrix.
+
+Each example ships Maestro flow skeletons under `.maestro/` for e2e
+verification of navigation and deep linking.
+
 ## Deep Linking
 
 Configure deep linking on `router` `native` options. `NativeRouterProvider`
