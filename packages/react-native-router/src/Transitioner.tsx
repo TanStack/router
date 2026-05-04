@@ -68,7 +68,10 @@ export function Transitioner() {
     if (previousIsLoading.current && !isLoading) {
       router.emit({
         type: 'onLoad',
-        ...getLocationChangeInfo(router.state),
+        ...getLocationChangeInfo(
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
+        ),
       })
     }
     previousIsLoading.current = isLoading

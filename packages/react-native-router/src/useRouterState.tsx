@@ -48,7 +48,7 @@ export function useRouterState<
     useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
   const stateOverride = useContext(routerStateContext)
 
-  return useStore(router.__store, (state) => {
+  return useStore(router.stores.__store, (state) => {
     const resolvedState = (stateOverride ?? state) as RouterState<
       TRouter['routeTree']
     >

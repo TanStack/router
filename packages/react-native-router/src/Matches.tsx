@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useStore } from '@tanstack/react-store'
 import { rootRouteId } from '@tanstack/router-core'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -444,8 +445,6 @@ function cloneRouterState(state: RouterState<AnyRoute>): RouterState<AnyRoute> {
       ? { ...state.resolvedLocation }
       : undefined,
     matches: state.matches.map((match) => ({ ...match })),
-    pendingMatches: state.pendingMatches?.map((match) => ({ ...match })),
-    cachedMatches: state.cachedMatches.map((match) => ({ ...match })),
   }
 }
 
@@ -481,6 +480,16 @@ export function NativeScreenMatches() {
     select: (s) => s.status === 'pending' && s.isLoading,
   })
 
+  // pendingMatches is no longer on RouterState (signal-based core refactor) —
+  // subscribe to its dedicated store. Only matters when navigation is pending
+  // and there's a non-trivial match list to render mid-transition.
+  const pendingMatches = useStore(
+    router.stores.pendingMatches,
+    (m) => m,
+  ) as Array<any>
+  const usePendingMatches =
+    isPendingNavigation && (pendingMatches?.length ?? 0) > 1
+
   // Get current pathname and animation options from deepest screen match
   const currentScreen = useRouterState({
     select: (s): ScreenEntry => {
@@ -491,10 +500,7 @@ export function NativeScreenMatches() {
         (s.location.state as any).__TSR_initialDeepLink,
       )
 
-      const usePendingMatches =
-        s.status === 'pending' && (s.pendingMatches?.length ?? 0) > 1
-
-      const matches = usePendingMatches ? s.pendingMatches! : s.matches
+      const matches = usePendingMatches ? pendingMatches : s.matches
 
       const renderState = usePendingMatches ? { ...s, matches } : s
       // Find the deepest match that is a screen (not a layout/navigator)
