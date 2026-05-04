@@ -258,6 +258,10 @@
         {
           "label": "Render Optimizations",
           "to": "guide/render-optimizations"
+        },
+        {
+          "label": "React Native (Native Stack)",
+          "to": "guide/react-native-native-stack"
         }
       ],
       "frameworks": [
