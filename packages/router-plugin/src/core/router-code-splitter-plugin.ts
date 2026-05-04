@@ -116,6 +116,7 @@ export function createRouterCodeSplitterPlugin(
 
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
+      filename: id,
     })
 
     if (fromCode.groupings !== undefined) {
@@ -150,6 +151,7 @@ export function createRouterCodeSplitterPlugin(
     // Compute shared bindings before compiling the reference route
     const sharedBindings = computeSharedBindings({
       code,
+      filename: id,
       codeSplitGroupings: splitGroupings,
     })
     if (sharedBindings.size > 0) {

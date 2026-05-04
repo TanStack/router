@@ -83,7 +83,7 @@ export function createRouterHmrPlugin(
           }
         }
 
-        const ast = parseAst({ code })
+        const ast = parseAst({ code, filename: normalizedId })
         ast.program.body.push(
           ...createRouteHmrStatement([], {
             hmrStyle,

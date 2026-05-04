@@ -25,6 +25,14 @@ export const value = data`
 
       expect(() => parseAst({ code })).not.toThrow()
     })
+
+    test('parses angle-bracket type assertions in .ts files without JSX', () => {
+      const code = `export function cast<T>(value: any): T {
+  return <T>value
+}`
+
+      expect(() => parseAst({ code, filename: 'cast.ts' })).not.toThrow()
+    })
   })
 
   describe('type alias declarations', () => {

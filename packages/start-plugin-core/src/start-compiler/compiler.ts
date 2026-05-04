@@ -863,8 +863,16 @@ export class StartCompiler {
     return info
   }
 
-  public ingestModule({ code, id }: { code: string; id: string }) {
-    const ast = parseAst({ code })
+  public ingestModule({
+    code,
+    id,
+    parserFilename,
+  }: {
+    code: string
+    id: string
+    parserFilename?: string
+  }) {
+    const ast = parseAst({ code, filename: parserFilename ?? id })
     const info = this.extractModuleInfo(ast, id)
     return { info, ast }
   }
@@ -974,10 +982,12 @@ export class StartCompiler {
   public async compile({
     code,
     id,
+    parserFilename,
     detectedKinds,
   }: {
     code: string
     id: string
+    parserFilename?: string
     /** Pre-detected kinds present in this file. If not provided, all valid kinds are checked. */
     detectedKinds?: Set<LookupKind>
   }) {
@@ -1008,7 +1018,7 @@ export class StartCompiler {
 
     // Always parse and extract module info upfront.
     // This ensures the module is cached for import resolution even if no candidates are found.
-    const { ast } = this.ingestModule({ code, id })
+    const { ast } = this.ingestModule({ code, id, parserFilename })
 
     // Single-pass traversal to:
     // 1. Collect candidate paths (only candidates, not all CallExpressions)

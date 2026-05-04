@@ -1,10 +1,10 @@
 import * as t from '@babel/types'
+import { parseAst } from '@tanstack/router-utils'
 
-import { parseImportProtectionAst } from './ast'
 import { buildLineIndex } from './sourceLocation'
 import { getOrCreate } from './utils'
 import type { LineIndex, TransformResult } from './sourceLocation'
-import type { ParsedAst } from './ast'
+import type { ParseAstResult } from '@tanstack/router-utils'
 
 export type UsagePos = { line: number; column0: number }
 
@@ -18,7 +18,7 @@ type ImportBindingInfo = {
 type UsageCacheKey = `${BoundaryEnv | 'post'}::${string}`
 
 export type ImportAnalysis = {
-  ast: ParsedAst
+  ast: ParseAstResult
   lineIndex: LineIndex
   importSourcesInOrder: Array<string>
   importSpecifierLocationIndex: Map<string, number>
@@ -28,9 +28,10 @@ export type ImportAnalysis = {
   usageByKey: Map<UsageCacheKey, UsagePos | null>
 }
 
-function makeTransientResult(code: string): TransformResult {
+function makeTransientResult(code: string, filename?: string): TransformResult {
   return {
     code,
+    filename,
     map: undefined,
     originalCode: undefined,
   }
@@ -131,7 +132,9 @@ export function isValidExportName(name: string): boolean {
 }
 
 function buildImportAnalysis(result: TransformResult): ImportAnalysis {
-  const ast = result.parsedAst ?? parseImportProtectionAst(result.code)
+  const ast =
+    result.parsedAst ??
+    parseAst({ code: result.code, filename: result.filename })
   result.parsedAst = ast
 
   const importSourcesInOrder: Array<string> = []
@@ -325,8 +328,11 @@ export function getImportSourcesFromResult(
   return getOrCreateImportAnalysis(result).importSourcesInOrder
 }
 
-export function getImportSources(code: string): Array<string> {
-  return getImportSourcesFromResult(makeTransientResult(code))
+export function getImportSources(
+  code: string,
+  filename?: string,
+): Array<string> {
+  return getImportSourcesFromResult(makeTransientResult(code, filename))
 }
 
 export function getImportSpecifierLocationFromResult(
@@ -348,8 +354,11 @@ export function getMockExportNamesBySourceFromResult(
 
 export function getMockExportNamesBySource(
   code: string,
+  filename?: string,
 ): Map<string, Array<string>> {
-  return getMockExportNamesBySourceFromResult(makeTransientResult(code))
+  return getMockExportNamesBySourceFromResult(
+    makeTransientResult(code, filename),
+  )
 }
 
 export function getNamedExportsFromResult(
@@ -358,8 +367,11 @@ export function getNamedExportsFromResult(
   return getOrCreateImportAnalysis(result).namedExports
 }
 
-export function getNamedExports(code: string): Array<string> {
-  return getNamedExportsFromResult(makeTransientResult(code))
+export function getNamedExports(
+  code: string,
+  filename?: string,
+): Array<string> {
+  return getNamedExportsFromResult(makeTransientResult(code, filename))
 }
 
 function isCompilerSafeBoundaryCall(
