@@ -74,6 +74,15 @@
         "default": "./dist/esm/rsbuild/types.js"
       }
     },
+    "./metro": {
+      "import": {
+        "types": "./dist/esm/metro/index.d.ts",
+        "default": "./dist/esm/metro/index.js"
+      }
+    },
+    "./metro/transformer": {
+      "require": "./dist/esm/metro/transformer.cjs"
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

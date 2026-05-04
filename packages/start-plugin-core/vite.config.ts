@@ -1,5 +1,6 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
+import { copyFilesPlugin } from '@tanstack/router-utils'
 import packageJson from './package.json'
 
 const config = defineConfig({
@@ -9,6 +10,13 @@ const config = defineConfig({
     watch: false,
     typecheck: { enabled: true },
   },
+  plugins: [
+    copyFilesPlugin({
+      pattern: ['*.cjs'],
+      fromDir: 'src/metro',
+      toDir: 'dist/esm/metro',
+    }),
+  ],
 })
 
 export default mergeConfig(
@@ -21,6 +29,8 @@ export default mergeConfig(
       './src/vite/index.ts',
       './src/rsbuild/index.ts',
       './src/rsbuild/types.ts',
+      './src/metro/index.ts',
+      './src/metro/transformer-impl.ts',
     ],
     srcDir: './src',
     outDir: './dist',
