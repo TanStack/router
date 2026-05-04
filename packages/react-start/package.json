@@ -88,6 +88,16 @@
         "default": "./dist/esm/plugin/rsbuild.js"
       }
     },
+    "./plugin/metro": {
+      "import": {
+        "types": "./dist/esm/plugin/metro.d.ts",
+        "default": "./dist/esm/plugin/metro.js"
+      },
+      "require": {
+        "types": "./dist/esm/plugin/metro.d.cts",
+        "default": "./dist/esm/plugin/metro.cjs"
+      }
+    },
     "./server-entry": {
       "import": {
         "types": "./dist/default-entry/esm/server.d.ts",

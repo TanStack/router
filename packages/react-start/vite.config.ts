@@ -15,6 +15,11 @@ const config = defineConfig({
       fromDir: 'src/default-entry',
       toDir: 'dist/plugin/default-entry',
     }),
+    copyFilesPlugin({
+      pattern: ['*.cjs', '*.d.cts'],
+      fromDir: 'src/plugin',
+      toDir: 'dist/esm/plugin',
+    }),
   ],
 })
 
@@ -39,6 +44,7 @@ export default mergeConfig(
       './src/rsbuild/browser-decode.ts',
       './src/rsbuild/ssr-decode.ts',
       './src/plugin/rsbuild.ts',
+      './src/plugin/metro.ts',
       './src/plugin/vite.ts',
       './src/server-only.ts',
       './src/client-only.ts',
