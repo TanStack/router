@@ -379,8 +379,7 @@ export default defineConfig({
       serverFns: {
         generateFunctionId: ({ filename, functionName }) => {
           // Return a custom ID string
-          return crypto
-            .hash('sha1', `${filename}--${functionName}`, 'hex')
+          return crypto.hash('sha1', `${filename}--${functionName}`, 'hex')
 
           // If you return undefined, the default is used
           // return undefined
