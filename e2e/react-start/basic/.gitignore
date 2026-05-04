@@ -19,3 +19,4 @@ yarn.lock
 /blob-report/
 /playwright/.cache/
 /dist-vite-*/
+/dist-rsbuild-*/

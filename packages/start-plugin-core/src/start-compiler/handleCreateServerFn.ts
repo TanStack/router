@@ -1,11 +1,26 @@
 import * as t from '@babel/types'
 import babel from '@babel/core'
+import { hasKeys } from '@tanstack/router-core'
 import path from 'pathe'
 import { cleanId, codeFrameError, stripMethodCall } from './utils'
 import type { CompilationContext, RewriteCandidate, ServerFn } from './types'
 import type { CompileStartFrameworkOptions } from '../types'
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
+
+const providerHmrAcceptTemplate = babel.template.statements(
+  `
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {})
+}
+if (import.meta.webpackHot) {
+  import.meta.webpackHot.accept(() => {})
+}
+`,
+  {
+    placeholderPattern: false,
+  },
+)
 
 // ============================================================================
 // Pre-compiled babel templates (compiled once at module load time)
@@ -181,6 +196,13 @@ export function handleCreateServerFn(
   }
 
   const isProviderFile = context.id.includes(TSS_SERVERFN_SPLIT_PARAM)
+  if (isProviderFile && context.serverFnProviderModuleDirectives) {
+    ensureDirectivePrologue(
+      context.ast,
+      context.serverFnProviderModuleDirectives,
+    )
+  }
+
   // Get environment-specific configuration
   const envConfig = getEnvConfig(context, isProviderFile)
 
@@ -414,14 +436,14 @@ export function handleCreateServerFn(
         ),
       )
     }
+
+    if (context.mode === 'dev') {
+      context.ast.program.body.push(...providerHmrAcceptTemplate())
+    }
   }
 
   // Notify about discovered functions (only for non-provider files)
-  if (
-    !isProviderFile &&
-    Object.keys(serverFnsById).length > 0 &&
-    context.onServerFnsById
-  ) {
+  if (!isProviderFile && hasKeys(serverFnsById) && context.onServerFnsById) {
     context.onServerFnsById(serverFnsById)
   }
 
@@ -488,4 +510,26 @@ function safeRemoveExports(ast: t.File): void {
     }
     return node
   })
+}
+
+function ensureDirectivePrologue(
+  ast: t.File,
+  directiveValues: ReadonlyArray<string>,
+): void {
+  const directives = ast.program.directives
+  const existingDirectives = new Set(
+    directives.map((directive) => directive.value.value),
+  )
+  const missingDirectives: Array<string> = []
+
+  for (const directiveValue of directiveValues) {
+    if (!directiveValue || existingDirectives.has(directiveValue)) continue
+
+    existingDirectives.add(directiveValue)
+    missingDirectives.push(directiveValue)
+  }
+
+  for (let i = missingDirectives.length - 1; i >= 0; i--) {
+    directives.unshift(t.directive(t.directiveLiteral(missingDirectives[i]!)))
+  }
 }

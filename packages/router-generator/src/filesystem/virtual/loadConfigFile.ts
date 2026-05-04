@@ -1,8 +1,7 @@
-import { pathToFileURL } from 'node:url'
-import { tsImport } from 'tsx/esm/api'
+import { createJiti } from 'jiti'
 
 export async function loadConfigFile(filePath: string) {
-  const fileURL = pathToFileURL(filePath).href
-  const loaded = await tsImport(fileURL, './')
+  const jiti = createJiti(filePath, { interopDefault: false })
+  const loaded = await jiti.import<any>(filePath)
   return loaded
 }

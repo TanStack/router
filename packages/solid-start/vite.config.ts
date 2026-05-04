@@ -31,6 +31,7 @@ export default mergeConfig(
       './src/ssr-rpc.ts',
       './src/server-rpc.ts',
       './src/server.tsx',
+      './src/plugin/rsbuild.ts',
       './src/plugin/vite.ts',
       './src/server-only.ts',
       './src/client-only.ts',

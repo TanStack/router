@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RscUseServerFnRouteImport } from './routes/rsc-use-server-fn'
 import { Route as RscTreeRouteImport } from './routes/rsc-tree'
 import { Route as RscSuspenseRouteImport } from './routes/rsc-suspense'
 import { Route as RscStreamingRouteImport } from './routes/rsc-streaming'
@@ -41,6 +42,7 @@ import { Route as RscDeferredComponentRouteImport } from './routes/rsc-deferred-
 import { Route as RscDeferredRouteImport } from './routes/rsc-deferred'
 import { Route as RscCssPreloadComplexRouteImport } from './routes/rsc-css-preload-complex'
 import { Route as RscCssModulesRouteImport } from './routes/rsc-css-modules'
+import { Route as RscCssAutoinjectRouteImport } from './routes/rsc-css-autoinject'
 import { Route as RscContextRouteImport } from './routes/rsc-context'
 import { Route as RscComponentSlotRouteImport } from './routes/rsc-component-slot'
 import { Route as RscClientPreloadRouteImport } from './routes/rsc-client-preload'
@@ -55,6 +57,11 @@ import { Route as RscParamIdRouteImport } from './routes/rsc-param/$id'
 import { Route as RscCssConditionalBranchRouteImport } from './routes/rsc-css-conditional.$branch'
 import { Route as ApiRscFlightRouteImport } from './routes/api.rsc-flight'
 
+const RscUseServerFnRoute = RscUseServerFnRouteImport.update({
+  id: '/rsc-use-server-fn',
+  path: '/rsc-use-server-fn',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RscTreeRoute = RscTreeRouteImport.update({
   id: '/rsc-tree',
   path: '/rsc-tree',
@@ -215,6 +222,11 @@ const RscCssModulesRoute = RscCssModulesRouteImport.update({
   path: '/rsc-css-modules',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RscCssAutoinjectRoute = RscCssAutoinjectRouteImport.update({
+  id: '/rsc-css-autoinject',
+  path: '/rsc-css-autoinject',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RscContextRoute = RscContextRouteImport.update({
   id: '/rsc-context',
   path: '/rsc-context',
@@ -290,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/rsc-client-preload': typeof RscClientPreloadRoute
   '/rsc-component-slot': typeof RscComponentSlotRoute
   '/rsc-context': typeof RscContextRoute
+  '/rsc-css-autoinject': typeof RscCssAutoinjectRoute
   '/rsc-css-modules': typeof RscCssModulesRoute
   '/rsc-css-preload-complex': typeof RscCssPreloadComplexRoute
   '/rsc-deferred': typeof RscDeferredRoute
@@ -322,6 +335,7 @@ export interface FileRoutesByFullPath {
   '/rsc-streaming': typeof RscStreamingRoute
   '/rsc-suspense': typeof RscSuspenseRoute
   '/rsc-tree': typeof RscTreeRoute
+  '/rsc-use-server-fn': typeof RscUseServerFnRoute
   '/api/rsc-flight': typeof ApiRscFlightRoute
   '/rsc-css-conditional/$branch': typeof RscCssConditionalBranchRoute
   '/rsc-param/$id': typeof RscParamIdRoute
@@ -337,6 +351,7 @@ export interface FileRoutesByTo {
   '/rsc-client-preload': typeof RscClientPreloadRoute
   '/rsc-component-slot': typeof RscComponentSlotRoute
   '/rsc-context': typeof RscContextRoute
+  '/rsc-css-autoinject': typeof RscCssAutoinjectRoute
   '/rsc-css-modules': typeof RscCssModulesRoute
   '/rsc-css-preload-complex': typeof RscCssPreloadComplexRoute
   '/rsc-deferred': typeof RscDeferredRoute
@@ -369,6 +384,7 @@ export interface FileRoutesByTo {
   '/rsc-streaming': typeof RscStreamingRoute
   '/rsc-suspense': typeof RscSuspenseRoute
   '/rsc-tree': typeof RscTreeRoute
+  '/rsc-use-server-fn': typeof RscUseServerFnRoute
   '/api/rsc-flight': typeof ApiRscFlightRoute
   '/rsc-css-conditional/$branch': typeof RscCssConditionalBranchRoute
   '/rsc-param/$id': typeof RscParamIdRoute
@@ -385,6 +401,7 @@ export interface FileRoutesById {
   '/rsc-client-preload': typeof RscClientPreloadRoute
   '/rsc-component-slot': typeof RscComponentSlotRoute
   '/rsc-context': typeof RscContextRoute
+  '/rsc-css-autoinject': typeof RscCssAutoinjectRoute
   '/rsc-css-modules': typeof RscCssModulesRoute
   '/rsc-css-preload-complex': typeof RscCssPreloadComplexRoute
   '/rsc-deferred': typeof RscDeferredRoute
@@ -417,6 +434,7 @@ export interface FileRoutesById {
   '/rsc-streaming': typeof RscStreamingRoute
   '/rsc-suspense': typeof RscSuspenseRoute
   '/rsc-tree': typeof RscTreeRoute
+  '/rsc-use-server-fn': typeof RscUseServerFnRoute
   '/api/rsc-flight': typeof ApiRscFlightRoute
   '/rsc-css-conditional/$branch': typeof RscCssConditionalBranchRoute
   '/rsc-param/$id': typeof RscParamIdRoute
@@ -434,6 +452,7 @@ export interface FileRouteTypes {
     | '/rsc-client-preload'
     | '/rsc-component-slot'
     | '/rsc-context'
+    | '/rsc-css-autoinject'
     | '/rsc-css-modules'
     | '/rsc-css-preload-complex'
     | '/rsc-deferred'
@@ -466,6 +485,7 @@ export interface FileRouteTypes {
     | '/rsc-streaming'
     | '/rsc-suspense'
     | '/rsc-tree'
+    | '/rsc-use-server-fn'
     | '/api/rsc-flight'
     | '/rsc-css-conditional/$branch'
     | '/rsc-param/$id'
@@ -481,6 +501,7 @@ export interface FileRouteTypes {
     | '/rsc-client-preload'
     | '/rsc-component-slot'
     | '/rsc-context'
+    | '/rsc-css-autoinject'
     | '/rsc-css-modules'
     | '/rsc-css-preload-complex'
     | '/rsc-deferred'
@@ -513,6 +534,7 @@ export interface FileRouteTypes {
     | '/rsc-streaming'
     | '/rsc-suspense'
     | '/rsc-tree'
+    | '/rsc-use-server-fn'
     | '/api/rsc-flight'
     | '/rsc-css-conditional/$branch'
     | '/rsc-param/$id'
@@ -528,6 +550,7 @@ export interface FileRouteTypes {
     | '/rsc-client-preload'
     | '/rsc-component-slot'
     | '/rsc-context'
+    | '/rsc-css-autoinject'
     | '/rsc-css-modules'
     | '/rsc-css-preload-complex'
     | '/rsc-deferred'
@@ -560,6 +583,7 @@ export interface FileRouteTypes {
     | '/rsc-streaming'
     | '/rsc-suspense'
     | '/rsc-tree'
+    | '/rsc-use-server-fn'
     | '/api/rsc-flight'
     | '/rsc-css-conditional/$branch'
     | '/rsc-param/$id'
@@ -576,6 +600,7 @@ export interface RootRouteChildren {
   RscClientPreloadRoute: typeof RscClientPreloadRoute
   RscComponentSlotRoute: typeof RscComponentSlotRoute
   RscContextRoute: typeof RscContextRoute
+  RscCssAutoinjectRoute: typeof RscCssAutoinjectRoute
   RscCssModulesRoute: typeof RscCssModulesRoute
   RscCssPreloadComplexRoute: typeof RscCssPreloadComplexRoute
   RscDeferredRoute: typeof RscDeferredRoute
@@ -608,6 +633,7 @@ export interface RootRouteChildren {
   RscStreamingRoute: typeof RscStreamingRoute
   RscSuspenseRoute: typeof RscSuspenseRoute
   RscTreeRoute: typeof RscTreeRoute
+  RscUseServerFnRoute: typeof RscUseServerFnRoute
   ApiRscFlightRoute: typeof ApiRscFlightRoute
   RscCssConditionalBranchRoute: typeof RscCssConditionalBranchRoute
   RscParamIdRoute: typeof RscParamIdRoute
@@ -617,6 +643,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/rsc-use-server-fn': {
+      id: '/rsc-use-server-fn'
+      path: '/rsc-use-server-fn'
+      fullPath: '/rsc-use-server-fn'
+      preLoaderRoute: typeof RscUseServerFnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rsc-tree': {
       id: '/rsc-tree'
       path: '/rsc-tree'
@@ -841,6 +874,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RscCssModulesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rsc-css-autoinject': {
+      id: '/rsc-css-autoinject'
+      path: '/rsc-css-autoinject'
+      fullPath: '/rsc-css-autoinject'
+      preLoaderRoute: typeof RscCssAutoinjectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rsc-context': {
       id: '/rsc-context'
       path: '/rsc-context'
@@ -944,6 +984,7 @@ const rootRouteChildren: RootRouteChildren = {
   RscClientPreloadRoute: RscClientPreloadRoute,
   RscComponentSlotRoute: RscComponentSlotRoute,
   RscContextRoute: RscContextRoute,
+  RscCssAutoinjectRoute: RscCssAutoinjectRoute,
   RscCssModulesRoute: RscCssModulesRoute,
   RscCssPreloadComplexRoute: RscCssPreloadComplexRoute,
   RscDeferredRoute: RscDeferredRoute,
@@ -976,6 +1017,7 @@ const rootRouteChildren: RootRouteChildren = {
   RscStreamingRoute: RscStreamingRoute,
   RscSuspenseRoute: RscSuspenseRoute,
   RscTreeRoute: RscTreeRoute,
+  RscUseServerFnRoute: RscUseServerFnRoute,
   ApiRscFlightRoute: ApiRscFlightRoute,
   RscCssConditionalBranchRoute: RscCssConditionalBranchRoute,
   RscParamIdRoute: RscParamIdRoute,

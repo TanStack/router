@@ -66,5 +66,7 @@ export function useHydrated(): boolean {
 }
 
 function subscribe() {
-  return () => {}
+  return () => {
+    // noop
+  }
 }

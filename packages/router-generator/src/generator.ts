@@ -270,7 +270,7 @@ export class Generator {
     return new Map(
       [...this.routeNodeCache.entries()].map(([filePath, cacheEntry]) => [
         filePath,
-        { routePath: cacheEntry.routeId },
+        { routeId: cacheEntry.routeId },
       ]),
     )
   }

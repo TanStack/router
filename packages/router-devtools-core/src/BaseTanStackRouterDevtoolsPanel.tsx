@@ -1,5 +1,10 @@
 import { clsx as cx } from 'clsx'
-import { interpolatePath, rootRouteId, trimPath } from '@tanstack/router-core'
+import {
+  hasKeys,
+  interpolatePath,
+  rootRouteId,
+  trimPath,
+} from '@tanstack/router-core'
 import {
   For,
   Match,
@@ -356,9 +361,7 @@ export const BaseTanStackRouterDevtoolsPanel =
       )
     })
 
-    const hasSearch = createMemo(
-      () => Object.keys(routerState().location.search).length,
-    )
+    const hasSearch = createMemo(() => hasKeys(routerState().location.search))
 
     const explorerState = createMemo(() => {
       return {

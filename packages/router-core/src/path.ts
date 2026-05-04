@@ -167,33 +167,7 @@ export function resolvePath({
     }
   }
 
-  let segment
-  let joined = ''
-  for (let i = 0; i < baseSegments.length; i++) {
-    if (i > 0) joined += '/'
-    const part = baseSegments[i]!
-    if (!part) continue
-    segment = parseSegment(part, 0, segment)
-    const kind = segment[0]
-    if (kind === SEGMENT_TYPE_PATHNAME) {
-      joined += part
-      continue
-    }
-    const end = segment[5]
-    const prefix = part.substring(0, segment[1])
-    const suffix = part.substring(segment[4], end)
-    const value = part.substring(segment[2], segment[3])
-    if (kind === SEGMENT_TYPE_PARAM) {
-      joined += prefix || suffix ? `${prefix}{$${value}}${suffix}` : `$${value}`
-    } else if (kind === SEGMENT_TYPE_WILDCARD) {
-      joined += prefix || suffix ? `${prefix}{$}${suffix}` : '$'
-    } else {
-      // SEGMENT_TYPE_OPTIONAL_PARAM
-      joined += `${prefix}{-$${value}}${suffix}`
-    }
-  }
-  joined = cleanPath(joined)
-  const result = joined || '/'
+  const result = cleanPath(baseSegments.join('/')) || '/'
   if (key && cache) cache.set(key, result)
   return result
 }

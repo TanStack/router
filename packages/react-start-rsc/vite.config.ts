@@ -36,8 +36,11 @@ export default mergeConfig(
       './src/index.rsc.ts',
       './src/serialization.client.ts',
       './src/serialization.server.ts',
+      './src/plugin/rscCssTransform.ts',
       './src/plugin/vite.ts',
       './src/entry/rsc.tsx',
+      './src/rsbuild/ssr-decode.ts',
+      './src/rsbuild/browser-decode.ts',
     ],
     cjs: false,
     // Externalize virtual modules and SSR-only imports - resolved at runtime by Vite plugins
@@ -47,6 +50,9 @@ export default mergeConfig(
       'virtual:tanstack-rsc-ssr-decode',
       'virtual:tanstack-rsc-hmr',
       '#tanstack-start-server-fn-resolver',
+      'react-server-dom-rspack/client.node',
+      'react-server-dom-rspack/client.browser',
+      'react-server-dom-rspack/server',
     ],
   }),
 )

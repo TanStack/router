@@ -2,7 +2,13 @@
 // This file is used when importing outside of RSC (React Server Components) context
 
 // Types are always available
-export type { AnyCompositeComponent } from './ServerComponentTypes'
+export type {
+  AnyCompositeComponent,
+  AnyRenderableServerComponent,
+  RenderableServerComponent,
+  RenderableServerComponentAttributes,
+  RenderableServerComponentBuilder,
+} from './ServerComponentTypes'
 
 // CSS hrefs symbol for type-safe access
 export { SERVER_COMPONENT_CSS_HREFS } from './ServerComponentTypes'

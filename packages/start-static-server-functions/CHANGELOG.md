@@ -1,5 +1,68 @@
 # @tanstack/start-static-server-functions
 
+## 1.166.40
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.168.1
+  - @tanstack/react-start@1.167.57
+  - @tanstack/solid-start@1.167.54
+
+## 1.166.39
+
+### Patch Changes
+
+- Updated dependencies [[`82b0613`](https://github.com/TanStack/router/commit/82b06132af776f74603ab27977cc277d6219a845)]:
+  - @tanstack/start-client-core@1.168.0
+  - @tanstack/react-start@1.167.56
+  - @tanstack/solid-start@1.167.53
+
+## 1.166.38
+
+### Patch Changes
+
+- Updated dependencies [[`7fa0f39`](https://github.com/TanStack/router/commit/7fa0f39cabf4407aa1cb99e369566e8ea85554a2)]:
+  - @tanstack/react-start@1.167.53
+  - @tanstack/start-client-core@1.167.22
+  - @tanstack/solid-start@1.167.50
+
+## 1.166.37
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.167.21
+  - @tanstack/react-start@1.167.52
+  - @tanstack/solid-start@1.167.49
+
+## 1.166.36
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.167.20
+  - @tanstack/react-start@1.167.50
+  - @tanstack/solid-start@1.167.48
+
+## 1.166.35
+
+### Patch Changes
+
+- Updated dependencies [[`8b97002`](https://github.com/TanStack/router/commit/8b97002af3f6d15204e60c55d3f5735b78bd7efe)]:
+  - @tanstack/start-client-core@1.167.19
+  - @tanstack/react-start@1.167.48
+  - @tanstack/solid-start@1.167.43
+
+## 1.166.34
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-start@1.167.46
+  - @tanstack/start-client-core@1.167.18
+  - @tanstack/solid-start@1.167.41
+
 ## 1.166.33
 
 ### Patch Changes

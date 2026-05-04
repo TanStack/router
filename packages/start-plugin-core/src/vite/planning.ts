@@ -136,6 +136,7 @@ export function createViteDefineConfig(opts: {
   spaEnabled: boolean | undefined
   devSsrStylesEnabled: boolean
   devSsrStylesBasepath: string
+  inlineCssEnabled: boolean
   staticNodeEnv: boolean
 }) {
   return {
@@ -155,6 +156,10 @@ export function createViteDefineConfig(opts: {
     ...defineReplaceEnv(
       'TSS_DEV_SSR_STYLES_BASEPATH',
       opts.devSsrStylesBasepath,
+    ),
+    ...defineReplaceEnv(
+      'TSS_INLINE_CSS_ENABLED',
+      opts.inlineCssEnabled ? 'true' : 'false',
     ),
     ...(opts.command === 'build' && opts.staticNodeEnv
       ? {

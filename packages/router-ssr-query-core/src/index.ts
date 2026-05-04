@@ -6,6 +6,8 @@ import { isRedirect } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import type { AnyRouter } from '@tanstack/router-core'
 import type {
+  DehydrateOptions,
+  HydrateOptions,
   QueryClient,
   DehydratedState as QueryDehydratedState,
 } from '@tanstack/query-core'
@@ -13,6 +15,8 @@ import type {
 export type RouterSsrQueryOptions<TRouter extends AnyRouter> = {
   router: TRouter
   queryClient: QueryClient
+  dehydrateOptions?: DehydrateOptions
+  hydrateOptions?: HydrateOptions
 
   /**
    * If `true`, the QueryClient will handle errors thrown by `redirect()` inside of mutations and queries.
@@ -31,6 +35,8 @@ type DehydratedRouterQueryState = {
 export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   router,
   queryClient,
+  dehydrateOptions,
+  hydrateOptions,
   handleRedirects = true,
 }: RouterSsrQueryOptions<TRouter>) {
   const ogHydrate = router.options.hydrate
@@ -55,7 +61,10 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
           queryStream: queryStream.stream,
         }
 
-        const dehydratedQueryClient = queryDehydrate(queryClient)
+        const dehydratedQueryClient = queryDehydrate(
+          queryClient,
+          dehydrateOptions,
+        )
         if (dehydratedQueryClient.queries.length > 0) {
           dehydratedQueryClient.queries.forEach((query) => {
             sentQueries.add(query.queryHash)
@@ -95,19 +104,27 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
         )
         return
       }
-      sentQueries.add(event.query.queryHash)
-      queryStream.enqueue(
-        queryDehydrate(queryClient, {
-          shouldDehydrateQuery: (query) => {
-            if (query.queryHash === event.query.queryHash) {
-              return (
-                ogClientOptions.dehydrate?.shouldDehydrateQuery?.(query) ?? true
-              )
-            }
+      const dehydratedQuery = queryDehydrate(queryClient, {
+        ...dehydrateOptions,
+        shouldDehydrateQuery: (query) => {
+          if (query.queryHash !== event.query.queryHash) {
             return false
-          },
-        }),
-      )
+          }
+
+          return (
+            (ogClientOptions.dehydrate?.shouldDehydrateQuery?.(query) ??
+              true) &&
+            (dehydrateOptions?.shouldDehydrateQuery?.(query) ?? true)
+          )
+        },
+      })
+
+      if (dehydratedQuery.queries.length === 0) {
+        return
+      }
+
+      sentQueries.add(event.query.queryHash)
+      queryStream.enqueue(dehydratedQuery)
     })
     // on the client
   } else {
@@ -115,7 +132,11 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       await ogHydrate?.(dehydrated)
       // hydrate the query client with the dehydrated data (if it was dehydrated on the server)
       if (dehydrated.dehydratedQueryClient) {
-        queryHydrate(queryClient, dehydrated.dehydratedQueryClient)
+        queryHydrate(
+          queryClient,
+          dehydrated.dehydratedQueryClient,
+          hydrateOptions,
+        )
       }
 
       // read the query stream and hydrate the queries as they come in
@@ -123,7 +144,7 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       reader
         .read()
         .then(async function handle({ done, value }) {
-          queryHydrate(queryClient, value)
+          queryHydrate(queryClient, value, hydrateOptions)
           if (done) {
             return
           }

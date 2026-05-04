@@ -44,7 +44,7 @@ export function startManifestPlugin(opts: {
       moduleId: VIRTUAL_MODULES.startManifest,
       enforce: 'pre',
       load() {
-        const { resolvedStartConfig } = opts.getConfig()
+        const { resolvedStartConfig, startConfig } = opts.getConfig()
         const clientEntry = joinURL(
           resolvedStartConfig.basePaths.publicBase,
           '@id',
@@ -70,6 +70,7 @@ export function startManifestPlugin(opts: {
           clientBuild,
           routeTreeRoutes,
           basePath: resolvedStartConfig.basePaths.publicBase,
+          inlineCss: startConfig.server.build.inlineCss,
           additionalRouteAssets: getViteAdditionalRouteAssets({
             cssCodeSplitDisabledFileName,
             basePath: resolvedStartConfig.basePaths.publicBase,

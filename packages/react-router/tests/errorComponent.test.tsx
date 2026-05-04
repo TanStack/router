@@ -3,12 +3,15 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
   Link,
+  Outlet,
   RouterProvider,
   createBrowserHistory,
   createLazyRoute,
+  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
+  notFound,
 } from '../src'
 import type { ErrorComponentProps, RouterHistory } from '../src'
 
@@ -258,3 +261,101 @@ describe.each([true, false])(
     })
   },
 )
+
+describe('notFoundComponent is rendered when an error is thrown in params.parse', () => {
+  test('displays notFoundComponent when error is thrown in params.parse', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const rootLoader = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1))
+      return { ok: true }
+    })
+
+    const rootRoute = createRootRoute({
+      component: function Root() {
+        return <Outlet />
+      },
+      notFoundComponent: function NotFound() {
+        return <div>No pizza</div>
+      },
+      pendingComponent: function Pending() {
+        return <div>Loading...</div>
+      },
+      loader: rootLoader,
+      shouldReload: true,
+      pendingMs: 0,
+      pendingMinMs: 100,
+      wrapInSuspense: true,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: function Home() {
+        return (
+          <div>
+            <Link to="/pizza/rotten" preload="intent">
+              link to rotten pizza
+            </Link>
+          </div>
+        )
+      },
+    })
+
+    const restaurantRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: 'restaurant',
+      component: function Restaurant() {
+        return <Outlet />
+      },
+    })
+
+    const pizzaRoute = createRoute({
+      getParentRoute: () => restaurantRoute,
+      path: '/pizza/$pizzaType',
+      component: function Pizza() {
+        return <div>Pizza</div>
+      },
+      params: {
+        parse: (p) => {
+          if (p.pizzaType === 'rotten') {
+            throw new Error('404 No rotten pizzas')
+          }
+          return { pizzaType: p.pizzaType }
+        },
+        stringify: (p) => ({ pizzaType: p.pizzaType }),
+      },
+      onError: () => {
+        throw notFound()
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      restaurantRoute.addChildren([pizzaRoute]),
+    ])
+
+    const router = createRouter({
+      routeTree,
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.latestLoadPromise)
+    expect(rootLoader).toHaveBeenCalledTimes(1)
+
+    const linkToRottenPizza = await screen.findByRole('link', {
+      name: 'link to rotten pizza',
+    })
+
+    expect(linkToRottenPizza).toBeInTheDocument()
+    await act(() => fireEvent.mouseOver(linkToRottenPizza))
+    await act(() => fireEvent.click(linkToRottenPizza))
+
+    const notFoundComponent = await screen.findByText('No pizza', undefined, {
+      timeout: 750,
+    })
+    expect(rootLoader).toHaveBeenCalledTimes(2)
+    expect(notFoundComponent).toBeInTheDocument()
+  })
+})

@@ -1,5 +1,57 @@
 # @tanstack/start-client-core
 
+## 1.168.1
+
+### Patch Changes
+
+- Updated dependencies [[`4a1e63f`](https://github.com/TanStack/router/commit/4a1e63f1d1230b1ed8234609acad4639d8982c13)]:
+  - @tanstack/router-core@1.169.1
+  - @tanstack/start-storage-context@1.166.34
+
+## 1.168.0
+
+### Minor Changes
+
+- Add a `strict` option to `createServerFn` for type-level server function serialization checks. Use `strict: false` to opt out for input and output values, or `strict: { output: false }` to opt out for return values only. ([#7277](https://github.com/TanStack/router/pull/7277))
+
+## 1.167.22
+
+### Patch Changes
+
+- Updated dependencies [[`c992495`](https://github.com/TanStack/router/commit/c992495bf4010ff4c3597bb1f3b1ba02594e857e)]:
+  - @tanstack/router-core@1.169.0
+  - @tanstack/start-storage-context@1.166.33
+
+## 1.167.21
+
+### Patch Changes
+
+- Updated dependencies [[`b5c4183`](https://github.com/TanStack/router/commit/b5c4183ab8b44be8a75647b7f7b588ad7c146ece)]:
+  - @tanstack/router-core@1.168.18
+  - @tanstack/start-storage-context@1.166.32
+
+## 1.167.20
+
+### Patch Changes
+
+- Updated dependencies [[`493148b`](https://github.com/TanStack/router/commit/493148bc5378b7f9de1544d87f6aaa425c12eb34)]:
+  - @tanstack/router-core@1.168.17
+  - @tanstack/start-storage-context@1.166.31
+
+## 1.167.19
+
+### Patch Changes
+
+- refactor(start-client-core): use a more explicit typing to `CustomFetch` type ([#7258](https://github.com/TanStack/router/pull/7258))
+
+## 1.167.18
+
+### Patch Changes
+
+- Updated dependencies [[`4d864ee`](https://github.com/TanStack/router/commit/4d864eebbd184265eabb563d326ab409c93feb17)]:
+  - @tanstack/router-core@1.168.16
+  - @tanstack/start-storage-context@1.166.30
+
 ## 1.167.17
 
 ### Patch Changes

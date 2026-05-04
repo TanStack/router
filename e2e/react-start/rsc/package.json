@@ -4,11 +4,15 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --port 3000",
-    "dev:e2e": "vite dev --port $PORT",
-    "build": "vite build && tsc --noEmit",
+    "dev": "pnpm dev:vite --port 3000",
+    "dev:e2e": "pnpm dev:vite --port $PORT",
+    "dev:vite": "vite dev",
+    "dev:rsbuild": "rsbuild dev",
+    "build:rsbuild": "rsbuild build && tsc --noEmit",
+    "build": "pnpm build:vite",
+    "build:vite": "vite build && tsc --noEmit",
     "preview": "vite preview",
-    "start": "pnpx srvx --prod -s ../client ${E2E_DIST_DIR:-dist}/server/server.js",
+    "start": "node server.js",
     "test:e2e-full": "pnpm build && sh -c 'rm -f \"port-${E2E_PORT_KEY:-$npm_package_name}.txt\" \"port-${E2E_PORT_KEY:-$npm_package_name}-external.txt\"' && playwright test --project=chromium"
   },
   "nx": {
@@ -31,6 +35,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
+    "@rsbuild/core": "^2.0.1",
+    "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/eslint-plugin-start": "workspace:^",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",

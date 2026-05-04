@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/vue-router",
-  "version": "1.168.19",
+  "version": "1.169.1",
   "description": "Modern and scalable routing for Vue applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -81,7 +81,6 @@
     "jsesc": "^3.0.2"
   },
   "devDependencies": {
-    "@tanstack/intent": "^0.0.14",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/vue": "^8.1.0",
     "@types/jsesc": "^3.0.3",
@@ -95,8 +94,5 @@
   },
   "peerDependencies": {
     "vue": "^3.3.0"
-  },
-  "bin": {
-    "intent": "./bin/intent.js"
   }
 }

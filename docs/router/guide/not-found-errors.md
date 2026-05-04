@@ -27,7 +27,7 @@ Under the hood, both of these cases are implemented using the same `notFound` fu
 
 When TanStack Router encounters a **pathname** that doesn't match any known route pattern **OR** partially matches a route pattern but with extra trailing pathname segments, it will automatically throw a not-found error.
 
-Depending on the `notFoundMode` option, the router will handle these automatic errors differently::
+Depending on the `notFoundMode` option, the router will handle these automatic errors differently:
 
 - ["fuzzy" mode](#notfoundmode-fuzzy) (default): The router will intelligently find the closest matching suitable route and display the `notFoundComponent`.
 - ["root" mode](#notfoundmode-root): All not-found errors will be handled by the root route's `notFoundComponent`, regardless of the nearest matching route.

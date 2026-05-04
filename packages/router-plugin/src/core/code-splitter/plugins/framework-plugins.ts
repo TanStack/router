@@ -2,24 +2,23 @@ import { createReactRefreshIgnoredRouteExportsPlugin } from './react-refresh-ign
 import { createReactRefreshRouteComponentsPlugin } from './react-refresh-route-components'
 import { createReactStableHmrSplitRouteComponentsPlugin } from './react-stable-hmr-split-route-components'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
-import type { Config } from '../../config'
+import type { Config, HmrStyle } from '../../config'
 
 export function getReferenceRouteCompilerPlugins(opts: {
   targetFramework: Config['target']
   addHmr?: boolean
-  hmrHotExpression?: string
+  hmrStyle?: HmrStyle
 }): Array<ReferenceRouteCompilerPlugin> | undefined {
   switch (opts.targetFramework) {
     case 'react': {
       if (opts.addHmr) {
+        const hmrStyle = opts.hmrStyle ?? 'vite'
         return [
-          createReactRefreshIgnoredRouteExportsPlugin({
-            hotExpression: opts.hmrHotExpression,
-          }),
+          ...(hmrStyle === 'vite'
+            ? [createReactRefreshIgnoredRouteExportsPlugin()]
+            : []),
           createReactRefreshRouteComponentsPlugin(),
-          createReactStableHmrSplitRouteComponentsPlugin({
-            hotExpression: opts.hmrHotExpression,
-          }),
+          createReactStableHmrSplitRouteComponentsPlugin({ hmrStyle }),
         ]
       }
       return undefined

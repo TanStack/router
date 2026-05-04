@@ -1,11 +1,11 @@
 import {
   START_ENVIRONMENT_NAMES,
   tanStackStartVite,
-} from '@tanstack/start-plugin-core'
+} from '@tanstack/start-plugin-core/vite'
 import type {
   TanStackStartViteInputConfig,
   TanStackStartVitePluginCoreOptions,
-} from '@tanstack/start-plugin-core'
+} from '@tanstack/start-plugin-core/vite'
 import { solidStartDefaultEntryPaths } from './shared'
 import type { PluginOption } from 'vite'
 
@@ -25,6 +25,17 @@ export function tanstackStart(
   return [
     {
       name: 'tanstack-solid-start:config',
+      config() {
+        return {
+          ssr: {
+            noExternal: [
+              '@tanstack/solid-router-ssr-query',
+              '@tanstack/solid-query',
+              '@tanstack/solid-query-devtools',
+            ],
+          },
+        }
+      },
       configEnvironment(environmentName, options) {
         return {
           optimizeDeps:

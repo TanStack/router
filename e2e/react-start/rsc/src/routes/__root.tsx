@@ -353,6 +353,14 @@ function RootComponent() {
             CSS Preload Complex
           </Link>
           <Link
+            to="/rsc-css-autoinject"
+            className="nav-link"
+            activeProps={{ className: 'nav-link active' }}
+            data-testid="nav-css-autoinject"
+          >
+            CSS Auto Inject
+          </Link>
+          <Link
             to="/rsc-param"
             className="nav-link"
             activeProps={{ className: 'nav-link active' }}

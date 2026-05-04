@@ -1103,6 +1103,175 @@ describe('buildLocation - params edge cases', () => {
     expect(location.pathname).toBe('/users/000042')
   })
 
+  test('params.stringify should run for params.parse route templates', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const languageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/{$language}',
+      params: {
+        parse: ({ language }: { language: string }) => {
+          if (language === 'en') return { language: 'en-US' as const }
+          if (language === 'pl') return { language: 'pl-PL' as const }
+          return false
+        },
+        stringify: ({ language }: { language: 'en-US' | 'pl-PL' }) => {
+          if (language === 'en-US') return { language: 'en' }
+          if (language === 'pl-PL') return { language: 'pl' }
+          return { language }
+        },
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([languageRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/en'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/{$language}',
+      params: { language: 'pl-PL' },
+    })
+
+    expect(location.pathname).toBe('/pl')
+
+    const currentRouteLocation = router.buildLocation({
+      params: { language: 'pl-PL' },
+    } as any)
+
+    expect(currentRouteLocation.pathname).toBe('/pl')
+  })
+
+  test('params.stringify should use the exact route template over path matching priority', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const dollarRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/$value',
+      params: {
+        parse: ({ value }: { value: string }) => {
+          if (value.startsWith('dollar-')) return { value }
+          return false
+        },
+        stringify: ({ value }: { value: string }) => ({
+          value: `dollar-${value}`,
+        }),
+      },
+    })
+    const curlyRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/{$value}',
+      params: {
+        parse: ({ value }: { value: string }) => {
+          if (value.startsWith('curly-')) return { value }
+          return false
+        },
+        stringify: ({ value }: { value: string }) => ({
+          value: `curly-${value}`,
+        }),
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([dollarRoute, curlyRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/dollar-home'] }),
+    })
+
+    await router.load()
+
+    const curlyLocation = router.buildLocation({
+      to: '/{$value}',
+      params: { value: 'alpha' },
+    })
+    const dollarLocation = router.buildLocation({
+      to: '/$value',
+      params: { value: 'alpha' },
+    })
+
+    expect(curlyLocation.pathname).toBe('/curly-alpha')
+    expect(dollarLocation.pathname).toBe('/dollar-alpha')
+  })
+
+  test('params.parse should gate path matching and provide typed params', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const userRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users/$userId',
+      params: {
+        parse: ({ userId }: { userId: string }) => {
+          const parsed = Number(userId)
+          if (!Number.isInteger(parsed)) return false
+          return { userId: parsed }
+        },
+        stringify: ({ userId }: { userId: number }) => ({
+          userId: String(userId),
+        }),
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([userRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/users/123'] }),
+    })
+
+    await router.load()
+
+    expect(router.state.matches.at(-1)?.params).toEqual({ userId: 123 })
+
+    const location = router.buildLocation({
+      to: '/users/$userId',
+      params: { userId: 456 },
+    })
+
+    expect(location.pathname).toBe('/users/456')
+  })
+
+  test('buildLocation should warn in development when stringified params do not match the target route', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const staticRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/no',
+    })
+    const dynamicRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/$foo',
+      params: {
+        stringify: () => ({ foo: 'no' }),
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([staticRoute, dynamicRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/yes'] }),
+    })
+
+    await router.load()
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    try {
+      const location = router.buildLocation({
+        to: '/$foo',
+        params: { foo: 'yes' },
+      })
+
+      expect(location.pathname).toBe('/no')
+      expect(warn).toHaveBeenCalledWith(
+        'Generated path "/no" for route "/$foo" did not match the same route after params.stringify.',
+      )
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
   test('params.stringify in nested routes should all be applied', async () => {
     const rootRoute = new BaseRootRoute({})
     const orgRoute = new BaseRoute({

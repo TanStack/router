@@ -313,7 +313,9 @@ export function NavItem(props: NavItemProps): React.ReactNode {
 <NavItem label="Post" linkOptions={{ to: '/posts/$postId', params: { postId: '1' } }} />
 ```
 
-### `ValidateNavigateOptions` — Type-Safe Navigate in Utilities
+### `ValidateNavigateOptions` and `ValidateRedirectOptions`
+
+Same pattern as `ValidateLinkOptions` above, for `useNavigate` and `redirect`. Declare a generic public overload plus a non-generic implementation signature so the call site stays narrowed and the body works without casts:
 
 ```tsx
 import {
@@ -332,45 +334,15 @@ export function useDelayedNavigate<
 export function useDelayedNavigate(
   options: ValidateNavigateOptions,
   delayMs: number,
-): () => void {
+) {
   const navigate = useNavigate()
   return () => {
     setTimeout(() => navigate(options), delayMs)
   }
 }
-
-// Usage — type-safe
-const go = useDelayedNavigate(
-  { to: '/posts/$postId', params: { postId: '1' } },
-  500,
-)
 ```
 
-### `ValidateRedirectOptions` — Type-Safe Redirect in Utilities
-
-```tsx
-import {
-  redirect,
-  type RegisteredRouter,
-  type ValidateRedirectOptions,
-} from '@tanstack/react-router'
-
-export async function fetchOrRedirect<
-  TRouter extends RegisteredRouter = RegisteredRouter,
-  TOptions = unknown,
->(
-  url: string,
-  redirectOptions: ValidateRedirectOptions<TRouter, TOptions>,
-): Promise<unknown>
-export async function fetchOrRedirect(
-  url: string,
-  redirectOptions: ValidateRedirectOptions,
-): Promise<unknown> {
-  const response = await fetch(url)
-  if (!response.ok && response.status === 401) throw redirect(redirectOptions)
-  return response.json()
-}
-```
+`ValidateRedirectOptions` works identically — declare a generic overload accepting `ValidateRedirectOptions<TRouter, TOptions>` and an impl signature accepting `ValidateRedirectOptions`, then call `redirect(options)` in the body.
 
 ### Render Props for Maximum Performance
 
@@ -477,21 +449,44 @@ declare module '@tanstack/react-router' {
 }
 ```
 
-### 5. CRITICAL (cross-skill): Generating Next.js or Remix patterns
+### 5. CRITICAL (cross-skill): Wrong-framework imports and file structure
+
+Wrong-framework code looks plausible (it's React) but breaks the build or produces conflicting `/` routes at runtime.
 
 ```tsx
-// WRONG — these are NOT TanStack Router APIs
-export async function getServerSideProps() { ... }
-export async function loader({ request }) { ... } // Remix-style
-const [searchParams, setSearchParams] = useSearchParams() // React Router
+// WRONG — react-router-dom and next/* are different libraries
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import Link from 'next/link'
+import { useRouter, useParams } from 'next/navigation'
 
-// CORRECT — TanStack Router APIs
+// CORRECT — all routing exports come from @tanstack/react-router
+import {
+  Link,
+  Outlet,
+  useNavigate,
+  useRouter,
+  useLocation,
+  useParams,
+  redirect,
+} from '@tanstack/react-router'
+```
+
+```tsx
+// WRONG file structures + APIs:
+//   src/pages/*.tsx with getServerSideProps / getStaticProps  (Next.js Pages Router)
+//   app/layout.tsx + app/page.tsx                              (Next.js App Router)
+//   _app/index.tsx, pages/_app.tsx, pages/_document.tsx        (Next.js custom App)
+//   loader/action exports                                       (Remix)
+
+// CORRECT — TanStack file-based routing at src/routes/*.tsx
 export const Route = createFileRoute('/posts')({
-  loader: async () => { ... },           // TanStack loader
-  validateSearch: zodValidator(schema),   // TanStack search validation
+  loader: async () => { ... },
+  validateSearch: zodValidator(schema),
   component: PostsComponent,
 })
-const search = Route.useSearch()          // TanStack hook
+const search = Route.useSearch()
 ```
+
+If a build error mentions `react-router-dom`, `next/`, `pages/_app`, or duplicate `/` routes, fix the import — don't paper over with type assertions.
 
 See also: router-core (Register setup), router-core/navigation (from narrowing), router-core/code-splitting (getRouteApi).

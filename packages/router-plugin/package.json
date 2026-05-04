@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-plugin",
-  "version": "1.167.22",
+  "version": "1.167.32",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -63,6 +63,16 @@
         "default": "./dist/cjs/vite.cjs"
       }
     },
+    "./context": {
+      "import": {
+        "types": "./dist/esm/context.d.ts",
+        "default": "./dist/esm/context.js"
+      },
+      "require": {
+        "types": "./dist/cjs/context.d.cts",
+        "default": "./dist/cjs/context.cjs"
+      }
+    },
     "./rspack": {
       "import": {
         "types": "./dist/esm/rspack.d.ts",
@@ -118,18 +128,17 @@
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/virtual-file-routes": "workspace:*",
     "chokidar": "^3.6.0",
-    "unplugin": "^2.1.2",
+    "unplugin": "^3.0.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tanstack/intent": "^0.0.14",
     "@types/babel__core": "^7.20.5",
     "@types/babel__template": "^7.4.4",
     "@types/babel__traverse": "^7.28.0",
     "@types/node": ">=20"
   },
   "peerDependencies": {
-    "@rsbuild/core": ">=1.0.2",
+    "@rsbuild/core": ">=1.0.2 || ^2.0.0",
     "@tanstack/react-router": "workspace:^",
     "vite": ">=5.0.0 || >=6.0.0 || >=7.0.0 || >=8.0.0",
     "vite-plugin-solid": "^2.11.10 || ^3.0.0-0",
@@ -151,8 +160,5 @@
     "webpack": {
       "optional": true
     }
-  },
-  "bin": {
-    "intent": "./bin/intent.js"
   }
 }

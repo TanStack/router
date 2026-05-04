@@ -26,7 +26,6 @@ export default mergeConfig(
     exclude: ['./src/default-entry'],
     entry: [
       './src/index.ts',
-      './src/index.rsc.ts',
       './src/client.tsx',
       './src/client-rpc.ts',
       './src/server.tsx',
@@ -37,6 +36,9 @@ export default mergeConfig(
       './src/rsc.rsc.ts',
       './src/rsc/serialization/server.ts',
       './src/rsc/serialization/client.ts',
+      './src/rsbuild/browser-decode.ts',
+      './src/rsbuild/ssr-decode.ts',
+      './src/plugin/rsbuild.ts',
       './src/plugin/vite.ts',
       './src/server-only.ts',
       './src/client-only.ts',

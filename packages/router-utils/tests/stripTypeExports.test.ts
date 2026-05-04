@@ -11,6 +11,22 @@ function transform(code: string): string {
 }
 
 describe('stripTypeExports', () => {
+  describe('import attributes parsing', () => {
+    test('parses import attributes with with syntax', () => {
+      const code = `import data from './data.json' with { type: 'json' }
+export const value = data`
+
+      expect(() => parseAst({ code })).not.toThrow()
+    })
+
+    test('parses import attributes with deprecated assert syntax', () => {
+      const code = `import data from './data.json' assert { type: 'json' }
+export const value = data`
+
+      expect(() => parseAst({ code })).not.toThrow()
+    })
+  })
+
   describe('type alias declarations', () => {
     test('preserves top-level type alias declaration (non-exported)', () => {
       const code = `type Foo = string;

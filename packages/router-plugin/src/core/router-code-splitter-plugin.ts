@@ -6,7 +6,6 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { logDiff } from '@tanstack/router-utils'
 import { getConfig, splitGroupingsSchema } from './config'
-import { resolveHmrHotExpression } from './hmr-hot-expression'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitSharedRoute,
@@ -23,9 +22,11 @@ import {
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
 import { debug, normalizePath } from './utils'
+import { createRouterPluginContext } from './router-plugin-context'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
 import type { Config } from './config'
+import type { RouterPluginContext } from './router-plugin-context'
 import type {
   UnpluginFactory,
   TransformResult as UnpluginTransformResult,
@@ -77,9 +78,10 @@ const TRANSFORMATION_PLUGINS_BY_FRAMEWORK: Record<
   ],
 }
 
-export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
-  Partial<Config | (() => Config)> | undefined
-> = (options = {}, { framework: _framework }) => {
+export function createRouterCodeSplitterPlugin(
+  options: Partial<Config | (() => Config)> | undefined = {},
+  routerPluginContext: RouterPluginContext,
+): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
 
@@ -129,7 +131,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     const userShouldSplitFn = getShouldSplitFn()
 
     const pluginSplitBehavior = userShouldSplitFn?.({
-      routeId: generatorNodeInfo.routePath,
+      routeId: generatorNodeInfo.routeId,
     }) as CodeSplitGroupings | undefined
 
     if (pluginSplitBehavior) {
@@ -158,9 +160,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const addHmr =
       (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction
-    const hmrHotExpression = resolveHmrHotExpression(
-      userConfig.plugin?.hmr?.hotExpression,
-    )
+    const hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
@@ -172,12 +172,13 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         ? new Set(userConfig.codeSplittingOptions.deleteNodes)
         : undefined,
       addHmr,
-      hmrHotExpression,
+      hmrStyle,
+      hmrRouteId: generatorNodeInfo.routeId,
       sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
       compilerPlugins: getReferenceRouteCompilerPlugins({
         targetFramework: userConfig.target,
         addHmr,
-        hmrHotExpression,
+        hmrStyle,
       }),
     })
 
@@ -261,7 +262,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         handler(code, id) {
           const normalizedId = normalizePath(id)
           const generatorFileInfo =
-            globalThis.TSR_ROUTES_BY_ID_MAP?.get(normalizedId)
+            routerPluginContext.routesByFile.get(normalizedId)
           if (
             generatorFileInfo &&
             includedCode.some((included) => code.includes(included))
@@ -403,4 +404,10 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       },
     },
   ]
+}
+
+export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
+  Partial<Config | (() => Config)> | undefined
+> = (options = {}) => {
+  return createRouterCodeSplitterPlugin(options, createRouterPluginContext())
 }

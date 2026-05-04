@@ -4,9 +4,13 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --port 3000",
-    "dev:e2e": "vite dev --port $PORT",
-    "build": "vite build && tsc --noEmit",
+    "dev": "pnpm dev:vite --port 3000",
+    "dev:e2e": "pnpm dev:vite",
+    "dev:vite": "vite dev",
+    "dev:rsbuild": "rsbuild dev",
+    "build": "pnpm build:vite",
+    "build:vite": "vite build && tsc --noEmit",
+    "build:rsbuild": "rsbuild build && tsc --noEmit",
     "test:e2e": "MODE=dev playwright test --project=chromium"
   },
   "dependencies": {
@@ -17,6 +21,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
+    "@rsbuild/core": "^2.0.1",
+    "@rsbuild/plugin-react": "^2.0.0",
+    "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
@@ -26,5 +33,19 @@
     "@vitejs/plugin-react": "^6.0.1",
     "typescript": "^6.0.2",
     "vite": "^8.0.0"
+  },
+  "nx": {
+    "metadata": {
+      "playwrightModes": [
+        {
+          "toolchain": "vite",
+          "mode": "ssr"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr"
+        }
+      ]
+    }
   }
 }

@@ -1,5 +1,85 @@
 # @tanstack/solid-start-client
 
+## 1.166.46
+
+### Patch Changes
+
+- Updated dependencies [[`4a1e63f`](https://github.com/TanStack/router/commit/4a1e63f1d1230b1ed8234609acad4639d8982c13)]:
+  - @tanstack/router-core@1.169.1
+  - @tanstack/solid-router@1.169.1
+  - @tanstack/start-client-core@1.168.1
+
+## 1.166.45
+
+### Patch Changes
+
+- Updated dependencies [[`82b0613`](https://github.com/TanStack/router/commit/82b06132af776f74603ab27977cc277d6219a845)]:
+  - @tanstack/start-client-core@1.168.0
+
+## 1.166.44
+
+### Patch Changes
+
+- Updated dependencies [[`c992495`](https://github.com/TanStack/router/commit/c992495bf4010ff4c3597bb1f3b1ba02594e857e)]:
+  - @tanstack/router-core@1.169.0
+  - @tanstack/solid-router@1.169.0
+  - @tanstack/start-client-core@1.167.22
+
+## 1.166.43
+
+### Patch Changes
+
+- Updated dependencies [[`b5c4183`](https://github.com/TanStack/router/commit/b5c4183ab8b44be8a75647b7f7b588ad7c146ece)]:
+  - @tanstack/router-core@1.168.18
+  - @tanstack/solid-router@1.168.26
+  - @tanstack/start-client-core@1.167.21
+
+## 1.166.42
+
+### Patch Changes
+
+- Updated dependencies [[`493148b`](https://github.com/TanStack/router/commit/493148bc5378b7f9de1544d87f6aaa425c12eb34)]:
+  - @tanstack/router-core@1.168.17
+  - @tanstack/solid-router@1.168.25
+  - @tanstack/start-client-core@1.167.20
+
+## 1.166.41
+
+### Patch Changes
+
+- Updated dependencies [[`944b155`](https://github.com/TanStack/router/commit/944b1558965bf038eaf3c0dfb9e1ac3800d6fd3a)]:
+  - @tanstack/solid-router@1.168.24
+
+## 1.166.40
+
+### Patch Changes
+
+- Updated dependencies [[`41e37f8`](https://github.com/TanStack/router/commit/41e37f8a9c3d2a6e00e4ca6faabb6a596bc36a98), [`e054474`](https://github.com/TanStack/router/commit/e054474cd1df6f93cd69dd5d255013840441438e)]:
+  - @tanstack/solid-router@1.168.23
+
+## 1.166.39
+
+### Patch Changes
+
+- Updated dependencies [[`b732c8a`](https://github.com/TanStack/router/commit/b732c8ac26bd3b316e95b026ca2fc7c2c78a1ddd), [`d20c878`](https://github.com/TanStack/router/commit/d20c87813559ff00d0b4810c4b600d47b47eff2f)]:
+  - @tanstack/solid-router@1.168.22
+
+## 1.166.38
+
+### Patch Changes
+
+- Updated dependencies [[`8b97002`](https://github.com/TanStack/router/commit/8b97002af3f6d15204e60c55d3f5735b78bd7efe)]:
+  - @tanstack/start-client-core@1.167.19
+
+## 1.166.37
+
+### Patch Changes
+
+- Updated dependencies [[`4d864ee`](https://github.com/TanStack/router/commit/4d864eebbd184265eabb563d326ab409c93feb17)]:
+  - @tanstack/router-core@1.168.16
+  - @tanstack/solid-router@1.168.21
+  - @tanstack/start-client-core@1.167.18
+
 ## 1.166.36
 
 ### Patch Changes
