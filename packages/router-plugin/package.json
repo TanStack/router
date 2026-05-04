@@ -103,6 +103,16 @@
         "default": "./dist/cjs/esbuild.cjs"
       }
     },
+    "./metro": {
+      "import": {
+        "types": "./dist/esm/metro.d.ts",
+        "default": "./dist/esm/metro.js"
+      },
+      "require": {
+        "types": "./dist/cjs/metro.d.cts",
+        "default": "./dist/cjs/metro.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

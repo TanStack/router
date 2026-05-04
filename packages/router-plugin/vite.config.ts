@@ -22,6 +22,7 @@ export default mergeConfig(
       './src/rspack.ts',
       './src/webpack.ts',
       './src/esbuild.ts',
+      './src/metro.ts',
     ],
     srcDir: './src',
   }),
