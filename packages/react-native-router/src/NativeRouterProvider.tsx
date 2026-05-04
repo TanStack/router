@@ -18,10 +18,24 @@ function getGestureHandlerRootView() {
   if (!_gestureHandlerChecked) {
     _gestureHandlerChecked = true
     try {
+      // Probe for the native TurboModule first. `getEnforcing` throws (and
+      // logs to LogBox in dev) when the native side isn't registered, but
+      // `get()` returns null. This matters in environments where the JS
+      // version of gesture-handler is installed but the native binary
+      // doesn't expose a matching module (e.g., Expo Go bundled with a
+      // different gesture-handler build than the one resolved in JS).
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const RN = require('react-native') as {
+        TurboModuleRegistry?: { get?: (name: string) => unknown }
+      }
+      if (!RN.TurboModuleRegistry?.get?.('RNGestureHandlerModule')) {
+        return null
+      }
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const gestureHandler = require('react-native-gesture-handler')
       _GestureHandlerRootView = gestureHandler.GestureHandlerRootView
     } catch {
-      // react-native-gesture-handler not installed
+      // gesture-handler not installed
     }
   }
   return _GestureHandlerRootView
