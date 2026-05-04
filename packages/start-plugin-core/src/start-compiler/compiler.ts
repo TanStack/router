@@ -1,10 +1,9 @@
-/* eslint-disable import/no-commonjs */
-import crypto from 'node:crypto'
 import * as t from '@babel/types'
 import {
   deadCodeElimination,
   findReferencedIdentifiers,
   generateFromAst,
+  hash,
   parseAst,
 } from '@tanstack/router-utils'
 import babel from '@babel/core'
@@ -600,7 +599,7 @@ export class StartCompiler {
         })
       }
       if (!functionId) {
-        functionId = crypto.hash('sha256', entryId, 'hex')
+        functionId = hash('sha256', entryId, 'hex')
       }
       // Deduplicate in case the generated id conflicts with an existing id
       if (this.functionIds.has(functionId)) {

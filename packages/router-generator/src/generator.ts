@@ -3,6 +3,7 @@ import * as fsp from 'node:fs/promises'
 import { existsSync, mkdirSync } from 'node:fs'
 import crypto from 'node:crypto'
 import { rootRouteId } from '@tanstack/router-core'
+import { hash as hashString } from '@tanstack/router-utils'
 import { logging } from './logger'
 import {
   isVirtualConfigFile,
@@ -1243,7 +1244,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
   private getTempFileName(filePath: string) {
     const absPath = path.resolve(filePath)
-    const hash = crypto.hash('md5', absPath, 'hex')
+    const hash = hashString('md5', absPath, 'hex')
     // lazy initialize sessionId to only create tmpDir when it is first needed
     if (!this.sessionId) {
       // ensure the directory exists
