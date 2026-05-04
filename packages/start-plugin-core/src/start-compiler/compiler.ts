@@ -872,7 +872,7 @@ export class StartCompiler {
     id: string
     parserFilename?: string
   }) {
-    const ast = parseAst({ code, filename: parserFilename ?? id })
+    const ast = parseAst({ code, filename: parserFilename ?? cleanId(id) })
     const info = this.extractModuleInfo(ast, id)
     return { info, ast }
   }
