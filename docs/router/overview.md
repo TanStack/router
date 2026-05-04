@@ -139,3 +139,9 @@ We acknowledge the investment, risk and research that went into their developmen
 ## Let's go!
 
 Enough overview, there's so much more to do with TanStack Router. Hit that next button and let's get started!
+
+## React Native
+
+TanStack Router also has an experimental React Native package with native stack support via `react-native-screens`.
+
+See: [React Native Native Stack](./guide/react-native-native-stack)

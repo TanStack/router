@@ -84,6 +84,8 @@ vite.config.ts.timestamp_*
 **/llms
 
 **/.tanstack
-
 # eslint-plugin-start perf fixtures
 /e2e/eslint-plugin-start/src/perf/generated
+
+**/ios/**
+**/android/**
