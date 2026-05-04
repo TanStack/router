@@ -6878,6 +6878,9 @@ importers:
       '@babel/runtime':
         specifier: ^7.25.0
         version: 7.26.7
+      '@tanstack/router-cli':
+        specifier: workspace:*
+        version: link:../../../packages/router-cli
       '@types/react':
         specifier: ~19.1.0
         version: 19.1.17
