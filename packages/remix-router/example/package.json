@@ -1,0 +1,16 @@
+{
+  "name": "@tanstack/remix-router-example-basic",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "End-to-end demo of @tanstack/remix-router on top of Remix 3.",
+  "scripts": {
+    "dev": "node ./server.mjs"
+  },
+  "dependencies": {
+    "@remix-run/fetch-router": "^0.18.2",
+    "@remix-run/node-serve": "^0.1.0",
+    "@remix-run/ui": "^0.1.1",
+    "@tanstack/remix-router": "workspace:*"
+  }
+}

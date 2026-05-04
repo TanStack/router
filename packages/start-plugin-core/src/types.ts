@@ -2,7 +2,7 @@ import type * as babel from '@babel/core'
 import type * as t from '@babel/types'
 import type { TanStackStartOutputConfig } from './schema'
 
-export type CompileStartFrameworkOptions = 'react' | 'solid' | 'vue'
+export type CompileStartFrameworkOptions = 'react' | 'solid' | 'vue' | 'remix'
 
 export type ServerFnLookupAccess = { origin: 'client' } | { origin: 'server' }
 

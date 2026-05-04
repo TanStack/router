@@ -1,0 +1,97 @@
+{
+  "name": "@tanstack/remix-start",
+  "version": "0.0.1-experimental",
+  "description": "TanStack Start for Remix 3 (experimental skeleton). Combines @tanstack/remix-router with @tanstack/start-{client,server}-core to ship server functions, middleware, and an SSR pipeline as a plain (Request) => Response handler.",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TanStack/router.git",
+    "directory": "packages/remix-start"
+  },
+  "homepage": "https://tanstack.com/router",
+  "keywords": [
+    "remix",
+    "remix-3",
+    "tanstack",
+    "start",
+    "ssr",
+    "rpc",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "test:eslint": "eslint",
+    "test:types": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "type": "module",
+  "types": "src/index.ts",
+  "module": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./client": {
+      "types": "./src/client.tsx",
+      "default": "./src/client.tsx"
+    },
+    "./client-rpc": {
+      "types": "./src/client-rpc.ts",
+      "default": "./src/client-rpc.ts"
+    },
+    "./server": {
+      "types": "./src/server.tsx",
+      "default": "./src/server.tsx"
+    },
+    "./server-rpc": {
+      "types": "./src/server-rpc.ts",
+      "default": "./src/server-rpc.ts"
+    },
+    "./ssr-rpc": {
+      "types": "./src/ssr-rpc.ts",
+      "default": "./src/ssr-rpc.ts"
+    },
+    "./client-only": {
+      "types": "./src/client-only.ts",
+      "default": "./src/client-only.ts"
+    },
+    "./server-only": {
+      "types": "./src/server-only.ts",
+      "default": "./src/server-only.ts"
+    },
+    "./plugin/vite": {
+      "types": "./src/plugin/vite.ts",
+      "default": "./src/plugin/vite.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "dependencies": {
+    "@tanstack/remix-router": "workspace:*",
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/start-client-core": "workspace:*",
+    "@tanstack/start-plugin-core": "workspace:*",
+    "@tanstack/start-server-core": "workspace:*",
+    "pathe": "^2.0.3"
+  },
+  "devDependencies": {
+    "@remix-run/ui": "^0.1.1",
+    "@types/node": ">=20",
+    "typescript": "^5.9.3",
+    "vite": "*"
+  },
+  "peerDependencies": {
+    "@remix-run/ui": ">=0.1.0",
+    "vite": ">=7.0.0"
+  }
+}

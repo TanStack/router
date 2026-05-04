@@ -41,6 +41,16 @@ export function getFrameworkOptions(framework: string): FrameworkOptions {
         },
       }
       break
+    case 'remix':
+      frameworkOptions = {
+        package: '@tanstack/remix-router',
+        idents: {
+          createFileRoute: 'createFileRoute',
+          lazyFn: 'lazyFn',
+          lazyRouteComponent: 'lazyRouteComponent',
+        },
+      }
+      break
     default:
       throw new Error(
         `[getFrameworkOptions] - Unsupported framework: ${framework}`,

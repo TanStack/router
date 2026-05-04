@@ -1,0 +1,22 @@
+{
+  "name": "tanstack-remix-router-example-basic",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "End-to-end demo of @tanstack/remix-router on top of Remix 3.",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@remix-run/ui": "^0.1.1",
+    "@tanstack/remix-router": "workspace:*",
+    "@tanstack/remix-start": "workspace:*",
+    "highlight.js": "^11.10.0",
+    "marked": "^15.0.0"
+  },
+  "devDependencies": {
+    "vite": "^8.0.0"
+  }
+}
