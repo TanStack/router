@@ -1,0 +1,16 @@
+# TanStack Router — expo-dev-client: navigation smoke test
+appId: com.tannerlinsley.tanstack-router-rn-example
+name: Router navigation flow
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Welcome!"
+- tapOn: "About →"
+- assertVisible: "About"
+- back
+- assertVisible: "Welcome!"
+- tapOn: "Posts →"
+- assertVisible: "Posts"
+- back
+- tapOn: "Stack Depth Lab →"
+- assertVisible: "Depth"

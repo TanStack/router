@@ -1,0 +1,12 @@
+# TanStack Router — expo-dev-client: deep link smoke test
+appId: com.tannerlinsley.tanstack-router-rn-example
+name: Deep link from cold start
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- openLink: "tanstackrouter://posts/1"
+- assertVisible: "Post"
+- back
+- assertVisible: "Welcome!"

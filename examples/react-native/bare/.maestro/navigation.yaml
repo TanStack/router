@@ -1,0 +1,18 @@
+# TanStack Router — bare example: navigation smoke test
+# Run: maestro test .maestro/navigation.yaml
+appId: org.reactjs.native.example.TanStackRouterBare
+name: Router navigation flow
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Welcome!"
+- assertVisible: "About →"
+- tapOn: "About →"
+- assertVisible: "About"
+- back
+- assertVisible: "Welcome!"
+- tapOn: "Posts →"
+- assertVisible: "Posts"
+- back
+- tapOn: "Stack Depth Lab →"
+- assertVisible: "Depth"

@@ -1,0 +1,12 @@
+# TanStack Router — bare example: deep link smoke test
+appId: org.reactjs.native.example.TanStackRouterBare
+name: Deep link from cold start
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- openLink: "tanstackbare:///posts/1"
+- assertVisible: "Post"
+- back
+- assertVisible: "Welcome!"

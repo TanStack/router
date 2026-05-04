@@ -1,0 +1,15 @@
+# TanStack Router — expo-go: navigation smoke test
+# Note: appId is Expo Go, since this example runs inside Expo Go.
+appId: host.exp.Exponent
+name: Router navigation flow inside Expo Go
+---
+- launchApp:
+    clearState: true
+- openLink: "exp://localhost:8125"
+- assertVisible: "Welcome!"
+    timeout: 30000
+- tapOn: "About →"
+- assertVisible: "About"
+- back
+- tapOn: "Posts →"
+- assertVisible: "Posts"

@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "TanStack Router (Expo Go)",
+    "slug": "tanstack-router-rn-expo-go",
+    "scheme": "tsrgo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tannerlinsley.tanstack-router-rn-expo-go"
+    },
+    "android": {
+      "adaptiveIcon": { "backgroundColor": "#ffffff" },
+      "package": "com.tannerlinsley.tanstackrouterexpogo"
+    }
+  }
+}
