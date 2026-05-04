@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tanstack/react-native-router": "workspace:*",
+    "@tanstack/react-start": "workspace:*",
     "@tanstack/router-core": "workspace:*",
     "react": "19.1.0",
     "react-native": "0.81.5",

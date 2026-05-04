@@ -1,5 +1,6 @@
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config')
 const { withTanStackRouter } = require('@tanstack/router-plugin/metro')
+const { withTanStackStart } = require('@tanstack/react-start/plugin/metro')
 const path = require('path')
 const fs = require('fs')
 
@@ -63,4 +64,13 @@ if (isMonorepo) {
   ]
 }
 
-module.exports = withTanStackRouter(mergeConfig(defaultConfig, config))
+// Compose: withTanStackStart wraps the merged config to install the
+// Start compiler transformer (rewrites createServerFn calls into RPC
+// stubs at bundle time). Then withTanStackRouter handles file-based
+// route generation. Order doesn't matter for correctness — each wrapper
+// only touches its own config slice.
+module.exports = withTanStackRouter(
+  withTanStackStart(mergeConfig(defaultConfig, config), {
+    serverFnBase: process.env.TSR_SERVER_FN_BASE ?? 'http://localhost:3050',
+  }),
+)
