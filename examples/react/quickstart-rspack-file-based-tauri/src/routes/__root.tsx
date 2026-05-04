@@ -8,8 +8,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <>
-      <div className="p-20"></div>
-      <div>@tanstack/router-plugin</div>
+      <div className="p-20">@tanstack/router-plugin</div>
       <div className="p-2 flex gap-2 text-lg">
         <Link
           to="/"

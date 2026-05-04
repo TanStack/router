@@ -9,7 +9,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.168.23",
+    "@tanstack/react-router": "workspace:^",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
@@ -19,6 +19,7 @@
     "@tailwindcss/postcss": "^4.1.18",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@tauri-apps/cli": "^2.10.1",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
   }
