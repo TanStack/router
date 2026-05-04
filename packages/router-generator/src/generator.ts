@@ -1243,7 +1243,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
   private getTempFileName(filePath: string) {
     const absPath = path.resolve(filePath)
-    const hash = crypto.createHash('md5').update(absPath).digest('hex')
+    const hash = crypto.hash('md5', absPath, 'hex')
     // lazy initialize sessionId to only create tmpDir when it is first needed
     if (!this.sessionId) {
       // ensure the directory exists

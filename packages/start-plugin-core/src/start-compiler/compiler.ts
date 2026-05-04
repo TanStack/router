@@ -600,7 +600,7 @@ export class StartCompiler {
         })
       }
       if (!functionId) {
-        functionId = crypto.createHash('sha256').update(entryId).digest('hex')
+        functionId = crypto.hash('sha256', entryId, 'hex')
       }
       // Deduplicate in case the generated id conflicts with an existing id
       if (this.functionIds.has(functionId)) {

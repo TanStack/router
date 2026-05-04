@@ -342,9 +342,7 @@ const etagMiddleware = createMiddleware().server(async ({ next }) => {
 
   // Generate ETag from response content
   const etag = crypto
-    .createHash('md5')
-    .update(JSON.stringify(result.data))
-    .digest('hex')
+    .hash('md5', JSON.stringify(result.data), 'hex')
 
   result.response.headers.set('ETag', `"${etag}"`)
 
