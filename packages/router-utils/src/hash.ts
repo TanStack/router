@@ -8,7 +8,6 @@ export function hash(
   data: BinaryLike,
   outputEncoding: BinaryToTextEncoding = 'hex',
 ): string {
-
   if (nativeHashAvailable) {
     return crypto.hash(algorithm, data, outputEncoding)
   }
