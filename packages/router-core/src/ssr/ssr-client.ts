@@ -27,6 +27,9 @@ function hydrateMatch(
   match.ssr = deyhydratedMatch.ssr
   match.updatedAt = deyhydratedMatch.u
   match.error = deyhydratedMatch.e
+  if (isNotFound(match.error) && typeof match.error.routeId === 'string') {
+    match.error.routeId = hydrateSsrMatchId(match.error.routeId) as any
+  }
   // Only hydrate global-not-found when a defined value is present in the
   // dehydrated payload. If omitted, preserve the value computed from the
   // current client location (important for SPA fallback HTML served at unknown
@@ -79,6 +82,16 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   if (dehydratedRouter.lastMatchId) {
     dehydratedRouter.lastMatchId = hydrateSsrMatchId(
       dehydratedRouter.lastMatchId,
+    )
+  }
+  if (dehydratedRouter.manifest) {
+    dehydratedRouter.manifest.routes = Object.fromEntries(
+      Object.entries(dehydratedRouter.manifest.routes).map(
+        ([routeId, routeManifest]) => [
+          hydrateSsrMatchId(routeId),
+          routeManifest,
+        ],
+      ),
     )
   }
   const { manifest, dehydratedData, lastMatchId } = dehydratedRouter

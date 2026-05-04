@@ -3,6 +3,7 @@ import { runInNewContext } from 'node:vm'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { GLOBAL_TSR } from '../src/ssr/constants'
+import { dehydrateSsrMatchId, hydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import { createTestRouter } from './routerTestUtils'
 import { describe, expect, test } from 'vitest'
 import type { Manifest } from '../src/manifest'
@@ -17,7 +18,7 @@ function buildRouter() {
   })
   const postsRoute = new BaseRoute({
     getParentRoute: () => rootRoute,
-    path: '/posts',
+    path: '/_layout/posts/$postId',
     component: () => null,
   })
 
@@ -54,6 +55,10 @@ function buildManifest(): Manifest {
         assets: [sharedAsset],
         preloads: ['/assets/posts.js'],
       },
+      '/_layout/posts/$postId': {
+        assets: [sharedAsset],
+        preloads: ['/assets/post.js'],
+      },
     },
   }
 }
@@ -72,6 +77,7 @@ function buildInlineManifest(): Manifest {
 
 async function dehydrateManifest(options?: {
   includeUnmatchedRouteAssets?: boolean
+  decodeRouteKeys?: boolean
 }) {
   const router = buildRouter()
   const manifest = buildManifest()
@@ -89,7 +95,10 @@ async function dehydrateManifest(options?: {
   expect(script?.tag).toBe('script')
   expect(script?.children).toBeTruthy()
 
-  return parseSerializedRouter(script!.children!).manifest!
+  const dehydratedManifest = parseSerializedRouter(script!.children!).manifest!
+  return options?.decodeRouteKeys === false
+    ? dehydratedManifest
+    : decodeManifestRouteKeys(dehydratedManifest)
 }
 
 function parseSerializedRouter(serialized: string): DehydratedRouter {
@@ -107,6 +116,22 @@ function parseSerializedRouter(serialized: string): DehydratedRouter {
   const router = context[GLOBAL_TSR]?.router
   expect(router).toBeDefined()
   return router
+}
+
+function decodeManifestRouteKeys(manifest: Manifest): Manifest {
+  return {
+    ...manifest,
+    routes: Object.fromEntries(
+      Object.entries(manifest.routes).map(([routeId, routeManifest]) => [
+        hydrateSsrMatchId(routeId),
+        routeManifest,
+      ]),
+    ),
+  }
+}
+
+function normalizeCrawlerCandidate(id: string) {
+  return id.replaceAll('\0', '/').replaceAll('\uFFFD', '/')
 }
 
 describe('attachRouterServerSsrUtils manifest dehydration', () => {
@@ -136,6 +161,25 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     expect(manifest.routes['/']?.preloads).toEqual(['/assets/index.js'])
   })
 
+  test('dehydrates manifest route keys without crawler-visible route paths', async () => {
+    const manifest = await dehydrateManifest({
+      decodeRouteKeys: false,
+    })
+    const routeKeys = Object.keys(manifest.routes)
+    const crawlerNormalizedRouteKeys = routeKeys.map(normalizeCrawlerCandidate)
+
+    expect(manifest.routes['/_layout/posts/$postId']).toBeUndefined()
+    expect(
+      manifest.routes[dehydrateSsrMatchId('/_layout/posts/$postId')],
+    ).toBeDefined()
+    expect(
+      crawlerNormalizedRouteKeys.some(
+        (routeId) =>
+          routeId.includes('/_layout') || routeId.includes('$postId'),
+      ),
+    ).toBe(false)
+  })
+
   test('inlines stylesheet assets for SSR and strips stylesheet links from dehydration', async () => {
     const router = buildRouter()
     const manifest = buildInlineManifest()
@@ -163,7 +207,9 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     const script = router.serverSsr!.takeBufferedScripts()
     expect(script?.children).toBeTruthy()
     const dehydratedRouter = parseSerializedRouter(script!.children!)
-    const dehydratedManifest = dehydratedRouter.manifest!
+    const dehydratedManifest = decodeManifestRouteKeys(
+      dehydratedRouter.manifest!,
+    )
     const rootAssets = dehydratedManifest.routes.__root__?.assets ?? []
     const allAssets = Object.values(dehydratedManifest.routes).flatMap(
       (route) => route.assets ?? [],

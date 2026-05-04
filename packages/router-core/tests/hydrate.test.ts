@@ -141,7 +141,13 @@ describe('hydrate', () => {
   })
 
   it('should set manifest in router.ssr', async () => {
-    const testManifest = { routes: {} }
+    const testManifest = {
+      routes: {
+        [dehydrateSsrMatchId('/_layout/posts/$postId')]: {
+          preloads: ['/assets/post.js'],
+        },
+      },
+    }
     mockWindow.$_TSR = {
       router: {
         manifest: testManifest,
@@ -160,7 +166,13 @@ describe('hydrate', () => {
     await hydrate(mockRouter)
 
     expect(mockRouter.ssr).toEqual({
-      manifest: testManifest,
+      manifest: {
+        routes: {
+          '/_layout/posts/$postId': {
+            preloads: ['/assets/post.js'],
+          },
+        },
+      },
     })
   })
 
@@ -393,6 +405,56 @@ describe('hydrate', () => {
 
     expect(loadSpy).not.toHaveBeenCalled()
     expect((mockRouter.state.matches[0] as AnyRouteMatch).id).toBe('/')
+  })
+
+  it('should decode notFound error route ids during hydration', async () => {
+    const rawRouteId = '/other'
+    const mockMatches = [
+      {
+        id: rawRouteId,
+        routeId: rawRouteId,
+        index: 0,
+        ssr: undefined,
+        _nonReactive: {},
+      },
+    ]
+
+    mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
+    mockRouter.state.matches = mockMatches
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: { routes: {} },
+        dehydratedData: {},
+        lastMatchId: dehydrateSsrMatchId(rawRouteId),
+        matches: [
+          {
+            i: dehydrateSsrMatchId(rawRouteId),
+            e: {
+              isNotFound: true,
+              routeId: dehydrateSsrMatchId(rawRouteId),
+            },
+            s: 'notFound',
+            ssr: true,
+            u: Date.now(),
+          },
+        ],
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(mockRouter)
+
+    const match = mockRouter.state.matches[0] as AnyRouteMatch
+    expect(match.error).toEqual({
+      isNotFound: true,
+      routeId: rawRouteId,
+    })
   })
 
   it('should handle errors during route context hydration', async () => {
