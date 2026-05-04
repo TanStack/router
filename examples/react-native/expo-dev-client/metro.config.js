@@ -1,5 +1,6 @@
 const { getDefaultConfig } = require('expo/metro-config')
 const { withTanStackRouter } = require('@tanstack/router-plugin/metro')
+const { withTanStackStart } = require('@tanstack/react-start/plugin/metro')
 const path = require('path')
 const fs = require('fs')
 
@@ -55,4 +56,11 @@ if (isMonorepo) {
 
 config.resolver.unstable_enablePackageExports = true
 
-module.exports = withTanStackRouter(config)
+// Compose: withTanStackStart installs the Start compiler transformer
+// (rewrites createServerFn calls into RPC stubs at bundle time).
+// withTanStackRouter handles file-based route generation.
+module.exports = withTanStackRouter(
+  withTanStackStart(config, {
+    serverFnBase: process.env.TSR_SERVER_FN_BASE ?? 'http://localhost:3050',
+  }),
+)

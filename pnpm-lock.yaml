@@ -6945,6 +6945,9 @@ importers:
       '@tanstack/react-native-router':
         specifier: workspace:*
         version: link:../../../packages/react-native-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../../../packages/router-core

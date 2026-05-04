@@ -9,6 +9,9 @@ import {
   View,
 } from 'react-native'
 import { Link, createFileRoute } from '@tanstack/react-native-router'
+// Importing this file makes the Metro Start compiler rewrite its
+// createServerFn().handler() bodies into RPC stubs.
+import { listPosts as listPostsRpc } from '../server-fns/posts'
 
 type Post = {
   id: number
@@ -17,6 +20,10 @@ type Post = {
 }
 
 async function fetchPosts(): Promise<Array<Post>> {
+  if (process.env.TSR_SERVER_FN_BASE) {
+    const result = await listPostsRpc()
+    return result as unknown as Array<Post>
+  }
   const response = await fetch(
     'https://jsonplaceholder.typicode.com/posts?_limit=10',
   )
