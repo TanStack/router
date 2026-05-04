@@ -134,13 +134,9 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              config.verboseFileRoutes === false
-                ? ''
-                : "import { createFileRoute } from '@tanstack/react-native-router';",
+              "import { createFileRoute } from '@tanstack/react-native-router';",
             tsrExportStart: (routePath) =>
-              config.verboseFileRoutes === false
-                ? 'export const Route = createFileRoute('
-                : `export const Route = createFileRoute('${routePath}')(`,
+              `export const Route = createFileRoute(${serializeRoutePath(routePath)})(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -154,13 +150,9 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              config.verboseFileRoutes === false
-                ? ''
-                : "import { createLazyFileRoute } from '@tanstack/react-native-router';",
+              "import { createLazyFileRoute } from '@tanstack/react-native-router';",
             tsrExportStart: (routePath) =>
-              config.verboseFileRoutes === false
-                ? 'export const Route = createLazyFileRoute('
-                : `export const Route = createLazyFileRoute('${routePath}')(`,
+              `export const Route = createLazyFileRoute(${serializeRoutePath(routePath)})(`,
             tsrExportEnd: () => ');',
           },
         },
