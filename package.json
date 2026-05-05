@@ -133,6 +133,9 @@
       "@tanstack/router-utils": "workspace:*",
       "@tanstack/start-static-server-functions": "workspace:*",
       "@tanstack/nitro-v2-vite-plugin": "workspace:*"
+    },
+    "patchedDependencies": {
+      "@solidjs/signals@2.0.0-beta.10": "patches/@solidjs__signals@2.0.0-beta.10.patch"
     }
   }
 }

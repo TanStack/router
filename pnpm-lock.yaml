@@ -56,6 +56,11 @@ overrides:
   '@tanstack/start-static-server-functions': workspace:*
   '@tanstack/nitro-v2-vite-plugin': workspace:*
 
+patchedDependencies:
+  '@solidjs/signals@2.0.0-beta.10':
+    hash: 1d5de47facd32b65a19e9d46610fb2c5ac2b16983219bf8806b97bad2f376364
+    path: patches/@solidjs__signals@2.0.0-beta.10.patch
+
 importers:
 
   .:
@@ -30988,7 +30993,7 @@ snapshots:
     dependencies:
       solid-js: 2.0.0-beta.10
 
-  '@solidjs/signals@2.0.0-beta.10': {}
+  '@solidjs/signals@2.0.0-beta.10(patch_hash=1d5de47facd32b65a19e9d46610fb2c5ac2b16983219bf8806b97bad2f376364)': {}
 
   '@solidjs/testing-library@0.8.10(solid-js@2.0.0-beta.10)':
     dependencies:
@@ -38581,7 +38586,7 @@ snapshots:
 
   solid-js@2.0.0-beta.10:
     dependencies:
-      '@solidjs/signals': 2.0.0-beta.10
+      '@solidjs/signals': 2.0.0-beta.10(patch_hash=1d5de47facd32b65a19e9d46610fb2c5ac2b16983219bf8806b97bad2f376364)
       csstype: 3.2.3
       seroval: 1.5.2
       seroval-plugins: 1.5.2(seroval@1.5.2)
