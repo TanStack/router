@@ -10,6 +10,7 @@ import {
 } from '../config-context'
 import { normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
+import { shouldUseSeparatePrerenderRouteOptions } from '../prerender-route-options-env'
 import { parseStartConfig } from './schema'
 import {
   RSBUILD_ENVIRONMENT_NAMES,
@@ -86,6 +87,7 @@ export function tanStackStartRsbuild(
   let devServerRef: Pick<RsbuildDevServer, 'sockWrite'> | null = null
   const serverFnsById: Record<string, ServerFn> = {}
   let updateServerFnResolver: (() => void) | undefined
+  let prerenderOutputDirectory: string | undefined
 
   return {
     name: 'tanstack-start-rsbuild',
@@ -154,9 +156,22 @@ export function tanStackStartRsbuild(
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           publicBase: resolvedStartConfig.basePaths.publicBase,
           serverFnProviderEnv,
+          separatePrerenderRouteOptions:
+            shouldUseSeparatePrerenderRouteOptions(startConfig),
           environmentOverrides: corePluginOpts.rsbuild?.environments,
           rsc: rscOpts,
           dev: isDev,
+        })
+        prerenderOutputDirectory = resolveRsbuildOutputDirectory({
+          distPath:
+            environmentPlan.environments[RSBUILD_ENVIRONMENT_NAMES.prerender]
+              ?.output?.distPath,
+          rootDistPath: undefined,
+          fallback: join(
+            resolvedStartConfig.outputDirectories.server,
+            '.tanstack/prerender',
+          ),
+          subdirectory: 'prerender',
         })
         const serverFnBase = createServerFnBasePath({
           routerBasepath,
@@ -233,6 +248,11 @@ export function tanStackStartRsbuild(
       // ---------------------------------------------------------------
       registerStartCompilerTransforms(api, {
         framework: corePluginOpts.framework,
+        environments: [
+          { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' },
+          { name: RSBUILD_ENVIRONMENT_NAMES.prerender, type: 'server' },
+          { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' },
+        ],
         // modifyRsbuildConfig copies rsbuildConfig.root into resolvedStartConfig.root,
         // so defer this read until transform time instead of falling back to
         // process.cwd() during plugin setup.
@@ -253,6 +273,7 @@ export function tanStackStartRsbuild(
         framework: corePluginOpts.framework,
         environments: [
           { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' },
+          { name: RSBUILD_ENVIRONMENT_NAMES.prerender, type: 'server' },
           { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' },
           ...(serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
           !rscEnabled
@@ -675,6 +696,9 @@ export function tanStackStartRsbuild(
             startConfig,
             clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
             serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
+            prerenderOutputDirectory,
+            separatePrerenderRouteOptions:
+              shouldUseSeparatePrerenderRouteOptions(startConfig),
           })
         })
       }

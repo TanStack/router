@@ -13,7 +13,9 @@ import { pruneServerOnlySubtrees } from '../../start-router-plugin/pruneServerOn
 import {
   CLIENT_ROUTE_OPTION_DELETE_NODES,
   SERVER_PROP,
+  SERVER_ROUTE_OPTION_DELETE_NODES,
 } from '../../start-router-plugin/constants'
+import { shouldUseSeparatePrerenderRouteOptions } from '../../prerender-route-options-env'
 import type { GetConfigFn } from '../../types'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
 import type {
@@ -181,10 +183,28 @@ export function tanStackStartRouter(
         ...routerConfig,
         codeSplittingOptions: {
           ...routerConfig.codeSplittingOptions,
+          deleteNodes: shouldUseSeparatePrerenderRouteOptions(
+            getConfig().startConfig,
+          )
+            ? SERVER_ROUTE_OPTION_DELETE_NODES
+            : undefined,
           addHmr: false,
         },
         plugin: {
           vite: { environmentName: VITE_ENVIRONMENT_NAMES.server },
+        },
+      }
+    }, routerPluginContext),
+    tanStackRouterCodeSplitter(() => {
+      const routerConfig = getConfig().startConfig.router
+      return {
+        ...routerConfig,
+        codeSplittingOptions: {
+          ...routerConfig.codeSplittingOptions,
+          addHmr: false,
+        },
+        plugin: {
+          vite: { environmentName: VITE_ENVIRONMENT_NAMES.prerender },
         },
       }
     }, routerPluginContext),

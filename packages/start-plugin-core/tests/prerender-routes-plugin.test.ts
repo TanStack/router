@@ -4,10 +4,9 @@ import { prerenderRoutesPlugin } from '../src/start-router-plugin/generator-plug
 describe('prerenderRoutesPlugin', () => {
   afterEach(() => {
     globalThis.TSS_PRERENDABLE_PATHS = undefined
-    globalThis.TSS_PRERENDER_DYNAMIC_ROUTES = undefined
   })
 
-  it('stores static and dynamic prerender routes on globalThis', () => {
+  it('stores static prerender routes on globalThis', () => {
     const plugin = prerenderRoutesPlugin()
 
     plugin.onRouteTreeChanged?.({
@@ -30,10 +29,6 @@ describe('prerenderRoutesPlugin', () => {
     } as any)
 
     expect(globalThis.TSS_PRERENDABLE_PATHS).toContainEqual({ path: '/about' })
-    expect(globalThis.TSS_PRERENDER_DYNAMIC_ROUTES).toContainEqual({
-      path: '/posts/$slug',
-      routePath: '/posts/$slug',
-    })
   })
 
   it('does not store API, layout, or dynamic routes as static paths', () => {
@@ -68,44 +63,4 @@ describe('prerenderRoutesPlugin', () => {
     expect(globalThis.TSS_PRERENDABLE_PATHS).toEqual([{ path: '/' }])
   })
 
-  it('stores only prerenderParams routes as dynamic prerender hints', () => {
-    const plugin = prerenderRoutesPlugin()
-
-    plugin.onRouteTreeChanged?.({
-      routeTree: [],
-      rootRouteNode: { fullPath: '/src/routes/__root.tsx' } as any,
-      routeNodes: [
-        {
-          routePath: '/posts/$slug',
-          path: '$slug',
-          fullPath: '/src/routes/posts.$slug.tsx',
-          createFileRouteProps: new Set(['component', 'prerenderParams']),
-        },
-        {
-          routePath: '/posts/$slug',
-          path: '$slug',
-          fullPath: '/src/routes/posts.$slug.tsx',
-          createFileRouteProps: new Set(['component', 'prerenderParams']),
-        },
-        {
-          routePath: '/products/$slug',
-          path: '$slug',
-          fullPath: '/src/routes/products.$slug.tsx',
-          createFileRouteProps: new Set(['component', 'sitemap']),
-        },
-        {
-          path: '$slug',
-          fullPath: '/src/routes/missing-route-path.$slug.tsx',
-          createFileRouteProps: new Set(['component', 'prerenderParams']),
-        },
-      ],
-    } as any)
-
-    expect(globalThis.TSS_PRERENDER_DYNAMIC_ROUTES).toEqual([
-      {
-        path: '/posts/$slug',
-        routePath: '/posts/$slug',
-      },
-    ])
-  })
 })

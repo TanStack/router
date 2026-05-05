@@ -10,12 +10,6 @@ declare global {
     }
   >
   var TSS_PRERENDABLE_PATHS: Array<{ path: string }> | undefined
-  var TSS_PRERENDER_DYNAMIC_ROUTES:
-    | Array<{
-        path: string
-        routePath: string
-      }>
-    | undefined
   var TSS_PRERENDER_ROUTE_TREE:
     | (() => Promise<AnyRoute | undefined>)
     | undefined

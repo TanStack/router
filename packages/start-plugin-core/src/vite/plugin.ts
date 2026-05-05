@@ -10,6 +10,10 @@ import {
   normalizePublicBase,
   shouldRewriteDevBasepath,
 } from '../planning'
+import {
+  applySeparatePrerenderRouteOptionsBundleDefault,
+  shouldUseSeparatePrerenderRouteOptions,
+} from '../prerender-route-options-env'
 import { importProtectionPlugin } from './import-protection-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
@@ -33,6 +37,7 @@ import {
   getClientOutputDirectory,
   getServerOutputDirectory,
 } from './output-directory'
+import { hasNitroPlugin } from './nitro'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
 import type {
@@ -61,6 +66,11 @@ export function tanStackStartVite(
   // we install a URL rewrite middleware instead of erroring.
   let needsDevBaseRewrite = false
 
+  const getServerFnById =
+    corePluginOpts.ssrResolverStrategy.type === 'vite-rsc-forward'
+      ? createViteRscForwarder(corePluginOpts.ssrResolverStrategy)
+      : undefined
+
   const environments: Array<{
     name: string
     type: 'client' | 'server'
@@ -68,12 +78,14 @@ export function tanStackStartVite(
   }> = [
     { name: START_ENVIRONMENT_NAMES.client, type: 'client' },
     {
+      name: START_ENVIRONMENT_NAMES.prerender,
+      type: 'server',
+      getServerFnById,
+    },
+    {
       name: START_ENVIRONMENT_NAMES.server,
       type: 'server',
-      getServerFnById:
-        corePluginOpts.ssrResolverStrategy.type === 'vite-rsc-forward'
-          ? createViteRscForwarder(corePluginOpts.ssrResolverStrategy)
-          : undefined,
+      getServerFnById,
     },
   ]
   if (
@@ -99,6 +111,10 @@ export function tanStackStartVite(
           serverOutputDirectory: getServerOutputDirectory(viteConfig),
         })
         const { startConfig } = getConfig()
+        applySeparatePrerenderRouteOptionsBundleDefault(
+          startConfig,
+          !hasNitroPlugin(viteConfig.plugins),
+        )
         const routerBasepath = applyResolvedRouterBasepath({
           resolvedStartConfig,
           startConfig,
@@ -165,6 +181,8 @@ export function tanStackStartVite(
           clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           serverFnProviderEnv,
+          separatePrerenderRouteOptions:
+            shouldUseSeparatePrerenderRouteOptions(startConfig),
           optimizeDepsExclude: crawlFrameworkPkgsResult.optimizeDeps.exclude,
           noExternal: crawlFrameworkPkgsResult.ssr.noExternal.sort(),
         })
@@ -196,6 +214,8 @@ export function tanStackStartVite(
                 builder,
                 providerEnvironmentName: serverFnProviderEnv,
                 ssrIsProvider,
+                separatePrerenderRouteOptions:
+                  shouldUseSeparatePrerenderRouteOptions(startConfig),
               })
             },
           },

@@ -25,46 +25,46 @@ export async function prerender({
   const logger = createLogger('prerender')
   logger.info('Prerendering pages...')
 
-  if (startConfig.prerender?.enabled) {
-    let pages = startConfig.pages.length ? startConfig.pages : [{ path: '/' }]
+  try {
+    if (startConfig.prerender?.enabled) {
+      let pages = startConfig.pages.length ? startConfig.pages : [{ path: '/' }]
 
-    if (startConfig.prerender.autoStaticPathsDiscovery ?? true) {
-      const pagesMap = new Map(pages.map((item) => [item.path, item]))
-      const discoveredPages = globalThis.TSS_PRERENDABLE_PATHS || []
+      if (startConfig.prerender.autoStaticPathsDiscovery ?? true) {
+        const pagesMap = new Map(pages.map((item) => [item.path, item]))
+        const discoveredPages = globalThis.TSS_PRERENDABLE_PATHS || []
 
-      for (const page of discoveredPages) {
-        if (!pagesMap.has(page.path)) {
-          pagesMap.set(page.path, page)
+        for (const page of discoveredPages) {
+          if (!pagesMap.has(page.path)) {
+            pagesMap.set(page.path, page)
+          }
         }
+
+        pages = Array.from(pagesMap.values())
       }
 
-      pages = Array.from(pagesMap.values())
+      if (!startConfig.spa?.enabled) {
+        const routeTree = await globalThis.TSS_PRERENDER_ROUTE_TREE?.()
+
+        pages = await runPrerenderParams({
+          routeTree,
+          pages,
+          logger,
+          filter: startConfig.prerender.filter,
+          prerenderParamsTimeout: startConfig.prerender.prerenderParamsTimeout,
+        })
+      }
+
+      startConfig.pages = pages
     }
 
-    if (!startConfig.spa?.enabled) {
-      const routeTree = await globalThis.TSS_PRERENDER_ROUTE_TREE?.()
+    const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
+    const routerBaseUrl = new URL(routerBasePath, 'http://localhost')
 
-      pages = await runPrerenderParams({
-        routeTree,
-        pages,
-        logger,
-        filter: startConfig.prerender.filter,
-        prerenderParamsTimeout: startConfig.prerender.prerenderParamsTimeout,
-      })
-    }
+    startConfig.pages = validateAndNormalizePrerenderPages(
+      startConfig.pages,
+      routerBaseUrl,
+    )
 
-    startConfig.pages = pages
-  }
-
-  const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
-  const routerBaseUrl = new URL(routerBasePath, 'http://localhost')
-
-  startConfig.pages = validateAndNormalizePrerenderPages(
-    startConfig.pages,
-    routerBaseUrl,
-  )
-
-  try {
     const pages = await prerenderPages({
       outputDir: handler.getClientOutputDirectory(),
     })
@@ -77,6 +77,7 @@ export async function prerender({
     logger.error(error)
     throw error
   } finally {
+    delete globalThis.TSS_PRERENDER_ROUTE_TREE
     await handler.close?.()
   }
 

@@ -252,6 +252,7 @@ export const tanstackStartOptionsObjectSchema = z.object({
       filter: z.function().args(pageSchema).returns(z.any()).optional(),
       failOnError: z.boolean().optional(),
       autoStaticPathsDiscovery: z.boolean().optional(),
+      separateRouteOptionsBundle: z.boolean().optional(),
       maxRedirects: z.number().min(0).optional(),
       prerenderParamsTimeout: z.number().min(0).optional(),
     })

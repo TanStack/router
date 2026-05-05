@@ -14,9 +14,6 @@ export async function postBuild({
   startConfig: TanStackStartOutputConfig
   adapter: StartPostBuildAdapter
 }) {
-  const spaOnly =
-    startConfig.spa?.enabled && startConfig.prerender?.enabled !== true
-
   if (startConfig.prerender?.enabled !== false) {
     startConfig.prerender = {
       ...startConfig.prerender,
@@ -25,6 +22,9 @@ export async function postBuild({
         startConfig.pages.some((page) => page.prerender?.enabled),
     }
   }
+
+  const spaOnly =
+    startConfig.spa?.enabled && startConfig.prerender.enabled !== true
 
   if (startConfig.spa?.enabled) {
     if (spaOnly) {

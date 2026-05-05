@@ -1,6 +1,11 @@
+import { promises as fsp } from 'node:fs'
 import { join } from 'pathe'
 import { postBuild } from '../post-build'
 import { prerender } from '../prerender'
+import {
+  capturePrerenderEnv,
+  restorePrerenderEnv,
+} from '../prerender-route-options-env'
 import type { PrerenderHandler } from '../prerender'
 import type { TanStackStartOutputConfig } from '../schema'
 
@@ -8,10 +13,14 @@ export async function postBuildWithRsbuild({
   startConfig,
   clientOutputDirectory,
   serverOutputDirectory,
+  prerenderOutputDirectory,
+  separatePrerenderRouteOptions,
 }: {
   startConfig: TanStackStartOutputConfig
   clientOutputDirectory: string
   serverOutputDirectory: string
+  prerenderOutputDirectory?: string | undefined
+  separatePrerenderRouteOptions: boolean
 }) {
   await postBuild({
     startConfig,
@@ -23,8 +32,16 @@ export async function postBuildWithRsbuild({
         const handler = createRsbuildPrerenderHandler({
           clientOutputDirectory,
           serverOutputDirectory,
+          prerenderOutputDirectory,
+          separatePrerenderRouteOptions,
         })
-        await handler.loadRequestHandler()
+        try {
+          await handler.loadRouteOptions()
+          await handler.loadRequestHandler()
+        } catch (error) {
+          await handler.close?.()
+          throw error
+        }
 
         return prerender({
           startConfig,
@@ -38,14 +55,21 @@ export async function postBuildWithRsbuild({
 function createRsbuildPrerenderHandler({
   clientOutputDirectory,
   serverOutputDirectory,
+  prerenderOutputDirectory,
+  separatePrerenderRouteOptions,
 }: {
   clientOutputDirectory: string
   serverOutputDirectory: string
+  prerenderOutputDirectory?: string | undefined
+  separatePrerenderRouteOptions: boolean
 }): PrerenderHandler & {
+  loadRouteOptions: () => Promise<void>
   loadRequestHandler: () => Promise<
     (request: Request, opts?: unknown) => Promise<Response> | Response
   >
 } {
+  const prerenderEnvState = capturePrerenderEnv()
+
   process.env.TSS_PRERENDERING = 'true'
   process.env.TSS_CLIENT_OUTPUT_DIR = clientOutputDirectory
 
@@ -55,7 +79,10 @@ function createRsbuildPrerenderHandler({
       >
     | undefined
 
+  let routeOptionsPromise: Promise<void> | undefined
+
   return {
+    loadRouteOptions,
     loadRequestHandler,
     getClientOutputDirectory() {
       return clientOutputDirectory
@@ -71,6 +98,16 @@ function createRsbuildPrerenderHandler({
         }),
       )
     },
+    async close() {
+      delete globalThis.TSS_PRERENDER_ROUTE_TREE
+      restorePrerenderEnv(prerenderEnvState)
+      if (separatePrerenderRouteOptions) {
+        await fsp.rm(getPrerenderOutputDirectory(), {
+          recursive: true,
+          force: true,
+        })
+      }
+    },
   }
 
   function loadRequestHandler() {
@@ -82,6 +119,31 @@ function createRsbuildPrerenderHandler({
 
     return requestHandlerPromise
   }
+
+  function loadRouteOptions() {
+    if (!routeOptionsPromise) {
+      routeOptionsPromise = separatePrerenderRouteOptions
+        ? loadRouteOptionsFromBundle(getPrerenderOutputDirectory())
+        : loadRequestHandler().then(() => undefined)
+    }
+
+    return routeOptionsPromise
+  }
+
+  function getPrerenderOutputDirectory() {
+    return (
+      prerenderOutputDirectory ?? join(serverOutputDirectory, '.tanstack/prerender')
+    )
+  }
+}
+
+async function loadRouteOptionsFromBundle(prerenderOutputDirectory: string) {
+  const { pathToFileURL } = await import('node:url')
+  const prerenderEntryUrl = pathToFileURL(join(prerenderOutputDirectory, 'index.js'))
+  prerenderEntryUrl.searchParams.set('tss-prerender', Date.now().toString())
+
+  delete globalThis.TSS_PRERENDER_ROUTE_TREE
+  await import(prerenderEntryUrl.toString())
 }
 
 async function loadRequestHandlerFromBundle(serverOutputDirectory: string) {
