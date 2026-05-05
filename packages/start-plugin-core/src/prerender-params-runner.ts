@@ -15,6 +15,13 @@ interface PrerenderParamsLogger {
   warn: (...args: Array<unknown>) => void
 }
 
+interface PrerenderParamsEntry {
+  params: Record<string, unknown>
+  search?: Record<string, unknown>
+  sitemap?: RouteSitemapOptions
+  prerender?: RoutePrerenderOptions
+}
+
 export interface RunPrerenderParamsOptions {
   routeTree: AnyRoute | undefined
   pages: Array<Page>
@@ -39,33 +46,33 @@ export async function runPrerenderParams({
     if (!options?.sitemap) continue
 
     const page = pagesByPath.get(route.path)
-    if (!page || dynamic(route.path)) continue
+    if (!page || isDynamicPath(route.path)) continue
 
     pagesByPath.set(route.path, merge(page, { sitemap: options.sitemap }))
   }
 
   const controller = new AbortController()
-  const cleanupProcessAbort = signals(controller)
+  const cleanupProcessAbort = attachProcessAbortHandlers(controller)
 
   try {
     for (const route of dynamicRoutes) {
       const options = routeOptions.get(route.routePath)
       if (!options?.prerenderParams) continue
 
-      if (!dynamic(route.path)) {
+      if (!isDynamicPath(route.path)) {
         logger.warn(
           `Skipping prerenderParams for static route ${route.routePath}; static routes are already discovered automatically.`,
         )
         continue
       }
 
-      const cleanupTimeout = timeout(
+      const cleanupTimeout = startPrerenderParamsTimeout(
         controller,
         prerenderParamsTimeout,
         route.routePath,
       )
 
-      const entries = await call(
+      const entries = await runWithAbortSignal(
         () =>
           options.prerenderParams!({
             routePath: route.routePath,
@@ -74,8 +81,14 @@ export async function runPrerenderParams({
         controller.signal,
       ).finally(cleanupTimeout)
 
+      if (!Array.isArray(entries)) {
+        throw new Error(
+          `prerenderParams for route ${route.routePath} must return an array`,
+        )
+      }
+
       for (const entry of entries) {
-        const page = create(route, options, entry)
+        const page = createPageFromParams(route, options, entry)
 
         if (filter && !filter(page)) {
           continue
@@ -94,7 +107,7 @@ export async function runPrerenderParams({
   return Array.from(pagesByPath.values())
 }
 
-function signals(controller: AbortController) {
+function attachProcessAbortHandlers(controller: AbortController) {
   const abort = () => controller.abort()
 
   process.once('SIGINT', abort)
@@ -106,13 +119,17 @@ function signals(controller: AbortController) {
   }
 }
 
-function timeout(
+function startPrerenderParamsTimeout(
   controller: AbortController,
   timeout: number | undefined,
   routePath: string,
 ) {
   if (timeout === undefined) {
     return () => {}
+  }
+
+  if (!Number.isFinite(timeout) || timeout < 0) {
+    throw new Error('prerenderParamsTimeout must be a non-negative finite number')
   }
 
   const timeoutId = setTimeout(() => {
@@ -124,7 +141,7 @@ function timeout(
   return () => clearTimeout(timeoutId)
 }
 
-async function call<T>(
+async function runWithAbortSignal<T>(
   callback: () => T | Promise<T>,
   signal: AbortSignal,
 ): Promise<T> {
@@ -152,16 +169,17 @@ async function call<T>(
   })
 }
 
-function create(
+function createPageFromParams(
   route: PrerenderRouteMetadata,
   options: PrerenderRouteOptions,
-  entry: {
-    params: Record<string, unknown>
-    search?: Record<string, unknown>
-    sitemap?: RouteSitemapOptions
-    prerender?: RoutePrerenderOptions
-  },
+  entry: unknown,
 ): Page {
+  if (!isPrerenderParamsEntry(entry)) {
+    throw new Error(
+      `prerenderParams entry for route ${route.routePath} must include params`,
+    )
+  }
+
   const { interpolatedPath, isMissingParams, usedParams } = interpolatePath({
     path: route.path,
     params: entry.params,
@@ -179,43 +197,44 @@ function create(
   }
 
   return {
-    path: interpolatedPath + search(entry.search),
-    sitemap: sitemap(options.sitemap, entry.sitemap),
+    path: interpolatedPath + stringifySearch(entry.search),
+    sitemap: mergeOptions(options.sitemap, entry.sitemap),
     prerender: entry.prerender,
   }
 }
 
-function search(value: Record<string, unknown> | undefined) {
+function stringifySearch(value: Record<string, unknown> | undefined) {
   return value ? defaultStringifySearch(value) : ''
+}
+
+function isPrerenderParamsEntry(value: unknown): value is PrerenderParamsEntry {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    'params' in value &&
+    !!value.params &&
+    typeof value.params === 'object'
+  )
 }
 
 function merge(base: Page, override: Partial<Page>): Page {
   return {
     ...base,
     ...override,
-    sitemap: sitemap(base.sitemap, override.sitemap),
-    prerender: prerender(base.prerender, override.prerender),
+    sitemap: mergeOptions(base.sitemap, override.sitemap),
+    prerender: mergeOptions(base.prerender, override.prerender),
   }
 }
 
-function sitemap(
-  base: RouteSitemapOptions | undefined,
-  override: RouteSitemapOptions | undefined,
+function mergeOptions<T extends RouteSitemapOptions | RoutePrerenderOptions>(
+  base: T | undefined,
+  override: T | undefined,
 ) {
   if (!base) return override
   if (!override) return base
   return { ...base, ...override }
 }
 
-function prerender(
-  base: RoutePrerenderOptions | undefined,
-  override: RoutePrerenderOptions | undefined,
-) {
-  if (!base) return override
-  if (!override) return base
-  return { ...base, ...override }
-}
-
-function dynamic(path: string) {
+function isDynamicPath(path: string) {
   return path.includes('$')
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  applySeparatePrerenderRouteOptionsBundleDefault,
-  shouldUseSeparatePrerenderRouteOptions,
+  applySeparateRouteOptionsDefault,
+  shouldSeparateRouteOptions,
 } from '../src/prerender-route-options-env'
 import { parseStartConfig } from '../src/schema'
 
@@ -13,7 +13,7 @@ describe('separate prerender route options environment', () => {
       process.cwd(),
     )
 
-    expect(shouldUseSeparatePrerenderRouteOptions(startConfig)).toBe(true)
+    expect(shouldSeparateRouteOptions(startConfig)).toBe(true)
   })
 
   it('can be disabled to keep route options in the final server bundle', () => {
@@ -28,7 +28,7 @@ describe('separate prerender route options environment', () => {
       process.cwd(),
     )
 
-    expect(shouldUseSeparatePrerenderRouteOptions(startConfig)).toBe(false)
+    expect(shouldSeparateRouteOptions(startConfig)).toBe(false)
   })
 
   it('can be disabled by a deployment-specific default', () => {
@@ -38,9 +38,9 @@ describe('separate prerender route options environment', () => {
       process.cwd(),
     )
 
-    applySeparatePrerenderRouteOptionsBundleDefault(startConfig, false)
+    applySeparateRouteOptionsDefault(startConfig, false)
 
-    expect(shouldUseSeparatePrerenderRouteOptions(startConfig)).toBe(false)
+    expect(shouldSeparateRouteOptions(startConfig)).toBe(false)
   })
 
   it('preserves explicit user configuration over deployment defaults', () => {
@@ -55,12 +55,12 @@ describe('separate prerender route options environment', () => {
       process.cwd(),
     )
 
-    applySeparatePrerenderRouteOptionsBundleDefault(startConfig, false)
+    applySeparateRouteOptionsDefault(startConfig, false)
 
-    expect(shouldUseSeparatePrerenderRouteOptions(startConfig)).toBe(true)
+    expect(shouldSeparateRouteOptions(startConfig)).toBe(true)
   })
 
-  it('stays disabled for SPA prerendering', () => {
+  it('is enabled for SPA builds so final server output is stripped', () => {
     const startConfig = parseStartConfig(
       {
         spa: { enabled: true },
@@ -70,6 +70,6 @@ describe('separate prerender route options environment', () => {
       process.cwd(),
     )
 
-    expect(shouldUseSeparatePrerenderRouteOptions(startConfig)).toBe(false)
+    expect(shouldSeparateRouteOptions(startConfig)).toBe(true)
   })
 })

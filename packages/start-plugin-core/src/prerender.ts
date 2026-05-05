@@ -43,7 +43,11 @@ export async function prerender({
       }
 
       if (!startConfig.spa?.enabled) {
-        const routeTree = await globalThis.TSS_PRERENDER_ROUTE_TREE?.()
+        if (!globalThis.TSS_PRERENDER_ROUTE_TREE) {
+          throw new Error('Prerender route options were not loaded')
+        }
+
+        const routeTree = await globalThis.TSS_PRERENDER_ROUTE_TREE()
 
         pages = await runPrerenderParams({
           routeTree,

@@ -6,7 +6,7 @@ import { prerender } from '../prerender'
 import {
   capturePrerenderEnv,
   restorePrerenderEnv,
-  shouldUseSeparatePrerenderRouteOptions,
+  shouldSeparateRouteOptions,
 } from '../prerender-route-options-env'
 import { getBundlerOptions } from '../utils'
 import { getServerOutputDirectory } from './output-directory'
@@ -99,7 +99,7 @@ async function importRouteOptionsEntry({
   serverEnv: NonNullable<ViteBuilder['environments'][string]>
   prerenderEnv: ViteBuilder['environments'][string] | undefined
 }): Promise<string | undefined> {
-  const separateRouteOptions = shouldUseSeparatePrerenderRouteOptions(startConfig)
+  const separateRouteOptions = shouldSeparateRouteOptions(startConfig)
   const routeOptionsEnv = separateRouteOptions ? prerenderEnv : serverEnv
 
   if (!routeOptionsEnv) {
@@ -108,11 +108,11 @@ async function importRouteOptionsEntry({
     )
   }
 
-  const entry = getRouteOptionsEntry(
+  const outputName = getRouteOptionsEntryName(
     getBundlerOptions(routeOptionsEnv.config.build)?.input ?? 'server',
   )
 
-  if (!entry) {
+  if (!outputName) {
     return undefined
   }
 
@@ -123,7 +123,7 @@ async function importRouteOptionsEntry({
   const outputDir = separateRouteOptions
     ? routeOptionsEnv.config.build.outDir
     : getServerOutputDirectory(serverEnv.config)
-  const entryPath = await resolveRouteOptionsEntryPath(outputDir, entry.outputName)
+  const entryPath = await resolveRouteOptionsEntryPath(outputDir, outputName)
 
   try {
     await importWithCacheBust(entryPath)
@@ -173,7 +173,7 @@ async function findEntryFile(
     return undefined
   }
 
-  const matches = new Set<string>()
+  const matches: Array<string> = []
 
   for (const entry of entries) {
     const entryPath = join(directory, entry.name)
@@ -181,7 +181,7 @@ async function findEntryFile(
     if (entry.isDirectory()) {
       const match = await findEntryFile(entryPath, outputName)
       if (match) {
-        matches.add(match)
+        matches.push(match)
       }
       continue
     }
@@ -193,15 +193,15 @@ async function findEntryFile(
 
     const name = basename(entry.name, ext)
     if (name === outputName || name.startsWith(`${outputName}-`)) {
-      matches.add(entryPath)
+      matches.push(entryPath)
     }
   }
 
-  if (matches.size === 1) {
-    return Array.from(matches)[0]
+  if (matches.length === 1) {
+    return matches[0]
   }
 
-  if (matches.size > 1) {
+  if (matches.length > 1) {
     throw new Error(
       `Unable to resolve a unique Vite route-options entry ${outputName} in ${directory}`,
     )
@@ -216,11 +216,9 @@ async function importWithCacheBust(path: string) {
   await import(url.toString())
 }
 
-function getRouteOptionsEntry(
-  input: unknown,
-): { outputName: string } | undefined {
+function getRouteOptionsEntryName(input: unknown): string | undefined {
   if (typeof input === 'string') {
-    return { outputName: basename(input, extname(input)) }
+    return basename(input, extname(input))
   }
 
   if (input && typeof input === 'object') {
@@ -229,13 +227,13 @@ function getRouteOptionsEntry(
     )
 
     if (entries.length === 1) {
-      return { outputName: entries[0]![0] }
+      return entries[0]![0]
     }
 
     const serverEntry = entries.find(([name]) => name === 'server')
 
     if (serverEntry) {
-      return { outputName: serverEntry[0] }
+      return serverEntry[0]
     }
 
     throw new Error('Unable to resolve Vite route-options entry point')

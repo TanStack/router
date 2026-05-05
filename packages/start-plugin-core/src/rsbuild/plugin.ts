@@ -9,7 +9,7 @@ import {
 } from '../config-context'
 import { escapeRegExp, normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
-import { shouldUseSeparatePrerenderRouteOptions } from '../prerender-route-options-env'
+import { shouldSeparateRouteOptions } from '../prerender-route-options-env'
 import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
   RSBUILD_CLIENT_ASSETS_DIR,
@@ -167,6 +167,7 @@ export function tanStackStartRsbuild(
         const entryAliases = createRsbuildResolvedEntryAliases({
           entryPaths: resolvedEntryPlan.entryPaths,
         })
+        const separateRouteOptions = shouldSeparateRouteOptions(startConfig)
 
         const environmentPlan = createRsbuildEnvironmentPlan({
           root,
@@ -175,24 +176,25 @@ export function tanStackStartRsbuild(
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           publicBase: resolvedStartConfig.basePaths.publicBase,
           serverFnProviderEnv,
-          separatePrerenderRouteOptions:
-            shouldUseSeparatePrerenderRouteOptions(startConfig),
+          separatePrerenderRouteOptions: separateRouteOptions,
           environmentOverrides: corePluginOpts.rsbuild?.environments,
           scriptFormat,
           rsc: rscOpts,
           dev: isDev,
         })
-        prerenderOutputDirectory = resolveRsbuildOutputDirectory({
-          distPath:
-            environmentPlan.environments[RSBUILD_ENVIRONMENT_NAMES.prerender]
-              ?.output?.distPath,
-          rootDistPath: undefined,
-          fallback: join(
-            resolvedStartConfig.outputDirectories.server,
-            '.tanstack/prerender',
-          ),
-          subdirectory: 'prerender',
-        })
+        prerenderOutputDirectory = separateRouteOptions
+          ? resolveRsbuildOutputDirectory({
+              distPath:
+                environmentPlan.environments[RSBUILD_ENVIRONMENT_NAMES.prerender]
+                  ?.output?.distPath,
+              rootDistPath: undefined,
+              fallback: join(
+                resolvedStartConfig.outputDirectories.server,
+                '.tanstack/prerender',
+              ),
+              subdirectory: 'prerender',
+            })
+          : undefined
         const serverFnBase = createServerFnBasePath({
           routerBasepath,
           serverFnBase: startConfig.serverFns.base,
@@ -794,14 +796,14 @@ export function tanStackStartRsbuild(
       if (api.context.action === 'build') {
         api.onAfterBuild(async () => {
           const { startConfig } = getConfig()
+          const separateRouteOptions = shouldSeparateRouteOptions(startConfig)
 
           await postBuildWithRsbuild({
             startConfig,
             clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
             serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
             prerenderOutputDirectory,
-            separatePrerenderRouteOptions:
-              shouldUseSeparatePrerenderRouteOptions(startConfig),
+            separatePrerenderRouteOptions: separateRouteOptions,
           })
         })
       }

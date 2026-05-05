@@ -489,6 +489,42 @@ describe('runPrerenderParams', () => {
     ).rejects.toThrow('Missing prerenderParams values for route /posts/$slug')
   })
 
+  it('throws when prerenderParams does not return an array', async () => {
+    const routeTree = createRouteTree({
+      '/posts/$slug': {
+        prerenderParams: () => undefined,
+      },
+    })
+
+    await expect(
+      runPrerenderParams({
+        routeTree,
+        pages: [],
+        logger,
+      }),
+    ).rejects.toThrow(
+      'prerenderParams for route /posts/$slug must return an array',
+    )
+  })
+
+  it('throws when a prerenderParams entry does not include params', async () => {
+    const routeTree = createRouteTree({
+      '/posts/$slug': {
+        prerenderParams: () => [{}],
+      },
+    })
+
+    await expect(
+      runPrerenderParams({
+        routeTree,
+        pages: [],
+        logger,
+      }),
+    ).rejects.toThrow(
+      'prerenderParams entry for route /posts/$slug must include params',
+    )
+  })
+
   it('throws when a prerenderParams entry has nullish required params', async () => {
     const routeTree = createRouteTree({
       '/posts/$slug': {

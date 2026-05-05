@@ -26,7 +26,7 @@ export function restorePrerenderEnv(state: PrerenderEnvState) {
   }
 }
 
-export function applySeparatePrerenderRouteOptionsBundleDefault(
+export function applySeparateRouteOptionsDefault(
   startConfig: TanStackStartOutputConfig,
   defaultValue: boolean,
 ) {
@@ -40,7 +40,7 @@ export function applySeparatePrerenderRouteOptionsBundleDefault(
   }
 }
 
-export function shouldUseSeparatePrerenderRouteOptions(
+export function shouldSeparateRouteOptions(
   startConfig: TanStackStartOutputConfig,
 ) {
   if (startConfig.prerender?.separateRouteOptionsBundle === false) {
@@ -51,5 +51,5 @@ export function shouldUseSeparatePrerenderRouteOptions(
     startConfig.prerender?.enabled ??
     startConfig.pages.some((page) => page.prerender?.enabled)
 
-  return prerenderEnabled && !startConfig.spa?.enabled
+  return prerenderEnabled || Boolean(startConfig.spa?.enabled)
 }

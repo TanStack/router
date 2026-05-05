@@ -11,7 +11,7 @@ import {
   CLIENT_ROUTE_OPTION_DELETE_NODES,
   SERVER_ROUTE_OPTION_DELETE_NODES,
 } from '../start-router-plugin/constants'
-import { shouldUseSeparatePrerenderRouteOptions } from '../prerender-route-options-env'
+import { shouldSeparateRouteOptions } from '../prerender-route-options-env'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI } from '@rsbuild/core'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
@@ -74,18 +74,18 @@ export function registerRouterPlugins(
     ) {
       const isClient = envName === RSBUILD_ENVIRONMENT_NAMES.client
       const isServer = envName === RSBUILD_ENVIRONMENT_NAMES.server
+      const deleteNodes = isClient
+        ? CLIENT_ROUTE_OPTION_DELETE_NODES
+        : isServer && shouldSeparateRouteOptions(startConfig)
+          ? SERVER_ROUTE_OPTION_DELETE_NODES
+          : undefined
       const splitterPlugin = TanStackRouterCodeSplitterRspack(
         {
           ...routerConfig,
           target: opts.corePluginOpts.framework,
           codeSplittingOptions: {
             ...routerConfig.codeSplittingOptions,
-            deleteNodes: isClient
-              ? CLIENT_ROUTE_OPTION_DELETE_NODES
-              : isServer &&
-                  shouldUseSeparatePrerenderRouteOptions(startConfig)
-                ? SERVER_ROUTE_OPTION_DELETE_NODES
-                : undefined,
+            deleteNodes,
             addHmr: isClient,
           },
         },

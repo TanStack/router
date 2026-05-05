@@ -578,7 +578,9 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     updateServerFnResolver() {
       for (const environmentName of new Set([
         RSBUILD_ENVIRONMENT_NAMES.server,
-        RSBUILD_ENVIRONMENT_NAMES.prerender,
+        ...(vmPlugins[RSBUILD_ENVIRONMENT_NAMES.prerender]
+          ? [RSBUILD_ENVIRONMENT_NAMES.prerender]
+          : []),
         ...(hasSeparateProviderEnvironment ? [opts.providerEnvName] : []),
       ])) {
         if (!needsServerFnResolver(environmentName)) {

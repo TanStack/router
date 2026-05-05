@@ -52,6 +52,9 @@ export default defineConfig({
         // Maximum time in milliseconds to wait for each prerenderParams callback
         prerenderParamsTimeout: 30000,
 
+        // Build route options used for prerendering separately from the server bundle
+        separateRouteOptionsBundle: true,
+
         // Fail if an error occurs during prerendering
         failOnError: true,
 
@@ -137,6 +140,8 @@ export default defineConfig({
 ```
 
 <!-- ::end:tabs -->
+
+By default, Start builds route options used by `prerenderParams` and `sitemap` separately from the final server bundle so they can be used at build time without being deployed. Some deployment adapters may override this default for compatibility. For example, Nitro keeps route options in the server bundle unless you explicitly set `prerender.separateRouteOptionsBundle` to `true`. Set `prerender.separateRouteOptionsBundle` to `false` if your deployment adapter does not support the extra build environment or if you prefer to keep those route options in the server bundle.
 
 ## Automatic Static Route Discovery
 

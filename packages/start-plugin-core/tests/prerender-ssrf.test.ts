@@ -39,6 +39,7 @@ const handler = {
 
 function resetFetch() {
   fetchMock.mockClear()
+  globalThis.TSS_PRERENDER_ROUTE_TREE = async () => undefined
 }
 
 function makeStartConfig(pagePath: string) {
@@ -71,6 +72,16 @@ describe('prerender pages validation', () => {
       /prerender page path must be relative/i,
     )
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('throws when route options are not loaded for SSR prerendering', async () => {
+    resetFetch()
+    delete globalThis.TSS_PRERENDER_ROUTE_TREE
+    const startConfig = makeStartConfig('/about')
+
+    await expect(prerender({ startConfig, handler })).rejects.toThrow(
+      'Prerender route options were not loaded',
+    )
   })
 
   it('closes the handler and clears route tree state when prerendering fails', async () => {
