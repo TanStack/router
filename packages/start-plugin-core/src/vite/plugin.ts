@@ -11,8 +11,8 @@ import {
   shouldRewriteDevBasepath,
 } from '../planning'
 import {
-  applySeparatePrerenderRouteOptionsBundleDefault,
-  shouldUseSeparatePrerenderRouteOptions,
+  applySeparateRouteOptionsDefault,
+  shouldSeparateRouteOptions,
 } from '../prerender-route-options-env'
 import { importProtectionPlugin } from './import-protection-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin/plugin'
@@ -111,10 +111,11 @@ export function tanStackStartVite(
           serverOutputDirectory: getServerOutputDirectory(viteConfig),
         })
         const { startConfig } = getConfig()
-        applySeparatePrerenderRouteOptionsBundleDefault(
+        applySeparateRouteOptionsDefault(
           startConfig,
           !hasNitroPlugin(viteConfig.plugins),
         )
+        const separateRouteOptions = shouldSeparateRouteOptions(startConfig)
         const routerBasepath = applyResolvedRouterBasepath({
           resolvedStartConfig,
           startConfig,
@@ -181,8 +182,7 @@ export function tanStackStartVite(
           clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           serverFnProviderEnv,
-          separatePrerenderRouteOptions:
-            shouldUseSeparatePrerenderRouteOptions(startConfig),
+          separatePrerenderRouteOptions: separateRouteOptions,
           optimizeDepsExclude: crawlFrameworkPkgsResult.optimizeDeps.exclude,
           noExternal: crawlFrameworkPkgsResult.ssr.noExternal.sort(),
         })
@@ -214,8 +214,7 @@ export function tanStackStartVite(
                 builder,
                 providerEnvironmentName: serverFnProviderEnv,
                 ssrIsProvider,
-                separatePrerenderRouteOptions:
-                  shouldUseSeparatePrerenderRouteOptions(startConfig),
+                separatePrerenderRouteOptions: separateRouteOptions,
               })
             },
           },

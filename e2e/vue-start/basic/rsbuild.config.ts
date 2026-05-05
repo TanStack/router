@@ -34,6 +34,12 @@ export default defineConfig({
     pluginVueJsx(),
     tanstackStart({
       prerender: isPrerender ? prerenderConfiguration : undefined,
+      sitemap: isPrerender
+        ? {
+            enabled: true,
+            host: 'https://example.com',
+          }
+        : undefined,
     }),
   ],
   performance: {

@@ -32,6 +32,12 @@ export default defineConfig({
     pluginSolid(),
     tanstackStart({
       prerender: isPrerender ? prerenderConfiguration : undefined,
+      sitemap: isPrerender
+        ? {
+            enabled: true,
+            host: 'https://example.com',
+          }
+        : undefined,
     }),
   ],
   output: {

@@ -23,8 +23,9 @@ export async function postBuild({
     }
   }
 
-  const spaOnly =
-    startConfig.spa?.enabled && startConfig.prerender.enabled !== true
+  const spaOnly = Boolean(
+    startConfig.spa?.enabled && startConfig.prerender.enabled !== true,
+  )
 
   if (startConfig.spa?.enabled) {
     if (spaOnly) {

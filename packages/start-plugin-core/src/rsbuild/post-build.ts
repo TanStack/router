@@ -29,19 +29,12 @@ export async function postBuildWithRsbuild({
         return clientOutputDirectory
       },
       async prerender(startConfig) {
-        const handler = createRsbuildPrerenderHandler({
+        const handler = await createRsbuildPrerenderHandler({
           clientOutputDirectory,
           serverOutputDirectory,
           prerenderOutputDirectory,
           separatePrerenderRouteOptions,
         })
-        try {
-          await handler.loadRouteOptions()
-          await handler.loadRequestHandler()
-        } catch (error) {
-          await handler.close?.()
-          throw error
-        }
 
         return prerender({
           startConfig,
@@ -52,7 +45,7 @@ export async function postBuildWithRsbuild({
   })
 }
 
-function createRsbuildPrerenderHandler({
+async function createRsbuildPrerenderHandler({
   clientOutputDirectory,
   serverOutputDirectory,
   prerenderOutputDirectory,
@@ -62,12 +55,7 @@ function createRsbuildPrerenderHandler({
   serverOutputDirectory: string
   prerenderOutputDirectory?: string | undefined
   separatePrerenderRouteOptions: boolean
-}): PrerenderHandler & {
-  loadRouteOptions: () => Promise<void>
-  loadRequestHandler: () => Promise<
-    (request: Request, opts?: unknown) => Promise<Response> | Response
-  >
-} {
+}): Promise<PrerenderHandler> {
   const prerenderEnvState = capturePrerenderEnv()
 
   process.env.TSS_PRERENDERING = 'true'
@@ -81,9 +69,7 @@ function createRsbuildPrerenderHandler({
 
   let routeOptionsPromise: Promise<void> | undefined
 
-  return {
-    loadRouteOptions,
-    loadRequestHandler,
+  const handler: PrerenderHandler = {
     getClientOutputDirectory() {
       return clientOutputDirectory
     },
@@ -109,6 +95,16 @@ function createRsbuildPrerenderHandler({
       }
     },
   }
+
+  try {
+    await loadRouteOptions()
+    await loadRequestHandler()
+  } catch (error) {
+    await handler.close?.()
+    throw error
+  }
+
+  return handler
 
   function loadRequestHandler() {
     if (!requestHandlerPromise) {

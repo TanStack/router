@@ -52,8 +52,6 @@ export function createViteConfigPlan(opts: {
     getBundlerOptions(
       opts.viteConfig.environments?.[START_ENVIRONMENT_NAMES.server]?.build,
     )?.input ?? opts.entryAliases.server
-  const prerenderInput =
-    typeof serverInput === 'string' ? { server: serverInput } : serverInput
 
   return {
     environments: {
@@ -106,7 +104,12 @@ export function createViteConfigPlan(opts: {
               consumer: 'server',
               build: {
                 ssr: true,
-                ...buildViteInputOptions(prerenderInput),
+                ...buildViteInputOptions(
+                  typeof serverInput === 'string'
+                    ? { server: serverInput }
+                    : serverInput,
+                  [/^cloudflare:/],
+                ),
                 outDir: join(
                   opts.serverOutputDirectory,
                   '.tanstack/prerender',
@@ -249,8 +252,11 @@ function escapeEntries(entries: Array<string>) {
   return entries.map((entry) => escapePath(entry))
 }
 
-function buildViteInputOptions(input: NonNullable<vite.BuildOptions['rollupOptions']>['input']) {
-  const bundlerOptions = { input }
+function buildViteInputOptions(
+  input: NonNullable<vite.BuildOptions['rollupOptions']>['input'],
+  external?: NonNullable<vite.BuildOptions['rollupOptions']>['external'],
+) {
+  const bundlerOptions = external ? { input, external } : { input }
 
   return {
     rollupOptions: bundlerOptions,

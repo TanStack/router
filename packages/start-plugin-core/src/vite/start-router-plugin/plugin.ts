@@ -15,7 +15,7 @@ import {
   SERVER_PROP,
   SERVER_ROUTE_OPTION_DELETE_NODES,
 } from '../../start-router-plugin/constants'
-import { shouldUseSeparatePrerenderRouteOptions } from '../../prerender-route-options-env'
+import { shouldSeparateRouteOptions } from '../../prerender-route-options-env'
 import type { GetConfigFn } from '../../types'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
 import type {
@@ -152,7 +152,6 @@ export function tanStackStartRouter(
     tanstackRouterGenerator(() => {
       const routerConfig = getConfig().startConfig.router
       const plugins = [clientTreeGeneratorPlugin, routesManifestPlugin()]
-      // Dynamic route params can enable prerendering after route generation.
       if (startPluginOpts.prerender?.enabled !== false) {
         plugins.push(prerenderRoutesPlugin())
       }
@@ -178,14 +177,13 @@ export function tanStackStartRouter(
       }
     }, routerPluginContext),
     tanStackRouterCodeSplitter(() => {
-      const routerConfig = getConfig().startConfig.router
+      const { startConfig } = getConfig()
+      const routerConfig = startConfig.router
       return {
         ...routerConfig,
         codeSplittingOptions: {
           ...routerConfig.codeSplittingOptions,
-          deleteNodes: shouldUseSeparatePrerenderRouteOptions(
-            getConfig().startConfig,
-          )
+          deleteNodes: shouldSeparateRouteOptions(startConfig)
             ? SERVER_ROUTE_OPTION_DELETE_NODES
             : undefined,
           addHmr: false,
