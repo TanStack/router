@@ -28,7 +28,7 @@ function hydrateMatch(
   match.updatedAt = deyhydratedMatch.u
   match.error = deyhydratedMatch.e
   if (isNotFound(match.error) && typeof match.error.routeId === 'string') {
-    match.error.routeId = hydrateSsrMatchId(match.error.routeId) as any
+    match.error.routeId = hydrateSsrMatchId(match.error.routeId)
   }
   // Only hydrate global-not-found when a defined value is present in the
   // dehydrated payload. If omitted, preserve the value computed from the
