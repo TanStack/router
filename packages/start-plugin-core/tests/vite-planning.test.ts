@@ -5,7 +5,7 @@ import {
 } from '../src/vite/planning'
 
 describe('Vite planning', () => {
-  it('uses a non-Nitro-service input for the prerender route options environment', () => {
+  it('uses the server entry input for the prerender route options environment', () => {
     const entryAliases = createViteResolvedEntryAliases({
       entryPaths: {
         client: '/app/src/client.tsx',

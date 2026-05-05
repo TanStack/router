@@ -10,10 +10,7 @@ import {
   normalizePublicBase,
   shouldRewriteDevBasepath,
 } from '../planning'
-import {
-  applySeparateRouteOptionsDefault,
-  shouldSeparateRouteOptions,
-} from '../prerender-route-options-env'
+import { shouldSeparateRouteOptions } from '../prerender-route-options-env'
 import { importProtectionPlugin } from './import-protection-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
@@ -37,7 +34,6 @@ import {
   getClientOutputDirectory,
   getServerOutputDirectory,
 } from './output-directory'
-import { hasNitroPlugin } from './nitro'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
 import type {
@@ -111,10 +107,6 @@ export function tanStackStartVite(
           serverOutputDirectory: getServerOutputDirectory(viteConfig),
         })
         const { startConfig } = getConfig()
-        applySeparateRouteOptionsDefault(
-          startConfig,
-          !hasNitroPlugin(viteConfig.plugins),
-        )
         const separateRouteOptions = shouldSeparateRouteOptions(startConfig)
         const routerBasepath = applyResolvedRouterBasepath({
           resolvedStartConfig,

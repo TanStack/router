@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  applySeparateRouteOptionsDefault,
-  shouldSeparateRouteOptions,
-} from '../src/prerender-route-options-env'
+import { shouldSeparateRouteOptions } from '../src/prerender-route-options-env'
 import { parseStartConfig } from '../src/schema'
 
 describe('separate prerender route options environment', () => {
@@ -29,35 +26,6 @@ describe('separate prerender route options environment', () => {
     )
 
     expect(shouldSeparateRouteOptions(startConfig)).toBe(false)
-  })
-
-  it('can be disabled by a deployment-specific default', () => {
-    const startConfig = parseStartConfig(
-      { prerender: { enabled: true } },
-      { framework: 'react' },
-      process.cwd(),
-    )
-
-    applySeparateRouteOptionsDefault(startConfig, false)
-
-    expect(shouldSeparateRouteOptions(startConfig)).toBe(false)
-  })
-
-  it('preserves explicit user configuration over deployment defaults', () => {
-    const startConfig = parseStartConfig(
-      {
-        prerender: {
-          enabled: true,
-          separateRouteOptionsBundle: true,
-        },
-      },
-      { framework: 'react' },
-      process.cwd(),
-    )
-
-    applySeparateRouteOptionsDefault(startConfig, false)
-
-    expect(shouldSeparateRouteOptions(startConfig)).toBe(true)
   })
 
   it('is enabled for SPA builds so final server output is stripped', () => {
