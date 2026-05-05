@@ -69,4 +69,43 @@ describe('postServerBuild', () => {
 
     expect(prerender).not.toHaveBeenCalled()
   })
+
+  it('limits SPA-only prerendering to the shell page', async () => {
+    const prerender = vi.fn(async () => {})
+    const { postBuild } = await import('../src/post-build')
+
+    const startConfig = {
+      spa: {
+        enabled: true,
+        maskPath: '/',
+        prerender: {},
+      },
+      pages: [{ path: '/about', prerender: { enabled: true } }],
+      router: { basepath: '' },
+      serverFns: { base: '' },
+      sitemap: { enabled: false },
+    } as any
+
+    await postBuild({
+      startConfig,
+      adapter: {
+        getClientOutputDirectory: () => '/client',
+        prerender,
+      },
+    })
+
+    expect(prerender).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pages: [
+          expect.objectContaining({
+            path: '/',
+          }),
+        ],
+        prerender: expect.objectContaining({
+          enabled: true,
+          autoStaticPathsDiscovery: false,
+        }),
+      }),
+    )
+  })
 })

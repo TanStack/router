@@ -38,16 +38,14 @@ export async function prerenderWithVite({
   const serverInput =
     getBundlerOptions(serverEnv.config.build)?.input ?? 'server'
 
-  if (typeof serverInput !== 'string') {
-    throw new Error('Invalid server input. Expected a string.')
+  if (typeof serverInput === 'string') {
+    // Import the built server entry before prerendering so route options from the
+    // initialized router are available for dynamic route discovery.
+    const outputFilename = `${basename(serverInput, extname(serverInput))}.js`
+    const serverOutputDir = getServerOutputDirectory(serverEnv.config)
+    const serverEntryPath = join(serverOutputDir, outputFilename)
+    await import(pathToFileURL(serverEntryPath).toString())
   }
-
-  // Import the built server entry before prerendering so route options from the
-  // initialized router are available for dynamic route discovery.
-  const outputFilename = `${basename(serverInput, extname(serverInput))}.js`
-  const serverOutputDir = getServerOutputDirectory(serverEnv.config)
-  const serverEntryPath = join(serverOutputDir, outputFilename)
-  await import(pathToFileURL(serverEntryPath).toString())
 
   const previewServer = await startPreviewServer(serverEnv.config)
   const baseUrl = getResolvedUrl(previewServer)
