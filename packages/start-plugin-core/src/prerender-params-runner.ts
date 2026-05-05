@@ -138,7 +138,13 @@ async function call<T>(
     signal.addEventListener('abort', abort, { once: true })
 
     Promise.resolve()
-      .then(callback)
+      .then(() => {
+        if (signal.aborted) {
+          throw signal.reason ?? new Error('prerenderParams aborted')
+        }
+
+        return callback()
+      })
       .then(resolve, reject)
       .finally(() => {
         signal.removeEventListener('abort', abort)

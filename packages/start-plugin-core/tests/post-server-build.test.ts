@@ -11,6 +11,35 @@ vi.mock('../src/build-sitemap', () => ({
 }))
 
 describe('postServerBuild', () => {
+  it('does not enable prerendering from dynamic route hints without prerender config', async () => {
+    const prerender = vi.fn(async () => {})
+    const { postBuild } = await import('../src/post-build')
+
+    globalThis.TSS_PRERENDER_DYNAMIC_ROUTES = [
+      { routePath: '/posts/$postId', path: '/posts/$postId' },
+    ]
+
+    try {
+      await postBuild({
+        startConfig: {
+          pages: [],
+          router: { basepath: '' },
+          serverFns: { base: '' },
+          spa: { enabled: false },
+          sitemap: { enabled: false },
+        } as any,
+        adapter: {
+          getClientOutputDirectory: () => '/client',
+          prerender,
+        },
+      })
+    } finally {
+      globalThis.TSS_PRERENDER_DYNAMIC_ROUTES = undefined
+    }
+
+    expect(prerender).not.toHaveBeenCalled()
+  })
+
   it('rejects absolute SPA maskPath URLs to avoid external prerendering', async () => {
     const prerender = vi.fn(async () => {})
     const { postBuild } = await import('../src/post-build')
