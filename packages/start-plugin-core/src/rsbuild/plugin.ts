@@ -199,6 +199,9 @@ export function tanStackStartRsbuild(
             },
           },
           server: {
+            // Rsbuild compression currently treats Node's raw header array
+            // writeHead form as an object, which corrupts SSR response headers.
+            compress: false,
             // SSR apps render every route on the server — disable HTML
             // fallback so rsbuild doesn't intercept /_serverFn/ URLs.
             htmlFallback: false,
