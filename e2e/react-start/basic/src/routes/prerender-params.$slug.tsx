@@ -1,6 +1,25 @@
 import { createFileRoute } from '@tanstack/react-router'
 import z from 'zod'
-import { getServerOnlyPrerenderSlug } from './-prerender-params.server'
+import {
+  SERVER_ONLY_PRERENDER_MARKER,
+  getServerOnlyPrerenderSlug,
+} from './-prerender-params.server'
+
+const topLevelPrerenderLiteral =
+  'top-level-prerender-literal-marker-should-not-ship'
+const topLevelPrerenderImportedMarker = SERVER_ONLY_PRERENDER_MARKER.replace(
+  'server-only-prerender-marker-should-not-be-in-client',
+  'top-level-imported-marker-slug',
+)
+const topLevelPrerenderImportedCall = getServerOnlyPrerenderSlug().replace(
+  'server-only-slug',
+  'top-level-import-call-marker-should-not-ship',
+)
+const topLevelPrerenderSideEffect = (() => {
+  ;(globalThis as any).__TSR_PRERENDER_SIDE_EFFECT_MARKER =
+    'top-level-side-effect-prerender-marker-should-not-ship'
+  return 'top-level-side-effect-slug'
+})()
 
 export const Route = createFileRoute('/prerender-params/$slug')({
   validateSearch: z.object({
@@ -39,6 +58,30 @@ export const Route = createFileRoute('/prerender-params/$slug')({
     },
     {
       params: { slug: getServerOnlyPrerenderSlug() },
+      sitemap: {
+        exclude: true,
+      },
+    },
+    {
+      params: { slug: topLevelPrerenderLiteral },
+      sitemap: {
+        exclude: true,
+      },
+    },
+    {
+      params: { slug: topLevelPrerenderImportedMarker },
+      sitemap: {
+        exclude: true,
+      },
+    },
+    {
+      params: { slug: topLevelPrerenderImportedCall },
+      sitemap: {
+        exclude: true,
+      },
+    },
+    {
+      params: { slug: topLevelPrerenderSideEffect },
       sitemap: {
         exclude: true,
       },

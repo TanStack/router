@@ -9,6 +9,32 @@ const distDir = join(
   process.env.E2E_DIST_DIR ?? 'dist',
   'client',
 )
+const serverDistDir = join(
+  process.cwd(),
+  process.env.E2E_DIST_DIR ?? 'dist',
+  'server',
+)
+
+const prerenderOnlyBundleMarkers = [
+  'server-only-prerender-marker',
+  'top-level-prerender-literal-marker-should-not-ship',
+  'top-level-imported-marker-slug',
+  'top-level-import-call-marker-should-not-ship',
+  'top-level-side-effect-prerender-marker-should-not-ship',
+  'top-level-side-effect-slug',
+  '__TSR_PRERENDER_SIDE_EFFECT_MARKER',
+] as const
+
+function outputContainsMarker(dir: string, marker: string) {
+  return readdirSync(dir, { recursive: true }).some((relativePath) => {
+    const filePath = join(dir, String(relativePath))
+    return (
+      statSync(filePath).isFile() &&
+      filePath.endsWith('.js') &&
+      readFileSync(filePath, 'utf-8').includes(marker)
+    )
+  })
+}
 
 test.describe('Prerender Static Path Discovery', () => {
   test.skip(!isPrerender, 'Skipping since not in prerender mode')
@@ -124,16 +150,48 @@ test.describe('Prerender Static Path Discovery', () => {
 
       expect(existsSync(htmlPath)).toBe(true)
       expect(
-        readdirSync(distDir, { recursive: true }).some((relativePath) => {
-          const filePath = join(distDir, String(relativePath))
-          return (
-            statSync(filePath).isFile() &&
-            readFileSync(filePath, 'utf-8').includes(
-              'server-only-prerender-marker',
-            )
-          )
-        }),
+        outputContainsMarker(distDir, 'server-only-prerender-marker'),
       ).toBe(false)
+    })
+
+    test('should strip prerenderParams-only module scope code from final bundles', () => {
+      expect(
+        existsSync(
+          join(
+            distDir,
+            'prerender-params/top-level-prerender-literal-marker-should-not-ship/index.html',
+          ),
+        ),
+      ).toBe(true)
+      expect(
+        existsSync(
+          join(
+            distDir,
+            'prerender-params/top-level-imported-marker-slug/index.html',
+          ),
+        ),
+      ).toBe(true)
+      expect(
+        existsSync(
+          join(
+            distDir,
+            'prerender-params/top-level-import-call-marker-should-not-ship/index.html',
+          ),
+        ),
+      ).toBe(true)
+      expect(
+        existsSync(
+          join(
+            distDir,
+            'prerender-params/top-level-side-effect-slug/index.html',
+          ),
+        ),
+      ).toBe(true)
+
+      for (const marker of prerenderOnlyBundleMarkers) {
+        expect(outputContainsMarker(distDir, marker)).toBe(false)
+        expect(outputContainsMarker(serverDistDir, marker)).toBe(false)
+      }
     })
 
     test('should include route sitemap options from prerenderParams', () => {
