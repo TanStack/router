@@ -14,6 +14,9 @@ export async function postBuild({
   startConfig: TanStackStartOutputConfig
   adapter: StartPostBuildAdapter
 }) {
+  const spaOnly =
+    startConfig.spa?.enabled && startConfig.prerender?.enabled !== true
+
   if (startConfig.prerender?.enabled !== false) {
     startConfig.prerender = {
       ...startConfig.prerender,
@@ -24,8 +27,17 @@ export async function postBuild({
   }
 
   if (startConfig.spa?.enabled) {
+    if (spaOnly) {
+      startConfig.pages = []
+    }
+
     startConfig.prerender = {
       ...startConfig.prerender,
+      ...(spaOnly
+        ? {
+            autoStaticPathsDiscovery: false,
+          }
+        : {}),
       enabled: true,
     }
 

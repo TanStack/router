@@ -41,15 +41,17 @@ export async function prerender({
       pages = Array.from(pagesMap.values())
     }
 
-    const routeTree = await globalThis.TSS_PRERENDER_ROUTE_TREE?.()
+    if (!startConfig.spa?.enabled) {
+      const routeTree = await globalThis.TSS_PRERENDER_ROUTE_TREE?.()
 
-    pages = await runPrerenderParams({
-      routeTree,
-      pages,
-      logger,
-      filter: startConfig.prerender.filter,
-      prerenderParamsTimeout: startConfig.prerender.prerenderParamsTimeout,
-    })
+      pages = await runPrerenderParams({
+        routeTree,
+        pages,
+        logger,
+        filter: startConfig.prerender.filter,
+        prerenderParamsTimeout: startConfig.prerender.prerenderParamsTimeout,
+      })
+    }
 
     startConfig.pages = pages
   }
