@@ -26,20 +26,6 @@ export function restorePrerenderEnv(state: PrerenderEnvState) {
   }
 }
 
-export function applySeparateRouteOptionsDefault(
-  startConfig: TanStackStartOutputConfig,
-  defaultValue: boolean,
-) {
-  if (startConfig.prerender?.separateRouteOptionsBundle !== undefined) {
-    return
-  }
-
-  startConfig.prerender = {
-    ...startConfig.prerender,
-    separateRouteOptionsBundle: defaultValue,
-  }
-}
-
 export function shouldSeparateRouteOptions(
   startConfig: TanStackStartOutputConfig,
 ) {
