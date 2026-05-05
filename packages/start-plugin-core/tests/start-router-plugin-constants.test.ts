@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { CLIENT_ROUTE_OPTION_DELETE_NODES } from '../src/start-router-plugin/constants'
+import {
+  CLIENT_ROUTE_OPTION_DELETE_NODES,
+  SERVER_ROUTE_OPTION_DELETE_NODES,
+} from '../src/start-router-plugin/constants'
 
 describe('client route option stripping', () => {
   it('strips server-only and prerender route options from client bundles', () => {
@@ -7,6 +10,13 @@ describe('client route option stripping', () => {
       'ssr',
       'server',
       'headers',
+      'prerenderParams',
+      'sitemap',
+    ])
+  })
+
+  it('strips prerender route options from separate final server bundles', () => {
+    expect(SERVER_ROUTE_OPTION_DELETE_NODES).toEqual([
       'prerenderParams',
       'sitemap',
     ])

@@ -2,6 +2,7 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { resolve as resolvePath } from 'pathe'
 import {
   SERVER_FN_LOOKUP,
+  START_ENVIRONMENT_NAMES,
   TRANSFORM_ID_REGEX,
   VITE_ENVIRONMENT_NAMES,
 } from '../../constants'
@@ -264,7 +265,9 @@ export function startCompilerPlugin(
 
   // Environments that need the resolver: SSR (for server calls) and provider (for implementation)
   const appliedResolverEnvironments = new Set(
-    ssrIsProvider ? [opts.providerEnvName] : [ssrEnvName, opts.providerEnvName],
+    ssrIsProvider
+      ? [opts.providerEnvName, START_ENVIRONMENT_NAMES.prerender]
+      : [ssrEnvName, opts.providerEnvName, START_ENVIRONMENT_NAMES.prerender],
   )
 
   function perEnvServerFnPlugin(environment: {
@@ -272,7 +275,8 @@ export function startCompilerPlugin(
     type: 'client' | 'server'
   }): PluginOption {
     const compilerTransforms =
-      environment.name === opts.providerEnvName
+      environment.name === opts.providerEnvName ||
+      environment.name === START_ENVIRONMENT_NAMES.prerender
         ? opts.compilerTransforms
         : undefined
     const serverFnProviderModuleDirectives =
@@ -621,7 +625,10 @@ export function startCompilerPlugin(
         return appliedResolverEnvironments.has(env.name)
       },
       load() {
-        if (this.environment.name !== opts.providerEnvName) {
+        if (
+          this.environment.name !== opts.providerEnvName &&
+          !(ssrIsProvider && this.environment.name === START_ENVIRONMENT_NAMES.prerender)
+        ) {
           const mod = opts.environments.find(
             (e) => e.name === this.environment.name,
           )?.getServerFnById

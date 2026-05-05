@@ -73,6 +73,26 @@ describe('prerender pages validation', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('closes the handler and clears route tree state when prerendering fails', async () => {
+    resetFetch()
+    const startConfig = makeStartConfig('https://attacker.test/leak')
+    const close = vi.fn(async () => {})
+    globalThis.TSS_PRERENDER_ROUTE_TREE = async () => undefined
+
+    await expect(
+      prerender({
+        startConfig,
+        handler: {
+          ...handler,
+          close,
+        },
+      }),
+    ).rejects.toThrow(/prerender page path must be relative/i)
+
+    expect(close).toHaveBeenCalledOnce()
+    expect(globalThis.TSS_PRERENDER_ROUTE_TREE).toBeUndefined()
+  })
+
   it('allows relative paths', async () => {
     resetFetch()
     const startConfig = makeStartConfig('/about')

@@ -9,6 +9,7 @@ import {
 } from '../config-context'
 import { escapeRegExp, normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
+import { shouldUseSeparatePrerenderRouteOptions } from '../prerender-route-options-env'
 import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
   RSBUILD_CLIENT_ASSETS_DIR,
@@ -91,12 +92,14 @@ export function tanStackStartRsbuild(
   let devServerRef: Pick<RsbuildDevServer, 'sockWrite'> | null = null
   const serverFnsById: Record<string, ServerFn> = {}
   let updateServerFnResolver: (() => void) | undefined
+  let prerenderOutputDirectory: string | undefined
 
   return {
     name: 'tanstack-start-rsbuild',
     setup(api: RsbuildPluginAPI) {
       const startCompilerEnvironments = [
         { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' as const },
+        { name: RSBUILD_ENVIRONMENT_NAMES.prerender, type: 'server' as const },
         { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' as const },
         ...(serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
         !rscEnabled
@@ -172,10 +175,23 @@ export function tanStackStartRsbuild(
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           publicBase: resolvedStartConfig.basePaths.publicBase,
           serverFnProviderEnv,
+          separatePrerenderRouteOptions:
+            shouldUseSeparatePrerenderRouteOptions(startConfig),
           environmentOverrides: corePluginOpts.rsbuild?.environments,
           scriptFormat,
           rsc: rscOpts,
           dev: isDev,
+        })
+        prerenderOutputDirectory = resolveRsbuildOutputDirectory({
+          distPath:
+            environmentPlan.environments[RSBUILD_ENVIRONMENT_NAMES.prerender]
+              ?.output?.distPath,
+          rootDistPath: undefined,
+          fallback: join(
+            resolvedStartConfig.outputDirectories.server,
+            '.tanstack/prerender',
+          ),
+          subdirectory: 'prerender',
         })
         const serverFnBase = createServerFnBasePath({
           routerBasepath,
@@ -783,6 +799,9 @@ export function tanStackStartRsbuild(
             startConfig,
             clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
             serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
+            prerenderOutputDirectory,
+            separatePrerenderRouteOptions:
+              shouldUseSeparatePrerenderRouteOptions(startConfig),
           })
         })
       }

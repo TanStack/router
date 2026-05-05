@@ -49,9 +49,17 @@ export function createViteConfigPlan(opts: {
   clientOutputDirectory: string
   serverOutputDirectory: string
   serverFnProviderEnv: string
+  separatePrerenderRouteOptions: boolean
   optimizeDepsExclude: Array<string>
   noExternal: Array<string>
 }) {
+  const serverInput =
+    getBundlerOptions(
+      opts.viteConfig.environments?.[START_ENVIRONMENT_NAMES.server]?.build,
+    )?.input ?? opts.entryAliases.server
+  const prerenderInput =
+    typeof serverInput === 'string' ? { server: serverInput } : serverInput
+
   return {
     environments: {
       [START_ENVIRONMENT_NAMES.client]: {
@@ -83,19 +91,7 @@ export function createViteConfigPlan(opts: {
         consumer: 'server',
         build: {
           ssr: true,
-          ...(() => {
-            const bundlerOptions = {
-              input:
-                getBundlerOptions(
-                  opts.viteConfig.environments?.[START_ENVIRONMENT_NAMES.server]
-                    ?.build,
-                )?.input ?? opts.entryAliases.server,
-            }
-            return {
-              rollupOptions: bundlerOptions,
-              rolldownOptions: bundlerOptions,
-            }
-          })(),
+          ...buildViteInputOptions(serverInput),
           outDir: opts.serverOutputDirectory,
           commonjsOptions: {
             include: [/node_modules/],
@@ -112,6 +108,32 @@ export function createViteConfigPlan(opts: {
           ]),
         },
       },
+      ...(opts.separatePrerenderRouteOptions
+        ? {
+            [START_ENVIRONMENT_NAMES.prerender]: {
+              consumer: 'server',
+              build: {
+                ssr: true,
+                ...buildViteInputOptions(prerenderInput),
+                outDir: join(
+                  opts.serverOutputDirectory,
+                  '.tanstack/prerender',
+                ),
+                commonjsOptions: {
+                  include: [/node_modules/],
+                },
+                copyPublicDir: false,
+              },
+              optimizeDeps: {
+                entries: escapeEntries([
+                  opts.entryAliases.server,
+                  opts.entryAliases.start,
+                  opts.entryAliases.router,
+                ]),
+              },
+            },
+          }
+        : {}),
       ...(opts.serverFnProviderEnv !== START_ENVIRONMENT_NAMES.server && {
         [opts.serverFnProviderEnv]: {
           build: {
@@ -188,6 +210,7 @@ export async function buildStartViteEnvironments(opts: {
   builder: vite.ViteBuilder
   providerEnvironmentName: string
   ssrIsProvider: boolean
+  separatePrerenderRouteOptions: boolean
 }) {
   const client = getRequiredBuilderEnvironment(
     opts.builder,
@@ -208,6 +231,18 @@ export async function buildStartViteEnvironments(opts: {
     await opts.builder.build(server)
   }
 
+  if (opts.separatePrerenderRouteOptions) {
+    const prerender = getRequiredBuilderEnvironment(
+      opts.builder,
+      START_ENVIRONMENT_NAMES.prerender,
+      'Prerender environment not found',
+    )
+
+    if (!prerender.isBuilt) {
+      await opts.builder.build(prerender)
+    }
+  }
+
   if (opts.ssrIsProvider) {
     return
   }
@@ -225,6 +260,15 @@ export async function buildStartViteEnvironments(opts: {
 
 function escapeEntries(entries: Array<string>) {
   return entries.map((entry) => escapePath(entry))
+}
+
+function buildViteInputOptions(input: NonNullable<vite.BuildOptions['rollupOptions']>['input']) {
+  const bundlerOptions = { input }
+
+  return {
+    rollupOptions: bundlerOptions,
+    rolldownOptions: bundlerOptions,
+  }
 }
 
 function defineReplaceEnv<TKey extends string, TValue extends string>(

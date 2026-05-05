@@ -278,6 +278,7 @@ export const tanstackStartOptionsObjectSchema = z.object({
         .optional(),
       failOnError: z.boolean().optional(),
       autoStaticPathsDiscovery: z.boolean().optional(),
+      separateRouteOptionsBundle: z.boolean().optional(),
       maxRedirects: z.number().min(0).optional(),
       prerenderParamsTimeout: z.number().min(0).optional(),
     })

@@ -227,7 +227,10 @@ export function registerStartCompilerTransforms(
 
   for (const env of environments) {
     const compilerTransforms =
-      env.name === opts.providerEnvName ? opts.compilerTransforms : undefined
+      env.name === opts.providerEnvName ||
+      env.name === RSBUILD_ENVIRONMENT_NAMES.prerender
+        ? opts.compilerTransforms
+        : undefined
     const envCodeFilters = getTransformCodeFilterForEnv(env.type, {
       compilerTransforms,
       compilerPlugins,

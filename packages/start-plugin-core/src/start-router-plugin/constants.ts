@@ -6,3 +6,5 @@ export const CLIENT_ROUTE_OPTION_DELETE_NODES = [
   'prerenderParams',
   'sitemap',
 ]
+
+export const SERVER_ROUTE_OPTION_DELETE_NODES = ['prerenderParams', 'sitemap']
