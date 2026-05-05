@@ -216,14 +216,18 @@ export type UpdatableStaticRouteOption = {} extends StaticDataRouteOption
   : RequiredStaticDataRouteOption
 
 export type MetaDescriptor =
-  | { charSet: 'utf-8' }
-  | { title: string }
-  | { name: string; content: string }
-  | { property: string; content: string }
-  | { httpEquiv: string; content: string }
-  | { 'script:ld+json': LdJsonObject }
-  | { tagName: 'meta' | 'link'; [name: string]: string }
-  | Record<string, unknown>
+  | { charSet: 'utf-8'; key?: string }
+  | { title: string; key?: string }
+  | { name: string; content: string; key?: string }
+  | { property: string; content: string; key?: string }
+  | { httpEquiv: string; content: string; key?: string }
+  | { 'script:ld+json': LdJsonObject; key?: string }
+  | {
+      tagName: 'meta' | 'link'
+      key?: string
+      [name: string]: string | undefined
+    }
+  | (Record<string, unknown> & { key?: string })
 
 type LdJsonObject = { [Key in string]: LdJsonValue } & {
   [Key in string]?: LdJsonValue | undefined
@@ -231,6 +235,11 @@ type LdJsonObject = { [Key in string]: LdJsonValue } & {
 type LdJsonArray = Array<LdJsonValue> | ReadonlyArray<LdJsonValue>
 type LdJsonPrimitive = string | number | boolean | null
 type LdJsonValue = LdJsonPrimitive | LdJsonObject | LdJsonArray
+
+type DeferredHeadEntries<T> =
+  T extends Array<infer U>
+    ? Array<U | Promise<U | Array<U> | null | undefined>>
+    : T
 
 export type RouteLinkEntry = {}
 
@@ -1371,10 +1380,10 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >,
   ) => Awaitable<{
-    links?: AnyRouteMatch['links']
-    scripts?: AnyRouteMatch['headScripts']
-    meta?: AnyRouteMatch['meta']
-    styles?: AnyRouteMatch['styles']
+    links?: DeferredHeadEntries<AnyRouteMatch['links']>
+    scripts?: DeferredHeadEntries<AnyRouteMatch['headScripts']>
+    meta?: DeferredHeadEntries<AnyRouteMatch['meta']>
+    styles?: DeferredHeadEntries<AnyRouteMatch['styles']>
   }>
   scripts?: (
     ctx: AssetFnContextOptions<
@@ -1389,7 +1398,7 @@ export interface UpdatableRouteOptions<
       TBeforeLoadFn,
       TLoaderDeps
     >,
-  ) => Awaitable<AnyRouteMatch['scripts']>
+  ) => Awaitable<DeferredHeadEntries<AnyRouteMatch['scripts']>>
   codeSplitGroupings?: Array<
     Array<
       | 'loader'

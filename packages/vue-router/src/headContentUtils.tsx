@@ -1,9 +1,12 @@
 import * as Vue from 'vue'
 import {
-  escapeHtml,
+  buildMetaTags,
+  dedupByLastKey,
   getAssetCrossOrigin,
+  hashTag,
   isInlinableStylesheet,
   resolveManifestAssetLink,
+  uniqBy,
 } from '@tanstack/router-core'
 import { useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
@@ -15,80 +18,33 @@ import type {
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const matches = useStore(router.stores.matches, (value) => value)
+  const nonce = router.options.ssr?.nonce
 
-  const meta = Vue.computed<Array<RouterManagedTag>>(() => {
-    const resultMeta: Array<RouterManagedTag> = []
-    const metaByAttribute: Record<string, true> = {}
-    let title: RouterManagedTag | undefined
-    ;[...matches.value.map((match) => match.meta!).filter(Boolean)]
-      .reverse()
-      .forEach((metas) => {
-        ;[...metas].reverse().forEach((m) => {
-          if (!m) return
-
-          if (m.title) {
-            if (!title) {
-              title = {
-                tag: 'title',
-                children: m.title,
-              }
-            }
-          } else if ('script:ld+json' in m) {
-            // Handle JSON-LD structured data
-            // Content is HTML-escaped to prevent XSS when injected via innerHTML
-            try {
-              const json = JSON.stringify(m['script:ld+json'])
-              resultMeta.push({
-                tag: 'script',
-                attrs: {
-                  type: 'application/ld+json',
-                },
-                children: escapeHtml(json),
-              })
-            } catch {
-              // Skip invalid JSON-LD objects
-            }
-          } else {
-            const attribute = m.name ?? m.property
-            if (attribute) {
-              if (metaByAttribute[attribute]) {
-                return
-              } else {
-                metaByAttribute[attribute] = true
-              }
-            }
-
-            resultMeta.push({
-              tag: 'meta',
-              attrs: {
-                ...m,
-              },
-            })
-          }
-        })
-      })
-
-    if (title) {
-      resultMeta.push(title)
-    }
-
-    resultMeta.reverse()
-
-    return resultMeta
-  })
+  const meta = Vue.computed<Array<RouterManagedTag>>(() =>
+    buildMetaTags(
+      matches.value.map((match) => match.meta!).filter(Boolean),
+      nonce,
+    ),
+  )
 
   const links = Vue.computed<Array<RouterManagedTag>>(
     () =>
-      matches.value
-        .map((match) => match.links!)
-        .filter(Boolean)
-        .flat(1)
-        .map((link) => ({
+      dedupByLastKey(
+        matches.value
+          .map((match) => match.links!)
+          .flat(1)
+          .filter(Boolean) as Array<RouterManagedTag>,
+      ).map((link) => {
+        const { key, ...attrs } = link
+        return {
           tag: 'link',
           attrs: {
-            ...link,
+            ...attrs,
+            nonce,
           },
-        })) as Array<RouterManagedTag>,
+          key,
+        }
+      }) as Array<RouterManagedTag>,
   )
 
   const preloadMeta = Vue.computed<Array<RouterManagedTag>>(() => {
@@ -109,6 +65,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
                 crossOrigin:
                   getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
                   preloadLink.crossOrigin,
+                nonce,
               },
             })
           }),
@@ -118,17 +75,19 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   })
 
   const headScripts = Vue.computed<Array<RouterManagedTag>>(() =>
-    (
+    dedupByLastKey(
       matches.value
         .map((match) => match.headScripts!)
         .flat(1)
-        .filter(Boolean) as Array<RouterManagedTag>
-    ).map(({ children, ...script }) => ({
+        .filter(Boolean) as Array<RouterManagedTag>,
+    ).map(({ children, key, ...script }) => ({
       tag: 'script',
       attrs: {
         ...script,
+        nonce,
       },
       children,
+      key,
     })),
   )
 
@@ -153,6 +112,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
                 crossOrigin:
                   getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
                   asset.attrs?.crossOrigin,
+                nonce,
               },
             },
           ]
@@ -162,7 +122,10 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
           return [
             {
               tag: 'style',
-              attrs: asset.attrs,
+              attrs: {
+                ...asset.attrs,
+                nonce,
+              },
               children: asset.children,
               ...(asset.inlineCss ? { inlineCss: true as const } : {}),
             },
@@ -184,20 +147,6 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
         ...links.value,
         ...headScripts.value,
       ] as Array<RouterManagedTag>,
-      (d) => {
-        return JSON.stringify(d)
-      },
+      hashTag,
     )
-}
-
-export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
-  const seen = new Set<string>()
-  return arr.filter((item) => {
-    const key = fn(item)
-    if (seen.has(key)) {
-      return false
-    }
-    seen.add(key)
-    return true
-  })
 }

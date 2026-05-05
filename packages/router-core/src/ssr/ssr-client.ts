@@ -1,5 +1,6 @@
 import { invariant } from '../invariant'
 import { isNotFound } from '../not-found'
+import { resolveDeferredHead } from '../defer'
 import { createControlledPromise } from '../utils'
 import { hydrateSsrMatchId } from './ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
@@ -218,15 +219,28 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           params: match.params,
           loaderData: match.loaderData,
         }
-        const headFnContent = await route.options.head?.(assetContext)
+        const headRaw = route.options.head?.(assetContext)
+        const scriptsRaw = route.options.scripts?.(assetContext)
+        const headFnContent =
+          headRaw instanceof Promise ? await headRaw : headRaw
+        const scriptsResolved =
+          scriptsRaw instanceof Promise ? await scriptsRaw : scriptsRaw
 
-        const scripts = await route.options.scripts?.(assetContext)
-
-        match.meta = headFnContent?.meta
-        match.links = headFnContent?.links
-        match.headScripts = headFnContent?.scripts
-        match.styles = headFnContent?.styles
-        match.scripts = scripts
+        const head = resolveDeferredHead(
+          router,
+          match.id,
+          route,
+          activeMatches,
+          headFnContent,
+          scriptsResolved,
+          'hydrate',
+        )
+        const resolved = head instanceof Promise ? await head : head
+        match.meta = resolved.meta
+        match.links = resolved.links
+        match.headScripts = resolved.headScripts
+        match.styles = resolved.styles
+        match.scripts = resolved.scripts
       } catch (err) {
         if (isNotFound(err)) {
           match.error = { isNotFound: true }

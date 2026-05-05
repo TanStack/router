@@ -77,10 +77,14 @@ export type {
 } from './manifest'
 export {
   createInlineCssStyleAsset,
+  buildMetaTags,
+  dedupByLastKey,
   getAssetCrossOrigin,
   getStylesheetHref,
+  hashTag,
   isInlinableStylesheet,
   resolveManifestAssetLink,
+  uniqBy,
 } from './manifest'
 export { isMatch } from './Matches'
 export type {

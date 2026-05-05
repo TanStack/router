@@ -25,10 +25,14 @@ type ErrorRouteComponentType = (props: ErrorComponentProps) => Vue.VNode
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
-    meta?: Array<Vue.ComponentOptions['meta'] | undefined>
-    links?: Array<Vue.ComponentOptions['link'] | undefined>
-    scripts?: Array<Vue.ComponentOptions['script'] | undefined>
-    headScripts?: Array<Vue.ComponentOptions['script'] | undefined>
+    meta?: Array<(Vue.ComponentOptions['meta'] & { key?: string }) | undefined>
+    links?: Array<(Vue.ComponentOptions['link'] & { key?: string }) | undefined>
+    scripts?: Array<
+      (Vue.ComponentOptions['script'] & { key?: string }) | undefined
+    >
+    headScripts?: Array<
+      (Vue.ComponentOptions['script'] & { key?: string }) | undefined
+    >
   }
 }
 

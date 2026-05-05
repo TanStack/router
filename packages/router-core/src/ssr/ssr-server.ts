@@ -1,4 +1,5 @@
 import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
+import { isbot } from 'isbot'
 import { invariant } from '../invariant'
 import {
   createInlineCssPlaceholderAsset,
@@ -282,11 +283,13 @@ function stripInlinedStylesheetAssets(
 export function attachRouterServerSsrUtils({
   router,
   manifest,
+  request,
   getRequestAssets,
   includeUnmatchedRouteAssets = true,
 }: {
   router: AnyRouter
   manifest: Manifest | undefined
+  request?: Request
   getRequestAssets?: () => Array<RouterManagedTag> | undefined
   includeUnmatchedRouteAssets?: boolean
 }) {
@@ -323,6 +326,7 @@ export function attachRouterServerSsrUtils({
   let injectedHtmlBuffer = ''
 
   router.serverSsr = {
+    isBot: request ? isbot(request.headers.get('user-agent')) : undefined,
     injectHtml: (html: string) => {
       if (!html) return
       // Buffer the HTML so it can be retrieved via takeBufferedHtml()

@@ -4,6 +4,7 @@ import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
+import { resolveDeferredHead } from './defer'
 import type { NotFoundError } from './not-found'
 import type { ParsedLocation } from './location'
 import type {
@@ -559,16 +560,25 @@ const handleBeforeLoad = (
   return serverSsr()
 }
 
+type ExecuteHeadResult = Pick<
+  AnyRouteMatch,
+  'meta' | 'links' | 'headScripts' | 'headers' | 'scripts' | 'styles'
+>
+
+const attachHeaders = (
+  head: Awaited<ReturnType<typeof resolveDeferredHead>>,
+  headers: unknown,
+): ExecuteHeadResult => {
+  const result = head as ExecuteHeadResult
+  result.headers = headers as ExecuteHeadResult['headers']
+  return result
+}
+
 const executeHead = (
   inner: InnerLoadContext,
   matchId: string,
   route: AnyRoute,
-): void | Promise<
-  Pick<
-    AnyRouteMatch,
-    'meta' | 'links' | 'headScripts' | 'headers' | 'scripts' | 'styles'
-  >
-> => {
+): void | ExecuteHeadResult | Promise<ExecuteHeadResult> => {
   const match = inner.router.getMatch(matchId)
   // in case of a redirecting match during preload, the match does not exist
   if (!match) {
@@ -585,25 +595,45 @@ const executeHead = (
     loaderData: match.loaderData,
   }
 
-  return Promise.all([
-    route.options.head?.(assetContext),
-    route.options.scripts?.(assetContext),
-    route.options.headers?.(assetContext),
-  ]).then(([headFnContent, scripts, headers]) => {
-    const meta = headFnContent?.meta
-    const links = headFnContent?.links
-    const headScripts = headFnContent?.scripts
-    const styles = headFnContent?.styles
+  const headRaw = route.options.head?.(assetContext)
+  const scriptsRaw = route.options.scripts?.(assetContext)
+  const headersRaw = route.options.headers?.(assetContext)
 
-    return {
-      meta,
-      links,
-      headScripts,
-      headers,
-      scripts,
-      styles,
-    }
-  })
+  if (
+    !(headRaw instanceof Promise) &&
+    !(scriptsRaw instanceof Promise) &&
+    !(headersRaw instanceof Promise)
+  ) {
+    const head = resolveDeferredHead(
+      inner.router,
+      matchId,
+      route,
+      inner.matches,
+      headRaw,
+      scriptsRaw,
+      'load',
+    )
+    return head instanceof Promise
+      ? head.then((h) => attachHeaders(h, headersRaw))
+      : attachHeaders(head, headersRaw)
+  }
+
+  return Promise.all([headRaw, scriptsRaw, headersRaw]).then(
+    ([headFnContent, scriptsResolved, headers]) => {
+      const head = resolveDeferredHead(
+        inner.router,
+        matchId,
+        route,
+        inner.matches,
+        headFnContent,
+        scriptsResolved,
+        'load',
+      )
+      return head instanceof Promise
+        ? head.then((h) => attachHeaders(h, headers))
+        : attachHeaders(head, headers)
+    },
+  )
 }
 
 const getLoaderContext = (
@@ -1159,7 +1189,7 @@ export async function loadMatches(arg: {
     try {
       const headResult = executeHead(inner, matchId, route)
       if (headResult) {
-        const head = await headResult
+        const head = headResult instanceof Promise ? await headResult : headResult
         inner.updateMatch(matchId, (prev) => ({
           ...prev,
           ...head,

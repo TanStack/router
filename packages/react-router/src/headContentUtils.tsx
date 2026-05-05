@@ -1,11 +1,14 @@
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
 import {
+  buildMetaTags,
+  dedupByLastKey,
   deepEqual,
-  escapeHtml,
   getAssetCrossOrigin,
+  hashTag,
   isInlinableStylesheet,
   resolveManifestAssetLink,
+  uniqBy,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -20,84 +23,27 @@ function buildTagsFromMatches(
   matches: Array<any>,
   assetCrossOrigin?: AssetCrossOriginConfig,
 ): Array<RouterManagedTag> {
-  const routeMeta = matches.map((match) => match.meta!).filter(Boolean)
+  const resultMeta = buildMetaTags(
+    matches.map((match) => match.meta!).filter(Boolean),
+    nonce,
+  )
 
-  const resultMeta: Array<RouterManagedTag> = []
-  const metaByAttribute: Record<string, true> = {}
-  let title: RouterManagedTag | undefined
-  for (let i = routeMeta.length - 1; i >= 0; i--) {
-    const metas = routeMeta[i]!
-    for (let j = metas.length - 1; j >= 0; j--) {
-      const m = metas[j]
-      if (!m) continue
-
-      if (m.title) {
-        if (!title) {
-          title = {
-            tag: 'title',
-            children: m.title,
-          }
-        }
-      } else if ('script:ld+json' in m) {
-        try {
-          const json = JSON.stringify(m['script:ld+json'])
-          resultMeta.push({
-            tag: 'script',
-            attrs: {
-              type: 'application/ld+json',
-            },
-            children: escapeHtml(json),
-          })
-        } catch {
-          // Skip invalid JSON-LD objects
-        }
-      } else {
-        const attribute = m.name ?? m.property
-        if (attribute) {
-          if (metaByAttribute[attribute]) {
-            continue
-          } else {
-            metaByAttribute[attribute] = true
-          }
-        }
-
-        resultMeta.push({
-          tag: 'meta',
-          attrs: {
-            ...m,
-            nonce,
-          },
-        })
-      }
-    }
-  }
-
-  if (title) {
-    resultMeta.push(title)
-  }
-
-  if (nonce) {
-    resultMeta.push({
-      tag: 'meta',
-      attrs: {
-        property: 'csp-nonce',
-        content: nonce,
-      },
-    })
-  }
-  resultMeta.reverse()
-
-  const constructedLinks = matches
-    .map((match) => match.links!)
-    .filter(Boolean)
-    .flat(1)
-    .map((link) => ({
+  const constructedLinks = dedupByLastKey(
+    matches
+      .map((match) => match.links!)
+      .flat(1)
+      .filter(Boolean) as Array<RouterManagedTag>,
+  ).map((link) => {
+    const { key, ...attrs } = link
+    return {
       tag: 'link',
       attrs: {
-        ...link,
+        ...attrs,
         nonce,
       },
-    })) satisfies Array<RouterManagedTag>
+      key,
+    }
+  }) satisfies Array<RouterManagedTag>
 
   const manifest = router.ssr?.manifest
   const assetLinks = matches
@@ -164,32 +110,34 @@ function buildTagsFromMatches(
         }),
     )
 
-  const styles = (
+  const styles = dedupByLastKey(
     matches
       .map((match) => match.styles!)
       .flat(1)
-      .filter(Boolean) as Array<RouterManagedTag>
-  ).map(({ children, ...attrs }) => ({
+      .filter(Boolean) as Array<RouterManagedTag>,
+  ).map(({ children, key, ...attrs }) => ({
     tag: 'style',
     attrs: {
       ...attrs,
       nonce,
     },
     children,
+    key,
   }))
 
-  const headScripts = (
+  const headScripts = dedupByLastKey(
     matches
       .map((match) => match.headScripts!)
       .flat(1)
-      .filter(Boolean) as Array<RouterManagedTag>
-  ).map(({ children, ...script }) => ({
+      .filter(Boolean) as Array<RouterManagedTag>,
+  ).map(({ children, key, ...script }) => ({
     tag: 'script',
     attrs: {
       ...script,
       nonce,
     },
     children,
+    key,
   }))
 
   return uniqBy(
@@ -201,7 +149,7 @@ function buildTagsFromMatches(
       ...styles,
       ...headScripts,
     ] as Array<RouterManagedTag>,
-    (d) => JSON.stringify(d),
+    hashTag,
   )
 }
 
@@ -232,92 +180,31 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const meta: Array<RouterManagedTag> = React.useMemo(() => {
-    const resultMeta: Array<RouterManagedTag> = []
-    const metaByAttribute: Record<string, true> = {}
-    let title: RouterManagedTag | undefined
-    for (let i = routeMeta.length - 1; i >= 0; i--) {
-      const metas = routeMeta[i]!
-      for (let j = metas.length - 1; j >= 0; j--) {
-        const m = metas[j]
-        if (!m) continue
-
-        if (m.title) {
-          if (!title) {
-            title = {
-              tag: 'title',
-              children: m.title,
-            }
-          }
-        } else if ('script:ld+json' in m) {
-          // Handle JSON-LD structured data
-          // Content is HTML-escaped to prevent XSS when injected via dangerouslySetInnerHTML
-          try {
-            const json = JSON.stringify(m['script:ld+json'])
-            resultMeta.push({
-              tag: 'script',
-              attrs: {
-                type: 'application/ld+json',
-              },
-              children: escapeHtml(json),
-            })
-          } catch {
-            // Skip invalid JSON-LD objects
-          }
-        } else {
-          const attribute = m.name ?? m.property
-          if (attribute) {
-            if (metaByAttribute[attribute]) {
-              continue
-            } else {
-              metaByAttribute[attribute] = true
-            }
-          }
-
-          resultMeta.push({
-            tag: 'meta',
-            attrs: {
-              ...m,
-              nonce,
-            },
-          })
-        }
-      }
-    }
-
-    if (title) {
-      resultMeta.push(title)
-    }
-
-    if (nonce) {
-      resultMeta.push({
-        tag: 'meta',
-        attrs: {
-          property: 'csp-nonce',
-          content: nonce,
-        },
-      })
-    }
-    resultMeta.reverse()
-
-    return resultMeta
-  }, [routeMeta, nonce])
+  const meta: Array<RouterManagedTag> = React.useMemo(
+    () => buildMetaTags(routeMeta, nonce),
+    [routeMeta, nonce],
+  )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const links = useStore(
     router.stores.matches,
     (matches) => {
-      const constructed = matches
-        .map((match) => match.links!)
-        .filter(Boolean)
-        .flat(1)
-        .map((link) => ({
+      const constructed = dedupByLastKey(
+        matches
+          .map((match) => match.links!)
+          .flat(1)
+          .filter(Boolean) as Array<RouterManagedTag>,
+      ).map((link) => {
+        const { key, ...attrs } = link
+        return {
           tag: 'link',
           attrs: {
-            ...link,
+            ...attrs,
             nonce,
           },
-        })) satisfies Array<RouterManagedTag>
+          key,
+        }
+      }) satisfies Array<RouterManagedTag>
 
       const manifest = router.ssr?.manifest
 
@@ -406,18 +293,19 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const styles = useStore(
     router.stores.matches,
     (matches) =>
-      (
+      dedupByLastKey(
         matches
           .map((match) => match.styles!)
           .flat(1)
-          .filter(Boolean) as Array<RouterManagedTag>
-      ).map(({ children, ...attrs }) => ({
+          .filter(Boolean) as Array<RouterManagedTag>,
+      ).map(({ children, key, ...attrs }) => ({
         tag: 'style',
         attrs: {
           ...attrs,
           nonce,
         },
         children,
+        key,
       })),
     deepEqual,
   )
@@ -426,18 +314,19 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const headScripts: Array<RouterManagedTag> = useStore(
     router.stores.matches,
     (matches) =>
-      (
+      dedupByLastKey(
         matches
           .map((match) => match.headScripts!)
           .flat(1)
-          .filter(Boolean) as Array<RouterManagedTag>
-      ).map(({ children, ...script }) => ({
+          .filter(Boolean) as Array<RouterManagedTag>,
+      ).map(({ children, key, ...script }) => ({
         tag: 'script',
         attrs: {
           ...script,
           nonce,
         },
         children,
+        key,
       })),
     deepEqual,
   )
@@ -450,20 +339,6 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       ...styles,
       ...headScripts,
     ] as Array<RouterManagedTag>,
-    (d) => {
-      return JSON.stringify(d)
-    },
+    hashTag,
   )
-}
-
-export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
-  const seen = new Set<string>()
-  return arr.filter((item) => {
-    const key = fn(item)
-    if (seen.has(key)) {
-      return false
-    }
-    seen.add(key)
-    return true
-  })
 }

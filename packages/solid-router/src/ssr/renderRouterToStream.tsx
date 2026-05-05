@@ -1,5 +1,4 @@
 import * as Solid from 'solid-js/web'
-import { isbot } from 'isbot'
 import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
 import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
@@ -42,7 +41,7 @@ export const renderRouterToStream = async ({
     } as any,
   )
 
-  if (isbot(request.headers.get('User-Agent'))) {
+  if (router.serverSsr?.isBot) {
     await stream
   }
   stream.pipeTo(writable)

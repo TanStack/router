@@ -1,9 +1,12 @@
 import * as Solid from 'solid-js'
 import {
-  escapeHtml,
+  buildMetaTags,
+  dedupByLastKey,
   getAssetCrossOrigin,
+  hashTag,
   isInlinableStylesheet,
   resolveManifestAssetLink,
+  uniqBy,
 } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type {
@@ -25,91 +28,28 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       .filter(Boolean),
   )
 
-  const meta: Solid.Accessor<Array<RouterManagedTag>> = Solid.createMemo(() => {
-    const resultMeta: Array<RouterManagedTag> = []
-    const metaByAttribute: Record<string, true> = {}
-    let title: RouterManagedTag | undefined
-    const routeMetasArray = routeMeta()
-    for (let i = routeMetasArray.length - 1; i >= 0; i--) {
-      const metas = routeMetasArray[i]!
-      for (let j = metas.length - 1; j >= 0; j--) {
-        const m = metas[j]
-        if (!m) continue
-
-        if (m.title) {
-          if (!title) {
-            title = {
-              tag: 'title',
-              children: m.title,
-            }
-          }
-        } else if ('script:ld+json' in m) {
-          // Handle JSON-LD structured data
-          // Content is HTML-escaped to prevent XSS when injected via innerHTML
-          try {
-            const json = JSON.stringify(m['script:ld+json'])
-            resultMeta.push({
-              tag: 'script',
-              attrs: {
-                type: 'application/ld+json',
-              },
-              children: escapeHtml(json),
-            })
-          } catch {
-            // Skip invalid JSON-LD objects
-          }
-        } else {
-          const attribute = m.name ?? m.property
-          if (attribute) {
-            if (metaByAttribute[attribute]) {
-              continue
-            } else {
-              metaByAttribute[attribute] = true
-            }
-          }
-
-          resultMeta.push({
-            tag: 'meta',
-            attrs: {
-              ...m,
-              nonce,
-            },
-          })
-        }
-      }
-    }
-
-    if (title) {
-      resultMeta.push(title)
-    }
-
-    if (router.options.ssr?.nonce) {
-      resultMeta.push({
-        tag: 'meta',
-        attrs: {
-          property: 'csp-nonce',
-          content: router.options.ssr.nonce,
-        },
-      })
-    }
-    resultMeta.reverse()
-
-    return resultMeta
-  })
+  const meta: Solid.Accessor<Array<RouterManagedTag>> = Solid.createMemo(() =>
+    buildMetaTags(routeMeta(), nonce),
+  )
 
   const links = Solid.createMemo(() => {
     const matches = activeMatches()
-    const constructed = matches
-      .map((match) => match.links!)
-      .filter(Boolean)
-      .flat(1)
-      .map((link) => ({
+    const constructed = dedupByLastKey(
+      matches
+        .map((match) => match.links!)
+        .flat(1)
+        .filter(Boolean) as Array<RouterManagedTag>,
+    ).map((link) => {
+      const { key, ...attrs } = link
+      return {
         tag: 'link',
         attrs: {
-          ...link,
+          ...attrs,
           nonce,
         },
-      })) satisfies Array<RouterManagedTag>
+        key,
+      }
+    }) satisfies Array<RouterManagedTag>
 
     const manifest = router.ssr?.manifest
 
@@ -186,34 +126,36 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   })
 
   const styles = Solid.createMemo(() =>
-    (
+    dedupByLastKey(
       activeMatches()
         .map((match) => match.styles!)
         .flat(1)
-        .filter(Boolean) as Array<RouterManagedTag>
-    ).map(({ children, ...style }) => ({
+        .filter(Boolean) as Array<RouterManagedTag>,
+    ).map(({ children, key, ...attrs }) => ({
       tag: 'style',
       attrs: {
-        ...style,
+        ...attrs,
         nonce,
       },
       children,
+      key,
     })),
   )
 
   const headScripts = Solid.createMemo(() =>
-    (
+    dedupByLastKey(
       activeMatches()
         .map((match) => match.headScripts!)
         .flat(1)
-        .filter(Boolean) as Array<RouterManagedTag>
-    ).map(({ children, ...script }) => ({
+        .filter(Boolean) as Array<RouterManagedTag>,
+    ).map(({ children, key, ...script }) => ({
       tag: 'script',
       attrs: {
         ...script,
         nonce,
       },
       children,
+      key,
     })),
   )
 
@@ -226,9 +168,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
         ...styles(),
         ...headScripts(),
       ] as Array<RouterManagedTag>,
-      (d) => {
-        return JSON.stringify(d)
-      },
+      hashTag,
     )
     if (prev === undefined) {
       return next
@@ -243,12 +183,12 @@ function replaceEqualTags(
 ) {
   const prevByKey = new Map<string, RouterManagedTag>()
   for (const tag of prev) {
-    prevByKey.set(JSON.stringify(tag), tag)
+    prevByKey.set(hashTag(tag), tag)
   }
 
   let isEqual = prev.length === next.length
   const result = next.map((tag, index) => {
-    const existing = prevByKey.get(JSON.stringify(tag))
+    const existing = prevByKey.get(hashTag(tag))
     if (existing) {
       if (existing !== prev[index]) {
         isEqual = false
@@ -261,16 +201,4 @@ function replaceEqualTags(
   })
 
   return isEqual ? prev : result
-}
-
-export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
-  const seen = new Set<string>()
-  return arr.filter((item) => {
-    const key = fn(item)
-    if (seen.has(key)) {
-      return false
-    }
-    seen.add(key)
-    return true
-  })
 }

@@ -784,6 +784,11 @@ export type ClearCacheFn<TRouter extends AnyRouter> = (opts?: {
 
 export interface ServerSsr {
   /**
+   * Whether the incoming request looks like a bot/crawler, based on the
+   * User-Agent header.
+   */
+  isBot?: boolean
+  /**
    * Injects HTML synchronously into the stream.
    * Emits an onInjectedHtml event that listeners can handle.
    * If no subscriber is listening, the HTML is buffered and can be retrieved via takeBufferedHtml().
