@@ -88,7 +88,7 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/start-fn-stubs": "workspace:*",
     "@tanstack/start-storage-context": "workspace:*",
-    "seroval": "^1.5.0"
+    "seroval": "^1.5.4"
   },
   "devDependencies": {
     "vite": "*",

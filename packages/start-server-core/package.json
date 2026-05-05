@@ -84,7 +84,7 @@
     "@tanstack/start-storage-context": "workspace:*",
     "fetchdts": "^0.1.6",
     "h3-v2": "npm:h3@2.0.1-rc.20",
-    "seroval": "^1.5.0"
+    "seroval": "^1.5.4"
   },
   "devDependencies": {
     "@standard-schema/spec": "^1.0.0",

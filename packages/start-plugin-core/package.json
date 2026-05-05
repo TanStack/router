@@ -95,7 +95,7 @@
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
-    "seroval": "^1.5.0",
+    "seroval": "^1.5.4",
     "cheerio": "^1.0.0",
     "exsolve": "^1.0.7",
     "lightningcss": "^1.32.0",
