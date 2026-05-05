@@ -60,10 +60,7 @@ test.describe('Prerender Static Path Discovery', () => {
     })
 
     test('should prerender dynamic routes through nested pathless outlets', () => {
-      const htmlPath = join(
-        distDir,
-        'prerender-nested/under-layout/index.html',
-      )
+      const htmlPath = join(distDir, 'prerender-nested/under-layout/index.html')
 
       expect(existsSync(htmlPath)).toBe(true)
 

@@ -74,7 +74,9 @@ export function registerRouterPlugins(
           target: opts.corePluginOpts.framework,
           codeSplittingOptions: {
             ...routerConfig.codeSplittingOptions,
-            deleteNodes: isClient ? CLIENT_ROUTE_OPTION_DELETE_NODES : undefined,
+            deleteNodes: isClient
+              ? CLIENT_ROUTE_OPTION_DELETE_NODES
+              : undefined,
             addHmr: isClient,
           },
         },
