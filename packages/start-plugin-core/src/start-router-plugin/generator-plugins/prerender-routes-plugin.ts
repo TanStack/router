@@ -10,6 +10,17 @@ export function prerenderRoutesPlugin(): GeneratorPlugin {
     name: 'prerender-routes-plugin',
     onRouteTreeChanged: ({ routeNodes }) => {
       globalThis.TSS_PRERENDABLE_PATHS = getPrerenderablePaths(routeNodes)
+      const seenDynamicRoutes = new Set<string>()
+
+      globalThis.TSS_PRERENDER_DYNAMIC_ROUTES = routeNodes.flatMap((route) => {
+        if (!route.routePath) return []
+        if (!route.createFileRouteProps?.has('prerenderParams')) return []
+        if (seenDynamicRoutes.has(route.routePath)) return []
+
+        seenDynamicRoutes.add(route.routePath)
+
+        return [{ path: inferFullPath(route), routePath: route.routePath }]
+      })
     },
   }
 }

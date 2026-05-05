@@ -47,6 +47,7 @@ import { Route as RawStreamSsrMultipleRouteImport } from './routes/raw-stream/ss
 import { Route as RawStreamSsrMixedRouteImport } from './routes/raw-stream/ssr-mixed'
 import { Route as RawStreamSsrBinaryHintRouteImport } from './routes/raw-stream/ssr-binary-hint'
 import { Route as RawStreamClientCallRouteImport } from './routes/raw-stream/client-call'
+import { Route as PrerenderParamsSlugRouteImport } from './routes/prerender-params.$slug'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
 import { Route as NotFoundViaBeforeLoadTargetRootRouteImport } from './routes/not-found/via-beforeLoad-target-root'
@@ -75,6 +76,7 @@ import { Route as RedirectTargetServerFnViaUseServerFnRouteImport } from './rout
 import { Route as RedirectTargetServerFnViaLoaderRouteImport } from './routes/redirect/$target/serverFn/via-loader'
 import { Route as RedirectTargetServerFnViaBeforeLoadRouteImport } from './routes/redirect/$target/serverFn/via-beforeLoad'
 import { Route as FooBarQuxHereRouteImport } from './routes/foo/$bar/$qux/_here'
+import { Route as LayoutLayout2PrerenderNestedSlugRouteImport } from './routes/_layout/_layout-2/prerender-nested.$slug'
 import { Route as NotFoundDeepBCRouteRouteImport } from './routes/not-found/deep/b/c/route'
 import { Route as FooBarQuxHereIndexRouteImport } from './routes/foo/$bar/$qux/_here/index'
 import { Route as NotFoundDeepBCDRouteImport } from './routes/not-found/deep/b/c/d'
@@ -271,6 +273,11 @@ const RawStreamClientCallRoute = RawStreamClientCallRouteImport.update({
   path: '/client-call',
   getParentRoute: () => RawStreamRoute,
 } as any)
+const PrerenderParamsSlugRoute = PrerenderParamsSlugRouteImport.update({
+  id: '/prerender-params/$slug',
+  path: '/prerender-params/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
@@ -423,6 +430,12 @@ const FooBarQuxHereRoute = FooBarQuxHereRouteImport.update({
   path: '/foo/$bar/$qux',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LayoutLayout2PrerenderNestedSlugRoute =
+  LayoutLayout2PrerenderNestedSlugRouteImport.update({
+    id: '/prerender-nested/$slug',
+    path: '/prerender-nested/$slug',
+    getParentRoute: () => LayoutLayout2Route,
+  } as any)
 const NotFoundDeepBCRouteRoute = NotFoundDeepBCRouteRouteImport.update({
   id: '/c',
   path: '/c',
@@ -465,6 +478,7 @@ export interface FileRoutesByFullPath {
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/prerender-params/$slug': typeof PrerenderParamsSlugRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
   '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
   '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
@@ -500,6 +514,7 @@ export interface FileRoutesByFullPath {
   '/not-found/parent-boundary/': typeof NotFoundParentBoundaryIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/not-found/deep/b/c': typeof NotFoundDeepBCRouteRouteWithChildren
+  '/prerender-nested/$slug': typeof LayoutLayout2PrerenderNestedSlugRoute
   '/foo/$bar/$qux': typeof FooBarQuxHereRouteWithChildren
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
@@ -527,6 +542,7 @@ export interface FileRoutesByTo {
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/prerender-params/$slug': typeof PrerenderParamsSlugRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
   '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
   '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
@@ -561,6 +577,7 @@ export interface FileRoutesByTo {
   '/not-found/parent-boundary': typeof NotFoundParentBoundaryIndexRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
   '/not-found/deep/b/c': typeof NotFoundDeepBCRouteRouteWithChildren
+  '/prerender-nested/$slug': typeof LayoutLayout2PrerenderNestedSlugRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
@@ -597,6 +614,7 @@ export interface FileRoutesById {
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/prerender-params/$slug': typeof PrerenderParamsSlugRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
   '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
   '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
@@ -632,6 +650,7 @@ export interface FileRoutesById {
   '/not-found/parent-boundary/': typeof NotFoundParentBoundaryIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/not-found/deep/b/c': typeof NotFoundDeepBCRouteRouteWithChildren
+  '/_layout/_layout-2/prerender-nested/$slug': typeof LayoutLayout2PrerenderNestedSlugRoute
   '/foo/$bar/$qux/_here': typeof FooBarQuxHereRouteWithChildren
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
@@ -668,6 +687,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/prerender-params/$slug'
     | '/raw-stream/client-call'
     | '/raw-stream/ssr-binary-hint'
     | '/raw-stream/ssr-mixed'
@@ -703,6 +723,7 @@ export interface FileRouteTypes {
     | '/not-found/parent-boundary/'
     | '/redirect/$target/'
     | '/not-found/deep/b/c'
+    | '/prerender-nested/$slug'
     | '/foo/$bar/$qux'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
@@ -730,6 +751,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/prerender-params/$slug'
     | '/raw-stream/client-call'
     | '/raw-stream/ssr-binary-hint'
     | '/raw-stream/ssr-mixed'
@@ -764,6 +786,7 @@ export interface FileRouteTypes {
     | '/not-found/parent-boundary'
     | '/redirect/$target'
     | '/not-found/deep/b/c'
+    | '/prerender-nested/$slug'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
@@ -799,6 +822,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/prerender-params/$slug'
     | '/raw-stream/client-call'
     | '/raw-stream/ssr-binary-hint'
     | '/raw-stream/ssr-mixed'
@@ -834,6 +858,7 @@ export interface FileRouteTypes {
     | '/not-found/parent-boundary/'
     | '/redirect/$target/'
     | '/not-found/deep/b/c'
+    | '/_layout/_layout-2/prerender-nested/$slug'
     | '/foo/$bar/$qux/_here'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
@@ -863,6 +888,7 @@ export interface RootRouteChildren {
   UsersRoute: typeof UsersRouteWithChildren
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
   MultiCookieRedirectTargetRoute: typeof MultiCookieRedirectTargetRoute
+  PrerenderParamsSlugRoute: typeof PrerenderParamsSlugRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   MultiCookieRedirectIndexRoute: typeof MultiCookieRedirectIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
@@ -1138,6 +1164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RawStreamClientCallRouteImport
       parentRoute: typeof RawStreamRoute
     }
+    '/prerender-params/$slug': {
+      id: '/prerender-params/$slug'
+      path: '/prerender-params/$slug'
+      fullPath: '/prerender-params/$slug'
+      preLoaderRoute: typeof PrerenderParamsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
@@ -1334,6 +1367,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FooBarQuxHereRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_layout/_layout-2/prerender-nested/$slug': {
+      id: '/_layout/_layout-2/prerender-nested/$slug'
+      path: '/prerender-nested/$slug'
+      fullPath: '/prerender-nested/$slug'
+      preLoaderRoute: typeof LayoutLayout2PrerenderNestedSlugRouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
     '/not-found/deep/b/c': {
       id: '/not-found/deep/b/c'
       path: '/c'
@@ -1487,11 +1527,13 @@ const SpecialCharsRouteRouteWithChildren =
 interface LayoutLayout2RouteChildren {
   LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
   LayoutLayout2LayoutBRoute: typeof LayoutLayout2LayoutBRoute
+  LayoutLayout2PrerenderNestedSlugRoute: typeof LayoutLayout2PrerenderNestedSlugRoute
 }
 
 const LayoutLayout2RouteChildren: LayoutLayout2RouteChildren = {
   LayoutLayout2LayoutARoute: LayoutLayout2LayoutARoute,
   LayoutLayout2LayoutBRoute: LayoutLayout2LayoutBRoute,
+  LayoutLayout2PrerenderNestedSlugRoute: LayoutLayout2PrerenderNestedSlugRoute,
 }
 
 const LayoutLayout2RouteWithChildren = LayoutLayout2Route._addFileChildren(
@@ -1627,6 +1669,7 @@ const rootRouteChildren: RootRouteChildren = {
   UsersRoute: UsersRouteWithChildren,
   ApiUsersRoute: ApiUsersRouteWithChildren,
   MultiCookieRedirectTargetRoute: MultiCookieRedirectTargetRoute,
+  PrerenderParamsSlugRoute: PrerenderParamsSlugRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   MultiCookieRedirectIndexRoute: MultiCookieRedirectIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,

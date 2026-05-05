@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
@@ -43,6 +43,131 @@ test.describe('Prerender Static Path Discovery', () => {
       // "Select a post." should be in the prerendered HTML
       const html = readFileSync(join(distDir, 'posts/index.html'), 'utf-8')
       expect(html).toContain('Select a post.')
+    })
+
+    test('should prerender static routes through outlets', () => {
+      const htmlPath = join(distDir, 'layout-a/index.html')
+
+      expect(existsSync(htmlPath)).toBe(true)
+
+      const html = readFileSync(htmlPath, 'utf-8')
+        .replaceAll('&#x27;', "'")
+        .replaceAll('&#39;', "'")
+        .replaceAll('&apos;', "'")
+      expect(html).toContain("I'm a layout")
+      expect(html).toContain("I'm a nested layout")
+      expect(html).toContain("I'm layout A!")
+    })
+
+    test('should prerender dynamic routes through nested pathless outlets', () => {
+      const htmlPath = join(
+        distDir,
+        'prerender-nested/under-layout/index.html',
+      )
+
+      expect(existsSync(htmlPath)).toBe(true)
+
+      const html = readFileSync(htmlPath, 'utf-8')
+        .replaceAll('&#x27;', "'")
+        .replaceAll('&#39;', "'")
+        .replaceAll('&apos;', "'")
+      expect(html).toContain("I'm a layout")
+      expect(html).toContain("I'm a nested layout")
+      expect(html).toContain('Nested prerendered slug:')
+      expect(html).toContain('under-layout')
+    })
+
+    test('should contain prerendered content from route prerenderParams', () => {
+      const htmlPath = join(distDir, 'prerender-params/hello-world/index.html')
+
+      expect(existsSync(htmlPath)).toBe(true)
+
+      const html = readFileSync(htmlPath, 'utf-8')
+      expect(html).toContain('Prerendered slug:')
+      expect(html).toContain('hello-world')
+    })
+
+    test('should support special characters from route prerenderParams', () => {
+      const htmlPath = join(distDir, 'prerender-params/대한민국/index.html')
+
+      expect(existsSync(htmlPath)).toBe(true)
+
+      const html = readFileSync(htmlPath, 'utf-8')
+      expect(html).toContain('Prerendered slug:')
+      expect(html).toContain('대한민국')
+    })
+
+    test('should preserve encoded delimiters in route prerenderParams output paths', () => {
+      const htmlPath = join(
+        distDir,
+        'prerender-params/reserved%3Fhash%23plus%2B/index.html',
+      )
+
+      expect(existsSync(htmlPath)).toBe(true)
+
+      const html = readFileSync(htmlPath, 'utf-8')
+      expect(html).toContain('Prerendered slug:')
+      expect(html).toContain('reserved?hash#plus+')
+    })
+
+    test('should preserve route prerenderParams search params', () => {
+      const htmlPath = join(distDir, 'prerender-params/with-query/index.html')
+
+      expect(existsSync(htmlPath)).toBe(true)
+
+      const html = readFileSync(htmlPath, 'utf-8')
+      expect(html).toContain('Prerendered slug:')
+      expect(html).toContain('with-query')
+      expect(html).toContain('Search page:')
+      expect(html).toContain('2')
+      expect(html).toContain('Search tag:')
+      expect(html).toContain('router start')
+    })
+
+    test('should strip server-only imports used by prerenderParams from client output', () => {
+      const htmlPath = join(
+        distDir,
+        'prerender-params/server-only-slug/index.html',
+      )
+
+      expect(existsSync(htmlPath)).toBe(true)
+      expect(
+        readdirSync(distDir, { recursive: true }).some((relativePath) => {
+          const filePath = join(distDir, String(relativePath))
+          return (
+            statSync(filePath).isFile() &&
+            readFileSync(filePath, 'utf-8').includes(
+              'server-only-prerender-marker',
+            )
+          )
+        }),
+      ).toBe(false)
+    })
+
+    test('should include route sitemap options from prerenderParams', () => {
+      const sitemapPath = join(distDir, 'sitemap.xml')
+
+      test.skip(!existsSync(sitemapPath), 'Skipping since sitemap is disabled')
+      expect(existsSync(sitemapPath)).toBe(true)
+
+      const sitemap = readFileSync(sitemapPath, 'utf-8')
+      expect(sitemap).toContain(
+        '<loc>https://example.com/prerender-params/hello-world</loc>',
+      )
+      expect(sitemap).toContain('<lastmod>2026-05-05</lastmod>')
+      expect(sitemap).toContain('<priority>0.8</priority>')
+      expect(sitemap).toContain('<changefreq>weekly</changefreq>')
+      expect(sitemap).toContain(
+        '<loc>https://example.com/prerender-params/대한민국</loc>',
+      )
+      expect(sitemap).toContain('<priority>0.6</priority>')
+      expect(sitemap).toContain(
+        '<loc>https://example.com/prerender-params/with-query?page=2&amp;tag=router+start</loc>',
+      )
+      expect(sitemap).toContain('<priority>0.4</priority>')
+      expect(sitemap).not.toContain(
+        '<loc>https://example.com/prerender-params/server-only-slug</loc>',
+      )
     })
   })
 })

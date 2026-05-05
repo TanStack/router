@@ -1,7 +1,11 @@
+import { pathToFileURL } from 'node:url'
+import { basename, extname, join } from 'pathe'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { prerender } from '../prerender'
-import type { PrerenderHandler } from '../prerender'
+import { getBundlerOptions } from '../utils'
+import { getServerOutputDirectory } from './output-directory'
 import type { TanStackStartOutputConfig } from '../schema'
+import type { PrerenderHandler } from '../prerender'
 import type { PreviewServer, ResolvedConfig, ViteBuilder } from 'vite'
 
 export async function prerenderWithVite({
@@ -30,6 +34,20 @@ export async function prerenderWithVite({
 
   process.env.TSS_PRERENDERING = 'true'
   process.env.TSS_CLIENT_OUTPUT_DIR = outputDir
+
+  const serverInput =
+    getBundlerOptions(serverEnv.config.build)?.input ?? 'server'
+
+  if (typeof serverInput !== 'string') {
+    throw new Error('Invalid server input. Expected a string.')
+  }
+
+  // Import the built server entry before prerendering so route options from the
+  // initialized router are available for dynamic route discovery.
+  const outputFilename = `${basename(serverInput, extname(serverInput))}.js`
+  const serverOutputDir = getServerOutputDirectory(serverEnv.config)
+  const serverEntryPath = join(serverOutputDir, outputFilename)
+  await import(pathToFileURL(serverEntryPath).toString())
 
   const previewServer = await startPreviewServer(serverEnv.config)
   const baseUrl = getResolvedUrl(previewServer)

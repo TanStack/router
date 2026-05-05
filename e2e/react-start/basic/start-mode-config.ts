@@ -28,5 +28,11 @@ export function getStartModeConfig() {
           maxRedirects: 100,
         }
       : undefined,
+    sitemap: isPrerender
+      ? {
+          enabled: true,
+          host: 'https://example.com',
+        }
+      : undefined,
   }
 }
