@@ -112,8 +112,8 @@ test.describe('Prerender Static Path Discovery', () => {
       const html = readFileSync(htmlPath, 'utf-8')
       expect(html).toContain('Prerendered slug:')
       expect(html).toContain('with-query')
-      expect(html).toContain('Search page: <!-- -->2')
-      expect(html).toContain('Search tag: <!-- -->router start')
+      expect(html).toMatch(/Search page:(?:\s|<!--[^>]*-->)*2/)
+      expect(html).toMatch(/Search tag:(?:\s|<!--[^>]*-->)*router start/)
     })
 
     test('should strip server-only imports used by prerenderParams from client output', () => {
