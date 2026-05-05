@@ -19,9 +19,8 @@ export async function postBuild({
       ...startConfig.prerender,
       enabled:
         startConfig.prerender?.enabled ??
-        startConfig.pages.some((d) =>
-          typeof d === 'string' ? false : !!d.prerender?.enabled,
-        ),
+        (startConfig.pages.some((page) => page.prerender?.enabled) ||
+          !!globalThis.TSS_PRERENDER_DYNAMIC_ROUTES?.length),
     }
   }
 

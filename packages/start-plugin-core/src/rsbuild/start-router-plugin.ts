@@ -7,6 +7,7 @@ import {
 import { routesManifestPlugin } from '../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../start-router-plugin/route-tree-footer'
+import { CLIENT_ROUTE_OPTION_DELETE_NODES } from '../start-router-plugin/constants'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI } from '@rsbuild/core'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
@@ -52,7 +53,7 @@ export function registerRouterPlugins(
           },
           plugins: [
             routesManifestPlugin(),
-            ...(opts.startPluginOpts.prerender?.enabled === true
+            ...(opts.startPluginOpts.prerender?.enabled !== false
               ? [prerenderRoutesPlugin()]
               : []),
           ],
@@ -73,7 +74,7 @@ export function registerRouterPlugins(
           target: opts.corePluginOpts.framework,
           codeSplittingOptions: {
             ...routerConfig.codeSplittingOptions,
-            deleteNodes: isClient ? ['ssr', 'server', 'headers'] : undefined,
+            deleteNodes: isClient ? CLIENT_ROUTE_OPTION_DELETE_NODES : undefined,
             addHmr: isClient,
           },
         },

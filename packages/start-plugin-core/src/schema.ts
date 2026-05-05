@@ -279,6 +279,7 @@ export const tanstackStartOptionsObjectSchema = z.object({
       failOnError: z.boolean().optional(),
       autoStaticPathsDiscovery: z.boolean().optional(),
       maxRedirects: z.number().min(0).optional(),
+      prerenderParamsTimeout: z.number().min(0).optional(),
     })
     .and(pagePrerenderOptionsSchema.optional())
     .optional(),

@@ -19,13 +19,16 @@ export async function postBuildWithRsbuild({
       getClientOutputDirectory() {
         return clientOutputDirectory
       },
-      prerender(startConfig) {
+      async prerender(startConfig) {
+        const handler = createRsbuildPrerenderHandler({
+          clientOutputDirectory,
+          serverOutputDirectory,
+        })
+        await handler.loadRequestHandler()
+
         return prerender({
           startConfig,
-          handler: createRsbuildPrerenderHandler({
-            clientOutputDirectory,
-            serverOutputDirectory,
-          }),
+          handler,
         })
       },
     },
@@ -38,7 +41,11 @@ function createRsbuildPrerenderHandler({
 }: {
   clientOutputDirectory: string
   serverOutputDirectory: string
-}): PrerenderHandler {
+}): PrerenderHandler & {
+  loadRequestHandler: () => Promise<
+    (request: Request, opts?: unknown) => Promise<Response> | Response
+  >
+} {
   process.env.TSS_PRERENDERING = 'true'
   process.env.TSS_CLIENT_OUTPUT_DIR = clientOutputDirectory
 
@@ -49,11 +56,12 @@ function createRsbuildPrerenderHandler({
     | undefined
 
   return {
+    loadRequestHandler,
     getClientOutputDirectory() {
       return clientOutputDirectory
     },
     async request(path, options) {
-      const requestHandler = await getRequestHandler()
+      const requestHandler = await loadRequestHandler()
       const url = new URL(path, 'http://localhost')
 
       return requestHandler(
@@ -65,16 +73,18 @@ function createRsbuildPrerenderHandler({
     },
   }
 
-  function getRequestHandler() {
+  function loadRequestHandler() {
     if (!requestHandlerPromise) {
-      requestHandlerPromise = loadRequestHandler(serverOutputDirectory)
+      requestHandlerPromise = loadRequestHandlerFromBundle(
+        serverOutputDirectory,
+      )
     }
 
     return requestHandlerPromise
   }
 }
 
-async function loadRequestHandler(serverOutputDirectory: string) {
+async function loadRequestHandlerFromBundle(serverOutputDirectory: string) {
   const { pathToFileURL } = await import('node:url')
   const serverEntryUrl = pathToFileURL(
     join(serverOutputDirectory, 'index.js'),

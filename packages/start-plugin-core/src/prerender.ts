@@ -4,6 +4,7 @@ import path from 'pathe'
 import { joinURL, withBase, withTrailingSlash, withoutBase } from 'ufo'
 import { createLogger } from './utils'
 import { Queue } from './queue'
+import { runPrerenderParams } from './prerender-params-runner'
 import type { Page, TanStackStartOutputConfig } from './schema'
 
 const DEFAULT_RETRY_DELAY = 500
@@ -39,6 +40,16 @@ export async function prerender({
 
       pages = Array.from(pagesMap.values())
     }
+
+    const routeTree = await globalThis.TSS_PRERENDER_ROUTE_TREE?.()
+
+    pages = await runPrerenderParams({
+      routeTree,
+      pages,
+      logger,
+      filter: startConfig.prerender.filter,
+      prerenderParamsTimeout: startConfig.prerender.prerenderParamsTimeout,
+    })
 
     startConfig.pages = pages
   }
@@ -282,7 +293,7 @@ export function validateAndNormalizePrerenderPages(
       throw new Error(`prerender page path must be relative: ${page.path}`)
     }
 
-    const decodedPathname = decodeURIComponent(url.pathname)
+    const decodedPathname = decodeURI(url.pathname)
 
     return {
       ...page,
