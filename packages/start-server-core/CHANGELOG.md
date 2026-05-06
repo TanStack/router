@@ -1,5 +1,16 @@
 # @tanstack/start-server-core
 
+## 1.167.30
+
+### Patch Changes
+
+- Update seroval dependencies to version 1.5.4. ([#7340](https://github.com/TanStack/router/pull/7340))
+
+- Updated dependencies [[`35e88f0`](https://github.com/TanStack/router/commit/35e88f04996d71019a1868b7b06ecb4ddbc9df9e)]:
+  - @tanstack/router-core@1.169.2
+  - @tanstack/start-client-core@1.168.2
+  - @tanstack/start-storage-context@1.166.35
+
 ## 1.167.29
 
 ### Patch Changes

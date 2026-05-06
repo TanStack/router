@@ -1,5 +1,14 @@
 # @tanstack/router-plugin
 
+## 1.167.34
+
+### Patch Changes
+
+- Updated dependencies [[`35e88f0`](https://github.com/TanStack/router/commit/35e88f04996d71019a1868b7b06ecb4ddbc9df9e)]:
+  - @tanstack/router-core@1.169.2
+  - @tanstack/react-router@1.169.2
+  - @tanstack/router-generator@1.166.41
+
 ## 1.167.33
 
 ### Patch Changes
