@@ -4,12 +4,12 @@ import {
   deepEqual,
   escapeHtml,
   getAssetCrossOrigin,
+  getHydrateStatus,
   isInlinableStylesheet,
   resolveManifestAssetLink,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
-import { getHydrateStatus } from './hydrate-status'
 import type {
   AssetCrossOriginConfig,
   RouterManagedTag,

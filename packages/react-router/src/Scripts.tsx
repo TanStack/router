@@ -1,11 +1,16 @@
+import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
-import { deepEqual } from '@tanstack/router-core'
+import { deepEqual, getHydrateStatus } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
-import { getHydrateStatus } from './hydrate-status'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+// Identifies the client-entry script tag emitted by start-server-core's
+// `buildClientEntryScriptTag`. When a route sets `hydrate: false`, we strip
+// the tag's trailing `import(<clientEntry>)` (and skip the tag entirely if
+// nothing else is in it) so the page renders SSR HTML without booting React
+// on the client. Any injected prelude (e.g. React Refresh for HMR) is kept.
 const CLIENT_ENTRY_MARKER_ATTR = 'data-tsr-client-entry'
 const LEGACY_CLIENT_ENTRY_ID = 'virtual:tanstack-start-client-entry'
 const TRAILING_IMPORT_RE = /(?:^|[;\n])\s*import\((['"]).*?\1\)\s*;?\s*$/s
@@ -101,12 +106,22 @@ export const Scripts = () => {
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const scripts = useStore(router.stores.matches, getScripts, deepEqual)
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const shouldHydrate = useStore(
-    router.stores.matches,
-    (matches) => getHydrateStatus(matches, router).shouldHydrate,
+  const status = useStore(router.stores.matches, (matches) =>
+    getHydrateStatus(matches, router),
   )
 
-  return renderScripts(router, scripts, assetScripts, shouldHydrate)
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  React.useEffect(() => {
+    if (process.env.NODE_ENV !== 'production' && status.hasConflict) {
+      console.warn(
+        '[TanStack Router] Conflicting `hydrate` options detected in route matches: ' +
+          'some routes set `hydrate: false` while others set `hydrate: true`. ' +
+          'The page will not hydrate. Align route `hydrate` settings to silence this warning.',
+      )
+    }
+  }, [status.hasConflict])
+
+  return renderScripts(router, scripts, assetScripts, status.shouldHydrate)
 }
 
 function renderScripts(

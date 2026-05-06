@@ -345,6 +345,10 @@ export function buildClientEntryScriptTag(
     attrs: {
       type: 'module',
       async: true,
+      // Marks this tag as the client entry import so the React `<Scripts />`
+      // renderer can strip it when a route opts out via `hydrate: false`.
+      // Any injected prelude (e.g. React Refresh setup for HMR) is kept;
+      // only the trailing `import(<clientEntry>)` is removed.
       'data-tsr-client-entry': 'true',
     },
     children: script,

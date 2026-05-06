@@ -82,6 +82,8 @@ export {
   isInlinableStylesheet,
   resolveManifestAssetLink,
 } from './manifest'
+export { getHydrateStatus } from './hydrate-status'
+export type { HydrateStatus } from './hydrate-status'
 export { isMatch } from './Matches'
 export type {
   AnyMatchAndValue,
