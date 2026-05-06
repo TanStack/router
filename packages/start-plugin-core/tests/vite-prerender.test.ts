@@ -20,7 +20,10 @@ describe('prerenderWithVite', () => {
     const root = await mkdtemp(join(tmpdir(), 'tss-vite-prerender-'))
     const clientOutputDirectory = join(root, 'client')
     const serverOutputDirectory = join(root, 'server')
-    const prerenderOutputDirectory = join(serverOutputDirectory, '.tanstack/prerender')
+    const prerenderOutputDirectory = join(
+      serverOutputDirectory,
+      '.tanstack/prerender',
+    )
     const close = vi.fn()
     const prerenderSpy = vi.fn(async ({ handler }: any) => {
       expect((globalThis as any).__ROUTE_OPTIONS_LOADED).toBe(1)
@@ -74,7 +77,10 @@ describe('prerenderWithVite', () => {
     const root = await mkdtemp(join(tmpdir(), 'tss-vite-prerender-'))
     const clientOutputDirectory = join(root, 'client')
     const serverOutputDirectory = join(root, 'server')
-    const prerenderOutputDirectory = join(serverOutputDirectory, '.tanstack/prerender')
+    const prerenderOutputDirectory = join(
+      serverOutputDirectory,
+      '.tanstack/prerender',
+    )
     const prerenderSpy = vi.fn()
 
     vi.doMock('vite', () => ({
@@ -89,7 +95,10 @@ describe('prerenderWithVite', () => {
     })
 
     await mkdir(prerenderOutputDirectory, { recursive: true })
-    await writeFile(join(prerenderOutputDirectory, 'server.js'), 'throw new Error("boom")')
+    await writeFile(
+      join(prerenderOutputDirectory, 'server.js'),
+      'throw new Error("boom")',
+    )
 
     const { prerenderWithVite } = await import('../src/vite/prerender')
 
@@ -119,7 +128,10 @@ describe('prerenderWithVite', () => {
     const root = await mkdtemp(join(tmpdir(), 'tss-vite-prerender-'))
     const clientOutputDirectory = join(root, 'client')
     const serverOutputDirectory = join(root, 'server')
-    const prerenderOutputDirectory = join(serverOutputDirectory, '.tanstack/prerender')
+    const prerenderOutputDirectory = join(
+      serverOutputDirectory,
+      '.tanstack/prerender',
+    )
     const serverRouteOptionsDirectory = join(serverOutputDirectory, 'server')
     const close = vi.fn()
     const prerenderSpy = vi.fn(async ({ handler }: any) => {
@@ -179,7 +191,10 @@ describe('prerenderWithVite', () => {
     const root = await mkdtemp(join(tmpdir(), 'tss-vite-prerender-'))
     const clientOutputDirectory = join(root, 'client')
     const serverOutputDirectory = join(root, 'server')
-    const prerenderOutputDirectory = join(serverOutputDirectory, '.tanstack/prerender')
+    const prerenderOutputDirectory = join(
+      serverOutputDirectory,
+      '.tanstack/prerender',
+    )
     const prerenderSpy = vi.fn()
     const preview = vi.fn()
 

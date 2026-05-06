@@ -129,7 +129,9 @@ function startPrerenderParamsTimeout(
   }
 
   if (!Number.isFinite(timeout) || timeout < 0) {
-    throw new Error('prerenderParamsTimeout must be a non-negative finite number')
+    throw new Error(
+      'prerenderParamsTimeout must be a non-negative finite number',
+    )
   }
 
   const timeoutId = setTimeout(() => {

@@ -67,7 +67,10 @@ describe('postBuildWithRsbuild', () => {
 
   it('imports route options from the prerender bundle and removes it', async () => {
     const serverOutputDirectory = await mkdtemp(join(tmpdir(), 'tss-rsbuild-'))
-    const prerenderOutputDirectory = join(serverOutputDirectory, 'custom-prerender')
+    const prerenderOutputDirectory = join(
+      serverOutputDirectory,
+      'custom-prerender',
+    )
     const prerenderSpy = vi.fn(async ({ handler }: any) => {
       expect((globalThis as any).__ROUTE_OPTIONS_LOADED).toBe(true)
       const response = await handler.request('/posts')
@@ -127,7 +130,10 @@ describe('postBuildWithRsbuild', () => {
 
   it('cleans up route options and env vars if request handler preload fails', async () => {
     const serverOutputDirectory = await mkdtemp(join(tmpdir(), 'tss-rsbuild-'))
-    const prerenderOutputDirectory = join(serverOutputDirectory, 'custom-prerender')
+    const prerenderOutputDirectory = join(
+      serverOutputDirectory,
+      'custom-prerender',
+    )
     const prerenderSpy = vi.fn()
 
     vi.doMock('../src/prerender', async () => {

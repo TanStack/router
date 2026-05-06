@@ -374,7 +374,8 @@ export function registerVirtualModules(
             startConfig.server.build.inlineCss,
           )
     } else {
-      content[paths.manifest] = `export const tsrStartManifest = () => ({ routes: {}, clientEntry: '' })`
+      content[paths.manifest] =
+        `export const tsrStartManifest = () => ({ routes: {}, clientEntry: '' })`
     }
 
     // Injected head scripts — only server
