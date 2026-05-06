@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -87,6 +87,95 @@ describe('buildSitemap', () => {
     expect(sitemap).toContain('hreflang="ko"')
     expect(sitemap).not.toContain('https://example.com//blog/router')
     expect(pagesJson).toContain('/blog/router?tag=router+start')
+  })
+
+  it('preserves a deployment base path from the sitemap host', () => {
+    const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
+    tempDirs.push(publicDir)
+
+    buildSitemap({
+      publicDir,
+      startConfig: {
+        sitemap: {
+          enabled: true,
+          host: 'https://example.com/docs/',
+          outputPath: 'sitemap.xml',
+        },
+        pages: [{ path: '/guide/start' }],
+      } as any,
+    })
+
+    const sitemap = readFileSync(join(publicDir, 'sitemap.xml'), 'utf-8')
+
+    expect(sitemap).toContain('<loc>https://example.com/docs/guide/start</loc>')
+    expect(sitemap).not.toContain('https://example.com/docs//guide/start')
+  })
+
+  it('uses a host supplied from the environment', () => {
+    const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
+    tempDirs.push(publicDir)
+
+    const previousSiteUrl = process.env.SITE_URL
+    process.env.SITE_URL = 'https://deploy.example.com'
+
+    try {
+      buildSitemap({
+        publicDir,
+        startConfig: {
+          sitemap: {
+            enabled: true,
+            host: process.env.SITE_URL,
+            outputPath: 'sitemap.xml',
+          },
+          pages: [{ path: '/guide/start' }],
+        } as any,
+      })
+    } finally {
+      if (previousSiteUrl === undefined) {
+        delete process.env.SITE_URL
+      } else {
+        process.env.SITE_URL = previousSiteUrl
+      }
+    }
+
+    const sitemap = readFileSync(join(publicDir, 'sitemap.xml'), 'utf-8')
+
+    expect(sitemap).toContain(
+      '<loc>https://deploy.example.com/guide/start</loc>',
+    )
+  })
+
+  it('skips sitemap generation when pages exist but sitemap config is omitted', () => {
+    const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
+    tempDirs.push(publicDir)
+
+    buildSitemap({
+      publicDir,
+      startConfig: {
+        pages: [{ path: '/guide/start' }],
+      } as any,
+    })
+
+    expect(existsSync(join(publicDir, 'sitemap.xml'))).toBe(false)
+    expect(existsSync(join(publicDir, 'pages.json'))).toBe(false)
+  })
+
+  it('throws when sitemap is explicitly enabled without a host', () => {
+    const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
+    tempDirs.push(publicDir)
+
+    expect(() =>
+      buildSitemap({
+        publicDir,
+        startConfig: {
+          sitemap: {
+            enabled: true,
+            outputPath: 'sitemap.xml',
+          },
+          pages: [{ path: '/guide/start' }],
+        } as any,
+      }),
+    ).toThrow('Sitemap host is not set and required to build the sitemap.')
   })
 
   it('writes advanced sitemap metadata', () => {
