@@ -24,7 +24,7 @@ export async function postBuild({
   }
 
   const spaOnly = Boolean(
-    startConfig.spa?.enabled && startConfig.prerender.enabled !== true,
+    startConfig.spa?.enabled && startConfig.prerender?.enabled !== true,
   )
 
   if (startConfig.spa?.enabled) {
@@ -62,7 +62,7 @@ export async function postBuild({
     })
   }
 
-  if (startConfig.prerender.enabled) {
+  if (startConfig.prerender?.enabled) {
     await adapter.prerender(startConfig)
   }
 

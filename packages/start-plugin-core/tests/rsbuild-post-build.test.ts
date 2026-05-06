@@ -13,6 +13,7 @@ describe('postBuildWithRsbuild', () => {
   beforeEach(() => {
     vi.resetModules()
     delete (globalThis as any).__ROUTE_OPTIONS_LOADED
+    delete (globalThis as any).TSS_PRERENDER_ROUTE_TREE
     delete process.env.TSS_PRERENDERING
     delete process.env.TSS_CLIENT_OUTPUT_DIR
   })

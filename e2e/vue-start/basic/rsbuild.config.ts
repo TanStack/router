@@ -19,7 +19,7 @@ const prerenderConfiguration = {
       '/search-params', // search-param routes have dynamic content based on query params
       '/transition',
       '/users',
-    ].some((p) => page.path.includes(p)),
+    ].some((p) => page.path === p || page.path.startsWith(`${p}/`)),
   maxRedirects: 100,
 }
 

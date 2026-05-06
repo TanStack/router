@@ -79,6 +79,7 @@ export function registerStartCompilerTransforms(
 
   const environments = opts.environments ?? [
     { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' },
+    { name: RSBUILD_ENVIRONMENT_NAMES.prerender, type: 'server' },
     { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' },
   ]
 

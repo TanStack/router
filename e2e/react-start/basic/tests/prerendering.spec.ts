@@ -30,7 +30,7 @@ function outputContainsMarker(dir: string, marker: string) {
     const filePath = join(dir, String(relativePath))
     return (
       statSync(filePath).isFile() &&
-      filePath.endsWith('.js') &&
+      (filePath.endsWith('.js') || filePath.endsWith('.mjs')) &&
       readFileSync(filePath, 'utf-8').includes(marker)
     )
   })

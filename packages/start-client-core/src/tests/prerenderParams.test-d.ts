@@ -1,4 +1,5 @@
 import { expectTypeOf, test } from 'vitest'
+import type {} from '../prerenderParams'
 import type { AnyRoute, FileBaseRouteOptions } from '@tanstack/router-core'
 
 type ParentRoute = Omit<AnyRoute, 'types'> & {
