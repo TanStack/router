@@ -128,14 +128,17 @@ async function createRsbuildPrerenderHandler({
 
   function getPrerenderOutputDirectory() {
     return (
-      prerenderOutputDirectory ?? join(serverOutputDirectory, '.tanstack/prerender')
+      prerenderOutputDirectory ??
+      join(serverOutputDirectory, '.tanstack/prerender')
     )
   }
 }
 
 async function loadRouteOptionsFromBundle(prerenderOutputDirectory: string) {
   const { pathToFileURL } = await import('node:url')
-  const prerenderEntryUrl = pathToFileURL(join(prerenderOutputDirectory, 'index.js'))
+  const prerenderEntryUrl = pathToFileURL(
+    join(prerenderOutputDirectory, 'index.js'),
+  )
   prerenderEntryUrl.searchParams.set('tss-prerender', Date.now().toString())
 
   delete globalThis.TSS_PRERENDER_ROUTE_TREE

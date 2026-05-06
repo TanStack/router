@@ -185,8 +185,9 @@ export function tanStackStartRsbuild(
         prerenderOutputDirectory = separateRouteOptions
           ? resolveRsbuildOutputDirectory({
               distPath:
-                environmentPlan.environments[RSBUILD_ENVIRONMENT_NAMES.prerender]
-                  ?.output?.distPath,
+                environmentPlan.environments[
+                  RSBUILD_ENVIRONMENT_NAMES.prerender
+                ]?.output?.distPath,
               rootDistPath: undefined,
               fallback: join(
                 resolvedStartConfig.outputDirectories.server,

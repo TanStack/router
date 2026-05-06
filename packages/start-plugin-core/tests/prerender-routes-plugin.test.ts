@@ -62,5 +62,4 @@ describe('prerenderRoutesPlugin', () => {
 
     expect(globalThis.TSS_PRERENDABLE_PATHS).toEqual([{ path: '/' }])
   })
-
 })

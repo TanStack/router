@@ -392,7 +392,8 @@ export function registerVirtualModules(
             opts.scriptFormat,
           )
     } else {
-      content[paths.manifest] = `export const tsrStartManifest = () => ({ routes: {}, clientEntry: '' })`
+      content[paths.manifest] =
+        `export const tsrStartManifest = () => ({ routes: {}, clientEntry: '' })`
     }
 
     // Server fn resolver — SSR and provider environments

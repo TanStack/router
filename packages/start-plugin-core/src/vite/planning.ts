@@ -118,10 +118,7 @@ export function createViteConfigPlan(opts: {
                     : serverInput,
                   [/^cloudflare:/],
                 ),
-                outDir: join(
-                  opts.serverOutputDirectory,
-                  '.tanstack/prerender',
-                ),
+                outDir: join(opts.serverOutputDirectory, '.tanstack/prerender'),
                 commonjsOptions: {
                   include: [/node_modules/],
                 },

@@ -627,7 +627,10 @@ export function startCompilerPlugin(
       load() {
         if (
           this.environment.name !== opts.providerEnvName &&
-          !(ssrIsProvider && this.environment.name === START_ENVIRONMENT_NAMES.prerender)
+          !(
+            ssrIsProvider &&
+            this.environment.name === START_ENVIRONMENT_NAMES.prerender
+          )
         ) {
           const mod = opts.environments.find(
             (e) => e.name === this.environment.name,
