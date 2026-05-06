@@ -24,6 +24,7 @@ import type { Manifest, RouterManagedTag } from '../manifest'
 declare module '../router' {
   interface ServerSsr {
     setRenderFinished: () => void
+    flushScripts: () => void
     cleanup: () => void
   }
   interface RouterEvents {
@@ -88,25 +89,16 @@ class ScriptBuffer {
   enqueue(script: string) {
     if (this._cleanedUp) return
     this._queue.push(script)
-    // If barrier is lifted, schedule injection (if not already scheduled)
-    if (this._scriptBarrierLifted && !this._pendingMicrotask) {
-      this._pendingMicrotask = true
-      queueMicrotask(() => {
-        this._pendingMicrotask = false
-        this.injectBufferedScripts()
-      })
+    if (this._scriptBarrierLifted) {
+      this.injectBufferedScripts()
     }
   }
 
   liftBarrier() {
     if (this._scriptBarrierLifted || this._cleanedUp) return
     this._scriptBarrierLifted = true
-    if (this._queue.length > 0 && !this._pendingMicrotask) {
-      this._pendingMicrotask = true
-      queueMicrotask(() => {
-        this._pendingMicrotask = false
-        this.injectBufferedScripts()
-      })
+    if (this._queue.length > 0) {
+      this.injectBufferedScripts()
     }
   }
 
@@ -511,6 +503,9 @@ export function attachRouterServerSsrUtils({
     },
     liftScriptBarrier() {
       scriptBuffer.liftBarrier()
+    },
+    flushScripts() {
+      scriptBuffer.flush()
     },
     takeBufferedHtml() {
       if (!injectedHtmlBuffer) {

@@ -189,12 +189,20 @@ export function transformStreamWithRouter(
         if (cleanedUp || isStreamClosed) return
 
         router.serverSsr?.setRenderFinished()
+        const finalHtml = router.serverSsr?.takeBufferedHtml()
+        if (finalHtml) {
+          controller?.enqueue(textEncoder.encode(finalHtml))
+        }
         safeClose()
         cleanup()
       } catch (error) {
         if (cleanedUp) return
         console.error('Error reading appStream:', error)
         router.serverSsr?.setRenderFinished()
+        const finalHtmlErr = router.serverSsr?.takeBufferedHtml()
+        if (finalHtmlErr) {
+          controller?.enqueue(textEncoder.encode(finalHtmlErr))
+        }
         safeError(error)
         cleanup()
       } finally {
@@ -331,6 +339,8 @@ export function transformStreamWithRouter(
       serializationTimeoutHandle = undefined
     }
 
+    router.serverSsr?.flushScripts()
+
     // Flush any remaining bytes in the TextDecoder
     const decoderRemainder = textDecoder.decode()
 
@@ -403,7 +413,6 @@ export function transformStreamWithRouter(
         if (!streamBarrierLifted) {
           if (chunkString.includes(TSR_SCRIPT_BARRIER_ID)) {
             streamBarrierLifted = true
-            router.serverSsr?.liftScriptBarrier()
           }
         }
 
@@ -425,6 +434,9 @@ export function transformStreamWithRouter(
           pendingClosingTags = chunkString.slice(bodyEndIndex)
           safeEnqueue(chunkString.slice(0, bodyEndIndex))
           flushPendingRouterHtml()
+          if (streamBarrierLifted) {
+            router.serverSsr?.liftScriptBarrier()
+          }
           leftover = ''
           continue
         }
@@ -434,6 +446,9 @@ export function transformStreamWithRouter(
         if (lastClosingTagEnd > 0) {
           safeEnqueue(chunkString.slice(0, lastClosingTagEnd))
           flushPendingRouterHtml()
+          if (streamBarrierLifted) {
+            router.serverSsr?.liftScriptBarrier()
+          }
 
           leftover = chunkString.slice(lastClosingTagEnd)
           if (leftover.length > MAX_LEFTOVER_CHARS) {
