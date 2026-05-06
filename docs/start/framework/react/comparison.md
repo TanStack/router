@@ -217,6 +217,7 @@ Key differences:
 - Start's server functions support both client and server middleware
 - Start has built-in input validation
 - Start's approach is more explicit about the client/server boundary
+- Start's server functions support both GET and POST methods (configurable via the `method` option, defaults to GET), while Next.js Server Actions only support POST.
 - Next.js Server Actions integrate more seamlessly with forms
 
 ### Middleware Architecture

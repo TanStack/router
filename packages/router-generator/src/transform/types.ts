@@ -3,6 +3,7 @@ import type { Config } from '../config'
 
 export interface TransformOptions {
   source: string
+  filename?: string
   ctx: TransformContext
   node: RouteNode
 }

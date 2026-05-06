@@ -289,6 +289,7 @@ export type { OptionalStructuralSharing } from './structuralSharing'
 
 export {
   functionalUpdate,
+  hasKeys,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,

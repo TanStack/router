@@ -237,6 +237,7 @@ export function buildDependencyGraph(
  */
 export function computeSharedBindings(opts: {
   code: string
+  filename?: string
   codeSplitGroupings: CodeSplitGroupings
 }): Set<string> {
   const ast = parseAst(opts)

@@ -132,14 +132,6 @@ export function getRouter() {
 - `useSuspenseQuery`: runs on the server during SSR when its data is required and will be streamed to the client as it resolves.
 - `useQuery`: does not execute on the server; it will fetch on the client after hydration. Use this for data that is not required for SSR.
 
-```tsx
-// Suspense: executes on server and streams
-const { data } = useSuspenseQuery(postsQuery)
-
-// Non-suspense: executes only on client
-const { data, isLoading } = useQuery(postsQuery)
-```
-
 <!-- ::start:framework -->
 
 # React

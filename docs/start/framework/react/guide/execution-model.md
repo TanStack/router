@@ -194,14 +194,25 @@ const secret = getSecret() // ❌ Throws error
 
 ## Common Anti-Patterns
 
-### Environment Variable Exposure
+### Module-Level `process.env` Reads
+
+Reading `process.env` at module scope is wrong for **two** reasons, not one:
+
+1. **Security:** the value can be inlined into the client bundle.
+2. **Runtime correctness:** on Cloudflare Workers and other edge SSR runtimes, env is injected per-request. Module-level code runs at module load, before the env exists, so the read evaluates to `undefined` even on the server.
 
 ```tsx
-// ❌ Exposes to client bundle
+// ❌ Leaks to client AND is undefined under Worker SSR
 const apiKey = process.env.SECRET_KEY
 
-// ✅ Server-only access
+// ✅ Wrap in a server-only function — read happens per call, on the server
 const apiKey = createServerOnlyFn(() => process.env.SECRET_KEY)
+
+// ✅ Or read directly inside `.handler()` / middleware `.server()` / server-route handlers
+const fetchData = createServerFn().handler(async () => {
+  const apiKey = process.env.SECRET_KEY
+  // ...
+})
 ```
 
 ### Incorrect Loader Assumptions
@@ -264,6 +275,30 @@ const logMessage = createIsomorphicFn()
   .server((msg) => console.log(`[SERVER]: ${msg}`))
   .client((msg) => console.log(`[CLIENT]: ${msg}`))
 ```
+
+## Marking Whole Files Server- or Client-Only
+
+The `.server.*` and `.client.*` filename suffixes opt a file into Start's import protection automatically. When you can't or don't want to rename the file, achieve the same effect with a side-effect import at the top:
+
+```ts
+// src/lib/secrets.ts (filename can't be *.server.ts)
+import '@tanstack/react-start/server-only'
+
+export function getApiKey() {
+  return process.env.API_KEY
+}
+```
+
+```ts
+// src/lib/storage.ts
+import '@tanstack/react-start/client-only'
+
+export function savePreferences(prefs: Record<string, string>) {
+  localStorage.setItem('prefs', JSON.stringify(prefs))
+}
+```
+
+Both markers in the same file is an error. Type-only imports are ignored. See the [Import Protection guide](./import-protection.md) for the full reference, including dev vs build behavior, configuring deny rules, and reading violation traces.
 
 ## Architecture Decision Framework
 

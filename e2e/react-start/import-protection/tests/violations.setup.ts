@@ -94,6 +94,7 @@ const routeDefinitions = [
   ['/alias-path-leak', 'alias-path-leak-heading'],
   ['/alias-path-namespace-leak', 'alias-path-namespace-leak-heading'],
   ['/non-alias-namespace-leak', 'non-alias-namespace-leak-heading'],
+  ['/type-only-protected-import', 'type-only-protected-import-heading'],
 ] as const
 
 const routes = routeDefinitions.map(([route]) => route)

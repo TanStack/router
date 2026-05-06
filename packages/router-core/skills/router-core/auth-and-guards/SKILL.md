@@ -21,6 +21,10 @@ sources:
 
 # Auth and Guards
 
+> **This skill covers the routing side of auth.** For the **server-side primitives** — session cookies (`HttpOnly`/`Secure`/`SameSite`), `useSession`-style helpers, OAuth `state` + PKCE, password-reset enumeration defense, CSRF, rate limiting — see [start-core/auth-server-primitives](../../../../start-client-core/skills/start-core/auth-server-primitives/SKILL.md). The two skills are designed to be used together.
+>
+> **CRITICAL**: A route guard (`beforeLoad`) does NOT protect a `createServerFn` declared on that route. Server functions are RPC endpoints reachable by direct POST regardless of which route renders them. See "Route guards do not protect server functions" below.
+
 ## Setup
 
 Protect routes with `beforeLoad` + `redirect()` in a pathless layout route (`_authenticated`):
@@ -371,6 +375,41 @@ export const Route = createFileRoute('/_authenticated')({
 
 ## Common Mistakes
 
+### CRITICAL: Route guards do not protect server functions
+
+A `beforeLoad` redirect protects the **route's UI**, not the **server functions** declared on it. `createServerFn` produces an RPC endpoint reachable by direct POST regardless of which route renders the calling UI. An attacker doesn't have to load `/_authenticated/orders` — they can curl the RPC endpoint directly.
+
+```tsx
+// WRONG — handler has no auth check; the route guard doesn't help
+import { createServerFn } from '@tanstack/react-start'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+
+const getMyOrders = createServerFn({ method: 'GET' }).handler(async () => {
+  return db.orders.findMany() // ← anyone can hit the RPC
+})
+
+export const Route = createFileRoute('/_authenticated/orders')({
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) throw redirect({ to: '/login' })
+  },
+  loader: () => getMyOrders(),
+})
+```
+
+```tsx
+// CORRECT — auth enforced on the handler itself, via middleware
+import { createServerFn } from '@tanstack/react-start'
+import { authMiddleware } from '~/server/auth-middleware'
+
+const getMyOrders = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    return db.orders.findMany({ where: { userId: context.session.userId } })
+  })
+```
+
+Rule of thumb: every `createServerFn` that touches user data needs `authMiddleware` (or an equivalent in-handler check). The route guard is for the page experience; the RPC guard is for the data. See [start-core/auth-server-primitives](../../../../start-client-core/skills/start-core/auth-server-primitives/SKILL.md) for the full session/middleware pattern.
+
 ### HIGH: Auth check in component instead of beforeLoad
 
 Component-level auth checks cause a **flash of protected content** before the redirect:
@@ -456,3 +495,5 @@ Place protected routes as children of the `_authenticated` layout route. Public 
 ## Cross-References
 
 - See also: **router-core/data-loading/SKILL.md** — `beforeLoad` runs before `loader`; auth context flows into loader via route context
+- See also: **start-core/auth-server-primitives/SKILL.md** — server-side session cookies, OAuth state + PKCE, CSRF, password-reset hardening, rate limiting (the server half of authentication)
+- See also: **start-core/middleware/SKILL.md** — `authMiddleware` factory pattern for protecting individual `createServerFn` calls

@@ -138,6 +138,10 @@
               "to": "framework/react/guide/server-entry-point"
             },
             {
+              "label": "Early Hints",
+              "to": "framework/react/guide/early-hints"
+            },
+            {
               "label": "CDN Asset URLs",
               "to": "framework/react/guide/cdn-asset-urls"
             },
@@ -253,6 +257,10 @@
             {
               "label": "Server Entry Point",
               "to": "framework/solid/guide/server-entry-point"
+            },
+            {
+              "label": "Early Hints",
+              "to": "framework/solid/guide/early-hints"
             },
             {
               "label": "Client Entry Point",

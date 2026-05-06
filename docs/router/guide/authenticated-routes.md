@@ -5,6 +5,8 @@ title: Authenticated Routes
 
 Authentication is an extremely common requirement for web applications. In this guide, we'll walk through how to use TanStack Router to build protected routes, and how to redirect users to login if they try to access them.
 
+> **A route guard does not protect a server function.** This guide shows how to gate a route's UI behind `beforeLoad`. If you also have a `createServerFn` that fetches sensitive data, the route guard does NOT stop a direct request to that RPC — server functions are reachable by POST regardless of which route renders them. Pair routing-side guards with **handler-level enforcement** (auth middleware or in-handler check). See [Authentication Server Primitives](../../start/framework/react/guide/authentication-server-primitives.md) in the Start docs.
+
 ## The `route.beforeLoad` Option
 
 The `route.beforeLoad` option allows you to specify a function that will be called before a route is loaded. It receives all of the same arguments that the `route.loader` function does. This is a great place to check if a user is authenticated, and redirect them to a login page if they are not.

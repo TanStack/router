@@ -2,7 +2,13 @@
 // This file is used when importing from RSC (React Server Components) context
 
 // Types are always available
-export type { AnyCompositeComponent } from './ServerComponentTypes'
+export type {
+  AnyCompositeComponent,
+  AnyRenderableServerComponent,
+  RenderableServerComponent,
+  RenderableServerComponentAttributes,
+  RenderableServerComponentBuilder,
+} from './ServerComponentTypes'
 
 // New API: renderServerComponent - renders element to renderable proxy
 export { renderServerComponent } from './renderServerComponent.js'

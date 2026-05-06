@@ -1,3 +1,4 @@
+import { createRouterPluginContext } from '@tanstack/router-plugin/context'
 import {
   tanStackRouterCodeSplitter,
   tanstackRouterGenerator,
@@ -35,6 +36,8 @@ export function tanStackStartRouter(
   getConfig: GetConfigFn,
   corePluginOpts: TanStackStartVitePluginCoreOptions,
 ): Array<PluginOption> {
+  const routerPluginContext = createRouterPluginContext()
+
   const getGeneratedRouteTreePath = () => {
     const { startConfig } = getConfig()
     return path.resolve(startConfig.router.generatedRouteTree)
@@ -153,7 +156,7 @@ export function tanStackStartRouter(
         routeTreeFileFooter: getRouteTreeFileFooter,
         plugins,
       }
-    }),
+    }, routerPluginContext),
     tanStackRouterCodeSplitter(() => {
       const routerConfig = getConfig().startConfig.router
       return {
@@ -167,7 +170,7 @@ export function tanStackStartRouter(
           vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
         },
       }
-    }),
+    }, routerPluginContext),
     tanStackRouterCodeSplitter(() => {
       const routerConfig = getConfig().startConfig.router
       return {
@@ -180,6 +183,6 @@ export function tanStackStartRouter(
           vite: { environmentName: VITE_ENVIRONMENT_NAMES.server },
         },
       }
-    }),
+    }, routerPluginContext),
   ]
 }

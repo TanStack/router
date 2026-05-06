@@ -15,6 +15,7 @@ import { Route as StreamRouteImport } from './routes/stream'
 import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as RawStreamRouteImport } from './routes/raw-stream'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as PlainTsTypeAssertionRouteImport } from './routes/plain-ts-type-assertion'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as DeferredRouteImport } from './routes/deferred'
@@ -106,6 +107,11 @@ const RawStreamRoute = RawStreamRouteImport.update({
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlainTsTypeAssertionRoute = PlainTsTypeAssertionRouteImport.update({
+  id: '/plain-ts-type-assertion',
+  path: '/plain-ts-type-assertion',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LinksRoute = LinksRouteImport.update({
@@ -443,6 +449,7 @@ export interface FileRoutesByFullPath {
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
+  '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
   '/posts': typeof PostsRouteWithChildren
   '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
@@ -509,6 +516,7 @@ export interface FileRoutesByTo {
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
+  '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
   '/type-only-reexport': typeof TypeOnlyReexportRoute
@@ -572,6 +580,7 @@ export interface FileRoutesById {
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
+  '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
   '/posts': typeof PostsRouteWithChildren
   '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
@@ -643,6 +652,7 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/inline-scripts'
     | '/links'
+    | '/plain-ts-type-assertion'
     | '/posts'
     | '/raw-stream'
     | '/scripts'
@@ -709,6 +719,7 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/inline-scripts'
     | '/links'
+    | '/plain-ts-type-assertion'
     | '/scripts'
     | '/stream'
     | '/type-only-reexport'
@@ -771,6 +782,7 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/inline-scripts'
     | '/links'
+    | '/plain-ts-type-assertion'
     | '/posts'
     | '/raw-stream'
     | '/scripts'
@@ -842,6 +854,7 @@ export interface RootRouteChildren {
   DeferredRoute: typeof DeferredRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
+  PlainTsTypeAssertionRoute: typeof PlainTsTypeAssertionRoute
   PostsRoute: typeof PostsRouteWithChildren
   RawStreamRoute: typeof RawStreamRouteWithChildren
   ScriptsRoute: typeof ScriptsRoute
@@ -899,6 +912,13 @@ declare module '@tanstack/react-router' {
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plain-ts-type-assertion': {
+      id: '/plain-ts-type-assertion'
+      path: '/plain-ts-type-assertion'
+      fullPath: '/plain-ts-type-assertion'
+      preLoaderRoute: typeof PlainTsTypeAssertionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/links': {
@@ -1598,6 +1618,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeferredRoute: DeferredRoute,
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
+  PlainTsTypeAssertionRoute: PlainTsTypeAssertionRoute,
   PostsRoute: PostsRouteWithChildren,
   RawStreamRoute: RawStreamRouteWithChildren,
   ScriptsRoute: ScriptsRoute,

@@ -1,10 +1,10 @@
 import * as t from '@babel/types'
+import { parseAst } from '@tanstack/router-utils'
 
-import { parseImportProtectionAst } from './ast'
 import { buildLineIndex } from './sourceLocation'
 import { getOrCreate } from './utils'
 import type { LineIndex, TransformResult } from './sourceLocation'
-import type { ParsedAst } from './ast'
+import type { ParseAstResult } from '@tanstack/router-utils'
 
 export type UsagePos = { line: number; column0: number }
 
@@ -18,7 +18,7 @@ type ImportBindingInfo = {
 type UsageCacheKey = `${BoundaryEnv | 'post'}::${string}`
 
 export type ImportAnalysis = {
-  ast: ParsedAst
+  ast: ParseAstResult
   lineIndex: LineIndex
   importSourcesInOrder: Array<string>
   importSpecifierLocationIndex: Map<string, number>
@@ -28,9 +28,10 @@ export type ImportAnalysis = {
   usageByKey: Map<UsageCacheKey, UsagePos | null>
 }
 
-function makeTransientResult(code: string): TransformResult {
+function makeTransientResult(code: string, filename?: string): TransformResult {
   return {
     code,
+    filename,
     map: undefined,
     originalCode: undefined,
   }
@@ -51,6 +52,30 @@ function getStringLiteralValueStart(node: t.StringLiteral): number {
   }
 
   return node.start
+}
+
+function isTypeOnlyImportDeclaration(node: t.ImportDeclaration): boolean {
+  if (node.importKind === 'type') return true
+  if (node.specifiers.length === 0) return false
+
+  return node.specifiers.every(
+    (specifier) =>
+      t.isImportSpecifier(specifier) && specifier.importKind === 'type',
+  )
+}
+
+function isTypeOnlyExportNamedDeclaration(
+  node: t.ExportNamedDeclaration,
+): boolean {
+  if (node.exportKind === 'type') return true
+  if (!node.source || node.declaration || node.specifiers.length === 0) {
+    return false
+  }
+
+  return node.specifiers.every(
+    (specifier) =>
+      t.isExportSpecifier(specifier) && specifier.exportKind === 'type',
+  )
 }
 
 function collectIdentifiersFromPattern(
@@ -107,7 +132,9 @@ export function isValidExportName(name: string): boolean {
 }
 
 function buildImportAnalysis(result: TransformResult): ImportAnalysis {
-  const ast = result.parsedAst ?? parseImportProtectionAst(result.code)
+  const ast =
+    result.parsedAst ??
+    parseAst({ code: result.code, filename: result.filename })
   result.parsedAst = ast
 
   const importSourcesInOrder: Array<string> = []
@@ -149,8 +176,9 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
 
   const visit = (node: t.Node): void => {
     if (t.isImportDeclaration(node)) {
-      addSpecifierLocation(node.source)
-      if (node.importKind !== 'type') {
+      const isTypeOnly = isTypeOnlyImportDeclaration(node)
+      if (!isTypeOnly) {
+        addSpecifierLocation(node.source)
         const source = node.source.value
         const bindingInfo = getBindingInfo(source)
         for (const specifier of node.specifiers) {
@@ -177,11 +205,12 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
         }
       }
     } else if (t.isExportNamedDeclaration(node)) {
-      if (node.source && t.isStringLiteral(node.source)) {
+      const isTypeOnly = isTypeOnlyExportNamedDeclaration(node)
+      if (!isTypeOnly && node.source && t.isStringLiteral(node.source)) {
         addSpecifierLocation(node.source)
       }
 
-      if (node.exportKind !== 'type' && node.source?.value) {
+      if (!isTypeOnly && node.source?.value) {
         const source = node.source.value
         for (const specifier of node.specifiers) {
           if (!t.isExportSpecifier(specifier)) continue
@@ -190,7 +219,7 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
         }
       }
 
-      if (node.exportKind !== 'type') {
+      if (!isTypeOnly) {
         if (node.declaration) {
           const decl = node.declaration
           if (t.isFunctionDeclaration(decl) || t.isClassDeclaration(decl)) {
@@ -210,7 +239,9 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
         }
       }
     } else if (t.isExportAllDeclaration(node)) {
-      addSpecifierLocation(node.source)
+      if (node.exportKind !== 'type') {
+        addSpecifierLocation(node.source)
+      }
     } else if (t.isImportExpression(node)) {
       if (t.isStringLiteral(node.source)) {
         addSpecifierLocation(node.source)
@@ -297,8 +328,11 @@ export function getImportSourcesFromResult(
   return getOrCreateImportAnalysis(result).importSourcesInOrder
 }
 
-export function getImportSources(code: string): Array<string> {
-  return getImportSourcesFromResult(makeTransientResult(code))
+export function getImportSources(
+  code: string,
+  filename?: string,
+): Array<string> {
+  return getImportSourcesFromResult(makeTransientResult(code, filename))
 }
 
 export function getImportSpecifierLocationFromResult(
@@ -320,8 +354,11 @@ export function getMockExportNamesBySourceFromResult(
 
 export function getMockExportNamesBySource(
   code: string,
+  filename?: string,
 ): Map<string, Array<string>> {
-  return getMockExportNamesBySourceFromResult(makeTransientResult(code))
+  return getMockExportNamesBySourceFromResult(
+    makeTransientResult(code, filename),
+  )
 }
 
 export function getNamedExportsFromResult(
@@ -330,8 +367,11 @@ export function getNamedExportsFromResult(
   return getOrCreateImportAnalysis(result).namedExports
 }
 
-export function getNamedExports(code: string): Array<string> {
-  return getNamedExportsFromResult(makeTransientResult(code))
+export function getNamedExports(
+  code: string,
+  filename?: string,
+): Array<string> {
+  return getNamedExportsFromResult(makeTransientResult(code, filename))
 }
 
 function isCompilerSafeBoundaryCall(

@@ -1,10 +1,9 @@
 import * as t from '@babel/types'
-import { generateFromAst } from '@tanstack/router-utils'
+import { generateFromAst, parseAst } from '@tanstack/router-utils'
 
-import { parseImportProtectionAst } from './ast'
 import { MOCK_MODULE_ID } from './constants'
-import type { ParsedAst } from './ast'
 import type { SourceMapLike } from './sourceLocation'
+import type { ParseAstResult } from '@tanstack/router-utils'
 
 function getModuleExportName(node: t.Identifier | t.StringLiteral): string {
   return t.isIdentifier(node) ? node.name : node.value
@@ -67,7 +66,7 @@ export function rewriteDeniedImports(
   getMockModuleId: (source: string) => string = () => MOCK_MODULE_ID,
 ): { code: string; map?: SourceMapLike } | undefined {
   return rewriteDeniedImportsFromAst(
-    parseImportProtectionAst(code),
+    parseAst({ code, filename: id }),
     id,
     deniedSources,
     getMockModuleId,
@@ -75,7 +74,7 @@ export function rewriteDeniedImports(
 }
 
 function rewriteDeniedImportsFromAst(
-  ast: ParsedAst,
+  ast: ParseAstResult,
   id: string,
   deniedSources: Set<string>,
   getMockModuleId: (source: string) => string = () => MOCK_MODULE_ID,

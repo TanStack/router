@@ -391,22 +391,74 @@ component: () => {
 }
 ```
 
-### 3. CRITICAL: Generating Next.js or Remix SSR patterns
+### 3. CRITICAL: Generating Next.js, Remix, or React Router DOM patterns
 
-TanStack Router does NOT use `getServerSideProps`, `getStaticProps`, App Router `page.tsx`, or Remix-style server-only `loader` exports.
+TanStack Router does NOT use `getServerSideProps`, `getStaticProps`, App Router `page.tsx`, Remix-style server-only `loader` exports, or anything from `react-router-dom`.
+
+#### Wrong file structures
+
+```text
+WRONG (Next.js Pages Router):
+  src/pages/index.tsx
+  src/pages/_app.tsx
+  src/pages/posts/[id].tsx
+
+WRONG (Next.js App Router):
+  app/layout.tsx
+  app/page.tsx
+  app/posts/[id]/page.tsx
+
+WRONG (Next.js custom App):
+  _app/index.tsx
+  pages/_app.tsx, pages/_document.tsx
+
+CORRECT (TanStack Router file-based routing):
+  src/routes/__root.tsx
+  src/routes/index.tsx
+  src/routes/posts/$postId.tsx
+```
+
+#### Wrong imports
 
 ```tsx
-// WRONG — Next.js patterns
+// WRONG — react-router-dom is a different library
+import {
+  Link,
+  useNavigate,
+  BrowserRouter,
+  Route,
+  Routes,
+} from 'react-router-dom'
+
+// WRONG — Next.js Link/router
+import Link from 'next/link'
+import { useRouter } from 'next/router' // Pages Router
+import { useRouter } from 'next/navigation' // App Router
+
+// CORRECT — everything routing-related lives in @tanstack/react-router
+import {
+  Link,
+  useNavigate,
+  useRouter,
+  useLocation,
+  redirect,
+} from '@tanstack/react-router'
+```
+
+#### Wrong loader/data-fetching patterns
+
+```tsx
+// WRONG — Next.js Pages Router
 export async function getServerSideProps() {
   return { props: { data: await fetchData() } }
 }
 
-// WRONG — Remix patterns
+// WRONG — Remix
 export async function loader({ request }: LoaderFunctionArgs) {
   return json({ data: await fetchData() })
 }
 
-// CORRECT — TanStack Router pattern
+// CORRECT — TanStack Router
 export const Route = createFileRoute('/data')({
   loader: async () => {
     const data = await fetchData()
@@ -420,6 +472,8 @@ function DataPage() {
   return <div>{data}</div>
 }
 ```
+
+If you see `src/pages/`, `app/layout.tsx`, `react-router-dom`, or any of the above in agent output, the agent is generating for the wrong framework. The build will either fail or produce duplicate `/` routes that conflict at runtime.
 
 ## Tension: Client-First Loaders vs SSR
 

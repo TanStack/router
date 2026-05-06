@@ -7,6 +7,13 @@ import type { ViteUserConfig } from 'vitest/config'
 
 const config = defineConfig({
   plugins: [minifyScriptPlugin()] as ViteUserConfig['plugins'],
+  build: {
+    rolldownOptions: {
+      output: {
+        topLevelVar: false,
+      },
+    },
+  },
   test: {
     name: packageJson.name,
     dir: './tests',

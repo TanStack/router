@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { hasKeys } from '@tanstack/router-core'
 import { joinURL } from 'ufo'
 import {
   applyResolvedBaseAndOutput,
@@ -198,6 +199,9 @@ export function tanStackStartRsbuild(
             },
           },
           server: {
+            // Rsbuild compression currently treats Node's raw header array
+            // writeHead form as an object, which corrupts SSR response headers.
+            compress: false,
             // SSR apps render every route on the server — disable HTML
             // fallback so rsbuild doesn't intercept /_serverFn/ URLs.
             htmlFallback: false,
@@ -238,6 +242,9 @@ export function tanStackStartRsbuild(
         root: () => resolvedStartConfig.root || process.cwd(),
         providerEnvName: serverFnProviderEnv,
         generateFunctionId: startPluginOpts.serverFns?.generateFunctionId,
+        compilerTransforms: corePluginOpts.compilerTransforms,
+        serverFnProviderModuleDirectives:
+          corePluginOpts.serverFnProviderModuleDirectives,
         serverFnsById,
         onServerFnsByIdChange: () => {
           updateServerFnResolver?.()
@@ -465,7 +472,7 @@ export function tanStackStartRsbuild(
                     stage: -10,
                   },
                   async (compilation: RspackCompilationExtended) => {
-                    if (Object.keys(serverFnsById).length === 0) {
+                    if (!hasKeys(serverFnsById)) {
                       return
                     }
 
