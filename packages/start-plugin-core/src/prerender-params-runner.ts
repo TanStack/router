@@ -201,7 +201,7 @@ function createPageFromParams(
   return {
     path: interpolatedPath + stringifySearch(entry.search),
     sitemap: mergeOptions(options.sitemap, entry.sitemap),
-    prerender: entry.prerender,
+    prerender: mergeOptions(options.prerender, entry.prerender),
   }
 }
 

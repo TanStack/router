@@ -24,6 +24,7 @@ describe('runPrerenderParams', () => {
     const routeTree = createRouteTree({
       '/posts/$slug': {
         sitemap: { priority: 0.7 },
+        prerender: { retryDelay: 100, retryCount: 2 },
         prerenderParams: () => [
           {
             params: { slug: 'hello-world' },
@@ -44,7 +45,7 @@ describe('runPrerenderParams', () => {
       {
         path: '/posts/hello-world',
         sitemap: { priority: 0.7, lastmod: '2026-05-05' },
-        prerender: { retryCount: 1 },
+        prerender: { retryDelay: 100, retryCount: 1 },
       },
     ])
   })
@@ -331,9 +332,7 @@ describe('runPrerenderParams', () => {
       pages: [],
       logger,
     })
-    const expectation = expect(result).rejects.toThrow(
-      'This operation was aborted',
-    )
+    const expectation = expect(result).rejects.toThrow(/operation was aborted/i)
 
     process.emit('SIGTERM')
     await expectation

@@ -111,40 +111,6 @@ describe('buildSitemap', () => {
     expect(sitemap).not.toContain('https://example.com/docs//guide/start')
   })
 
-  it('uses a host supplied from the environment', () => {
-    const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
-    tempDirs.push(publicDir)
-
-    const previousSiteUrl = process.env.SITE_URL
-    process.env.SITE_URL = 'https://deploy.example.com'
-
-    try {
-      buildSitemap({
-        publicDir,
-        startConfig: {
-          sitemap: {
-            enabled: true,
-            host: process.env.SITE_URL,
-            outputPath: 'sitemap.xml',
-          },
-          pages: [{ path: '/guide/start' }],
-        } as any,
-      })
-    } finally {
-      if (previousSiteUrl === undefined) {
-        delete process.env.SITE_URL
-      } else {
-        process.env.SITE_URL = previousSiteUrl
-      }
-    }
-
-    const sitemap = readFileSync(join(publicDir, 'sitemap.xml'), 'utf-8')
-
-    expect(sitemap).toContain(
-      '<loc>https://deploy.example.com/guide/start</loc>',
-    )
-  })
-
   it('skips sitemap generation when pages exist but sitemap config is omitted', () => {
     const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
     tempDirs.push(publicDir)

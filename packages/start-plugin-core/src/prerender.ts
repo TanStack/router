@@ -61,14 +61,6 @@ export async function prerender({
       startConfig.pages = pages
     }
 
-    const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
-    const routerBaseUrl = new URL(routerBasePath, 'http://localhost')
-
-    startConfig.pages = validateAndNormalizePrerenderPages(
-      startConfig.pages,
-      routerBaseUrl,
-    )
-
     const pages = await prerenderPages({
       outputDir: handler.getClientOutputDirectory(),
     })

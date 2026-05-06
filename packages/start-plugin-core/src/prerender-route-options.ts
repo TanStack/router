@@ -1,6 +1,7 @@
 import type { AnyRoute } from '@tanstack/router-core'
 import type {
   PrerenderParamsEntry,
+  RoutePrerenderOptions,
   RouteSitemapOptions,
 } from '@tanstack/start-client-core'
 
@@ -16,6 +17,7 @@ export interface PrerenderRouteOptions {
   }) =>
     | ReadonlyArray<PrerenderParamsEntry<Record<string, unknown>>>
     | Promise<ReadonlyArray<PrerenderParamsEntry<Record<string, unknown>>>>
+  prerender?: RoutePrerenderOptions
   sitemap?: RouteSitemapOptions
 }
 
@@ -61,6 +63,7 @@ export function collectPrerenderRouteOptions(routeTree: AnyRoute | undefined): {
       if (options.prerenderParams || options.sitemap) {
         routeOptions.set(routePath, {
           prerenderParams: options.prerenderParams,
+          prerender: options.prerender,
           sitemap: options.sitemap,
         })
       }

@@ -18,7 +18,7 @@ const prerenderConfiguration = {
       '/search-params/default',
       '/transition',
       '/users',
-    ].some((p) => page.path.includes(p)),
+    ].some((p) => page.path === p || page.path.startsWith(`${p}/`)),
   maxRedirects: 100,
 }
 
