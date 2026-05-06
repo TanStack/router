@@ -21,8 +21,9 @@ Each package has `minimal` and `full` scenarios:
 - Start Vite scenarios use `@tanstack/<framework>-start/plugin/vite` with router code-splitting enabled.
 - React Start also includes Rsbuild scenarios using `@tanstack/react-start/plugin/rsbuild`.
 - Full-surface coverage is manually maintained (no strict export-coverage gate).
-- Metrics are measured from initial-load JS graph only and reported as raw/gzip/brotli bytes.
-- Gzip is the primary tracking signal for PR deltas and historical charting.
+- Primary metrics measure all emitted client JS chunks and are reported as raw/gzip/brotli bytes.
+- Initial-load JS graph metrics are also recorded as `initialRawBytes`, `initialGzipBytes`, and `initialBrotliBytes` for context.
+- Gzip for all emitted client JS is the primary tracking signal for PR deltas and historical charting.
 
 ## Local Run
 
