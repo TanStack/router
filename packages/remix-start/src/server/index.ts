@@ -12,7 +12,7 @@
  */
 
 export * from '@tanstack/remix-router/server'
-export { createStartHandler, createStartApp } from './createStartHandler'
+export { createStartHandler } from './createStartHandler'
 export type {
   CreateStartHandlerOptions,
   StartRequestHandler,

@@ -1,0 +1,16 @@
+{
+  "name": "tanstack-remix-islands-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Pure Remix 3 example: mostly-static SSR'd HTML with `clientEntry()` islands that hydrate independently.",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@remix-run/ui": "^0.1.1"
+  },
+  "devDependencies": {
+    "vite": "^8.0.0"
+  }
+}

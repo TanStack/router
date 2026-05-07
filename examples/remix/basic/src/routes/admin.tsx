@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import { Link, Outlet, createRoute } from '@tanstack/remix-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/remix-router'
 import { Route as RootRoute } from './__root'
 import type { Handle } from '@remix-run/ui'
 
@@ -26,7 +26,7 @@ function AdminLayout(_handle: Handle) {
   )
 }
 
-export const Route = createRoute({
+export const Route = createFileRoute('/admin')({
   getParentRoute: () => RootRoute,
   path: '/admin',
   component: AdminLayout,

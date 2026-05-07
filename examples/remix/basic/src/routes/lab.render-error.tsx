@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import { createRoute } from '@tanstack/remix-router'
+import { createFileRoute } from '@tanstack/remix-router'
 import { Route as LabRoute } from './lab'
 import type { Handle } from '@remix-run/ui'
 
@@ -16,7 +16,7 @@ function ExplosivePage(_handle: Handle) {
   }
 }
 
-export const Route = createRoute({
+export const Route = createFileRoute('/lab/render-error')({
   getParentRoute: () => LabRoute,
   path: '/lab/render-error',
   component: ExplosivePage,

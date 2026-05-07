@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import { createRoute } from '@tanstack/remix-router'
+import { createFileRoute } from '@tanstack/remix-router'
 import { IslandCounter } from '../components/IslandCounter'
 import { Route as RootRoute } from './__root'
 import type { Handle } from '@remix-run/ui'
@@ -30,7 +30,7 @@ function CounterPage(_handle: Handle) {
   )
 }
 
-export const Route = createRoute({
+export const Route = createFileRoute('/counter')({
   getParentRoute: () => RootRoute,
   path: '/counter',
   component: CounterPage,

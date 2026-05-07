@@ -1,6 +1,7 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
 import { TSR_DEFERRED_PROMISE, defer } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import type { Handle, RemixNode } from '@remix-run/ui'
 import type { DeferredPromise } from '@tanstack/router-core'
 
@@ -75,6 +76,13 @@ export function useAwaited<T>(
     currentPromise = wrapped
     const myGen = ++generation
     if (wrapped[TSR_DEFERRED_PROMISE].status === 'pending') {
+      // On the server, the seroval streaming pipeline writes the
+      // resolved chunk into the dehydration stream — there's no
+      // component re-render to schedule, and `handle.update()` errors
+      // because the SSR scheduler doesn't implement it. Skip the
+      // settlement listener entirely server-side; the client picks up
+      // the resolved value when the chunk lands.
+      if (isServer) return
       const onSettle = () => {
         if (myGen === generation) handle.update()
       }

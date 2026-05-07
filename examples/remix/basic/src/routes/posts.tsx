@@ -1,11 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import {
-  Link,
-  Outlet,
-  createRoute,
-  useLoaderData,
-} from '@tanstack/remix-router'
+import { Link, Outlet, useLoaderData, createFileRoute } from '@tanstack/remix-router'
 import { Route as RootRoute } from './__root'
 import { listPosts } from '../server/posts'
 import type { Handle } from '@remix-run/ui'
@@ -38,7 +33,7 @@ function PostsLayout(handle: Handle) {
   }
 }
 
-export const Route = createRoute({
+export const Route = createFileRoute('/posts')({
   getParentRoute: () => RootRoute,
   path: '/posts',
   loader: listPosts,

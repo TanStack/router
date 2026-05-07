@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import { createRoute } from '@tanstack/remix-router'
+import { createFileRoute } from '@tanstack/remix-router'
 import { Route as LabRoute } from './lab'
 import { LabErrorComponent } from '../components/LabErrorComponent'
 import type { Handle } from '@remix-run/ui'
@@ -15,7 +15,7 @@ function ShouldNeverRender(_handle: Handle) {
  * `<CatchBoundary>` in `/lab` is also engaged — both paths work, this
  * route prefers the per-route component for direct control.
  */
-export const Route = createRoute({
+export const Route = createFileRoute('/lab/error')({
   getParentRoute: () => LabRoute,
   path: '/lab/error',
   loader: () => {

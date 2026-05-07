@@ -11,14 +11,14 @@ Remix 3 dropped React for its own JSX runtime and ships as a "Demand Composition
 
 ## Status
 
-Working today (covered by the example app at `examples/remix/basic` and ~98 unit tests):
+Working today (covered by the example app at `examples/remix/basic` and 120 unit tests, 111 passing):
 
 - [x] Reactivity adapter: `RouterStores` ↔ `handle.update()`
 - [x] `<RouterProvider>`, `<Match>`, `<Outlet>`, `<MatchRoute>`, `<MatchContext>`
 - [x] Setup-time accessors: `useMatch`, `useMatches`, `useLoaderData`, `useParams`, `useSearch`, `useRouterState`, `useRouter`, `useNavigate`, `useLocation`, `useCanGoBack`, `useRouteContext`
 - [x] `<Link>` with client-side navigation, preloading (intent + render), active state
 - [x] `<Block>` / `useBlocker` with reactive opts swap
-- [x] `<Await>` / `useAwaited` for streaming deferred data
+- [x] `<Await>` / `useAwaited` (SSR fallback only — seroval streaming chunks not yet plumbed through `pipeWithDehydration` to the response body; client-side resolution after a navigation works)
 - [x] `<CatchBoundary>`, `errorComponent`, `notFoundComponent`
 - [x] `<ClientOnly>` / `useHydrated`
 - [x] Streaming SSR via `renderRouterToStream` (with isbot drain for crawlers)
@@ -30,6 +30,9 @@ Working today (covered by the example app at `examples/remix/basic` and ~98 unit
 
 Not yet:
 
+- [ ] `<Frame>` server-fn–backed boundaries (SSR `resolveFrame` does not thread through nested route renders; depends on Manuel's pending `buildServerFnUrl` PR for the URL-builder side)
+- [ ] `<Await>` SSR streaming (the resolution chunk emitted by seroval's `crossSerializeStream` is enqueued in `scriptBuffer` but does not reach the response body — `pipeWithDehydration` collects only the initial dehydration)
+- [ ] `serverComponent()` re-render endpoint (test scaffold present, source helpers `_resetServerComponentRegistry` and `deactivateServerComponentCollector` not implemented — accounts for all 9 failing tests)
 - [ ] Devtools binding
 - [ ] `<Form>` action wiring against Remix 3's middleware
 

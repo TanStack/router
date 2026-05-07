@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import { createRoute, useParams } from '@tanstack/remix-router'
+import { useParams, createFileRoute } from '@tanstack/remix-router'
 import { Route as AdminUserDetailRoute } from './admin.users.$userId'
 import type { Handle } from '@remix-run/ui'
 
@@ -34,7 +34,7 @@ function SessionDetail(handle: Handle) {
   }
 }
 
-export const Route = createRoute({
+export const Route = createFileRoute('/admin/users/$userId/sessions/$sessionId')({
   getParentRoute: () => AdminUserDetailRoute,
   path: 'sessions/$sessionId',
   component: SessionDetail,

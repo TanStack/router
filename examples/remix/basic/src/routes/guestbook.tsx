@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import { createRoute, useLoaderData } from '@tanstack/remix-router'
+import { useLoaderData, createFileRoute } from '@tanstack/remix-router'
 import { on } from '@remix-run/ui'
 import { Route as RootRoute } from './__root'
 import {
@@ -120,7 +120,7 @@ function GuestbookPage(handle: Handle) {
   }
 }
 
-export const Route = createRoute({
+export const Route = createFileRoute('/guestbook')({
   getParentRoute: () => RootRoute,
   path: '/guestbook',
   loader: () => listEntries(),

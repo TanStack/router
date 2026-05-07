@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import { Link, createRoute, notFound } from '@tanstack/remix-router'
+import { Link, notFound, createFileRoute } from '@tanstack/remix-router'
 import { Route as LabRoute } from './lab'
 import type { Handle } from '@remix-run/ui'
 
@@ -25,7 +25,7 @@ function ShouldNeverRender(_handle: Handle) {
  * and picks the `notFoundComponent`. Demonstrates the same boundary
  * shape as `errorComponent`, but for the "expected absence" case.
  */
-export const Route = createRoute({
+export const Route = createFileRoute('/lab/missing')({
   getParentRoute: () => LabRoute,
   path: '/lab/missing',
   loader: () => {

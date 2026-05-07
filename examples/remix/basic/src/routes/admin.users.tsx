@@ -1,11 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import {
-  Link,
-  Outlet,
-  createRoute,
-  useLoaderData,
-} from '@tanstack/remix-router'
+import { Link, Outlet, useLoaderData, createFileRoute } from '@tanstack/remix-router'
 import { Route as AdminRoute } from './admin'
 import type { Handle } from '@remix-run/ui'
 
@@ -44,7 +39,7 @@ function AdminUsersLayout(handle: Handle) {
   }
 }
 
-export const Route = createRoute({
+export const Route = createFileRoute('/admin/users')({
   getParentRoute: () => AdminRoute,
   path: 'users',
   loader: () => SEED,

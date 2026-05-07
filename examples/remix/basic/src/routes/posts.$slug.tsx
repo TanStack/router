@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import { createRoute, useLoaderData } from '@tanstack/remix-router'
+import { useLoaderData, createFileRoute } from '@tanstack/remix-router'
 import { renderPostBody } from '../server/renderers'
 import { Route as PostsRoute } from './posts'
 import type { Handle } from '@remix-run/ui'
@@ -13,7 +13,7 @@ function PostDetail(handle: Handle) {
   }
 }
 
-export const Route = createRoute({
+export const Route = createFileRoute('/posts/$slug')({
   getParentRoute: () => PostsRoute,
   path: '$slug',
   loader: ({ params }: { params: { slug: string } }) =>

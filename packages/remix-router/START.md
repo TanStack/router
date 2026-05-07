@@ -145,14 +145,23 @@ This is the heart of the integration: TanStack Start does the framework work; Re
 
 The killer feature when this all lands: routes ship as **mostly-static SSR HTML** with only `<Link>`, `<Form>`, and explicitly-marked components hydrating client-side.
 
-Today our example bundle is 135 kB / 43 kB gzip because we hydrate the entire `RouterProvider` tree. With clientEntry-based selective hydration, a typical route would ship:
+Today our `examples/remix/basic` example produces (production build, all routes including lazy chunks):
+
+| Metric | Raw | Gzip |
+|---|---|---|
+| Total client JS (all chunks) | 296 kB | 64 kB |
+| Initial entry (`index` + `useRouter`) | ~140 kB | ~46 kB |
+| Per-route lazy chunks | 0.5–7 kB each | 0.2–3 kB each |
+| Server bundle | 556 kB | — |
+
+Initial-load gzip (~46 kB) is dominated by the router runtime + Remix UI reconciler. With clientEntry-based selective hydration, a typical route would ship:
 
 - The `clientEntry` runtime (~8 kB from `@remix-run/ui`)
 - Just the chunks for marked-as-interactive components (~5–20 kB depending on usage)
 - The router-core navigation logic (~30 kB) needed to drive `<Link>` clicks
 - **No** route component code paths for static pages
 
-Estimated bundle: ~40–60 kB raw / ~15–20 kB gzip for a typical CRUD app. ~3x smaller than a fully-hydrated React equivalent.
+Estimated bundle for a clientEntry-only app: ~40–60 kB raw / ~15–20 kB gzip for a typical CRUD app. ~3x smaller than the full-tree hydration path. (See `examples/remix/islands` for a working pure-Remix-3 island demo using `@remix-run/ui` directly without TanStack Router.)
 
 ## What we ship today vs. what Start would add
 

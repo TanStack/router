@@ -48,9 +48,8 @@ function RootComponent(_handle: Handle) {
         <Link to="/posts">Posts</Link>
         <Link to="/admin">Admin</Link>
         <Link to="/catalog">Catalog</Link>
-        <Link to="/lab/error">Lab</Link>
         <Link to="/slow">Slow</Link>
-        <Link to="/deferred">Deferred</Link>
+        <Link to="/lab/error">Lab</Link>
         <Link to="/guestbook">Guestbook</Link>
         <Link to="/counter">Counter</Link>
       </nav>

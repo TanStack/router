@@ -1,12 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import {
-  Link,
-  createRoute,
-  useLoaderData,
-  useNavigate,
-  useSearch,
-} from '@tanstack/remix-router'
+import { Link, useLoaderData, useNavigate, useSearch, createFileRoute } from '@tanstack/remix-router'
 import { on } from '@remix-run/ui'
 import { Route as RootRoute } from './__root'
 import type { Handle } from '@remix-run/ui'
@@ -33,8 +27,7 @@ const ITEMS = [
 /**
  * Search-params driven view. Demonstrates:
  *  - `validateSearch` parsing URL query string into a typed shape
- *  - `loaderDeps` selecting which params force a refetch (q + page,
- *    not sort — sort is purely client-side)
+ *  - `loaderDeps` selecting which params force a refetch (q + page + sort)
  *  - `<Link search={(prev) => …}>` updating a single param via a
  *    functional updater
  *  - A controlled form with `on('submit', …)` calling `useNavigate`
@@ -82,7 +75,7 @@ function CatalogPage(handle: Handle) {
           <input
             type="text"
             placeholder="Search"
-            value={search.q}
+            defaultValue={search.q}
             mix={[
               on<HTMLInputElement, 'input'>('input', (e: InputEvent) => {
                 pendingQ = (e.target as HTMLInputElement).value
@@ -135,7 +128,7 @@ function CatalogPage(handle: Handle) {
   }
 }
 
-export const Route = createRoute({
+export const Route = createFileRoute('/catalog')({
   getParentRoute: () => RootRoute,
   path: '/catalog',
   validateSearch: (raw: Record<string, unknown>): CatalogSearch => ({
@@ -146,14 +139,18 @@ export const Route = createRoute({
   loaderDeps: ({ search }: { search: CatalogSearch }) => ({
     q: search.q,
     page: search.page,
+    sort: search.sort,
   }),
-  loader: ({ deps }: { deps: { q: string; page: number } }) => {
+  loader: ({ deps }: { deps: { q: string; page: number; sort: 'asc' | 'desc' } }) => {
     const filtered = ITEMS.filter((item) =>
       item.toLowerCase().includes(deps.q.toLowerCase()),
     )
+    const sorted = [...filtered].sort((a, b) =>
+      deps.sort === 'asc' ? a.localeCompare(b) : b.localeCompare(a),
+    )
     const start = (deps.page - 1) * 3
-    const items = filtered.slice(start, start + 3)
-    return { items, total: filtered.length }
+    const items = sorted.slice(start, start + 3)
+    return { items, total: sorted.length }
   },
   component: CatalogPage,
 })

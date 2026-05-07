@@ -1,6 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import { createRoute, useLoaderData } from '@tanstack/remix-router'
+import { useLoaderData, createFileRoute } from '@tanstack/remix-router'
 import { renderUserBio } from '../server/renderers'
 import { Route as UsersRoute } from './users'
 import type { Handle } from '@remix-run/ui'
@@ -13,7 +13,7 @@ function UserDetail(handle: Handle) {
   }
 }
 
-export const Route = createRoute({
+export const Route = createFileRoute('/users/$id')({
   getParentRoute: () => UsersRoute,
   path: '$id',
   loader: ({ params }: { params: { id: string } }) => {

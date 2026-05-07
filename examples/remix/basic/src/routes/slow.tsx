@@ -1,10 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import {
-  Link,
-  createRoute,
-  useLoaderData,
-} from '@tanstack/remix-router'
+import { Link, useLoaderData, createFileRoute } from '@tanstack/remix-router'
 import { Route as RootRoute } from './__root'
 import type { Handle } from '@remix-run/ui'
 
@@ -45,7 +41,7 @@ function SlowComponent(handle: Handle) {
  *  - The atom subscribe path on `router.stores.isLoading` and
  *    `router.stores.hasPending`
  */
-export const Route = createRoute({
+export const Route = createFileRoute('/slow')({
   getParentRoute: () => RootRoute,
   path: '/slow',
   pendingMs: 100,

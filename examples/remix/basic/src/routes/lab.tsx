@@ -1,12 +1,6 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource @remix-run/ui */
-import {
-  CatchBoundary,
-  Link,
-  Outlet,
-  createRoute,
-  useRouter,
-} from '@tanstack/remix-router'
+import { CatchBoundary, Link, Outlet, useRouter, createFileRoute } from '@tanstack/remix-router'
 import { Route as RootRoute } from './__root'
 import { LabErrorComponent } from '../components/LabErrorComponent'
 import { subscribeStore } from '@tanstack/remix-router'
@@ -42,7 +36,7 @@ function LabLayout(handle: Handle) {
   )
 }
 
-export const Route = createRoute({
+export const Route = createFileRoute('/lab')({
   getParentRoute: () => RootRoute,
   id: '_lab',
   component: LabLayout,
