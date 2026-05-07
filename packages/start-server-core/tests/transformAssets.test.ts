@@ -182,6 +182,7 @@ describe('transformAssets', () => {
         attrs: {
           type: 'module',
           async: true,
+          'data-tsr-client-entry': 'true',
         },
         children: 'import("https://cdn.example.com/assets/entry.js")',
       },
