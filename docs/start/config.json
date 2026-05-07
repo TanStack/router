@@ -263,6 +263,10 @@
               "to": "framework/solid/guide/selective-ssr"
             },
             {
+              "label": "Selective Hydration",
+              "to": "framework/solid/guide/selective-hydration"
+            },
+            {
               "label": "SPA Mode",
               "to": "framework/solid/guide/spa-mode"
             },
