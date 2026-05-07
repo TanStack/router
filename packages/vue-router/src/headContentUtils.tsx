@@ -2,6 +2,7 @@ import * as Vue from 'vue'
 import {
   escapeHtml,
   getAssetCrossOrigin,
+  getHydrateStatus,
   isInlinableStylesheet,
   resolveManifestAssetLink,
 } from '@tanstack/router-core'
@@ -92,6 +93,11 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   )
 
   const preloadMeta = Vue.computed<Array<RouterManagedTag>>(() => {
+    const { shouldHydrate } = getHydrateStatus(matches.value, router)
+    if (!shouldHydrate) {
+      return []
+    }
+
     const preloadMeta: Array<RouterManagedTag> = []
 
     matches.value

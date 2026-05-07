@@ -1,19 +1,14 @@
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
-import { deepEqual, getHydrateStatus } from '@tanstack/router-core'
+import {
+  deepEqual,
+  getHydrateStatus,
+  stripClientEntryImport,
+} from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
-
-// Identifies the client-entry script tag emitted by start-server-core's
-// `buildClientEntryScriptTag`. When a route sets `hydrate: false`, we strip
-// the tag's trailing `import(<clientEntry>)` (and skip the tag entirely if
-// nothing else is in it) so the page renders SSR HTML without booting React
-// on the client. Any injected prelude (e.g. React Refresh for HMR) is kept.
-const CLIENT_ENTRY_MARKER_ATTR = 'data-tsr-client-entry'
-const LEGACY_CLIENT_ENTRY_ID = 'virtual:tanstack-start-client-entry'
-const TRAILING_IMPORT_RE = /(?:^|[;\n])\s*import\((['"]).*?\1\)\s*;?\s*$/s
 
 /**
  * Render body script tags collected from route matches and SSR manifests.
@@ -151,57 +146,3 @@ function renderScripts(
   )
 }
 
-function stripClientEntryImport(
-  script: RouterManagedTag,
-): RouterManagedTag | null {
-  if (!isClientEntryScript(script)) {
-    return script
-  }
-
-  if (typeof script.children !== 'string') {
-    return null
-  }
-
-  const withoutImport = script.children.replace(TRAILING_IMPORT_RE, '').trim()
-
-  if (withoutImport.length > 0) {
-    return {
-      ...script,
-      children: withoutImport,
-    }
-  }
-
-  if (script.children.includes(LEGACY_CLIENT_ENTRY_ID)) {
-    const withoutLegacyImport = script.children
-      .split('\n')
-      .filter((line) => !line.includes(LEGACY_CLIENT_ENTRY_ID))
-      .join('\n')
-      .trim()
-
-    if (withoutLegacyImport.length > 0) {
-      return {
-        ...script,
-        children: withoutLegacyImport,
-      }
-    }
-  }
-
-  return null
-}
-
-function isClientEntryScript(script: RouterManagedTag): boolean {
-  if (script.tag !== 'script') {
-    return false
-  }
-
-  const marker = script.attrs?.[CLIENT_ENTRY_MARKER_ATTR]
-  if (marker === true || marker === 'true') {
-    return true
-  }
-
-  if (typeof script.children !== 'string') {
-    return false
-  }
-
-  return script.children.includes(LEGACY_CLIENT_ENTRY_ID)
-}

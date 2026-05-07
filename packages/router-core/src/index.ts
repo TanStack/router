@@ -84,6 +84,10 @@ export {
 } from './manifest'
 export { getHydrateStatus } from './hydrate-status'
 export type { HydrateStatus } from './hydrate-status'
+export {
+  isClientEntryScript,
+  stripClientEntryImport,
+} from './clientEntryScript'
 export { isMatch } from './Matches'
 export type {
   AnyMatchAndValue,

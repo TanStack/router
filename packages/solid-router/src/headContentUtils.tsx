@@ -2,6 +2,7 @@ import * as Solid from 'solid-js'
 import {
   escapeHtml,
   getAssetCrossOrigin,
+  getHydrateStatus,
   isInlinableStylesheet,
   resolveManifestAssetLink,
 } from '@tanstack/router-core'
@@ -159,6 +160,11 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
 
   const preloadLinks = Solid.createMemo(() => {
     const matches = activeMatches()
+    const { shouldHydrate } = getHydrateStatus(matches, router)
+    if (!shouldHydrate) {
+      return []
+    }
+
     const preloadLinks: Array<RouterManagedTag> = []
 
     matches
