@@ -1,4 +1,4 @@
-const _Hydrate_ = _lazyHydratedComponent(() => import("/Users/caligano/source/tanstack/router/packages/start-plugin-core/tests/hydrateWhen/test-files/hydrateWhenNever.tsx?tss-hydrate=hydrateWhenNever_9a00c8d701&tss-hydrate-index=0"), "Hydrate_0"),
+const _Hydrate_ = _lazyHydratedComponent(() => import("<fixtureRoot>/hydrateWhenNever.tsx?tss-hydrate=hydrateWhenNever_9a00c8d701&tss-hydrate-index=0"), "Hydrate_0"),
   _Hydrate_0_preload = _Hydrate_.preload;
 import { lazyHydratedComponent as _lazyHydratedComponent } from "@tanstack/react-start";
 import { Hydrate } from '@tanstack/react-start';

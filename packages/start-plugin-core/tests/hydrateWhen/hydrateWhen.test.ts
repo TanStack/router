@@ -12,6 +12,10 @@ function fixtureId(filename: string) {
   return path.join(fixtureRoot, filename)
 }
 
+function normalizeSnapshotCode(code: string) {
+  return code.split(fixtureRoot).join('<fixtureRoot>')
+}
+
 async function readFixture(filename: string) {
   return await readFile(fixtureId(filename), 'utf8')
 }
@@ -128,17 +132,17 @@ describe('Hydrate compiler transform fixtures', async () => {
     test(`should compile ${filename} for client`, async () => {
       const result = compile({ env: 'client', code, id })
 
-      await expect(result?.code ?? 'no-transform').toMatchFileSnapshot(
-        `./snapshots/client/${filename}`,
-      )
+      await expect(
+        normalizeSnapshotCode(result?.code ?? 'no-transform'),
+      ).toMatchFileSnapshot(`./snapshots/client/${filename}`)
     })
 
     test(`should compile ${filename} for server`, async () => {
       const result = compile({ env: 'server', code, id })
 
-      await expect(result?.code ?? 'no-transform').toMatchFileSnapshot(
-        `./snapshots/server/${filename}`,
-      )
+      await expect(
+        normalizeSnapshotCode(result?.code ?? 'no-transform'),
+      ).toMatchFileSnapshot(`./snapshots/server/${filename}`)
     })
   })
 
@@ -160,7 +164,9 @@ describe('Hydrate compiler transform fixtures', async () => {
         root: fixtureRoot,
       })
 
-      await expect(loaded?.code ?? 'no-virtual-module').toMatchFileSnapshot(
+      await expect(
+        normalizeSnapshotCode(loaded?.code ?? 'no-virtual-module'),
+      ).toMatchFileSnapshot(
         `./snapshots/virtual/${filename}.${boundary.exportName}.tsx`,
       )
     }
@@ -178,7 +184,9 @@ describe('Hydrate compiler transform fixtures', async () => {
       env: 'client',
     })
 
-    await expect(nestedPass?.code ?? 'no-transform').toMatchFileSnapshot(
+    await expect(
+      normalizeSnapshotCode(nestedPass?.code ?? 'no-transform'),
+    ).toMatchFileSnapshot(
       `./snapshots/virtual/${filename}.Hydrate_0.client.tsx`,
     )
   })
