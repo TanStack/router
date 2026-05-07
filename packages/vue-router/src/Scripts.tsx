@@ -1,9 +1,6 @@
 import * as Vue from 'vue'
 import { useStore } from '@tanstack/vue-store'
-import {
-  getHydrateStatus,
-  stripClientEntryImport,
-} from '@tanstack/router-core'
+import { getHydrateStatus, stripClientEntryImport } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'

@@ -1,8 +1,5 @@
 import * as Solid from 'solid-js'
-import {
-  getHydrateStatus,
-  stripClientEntryImport,
-} from '@tanstack/router-core'
+import { getHydrateStatus, stripClientEntryImport } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
