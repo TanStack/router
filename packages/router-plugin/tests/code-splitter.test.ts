@@ -18,7 +18,7 @@ import {
   expandTransitively,
   removeBindingsDependingOnRoute,
 } from '../src/core/code-splitter/compilers'
-import { createIdentifier } from '../src/core/code-splitter/path-ids'
+import { createIdentifier } from '@tanstack/router-utils'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import { frameworks } from './constants'
 import type { CodeSplitGroupings } from '../src/core/constants'

@@ -1,4 +1,5 @@
 import { tsrSplit } from '@tanstack/router-plugin'
+import { tssHydrate } from '../hydration-constants'
 import { getCssAssetSource } from '../start-manifest-plugin/inlineCss'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
@@ -55,6 +56,39 @@ function getRouteFilePathsFromModules(
   }
 
   return routeFilePaths ?? []
+}
+
+function getHydrationIdsFromModules(
+  modules: Array<RspackModule>,
+): Array<string> {
+  let hydrationIds: Array<string> | undefined
+  let seen: Set<string> | undefined
+
+  for (const mod of modules) {
+    const identifier = mod.identifier()
+    const lastBangIndex = identifier.lastIndexOf('!')
+    const resourcePart =
+      lastBangIndex >= 0 ? identifier.slice(lastBangIndex + 1) : identifier
+
+    const queryIndex = resourcePart.indexOf('?')
+    if (queryIndex < 0) continue
+
+    const query = resourcePart.slice(queryIndex + 1)
+    if (!query.includes(tssHydrate)) continue
+
+    const hydrationId = new URLSearchParams(query).get(tssHydrate)
+    if (!hydrationId || seen?.has(hydrationId)) continue
+
+    if (!hydrationIds || !seen) {
+      hydrationIds = []
+      seen = new Set()
+    }
+
+    hydrationIds.push(hydrationId)
+    seen.add(hydrationId)
+  }
+
+  return hydrationIds ?? []
 }
 
 /**
@@ -186,6 +220,7 @@ export function normalizeRspackClientBuild(
   for (const chunk of compilation.chunks) {
     const modules = compilation.chunkGraph.getChunkModules(chunk)
     const routeFilePaths = getRouteFilePathsFromModules(modules)
+    const hydrationIds = getHydrationIdsFromModules(modules)
     const cssFiles: Array<string> = []
     const seenCssFiles = new Set<string>()
 
@@ -242,6 +277,7 @@ export function normalizeRspackClientBuild(
         dynamicImports,
         css: [],
         routeFilePaths,
+        hydrationIds,
       }
 
       chunksByFileName.set(file, normalizedChunk)

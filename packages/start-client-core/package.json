@@ -60,16 +60,37 @@
         "default": "./dist/esm/client-rpc/index.js"
       }
     },
+    "./hydration": {
+      "import": {
+        "types": "./dist/esm/hydration.d.ts",
+        "default": "./dist/esm/hydration.js"
+      }
+    },
+    "./hydration/constants": {
+      "import": {
+        "types": "./dist/esm/hydration/constants.d.ts",
+        "default": "./dist/esm/hydration/constants.js"
+      }
+    },
+    "./hydration/runtime": {
+      "import": {
+        "types": "./dist/esm/hydration/runtime.d.ts",
+        "default": "./dist/esm/hydration/runtime.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "imports": {
     "#tanstack-start-entry": {
+      "types": "./src/start-entry.d.ts",
       "default": "./dist/esm/fake-entries/start.js"
     },
     "#tanstack-router-entry": {
+      "types": "./src/start-entry.d.ts",
       "default": "./dist/esm/fake-entries/router.js"
     },
     "#tanstack-start-plugin-adapters": {
+      "types": "./src/start-entry.d.ts",
       "default": "./dist/esm/fake-entries/plugin-adapters.js"
     }
   },

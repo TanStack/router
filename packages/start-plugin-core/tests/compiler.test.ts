@@ -185,6 +185,29 @@ describe('detectKindsInCode', () => {
         new Set(['ClientOnlyFn']),
       )
     })
+
+    test('resets external transform regex state between detections', () => {
+      const compilerTransforms: Array<StartCompilerImportTransform> = [
+        {
+          name: 'global-detect',
+          environment: 'server',
+          imports: [{ libName: '@example/runtime', rootExport: 'renderThing' }],
+          detect: /\brenderThing\b/g,
+          transform: () => {},
+        },
+      ]
+      const code = `
+        import { renderThing } from '@example/runtime'
+        renderThing()
+      `
+
+      expect(detectKindsInCode(code, 'server', { compilerTransforms })).toEqual(
+        new Set(['External:global-detect']),
+      )
+      expect(detectKindsInCode(code, 'server', { compilerTransforms })).toEqual(
+        new Set(['External:global-detect']),
+      )
+    })
   })
 
   describe('detects multiple kinds in same file', () => {
@@ -609,6 +632,53 @@ test('ingestModule handles empty code gracefully', () => {
   expect(() => {
     compiler.ingestModule({ code: '   \n\t  ', id: 'whitespace.ts' })
   }).not.toThrow()
+})
+
+test('compile caches modules without detected candidates for transitive importer traversal', async () => {
+  const compiler = new StartCompiler({
+    env: 'client',
+    ...getDefaultTestOptions('client'),
+    lookupKinds: new Set(['ServerFn']),
+    lookupConfigurations: [],
+    getKnownServerFns: () => ({}),
+    loadModule: async () => {},
+    resolveId: async (source, importer) => {
+      if (source === './leaf' && importer === '/src/plain.ts') {
+        return '/src/leaf.ts'
+      }
+
+      if (source === './plain' && importer === '/src/parent.ts') {
+        return '/src/plain.ts'
+      }
+
+      return null
+    },
+  })
+
+  await compiler.compile({
+    id: '/src/plain.ts',
+    code: `
+      import { value } from './leaf'
+      export const plain = value
+    `,
+    detectedKinds: new Set(),
+  })
+
+  await compiler.compile({
+    id: '/src/parent.ts',
+    code: `
+      import { plain } from './plain'
+      export const parent = plain
+    `,
+    detectedKinds: new Set(),
+  })
+
+  expect(await compiler.getTransitiveImporters('/src/leaf.ts')).toEqual(
+    new Set(['/src/plain.ts', '/src/parent.ts']),
+  )
+  expect(await compiler.getTransitiveImporters(['/src/leaf.ts'])).toEqual(
+    new Set(['/src/plain.ts', '/src/parent.ts']),
+  )
 })
 
 describe('calling result of createServerOnlyFn/createClientOnlyFn', () => {

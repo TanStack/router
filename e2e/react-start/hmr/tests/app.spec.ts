@@ -1,7 +1,10 @@
-import { readFile, writeFile } from 'node:fs/promises'
-import path from 'node:path'
 import { expect } from '@playwright/test'
-import { test } from '@tanstack/router-e2e-utils'
+import {
+  createHmrFileEditor,
+  replaceAll,
+  test,
+} from '@tanstack/router-e2e-utils'
+import path from 'node:path'
 
 import type { Page } from '@playwright/test'
 
@@ -113,14 +116,6 @@ const routeFileRestoreChecks: Partial<
     testId: 'server-fn-hmr-marker',
     text: 'server-fn-hmr-baseline',
   },
-}
-
-// Capture original file contents once so beforeEach can restore them
-const originalContents: Partial<Record<RouteFileKey, string>> = {}
-const routeKeysPendingRestoreCheck = new Set<RouteFileKey>()
-
-function replaceAll(source: string, from: string, to: string) {
-  return source.split(from).join(to)
 }
 
 function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
@@ -254,59 +249,14 @@ function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
   return next
 }
 
-async function captureOriginals() {
-  for (const [key, filePath] of Object.entries(routeFiles) as Array<
-    [RouteFileKey, string]
-  >) {
-    const current = await readFile(filePath, 'utf8')
-    const normalized = normalizeRouteSource(key, current)
-    if (normalized !== current) {
-      await writeFile(filePath, normalized)
-      routeKeysPendingRestoreCheck.add(key)
-    }
-    originalContents[key] = normalized
-  }
-}
-
-const capturePromise = captureOriginals()
-
-async function restoreRouteFiles(
-  forceRouteFileKeys: Iterable<RouteFileKey> = [],
-) {
-  const forceRestoreKeys = new Set(forceRouteFileKeys)
-  const restoredRouteKeys: Array<RouteFileKey> = []
-
-  for (const [key, filePath] of Object.entries(routeFiles) as Array<
-    [RouteFileKey, string]
-  >) {
-    const content = originalContents[key]
-    if (content === undefined) continue
-    const current = await readFile(filePath, 'utf8')
-    // Re-emit pending restores in case the watcher coalesced the previous
-    // restore write and the dev server is still serving stale route options.
-    if (current !== content || forceRestoreKeys.has(key)) {
-      await writeFile(filePath, content)
-      restoredRouteKeys.push(key)
-    }
-  }
-
-  return restoredRouteKeys
-}
-
-async function replaceRouteText(
-  routeFileKey: RouteFileKey,
-  from: string,
-  to: string,
-) {
-  const filePath = routeFiles[routeFileKey]
-  const source = await readFile(filePath, 'utf8')
-
-  if (!source.includes(from)) {
-    throw new Error(`Expected route file to include ${JSON.stringify(from)}`)
-  }
-
-  await writeFile(filePath, source.replace(from, to))
-}
+const routeFileEditor = createHmrFileEditor({
+  files: routeFiles,
+  normalizeSource: normalizeRouteSource,
+})
+const capturePromise = routeFileEditor.capturePromise
+const routeKeysPendingRestoreCheck = routeFileEditor.pendingRestoreKeys
+const restoreRouteFiles = routeFileEditor.restoreFiles
+const replaceRouteText = routeFileEditor.replaceText
 
 async function replaceRouteTextAndWait(
   page: Page,
@@ -315,7 +265,7 @@ async function replaceRouteTextAndWait(
   to: string,
   assertion: () => Promise<void>,
 ) {
-  await replaceRouteText(routeFileKey, from, to)
+  await routeFileEditor.replaceText(routeFileKey, from, to)
   await assertion()
 }
 
@@ -326,17 +276,7 @@ async function rewriteRouteFile(
   assertion: () => Promise<void>,
   options: { allowNoop?: boolean } = {},
 ) {
-  const filePath = routeFiles[routeFileKey]
-  const source = await readFile(filePath, 'utf8')
-  const updated = updater(source)
-
-  if (updated === source && !options.allowNoop) {
-    throw new Error(`Expected ${filePath} to change during rewrite`)
-  }
-
-  // Even a no-op write is useful for tests that need to force the dev server
-  // to reconcile a stale in-memory module with the current file contents.
-  await writeFile(filePath, updated)
+  await routeFileEditor.rewriteFile(routeFileKey, updater, options)
   await assertion()
 }
 

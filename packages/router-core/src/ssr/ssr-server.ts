@@ -292,23 +292,27 @@ export function attachRouterServerSsrUtils({
 }) {
   router.ssr = {
     get manifest() {
+      if (!manifest) return manifest
+
       const requestAssets = getRequestAssets?.()
-      const inlineCssAsset = getInlineCssAssetForMatches(
-        manifest,
-        router.stores.matches.get(),
-      )
-      if (!requestAssets?.length && !inlineCssAsset) return manifest
+      const matches = router.stores.matches.get()
+      const inlineCssAsset = getInlineCssAssetForMatches(manifest, matches)
+
+      if (!requestAssets?.length && !inlineCssAsset) {
+        return manifest
+      }
+
       // Merge request-scoped assets into root route without mutating cached manifest
       return {
         ...manifest,
         routes: {
-          ...manifest?.routes,
+          ...manifest.routes,
           [rootRouteId]: {
-            ...manifest?.routes?.[rootRouteId],
+            ...manifest.routes[rootRouteId],
             assets: [
               ...(requestAssets ?? []),
               ...(inlineCssAsset ? [inlineCssAsset] : []),
-              ...(manifest?.routes?.[rootRouteId]?.assets ?? []),
+              ...(manifest.routes[rootRouteId]?.assets ?? []),
             ],
           },
         },
