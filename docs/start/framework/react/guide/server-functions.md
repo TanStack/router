@@ -193,23 +193,12 @@ export const submitForm = createServerFn({ method: 'POST' })
 
 ### Serialization Type Checking
 
-By default, server functions use `strict: true` and TypeScript checks that values crossing the network boundary are serializable:
+Server function inputs and outputs cross the network boundary, so TypeScript checks that they are serializable:
 
 - Input validator input types must be serializable. `FormData` is also allowed for `POST` server functions.
 - Handler return types must be serializable. `Response` objects are allowed.
 
-```tsx
-export const getUser = createServerFn({ method: 'GET' })
-  .inputValidator((data: { id: string }) => data)
-  .handler(async ({ data }) => {
-    return {
-      id: data.id,
-      createdAt: new Date(),
-    }
-  })
-```
-
-If you intentionally need to opt out of these type-level serialization checks, pass the `strict` option to `createServerFn`:
+This default behavior is called `strict` mode. If you intentionally need to opt out of these type-level serialization checks, pass the `strict` option to `createServerFn`:
 
 ```tsx
 // Disable input and output serialization type checks
