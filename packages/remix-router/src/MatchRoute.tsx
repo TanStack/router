@@ -51,8 +51,9 @@ export function MatchRoute<
     const { children, ...rest } = props as any
     const matchResult = matchRoute(rest)
     if (typeof children === 'function') {
-      return (children as any)(matchResult)
+      return (children)(matchResult)
     }
+     
     return matchResult ? (children as RemixNode) : null
   }
 }

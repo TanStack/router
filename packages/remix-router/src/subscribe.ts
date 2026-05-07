@@ -102,7 +102,7 @@ export function subscribeSelected<TValue, TSelected>(
       ? options.select(read())
       : (read() as unknown as TSelected)
     if (options.structuralSharing) {
-      const shared = replaceEqualDeep(cached, next) as TSelected
+      const shared = replaceEqualDeep(cached, next)
       cached = shared
       return shared
     }

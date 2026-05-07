@@ -82,6 +82,7 @@ export function useAwaited<T>(
       // because the SSR scheduler doesn't implement it. Skip the
       // settlement listener entirely server-side; the client picks up
       // the resolved value when the chunk lands.
+       
       if (isServer) return
       const onSettle = () => {
         if (myGen === generation) handle.update()

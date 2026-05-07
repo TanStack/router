@@ -153,14 +153,14 @@ export function serverComponent<TProps>(
           activeCollector.record(instanceId, { id, props: props as unknown })
         }
         const entry = registry.get(id)!
-        const inner = entry.factory(handle as Handle<TProps>)
+        const inner = entry.factory(handle)
         return (
           <span
             data-rmx-sc={instanceId}
             data-rmx-sc-id={id}
             style="display:contents"
           >
-            {inner(props) as RemixNode}
+            {inner(props)}
           </span>
         )
       }

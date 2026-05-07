@@ -49,7 +49,7 @@ export function RouterContextProvider(
       // factory-shaped (handle -> renderFn) components in JSX
       // position, but a router-options-supplied Wrap follows the
       // cross-binding contract.
-      return Wrap({ children }) as RemixNode
+      return Wrap({ children })
     }
     return <>{children}</>
   }

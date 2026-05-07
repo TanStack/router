@@ -173,7 +173,7 @@ describe('not-found', () => {
       loader: ({ params }: { params: { id: string } }) => {
         if (params.id === 'missing') {
           // notFound() lives on router-core; throw via the standard helper.
-          // eslint-disable-next-line @typescript-eslint/no-throw-literal
+          // eslint-disable-next-line @typescript-eslint/only-throw-error
           throw { isNotFound: true, data: undefined }
         }
         return { id: params.id }

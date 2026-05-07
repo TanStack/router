@@ -156,20 +156,20 @@ function resolveSimpleStyle(
       : EMPTY_OBJECT
 
   const className = [
-    options.class as string | undefined,
-    options.className as string | undefined,
-    (activeProps as any).class,
-    (activeProps as any).className,
-    (inactiveProps as any).class,
-    (inactiveProps as any).className,
+    options.class,
+    options.className,
+    (activeProps).class,
+    (activeProps).className,
+    (inactiveProps).class,
+    (inactiveProps).className,
   ]
     .filter(Boolean)
     .join(' ')
 
   const style: Record<string, unknown> = {
     ...(typeof options.style === 'object' ? (options.style as any) : null),
-    ...((activeProps as any).style ?? null),
-    ...((inactiveProps as any).style ?? null),
+    ...((activeProps).style ?? null),
+    ...((inactiveProps).style ?? null),
   }
 
   return {
@@ -380,7 +380,7 @@ export function Link(handle: Handle<LinkComponentProps<'a'>>) {
         doPreload()
         return
       }
-      const eventTarget = (e.currentTarget ?? e.target) as EventTarget | null
+      const eventTarget = (e.currentTarget ?? e.target)
       if (!eventTarget || timeoutMap.has(eventTarget)) return
       timeoutMap.set(
         eventTarget,
@@ -395,9 +395,9 @@ export function Link(handle: Handle<LinkComponentProps<'a'>>) {
       if (disabled) return
       const eventTarget = e.currentTarget ?? e.target
       if (eventTarget) {
-        const id = timeoutMap.get(eventTarget as EventTarget)
+        const id = timeoutMap.get(eventTarget)
         clearTimeout(id)
-        timeoutMap.delete(eventTarget as EventTarget)
+        timeoutMap.delete(eventTarget)
       }
     }
 
@@ -410,7 +410,7 @@ export function Link(handle: Handle<LinkComponentProps<'a'>>) {
     // ===== Resolve children =====
     let resolvedChildren: RemixNode = null
     if (typeof children === 'function') {
-      resolvedChildren = (children as any)({ isActive, isTransitioning })
+      resolvedChildren = (children)({ isActive, isTransitioning })
     } else if (children !== undefined) {
       resolvedChildren = children as RemixNode
     }
@@ -438,7 +438,7 @@ export function Link(handle: Handle<LinkComponentProps<'a'>>) {
         href={resolvedHref}
         target={target}
         mix={eventMixins}
-        {...(propsSafeToSpread as any)}
+        {...(propsSafeToSpread)}
         {...(disabled ? STATIC_DISABLED_PROPS : null)}
         {...(isTransitioning ? STATIC_TRANSITIONING_ATTRIBUTES : null)}
         {...(stateProps as any)}

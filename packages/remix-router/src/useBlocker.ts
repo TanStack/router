@@ -140,7 +140,7 @@ function _resolveBlockerOpts<
     }
   }
 
-  const legacy = opts as LegacyBlockerOpts
+  const legacy = opts
   const shouldBlock = Boolean(legacy.condition ?? true)
   const fn = async () => {
     if (shouldBlock && legacy.blockerFn !== undefined) {

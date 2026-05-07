@@ -54,21 +54,21 @@ export class RouteApi<
       ...(opts as any),
       from: this.id as any,
       strict: false,
-    } as any)
+    })
 
   useLoaderData = (handle: Handle<any, any>, opts?: { select?: any }) =>
     useLoaderData(handle, {
       ...(opts as any),
       from: this.id as any,
       strict: false,
-    } as any)
+    })
 
   useNavigate = (
     handle: Handle<any, any>,
   ): UseNavigateResult<RouteTypesById<TRouter, TId>['fullPath']> => {
     const router = useRouter(handle)
     return useNavigate(handle, {
-      from: router.routesById[this.id as any]?.fullPath as any,
+      from: router.routesById[this.id as any]?.fullPath,
     })
   }
 

@@ -2,7 +2,7 @@
 /** @jsxImportSource @remix-run/ui */
 import { describe, expect, test } from 'vitest'
 import { renderToString } from '@remix-run/ui/server'
-import { ClientLink, setActiveRouter, clearActiveRouter } from '../src'
+import { ClientLink, clearActiveRouter } from '../src'
 
 describe('<ClientLink>', () => {
   test('SSR emits a hydration marker for the entry', async () => {

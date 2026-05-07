@@ -1,9 +1,9 @@
-import { isRedirect, isNotFound } from '@tanstack/router-core'
+import { isNotFound, isRedirect } from '@tanstack/router-core'
 import { RouterProvider } from './RouterProvider'
 import { MatchContext } from './MatchContext'
 import { subscribeStore } from './subscribe'
 import type { Handle } from '@remix-run/ui'
-import type { AnyRoute, AnyRouter, AnyRouteMatch } from '@tanstack/router-core'
+import type { AnyRoute, AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
 
 /**
  * Read the router instance from the nearest enclosing `<RouterProvider>`.

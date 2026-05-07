@@ -211,7 +211,7 @@ export function useLinkProps<
     function enqueueIntent(e: MouseEvent | FocusEvent) {
       if (disabled || preload !== 'intent') return
       if (!preloadDelay) return doPreload()
-      const t = (e.currentTarget ?? e.target) as EventTarget | null
+      const t = (e.currentTarget ?? e.target)
       if (!t || timeoutMap.has(t)) return
       timeoutMap.set(
         t,
@@ -223,7 +223,7 @@ export function useLinkProps<
     }
     function handleLeave(e: MouseEvent | FocusEvent) {
       if (disabled) return
-      const t = (e.currentTarget ?? e.target) as EventTarget | null
+      const t = (e.currentTarget ?? e.target)
       if (t) {
         const id = timeoutMap.get(t)
         clearTimeout(id)
@@ -248,28 +248,28 @@ export function useLinkProps<
 
     const computedActive =
       isActive && activeProps
-        ? functionalUpdate(activeProps as any, {})
+        ? functionalUpdate(activeProps, {})
         : EMPTY_OBJECT
     const computedInactive =
       !isActive && inactiveProps
-        ? functionalUpdate(inactiveProps as any, {})
+        ? functionalUpdate(inactiveProps, {})
         : EMPTY_OBJECT
 
     const mergedClass = [
       linkClass,
       className,
-      (computedActive as any).class,
-      (computedActive as any).className,
-      (computedInactive as any).class,
-      (computedInactive as any).className,
+      (computedActive).class,
+      (computedActive).className,
+      (computedInactive).class,
+      (computedInactive).className,
     ]
       .filter(Boolean)
       .join(' ')
 
     const mergedStyle = {
-      ...(typeof style === 'object' ? (style as any) : null),
-      ...((computedActive as any).style ?? null),
-      ...((computedInactive as any).style ?? null),
+      ...(typeof style === 'object' ? (style) : null),
+      ...((computedActive).style ?? null),
+      ...((computedInactive).style ?? null),
     }
 
     return {

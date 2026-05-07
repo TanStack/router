@@ -76,11 +76,11 @@ describe('router options Wrap / InnerWrap', () => {
     activeCleanup = result.cleanup
 
     expect(result.$('#wrap-marker')?.textContent).toBe('wrap-active')
-    expect(result.$('#wrap')?.contains(result.$('#page')!)).toBe(true)
+    expect(result.$('#wrap')?.contains(result.$('#page'))).toBe(true)
   })
 
   test('InnerWrap envelopes only the match tree (inside router context)', async () => {
-    let routerInsideInnerWrap: unknown = null
+    const routerInsideInnerWrap: unknown = null
     const router = setup({
       InnerWrap: ({ children }) => (
         <div id="inner-wrap">
@@ -95,7 +95,7 @@ describe('router options Wrap / InnerWrap', () => {
     activeCleanup = result.cleanup
 
     expect(result.$('#inner-wrap-marker')?.textContent).toBe('inner-active')
-    expect(result.$('#inner-wrap')?.contains(result.$('#page')!)).toBe(true)
+    expect(result.$('#inner-wrap')?.contains(result.$('#page'))).toBe(true)
   })
 
   test('InnerWrap can use useRouter — the router context is in scope', async () => {

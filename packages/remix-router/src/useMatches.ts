@@ -155,6 +155,6 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>(
       caseSensitive,
       fuzzy,
       includeSearch,
-    }) as any
+    })
   }
 }

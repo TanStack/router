@@ -174,12 +174,15 @@ function buildSkipMask(code: string): Uint8Array {
 }
 
 /**
- * Find each `/* SC *​/ import.meta.env.SSR ? (` marker emitted by the
+ * Find each `[SC marker] import.meta.env.SSR ? (` marker emitted by the
  * `transform` step and insert ` : null)` at the matching closing
  * paren that ends the surrounding `serverComponent(...)` call.
  *
+ * The marker syntax is a JS block comment containing the literal
+ * letters `SC`, used as a sentinel during the transform pass.
+ *
  * Walks character-by-character respecting paren depth, single-/double-
- * /backtick string boundaries, and `//` / `/* *​/` comments. Not a full
+ * /backtick string boundaries, and JS line/block comments. Not a full
  * JS parser — but enough for the well-formed call shapes the runtime
  * accepts.
  */

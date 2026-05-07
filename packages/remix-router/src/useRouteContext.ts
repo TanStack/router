@@ -26,5 +26,5 @@ export function useRouteContext<
     ...(opts as any),
     select: (match: any) =>
       opts.select ? opts.select(match.context) : match.context,
-  } as any) as any
+  }) as any
 }

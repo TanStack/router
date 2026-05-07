@@ -11,12 +11,12 @@ import type {
   AnyContext,
   AnyRoute,
   Register,
-  ResolveParams,
-  RouteConstraints,
-  RouteOptions,
-  RootRouteOptions,
   ResolveFullPath,
   ResolveId,
+  ResolveParams,
+  RootRouteOptions,
+  RouteConstraints,
+  RouteOptions,
   UpdatableRouteOptions,
   UseNavigateResult,
 } from '@tanstack/router-core'
@@ -423,6 +423,6 @@ export class NotFoundRoute<
         TBeforeLoadFn
       >,
   ) {
-    super({ id: '404' as any, ...(options as any) } as any)
+    super({ id: '404' as any, ...(options as any) })
   }
 }

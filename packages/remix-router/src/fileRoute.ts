@@ -173,7 +173,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
   ): UseNavigateResult<TRoute['fullPath']> => {
     const router = useRouter(handle)
     return useNavigate(handle, {
-      from: router.routesById[this.options.id]?.fullPath as any,
+      from: router.routesById[this.options.id]?.fullPath,
     })
   }
 }

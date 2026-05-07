@@ -4,12 +4,12 @@ import { describe, expect, test } from 'vitest'
 import { renderToString } from '@remix-run/ui/server'
 import { createMemoryHistory } from '@tanstack/history'
 import {
-  createRootRoute,
-  createRoute,
-  createRouter,
   Link,
   Outlet,
   RouterProvider,
+  createRootRoute,
+  createRoute,
+  createRouter,
   useLoaderData,
 } from '../src'
 import type { Handle } from '@remix-run/ui'

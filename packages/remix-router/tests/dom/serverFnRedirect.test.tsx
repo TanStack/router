@@ -18,7 +18,6 @@ import {
   isRedirect,
   redirect,
 } from '../../src'
-import type { Handle } from '@remix-run/ui'
 
 function makeRouter() {
   const root = createRootRoute()

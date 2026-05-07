@@ -50,5 +50,5 @@ export function useLoaderDeps<
     ...(opts as any),
     select: (match: any) =>
       opts.select ? opts.select(match.loaderDeps) : match.loaderDeps,
-  } as any) as any
+  }) as any
 }

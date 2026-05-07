@@ -4,15 +4,10 @@ import { createMemoryHistory } from '@tanstack/history'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { renderToStream } from '@remix-run/ui/server'
 import { RouterProvider } from './RouterProvider'
-import {
-  activateServerComponentCollector,
-  createServerComponentCollector,
-  deactivateServerComponentCollector,
-} from './serverComponent'
-import {
-  DEFAULT_SERVER_COMPONENT_BASE,
-  handleServerComponentRequest,
-} from './serverComponentEndpoint'
+
+
+
+
 import type { Handle, RemixNode } from '@remix-run/ui'
 import type { AnyRouter, Manifest } from '@tanstack/router-core'
 

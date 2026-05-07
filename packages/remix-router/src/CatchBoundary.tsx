@@ -108,7 +108,7 @@ export function ErrorComponent(handle: Handle<{ error: any }>) {
         <div style="height:.25rem" />
         {show ? (
           <pre style="font-size:.7em;border:1px solid red;border-radius:.25rem;padding:.3rem;color:red;overflow:auto">
-            {(error as { message?: string })?.message ?? String(error)}
+            {(error as { message?: string }).message ?? String(error)}
           </pre>
         ) : null}
       </div>

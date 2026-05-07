@@ -5,14 +5,13 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { render } from '@remix-run/ui/test'
 import { createMemoryHistory } from '@tanstack/history'
 import {
-  createRootRoute,
-  createRoute,
-  createRouter,
   Link,
   Outlet,
   RouterProvider,
+  createRootRoute,
+  createRoute,
+  createRouter,
   useLoaderData,
-  useNavigate,
   useParams,
 } from '../../src'
 import type { Handle } from '@remix-run/ui'

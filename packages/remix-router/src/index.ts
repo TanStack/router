@@ -2,6 +2,9 @@
 // downstream code reads them. Keep this import first.
 import './extensions'
 
+// Augments `@tanstack/history` with state-bookkeeping field types.
+import './history'
+
 // Re-export the framework-agnostic core surface verbatim. The Remix binding
 // is purely additive — it provides reactivity glue and view components,
 // not a different routing model.
@@ -31,9 +34,6 @@ export {
 } from './route'
 export type { AnyRootRoute } from './route'
 export { RouteApi, getRouteApi } from './routeApi'
-
-// Augments `@tanstack/history` with state-bookkeeping field types.
-import './history'
 
 // Async data.
 export { Await, useAwaited } from './awaited'

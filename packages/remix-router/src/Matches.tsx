@@ -40,7 +40,7 @@ export function Matches(handle: Handle) {
     if (InnerWrap) {
       // InnerWrap follows the same React-shape contract as Wrap —
       // call it as a function rather than using JSX.
-      inner = InnerWrap({ children: inner }) as RemixNode
+      inner = InnerWrap({ children: inner })
     }
 
     if (router.options.disableGlobalCatchBoundary) {

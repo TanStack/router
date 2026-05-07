@@ -56,7 +56,7 @@ export function Match(handle: Handle<MatchProps>) {
           />
         )
       }
-      return <pre>{(match.error as Error)?.message ?? String(match.error)}</pre>
+      return <pre>{(match.error as Error).message ?? String(match.error)}</pre>
     }
 
     if (match.status === 'notFound') {

@@ -1,4 +1,6 @@
 import { remixClientEntries } from './clientEntries'
+import type { ClientEntriesPluginOptions } from './clientEntries'
+
 export type {
   ClientEntriesPluginOptions,
   ClientEntryManifest,
@@ -20,9 +22,7 @@ export type {
  * handler. No router-specific plugin is required for that path.
  */
 export interface RemixRouterPluginOptions {
-  clientEntries?:
-    | import('./clientEntries').ClientEntriesPluginOptions
-    | false
+  clientEntries?: ClientEntriesPluginOptions | false
 }
 
 export function remixRouter(options: RemixRouterPluginOptions = {}) {
