@@ -462,6 +462,13 @@ export function buildRouteManifestRoutes(options: {
         getChunkCssAssets,
         getChunkPreloads: options.assetResolvers.getChunkPreloads,
       })
+
+      mergeReachableHydrationChunkData({
+        route: targetRoute,
+        chunk,
+        chunksByFileName: options.chunksByFileName,
+        getChunkCssAssets,
+      })
     }
   }
 
@@ -471,6 +478,12 @@ export function buildRouteManifestRoutes(options: {
     chunk: options.entryChunk,
     getChunkCssAssets,
     getChunkPreloads: options.assetResolvers.getChunkPreloads,
+  })
+  mergeReachableHydrationChunkData({
+    route: rootRoute,
+    chunk: options.entryChunk,
+    chunksByFileName: options.chunksByFileName,
+    getChunkCssAssets,
   })
 
   if (options.additionalRouteAssets) {
@@ -493,6 +506,54 @@ export function buildRouteManifestRoutes(options: {
   }
 
   return routes
+}
+
+function mergeReachableHydrationChunkData(options: {
+  route: RouteTreeRoute
+  chunk: NormalizedClientChunk
+  chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
+  getChunkCssAssets: (chunk: NormalizedClientChunk) => Array<RouterManagedTag>
+}) {
+  const visitedStaticChunks = new Set<string>()
+  const mergedHydrationChunks = new Set<string>()
+
+  const mergeHydrationChunk = (chunk: NormalizedClientChunk) => {
+    if (mergedHydrationChunks.has(chunk.fileName)) return
+    mergedHydrationChunks.add(chunk.fileName)
+
+    options.route.assets = appendUniqueAssets(
+      options.route.assets,
+      options.getChunkCssAssets(chunk),
+    )
+
+    for (const dynamicImport of chunk.dynamicImports) {
+      const dynamicChunk = options.chunksByFileName.get(dynamicImport)
+      if (dynamicChunk?.hydrationIds.length) {
+        mergeHydrationChunk(dynamicChunk)
+      }
+    }
+  }
+
+  const visitStaticChunk = (chunk: NormalizedClientChunk) => {
+    if (visitedStaticChunks.has(chunk.fileName)) return
+    visitedStaticChunks.add(chunk.fileName)
+
+    for (const importedFileName of chunk.imports) {
+      const importedChunk = options.chunksByFileName.get(importedFileName)
+      if (importedChunk) {
+        visitStaticChunk(importedChunk)
+      }
+    }
+
+    for (const dynamicImport of chunk.dynamicImports) {
+      const dynamicChunk = options.chunksByFileName.get(dynamicImport)
+      if (dynamicChunk?.hydrationIds.length) {
+        mergeHydrationChunk(dynamicChunk)
+      }
+    }
+  }
+
+  visitStaticChunk(options.chunk)
 }
 
 export {

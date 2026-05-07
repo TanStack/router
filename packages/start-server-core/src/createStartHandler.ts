@@ -59,6 +59,7 @@ import type {
 } from './early-hints'
 import type {
   AnyRoute,
+  AnyRouteMatch,
   AnyRouter,
   AnySerializationAdapter,
   Manifest,
@@ -250,6 +251,15 @@ function getResponseLinkHeaderFilter(
   }
 
   return responseLinkHeader.filter
+}
+
+function getRoutesForMatches(
+  router: AnyRouter,
+  matches: ReadonlyArray<AnyRouteMatch>,
+) {
+  return matches
+    .map((match) => router.looseRoutesById[match.routeId])
+    .filter((route): route is AnyRoute => !!route)
 }
 
 function appendResponseLinkHeaders(opts: {
@@ -862,7 +872,15 @@ export function createStartHandler<TRegister = Register>(
 
         if (shouldCollectEarlyHints && sentEarlyHintLinks) {
           const loadedMatches = routerInstance.stores.matches.get()
-          const hints = collectDynamicHintsFromMatches(loadedMatches)
+          const loadedRoutes = getRoutesForMatches(
+            routerInstance,
+            loadedMatches,
+          )
+          const filteredManifest = routerInstance.ssr?.manifest ?? manifest
+          const hints = [
+            ...collectStaticHintsFromManifest(filteredManifest, loadedRoutes),
+            ...collectDynamicHintsFromMatches(loadedMatches),
+          ]
           handleCollectedEarlyHints({
             phase: 'dynamic',
             hints,

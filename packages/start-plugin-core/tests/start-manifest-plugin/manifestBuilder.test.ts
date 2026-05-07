@@ -259,6 +259,17 @@ describe('scanClientChunks', () => {
     ])
   })
 
+  test('detects Hydrate metadata from chunk module ids', () => {
+    const chunk = normalizeTestChunk(
+      makeChunk({
+        fileName: 'widget.js',
+        moduleIds: ['/routes/posts.tsx?tss-hydrate=posts_widget'],
+      }),
+    )
+
+    expect(chunk.hydrationIds).toEqual(['posts_widget'])
+  })
+
   test('throws when no entry chunk exists', () => {
     const routeChunk = makeChunk({
       fileName: 'posts.js',
@@ -605,6 +616,166 @@ describe('buildStartManifest', () => {
           type: 'text/css',
         },
       },
+    ])
+  })
+
+  test('adds Hydrate chunk CSS without preloading deferred component JS by default', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+    })
+    const routeChunk = makeChunk({
+      fileName: 'about.js',
+      dynamicImports: ['about-widget.js'],
+      moduleIds: ['/routes/about.tsx?tsr-split=component'],
+    })
+    const widgetChunk = makeChunk({
+      fileName: 'about-widget.js',
+      importedCss: ['about-widget.css'],
+      moduleIds: ['/routes/about.tsx?tss-hydrate=about_widget'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'about.js': routeChunk,
+        'about-widget.js': widgetChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes['/about']!.assets).toEqual([
+      {
+        tag: 'link',
+        attrs: {
+          rel: 'stylesheet',
+          href: '/assets/about-widget.css',
+          type: 'text/css',
+        },
+      },
+    ])
+    expect(manifest.routes['/about']!.preloads).toEqual(['/assets/about.js'])
+  })
+
+  test('adds nested Hydrate chunk CSS without preloading deferred component JS by default', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+    })
+    const routeChunk = makeChunk({
+      fileName: 'about.js',
+      dynamicImports: ['parent-widget.js'],
+      moduleIds: ['/routes/about.tsx?tsr-split=component'],
+    })
+    const parentWidgetChunk = makeChunk({
+      fileName: 'parent-widget.js',
+      dynamicImports: ['child-widget.js'],
+      importedCss: ['parent-widget.css'],
+      moduleIds: ['/routes/about.tsx?tss-hydrate=parent_widget'],
+    })
+    const childWidgetChunk = makeChunk({
+      fileName: 'child-widget.js',
+      importedCss: ['child-widget.css'],
+      moduleIds: ['/routes/about.tsx?tss-hydrate=child_widget'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'about.js': routeChunk,
+        'parent-widget.js': parentWidgetChunk,
+        'child-widget.js': childWidgetChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes['/about']!.assets).toEqual([
+      {
+        tag: 'link',
+        attrs: {
+          rel: 'stylesheet',
+          href: '/assets/parent-widget.css',
+          type: 'text/css',
+        },
+      },
+      {
+        tag: 'link',
+        attrs: {
+          rel: 'stylesheet',
+          href: '/assets/child-widget.css',
+          type: 'text/css',
+        },
+      },
+    ])
+    expect(manifest.routes['/about']!.preloads).toEqual(['/assets/about.js'])
+  })
+
+  test('adds shared component Hydrate CSS to every statically importing route', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+    })
+    const aboutRouteChunk = makeChunk({
+      fileName: 'about.js',
+      imports: ['shared-widget.js'],
+      moduleIds: ['/routes/about.tsx?tsr-split=component'],
+    })
+    const postsRouteChunk = makeChunk({
+      fileName: 'posts.js',
+      imports: ['shared-widget.js'],
+      moduleIds: ['/routes/posts.tsx?tsr-split=component'],
+    })
+    const sharedWidgetChunk = makeChunk({
+      fileName: 'shared-widget.js',
+      dynamicImports: ['shared-hydrate.js'],
+    })
+    const sharedHydrateChunk = makeChunk({
+      fileName: 'shared-hydrate.js',
+      importedCss: ['shared-hydrate.css'],
+      moduleIds: ['/components/Shared.tsx?tss-hydrate=shared_widget'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'about.js': aboutRouteChunk,
+        'posts.js': postsRouteChunk,
+        'shared-widget.js': sharedWidgetChunk,
+        'shared-hydrate.js': sharedHydrateChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about', '/posts'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+        '/posts': { filePath: '/routes/posts.tsx' },
+      },
+      basePath: '/assets',
+    })
+
+    const expectedAsset = {
+      tag: 'link',
+      attrs: {
+        rel: 'stylesheet',
+        href: '/assets/shared-hydrate.css',
+        type: 'text/css',
+      },
+    }
+    expect(manifest.routes['/about']!.assets).toEqual([expectedAsset])
+    expect(manifest.routes['/posts']!.assets).toEqual([expectedAsset])
+    expect(manifest.routes['/about']!.preloads).toEqual([
+      '/assets/about.js',
+      '/assets/shared-widget.js',
+    ])
+    expect(manifest.routes['/posts']!.preloads).toEqual([
+      '/assets/posts.js',
+      '/assets/shared-widget.js',
     ])
   })
 

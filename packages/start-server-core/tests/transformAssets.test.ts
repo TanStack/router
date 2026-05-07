@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   adaptTransformAssetUrlsToTransformAssets,
+  buildManifestWithClientEntry,
   resolveTransformAssetsConfig,
   transformManifestAssets,
 } from '../src/transformAssetUrls'

@@ -20,7 +20,12 @@ export default mergeConfig(
   tanstackViteConfig({
     tsconfigPath: './tsconfig.build.json',
     srcDir: './src',
-    entry: './src/index.tsx',
+    entry: [
+      './src/index.tsx',
+      './src/Hydrate.tsx',
+      './src/hydration.ts',
+      './src/lazyHydratedComponent.tsx',
+    ],
     cjs: false,
   }),
 )

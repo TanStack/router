@@ -9,6 +9,7 @@ import type {
   RouteIds,
 } from '@tanstack/router-core'
 import type { CodeSplitGroupings } from './constants'
+import type { ReferenceRouteCompilerPlugin } from './code-splitter/plugins'
 
 export const splitGroupingsSchema = z
   .array(
@@ -70,6 +71,12 @@ export type CodeSplittingOptions = {
    * @default true
    */
   addHmr?: boolean
+
+  /**
+   * Internal compiler plugins used by framework integrations.
+   * @internal
+   */
+  compilerPlugins?: Array<ReferenceRouteCompilerPlugin>
 }
 
 export type HmrStyle = 'vite' | 'webpack'

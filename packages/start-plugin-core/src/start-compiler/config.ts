@@ -3,17 +3,20 @@ import {
   getExternalLookupKind,
   getLookupKindsForEnv,
   isCompilerTransformEnabledForEnv,
+  isStartCompilerPluginEnabledForEnv,
 } from './compiler'
 import type { BuiltInLookupKind, LookupConfig } from './compiler'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerImportTransform,
+  StartCompilerPlugin,
 } from '../types'
 
 export function getTransformCodeFilterForEnv(
   env: 'client' | 'server',
   opts?: {
     compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+    compilerPlugins?: Array<StartCompilerPlugin> | undefined
   },
 ): Array<RegExp> {
   const validKinds = getLookupKindsForEnv(env, opts)
@@ -30,6 +33,12 @@ export function getTransformCodeFilterForEnv(
   for (const transform of opts?.compilerTransforms ?? []) {
     if (isCompilerTransformEnabledForEnv(transform, env)) {
       patterns.push(transform.detect)
+    }
+  }
+
+  for (const plugin of opts?.compilerPlugins ?? []) {
+    if (plugin.detect && isStartCompilerPluginEnabledForEnv(plugin, env)) {
+      patterns.push(plugin.detect)
     }
   }
 

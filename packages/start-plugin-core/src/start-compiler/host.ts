@@ -3,6 +3,9 @@ import { getLookupConfigurationsForEnv } from './config'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerImportTransform,
+  StartCompilerPlugin,
+  StartCompilerTransformResult,
+  StartCompilerVirtualModuleContext,
 } from '../types'
 import type {
   DevServerFnModuleSpecifierEncoder,
@@ -19,6 +22,7 @@ export interface CreateStartCompilerOptions {
   mode: 'dev' | 'build'
   generateFunctionId?: GenerateFunctionIdFnOptional
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  compilerPlugins?: Array<StartCompilerPlugin> | undefined
   serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
   onServerFnsById?: (d: Record<string, ServerFn>) => void
   getKnownServerFns: () => Record<string, ServerFn>
@@ -48,6 +52,7 @@ export function createStartCompiler(
     generateFunctionId: options.generateFunctionId,
     onServerFnsById: options.onServerFnsById,
     compilerTransforms: options.compilerTransforms,
+    compilerPlugins: options.compilerPlugins,
     serverFnProviderModuleDirectives: options.serverFnProviderModuleDirectives,
     getKnownServerFns: options.getKnownServerFns,
     devServerFnModuleSpecifierEncoder: options.encodeModuleSpecifierInDev,
@@ -81,10 +86,51 @@ export function matchesCodeFilters(
   filters: ReadonlyArray<RegExp>,
 ): boolean {
   for (const pattern of filters) {
+    pattern.lastIndex = 0
     if (pattern.test(code)) {
       return true
     }
   }
 
   return false
+}
+
+export function createCompilerVirtualModuleIdPattern(
+  compilerPlugins: ReadonlyArray<StartCompilerPlugin>,
+) {
+  const patterns = compilerPlugins
+    .map((plugin) => plugin.virtualModuleIdPattern)
+    .filter((pattern): pattern is RegExp => !!pattern)
+
+  if (patterns.length === 0) {
+    return undefined
+  }
+
+  return new RegExp(
+    patterns.map((pattern) => `(?:${pattern.source})`).join('|'),
+  )
+}
+
+export function loadCompilerVirtualModule(
+  compilerPlugins: ReadonlyArray<StartCompilerPlugin>,
+  context: StartCompilerVirtualModuleContext,
+): StartCompilerTransformResult | null {
+  for (const compilerPlugin of compilerPlugins) {
+    const pattern = compilerPlugin.virtualModuleIdPattern
+    if (!pattern) {
+      continue
+    }
+
+    pattern.lastIndex = 0
+    if (!pattern.test(context.id)) {
+      continue
+    }
+
+    const result = compilerPlugin.loadVirtualModule?.(context)
+    if (result) {
+      return result
+    }
+  }
+
+  return null
 }

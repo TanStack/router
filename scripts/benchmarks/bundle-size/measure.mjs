@@ -64,6 +64,13 @@ const SCENARIOS = [
     case: 'minimal',
   },
   {
+    id: 'react-start.deferred-hydration',
+    dir: 'react-start-deferred-hydration',
+    framework: 'react',
+    packageName: '@tanstack/react-start',
+    case: 'deferred-hydration',
+  },
+  {
     id: 'react-start.full',
     dir: 'react-start-full',
     framework: 'react',
@@ -94,6 +101,13 @@ const SCENARIOS = [
     framework: 'solid',
     packageName: '@tanstack/solid-start',
     case: 'minimal',
+  },
+  {
+    id: 'solid-start.deferred-hydration',
+    dir: 'solid-start-deferred-hydration',
+    framework: 'solid',
+    packageName: '@tanstack/solid-start',
+    case: 'deferred-hydration',
   },
   {
     id: 'solid-start.full',

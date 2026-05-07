@@ -8,12 +8,15 @@ import {
 import { detectKindsInCode } from '../../start-compiler/compiler'
 import { getTransformCodeFilterForEnv } from '../../start-compiler/config'
 import {
+  createCompilerVirtualModuleIdPattern,
   createStartCompiler,
+  loadCompilerVirtualModule,
   mergeServerFnsById,
 } from '../../start-compiler/host'
 import { generateServerFnResolverModule } from '../../start-compiler/server-fn-resolver-module'
 import { cleanId } from '../../start-compiler/utils'
 import { createVirtualModule } from '../createVirtualModule'
+import { createHydrateCompilerPlugin } from '../../hydrate-when-transform'
 import { resolveViteId } from '../../utils'
 import {
   createViteDevServerFnModuleSpecifierEncoder,
@@ -23,6 +26,7 @@ import { mergeHotUpdateModules } from './hot-update'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerImportTransform,
+  StartCompilerPlugin,
 } from '../../types'
 import type {
   GenerateFunctionIdFnOptional,
@@ -104,6 +108,25 @@ function invalidateServerFnLookupModules(
   )
 }
 
+function invalidateCompilerVirtualModules(
+  environment: ModuleInvalidationEnvironment,
+  ids: Iterable<string>,
+  pattern: RegExp | undefined,
+) {
+  if (!pattern) {
+    return []
+  }
+
+  return invalidateMatchingFileModules(environment, ids, (fileModule) => {
+    if (!fileModule.id) {
+      return false
+    }
+
+    pattern.lastIndex = 0
+    return pattern.test(fileModule.id)
+  })
+}
+
 function getServerFnProviderIds(ids: Iterable<string>) {
   const providerIds = new Set<string>()
 
@@ -170,6 +193,7 @@ export interface StartCompilerPluginOptions {
    */
   generateFunctionId?: GenerateFunctionIdFnOptional
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  compilerPlugins?: Array<StartCompilerPlugin> | undefined
   serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
   /**
    * The Vite environment name for the server function provider.
@@ -181,6 +205,15 @@ export function startCompilerPlugin(
   opts: StartCompilerPluginOptions,
 ): PluginOption {
   const compilers = new Map<string, ReturnType<typeof createStartCompiler>>()
+  const compilerPlugins = [
+    createHydrateCompilerPlugin(),
+    ...(opts.compilerPlugins ?? []),
+  ]
+  const compilerVirtualModuleIdPattern =
+    createCompilerVirtualModuleIdPattern(compilerPlugins)
+  const environmentByName = new Map(
+    opts.environments.map((environment) => [environment.name, environment]),
+  )
 
   // Shared registry of server functions across all environments
   const serverFnsById: Record<string, ServerFn> = {}
@@ -218,6 +251,7 @@ export function startCompilerPlugin(
     // Derive transform code filter from KindDetectionPatterns (single source of truth)
     const transformCodeFilter = getTransformCodeFilterForEnv(environment.type, {
       compilerTransforms,
+      compilerPlugins,
     })
     return {
       name: `tanstack-start-core::server-fn:${environment.name}`,
@@ -254,6 +288,7 @@ export function startCompilerPlugin(
               providerEnvName: opts.providerEnvName,
               generateFunctionId: opts.generateFunctionId,
               compilerTransforms,
+              compilerPlugins,
               serverFnProviderModuleDirectives,
               onServerFnsById,
               getKnownServerFns: () => serverFnsById,
@@ -307,6 +342,7 @@ export function startCompilerPlugin(
             code,
             detectedKinds,
           })
+
           return result
         },
       },
@@ -370,9 +406,14 @@ export function startCompilerPlugin(
 
           invalidateModuleNodes(this.environment, importerModulesToInvalidate)
           invalidateServerFnLookupModules(this.environment, idsToInvalidate)
+          const compilerVirtualModules = invalidateCompilerVirtualModules(
+            this.environment,
+            idsToInvalidate,
+            compilerVirtualModuleIdPattern,
+          )
 
           if (environment.type !== 'server') {
-            return
+            return mergeHotUpdateModules(ctx.modules, compilerVirtualModules)
           }
 
           invalidateModuleNodes(this.environment, ctx.modules)
@@ -388,7 +429,10 @@ export function startCompilerPlugin(
             [...idsToInvalidate, ...providerIdsToInvalidate],
           )
 
-          return mergeHotUpdateModules(ctx.modules, providerModules)
+          return mergeHotUpdateModules(ctx.modules, [
+            ...compilerVirtualModules,
+            ...providerModules,
+          ])
         }
 
         return finishHotUpdate()
@@ -412,6 +456,28 @@ export function startCompilerPlugin(
         handler(code, id) {
           const compiler = compilers.get(this.environment.name)
           compiler?.ingestModule({ code, id: cleanId(id) })
+        },
+      },
+    },
+    {
+      name: 'tanstack-start-core:compiler-virtual-module',
+      enforce: 'pre',
+      load: {
+        filter: {
+          id: compilerVirtualModuleIdPattern ?? /$^/,
+        },
+        handler(id) {
+          const environment = environmentByName.get(this.environment.name)
+          if (!environment || !compilerVirtualModuleIdPattern) {
+            return null
+          }
+
+          return loadCompilerVirtualModule(compilerPlugins, {
+            id,
+            root,
+            env: environment.type,
+            envName: this.environment.name,
+          })
         },
       },
     },
@@ -443,7 +509,7 @@ export function startCompilerPlugin(
                 typeof decoded.file === 'string' &&
                 typeof decoded.export === 'string'
               ) {
-                // Use the Vite strategy to decode the module specifier
+                // Use the Vite when to decode the module specifier
                 // back to the original source file path.
                 const sourceFile = decodeViteDevServerModuleSpecifier(
                   decoded.file,

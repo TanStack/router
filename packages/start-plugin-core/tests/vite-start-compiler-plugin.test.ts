@@ -136,4 +136,52 @@ describe('startCompilerPlugin Vite hotUpdate', () => {
     expect(invalidatedModules).toContain(providerModule)
     expect(invalidatedModules).toContain(lookupModule)
   })
+
+  test('invalidates compiler virtual modules for changed source files', async () => {
+    const plugins = startCompilerPlugin({
+      framework: 'react',
+      providerEnvName: 'client',
+      environments: [{ name: 'client', type: 'client' }],
+    }) as Array<Plugin>
+    const plugin = plugins.find(
+      (candidate) => candidate.name === 'tanstack-start-core::server-fn:client',
+    )!
+
+    const changedModule = {
+      id: '/src/routes/index.tsx',
+      importers: new Set<EnvironmentModuleNode>(),
+    } as EnvironmentModuleNode
+    const hydrateModule = {
+      id: '/src/routes/index.tsx?tss-hydrate=boundary&tss-hydrate-index=0',
+      importers: new Set<EnvironmentModuleNode>(),
+    } as EnvironmentModuleNode
+    const invalidatedModules: Array<EnvironmentModuleNode> = []
+
+    const result = await (plugin.hotUpdate as any).call(
+      {
+        environment: {
+          name: 'client',
+          mode: 'dev',
+          moduleGraph: {
+            getModulesByFile(file: string) {
+              if (file === '/src/routes/index.tsx') {
+                return new Set([changedModule, hydrateModule])
+              }
+
+              return undefined
+            },
+            invalidateModule(module: EnvironmentModuleNode) {
+              invalidatedModules.push(module)
+            },
+          },
+        },
+      },
+      {
+        modules: [changedModule],
+      },
+    )
+
+    expect(result).toEqual([changedModule, hydrateModule])
+    expect(invalidatedModules).toContain(hydrateModule)
+  })
 })
