@@ -191,6 +191,54 @@ export const submitForm = createServerFn({ method: 'POST' })
   })
 ```
 
+### Serialization Type Checking
+
+By default, server functions use `strict: true` and TypeScript checks that values crossing the network boundary are serializable:
+
+- Input validator input types must be serializable. `FormData` is also allowed for `POST` server functions.
+- Handler return types must be serializable. `Response` objects are allowed.
+
+```tsx
+export const getUser = createServerFn({ method: 'GET' })
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    return {
+      id: data.id,
+      createdAt: new Date(),
+    }
+  })
+```
+
+If you intentionally need to opt out of these type-level serialization checks, pass the `strict` option to `createServerFn`:
+
+```tsx
+// Disable input and output serialization type checks
+export const looseServerFn = createServerFn({ strict: false })
+  .inputValidator((data: { value: unknown }) => data)
+  .handler(async ({ data }) => {
+    return data.value
+  })
+
+// Disable only input serialization type checks
+export const looseInputServerFn = createServerFn({
+  strict: { input: false },
+})
+  .inputValidator((data: { value: unknown }) => data)
+  .handler(async () => {
+    return { ok: true }
+  })
+
+// Disable only output serialization type checks
+export const looseOutputServerFn = createServerFn({
+  strict: { output: false },
+}).handler(async () => {
+  return getCustomSerializedValue()
+})
+```
+
+> [!WARNING]
+> `strict: false` only relaxes TypeScript's serialization checks. Values still need to be handled correctly by the runtime serialization layer when they are sent between the client and server. Prefer the default `strict: true` unless you know why the default serializability rules are too restrictive for a specific server function.
+
 ## Error Handling & Redirects
 
 Server functions can throw errors, redirects, and not-found responses that are handled automatically when called from route lifecycles or components using `useServerFn()`.
