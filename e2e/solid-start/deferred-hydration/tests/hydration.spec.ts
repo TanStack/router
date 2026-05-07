@@ -46,6 +46,106 @@ async function dispatchHydrationIntent(
   }, eventName)
 }
 
+async function trackBoundaryStability(page: Page, buttonTestId: string) {
+  await page.getByTestId(buttonTestId).evaluate((element, testId) => {
+    const marker = element.closest('[data-ts-hydrate-id]')
+
+    if (!(marker instanceof HTMLElement)) {
+      throw new Error('Expected Hydrate marker to exist')
+    }
+
+    const win = window as typeof window & {
+      __hydrateBoundaryVisualGapCount?: number
+      __hydrateBoundaryMaxScrollDelta?: number
+      __hydrateBoundaryStabilityDone?: boolean
+    }
+    const hasBoundaryButton = () =>
+      Array.from(marker.querySelectorAll('[data-testid]')).some(
+        (child) => child.getAttribute('data-testid') === testId,
+      )
+    const hasHydratedBoundaryButton = () =>
+      Array.from(marker.querySelectorAll('[data-testid]')).some(
+        (child) =>
+          child.getAttribute('data-testid') === testId &&
+          child.getAttribute('data-hydrated') === 'true',
+      )
+    const initialScrollY = window.scrollY
+
+    win.__hydrateBoundaryVisualGapCount = 0
+    win.__hydrateBoundaryMaxScrollDelta = 0
+    win.__hydrateBoundaryStabilityDone = false
+
+    let frameCount = 0
+    let hydratedFrameCount = 0
+    let observer: MutationObserver | undefined
+    const recordScroll = () => {
+      win.__hydrateBoundaryMaxScrollDelta = Math.max(
+        win.__hydrateBoundaryMaxScrollDelta ?? 0,
+        Math.abs(window.scrollY - initialScrollY),
+      )
+
+      if (hasHydratedBoundaryButton()) hydratedFrameCount++
+
+      frameCount++
+      if (hydratedFrameCount >= 10 || frameCount >= 300) {
+        observer?.disconnect()
+        win.__hydrateBoundaryStabilityDone = true
+        return
+      }
+
+      requestAnimationFrame(recordScroll)
+    }
+
+    observer = new MutationObserver(() => {
+      if (!hasBoundaryButton()) {
+        win.__hydrateBoundaryVisualGapCount!++
+      }
+    })
+    observer.observe(marker, { childList: true })
+
+    requestAnimationFrame(recordScroll)
+  }, buttonTestId)
+}
+
+async function expectBoundaryStable(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as typeof window & {
+              __hydrateBoundaryStabilityDone?: boolean
+            }
+          ).__hydrateBoundaryStabilityDone ?? false,
+      ),
+    )
+    .toBe(true)
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as typeof window & {
+              __hydrateBoundaryVisualGapCount?: number
+            }
+          ).__hydrateBoundaryVisualGapCount ?? 0,
+      ),
+    )
+    .toBe(0)
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as typeof window & {
+              __hydrateBoundaryMaxScrollDelta?: number
+            }
+          ).__hydrateBoundaryMaxScrollDelta ?? 0,
+      ),
+    )
+    .toBeLessThanOrEqual(1)
+}
+
 async function expectRouteToStayUnhydrated(
   page: Page,
   buttonTestId: string,
@@ -283,11 +383,14 @@ test.describe('component-level Hydrate runtime strategies', () => {
       'component-condition-count',
       '1',
     )
+    await scrollToBoundary(page, 'component-click-replay-button')
     await expectRouteToStayUnhydrated(page, 'component-click-replay-button')
+    await trackBoundaryStability(page, 'component-click-replay-button')
     await page.getByTestId('component-click-replay-button').click()
     await expect(
       page.getByTestId('component-click-replay-button'),
     ).toHaveAttribute('data-hydrated', 'true')
+    await expectBoundaryStable(page)
     await expect(page.getByTestId('component-click-replay-count')).toHaveText(
       '1',
     )
@@ -348,11 +451,41 @@ test.describe('component-level Hydrate runtime strategies', () => {
 
     await scrollToBoundary(page, 'component-click-replay-button')
     await expectRouteToStayUnhydrated(page, 'component-click-replay-button')
+    await trackBoundaryStability(page, 'component-click-replay-button')
     await page.getByTestId('component-click-replay-button').click()
     await expect(
       page.getByTestId('component-click-replay-button'),
     ).toHaveAttribute('data-hydrated', 'true')
+    await expectBoundaryStable(page)
     await expect(page.getByTestId('component-click-replay-count')).toHaveText(
+      '1',
+    )
+  })
+
+  test('keeps bottom scroll stable when a condition boundary hydrates', async ({
+    page,
+  }) => {
+    await page.goto('/components')
+    await expectClientRouterReady(page)
+    await expectRouteToStayUnhydrated(page, 'component-condition-button')
+
+    await page.evaluate(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight)
+    })
+    await page.waitForTimeout(100)
+    await expect(page.getByTestId('component-enable-condition')).toBeInViewport()
+
+    await trackBoundaryStability(page, 'component-condition-button')
+    await page.getByTestId('component-enable-condition').click()
+    await expect(page.getByTestId('component-condition-button')).toHaveAttribute(
+      'data-hydrated',
+      'true',
+    )
+    await expectBoundaryStable(page)
+    await clickAndExpectCount(
+      page,
+      'component-condition-button',
+      'component-condition-count',
       '1',
     )
   })

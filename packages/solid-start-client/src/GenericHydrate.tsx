@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { Dynamic, NoHydration, createComponent } from 'solid-js/web'
+import { Dynamic, createComponent } from 'solid-js/web'
 
 import { useHydrated } from '@tanstack/solid-router'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -9,9 +9,11 @@ import {
 } from '@tanstack/start-client-core/hydration/constants'
 import {
   createResolvedGate,
+  getFallbackHtml,
   getOrCreateGate,
   onGateResolve,
   releaseGate,
+  saveFallbackHtml,
 } from '@tanstack/start-client-core/hydration/runtime'
 import type { HydrationRuntimeContext } from '@tanstack/start-client-core/hydration'
 import type { HydrationGateRecord } from '@tanstack/start-client-core/hydration/runtime'
@@ -48,6 +50,18 @@ function HydratedBoundary(props: {
   return props.children
 }
 
+function HydrationFallback(props: { id: string }) {
+  const html = getFallbackHtml(props.id)
+
+  if (!html) return null
+
+  return createComponent(Dynamic as any, {
+    component: 'div',
+    style: { display: 'contents' },
+    innerHTML: html,
+  })
+}
+
 export function GenericHydrate(props: HydrateProps) {
   const internalProps = props as InternalHydrateProps
   const hydrateStrategy = () => internalProps.when
@@ -59,6 +73,7 @@ export function GenericHydrate(props: HydrateProps) {
     ? `${internalProps.splitId}${uniqueId}`
     : uniqueId
   const initialHydrateStrategy = hydrateStrategy()
+  const initialHydrateType = initialHydrateStrategy.type
   const shouldPreserveServerHTML =
     ((isServer as boolean | undefined) ?? typeof window === 'undefined') ||
     !hydrated()
@@ -77,7 +92,7 @@ export function GenericHydrate(props: HydrateProps) {
 
   if (
     !((isServer as boolean | undefined) ?? typeof window === 'undefined') &&
-    initialHydrateStrategy.type !== 'never' &&
+    initialHydrateType !== 'never' &&
     (!shouldDeferInitialHydration ||
       !shouldDeferHydration(initialHydrateStrategy))
   ) {
@@ -94,6 +109,7 @@ export function GenericHydrate(props: HydrateProps) {
     )) {
       if (element.getAttribute(hydrateIdAttribute) === id) {
         markerElement = element
+        saveFallbackHtml(id, element)
         break
       }
     }
@@ -135,9 +151,6 @@ export function GenericHydrate(props: HydrateProps) {
     let disposed = false
 
     const resolveBoundary = () => {
-      if (shouldPreserveServerHTML && markerElement && !ready()) {
-        markerElement.replaceChildren()
-      }
       setReady(true)
     }
 
@@ -194,7 +207,7 @@ export function GenericHydrate(props: HydrateProps) {
     }
   })
 
-  Solid.createEffect(() => {
+  Solid.createRenderEffect(() => {
     const currentHydrateStrategy = hydrateStrategy()
     if (
       ((isServer as boolean | undefined) ?? typeof window === 'undefined') ||
@@ -208,7 +221,15 @@ export function GenericHydrate(props: HydrateProps) {
     gate.resolve()
   })
 
-  const markerAttributes = hydrateStrategy().getMarkerAttributes?.()
+  const markerAttributes = initialHydrateStrategy.getMarkerAttributes?.()
+  const fallback = () =>
+    shouldPreserveServerHTML
+      ? createComponent(HydrationFallback, {
+          get id() {
+            return id
+          },
+        })
+      : (props.fallback ?? null)
 
   return createComponent(Dynamic as any, {
     component: 'div',
@@ -216,17 +237,17 @@ export function GenericHydrate(props: HydrateProps) {
       return id
     },
     get [hydrateWhenAttribute]() {
-      return hydrateStrategy().type
+      return initialHydrateType
     },
     ...markerAttributes,
     get children() {
-      if (hydrateStrategy().type === 'never' && !shouldPreserveServerHTML) {
+      if (initialHydrateType === 'never' && !shouldPreserveServerHTML) {
         return props.fallback ?? null
       }
 
       return createComponent(Solid.Suspense, {
         get fallback() {
-          return shouldPreserveServerHTML ? null : (props.fallback ?? null)
+          return fallback()
         },
         get children() {
           return createComponent(Solid.Show as any, {
@@ -234,13 +255,7 @@ export function GenericHydrate(props: HydrateProps) {
               return ready()
             },
             get fallback() {
-              return shouldPreserveServerHTML
-                ? createComponent(NoHydration, {
-                    get children() {
-                      return props.children
-                    },
-                  })
-                : (props.fallback ?? null)
+              return fallback()
             },
             get children() {
               return createComponent(HydratedBoundary, {
