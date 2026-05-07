@@ -11,7 +11,7 @@ Remix 3 dropped React for its own JSX runtime and ships as a "Demand Composition
 
 ## Status
 
-Working today (covered by the example app at `examples/remix/basic` and 120 unit tests, 111 passing):
+Working today (covered by the example app at `examples/remix/basic` and 111/120 unit tests passing — the 9 `test.todo`s are scaffolded for `serverComponent()`, an in-progress feature whose source helpers aren't implemented yet):
 
 - [x] Reactivity adapter: `RouterStores` ↔ `handle.update()`
 - [x] `<RouterProvider>`, `<Match>`, `<Outlet>`, `<MatchRoute>`, `<MatchContext>`
