@@ -38,6 +38,10 @@ export interface StartCompilerHostOptions {
   framework: CompileStartFrameworkOptions
   root: string | (() => string)
   providerEnvName: string
+  environments?: Array<{
+    name: string
+    type: 'client' | 'server'
+  }>
   generateFunctionId?: GenerateFunctionIdFnOptional
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
   serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
@@ -73,11 +77,9 @@ export function registerStartCompilerTransforms(
   const isDev = api.context.action === 'dev'
   const mode = isDev ? 'dev' : 'build'
 
-  const environments: Array<{
-    name: string
-    type: 'client' | 'server'
-  }> = [
+  const environments = opts.environments ?? [
     { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' },
+    { name: RSBUILD_ENVIRONMENT_NAMES.prerender, type: 'server' },
     { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' },
   ]
 
@@ -92,7 +94,8 @@ export function registerStartCompilerTransforms(
   for (const env of environments) {
     const envCodeFilters = codeFilters[env.type]
     const compilerTransforms =
-      env.name === RSBUILD_ENVIRONMENT_NAMES.server
+      env.name === RSBUILD_ENVIRONMENT_NAMES.server ||
+      env.name === RSBUILD_ENVIRONMENT_NAMES.prerender
         ? opts.compilerTransforms
         : undefined
     const serverFnProviderModuleDirectives =

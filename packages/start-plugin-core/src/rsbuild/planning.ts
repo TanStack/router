@@ -11,6 +11,7 @@ const require = createRequire(import.meta.url)
 export const RSBUILD_ENVIRONMENT_NAMES = {
   client: 'client',
   server: 'ssr',
+  prerender: 'prerender',
 } as const
 
 /**
@@ -71,6 +72,7 @@ export function createRsbuildEnvironmentPlan(opts: {
   serverOutputDirectory: string
   publicBase: string
   serverFnProviderEnv: string
+  separatePrerenderRouteOptions: boolean
   environmentOverrides?: RsbuildEnvironmentOverrides
   rsc?: boolean | undefined
   dev?: boolean | undefined
@@ -161,6 +163,42 @@ export function createRsbuildEnvironmentPlan(opts: {
         environmentOverrides.all,
         environmentOverrides.server,
       ),
+      ...(opts.separatePrerenderRouteOptions
+        ? {
+            [RSBUILD_ENVIRONMENT_NAMES.prerender]: mergeRsbuildConfig(
+              {
+                source: {
+                  entry: {
+                    index: {
+                      import: opts.entryAliases.server,
+                      html: false,
+                      ...(opts.rsc ? { layer: RSBUILD_RSC_LAYERS.ssr } : {}),
+                    },
+                  },
+                },
+                output: {
+                  target: 'node',
+                  module: true,
+                  distPath: {
+                    root: `${opts.serverOutputDirectory}/.tanstack/prerender`,
+                  },
+                },
+                resolve: {
+                  alias,
+                },
+                ...(opts.rsc
+                  ? {
+                      splitChunks: {
+                        preset: 'single-vendor',
+                      },
+                    }
+                  : {}),
+              },
+              environmentOverrides.all,
+              environmentOverrides.prerender,
+            ),
+          }
+        : {}),
       // When provider is a separate environment (not layered RSC),
       // create a third environment. With the layered RSC setup this branch
       // is not taken because provider maps to the same `ssr` environment.

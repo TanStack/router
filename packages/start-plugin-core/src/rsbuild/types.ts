@@ -5,6 +5,7 @@ export interface RsbuildEnvironmentOverrides {
   all?: EnvironmentConfig | undefined
   client?: EnvironmentConfig | undefined
   server?: EnvironmentConfig | undefined
+  prerender?: EnvironmentConfig | undefined
   provider?: EnvironmentConfig | undefined
 }
 

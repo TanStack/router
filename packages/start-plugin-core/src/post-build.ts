@@ -19,15 +19,26 @@ export async function postBuild({
       ...startConfig.prerender,
       enabled:
         startConfig.prerender?.enabled ??
-        startConfig.pages.some((d) =>
-          typeof d === 'string' ? false : !!d.prerender?.enabled,
-        ),
+        startConfig.pages.some((page) => page.prerender?.enabled),
     }
   }
 
+  const spaOnly = Boolean(
+    startConfig.spa?.enabled && startConfig.prerender?.enabled !== true,
+  )
+
   if (startConfig.spa?.enabled) {
+    if (spaOnly) {
+      startConfig.pages = []
+    }
+
     startConfig.prerender = {
       ...startConfig.prerender,
+      ...(spaOnly
+        ? {
+            autoStaticPathsDiscovery: false,
+          }
+        : {}),
       enabled: true,
     }
 
@@ -51,7 +62,7 @@ export async function postBuild({
     })
   }
 
-  if (startConfig.prerender.enabled) {
+  if (startConfig.prerender?.enabled) {
     await adapter.prerender(startConfig)
   }
 

@@ -7,6 +7,11 @@ import {
 import { routesManifestPlugin } from '../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../start-router-plugin/route-tree-footer'
+import {
+  CLIENT_ROUTE_OPTION_DELETE_NODES,
+  SERVER_ROUTE_OPTION_DELETE_NODES,
+} from '../start-router-plugin/constants'
+import { shouldSeparateRouteOptions } from '../prerender-route-options-env'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI } from '@rsbuild/core'
 import type { GetConfigFn, TanStackStartCoreOptions } from '../types'
@@ -52,7 +57,7 @@ export function registerRouterPlugins(
           },
           plugins: [
             routesManifestPlugin(),
-            ...(opts.startPluginOpts?.prerender?.enabled === true
+            ...(opts.startPluginOpts?.prerender?.enabled !== false
               ? [prerenderRoutesPlugin()]
               : []),
           ],
@@ -64,16 +69,23 @@ export function registerRouterPlugins(
 
     if (
       envName === RSBUILD_ENVIRONMENT_NAMES.client ||
-      envName === RSBUILD_ENVIRONMENT_NAMES.server
+      envName === RSBUILD_ENVIRONMENT_NAMES.server ||
+      envName === RSBUILD_ENVIRONMENT_NAMES.prerender
     ) {
       const isClient = envName === RSBUILD_ENVIRONMENT_NAMES.client
+      const isServer = envName === RSBUILD_ENVIRONMENT_NAMES.server
+      const deleteNodes = isClient
+        ? CLIENT_ROUTE_OPTION_DELETE_NODES
+        : isServer && shouldSeparateRouteOptions(startConfig)
+          ? SERVER_ROUTE_OPTION_DELETE_NODES
+          : undefined
       const splitterPlugin = TanStackRouterCodeSplitterRspack(
         {
           ...routerConfig,
           target: opts.corePluginOpts.framework,
           codeSplittingOptions: {
             ...routerConfig.codeSplittingOptions,
-            deleteNodes: isClient ? ['ssr', 'server', 'headers'] : undefined,
+            deleteNodes,
             addHmr: isClient,
           },
         },

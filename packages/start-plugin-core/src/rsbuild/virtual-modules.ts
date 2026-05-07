@@ -271,6 +271,7 @@ export function registerVirtualModules(
   function needsServerFnResolver(environmentName: string): boolean {
     return (
       environmentName === RSBUILD_ENVIRONMENT_NAMES.server ||
+      environmentName === RSBUILD_ENVIRONMENT_NAMES.prerender ||
       (hasSeparateProviderEnvironment && isProviderEnvironment(environmentName))
     )
   }
@@ -353,6 +354,9 @@ export function registerVirtualModules(
     // Safe to call getConfig() here — this runs inside modifyRspackConfig
     const { resolvedStartConfig, startConfig } = opts.getConfig()
     const isServerEnv = environmentName === RSBUILD_ENVIRONMENT_NAMES.server
+    const isPrerenderEnv =
+      environmentName === RSBUILD_ENVIRONMENT_NAMES.prerender
+    const isServerLikeEnv = isServerEnv || isPrerenderEnv
     const isClientEnv = environmentName === RSBUILD_ENVIRONMENT_NAMES.client
     const content: Record<string, string> = {}
 
@@ -370,7 +374,8 @@ export function registerVirtualModules(
             startConfig.server.build.inlineCss,
           )
     } else {
-      content[paths.manifest] = 'export default {}'
+      content[paths.manifest] =
+        `export const tsrStartManifest = () => ({ routes: {}, clientEntry: '' })`
     }
 
     // Injected head scripts — only server
@@ -401,8 +406,8 @@ export function registerVirtualModules(
       // rspack layers handle module isolation. The RSC entry imports this
       // and the react-server condition on the RSC layer resolves
       // react-server-dom-rspack/server correctly.
-      if (isServerEnv) {
-        // Server env gets the real RSC runtime (used by RSC layer)
+      if (isServerLikeEnv) {
+        // Server-like envs get the real RSC runtime (used by RSC layer)
         content[rscPaths.rscRuntime] = generateRscRuntimeModule(true)
       } else {
         // Client env gets stubs
@@ -415,7 +420,7 @@ export function registerVirtualModules(
         ? `export * from '@tanstack/react-start/rsbuild/browser-decode'`
         : `export function createFromReadableStream() { throw new Error('RSC browser decode is only available in the client environment') }
 export function createFromFetch() { throw new Error('RSC browser decode is only available in the client environment') }`
-      content[rscPaths.rscSsrDecode] = isServerEnv
+      content[rscPaths.rscSsrDecode] = isServerLikeEnv
         ? `export * from '@tanstack/react-start/rsbuild/ssr-decode'`
         : `export function setOnClientReference() {}
 export function createFromReadableStream() { throw new Error('RSC SSR decode is only available in the server environment') }`
@@ -545,6 +550,9 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     updateServerFnResolver() {
       for (const environmentName of new Set([
         RSBUILD_ENVIRONMENT_NAMES.server,
+        ...(vmPlugins[RSBUILD_ENVIRONMENT_NAMES.prerender]
+          ? [RSBUILD_ENVIRONMENT_NAMES.prerender]
+          : []),
         ...(hasSeparateProviderEnvironment ? [opts.providerEnvName] : []),
       ])) {
         if (!needsServerFnResolver(environmentName)) {
