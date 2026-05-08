@@ -217,6 +217,8 @@ export default defineConfig({
       sitemap: {
         enabled: true,
         host: 'https://myapp.com',
+        // Filter function takes the page object and returns whether it should be included in the sitemap
+        filter: ({ path }) => !path.startsWith('/do-not-include-me'),
       },
     }),
   ],

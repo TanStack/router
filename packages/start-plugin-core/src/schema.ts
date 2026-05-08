@@ -243,6 +243,7 @@ export const tanstackStartOptionsObjectSchema = z.object({
       enabled: z.boolean().optional().default(true),
       host: z.string().optional(),
       outputPath: z.string().optional().default('sitemap.xml'),
+      filter: z.function().args(pageSchema).returns(z.any()).optional(),
     })
     .optional(),
   prerender: z

@@ -43,12 +43,15 @@ export type SitemapData = {
 function buildSitemapJson(
   pages: TanStackStartOutputConfig['pages'],
   host: string,
+  filter: NonNullable<TanStackStartOutputConfig['sitemap']>['filter']
 ): SitemapData {
   const slash = checkSlash(host)
 
   const urls: Array<SitemapUrl> = pages
     .filter((page) => {
-      return page.sitemap?.exclude !== true
+      if (page.sitemap?.exclude === true) return false
+      if (filter && !filter(page)) return false
+      return true
     })
     .map((page) => ({
       loc: `${host}${slash}${page.path.replace(/^\/+/g, '')}`,
@@ -141,7 +144,7 @@ export function buildSitemap({
     throw new Error('Sitemap is not enabled')
   }
 
-  const { host, outputPath } = sitemapOptions
+  const { host, outputPath, filter } = sitemapOptions
 
   if (!host) {
     if (!startConfig.sitemap) {
@@ -169,7 +172,7 @@ export function buildSitemap({
   logger.info('Building Sitemap...')
 
   // Build the sitemap data
-  const sitemapData = buildSitemapJson(pages, host)
+  const sitemapData = buildSitemapJson(pages, host, filter)
 
   // Generate output paths
   const xmlOutputPath = path.join(publicDir, outputPath)
