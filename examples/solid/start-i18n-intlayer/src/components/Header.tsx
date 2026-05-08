@@ -10,10 +10,10 @@ export default function Header() {
       <nav class="page-wrap nav-shell relative">
         <h2 class="m-0 flex-shrink-0 text-base font-semibold tracking-tight">
           <Link to="/" class="brand-pill">
-            {content().tanstack}
+            {content.tanstack}
             <span>+</span>
 
-            <span class="text-neutral">{content().intlayer}</span>
+            <span class="text-neutral">{content.intlayer}</span>
           </Link>
         </h2>
 
@@ -27,14 +27,14 @@ export default function Header() {
             class="nav-link"
             activeProps={{ class: 'nav-link is-active' }}
           >
-            {content().navHome}
+            {content.navHome}
           </Link>
           <Link
             to="/about"
             class="nav-link"
             activeProps={{ class: 'nav-link is-active' }}
           >
-            {content().navAbout}
+            {content.navAbout}
           </Link>
           <a
             href="https://tanstack.com/start/latest/docs/framework/solid/overview"
@@ -42,7 +42,7 @@ export default function Header() {
             rel="noreferrer"
             class="nav-link"
           >
-            {content().navDocs}
+            {content.navDocs}
           </a>
         </div>
       </nav>

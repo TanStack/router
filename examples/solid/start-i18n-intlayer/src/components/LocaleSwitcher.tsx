@@ -20,7 +20,7 @@ export const LocaleSwitcher = () => {
             <Link
               aria-current={localeEl === locale() ? 'page' : undefined}
               aria-label={
-                content().localeSwitcherLabel({
+                content.localeSwitcherLabel({
                   language: getLocaleName(localeEl),
                 }).value
               }
