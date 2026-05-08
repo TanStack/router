@@ -711,7 +711,7 @@ describe('matchPathname', () => {
         expectedMatchedParams: { id: '123' },
       },
       {
-        name: 'should match and return the the splat param',
+        name: 'should match and return the splat param',
         input: '/users/123',
         matchingOptions: {
           to: '/users/$',

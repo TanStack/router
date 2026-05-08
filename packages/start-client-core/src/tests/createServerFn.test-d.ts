@@ -518,10 +518,154 @@ test('createServerFn cannot return function', () => {
     }>()
 })
 
+test('createServerFn strict false can validate and return function', () => {
+  const fn = createServerFn({ method: 'GET', strict: false })
+    .inputValidator((input: { func: () => 'input' }) => ({
+      output: input.func(),
+    }))
+    .handler(({ data }) => {
+      expectTypeOf(data).toEqualTypeOf<{ output: 'input' }>()
+
+      return {
+        func: () => 'func' as const,
+      }
+    })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+    data: { func: () => 'input' }
+    headers?: HeadersInit
+    signal?: AbortSignal
+    fetch?: CustomFetch
+  }>()
+
+  expectTypeOf(fn({ data: { func: () => 'input' } })).toEqualTypeOf<
+    Promise<{
+      func: () => 'func'
+    }>
+  >()
+})
+
+test('createServerFn strict false factory preserves strictness', () => {
+  const createServerFnWithoutSerializationCheck = createServerFn({
+    strict: false,
+  })
+
+  const myServerFn = createServerFnWithoutSerializationCheck()
+    .inputValidator((input: { func: () => 'input' }) => ({
+      output: input.func(),
+    }))
+    .handler(({ data }) => {
+      expectTypeOf(data).toEqualTypeOf<{ output: 'input' }>()
+
+      return {
+        func: () => 'func' as const,
+      }
+    })
+
+  expectTypeOf(myServerFn).parameter(0).toEqualTypeOf<{
+    data: { func: () => 'input' }
+    headers?: HeadersInit
+    signal?: AbortSignal
+    fetch?: CustomFetch
+  }>()
+
+  expectTypeOf(myServerFn({ data: { func: () => 'input' } })).toEqualTypeOf<
+    Promise<{
+      func: () => 'func'
+    }>
+  >()
+})
+
+test('createServerFn strict input false can validate function', () => {
+  const fn = createServerFn({ strict: { input: false } })
+    .inputValidator((input: { func: () => 'input' }) => ({
+      output: input.func(),
+    }))
+    .handler(({ data }) => {
+      expectTypeOf(data).toEqualTypeOf<{ output: 'input' }>()
+
+      return {
+        value: 'serializable' as const,
+      }
+    })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+    data: { func: () => 'input' }
+    headers?: HeadersInit
+    signal?: AbortSignal
+    fetch?: CustomFetch
+  }>()
+
+  expectTypeOf(fn({ data: { func: () => 'input' } })).toEqualTypeOf<
+    Promise<{
+      value: 'serializable'
+    }>
+  >()
+})
+
+test('createServerFn strict output false can return function', () => {
+  const fn = createServerFn({ strict: { output: false } }).handler(() => ({
+    func: () => 'func' as const,
+  }))
+
+  expectTypeOf(fn()).toEqualTypeOf<
+    Promise<{
+      func: () => 'func'
+    }>
+  >()
+
+  const promiseFn = createServerFn({ strict: { output: false } }).handler(() =>
+    Promise.resolve({
+      func: () => 'func' as const,
+    }),
+  )
+
+  expectTypeOf(promiseFn()).toEqualTypeOf<
+    Promise<{
+      func: () => 'func'
+    }>
+  >()
+})
+
+test('ServerFnReturnType skips serialization when strict is false', () => {
+  expectTypeOf<
+    ServerFnReturnType<Register, { func: () => 'func' }, false>
+  >().toEqualTypeOf<{
+    func: () => 'func'
+  }>()
+})
+
+test('ServerFnReturnType skips serialization when strict output is false', () => {
+  expectTypeOf<
+    ServerFnReturnType<Register, { func: () => 'func' }, { output: false }>
+  >().toEqualTypeOf<{
+    func: () => 'func'
+  }>()
+})
+
 test('createServerFn cannot validate function', () => {
   const validator = createServerFn().inputValidator<
     (input: { func: () => 'string' }) => { output: 'string' }
   >
+
+  expectTypeOf(validator)
+    .parameter(0)
+    .toEqualTypeOf<
+      Constrain<
+        (input: { func: () => 'string' }) => { output: 'string' },
+        Validator<
+          { func: SerializationError<'Function may not be serializable'> },
+          any
+        >
+      >
+    >()
+})
+
+test('createServerFn strict output false still checks input', () => {
+  const validator = createServerFn({
+    method: 'GET',
+    strict: { output: false },
+  }).inputValidator<(input: { func: () => 'string' }) => { output: 'string' }>
 
   expectTypeOf(validator)
     .parameter(0)

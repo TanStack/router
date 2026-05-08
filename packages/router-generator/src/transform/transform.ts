@@ -48,12 +48,13 @@ type RouteCallAnalysis = {
 export function transform({
   ctx,
   source,
+  filename,
   node,
 }: TransformOptions): TransformResult {
   let ast: ReturnType<typeof parseAst>
 
   try {
-    ast = parseAst({ code: source })
+    ast = parseAst({ code: source, filename })
   } catch (error) {
     return {
       result: 'error',

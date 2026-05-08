@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start",
-  "version": "1.167.53",
+  "version": "1.167.65",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -183,10 +183,6 @@
   },
   "devDependencies": {
     "@rsbuild/core": "^2.0.1",
-    "@tanstack/intent": "^0.0.14",
     "@types/node": ">=20"
-  },
-  "bin": {
-    "intent": "./bin/intent.js"
   }
 }

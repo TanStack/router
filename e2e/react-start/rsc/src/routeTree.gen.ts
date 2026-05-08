@@ -42,6 +42,7 @@ import { Route as RscDeferredComponentRouteImport } from './routes/rsc-deferred-
 import { Route as RscDeferredRouteImport } from './routes/rsc-deferred'
 import { Route as RscCssPreloadComplexRouteImport } from './routes/rsc-css-preload-complex'
 import { Route as RscCssModulesRouteImport } from './routes/rsc-css-modules'
+import { Route as RscCssAutoinjectRouteImport } from './routes/rsc-css-autoinject'
 import { Route as RscContextRouteImport } from './routes/rsc-context'
 import { Route as RscComponentSlotRouteImport } from './routes/rsc-component-slot'
 import { Route as RscClientPreloadRouteImport } from './routes/rsc-client-preload'
@@ -221,6 +222,11 @@ const RscCssModulesRoute = RscCssModulesRouteImport.update({
   path: '/rsc-css-modules',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RscCssAutoinjectRoute = RscCssAutoinjectRouteImport.update({
+  id: '/rsc-css-autoinject',
+  path: '/rsc-css-autoinject',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RscContextRoute = RscContextRouteImport.update({
   id: '/rsc-context',
   path: '/rsc-context',
@@ -296,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/rsc-client-preload': typeof RscClientPreloadRoute
   '/rsc-component-slot': typeof RscComponentSlotRoute
   '/rsc-context': typeof RscContextRoute
+  '/rsc-css-autoinject': typeof RscCssAutoinjectRoute
   '/rsc-css-modules': typeof RscCssModulesRoute
   '/rsc-css-preload-complex': typeof RscCssPreloadComplexRoute
   '/rsc-deferred': typeof RscDeferredRoute
@@ -344,6 +351,7 @@ export interface FileRoutesByTo {
   '/rsc-client-preload': typeof RscClientPreloadRoute
   '/rsc-component-slot': typeof RscComponentSlotRoute
   '/rsc-context': typeof RscContextRoute
+  '/rsc-css-autoinject': typeof RscCssAutoinjectRoute
   '/rsc-css-modules': typeof RscCssModulesRoute
   '/rsc-css-preload-complex': typeof RscCssPreloadComplexRoute
   '/rsc-deferred': typeof RscDeferredRoute
@@ -393,6 +401,7 @@ export interface FileRoutesById {
   '/rsc-client-preload': typeof RscClientPreloadRoute
   '/rsc-component-slot': typeof RscComponentSlotRoute
   '/rsc-context': typeof RscContextRoute
+  '/rsc-css-autoinject': typeof RscCssAutoinjectRoute
   '/rsc-css-modules': typeof RscCssModulesRoute
   '/rsc-css-preload-complex': typeof RscCssPreloadComplexRoute
   '/rsc-deferred': typeof RscDeferredRoute
@@ -443,6 +452,7 @@ export interface FileRouteTypes {
     | '/rsc-client-preload'
     | '/rsc-component-slot'
     | '/rsc-context'
+    | '/rsc-css-autoinject'
     | '/rsc-css-modules'
     | '/rsc-css-preload-complex'
     | '/rsc-deferred'
@@ -491,6 +501,7 @@ export interface FileRouteTypes {
     | '/rsc-client-preload'
     | '/rsc-component-slot'
     | '/rsc-context'
+    | '/rsc-css-autoinject'
     | '/rsc-css-modules'
     | '/rsc-css-preload-complex'
     | '/rsc-deferred'
@@ -539,6 +550,7 @@ export interface FileRouteTypes {
     | '/rsc-client-preload'
     | '/rsc-component-slot'
     | '/rsc-context'
+    | '/rsc-css-autoinject'
     | '/rsc-css-modules'
     | '/rsc-css-preload-complex'
     | '/rsc-deferred'
@@ -588,6 +600,7 @@ export interface RootRouteChildren {
   RscClientPreloadRoute: typeof RscClientPreloadRoute
   RscComponentSlotRoute: typeof RscComponentSlotRoute
   RscContextRoute: typeof RscContextRoute
+  RscCssAutoinjectRoute: typeof RscCssAutoinjectRoute
   RscCssModulesRoute: typeof RscCssModulesRoute
   RscCssPreloadComplexRoute: typeof RscCssPreloadComplexRoute
   RscDeferredRoute: typeof RscDeferredRoute
@@ -861,6 +874,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RscCssModulesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rsc-css-autoinject': {
+      id: '/rsc-css-autoinject'
+      path: '/rsc-css-autoinject'
+      fullPath: '/rsc-css-autoinject'
+      preLoaderRoute: typeof RscCssAutoinjectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rsc-context': {
       id: '/rsc-context'
       path: '/rsc-context'
@@ -964,6 +984,7 @@ const rootRouteChildren: RootRouteChildren = {
   RscClientPreloadRoute: RscClientPreloadRoute,
   RscComponentSlotRoute: RscComponentSlotRoute,
   RscContextRoute: RscContextRoute,
+  RscCssAutoinjectRoute: RscCssAutoinjectRoute,
   RscCssModulesRoute: RscCssModulesRoute,
   RscCssPreloadComplexRoute: RscCssPreloadComplexRoute,
   RscDeferredRoute: RscDeferredRoute,

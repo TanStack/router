@@ -191,6 +191,43 @@ export const submitForm = createServerFn({ method: 'POST' })
   })
 ```
 
+### Serialization Type Checking
+
+Server function inputs and outputs cross the network boundary, so TypeScript checks that they are serializable:
+
+- Input validator input types must be serializable. `FormData` is also allowed for `POST` server functions.
+- Handler return types must be serializable. `Response` objects are allowed.
+
+This default behavior is called `strict` mode. If you intentionally need to opt out of these type-level serialization checks, pass the `strict` option to `createServerFn`:
+
+```tsx
+// Disable input and output serialization type checks
+export const looseServerFn = createServerFn({ strict: false })
+  .inputValidator((data: { value: unknown }) => data)
+  .handler(async ({ data }) => {
+    return data.value
+  })
+
+// Disable only input serialization type checks
+export const looseInputServerFn = createServerFn({
+  strict: { input: false },
+})
+  .inputValidator((data: { value: unknown }) => data)
+  .handler(async () => {
+    return { ok: true }
+  })
+
+// Disable only output serialization type checks
+export const looseOutputServerFn = createServerFn({
+  strict: { output: false },
+}).handler(async () => {
+  return getCustomSerializedValue()
+})
+```
+
+> [!WARNING]
+> `strict: false` only relaxes TypeScript's serialization checks. Values still need to be handled correctly by the runtime serialization layer when they are sent between the client and server. Prefer the default `strict: true` unless you know why the default serializability rules are too restrictive for a specific server function.
+
 ## Error Handling & Redirects
 
 Server functions can throw errors, redirects, and not-found responses that are handled automatically when called from route lifecycles or components using `useServerFn()`.
@@ -272,26 +309,44 @@ import {
   setResponseStatus,
 } from '@tanstack/react-start/server'
 
-export const getCachedData = createServerFn({ method: 'GET' }).handler(
+// Public, non-personalized data — safe to cache shared across users.
+export const getPublicData = createServerFn({ method: 'GET' }).handler(
   async () => {
-    // Access the incoming request
-    const request = getRequest()
-    const authHeader = getRequestHeader('Authorization')
-
-    // Set response headers (e.g., for caching)
     setResponseHeaders(
       new Headers({
+        // 'public' is correct ONLY when the response does not depend on identity.
+        // For anything tied to a session/user/tenant, see the authenticated example below.
         'Cache-Control': 'public, max-age=300',
         'CDN-Cache-Control': 'max-age=3600, stale-while-revalidate=600',
       }),
     )
-
-    // Optionally set status code
     setResponseStatus(200)
-
-    return fetchData()
+    return fetchPublicData()
   },
 )
+```
+
+> **Cache-Control safety:** `public` tells every CDN/proxy between you and the user that the response can be served to anyone. If the handler reads a session, cookie, or auth header — or branches on identity at all — using `public` will cache one user's response and replay it to the next user (cross-tenant data leak). For authenticated responses, use `private`:
+
+```tsx
+// Authenticated data — must NOT be 'public'.
+export const getMyOrders = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const session = await requireSession()
+    setResponseHeaders(
+      new Headers({
+        // 'private' = only the user-agent may cache. Vary by Cookie/Authorization
+        // so any intermediary that does cache keys by identity, not URL alone.
+        'Cache-Control': 'private, max-age=60',
+        Vary: 'Cookie, Authorization',
+      }),
+    )
+    return db.orders.findMany({ where: { userId: session.userId } })
+  },
+)
+
+// For sensitive data, opt out entirely:
+// setResponseHeaders(new Headers({ 'Cache-Control': 'no-store' }))
 ```
 
 Available utilities:
@@ -317,6 +372,8 @@ Use server functions without JavaScript by leveraging the `.url` property with H
 ### Middleware
 
 Compose server functions with middleware for authentication, logging, and shared logic. See the [Middleware guide](./middleware.md).
+
+> **Auth must be enforced on the server function, not the route.** A `createServerFn` is an RPC endpoint reachable by direct POST regardless of which route renders the calling UI — a route `beforeLoad` redirect protects the page experience, but it does not stop a request from hitting the RPC directly. Apply `authMiddleware` (or an equivalent in-handler check) to every server function that needs auth. See [Authentication Server Primitives](./authentication-server-primitives.md).
 
 ### Static Server Functions
 

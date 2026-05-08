@@ -23,6 +23,7 @@ const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
 async function compile(opts: {
   env: 'client' | 'server'
   code: string
+  parserFilename?: string
   isProviderFile: boolean
   mode: 'dev' | 'build'
 }) {
@@ -55,6 +56,7 @@ async function compile(opts: {
   const result = await compiler.compile({
     code: opts.code,
     id,
+    parserFilename: opts.parserFilename,
   })
   return result
 }
@@ -77,6 +79,7 @@ describe('createServerFn compiles correctly', async () => {
         env: env.type,
         isProviderFile: env.isProviderFile,
         code,
+        parserFilename: `/test/src/${filename}`,
         mode: 'build',
       })
 

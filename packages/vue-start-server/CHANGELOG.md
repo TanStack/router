@@ -1,5 +1,56 @@
 # @tanstack/vue-start-server
 
+## 1.166.47
+
+### Patch Changes
+
+- Updated dependencies [[`35e88f0`](https://github.com/TanStack/router/commit/35e88f04996d71019a1868b7b06ecb4ddbc9df9e)]:
+  - @tanstack/router-core@1.169.2
+  - @tanstack/start-client-core@1.168.2
+  - @tanstack/start-server-core@1.167.30
+  - @tanstack/vue-router@1.169.2
+
+## 1.166.46
+
+### Patch Changes
+
+- Updated dependencies [[`afa40ef`](https://github.com/TanStack/router/commit/afa40ef46c273c53646ba33f607fc618a07ffede)]:
+  - @tanstack/start-server-core@1.167.29
+
+## 1.166.45
+
+### Patch Changes
+
+- Add opt-in Start response Link headers for collected Early Hints. ([#7327](https://github.com/TanStack/router/pull/7327))
+
+- Updated dependencies [[`709627f`](https://github.com/TanStack/router/commit/709627f3dbc6d97daa547a1401ef42a53bc4be32)]:
+  - @tanstack/start-server-core@1.167.28
+
+## 1.166.44
+
+### Patch Changes
+
+- Updated dependencies [[`238ea4a`](https://github.com/TanStack/router/commit/238ea4a4998ab3a7fd528b317e1935766ac65df8)]:
+  - @tanstack/start-server-core@1.167.27
+
+## 1.166.43
+
+### Patch Changes
+
+- Updated dependencies [[`4a1e63f`](https://github.com/TanStack/router/commit/4a1e63f1d1230b1ed8234609acad4639d8982c13)]:
+  - @tanstack/router-core@1.169.1
+  - @tanstack/start-client-core@1.168.1
+  - @tanstack/start-server-core@1.167.26
+  - @tanstack/vue-router@1.169.1
+
+## 1.166.42
+
+### Patch Changes
+
+- Updated dependencies [[`82b0613`](https://github.com/TanStack/router/commit/82b06132af776f74603ab27977cc277d6219a845)]:
+  - @tanstack/start-client-core@1.168.0
+  - @tanstack/start-server-core@1.167.25
+
 ## 1.166.41
 
 ### Patch Changes

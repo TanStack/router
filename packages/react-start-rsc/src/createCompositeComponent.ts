@@ -9,6 +9,7 @@ import {
   RSC_SLOT_USAGES_STREAM,
   SERVER_COMPONENT_STREAM,
 } from './ServerComponentTypes'
+import { createRscCssEnvelope } from './rscCssEnvelope'
 import type {
   AnyCompositeComponent,
   CompositeComponentResult,
@@ -16,6 +17,7 @@ import type {
   ServerComponentStream,
   ValidateCompositeComponent,
 } from './ServerComponentTypes'
+import type { RscCssEnvelopeOptions } from './rscCssEnvelope'
 
 import './rscSsrHandler' // Import for global declaration side effect
 
@@ -51,6 +53,7 @@ import './rscSsrHandler' // Import for global declaration side effect
  */
 export async function createCompositeComponent<TComp>(
   component: ValidateCompositeComponent<TComp>,
+  options?: RscCssEnvelopeOptions,
 ): Promise<CompositeComponentResult<TComp>> {
   const isDev = process.env.NODE_ENV === 'development'
 
@@ -76,14 +79,17 @@ export async function createCompositeComponent<TComp>(
 
   // Wrapper that renders the user's component inside Flight render context
   async function ServerComponentWrapper() {
-    return (component as React.FC)(proxyProps)
+    return createRscCssEnvelope(
+      await (component as React.FC)(proxyProps),
+      options,
+    )
   }
 
   // Render using createElement so React calls our component during Flight rendering
   // This is critical for React.cache to work - the component must be invoked
   // during renderToReadableStream's execution, not before
   const flightStream = renderToReadableStream(
-    createElement(ServerComponentWrapper),
+    createElement(ServerComponentWrapper as any),
   )
 
   // Check if this is an SSR request (router) or a direct server function call

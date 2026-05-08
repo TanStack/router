@@ -5,6 +5,8 @@ title: Environment Variables
 
 Learn how to securely configure and use environment variables in your TanStack Start application across different contexts (server functions, client code, and build processes).
 
+> **Read env per-request, not at module scope.** On Cloudflare Workers and other edge SSR runtimes, env vars are injected at request time — module-level `process.env.X` reads run before the env exists and evaluate to `undefined` even on the server. Always read `process.env` inside `.handler()`, middleware `.server()`, server-route handlers, or other per-request callbacks. Reading at module scope also risks inlining secrets into the client bundle. (On Cloudflare Workers specifically, the canonical way to read env from anywhere — including module scope — is the [`cloudflare:workers` env binding](https://developers.cloudflare.com/workers/configuration/environment-variables/).)
+
 ## Quick Start
 
 TanStack Start automatically loads `.env` files and makes variables available in both server and client contexts with proper security boundaries.
@@ -294,9 +296,17 @@ const clientEnvSchema = z.object({
 })
 
 // Validate server environment
+// NOTE: Module-level parse runs at module load. Fine for Node.js;
+// on Cloudflare Workers (and other edge runtimes) `process.env` is
+// empty at module load, so wrap this in a function and call it
+// inside `.handler()` instead:
+//
+//   export const getServerEnv = () => envSchema.parse(process.env)
+//
+// Then read `getServerEnv()` per-request from server functions/middleware.
 export const serverEnv = envSchema.parse(process.env)
 
-// Validate client environment
+// Validate client environment (build-time, always safe)
 export const clientEnv = clientEnvSchema.parse(import.meta.env)
 ```
 

@@ -1,3 +1,5 @@
+import type * as babel from '@babel/core'
+import type * as t from '@babel/types'
 import type { TanStackStartOutputConfig } from './schema'
 
 export type CompileStartFrameworkOptions = 'react' | 'solid' | 'vue'
@@ -19,6 +21,46 @@ export type SerializationAdapterByRuntime = Partial<
 export type SerializationAdapterConfig =
   | SerializationAdapterModuleRef
   | SerializationAdapterByRuntime
+
+export type StartCompilerEnvironment = 'client' | 'server'
+
+export interface StartCompilerImportTransformImport {
+  libName: string
+  rootExport: string
+}
+
+export interface StartCompilerTransformCandidate {
+  path: babel.NodePath<t.CallExpression>
+}
+
+export interface StartCompilerTransformContext {
+  readonly ast: t.File
+  readonly code: string
+  readonly id: string
+  readonly env: StartCompilerEnvironment
+  readonly envName: string
+  readonly mode: 'dev' | 'build'
+  readonly root: string
+  readonly framework: CompileStartFrameworkOptions
+  readonly providerEnvName: string
+  readonly types: typeof t
+  parseExpression: (code: string) => t.Expression
+}
+
+export interface StartCompilerImportTransform {
+  name: string
+  environment?:
+    | StartCompilerEnvironment
+    | Array<StartCompilerEnvironment>
+    | undefined
+  imports: Array<StartCompilerImportTransformImport>
+  detect: RegExp
+  order?: 'pre' | 'post' | undefined
+  transform: (
+    candidates: Array<StartCompilerTransformCandidate>,
+    context: StartCompilerTransformContext,
+  ) => void
+}
 
 export interface NormalizedBasePaths {
   publicBase: string
@@ -60,6 +102,8 @@ export interface TanStackStartCoreOptions {
   providerEnvironmentName: string
   ssrIsProvider: boolean
   serializationAdapters?: Array<SerializationAdapterConfig> | undefined
+  compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
 }
 
 export interface ResolvedStartConfig {

@@ -11,23 +11,51 @@ import type * as _babel_types from '@babel/types'
 
 export type ParseAstOptions = ParserOptions & {
   code: string
+  filename?: string
 }
 
 export type ParseAstResult = ParseResult<_babel_types.File>
-export function parseAst({ code, ...opts }: ParseAstOptions): ParseAstResult {
+export function parseAst({
+  code,
+  filename,
+  sourceFilename,
+  plugins,
+  ...opts
+}: ParseAstOptions): ParseAstResult {
+  const inferredFilename = filename ?? sourceFilename
   return parse(code, {
-    plugins: [
-      'jsx',
-      'typescript',
-      'explicitResourceManagement',
-      'importAttributes',
-      'deprecatedImportAssert',
-      ['decorators', { decoratorsBeforeExport: true }],
-      'decoratorAutoAccessors',
-    ],
+    plugins: plugins ?? getDefaultParserPluginsForFilename(inferredFilename),
     sourceType: 'module',
+    sourceFilename,
     ...opts,
   })
+}
+
+function getDefaultParserPluginsForFilename(
+  filename: string | undefined,
+): NonNullable<ParserOptions['plugins']> {
+  const plugins: NonNullable<ParserOptions['plugins']> = [
+    'typescript',
+    'explicitResourceManagement',
+    'importAttributes',
+    'deprecatedImportAssert',
+    ['decorators', { decoratorsBeforeExport: true }],
+    'decoratorAutoAccessors',
+  ]
+
+  if (!isPlainTypeScriptFile(filename)) {
+    plugins.unshift('jsx')
+  }
+
+  return plugins
+}
+
+function isPlainTypeScriptFile(filename: string | undefined): boolean {
+  if (!filename) {
+    return false
+  }
+
+  return /\.[cm]?ts(?:$|[?#])/.test(filename)
 }
 
 let generate = _generate

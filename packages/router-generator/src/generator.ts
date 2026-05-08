@@ -1069,6 +1069,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       // transform the file
       const transformResult = await transform({
         source: updatedCacheEntry.fileContent,
+        filename: node.fullPath,
         ctx: {
           target: this.config.target,
           routeId: escapedRoutePath,

@@ -17,6 +17,15 @@ test('Navigating to post', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
 
+test('plain .ts modules with angle-bracket type assertions build and render', async ({
+  page,
+}) => {
+  await page.goto('/plain-ts-type-assertion')
+  await expect(page.getByTestId('plain-ts-parser-regression')).toContainText(
+    'plain .ts cast parsed',
+  )
+})
+
 test('Navigating to user', async ({ page }) => {
   await page.goto('/')
   await page.waitForURL('/')

@@ -539,7 +539,7 @@ export function importProtectionPlugin(
         return []
 
       try {
-        parsedBySource = getMockExportNamesBySource(importerCode)
+        parsedBySource = getMockExportNamesBySource(importerCode, importerFile)
 
         // Also index by resolved physical IDs so later lookups match.
         await recordMockExportsForImporter(
@@ -1853,7 +1853,7 @@ export function importProtectionPlugin(
             // Falls back to empty list on non-standard syntax.
             let exportNames: Array<string> = []
             try {
-              exportNames = getNamedExports(code)
+              exportNames = getNamedExports(code, file)
             } catch {
               // Parsing may fail on non-standard syntax
             }
@@ -1913,6 +1913,7 @@ export function importProtectionPlugin(
 
           const result: TransformResult = {
             code,
+            filename: file,
             map,
             originalCode,
             lineIndex,
@@ -1931,7 +1932,7 @@ export function importProtectionPlugin(
           // Dev mode: resolve imports, populate graph, detect violations,
           // and rewrite denied imports.
           const isDevMock = config.effectiveBehavior === 'mock'
-          const importSources = getImportSources(code)
+          const importSources = getImportSources(code, file)
           const resolvedChildren = new Set<string>()
           const deniedSourceReplacements = new Map<string, string>()
           for (const src of importSources) {

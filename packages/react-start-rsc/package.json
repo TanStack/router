@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start-rsc",
-  "version": "0.0.32",
+  "version": "0.0.44",
   "description": "React Server Components support for TanStack Start",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -67,6 +67,12 @@
       "import": {
         "types": "./dist/esm/src/plugin/vite.d.ts",
         "default": "./dist/esm/plugin/vite.js"
+      }
+    },
+    "./plugin/rscCssTransform": {
+      "import": {
+        "types": "./dist/esm/src/plugin/rscCssTransform.d.ts",
+        "default": "./dist/esm/plugin/rscCssTransform.js"
       }
     },
     "./rsbuild/ssr-decode": {

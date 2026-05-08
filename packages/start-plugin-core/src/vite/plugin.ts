@@ -217,6 +217,9 @@ export function tanStackStartVite(
       environments,
       generateFunctionId:
         normalizedStartPluginOpts.serverFns?.generateFunctionId,
+      compilerTransforms: corePluginOpts.compilerTransforms,
+      serverFnProviderModuleDirectives:
+        corePluginOpts.serverFnProviderModuleDirectives,
       providerEnvName: serverFnProviderEnv,
     }),
     importProtectionPlugin({
