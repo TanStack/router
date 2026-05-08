@@ -1178,7 +1178,7 @@ export class RouterCore<
       typeof window.CSS?.supports === 'function'
     ) {
       this.isViewTransitionTypesSupported = window.CSS.supports(
-        'selector(:active-view-transition-type(a)',
+        'selector(:active-view-transition-type(a))',
       )
     }
   }
