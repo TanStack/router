@@ -31,7 +31,6 @@ import type {
   IntersectAllValidatorOutputs,
 } from './createMiddleware'
 
-
 type TODO = any
 
 export type ServerFnStrict = boolean | { input?: boolean; output?: boolean }
