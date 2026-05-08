@@ -1,6 +1,73 @@
 import { expect } from '@playwright/test'
-import { test } from '@tanstack/router-e2e-utils'
+import { createHmrFileEditor, test } from '@tanstack/router-e2e-utils'
+import crypto from 'node:crypto'
+import path from 'node:path'
 import type { APIRequestContext, Page } from '@playwright/test'
+
+const isDev = process.env.MODE === 'dev'
+const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+const isVite = toolchain === 'vite'
+const hmrExpect = expect.configure({ timeout: 20_000 })
+const componentsRouteFile = path.join(
+  process.cwd(),
+  'src/routes/components.tsx',
+)
+const interactiveBoxLabelSource =
+  '      {props.label}: <span data-testid={`${props.id}-count`}>{count}</span>'
+const interactiveBoxHmrLabelSource =
+  '      hmr {props.label}: <span data-testid={`${props.id}-count`}>{count}</span>'
+
+function normalizeComponentsRouteSource(source: string) {
+  return source
+    .split(interactiveBoxHmrLabelSource)
+    .join(interactiveBoxLabelSource)
+}
+
+const componentsRouteEditor = createHmrFileEditor({
+  files: {
+    componentsRoute: componentsRouteFile,
+  },
+  normalizeSource: (_fileKey, source) => normalizeComponentsRouteSource(source),
+})
+
+function getVisibleHydrateVirtualPath() {
+  const normalizedSourcePath = path
+    .relative(process.cwd(), componentsRouteFile)
+    .replaceAll('\\', '/')
+  const sourceHash = crypto
+    .createHash('sha1')
+    .update(normalizedSourcePath)
+    .digest('hex')
+    .slice(0, 10)
+  const params = new URLSearchParams()
+  params.set('tss-hydrate', `0_${sourceHash}`)
+
+  return `${componentsRouteFile}?${params.toString()}`
+}
+
+async function waitForVisibleHydrateVirtualModule(page: Page, marker: string) {
+  const virtualPath = getVisibleHydrateVirtualPath()
+
+  await expect
+    .poll(
+      async () => {
+        try {
+          const response = await page.request.get(virtualPath)
+          const text = await response.text()
+
+          if (response.ok() && text.includes(marker)) {
+            return 'ready'
+          }
+
+          return `${response.status()} ${text.slice(0, 240)}`
+        } catch (error) {
+          return String(error)
+        }
+      },
+      { timeout: 20_000 },
+    )
+    .toBe('ready')
+}
 
 async function clickAndExpectCount(
   page: Page,
@@ -101,6 +168,29 @@ function htmlContainsText(html: string, text: string) {
   expect(html).toMatch(new RegExp(pattern))
 }
 
+async function waitForComponentsServerHtmlText(page: Page, text: string) {
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.get('/components')
+        const html = await response.text()
+
+        if (!response.ok()) {
+          return `${response.status()} ${html.slice(0, 240)}`
+        }
+
+        try {
+          htmlContainsText(html, text)
+          return 'ready'
+        } catch {
+          return html.slice(0, 240)
+        }
+      },
+      { timeout: 20_000 },
+    )
+    .toBe('ready')
+}
+
 function getModulePreloadHrefs(html: string) {
   return Array.from(html.matchAll(/<link\b[^>]*>/g), (match) => match[0])
     .filter((tag) => /\brel="modulepreload"/.test(tag))
@@ -180,7 +270,69 @@ async function expectClientRouterReady(page: Page) {
     .toBe(true)
 }
 
+test.describe('Hydrate HMR', () => {
+  test.skip(!isDev, 'HMR regression coverage runs against the dev server only')
+
+  test.beforeAll(async () => {
+    await componentsRouteEditor.capturePromise
+  })
+
+  test.afterEach(async () => {
+    await componentsRouteEditor.capturePromise
+    await componentsRouteEditor.restoreFiles()
+  })
+
+  test.afterAll(async () => {
+    await componentsRouteEditor.capturePromise
+    await componentsRouteEditor.restoreFiles()
+  })
+
+  test('updates deferred child chunks after the parent route is edited', async ({
+    page,
+  }) => {
+    const pageErrors: Array<string> = []
+    page.on('pageerror', (error) => {
+      pageErrors.push(error.message)
+    })
+
+    await page.goto('/components')
+    await expectClientRouterReady(page)
+    await expectRouteToStayUnhydrated(page, 'component-visible-button')
+
+    await componentsRouteEditor.replaceText(
+      'componentsRoute',
+      interactiveBoxLabelSource,
+      interactiveBoxHmrLabelSource,
+    )
+
+    await waitForComponentsServerHtmlText(page, 'hmr visible')
+    if (isVite) {
+      await waitForVisibleHydrateVirtualModule(page, 'hmr ')
+    }
+
+    await page.goto('/components')
+    await expectClientRouterReady(page)
+    await expectRouteToStayUnhydrated(page, 'component-visible-button')
+    await scrollToBoundary(page, 'component-visible-button')
+    await hmrExpect(page.getByTestId('component-visible-button')).toContainText(
+      'hmr visible',
+    )
+    await clickAndExpectCount(
+      page,
+      'component-visible-button',
+      'component-visible-count',
+      '1',
+    )
+    expect(pageErrors).toEqual([])
+  })
+})
+
 test.describe('component-level Hydrate runtime strategies', () => {
+  test.skip(
+    isDev,
+    'production hydration coverage runs against the preview server',
+  )
+
   test('renders SSR HTML and hydrates each runtime when appropriately', async ({
     page,
     request,
@@ -378,6 +530,11 @@ test.describe('component-level Hydrate runtime strategies', () => {
 })
 
 test.describe('Hydrate CSS delivery', () => {
+  test.skip(
+    isDev,
+    'production hydration coverage runs against the preview server',
+  )
+
   test('ships CSS for deferred, never, shared, and nested boundaries without JavaScript', async ({
     browser,
     request,
@@ -461,6 +618,11 @@ test.describe('Hydrate CSS delivery', () => {
 })
 
 test.describe('imported Hydrate boundaries', () => {
+  test.skip(
+    isDev,
+    'production hydration coverage runs against the preview server',
+  )
+
   test('does not emit filtered shared Hydrate child JS on the initial document', async ({
     request,
   }) => {

@@ -31,6 +31,14 @@ type HydrationImport = {
   interactionLocalNames: Set<string>
 }
 
+export class MissingHydrateSourceError extends Error {
+  constructor(id: string) {
+    super(
+      `Missing Hydrate source for virtual module ${id}. The parent module must be transformed before its Hydrate child chunk is loaded.`,
+    )
+  }
+}
+
 const hydrateImportSources = new Set([
   '@tanstack/react-start',
   '@tanstack/solid-start',
@@ -962,9 +970,7 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
           : setSource(context.envName, virtualModule.sourceId, context.code)
 
       if (!sourceEntry) {
-        throw new Error(
-          `Missing Hydrate source for virtual module ${context.id}. The parent module must be transformed before its Hydrate child chunk is loaded.`,
-        )
+        throw new MissingHydrateSourceError(context.id)
       }
 
       if (sourceEntry.virtualModules.has(context.id)) {

@@ -16,7 +16,10 @@ import {
 import { generateServerFnResolverModule } from '../../start-compiler/server-fn-resolver-module'
 import { cleanId } from '../../start-compiler/utils'
 import { createVirtualModule } from '../createVirtualModule'
-import { createHydrateCompilerPlugin } from '../../hydrate-when-transform'
+import {
+  MissingHydrateSourceError,
+  createHydrateCompilerPlugin,
+} from '../../hydrate-when-transform'
 import { resolveViteId } from '../../utils'
 import {
   createViteDevServerFnModuleSpecifierEncoder,
@@ -32,7 +35,7 @@ import type {
   GenerateFunctionIdFnOptional,
   ServerFn,
 } from '../../start-compiler/types'
-import type { EnvironmentModuleNode, PluginOption } from 'vite'
+import type { Environment, EnvironmentModuleNode, PluginOption } from 'vite'
 
 // Re-export from shared constants for backwards compatibility
 export { SERVER_FN_LOOKUP }
@@ -48,6 +51,32 @@ type ModuleInvalidationEnvironment = {
       seen?: Set<EnvironmentModuleNode>,
     ) => void
   }
+}
+
+type ViteModuleLoadOptions = {
+  devId?: string
+  load: (options: { id: string }) => Promise<{ code?: string | null } | null>
+  error: (message: string) => never
+}
+
+async function loadViteModuleFromEnvironment(
+  environment: Environment,
+  id: string,
+  opts: ViteModuleLoadOptions,
+): Promise<string | undefined> {
+  if (environment.mode === 'build') {
+    const loaded = await opts.load({ id })
+    return loaded?.code ?? ''
+  }
+
+  if (environment.mode === 'dev') {
+    await environment.transformRequest(opts.devId ?? id)
+    return undefined
+  }
+
+  opts.error(
+    `could not load module ${id}: unknown environment mode ${environment.mode}`,
+  )
 }
 
 function invalidateMatchingFileModules(
@@ -297,23 +326,18 @@ export function startCompilerPlugin(
                   ? createViteDevServerFnModuleSpecifierEncoder(root)
                   : undefined,
               loadModule: async (id: string) => {
-                if (mode === 'build') {
-                  const loaded = await this.load({ id })
-                  const code = loaded.code ?? ''
-
-                  compiler!.ingestModule({ code, id })
-                  return
-                }
-
-                if (this.environment.mode !== 'dev') {
-                  this.error(
-                    `could not load module ${id}: unknown environment mode ${this.environment.mode}`,
-                  )
-                }
-
-                await this.environment.transformRequest(
-                  `${id}?${SERVER_FN_LOOKUP}`,
+                const code = await loadViteModuleFromEnvironment(
+                  this.environment,
+                  id,
+                  {
+                    load: (options) => this.load(options),
+                    error: (message) => this.error(message),
+                    devId: `${id}?${SERVER_FN_LOOKUP}`,
+                  },
                 )
+                if (code !== undefined) {
+                  compiler!.ingestModule({ code, id })
+                }
               },
 
               resolveId: async (source: string, importer?: string) => {
@@ -463,18 +487,35 @@ export function startCompilerPlugin(
         filter: {
           id: compilerVirtualModuleIdPattern ?? /$^/,
         },
-        handler(id) {
+        async handler(id) {
           const environment = environmentByName.get(this.environment.name)
           if (!environment || !compilerVirtualModuleIdPattern) {
             return null
           }
 
-          return loadCompilerVirtualModule(compilerPlugins, {
-            id,
-            root,
-            env: environment.type,
-            envName: this.environment.name,
+          const loadVirtualModule = () =>
+            loadCompilerVirtualModule(compilerPlugins, {
+              id,
+              root,
+              env: environment.type,
+              envName: this.environment.name,
+            })
+
+          try {
+            return loadVirtualModule()
+          } catch (error) {
+            if (!(error instanceof MissingHydrateSourceError)) {
+              throw error
+            }
+          }
+
+          const sourceId = cleanId(id)
+          await loadViteModuleFromEnvironment(this.environment, sourceId, {
+            load: (options) => this.load(options),
+            error: (message) => this.error(message),
           })
+
+          return loadVirtualModule()
         },
       },
     },

@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import { describe, expect, test, vi } from 'vitest'
 
 vi.mock('@tanstack/start-server-core', () => ({
@@ -183,5 +184,73 @@ describe('startCompilerPlugin Vite hotUpdate', () => {
 
     expect(result).toEqual([changedModule, hydrateModule])
     expect(invalidatedModules).toContain(hydrateModule)
+  })
+})
+
+describe('startCompilerPlugin Vite virtual modules', () => {
+  test('asks Vite to transform the parent module when a Hydrate child loads after invalidation', async () => {
+    const root = '/repo'
+    const sourceId = '/repo/src/routes/index.tsx'
+    const sourceHash = crypto
+      .createHash('sha1')
+      .update('src/routes/index.tsx')
+      .digest('hex')
+      .slice(0, 10)
+    const virtualId = `${sourceId}?tss-hydrate=0_${sourceHash}`
+    const source = `
+      import { Hydrate } from '@tanstack/react-start'
+      import { visible } from '@tanstack/react-start/hydration'
+
+      export function Page() {
+        return <Hydrate when={visible()}><p>New</p></Hydrate>
+      }
+    `
+    const plugins = startCompilerPlugin({
+      framework: 'react',
+      providerEnvName: 'client',
+      environments: [{ name: 'client', type: 'client' }],
+    }) as Array<Plugin>
+    const transformPlugin = plugins.find(
+      (candidate) => candidate.name === 'tanstack-start-core::server-fn:client',
+    )!
+    const virtualModulePlugin = plugins.find(
+      (candidate) =>
+        candidate.name === 'tanstack-start-core:compiler-virtual-module',
+    )!
+
+    const configResolved = transformPlugin.configResolved as any
+    await (typeof configResolved === 'function'
+      ? configResolved({ root })
+      : configResolved.handler({ root }))
+
+    const transformRequest = vi.fn(async (id: string) => {
+      await (transformPlugin.transform as any).handler.call(
+        {
+          environment: {
+            name: 'client',
+            mode: 'dev',
+          },
+          resolve: vi.fn(),
+        },
+        source,
+        id,
+      )
+
+      return { code: source }
+    })
+
+    const result = await (virtualModulePlugin.load as any).handler.call(
+      {
+        environment: {
+          name: 'client',
+          mode: 'dev',
+          transformRequest,
+        },
+      },
+      virtualId,
+    )
+
+    expect(transformRequest).toHaveBeenCalledWith(sourceId)
+    expect(result.code).toContain('New')
   })
 })

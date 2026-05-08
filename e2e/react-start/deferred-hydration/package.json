@@ -15,7 +15,9 @@
     "start": "pnpm start:vite",
     "start:vite": "srvx --prod --dir=. -s dist-vite-ssr/client --entry dist-vite-ssr/server/server.js",
     "start:rsbuild": "srvx --prod --dir=. -s dist-rsbuild-ssr/client --entry dist-rsbuild-ssr/server/index.js",
-    "test:e2e": "playwright test --project=chromium"
+    "test:e2e": "pnpm test:e2e:dev && pnpm test:e2e:prod",
+    "test:e2e:dev": "MODE=dev playwright test --project=chromium",
+    "test:e2e:prod": "MODE=prod playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
