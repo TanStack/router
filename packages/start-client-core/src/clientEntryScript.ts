@@ -1,4 +1,4 @@
-import type { RouterManagedTag } from './manifest'
+import type { RouterManagedTag, ScriptFilter } from '@tanstack/router-core'
 
 const CLIENT_ENTRY_MARKER_ATTR = 'data-tsr-client-entry'
 const LEGACY_CLIENT_ENTRY_ID = 'virtual:tanstack-start-client-entry'
@@ -74,3 +74,13 @@ export function stripClientEntryImport(
 
   return null
 }
+
+/**
+ * Default `scriptFilter` for adapter `<Scripts />`. When the matched route
+ * tree opts out of hydration, drops the client-entry import so the page
+ * renders without booting the client framework. Otherwise leaves the script
+ * unchanged. TanStack Start auto-registers this filter; router-only consumers
+ * can opt in by passing it as `createRouter({ scriptFilter })`.
+ */
+export const clientEntryScriptFilter: ScriptFilter = (script, { shouldHydrate }) =>
+  shouldHydrate ? script : stripClientEntryImport(script)

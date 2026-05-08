@@ -1,14 +1,18 @@
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
-import {
-  deepEqual,
-  getHydrateStatus,
-  stripClientEntryImport,
-} from '@tanstack/router-core'
+import { deepEqual, getHydrateStatus } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type { RouterManagedTag, ScriptFilter } from '@tanstack/router-core'
+
+function applyFilter(
+  filter: ScriptFilter | undefined,
+  script: RouterManagedTag,
+  ctx: { shouldHydrate: boolean },
+): RouterManagedTag | null {
+  return filter ? filter(script, ctx) : script
+}
 
 /**
  * Render body script tags collected from route matches and SSR manifests.
@@ -26,7 +30,8 @@ export const Scripts = () => {
       return []
     }
 
-    const { shouldHydrate } = getHydrateStatus(matches, router)
+    const ctx = { shouldHydrate: getHydrateStatus(matches, router).shouldHydrate }
+    const filter = router.options.scriptFilter
 
     matches
       .map((match) => router.looseRoutesById[match.routeId]!)
@@ -40,15 +45,8 @@ export const Scripts = () => {
               children: asset.children,
             } as RouterManagedTag
 
-            if (!shouldHydrate) {
-              const normalized = stripClientEntryImport(withNonce)
-              if (normalized) {
-                assetScripts.push(normalized)
-              }
-              return
-            }
-
-            assetScripts.push(withNonce)
+            const filtered = applyFilter(filter, withNonce, ctx)
+            if (filtered) assetScripts.push(filtered)
           }),
       )
 
@@ -74,14 +72,13 @@ export const Scripts = () => {
         }) satisfies RouterManagedTag,
     )
 
-    const { shouldHydrate } = getHydrateStatus(matches, router)
-    if (!shouldHydrate) {
-      return allScripts
-        .map(stripClientEntryImport)
-        .filter(Boolean) as Array<RouterManagedTag>
-    }
+    const ctx = { shouldHydrate: getHydrateStatus(matches, router).shouldHydrate }
+    const filter = router.options.scriptFilter
+    if (!filter) return allScripts
 
     return allScripts
+      .map((s) => applyFilter(filter, s, ctx))
+      .filter(Boolean) as Array<RouterManagedTag>
   }
 
   if (isServer ?? router.isServer) {

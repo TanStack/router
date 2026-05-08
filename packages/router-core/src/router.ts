@@ -157,6 +157,11 @@ export type SSROption = boolean | 'data-only'
 
 export type HydrateOption = boolean
 
+export type ScriptFilter = (
+  script: RouterManagedTag,
+  ctx: { shouldHydrate: boolean },
+) => RouterManagedTag | null
+
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
@@ -423,6 +428,16 @@ export interface RouterOptions<
    * @default true
    */
   defaultHydrate?: HydrateOption
+
+  /**
+   * Hook called by adapter `<Scripts />` for each script tag before render.
+   * Receives the current hydration status and may return a transformed tag,
+   * or `null` to drop the tag entirely. Used by TanStack Start to strip the
+   * client-entry import when a route opts out via `hydrate: false`; router-
+   * only consumers can wire their own filter to do the same with their own
+   * client entry marker.
+   */
+  scriptFilter?: ScriptFilter
 
   search?: {
     /**

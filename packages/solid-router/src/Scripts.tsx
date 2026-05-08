@@ -1,8 +1,16 @@
 import * as Solid from 'solid-js'
-import { getHydrateStatus, stripClientEntryImport } from '@tanstack/router-core'
+import { getHydrateStatus } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type { RouterManagedTag, ScriptFilter } from '@tanstack/router-core'
+
+function applyFilter(
+  filter: ScriptFilter | undefined,
+  script: RouterManagedTag,
+  ctx: { shouldHydrate: boolean },
+): RouterManagedTag | null {
+  return filter ? filter(script, ctx) : script
+}
 
 export const Scripts = () => {
   const router = useRouter()
@@ -21,7 +29,8 @@ export const Scripts = () => {
       return []
     }
 
-    const { shouldHydrate } = hydrateStatus()
+    const ctx = { shouldHydrate: hydrateStatus().shouldHydrate }
+    const filter = router.options.scriptFilter
 
     activeMatches()
       .map((match) => router.looseRoutesById[match.routeId]!)
@@ -35,15 +44,8 @@ export const Scripts = () => {
               children: asset.children,
             } as RouterManagedTag
 
-            if (!shouldHydrate) {
-              const normalized = stripClientEntryImport(withNonce)
-              if (normalized) {
-                assetScripts.push(normalized)
-              }
-              return
-            }
-
-            assetScripts.push(withNonce)
+            const filtered = applyFilter(filter, withNonce, ctx)
+            if (filtered) assetScripts.push(filtered)
           }),
       )
 
@@ -65,14 +67,13 @@ export const Scripts = () => {
       children,
     })) as Array<RouterManagedTag>
 
-    const { shouldHydrate } = hydrateStatus()
-    if (!shouldHydrate) {
-      return allScripts
-        .map(stripClientEntryImport)
-        .filter(Boolean) as Array<RouterManagedTag>
-    }
+    const ctx = { shouldHydrate: hydrateStatus().shouldHydrate }
+    const filter = router.options.scriptFilter
+    if (!filter) return allScripts
 
     return allScripts
+      .map((s) => applyFilter(filter, s, ctx))
+      .filter(Boolean) as Array<RouterManagedTag>
   })
 
   Solid.createEffect(() => {

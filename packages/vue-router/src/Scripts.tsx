@@ -1,9 +1,17 @@
 import * as Vue from 'vue'
 import { useStore } from '@tanstack/vue-store'
-import { getHydrateStatus, stripClientEntryImport } from '@tanstack/router-core'
+import { getHydrateStatus } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type { RouterManagedTag, ScriptFilter } from '@tanstack/router-core'
+
+function applyFilter(
+  filter: ScriptFilter | undefined,
+  script: RouterManagedTag,
+  ctx: { shouldHydrate: boolean },
+): RouterManagedTag | null {
+  return filter ? filter(script, ctx) : script
+}
 
 export const Scripts = Vue.defineComponent({
   name: 'Scripts',
@@ -24,7 +32,8 @@ export const Scripts = Vue.defineComponent({
         return []
       }
 
-      const { shouldHydrate } = hydrateStatus.value
+      const ctx = { shouldHydrate: hydrateStatus.value.shouldHydrate }
+      const filter = router.options.scriptFilter
 
       matches.value
         .map((match) => router.looseRoutesById[match.routeId]!)
@@ -38,15 +47,8 @@ export const Scripts = Vue.defineComponent({
                 children: asset.children,
               } as RouterManagedTag
 
-              if (!shouldHydrate) {
-                const normalized = stripClientEntryImport(withNonce)
-                if (normalized) {
-                  assetScripts.push(normalized)
-                }
-                return
-              }
-
-              assetScripts.push(withNonce)
+              const filtered = applyFilter(filter, withNonce, ctx)
+              if (filtered) assetScripts.push(filtered)
             }),
         )
 
@@ -68,16 +70,15 @@ export const Scripts = Vue.defineComponent({
         children,
       })) as Array<RouterManagedTag>
 
-      const { shouldHydrate } = hydrateStatus.value
-      if (!shouldHydrate) {
-        return {
-          scripts: allScripts
-            .map(stripClientEntryImport)
-            .filter(Boolean) as Array<RouterManagedTag>,
-        }
-      }
+      const ctx = { shouldHydrate: hydrateStatus.value.shouldHydrate }
+      const filter = router.options.scriptFilter
+      if (!filter) return { scripts: allScripts }
 
-      return { scripts: allScripts }
+      return {
+        scripts: allScripts
+          .map((s) => applyFilter(filter, s, ctx))
+          .filter(Boolean) as Array<RouterManagedTag>,
+      }
     })
 
     Vue.watchEffect(() => {

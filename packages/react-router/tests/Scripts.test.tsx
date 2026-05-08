@@ -1041,13 +1041,35 @@ describe('data script rendering', () => {
 })
 
 describe('selective hydration scripts', () => {
-  test('hydrate: false strips client entry import but keeps injected prelude', async () => {
+  // A minimal scriptFilter that demonstrates the wiring without depending on
+  // Start's clientEntryScriptFilter. Drops scripts marked TEST_DROP and
+  // unwraps TEST_KEEP_PREFIX from anything else when shouldHydrate is false.
+  const TEST_DROP_MARKER = 'data-test-drop'
+  const TEST_KEEP_PREFIX = 'KEEP:'
+  const testScriptFilter = (
+    script: any,
+    { shouldHydrate }: { shouldHydrate: boolean },
+  ) => {
+    if (shouldHydrate) return script
+    if (script.attrs?.[TEST_DROP_MARKER]) return null
+    if (
+      typeof script.children === 'string' &&
+      script.children.startsWith(TEST_KEEP_PREFIX)
+    ) {
+      return {
+        ...script,
+        children: script.children.slice(TEST_KEEP_PREFIX.length),
+      }
+    }
+    return script
+  }
+
+  test('hydrate: false invokes scriptFilter for inline scripts', async () => {
     const rootRoute = createRootRoute({
       scripts: () => [
         {
           type: 'module',
-          children:
-            'window.__tsr_refresh_setup = true;\nimport("virtual:tanstack-start-client-entry")',
+          children: 'KEEP:window.__tsr_inline_kept = true',
         },
       ],
       component: () => {
@@ -1078,6 +1100,7 @@ describe('selective hydration scripts', () => {
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
       isServer: false,
+      scriptFilter: testScriptFilter,
     })
 
     await router.load()
@@ -1085,11 +1108,11 @@ describe('selective hydration scripts', () => {
 
     const headScripts = document.head.textContent || ''
 
-    expect(headScripts).toContain('window.__tsr_refresh_setup = true')
-    expect(headScripts).not.toContain('virtual:tanstack-start-client-entry')
+    expect(headScripts).toContain('window.__tsr_inline_kept = true')
+    expect(headScripts).not.toContain('KEEP:')
   })
 
-  test('hydrate: false strips marked client entry scripts from manifest assets', async () => {
+  test('hydrate: false invokes scriptFilter for manifest asset scripts', async () => {
     const rootRoute = createRootRoute({
       component: () => {
         return (
@@ -1116,6 +1139,7 @@ describe('selective hydration scripts', () => {
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
       isServer: true,
+      scriptFilter: testScriptFilter,
     })
 
     ;(router as any).ssr = {
@@ -1128,10 +1152,9 @@ describe('selective hydration scripts', () => {
                 attrs: {
                   type: 'module',
                   async: true,
-                  'data-tsr-client-entry': 'true',
+                  [TEST_DROP_MARKER]: 'true',
                 },
-                children:
-                  'window.__tsr_refresh_setup = true;import("/assets/client.js")',
+                children: 'import("/assets/client.js")',
               },
             ],
           },
@@ -1145,7 +1168,6 @@ describe('selective hydration scripts', () => {
       <RouterProvider router={router} />,
     )
 
-    expect(html).toContain('window.__tsr_refresh_setup = true')
     expect(html).not.toContain('import(&quot;/assets/client.js&quot;)')
   })
 })
