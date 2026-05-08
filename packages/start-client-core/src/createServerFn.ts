@@ -1,6 +1,6 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
-import { isRedirect, parseRedirect } from '@tanstack/router-core'
+import { isNotFound, isRedirect, parseRedirect } from '@tanstack/router-core'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
@@ -162,7 +162,12 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             throw redirect
           }
 
-          if (result.error instanceof Error) throw result.error
+          if (
+            result.error instanceof Error ||
+            isRedirect(result.error) ||
+            isNotFound(result.error)
+          )
+            throw result.error
           // Non-Error values in result.error are application-level error payloads;
           // return them as the resolved value when no explicit result is present.
           return result.result !== undefined ? result.result : result.error
@@ -304,7 +309,11 @@ export async function executeMiddleware(
 
           const result = await callNextMiddleware(nextCtx)
 
-          if (result.error instanceof Error) {
+          if (
+            result.error instanceof Error ||
+            isRedirect(result.error) ||
+            isNotFound(result.error)
+          ) {
             throw result.error
           }
 
