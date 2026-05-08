@@ -397,7 +397,8 @@ export function createStartHandler<TRegister = Register>(
           origin: router.options.origin ?? origin,
           ...{
             defaultSsr: requestStartOptions.defaultSsr,
-            scriptFilter: router.options.scriptFilter ?? clientEntryScriptFilter,
+            scriptFilter:
+              router.options.scriptFilter ?? clientEntryScriptFilter,
             serializationAdapters: [
               ...requestStartOptions.serializationAdapters,
               ...(router.options.serializationAdapters || []),

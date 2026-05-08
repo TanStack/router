@@ -70,8 +70,7 @@ describe('stripClientEntryImport', () => {
   test('strips legacy virtual id substring', () => {
     const result = stripClientEntryImport({
       tag: 'script',
-      children:
-        'window.x = 1\nimport("virtual:tanstack-start-client-entry")',
+      children: 'window.x = 1\nimport("virtual:tanstack-start-client-entry")',
     } as RouterManagedTag)
     expect(result).not.toBeNull()
     expect((result as RouterManagedTag).children).toBe('window.x = 1')

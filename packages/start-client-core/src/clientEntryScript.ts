@@ -82,5 +82,7 @@ export function stripClientEntryImport(
  * unchanged. TanStack Start auto-registers this filter; router-only consumers
  * can opt in by passing it as `createRouter({ scriptFilter })`.
  */
-export const clientEntryScriptFilter: ScriptFilter = (script, { shouldHydrate }) =>
-  shouldHydrate ? script : stripClientEntryImport(script)
+export const clientEntryScriptFilter: ScriptFilter = (
+  script,
+  { shouldHydrate },
+) => (shouldHydrate ? script : stripClientEntryImport(script))

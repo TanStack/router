@@ -30,7 +30,9 @@ export const Scripts = () => {
       return []
     }
 
-    const ctx = { shouldHydrate: getHydrateStatus(matches, router).shouldHydrate }
+    const ctx = {
+      shouldHydrate: getHydrateStatus(matches, router).shouldHydrate,
+    }
     const filter = router.options.scriptFilter
 
     matches
@@ -72,7 +74,9 @@ export const Scripts = () => {
         }) satisfies RouterManagedTag,
     )
 
-    const ctx = { shouldHydrate: getHydrateStatus(matches, router).shouldHydrate }
+    const ctx = {
+      shouldHydrate: getHydrateStatus(matches, router).shouldHydrate,
+    }
     const filter = router.options.scriptFilter
     if (!filter) return allScripts
 
