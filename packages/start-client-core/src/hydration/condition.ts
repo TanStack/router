@@ -9,15 +9,14 @@ function readCondition(condition: HydrationCondition) {
 }
 
 /* @__NO_SIDE_EFFECTS__ */
-export function condition(condition: HydrationCondition): HydrationStrategy {
-  const conditionValue = readCondition(condition)
-
+export function condition(
+  condition: HydrationCondition,
+): HydrationStrategy<typeof conditionType, false> {
   return {
-    type: conditionType,
-    key: `${conditionType}:${conditionValue ? '1' : '0'}`,
-    shouldDefer: () => !readCondition(condition),
-    setup: ({ gate }) => {
-      if (readCondition(condition)) gate.resolve()
+    _t: conditionType,
+    _d: () => !readCondition(condition),
+    _s: ({ gate }) => {
+      if (readCondition(condition)) gate!.resolve()
     },
   }
 }

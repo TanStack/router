@@ -43,8 +43,11 @@ function getHydrateBoundariesFromCode(code: string): Array<HydrateBoundary> {
     const queryIndex = importId.indexOf('?')
     const params = new URLSearchParams(importId.slice(queryIndex + 1))
     const boundaryId = params.get('tss-hydrate')
-    const rawIndex = params.get('tss-hydrate-index')
-    const index = rawIndex === null ? Number.NaN : Number(rawIndex)
+    const separatorIndex = boundaryId?.indexOf('_') ?? -1
+    const index =
+      boundaryId && separatorIndex > 0
+        ? Number.parseInt(boundaryId.slice(0, separatorIndex), 36)
+        : Number.NaN
 
     if (boundaryId && Number.isInteger(index)) {
       boundaries.push({
@@ -118,7 +121,6 @@ function virtualHydrateId(
 ) {
   const params = new URLSearchParams()
   params.set('tss-hydrate', boundary.id)
-  params.set('tss-hydrate-index', String(boundary.index))
   return `${file}?${params.toString()}`
 }
 
@@ -154,7 +156,7 @@ describe('Hydrate compiler transform fixtures', async () => {
 
     expect(
       firstPass?.boundaries.map((boundary) => boundary.exportName),
-    ).toEqual(['Hydrate_0', 'Hydrate_2'])
+    ).toEqual(['H0', 'H2'])
 
     for (const boundary of firstPass!.boundaries) {
       const virtualId = virtualHydrateId(id, boundary)
@@ -186,9 +188,7 @@ describe('Hydrate compiler transform fixtures', async () => {
 
     await expect(
       normalizeSnapshotCode(nestedPass?.code ?? 'no-transform'),
-    ).toMatchFileSnapshot(
-      `./snapshots/virtual/${filename}.Hydrate_0.client.tsx`,
-    )
+    ).toMatchFileSnapshot(`./snapshots/virtual/${filename}.H0.client.tsx`)
   })
 })
 

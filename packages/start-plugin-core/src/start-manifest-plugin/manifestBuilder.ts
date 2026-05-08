@@ -463,8 +463,27 @@ export function buildRouteManifestRoutes(options: {
         getChunkPreloads: options.assetResolvers.getChunkPreloads,
       })
 
+      if (routeId !== rootRouteId) {
+        mergeReachableHydrationChunkData({
+          route: targetRoute,
+          chunk,
+          chunksByFileName: options.chunksByFileName,
+          getChunkCssAssets,
+        })
+      }
+    }
+  }
+
+  const rootRoute = (routes[rootRouteId] = routes[rootRouteId] || {})
+  const rootRouteTreeRoute = options.routeTreeRoutes[rootRouteId]
+  const rootRouteChunks = rootRouteTreeRoute?.filePath
+    ? options.routeChunksByFilePath.get(rootRouteTreeRoute.filePath)
+    : undefined
+
+  if (rootRouteChunks) {
+    for (const chunk of rootRouteChunks) {
       mergeReachableHydrationChunkData({
-        route: targetRoute,
+        route: rootRoute,
         chunk,
         chunksByFileName: options.chunksByFileName,
         getChunkCssAssets,
@@ -472,18 +491,11 @@ export function buildRouteManifestRoutes(options: {
     }
   }
 
-  const rootRoute = (routes[rootRouteId] = routes[rootRouteId] || {})
   mergeRouteChunkData({
     route: rootRoute,
     chunk: options.entryChunk,
     getChunkCssAssets,
     getChunkPreloads: options.assetResolvers.getChunkPreloads,
-  })
-  mergeReachableHydrationChunkData({
-    route: rootRoute,
-    chunk: options.entryChunk,
-    chunksByFileName: options.chunksByFileName,
-    getChunkCssAssets,
   })
 
   if (options.additionalRouteAssets) {

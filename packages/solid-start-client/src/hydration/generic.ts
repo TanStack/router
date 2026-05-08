@@ -17,27 +17,28 @@ function withGenericRenderer<T extends HydrationStrategy>(
   strategy: T,
 ): T & SolidHydrationStrategy {
   return /* @__PURE__ */ Object.assign(strategy, {
-    $$renderHydrate: GenericHydrate,
+    _h: GenericHydrate,
   })
 }
 
 /* @__NO_SIDE_EFFECTS__ */
 export function media(
   query: string,
-): SolidHydrationStrategy & HydrationPrefetchStrategy {
+): SolidHydrationStrategy<'media', true> & HydrationPrefetchStrategy<'media'> {
   return /* @__PURE__ */ withGenericRenderer(coreMedia(query))
 }
 
 /* @__NO_SIDE_EFFECTS__ */
 export function condition(
   condition: HydrationCondition,
-): SolidHydrationStrategy {
+): SolidHydrationStrategy<'condition', false> {
   return /* @__PURE__ */ withGenericRenderer(coreCondition(condition))
 }
 
 /* @__NO_SIDE_EFFECTS__ */
 export function interaction(options?: {
   events?: HydrationInteractionEvents
-}): SolidHydrationStrategy & HydrationPrefetchStrategy {
+}): SolidHydrationStrategy<'interaction', true> &
+  HydrationPrefetchStrategy<'interaction'> {
   return /* @__PURE__ */ withGenericRenderer(coreInteraction(options))
 }

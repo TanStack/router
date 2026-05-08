@@ -6,7 +6,7 @@ function SearchBox() {
 export function Page() {
   return <HW when={interaction({
     events: 'focusin'
-  })} splitId="hydrateWhenRenamed_ad6838514c">
+  })} h="0_f555ef3ac2">
       <SearchBox />
     </HW>;
 }

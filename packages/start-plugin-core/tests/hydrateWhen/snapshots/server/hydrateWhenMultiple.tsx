@@ -11,13 +11,13 @@ function Footer() {
 }
 export function Page() {
   return <>
-      <Hydrate when={load()} splitId="hydrateWhenMultiple_60c0370186">
+      <Hydrate when={load()} h="0_21aa371e0f">
         <Summary />
       </Hydrate>
-      <Hydrate when={visible()} splitId="hydrateWhenMultiple_b697cf73ee">
+      <Hydrate when={visible()} h="1_21aa371e0f">
         <Comments />
       </Hydrate>
-      <Hydrate when={media('(min-width: 800px)')} splitId="hydrateWhenMultiple_67a68576e2">
+      <Hydrate when={media('(min-width: 800px)')} h="2_21aa371e0f">
         <Footer />
       </Hydrate>
     </>;

@@ -16,7 +16,7 @@ import { idle, interaction, load, never } from '../hydration'
 import type { HydrateProps } from '../Hydrate'
 
 const InternalHydrate = Hydrate as React.ComponentType<
-  HydrateProps & { preload?: () => Promise<void>; splitId?: string }
+  HydrateProps & { p?: () => Promise<void>; h?: string }
 >
 
 const hydrateIdSelector = `[${hydrateIdAttribute}]`
@@ -281,10 +281,10 @@ describe('Hydrate', () => {
   it('keeps repeated split boundaries independently gated', async () => {
     const { container, root } = await hydrateFromServer(
       <>
-        <InternalHydrate when={interaction()} splitId="shared-boundary">
+        <InternalHydrate when={interaction()} h="shared-boundary">
           <NamedInteractiveChild id="one" />
         </InternalHydrate>
-        <InternalHydrate when={interaction()} splitId="shared-boundary">
+        <InternalHydrate when={interaction()} h="shared-boundary">
           <NamedInteractiveChild id="two" />
         </InternalHydrate>
       </>,
@@ -365,7 +365,7 @@ describe('Hydrate', () => {
       <InternalHydrate
         when={interaction()}
         prefetch={idle({ timeout: 1 })}
-        preload={preload}
+        p={preload}
       >
         <InteractiveChild />
       </InternalHydrate>,

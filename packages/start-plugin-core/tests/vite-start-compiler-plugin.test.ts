@@ -152,7 +152,7 @@ describe('startCompilerPlugin Vite hotUpdate', () => {
       importers: new Set<EnvironmentModuleNode>(),
     } as EnvironmentModuleNode
     const hydrateModule = {
-      id: '/src/routes/index.tsx?tss-hydrate=boundary&tss-hydrate-index=0',
+      id: '/src/routes/index.tsx?tss-hydrate=0_boundary',
       importers: new Set<EnvironmentModuleNode>(),
     } as EnvironmentModuleNode
     const invalidatedModules: Array<EnvironmentModuleNode> = []

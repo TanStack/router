@@ -1,17 +1,16 @@
-import type { HydrationPrefetchStrategy, HydrationStrategy } from './types'
+import type { HydrationPrefetchStrategy } from './types'
 
 const loadType = 'load'
 
-const loadStrategy: HydrationStrategy & HydrationPrefetchStrategy = {
-  type: loadType,
-  key: loadType,
-  shouldDefer: () => false,
-  setupPrefetch: ({ prefetch }) => {
-    prefetch()
+const loadStrategy: HydrationPrefetchStrategy<typeof loadType> = {
+  _t: loadType,
+  _d: () => false,
+  _s: ({ gate, prefetch }) => {
+    ;(prefetch ?? gate!.resolve)()
   },
 }
 
 /* @__NO_SIDE_EFFECTS__ */
-export function load(): HydrationStrategy & HydrationPrefetchStrategy {
+export function load(): HydrationPrefetchStrategy<typeof loadType> {
   return loadStrategy
 }

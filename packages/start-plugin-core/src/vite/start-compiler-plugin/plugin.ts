@@ -352,17 +352,22 @@ export function startCompilerPlugin(
         const idsToInvalidate = new Set<string>()
         const transitiveCompilerImportersToInvalidate = new Set<string>()
         const importerModulesToInvalidate = new Set<EnvironmentModuleNode>()
+        const changedIds: Array<string> = []
 
         ctx.modules.forEach((m) => {
           if (m.id) {
             idsToInvalidate.add(m.id)
-            const deleted = compiler?.invalidateModule(m.id)
+            changedIds.push(m.id)
+          }
+        })
 
-            if (deleted) {
+        const deletedIds = compiler?.invalidateModules(changedIds) ?? new Set()
+
+        ctx.modules.forEach((m) => {
+          if (m.id) {
+            if (deletedIds.has(cleanId(m.id))) {
               transitiveCompilerImportersToInvalidate.add(cleanId(m.id))
-            }
 
-            if (deleted) {
               m.importers.forEach((importer) => {
                 if (importer.id) {
                   idsToInvalidate.add(importer.id)
@@ -377,31 +382,25 @@ export function startCompilerPlugin(
         })
 
         const finishHotUpdate = async () => {
-          if (environment.type === 'server' && compiler) {
-            const pendingImporters = [
-              ...transitiveCompilerImportersToInvalidate,
-            ]
-            const seenImporters = new Set(pendingImporters)
+          if (
+            environment.type === 'server' &&
+            compiler &&
+            transitiveCompilerImportersToInvalidate.size > 0
+          ) {
+            const seenImporters = new Set(
+              transitiveCompilerImportersToInvalidate,
+            )
+            const nestedImporters =
+              await compiler.getTransitiveImporters(seenImporters)
 
-            while (pendingImporters.length > 0) {
-              const importerId = pendingImporters.pop()!
-              const nestedImporters =
-                await compiler.getTransitiveImporters(importerId)
-
-              for (const nestedImporterId of nestedImporters) {
-                if (seenImporters.has(nestedImporterId)) {
-                  continue
-                }
-
-                seenImporters.add(nestedImporterId)
-                pendingImporters.push(nestedImporterId)
-              }
+            for (const nestedImporterId of nestedImporters) {
+              seenImporters.add(nestedImporterId)
             }
 
             for (const importerId of seenImporters) {
               idsToInvalidate.add(importerId)
-              compiler.invalidateModule(importerId)
             }
+            compiler.invalidateModules(seenImporters)
           }
 
           invalidateModuleNodes(this.environment, importerModulesToInvalidate)
@@ -420,9 +419,7 @@ export function startCompilerPlugin(
 
           const providerIdsToInvalidate =
             getServerFnProviderIds(idsToInvalidate)
-          for (const providerId of providerIdsToInvalidate) {
-            compiler?.invalidateModule(providerId)
-          }
+          compiler?.invalidateModules(providerIdsToInvalidate)
 
           const providerModules = invalidateServerFnProviderModules(
             this.environment,

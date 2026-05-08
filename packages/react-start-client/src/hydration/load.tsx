@@ -2,11 +2,14 @@
 
 import * as React from 'react'
 
-import { load as coreLoad } from '@tanstack/start-client-core/hydration'
 import {
   hydrateIdAttribute,
   hydrateWhenAttribute,
 } from '@tanstack/start-client-core/hydration/constants'
+import type {
+  HydrationPrefetchStrategy,
+  HydrationRuntimeContext,
+} from '@tanstack/start-client-core/hydration'
 import type {
   HydrateProps,
   InternalHydrateProps,
@@ -16,20 +19,17 @@ import type {
 const loadType = 'load'
 
 function HydratedBoundary(props: {
-  id: string
   onHydrated?: () => void
-  onStrategyHydrated?: (id: string) => void
   children: React.ReactNode
 }) {
-  const { id, onHydrated, onStrategyHydrated, children } = props
+  const { onHydrated, children } = props
   const didHydrateRef = React.useRef(false)
 
   React.useEffect(() => {
     if (didHydrateRef.current) return
     didHydrateRef.current = true
     onHydrated?.()
-    onStrategyHydrated?.(id)
-  }, [id, onHydrated, onStrategyHydrated])
+  }, [onHydrated])
 
   return children as React.JSX.Element
 }
@@ -37,9 +37,7 @@ function HydratedBoundary(props: {
 export function LoadHydrate(props: HydrateProps): React.JSX.Element {
   const internalProps = props as InternalHydrateProps
   const reactId = React.useId()
-  const id = internalProps.splitId
-    ? `${internalProps.splitId}${reactId}`
-    : reactId
+  const id = internalProps.h ? `${internalProps.h}${reactId}` : reactId
 
   return (
     <div
@@ -49,11 +47,7 @@ export function LoadHydrate(props: HydrateProps): React.JSX.Element {
       }}
     >
       <React.Suspense fallback={props.fallback ?? null}>
-        <HydratedBoundary
-          id={id}
-          onHydrated={props.onHydrated}
-          onStrategyHydrated={internalProps.when.onHydrated}
-        >
+        <HydratedBoundary onHydrated={props.onHydrated}>
           {props.children}
         </HydratedBoundary>
       </React.Suspense>
@@ -61,9 +55,15 @@ export function LoadHydrate(props: HydrateProps): React.JSX.Element {
   )
 }
 
+const loadStrategy = {
+  _s: ({ gate, prefetch }: HydrationRuntimeContext) => {
+    ;(prefetch ?? gate!.resolve)()
+  },
+  _h: LoadHydrate,
+} as ReactHydrationStrategy<'load', true> & HydrationPrefetchStrategy<'load'>
+
 /* @__NO_SIDE_EFFECTS__ */
-export function load(): ReactHydrationStrategy {
-  return /* @__PURE__ */ Object.assign(coreLoad(), {
-    $$renderHydrate: LoadHydrate,
-  })
+export function load(): ReactHydrationStrategy<'load', true> &
+  HydrationPrefetchStrategy<'load'> {
+  return loadStrategy
 }

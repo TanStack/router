@@ -1,7 +1,7 @@
 export { useServerFn } from './useServerFn'
 export * from '@tanstack/start-client-core'
 export { createServerFn } from '@tanstack/start-client-core'
-export { Hydrate, lazyHydratedComponent } from '@tanstack/react-start-client'
+export { Hydrate } from '@tanstack/react-start-client'
 export type {
   HydrateOptions,
   HydrateProps,

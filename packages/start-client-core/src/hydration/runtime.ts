@@ -4,6 +4,8 @@ import type { HydrationRuntimeGate, HydrationWhen } from './types'
 const hydrateIdSelector = `[${hydrateIdAttribute}]`
 
 export type HydrationGateRecord = HydrationRuntimeGate & {
+  id: string
+  when: HydrationWhen
   promise: Promise<void>
   consumers: number
   resolveListeners: Set<() => void>

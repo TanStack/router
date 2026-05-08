@@ -12,13 +12,13 @@ function Sibling() {
 }
 export function Page() {
   return <>
-      <Hydrate when={visible()} splitId="hydrateWhenNested_27eaf98771">
+      <Hydrate when={visible()} h="0_466696e41d">
         <Outer />
-        <Hydrate when={interaction()} splitId="hydrateWhenNested_895e8f985c">
+        <Hydrate when={interaction()} h="1_466696e41d">
           <NestedButton />
         </Hydrate>
       </Hydrate>
-      <Hydrate when={idle()} splitId="hydrateWhenNested_383a2d73fd">
+      <Hydrate when={idle()} h="2_466696e41d">
         <Sibling />
       </Hydrate>
     </>;

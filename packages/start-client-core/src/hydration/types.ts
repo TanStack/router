@@ -31,33 +31,44 @@ export type HydrationInteractionEvents =
 export type HydrationMarkerAttributes = Record<string, string | undefined>
 
 export type HydrationRuntimeGate = {
-  id: string
-  when: HydrationWhen
+  id?: string
+  when?: HydrationWhen
   resolved: boolean
   resolve: () => void
 }
 
 export type HydrationRuntimeContext = {
   element: Element | null
-  gate: HydrationRuntimeGate
+  gate?: HydrationRuntimeGate
+  prefetch?: () => void
   delegated?: boolean
 }
 
-export type HydrationPrefetchContext = {
-  element: Element | null
-  prefetch: () => void
+export type HydrationStrategyTypes<
+  TWhen extends HydrationWhen = HydrationWhen,
+  TCanPrefetch extends boolean = boolean,
+> = {
+  when: TWhen
+  canPrefetch: TCanPrefetch
 }
 
-export type HydrationStrategy = {
-  type: HydrationWhen
-  key: string
-  shouldDefer?: () => boolean
-  setup?: (context: HydrationRuntimeContext) => void | (() => void)
-  setupPrefetch?: (context: HydrationPrefetchContext) => void | (() => void)
-  onHydrated?: (id: string) => void
-  getMarkerAttributes?: () => HydrationMarkerAttributes | undefined
+export type HydrationStrategy<
+  TWhen extends HydrationWhen = HydrationWhen,
+  TCanPrefetch extends boolean = boolean,
+> = {
+  _t?: TWhen
+  readonly '~types'?: HydrationStrategyTypes<TWhen, TCanPrefetch>
+  _d?: () => boolean
+  _s?: (context: HydrationRuntimeContext) => void | (() => void)
+  _o?: (id: string) => void
+  _a?: () => HydrationMarkerAttributes | undefined
 }
 
-export type HydrationPrefetchStrategy = HydrationStrategy & {
-  type: Exclude<HydrationWhen, 'condition' | 'never'>
-}
+export type HydrationPrefetchWhen = Exclude<
+  HydrationWhen,
+  'condition' | 'never'
+>
+
+export type HydrationPrefetchStrategy<
+  TWhen extends HydrationPrefetchWhen = HydrationPrefetchWhen,
+> = HydrationStrategy<TWhen, true>

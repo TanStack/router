@@ -1,8 +1,6 @@
-const _Hydrate_2 = _lazyHydratedComponent(() => import("<fixtureRoot>/hydrateWhenNested.tsx?tss-hydrate=hydrateWhenNested_383a2d73fd&tss-hydrate-index=2"), "Hydrate_2"),
-  _Hydrate_2_preload = _Hydrate_2.preload;
-const _Hydrate_ = _lazyHydratedComponent(() => import("<fixtureRoot>/hydrateWhenNested.tsx?tss-hydrate=hydrateWhenNested_27eaf98771&tss-hydrate-index=0"), "Hydrate_0"),
-  _Hydrate_0_preload = _Hydrate_.preload;
-import { lazyHydratedComponent as _lazyHydratedComponent } from "@tanstack/react-start";
+const _H2 = _lazyRouteComponent(() => import("<fixtureRoot>/hydrateWhenNested.tsx?tss-hydrate=2_466696e41d"), "H2");
+const _H = _lazyRouteComponent(() => import("<fixtureRoot>/hydrateWhenNested.tsx?tss-hydrate=0_466696e41d"), "H0");
+import { lazyRouteComponent as _lazyRouteComponent } from "@tanstack/react-router";
 import { Hydrate } from '@tanstack/react-start';
 import { idle, interaction, visible } from '@tanstack/react-start/hydration';
 const unused = 'remove me from virtual modules';
@@ -17,11 +15,11 @@ function Sibling() {
 }
 export function Page() {
   return <>
-      <Hydrate when={visible()} splitId="hydrateWhenNested_27eaf98771" __hydrate={interaction()} preload={_Hydrate_0_preload}>
-      {<_Hydrate_ />}
+      <Hydrate when={visible()} h="0_466696e41d" g={interaction()}>
+      {<_H />}
     </Hydrate>
-      <Hydrate when={idle()} splitId="hydrateWhenNested_383a2d73fd" preload={_Hydrate_2_preload}>
-      {<_Hydrate_2 />}
+      <Hydrate when={idle()} h="2_466696e41d">
+      {<_H2 />}
     </Hydrate>
     </>;
 }

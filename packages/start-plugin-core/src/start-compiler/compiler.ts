@@ -3,6 +3,7 @@ import crypto from 'node:crypto'
 import * as t from '@babel/types'
 import {
   deadCodeElimination,
+  extractModuleInfoFromAst,
   findReferencedIdentifiers,
   generateFromAst,
   parseAst,
@@ -21,6 +22,7 @@ import type {
   RewriteCandidate,
   ServerFn,
 } from './types'
+import type { ModuleInfoBinding } from '@tanstack/router-utils'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerEnvironment,
@@ -29,18 +31,9 @@ import type {
   StartCompilerTransformResult,
 } from '../types'
 
-type Binding =
-  | {
-      type: 'import'
-      source: string
-      importedName: string
-      resolvedKind?: Kind
-    }
-  | {
-      type: 'var'
-      init: t.Expression | null
-      resolvedKind?: Kind
-    }
+type Binding = ModuleInfoBinding & {
+  resolvedKind?: Kind
+}
 
 type Kind = 'None' | `Root` | `Builder` | LookupKind
 type ParsedAst = ReturnType<typeof parseAst>
@@ -240,13 +233,16 @@ export function detectKindsInCode(
   const validForEnv = getLookupKindsForEnv(env, opts)
 
   for (const kind of AllBuiltInLookupKinds) {
-    if (validForEnv.has(kind) && KindDetectionPatterns[kind].test(code)) {
+    const pattern = KindDetectionPatterns[kind]
+    pattern.lastIndex = 0
+    if (validForEnv.has(kind) && pattern.test(code)) {
       detected.add(kind)
     }
   }
 
   for (const transform of opts?.compilerTransforms ?? []) {
     if (!isCompilerTransformEnabledForEnv(transform, env)) continue
+    transform.detect.lastIndex = 0
     if (transform.detect.test(code)) {
       detected.add(getExternalLookupKind(transform))
     }
@@ -793,100 +789,13 @@ export class StartCompiler {
     ast: ReturnType<typeof parseAst>,
     id: string,
   ): ModuleInfo {
-    const bindings = new Map<string, Binding>()
-    const exports = new Map<string, string>()
-    const reExportAllSources: Array<string> = []
-
-    // we are only interested in top-level bindings, hence we don't traverse the AST
-    // instead we only iterate over the program body
-    for (const node of ast.program.body) {
-      if (t.isImportDeclaration(node)) {
-        const source = node.source.value
-        for (const s of node.specifiers) {
-          if (t.isImportSpecifier(s)) {
-            const importedName = t.isIdentifier(s.imported)
-              ? s.imported.name
-              : s.imported.value
-            bindings.set(s.local.name, { type: 'import', source, importedName })
-          } else if (t.isImportDefaultSpecifier(s)) {
-            bindings.set(s.local.name, {
-              type: 'import',
-              source,
-              importedName: 'default',
-            })
-          } else if (t.isImportNamespaceSpecifier(s)) {
-            bindings.set(s.local.name, {
-              type: 'import',
-              source,
-              importedName: '*',
-            })
-          }
-        }
-      } else if (t.isVariableDeclaration(node)) {
-        for (const decl of node.declarations) {
-          if (t.isIdentifier(decl.id)) {
-            bindings.set(decl.id.name, {
-              type: 'var',
-              init: decl.init ?? null,
-            })
-          }
-        }
-      } else if (t.isExportNamedDeclaration(node)) {
-        // export const foo = ...
-        if (node.declaration) {
-          if (t.isVariableDeclaration(node.declaration)) {
-            for (const d of node.declaration.declarations) {
-              if (t.isIdentifier(d.id)) {
-                exports.set(d.id.name, d.id.name)
-                bindings.set(d.id.name, { type: 'var', init: d.init ?? null })
-              }
-            }
-          }
-        }
-        for (const sp of node.specifiers) {
-          if (t.isExportNamespaceSpecifier(sp)) {
-            exports.set(sp.exported.name, sp.exported.name)
-          }
-          // export { local as exported }
-          else if (t.isExportSpecifier(sp)) {
-            const local = sp.local.name
-            const exported = t.isIdentifier(sp.exported)
-              ? sp.exported.name
-              : sp.exported.value
-            exports.set(exported, local)
-
-            // When re-exporting from another module (export { foo } from './module'),
-            // create an import binding so the server function can be resolved
-            if (node.source) {
-              bindings.set(local, {
-                type: 'import',
-                source: node.source.value,
-                importedName: local,
-              })
-            }
-          }
-        }
-      } else if (t.isExportDefaultDeclaration(node)) {
-        const d = node.declaration
-        if (t.isIdentifier(d)) {
-          exports.set('default', d.name)
-        } else {
-          const synth = '__default_export__'
-          bindings.set(synth, { type: 'var', init: d as t.Expression })
-          exports.set('default', synth)
-        }
-      } else if (t.isExportAllDeclaration(node)) {
-        // Handle `export * from './module'` syntax
-        // Track the source so we can look up exports from it when needed
-        reExportAllSources.push(node.source.value)
-      }
-    }
+    const extracted = extractModuleInfoFromAst(ast)
 
     const info: ModuleInfo = {
       id,
-      bindings,
-      exports,
-      reExportAllSources,
+      bindings: new Map(extracted.bindings),
+      exports: extracted.exports,
+      reExportAllSources: extracted.reExportAllSources,
     }
     this.moduleCache.set(id, info)
     return info
@@ -907,17 +816,30 @@ export class StartCompiler {
   }
 
   public invalidateModule(id: string) {
-    const normalizedId = cleanId(id)
-    let hasCachedModule = false
+    return this.invalidateModules([id]).size > 0
+  }
 
-    for (const plugin of this.compilerPlugins) {
-      plugin.invalidateModule?.({ id, envName: this.options.envName })
+  public invalidateModules(ids: Iterable<string>): Set<string> {
+    const normalizedIds = new Set<string>()
+
+    for (const id of ids) {
+      normalizedIds.add(cleanId(id))
+
+      for (const plugin of this.compilerPlugins) {
+        plugin.invalidateModule?.({ id, envName: this.options.envName })
+      }
+    }
+
+    const deletedModuleIds = new Set<string>()
+    if (normalizedIds.size === 0) {
+      return deletedModuleIds
     }
 
     for (const moduleId of Array.from(this.moduleCache.keys())) {
-      if (cleanId(moduleId) === normalizedId) {
+      const normalizedModuleId = cleanId(moduleId)
+      if (normalizedIds.has(normalizedModuleId)) {
         this.moduleCache.delete(moduleId)
-        hasCachedModule = true
+        deletedModuleIds.add(normalizedModuleId)
       }
     }
 
@@ -937,14 +859,20 @@ export class StartCompiler {
     this.resolveIdCache.clear()
     this.exportResolutionCache.clear()
 
-    return hasCachedModule
+    return deletedModuleIds
   }
 
-  public async getTransitiveImporters(id: string): Promise<Set<string>> {
+  public async getTransitiveImporters(
+    ids: string | Iterable<string>,
+  ): Promise<Set<string>> {
     const discoveredImporters = new Set<string>()
-    const pendingTargets = [cleanId(id)]
+    const pendingTargets =
+      typeof ids === 'string'
+        ? [cleanId(ids)]
+        : Array.from(ids, (id) => cleanId(id))
     const visitedTargets = new Set<string>()
     const resolveCache = new Map<string, Promise<string | null>>()
+    const importersByTarget = new Map<string, Set<string>>()
 
     const resolveSource = (source: string, importer: string) => {
       const cacheKey = `${importer}::${source}`
@@ -958,6 +886,40 @@ export class StartCompiler {
       return resolved
     }
 
+    await Promise.all(
+      Array.from(this.moduleCache.values()).map(async (moduleInfo) => {
+        if (this.knownRootImports.has(moduleInfo.id)) {
+          return
+        }
+
+        const moduleId = cleanId(moduleInfo.id)
+        const importSources = new Set(moduleInfo.reExportAllSources)
+
+        for (const binding of moduleInfo.bindings.values()) {
+          if (binding.type === 'import') {
+            importSources.add(binding.source)
+          }
+        }
+
+        await Promise.all(
+          Array.from(importSources, async (source) => {
+            const resolved = await resolveSource(source, moduleInfo.id)
+            if (!resolved) return
+
+            const targetId = cleanId(resolved)
+            if (targetId === moduleId) return
+
+            let importers = importersByTarget.get(targetId)
+            if (!importers) {
+              importers = new Set()
+              importersByTarget.set(targetId, importers)
+            }
+            importers.add(moduleId)
+          }),
+        )
+      }),
+    )
+
     while (pendingTargets.length > 0) {
       const targetId = pendingTargets.pop()!
 
@@ -967,40 +929,8 @@ export class StartCompiler {
 
       visitedTargets.add(targetId)
 
-      const importerIds = await Promise.all(
-        Array.from(this.moduleCache.values()).map(async (moduleInfo) => {
-          if (this.knownRootImports.has(moduleInfo.id)) {
-            return null
-          }
-
-          const moduleId = cleanId(moduleInfo.id)
-
-          if (moduleId === targetId) {
-            return null
-          }
-
-          const importSources = new Set(moduleInfo.reExportAllSources)
-
-          for (const binding of moduleInfo.bindings.values()) {
-            if (binding.type === 'import') {
-              importSources.add(binding.source)
-            }
-          }
-
-          for (const source of importSources) {
-            const resolved = await resolveSource(source, moduleInfo.id)
-
-            if (resolved && cleanId(resolved) === targetId) {
-              return moduleId
-            }
-          }
-
-          return null
-        }),
-      )
-
-      for (const importerId of importerIds) {
-        if (!importerId || discoveredImporters.has(importerId)) {
+      for (const importerId of importersByTarget.get(targetId) ?? []) {
+        if (discoveredImporters.has(importerId)) {
           continue
         }
 
@@ -1034,7 +964,9 @@ export class StartCompiler {
       : this.validLookupKinds
 
     const astTransformPlugins = this.getAstTransformPluginsForCode(code)
-    let ast: ParsedAst | undefined
+    // Always parse and extract module info upfront.
+    // This ensures the module is cached for import resolution even if no candidates are found.
+    const ast = this.ingestModule({ code, id, parserFilename }).ast
     let astHasChanges = false
 
     builtInTransforms: {
@@ -1053,10 +985,6 @@ export class StartCompiler {
       // If the file only has ServerFn, we can skip full AST traversal and only visit
       // the specific top-level declarations that have candidates.
       const canUseFastPath = areAllKindsTopLevelOnly(fileKinds)
-
-      // Always parse and extract module info upfront.
-      // This ensures the module is cached for import resolution even if no candidates are found.
-      ast = this.ingestModule({ code, id, parserFilename }).ast
 
       // Single-pass traversal to:
       // 1. Collect candidate paths (only candidates, not all CallExpressions)
@@ -1446,11 +1374,7 @@ export class StartCompiler {
       astHasChanges = true
     }
 
-    if (!ast && astTransformPlugins.length > 0) {
-      ast = parseAst({ code, filename: parserFilename ?? cleanId(id) })
-    }
-
-    if (ast && astTransformPlugins.length > 0) {
+    if (astTransformPlugins.length > 0) {
       astHasChanges =
         this.runAstTransforms({
           ast,
@@ -1460,9 +1384,7 @@ export class StartCompiler {
         }) || astHasChanges
     }
 
-    return ast && astHasChanges
-      ? this.generateResultFromAst(ast, code, id)
-      : null
+    return astHasChanges ? this.generateResultFromAst(ast, code, id) : null
   }
 
   private generateResultFromAst(

@@ -2,14 +2,13 @@ import type { HydrationStrategy } from './types'
 
 const neverType = 'never'
 
-const neverStrategy: HydrationStrategy = {
-  type: neverType,
-  key: neverType,
-  shouldDefer: () => true,
+const neverStrategy: HydrationStrategy<typeof neverType, false> = {
+  _t: neverType,
+  _d: () => true,
 }
 
 /* @__NO_SIDE_EFFECTS__ */
-function neverHydrate(): HydrationStrategy {
+function neverHydrate(): HydrationStrategy<typeof neverType, false> {
   return neverStrategy
 }
 

@@ -3,6 +3,7 @@ import type * as Solid from 'solid-js'
 import type {
   HydrationStrategy as CoreHydrationStrategy,
   HydrationPrefetchStrategy,
+  HydrationWhen,
 } from '@tanstack/start-client-core/hydration'
 
 export type {
@@ -12,11 +13,17 @@ export type {
   HydrationWhen,
 } from '@tanstack/start-client-core/hydration'
 
-export type SolidHydrationStrategy = CoreHydrationStrategy & {
-  $$renderHydrate: (props: HydrateProps) => Solid.JSX.Element
+export type SolidHydrationStrategy<
+  TWhen extends HydrationWhen = HydrationWhen,
+  TCanPrefetch extends boolean = boolean,
+> = CoreHydrationStrategy<TWhen, TCanPrefetch> & {
+  _h: (props: HydrateProps) => Solid.JSX.Element
 }
 
-export type HydrationStrategy = SolidHydrationStrategy
+export type HydrationStrategy<
+  TWhen extends HydrationWhen = HydrationWhen,
+  TCanPrefetch extends boolean = boolean,
+> = SolidHydrationStrategy<TWhen, TCanPrefetch>
 
 export type HydrateOptions = {
   when: SolidHydrationStrategy
@@ -41,11 +48,11 @@ export type HydrateProps =
       })
 
 export type InternalHydrateProps = HydrateProps & {
-  __hydrate?: CoreHydrationStrategy
-  splitId?: string
-  preload?: () => Promise<void>
+  g?: CoreHydrationStrategy
+  h?: string
+  p?: () => Promise<void>
 }
 
 export function Hydrate(props: HydrateProps) {
-  return props.when.$$renderHydrate(props)
+  return props.when._h(props)
 }

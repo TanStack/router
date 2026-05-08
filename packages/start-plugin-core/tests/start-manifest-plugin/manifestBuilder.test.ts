@@ -779,6 +779,103 @@ describe('buildStartManifest', () => {
     ])
   })
 
+  test('does not add unrelated Hydrate CSS from the global entry graph to root', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      imports: ['app-shell.js'],
+    })
+    const appShellChunk = makeChunk({
+      fileName: 'app-shell.js',
+      dynamicImports: ['about-widget.js'],
+    })
+    const aboutWidgetChunk = makeChunk({
+      fileName: 'about-widget.js',
+      importedCss: ['about-widget.css'],
+      moduleIds: ['/routes/about.tsx?tss-hydrate=about_widget'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'app-shell.js': appShellChunk,
+        'about-widget.js': aboutWidgetChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes.__root__!.assets).toBeUndefined()
+    expect(manifest.routes.__root__!.preloads).toEqual([
+      '/assets/entry.js',
+      '/assets/app-shell.js',
+    ])
+  })
+
+  test('adds root-owned Hydrate CSS without walking unrelated entry graph hydration', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      imports: ['app-shell.js'],
+    })
+    const rootChunk = makeChunk({
+      fileName: 'root.js',
+      dynamicImports: ['root-widget.js'],
+      moduleIds: ['/routes/__root.tsx?tsr-split=component'],
+    })
+    const rootWidgetChunk = makeChunk({
+      fileName: 'root-widget.js',
+      importedCss: ['root-widget.css'],
+      moduleIds: ['/routes/__root.tsx?tss-hydrate=root_widget'],
+    })
+    const appShellChunk = makeChunk({
+      fileName: 'app-shell.js',
+      dynamicImports: ['about-widget.js'],
+    })
+    const aboutWidgetChunk = makeChunk({
+      fileName: 'about-widget.js',
+      importedCss: ['about-widget.css'],
+      moduleIds: ['/routes/about.tsx?tss-hydrate=about_widget'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'root.js': rootChunk,
+        'root-widget.js': rootWidgetChunk,
+        'app-shell.js': appShellChunk,
+        'about-widget.js': aboutWidgetChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: {
+          filePath: '/routes/__root.tsx',
+          children: ['/about'],
+        } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes.__root__!.assets).toEqual([
+      {
+        tag: 'link',
+        attrs: {
+          rel: 'stylesheet',
+          href: '/assets/root-widget.css',
+          type: 'text/css',
+        },
+      },
+    ])
+    expect(manifest.routes.__root__!.preloads).toEqual([
+      '/assets/root.js',
+      '/assets/entry.js',
+      '/assets/app-shell.js',
+    ])
+  })
+
   test('orders imported chunk css before route chunk css', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',

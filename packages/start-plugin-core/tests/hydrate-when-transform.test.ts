@@ -5,6 +5,7 @@ import * as t from '@babel/types'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../src/hydrate-when-transform'
+import type { CompileStartFrameworkOptions } from '../src/types'
 
 const root = '/repo'
 const id = '/repo/src/routes/about.tsx'
@@ -26,8 +27,11 @@ function getHydrateBoundariesFromCode(code: string): Array<HydrateBoundary> {
     const queryIndex = importId.indexOf('?')
     const params = new URLSearchParams(importId.slice(queryIndex + 1))
     const boundaryId = params.get('tss-hydrate')
-    const rawIndex = params.get('tss-hydrate-index')
-    const index = rawIndex === null ? Number.NaN : Number(rawIndex)
+    const separatorIndex = boundaryId?.indexOf('_') ?? -1
+    const index =
+      boundaryId && separatorIndex > 0
+        ? Number.parseInt(boundaryId.slice(0, separatorIndex), 36)
+        : Number.NaN
 
     if (boundaryId && Number.isInteger(index)) {
       boundaries.push({
@@ -47,8 +51,12 @@ function virtualHydrateId(
 ) {
   const params = new URLSearchParams()
   params.set('tss-hydrate', boundary.id)
-  params.set('tss-hydrate-index', String(boundary.index))
   return `${file}?${params.toString()}`
+}
+
+function withSourceHash(id: string, sourceHash: string) {
+  const separatorIndex = id.indexOf('_')
+  return `${id.slice(0, separatorIndex + 1)}${sourceHash}`
 }
 
 function compileHydrate(options: {
@@ -57,6 +65,7 @@ function compileHydrate(options: {
   root: string
   env: 'client' | 'server'
   envName?: string
+  framework?: CompileStartFrameworkOptions
   plugin?: ReturnType<typeof createHydrateCompilerPlugin>
 }) {
   const plugin = options.plugin ?? createHydrateCompilerPlugin()
@@ -70,7 +79,7 @@ function compileHydrate(options: {
     env: options.env,
     envName,
     mode: 'dev',
-    framework: 'react',
+    framework: options.framework ?? 'react',
     providerEnvName: 'ssr',
     types: t,
     parseExpression: (expressionCode) => t.identifier(expressionCode),
@@ -131,14 +140,15 @@ describe('Hydrate compiler transform', () => {
       env: 'client',
     })
 
-    expect(result?.code).toContain('lazyHydratedComponent')
+    expect(result?.code).toContain('lazyRouteComponent')
     expect(result?.code).toContain('tss-hydrate=')
-    expect(result?.code).not.toContain('tss-hydrate-preload')
-    expect(result?.code).toContain('splitId=')
-    expect(result?.code).toContain('preload=')
+    expect(result?.code).not.toContain('tss-hydrate-index')
+    expect(result?.code).not.toContain('createElement')
+    expect(result?.code).toContain('h=')
+    expect(result?.code).not.toContain('p=')
   })
 
-  test('uses the Solid Start import source for Solid Hydrate boundaries', () => {
+  test('uses the Solid Router import source for Solid Hydrate boundaries', () => {
     const result = compileHydrate({
       code: `
         import { Hydrate } from '@tanstack/solid-start'
@@ -159,14 +169,15 @@ describe('Hydrate compiler transform', () => {
       id,
       root,
       env: 'client',
+      framework: 'solid',
     })
 
     expect(result?.code).toContain(
-      'lazyHydratedComponent } from "@tanstack/solid-start"',
+      'lazyRouteComponent } from "@tanstack/solid-router"',
     )
     expect(result?.code).toContain('tss-hydrate=')
-    expect(result?.code).toContain('splitId=')
-    expect(result?.code).toContain('preload=')
+    expect(result?.code).toContain('h=')
+    expect(result?.code).not.toContain('p=')
   })
 
   test('rejects function-as-children unless the boundary opts out of splitting', () => {
@@ -274,7 +285,7 @@ describe('Hydrate compiler transform', () => {
     expect(result?.code).not.toContain('server-inline')
     expect(result?.code).not.toContain('server-spread')
     expect(result?.code).not.toContain('server-bound-spread')
-    expect(result?.code).toContain('splitId=')
+    expect(result?.code).toContain('h=')
     expect(result?.code).toContain('<Widget title="split" />')
     expect(result?.code).toContain('<Widget title="inline" />')
     expect(result?.code).toContain('<Widget title="spread" />')
@@ -327,7 +338,7 @@ describe('Hydrate compiler transform', () => {
     })
 
     expect(boundaryIndex).toBe(0)
-    expect(nestedPass?.code).toContain('Hydrate_1')
+    expect(nestedPass?.code).toContain('H1')
     expect(nestedPass?.code).toContain('tss-hydrate=')
   })
 
@@ -363,7 +374,7 @@ describe('Hydrate compiler transform', () => {
     })
     expect(
       firstPass?.boundaries.map((boundary) => boundary.exportName),
-    ).toEqual(['Hydrate_0', 'Hydrate_2'])
+    ).toEqual(['H0', 'H2'])
 
     const siblingBoundary = firstPass!.boundaries[1]!
     const virtualId = virtualHydrateId(file, siblingBoundary)
@@ -395,7 +406,7 @@ describe('Hydrate compiler transform', () => {
     expect(boundaryIndex).toBe(2)
     expect(virtualModule?.code).toContain('Sibling')
     expect(virtualModule?.code).not.toContain('Nested')
-    expect(nestedPass?.boundaries[0]?.exportName).toBe('Hydrate_1')
+    expect(nestedPass?.boundaries[0]?.exportName).toBe('H1')
     expect(serverPass?.code).toContain(firstPass!.boundaries[0]!.id)
     expect(serverPass?.code).toContain(nestedPass!.boundaries[0]!.id)
     expect(serverPass?.code).toContain(siblingBoundary.id)
@@ -462,7 +473,7 @@ describe('Hydrate compiler transform', () => {
       root: dir,
     })
 
-    expect(virtualModule?.code).toContain('export function Hydrate_0({')
+    expect(virtualModule?.code).toContain('export function H0({')
     expect(virtualModule?.code).toContain('items')
     expect(virtualModule?.code).toContain('key')
     expect(virtualModule?.code).toContain('items[key]')
@@ -572,7 +583,7 @@ describe('Hydrate compiler transform', () => {
     ).toContain('New')
   })
 
-  test('rejects virtual module ids whose boundary index and stable id disagree', () => {
+  test('rejects virtual module ids whose source hash does not match', () => {
     const code = `
       import { Hydrate } from '@tanstack/react-start'
       import { idle, visible } from '@tanstack/react-start/hydration'
@@ -593,13 +604,13 @@ describe('Hydrate compiler transform', () => {
       env: 'client',
     })
     const mismatchedId = virtualHydrateId(id, {
-      ...firstPass!.boundaries[0]!,
-      index: firstPass!.boundaries[1]!.index,
+      id: withSourceHash(firstPass!.boundaries[0]!.id, 'mismatch'),
+      index: firstPass!.boundaries[0]!.index,
     })
 
     expect(
-      new URLSearchParams(mismatchedId.split('?')[1]).get('tss-hydrate-index'),
-    ).toBe('1')
+      new URLSearchParams(mismatchedId.split('?')[1]).get('tss-hydrate'),
+    ).toMatch(/_mismatch$/)
     expect(
       loadVirtualHydrateModule({ code, id: mismatchedId, root }),
     ).toBeNull()

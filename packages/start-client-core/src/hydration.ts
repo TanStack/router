@@ -8,7 +8,8 @@ export {
   hydrateWhenAttribute,
 } from './hydration/constants'
 export const hydrateIdSelector = `[${hydrateIdAttribute}]`
-export { idle } from './hydration/idle'
+export { idle, scheduleIdle } from './hydration/idle'
+export type { IdleHydrationOptions } from './hydration/idle'
 export { interaction } from './hydration/interaction'
 export { load } from './hydration/load'
 export { media } from './hydration/media'
@@ -31,10 +32,11 @@ export type {
   HydrationInteractionEvent,
   HydrationInteractionEvents,
   HydrationMarkerAttributes,
+  HydrationPrefetchWhen,
   HydrationPrefetchStrategy,
-  HydrationPrefetchContext,
   HydrationRuntimeContext,
   HydrationRuntimeGate,
   HydrationStrategy,
+  HydrationStrategyTypes,
   HydrationWhen,
 } from './hydration/types'

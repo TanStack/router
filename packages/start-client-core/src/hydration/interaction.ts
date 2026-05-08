@@ -12,7 +12,6 @@ import type {
   HydrationInteractionEvents,
   HydrationPrefetchStrategy,
   HydrationRuntimeContext,
-  HydrationStrategy,
 } from './types'
 
 export type InteractionHydrationOptions = {
@@ -119,36 +118,15 @@ function queueHydrationReplayEvent(marker: Element, event: Event) {
 }
 
 function createReplayEvent(event: Event) {
-  const init = {
-    bubbles: event.bubbles,
-    cancelable: event.cancelable,
-    composed: event.composed,
-  }
-
   if (event instanceof MouseEvent) {
-    return new MouseEvent(event.type, {
-      ...init,
-      button: event.button,
-      buttons: event.buttons,
-      clientX: event.clientX,
-      clientY: event.clientY,
-      ctrlKey: event.ctrlKey,
-      metaKey: event.metaKey,
-      relatedTarget: event.relatedTarget,
-      screenX: event.screenX,
-      screenY: event.screenY,
-      shiftKey: event.shiftKey,
-    })
+    return new MouseEvent(event.type, event)
   }
 
   if (event instanceof FocusEvent) {
-    return new FocusEvent(event.type, {
-      ...init,
-      relatedTarget: event.relatedTarget,
-    })
+    return new FocusEvent(event.type, event)
   }
 
-  return new Event(event.type, init)
+  return new Event(event.type, event)
 }
 
 function replayHydrationEvents(id: string) {
@@ -255,16 +233,20 @@ function listenForPrefetchIntent(
 /* @__NO_SIDE_EFFECTS__ */
 export function interaction(
   options: InteractionHydrationOptions = {},
-): HydrationStrategy & HydrationPrefetchStrategy {
+): HydrationPrefetchStrategy<typeof interactionType> {
   const events = normalizeInteractionEvents(options.events)
   const eventKey = events.join(' ')
 
   return {
-    type: interactionType,
-    key: `${interactionType}:${eventKey}`,
-    setup: (context) => {
+    _t: interactionType,
+    _s: (context) => {
       const element = context.element
       if (!element) return
+      if (context.prefetch) {
+        if (!events.length) return
+        return listenForPrefetchIntent(element, events, context.prefetch)
+      }
+
       const listenerEvents = getIntentListenerEvents(element, events)
       const cleanupIntent = listenerEvents.length
         ? listenForIntent(element, listenerEvents, context)
@@ -274,18 +256,10 @@ export function interaction(
         clearResolvedGateIdsInMarker(element)
       }
     },
-    setupPrefetch: ({ element, prefetch }) => {
-      if (!element || !events.length) return
-      return listenForPrefetchIntent(element, events, prefetch)
+    _o: (id) => {
+      globalThis.requestAnimationFrame(() => replayHydrationEvents(id))
     },
-    onHydrated: (id) => {
-      if (typeof globalThis.requestAnimationFrame === 'function') {
-        globalThis.requestAnimationFrame(() => replayHydrationEvents(id))
-      } else {
-        globalThis.setTimeout(() => replayHydrationEvents(id), 0)
-      }
-    },
-    getMarkerAttributes: () =>
+    _a: () =>
       options.events === undefined
         ? undefined
         : {

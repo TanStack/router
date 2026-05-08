@@ -19,27 +19,28 @@ function withGenericRenderer<T extends HydrationStrategy>(
   strategy: T,
 ): T & ReactHydrationStrategy {
   return /* @__PURE__ */ Object.assign(strategy, {
-    $$renderHydrate: GenericHydrate,
+    _h: GenericHydrate,
   })
 }
 
 /* @__NO_SIDE_EFFECTS__ */
 export function media(
   query: string,
-): ReactHydrationStrategy & HydrationPrefetchStrategy {
+): ReactHydrationStrategy<'media', true> & HydrationPrefetchStrategy<'media'> {
   return /* @__PURE__ */ withGenericRenderer(coreMedia(query))
 }
 
 /* @__NO_SIDE_EFFECTS__ */
 export function condition(
   condition: HydrationCondition,
-): ReactHydrationStrategy {
+): ReactHydrationStrategy<'condition', false> {
   return /* @__PURE__ */ withGenericRenderer(coreCondition(condition))
 }
 
 /* @__NO_SIDE_EFFECTS__ */
 export function interaction(options?: {
   events?: HydrationInteractionEvents
-}): ReactHydrationStrategy & HydrationPrefetchStrategy {
+}): ReactHydrationStrategy<'interaction', true> &
+  HydrationPrefetchStrategy<'interaction'> {
   return /* @__PURE__ */ withGenericRenderer(coreInteraction(options))
 }

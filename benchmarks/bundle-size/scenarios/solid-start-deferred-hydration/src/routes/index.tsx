@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import { Hydrate } from '@tanstack/solid-start'
-import { idle, visible } from '@tanstack/solid-start/hydration'
+import { visible } from '@tanstack/solid-start/hydration'
 
 export const Route = createFileRoute('/')({
   component: IndexComponent,
@@ -8,7 +8,7 @@ export const Route = createFileRoute('/')({
 
 function IndexComponent() {
   return (
-    <Hydrate when={visible()} prefetch={idle()}>
+    <Hydrate when={visible()}>
       <div>hello world</div>
     </Hydrate>
   )

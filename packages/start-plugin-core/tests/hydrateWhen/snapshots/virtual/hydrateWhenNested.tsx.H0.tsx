@@ -6,7 +6,7 @@ function Outer() {
 function NestedButton() {
   return <button>Nested</button>;
 }
-export function Hydrate_0({}) {
+export function H0() {
   return <>
         <Outer />
         <Hydrate when={interaction()}>

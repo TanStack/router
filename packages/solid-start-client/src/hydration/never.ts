@@ -3,8 +3,8 @@ import { GenericHydrate } from '../GenericHydrate'
 import type { SolidHydrationStrategy } from '../Hydrate'
 
 /* @__NO_SIDE_EFFECTS__ */
-export function never(): SolidHydrationStrategy {
+export function never(): SolidHydrationStrategy<'never', false> {
   return /* @__PURE__ */ Object.assign(coreNever(), {
-    $$renderHydrate: GenericHydrate,
+    _h: GenericHydrate,
   })
 }

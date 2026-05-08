@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { Dynamic, createComponent } from 'solid-js/web'
+import { Dynamic } from 'solid-js/web'
 
 import { useHydrated } from '@tanstack/solid-router'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -17,14 +17,20 @@ import {
 } from '@tanstack/start-client-core/hydration/runtime'
 import type { HydrationRuntimeContext } from '@tanstack/start-client-core/hydration'
 import type { HydrationGateRecord } from '@tanstack/start-client-core/hydration/runtime'
-import type { HydrateProps, InternalHydrateProps } from './Hydrate'
+import type { InternalHydrateProps } from './Hydrate'
+import type { DynamicProps } from 'solid-js/web'
+
+type HydrationFallbackDynamicProps = DynamicProps<'div'>
+type HydrationMarkerDynamicProps = DynamicProps<'div'> & {
+  [hydrateIdAttribute]: string
+  [hydrateWhenAttribute]: NonNullable<InternalHydrateProps['when']['_t']>
+  [key: `data-${string}`]: string | undefined
+}
 
 const hydrateIdSelector = `[${hydrateIdAttribute}]`
 
 function shouldDeferHydration(strategy: InternalHydrateProps['when']) {
-  return strategy.shouldDefer
-    ? strategy.shouldDefer()
-    : strategy.type !== 'load'
+  return strategy._d ? strategy._d() : strategy._t !== 'load'
 }
 
 function runStrategyCleanup(cleanup: void | (() => void)) {
@@ -55,43 +61,41 @@ function HydrationFallback(props: { id: string }) {
 
   if (!html) return null
 
-  return createComponent(Dynamic as any, {
+  const fallbackProps: HydrationFallbackDynamicProps = {
     component: 'div',
     style: { display: 'contents' },
     innerHTML: html,
-  })
+  }
+
+  return <Dynamic {...fallbackProps} />
 }
 
-export function GenericHydrate(props: HydrateProps) {
-  const internalProps = props as InternalHydrateProps
-  const hydrateStrategy = () => internalProps.when
-  const prefetchStrategy = () => internalProps.prefetch
-  const delegatedStrategy = () => internalProps.__hydrate
+export function GenericHydrate(props: InternalHydrateProps) {
+  const hydrateStrategy = () => props.when
+  const prefetchStrategy = () => props.prefetch
+  const delegatedStrategy = () => props.g
   const hydrated = useHydrated()
   const uniqueId = Solid.createUniqueId()
-  const id = internalProps.splitId
-    ? `${internalProps.splitId}${uniqueId}`
-    : uniqueId
+  const id = props.h ? `${props.h}${uniqueId}` : uniqueId
   const initialHydrateStrategy = hydrateStrategy()
-  const initialHydrateType = initialHydrateStrategy.type
-  const shouldPreserveServerHTML =
-    ((isServer as boolean | undefined) ?? typeof window === 'undefined') ||
-    !hydrated()
+  const initialHydrateType = initialHydrateStrategy._t!
+  const isServerEnvironment =
+    (isServer as boolean | undefined) ?? typeof window === 'undefined'
+  const shouldPreserveServerHTML = isServerEnvironment || !hydrated()
   const shouldDeferInitialHydration =
     !hydrated() && shouldDeferHydration(initialHydrateStrategy)
-  const gate: HydrationGateRecord =
-    ((isServer as boolean | undefined) ?? typeof window === 'undefined')
-      ? createResolvedGate(id, initialHydrateStrategy.type)
-      : getOrCreateGate(id, initialHydrateStrategy.type)
+  const gate: HydrationGateRecord = isServerEnvironment
+    ? createResolvedGate(id, initialHydrateType)
+    : getOrCreateGate(id, initialHydrateType)
   const [ready, setReady] = Solid.createSignal(
-    ((isServer as boolean | undefined) ?? typeof window === 'undefined') ||
-      (!shouldDeferInitialHydration && initialHydrateStrategy.type !== 'never'),
+    isServerEnvironment ||
+      (!shouldDeferInitialHydration && initialHydrateType !== 'never'),
   )
   let didPrefetch = false
   let markerElement: HTMLDivElement | undefined
 
   if (
-    !((isServer as boolean | undefined) ?? typeof window === 'undefined') &&
+    !isServerEnvironment &&
     initialHydrateType !== 'never' &&
     (!shouldDeferInitialHydration ||
       !shouldDeferHydration(initialHydrateStrategy))
@@ -103,7 +107,8 @@ export function GenericHydrate(props: HydrateProps) {
     const currentHydrateStrategy = hydrateStrategy()
     const currentPrefetchStrategy = prefetchStrategy()
     const currentDelegatedStrategy = delegatedStrategy()
-    gate.when = currentHydrateStrategy.type
+    const currentHydrateType = currentHydrateStrategy._t!
+    gate.when = currentHydrateType
     for (const element of document.querySelectorAll<HTMLDivElement>(
       hydrateIdSelector,
     )) {
@@ -115,21 +120,21 @@ export function GenericHydrate(props: HydrateProps) {
     }
 
     if (
-      currentHydrateStrategy.type === 'never' &&
+      currentHydrateType === 'never' &&
       !shouldPreserveServerHTML &&
       markerElement
     ) {
       markerElement.replaceChildren()
     }
 
-    if (internalProps.preload && currentPrefetchStrategy) {
+    if (props.p && currentPrefetchStrategy) {
       const prefetch = () => {
         if (didPrefetch) return
         didPrefetch = true
-        void internalProps.preload?.()
+        void props.p?.()
       }
       const cleanupPrefetch = runStrategyCleanup(
-        currentPrefetchStrategy.setupPrefetch?.({
+        currentPrefetchStrategy._s?.({
           element: markerElement ?? null,
           prefetch,
         }),
@@ -138,7 +143,7 @@ export function GenericHydrate(props: HydrateProps) {
     }
 
     if (
-      currentHydrateStrategy.type !== 'never' &&
+      currentHydrateType !== 'never' &&
       (!shouldDeferInitialHydration ||
         !shouldDeferHydration(currentHydrateStrategy))
     ) {
@@ -158,7 +163,7 @@ export function GenericHydrate(props: HydrateProps) {
       if (disposed) return
       disposed = true
       removeResolveListener()
-      cleanups.splice(0).forEach((fn) => fn())
+      cleanups.forEach((fn) => fn())
     }
 
     const addCleanup = (fn: void | (() => void)) => {
@@ -183,7 +188,7 @@ export function GenericHydrate(props: HydrateProps) {
     if (
       gate.resolved ||
       !shouldDeferInitialHydration ||
-      currentHydrateStrategy.type === 'never'
+      currentHydrateType === 'never'
     ) {
       if (gate.resolved) resolveBoundary()
       return
@@ -193,12 +198,12 @@ export function GenericHydrate(props: HydrateProps) {
       element: markerElement ?? null,
       gate,
     }
-    addCleanup(runStrategyCleanup(currentHydrateStrategy.setup?.(context)))
+    addCleanup(runStrategyCleanup(currentHydrateStrategy._s?.(context)))
 
-    if (currentDelegatedStrategy?.setup) {
+    if (currentDelegatedStrategy?._s) {
       addCleanup(
         runStrategyCleanup(
-          currentDelegatedStrategy.setup({
+          currentDelegatedStrategy._s({
             ...context,
             delegated: true,
           }),
@@ -210,9 +215,9 @@ export function GenericHydrate(props: HydrateProps) {
   Solid.createRenderEffect(() => {
     const currentHydrateStrategy = hydrateStrategy()
     if (
-      ((isServer as boolean | undefined) ?? typeof window === 'undefined') ||
+      isServerEnvironment ||
       gate.resolved ||
-      currentHydrateStrategy.type === 'never' ||
+      currentHydrateStrategy._t === 'never' ||
       shouldDeferHydration(currentHydrateStrategy)
     ) {
       return
@@ -221,61 +226,37 @@ export function GenericHydrate(props: HydrateProps) {
     gate.resolve()
   })
 
-  const markerAttributes = initialHydrateStrategy.getMarkerAttributes?.()
-  const fallback = () =>
-    shouldPreserveServerHTML
-      ? createComponent(HydrationFallback, {
-          get id() {
-            return id
-          },
-        })
-      : (props.fallback ?? null)
-
-  return createComponent(Dynamic as any, {
+  const markerAttributes = initialHydrateStrategy._a?.()
+  const markerProps: HydrationMarkerDynamicProps = {
     component: 'div',
-    get [hydrateIdAttribute]() {
-      return id
-    },
-    get [hydrateWhenAttribute]() {
-      return initialHydrateType
-    },
+    [hydrateIdAttribute]: id,
+    [hydrateWhenAttribute]: initialHydrateType,
     ...markerAttributes,
-    get children() {
-      if (initialHydrateType === 'never' && !shouldPreserveServerHTML) {
-        return props.fallback ?? null
-      }
+  }
+  const fallback = () =>
+    shouldPreserveServerHTML ? (
+      <HydrationFallback id={id} />
+    ) : (
+      (props.fallback ?? null)
+    )
 
-      return createComponent(Solid.Suspense, {
-        get fallback() {
-          return fallback()
-        },
-        get children() {
-          return createComponent(Solid.Show as any, {
-            get when() {
-              return ready()
-            },
-            get fallback() {
-              return fallback()
-            },
-            get children() {
-              return createComponent(HydratedBoundary, {
-                get id() {
-                  return id
-                },
-                get onHydrated() {
-                  return props.onHydrated
-                },
-                get onStrategyHydrated() {
-                  return hydrateStrategy().onHydrated
-                },
-                get children() {
-                  return props.children
-                },
-              })
-            },
-          })
-        },
-      })
-    },
-  })
+  return (
+    <Dynamic {...markerProps}>
+      {initialHydrateType === 'never' && !shouldPreserveServerHTML ? (
+        (props.fallback ?? null)
+      ) : (
+        <Solid.Suspense fallback={fallback()}>
+          <Solid.Show when={ready()} fallback={fallback()}>
+            <HydratedBoundary
+              id={id}
+              onHydrated={props.onHydrated}
+              onStrategyHydrated={hydrateStrategy()._o}
+            >
+              {props.children}
+            </HydratedBoundary>
+          </Solid.Show>
+        </Solid.Suspense>
+      )}
+    </Dynamic>
+  )
 }

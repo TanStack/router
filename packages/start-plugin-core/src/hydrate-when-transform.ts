@@ -19,7 +19,11 @@ import {
 } from '@tanstack/router-utils'
 import { tssHydrate } from './hydration-constants'
 import { cleanId, codeFrameError } from './start-compiler/utils'
-import type { StartCompilerPlugin } from './types'
+import type {
+  CompileStartFrameworkOptions,
+  StartCompilerPlugin,
+  StartCompilerTransformResult,
+} from './types'
 
 type HydrationImport = {
   hydrateLocalName: string
@@ -40,23 +44,23 @@ const HYDRATE_DETECTION_PATTERN = /\bHydrate\b/
 
 function createBoundaryId(root: string, sourceId: string) {
   const normalized = relative(root, sourceId).replaceAll('\\', '/')
-  const label =
-    normalized
-      .replace(/\.[cm]?[jt]sx?$/, '')
-      .replace(/[^a-zA-Z0-9_$]+/g, '_')
-      .replace(/^_+|_+$/g, '') || 'Hydrate'
+  const sourceHash = crypto
+    .createHash('sha1')
+    .update(normalized)
+    .digest('hex')
+    .slice(0, 10)
 
   return (index: number) => {
-    const hash = crypto
-      .createHash('sha1')
-      .update(normalized)
-      .update(':')
-      .update(String(index))
-      .digest('hex')
-      .slice(0, 10)
-
-    return `${label}_${hash}`
+    return `${index.toString(36)}_${sourceHash}`
   }
+}
+
+function parseBoundaryIndex(splitId: string | null) {
+  if (!splitId) return -1
+  const separatorIndex = splitId.indexOf('_')
+  if (separatorIndex <= 0) return -1
+  const boundaryIndex = Number.parseInt(splitId.slice(0, separatorIndex), 36)
+  return Number.isInteger(boundaryIndex) ? boundaryIndex : -1
 }
 
 function getJSXElementName(node: t.JSXElement) {
@@ -103,7 +107,15 @@ function getWhenExpression(node: t.JSXOpeningElement) {
   return when.value.expression
 }
 
-const hydrateBoundaryIndexParam = `${tssHydrate}-index`
+function mayHavePrefetchProp(node: t.JSXOpeningElement) {
+  return node.attributes.some((attribute) => {
+    if (t.isJSXSpreadAttribute(attribute)) return true
+    return (
+      t.isJSXAttribute(attribute) &&
+      t.isJSXIdentifier(attribute.name, { name: 'prefetch' })
+    )
+  })
+}
 
 function parseHydrateVirtualId(id: string) {
   const queryIndex = id.indexOf('?')
@@ -115,33 +127,30 @@ function parseHydrateVirtualId(id: string) {
   const rawQuery = id.slice(queryIndex + 1)
   const params = new URLSearchParams(rawQuery)
   const splitId = params.get(tssHydrate)
-  const rawIndex = params.get(hydrateBoundaryIndexParam)
-  const boundaryIndex = rawIndex === null ? -1 : Number(rawIndex)
 
   return {
     sourceId,
     splitId,
-    boundaryIndex: Number.isInteger(boundaryIndex) ? boundaryIndex : -1,
+    boundaryIndex: parseBoundaryIndex(splitId),
   }
 }
 
-function createHydrateImportId(sourceId: string, id: string, index: number) {
+function createHydrateImportId(sourceId: string, id: string) {
   const params = new URLSearchParams()
   params.set(tssHydrate, id)
-  params.set(hydrateBoundaryIndexParam, String(index))
   return `${sourceId}?${params.toString()}`
 }
 
-function upsertSplitId(node: t.JSXOpeningElement, splitId: string) {
-  const existing = getJSXAttribute(node, 'splitId')
+function upsertHydrateId(node: t.JSXOpeningElement, id: string) {
+  const existing = getJSXAttribute(node, 'h')
 
   if (existing) {
-    existing.value = t.stringLiteral(splitId)
+    existing.value = t.stringLiteral(id)
     return
   }
 
   node.attributes.push(
-    t.jsxAttribute(t.jsxIdentifier('splitId'), t.stringLiteral(splitId)),
+    t.jsxAttribute(t.jsxIdentifier('h'), t.stringLiteral(id)),
   )
 }
 
@@ -565,18 +574,39 @@ function getOrAddInteractionImport(
 
 function addClientImports(
   programPath: babel.NodePath<t.Program>,
-  source: string,
+  framework: CompileStartFrameworkOptions,
 ) {
-  const lazyIdent = programPath.scope.generateUidIdentifier(
-    'lazyHydratedComponent',
-  )
+  const lazyIdent =
+    programPath.scope.generateUidIdentifier('lazyRouteComponent')
   programPath.unshiftContainer('body', [
     t.importDeclaration(
-      [t.importSpecifier(lazyIdent, t.identifier('lazyHydratedComponent'))],
-      t.stringLiteral(source),
+      [t.importSpecifier(lazyIdent, t.identifier('lazyRouteComponent'))],
+      t.stringLiteral(`@tanstack/${framework}-router`),
     ),
   ])
   return lazyIdent
+}
+
+function createReturnExpressionFromChildren(
+  children: Array<t.JSXElement['children'][number]>,
+) {
+  const meaningfulChildren = children.filter(
+    (child) => !(t.isJSXText(child) && child.value.trim() === ''),
+  )
+
+  if (meaningfulChildren.length === 0) return t.nullLiteral()
+  if (meaningfulChildren.length === 1) {
+    const child = meaningfulChildren[0]!
+    if (t.isJSXExpressionContainer(child)) {
+      return t.isJSXEmptyExpression(child.expression)
+        ? t.nullLiteral()
+        : child.expression
+    }
+    if (t.isJSXElement(child) || t.isJSXFragment(child)) return child
+    if (t.isJSXText(child)) return t.stringLiteral(child.value)
+  }
+
+  return t.jsxFragment(t.jsxOpeningFragment(), t.jsxClosingFragment(), children)
 }
 
 function transformHydrateAst(options: {
@@ -585,6 +615,7 @@ function transformHydrateAst(options: {
   id: string
   root: string
   env: 'client' | 'server'
+  framework: CompileStartFrameworkOptions
   indexOffset?: number
 }) {
   if (!options.code.includes('Hydrate')) return null
@@ -606,8 +637,13 @@ function transformHydrateAst(options: {
         JSXElement(path) {
           if (getJSXElementName(path.node) !== localName) return
 
-          if (options.env === 'server' && stripJSXAttribute(path, 'fallback')) {
-            state.modified = true
+          if (options.env === 'server') {
+            if (stripJSXAttribute(path, 'fallback')) {
+              state.modified = true
+            }
+            if (stripJSXAttribute(path, 'prefetch')) {
+              state.modified = true
+            }
           }
 
           const split = getBooleanProp(path.node.openingElement, 'split')
@@ -628,19 +664,21 @@ function transformHydrateAst(options: {
               : {}),
           })
 
+          const whenExpression = getWhenExpression(path.node.openingElement)
           const index = nextBoundaryIndex
           const needsDelegatedInteraction =
             options.env === 'client' &&
             boundaryInspection.hasNestedInteraction &&
             !isInteractionCall(
-              getWhenExpression(path.node.openingElement),
+              whenExpression,
               hydrateImport.interactionLocalNames,
             )
           nextBoundaryIndex += 1 + boundaryInspection.nestedBoundaryCount
           const id = getBoundaryId(index)
-          const exportName = `Hydrate_${index}`
+          const exportName = `H${index}`
+          const needsPreloadProp = mayHavePrefetchProp(path.node.openingElement)
 
-          upsertSplitId(path.node.openingElement, id)
+          upsertHydrateId(path.node.openingElement, id)
           if (needsDelegatedInteraction) {
             interactionIdent ??= getOrAddInteractionImport(
               programPath,
@@ -648,7 +686,7 @@ function transformHydrateAst(options: {
             )
             path.node.openingElement.attributes.push(
               t.jsxAttribute(
-                t.jsxIdentifier('__hydrate'),
+                t.jsxIdentifier('g'),
                 t.jsxExpressionContainer(
                   t.callExpression(interactionIdent, []),
                 ),
@@ -660,42 +698,50 @@ function transformHydrateAst(options: {
           if (options.env === 'server') return
 
           if (!lazyIdent) {
-            lazyIdent = addClientImports(programPath, hydrateImport.source)
+            lazyIdent = addClientImports(programPath, options.framework)
           }
 
           const componentIdent =
             programPath.scope.generateUidIdentifier(exportName)
-          const preloadIdent = programPath.scope.generateUidIdentifier(
-            `${exportName}_preload`,
-          )
-          programPath.unshiftContainer('body', [
-            t.variableDeclaration('const', [
-              t.variableDeclarator(
-                componentIdent,
-                t.callExpression(lazyIdent, [
-                  t.arrowFunctionExpression(
-                    [],
-                    t.callExpression(t.import(), [
-                      t.stringLiteral(
-                        createHydrateImportId(sourceId, id, index),
-                      ),
-                    ]),
-                  ),
-                  t.stringLiteral(exportName),
-                ]),
-              ),
+          const declarations = [
+            t.variableDeclarator(
+              componentIdent,
+              t.callExpression(lazyIdent, [
+                t.arrowFunctionExpression(
+                  [],
+                  t.callExpression(t.import(), [
+                    t.stringLiteral(createHydrateImportId(sourceId, id)),
+                  ]),
+                ),
+                t.stringLiteral(exportName),
+              ]),
+            ),
+          ]
+
+          let preloadIdent: t.Identifier | undefined
+          if (needsPreloadProp) {
+            preloadIdent = programPath.scope.generateUidIdentifier(
+              `${exportName}_preload`,
+            )
+            declarations.push(
               t.variableDeclarator(
                 preloadIdent,
                 t.memberExpression(componentIdent, t.identifier('preload')),
               ),
-            ]),
+            )
+          }
+
+          programPath.unshiftContainer('body', [
+            t.variableDeclaration('const', declarations),
           ])
-          path.node.openingElement.attributes.push(
-            t.jsxAttribute(
-              t.jsxIdentifier('preload'),
-              t.jsxExpressionContainer(preloadIdent),
-            ),
-          )
+          if (preloadIdent) {
+            path.node.openingElement.attributes.push(
+              t.jsxAttribute(
+                t.jsxIdentifier('p'),
+                t.jsxExpressionContainer(preloadIdent),
+              ),
+            )
+          }
 
           path.node.children = [
             t.jsxText('\n'),
@@ -777,7 +823,7 @@ function loadHydrateVirtualModule(options: {
   if (!target || targetIndex < 0) return null
 
   const children = target.children
-  const exportName = `Hydrate_${targetIndex}`
+  const exportName = `H${targetIndex}`
   const refIdents = findReferencedIdentifiers(ast)
 
   removeModuleLevelBindings(ast, new Set(['Route']))
@@ -787,12 +833,8 @@ function loadHydrateVirtualModule(options: {
   }
 
   const keepBindings = new Set<string>()
-  const fragment = t.jsxFragment(
-    t.jsxOpeningFragment(),
-    t.jsxClosingFragment(),
-    children,
-  )
-  for (const name of collectIdentifiersFromNode(fragment)) {
+  const returnExpression = createReturnExpressionFromChildren(children)
+  for (const name of collectIdentifiersFromNode(returnExpression)) {
     if (localBindings.has(name)) {
       keepBindings.add(name)
     }
@@ -812,19 +854,21 @@ function loadHydrateVirtualModule(options: {
     t.exportNamedDeclaration(
       t.functionDeclaration(
         t.identifier(exportName),
-        [
-          t.objectPattern(
-            targetCaptured.map((name) =>
-              t.objectProperty(
-                t.identifier(name),
-                t.identifier(name),
-                false,
-                true,
+        targetCaptured.length > 0
+          ? [
+              t.objectPattern(
+                targetCaptured.map((name) =>
+                  t.objectProperty(
+                    t.identifier(name),
+                    t.identifier(name),
+                    false,
+                    true,
+                  ),
+                ),
               ),
-            ),
-          ),
-        ],
-        t.blockStatement([t.returnStatement(fragment)]),
+            ]
+          : [],
+        t.blockStatement([t.returnStatement(returnExpression)]),
       ),
     ),
   )
@@ -841,7 +885,12 @@ function loadHydrateVirtualModule(options: {
 }
 
 export function createHydrateCompilerPlugin(): StartCompilerPlugin {
-  const sourcesByEnvironment = new Map<string, Map<string, string>>()
+  type SourceEntry = {
+    code: string
+    virtualModules: Map<string, StartCompilerTransformResult | null>
+  }
+
+  const sourcesByEnvironment = new Map<string, Map<string, SourceEntry>>()
 
   const getEnvironmentSources = (envName: string) => {
     let sources = sourcesByEnvironment.get(envName)
@@ -853,10 +902,22 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
   }
 
   const setSource = (envName: string, id: string, code: string) => {
-    getEnvironmentSources(envName).set(cleanId(id), code)
+    const sourceId = cleanId(id)
+    const sources = getEnvironmentSources(envName)
+    const existing = sources.get(sourceId)
+    if (existing?.code === code) {
+      return existing
+    }
+
+    const entry = {
+      code,
+      virtualModules: new Map<string, StartCompilerTransformResult | null>(),
+    }
+    sources.set(sourceId, entry)
+    return entry
   }
 
-  const getSource = (envName: string, id: string) =>
+  const getSourceEntry = (envName: string, id: string) =>
     sourcesByEnvironment.get(envName)?.get(cleanId(id))
 
   const deleteSource = (envName: string, id: string) => {
@@ -879,6 +940,7 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
         id: context.id,
         root: context.root,
         env: context.env,
+        framework: context.framework,
         indexOffset,
       })
 
@@ -894,20 +956,28 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
         return null
       }
 
-      const code =
-        context.code ?? getSource(context.envName, virtualModule.sourceId)
+      const sourceEntry =
+        context.code === undefined
+          ? getSourceEntry(context.envName, virtualModule.sourceId)
+          : setSource(context.envName, virtualModule.sourceId, context.code)
 
-      if (code === undefined) {
+      if (!sourceEntry) {
         throw new Error(
           `Missing Hydrate source for virtual module ${context.id}. The parent module must be transformed before its Hydrate child chunk is loaded.`,
         )
       }
 
-      return loadHydrateVirtualModule({
-        code,
+      if (sourceEntry.virtualModules.has(context.id)) {
+        return sourceEntry.virtualModules.get(context.id)!
+      }
+
+      const result = loadHydrateVirtualModule({
+        code: sourceEntry.code,
         id: context.id,
         root: context.root,
       })
+      sourceEntry.virtualModules.set(context.id, result)
+      return result
     },
     invalidateModule(context) {
       deleteSource(context.envName, context.id)

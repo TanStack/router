@@ -17,6 +17,408 @@ import { Route as ParamsRouteRouteImport } from './routes/params/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SearchSearchPlaceholderRouteImport } from './routes/search/searchPlaceholder'
 import { Route as ParamsParamsPlaceholderRouteImport } from './routes/params/$paramsPlaceholder'
+import { Route as genRelative99RouteImport } from './routes/(gen)/relative99'
+import { Route as genRelative98RouteImport } from './routes/(gen)/relative98'
+import { Route as genRelative97RouteImport } from './routes/(gen)/relative97'
+import { Route as genRelative96RouteImport } from './routes/(gen)/relative96'
+import { Route as genRelative95RouteImport } from './routes/(gen)/relative95'
+import { Route as genRelative94RouteImport } from './routes/(gen)/relative94'
+import { Route as genRelative93RouteImport } from './routes/(gen)/relative93'
+import { Route as genRelative92RouteImport } from './routes/(gen)/relative92'
+import { Route as genRelative91RouteImport } from './routes/(gen)/relative91'
+import { Route as genRelative90RouteImport } from './routes/(gen)/relative90'
+import { Route as genRelative9RouteImport } from './routes/(gen)/relative9'
+import { Route as genRelative89RouteImport } from './routes/(gen)/relative89'
+import { Route as genRelative88RouteImport } from './routes/(gen)/relative88'
+import { Route as genRelative87RouteImport } from './routes/(gen)/relative87'
+import { Route as genRelative86RouteImport } from './routes/(gen)/relative86'
+import { Route as genRelative85RouteImport } from './routes/(gen)/relative85'
+import { Route as genRelative84RouteImport } from './routes/(gen)/relative84'
+import { Route as genRelative83RouteImport } from './routes/(gen)/relative83'
+import { Route as genRelative82RouteImport } from './routes/(gen)/relative82'
+import { Route as genRelative81RouteImport } from './routes/(gen)/relative81'
+import { Route as genRelative80RouteImport } from './routes/(gen)/relative80'
+import { Route as genRelative8RouteImport } from './routes/(gen)/relative8'
+import { Route as genRelative79RouteImport } from './routes/(gen)/relative79'
+import { Route as genRelative78RouteImport } from './routes/(gen)/relative78'
+import { Route as genRelative77RouteImport } from './routes/(gen)/relative77'
+import { Route as genRelative76RouteImport } from './routes/(gen)/relative76'
+import { Route as genRelative75RouteImport } from './routes/(gen)/relative75'
+import { Route as genRelative74RouteImport } from './routes/(gen)/relative74'
+import { Route as genRelative73RouteImport } from './routes/(gen)/relative73'
+import { Route as genRelative72RouteImport } from './routes/(gen)/relative72'
+import { Route as genRelative71RouteImport } from './routes/(gen)/relative71'
+import { Route as genRelative70RouteImport } from './routes/(gen)/relative70'
+import { Route as genRelative7RouteImport } from './routes/(gen)/relative7'
+import { Route as genRelative69RouteImport } from './routes/(gen)/relative69'
+import { Route as genRelative68RouteImport } from './routes/(gen)/relative68'
+import { Route as genRelative67RouteImport } from './routes/(gen)/relative67'
+import { Route as genRelative66RouteImport } from './routes/(gen)/relative66'
+import { Route as genRelative65RouteImport } from './routes/(gen)/relative65'
+import { Route as genRelative64RouteImport } from './routes/(gen)/relative64'
+import { Route as genRelative63RouteImport } from './routes/(gen)/relative63'
+import { Route as genRelative62RouteImport } from './routes/(gen)/relative62'
+import { Route as genRelative61RouteImport } from './routes/(gen)/relative61'
+import { Route as genRelative60RouteImport } from './routes/(gen)/relative60'
+import { Route as genRelative6RouteImport } from './routes/(gen)/relative6'
+import { Route as genRelative59RouteImport } from './routes/(gen)/relative59'
+import { Route as genRelative58RouteImport } from './routes/(gen)/relative58'
+import { Route as genRelative57RouteImport } from './routes/(gen)/relative57'
+import { Route as genRelative56RouteImport } from './routes/(gen)/relative56'
+import { Route as genRelative55RouteImport } from './routes/(gen)/relative55'
+import { Route as genRelative54RouteImport } from './routes/(gen)/relative54'
+import { Route as genRelative53RouteImport } from './routes/(gen)/relative53'
+import { Route as genRelative52RouteImport } from './routes/(gen)/relative52'
+import { Route as genRelative51RouteImport } from './routes/(gen)/relative51'
+import { Route as genRelative50RouteImport } from './routes/(gen)/relative50'
+import { Route as genRelative5RouteImport } from './routes/(gen)/relative5'
+import { Route as genRelative49RouteImport } from './routes/(gen)/relative49'
+import { Route as genRelative48RouteImport } from './routes/(gen)/relative48'
+import { Route as genRelative47RouteImport } from './routes/(gen)/relative47'
+import { Route as genRelative46RouteImport } from './routes/(gen)/relative46'
+import { Route as genRelative45RouteImport } from './routes/(gen)/relative45'
+import { Route as genRelative44RouteImport } from './routes/(gen)/relative44'
+import { Route as genRelative43RouteImport } from './routes/(gen)/relative43'
+import { Route as genRelative42RouteImport } from './routes/(gen)/relative42'
+import { Route as genRelative41RouteImport } from './routes/(gen)/relative41'
+import { Route as genRelative40RouteImport } from './routes/(gen)/relative40'
+import { Route as genRelative4RouteImport } from './routes/(gen)/relative4'
+import { Route as genRelative39RouteImport } from './routes/(gen)/relative39'
+import { Route as genRelative38RouteImport } from './routes/(gen)/relative38'
+import { Route as genRelative37RouteImport } from './routes/(gen)/relative37'
+import { Route as genRelative36RouteImport } from './routes/(gen)/relative36'
+import { Route as genRelative35RouteImport } from './routes/(gen)/relative35'
+import { Route as genRelative34RouteImport } from './routes/(gen)/relative34'
+import { Route as genRelative33RouteImport } from './routes/(gen)/relative33'
+import { Route as genRelative32RouteImport } from './routes/(gen)/relative32'
+import { Route as genRelative31RouteImport } from './routes/(gen)/relative31'
+import { Route as genRelative30RouteImport } from './routes/(gen)/relative30'
+import { Route as genRelative3RouteImport } from './routes/(gen)/relative3'
+import { Route as genRelative29RouteImport } from './routes/(gen)/relative29'
+import { Route as genRelative28RouteImport } from './routes/(gen)/relative28'
+import { Route as genRelative27RouteImport } from './routes/(gen)/relative27'
+import { Route as genRelative26RouteImport } from './routes/(gen)/relative26'
+import { Route as genRelative25RouteImport } from './routes/(gen)/relative25'
+import { Route as genRelative24RouteImport } from './routes/(gen)/relative24'
+import { Route as genRelative23RouteImport } from './routes/(gen)/relative23'
+import { Route as genRelative22RouteImport } from './routes/(gen)/relative22'
+import { Route as genRelative21RouteImport } from './routes/(gen)/relative21'
+import { Route as genRelative20RouteImport } from './routes/(gen)/relative20'
+import { Route as genRelative2RouteImport } from './routes/(gen)/relative2'
+import { Route as genRelative19RouteImport } from './routes/(gen)/relative19'
+import { Route as genRelative18RouteImport } from './routes/(gen)/relative18'
+import { Route as genRelative17RouteImport } from './routes/(gen)/relative17'
+import { Route as genRelative16RouteImport } from './routes/(gen)/relative16'
+import { Route as genRelative15RouteImport } from './routes/(gen)/relative15'
+import { Route as genRelative14RouteImport } from './routes/(gen)/relative14'
+import { Route as genRelative13RouteImport } from './routes/(gen)/relative13'
+import { Route as genRelative12RouteImport } from './routes/(gen)/relative12'
+import { Route as genRelative11RouteImport } from './routes/(gen)/relative11'
+import { Route as genRelative10RouteImport } from './routes/(gen)/relative10'
+import { Route as genRelative1RouteImport } from './routes/(gen)/relative1'
+import { Route as genRelative0RouteImport } from './routes/(gen)/relative0'
+import { Route as genAbsolute99RouteImport } from './routes/(gen)/absolute99'
+import { Route as genAbsolute98RouteImport } from './routes/(gen)/absolute98'
+import { Route as genAbsolute97RouteImport } from './routes/(gen)/absolute97'
+import { Route as genAbsolute96RouteImport } from './routes/(gen)/absolute96'
+import { Route as genAbsolute95RouteImport } from './routes/(gen)/absolute95'
+import { Route as genAbsolute94RouteImport } from './routes/(gen)/absolute94'
+import { Route as genAbsolute93RouteImport } from './routes/(gen)/absolute93'
+import { Route as genAbsolute92RouteImport } from './routes/(gen)/absolute92'
+import { Route as genAbsolute91RouteImport } from './routes/(gen)/absolute91'
+import { Route as genAbsolute90RouteImport } from './routes/(gen)/absolute90'
+import { Route as genAbsolute9RouteImport } from './routes/(gen)/absolute9'
+import { Route as genAbsolute89RouteImport } from './routes/(gen)/absolute89'
+import { Route as genAbsolute88RouteImport } from './routes/(gen)/absolute88'
+import { Route as genAbsolute87RouteImport } from './routes/(gen)/absolute87'
+import { Route as genAbsolute86RouteImport } from './routes/(gen)/absolute86'
+import { Route as genAbsolute85RouteImport } from './routes/(gen)/absolute85'
+import { Route as genAbsolute84RouteImport } from './routes/(gen)/absolute84'
+import { Route as genAbsolute83RouteImport } from './routes/(gen)/absolute83'
+import { Route as genAbsolute82RouteImport } from './routes/(gen)/absolute82'
+import { Route as genAbsolute81RouteImport } from './routes/(gen)/absolute81'
+import { Route as genAbsolute80RouteImport } from './routes/(gen)/absolute80'
+import { Route as genAbsolute8RouteImport } from './routes/(gen)/absolute8'
+import { Route as genAbsolute79RouteImport } from './routes/(gen)/absolute79'
+import { Route as genAbsolute78RouteImport } from './routes/(gen)/absolute78'
+import { Route as genAbsolute77RouteImport } from './routes/(gen)/absolute77'
+import { Route as genAbsolute76RouteImport } from './routes/(gen)/absolute76'
+import { Route as genAbsolute75RouteImport } from './routes/(gen)/absolute75'
+import { Route as genAbsolute74RouteImport } from './routes/(gen)/absolute74'
+import { Route as genAbsolute73RouteImport } from './routes/(gen)/absolute73'
+import { Route as genAbsolute72RouteImport } from './routes/(gen)/absolute72'
+import { Route as genAbsolute71RouteImport } from './routes/(gen)/absolute71'
+import { Route as genAbsolute70RouteImport } from './routes/(gen)/absolute70'
+import { Route as genAbsolute7RouteImport } from './routes/(gen)/absolute7'
+import { Route as genAbsolute69RouteImport } from './routes/(gen)/absolute69'
+import { Route as genAbsolute68RouteImport } from './routes/(gen)/absolute68'
+import { Route as genAbsolute67RouteImport } from './routes/(gen)/absolute67'
+import { Route as genAbsolute66RouteImport } from './routes/(gen)/absolute66'
+import { Route as genAbsolute65RouteImport } from './routes/(gen)/absolute65'
+import { Route as genAbsolute64RouteImport } from './routes/(gen)/absolute64'
+import { Route as genAbsolute63RouteImport } from './routes/(gen)/absolute63'
+import { Route as genAbsolute62RouteImport } from './routes/(gen)/absolute62'
+import { Route as genAbsolute61RouteImport } from './routes/(gen)/absolute61'
+import { Route as genAbsolute60RouteImport } from './routes/(gen)/absolute60'
+import { Route as genAbsolute6RouteImport } from './routes/(gen)/absolute6'
+import { Route as genAbsolute59RouteImport } from './routes/(gen)/absolute59'
+import { Route as genAbsolute58RouteImport } from './routes/(gen)/absolute58'
+import { Route as genAbsolute57RouteImport } from './routes/(gen)/absolute57'
+import { Route as genAbsolute56RouteImport } from './routes/(gen)/absolute56'
+import { Route as genAbsolute55RouteImport } from './routes/(gen)/absolute55'
+import { Route as genAbsolute54RouteImport } from './routes/(gen)/absolute54'
+import { Route as genAbsolute53RouteImport } from './routes/(gen)/absolute53'
+import { Route as genAbsolute52RouteImport } from './routes/(gen)/absolute52'
+import { Route as genAbsolute51RouteImport } from './routes/(gen)/absolute51'
+import { Route as genAbsolute50RouteImport } from './routes/(gen)/absolute50'
+import { Route as genAbsolute5RouteImport } from './routes/(gen)/absolute5'
+import { Route as genAbsolute49RouteImport } from './routes/(gen)/absolute49'
+import { Route as genAbsolute48RouteImport } from './routes/(gen)/absolute48'
+import { Route as genAbsolute47RouteImport } from './routes/(gen)/absolute47'
+import { Route as genAbsolute46RouteImport } from './routes/(gen)/absolute46'
+import { Route as genAbsolute45RouteImport } from './routes/(gen)/absolute45'
+import { Route as genAbsolute44RouteImport } from './routes/(gen)/absolute44'
+import { Route as genAbsolute43RouteImport } from './routes/(gen)/absolute43'
+import { Route as genAbsolute42RouteImport } from './routes/(gen)/absolute42'
+import { Route as genAbsolute41RouteImport } from './routes/(gen)/absolute41'
+import { Route as genAbsolute40RouteImport } from './routes/(gen)/absolute40'
+import { Route as genAbsolute4RouteImport } from './routes/(gen)/absolute4'
+import { Route as genAbsolute39RouteImport } from './routes/(gen)/absolute39'
+import { Route as genAbsolute38RouteImport } from './routes/(gen)/absolute38'
+import { Route as genAbsolute37RouteImport } from './routes/(gen)/absolute37'
+import { Route as genAbsolute36RouteImport } from './routes/(gen)/absolute36'
+import { Route as genAbsolute35RouteImport } from './routes/(gen)/absolute35'
+import { Route as genAbsolute34RouteImport } from './routes/(gen)/absolute34'
+import { Route as genAbsolute33RouteImport } from './routes/(gen)/absolute33'
+import { Route as genAbsolute32RouteImport } from './routes/(gen)/absolute32'
+import { Route as genAbsolute31RouteImport } from './routes/(gen)/absolute31'
+import { Route as genAbsolute30RouteImport } from './routes/(gen)/absolute30'
+import { Route as genAbsolute3RouteImport } from './routes/(gen)/absolute3'
+import { Route as genAbsolute29RouteImport } from './routes/(gen)/absolute29'
+import { Route as genAbsolute28RouteImport } from './routes/(gen)/absolute28'
+import { Route as genAbsolute27RouteImport } from './routes/(gen)/absolute27'
+import { Route as genAbsolute26RouteImport } from './routes/(gen)/absolute26'
+import { Route as genAbsolute25RouteImport } from './routes/(gen)/absolute25'
+import { Route as genAbsolute24RouteImport } from './routes/(gen)/absolute24'
+import { Route as genAbsolute23RouteImport } from './routes/(gen)/absolute23'
+import { Route as genAbsolute22RouteImport } from './routes/(gen)/absolute22'
+import { Route as genAbsolute21RouteImport } from './routes/(gen)/absolute21'
+import { Route as genAbsolute20RouteImport } from './routes/(gen)/absolute20'
+import { Route as genAbsolute2RouteImport } from './routes/(gen)/absolute2'
+import { Route as genAbsolute19RouteImport } from './routes/(gen)/absolute19'
+import { Route as genAbsolute18RouteImport } from './routes/(gen)/absolute18'
+import { Route as genAbsolute17RouteImport } from './routes/(gen)/absolute17'
+import { Route as genAbsolute16RouteImport } from './routes/(gen)/absolute16'
+import { Route as genAbsolute15RouteImport } from './routes/(gen)/absolute15'
+import { Route as genAbsolute14RouteImport } from './routes/(gen)/absolute14'
+import { Route as genAbsolute13RouteImport } from './routes/(gen)/absolute13'
+import { Route as genAbsolute12RouteImport } from './routes/(gen)/absolute12'
+import { Route as genAbsolute11RouteImport } from './routes/(gen)/absolute11'
+import { Route as genAbsolute10RouteImport } from './routes/(gen)/absolute10'
+import { Route as genAbsolute1RouteImport } from './routes/(gen)/absolute1'
+import { Route as genAbsolute0RouteImport } from './routes/(gen)/absolute0'
+import { Route as genSearchRouteRouteImport } from './routes/(gen)/search/route'
+import { Route as genParamsRouteRouteImport } from './routes/(gen)/params/route'
+import { Route as genSearchSearch99RouteImport } from './routes/(gen)/search/search99'
+import { Route as genSearchSearch98RouteImport } from './routes/(gen)/search/search98'
+import { Route as genSearchSearch97RouteImport } from './routes/(gen)/search/search97'
+import { Route as genSearchSearch96RouteImport } from './routes/(gen)/search/search96'
+import { Route as genSearchSearch95RouteImport } from './routes/(gen)/search/search95'
+import { Route as genSearchSearch94RouteImport } from './routes/(gen)/search/search94'
+import { Route as genSearchSearch93RouteImport } from './routes/(gen)/search/search93'
+import { Route as genSearchSearch92RouteImport } from './routes/(gen)/search/search92'
+import { Route as genSearchSearch91RouteImport } from './routes/(gen)/search/search91'
+import { Route as genSearchSearch90RouteImport } from './routes/(gen)/search/search90'
+import { Route as genSearchSearch9RouteImport } from './routes/(gen)/search/search9'
+import { Route as genSearchSearch89RouteImport } from './routes/(gen)/search/search89'
+import { Route as genSearchSearch88RouteImport } from './routes/(gen)/search/search88'
+import { Route as genSearchSearch87RouteImport } from './routes/(gen)/search/search87'
+import { Route as genSearchSearch86RouteImport } from './routes/(gen)/search/search86'
+import { Route as genSearchSearch85RouteImport } from './routes/(gen)/search/search85'
+import { Route as genSearchSearch84RouteImport } from './routes/(gen)/search/search84'
+import { Route as genSearchSearch83RouteImport } from './routes/(gen)/search/search83'
+import { Route as genSearchSearch82RouteImport } from './routes/(gen)/search/search82'
+import { Route as genSearchSearch81RouteImport } from './routes/(gen)/search/search81'
+import { Route as genSearchSearch80RouteImport } from './routes/(gen)/search/search80'
+import { Route as genSearchSearch8RouteImport } from './routes/(gen)/search/search8'
+import { Route as genSearchSearch79RouteImport } from './routes/(gen)/search/search79'
+import { Route as genSearchSearch78RouteImport } from './routes/(gen)/search/search78'
+import { Route as genSearchSearch77RouteImport } from './routes/(gen)/search/search77'
+import { Route as genSearchSearch76RouteImport } from './routes/(gen)/search/search76'
+import { Route as genSearchSearch75RouteImport } from './routes/(gen)/search/search75'
+import { Route as genSearchSearch74RouteImport } from './routes/(gen)/search/search74'
+import { Route as genSearchSearch73RouteImport } from './routes/(gen)/search/search73'
+import { Route as genSearchSearch72RouteImport } from './routes/(gen)/search/search72'
+import { Route as genSearchSearch71RouteImport } from './routes/(gen)/search/search71'
+import { Route as genSearchSearch70RouteImport } from './routes/(gen)/search/search70'
+import { Route as genSearchSearch7RouteImport } from './routes/(gen)/search/search7'
+import { Route as genSearchSearch69RouteImport } from './routes/(gen)/search/search69'
+import { Route as genSearchSearch68RouteImport } from './routes/(gen)/search/search68'
+import { Route as genSearchSearch67RouteImport } from './routes/(gen)/search/search67'
+import { Route as genSearchSearch66RouteImport } from './routes/(gen)/search/search66'
+import { Route as genSearchSearch65RouteImport } from './routes/(gen)/search/search65'
+import { Route as genSearchSearch64RouteImport } from './routes/(gen)/search/search64'
+import { Route as genSearchSearch63RouteImport } from './routes/(gen)/search/search63'
+import { Route as genSearchSearch62RouteImport } from './routes/(gen)/search/search62'
+import { Route as genSearchSearch61RouteImport } from './routes/(gen)/search/search61'
+import { Route as genSearchSearch60RouteImport } from './routes/(gen)/search/search60'
+import { Route as genSearchSearch6RouteImport } from './routes/(gen)/search/search6'
+import { Route as genSearchSearch59RouteImport } from './routes/(gen)/search/search59'
+import { Route as genSearchSearch58RouteImport } from './routes/(gen)/search/search58'
+import { Route as genSearchSearch57RouteImport } from './routes/(gen)/search/search57'
+import { Route as genSearchSearch56RouteImport } from './routes/(gen)/search/search56'
+import { Route as genSearchSearch55RouteImport } from './routes/(gen)/search/search55'
+import { Route as genSearchSearch54RouteImport } from './routes/(gen)/search/search54'
+import { Route as genSearchSearch53RouteImport } from './routes/(gen)/search/search53'
+import { Route as genSearchSearch52RouteImport } from './routes/(gen)/search/search52'
+import { Route as genSearchSearch51RouteImport } from './routes/(gen)/search/search51'
+import { Route as genSearchSearch50RouteImport } from './routes/(gen)/search/search50'
+import { Route as genSearchSearch5RouteImport } from './routes/(gen)/search/search5'
+import { Route as genSearchSearch49RouteImport } from './routes/(gen)/search/search49'
+import { Route as genSearchSearch48RouteImport } from './routes/(gen)/search/search48'
+import { Route as genSearchSearch47RouteImport } from './routes/(gen)/search/search47'
+import { Route as genSearchSearch46RouteImport } from './routes/(gen)/search/search46'
+import { Route as genSearchSearch45RouteImport } from './routes/(gen)/search/search45'
+import { Route as genSearchSearch44RouteImport } from './routes/(gen)/search/search44'
+import { Route as genSearchSearch43RouteImport } from './routes/(gen)/search/search43'
+import { Route as genSearchSearch42RouteImport } from './routes/(gen)/search/search42'
+import { Route as genSearchSearch41RouteImport } from './routes/(gen)/search/search41'
+import { Route as genSearchSearch40RouteImport } from './routes/(gen)/search/search40'
+import { Route as genSearchSearch4RouteImport } from './routes/(gen)/search/search4'
+import { Route as genSearchSearch39RouteImport } from './routes/(gen)/search/search39'
+import { Route as genSearchSearch38RouteImport } from './routes/(gen)/search/search38'
+import { Route as genSearchSearch37RouteImport } from './routes/(gen)/search/search37'
+import { Route as genSearchSearch36RouteImport } from './routes/(gen)/search/search36'
+import { Route as genSearchSearch35RouteImport } from './routes/(gen)/search/search35'
+import { Route as genSearchSearch34RouteImport } from './routes/(gen)/search/search34'
+import { Route as genSearchSearch33RouteImport } from './routes/(gen)/search/search33'
+import { Route as genSearchSearch32RouteImport } from './routes/(gen)/search/search32'
+import { Route as genSearchSearch31RouteImport } from './routes/(gen)/search/search31'
+import { Route as genSearchSearch30RouteImport } from './routes/(gen)/search/search30'
+import { Route as genSearchSearch3RouteImport } from './routes/(gen)/search/search3'
+import { Route as genSearchSearch29RouteImport } from './routes/(gen)/search/search29'
+import { Route as genSearchSearch28RouteImport } from './routes/(gen)/search/search28'
+import { Route as genSearchSearch27RouteImport } from './routes/(gen)/search/search27'
+import { Route as genSearchSearch26RouteImport } from './routes/(gen)/search/search26'
+import { Route as genSearchSearch25RouteImport } from './routes/(gen)/search/search25'
+import { Route as genSearchSearch24RouteImport } from './routes/(gen)/search/search24'
+import { Route as genSearchSearch23RouteImport } from './routes/(gen)/search/search23'
+import { Route as genSearchSearch22RouteImport } from './routes/(gen)/search/search22'
+import { Route as genSearchSearch21RouteImport } from './routes/(gen)/search/search21'
+import { Route as genSearchSearch20RouteImport } from './routes/(gen)/search/search20'
+import { Route as genSearchSearch2RouteImport } from './routes/(gen)/search/search2'
+import { Route as genSearchSearch19RouteImport } from './routes/(gen)/search/search19'
+import { Route as genSearchSearch18RouteImport } from './routes/(gen)/search/search18'
+import { Route as genSearchSearch17RouteImport } from './routes/(gen)/search/search17'
+import { Route as genSearchSearch16RouteImport } from './routes/(gen)/search/search16'
+import { Route as genSearchSearch15RouteImport } from './routes/(gen)/search/search15'
+import { Route as genSearchSearch14RouteImport } from './routes/(gen)/search/search14'
+import { Route as genSearchSearch13RouteImport } from './routes/(gen)/search/search13'
+import { Route as genSearchSearch12RouteImport } from './routes/(gen)/search/search12'
+import { Route as genSearchSearch11RouteImport } from './routes/(gen)/search/search11'
+import { Route as genSearchSearch10RouteImport } from './routes/(gen)/search/search10'
+import { Route as genSearchSearch1RouteImport } from './routes/(gen)/search/search1'
+import { Route as genSearchSearch0RouteImport } from './routes/(gen)/search/search0'
+import { Route as genParamsParam99RouteImport } from './routes/(gen)/params/$param99'
+import { Route as genParamsParam98RouteImport } from './routes/(gen)/params/$param98'
+import { Route as genParamsParam97RouteImport } from './routes/(gen)/params/$param97'
+import { Route as genParamsParam96RouteImport } from './routes/(gen)/params/$param96'
+import { Route as genParamsParam95RouteImport } from './routes/(gen)/params/$param95'
+import { Route as genParamsParam94RouteImport } from './routes/(gen)/params/$param94'
+import { Route as genParamsParam93RouteImport } from './routes/(gen)/params/$param93'
+import { Route as genParamsParam92RouteImport } from './routes/(gen)/params/$param92'
+import { Route as genParamsParam91RouteImport } from './routes/(gen)/params/$param91'
+import { Route as genParamsParam90RouteImport } from './routes/(gen)/params/$param90'
+import { Route as genParamsParam9RouteImport } from './routes/(gen)/params/$param9'
+import { Route as genParamsParam89RouteImport } from './routes/(gen)/params/$param89'
+import { Route as genParamsParam88RouteImport } from './routes/(gen)/params/$param88'
+import { Route as genParamsParam87RouteImport } from './routes/(gen)/params/$param87'
+import { Route as genParamsParam86RouteImport } from './routes/(gen)/params/$param86'
+import { Route as genParamsParam85RouteImport } from './routes/(gen)/params/$param85'
+import { Route as genParamsParam84RouteImport } from './routes/(gen)/params/$param84'
+import { Route as genParamsParam83RouteImport } from './routes/(gen)/params/$param83'
+import { Route as genParamsParam82RouteImport } from './routes/(gen)/params/$param82'
+import { Route as genParamsParam81RouteImport } from './routes/(gen)/params/$param81'
+import { Route as genParamsParam80RouteImport } from './routes/(gen)/params/$param80'
+import { Route as genParamsParam8RouteImport } from './routes/(gen)/params/$param8'
+import { Route as genParamsParam79RouteImport } from './routes/(gen)/params/$param79'
+import { Route as genParamsParam78RouteImport } from './routes/(gen)/params/$param78'
+import { Route as genParamsParam77RouteImport } from './routes/(gen)/params/$param77'
+import { Route as genParamsParam76RouteImport } from './routes/(gen)/params/$param76'
+import { Route as genParamsParam75RouteImport } from './routes/(gen)/params/$param75'
+import { Route as genParamsParam74RouteImport } from './routes/(gen)/params/$param74'
+import { Route as genParamsParam73RouteImport } from './routes/(gen)/params/$param73'
+import { Route as genParamsParam72RouteImport } from './routes/(gen)/params/$param72'
+import { Route as genParamsParam71RouteImport } from './routes/(gen)/params/$param71'
+import { Route as genParamsParam70RouteImport } from './routes/(gen)/params/$param70'
+import { Route as genParamsParam7RouteImport } from './routes/(gen)/params/$param7'
+import { Route as genParamsParam69RouteImport } from './routes/(gen)/params/$param69'
+import { Route as genParamsParam68RouteImport } from './routes/(gen)/params/$param68'
+import { Route as genParamsParam67RouteImport } from './routes/(gen)/params/$param67'
+import { Route as genParamsParam66RouteImport } from './routes/(gen)/params/$param66'
+import { Route as genParamsParam65RouteImport } from './routes/(gen)/params/$param65'
+import { Route as genParamsParam64RouteImport } from './routes/(gen)/params/$param64'
+import { Route as genParamsParam63RouteImport } from './routes/(gen)/params/$param63'
+import { Route as genParamsParam62RouteImport } from './routes/(gen)/params/$param62'
+import { Route as genParamsParam61RouteImport } from './routes/(gen)/params/$param61'
+import { Route as genParamsParam60RouteImport } from './routes/(gen)/params/$param60'
+import { Route as genParamsParam6RouteImport } from './routes/(gen)/params/$param6'
+import { Route as genParamsParam59RouteImport } from './routes/(gen)/params/$param59'
+import { Route as genParamsParam58RouteImport } from './routes/(gen)/params/$param58'
+import { Route as genParamsParam57RouteImport } from './routes/(gen)/params/$param57'
+import { Route as genParamsParam56RouteImport } from './routes/(gen)/params/$param56'
+import { Route as genParamsParam55RouteImport } from './routes/(gen)/params/$param55'
+import { Route as genParamsParam54RouteImport } from './routes/(gen)/params/$param54'
+import { Route as genParamsParam53RouteImport } from './routes/(gen)/params/$param53'
+import { Route as genParamsParam52RouteImport } from './routes/(gen)/params/$param52'
+import { Route as genParamsParam51RouteImport } from './routes/(gen)/params/$param51'
+import { Route as genParamsParam50RouteImport } from './routes/(gen)/params/$param50'
+import { Route as genParamsParam5RouteImport } from './routes/(gen)/params/$param5'
+import { Route as genParamsParam49RouteImport } from './routes/(gen)/params/$param49'
+import { Route as genParamsParam48RouteImport } from './routes/(gen)/params/$param48'
+import { Route as genParamsParam47RouteImport } from './routes/(gen)/params/$param47'
+import { Route as genParamsParam46RouteImport } from './routes/(gen)/params/$param46'
+import { Route as genParamsParam45RouteImport } from './routes/(gen)/params/$param45'
+import { Route as genParamsParam44RouteImport } from './routes/(gen)/params/$param44'
+import { Route as genParamsParam43RouteImport } from './routes/(gen)/params/$param43'
+import { Route as genParamsParam42RouteImport } from './routes/(gen)/params/$param42'
+import { Route as genParamsParam41RouteImport } from './routes/(gen)/params/$param41'
+import { Route as genParamsParam40RouteImport } from './routes/(gen)/params/$param40'
+import { Route as genParamsParam4RouteImport } from './routes/(gen)/params/$param4'
+import { Route as genParamsParam39RouteImport } from './routes/(gen)/params/$param39'
+import { Route as genParamsParam38RouteImport } from './routes/(gen)/params/$param38'
+import { Route as genParamsParam37RouteImport } from './routes/(gen)/params/$param37'
+import { Route as genParamsParam36RouteImport } from './routes/(gen)/params/$param36'
+import { Route as genParamsParam35RouteImport } from './routes/(gen)/params/$param35'
+import { Route as genParamsParam34RouteImport } from './routes/(gen)/params/$param34'
+import { Route as genParamsParam33RouteImport } from './routes/(gen)/params/$param33'
+import { Route as genParamsParam32RouteImport } from './routes/(gen)/params/$param32'
+import { Route as genParamsParam31RouteImport } from './routes/(gen)/params/$param31'
+import { Route as genParamsParam30RouteImport } from './routes/(gen)/params/$param30'
+import { Route as genParamsParam3RouteImport } from './routes/(gen)/params/$param3'
+import { Route as genParamsParam29RouteImport } from './routes/(gen)/params/$param29'
+import { Route as genParamsParam28RouteImport } from './routes/(gen)/params/$param28'
+import { Route as genParamsParam27RouteImport } from './routes/(gen)/params/$param27'
+import { Route as genParamsParam26RouteImport } from './routes/(gen)/params/$param26'
+import { Route as genParamsParam25RouteImport } from './routes/(gen)/params/$param25'
+import { Route as genParamsParam24RouteImport } from './routes/(gen)/params/$param24'
+import { Route as genParamsParam23RouteImport } from './routes/(gen)/params/$param23'
+import { Route as genParamsParam22RouteImport } from './routes/(gen)/params/$param22'
+import { Route as genParamsParam21RouteImport } from './routes/(gen)/params/$param21'
+import { Route as genParamsParam20RouteImport } from './routes/(gen)/params/$param20'
+import { Route as genParamsParam2RouteImport } from './routes/(gen)/params/$param2'
+import { Route as genParamsParam19RouteImport } from './routes/(gen)/params/$param19'
+import { Route as genParamsParam18RouteImport } from './routes/(gen)/params/$param18'
+import { Route as genParamsParam17RouteImport } from './routes/(gen)/params/$param17'
+import { Route as genParamsParam16RouteImport } from './routes/(gen)/params/$param16'
+import { Route as genParamsParam15RouteImport } from './routes/(gen)/params/$param15'
+import { Route as genParamsParam14RouteImport } from './routes/(gen)/params/$param14'
+import { Route as genParamsParam13RouteImport } from './routes/(gen)/params/$param13'
+import { Route as genParamsParam12RouteImport } from './routes/(gen)/params/$param12'
+import { Route as genParamsParam11RouteImport } from './routes/(gen)/params/$param11'
+import { Route as genParamsParam10RouteImport } from './routes/(gen)/params/$param10'
+import { Route as genParamsParam1RouteImport } from './routes/(gen)/params/$param1'
+import { Route as genParamsParam0RouteImport } from './routes/(gen)/params/$param0'
 
 const RelativeRoute = RelativeRouteImport.update({
   id: '/relative',
@@ -58,26 +460,2836 @@ const ParamsParamsPlaceholderRoute = ParamsParamsPlaceholderRouteImport.update({
   path: '/$paramsPlaceholder',
   getParentRoute: () => ParamsRouteRoute,
 } as any)
+const genRelative99Route = genRelative99RouteImport.update({
+  id: '/(gen)/relative99',
+  path: '/relative99',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative98Route = genRelative98RouteImport.update({
+  id: '/(gen)/relative98',
+  path: '/relative98',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative97Route = genRelative97RouteImport.update({
+  id: '/(gen)/relative97',
+  path: '/relative97',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative96Route = genRelative96RouteImport.update({
+  id: '/(gen)/relative96',
+  path: '/relative96',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative95Route = genRelative95RouteImport.update({
+  id: '/(gen)/relative95',
+  path: '/relative95',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative94Route = genRelative94RouteImport.update({
+  id: '/(gen)/relative94',
+  path: '/relative94',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative93Route = genRelative93RouteImport.update({
+  id: '/(gen)/relative93',
+  path: '/relative93',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative92Route = genRelative92RouteImport.update({
+  id: '/(gen)/relative92',
+  path: '/relative92',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative91Route = genRelative91RouteImport.update({
+  id: '/(gen)/relative91',
+  path: '/relative91',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative90Route = genRelative90RouteImport.update({
+  id: '/(gen)/relative90',
+  path: '/relative90',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative9Route = genRelative9RouteImport.update({
+  id: '/(gen)/relative9',
+  path: '/relative9',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative89Route = genRelative89RouteImport.update({
+  id: '/(gen)/relative89',
+  path: '/relative89',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative88Route = genRelative88RouteImport.update({
+  id: '/(gen)/relative88',
+  path: '/relative88',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative87Route = genRelative87RouteImport.update({
+  id: '/(gen)/relative87',
+  path: '/relative87',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative86Route = genRelative86RouteImport.update({
+  id: '/(gen)/relative86',
+  path: '/relative86',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative85Route = genRelative85RouteImport.update({
+  id: '/(gen)/relative85',
+  path: '/relative85',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative84Route = genRelative84RouteImport.update({
+  id: '/(gen)/relative84',
+  path: '/relative84',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative83Route = genRelative83RouteImport.update({
+  id: '/(gen)/relative83',
+  path: '/relative83',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative82Route = genRelative82RouteImport.update({
+  id: '/(gen)/relative82',
+  path: '/relative82',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative81Route = genRelative81RouteImport.update({
+  id: '/(gen)/relative81',
+  path: '/relative81',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative80Route = genRelative80RouteImport.update({
+  id: '/(gen)/relative80',
+  path: '/relative80',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative8Route = genRelative8RouteImport.update({
+  id: '/(gen)/relative8',
+  path: '/relative8',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative79Route = genRelative79RouteImport.update({
+  id: '/(gen)/relative79',
+  path: '/relative79',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative78Route = genRelative78RouteImport.update({
+  id: '/(gen)/relative78',
+  path: '/relative78',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative77Route = genRelative77RouteImport.update({
+  id: '/(gen)/relative77',
+  path: '/relative77',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative76Route = genRelative76RouteImport.update({
+  id: '/(gen)/relative76',
+  path: '/relative76',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative75Route = genRelative75RouteImport.update({
+  id: '/(gen)/relative75',
+  path: '/relative75',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative74Route = genRelative74RouteImport.update({
+  id: '/(gen)/relative74',
+  path: '/relative74',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative73Route = genRelative73RouteImport.update({
+  id: '/(gen)/relative73',
+  path: '/relative73',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative72Route = genRelative72RouteImport.update({
+  id: '/(gen)/relative72',
+  path: '/relative72',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative71Route = genRelative71RouteImport.update({
+  id: '/(gen)/relative71',
+  path: '/relative71',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative70Route = genRelative70RouteImport.update({
+  id: '/(gen)/relative70',
+  path: '/relative70',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative7Route = genRelative7RouteImport.update({
+  id: '/(gen)/relative7',
+  path: '/relative7',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative69Route = genRelative69RouteImport.update({
+  id: '/(gen)/relative69',
+  path: '/relative69',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative68Route = genRelative68RouteImport.update({
+  id: '/(gen)/relative68',
+  path: '/relative68',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative67Route = genRelative67RouteImport.update({
+  id: '/(gen)/relative67',
+  path: '/relative67',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative66Route = genRelative66RouteImport.update({
+  id: '/(gen)/relative66',
+  path: '/relative66',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative65Route = genRelative65RouteImport.update({
+  id: '/(gen)/relative65',
+  path: '/relative65',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative64Route = genRelative64RouteImport.update({
+  id: '/(gen)/relative64',
+  path: '/relative64',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative63Route = genRelative63RouteImport.update({
+  id: '/(gen)/relative63',
+  path: '/relative63',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative62Route = genRelative62RouteImport.update({
+  id: '/(gen)/relative62',
+  path: '/relative62',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative61Route = genRelative61RouteImport.update({
+  id: '/(gen)/relative61',
+  path: '/relative61',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative60Route = genRelative60RouteImport.update({
+  id: '/(gen)/relative60',
+  path: '/relative60',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative6Route = genRelative6RouteImport.update({
+  id: '/(gen)/relative6',
+  path: '/relative6',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative59Route = genRelative59RouteImport.update({
+  id: '/(gen)/relative59',
+  path: '/relative59',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative58Route = genRelative58RouteImport.update({
+  id: '/(gen)/relative58',
+  path: '/relative58',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative57Route = genRelative57RouteImport.update({
+  id: '/(gen)/relative57',
+  path: '/relative57',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative56Route = genRelative56RouteImport.update({
+  id: '/(gen)/relative56',
+  path: '/relative56',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative55Route = genRelative55RouteImport.update({
+  id: '/(gen)/relative55',
+  path: '/relative55',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative54Route = genRelative54RouteImport.update({
+  id: '/(gen)/relative54',
+  path: '/relative54',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative53Route = genRelative53RouteImport.update({
+  id: '/(gen)/relative53',
+  path: '/relative53',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative52Route = genRelative52RouteImport.update({
+  id: '/(gen)/relative52',
+  path: '/relative52',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative51Route = genRelative51RouteImport.update({
+  id: '/(gen)/relative51',
+  path: '/relative51',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative50Route = genRelative50RouteImport.update({
+  id: '/(gen)/relative50',
+  path: '/relative50',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative5Route = genRelative5RouteImport.update({
+  id: '/(gen)/relative5',
+  path: '/relative5',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative49Route = genRelative49RouteImport.update({
+  id: '/(gen)/relative49',
+  path: '/relative49',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative48Route = genRelative48RouteImport.update({
+  id: '/(gen)/relative48',
+  path: '/relative48',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative47Route = genRelative47RouteImport.update({
+  id: '/(gen)/relative47',
+  path: '/relative47',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative46Route = genRelative46RouteImport.update({
+  id: '/(gen)/relative46',
+  path: '/relative46',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative45Route = genRelative45RouteImport.update({
+  id: '/(gen)/relative45',
+  path: '/relative45',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative44Route = genRelative44RouteImport.update({
+  id: '/(gen)/relative44',
+  path: '/relative44',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative43Route = genRelative43RouteImport.update({
+  id: '/(gen)/relative43',
+  path: '/relative43',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative42Route = genRelative42RouteImport.update({
+  id: '/(gen)/relative42',
+  path: '/relative42',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative41Route = genRelative41RouteImport.update({
+  id: '/(gen)/relative41',
+  path: '/relative41',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative40Route = genRelative40RouteImport.update({
+  id: '/(gen)/relative40',
+  path: '/relative40',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative4Route = genRelative4RouteImport.update({
+  id: '/(gen)/relative4',
+  path: '/relative4',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative39Route = genRelative39RouteImport.update({
+  id: '/(gen)/relative39',
+  path: '/relative39',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative38Route = genRelative38RouteImport.update({
+  id: '/(gen)/relative38',
+  path: '/relative38',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative37Route = genRelative37RouteImport.update({
+  id: '/(gen)/relative37',
+  path: '/relative37',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative36Route = genRelative36RouteImport.update({
+  id: '/(gen)/relative36',
+  path: '/relative36',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative35Route = genRelative35RouteImport.update({
+  id: '/(gen)/relative35',
+  path: '/relative35',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative34Route = genRelative34RouteImport.update({
+  id: '/(gen)/relative34',
+  path: '/relative34',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative33Route = genRelative33RouteImport.update({
+  id: '/(gen)/relative33',
+  path: '/relative33',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative32Route = genRelative32RouteImport.update({
+  id: '/(gen)/relative32',
+  path: '/relative32',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative31Route = genRelative31RouteImport.update({
+  id: '/(gen)/relative31',
+  path: '/relative31',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative30Route = genRelative30RouteImport.update({
+  id: '/(gen)/relative30',
+  path: '/relative30',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative3Route = genRelative3RouteImport.update({
+  id: '/(gen)/relative3',
+  path: '/relative3',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative29Route = genRelative29RouteImport.update({
+  id: '/(gen)/relative29',
+  path: '/relative29',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative28Route = genRelative28RouteImport.update({
+  id: '/(gen)/relative28',
+  path: '/relative28',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative27Route = genRelative27RouteImport.update({
+  id: '/(gen)/relative27',
+  path: '/relative27',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative26Route = genRelative26RouteImport.update({
+  id: '/(gen)/relative26',
+  path: '/relative26',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative25Route = genRelative25RouteImport.update({
+  id: '/(gen)/relative25',
+  path: '/relative25',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative24Route = genRelative24RouteImport.update({
+  id: '/(gen)/relative24',
+  path: '/relative24',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative23Route = genRelative23RouteImport.update({
+  id: '/(gen)/relative23',
+  path: '/relative23',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative22Route = genRelative22RouteImport.update({
+  id: '/(gen)/relative22',
+  path: '/relative22',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative21Route = genRelative21RouteImport.update({
+  id: '/(gen)/relative21',
+  path: '/relative21',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative20Route = genRelative20RouteImport.update({
+  id: '/(gen)/relative20',
+  path: '/relative20',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative2Route = genRelative2RouteImport.update({
+  id: '/(gen)/relative2',
+  path: '/relative2',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative19Route = genRelative19RouteImport.update({
+  id: '/(gen)/relative19',
+  path: '/relative19',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative18Route = genRelative18RouteImport.update({
+  id: '/(gen)/relative18',
+  path: '/relative18',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative17Route = genRelative17RouteImport.update({
+  id: '/(gen)/relative17',
+  path: '/relative17',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative16Route = genRelative16RouteImport.update({
+  id: '/(gen)/relative16',
+  path: '/relative16',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative15Route = genRelative15RouteImport.update({
+  id: '/(gen)/relative15',
+  path: '/relative15',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative14Route = genRelative14RouteImport.update({
+  id: '/(gen)/relative14',
+  path: '/relative14',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative13Route = genRelative13RouteImport.update({
+  id: '/(gen)/relative13',
+  path: '/relative13',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative12Route = genRelative12RouteImport.update({
+  id: '/(gen)/relative12',
+  path: '/relative12',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative11Route = genRelative11RouteImport.update({
+  id: '/(gen)/relative11',
+  path: '/relative11',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative10Route = genRelative10RouteImport.update({
+  id: '/(gen)/relative10',
+  path: '/relative10',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative1Route = genRelative1RouteImport.update({
+  id: '/(gen)/relative1',
+  path: '/relative1',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genRelative0Route = genRelative0RouteImport.update({
+  id: '/(gen)/relative0',
+  path: '/relative0',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute99Route = genAbsolute99RouteImport.update({
+  id: '/(gen)/absolute99',
+  path: '/absolute99',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute98Route = genAbsolute98RouteImport.update({
+  id: '/(gen)/absolute98',
+  path: '/absolute98',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute97Route = genAbsolute97RouteImport.update({
+  id: '/(gen)/absolute97',
+  path: '/absolute97',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute96Route = genAbsolute96RouteImport.update({
+  id: '/(gen)/absolute96',
+  path: '/absolute96',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute95Route = genAbsolute95RouteImport.update({
+  id: '/(gen)/absolute95',
+  path: '/absolute95',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute94Route = genAbsolute94RouteImport.update({
+  id: '/(gen)/absolute94',
+  path: '/absolute94',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute93Route = genAbsolute93RouteImport.update({
+  id: '/(gen)/absolute93',
+  path: '/absolute93',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute92Route = genAbsolute92RouteImport.update({
+  id: '/(gen)/absolute92',
+  path: '/absolute92',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute91Route = genAbsolute91RouteImport.update({
+  id: '/(gen)/absolute91',
+  path: '/absolute91',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute90Route = genAbsolute90RouteImport.update({
+  id: '/(gen)/absolute90',
+  path: '/absolute90',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute9Route = genAbsolute9RouteImport.update({
+  id: '/(gen)/absolute9',
+  path: '/absolute9',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute89Route = genAbsolute89RouteImport.update({
+  id: '/(gen)/absolute89',
+  path: '/absolute89',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute88Route = genAbsolute88RouteImport.update({
+  id: '/(gen)/absolute88',
+  path: '/absolute88',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute87Route = genAbsolute87RouteImport.update({
+  id: '/(gen)/absolute87',
+  path: '/absolute87',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute86Route = genAbsolute86RouteImport.update({
+  id: '/(gen)/absolute86',
+  path: '/absolute86',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute85Route = genAbsolute85RouteImport.update({
+  id: '/(gen)/absolute85',
+  path: '/absolute85',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute84Route = genAbsolute84RouteImport.update({
+  id: '/(gen)/absolute84',
+  path: '/absolute84',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute83Route = genAbsolute83RouteImport.update({
+  id: '/(gen)/absolute83',
+  path: '/absolute83',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute82Route = genAbsolute82RouteImport.update({
+  id: '/(gen)/absolute82',
+  path: '/absolute82',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute81Route = genAbsolute81RouteImport.update({
+  id: '/(gen)/absolute81',
+  path: '/absolute81',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute80Route = genAbsolute80RouteImport.update({
+  id: '/(gen)/absolute80',
+  path: '/absolute80',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute8Route = genAbsolute8RouteImport.update({
+  id: '/(gen)/absolute8',
+  path: '/absolute8',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute79Route = genAbsolute79RouteImport.update({
+  id: '/(gen)/absolute79',
+  path: '/absolute79',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute78Route = genAbsolute78RouteImport.update({
+  id: '/(gen)/absolute78',
+  path: '/absolute78',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute77Route = genAbsolute77RouteImport.update({
+  id: '/(gen)/absolute77',
+  path: '/absolute77',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute76Route = genAbsolute76RouteImport.update({
+  id: '/(gen)/absolute76',
+  path: '/absolute76',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute75Route = genAbsolute75RouteImport.update({
+  id: '/(gen)/absolute75',
+  path: '/absolute75',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute74Route = genAbsolute74RouteImport.update({
+  id: '/(gen)/absolute74',
+  path: '/absolute74',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute73Route = genAbsolute73RouteImport.update({
+  id: '/(gen)/absolute73',
+  path: '/absolute73',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute72Route = genAbsolute72RouteImport.update({
+  id: '/(gen)/absolute72',
+  path: '/absolute72',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute71Route = genAbsolute71RouteImport.update({
+  id: '/(gen)/absolute71',
+  path: '/absolute71',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute70Route = genAbsolute70RouteImport.update({
+  id: '/(gen)/absolute70',
+  path: '/absolute70',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute7Route = genAbsolute7RouteImport.update({
+  id: '/(gen)/absolute7',
+  path: '/absolute7',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute69Route = genAbsolute69RouteImport.update({
+  id: '/(gen)/absolute69',
+  path: '/absolute69',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute68Route = genAbsolute68RouteImport.update({
+  id: '/(gen)/absolute68',
+  path: '/absolute68',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute67Route = genAbsolute67RouteImport.update({
+  id: '/(gen)/absolute67',
+  path: '/absolute67',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute66Route = genAbsolute66RouteImport.update({
+  id: '/(gen)/absolute66',
+  path: '/absolute66',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute65Route = genAbsolute65RouteImport.update({
+  id: '/(gen)/absolute65',
+  path: '/absolute65',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute64Route = genAbsolute64RouteImport.update({
+  id: '/(gen)/absolute64',
+  path: '/absolute64',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute63Route = genAbsolute63RouteImport.update({
+  id: '/(gen)/absolute63',
+  path: '/absolute63',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute62Route = genAbsolute62RouteImport.update({
+  id: '/(gen)/absolute62',
+  path: '/absolute62',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute61Route = genAbsolute61RouteImport.update({
+  id: '/(gen)/absolute61',
+  path: '/absolute61',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute60Route = genAbsolute60RouteImport.update({
+  id: '/(gen)/absolute60',
+  path: '/absolute60',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute6Route = genAbsolute6RouteImport.update({
+  id: '/(gen)/absolute6',
+  path: '/absolute6',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute59Route = genAbsolute59RouteImport.update({
+  id: '/(gen)/absolute59',
+  path: '/absolute59',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute58Route = genAbsolute58RouteImport.update({
+  id: '/(gen)/absolute58',
+  path: '/absolute58',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute57Route = genAbsolute57RouteImport.update({
+  id: '/(gen)/absolute57',
+  path: '/absolute57',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute56Route = genAbsolute56RouteImport.update({
+  id: '/(gen)/absolute56',
+  path: '/absolute56',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute55Route = genAbsolute55RouteImport.update({
+  id: '/(gen)/absolute55',
+  path: '/absolute55',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute54Route = genAbsolute54RouteImport.update({
+  id: '/(gen)/absolute54',
+  path: '/absolute54',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute53Route = genAbsolute53RouteImport.update({
+  id: '/(gen)/absolute53',
+  path: '/absolute53',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute52Route = genAbsolute52RouteImport.update({
+  id: '/(gen)/absolute52',
+  path: '/absolute52',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute51Route = genAbsolute51RouteImport.update({
+  id: '/(gen)/absolute51',
+  path: '/absolute51',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute50Route = genAbsolute50RouteImport.update({
+  id: '/(gen)/absolute50',
+  path: '/absolute50',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute5Route = genAbsolute5RouteImport.update({
+  id: '/(gen)/absolute5',
+  path: '/absolute5',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute49Route = genAbsolute49RouteImport.update({
+  id: '/(gen)/absolute49',
+  path: '/absolute49',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute48Route = genAbsolute48RouteImport.update({
+  id: '/(gen)/absolute48',
+  path: '/absolute48',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute47Route = genAbsolute47RouteImport.update({
+  id: '/(gen)/absolute47',
+  path: '/absolute47',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute46Route = genAbsolute46RouteImport.update({
+  id: '/(gen)/absolute46',
+  path: '/absolute46',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute45Route = genAbsolute45RouteImport.update({
+  id: '/(gen)/absolute45',
+  path: '/absolute45',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute44Route = genAbsolute44RouteImport.update({
+  id: '/(gen)/absolute44',
+  path: '/absolute44',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute43Route = genAbsolute43RouteImport.update({
+  id: '/(gen)/absolute43',
+  path: '/absolute43',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute42Route = genAbsolute42RouteImport.update({
+  id: '/(gen)/absolute42',
+  path: '/absolute42',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute41Route = genAbsolute41RouteImport.update({
+  id: '/(gen)/absolute41',
+  path: '/absolute41',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute40Route = genAbsolute40RouteImport.update({
+  id: '/(gen)/absolute40',
+  path: '/absolute40',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute4Route = genAbsolute4RouteImport.update({
+  id: '/(gen)/absolute4',
+  path: '/absolute4',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute39Route = genAbsolute39RouteImport.update({
+  id: '/(gen)/absolute39',
+  path: '/absolute39',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute38Route = genAbsolute38RouteImport.update({
+  id: '/(gen)/absolute38',
+  path: '/absolute38',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute37Route = genAbsolute37RouteImport.update({
+  id: '/(gen)/absolute37',
+  path: '/absolute37',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute36Route = genAbsolute36RouteImport.update({
+  id: '/(gen)/absolute36',
+  path: '/absolute36',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute35Route = genAbsolute35RouteImport.update({
+  id: '/(gen)/absolute35',
+  path: '/absolute35',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute34Route = genAbsolute34RouteImport.update({
+  id: '/(gen)/absolute34',
+  path: '/absolute34',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute33Route = genAbsolute33RouteImport.update({
+  id: '/(gen)/absolute33',
+  path: '/absolute33',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute32Route = genAbsolute32RouteImport.update({
+  id: '/(gen)/absolute32',
+  path: '/absolute32',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute31Route = genAbsolute31RouteImport.update({
+  id: '/(gen)/absolute31',
+  path: '/absolute31',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute30Route = genAbsolute30RouteImport.update({
+  id: '/(gen)/absolute30',
+  path: '/absolute30',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute3Route = genAbsolute3RouteImport.update({
+  id: '/(gen)/absolute3',
+  path: '/absolute3',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute29Route = genAbsolute29RouteImport.update({
+  id: '/(gen)/absolute29',
+  path: '/absolute29',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute28Route = genAbsolute28RouteImport.update({
+  id: '/(gen)/absolute28',
+  path: '/absolute28',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute27Route = genAbsolute27RouteImport.update({
+  id: '/(gen)/absolute27',
+  path: '/absolute27',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute26Route = genAbsolute26RouteImport.update({
+  id: '/(gen)/absolute26',
+  path: '/absolute26',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute25Route = genAbsolute25RouteImport.update({
+  id: '/(gen)/absolute25',
+  path: '/absolute25',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute24Route = genAbsolute24RouteImport.update({
+  id: '/(gen)/absolute24',
+  path: '/absolute24',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute23Route = genAbsolute23RouteImport.update({
+  id: '/(gen)/absolute23',
+  path: '/absolute23',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute22Route = genAbsolute22RouteImport.update({
+  id: '/(gen)/absolute22',
+  path: '/absolute22',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute21Route = genAbsolute21RouteImport.update({
+  id: '/(gen)/absolute21',
+  path: '/absolute21',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute20Route = genAbsolute20RouteImport.update({
+  id: '/(gen)/absolute20',
+  path: '/absolute20',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute2Route = genAbsolute2RouteImport.update({
+  id: '/(gen)/absolute2',
+  path: '/absolute2',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute19Route = genAbsolute19RouteImport.update({
+  id: '/(gen)/absolute19',
+  path: '/absolute19',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute18Route = genAbsolute18RouteImport.update({
+  id: '/(gen)/absolute18',
+  path: '/absolute18',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute17Route = genAbsolute17RouteImport.update({
+  id: '/(gen)/absolute17',
+  path: '/absolute17',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute16Route = genAbsolute16RouteImport.update({
+  id: '/(gen)/absolute16',
+  path: '/absolute16',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute15Route = genAbsolute15RouteImport.update({
+  id: '/(gen)/absolute15',
+  path: '/absolute15',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute14Route = genAbsolute14RouteImport.update({
+  id: '/(gen)/absolute14',
+  path: '/absolute14',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute13Route = genAbsolute13RouteImport.update({
+  id: '/(gen)/absolute13',
+  path: '/absolute13',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute12Route = genAbsolute12RouteImport.update({
+  id: '/(gen)/absolute12',
+  path: '/absolute12',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute11Route = genAbsolute11RouteImport.update({
+  id: '/(gen)/absolute11',
+  path: '/absolute11',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute10Route = genAbsolute10RouteImport.update({
+  id: '/(gen)/absolute10',
+  path: '/absolute10',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute1Route = genAbsolute1RouteImport.update({
+  id: '/(gen)/absolute1',
+  path: '/absolute1',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genAbsolute0Route = genAbsolute0RouteImport.update({
+  id: '/(gen)/absolute0',
+  path: '/absolute0',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genSearchRouteRoute = genSearchRouteRouteImport.update({
+  id: '/(gen)/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genParamsRouteRoute = genParamsRouteRouteImport.update({
+  id: '/(gen)/params',
+  path: '/params',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const genSearchSearch99Route = genSearchSearch99RouteImport.update({
+  id: '/search99',
+  path: '/search99',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch98Route = genSearchSearch98RouteImport.update({
+  id: '/search98',
+  path: '/search98',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch97Route = genSearchSearch97RouteImport.update({
+  id: '/search97',
+  path: '/search97',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch96Route = genSearchSearch96RouteImport.update({
+  id: '/search96',
+  path: '/search96',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch95Route = genSearchSearch95RouteImport.update({
+  id: '/search95',
+  path: '/search95',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch94Route = genSearchSearch94RouteImport.update({
+  id: '/search94',
+  path: '/search94',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch93Route = genSearchSearch93RouteImport.update({
+  id: '/search93',
+  path: '/search93',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch92Route = genSearchSearch92RouteImport.update({
+  id: '/search92',
+  path: '/search92',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch91Route = genSearchSearch91RouteImport.update({
+  id: '/search91',
+  path: '/search91',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch90Route = genSearchSearch90RouteImport.update({
+  id: '/search90',
+  path: '/search90',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch9Route = genSearchSearch9RouteImport.update({
+  id: '/search9',
+  path: '/search9',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch89Route = genSearchSearch89RouteImport.update({
+  id: '/search89',
+  path: '/search89',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch88Route = genSearchSearch88RouteImport.update({
+  id: '/search88',
+  path: '/search88',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch87Route = genSearchSearch87RouteImport.update({
+  id: '/search87',
+  path: '/search87',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch86Route = genSearchSearch86RouteImport.update({
+  id: '/search86',
+  path: '/search86',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch85Route = genSearchSearch85RouteImport.update({
+  id: '/search85',
+  path: '/search85',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch84Route = genSearchSearch84RouteImport.update({
+  id: '/search84',
+  path: '/search84',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch83Route = genSearchSearch83RouteImport.update({
+  id: '/search83',
+  path: '/search83',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch82Route = genSearchSearch82RouteImport.update({
+  id: '/search82',
+  path: '/search82',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch81Route = genSearchSearch81RouteImport.update({
+  id: '/search81',
+  path: '/search81',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch80Route = genSearchSearch80RouteImport.update({
+  id: '/search80',
+  path: '/search80',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch8Route = genSearchSearch8RouteImport.update({
+  id: '/search8',
+  path: '/search8',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch79Route = genSearchSearch79RouteImport.update({
+  id: '/search79',
+  path: '/search79',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch78Route = genSearchSearch78RouteImport.update({
+  id: '/search78',
+  path: '/search78',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch77Route = genSearchSearch77RouteImport.update({
+  id: '/search77',
+  path: '/search77',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch76Route = genSearchSearch76RouteImport.update({
+  id: '/search76',
+  path: '/search76',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch75Route = genSearchSearch75RouteImport.update({
+  id: '/search75',
+  path: '/search75',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch74Route = genSearchSearch74RouteImport.update({
+  id: '/search74',
+  path: '/search74',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch73Route = genSearchSearch73RouteImport.update({
+  id: '/search73',
+  path: '/search73',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch72Route = genSearchSearch72RouteImport.update({
+  id: '/search72',
+  path: '/search72',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch71Route = genSearchSearch71RouteImport.update({
+  id: '/search71',
+  path: '/search71',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch70Route = genSearchSearch70RouteImport.update({
+  id: '/search70',
+  path: '/search70',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch7Route = genSearchSearch7RouteImport.update({
+  id: '/search7',
+  path: '/search7',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch69Route = genSearchSearch69RouteImport.update({
+  id: '/search69',
+  path: '/search69',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch68Route = genSearchSearch68RouteImport.update({
+  id: '/search68',
+  path: '/search68',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch67Route = genSearchSearch67RouteImport.update({
+  id: '/search67',
+  path: '/search67',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch66Route = genSearchSearch66RouteImport.update({
+  id: '/search66',
+  path: '/search66',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch65Route = genSearchSearch65RouteImport.update({
+  id: '/search65',
+  path: '/search65',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch64Route = genSearchSearch64RouteImport.update({
+  id: '/search64',
+  path: '/search64',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch63Route = genSearchSearch63RouteImport.update({
+  id: '/search63',
+  path: '/search63',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch62Route = genSearchSearch62RouteImport.update({
+  id: '/search62',
+  path: '/search62',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch61Route = genSearchSearch61RouteImport.update({
+  id: '/search61',
+  path: '/search61',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch60Route = genSearchSearch60RouteImport.update({
+  id: '/search60',
+  path: '/search60',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch6Route = genSearchSearch6RouteImport.update({
+  id: '/search6',
+  path: '/search6',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch59Route = genSearchSearch59RouteImport.update({
+  id: '/search59',
+  path: '/search59',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch58Route = genSearchSearch58RouteImport.update({
+  id: '/search58',
+  path: '/search58',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch57Route = genSearchSearch57RouteImport.update({
+  id: '/search57',
+  path: '/search57',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch56Route = genSearchSearch56RouteImport.update({
+  id: '/search56',
+  path: '/search56',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch55Route = genSearchSearch55RouteImport.update({
+  id: '/search55',
+  path: '/search55',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch54Route = genSearchSearch54RouteImport.update({
+  id: '/search54',
+  path: '/search54',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch53Route = genSearchSearch53RouteImport.update({
+  id: '/search53',
+  path: '/search53',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch52Route = genSearchSearch52RouteImport.update({
+  id: '/search52',
+  path: '/search52',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch51Route = genSearchSearch51RouteImport.update({
+  id: '/search51',
+  path: '/search51',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch50Route = genSearchSearch50RouteImport.update({
+  id: '/search50',
+  path: '/search50',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch5Route = genSearchSearch5RouteImport.update({
+  id: '/search5',
+  path: '/search5',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch49Route = genSearchSearch49RouteImport.update({
+  id: '/search49',
+  path: '/search49',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch48Route = genSearchSearch48RouteImport.update({
+  id: '/search48',
+  path: '/search48',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch47Route = genSearchSearch47RouteImport.update({
+  id: '/search47',
+  path: '/search47',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch46Route = genSearchSearch46RouteImport.update({
+  id: '/search46',
+  path: '/search46',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch45Route = genSearchSearch45RouteImport.update({
+  id: '/search45',
+  path: '/search45',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch44Route = genSearchSearch44RouteImport.update({
+  id: '/search44',
+  path: '/search44',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch43Route = genSearchSearch43RouteImport.update({
+  id: '/search43',
+  path: '/search43',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch42Route = genSearchSearch42RouteImport.update({
+  id: '/search42',
+  path: '/search42',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch41Route = genSearchSearch41RouteImport.update({
+  id: '/search41',
+  path: '/search41',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch40Route = genSearchSearch40RouteImport.update({
+  id: '/search40',
+  path: '/search40',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch4Route = genSearchSearch4RouteImport.update({
+  id: '/search4',
+  path: '/search4',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch39Route = genSearchSearch39RouteImport.update({
+  id: '/search39',
+  path: '/search39',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch38Route = genSearchSearch38RouteImport.update({
+  id: '/search38',
+  path: '/search38',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch37Route = genSearchSearch37RouteImport.update({
+  id: '/search37',
+  path: '/search37',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch36Route = genSearchSearch36RouteImport.update({
+  id: '/search36',
+  path: '/search36',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch35Route = genSearchSearch35RouteImport.update({
+  id: '/search35',
+  path: '/search35',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch34Route = genSearchSearch34RouteImport.update({
+  id: '/search34',
+  path: '/search34',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch33Route = genSearchSearch33RouteImport.update({
+  id: '/search33',
+  path: '/search33',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch32Route = genSearchSearch32RouteImport.update({
+  id: '/search32',
+  path: '/search32',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch31Route = genSearchSearch31RouteImport.update({
+  id: '/search31',
+  path: '/search31',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch30Route = genSearchSearch30RouteImport.update({
+  id: '/search30',
+  path: '/search30',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch3Route = genSearchSearch3RouteImport.update({
+  id: '/search3',
+  path: '/search3',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch29Route = genSearchSearch29RouteImport.update({
+  id: '/search29',
+  path: '/search29',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch28Route = genSearchSearch28RouteImport.update({
+  id: '/search28',
+  path: '/search28',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch27Route = genSearchSearch27RouteImport.update({
+  id: '/search27',
+  path: '/search27',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch26Route = genSearchSearch26RouteImport.update({
+  id: '/search26',
+  path: '/search26',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch25Route = genSearchSearch25RouteImport.update({
+  id: '/search25',
+  path: '/search25',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch24Route = genSearchSearch24RouteImport.update({
+  id: '/search24',
+  path: '/search24',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch23Route = genSearchSearch23RouteImport.update({
+  id: '/search23',
+  path: '/search23',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch22Route = genSearchSearch22RouteImport.update({
+  id: '/search22',
+  path: '/search22',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch21Route = genSearchSearch21RouteImport.update({
+  id: '/search21',
+  path: '/search21',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch20Route = genSearchSearch20RouteImport.update({
+  id: '/search20',
+  path: '/search20',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch2Route = genSearchSearch2RouteImport.update({
+  id: '/search2',
+  path: '/search2',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch19Route = genSearchSearch19RouteImport.update({
+  id: '/search19',
+  path: '/search19',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch18Route = genSearchSearch18RouteImport.update({
+  id: '/search18',
+  path: '/search18',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch17Route = genSearchSearch17RouteImport.update({
+  id: '/search17',
+  path: '/search17',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch16Route = genSearchSearch16RouteImport.update({
+  id: '/search16',
+  path: '/search16',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch15Route = genSearchSearch15RouteImport.update({
+  id: '/search15',
+  path: '/search15',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch14Route = genSearchSearch14RouteImport.update({
+  id: '/search14',
+  path: '/search14',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch13Route = genSearchSearch13RouteImport.update({
+  id: '/search13',
+  path: '/search13',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch12Route = genSearchSearch12RouteImport.update({
+  id: '/search12',
+  path: '/search12',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch11Route = genSearchSearch11RouteImport.update({
+  id: '/search11',
+  path: '/search11',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch10Route = genSearchSearch10RouteImport.update({
+  id: '/search10',
+  path: '/search10',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch1Route = genSearchSearch1RouteImport.update({
+  id: '/search1',
+  path: '/search1',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genSearchSearch0Route = genSearchSearch0RouteImport.update({
+  id: '/search0',
+  path: '/search0',
+  getParentRoute: () => genSearchRouteRoute,
+} as any)
+const genParamsParam99Route = genParamsParam99RouteImport.update({
+  id: '/$param99',
+  path: '/$param99',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam98Route = genParamsParam98RouteImport.update({
+  id: '/$param98',
+  path: '/$param98',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam97Route = genParamsParam97RouteImport.update({
+  id: '/$param97',
+  path: '/$param97',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam96Route = genParamsParam96RouteImport.update({
+  id: '/$param96',
+  path: '/$param96',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam95Route = genParamsParam95RouteImport.update({
+  id: '/$param95',
+  path: '/$param95',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam94Route = genParamsParam94RouteImport.update({
+  id: '/$param94',
+  path: '/$param94',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam93Route = genParamsParam93RouteImport.update({
+  id: '/$param93',
+  path: '/$param93',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam92Route = genParamsParam92RouteImport.update({
+  id: '/$param92',
+  path: '/$param92',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam91Route = genParamsParam91RouteImport.update({
+  id: '/$param91',
+  path: '/$param91',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam90Route = genParamsParam90RouteImport.update({
+  id: '/$param90',
+  path: '/$param90',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam9Route = genParamsParam9RouteImport.update({
+  id: '/$param9',
+  path: '/$param9',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam89Route = genParamsParam89RouteImport.update({
+  id: '/$param89',
+  path: '/$param89',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam88Route = genParamsParam88RouteImport.update({
+  id: '/$param88',
+  path: '/$param88',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam87Route = genParamsParam87RouteImport.update({
+  id: '/$param87',
+  path: '/$param87',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam86Route = genParamsParam86RouteImport.update({
+  id: '/$param86',
+  path: '/$param86',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam85Route = genParamsParam85RouteImport.update({
+  id: '/$param85',
+  path: '/$param85',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam84Route = genParamsParam84RouteImport.update({
+  id: '/$param84',
+  path: '/$param84',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam83Route = genParamsParam83RouteImport.update({
+  id: '/$param83',
+  path: '/$param83',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam82Route = genParamsParam82RouteImport.update({
+  id: '/$param82',
+  path: '/$param82',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam81Route = genParamsParam81RouteImport.update({
+  id: '/$param81',
+  path: '/$param81',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam80Route = genParamsParam80RouteImport.update({
+  id: '/$param80',
+  path: '/$param80',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam8Route = genParamsParam8RouteImport.update({
+  id: '/$param8',
+  path: '/$param8',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam79Route = genParamsParam79RouteImport.update({
+  id: '/$param79',
+  path: '/$param79',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam78Route = genParamsParam78RouteImport.update({
+  id: '/$param78',
+  path: '/$param78',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam77Route = genParamsParam77RouteImport.update({
+  id: '/$param77',
+  path: '/$param77',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam76Route = genParamsParam76RouteImport.update({
+  id: '/$param76',
+  path: '/$param76',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam75Route = genParamsParam75RouteImport.update({
+  id: '/$param75',
+  path: '/$param75',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam74Route = genParamsParam74RouteImport.update({
+  id: '/$param74',
+  path: '/$param74',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam73Route = genParamsParam73RouteImport.update({
+  id: '/$param73',
+  path: '/$param73',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam72Route = genParamsParam72RouteImport.update({
+  id: '/$param72',
+  path: '/$param72',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam71Route = genParamsParam71RouteImport.update({
+  id: '/$param71',
+  path: '/$param71',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam70Route = genParamsParam70RouteImport.update({
+  id: '/$param70',
+  path: '/$param70',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam7Route = genParamsParam7RouteImport.update({
+  id: '/$param7',
+  path: '/$param7',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam69Route = genParamsParam69RouteImport.update({
+  id: '/$param69',
+  path: '/$param69',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam68Route = genParamsParam68RouteImport.update({
+  id: '/$param68',
+  path: '/$param68',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam67Route = genParamsParam67RouteImport.update({
+  id: '/$param67',
+  path: '/$param67',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam66Route = genParamsParam66RouteImport.update({
+  id: '/$param66',
+  path: '/$param66',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam65Route = genParamsParam65RouteImport.update({
+  id: '/$param65',
+  path: '/$param65',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam64Route = genParamsParam64RouteImport.update({
+  id: '/$param64',
+  path: '/$param64',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam63Route = genParamsParam63RouteImport.update({
+  id: '/$param63',
+  path: '/$param63',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam62Route = genParamsParam62RouteImport.update({
+  id: '/$param62',
+  path: '/$param62',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam61Route = genParamsParam61RouteImport.update({
+  id: '/$param61',
+  path: '/$param61',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam60Route = genParamsParam60RouteImport.update({
+  id: '/$param60',
+  path: '/$param60',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam6Route = genParamsParam6RouteImport.update({
+  id: '/$param6',
+  path: '/$param6',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam59Route = genParamsParam59RouteImport.update({
+  id: '/$param59',
+  path: '/$param59',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam58Route = genParamsParam58RouteImport.update({
+  id: '/$param58',
+  path: '/$param58',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam57Route = genParamsParam57RouteImport.update({
+  id: '/$param57',
+  path: '/$param57',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam56Route = genParamsParam56RouteImport.update({
+  id: '/$param56',
+  path: '/$param56',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam55Route = genParamsParam55RouteImport.update({
+  id: '/$param55',
+  path: '/$param55',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam54Route = genParamsParam54RouteImport.update({
+  id: '/$param54',
+  path: '/$param54',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam53Route = genParamsParam53RouteImport.update({
+  id: '/$param53',
+  path: '/$param53',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam52Route = genParamsParam52RouteImport.update({
+  id: '/$param52',
+  path: '/$param52',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam51Route = genParamsParam51RouteImport.update({
+  id: '/$param51',
+  path: '/$param51',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam50Route = genParamsParam50RouteImport.update({
+  id: '/$param50',
+  path: '/$param50',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam5Route = genParamsParam5RouteImport.update({
+  id: '/$param5',
+  path: '/$param5',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam49Route = genParamsParam49RouteImport.update({
+  id: '/$param49',
+  path: '/$param49',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam48Route = genParamsParam48RouteImport.update({
+  id: '/$param48',
+  path: '/$param48',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam47Route = genParamsParam47RouteImport.update({
+  id: '/$param47',
+  path: '/$param47',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam46Route = genParamsParam46RouteImport.update({
+  id: '/$param46',
+  path: '/$param46',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam45Route = genParamsParam45RouteImport.update({
+  id: '/$param45',
+  path: '/$param45',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam44Route = genParamsParam44RouteImport.update({
+  id: '/$param44',
+  path: '/$param44',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam43Route = genParamsParam43RouteImport.update({
+  id: '/$param43',
+  path: '/$param43',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam42Route = genParamsParam42RouteImport.update({
+  id: '/$param42',
+  path: '/$param42',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam41Route = genParamsParam41RouteImport.update({
+  id: '/$param41',
+  path: '/$param41',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam40Route = genParamsParam40RouteImport.update({
+  id: '/$param40',
+  path: '/$param40',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam4Route = genParamsParam4RouteImport.update({
+  id: '/$param4',
+  path: '/$param4',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam39Route = genParamsParam39RouteImport.update({
+  id: '/$param39',
+  path: '/$param39',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam38Route = genParamsParam38RouteImport.update({
+  id: '/$param38',
+  path: '/$param38',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam37Route = genParamsParam37RouteImport.update({
+  id: '/$param37',
+  path: '/$param37',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam36Route = genParamsParam36RouteImport.update({
+  id: '/$param36',
+  path: '/$param36',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam35Route = genParamsParam35RouteImport.update({
+  id: '/$param35',
+  path: '/$param35',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam34Route = genParamsParam34RouteImport.update({
+  id: '/$param34',
+  path: '/$param34',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam33Route = genParamsParam33RouteImport.update({
+  id: '/$param33',
+  path: '/$param33',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam32Route = genParamsParam32RouteImport.update({
+  id: '/$param32',
+  path: '/$param32',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam31Route = genParamsParam31RouteImport.update({
+  id: '/$param31',
+  path: '/$param31',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam30Route = genParamsParam30RouteImport.update({
+  id: '/$param30',
+  path: '/$param30',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam3Route = genParamsParam3RouteImport.update({
+  id: '/$param3',
+  path: '/$param3',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam29Route = genParamsParam29RouteImport.update({
+  id: '/$param29',
+  path: '/$param29',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam28Route = genParamsParam28RouteImport.update({
+  id: '/$param28',
+  path: '/$param28',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam27Route = genParamsParam27RouteImport.update({
+  id: '/$param27',
+  path: '/$param27',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam26Route = genParamsParam26RouteImport.update({
+  id: '/$param26',
+  path: '/$param26',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam25Route = genParamsParam25RouteImport.update({
+  id: '/$param25',
+  path: '/$param25',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam24Route = genParamsParam24RouteImport.update({
+  id: '/$param24',
+  path: '/$param24',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam23Route = genParamsParam23RouteImport.update({
+  id: '/$param23',
+  path: '/$param23',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam22Route = genParamsParam22RouteImport.update({
+  id: '/$param22',
+  path: '/$param22',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam21Route = genParamsParam21RouteImport.update({
+  id: '/$param21',
+  path: '/$param21',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam20Route = genParamsParam20RouteImport.update({
+  id: '/$param20',
+  path: '/$param20',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam2Route = genParamsParam2RouteImport.update({
+  id: '/$param2',
+  path: '/$param2',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam19Route = genParamsParam19RouteImport.update({
+  id: '/$param19',
+  path: '/$param19',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam18Route = genParamsParam18RouteImport.update({
+  id: '/$param18',
+  path: '/$param18',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam17Route = genParamsParam17RouteImport.update({
+  id: '/$param17',
+  path: '/$param17',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam16Route = genParamsParam16RouteImport.update({
+  id: '/$param16',
+  path: '/$param16',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam15Route = genParamsParam15RouteImport.update({
+  id: '/$param15',
+  path: '/$param15',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam14Route = genParamsParam14RouteImport.update({
+  id: '/$param14',
+  path: '/$param14',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam13Route = genParamsParam13RouteImport.update({
+  id: '/$param13',
+  path: '/$param13',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam12Route = genParamsParam12RouteImport.update({
+  id: '/$param12',
+  path: '/$param12',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam11Route = genParamsParam11RouteImport.update({
+  id: '/$param11',
+  path: '/$param11',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam10Route = genParamsParam10RouteImport.update({
+  id: '/$param10',
+  path: '/$param10',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam1Route = genParamsParam1RouteImport.update({
+  id: '/$param1',
+  path: '/$param1',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
+const genParamsParam0Route = genParamsParam0RouteImport.update({
+  id: '/$param0',
+  path: '/$param0',
+  getParentRoute: () => genParamsRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/params': typeof ParamsRouteRouteWithChildren
-  '/search': typeof SearchRouteRouteWithChildren
+  '/params': typeof genParamsRouteRouteWithChildren
+  '/search': typeof genSearchRouteRouteWithChildren
   '/absolute': typeof AbsoluteRoute
   '/linkProps': typeof LinkPropsRoute
   '/relative': typeof RelativeRoute
+  '/absolute0': typeof genAbsolute0Route
+  '/absolute1': typeof genAbsolute1Route
+  '/absolute10': typeof genAbsolute10Route
+  '/absolute11': typeof genAbsolute11Route
+  '/absolute12': typeof genAbsolute12Route
+  '/absolute13': typeof genAbsolute13Route
+  '/absolute14': typeof genAbsolute14Route
+  '/absolute15': typeof genAbsolute15Route
+  '/absolute16': typeof genAbsolute16Route
+  '/absolute17': typeof genAbsolute17Route
+  '/absolute18': typeof genAbsolute18Route
+  '/absolute19': typeof genAbsolute19Route
+  '/absolute2': typeof genAbsolute2Route
+  '/absolute20': typeof genAbsolute20Route
+  '/absolute21': typeof genAbsolute21Route
+  '/absolute22': typeof genAbsolute22Route
+  '/absolute23': typeof genAbsolute23Route
+  '/absolute24': typeof genAbsolute24Route
+  '/absolute25': typeof genAbsolute25Route
+  '/absolute26': typeof genAbsolute26Route
+  '/absolute27': typeof genAbsolute27Route
+  '/absolute28': typeof genAbsolute28Route
+  '/absolute29': typeof genAbsolute29Route
+  '/absolute3': typeof genAbsolute3Route
+  '/absolute30': typeof genAbsolute30Route
+  '/absolute31': typeof genAbsolute31Route
+  '/absolute32': typeof genAbsolute32Route
+  '/absolute33': typeof genAbsolute33Route
+  '/absolute34': typeof genAbsolute34Route
+  '/absolute35': typeof genAbsolute35Route
+  '/absolute36': typeof genAbsolute36Route
+  '/absolute37': typeof genAbsolute37Route
+  '/absolute38': typeof genAbsolute38Route
+  '/absolute39': typeof genAbsolute39Route
+  '/absolute4': typeof genAbsolute4Route
+  '/absolute40': typeof genAbsolute40Route
+  '/absolute41': typeof genAbsolute41Route
+  '/absolute42': typeof genAbsolute42Route
+  '/absolute43': typeof genAbsolute43Route
+  '/absolute44': typeof genAbsolute44Route
+  '/absolute45': typeof genAbsolute45Route
+  '/absolute46': typeof genAbsolute46Route
+  '/absolute47': typeof genAbsolute47Route
+  '/absolute48': typeof genAbsolute48Route
+  '/absolute49': typeof genAbsolute49Route
+  '/absolute5': typeof genAbsolute5Route
+  '/absolute50': typeof genAbsolute50Route
+  '/absolute51': typeof genAbsolute51Route
+  '/absolute52': typeof genAbsolute52Route
+  '/absolute53': typeof genAbsolute53Route
+  '/absolute54': typeof genAbsolute54Route
+  '/absolute55': typeof genAbsolute55Route
+  '/absolute56': typeof genAbsolute56Route
+  '/absolute57': typeof genAbsolute57Route
+  '/absolute58': typeof genAbsolute58Route
+  '/absolute59': typeof genAbsolute59Route
+  '/absolute6': typeof genAbsolute6Route
+  '/absolute60': typeof genAbsolute60Route
+  '/absolute61': typeof genAbsolute61Route
+  '/absolute62': typeof genAbsolute62Route
+  '/absolute63': typeof genAbsolute63Route
+  '/absolute64': typeof genAbsolute64Route
+  '/absolute65': typeof genAbsolute65Route
+  '/absolute66': typeof genAbsolute66Route
+  '/absolute67': typeof genAbsolute67Route
+  '/absolute68': typeof genAbsolute68Route
+  '/absolute69': typeof genAbsolute69Route
+  '/absolute7': typeof genAbsolute7Route
+  '/absolute70': typeof genAbsolute70Route
+  '/absolute71': typeof genAbsolute71Route
+  '/absolute72': typeof genAbsolute72Route
+  '/absolute73': typeof genAbsolute73Route
+  '/absolute74': typeof genAbsolute74Route
+  '/absolute75': typeof genAbsolute75Route
+  '/absolute76': typeof genAbsolute76Route
+  '/absolute77': typeof genAbsolute77Route
+  '/absolute78': typeof genAbsolute78Route
+  '/absolute79': typeof genAbsolute79Route
+  '/absolute8': typeof genAbsolute8Route
+  '/absolute80': typeof genAbsolute80Route
+  '/absolute81': typeof genAbsolute81Route
+  '/absolute82': typeof genAbsolute82Route
+  '/absolute83': typeof genAbsolute83Route
+  '/absolute84': typeof genAbsolute84Route
+  '/absolute85': typeof genAbsolute85Route
+  '/absolute86': typeof genAbsolute86Route
+  '/absolute87': typeof genAbsolute87Route
+  '/absolute88': typeof genAbsolute88Route
+  '/absolute89': typeof genAbsolute89Route
+  '/absolute9': typeof genAbsolute9Route
+  '/absolute90': typeof genAbsolute90Route
+  '/absolute91': typeof genAbsolute91Route
+  '/absolute92': typeof genAbsolute92Route
+  '/absolute93': typeof genAbsolute93Route
+  '/absolute94': typeof genAbsolute94Route
+  '/absolute95': typeof genAbsolute95Route
+  '/absolute96': typeof genAbsolute96Route
+  '/absolute97': typeof genAbsolute97Route
+  '/absolute98': typeof genAbsolute98Route
+  '/absolute99': typeof genAbsolute99Route
+  '/relative0': typeof genRelative0Route
+  '/relative1': typeof genRelative1Route
+  '/relative10': typeof genRelative10Route
+  '/relative11': typeof genRelative11Route
+  '/relative12': typeof genRelative12Route
+  '/relative13': typeof genRelative13Route
+  '/relative14': typeof genRelative14Route
+  '/relative15': typeof genRelative15Route
+  '/relative16': typeof genRelative16Route
+  '/relative17': typeof genRelative17Route
+  '/relative18': typeof genRelative18Route
+  '/relative19': typeof genRelative19Route
+  '/relative2': typeof genRelative2Route
+  '/relative20': typeof genRelative20Route
+  '/relative21': typeof genRelative21Route
+  '/relative22': typeof genRelative22Route
+  '/relative23': typeof genRelative23Route
+  '/relative24': typeof genRelative24Route
+  '/relative25': typeof genRelative25Route
+  '/relative26': typeof genRelative26Route
+  '/relative27': typeof genRelative27Route
+  '/relative28': typeof genRelative28Route
+  '/relative29': typeof genRelative29Route
+  '/relative3': typeof genRelative3Route
+  '/relative30': typeof genRelative30Route
+  '/relative31': typeof genRelative31Route
+  '/relative32': typeof genRelative32Route
+  '/relative33': typeof genRelative33Route
+  '/relative34': typeof genRelative34Route
+  '/relative35': typeof genRelative35Route
+  '/relative36': typeof genRelative36Route
+  '/relative37': typeof genRelative37Route
+  '/relative38': typeof genRelative38Route
+  '/relative39': typeof genRelative39Route
+  '/relative4': typeof genRelative4Route
+  '/relative40': typeof genRelative40Route
+  '/relative41': typeof genRelative41Route
+  '/relative42': typeof genRelative42Route
+  '/relative43': typeof genRelative43Route
+  '/relative44': typeof genRelative44Route
+  '/relative45': typeof genRelative45Route
+  '/relative46': typeof genRelative46Route
+  '/relative47': typeof genRelative47Route
+  '/relative48': typeof genRelative48Route
+  '/relative49': typeof genRelative49Route
+  '/relative5': typeof genRelative5Route
+  '/relative50': typeof genRelative50Route
+  '/relative51': typeof genRelative51Route
+  '/relative52': typeof genRelative52Route
+  '/relative53': typeof genRelative53Route
+  '/relative54': typeof genRelative54Route
+  '/relative55': typeof genRelative55Route
+  '/relative56': typeof genRelative56Route
+  '/relative57': typeof genRelative57Route
+  '/relative58': typeof genRelative58Route
+  '/relative59': typeof genRelative59Route
+  '/relative6': typeof genRelative6Route
+  '/relative60': typeof genRelative60Route
+  '/relative61': typeof genRelative61Route
+  '/relative62': typeof genRelative62Route
+  '/relative63': typeof genRelative63Route
+  '/relative64': typeof genRelative64Route
+  '/relative65': typeof genRelative65Route
+  '/relative66': typeof genRelative66Route
+  '/relative67': typeof genRelative67Route
+  '/relative68': typeof genRelative68Route
+  '/relative69': typeof genRelative69Route
+  '/relative7': typeof genRelative7Route
+  '/relative70': typeof genRelative70Route
+  '/relative71': typeof genRelative71Route
+  '/relative72': typeof genRelative72Route
+  '/relative73': typeof genRelative73Route
+  '/relative74': typeof genRelative74Route
+  '/relative75': typeof genRelative75Route
+  '/relative76': typeof genRelative76Route
+  '/relative77': typeof genRelative77Route
+  '/relative78': typeof genRelative78Route
+  '/relative79': typeof genRelative79Route
+  '/relative8': typeof genRelative8Route
+  '/relative80': typeof genRelative80Route
+  '/relative81': typeof genRelative81Route
+  '/relative82': typeof genRelative82Route
+  '/relative83': typeof genRelative83Route
+  '/relative84': typeof genRelative84Route
+  '/relative85': typeof genRelative85Route
+  '/relative86': typeof genRelative86Route
+  '/relative87': typeof genRelative87Route
+  '/relative88': typeof genRelative88Route
+  '/relative89': typeof genRelative89Route
+  '/relative9': typeof genRelative9Route
+  '/relative90': typeof genRelative90Route
+  '/relative91': typeof genRelative91Route
+  '/relative92': typeof genRelative92Route
+  '/relative93': typeof genRelative93Route
+  '/relative94': typeof genRelative94Route
+  '/relative95': typeof genRelative95Route
+  '/relative96': typeof genRelative96Route
+  '/relative97': typeof genRelative97Route
+  '/relative98': typeof genRelative98Route
+  '/relative99': typeof genRelative99Route
   '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
+  '/params/$param0': typeof genParamsParam0Route
+  '/params/$param1': typeof genParamsParam1Route
+  '/params/$param10': typeof genParamsParam10Route
+  '/params/$param11': typeof genParamsParam11Route
+  '/params/$param12': typeof genParamsParam12Route
+  '/params/$param13': typeof genParamsParam13Route
+  '/params/$param14': typeof genParamsParam14Route
+  '/params/$param15': typeof genParamsParam15Route
+  '/params/$param16': typeof genParamsParam16Route
+  '/params/$param17': typeof genParamsParam17Route
+  '/params/$param18': typeof genParamsParam18Route
+  '/params/$param19': typeof genParamsParam19Route
+  '/params/$param2': typeof genParamsParam2Route
+  '/params/$param20': typeof genParamsParam20Route
+  '/params/$param21': typeof genParamsParam21Route
+  '/params/$param22': typeof genParamsParam22Route
+  '/params/$param23': typeof genParamsParam23Route
+  '/params/$param24': typeof genParamsParam24Route
+  '/params/$param25': typeof genParamsParam25Route
+  '/params/$param26': typeof genParamsParam26Route
+  '/params/$param27': typeof genParamsParam27Route
+  '/params/$param28': typeof genParamsParam28Route
+  '/params/$param29': typeof genParamsParam29Route
+  '/params/$param3': typeof genParamsParam3Route
+  '/params/$param30': typeof genParamsParam30Route
+  '/params/$param31': typeof genParamsParam31Route
+  '/params/$param32': typeof genParamsParam32Route
+  '/params/$param33': typeof genParamsParam33Route
+  '/params/$param34': typeof genParamsParam34Route
+  '/params/$param35': typeof genParamsParam35Route
+  '/params/$param36': typeof genParamsParam36Route
+  '/params/$param37': typeof genParamsParam37Route
+  '/params/$param38': typeof genParamsParam38Route
+  '/params/$param39': typeof genParamsParam39Route
+  '/params/$param4': typeof genParamsParam4Route
+  '/params/$param40': typeof genParamsParam40Route
+  '/params/$param41': typeof genParamsParam41Route
+  '/params/$param42': typeof genParamsParam42Route
+  '/params/$param43': typeof genParamsParam43Route
+  '/params/$param44': typeof genParamsParam44Route
+  '/params/$param45': typeof genParamsParam45Route
+  '/params/$param46': typeof genParamsParam46Route
+  '/params/$param47': typeof genParamsParam47Route
+  '/params/$param48': typeof genParamsParam48Route
+  '/params/$param49': typeof genParamsParam49Route
+  '/params/$param5': typeof genParamsParam5Route
+  '/params/$param50': typeof genParamsParam50Route
+  '/params/$param51': typeof genParamsParam51Route
+  '/params/$param52': typeof genParamsParam52Route
+  '/params/$param53': typeof genParamsParam53Route
+  '/params/$param54': typeof genParamsParam54Route
+  '/params/$param55': typeof genParamsParam55Route
+  '/params/$param56': typeof genParamsParam56Route
+  '/params/$param57': typeof genParamsParam57Route
+  '/params/$param58': typeof genParamsParam58Route
+  '/params/$param59': typeof genParamsParam59Route
+  '/params/$param6': typeof genParamsParam6Route
+  '/params/$param60': typeof genParamsParam60Route
+  '/params/$param61': typeof genParamsParam61Route
+  '/params/$param62': typeof genParamsParam62Route
+  '/params/$param63': typeof genParamsParam63Route
+  '/params/$param64': typeof genParamsParam64Route
+  '/params/$param65': typeof genParamsParam65Route
+  '/params/$param66': typeof genParamsParam66Route
+  '/params/$param67': typeof genParamsParam67Route
+  '/params/$param68': typeof genParamsParam68Route
+  '/params/$param69': typeof genParamsParam69Route
+  '/params/$param7': typeof genParamsParam7Route
+  '/params/$param70': typeof genParamsParam70Route
+  '/params/$param71': typeof genParamsParam71Route
+  '/params/$param72': typeof genParamsParam72Route
+  '/params/$param73': typeof genParamsParam73Route
+  '/params/$param74': typeof genParamsParam74Route
+  '/params/$param75': typeof genParamsParam75Route
+  '/params/$param76': typeof genParamsParam76Route
+  '/params/$param77': typeof genParamsParam77Route
+  '/params/$param78': typeof genParamsParam78Route
+  '/params/$param79': typeof genParamsParam79Route
+  '/params/$param8': typeof genParamsParam8Route
+  '/params/$param80': typeof genParamsParam80Route
+  '/params/$param81': typeof genParamsParam81Route
+  '/params/$param82': typeof genParamsParam82Route
+  '/params/$param83': typeof genParamsParam83Route
+  '/params/$param84': typeof genParamsParam84Route
+  '/params/$param85': typeof genParamsParam85Route
+  '/params/$param86': typeof genParamsParam86Route
+  '/params/$param87': typeof genParamsParam87Route
+  '/params/$param88': typeof genParamsParam88Route
+  '/params/$param89': typeof genParamsParam89Route
+  '/params/$param9': typeof genParamsParam9Route
+  '/params/$param90': typeof genParamsParam90Route
+  '/params/$param91': typeof genParamsParam91Route
+  '/params/$param92': typeof genParamsParam92Route
+  '/params/$param93': typeof genParamsParam93Route
+  '/params/$param94': typeof genParamsParam94Route
+  '/params/$param95': typeof genParamsParam95Route
+  '/params/$param96': typeof genParamsParam96Route
+  '/params/$param97': typeof genParamsParam97Route
+  '/params/$param98': typeof genParamsParam98Route
+  '/params/$param99': typeof genParamsParam99Route
+  '/search/search0': typeof genSearchSearch0Route
+  '/search/search1': typeof genSearchSearch1Route
+  '/search/search10': typeof genSearchSearch10Route
+  '/search/search11': typeof genSearchSearch11Route
+  '/search/search12': typeof genSearchSearch12Route
+  '/search/search13': typeof genSearchSearch13Route
+  '/search/search14': typeof genSearchSearch14Route
+  '/search/search15': typeof genSearchSearch15Route
+  '/search/search16': typeof genSearchSearch16Route
+  '/search/search17': typeof genSearchSearch17Route
+  '/search/search18': typeof genSearchSearch18Route
+  '/search/search19': typeof genSearchSearch19Route
+  '/search/search2': typeof genSearchSearch2Route
+  '/search/search20': typeof genSearchSearch20Route
+  '/search/search21': typeof genSearchSearch21Route
+  '/search/search22': typeof genSearchSearch22Route
+  '/search/search23': typeof genSearchSearch23Route
+  '/search/search24': typeof genSearchSearch24Route
+  '/search/search25': typeof genSearchSearch25Route
+  '/search/search26': typeof genSearchSearch26Route
+  '/search/search27': typeof genSearchSearch27Route
+  '/search/search28': typeof genSearchSearch28Route
+  '/search/search29': typeof genSearchSearch29Route
+  '/search/search3': typeof genSearchSearch3Route
+  '/search/search30': typeof genSearchSearch30Route
+  '/search/search31': typeof genSearchSearch31Route
+  '/search/search32': typeof genSearchSearch32Route
+  '/search/search33': typeof genSearchSearch33Route
+  '/search/search34': typeof genSearchSearch34Route
+  '/search/search35': typeof genSearchSearch35Route
+  '/search/search36': typeof genSearchSearch36Route
+  '/search/search37': typeof genSearchSearch37Route
+  '/search/search38': typeof genSearchSearch38Route
+  '/search/search39': typeof genSearchSearch39Route
+  '/search/search4': typeof genSearchSearch4Route
+  '/search/search40': typeof genSearchSearch40Route
+  '/search/search41': typeof genSearchSearch41Route
+  '/search/search42': typeof genSearchSearch42Route
+  '/search/search43': typeof genSearchSearch43Route
+  '/search/search44': typeof genSearchSearch44Route
+  '/search/search45': typeof genSearchSearch45Route
+  '/search/search46': typeof genSearchSearch46Route
+  '/search/search47': typeof genSearchSearch47Route
+  '/search/search48': typeof genSearchSearch48Route
+  '/search/search49': typeof genSearchSearch49Route
+  '/search/search5': typeof genSearchSearch5Route
+  '/search/search50': typeof genSearchSearch50Route
+  '/search/search51': typeof genSearchSearch51Route
+  '/search/search52': typeof genSearchSearch52Route
+  '/search/search53': typeof genSearchSearch53Route
+  '/search/search54': typeof genSearchSearch54Route
+  '/search/search55': typeof genSearchSearch55Route
+  '/search/search56': typeof genSearchSearch56Route
+  '/search/search57': typeof genSearchSearch57Route
+  '/search/search58': typeof genSearchSearch58Route
+  '/search/search59': typeof genSearchSearch59Route
+  '/search/search6': typeof genSearchSearch6Route
+  '/search/search60': typeof genSearchSearch60Route
+  '/search/search61': typeof genSearchSearch61Route
+  '/search/search62': typeof genSearchSearch62Route
+  '/search/search63': typeof genSearchSearch63Route
+  '/search/search64': typeof genSearchSearch64Route
+  '/search/search65': typeof genSearchSearch65Route
+  '/search/search66': typeof genSearchSearch66Route
+  '/search/search67': typeof genSearchSearch67Route
+  '/search/search68': typeof genSearchSearch68Route
+  '/search/search69': typeof genSearchSearch69Route
+  '/search/search7': typeof genSearchSearch7Route
+  '/search/search70': typeof genSearchSearch70Route
+  '/search/search71': typeof genSearchSearch71Route
+  '/search/search72': typeof genSearchSearch72Route
+  '/search/search73': typeof genSearchSearch73Route
+  '/search/search74': typeof genSearchSearch74Route
+  '/search/search75': typeof genSearchSearch75Route
+  '/search/search76': typeof genSearchSearch76Route
+  '/search/search77': typeof genSearchSearch77Route
+  '/search/search78': typeof genSearchSearch78Route
+  '/search/search79': typeof genSearchSearch79Route
+  '/search/search8': typeof genSearchSearch8Route
+  '/search/search80': typeof genSearchSearch80Route
+  '/search/search81': typeof genSearchSearch81Route
+  '/search/search82': typeof genSearchSearch82Route
+  '/search/search83': typeof genSearchSearch83Route
+  '/search/search84': typeof genSearchSearch84Route
+  '/search/search85': typeof genSearchSearch85Route
+  '/search/search86': typeof genSearchSearch86Route
+  '/search/search87': typeof genSearchSearch87Route
+  '/search/search88': typeof genSearchSearch88Route
+  '/search/search89': typeof genSearchSearch89Route
+  '/search/search9': typeof genSearchSearch9Route
+  '/search/search90': typeof genSearchSearch90Route
+  '/search/search91': typeof genSearchSearch91Route
+  '/search/search92': typeof genSearchSearch92Route
+  '/search/search93': typeof genSearchSearch93Route
+  '/search/search94': typeof genSearchSearch94Route
+  '/search/search95': typeof genSearchSearch95Route
+  '/search/search96': typeof genSearchSearch96Route
+  '/search/search97': typeof genSearchSearch97Route
+  '/search/search98': typeof genSearchSearch98Route
+  '/search/search99': typeof genSearchSearch99Route
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/params': typeof ParamsRouteRouteWithChildren
-  '/search': typeof SearchRouteRouteWithChildren
+  '/params': typeof genParamsRouteRouteWithChildren
+  '/search': typeof genSearchRouteRouteWithChildren
   '/absolute': typeof AbsoluteRoute
   '/linkProps': typeof LinkPropsRoute
   '/relative': typeof RelativeRoute
+  '/absolute0': typeof genAbsolute0Route
+  '/absolute1': typeof genAbsolute1Route
+  '/absolute10': typeof genAbsolute10Route
+  '/absolute11': typeof genAbsolute11Route
+  '/absolute12': typeof genAbsolute12Route
+  '/absolute13': typeof genAbsolute13Route
+  '/absolute14': typeof genAbsolute14Route
+  '/absolute15': typeof genAbsolute15Route
+  '/absolute16': typeof genAbsolute16Route
+  '/absolute17': typeof genAbsolute17Route
+  '/absolute18': typeof genAbsolute18Route
+  '/absolute19': typeof genAbsolute19Route
+  '/absolute2': typeof genAbsolute2Route
+  '/absolute20': typeof genAbsolute20Route
+  '/absolute21': typeof genAbsolute21Route
+  '/absolute22': typeof genAbsolute22Route
+  '/absolute23': typeof genAbsolute23Route
+  '/absolute24': typeof genAbsolute24Route
+  '/absolute25': typeof genAbsolute25Route
+  '/absolute26': typeof genAbsolute26Route
+  '/absolute27': typeof genAbsolute27Route
+  '/absolute28': typeof genAbsolute28Route
+  '/absolute29': typeof genAbsolute29Route
+  '/absolute3': typeof genAbsolute3Route
+  '/absolute30': typeof genAbsolute30Route
+  '/absolute31': typeof genAbsolute31Route
+  '/absolute32': typeof genAbsolute32Route
+  '/absolute33': typeof genAbsolute33Route
+  '/absolute34': typeof genAbsolute34Route
+  '/absolute35': typeof genAbsolute35Route
+  '/absolute36': typeof genAbsolute36Route
+  '/absolute37': typeof genAbsolute37Route
+  '/absolute38': typeof genAbsolute38Route
+  '/absolute39': typeof genAbsolute39Route
+  '/absolute4': typeof genAbsolute4Route
+  '/absolute40': typeof genAbsolute40Route
+  '/absolute41': typeof genAbsolute41Route
+  '/absolute42': typeof genAbsolute42Route
+  '/absolute43': typeof genAbsolute43Route
+  '/absolute44': typeof genAbsolute44Route
+  '/absolute45': typeof genAbsolute45Route
+  '/absolute46': typeof genAbsolute46Route
+  '/absolute47': typeof genAbsolute47Route
+  '/absolute48': typeof genAbsolute48Route
+  '/absolute49': typeof genAbsolute49Route
+  '/absolute5': typeof genAbsolute5Route
+  '/absolute50': typeof genAbsolute50Route
+  '/absolute51': typeof genAbsolute51Route
+  '/absolute52': typeof genAbsolute52Route
+  '/absolute53': typeof genAbsolute53Route
+  '/absolute54': typeof genAbsolute54Route
+  '/absolute55': typeof genAbsolute55Route
+  '/absolute56': typeof genAbsolute56Route
+  '/absolute57': typeof genAbsolute57Route
+  '/absolute58': typeof genAbsolute58Route
+  '/absolute59': typeof genAbsolute59Route
+  '/absolute6': typeof genAbsolute6Route
+  '/absolute60': typeof genAbsolute60Route
+  '/absolute61': typeof genAbsolute61Route
+  '/absolute62': typeof genAbsolute62Route
+  '/absolute63': typeof genAbsolute63Route
+  '/absolute64': typeof genAbsolute64Route
+  '/absolute65': typeof genAbsolute65Route
+  '/absolute66': typeof genAbsolute66Route
+  '/absolute67': typeof genAbsolute67Route
+  '/absolute68': typeof genAbsolute68Route
+  '/absolute69': typeof genAbsolute69Route
+  '/absolute7': typeof genAbsolute7Route
+  '/absolute70': typeof genAbsolute70Route
+  '/absolute71': typeof genAbsolute71Route
+  '/absolute72': typeof genAbsolute72Route
+  '/absolute73': typeof genAbsolute73Route
+  '/absolute74': typeof genAbsolute74Route
+  '/absolute75': typeof genAbsolute75Route
+  '/absolute76': typeof genAbsolute76Route
+  '/absolute77': typeof genAbsolute77Route
+  '/absolute78': typeof genAbsolute78Route
+  '/absolute79': typeof genAbsolute79Route
+  '/absolute8': typeof genAbsolute8Route
+  '/absolute80': typeof genAbsolute80Route
+  '/absolute81': typeof genAbsolute81Route
+  '/absolute82': typeof genAbsolute82Route
+  '/absolute83': typeof genAbsolute83Route
+  '/absolute84': typeof genAbsolute84Route
+  '/absolute85': typeof genAbsolute85Route
+  '/absolute86': typeof genAbsolute86Route
+  '/absolute87': typeof genAbsolute87Route
+  '/absolute88': typeof genAbsolute88Route
+  '/absolute89': typeof genAbsolute89Route
+  '/absolute9': typeof genAbsolute9Route
+  '/absolute90': typeof genAbsolute90Route
+  '/absolute91': typeof genAbsolute91Route
+  '/absolute92': typeof genAbsolute92Route
+  '/absolute93': typeof genAbsolute93Route
+  '/absolute94': typeof genAbsolute94Route
+  '/absolute95': typeof genAbsolute95Route
+  '/absolute96': typeof genAbsolute96Route
+  '/absolute97': typeof genAbsolute97Route
+  '/absolute98': typeof genAbsolute98Route
+  '/absolute99': typeof genAbsolute99Route
+  '/relative0': typeof genRelative0Route
+  '/relative1': typeof genRelative1Route
+  '/relative10': typeof genRelative10Route
+  '/relative11': typeof genRelative11Route
+  '/relative12': typeof genRelative12Route
+  '/relative13': typeof genRelative13Route
+  '/relative14': typeof genRelative14Route
+  '/relative15': typeof genRelative15Route
+  '/relative16': typeof genRelative16Route
+  '/relative17': typeof genRelative17Route
+  '/relative18': typeof genRelative18Route
+  '/relative19': typeof genRelative19Route
+  '/relative2': typeof genRelative2Route
+  '/relative20': typeof genRelative20Route
+  '/relative21': typeof genRelative21Route
+  '/relative22': typeof genRelative22Route
+  '/relative23': typeof genRelative23Route
+  '/relative24': typeof genRelative24Route
+  '/relative25': typeof genRelative25Route
+  '/relative26': typeof genRelative26Route
+  '/relative27': typeof genRelative27Route
+  '/relative28': typeof genRelative28Route
+  '/relative29': typeof genRelative29Route
+  '/relative3': typeof genRelative3Route
+  '/relative30': typeof genRelative30Route
+  '/relative31': typeof genRelative31Route
+  '/relative32': typeof genRelative32Route
+  '/relative33': typeof genRelative33Route
+  '/relative34': typeof genRelative34Route
+  '/relative35': typeof genRelative35Route
+  '/relative36': typeof genRelative36Route
+  '/relative37': typeof genRelative37Route
+  '/relative38': typeof genRelative38Route
+  '/relative39': typeof genRelative39Route
+  '/relative4': typeof genRelative4Route
+  '/relative40': typeof genRelative40Route
+  '/relative41': typeof genRelative41Route
+  '/relative42': typeof genRelative42Route
+  '/relative43': typeof genRelative43Route
+  '/relative44': typeof genRelative44Route
+  '/relative45': typeof genRelative45Route
+  '/relative46': typeof genRelative46Route
+  '/relative47': typeof genRelative47Route
+  '/relative48': typeof genRelative48Route
+  '/relative49': typeof genRelative49Route
+  '/relative5': typeof genRelative5Route
+  '/relative50': typeof genRelative50Route
+  '/relative51': typeof genRelative51Route
+  '/relative52': typeof genRelative52Route
+  '/relative53': typeof genRelative53Route
+  '/relative54': typeof genRelative54Route
+  '/relative55': typeof genRelative55Route
+  '/relative56': typeof genRelative56Route
+  '/relative57': typeof genRelative57Route
+  '/relative58': typeof genRelative58Route
+  '/relative59': typeof genRelative59Route
+  '/relative6': typeof genRelative6Route
+  '/relative60': typeof genRelative60Route
+  '/relative61': typeof genRelative61Route
+  '/relative62': typeof genRelative62Route
+  '/relative63': typeof genRelative63Route
+  '/relative64': typeof genRelative64Route
+  '/relative65': typeof genRelative65Route
+  '/relative66': typeof genRelative66Route
+  '/relative67': typeof genRelative67Route
+  '/relative68': typeof genRelative68Route
+  '/relative69': typeof genRelative69Route
+  '/relative7': typeof genRelative7Route
+  '/relative70': typeof genRelative70Route
+  '/relative71': typeof genRelative71Route
+  '/relative72': typeof genRelative72Route
+  '/relative73': typeof genRelative73Route
+  '/relative74': typeof genRelative74Route
+  '/relative75': typeof genRelative75Route
+  '/relative76': typeof genRelative76Route
+  '/relative77': typeof genRelative77Route
+  '/relative78': typeof genRelative78Route
+  '/relative79': typeof genRelative79Route
+  '/relative8': typeof genRelative8Route
+  '/relative80': typeof genRelative80Route
+  '/relative81': typeof genRelative81Route
+  '/relative82': typeof genRelative82Route
+  '/relative83': typeof genRelative83Route
+  '/relative84': typeof genRelative84Route
+  '/relative85': typeof genRelative85Route
+  '/relative86': typeof genRelative86Route
+  '/relative87': typeof genRelative87Route
+  '/relative88': typeof genRelative88Route
+  '/relative89': typeof genRelative89Route
+  '/relative9': typeof genRelative9Route
+  '/relative90': typeof genRelative90Route
+  '/relative91': typeof genRelative91Route
+  '/relative92': typeof genRelative92Route
+  '/relative93': typeof genRelative93Route
+  '/relative94': typeof genRelative94Route
+  '/relative95': typeof genRelative95Route
+  '/relative96': typeof genRelative96Route
+  '/relative97': typeof genRelative97Route
+  '/relative98': typeof genRelative98Route
+  '/relative99': typeof genRelative99Route
   '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
+  '/params/$param0': typeof genParamsParam0Route
+  '/params/$param1': typeof genParamsParam1Route
+  '/params/$param10': typeof genParamsParam10Route
+  '/params/$param11': typeof genParamsParam11Route
+  '/params/$param12': typeof genParamsParam12Route
+  '/params/$param13': typeof genParamsParam13Route
+  '/params/$param14': typeof genParamsParam14Route
+  '/params/$param15': typeof genParamsParam15Route
+  '/params/$param16': typeof genParamsParam16Route
+  '/params/$param17': typeof genParamsParam17Route
+  '/params/$param18': typeof genParamsParam18Route
+  '/params/$param19': typeof genParamsParam19Route
+  '/params/$param2': typeof genParamsParam2Route
+  '/params/$param20': typeof genParamsParam20Route
+  '/params/$param21': typeof genParamsParam21Route
+  '/params/$param22': typeof genParamsParam22Route
+  '/params/$param23': typeof genParamsParam23Route
+  '/params/$param24': typeof genParamsParam24Route
+  '/params/$param25': typeof genParamsParam25Route
+  '/params/$param26': typeof genParamsParam26Route
+  '/params/$param27': typeof genParamsParam27Route
+  '/params/$param28': typeof genParamsParam28Route
+  '/params/$param29': typeof genParamsParam29Route
+  '/params/$param3': typeof genParamsParam3Route
+  '/params/$param30': typeof genParamsParam30Route
+  '/params/$param31': typeof genParamsParam31Route
+  '/params/$param32': typeof genParamsParam32Route
+  '/params/$param33': typeof genParamsParam33Route
+  '/params/$param34': typeof genParamsParam34Route
+  '/params/$param35': typeof genParamsParam35Route
+  '/params/$param36': typeof genParamsParam36Route
+  '/params/$param37': typeof genParamsParam37Route
+  '/params/$param38': typeof genParamsParam38Route
+  '/params/$param39': typeof genParamsParam39Route
+  '/params/$param4': typeof genParamsParam4Route
+  '/params/$param40': typeof genParamsParam40Route
+  '/params/$param41': typeof genParamsParam41Route
+  '/params/$param42': typeof genParamsParam42Route
+  '/params/$param43': typeof genParamsParam43Route
+  '/params/$param44': typeof genParamsParam44Route
+  '/params/$param45': typeof genParamsParam45Route
+  '/params/$param46': typeof genParamsParam46Route
+  '/params/$param47': typeof genParamsParam47Route
+  '/params/$param48': typeof genParamsParam48Route
+  '/params/$param49': typeof genParamsParam49Route
+  '/params/$param5': typeof genParamsParam5Route
+  '/params/$param50': typeof genParamsParam50Route
+  '/params/$param51': typeof genParamsParam51Route
+  '/params/$param52': typeof genParamsParam52Route
+  '/params/$param53': typeof genParamsParam53Route
+  '/params/$param54': typeof genParamsParam54Route
+  '/params/$param55': typeof genParamsParam55Route
+  '/params/$param56': typeof genParamsParam56Route
+  '/params/$param57': typeof genParamsParam57Route
+  '/params/$param58': typeof genParamsParam58Route
+  '/params/$param59': typeof genParamsParam59Route
+  '/params/$param6': typeof genParamsParam6Route
+  '/params/$param60': typeof genParamsParam60Route
+  '/params/$param61': typeof genParamsParam61Route
+  '/params/$param62': typeof genParamsParam62Route
+  '/params/$param63': typeof genParamsParam63Route
+  '/params/$param64': typeof genParamsParam64Route
+  '/params/$param65': typeof genParamsParam65Route
+  '/params/$param66': typeof genParamsParam66Route
+  '/params/$param67': typeof genParamsParam67Route
+  '/params/$param68': typeof genParamsParam68Route
+  '/params/$param69': typeof genParamsParam69Route
+  '/params/$param7': typeof genParamsParam7Route
+  '/params/$param70': typeof genParamsParam70Route
+  '/params/$param71': typeof genParamsParam71Route
+  '/params/$param72': typeof genParamsParam72Route
+  '/params/$param73': typeof genParamsParam73Route
+  '/params/$param74': typeof genParamsParam74Route
+  '/params/$param75': typeof genParamsParam75Route
+  '/params/$param76': typeof genParamsParam76Route
+  '/params/$param77': typeof genParamsParam77Route
+  '/params/$param78': typeof genParamsParam78Route
+  '/params/$param79': typeof genParamsParam79Route
+  '/params/$param8': typeof genParamsParam8Route
+  '/params/$param80': typeof genParamsParam80Route
+  '/params/$param81': typeof genParamsParam81Route
+  '/params/$param82': typeof genParamsParam82Route
+  '/params/$param83': typeof genParamsParam83Route
+  '/params/$param84': typeof genParamsParam84Route
+  '/params/$param85': typeof genParamsParam85Route
+  '/params/$param86': typeof genParamsParam86Route
+  '/params/$param87': typeof genParamsParam87Route
+  '/params/$param88': typeof genParamsParam88Route
+  '/params/$param89': typeof genParamsParam89Route
+  '/params/$param9': typeof genParamsParam9Route
+  '/params/$param90': typeof genParamsParam90Route
+  '/params/$param91': typeof genParamsParam91Route
+  '/params/$param92': typeof genParamsParam92Route
+  '/params/$param93': typeof genParamsParam93Route
+  '/params/$param94': typeof genParamsParam94Route
+  '/params/$param95': typeof genParamsParam95Route
+  '/params/$param96': typeof genParamsParam96Route
+  '/params/$param97': typeof genParamsParam97Route
+  '/params/$param98': typeof genParamsParam98Route
+  '/params/$param99': typeof genParamsParam99Route
+  '/search/search0': typeof genSearchSearch0Route
+  '/search/search1': typeof genSearchSearch1Route
+  '/search/search10': typeof genSearchSearch10Route
+  '/search/search11': typeof genSearchSearch11Route
+  '/search/search12': typeof genSearchSearch12Route
+  '/search/search13': typeof genSearchSearch13Route
+  '/search/search14': typeof genSearchSearch14Route
+  '/search/search15': typeof genSearchSearch15Route
+  '/search/search16': typeof genSearchSearch16Route
+  '/search/search17': typeof genSearchSearch17Route
+  '/search/search18': typeof genSearchSearch18Route
+  '/search/search19': typeof genSearchSearch19Route
+  '/search/search2': typeof genSearchSearch2Route
+  '/search/search20': typeof genSearchSearch20Route
+  '/search/search21': typeof genSearchSearch21Route
+  '/search/search22': typeof genSearchSearch22Route
+  '/search/search23': typeof genSearchSearch23Route
+  '/search/search24': typeof genSearchSearch24Route
+  '/search/search25': typeof genSearchSearch25Route
+  '/search/search26': typeof genSearchSearch26Route
+  '/search/search27': typeof genSearchSearch27Route
+  '/search/search28': typeof genSearchSearch28Route
+  '/search/search29': typeof genSearchSearch29Route
+  '/search/search3': typeof genSearchSearch3Route
+  '/search/search30': typeof genSearchSearch30Route
+  '/search/search31': typeof genSearchSearch31Route
+  '/search/search32': typeof genSearchSearch32Route
+  '/search/search33': typeof genSearchSearch33Route
+  '/search/search34': typeof genSearchSearch34Route
+  '/search/search35': typeof genSearchSearch35Route
+  '/search/search36': typeof genSearchSearch36Route
+  '/search/search37': typeof genSearchSearch37Route
+  '/search/search38': typeof genSearchSearch38Route
+  '/search/search39': typeof genSearchSearch39Route
+  '/search/search4': typeof genSearchSearch4Route
+  '/search/search40': typeof genSearchSearch40Route
+  '/search/search41': typeof genSearchSearch41Route
+  '/search/search42': typeof genSearchSearch42Route
+  '/search/search43': typeof genSearchSearch43Route
+  '/search/search44': typeof genSearchSearch44Route
+  '/search/search45': typeof genSearchSearch45Route
+  '/search/search46': typeof genSearchSearch46Route
+  '/search/search47': typeof genSearchSearch47Route
+  '/search/search48': typeof genSearchSearch48Route
+  '/search/search49': typeof genSearchSearch49Route
+  '/search/search5': typeof genSearchSearch5Route
+  '/search/search50': typeof genSearchSearch50Route
+  '/search/search51': typeof genSearchSearch51Route
+  '/search/search52': typeof genSearchSearch52Route
+  '/search/search53': typeof genSearchSearch53Route
+  '/search/search54': typeof genSearchSearch54Route
+  '/search/search55': typeof genSearchSearch55Route
+  '/search/search56': typeof genSearchSearch56Route
+  '/search/search57': typeof genSearchSearch57Route
+  '/search/search58': typeof genSearchSearch58Route
+  '/search/search59': typeof genSearchSearch59Route
+  '/search/search6': typeof genSearchSearch6Route
+  '/search/search60': typeof genSearchSearch60Route
+  '/search/search61': typeof genSearchSearch61Route
+  '/search/search62': typeof genSearchSearch62Route
+  '/search/search63': typeof genSearchSearch63Route
+  '/search/search64': typeof genSearchSearch64Route
+  '/search/search65': typeof genSearchSearch65Route
+  '/search/search66': typeof genSearchSearch66Route
+  '/search/search67': typeof genSearchSearch67Route
+  '/search/search68': typeof genSearchSearch68Route
+  '/search/search69': typeof genSearchSearch69Route
+  '/search/search7': typeof genSearchSearch7Route
+  '/search/search70': typeof genSearchSearch70Route
+  '/search/search71': typeof genSearchSearch71Route
+  '/search/search72': typeof genSearchSearch72Route
+  '/search/search73': typeof genSearchSearch73Route
+  '/search/search74': typeof genSearchSearch74Route
+  '/search/search75': typeof genSearchSearch75Route
+  '/search/search76': typeof genSearchSearch76Route
+  '/search/search77': typeof genSearchSearch77Route
+  '/search/search78': typeof genSearchSearch78Route
+  '/search/search79': typeof genSearchSearch79Route
+  '/search/search8': typeof genSearchSearch8Route
+  '/search/search80': typeof genSearchSearch80Route
+  '/search/search81': typeof genSearchSearch81Route
+  '/search/search82': typeof genSearchSearch82Route
+  '/search/search83': typeof genSearchSearch83Route
+  '/search/search84': typeof genSearchSearch84Route
+  '/search/search85': typeof genSearchSearch85Route
+  '/search/search86': typeof genSearchSearch86Route
+  '/search/search87': typeof genSearchSearch87Route
+  '/search/search88': typeof genSearchSearch88Route
+  '/search/search89': typeof genSearchSearch89Route
+  '/search/search9': typeof genSearchSearch9Route
+  '/search/search90': typeof genSearchSearch90Route
+  '/search/search91': typeof genSearchSearch91Route
+  '/search/search92': typeof genSearchSearch92Route
+  '/search/search93': typeof genSearchSearch93Route
+  '/search/search94': typeof genSearchSearch94Route
+  '/search/search95': typeof genSearchSearch95Route
+  '/search/search96': typeof genSearchSearch96Route
+  '/search/search97': typeof genSearchSearch97Route
+  '/search/search98': typeof genSearchSearch98Route
+  '/search/search99': typeof genSearchSearch99Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -87,8 +3299,410 @@ export interface FileRoutesById {
   '/absolute': typeof AbsoluteRoute
   '/linkProps': typeof LinkPropsRoute
   '/relative': typeof RelativeRoute
+  '/(gen)/params': typeof genParamsRouteRouteWithChildren
+  '/(gen)/search': typeof genSearchRouteRouteWithChildren
+  '/(gen)/absolute0': typeof genAbsolute0Route
+  '/(gen)/absolute1': typeof genAbsolute1Route
+  '/(gen)/absolute10': typeof genAbsolute10Route
+  '/(gen)/absolute11': typeof genAbsolute11Route
+  '/(gen)/absolute12': typeof genAbsolute12Route
+  '/(gen)/absolute13': typeof genAbsolute13Route
+  '/(gen)/absolute14': typeof genAbsolute14Route
+  '/(gen)/absolute15': typeof genAbsolute15Route
+  '/(gen)/absolute16': typeof genAbsolute16Route
+  '/(gen)/absolute17': typeof genAbsolute17Route
+  '/(gen)/absolute18': typeof genAbsolute18Route
+  '/(gen)/absolute19': typeof genAbsolute19Route
+  '/(gen)/absolute2': typeof genAbsolute2Route
+  '/(gen)/absolute20': typeof genAbsolute20Route
+  '/(gen)/absolute21': typeof genAbsolute21Route
+  '/(gen)/absolute22': typeof genAbsolute22Route
+  '/(gen)/absolute23': typeof genAbsolute23Route
+  '/(gen)/absolute24': typeof genAbsolute24Route
+  '/(gen)/absolute25': typeof genAbsolute25Route
+  '/(gen)/absolute26': typeof genAbsolute26Route
+  '/(gen)/absolute27': typeof genAbsolute27Route
+  '/(gen)/absolute28': typeof genAbsolute28Route
+  '/(gen)/absolute29': typeof genAbsolute29Route
+  '/(gen)/absolute3': typeof genAbsolute3Route
+  '/(gen)/absolute30': typeof genAbsolute30Route
+  '/(gen)/absolute31': typeof genAbsolute31Route
+  '/(gen)/absolute32': typeof genAbsolute32Route
+  '/(gen)/absolute33': typeof genAbsolute33Route
+  '/(gen)/absolute34': typeof genAbsolute34Route
+  '/(gen)/absolute35': typeof genAbsolute35Route
+  '/(gen)/absolute36': typeof genAbsolute36Route
+  '/(gen)/absolute37': typeof genAbsolute37Route
+  '/(gen)/absolute38': typeof genAbsolute38Route
+  '/(gen)/absolute39': typeof genAbsolute39Route
+  '/(gen)/absolute4': typeof genAbsolute4Route
+  '/(gen)/absolute40': typeof genAbsolute40Route
+  '/(gen)/absolute41': typeof genAbsolute41Route
+  '/(gen)/absolute42': typeof genAbsolute42Route
+  '/(gen)/absolute43': typeof genAbsolute43Route
+  '/(gen)/absolute44': typeof genAbsolute44Route
+  '/(gen)/absolute45': typeof genAbsolute45Route
+  '/(gen)/absolute46': typeof genAbsolute46Route
+  '/(gen)/absolute47': typeof genAbsolute47Route
+  '/(gen)/absolute48': typeof genAbsolute48Route
+  '/(gen)/absolute49': typeof genAbsolute49Route
+  '/(gen)/absolute5': typeof genAbsolute5Route
+  '/(gen)/absolute50': typeof genAbsolute50Route
+  '/(gen)/absolute51': typeof genAbsolute51Route
+  '/(gen)/absolute52': typeof genAbsolute52Route
+  '/(gen)/absolute53': typeof genAbsolute53Route
+  '/(gen)/absolute54': typeof genAbsolute54Route
+  '/(gen)/absolute55': typeof genAbsolute55Route
+  '/(gen)/absolute56': typeof genAbsolute56Route
+  '/(gen)/absolute57': typeof genAbsolute57Route
+  '/(gen)/absolute58': typeof genAbsolute58Route
+  '/(gen)/absolute59': typeof genAbsolute59Route
+  '/(gen)/absolute6': typeof genAbsolute6Route
+  '/(gen)/absolute60': typeof genAbsolute60Route
+  '/(gen)/absolute61': typeof genAbsolute61Route
+  '/(gen)/absolute62': typeof genAbsolute62Route
+  '/(gen)/absolute63': typeof genAbsolute63Route
+  '/(gen)/absolute64': typeof genAbsolute64Route
+  '/(gen)/absolute65': typeof genAbsolute65Route
+  '/(gen)/absolute66': typeof genAbsolute66Route
+  '/(gen)/absolute67': typeof genAbsolute67Route
+  '/(gen)/absolute68': typeof genAbsolute68Route
+  '/(gen)/absolute69': typeof genAbsolute69Route
+  '/(gen)/absolute7': typeof genAbsolute7Route
+  '/(gen)/absolute70': typeof genAbsolute70Route
+  '/(gen)/absolute71': typeof genAbsolute71Route
+  '/(gen)/absolute72': typeof genAbsolute72Route
+  '/(gen)/absolute73': typeof genAbsolute73Route
+  '/(gen)/absolute74': typeof genAbsolute74Route
+  '/(gen)/absolute75': typeof genAbsolute75Route
+  '/(gen)/absolute76': typeof genAbsolute76Route
+  '/(gen)/absolute77': typeof genAbsolute77Route
+  '/(gen)/absolute78': typeof genAbsolute78Route
+  '/(gen)/absolute79': typeof genAbsolute79Route
+  '/(gen)/absolute8': typeof genAbsolute8Route
+  '/(gen)/absolute80': typeof genAbsolute80Route
+  '/(gen)/absolute81': typeof genAbsolute81Route
+  '/(gen)/absolute82': typeof genAbsolute82Route
+  '/(gen)/absolute83': typeof genAbsolute83Route
+  '/(gen)/absolute84': typeof genAbsolute84Route
+  '/(gen)/absolute85': typeof genAbsolute85Route
+  '/(gen)/absolute86': typeof genAbsolute86Route
+  '/(gen)/absolute87': typeof genAbsolute87Route
+  '/(gen)/absolute88': typeof genAbsolute88Route
+  '/(gen)/absolute89': typeof genAbsolute89Route
+  '/(gen)/absolute9': typeof genAbsolute9Route
+  '/(gen)/absolute90': typeof genAbsolute90Route
+  '/(gen)/absolute91': typeof genAbsolute91Route
+  '/(gen)/absolute92': typeof genAbsolute92Route
+  '/(gen)/absolute93': typeof genAbsolute93Route
+  '/(gen)/absolute94': typeof genAbsolute94Route
+  '/(gen)/absolute95': typeof genAbsolute95Route
+  '/(gen)/absolute96': typeof genAbsolute96Route
+  '/(gen)/absolute97': typeof genAbsolute97Route
+  '/(gen)/absolute98': typeof genAbsolute98Route
+  '/(gen)/absolute99': typeof genAbsolute99Route
+  '/(gen)/relative0': typeof genRelative0Route
+  '/(gen)/relative1': typeof genRelative1Route
+  '/(gen)/relative10': typeof genRelative10Route
+  '/(gen)/relative11': typeof genRelative11Route
+  '/(gen)/relative12': typeof genRelative12Route
+  '/(gen)/relative13': typeof genRelative13Route
+  '/(gen)/relative14': typeof genRelative14Route
+  '/(gen)/relative15': typeof genRelative15Route
+  '/(gen)/relative16': typeof genRelative16Route
+  '/(gen)/relative17': typeof genRelative17Route
+  '/(gen)/relative18': typeof genRelative18Route
+  '/(gen)/relative19': typeof genRelative19Route
+  '/(gen)/relative2': typeof genRelative2Route
+  '/(gen)/relative20': typeof genRelative20Route
+  '/(gen)/relative21': typeof genRelative21Route
+  '/(gen)/relative22': typeof genRelative22Route
+  '/(gen)/relative23': typeof genRelative23Route
+  '/(gen)/relative24': typeof genRelative24Route
+  '/(gen)/relative25': typeof genRelative25Route
+  '/(gen)/relative26': typeof genRelative26Route
+  '/(gen)/relative27': typeof genRelative27Route
+  '/(gen)/relative28': typeof genRelative28Route
+  '/(gen)/relative29': typeof genRelative29Route
+  '/(gen)/relative3': typeof genRelative3Route
+  '/(gen)/relative30': typeof genRelative30Route
+  '/(gen)/relative31': typeof genRelative31Route
+  '/(gen)/relative32': typeof genRelative32Route
+  '/(gen)/relative33': typeof genRelative33Route
+  '/(gen)/relative34': typeof genRelative34Route
+  '/(gen)/relative35': typeof genRelative35Route
+  '/(gen)/relative36': typeof genRelative36Route
+  '/(gen)/relative37': typeof genRelative37Route
+  '/(gen)/relative38': typeof genRelative38Route
+  '/(gen)/relative39': typeof genRelative39Route
+  '/(gen)/relative4': typeof genRelative4Route
+  '/(gen)/relative40': typeof genRelative40Route
+  '/(gen)/relative41': typeof genRelative41Route
+  '/(gen)/relative42': typeof genRelative42Route
+  '/(gen)/relative43': typeof genRelative43Route
+  '/(gen)/relative44': typeof genRelative44Route
+  '/(gen)/relative45': typeof genRelative45Route
+  '/(gen)/relative46': typeof genRelative46Route
+  '/(gen)/relative47': typeof genRelative47Route
+  '/(gen)/relative48': typeof genRelative48Route
+  '/(gen)/relative49': typeof genRelative49Route
+  '/(gen)/relative5': typeof genRelative5Route
+  '/(gen)/relative50': typeof genRelative50Route
+  '/(gen)/relative51': typeof genRelative51Route
+  '/(gen)/relative52': typeof genRelative52Route
+  '/(gen)/relative53': typeof genRelative53Route
+  '/(gen)/relative54': typeof genRelative54Route
+  '/(gen)/relative55': typeof genRelative55Route
+  '/(gen)/relative56': typeof genRelative56Route
+  '/(gen)/relative57': typeof genRelative57Route
+  '/(gen)/relative58': typeof genRelative58Route
+  '/(gen)/relative59': typeof genRelative59Route
+  '/(gen)/relative6': typeof genRelative6Route
+  '/(gen)/relative60': typeof genRelative60Route
+  '/(gen)/relative61': typeof genRelative61Route
+  '/(gen)/relative62': typeof genRelative62Route
+  '/(gen)/relative63': typeof genRelative63Route
+  '/(gen)/relative64': typeof genRelative64Route
+  '/(gen)/relative65': typeof genRelative65Route
+  '/(gen)/relative66': typeof genRelative66Route
+  '/(gen)/relative67': typeof genRelative67Route
+  '/(gen)/relative68': typeof genRelative68Route
+  '/(gen)/relative69': typeof genRelative69Route
+  '/(gen)/relative7': typeof genRelative7Route
+  '/(gen)/relative70': typeof genRelative70Route
+  '/(gen)/relative71': typeof genRelative71Route
+  '/(gen)/relative72': typeof genRelative72Route
+  '/(gen)/relative73': typeof genRelative73Route
+  '/(gen)/relative74': typeof genRelative74Route
+  '/(gen)/relative75': typeof genRelative75Route
+  '/(gen)/relative76': typeof genRelative76Route
+  '/(gen)/relative77': typeof genRelative77Route
+  '/(gen)/relative78': typeof genRelative78Route
+  '/(gen)/relative79': typeof genRelative79Route
+  '/(gen)/relative8': typeof genRelative8Route
+  '/(gen)/relative80': typeof genRelative80Route
+  '/(gen)/relative81': typeof genRelative81Route
+  '/(gen)/relative82': typeof genRelative82Route
+  '/(gen)/relative83': typeof genRelative83Route
+  '/(gen)/relative84': typeof genRelative84Route
+  '/(gen)/relative85': typeof genRelative85Route
+  '/(gen)/relative86': typeof genRelative86Route
+  '/(gen)/relative87': typeof genRelative87Route
+  '/(gen)/relative88': typeof genRelative88Route
+  '/(gen)/relative89': typeof genRelative89Route
+  '/(gen)/relative9': typeof genRelative9Route
+  '/(gen)/relative90': typeof genRelative90Route
+  '/(gen)/relative91': typeof genRelative91Route
+  '/(gen)/relative92': typeof genRelative92Route
+  '/(gen)/relative93': typeof genRelative93Route
+  '/(gen)/relative94': typeof genRelative94Route
+  '/(gen)/relative95': typeof genRelative95Route
+  '/(gen)/relative96': typeof genRelative96Route
+  '/(gen)/relative97': typeof genRelative97Route
+  '/(gen)/relative98': typeof genRelative98Route
+  '/(gen)/relative99': typeof genRelative99Route
   '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
+  '/(gen)/params/$param0': typeof genParamsParam0Route
+  '/(gen)/params/$param1': typeof genParamsParam1Route
+  '/(gen)/params/$param10': typeof genParamsParam10Route
+  '/(gen)/params/$param11': typeof genParamsParam11Route
+  '/(gen)/params/$param12': typeof genParamsParam12Route
+  '/(gen)/params/$param13': typeof genParamsParam13Route
+  '/(gen)/params/$param14': typeof genParamsParam14Route
+  '/(gen)/params/$param15': typeof genParamsParam15Route
+  '/(gen)/params/$param16': typeof genParamsParam16Route
+  '/(gen)/params/$param17': typeof genParamsParam17Route
+  '/(gen)/params/$param18': typeof genParamsParam18Route
+  '/(gen)/params/$param19': typeof genParamsParam19Route
+  '/(gen)/params/$param2': typeof genParamsParam2Route
+  '/(gen)/params/$param20': typeof genParamsParam20Route
+  '/(gen)/params/$param21': typeof genParamsParam21Route
+  '/(gen)/params/$param22': typeof genParamsParam22Route
+  '/(gen)/params/$param23': typeof genParamsParam23Route
+  '/(gen)/params/$param24': typeof genParamsParam24Route
+  '/(gen)/params/$param25': typeof genParamsParam25Route
+  '/(gen)/params/$param26': typeof genParamsParam26Route
+  '/(gen)/params/$param27': typeof genParamsParam27Route
+  '/(gen)/params/$param28': typeof genParamsParam28Route
+  '/(gen)/params/$param29': typeof genParamsParam29Route
+  '/(gen)/params/$param3': typeof genParamsParam3Route
+  '/(gen)/params/$param30': typeof genParamsParam30Route
+  '/(gen)/params/$param31': typeof genParamsParam31Route
+  '/(gen)/params/$param32': typeof genParamsParam32Route
+  '/(gen)/params/$param33': typeof genParamsParam33Route
+  '/(gen)/params/$param34': typeof genParamsParam34Route
+  '/(gen)/params/$param35': typeof genParamsParam35Route
+  '/(gen)/params/$param36': typeof genParamsParam36Route
+  '/(gen)/params/$param37': typeof genParamsParam37Route
+  '/(gen)/params/$param38': typeof genParamsParam38Route
+  '/(gen)/params/$param39': typeof genParamsParam39Route
+  '/(gen)/params/$param4': typeof genParamsParam4Route
+  '/(gen)/params/$param40': typeof genParamsParam40Route
+  '/(gen)/params/$param41': typeof genParamsParam41Route
+  '/(gen)/params/$param42': typeof genParamsParam42Route
+  '/(gen)/params/$param43': typeof genParamsParam43Route
+  '/(gen)/params/$param44': typeof genParamsParam44Route
+  '/(gen)/params/$param45': typeof genParamsParam45Route
+  '/(gen)/params/$param46': typeof genParamsParam46Route
+  '/(gen)/params/$param47': typeof genParamsParam47Route
+  '/(gen)/params/$param48': typeof genParamsParam48Route
+  '/(gen)/params/$param49': typeof genParamsParam49Route
+  '/(gen)/params/$param5': typeof genParamsParam5Route
+  '/(gen)/params/$param50': typeof genParamsParam50Route
+  '/(gen)/params/$param51': typeof genParamsParam51Route
+  '/(gen)/params/$param52': typeof genParamsParam52Route
+  '/(gen)/params/$param53': typeof genParamsParam53Route
+  '/(gen)/params/$param54': typeof genParamsParam54Route
+  '/(gen)/params/$param55': typeof genParamsParam55Route
+  '/(gen)/params/$param56': typeof genParamsParam56Route
+  '/(gen)/params/$param57': typeof genParamsParam57Route
+  '/(gen)/params/$param58': typeof genParamsParam58Route
+  '/(gen)/params/$param59': typeof genParamsParam59Route
+  '/(gen)/params/$param6': typeof genParamsParam6Route
+  '/(gen)/params/$param60': typeof genParamsParam60Route
+  '/(gen)/params/$param61': typeof genParamsParam61Route
+  '/(gen)/params/$param62': typeof genParamsParam62Route
+  '/(gen)/params/$param63': typeof genParamsParam63Route
+  '/(gen)/params/$param64': typeof genParamsParam64Route
+  '/(gen)/params/$param65': typeof genParamsParam65Route
+  '/(gen)/params/$param66': typeof genParamsParam66Route
+  '/(gen)/params/$param67': typeof genParamsParam67Route
+  '/(gen)/params/$param68': typeof genParamsParam68Route
+  '/(gen)/params/$param69': typeof genParamsParam69Route
+  '/(gen)/params/$param7': typeof genParamsParam7Route
+  '/(gen)/params/$param70': typeof genParamsParam70Route
+  '/(gen)/params/$param71': typeof genParamsParam71Route
+  '/(gen)/params/$param72': typeof genParamsParam72Route
+  '/(gen)/params/$param73': typeof genParamsParam73Route
+  '/(gen)/params/$param74': typeof genParamsParam74Route
+  '/(gen)/params/$param75': typeof genParamsParam75Route
+  '/(gen)/params/$param76': typeof genParamsParam76Route
+  '/(gen)/params/$param77': typeof genParamsParam77Route
+  '/(gen)/params/$param78': typeof genParamsParam78Route
+  '/(gen)/params/$param79': typeof genParamsParam79Route
+  '/(gen)/params/$param8': typeof genParamsParam8Route
+  '/(gen)/params/$param80': typeof genParamsParam80Route
+  '/(gen)/params/$param81': typeof genParamsParam81Route
+  '/(gen)/params/$param82': typeof genParamsParam82Route
+  '/(gen)/params/$param83': typeof genParamsParam83Route
+  '/(gen)/params/$param84': typeof genParamsParam84Route
+  '/(gen)/params/$param85': typeof genParamsParam85Route
+  '/(gen)/params/$param86': typeof genParamsParam86Route
+  '/(gen)/params/$param87': typeof genParamsParam87Route
+  '/(gen)/params/$param88': typeof genParamsParam88Route
+  '/(gen)/params/$param89': typeof genParamsParam89Route
+  '/(gen)/params/$param9': typeof genParamsParam9Route
+  '/(gen)/params/$param90': typeof genParamsParam90Route
+  '/(gen)/params/$param91': typeof genParamsParam91Route
+  '/(gen)/params/$param92': typeof genParamsParam92Route
+  '/(gen)/params/$param93': typeof genParamsParam93Route
+  '/(gen)/params/$param94': typeof genParamsParam94Route
+  '/(gen)/params/$param95': typeof genParamsParam95Route
+  '/(gen)/params/$param96': typeof genParamsParam96Route
+  '/(gen)/params/$param97': typeof genParamsParam97Route
+  '/(gen)/params/$param98': typeof genParamsParam98Route
+  '/(gen)/params/$param99': typeof genParamsParam99Route
+  '/(gen)/search/search0': typeof genSearchSearch0Route
+  '/(gen)/search/search1': typeof genSearchSearch1Route
+  '/(gen)/search/search10': typeof genSearchSearch10Route
+  '/(gen)/search/search11': typeof genSearchSearch11Route
+  '/(gen)/search/search12': typeof genSearchSearch12Route
+  '/(gen)/search/search13': typeof genSearchSearch13Route
+  '/(gen)/search/search14': typeof genSearchSearch14Route
+  '/(gen)/search/search15': typeof genSearchSearch15Route
+  '/(gen)/search/search16': typeof genSearchSearch16Route
+  '/(gen)/search/search17': typeof genSearchSearch17Route
+  '/(gen)/search/search18': typeof genSearchSearch18Route
+  '/(gen)/search/search19': typeof genSearchSearch19Route
+  '/(gen)/search/search2': typeof genSearchSearch2Route
+  '/(gen)/search/search20': typeof genSearchSearch20Route
+  '/(gen)/search/search21': typeof genSearchSearch21Route
+  '/(gen)/search/search22': typeof genSearchSearch22Route
+  '/(gen)/search/search23': typeof genSearchSearch23Route
+  '/(gen)/search/search24': typeof genSearchSearch24Route
+  '/(gen)/search/search25': typeof genSearchSearch25Route
+  '/(gen)/search/search26': typeof genSearchSearch26Route
+  '/(gen)/search/search27': typeof genSearchSearch27Route
+  '/(gen)/search/search28': typeof genSearchSearch28Route
+  '/(gen)/search/search29': typeof genSearchSearch29Route
+  '/(gen)/search/search3': typeof genSearchSearch3Route
+  '/(gen)/search/search30': typeof genSearchSearch30Route
+  '/(gen)/search/search31': typeof genSearchSearch31Route
+  '/(gen)/search/search32': typeof genSearchSearch32Route
+  '/(gen)/search/search33': typeof genSearchSearch33Route
+  '/(gen)/search/search34': typeof genSearchSearch34Route
+  '/(gen)/search/search35': typeof genSearchSearch35Route
+  '/(gen)/search/search36': typeof genSearchSearch36Route
+  '/(gen)/search/search37': typeof genSearchSearch37Route
+  '/(gen)/search/search38': typeof genSearchSearch38Route
+  '/(gen)/search/search39': typeof genSearchSearch39Route
+  '/(gen)/search/search4': typeof genSearchSearch4Route
+  '/(gen)/search/search40': typeof genSearchSearch40Route
+  '/(gen)/search/search41': typeof genSearchSearch41Route
+  '/(gen)/search/search42': typeof genSearchSearch42Route
+  '/(gen)/search/search43': typeof genSearchSearch43Route
+  '/(gen)/search/search44': typeof genSearchSearch44Route
+  '/(gen)/search/search45': typeof genSearchSearch45Route
+  '/(gen)/search/search46': typeof genSearchSearch46Route
+  '/(gen)/search/search47': typeof genSearchSearch47Route
+  '/(gen)/search/search48': typeof genSearchSearch48Route
+  '/(gen)/search/search49': typeof genSearchSearch49Route
+  '/(gen)/search/search5': typeof genSearchSearch5Route
+  '/(gen)/search/search50': typeof genSearchSearch50Route
+  '/(gen)/search/search51': typeof genSearchSearch51Route
+  '/(gen)/search/search52': typeof genSearchSearch52Route
+  '/(gen)/search/search53': typeof genSearchSearch53Route
+  '/(gen)/search/search54': typeof genSearchSearch54Route
+  '/(gen)/search/search55': typeof genSearchSearch55Route
+  '/(gen)/search/search56': typeof genSearchSearch56Route
+  '/(gen)/search/search57': typeof genSearchSearch57Route
+  '/(gen)/search/search58': typeof genSearchSearch58Route
+  '/(gen)/search/search59': typeof genSearchSearch59Route
+  '/(gen)/search/search6': typeof genSearchSearch6Route
+  '/(gen)/search/search60': typeof genSearchSearch60Route
+  '/(gen)/search/search61': typeof genSearchSearch61Route
+  '/(gen)/search/search62': typeof genSearchSearch62Route
+  '/(gen)/search/search63': typeof genSearchSearch63Route
+  '/(gen)/search/search64': typeof genSearchSearch64Route
+  '/(gen)/search/search65': typeof genSearchSearch65Route
+  '/(gen)/search/search66': typeof genSearchSearch66Route
+  '/(gen)/search/search67': typeof genSearchSearch67Route
+  '/(gen)/search/search68': typeof genSearchSearch68Route
+  '/(gen)/search/search69': typeof genSearchSearch69Route
+  '/(gen)/search/search7': typeof genSearchSearch7Route
+  '/(gen)/search/search70': typeof genSearchSearch70Route
+  '/(gen)/search/search71': typeof genSearchSearch71Route
+  '/(gen)/search/search72': typeof genSearchSearch72Route
+  '/(gen)/search/search73': typeof genSearchSearch73Route
+  '/(gen)/search/search74': typeof genSearchSearch74Route
+  '/(gen)/search/search75': typeof genSearchSearch75Route
+  '/(gen)/search/search76': typeof genSearchSearch76Route
+  '/(gen)/search/search77': typeof genSearchSearch77Route
+  '/(gen)/search/search78': typeof genSearchSearch78Route
+  '/(gen)/search/search79': typeof genSearchSearch79Route
+  '/(gen)/search/search8': typeof genSearchSearch8Route
+  '/(gen)/search/search80': typeof genSearchSearch80Route
+  '/(gen)/search/search81': typeof genSearchSearch81Route
+  '/(gen)/search/search82': typeof genSearchSearch82Route
+  '/(gen)/search/search83': typeof genSearchSearch83Route
+  '/(gen)/search/search84': typeof genSearchSearch84Route
+  '/(gen)/search/search85': typeof genSearchSearch85Route
+  '/(gen)/search/search86': typeof genSearchSearch86Route
+  '/(gen)/search/search87': typeof genSearchSearch87Route
+  '/(gen)/search/search88': typeof genSearchSearch88Route
+  '/(gen)/search/search89': typeof genSearchSearch89Route
+  '/(gen)/search/search9': typeof genSearchSearch9Route
+  '/(gen)/search/search90': typeof genSearchSearch90Route
+  '/(gen)/search/search91': typeof genSearchSearch91Route
+  '/(gen)/search/search92': typeof genSearchSearch92Route
+  '/(gen)/search/search93': typeof genSearchSearch93Route
+  '/(gen)/search/search94': typeof genSearchSearch94Route
+  '/(gen)/search/search95': typeof genSearchSearch95Route
+  '/(gen)/search/search96': typeof genSearchSearch96Route
+  '/(gen)/search/search97': typeof genSearchSearch97Route
+  '/(gen)/search/search98': typeof genSearchSearch98Route
+  '/(gen)/search/search99': typeof genSearchSearch99Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -99,8 +3713,408 @@ export interface FileRouteTypes {
     | '/absolute'
     | '/linkProps'
     | '/relative'
+    | '/absolute0'
+    | '/absolute1'
+    | '/absolute10'
+    | '/absolute11'
+    | '/absolute12'
+    | '/absolute13'
+    | '/absolute14'
+    | '/absolute15'
+    | '/absolute16'
+    | '/absolute17'
+    | '/absolute18'
+    | '/absolute19'
+    | '/absolute2'
+    | '/absolute20'
+    | '/absolute21'
+    | '/absolute22'
+    | '/absolute23'
+    | '/absolute24'
+    | '/absolute25'
+    | '/absolute26'
+    | '/absolute27'
+    | '/absolute28'
+    | '/absolute29'
+    | '/absolute3'
+    | '/absolute30'
+    | '/absolute31'
+    | '/absolute32'
+    | '/absolute33'
+    | '/absolute34'
+    | '/absolute35'
+    | '/absolute36'
+    | '/absolute37'
+    | '/absolute38'
+    | '/absolute39'
+    | '/absolute4'
+    | '/absolute40'
+    | '/absolute41'
+    | '/absolute42'
+    | '/absolute43'
+    | '/absolute44'
+    | '/absolute45'
+    | '/absolute46'
+    | '/absolute47'
+    | '/absolute48'
+    | '/absolute49'
+    | '/absolute5'
+    | '/absolute50'
+    | '/absolute51'
+    | '/absolute52'
+    | '/absolute53'
+    | '/absolute54'
+    | '/absolute55'
+    | '/absolute56'
+    | '/absolute57'
+    | '/absolute58'
+    | '/absolute59'
+    | '/absolute6'
+    | '/absolute60'
+    | '/absolute61'
+    | '/absolute62'
+    | '/absolute63'
+    | '/absolute64'
+    | '/absolute65'
+    | '/absolute66'
+    | '/absolute67'
+    | '/absolute68'
+    | '/absolute69'
+    | '/absolute7'
+    | '/absolute70'
+    | '/absolute71'
+    | '/absolute72'
+    | '/absolute73'
+    | '/absolute74'
+    | '/absolute75'
+    | '/absolute76'
+    | '/absolute77'
+    | '/absolute78'
+    | '/absolute79'
+    | '/absolute8'
+    | '/absolute80'
+    | '/absolute81'
+    | '/absolute82'
+    | '/absolute83'
+    | '/absolute84'
+    | '/absolute85'
+    | '/absolute86'
+    | '/absolute87'
+    | '/absolute88'
+    | '/absolute89'
+    | '/absolute9'
+    | '/absolute90'
+    | '/absolute91'
+    | '/absolute92'
+    | '/absolute93'
+    | '/absolute94'
+    | '/absolute95'
+    | '/absolute96'
+    | '/absolute97'
+    | '/absolute98'
+    | '/absolute99'
+    | '/relative0'
+    | '/relative1'
+    | '/relative10'
+    | '/relative11'
+    | '/relative12'
+    | '/relative13'
+    | '/relative14'
+    | '/relative15'
+    | '/relative16'
+    | '/relative17'
+    | '/relative18'
+    | '/relative19'
+    | '/relative2'
+    | '/relative20'
+    | '/relative21'
+    | '/relative22'
+    | '/relative23'
+    | '/relative24'
+    | '/relative25'
+    | '/relative26'
+    | '/relative27'
+    | '/relative28'
+    | '/relative29'
+    | '/relative3'
+    | '/relative30'
+    | '/relative31'
+    | '/relative32'
+    | '/relative33'
+    | '/relative34'
+    | '/relative35'
+    | '/relative36'
+    | '/relative37'
+    | '/relative38'
+    | '/relative39'
+    | '/relative4'
+    | '/relative40'
+    | '/relative41'
+    | '/relative42'
+    | '/relative43'
+    | '/relative44'
+    | '/relative45'
+    | '/relative46'
+    | '/relative47'
+    | '/relative48'
+    | '/relative49'
+    | '/relative5'
+    | '/relative50'
+    | '/relative51'
+    | '/relative52'
+    | '/relative53'
+    | '/relative54'
+    | '/relative55'
+    | '/relative56'
+    | '/relative57'
+    | '/relative58'
+    | '/relative59'
+    | '/relative6'
+    | '/relative60'
+    | '/relative61'
+    | '/relative62'
+    | '/relative63'
+    | '/relative64'
+    | '/relative65'
+    | '/relative66'
+    | '/relative67'
+    | '/relative68'
+    | '/relative69'
+    | '/relative7'
+    | '/relative70'
+    | '/relative71'
+    | '/relative72'
+    | '/relative73'
+    | '/relative74'
+    | '/relative75'
+    | '/relative76'
+    | '/relative77'
+    | '/relative78'
+    | '/relative79'
+    | '/relative8'
+    | '/relative80'
+    | '/relative81'
+    | '/relative82'
+    | '/relative83'
+    | '/relative84'
+    | '/relative85'
+    | '/relative86'
+    | '/relative87'
+    | '/relative88'
+    | '/relative89'
+    | '/relative9'
+    | '/relative90'
+    | '/relative91'
+    | '/relative92'
+    | '/relative93'
+    | '/relative94'
+    | '/relative95'
+    | '/relative96'
+    | '/relative97'
+    | '/relative98'
+    | '/relative99'
     | '/params/$paramsPlaceholder'
     | '/search/searchPlaceholder'
+    | '/params/$param0'
+    | '/params/$param1'
+    | '/params/$param10'
+    | '/params/$param11'
+    | '/params/$param12'
+    | '/params/$param13'
+    | '/params/$param14'
+    | '/params/$param15'
+    | '/params/$param16'
+    | '/params/$param17'
+    | '/params/$param18'
+    | '/params/$param19'
+    | '/params/$param2'
+    | '/params/$param20'
+    | '/params/$param21'
+    | '/params/$param22'
+    | '/params/$param23'
+    | '/params/$param24'
+    | '/params/$param25'
+    | '/params/$param26'
+    | '/params/$param27'
+    | '/params/$param28'
+    | '/params/$param29'
+    | '/params/$param3'
+    | '/params/$param30'
+    | '/params/$param31'
+    | '/params/$param32'
+    | '/params/$param33'
+    | '/params/$param34'
+    | '/params/$param35'
+    | '/params/$param36'
+    | '/params/$param37'
+    | '/params/$param38'
+    | '/params/$param39'
+    | '/params/$param4'
+    | '/params/$param40'
+    | '/params/$param41'
+    | '/params/$param42'
+    | '/params/$param43'
+    | '/params/$param44'
+    | '/params/$param45'
+    | '/params/$param46'
+    | '/params/$param47'
+    | '/params/$param48'
+    | '/params/$param49'
+    | '/params/$param5'
+    | '/params/$param50'
+    | '/params/$param51'
+    | '/params/$param52'
+    | '/params/$param53'
+    | '/params/$param54'
+    | '/params/$param55'
+    | '/params/$param56'
+    | '/params/$param57'
+    | '/params/$param58'
+    | '/params/$param59'
+    | '/params/$param6'
+    | '/params/$param60'
+    | '/params/$param61'
+    | '/params/$param62'
+    | '/params/$param63'
+    | '/params/$param64'
+    | '/params/$param65'
+    | '/params/$param66'
+    | '/params/$param67'
+    | '/params/$param68'
+    | '/params/$param69'
+    | '/params/$param7'
+    | '/params/$param70'
+    | '/params/$param71'
+    | '/params/$param72'
+    | '/params/$param73'
+    | '/params/$param74'
+    | '/params/$param75'
+    | '/params/$param76'
+    | '/params/$param77'
+    | '/params/$param78'
+    | '/params/$param79'
+    | '/params/$param8'
+    | '/params/$param80'
+    | '/params/$param81'
+    | '/params/$param82'
+    | '/params/$param83'
+    | '/params/$param84'
+    | '/params/$param85'
+    | '/params/$param86'
+    | '/params/$param87'
+    | '/params/$param88'
+    | '/params/$param89'
+    | '/params/$param9'
+    | '/params/$param90'
+    | '/params/$param91'
+    | '/params/$param92'
+    | '/params/$param93'
+    | '/params/$param94'
+    | '/params/$param95'
+    | '/params/$param96'
+    | '/params/$param97'
+    | '/params/$param98'
+    | '/params/$param99'
+    | '/search/search0'
+    | '/search/search1'
+    | '/search/search10'
+    | '/search/search11'
+    | '/search/search12'
+    | '/search/search13'
+    | '/search/search14'
+    | '/search/search15'
+    | '/search/search16'
+    | '/search/search17'
+    | '/search/search18'
+    | '/search/search19'
+    | '/search/search2'
+    | '/search/search20'
+    | '/search/search21'
+    | '/search/search22'
+    | '/search/search23'
+    | '/search/search24'
+    | '/search/search25'
+    | '/search/search26'
+    | '/search/search27'
+    | '/search/search28'
+    | '/search/search29'
+    | '/search/search3'
+    | '/search/search30'
+    | '/search/search31'
+    | '/search/search32'
+    | '/search/search33'
+    | '/search/search34'
+    | '/search/search35'
+    | '/search/search36'
+    | '/search/search37'
+    | '/search/search38'
+    | '/search/search39'
+    | '/search/search4'
+    | '/search/search40'
+    | '/search/search41'
+    | '/search/search42'
+    | '/search/search43'
+    | '/search/search44'
+    | '/search/search45'
+    | '/search/search46'
+    | '/search/search47'
+    | '/search/search48'
+    | '/search/search49'
+    | '/search/search5'
+    | '/search/search50'
+    | '/search/search51'
+    | '/search/search52'
+    | '/search/search53'
+    | '/search/search54'
+    | '/search/search55'
+    | '/search/search56'
+    | '/search/search57'
+    | '/search/search58'
+    | '/search/search59'
+    | '/search/search6'
+    | '/search/search60'
+    | '/search/search61'
+    | '/search/search62'
+    | '/search/search63'
+    | '/search/search64'
+    | '/search/search65'
+    | '/search/search66'
+    | '/search/search67'
+    | '/search/search68'
+    | '/search/search69'
+    | '/search/search7'
+    | '/search/search70'
+    | '/search/search71'
+    | '/search/search72'
+    | '/search/search73'
+    | '/search/search74'
+    | '/search/search75'
+    | '/search/search76'
+    | '/search/search77'
+    | '/search/search78'
+    | '/search/search79'
+    | '/search/search8'
+    | '/search/search80'
+    | '/search/search81'
+    | '/search/search82'
+    | '/search/search83'
+    | '/search/search84'
+    | '/search/search85'
+    | '/search/search86'
+    | '/search/search87'
+    | '/search/search88'
+    | '/search/search89'
+    | '/search/search9'
+    | '/search/search90'
+    | '/search/search91'
+    | '/search/search92'
+    | '/search/search93'
+    | '/search/search94'
+    | '/search/search95'
+    | '/search/search96'
+    | '/search/search97'
+    | '/search/search98'
+    | '/search/search99'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -109,8 +4123,408 @@ export interface FileRouteTypes {
     | '/absolute'
     | '/linkProps'
     | '/relative'
+    | '/absolute0'
+    | '/absolute1'
+    | '/absolute10'
+    | '/absolute11'
+    | '/absolute12'
+    | '/absolute13'
+    | '/absolute14'
+    | '/absolute15'
+    | '/absolute16'
+    | '/absolute17'
+    | '/absolute18'
+    | '/absolute19'
+    | '/absolute2'
+    | '/absolute20'
+    | '/absolute21'
+    | '/absolute22'
+    | '/absolute23'
+    | '/absolute24'
+    | '/absolute25'
+    | '/absolute26'
+    | '/absolute27'
+    | '/absolute28'
+    | '/absolute29'
+    | '/absolute3'
+    | '/absolute30'
+    | '/absolute31'
+    | '/absolute32'
+    | '/absolute33'
+    | '/absolute34'
+    | '/absolute35'
+    | '/absolute36'
+    | '/absolute37'
+    | '/absolute38'
+    | '/absolute39'
+    | '/absolute4'
+    | '/absolute40'
+    | '/absolute41'
+    | '/absolute42'
+    | '/absolute43'
+    | '/absolute44'
+    | '/absolute45'
+    | '/absolute46'
+    | '/absolute47'
+    | '/absolute48'
+    | '/absolute49'
+    | '/absolute5'
+    | '/absolute50'
+    | '/absolute51'
+    | '/absolute52'
+    | '/absolute53'
+    | '/absolute54'
+    | '/absolute55'
+    | '/absolute56'
+    | '/absolute57'
+    | '/absolute58'
+    | '/absolute59'
+    | '/absolute6'
+    | '/absolute60'
+    | '/absolute61'
+    | '/absolute62'
+    | '/absolute63'
+    | '/absolute64'
+    | '/absolute65'
+    | '/absolute66'
+    | '/absolute67'
+    | '/absolute68'
+    | '/absolute69'
+    | '/absolute7'
+    | '/absolute70'
+    | '/absolute71'
+    | '/absolute72'
+    | '/absolute73'
+    | '/absolute74'
+    | '/absolute75'
+    | '/absolute76'
+    | '/absolute77'
+    | '/absolute78'
+    | '/absolute79'
+    | '/absolute8'
+    | '/absolute80'
+    | '/absolute81'
+    | '/absolute82'
+    | '/absolute83'
+    | '/absolute84'
+    | '/absolute85'
+    | '/absolute86'
+    | '/absolute87'
+    | '/absolute88'
+    | '/absolute89'
+    | '/absolute9'
+    | '/absolute90'
+    | '/absolute91'
+    | '/absolute92'
+    | '/absolute93'
+    | '/absolute94'
+    | '/absolute95'
+    | '/absolute96'
+    | '/absolute97'
+    | '/absolute98'
+    | '/absolute99'
+    | '/relative0'
+    | '/relative1'
+    | '/relative10'
+    | '/relative11'
+    | '/relative12'
+    | '/relative13'
+    | '/relative14'
+    | '/relative15'
+    | '/relative16'
+    | '/relative17'
+    | '/relative18'
+    | '/relative19'
+    | '/relative2'
+    | '/relative20'
+    | '/relative21'
+    | '/relative22'
+    | '/relative23'
+    | '/relative24'
+    | '/relative25'
+    | '/relative26'
+    | '/relative27'
+    | '/relative28'
+    | '/relative29'
+    | '/relative3'
+    | '/relative30'
+    | '/relative31'
+    | '/relative32'
+    | '/relative33'
+    | '/relative34'
+    | '/relative35'
+    | '/relative36'
+    | '/relative37'
+    | '/relative38'
+    | '/relative39'
+    | '/relative4'
+    | '/relative40'
+    | '/relative41'
+    | '/relative42'
+    | '/relative43'
+    | '/relative44'
+    | '/relative45'
+    | '/relative46'
+    | '/relative47'
+    | '/relative48'
+    | '/relative49'
+    | '/relative5'
+    | '/relative50'
+    | '/relative51'
+    | '/relative52'
+    | '/relative53'
+    | '/relative54'
+    | '/relative55'
+    | '/relative56'
+    | '/relative57'
+    | '/relative58'
+    | '/relative59'
+    | '/relative6'
+    | '/relative60'
+    | '/relative61'
+    | '/relative62'
+    | '/relative63'
+    | '/relative64'
+    | '/relative65'
+    | '/relative66'
+    | '/relative67'
+    | '/relative68'
+    | '/relative69'
+    | '/relative7'
+    | '/relative70'
+    | '/relative71'
+    | '/relative72'
+    | '/relative73'
+    | '/relative74'
+    | '/relative75'
+    | '/relative76'
+    | '/relative77'
+    | '/relative78'
+    | '/relative79'
+    | '/relative8'
+    | '/relative80'
+    | '/relative81'
+    | '/relative82'
+    | '/relative83'
+    | '/relative84'
+    | '/relative85'
+    | '/relative86'
+    | '/relative87'
+    | '/relative88'
+    | '/relative89'
+    | '/relative9'
+    | '/relative90'
+    | '/relative91'
+    | '/relative92'
+    | '/relative93'
+    | '/relative94'
+    | '/relative95'
+    | '/relative96'
+    | '/relative97'
+    | '/relative98'
+    | '/relative99'
     | '/params/$paramsPlaceholder'
     | '/search/searchPlaceholder'
+    | '/params/$param0'
+    | '/params/$param1'
+    | '/params/$param10'
+    | '/params/$param11'
+    | '/params/$param12'
+    | '/params/$param13'
+    | '/params/$param14'
+    | '/params/$param15'
+    | '/params/$param16'
+    | '/params/$param17'
+    | '/params/$param18'
+    | '/params/$param19'
+    | '/params/$param2'
+    | '/params/$param20'
+    | '/params/$param21'
+    | '/params/$param22'
+    | '/params/$param23'
+    | '/params/$param24'
+    | '/params/$param25'
+    | '/params/$param26'
+    | '/params/$param27'
+    | '/params/$param28'
+    | '/params/$param29'
+    | '/params/$param3'
+    | '/params/$param30'
+    | '/params/$param31'
+    | '/params/$param32'
+    | '/params/$param33'
+    | '/params/$param34'
+    | '/params/$param35'
+    | '/params/$param36'
+    | '/params/$param37'
+    | '/params/$param38'
+    | '/params/$param39'
+    | '/params/$param4'
+    | '/params/$param40'
+    | '/params/$param41'
+    | '/params/$param42'
+    | '/params/$param43'
+    | '/params/$param44'
+    | '/params/$param45'
+    | '/params/$param46'
+    | '/params/$param47'
+    | '/params/$param48'
+    | '/params/$param49'
+    | '/params/$param5'
+    | '/params/$param50'
+    | '/params/$param51'
+    | '/params/$param52'
+    | '/params/$param53'
+    | '/params/$param54'
+    | '/params/$param55'
+    | '/params/$param56'
+    | '/params/$param57'
+    | '/params/$param58'
+    | '/params/$param59'
+    | '/params/$param6'
+    | '/params/$param60'
+    | '/params/$param61'
+    | '/params/$param62'
+    | '/params/$param63'
+    | '/params/$param64'
+    | '/params/$param65'
+    | '/params/$param66'
+    | '/params/$param67'
+    | '/params/$param68'
+    | '/params/$param69'
+    | '/params/$param7'
+    | '/params/$param70'
+    | '/params/$param71'
+    | '/params/$param72'
+    | '/params/$param73'
+    | '/params/$param74'
+    | '/params/$param75'
+    | '/params/$param76'
+    | '/params/$param77'
+    | '/params/$param78'
+    | '/params/$param79'
+    | '/params/$param8'
+    | '/params/$param80'
+    | '/params/$param81'
+    | '/params/$param82'
+    | '/params/$param83'
+    | '/params/$param84'
+    | '/params/$param85'
+    | '/params/$param86'
+    | '/params/$param87'
+    | '/params/$param88'
+    | '/params/$param89'
+    | '/params/$param9'
+    | '/params/$param90'
+    | '/params/$param91'
+    | '/params/$param92'
+    | '/params/$param93'
+    | '/params/$param94'
+    | '/params/$param95'
+    | '/params/$param96'
+    | '/params/$param97'
+    | '/params/$param98'
+    | '/params/$param99'
+    | '/search/search0'
+    | '/search/search1'
+    | '/search/search10'
+    | '/search/search11'
+    | '/search/search12'
+    | '/search/search13'
+    | '/search/search14'
+    | '/search/search15'
+    | '/search/search16'
+    | '/search/search17'
+    | '/search/search18'
+    | '/search/search19'
+    | '/search/search2'
+    | '/search/search20'
+    | '/search/search21'
+    | '/search/search22'
+    | '/search/search23'
+    | '/search/search24'
+    | '/search/search25'
+    | '/search/search26'
+    | '/search/search27'
+    | '/search/search28'
+    | '/search/search29'
+    | '/search/search3'
+    | '/search/search30'
+    | '/search/search31'
+    | '/search/search32'
+    | '/search/search33'
+    | '/search/search34'
+    | '/search/search35'
+    | '/search/search36'
+    | '/search/search37'
+    | '/search/search38'
+    | '/search/search39'
+    | '/search/search4'
+    | '/search/search40'
+    | '/search/search41'
+    | '/search/search42'
+    | '/search/search43'
+    | '/search/search44'
+    | '/search/search45'
+    | '/search/search46'
+    | '/search/search47'
+    | '/search/search48'
+    | '/search/search49'
+    | '/search/search5'
+    | '/search/search50'
+    | '/search/search51'
+    | '/search/search52'
+    | '/search/search53'
+    | '/search/search54'
+    | '/search/search55'
+    | '/search/search56'
+    | '/search/search57'
+    | '/search/search58'
+    | '/search/search59'
+    | '/search/search6'
+    | '/search/search60'
+    | '/search/search61'
+    | '/search/search62'
+    | '/search/search63'
+    | '/search/search64'
+    | '/search/search65'
+    | '/search/search66'
+    | '/search/search67'
+    | '/search/search68'
+    | '/search/search69'
+    | '/search/search7'
+    | '/search/search70'
+    | '/search/search71'
+    | '/search/search72'
+    | '/search/search73'
+    | '/search/search74'
+    | '/search/search75'
+    | '/search/search76'
+    | '/search/search77'
+    | '/search/search78'
+    | '/search/search79'
+    | '/search/search8'
+    | '/search/search80'
+    | '/search/search81'
+    | '/search/search82'
+    | '/search/search83'
+    | '/search/search84'
+    | '/search/search85'
+    | '/search/search86'
+    | '/search/search87'
+    | '/search/search88'
+    | '/search/search89'
+    | '/search/search9'
+    | '/search/search90'
+    | '/search/search91'
+    | '/search/search92'
+    | '/search/search93'
+    | '/search/search94'
+    | '/search/search95'
+    | '/search/search96'
+    | '/search/search97'
+    | '/search/search98'
+    | '/search/search99'
   id:
     | '__root__'
     | '/'
@@ -119,8 +4533,410 @@ export interface FileRouteTypes {
     | '/absolute'
     | '/linkProps'
     | '/relative'
+    | '/(gen)/params'
+    | '/(gen)/search'
+    | '/(gen)/absolute0'
+    | '/(gen)/absolute1'
+    | '/(gen)/absolute10'
+    | '/(gen)/absolute11'
+    | '/(gen)/absolute12'
+    | '/(gen)/absolute13'
+    | '/(gen)/absolute14'
+    | '/(gen)/absolute15'
+    | '/(gen)/absolute16'
+    | '/(gen)/absolute17'
+    | '/(gen)/absolute18'
+    | '/(gen)/absolute19'
+    | '/(gen)/absolute2'
+    | '/(gen)/absolute20'
+    | '/(gen)/absolute21'
+    | '/(gen)/absolute22'
+    | '/(gen)/absolute23'
+    | '/(gen)/absolute24'
+    | '/(gen)/absolute25'
+    | '/(gen)/absolute26'
+    | '/(gen)/absolute27'
+    | '/(gen)/absolute28'
+    | '/(gen)/absolute29'
+    | '/(gen)/absolute3'
+    | '/(gen)/absolute30'
+    | '/(gen)/absolute31'
+    | '/(gen)/absolute32'
+    | '/(gen)/absolute33'
+    | '/(gen)/absolute34'
+    | '/(gen)/absolute35'
+    | '/(gen)/absolute36'
+    | '/(gen)/absolute37'
+    | '/(gen)/absolute38'
+    | '/(gen)/absolute39'
+    | '/(gen)/absolute4'
+    | '/(gen)/absolute40'
+    | '/(gen)/absolute41'
+    | '/(gen)/absolute42'
+    | '/(gen)/absolute43'
+    | '/(gen)/absolute44'
+    | '/(gen)/absolute45'
+    | '/(gen)/absolute46'
+    | '/(gen)/absolute47'
+    | '/(gen)/absolute48'
+    | '/(gen)/absolute49'
+    | '/(gen)/absolute5'
+    | '/(gen)/absolute50'
+    | '/(gen)/absolute51'
+    | '/(gen)/absolute52'
+    | '/(gen)/absolute53'
+    | '/(gen)/absolute54'
+    | '/(gen)/absolute55'
+    | '/(gen)/absolute56'
+    | '/(gen)/absolute57'
+    | '/(gen)/absolute58'
+    | '/(gen)/absolute59'
+    | '/(gen)/absolute6'
+    | '/(gen)/absolute60'
+    | '/(gen)/absolute61'
+    | '/(gen)/absolute62'
+    | '/(gen)/absolute63'
+    | '/(gen)/absolute64'
+    | '/(gen)/absolute65'
+    | '/(gen)/absolute66'
+    | '/(gen)/absolute67'
+    | '/(gen)/absolute68'
+    | '/(gen)/absolute69'
+    | '/(gen)/absolute7'
+    | '/(gen)/absolute70'
+    | '/(gen)/absolute71'
+    | '/(gen)/absolute72'
+    | '/(gen)/absolute73'
+    | '/(gen)/absolute74'
+    | '/(gen)/absolute75'
+    | '/(gen)/absolute76'
+    | '/(gen)/absolute77'
+    | '/(gen)/absolute78'
+    | '/(gen)/absolute79'
+    | '/(gen)/absolute8'
+    | '/(gen)/absolute80'
+    | '/(gen)/absolute81'
+    | '/(gen)/absolute82'
+    | '/(gen)/absolute83'
+    | '/(gen)/absolute84'
+    | '/(gen)/absolute85'
+    | '/(gen)/absolute86'
+    | '/(gen)/absolute87'
+    | '/(gen)/absolute88'
+    | '/(gen)/absolute89'
+    | '/(gen)/absolute9'
+    | '/(gen)/absolute90'
+    | '/(gen)/absolute91'
+    | '/(gen)/absolute92'
+    | '/(gen)/absolute93'
+    | '/(gen)/absolute94'
+    | '/(gen)/absolute95'
+    | '/(gen)/absolute96'
+    | '/(gen)/absolute97'
+    | '/(gen)/absolute98'
+    | '/(gen)/absolute99'
+    | '/(gen)/relative0'
+    | '/(gen)/relative1'
+    | '/(gen)/relative10'
+    | '/(gen)/relative11'
+    | '/(gen)/relative12'
+    | '/(gen)/relative13'
+    | '/(gen)/relative14'
+    | '/(gen)/relative15'
+    | '/(gen)/relative16'
+    | '/(gen)/relative17'
+    | '/(gen)/relative18'
+    | '/(gen)/relative19'
+    | '/(gen)/relative2'
+    | '/(gen)/relative20'
+    | '/(gen)/relative21'
+    | '/(gen)/relative22'
+    | '/(gen)/relative23'
+    | '/(gen)/relative24'
+    | '/(gen)/relative25'
+    | '/(gen)/relative26'
+    | '/(gen)/relative27'
+    | '/(gen)/relative28'
+    | '/(gen)/relative29'
+    | '/(gen)/relative3'
+    | '/(gen)/relative30'
+    | '/(gen)/relative31'
+    | '/(gen)/relative32'
+    | '/(gen)/relative33'
+    | '/(gen)/relative34'
+    | '/(gen)/relative35'
+    | '/(gen)/relative36'
+    | '/(gen)/relative37'
+    | '/(gen)/relative38'
+    | '/(gen)/relative39'
+    | '/(gen)/relative4'
+    | '/(gen)/relative40'
+    | '/(gen)/relative41'
+    | '/(gen)/relative42'
+    | '/(gen)/relative43'
+    | '/(gen)/relative44'
+    | '/(gen)/relative45'
+    | '/(gen)/relative46'
+    | '/(gen)/relative47'
+    | '/(gen)/relative48'
+    | '/(gen)/relative49'
+    | '/(gen)/relative5'
+    | '/(gen)/relative50'
+    | '/(gen)/relative51'
+    | '/(gen)/relative52'
+    | '/(gen)/relative53'
+    | '/(gen)/relative54'
+    | '/(gen)/relative55'
+    | '/(gen)/relative56'
+    | '/(gen)/relative57'
+    | '/(gen)/relative58'
+    | '/(gen)/relative59'
+    | '/(gen)/relative6'
+    | '/(gen)/relative60'
+    | '/(gen)/relative61'
+    | '/(gen)/relative62'
+    | '/(gen)/relative63'
+    | '/(gen)/relative64'
+    | '/(gen)/relative65'
+    | '/(gen)/relative66'
+    | '/(gen)/relative67'
+    | '/(gen)/relative68'
+    | '/(gen)/relative69'
+    | '/(gen)/relative7'
+    | '/(gen)/relative70'
+    | '/(gen)/relative71'
+    | '/(gen)/relative72'
+    | '/(gen)/relative73'
+    | '/(gen)/relative74'
+    | '/(gen)/relative75'
+    | '/(gen)/relative76'
+    | '/(gen)/relative77'
+    | '/(gen)/relative78'
+    | '/(gen)/relative79'
+    | '/(gen)/relative8'
+    | '/(gen)/relative80'
+    | '/(gen)/relative81'
+    | '/(gen)/relative82'
+    | '/(gen)/relative83'
+    | '/(gen)/relative84'
+    | '/(gen)/relative85'
+    | '/(gen)/relative86'
+    | '/(gen)/relative87'
+    | '/(gen)/relative88'
+    | '/(gen)/relative89'
+    | '/(gen)/relative9'
+    | '/(gen)/relative90'
+    | '/(gen)/relative91'
+    | '/(gen)/relative92'
+    | '/(gen)/relative93'
+    | '/(gen)/relative94'
+    | '/(gen)/relative95'
+    | '/(gen)/relative96'
+    | '/(gen)/relative97'
+    | '/(gen)/relative98'
+    | '/(gen)/relative99'
     | '/params/$paramsPlaceholder'
     | '/search/searchPlaceholder'
+    | '/(gen)/params/$param0'
+    | '/(gen)/params/$param1'
+    | '/(gen)/params/$param10'
+    | '/(gen)/params/$param11'
+    | '/(gen)/params/$param12'
+    | '/(gen)/params/$param13'
+    | '/(gen)/params/$param14'
+    | '/(gen)/params/$param15'
+    | '/(gen)/params/$param16'
+    | '/(gen)/params/$param17'
+    | '/(gen)/params/$param18'
+    | '/(gen)/params/$param19'
+    | '/(gen)/params/$param2'
+    | '/(gen)/params/$param20'
+    | '/(gen)/params/$param21'
+    | '/(gen)/params/$param22'
+    | '/(gen)/params/$param23'
+    | '/(gen)/params/$param24'
+    | '/(gen)/params/$param25'
+    | '/(gen)/params/$param26'
+    | '/(gen)/params/$param27'
+    | '/(gen)/params/$param28'
+    | '/(gen)/params/$param29'
+    | '/(gen)/params/$param3'
+    | '/(gen)/params/$param30'
+    | '/(gen)/params/$param31'
+    | '/(gen)/params/$param32'
+    | '/(gen)/params/$param33'
+    | '/(gen)/params/$param34'
+    | '/(gen)/params/$param35'
+    | '/(gen)/params/$param36'
+    | '/(gen)/params/$param37'
+    | '/(gen)/params/$param38'
+    | '/(gen)/params/$param39'
+    | '/(gen)/params/$param4'
+    | '/(gen)/params/$param40'
+    | '/(gen)/params/$param41'
+    | '/(gen)/params/$param42'
+    | '/(gen)/params/$param43'
+    | '/(gen)/params/$param44'
+    | '/(gen)/params/$param45'
+    | '/(gen)/params/$param46'
+    | '/(gen)/params/$param47'
+    | '/(gen)/params/$param48'
+    | '/(gen)/params/$param49'
+    | '/(gen)/params/$param5'
+    | '/(gen)/params/$param50'
+    | '/(gen)/params/$param51'
+    | '/(gen)/params/$param52'
+    | '/(gen)/params/$param53'
+    | '/(gen)/params/$param54'
+    | '/(gen)/params/$param55'
+    | '/(gen)/params/$param56'
+    | '/(gen)/params/$param57'
+    | '/(gen)/params/$param58'
+    | '/(gen)/params/$param59'
+    | '/(gen)/params/$param6'
+    | '/(gen)/params/$param60'
+    | '/(gen)/params/$param61'
+    | '/(gen)/params/$param62'
+    | '/(gen)/params/$param63'
+    | '/(gen)/params/$param64'
+    | '/(gen)/params/$param65'
+    | '/(gen)/params/$param66'
+    | '/(gen)/params/$param67'
+    | '/(gen)/params/$param68'
+    | '/(gen)/params/$param69'
+    | '/(gen)/params/$param7'
+    | '/(gen)/params/$param70'
+    | '/(gen)/params/$param71'
+    | '/(gen)/params/$param72'
+    | '/(gen)/params/$param73'
+    | '/(gen)/params/$param74'
+    | '/(gen)/params/$param75'
+    | '/(gen)/params/$param76'
+    | '/(gen)/params/$param77'
+    | '/(gen)/params/$param78'
+    | '/(gen)/params/$param79'
+    | '/(gen)/params/$param8'
+    | '/(gen)/params/$param80'
+    | '/(gen)/params/$param81'
+    | '/(gen)/params/$param82'
+    | '/(gen)/params/$param83'
+    | '/(gen)/params/$param84'
+    | '/(gen)/params/$param85'
+    | '/(gen)/params/$param86'
+    | '/(gen)/params/$param87'
+    | '/(gen)/params/$param88'
+    | '/(gen)/params/$param89'
+    | '/(gen)/params/$param9'
+    | '/(gen)/params/$param90'
+    | '/(gen)/params/$param91'
+    | '/(gen)/params/$param92'
+    | '/(gen)/params/$param93'
+    | '/(gen)/params/$param94'
+    | '/(gen)/params/$param95'
+    | '/(gen)/params/$param96'
+    | '/(gen)/params/$param97'
+    | '/(gen)/params/$param98'
+    | '/(gen)/params/$param99'
+    | '/(gen)/search/search0'
+    | '/(gen)/search/search1'
+    | '/(gen)/search/search10'
+    | '/(gen)/search/search11'
+    | '/(gen)/search/search12'
+    | '/(gen)/search/search13'
+    | '/(gen)/search/search14'
+    | '/(gen)/search/search15'
+    | '/(gen)/search/search16'
+    | '/(gen)/search/search17'
+    | '/(gen)/search/search18'
+    | '/(gen)/search/search19'
+    | '/(gen)/search/search2'
+    | '/(gen)/search/search20'
+    | '/(gen)/search/search21'
+    | '/(gen)/search/search22'
+    | '/(gen)/search/search23'
+    | '/(gen)/search/search24'
+    | '/(gen)/search/search25'
+    | '/(gen)/search/search26'
+    | '/(gen)/search/search27'
+    | '/(gen)/search/search28'
+    | '/(gen)/search/search29'
+    | '/(gen)/search/search3'
+    | '/(gen)/search/search30'
+    | '/(gen)/search/search31'
+    | '/(gen)/search/search32'
+    | '/(gen)/search/search33'
+    | '/(gen)/search/search34'
+    | '/(gen)/search/search35'
+    | '/(gen)/search/search36'
+    | '/(gen)/search/search37'
+    | '/(gen)/search/search38'
+    | '/(gen)/search/search39'
+    | '/(gen)/search/search4'
+    | '/(gen)/search/search40'
+    | '/(gen)/search/search41'
+    | '/(gen)/search/search42'
+    | '/(gen)/search/search43'
+    | '/(gen)/search/search44'
+    | '/(gen)/search/search45'
+    | '/(gen)/search/search46'
+    | '/(gen)/search/search47'
+    | '/(gen)/search/search48'
+    | '/(gen)/search/search49'
+    | '/(gen)/search/search5'
+    | '/(gen)/search/search50'
+    | '/(gen)/search/search51'
+    | '/(gen)/search/search52'
+    | '/(gen)/search/search53'
+    | '/(gen)/search/search54'
+    | '/(gen)/search/search55'
+    | '/(gen)/search/search56'
+    | '/(gen)/search/search57'
+    | '/(gen)/search/search58'
+    | '/(gen)/search/search59'
+    | '/(gen)/search/search6'
+    | '/(gen)/search/search60'
+    | '/(gen)/search/search61'
+    | '/(gen)/search/search62'
+    | '/(gen)/search/search63'
+    | '/(gen)/search/search64'
+    | '/(gen)/search/search65'
+    | '/(gen)/search/search66'
+    | '/(gen)/search/search67'
+    | '/(gen)/search/search68'
+    | '/(gen)/search/search69'
+    | '/(gen)/search/search7'
+    | '/(gen)/search/search70'
+    | '/(gen)/search/search71'
+    | '/(gen)/search/search72'
+    | '/(gen)/search/search73'
+    | '/(gen)/search/search74'
+    | '/(gen)/search/search75'
+    | '/(gen)/search/search76'
+    | '/(gen)/search/search77'
+    | '/(gen)/search/search78'
+    | '/(gen)/search/search79'
+    | '/(gen)/search/search8'
+    | '/(gen)/search/search80'
+    | '/(gen)/search/search81'
+    | '/(gen)/search/search82'
+    | '/(gen)/search/search83'
+    | '/(gen)/search/search84'
+    | '/(gen)/search/search85'
+    | '/(gen)/search/search86'
+    | '/(gen)/search/search87'
+    | '/(gen)/search/search88'
+    | '/(gen)/search/search89'
+    | '/(gen)/search/search9'
+    | '/(gen)/search/search90'
+    | '/(gen)/search/search91'
+    | '/(gen)/search/search92'
+    | '/(gen)/search/search93'
+    | '/(gen)/search/search94'
+    | '/(gen)/search/search95'
+    | '/(gen)/search/search96'
+    | '/(gen)/search/search97'
+    | '/(gen)/search/search98'
+    | '/(gen)/search/search99'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -130,6 +4946,208 @@ export interface RootRouteChildren {
   AbsoluteRoute: typeof AbsoluteRoute
   LinkPropsRoute: typeof LinkPropsRoute
   RelativeRoute: typeof RelativeRoute
+  genParamsRouteRoute: typeof genParamsRouteRouteWithChildren
+  genSearchRouteRoute: typeof genSearchRouteRouteWithChildren
+  genAbsolute0Route: typeof genAbsolute0Route
+  genAbsolute1Route: typeof genAbsolute1Route
+  genAbsolute10Route: typeof genAbsolute10Route
+  genAbsolute11Route: typeof genAbsolute11Route
+  genAbsolute12Route: typeof genAbsolute12Route
+  genAbsolute13Route: typeof genAbsolute13Route
+  genAbsolute14Route: typeof genAbsolute14Route
+  genAbsolute15Route: typeof genAbsolute15Route
+  genAbsolute16Route: typeof genAbsolute16Route
+  genAbsolute17Route: typeof genAbsolute17Route
+  genAbsolute18Route: typeof genAbsolute18Route
+  genAbsolute19Route: typeof genAbsolute19Route
+  genAbsolute2Route: typeof genAbsolute2Route
+  genAbsolute20Route: typeof genAbsolute20Route
+  genAbsolute21Route: typeof genAbsolute21Route
+  genAbsolute22Route: typeof genAbsolute22Route
+  genAbsolute23Route: typeof genAbsolute23Route
+  genAbsolute24Route: typeof genAbsolute24Route
+  genAbsolute25Route: typeof genAbsolute25Route
+  genAbsolute26Route: typeof genAbsolute26Route
+  genAbsolute27Route: typeof genAbsolute27Route
+  genAbsolute28Route: typeof genAbsolute28Route
+  genAbsolute29Route: typeof genAbsolute29Route
+  genAbsolute3Route: typeof genAbsolute3Route
+  genAbsolute30Route: typeof genAbsolute30Route
+  genAbsolute31Route: typeof genAbsolute31Route
+  genAbsolute32Route: typeof genAbsolute32Route
+  genAbsolute33Route: typeof genAbsolute33Route
+  genAbsolute34Route: typeof genAbsolute34Route
+  genAbsolute35Route: typeof genAbsolute35Route
+  genAbsolute36Route: typeof genAbsolute36Route
+  genAbsolute37Route: typeof genAbsolute37Route
+  genAbsolute38Route: typeof genAbsolute38Route
+  genAbsolute39Route: typeof genAbsolute39Route
+  genAbsolute4Route: typeof genAbsolute4Route
+  genAbsolute40Route: typeof genAbsolute40Route
+  genAbsolute41Route: typeof genAbsolute41Route
+  genAbsolute42Route: typeof genAbsolute42Route
+  genAbsolute43Route: typeof genAbsolute43Route
+  genAbsolute44Route: typeof genAbsolute44Route
+  genAbsolute45Route: typeof genAbsolute45Route
+  genAbsolute46Route: typeof genAbsolute46Route
+  genAbsolute47Route: typeof genAbsolute47Route
+  genAbsolute48Route: typeof genAbsolute48Route
+  genAbsolute49Route: typeof genAbsolute49Route
+  genAbsolute5Route: typeof genAbsolute5Route
+  genAbsolute50Route: typeof genAbsolute50Route
+  genAbsolute51Route: typeof genAbsolute51Route
+  genAbsolute52Route: typeof genAbsolute52Route
+  genAbsolute53Route: typeof genAbsolute53Route
+  genAbsolute54Route: typeof genAbsolute54Route
+  genAbsolute55Route: typeof genAbsolute55Route
+  genAbsolute56Route: typeof genAbsolute56Route
+  genAbsolute57Route: typeof genAbsolute57Route
+  genAbsolute58Route: typeof genAbsolute58Route
+  genAbsolute59Route: typeof genAbsolute59Route
+  genAbsolute6Route: typeof genAbsolute6Route
+  genAbsolute60Route: typeof genAbsolute60Route
+  genAbsolute61Route: typeof genAbsolute61Route
+  genAbsolute62Route: typeof genAbsolute62Route
+  genAbsolute63Route: typeof genAbsolute63Route
+  genAbsolute64Route: typeof genAbsolute64Route
+  genAbsolute65Route: typeof genAbsolute65Route
+  genAbsolute66Route: typeof genAbsolute66Route
+  genAbsolute67Route: typeof genAbsolute67Route
+  genAbsolute68Route: typeof genAbsolute68Route
+  genAbsolute69Route: typeof genAbsolute69Route
+  genAbsolute7Route: typeof genAbsolute7Route
+  genAbsolute70Route: typeof genAbsolute70Route
+  genAbsolute71Route: typeof genAbsolute71Route
+  genAbsolute72Route: typeof genAbsolute72Route
+  genAbsolute73Route: typeof genAbsolute73Route
+  genAbsolute74Route: typeof genAbsolute74Route
+  genAbsolute75Route: typeof genAbsolute75Route
+  genAbsolute76Route: typeof genAbsolute76Route
+  genAbsolute77Route: typeof genAbsolute77Route
+  genAbsolute78Route: typeof genAbsolute78Route
+  genAbsolute79Route: typeof genAbsolute79Route
+  genAbsolute8Route: typeof genAbsolute8Route
+  genAbsolute80Route: typeof genAbsolute80Route
+  genAbsolute81Route: typeof genAbsolute81Route
+  genAbsolute82Route: typeof genAbsolute82Route
+  genAbsolute83Route: typeof genAbsolute83Route
+  genAbsolute84Route: typeof genAbsolute84Route
+  genAbsolute85Route: typeof genAbsolute85Route
+  genAbsolute86Route: typeof genAbsolute86Route
+  genAbsolute87Route: typeof genAbsolute87Route
+  genAbsolute88Route: typeof genAbsolute88Route
+  genAbsolute89Route: typeof genAbsolute89Route
+  genAbsolute9Route: typeof genAbsolute9Route
+  genAbsolute90Route: typeof genAbsolute90Route
+  genAbsolute91Route: typeof genAbsolute91Route
+  genAbsolute92Route: typeof genAbsolute92Route
+  genAbsolute93Route: typeof genAbsolute93Route
+  genAbsolute94Route: typeof genAbsolute94Route
+  genAbsolute95Route: typeof genAbsolute95Route
+  genAbsolute96Route: typeof genAbsolute96Route
+  genAbsolute97Route: typeof genAbsolute97Route
+  genAbsolute98Route: typeof genAbsolute98Route
+  genAbsolute99Route: typeof genAbsolute99Route
+  genRelative0Route: typeof genRelative0Route
+  genRelative1Route: typeof genRelative1Route
+  genRelative10Route: typeof genRelative10Route
+  genRelative11Route: typeof genRelative11Route
+  genRelative12Route: typeof genRelative12Route
+  genRelative13Route: typeof genRelative13Route
+  genRelative14Route: typeof genRelative14Route
+  genRelative15Route: typeof genRelative15Route
+  genRelative16Route: typeof genRelative16Route
+  genRelative17Route: typeof genRelative17Route
+  genRelative18Route: typeof genRelative18Route
+  genRelative19Route: typeof genRelative19Route
+  genRelative2Route: typeof genRelative2Route
+  genRelative20Route: typeof genRelative20Route
+  genRelative21Route: typeof genRelative21Route
+  genRelative22Route: typeof genRelative22Route
+  genRelative23Route: typeof genRelative23Route
+  genRelative24Route: typeof genRelative24Route
+  genRelative25Route: typeof genRelative25Route
+  genRelative26Route: typeof genRelative26Route
+  genRelative27Route: typeof genRelative27Route
+  genRelative28Route: typeof genRelative28Route
+  genRelative29Route: typeof genRelative29Route
+  genRelative3Route: typeof genRelative3Route
+  genRelative30Route: typeof genRelative30Route
+  genRelative31Route: typeof genRelative31Route
+  genRelative32Route: typeof genRelative32Route
+  genRelative33Route: typeof genRelative33Route
+  genRelative34Route: typeof genRelative34Route
+  genRelative35Route: typeof genRelative35Route
+  genRelative36Route: typeof genRelative36Route
+  genRelative37Route: typeof genRelative37Route
+  genRelative38Route: typeof genRelative38Route
+  genRelative39Route: typeof genRelative39Route
+  genRelative4Route: typeof genRelative4Route
+  genRelative40Route: typeof genRelative40Route
+  genRelative41Route: typeof genRelative41Route
+  genRelative42Route: typeof genRelative42Route
+  genRelative43Route: typeof genRelative43Route
+  genRelative44Route: typeof genRelative44Route
+  genRelative45Route: typeof genRelative45Route
+  genRelative46Route: typeof genRelative46Route
+  genRelative47Route: typeof genRelative47Route
+  genRelative48Route: typeof genRelative48Route
+  genRelative49Route: typeof genRelative49Route
+  genRelative5Route: typeof genRelative5Route
+  genRelative50Route: typeof genRelative50Route
+  genRelative51Route: typeof genRelative51Route
+  genRelative52Route: typeof genRelative52Route
+  genRelative53Route: typeof genRelative53Route
+  genRelative54Route: typeof genRelative54Route
+  genRelative55Route: typeof genRelative55Route
+  genRelative56Route: typeof genRelative56Route
+  genRelative57Route: typeof genRelative57Route
+  genRelative58Route: typeof genRelative58Route
+  genRelative59Route: typeof genRelative59Route
+  genRelative6Route: typeof genRelative6Route
+  genRelative60Route: typeof genRelative60Route
+  genRelative61Route: typeof genRelative61Route
+  genRelative62Route: typeof genRelative62Route
+  genRelative63Route: typeof genRelative63Route
+  genRelative64Route: typeof genRelative64Route
+  genRelative65Route: typeof genRelative65Route
+  genRelative66Route: typeof genRelative66Route
+  genRelative67Route: typeof genRelative67Route
+  genRelative68Route: typeof genRelative68Route
+  genRelative69Route: typeof genRelative69Route
+  genRelative7Route: typeof genRelative7Route
+  genRelative70Route: typeof genRelative70Route
+  genRelative71Route: typeof genRelative71Route
+  genRelative72Route: typeof genRelative72Route
+  genRelative73Route: typeof genRelative73Route
+  genRelative74Route: typeof genRelative74Route
+  genRelative75Route: typeof genRelative75Route
+  genRelative76Route: typeof genRelative76Route
+  genRelative77Route: typeof genRelative77Route
+  genRelative78Route: typeof genRelative78Route
+  genRelative79Route: typeof genRelative79Route
+  genRelative8Route: typeof genRelative8Route
+  genRelative80Route: typeof genRelative80Route
+  genRelative81Route: typeof genRelative81Route
+  genRelative82Route: typeof genRelative82Route
+  genRelative83Route: typeof genRelative83Route
+  genRelative84Route: typeof genRelative84Route
+  genRelative85Route: typeof genRelative85Route
+  genRelative86Route: typeof genRelative86Route
+  genRelative87Route: typeof genRelative87Route
+  genRelative88Route: typeof genRelative88Route
+  genRelative89Route: typeof genRelative89Route
+  genRelative9Route: typeof genRelative9Route
+  genRelative90Route: typeof genRelative90Route
+  genRelative91Route: typeof genRelative91Route
+  genRelative92Route: typeof genRelative92Route
+  genRelative93Route: typeof genRelative93Route
+  genRelative94Route: typeof genRelative94Route
+  genRelative95Route: typeof genRelative95Route
+  genRelative96Route: typeof genRelative96Route
+  genRelative97Route: typeof genRelative97Route
+  genRelative98Route: typeof genRelative98Route
+  genRelative99Route: typeof genRelative99Route
 }
 
 declare module '@tanstack/react-router' {
@@ -190,6 +5208,2820 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParamsParamsPlaceholderRouteImport
       parentRoute: typeof ParamsRouteRoute
     }
+    '/(gen)/relative99': {
+      id: '/(gen)/relative99'
+      path: '/relative99'
+      fullPath: '/relative99'
+      preLoaderRoute: typeof genRelative99RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative98': {
+      id: '/(gen)/relative98'
+      path: '/relative98'
+      fullPath: '/relative98'
+      preLoaderRoute: typeof genRelative98RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative97': {
+      id: '/(gen)/relative97'
+      path: '/relative97'
+      fullPath: '/relative97'
+      preLoaderRoute: typeof genRelative97RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative96': {
+      id: '/(gen)/relative96'
+      path: '/relative96'
+      fullPath: '/relative96'
+      preLoaderRoute: typeof genRelative96RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative95': {
+      id: '/(gen)/relative95'
+      path: '/relative95'
+      fullPath: '/relative95'
+      preLoaderRoute: typeof genRelative95RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative94': {
+      id: '/(gen)/relative94'
+      path: '/relative94'
+      fullPath: '/relative94'
+      preLoaderRoute: typeof genRelative94RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative93': {
+      id: '/(gen)/relative93'
+      path: '/relative93'
+      fullPath: '/relative93'
+      preLoaderRoute: typeof genRelative93RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative92': {
+      id: '/(gen)/relative92'
+      path: '/relative92'
+      fullPath: '/relative92'
+      preLoaderRoute: typeof genRelative92RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative91': {
+      id: '/(gen)/relative91'
+      path: '/relative91'
+      fullPath: '/relative91'
+      preLoaderRoute: typeof genRelative91RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative90': {
+      id: '/(gen)/relative90'
+      path: '/relative90'
+      fullPath: '/relative90'
+      preLoaderRoute: typeof genRelative90RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative9': {
+      id: '/(gen)/relative9'
+      path: '/relative9'
+      fullPath: '/relative9'
+      preLoaderRoute: typeof genRelative9RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative89': {
+      id: '/(gen)/relative89'
+      path: '/relative89'
+      fullPath: '/relative89'
+      preLoaderRoute: typeof genRelative89RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative88': {
+      id: '/(gen)/relative88'
+      path: '/relative88'
+      fullPath: '/relative88'
+      preLoaderRoute: typeof genRelative88RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative87': {
+      id: '/(gen)/relative87'
+      path: '/relative87'
+      fullPath: '/relative87'
+      preLoaderRoute: typeof genRelative87RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative86': {
+      id: '/(gen)/relative86'
+      path: '/relative86'
+      fullPath: '/relative86'
+      preLoaderRoute: typeof genRelative86RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative85': {
+      id: '/(gen)/relative85'
+      path: '/relative85'
+      fullPath: '/relative85'
+      preLoaderRoute: typeof genRelative85RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative84': {
+      id: '/(gen)/relative84'
+      path: '/relative84'
+      fullPath: '/relative84'
+      preLoaderRoute: typeof genRelative84RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative83': {
+      id: '/(gen)/relative83'
+      path: '/relative83'
+      fullPath: '/relative83'
+      preLoaderRoute: typeof genRelative83RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative82': {
+      id: '/(gen)/relative82'
+      path: '/relative82'
+      fullPath: '/relative82'
+      preLoaderRoute: typeof genRelative82RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative81': {
+      id: '/(gen)/relative81'
+      path: '/relative81'
+      fullPath: '/relative81'
+      preLoaderRoute: typeof genRelative81RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative80': {
+      id: '/(gen)/relative80'
+      path: '/relative80'
+      fullPath: '/relative80'
+      preLoaderRoute: typeof genRelative80RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative8': {
+      id: '/(gen)/relative8'
+      path: '/relative8'
+      fullPath: '/relative8'
+      preLoaderRoute: typeof genRelative8RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative79': {
+      id: '/(gen)/relative79'
+      path: '/relative79'
+      fullPath: '/relative79'
+      preLoaderRoute: typeof genRelative79RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative78': {
+      id: '/(gen)/relative78'
+      path: '/relative78'
+      fullPath: '/relative78'
+      preLoaderRoute: typeof genRelative78RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative77': {
+      id: '/(gen)/relative77'
+      path: '/relative77'
+      fullPath: '/relative77'
+      preLoaderRoute: typeof genRelative77RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative76': {
+      id: '/(gen)/relative76'
+      path: '/relative76'
+      fullPath: '/relative76'
+      preLoaderRoute: typeof genRelative76RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative75': {
+      id: '/(gen)/relative75'
+      path: '/relative75'
+      fullPath: '/relative75'
+      preLoaderRoute: typeof genRelative75RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative74': {
+      id: '/(gen)/relative74'
+      path: '/relative74'
+      fullPath: '/relative74'
+      preLoaderRoute: typeof genRelative74RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative73': {
+      id: '/(gen)/relative73'
+      path: '/relative73'
+      fullPath: '/relative73'
+      preLoaderRoute: typeof genRelative73RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative72': {
+      id: '/(gen)/relative72'
+      path: '/relative72'
+      fullPath: '/relative72'
+      preLoaderRoute: typeof genRelative72RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative71': {
+      id: '/(gen)/relative71'
+      path: '/relative71'
+      fullPath: '/relative71'
+      preLoaderRoute: typeof genRelative71RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative70': {
+      id: '/(gen)/relative70'
+      path: '/relative70'
+      fullPath: '/relative70'
+      preLoaderRoute: typeof genRelative70RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative7': {
+      id: '/(gen)/relative7'
+      path: '/relative7'
+      fullPath: '/relative7'
+      preLoaderRoute: typeof genRelative7RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative69': {
+      id: '/(gen)/relative69'
+      path: '/relative69'
+      fullPath: '/relative69'
+      preLoaderRoute: typeof genRelative69RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative68': {
+      id: '/(gen)/relative68'
+      path: '/relative68'
+      fullPath: '/relative68'
+      preLoaderRoute: typeof genRelative68RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative67': {
+      id: '/(gen)/relative67'
+      path: '/relative67'
+      fullPath: '/relative67'
+      preLoaderRoute: typeof genRelative67RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative66': {
+      id: '/(gen)/relative66'
+      path: '/relative66'
+      fullPath: '/relative66'
+      preLoaderRoute: typeof genRelative66RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative65': {
+      id: '/(gen)/relative65'
+      path: '/relative65'
+      fullPath: '/relative65'
+      preLoaderRoute: typeof genRelative65RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative64': {
+      id: '/(gen)/relative64'
+      path: '/relative64'
+      fullPath: '/relative64'
+      preLoaderRoute: typeof genRelative64RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative63': {
+      id: '/(gen)/relative63'
+      path: '/relative63'
+      fullPath: '/relative63'
+      preLoaderRoute: typeof genRelative63RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative62': {
+      id: '/(gen)/relative62'
+      path: '/relative62'
+      fullPath: '/relative62'
+      preLoaderRoute: typeof genRelative62RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative61': {
+      id: '/(gen)/relative61'
+      path: '/relative61'
+      fullPath: '/relative61'
+      preLoaderRoute: typeof genRelative61RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative60': {
+      id: '/(gen)/relative60'
+      path: '/relative60'
+      fullPath: '/relative60'
+      preLoaderRoute: typeof genRelative60RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative6': {
+      id: '/(gen)/relative6'
+      path: '/relative6'
+      fullPath: '/relative6'
+      preLoaderRoute: typeof genRelative6RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative59': {
+      id: '/(gen)/relative59'
+      path: '/relative59'
+      fullPath: '/relative59'
+      preLoaderRoute: typeof genRelative59RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative58': {
+      id: '/(gen)/relative58'
+      path: '/relative58'
+      fullPath: '/relative58'
+      preLoaderRoute: typeof genRelative58RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative57': {
+      id: '/(gen)/relative57'
+      path: '/relative57'
+      fullPath: '/relative57'
+      preLoaderRoute: typeof genRelative57RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative56': {
+      id: '/(gen)/relative56'
+      path: '/relative56'
+      fullPath: '/relative56'
+      preLoaderRoute: typeof genRelative56RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative55': {
+      id: '/(gen)/relative55'
+      path: '/relative55'
+      fullPath: '/relative55'
+      preLoaderRoute: typeof genRelative55RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative54': {
+      id: '/(gen)/relative54'
+      path: '/relative54'
+      fullPath: '/relative54'
+      preLoaderRoute: typeof genRelative54RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative53': {
+      id: '/(gen)/relative53'
+      path: '/relative53'
+      fullPath: '/relative53'
+      preLoaderRoute: typeof genRelative53RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative52': {
+      id: '/(gen)/relative52'
+      path: '/relative52'
+      fullPath: '/relative52'
+      preLoaderRoute: typeof genRelative52RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative51': {
+      id: '/(gen)/relative51'
+      path: '/relative51'
+      fullPath: '/relative51'
+      preLoaderRoute: typeof genRelative51RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative50': {
+      id: '/(gen)/relative50'
+      path: '/relative50'
+      fullPath: '/relative50'
+      preLoaderRoute: typeof genRelative50RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative5': {
+      id: '/(gen)/relative5'
+      path: '/relative5'
+      fullPath: '/relative5'
+      preLoaderRoute: typeof genRelative5RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative49': {
+      id: '/(gen)/relative49'
+      path: '/relative49'
+      fullPath: '/relative49'
+      preLoaderRoute: typeof genRelative49RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative48': {
+      id: '/(gen)/relative48'
+      path: '/relative48'
+      fullPath: '/relative48'
+      preLoaderRoute: typeof genRelative48RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative47': {
+      id: '/(gen)/relative47'
+      path: '/relative47'
+      fullPath: '/relative47'
+      preLoaderRoute: typeof genRelative47RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative46': {
+      id: '/(gen)/relative46'
+      path: '/relative46'
+      fullPath: '/relative46'
+      preLoaderRoute: typeof genRelative46RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative45': {
+      id: '/(gen)/relative45'
+      path: '/relative45'
+      fullPath: '/relative45'
+      preLoaderRoute: typeof genRelative45RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative44': {
+      id: '/(gen)/relative44'
+      path: '/relative44'
+      fullPath: '/relative44'
+      preLoaderRoute: typeof genRelative44RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative43': {
+      id: '/(gen)/relative43'
+      path: '/relative43'
+      fullPath: '/relative43'
+      preLoaderRoute: typeof genRelative43RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative42': {
+      id: '/(gen)/relative42'
+      path: '/relative42'
+      fullPath: '/relative42'
+      preLoaderRoute: typeof genRelative42RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative41': {
+      id: '/(gen)/relative41'
+      path: '/relative41'
+      fullPath: '/relative41'
+      preLoaderRoute: typeof genRelative41RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative40': {
+      id: '/(gen)/relative40'
+      path: '/relative40'
+      fullPath: '/relative40'
+      preLoaderRoute: typeof genRelative40RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative4': {
+      id: '/(gen)/relative4'
+      path: '/relative4'
+      fullPath: '/relative4'
+      preLoaderRoute: typeof genRelative4RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative39': {
+      id: '/(gen)/relative39'
+      path: '/relative39'
+      fullPath: '/relative39'
+      preLoaderRoute: typeof genRelative39RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative38': {
+      id: '/(gen)/relative38'
+      path: '/relative38'
+      fullPath: '/relative38'
+      preLoaderRoute: typeof genRelative38RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative37': {
+      id: '/(gen)/relative37'
+      path: '/relative37'
+      fullPath: '/relative37'
+      preLoaderRoute: typeof genRelative37RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative36': {
+      id: '/(gen)/relative36'
+      path: '/relative36'
+      fullPath: '/relative36'
+      preLoaderRoute: typeof genRelative36RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative35': {
+      id: '/(gen)/relative35'
+      path: '/relative35'
+      fullPath: '/relative35'
+      preLoaderRoute: typeof genRelative35RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative34': {
+      id: '/(gen)/relative34'
+      path: '/relative34'
+      fullPath: '/relative34'
+      preLoaderRoute: typeof genRelative34RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative33': {
+      id: '/(gen)/relative33'
+      path: '/relative33'
+      fullPath: '/relative33'
+      preLoaderRoute: typeof genRelative33RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative32': {
+      id: '/(gen)/relative32'
+      path: '/relative32'
+      fullPath: '/relative32'
+      preLoaderRoute: typeof genRelative32RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative31': {
+      id: '/(gen)/relative31'
+      path: '/relative31'
+      fullPath: '/relative31'
+      preLoaderRoute: typeof genRelative31RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative30': {
+      id: '/(gen)/relative30'
+      path: '/relative30'
+      fullPath: '/relative30'
+      preLoaderRoute: typeof genRelative30RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative3': {
+      id: '/(gen)/relative3'
+      path: '/relative3'
+      fullPath: '/relative3'
+      preLoaderRoute: typeof genRelative3RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative29': {
+      id: '/(gen)/relative29'
+      path: '/relative29'
+      fullPath: '/relative29'
+      preLoaderRoute: typeof genRelative29RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative28': {
+      id: '/(gen)/relative28'
+      path: '/relative28'
+      fullPath: '/relative28'
+      preLoaderRoute: typeof genRelative28RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative27': {
+      id: '/(gen)/relative27'
+      path: '/relative27'
+      fullPath: '/relative27'
+      preLoaderRoute: typeof genRelative27RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative26': {
+      id: '/(gen)/relative26'
+      path: '/relative26'
+      fullPath: '/relative26'
+      preLoaderRoute: typeof genRelative26RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative25': {
+      id: '/(gen)/relative25'
+      path: '/relative25'
+      fullPath: '/relative25'
+      preLoaderRoute: typeof genRelative25RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative24': {
+      id: '/(gen)/relative24'
+      path: '/relative24'
+      fullPath: '/relative24'
+      preLoaderRoute: typeof genRelative24RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative23': {
+      id: '/(gen)/relative23'
+      path: '/relative23'
+      fullPath: '/relative23'
+      preLoaderRoute: typeof genRelative23RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative22': {
+      id: '/(gen)/relative22'
+      path: '/relative22'
+      fullPath: '/relative22'
+      preLoaderRoute: typeof genRelative22RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative21': {
+      id: '/(gen)/relative21'
+      path: '/relative21'
+      fullPath: '/relative21'
+      preLoaderRoute: typeof genRelative21RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative20': {
+      id: '/(gen)/relative20'
+      path: '/relative20'
+      fullPath: '/relative20'
+      preLoaderRoute: typeof genRelative20RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative2': {
+      id: '/(gen)/relative2'
+      path: '/relative2'
+      fullPath: '/relative2'
+      preLoaderRoute: typeof genRelative2RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative19': {
+      id: '/(gen)/relative19'
+      path: '/relative19'
+      fullPath: '/relative19'
+      preLoaderRoute: typeof genRelative19RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative18': {
+      id: '/(gen)/relative18'
+      path: '/relative18'
+      fullPath: '/relative18'
+      preLoaderRoute: typeof genRelative18RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative17': {
+      id: '/(gen)/relative17'
+      path: '/relative17'
+      fullPath: '/relative17'
+      preLoaderRoute: typeof genRelative17RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative16': {
+      id: '/(gen)/relative16'
+      path: '/relative16'
+      fullPath: '/relative16'
+      preLoaderRoute: typeof genRelative16RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative15': {
+      id: '/(gen)/relative15'
+      path: '/relative15'
+      fullPath: '/relative15'
+      preLoaderRoute: typeof genRelative15RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative14': {
+      id: '/(gen)/relative14'
+      path: '/relative14'
+      fullPath: '/relative14'
+      preLoaderRoute: typeof genRelative14RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative13': {
+      id: '/(gen)/relative13'
+      path: '/relative13'
+      fullPath: '/relative13'
+      preLoaderRoute: typeof genRelative13RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative12': {
+      id: '/(gen)/relative12'
+      path: '/relative12'
+      fullPath: '/relative12'
+      preLoaderRoute: typeof genRelative12RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative11': {
+      id: '/(gen)/relative11'
+      path: '/relative11'
+      fullPath: '/relative11'
+      preLoaderRoute: typeof genRelative11RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative10': {
+      id: '/(gen)/relative10'
+      path: '/relative10'
+      fullPath: '/relative10'
+      preLoaderRoute: typeof genRelative10RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative1': {
+      id: '/(gen)/relative1'
+      path: '/relative1'
+      fullPath: '/relative1'
+      preLoaderRoute: typeof genRelative1RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/relative0': {
+      id: '/(gen)/relative0'
+      path: '/relative0'
+      fullPath: '/relative0'
+      preLoaderRoute: typeof genRelative0RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute99': {
+      id: '/(gen)/absolute99'
+      path: '/absolute99'
+      fullPath: '/absolute99'
+      preLoaderRoute: typeof genAbsolute99RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute98': {
+      id: '/(gen)/absolute98'
+      path: '/absolute98'
+      fullPath: '/absolute98'
+      preLoaderRoute: typeof genAbsolute98RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute97': {
+      id: '/(gen)/absolute97'
+      path: '/absolute97'
+      fullPath: '/absolute97'
+      preLoaderRoute: typeof genAbsolute97RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute96': {
+      id: '/(gen)/absolute96'
+      path: '/absolute96'
+      fullPath: '/absolute96'
+      preLoaderRoute: typeof genAbsolute96RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute95': {
+      id: '/(gen)/absolute95'
+      path: '/absolute95'
+      fullPath: '/absolute95'
+      preLoaderRoute: typeof genAbsolute95RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute94': {
+      id: '/(gen)/absolute94'
+      path: '/absolute94'
+      fullPath: '/absolute94'
+      preLoaderRoute: typeof genAbsolute94RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute93': {
+      id: '/(gen)/absolute93'
+      path: '/absolute93'
+      fullPath: '/absolute93'
+      preLoaderRoute: typeof genAbsolute93RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute92': {
+      id: '/(gen)/absolute92'
+      path: '/absolute92'
+      fullPath: '/absolute92'
+      preLoaderRoute: typeof genAbsolute92RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute91': {
+      id: '/(gen)/absolute91'
+      path: '/absolute91'
+      fullPath: '/absolute91'
+      preLoaderRoute: typeof genAbsolute91RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute90': {
+      id: '/(gen)/absolute90'
+      path: '/absolute90'
+      fullPath: '/absolute90'
+      preLoaderRoute: typeof genAbsolute90RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute9': {
+      id: '/(gen)/absolute9'
+      path: '/absolute9'
+      fullPath: '/absolute9'
+      preLoaderRoute: typeof genAbsolute9RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute89': {
+      id: '/(gen)/absolute89'
+      path: '/absolute89'
+      fullPath: '/absolute89'
+      preLoaderRoute: typeof genAbsolute89RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute88': {
+      id: '/(gen)/absolute88'
+      path: '/absolute88'
+      fullPath: '/absolute88'
+      preLoaderRoute: typeof genAbsolute88RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute87': {
+      id: '/(gen)/absolute87'
+      path: '/absolute87'
+      fullPath: '/absolute87'
+      preLoaderRoute: typeof genAbsolute87RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute86': {
+      id: '/(gen)/absolute86'
+      path: '/absolute86'
+      fullPath: '/absolute86'
+      preLoaderRoute: typeof genAbsolute86RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute85': {
+      id: '/(gen)/absolute85'
+      path: '/absolute85'
+      fullPath: '/absolute85'
+      preLoaderRoute: typeof genAbsolute85RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute84': {
+      id: '/(gen)/absolute84'
+      path: '/absolute84'
+      fullPath: '/absolute84'
+      preLoaderRoute: typeof genAbsolute84RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute83': {
+      id: '/(gen)/absolute83'
+      path: '/absolute83'
+      fullPath: '/absolute83'
+      preLoaderRoute: typeof genAbsolute83RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute82': {
+      id: '/(gen)/absolute82'
+      path: '/absolute82'
+      fullPath: '/absolute82'
+      preLoaderRoute: typeof genAbsolute82RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute81': {
+      id: '/(gen)/absolute81'
+      path: '/absolute81'
+      fullPath: '/absolute81'
+      preLoaderRoute: typeof genAbsolute81RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute80': {
+      id: '/(gen)/absolute80'
+      path: '/absolute80'
+      fullPath: '/absolute80'
+      preLoaderRoute: typeof genAbsolute80RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute8': {
+      id: '/(gen)/absolute8'
+      path: '/absolute8'
+      fullPath: '/absolute8'
+      preLoaderRoute: typeof genAbsolute8RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute79': {
+      id: '/(gen)/absolute79'
+      path: '/absolute79'
+      fullPath: '/absolute79'
+      preLoaderRoute: typeof genAbsolute79RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute78': {
+      id: '/(gen)/absolute78'
+      path: '/absolute78'
+      fullPath: '/absolute78'
+      preLoaderRoute: typeof genAbsolute78RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute77': {
+      id: '/(gen)/absolute77'
+      path: '/absolute77'
+      fullPath: '/absolute77'
+      preLoaderRoute: typeof genAbsolute77RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute76': {
+      id: '/(gen)/absolute76'
+      path: '/absolute76'
+      fullPath: '/absolute76'
+      preLoaderRoute: typeof genAbsolute76RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute75': {
+      id: '/(gen)/absolute75'
+      path: '/absolute75'
+      fullPath: '/absolute75'
+      preLoaderRoute: typeof genAbsolute75RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute74': {
+      id: '/(gen)/absolute74'
+      path: '/absolute74'
+      fullPath: '/absolute74'
+      preLoaderRoute: typeof genAbsolute74RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute73': {
+      id: '/(gen)/absolute73'
+      path: '/absolute73'
+      fullPath: '/absolute73'
+      preLoaderRoute: typeof genAbsolute73RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute72': {
+      id: '/(gen)/absolute72'
+      path: '/absolute72'
+      fullPath: '/absolute72'
+      preLoaderRoute: typeof genAbsolute72RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute71': {
+      id: '/(gen)/absolute71'
+      path: '/absolute71'
+      fullPath: '/absolute71'
+      preLoaderRoute: typeof genAbsolute71RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute70': {
+      id: '/(gen)/absolute70'
+      path: '/absolute70'
+      fullPath: '/absolute70'
+      preLoaderRoute: typeof genAbsolute70RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute7': {
+      id: '/(gen)/absolute7'
+      path: '/absolute7'
+      fullPath: '/absolute7'
+      preLoaderRoute: typeof genAbsolute7RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute69': {
+      id: '/(gen)/absolute69'
+      path: '/absolute69'
+      fullPath: '/absolute69'
+      preLoaderRoute: typeof genAbsolute69RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute68': {
+      id: '/(gen)/absolute68'
+      path: '/absolute68'
+      fullPath: '/absolute68'
+      preLoaderRoute: typeof genAbsolute68RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute67': {
+      id: '/(gen)/absolute67'
+      path: '/absolute67'
+      fullPath: '/absolute67'
+      preLoaderRoute: typeof genAbsolute67RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute66': {
+      id: '/(gen)/absolute66'
+      path: '/absolute66'
+      fullPath: '/absolute66'
+      preLoaderRoute: typeof genAbsolute66RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute65': {
+      id: '/(gen)/absolute65'
+      path: '/absolute65'
+      fullPath: '/absolute65'
+      preLoaderRoute: typeof genAbsolute65RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute64': {
+      id: '/(gen)/absolute64'
+      path: '/absolute64'
+      fullPath: '/absolute64'
+      preLoaderRoute: typeof genAbsolute64RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute63': {
+      id: '/(gen)/absolute63'
+      path: '/absolute63'
+      fullPath: '/absolute63'
+      preLoaderRoute: typeof genAbsolute63RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute62': {
+      id: '/(gen)/absolute62'
+      path: '/absolute62'
+      fullPath: '/absolute62'
+      preLoaderRoute: typeof genAbsolute62RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute61': {
+      id: '/(gen)/absolute61'
+      path: '/absolute61'
+      fullPath: '/absolute61'
+      preLoaderRoute: typeof genAbsolute61RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute60': {
+      id: '/(gen)/absolute60'
+      path: '/absolute60'
+      fullPath: '/absolute60'
+      preLoaderRoute: typeof genAbsolute60RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute6': {
+      id: '/(gen)/absolute6'
+      path: '/absolute6'
+      fullPath: '/absolute6'
+      preLoaderRoute: typeof genAbsolute6RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute59': {
+      id: '/(gen)/absolute59'
+      path: '/absolute59'
+      fullPath: '/absolute59'
+      preLoaderRoute: typeof genAbsolute59RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute58': {
+      id: '/(gen)/absolute58'
+      path: '/absolute58'
+      fullPath: '/absolute58'
+      preLoaderRoute: typeof genAbsolute58RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute57': {
+      id: '/(gen)/absolute57'
+      path: '/absolute57'
+      fullPath: '/absolute57'
+      preLoaderRoute: typeof genAbsolute57RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute56': {
+      id: '/(gen)/absolute56'
+      path: '/absolute56'
+      fullPath: '/absolute56'
+      preLoaderRoute: typeof genAbsolute56RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute55': {
+      id: '/(gen)/absolute55'
+      path: '/absolute55'
+      fullPath: '/absolute55'
+      preLoaderRoute: typeof genAbsolute55RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute54': {
+      id: '/(gen)/absolute54'
+      path: '/absolute54'
+      fullPath: '/absolute54'
+      preLoaderRoute: typeof genAbsolute54RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute53': {
+      id: '/(gen)/absolute53'
+      path: '/absolute53'
+      fullPath: '/absolute53'
+      preLoaderRoute: typeof genAbsolute53RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute52': {
+      id: '/(gen)/absolute52'
+      path: '/absolute52'
+      fullPath: '/absolute52'
+      preLoaderRoute: typeof genAbsolute52RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute51': {
+      id: '/(gen)/absolute51'
+      path: '/absolute51'
+      fullPath: '/absolute51'
+      preLoaderRoute: typeof genAbsolute51RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute50': {
+      id: '/(gen)/absolute50'
+      path: '/absolute50'
+      fullPath: '/absolute50'
+      preLoaderRoute: typeof genAbsolute50RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute5': {
+      id: '/(gen)/absolute5'
+      path: '/absolute5'
+      fullPath: '/absolute5'
+      preLoaderRoute: typeof genAbsolute5RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute49': {
+      id: '/(gen)/absolute49'
+      path: '/absolute49'
+      fullPath: '/absolute49'
+      preLoaderRoute: typeof genAbsolute49RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute48': {
+      id: '/(gen)/absolute48'
+      path: '/absolute48'
+      fullPath: '/absolute48'
+      preLoaderRoute: typeof genAbsolute48RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute47': {
+      id: '/(gen)/absolute47'
+      path: '/absolute47'
+      fullPath: '/absolute47'
+      preLoaderRoute: typeof genAbsolute47RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute46': {
+      id: '/(gen)/absolute46'
+      path: '/absolute46'
+      fullPath: '/absolute46'
+      preLoaderRoute: typeof genAbsolute46RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute45': {
+      id: '/(gen)/absolute45'
+      path: '/absolute45'
+      fullPath: '/absolute45'
+      preLoaderRoute: typeof genAbsolute45RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute44': {
+      id: '/(gen)/absolute44'
+      path: '/absolute44'
+      fullPath: '/absolute44'
+      preLoaderRoute: typeof genAbsolute44RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute43': {
+      id: '/(gen)/absolute43'
+      path: '/absolute43'
+      fullPath: '/absolute43'
+      preLoaderRoute: typeof genAbsolute43RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute42': {
+      id: '/(gen)/absolute42'
+      path: '/absolute42'
+      fullPath: '/absolute42'
+      preLoaderRoute: typeof genAbsolute42RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute41': {
+      id: '/(gen)/absolute41'
+      path: '/absolute41'
+      fullPath: '/absolute41'
+      preLoaderRoute: typeof genAbsolute41RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute40': {
+      id: '/(gen)/absolute40'
+      path: '/absolute40'
+      fullPath: '/absolute40'
+      preLoaderRoute: typeof genAbsolute40RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute4': {
+      id: '/(gen)/absolute4'
+      path: '/absolute4'
+      fullPath: '/absolute4'
+      preLoaderRoute: typeof genAbsolute4RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute39': {
+      id: '/(gen)/absolute39'
+      path: '/absolute39'
+      fullPath: '/absolute39'
+      preLoaderRoute: typeof genAbsolute39RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute38': {
+      id: '/(gen)/absolute38'
+      path: '/absolute38'
+      fullPath: '/absolute38'
+      preLoaderRoute: typeof genAbsolute38RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute37': {
+      id: '/(gen)/absolute37'
+      path: '/absolute37'
+      fullPath: '/absolute37'
+      preLoaderRoute: typeof genAbsolute37RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute36': {
+      id: '/(gen)/absolute36'
+      path: '/absolute36'
+      fullPath: '/absolute36'
+      preLoaderRoute: typeof genAbsolute36RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute35': {
+      id: '/(gen)/absolute35'
+      path: '/absolute35'
+      fullPath: '/absolute35'
+      preLoaderRoute: typeof genAbsolute35RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute34': {
+      id: '/(gen)/absolute34'
+      path: '/absolute34'
+      fullPath: '/absolute34'
+      preLoaderRoute: typeof genAbsolute34RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute33': {
+      id: '/(gen)/absolute33'
+      path: '/absolute33'
+      fullPath: '/absolute33'
+      preLoaderRoute: typeof genAbsolute33RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute32': {
+      id: '/(gen)/absolute32'
+      path: '/absolute32'
+      fullPath: '/absolute32'
+      preLoaderRoute: typeof genAbsolute32RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute31': {
+      id: '/(gen)/absolute31'
+      path: '/absolute31'
+      fullPath: '/absolute31'
+      preLoaderRoute: typeof genAbsolute31RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute30': {
+      id: '/(gen)/absolute30'
+      path: '/absolute30'
+      fullPath: '/absolute30'
+      preLoaderRoute: typeof genAbsolute30RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute3': {
+      id: '/(gen)/absolute3'
+      path: '/absolute3'
+      fullPath: '/absolute3'
+      preLoaderRoute: typeof genAbsolute3RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute29': {
+      id: '/(gen)/absolute29'
+      path: '/absolute29'
+      fullPath: '/absolute29'
+      preLoaderRoute: typeof genAbsolute29RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute28': {
+      id: '/(gen)/absolute28'
+      path: '/absolute28'
+      fullPath: '/absolute28'
+      preLoaderRoute: typeof genAbsolute28RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute27': {
+      id: '/(gen)/absolute27'
+      path: '/absolute27'
+      fullPath: '/absolute27'
+      preLoaderRoute: typeof genAbsolute27RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute26': {
+      id: '/(gen)/absolute26'
+      path: '/absolute26'
+      fullPath: '/absolute26'
+      preLoaderRoute: typeof genAbsolute26RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute25': {
+      id: '/(gen)/absolute25'
+      path: '/absolute25'
+      fullPath: '/absolute25'
+      preLoaderRoute: typeof genAbsolute25RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute24': {
+      id: '/(gen)/absolute24'
+      path: '/absolute24'
+      fullPath: '/absolute24'
+      preLoaderRoute: typeof genAbsolute24RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute23': {
+      id: '/(gen)/absolute23'
+      path: '/absolute23'
+      fullPath: '/absolute23'
+      preLoaderRoute: typeof genAbsolute23RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute22': {
+      id: '/(gen)/absolute22'
+      path: '/absolute22'
+      fullPath: '/absolute22'
+      preLoaderRoute: typeof genAbsolute22RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute21': {
+      id: '/(gen)/absolute21'
+      path: '/absolute21'
+      fullPath: '/absolute21'
+      preLoaderRoute: typeof genAbsolute21RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute20': {
+      id: '/(gen)/absolute20'
+      path: '/absolute20'
+      fullPath: '/absolute20'
+      preLoaderRoute: typeof genAbsolute20RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute2': {
+      id: '/(gen)/absolute2'
+      path: '/absolute2'
+      fullPath: '/absolute2'
+      preLoaderRoute: typeof genAbsolute2RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute19': {
+      id: '/(gen)/absolute19'
+      path: '/absolute19'
+      fullPath: '/absolute19'
+      preLoaderRoute: typeof genAbsolute19RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute18': {
+      id: '/(gen)/absolute18'
+      path: '/absolute18'
+      fullPath: '/absolute18'
+      preLoaderRoute: typeof genAbsolute18RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute17': {
+      id: '/(gen)/absolute17'
+      path: '/absolute17'
+      fullPath: '/absolute17'
+      preLoaderRoute: typeof genAbsolute17RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute16': {
+      id: '/(gen)/absolute16'
+      path: '/absolute16'
+      fullPath: '/absolute16'
+      preLoaderRoute: typeof genAbsolute16RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute15': {
+      id: '/(gen)/absolute15'
+      path: '/absolute15'
+      fullPath: '/absolute15'
+      preLoaderRoute: typeof genAbsolute15RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute14': {
+      id: '/(gen)/absolute14'
+      path: '/absolute14'
+      fullPath: '/absolute14'
+      preLoaderRoute: typeof genAbsolute14RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute13': {
+      id: '/(gen)/absolute13'
+      path: '/absolute13'
+      fullPath: '/absolute13'
+      preLoaderRoute: typeof genAbsolute13RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute12': {
+      id: '/(gen)/absolute12'
+      path: '/absolute12'
+      fullPath: '/absolute12'
+      preLoaderRoute: typeof genAbsolute12RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute11': {
+      id: '/(gen)/absolute11'
+      path: '/absolute11'
+      fullPath: '/absolute11'
+      preLoaderRoute: typeof genAbsolute11RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute10': {
+      id: '/(gen)/absolute10'
+      path: '/absolute10'
+      fullPath: '/absolute10'
+      preLoaderRoute: typeof genAbsolute10RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute1': {
+      id: '/(gen)/absolute1'
+      path: '/absolute1'
+      fullPath: '/absolute1'
+      preLoaderRoute: typeof genAbsolute1RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/absolute0': {
+      id: '/(gen)/absolute0'
+      path: '/absolute0'
+      fullPath: '/absolute0'
+      preLoaderRoute: typeof genAbsolute0RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/search': {
+      id: '/(gen)/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof genSearchRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/params': {
+      id: '/(gen)/params'
+      path: '/params'
+      fullPath: '/params'
+      preLoaderRoute: typeof genParamsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(gen)/search/search99': {
+      id: '/(gen)/search/search99'
+      path: '/search99'
+      fullPath: '/search/search99'
+      preLoaderRoute: typeof genSearchSearch99RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search98': {
+      id: '/(gen)/search/search98'
+      path: '/search98'
+      fullPath: '/search/search98'
+      preLoaderRoute: typeof genSearchSearch98RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search97': {
+      id: '/(gen)/search/search97'
+      path: '/search97'
+      fullPath: '/search/search97'
+      preLoaderRoute: typeof genSearchSearch97RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search96': {
+      id: '/(gen)/search/search96'
+      path: '/search96'
+      fullPath: '/search/search96'
+      preLoaderRoute: typeof genSearchSearch96RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search95': {
+      id: '/(gen)/search/search95'
+      path: '/search95'
+      fullPath: '/search/search95'
+      preLoaderRoute: typeof genSearchSearch95RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search94': {
+      id: '/(gen)/search/search94'
+      path: '/search94'
+      fullPath: '/search/search94'
+      preLoaderRoute: typeof genSearchSearch94RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search93': {
+      id: '/(gen)/search/search93'
+      path: '/search93'
+      fullPath: '/search/search93'
+      preLoaderRoute: typeof genSearchSearch93RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search92': {
+      id: '/(gen)/search/search92'
+      path: '/search92'
+      fullPath: '/search/search92'
+      preLoaderRoute: typeof genSearchSearch92RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search91': {
+      id: '/(gen)/search/search91'
+      path: '/search91'
+      fullPath: '/search/search91'
+      preLoaderRoute: typeof genSearchSearch91RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search90': {
+      id: '/(gen)/search/search90'
+      path: '/search90'
+      fullPath: '/search/search90'
+      preLoaderRoute: typeof genSearchSearch90RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search9': {
+      id: '/(gen)/search/search9'
+      path: '/search9'
+      fullPath: '/search/search9'
+      preLoaderRoute: typeof genSearchSearch9RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search89': {
+      id: '/(gen)/search/search89'
+      path: '/search89'
+      fullPath: '/search/search89'
+      preLoaderRoute: typeof genSearchSearch89RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search88': {
+      id: '/(gen)/search/search88'
+      path: '/search88'
+      fullPath: '/search/search88'
+      preLoaderRoute: typeof genSearchSearch88RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search87': {
+      id: '/(gen)/search/search87'
+      path: '/search87'
+      fullPath: '/search/search87'
+      preLoaderRoute: typeof genSearchSearch87RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search86': {
+      id: '/(gen)/search/search86'
+      path: '/search86'
+      fullPath: '/search/search86'
+      preLoaderRoute: typeof genSearchSearch86RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search85': {
+      id: '/(gen)/search/search85'
+      path: '/search85'
+      fullPath: '/search/search85'
+      preLoaderRoute: typeof genSearchSearch85RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search84': {
+      id: '/(gen)/search/search84'
+      path: '/search84'
+      fullPath: '/search/search84'
+      preLoaderRoute: typeof genSearchSearch84RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search83': {
+      id: '/(gen)/search/search83'
+      path: '/search83'
+      fullPath: '/search/search83'
+      preLoaderRoute: typeof genSearchSearch83RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search82': {
+      id: '/(gen)/search/search82'
+      path: '/search82'
+      fullPath: '/search/search82'
+      preLoaderRoute: typeof genSearchSearch82RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search81': {
+      id: '/(gen)/search/search81'
+      path: '/search81'
+      fullPath: '/search/search81'
+      preLoaderRoute: typeof genSearchSearch81RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search80': {
+      id: '/(gen)/search/search80'
+      path: '/search80'
+      fullPath: '/search/search80'
+      preLoaderRoute: typeof genSearchSearch80RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search8': {
+      id: '/(gen)/search/search8'
+      path: '/search8'
+      fullPath: '/search/search8'
+      preLoaderRoute: typeof genSearchSearch8RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search79': {
+      id: '/(gen)/search/search79'
+      path: '/search79'
+      fullPath: '/search/search79'
+      preLoaderRoute: typeof genSearchSearch79RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search78': {
+      id: '/(gen)/search/search78'
+      path: '/search78'
+      fullPath: '/search/search78'
+      preLoaderRoute: typeof genSearchSearch78RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search77': {
+      id: '/(gen)/search/search77'
+      path: '/search77'
+      fullPath: '/search/search77'
+      preLoaderRoute: typeof genSearchSearch77RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search76': {
+      id: '/(gen)/search/search76'
+      path: '/search76'
+      fullPath: '/search/search76'
+      preLoaderRoute: typeof genSearchSearch76RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search75': {
+      id: '/(gen)/search/search75'
+      path: '/search75'
+      fullPath: '/search/search75'
+      preLoaderRoute: typeof genSearchSearch75RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search74': {
+      id: '/(gen)/search/search74'
+      path: '/search74'
+      fullPath: '/search/search74'
+      preLoaderRoute: typeof genSearchSearch74RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search73': {
+      id: '/(gen)/search/search73'
+      path: '/search73'
+      fullPath: '/search/search73'
+      preLoaderRoute: typeof genSearchSearch73RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search72': {
+      id: '/(gen)/search/search72'
+      path: '/search72'
+      fullPath: '/search/search72'
+      preLoaderRoute: typeof genSearchSearch72RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search71': {
+      id: '/(gen)/search/search71'
+      path: '/search71'
+      fullPath: '/search/search71'
+      preLoaderRoute: typeof genSearchSearch71RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search70': {
+      id: '/(gen)/search/search70'
+      path: '/search70'
+      fullPath: '/search/search70'
+      preLoaderRoute: typeof genSearchSearch70RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search7': {
+      id: '/(gen)/search/search7'
+      path: '/search7'
+      fullPath: '/search/search7'
+      preLoaderRoute: typeof genSearchSearch7RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search69': {
+      id: '/(gen)/search/search69'
+      path: '/search69'
+      fullPath: '/search/search69'
+      preLoaderRoute: typeof genSearchSearch69RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search68': {
+      id: '/(gen)/search/search68'
+      path: '/search68'
+      fullPath: '/search/search68'
+      preLoaderRoute: typeof genSearchSearch68RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search67': {
+      id: '/(gen)/search/search67'
+      path: '/search67'
+      fullPath: '/search/search67'
+      preLoaderRoute: typeof genSearchSearch67RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search66': {
+      id: '/(gen)/search/search66'
+      path: '/search66'
+      fullPath: '/search/search66'
+      preLoaderRoute: typeof genSearchSearch66RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search65': {
+      id: '/(gen)/search/search65'
+      path: '/search65'
+      fullPath: '/search/search65'
+      preLoaderRoute: typeof genSearchSearch65RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search64': {
+      id: '/(gen)/search/search64'
+      path: '/search64'
+      fullPath: '/search/search64'
+      preLoaderRoute: typeof genSearchSearch64RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search63': {
+      id: '/(gen)/search/search63'
+      path: '/search63'
+      fullPath: '/search/search63'
+      preLoaderRoute: typeof genSearchSearch63RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search62': {
+      id: '/(gen)/search/search62'
+      path: '/search62'
+      fullPath: '/search/search62'
+      preLoaderRoute: typeof genSearchSearch62RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search61': {
+      id: '/(gen)/search/search61'
+      path: '/search61'
+      fullPath: '/search/search61'
+      preLoaderRoute: typeof genSearchSearch61RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search60': {
+      id: '/(gen)/search/search60'
+      path: '/search60'
+      fullPath: '/search/search60'
+      preLoaderRoute: typeof genSearchSearch60RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search6': {
+      id: '/(gen)/search/search6'
+      path: '/search6'
+      fullPath: '/search/search6'
+      preLoaderRoute: typeof genSearchSearch6RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search59': {
+      id: '/(gen)/search/search59'
+      path: '/search59'
+      fullPath: '/search/search59'
+      preLoaderRoute: typeof genSearchSearch59RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search58': {
+      id: '/(gen)/search/search58'
+      path: '/search58'
+      fullPath: '/search/search58'
+      preLoaderRoute: typeof genSearchSearch58RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search57': {
+      id: '/(gen)/search/search57'
+      path: '/search57'
+      fullPath: '/search/search57'
+      preLoaderRoute: typeof genSearchSearch57RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search56': {
+      id: '/(gen)/search/search56'
+      path: '/search56'
+      fullPath: '/search/search56'
+      preLoaderRoute: typeof genSearchSearch56RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search55': {
+      id: '/(gen)/search/search55'
+      path: '/search55'
+      fullPath: '/search/search55'
+      preLoaderRoute: typeof genSearchSearch55RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search54': {
+      id: '/(gen)/search/search54'
+      path: '/search54'
+      fullPath: '/search/search54'
+      preLoaderRoute: typeof genSearchSearch54RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search53': {
+      id: '/(gen)/search/search53'
+      path: '/search53'
+      fullPath: '/search/search53'
+      preLoaderRoute: typeof genSearchSearch53RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search52': {
+      id: '/(gen)/search/search52'
+      path: '/search52'
+      fullPath: '/search/search52'
+      preLoaderRoute: typeof genSearchSearch52RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search51': {
+      id: '/(gen)/search/search51'
+      path: '/search51'
+      fullPath: '/search/search51'
+      preLoaderRoute: typeof genSearchSearch51RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search50': {
+      id: '/(gen)/search/search50'
+      path: '/search50'
+      fullPath: '/search/search50'
+      preLoaderRoute: typeof genSearchSearch50RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search5': {
+      id: '/(gen)/search/search5'
+      path: '/search5'
+      fullPath: '/search/search5'
+      preLoaderRoute: typeof genSearchSearch5RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search49': {
+      id: '/(gen)/search/search49'
+      path: '/search49'
+      fullPath: '/search/search49'
+      preLoaderRoute: typeof genSearchSearch49RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search48': {
+      id: '/(gen)/search/search48'
+      path: '/search48'
+      fullPath: '/search/search48'
+      preLoaderRoute: typeof genSearchSearch48RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search47': {
+      id: '/(gen)/search/search47'
+      path: '/search47'
+      fullPath: '/search/search47'
+      preLoaderRoute: typeof genSearchSearch47RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search46': {
+      id: '/(gen)/search/search46'
+      path: '/search46'
+      fullPath: '/search/search46'
+      preLoaderRoute: typeof genSearchSearch46RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search45': {
+      id: '/(gen)/search/search45'
+      path: '/search45'
+      fullPath: '/search/search45'
+      preLoaderRoute: typeof genSearchSearch45RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search44': {
+      id: '/(gen)/search/search44'
+      path: '/search44'
+      fullPath: '/search/search44'
+      preLoaderRoute: typeof genSearchSearch44RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search43': {
+      id: '/(gen)/search/search43'
+      path: '/search43'
+      fullPath: '/search/search43'
+      preLoaderRoute: typeof genSearchSearch43RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search42': {
+      id: '/(gen)/search/search42'
+      path: '/search42'
+      fullPath: '/search/search42'
+      preLoaderRoute: typeof genSearchSearch42RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search41': {
+      id: '/(gen)/search/search41'
+      path: '/search41'
+      fullPath: '/search/search41'
+      preLoaderRoute: typeof genSearchSearch41RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search40': {
+      id: '/(gen)/search/search40'
+      path: '/search40'
+      fullPath: '/search/search40'
+      preLoaderRoute: typeof genSearchSearch40RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search4': {
+      id: '/(gen)/search/search4'
+      path: '/search4'
+      fullPath: '/search/search4'
+      preLoaderRoute: typeof genSearchSearch4RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search39': {
+      id: '/(gen)/search/search39'
+      path: '/search39'
+      fullPath: '/search/search39'
+      preLoaderRoute: typeof genSearchSearch39RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search38': {
+      id: '/(gen)/search/search38'
+      path: '/search38'
+      fullPath: '/search/search38'
+      preLoaderRoute: typeof genSearchSearch38RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search37': {
+      id: '/(gen)/search/search37'
+      path: '/search37'
+      fullPath: '/search/search37'
+      preLoaderRoute: typeof genSearchSearch37RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search36': {
+      id: '/(gen)/search/search36'
+      path: '/search36'
+      fullPath: '/search/search36'
+      preLoaderRoute: typeof genSearchSearch36RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search35': {
+      id: '/(gen)/search/search35'
+      path: '/search35'
+      fullPath: '/search/search35'
+      preLoaderRoute: typeof genSearchSearch35RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search34': {
+      id: '/(gen)/search/search34'
+      path: '/search34'
+      fullPath: '/search/search34'
+      preLoaderRoute: typeof genSearchSearch34RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search33': {
+      id: '/(gen)/search/search33'
+      path: '/search33'
+      fullPath: '/search/search33'
+      preLoaderRoute: typeof genSearchSearch33RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search32': {
+      id: '/(gen)/search/search32'
+      path: '/search32'
+      fullPath: '/search/search32'
+      preLoaderRoute: typeof genSearchSearch32RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search31': {
+      id: '/(gen)/search/search31'
+      path: '/search31'
+      fullPath: '/search/search31'
+      preLoaderRoute: typeof genSearchSearch31RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search30': {
+      id: '/(gen)/search/search30'
+      path: '/search30'
+      fullPath: '/search/search30'
+      preLoaderRoute: typeof genSearchSearch30RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search3': {
+      id: '/(gen)/search/search3'
+      path: '/search3'
+      fullPath: '/search/search3'
+      preLoaderRoute: typeof genSearchSearch3RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search29': {
+      id: '/(gen)/search/search29'
+      path: '/search29'
+      fullPath: '/search/search29'
+      preLoaderRoute: typeof genSearchSearch29RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search28': {
+      id: '/(gen)/search/search28'
+      path: '/search28'
+      fullPath: '/search/search28'
+      preLoaderRoute: typeof genSearchSearch28RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search27': {
+      id: '/(gen)/search/search27'
+      path: '/search27'
+      fullPath: '/search/search27'
+      preLoaderRoute: typeof genSearchSearch27RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search26': {
+      id: '/(gen)/search/search26'
+      path: '/search26'
+      fullPath: '/search/search26'
+      preLoaderRoute: typeof genSearchSearch26RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search25': {
+      id: '/(gen)/search/search25'
+      path: '/search25'
+      fullPath: '/search/search25'
+      preLoaderRoute: typeof genSearchSearch25RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search24': {
+      id: '/(gen)/search/search24'
+      path: '/search24'
+      fullPath: '/search/search24'
+      preLoaderRoute: typeof genSearchSearch24RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search23': {
+      id: '/(gen)/search/search23'
+      path: '/search23'
+      fullPath: '/search/search23'
+      preLoaderRoute: typeof genSearchSearch23RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search22': {
+      id: '/(gen)/search/search22'
+      path: '/search22'
+      fullPath: '/search/search22'
+      preLoaderRoute: typeof genSearchSearch22RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search21': {
+      id: '/(gen)/search/search21'
+      path: '/search21'
+      fullPath: '/search/search21'
+      preLoaderRoute: typeof genSearchSearch21RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search20': {
+      id: '/(gen)/search/search20'
+      path: '/search20'
+      fullPath: '/search/search20'
+      preLoaderRoute: typeof genSearchSearch20RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search2': {
+      id: '/(gen)/search/search2'
+      path: '/search2'
+      fullPath: '/search/search2'
+      preLoaderRoute: typeof genSearchSearch2RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search19': {
+      id: '/(gen)/search/search19'
+      path: '/search19'
+      fullPath: '/search/search19'
+      preLoaderRoute: typeof genSearchSearch19RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search18': {
+      id: '/(gen)/search/search18'
+      path: '/search18'
+      fullPath: '/search/search18'
+      preLoaderRoute: typeof genSearchSearch18RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search17': {
+      id: '/(gen)/search/search17'
+      path: '/search17'
+      fullPath: '/search/search17'
+      preLoaderRoute: typeof genSearchSearch17RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search16': {
+      id: '/(gen)/search/search16'
+      path: '/search16'
+      fullPath: '/search/search16'
+      preLoaderRoute: typeof genSearchSearch16RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search15': {
+      id: '/(gen)/search/search15'
+      path: '/search15'
+      fullPath: '/search/search15'
+      preLoaderRoute: typeof genSearchSearch15RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search14': {
+      id: '/(gen)/search/search14'
+      path: '/search14'
+      fullPath: '/search/search14'
+      preLoaderRoute: typeof genSearchSearch14RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search13': {
+      id: '/(gen)/search/search13'
+      path: '/search13'
+      fullPath: '/search/search13'
+      preLoaderRoute: typeof genSearchSearch13RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search12': {
+      id: '/(gen)/search/search12'
+      path: '/search12'
+      fullPath: '/search/search12'
+      preLoaderRoute: typeof genSearchSearch12RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search11': {
+      id: '/(gen)/search/search11'
+      path: '/search11'
+      fullPath: '/search/search11'
+      preLoaderRoute: typeof genSearchSearch11RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search10': {
+      id: '/(gen)/search/search10'
+      path: '/search10'
+      fullPath: '/search/search10'
+      preLoaderRoute: typeof genSearchSearch10RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search1': {
+      id: '/(gen)/search/search1'
+      path: '/search1'
+      fullPath: '/search/search1'
+      preLoaderRoute: typeof genSearchSearch1RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/search/search0': {
+      id: '/(gen)/search/search0'
+      path: '/search0'
+      fullPath: '/search/search0'
+      preLoaderRoute: typeof genSearchSearch0RouteImport
+      parentRoute: typeof genSearchRouteRoute
+    }
+    '/(gen)/params/$param99': {
+      id: '/(gen)/params/$param99'
+      path: '/$param99'
+      fullPath: '/params/$param99'
+      preLoaderRoute: typeof genParamsParam99RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param98': {
+      id: '/(gen)/params/$param98'
+      path: '/$param98'
+      fullPath: '/params/$param98'
+      preLoaderRoute: typeof genParamsParam98RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param97': {
+      id: '/(gen)/params/$param97'
+      path: '/$param97'
+      fullPath: '/params/$param97'
+      preLoaderRoute: typeof genParamsParam97RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param96': {
+      id: '/(gen)/params/$param96'
+      path: '/$param96'
+      fullPath: '/params/$param96'
+      preLoaderRoute: typeof genParamsParam96RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param95': {
+      id: '/(gen)/params/$param95'
+      path: '/$param95'
+      fullPath: '/params/$param95'
+      preLoaderRoute: typeof genParamsParam95RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param94': {
+      id: '/(gen)/params/$param94'
+      path: '/$param94'
+      fullPath: '/params/$param94'
+      preLoaderRoute: typeof genParamsParam94RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param93': {
+      id: '/(gen)/params/$param93'
+      path: '/$param93'
+      fullPath: '/params/$param93'
+      preLoaderRoute: typeof genParamsParam93RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param92': {
+      id: '/(gen)/params/$param92'
+      path: '/$param92'
+      fullPath: '/params/$param92'
+      preLoaderRoute: typeof genParamsParam92RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param91': {
+      id: '/(gen)/params/$param91'
+      path: '/$param91'
+      fullPath: '/params/$param91'
+      preLoaderRoute: typeof genParamsParam91RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param90': {
+      id: '/(gen)/params/$param90'
+      path: '/$param90'
+      fullPath: '/params/$param90'
+      preLoaderRoute: typeof genParamsParam90RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param9': {
+      id: '/(gen)/params/$param9'
+      path: '/$param9'
+      fullPath: '/params/$param9'
+      preLoaderRoute: typeof genParamsParam9RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param89': {
+      id: '/(gen)/params/$param89'
+      path: '/$param89'
+      fullPath: '/params/$param89'
+      preLoaderRoute: typeof genParamsParam89RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param88': {
+      id: '/(gen)/params/$param88'
+      path: '/$param88'
+      fullPath: '/params/$param88'
+      preLoaderRoute: typeof genParamsParam88RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param87': {
+      id: '/(gen)/params/$param87'
+      path: '/$param87'
+      fullPath: '/params/$param87'
+      preLoaderRoute: typeof genParamsParam87RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param86': {
+      id: '/(gen)/params/$param86'
+      path: '/$param86'
+      fullPath: '/params/$param86'
+      preLoaderRoute: typeof genParamsParam86RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param85': {
+      id: '/(gen)/params/$param85'
+      path: '/$param85'
+      fullPath: '/params/$param85'
+      preLoaderRoute: typeof genParamsParam85RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param84': {
+      id: '/(gen)/params/$param84'
+      path: '/$param84'
+      fullPath: '/params/$param84'
+      preLoaderRoute: typeof genParamsParam84RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param83': {
+      id: '/(gen)/params/$param83'
+      path: '/$param83'
+      fullPath: '/params/$param83'
+      preLoaderRoute: typeof genParamsParam83RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param82': {
+      id: '/(gen)/params/$param82'
+      path: '/$param82'
+      fullPath: '/params/$param82'
+      preLoaderRoute: typeof genParamsParam82RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param81': {
+      id: '/(gen)/params/$param81'
+      path: '/$param81'
+      fullPath: '/params/$param81'
+      preLoaderRoute: typeof genParamsParam81RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param80': {
+      id: '/(gen)/params/$param80'
+      path: '/$param80'
+      fullPath: '/params/$param80'
+      preLoaderRoute: typeof genParamsParam80RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param8': {
+      id: '/(gen)/params/$param8'
+      path: '/$param8'
+      fullPath: '/params/$param8'
+      preLoaderRoute: typeof genParamsParam8RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param79': {
+      id: '/(gen)/params/$param79'
+      path: '/$param79'
+      fullPath: '/params/$param79'
+      preLoaderRoute: typeof genParamsParam79RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param78': {
+      id: '/(gen)/params/$param78'
+      path: '/$param78'
+      fullPath: '/params/$param78'
+      preLoaderRoute: typeof genParamsParam78RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param77': {
+      id: '/(gen)/params/$param77'
+      path: '/$param77'
+      fullPath: '/params/$param77'
+      preLoaderRoute: typeof genParamsParam77RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param76': {
+      id: '/(gen)/params/$param76'
+      path: '/$param76'
+      fullPath: '/params/$param76'
+      preLoaderRoute: typeof genParamsParam76RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param75': {
+      id: '/(gen)/params/$param75'
+      path: '/$param75'
+      fullPath: '/params/$param75'
+      preLoaderRoute: typeof genParamsParam75RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param74': {
+      id: '/(gen)/params/$param74'
+      path: '/$param74'
+      fullPath: '/params/$param74'
+      preLoaderRoute: typeof genParamsParam74RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param73': {
+      id: '/(gen)/params/$param73'
+      path: '/$param73'
+      fullPath: '/params/$param73'
+      preLoaderRoute: typeof genParamsParam73RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param72': {
+      id: '/(gen)/params/$param72'
+      path: '/$param72'
+      fullPath: '/params/$param72'
+      preLoaderRoute: typeof genParamsParam72RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param71': {
+      id: '/(gen)/params/$param71'
+      path: '/$param71'
+      fullPath: '/params/$param71'
+      preLoaderRoute: typeof genParamsParam71RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param70': {
+      id: '/(gen)/params/$param70'
+      path: '/$param70'
+      fullPath: '/params/$param70'
+      preLoaderRoute: typeof genParamsParam70RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param7': {
+      id: '/(gen)/params/$param7'
+      path: '/$param7'
+      fullPath: '/params/$param7'
+      preLoaderRoute: typeof genParamsParam7RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param69': {
+      id: '/(gen)/params/$param69'
+      path: '/$param69'
+      fullPath: '/params/$param69'
+      preLoaderRoute: typeof genParamsParam69RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param68': {
+      id: '/(gen)/params/$param68'
+      path: '/$param68'
+      fullPath: '/params/$param68'
+      preLoaderRoute: typeof genParamsParam68RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param67': {
+      id: '/(gen)/params/$param67'
+      path: '/$param67'
+      fullPath: '/params/$param67'
+      preLoaderRoute: typeof genParamsParam67RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param66': {
+      id: '/(gen)/params/$param66'
+      path: '/$param66'
+      fullPath: '/params/$param66'
+      preLoaderRoute: typeof genParamsParam66RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param65': {
+      id: '/(gen)/params/$param65'
+      path: '/$param65'
+      fullPath: '/params/$param65'
+      preLoaderRoute: typeof genParamsParam65RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param64': {
+      id: '/(gen)/params/$param64'
+      path: '/$param64'
+      fullPath: '/params/$param64'
+      preLoaderRoute: typeof genParamsParam64RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param63': {
+      id: '/(gen)/params/$param63'
+      path: '/$param63'
+      fullPath: '/params/$param63'
+      preLoaderRoute: typeof genParamsParam63RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param62': {
+      id: '/(gen)/params/$param62'
+      path: '/$param62'
+      fullPath: '/params/$param62'
+      preLoaderRoute: typeof genParamsParam62RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param61': {
+      id: '/(gen)/params/$param61'
+      path: '/$param61'
+      fullPath: '/params/$param61'
+      preLoaderRoute: typeof genParamsParam61RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param60': {
+      id: '/(gen)/params/$param60'
+      path: '/$param60'
+      fullPath: '/params/$param60'
+      preLoaderRoute: typeof genParamsParam60RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param6': {
+      id: '/(gen)/params/$param6'
+      path: '/$param6'
+      fullPath: '/params/$param6'
+      preLoaderRoute: typeof genParamsParam6RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param59': {
+      id: '/(gen)/params/$param59'
+      path: '/$param59'
+      fullPath: '/params/$param59'
+      preLoaderRoute: typeof genParamsParam59RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param58': {
+      id: '/(gen)/params/$param58'
+      path: '/$param58'
+      fullPath: '/params/$param58'
+      preLoaderRoute: typeof genParamsParam58RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param57': {
+      id: '/(gen)/params/$param57'
+      path: '/$param57'
+      fullPath: '/params/$param57'
+      preLoaderRoute: typeof genParamsParam57RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param56': {
+      id: '/(gen)/params/$param56'
+      path: '/$param56'
+      fullPath: '/params/$param56'
+      preLoaderRoute: typeof genParamsParam56RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param55': {
+      id: '/(gen)/params/$param55'
+      path: '/$param55'
+      fullPath: '/params/$param55'
+      preLoaderRoute: typeof genParamsParam55RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param54': {
+      id: '/(gen)/params/$param54'
+      path: '/$param54'
+      fullPath: '/params/$param54'
+      preLoaderRoute: typeof genParamsParam54RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param53': {
+      id: '/(gen)/params/$param53'
+      path: '/$param53'
+      fullPath: '/params/$param53'
+      preLoaderRoute: typeof genParamsParam53RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param52': {
+      id: '/(gen)/params/$param52'
+      path: '/$param52'
+      fullPath: '/params/$param52'
+      preLoaderRoute: typeof genParamsParam52RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param51': {
+      id: '/(gen)/params/$param51'
+      path: '/$param51'
+      fullPath: '/params/$param51'
+      preLoaderRoute: typeof genParamsParam51RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param50': {
+      id: '/(gen)/params/$param50'
+      path: '/$param50'
+      fullPath: '/params/$param50'
+      preLoaderRoute: typeof genParamsParam50RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param5': {
+      id: '/(gen)/params/$param5'
+      path: '/$param5'
+      fullPath: '/params/$param5'
+      preLoaderRoute: typeof genParamsParam5RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param49': {
+      id: '/(gen)/params/$param49'
+      path: '/$param49'
+      fullPath: '/params/$param49'
+      preLoaderRoute: typeof genParamsParam49RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param48': {
+      id: '/(gen)/params/$param48'
+      path: '/$param48'
+      fullPath: '/params/$param48'
+      preLoaderRoute: typeof genParamsParam48RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param47': {
+      id: '/(gen)/params/$param47'
+      path: '/$param47'
+      fullPath: '/params/$param47'
+      preLoaderRoute: typeof genParamsParam47RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param46': {
+      id: '/(gen)/params/$param46'
+      path: '/$param46'
+      fullPath: '/params/$param46'
+      preLoaderRoute: typeof genParamsParam46RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param45': {
+      id: '/(gen)/params/$param45'
+      path: '/$param45'
+      fullPath: '/params/$param45'
+      preLoaderRoute: typeof genParamsParam45RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param44': {
+      id: '/(gen)/params/$param44'
+      path: '/$param44'
+      fullPath: '/params/$param44'
+      preLoaderRoute: typeof genParamsParam44RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param43': {
+      id: '/(gen)/params/$param43'
+      path: '/$param43'
+      fullPath: '/params/$param43'
+      preLoaderRoute: typeof genParamsParam43RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param42': {
+      id: '/(gen)/params/$param42'
+      path: '/$param42'
+      fullPath: '/params/$param42'
+      preLoaderRoute: typeof genParamsParam42RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param41': {
+      id: '/(gen)/params/$param41'
+      path: '/$param41'
+      fullPath: '/params/$param41'
+      preLoaderRoute: typeof genParamsParam41RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param40': {
+      id: '/(gen)/params/$param40'
+      path: '/$param40'
+      fullPath: '/params/$param40'
+      preLoaderRoute: typeof genParamsParam40RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param4': {
+      id: '/(gen)/params/$param4'
+      path: '/$param4'
+      fullPath: '/params/$param4'
+      preLoaderRoute: typeof genParamsParam4RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param39': {
+      id: '/(gen)/params/$param39'
+      path: '/$param39'
+      fullPath: '/params/$param39'
+      preLoaderRoute: typeof genParamsParam39RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param38': {
+      id: '/(gen)/params/$param38'
+      path: '/$param38'
+      fullPath: '/params/$param38'
+      preLoaderRoute: typeof genParamsParam38RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param37': {
+      id: '/(gen)/params/$param37'
+      path: '/$param37'
+      fullPath: '/params/$param37'
+      preLoaderRoute: typeof genParamsParam37RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param36': {
+      id: '/(gen)/params/$param36'
+      path: '/$param36'
+      fullPath: '/params/$param36'
+      preLoaderRoute: typeof genParamsParam36RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param35': {
+      id: '/(gen)/params/$param35'
+      path: '/$param35'
+      fullPath: '/params/$param35'
+      preLoaderRoute: typeof genParamsParam35RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param34': {
+      id: '/(gen)/params/$param34'
+      path: '/$param34'
+      fullPath: '/params/$param34'
+      preLoaderRoute: typeof genParamsParam34RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param33': {
+      id: '/(gen)/params/$param33'
+      path: '/$param33'
+      fullPath: '/params/$param33'
+      preLoaderRoute: typeof genParamsParam33RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param32': {
+      id: '/(gen)/params/$param32'
+      path: '/$param32'
+      fullPath: '/params/$param32'
+      preLoaderRoute: typeof genParamsParam32RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param31': {
+      id: '/(gen)/params/$param31'
+      path: '/$param31'
+      fullPath: '/params/$param31'
+      preLoaderRoute: typeof genParamsParam31RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param30': {
+      id: '/(gen)/params/$param30'
+      path: '/$param30'
+      fullPath: '/params/$param30'
+      preLoaderRoute: typeof genParamsParam30RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param3': {
+      id: '/(gen)/params/$param3'
+      path: '/$param3'
+      fullPath: '/params/$param3'
+      preLoaderRoute: typeof genParamsParam3RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param29': {
+      id: '/(gen)/params/$param29'
+      path: '/$param29'
+      fullPath: '/params/$param29'
+      preLoaderRoute: typeof genParamsParam29RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param28': {
+      id: '/(gen)/params/$param28'
+      path: '/$param28'
+      fullPath: '/params/$param28'
+      preLoaderRoute: typeof genParamsParam28RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param27': {
+      id: '/(gen)/params/$param27'
+      path: '/$param27'
+      fullPath: '/params/$param27'
+      preLoaderRoute: typeof genParamsParam27RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param26': {
+      id: '/(gen)/params/$param26'
+      path: '/$param26'
+      fullPath: '/params/$param26'
+      preLoaderRoute: typeof genParamsParam26RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param25': {
+      id: '/(gen)/params/$param25'
+      path: '/$param25'
+      fullPath: '/params/$param25'
+      preLoaderRoute: typeof genParamsParam25RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param24': {
+      id: '/(gen)/params/$param24'
+      path: '/$param24'
+      fullPath: '/params/$param24'
+      preLoaderRoute: typeof genParamsParam24RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param23': {
+      id: '/(gen)/params/$param23'
+      path: '/$param23'
+      fullPath: '/params/$param23'
+      preLoaderRoute: typeof genParamsParam23RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param22': {
+      id: '/(gen)/params/$param22'
+      path: '/$param22'
+      fullPath: '/params/$param22'
+      preLoaderRoute: typeof genParamsParam22RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param21': {
+      id: '/(gen)/params/$param21'
+      path: '/$param21'
+      fullPath: '/params/$param21'
+      preLoaderRoute: typeof genParamsParam21RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param20': {
+      id: '/(gen)/params/$param20'
+      path: '/$param20'
+      fullPath: '/params/$param20'
+      preLoaderRoute: typeof genParamsParam20RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param2': {
+      id: '/(gen)/params/$param2'
+      path: '/$param2'
+      fullPath: '/params/$param2'
+      preLoaderRoute: typeof genParamsParam2RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param19': {
+      id: '/(gen)/params/$param19'
+      path: '/$param19'
+      fullPath: '/params/$param19'
+      preLoaderRoute: typeof genParamsParam19RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param18': {
+      id: '/(gen)/params/$param18'
+      path: '/$param18'
+      fullPath: '/params/$param18'
+      preLoaderRoute: typeof genParamsParam18RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param17': {
+      id: '/(gen)/params/$param17'
+      path: '/$param17'
+      fullPath: '/params/$param17'
+      preLoaderRoute: typeof genParamsParam17RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param16': {
+      id: '/(gen)/params/$param16'
+      path: '/$param16'
+      fullPath: '/params/$param16'
+      preLoaderRoute: typeof genParamsParam16RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param15': {
+      id: '/(gen)/params/$param15'
+      path: '/$param15'
+      fullPath: '/params/$param15'
+      preLoaderRoute: typeof genParamsParam15RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param14': {
+      id: '/(gen)/params/$param14'
+      path: '/$param14'
+      fullPath: '/params/$param14'
+      preLoaderRoute: typeof genParamsParam14RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param13': {
+      id: '/(gen)/params/$param13'
+      path: '/$param13'
+      fullPath: '/params/$param13'
+      preLoaderRoute: typeof genParamsParam13RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param12': {
+      id: '/(gen)/params/$param12'
+      path: '/$param12'
+      fullPath: '/params/$param12'
+      preLoaderRoute: typeof genParamsParam12RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param11': {
+      id: '/(gen)/params/$param11'
+      path: '/$param11'
+      fullPath: '/params/$param11'
+      preLoaderRoute: typeof genParamsParam11RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param10': {
+      id: '/(gen)/params/$param10'
+      path: '/$param10'
+      fullPath: '/params/$param10'
+      preLoaderRoute: typeof genParamsParam10RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param1': {
+      id: '/(gen)/params/$param1'
+      path: '/$param1'
+      fullPath: '/params/$param1'
+      preLoaderRoute: typeof genParamsParam1RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
+    '/(gen)/params/$param0': {
+      id: '/(gen)/params/$param0'
+      path: '/$param0'
+      fullPath: '/params/$param0'
+      preLoaderRoute: typeof genParamsParam0RouteImport
+      parentRoute: typeof genParamsRouteRoute
+    }
   }
 }
 
@@ -217,6 +8049,426 @@ const SearchRouteRouteWithChildren = SearchRouteRoute._addFileChildren(
   SearchRouteRouteChildren,
 )
 
+interface genParamsRouteRouteChildren {
+  genParamsParam0Route: typeof genParamsParam0Route
+  genParamsParam1Route: typeof genParamsParam1Route
+  genParamsParam10Route: typeof genParamsParam10Route
+  genParamsParam11Route: typeof genParamsParam11Route
+  genParamsParam12Route: typeof genParamsParam12Route
+  genParamsParam13Route: typeof genParamsParam13Route
+  genParamsParam14Route: typeof genParamsParam14Route
+  genParamsParam15Route: typeof genParamsParam15Route
+  genParamsParam16Route: typeof genParamsParam16Route
+  genParamsParam17Route: typeof genParamsParam17Route
+  genParamsParam18Route: typeof genParamsParam18Route
+  genParamsParam19Route: typeof genParamsParam19Route
+  genParamsParam2Route: typeof genParamsParam2Route
+  genParamsParam20Route: typeof genParamsParam20Route
+  genParamsParam21Route: typeof genParamsParam21Route
+  genParamsParam22Route: typeof genParamsParam22Route
+  genParamsParam23Route: typeof genParamsParam23Route
+  genParamsParam24Route: typeof genParamsParam24Route
+  genParamsParam25Route: typeof genParamsParam25Route
+  genParamsParam26Route: typeof genParamsParam26Route
+  genParamsParam27Route: typeof genParamsParam27Route
+  genParamsParam28Route: typeof genParamsParam28Route
+  genParamsParam29Route: typeof genParamsParam29Route
+  genParamsParam3Route: typeof genParamsParam3Route
+  genParamsParam30Route: typeof genParamsParam30Route
+  genParamsParam31Route: typeof genParamsParam31Route
+  genParamsParam32Route: typeof genParamsParam32Route
+  genParamsParam33Route: typeof genParamsParam33Route
+  genParamsParam34Route: typeof genParamsParam34Route
+  genParamsParam35Route: typeof genParamsParam35Route
+  genParamsParam36Route: typeof genParamsParam36Route
+  genParamsParam37Route: typeof genParamsParam37Route
+  genParamsParam38Route: typeof genParamsParam38Route
+  genParamsParam39Route: typeof genParamsParam39Route
+  genParamsParam4Route: typeof genParamsParam4Route
+  genParamsParam40Route: typeof genParamsParam40Route
+  genParamsParam41Route: typeof genParamsParam41Route
+  genParamsParam42Route: typeof genParamsParam42Route
+  genParamsParam43Route: typeof genParamsParam43Route
+  genParamsParam44Route: typeof genParamsParam44Route
+  genParamsParam45Route: typeof genParamsParam45Route
+  genParamsParam46Route: typeof genParamsParam46Route
+  genParamsParam47Route: typeof genParamsParam47Route
+  genParamsParam48Route: typeof genParamsParam48Route
+  genParamsParam49Route: typeof genParamsParam49Route
+  genParamsParam5Route: typeof genParamsParam5Route
+  genParamsParam50Route: typeof genParamsParam50Route
+  genParamsParam51Route: typeof genParamsParam51Route
+  genParamsParam52Route: typeof genParamsParam52Route
+  genParamsParam53Route: typeof genParamsParam53Route
+  genParamsParam54Route: typeof genParamsParam54Route
+  genParamsParam55Route: typeof genParamsParam55Route
+  genParamsParam56Route: typeof genParamsParam56Route
+  genParamsParam57Route: typeof genParamsParam57Route
+  genParamsParam58Route: typeof genParamsParam58Route
+  genParamsParam59Route: typeof genParamsParam59Route
+  genParamsParam6Route: typeof genParamsParam6Route
+  genParamsParam60Route: typeof genParamsParam60Route
+  genParamsParam61Route: typeof genParamsParam61Route
+  genParamsParam62Route: typeof genParamsParam62Route
+  genParamsParam63Route: typeof genParamsParam63Route
+  genParamsParam64Route: typeof genParamsParam64Route
+  genParamsParam65Route: typeof genParamsParam65Route
+  genParamsParam66Route: typeof genParamsParam66Route
+  genParamsParam67Route: typeof genParamsParam67Route
+  genParamsParam68Route: typeof genParamsParam68Route
+  genParamsParam69Route: typeof genParamsParam69Route
+  genParamsParam7Route: typeof genParamsParam7Route
+  genParamsParam70Route: typeof genParamsParam70Route
+  genParamsParam71Route: typeof genParamsParam71Route
+  genParamsParam72Route: typeof genParamsParam72Route
+  genParamsParam73Route: typeof genParamsParam73Route
+  genParamsParam74Route: typeof genParamsParam74Route
+  genParamsParam75Route: typeof genParamsParam75Route
+  genParamsParam76Route: typeof genParamsParam76Route
+  genParamsParam77Route: typeof genParamsParam77Route
+  genParamsParam78Route: typeof genParamsParam78Route
+  genParamsParam79Route: typeof genParamsParam79Route
+  genParamsParam8Route: typeof genParamsParam8Route
+  genParamsParam80Route: typeof genParamsParam80Route
+  genParamsParam81Route: typeof genParamsParam81Route
+  genParamsParam82Route: typeof genParamsParam82Route
+  genParamsParam83Route: typeof genParamsParam83Route
+  genParamsParam84Route: typeof genParamsParam84Route
+  genParamsParam85Route: typeof genParamsParam85Route
+  genParamsParam86Route: typeof genParamsParam86Route
+  genParamsParam87Route: typeof genParamsParam87Route
+  genParamsParam88Route: typeof genParamsParam88Route
+  genParamsParam89Route: typeof genParamsParam89Route
+  genParamsParam9Route: typeof genParamsParam9Route
+  genParamsParam90Route: typeof genParamsParam90Route
+  genParamsParam91Route: typeof genParamsParam91Route
+  genParamsParam92Route: typeof genParamsParam92Route
+  genParamsParam93Route: typeof genParamsParam93Route
+  genParamsParam94Route: typeof genParamsParam94Route
+  genParamsParam95Route: typeof genParamsParam95Route
+  genParamsParam96Route: typeof genParamsParam96Route
+  genParamsParam97Route: typeof genParamsParam97Route
+  genParamsParam98Route: typeof genParamsParam98Route
+  genParamsParam99Route: typeof genParamsParam99Route
+}
+
+const genParamsRouteRouteChildren: genParamsRouteRouteChildren = {
+  genParamsParam0Route: genParamsParam0Route,
+  genParamsParam1Route: genParamsParam1Route,
+  genParamsParam10Route: genParamsParam10Route,
+  genParamsParam11Route: genParamsParam11Route,
+  genParamsParam12Route: genParamsParam12Route,
+  genParamsParam13Route: genParamsParam13Route,
+  genParamsParam14Route: genParamsParam14Route,
+  genParamsParam15Route: genParamsParam15Route,
+  genParamsParam16Route: genParamsParam16Route,
+  genParamsParam17Route: genParamsParam17Route,
+  genParamsParam18Route: genParamsParam18Route,
+  genParamsParam19Route: genParamsParam19Route,
+  genParamsParam2Route: genParamsParam2Route,
+  genParamsParam20Route: genParamsParam20Route,
+  genParamsParam21Route: genParamsParam21Route,
+  genParamsParam22Route: genParamsParam22Route,
+  genParamsParam23Route: genParamsParam23Route,
+  genParamsParam24Route: genParamsParam24Route,
+  genParamsParam25Route: genParamsParam25Route,
+  genParamsParam26Route: genParamsParam26Route,
+  genParamsParam27Route: genParamsParam27Route,
+  genParamsParam28Route: genParamsParam28Route,
+  genParamsParam29Route: genParamsParam29Route,
+  genParamsParam3Route: genParamsParam3Route,
+  genParamsParam30Route: genParamsParam30Route,
+  genParamsParam31Route: genParamsParam31Route,
+  genParamsParam32Route: genParamsParam32Route,
+  genParamsParam33Route: genParamsParam33Route,
+  genParamsParam34Route: genParamsParam34Route,
+  genParamsParam35Route: genParamsParam35Route,
+  genParamsParam36Route: genParamsParam36Route,
+  genParamsParam37Route: genParamsParam37Route,
+  genParamsParam38Route: genParamsParam38Route,
+  genParamsParam39Route: genParamsParam39Route,
+  genParamsParam4Route: genParamsParam4Route,
+  genParamsParam40Route: genParamsParam40Route,
+  genParamsParam41Route: genParamsParam41Route,
+  genParamsParam42Route: genParamsParam42Route,
+  genParamsParam43Route: genParamsParam43Route,
+  genParamsParam44Route: genParamsParam44Route,
+  genParamsParam45Route: genParamsParam45Route,
+  genParamsParam46Route: genParamsParam46Route,
+  genParamsParam47Route: genParamsParam47Route,
+  genParamsParam48Route: genParamsParam48Route,
+  genParamsParam49Route: genParamsParam49Route,
+  genParamsParam5Route: genParamsParam5Route,
+  genParamsParam50Route: genParamsParam50Route,
+  genParamsParam51Route: genParamsParam51Route,
+  genParamsParam52Route: genParamsParam52Route,
+  genParamsParam53Route: genParamsParam53Route,
+  genParamsParam54Route: genParamsParam54Route,
+  genParamsParam55Route: genParamsParam55Route,
+  genParamsParam56Route: genParamsParam56Route,
+  genParamsParam57Route: genParamsParam57Route,
+  genParamsParam58Route: genParamsParam58Route,
+  genParamsParam59Route: genParamsParam59Route,
+  genParamsParam6Route: genParamsParam6Route,
+  genParamsParam60Route: genParamsParam60Route,
+  genParamsParam61Route: genParamsParam61Route,
+  genParamsParam62Route: genParamsParam62Route,
+  genParamsParam63Route: genParamsParam63Route,
+  genParamsParam64Route: genParamsParam64Route,
+  genParamsParam65Route: genParamsParam65Route,
+  genParamsParam66Route: genParamsParam66Route,
+  genParamsParam67Route: genParamsParam67Route,
+  genParamsParam68Route: genParamsParam68Route,
+  genParamsParam69Route: genParamsParam69Route,
+  genParamsParam7Route: genParamsParam7Route,
+  genParamsParam70Route: genParamsParam70Route,
+  genParamsParam71Route: genParamsParam71Route,
+  genParamsParam72Route: genParamsParam72Route,
+  genParamsParam73Route: genParamsParam73Route,
+  genParamsParam74Route: genParamsParam74Route,
+  genParamsParam75Route: genParamsParam75Route,
+  genParamsParam76Route: genParamsParam76Route,
+  genParamsParam77Route: genParamsParam77Route,
+  genParamsParam78Route: genParamsParam78Route,
+  genParamsParam79Route: genParamsParam79Route,
+  genParamsParam8Route: genParamsParam8Route,
+  genParamsParam80Route: genParamsParam80Route,
+  genParamsParam81Route: genParamsParam81Route,
+  genParamsParam82Route: genParamsParam82Route,
+  genParamsParam83Route: genParamsParam83Route,
+  genParamsParam84Route: genParamsParam84Route,
+  genParamsParam85Route: genParamsParam85Route,
+  genParamsParam86Route: genParamsParam86Route,
+  genParamsParam87Route: genParamsParam87Route,
+  genParamsParam88Route: genParamsParam88Route,
+  genParamsParam89Route: genParamsParam89Route,
+  genParamsParam9Route: genParamsParam9Route,
+  genParamsParam90Route: genParamsParam90Route,
+  genParamsParam91Route: genParamsParam91Route,
+  genParamsParam92Route: genParamsParam92Route,
+  genParamsParam93Route: genParamsParam93Route,
+  genParamsParam94Route: genParamsParam94Route,
+  genParamsParam95Route: genParamsParam95Route,
+  genParamsParam96Route: genParamsParam96Route,
+  genParamsParam97Route: genParamsParam97Route,
+  genParamsParam98Route: genParamsParam98Route,
+  genParamsParam99Route: genParamsParam99Route,
+}
+
+const genParamsRouteRouteWithChildren = genParamsRouteRoute._addFileChildren(
+  genParamsRouteRouteChildren,
+)
+
+interface genSearchRouteRouteChildren {
+  genSearchSearch0Route: typeof genSearchSearch0Route
+  genSearchSearch1Route: typeof genSearchSearch1Route
+  genSearchSearch10Route: typeof genSearchSearch10Route
+  genSearchSearch11Route: typeof genSearchSearch11Route
+  genSearchSearch12Route: typeof genSearchSearch12Route
+  genSearchSearch13Route: typeof genSearchSearch13Route
+  genSearchSearch14Route: typeof genSearchSearch14Route
+  genSearchSearch15Route: typeof genSearchSearch15Route
+  genSearchSearch16Route: typeof genSearchSearch16Route
+  genSearchSearch17Route: typeof genSearchSearch17Route
+  genSearchSearch18Route: typeof genSearchSearch18Route
+  genSearchSearch19Route: typeof genSearchSearch19Route
+  genSearchSearch2Route: typeof genSearchSearch2Route
+  genSearchSearch20Route: typeof genSearchSearch20Route
+  genSearchSearch21Route: typeof genSearchSearch21Route
+  genSearchSearch22Route: typeof genSearchSearch22Route
+  genSearchSearch23Route: typeof genSearchSearch23Route
+  genSearchSearch24Route: typeof genSearchSearch24Route
+  genSearchSearch25Route: typeof genSearchSearch25Route
+  genSearchSearch26Route: typeof genSearchSearch26Route
+  genSearchSearch27Route: typeof genSearchSearch27Route
+  genSearchSearch28Route: typeof genSearchSearch28Route
+  genSearchSearch29Route: typeof genSearchSearch29Route
+  genSearchSearch3Route: typeof genSearchSearch3Route
+  genSearchSearch30Route: typeof genSearchSearch30Route
+  genSearchSearch31Route: typeof genSearchSearch31Route
+  genSearchSearch32Route: typeof genSearchSearch32Route
+  genSearchSearch33Route: typeof genSearchSearch33Route
+  genSearchSearch34Route: typeof genSearchSearch34Route
+  genSearchSearch35Route: typeof genSearchSearch35Route
+  genSearchSearch36Route: typeof genSearchSearch36Route
+  genSearchSearch37Route: typeof genSearchSearch37Route
+  genSearchSearch38Route: typeof genSearchSearch38Route
+  genSearchSearch39Route: typeof genSearchSearch39Route
+  genSearchSearch4Route: typeof genSearchSearch4Route
+  genSearchSearch40Route: typeof genSearchSearch40Route
+  genSearchSearch41Route: typeof genSearchSearch41Route
+  genSearchSearch42Route: typeof genSearchSearch42Route
+  genSearchSearch43Route: typeof genSearchSearch43Route
+  genSearchSearch44Route: typeof genSearchSearch44Route
+  genSearchSearch45Route: typeof genSearchSearch45Route
+  genSearchSearch46Route: typeof genSearchSearch46Route
+  genSearchSearch47Route: typeof genSearchSearch47Route
+  genSearchSearch48Route: typeof genSearchSearch48Route
+  genSearchSearch49Route: typeof genSearchSearch49Route
+  genSearchSearch5Route: typeof genSearchSearch5Route
+  genSearchSearch50Route: typeof genSearchSearch50Route
+  genSearchSearch51Route: typeof genSearchSearch51Route
+  genSearchSearch52Route: typeof genSearchSearch52Route
+  genSearchSearch53Route: typeof genSearchSearch53Route
+  genSearchSearch54Route: typeof genSearchSearch54Route
+  genSearchSearch55Route: typeof genSearchSearch55Route
+  genSearchSearch56Route: typeof genSearchSearch56Route
+  genSearchSearch57Route: typeof genSearchSearch57Route
+  genSearchSearch58Route: typeof genSearchSearch58Route
+  genSearchSearch59Route: typeof genSearchSearch59Route
+  genSearchSearch6Route: typeof genSearchSearch6Route
+  genSearchSearch60Route: typeof genSearchSearch60Route
+  genSearchSearch61Route: typeof genSearchSearch61Route
+  genSearchSearch62Route: typeof genSearchSearch62Route
+  genSearchSearch63Route: typeof genSearchSearch63Route
+  genSearchSearch64Route: typeof genSearchSearch64Route
+  genSearchSearch65Route: typeof genSearchSearch65Route
+  genSearchSearch66Route: typeof genSearchSearch66Route
+  genSearchSearch67Route: typeof genSearchSearch67Route
+  genSearchSearch68Route: typeof genSearchSearch68Route
+  genSearchSearch69Route: typeof genSearchSearch69Route
+  genSearchSearch7Route: typeof genSearchSearch7Route
+  genSearchSearch70Route: typeof genSearchSearch70Route
+  genSearchSearch71Route: typeof genSearchSearch71Route
+  genSearchSearch72Route: typeof genSearchSearch72Route
+  genSearchSearch73Route: typeof genSearchSearch73Route
+  genSearchSearch74Route: typeof genSearchSearch74Route
+  genSearchSearch75Route: typeof genSearchSearch75Route
+  genSearchSearch76Route: typeof genSearchSearch76Route
+  genSearchSearch77Route: typeof genSearchSearch77Route
+  genSearchSearch78Route: typeof genSearchSearch78Route
+  genSearchSearch79Route: typeof genSearchSearch79Route
+  genSearchSearch8Route: typeof genSearchSearch8Route
+  genSearchSearch80Route: typeof genSearchSearch80Route
+  genSearchSearch81Route: typeof genSearchSearch81Route
+  genSearchSearch82Route: typeof genSearchSearch82Route
+  genSearchSearch83Route: typeof genSearchSearch83Route
+  genSearchSearch84Route: typeof genSearchSearch84Route
+  genSearchSearch85Route: typeof genSearchSearch85Route
+  genSearchSearch86Route: typeof genSearchSearch86Route
+  genSearchSearch87Route: typeof genSearchSearch87Route
+  genSearchSearch88Route: typeof genSearchSearch88Route
+  genSearchSearch89Route: typeof genSearchSearch89Route
+  genSearchSearch9Route: typeof genSearchSearch9Route
+  genSearchSearch90Route: typeof genSearchSearch90Route
+  genSearchSearch91Route: typeof genSearchSearch91Route
+  genSearchSearch92Route: typeof genSearchSearch92Route
+  genSearchSearch93Route: typeof genSearchSearch93Route
+  genSearchSearch94Route: typeof genSearchSearch94Route
+  genSearchSearch95Route: typeof genSearchSearch95Route
+  genSearchSearch96Route: typeof genSearchSearch96Route
+  genSearchSearch97Route: typeof genSearchSearch97Route
+  genSearchSearch98Route: typeof genSearchSearch98Route
+  genSearchSearch99Route: typeof genSearchSearch99Route
+}
+
+const genSearchRouteRouteChildren: genSearchRouteRouteChildren = {
+  genSearchSearch0Route: genSearchSearch0Route,
+  genSearchSearch1Route: genSearchSearch1Route,
+  genSearchSearch10Route: genSearchSearch10Route,
+  genSearchSearch11Route: genSearchSearch11Route,
+  genSearchSearch12Route: genSearchSearch12Route,
+  genSearchSearch13Route: genSearchSearch13Route,
+  genSearchSearch14Route: genSearchSearch14Route,
+  genSearchSearch15Route: genSearchSearch15Route,
+  genSearchSearch16Route: genSearchSearch16Route,
+  genSearchSearch17Route: genSearchSearch17Route,
+  genSearchSearch18Route: genSearchSearch18Route,
+  genSearchSearch19Route: genSearchSearch19Route,
+  genSearchSearch2Route: genSearchSearch2Route,
+  genSearchSearch20Route: genSearchSearch20Route,
+  genSearchSearch21Route: genSearchSearch21Route,
+  genSearchSearch22Route: genSearchSearch22Route,
+  genSearchSearch23Route: genSearchSearch23Route,
+  genSearchSearch24Route: genSearchSearch24Route,
+  genSearchSearch25Route: genSearchSearch25Route,
+  genSearchSearch26Route: genSearchSearch26Route,
+  genSearchSearch27Route: genSearchSearch27Route,
+  genSearchSearch28Route: genSearchSearch28Route,
+  genSearchSearch29Route: genSearchSearch29Route,
+  genSearchSearch3Route: genSearchSearch3Route,
+  genSearchSearch30Route: genSearchSearch30Route,
+  genSearchSearch31Route: genSearchSearch31Route,
+  genSearchSearch32Route: genSearchSearch32Route,
+  genSearchSearch33Route: genSearchSearch33Route,
+  genSearchSearch34Route: genSearchSearch34Route,
+  genSearchSearch35Route: genSearchSearch35Route,
+  genSearchSearch36Route: genSearchSearch36Route,
+  genSearchSearch37Route: genSearchSearch37Route,
+  genSearchSearch38Route: genSearchSearch38Route,
+  genSearchSearch39Route: genSearchSearch39Route,
+  genSearchSearch4Route: genSearchSearch4Route,
+  genSearchSearch40Route: genSearchSearch40Route,
+  genSearchSearch41Route: genSearchSearch41Route,
+  genSearchSearch42Route: genSearchSearch42Route,
+  genSearchSearch43Route: genSearchSearch43Route,
+  genSearchSearch44Route: genSearchSearch44Route,
+  genSearchSearch45Route: genSearchSearch45Route,
+  genSearchSearch46Route: genSearchSearch46Route,
+  genSearchSearch47Route: genSearchSearch47Route,
+  genSearchSearch48Route: genSearchSearch48Route,
+  genSearchSearch49Route: genSearchSearch49Route,
+  genSearchSearch5Route: genSearchSearch5Route,
+  genSearchSearch50Route: genSearchSearch50Route,
+  genSearchSearch51Route: genSearchSearch51Route,
+  genSearchSearch52Route: genSearchSearch52Route,
+  genSearchSearch53Route: genSearchSearch53Route,
+  genSearchSearch54Route: genSearchSearch54Route,
+  genSearchSearch55Route: genSearchSearch55Route,
+  genSearchSearch56Route: genSearchSearch56Route,
+  genSearchSearch57Route: genSearchSearch57Route,
+  genSearchSearch58Route: genSearchSearch58Route,
+  genSearchSearch59Route: genSearchSearch59Route,
+  genSearchSearch6Route: genSearchSearch6Route,
+  genSearchSearch60Route: genSearchSearch60Route,
+  genSearchSearch61Route: genSearchSearch61Route,
+  genSearchSearch62Route: genSearchSearch62Route,
+  genSearchSearch63Route: genSearchSearch63Route,
+  genSearchSearch64Route: genSearchSearch64Route,
+  genSearchSearch65Route: genSearchSearch65Route,
+  genSearchSearch66Route: genSearchSearch66Route,
+  genSearchSearch67Route: genSearchSearch67Route,
+  genSearchSearch68Route: genSearchSearch68Route,
+  genSearchSearch69Route: genSearchSearch69Route,
+  genSearchSearch7Route: genSearchSearch7Route,
+  genSearchSearch70Route: genSearchSearch70Route,
+  genSearchSearch71Route: genSearchSearch71Route,
+  genSearchSearch72Route: genSearchSearch72Route,
+  genSearchSearch73Route: genSearchSearch73Route,
+  genSearchSearch74Route: genSearchSearch74Route,
+  genSearchSearch75Route: genSearchSearch75Route,
+  genSearchSearch76Route: genSearchSearch76Route,
+  genSearchSearch77Route: genSearchSearch77Route,
+  genSearchSearch78Route: genSearchSearch78Route,
+  genSearchSearch79Route: genSearchSearch79Route,
+  genSearchSearch8Route: genSearchSearch8Route,
+  genSearchSearch80Route: genSearchSearch80Route,
+  genSearchSearch81Route: genSearchSearch81Route,
+  genSearchSearch82Route: genSearchSearch82Route,
+  genSearchSearch83Route: genSearchSearch83Route,
+  genSearchSearch84Route: genSearchSearch84Route,
+  genSearchSearch85Route: genSearchSearch85Route,
+  genSearchSearch86Route: genSearchSearch86Route,
+  genSearchSearch87Route: genSearchSearch87Route,
+  genSearchSearch88Route: genSearchSearch88Route,
+  genSearchSearch89Route: genSearchSearch89Route,
+  genSearchSearch9Route: genSearchSearch9Route,
+  genSearchSearch90Route: genSearchSearch90Route,
+  genSearchSearch91Route: genSearchSearch91Route,
+  genSearchSearch92Route: genSearchSearch92Route,
+  genSearchSearch93Route: genSearchSearch93Route,
+  genSearchSearch94Route: genSearchSearch94Route,
+  genSearchSearch95Route: genSearchSearch95Route,
+  genSearchSearch96Route: genSearchSearch96Route,
+  genSearchSearch97Route: genSearchSearch97Route,
+  genSearchSearch98Route: genSearchSearch98Route,
+  genSearchSearch99Route: genSearchSearch99Route,
+}
+
+const genSearchRouteRouteWithChildren = genSearchRouteRoute._addFileChildren(
+  genSearchRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ParamsRouteRoute: ParamsRouteRouteWithChildren,
@@ -224,6 +8476,208 @@ const rootRouteChildren: RootRouteChildren = {
   AbsoluteRoute: AbsoluteRoute,
   LinkPropsRoute: LinkPropsRoute,
   RelativeRoute: RelativeRoute,
+  genParamsRouteRoute: genParamsRouteRouteWithChildren,
+  genSearchRouteRoute: genSearchRouteRouteWithChildren,
+  genAbsolute0Route: genAbsolute0Route,
+  genAbsolute1Route: genAbsolute1Route,
+  genAbsolute10Route: genAbsolute10Route,
+  genAbsolute11Route: genAbsolute11Route,
+  genAbsolute12Route: genAbsolute12Route,
+  genAbsolute13Route: genAbsolute13Route,
+  genAbsolute14Route: genAbsolute14Route,
+  genAbsolute15Route: genAbsolute15Route,
+  genAbsolute16Route: genAbsolute16Route,
+  genAbsolute17Route: genAbsolute17Route,
+  genAbsolute18Route: genAbsolute18Route,
+  genAbsolute19Route: genAbsolute19Route,
+  genAbsolute2Route: genAbsolute2Route,
+  genAbsolute20Route: genAbsolute20Route,
+  genAbsolute21Route: genAbsolute21Route,
+  genAbsolute22Route: genAbsolute22Route,
+  genAbsolute23Route: genAbsolute23Route,
+  genAbsolute24Route: genAbsolute24Route,
+  genAbsolute25Route: genAbsolute25Route,
+  genAbsolute26Route: genAbsolute26Route,
+  genAbsolute27Route: genAbsolute27Route,
+  genAbsolute28Route: genAbsolute28Route,
+  genAbsolute29Route: genAbsolute29Route,
+  genAbsolute3Route: genAbsolute3Route,
+  genAbsolute30Route: genAbsolute30Route,
+  genAbsolute31Route: genAbsolute31Route,
+  genAbsolute32Route: genAbsolute32Route,
+  genAbsolute33Route: genAbsolute33Route,
+  genAbsolute34Route: genAbsolute34Route,
+  genAbsolute35Route: genAbsolute35Route,
+  genAbsolute36Route: genAbsolute36Route,
+  genAbsolute37Route: genAbsolute37Route,
+  genAbsolute38Route: genAbsolute38Route,
+  genAbsolute39Route: genAbsolute39Route,
+  genAbsolute4Route: genAbsolute4Route,
+  genAbsolute40Route: genAbsolute40Route,
+  genAbsolute41Route: genAbsolute41Route,
+  genAbsolute42Route: genAbsolute42Route,
+  genAbsolute43Route: genAbsolute43Route,
+  genAbsolute44Route: genAbsolute44Route,
+  genAbsolute45Route: genAbsolute45Route,
+  genAbsolute46Route: genAbsolute46Route,
+  genAbsolute47Route: genAbsolute47Route,
+  genAbsolute48Route: genAbsolute48Route,
+  genAbsolute49Route: genAbsolute49Route,
+  genAbsolute5Route: genAbsolute5Route,
+  genAbsolute50Route: genAbsolute50Route,
+  genAbsolute51Route: genAbsolute51Route,
+  genAbsolute52Route: genAbsolute52Route,
+  genAbsolute53Route: genAbsolute53Route,
+  genAbsolute54Route: genAbsolute54Route,
+  genAbsolute55Route: genAbsolute55Route,
+  genAbsolute56Route: genAbsolute56Route,
+  genAbsolute57Route: genAbsolute57Route,
+  genAbsolute58Route: genAbsolute58Route,
+  genAbsolute59Route: genAbsolute59Route,
+  genAbsolute6Route: genAbsolute6Route,
+  genAbsolute60Route: genAbsolute60Route,
+  genAbsolute61Route: genAbsolute61Route,
+  genAbsolute62Route: genAbsolute62Route,
+  genAbsolute63Route: genAbsolute63Route,
+  genAbsolute64Route: genAbsolute64Route,
+  genAbsolute65Route: genAbsolute65Route,
+  genAbsolute66Route: genAbsolute66Route,
+  genAbsolute67Route: genAbsolute67Route,
+  genAbsolute68Route: genAbsolute68Route,
+  genAbsolute69Route: genAbsolute69Route,
+  genAbsolute7Route: genAbsolute7Route,
+  genAbsolute70Route: genAbsolute70Route,
+  genAbsolute71Route: genAbsolute71Route,
+  genAbsolute72Route: genAbsolute72Route,
+  genAbsolute73Route: genAbsolute73Route,
+  genAbsolute74Route: genAbsolute74Route,
+  genAbsolute75Route: genAbsolute75Route,
+  genAbsolute76Route: genAbsolute76Route,
+  genAbsolute77Route: genAbsolute77Route,
+  genAbsolute78Route: genAbsolute78Route,
+  genAbsolute79Route: genAbsolute79Route,
+  genAbsolute8Route: genAbsolute8Route,
+  genAbsolute80Route: genAbsolute80Route,
+  genAbsolute81Route: genAbsolute81Route,
+  genAbsolute82Route: genAbsolute82Route,
+  genAbsolute83Route: genAbsolute83Route,
+  genAbsolute84Route: genAbsolute84Route,
+  genAbsolute85Route: genAbsolute85Route,
+  genAbsolute86Route: genAbsolute86Route,
+  genAbsolute87Route: genAbsolute87Route,
+  genAbsolute88Route: genAbsolute88Route,
+  genAbsolute89Route: genAbsolute89Route,
+  genAbsolute9Route: genAbsolute9Route,
+  genAbsolute90Route: genAbsolute90Route,
+  genAbsolute91Route: genAbsolute91Route,
+  genAbsolute92Route: genAbsolute92Route,
+  genAbsolute93Route: genAbsolute93Route,
+  genAbsolute94Route: genAbsolute94Route,
+  genAbsolute95Route: genAbsolute95Route,
+  genAbsolute96Route: genAbsolute96Route,
+  genAbsolute97Route: genAbsolute97Route,
+  genAbsolute98Route: genAbsolute98Route,
+  genAbsolute99Route: genAbsolute99Route,
+  genRelative0Route: genRelative0Route,
+  genRelative1Route: genRelative1Route,
+  genRelative10Route: genRelative10Route,
+  genRelative11Route: genRelative11Route,
+  genRelative12Route: genRelative12Route,
+  genRelative13Route: genRelative13Route,
+  genRelative14Route: genRelative14Route,
+  genRelative15Route: genRelative15Route,
+  genRelative16Route: genRelative16Route,
+  genRelative17Route: genRelative17Route,
+  genRelative18Route: genRelative18Route,
+  genRelative19Route: genRelative19Route,
+  genRelative2Route: genRelative2Route,
+  genRelative20Route: genRelative20Route,
+  genRelative21Route: genRelative21Route,
+  genRelative22Route: genRelative22Route,
+  genRelative23Route: genRelative23Route,
+  genRelative24Route: genRelative24Route,
+  genRelative25Route: genRelative25Route,
+  genRelative26Route: genRelative26Route,
+  genRelative27Route: genRelative27Route,
+  genRelative28Route: genRelative28Route,
+  genRelative29Route: genRelative29Route,
+  genRelative3Route: genRelative3Route,
+  genRelative30Route: genRelative30Route,
+  genRelative31Route: genRelative31Route,
+  genRelative32Route: genRelative32Route,
+  genRelative33Route: genRelative33Route,
+  genRelative34Route: genRelative34Route,
+  genRelative35Route: genRelative35Route,
+  genRelative36Route: genRelative36Route,
+  genRelative37Route: genRelative37Route,
+  genRelative38Route: genRelative38Route,
+  genRelative39Route: genRelative39Route,
+  genRelative4Route: genRelative4Route,
+  genRelative40Route: genRelative40Route,
+  genRelative41Route: genRelative41Route,
+  genRelative42Route: genRelative42Route,
+  genRelative43Route: genRelative43Route,
+  genRelative44Route: genRelative44Route,
+  genRelative45Route: genRelative45Route,
+  genRelative46Route: genRelative46Route,
+  genRelative47Route: genRelative47Route,
+  genRelative48Route: genRelative48Route,
+  genRelative49Route: genRelative49Route,
+  genRelative5Route: genRelative5Route,
+  genRelative50Route: genRelative50Route,
+  genRelative51Route: genRelative51Route,
+  genRelative52Route: genRelative52Route,
+  genRelative53Route: genRelative53Route,
+  genRelative54Route: genRelative54Route,
+  genRelative55Route: genRelative55Route,
+  genRelative56Route: genRelative56Route,
+  genRelative57Route: genRelative57Route,
+  genRelative58Route: genRelative58Route,
+  genRelative59Route: genRelative59Route,
+  genRelative6Route: genRelative6Route,
+  genRelative60Route: genRelative60Route,
+  genRelative61Route: genRelative61Route,
+  genRelative62Route: genRelative62Route,
+  genRelative63Route: genRelative63Route,
+  genRelative64Route: genRelative64Route,
+  genRelative65Route: genRelative65Route,
+  genRelative66Route: genRelative66Route,
+  genRelative67Route: genRelative67Route,
+  genRelative68Route: genRelative68Route,
+  genRelative69Route: genRelative69Route,
+  genRelative7Route: genRelative7Route,
+  genRelative70Route: genRelative70Route,
+  genRelative71Route: genRelative71Route,
+  genRelative72Route: genRelative72Route,
+  genRelative73Route: genRelative73Route,
+  genRelative74Route: genRelative74Route,
+  genRelative75Route: genRelative75Route,
+  genRelative76Route: genRelative76Route,
+  genRelative77Route: genRelative77Route,
+  genRelative78Route: genRelative78Route,
+  genRelative79Route: genRelative79Route,
+  genRelative8Route: genRelative8Route,
+  genRelative80Route: genRelative80Route,
+  genRelative81Route: genRelative81Route,
+  genRelative82Route: genRelative82Route,
+  genRelative83Route: genRelative83Route,
+  genRelative84Route: genRelative84Route,
+  genRelative85Route: genRelative85Route,
+  genRelative86Route: genRelative86Route,
+  genRelative87Route: genRelative87Route,
+  genRelative88Route: genRelative88Route,
+  genRelative89Route: genRelative89Route,
+  genRelative9Route: genRelative9Route,
+  genRelative90Route: genRelative90Route,
+  genRelative91Route: genRelative91Route,
+  genRelative92Route: genRelative92Route,
+  genRelative93Route: genRelative93Route,
+  genRelative94Route: genRelative94Route,
+  genRelative95Route: genRelative95Route,
+  genRelative96Route: genRelative96Route,
+  genRelative97Route: genRelative97Route,
+  genRelative98Route: genRelative98Route,
+  genRelative99Route: genRelative99Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

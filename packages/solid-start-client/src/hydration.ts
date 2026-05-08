@@ -7,7 +7,10 @@ export type {
   HydrationCondition,
   HydrationInteractionEvent,
   HydrationInteractionEvents,
+  IdleHydrationOptions,
+  HydrationPrefetchWhen,
   HydrationPrefetchStrategy,
+  HydrationStrategyTypes,
   HydrationWhen,
   VisibleHydrationOptions,
 } from '@tanstack/start-client-core/hydration'

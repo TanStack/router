@@ -473,14 +473,15 @@ test.describe('component-level Hydrate runtime strategies', () => {
       window.scrollTo(0, document.documentElement.scrollHeight)
     })
     await page.waitForTimeout(100)
-    await expect(page.getByTestId('component-enable-condition')).toBeInViewport()
+    await expect(
+      page.getByTestId('component-enable-condition'),
+    ).toBeInViewport()
 
     await trackBoundaryStability(page, 'component-condition-button')
     await page.getByTestId('component-enable-condition').click()
-    await expect(page.getByTestId('component-condition-button')).toHaveAttribute(
-      'data-hydrated',
-      'true',
-    )
+    await expect(
+      page.getByTestId('component-condition-button'),
+    ).toHaveAttribute('data-hydrated', 'true')
     await expectBoundaryStable(page)
     await clickAndExpectCount(
       page,

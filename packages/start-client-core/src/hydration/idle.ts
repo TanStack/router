@@ -1,4 +1,4 @@
-import type { HydrationPrefetchStrategy, HydrationStrategy } from './types'
+import type { HydrationPrefetchStrategy } from './types'
 
 const idleType = 'idle'
 
@@ -6,18 +6,16 @@ export type IdleHydrationOptions = {
   timeout?: number
 }
 
-function getIdleScheduler() {
-  return globalThis as unknown as {
-    requestIdleCallback?: (
-      callback: IdleRequestCallback,
-      options?: IdleRequestOptions,
-    ) => number
-    cancelIdleCallback?: (handle: number) => void
-  }
+type IdleScheduler = {
+  requestIdleCallback?: (
+    callback: IdleRequestCallback,
+    options?: IdleRequestOptions,
+  ) => number
+  cancelIdleCallback?: (handle: number) => void
 }
 
-function scheduleIdle(callback: () => void, timeout: number) {
-  const schedule = getIdleScheduler()
+export function scheduleIdle(callback: () => void, timeout: number) {
+  const schedule = globalThis as unknown as IdleScheduler
   if (schedule.requestIdleCallback) {
     const handle = schedule.requestIdleCallback(callback, { timeout })
     return () => schedule.cancelIdleCallback?.(handle)
@@ -30,13 +28,12 @@ function scheduleIdle(callback: () => void, timeout: number) {
 /* @__NO_SIDE_EFFECTS__ */
 export function idle(
   options: IdleHydrationOptions = {},
-): HydrationStrategy & HydrationPrefetchStrategy {
+): HydrationPrefetchStrategy<typeof idleType> {
   const timeout = options.timeout ?? 2000
 
   return {
-    type: idleType,
-    key: `${idleType}:${timeout}`,
-    setup: ({ gate }) => scheduleIdle(gate.resolve, timeout),
-    setupPrefetch: ({ prefetch }) => scheduleIdle(prefetch, timeout),
+    _t: idleType,
+    _s: ({ gate, prefetch }) =>
+      scheduleIdle(prefetch ?? gate!.resolve, timeout),
   }
 }

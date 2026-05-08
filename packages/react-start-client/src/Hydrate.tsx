@@ -5,6 +5,7 @@ import type * as React from 'react'
 import type {
   HydrationStrategy as CoreHydrationStrategy,
   HydrationPrefetchStrategy,
+  HydrationWhen,
 } from '@tanstack/start-client-core/hydration'
 
 export type {
@@ -14,11 +15,17 @@ export type {
   HydrationWhen,
 } from '@tanstack/start-client-core/hydration'
 
-export type ReactHydrationStrategy = CoreHydrationStrategy & {
-  $$renderHydrate: (props: HydrateProps) => React.JSX.Element
+export type ReactHydrationStrategy<
+  TWhen extends HydrationWhen = HydrationWhen,
+  TCanPrefetch extends boolean = boolean,
+> = CoreHydrationStrategy<TWhen, TCanPrefetch> & {
+  _h: (props: HydrateProps) => React.JSX.Element
 }
 
-export type HydrationStrategy = ReactHydrationStrategy
+export type HydrationStrategy<
+  TWhen extends HydrationWhen = HydrationWhen,
+  TCanPrefetch extends boolean = boolean,
+> = ReactHydrationStrategy<TWhen, TCanPrefetch>
 
 export type HydrateOptions = {
   when: ReactHydrationStrategy
@@ -43,11 +50,11 @@ export type HydrateProps =
       })
 
 export type InternalHydrateProps = HydrateProps & {
-  __hydrate?: CoreHydrationStrategy
-  splitId?: string
-  preload?: () => Promise<void>
+  g?: CoreHydrationStrategy
+  h?: string
+  p?: () => Promise<void>
 }
 
 export function Hydrate(props: HydrateProps): React.JSX.Element {
-  return props.when.$$renderHydrate(props)
+  return props.when._h(props)
 }

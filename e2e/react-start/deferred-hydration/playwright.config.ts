@@ -7,6 +7,8 @@ const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
 const distDir = process.env.E2E_DIST_DIR ?? `dist-${toolchain}-ssr`
 const e2ePortKey =
   process.env.E2E_PORT_KEY ?? `${packageJson.name}-${toolchain}`
+const serverEntryFile = toolchain === 'rsbuild' ? 'index.js' : 'server.js'
+const startCommand = `pnpm exec srvx --prod --dir=. -s ${distDir}/client --entry ${distDir}/server/${serverEntryFile}`
 
 if (process.env.TEST_WORKER_INDEX === undefined) {
   fs.rmSync(`port-${e2ePortKey}.txt`, { force: true })
@@ -21,7 +23,7 @@ export default defineConfig({
   reporter: [['line']],
   use: { baseURL },
   webServer: {
-    command: `pnpm start`,
+    command: startCommand,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',

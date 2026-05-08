@@ -1,4 +1,4 @@
-import type { HydrationPrefetchStrategy, HydrationStrategy } from './types'
+import type { HydrationPrefetchStrategy } from './types'
 
 const mediaType = 'media'
 
@@ -18,11 +18,10 @@ function listenForMedia(query: string, callback: () => void) {
 /* @__NO_SIDE_EFFECTS__ */
 export function media(
   query: string,
-): HydrationStrategy & HydrationPrefetchStrategy {
+): HydrationPrefetchStrategy<typeof mediaType> {
   return {
-    type: mediaType,
-    key: `${mediaType}:${query}`,
-    setup: ({ gate }) => listenForMedia(query, gate.resolve),
-    setupPrefetch: ({ prefetch }) => listenForMedia(query, prefetch),
+    _t: mediaType,
+    _s: ({ gate, prefetch }) =>
+      listenForMedia(query, prefetch ?? gate!.resolve),
   }
 }

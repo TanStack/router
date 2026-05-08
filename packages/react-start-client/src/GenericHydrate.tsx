@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 
-import { reactUse, useHydrated } from '@tanstack/react-router'
+import { useHydrated } from '@tanstack/react-router'
 import { isServer } from '@tanstack/router-core/isServer'
 import {
   hydrateIdAttribute,
@@ -23,9 +23,7 @@ import type { HydrateProps, InternalHydrateProps } from './Hydrate'
 type Gate = HydrationGateRecord & { promise: Promise<void> }
 
 function shouldDeferHydration(strategy: InternalHydrateProps['when']) {
-  return strategy.shouldDefer
-    ? strategy.shouldDefer()
-    : strategy.type !== 'load'
+  return strategy._d ? strategy._d() : strategy._t !== 'load'
 }
 
 function useLatest<T>(value: T) {
@@ -42,13 +40,13 @@ function runStrategyCleanup(cleanup: void | (() => void)) {
 function useHydrationGate(props: InternalHydrateProps) {
   const hydrated = useHydrated()
   const reactId = React.useId()
-  const id = props.splitId ? `${props.splitId}${reactId}` : reactId
+  const id = props.h ? `${props.h}${reactId}` : reactId
   const hydrateStrategy = props.when
   const latestRef = useLatest({
     hydrateStrategy,
     prefetch: props.prefetch,
-    delegated: props.__hydrate,
-    preload: props.preload,
+    delegated: props.g,
+    preload: props.p,
   })
   const gateRef = React.useRef<HydrationGateRecord | undefined>(undefined)
   const markerElementRef = React.useRef<HTMLDivElement | null>(null)
@@ -69,15 +67,15 @@ function useHydrationGate(props: InternalHydrateProps) {
   if (!gateRef.current) {
     gateRef.current =
       ((isServer as boolean | undefined) ?? typeof window === 'undefined')
-        ? createResolvedGate(id, hydrateStrategy.type)
-        : getOrCreateGate(id, hydrateStrategy.type)
+        ? createResolvedGate(id, hydrateStrategy._t!)
+        : getOrCreateGate(id, hydrateStrategy._t!)
   }
 
-  gateRef.current.when = hydrateStrategy.type
+  gateRef.current.when = hydrateStrategy._t!
 
   if (
     !((isServer as boolean | undefined) ?? typeof window === 'undefined') &&
-    hydrateStrategy.type !== 'never' &&
+    hydrateStrategy._t !== 'never' &&
     (!shouldDeferInitialHydrationRef.current ||
       !shouldDeferHydration(hydrateStrategy))
   ) {
@@ -89,7 +87,7 @@ function useHydrationGate(props: InternalHydrateProps) {
       markerElementRef.current = element
       if (element) {
         if (
-          latestRef.current.hydrateStrategy.type === 'never' &&
+          latestRef.current.hydrateStrategy._t === 'never' &&
           !shouldPreserveServerHTMLRef.current
         ) {
           element.replaceChildren()
@@ -124,12 +122,12 @@ function useHydrationGate(props: InternalHydrateProps) {
     }
 
     return runStrategyCleanup(
-      latestRef.current.prefetch.setupPrefetch?.({
+      latestRef.current.prefetch._s?.({
         element: markerElementRef.current,
         prefetch,
       }),
     )
-  }, [latestRef, props.prefetch?.key, props.preload])
+  }, [latestRef, props.prefetch, props.p])
 
   React.useEffect(() => {
     const gate = gateRef.current!
@@ -137,7 +135,7 @@ function useHydrationGate(props: InternalHydrateProps) {
     if (
       gate.resolved ||
       !shouldDeferInitialHydrationRef.current ||
-      hydrateStrategy.type === 'never'
+      hydrateStrategy._t === 'never'
     ) {
       return
     }
@@ -150,7 +148,7 @@ function useHydrationGate(props: InternalHydrateProps) {
       if (disposed) return
       disposed = true
       removeResolveListener()
-      cleanups.splice(0).forEach((fn) => fn())
+      cleanups.forEach((fn) => fn())
     }
 
     const addCleanup = (fn: void | (() => void)) => {
@@ -168,12 +166,12 @@ function useHydrationGate(props: InternalHydrateProps) {
       element: markerElementRef.current,
       gate,
     }
-    addCleanup(runStrategyCleanup(hydrateStrategy.setup?.(context)))
+    addCleanup(runStrategyCleanup(hydrateStrategy._s?.(context)))
 
-    if (delegatedStrategy?.setup) {
+    if (delegatedStrategy?._s) {
       addCleanup(
         runStrategyCleanup(
-          delegatedStrategy.setup({
+          delegatedStrategy._s({
             ...context,
             delegated: true,
           }),
@@ -182,7 +180,7 @@ function useHydrationGate(props: InternalHydrateProps) {
     }
 
     return cleanup
-  }, [latestRef, props.__hydrate?.key, props.when.key])
+  }, [latestRef, props.g, props.when])
 
   return {
     gate: gateRef.current,
@@ -198,11 +196,6 @@ function HydrationGate(props: { gate: Gate; children: React.ReactNode }) {
   }
 
   if (props.gate.resolved) {
-    return props.children as React.JSX.Element
-  }
-
-  if (reactUse) {
-    reactUse(props.gate.promise)
     return props.children as React.JSX.Element
   }
 
@@ -250,15 +243,17 @@ export function GenericHydrate(props: HydrateProps): React.JSX.Element {
   ) : (
     (props.fallback ?? null)
   )
-  const markerAttributes = hydrateStrategy.getMarkerAttributes?.()
+  const markerAttributes = hydrateStrategy._a?.()
 
-  if (hydrateStrategy.type === 'never' && !shouldPreserveServerHTML) {
+  const hydrateType = hydrateStrategy._t!
+
+  if (hydrateType === 'never' && !shouldPreserveServerHTML) {
     return (
       <div
         ref={markerRef}
         {...{
           [hydrateIdAttribute]: gate.id,
-          [hydrateWhenAttribute]: hydrateStrategy.type,
+          [hydrateWhenAttribute]: hydrateType,
           ...markerAttributes,
         }}
       >
@@ -272,7 +267,7 @@ export function GenericHydrate(props: HydrateProps): React.JSX.Element {
       ref={markerRef}
       {...{
         [hydrateIdAttribute]: gate.id,
-        [hydrateWhenAttribute]: hydrateStrategy.type,
+        [hydrateWhenAttribute]: hydrateType,
         ...markerAttributes,
       }}
     >
@@ -281,7 +276,7 @@ export function GenericHydrate(props: HydrateProps): React.JSX.Element {
           <HydratedBoundary
             id={gate.id}
             onHydrated={props.onHydrated}
-            onStrategyHydrated={hydrateStrategy.onHydrated}
+            onStrategyHydrated={hydrateStrategy._o}
           >
             {props.children}
           </HydratedBoundary>

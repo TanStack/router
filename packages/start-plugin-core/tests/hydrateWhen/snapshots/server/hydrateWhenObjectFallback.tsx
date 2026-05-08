@@ -10,15 +10,15 @@ function Widget(props: {
 }
 export function Page() {
   return <>
-      <Hydrate when={visible()} splitId="hydrateWhenObjectFallback_02e12e6487">
+      <Hydrate when={visible()} h="0_7f4dc3aa80">
         <Widget title="direct" />
       </Hydrate>
       <Hydrate {...{
       when: idle()
-    }} splitId="hydrateWhenObjectFallback_bdf3670c0a">
+    }} h="1_7f4dc3aa80">
         <Widget title="inline spread" />
       </Hydrate>
-      <Hydrate {...spreadProps} splitId="hydrateWhenObjectFallback_ff2f1d1b76">
+      <Hydrate {...spreadProps} h="2_7f4dc3aa80">
         <Widget title="bound spread" />
       </Hydrate>
     </>;

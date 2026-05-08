@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 
-import { reactUse, useHydrated } from '@tanstack/react-router'
+import { useHydrated } from '@tanstack/react-router'
 import { isServer } from '@tanstack/router-core/isServer'
 import { never as coreNever } from '@tanstack/start-client-core/hydration'
 import {
@@ -27,11 +27,6 @@ function NeverGate(props: { children: React.ReactNode }) {
     return props.children as React.JSX.Element
   }
 
-  if (reactUse) {
-    reactUse(neverPromise)
-    return props.children as React.JSX.Element
-  }
-
   throw neverPromise
 }
 
@@ -52,9 +47,7 @@ export function NeverHydrate(props: HydrateProps): React.JSX.Element {
   const internalProps = props as InternalHydrateProps
   const hydrated = useHydrated()
   const reactId = React.useId()
-  const id = internalProps.splitId
-    ? `${internalProps.splitId}${reactId}`
-    : reactId
+  const id = internalProps.h ? `${internalProps.h}${reactId}` : reactId
   const shouldPreserveServerHTMLRef = React.useRef<boolean | undefined>(
     undefined,
   )
@@ -92,8 +85,8 @@ export function NeverHydrate(props: HydrateProps): React.JSX.Element {
 }
 
 /* @__NO_SIDE_EFFECTS__ */
-export function never(): ReactHydrationStrategy {
+export function never(): ReactHydrationStrategy<'never', false> {
   return /* @__PURE__ */ Object.assign(coreNever(), {
-    $$renderHydrate: NeverHydrate,
+    _h: NeverHydrate,
   })
 }
