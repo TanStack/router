@@ -165,7 +165,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           if (result.error instanceof Error) throw result.error
           // Non-Error values in result.error are application-level error payloads;
           // return them as the resolved value when no explicit result is present.
-          return result.result ?? result.error
+          return result.result !== undefined ? result.result : result.error
         },
         {
           // This copies over the URL, function ID
