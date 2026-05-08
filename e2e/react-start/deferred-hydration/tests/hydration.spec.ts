@@ -527,6 +527,53 @@ test.describe('component-level Hydrate runtime strategies', () => {
     )
     await expect(page.getByTestId('component-client-fallback')).toHaveCount(0)
   })
+
+  test('preserves scroll position after a force reload on a visible boundary', async ({
+    page,
+  }) => {
+    await page.goto('/scroll-restoration')
+    await expectClientRouterReady(page)
+    await page.evaluate(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight)
+    })
+    await expect(page.getByTestId('scroll-restoration-widget')).toHaveAttribute(
+      'data-hydrated',
+      'true',
+    )
+    await page.evaluate(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight)
+    })
+
+    const beforeReloadDistanceFromBottom = await page.evaluate(
+      () =>
+        document.documentElement.scrollHeight -
+        window.innerHeight -
+        window.scrollY,
+    )
+    expect(beforeReloadDistanceFromBottom).toBeLessThan(5)
+
+    const client = await page.context().newCDPSession(page)
+    const reloaded = page.waitForEvent('load')
+    await client.send('Page.reload', { ignoreCache: true })
+    await reloaded
+
+    await expectClientRouterReady(page)
+    await expect(page.getByTestId('scroll-restoration-widget')).toHaveAttribute(
+      'data-hydrated',
+      'true',
+    )
+
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.documentElement.scrollHeight -
+            window.innerHeight -
+            window.scrollY,
+        ),
+      )
+      .toBeLessThan(20)
+  })
 })
 
 test.describe('Hydrate CSS delivery', () => {

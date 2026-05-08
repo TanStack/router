@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ScrollRestorationRouteImport } from './routes/scroll-restoration'
 import { Route as ImportedRouteImport } from './routes/imported'
 import { Route as CssRouteImport } from './routes/css'
 import { Route as ComponentsRouteImport } from './routes/components'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ScrollRestorationRoute = ScrollRestorationRouteImport.update({
+  id: '/scroll-restoration',
+  path: '/scroll-restoration',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ImportedRoute = ImportedRouteImport.update({
   id: '/imported',
   path: '/imported',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/components': typeof ComponentsRoute
   '/css': typeof CssRoute
   '/imported': typeof ImportedRoute
+  '/scroll-restoration': typeof ScrollRestorationRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/components': typeof ComponentsRoute
   '/css': typeof CssRoute
   '/imported': typeof ImportedRoute
+  '/scroll-restoration': typeof ScrollRestorationRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,20 @@ export interface FileRoutesById {
   '/components': typeof ComponentsRoute
   '/css': typeof CssRoute
   '/imported': typeof ImportedRoute
+  '/scroll-restoration': typeof ScrollRestorationRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/components' | '/css' | '/imported'
+  fullPaths: '/' | '/components' | '/css' | '/imported' | '/scroll-restoration'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/components' | '/css' | '/imported'
-  id: '__root__' | '/' | '/components' | '/css' | '/imported'
+  to: '/' | '/components' | '/css' | '/imported' | '/scroll-restoration'
+  id:
+    | '__root__'
+    | '/'
+    | '/components'
+    | '/css'
+    | '/imported'
+    | '/scroll-restoration'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +82,18 @@ export interface RootRouteChildren {
   ComponentsRoute: typeof ComponentsRoute
   CssRoute: typeof CssRoute
   ImportedRoute: typeof ImportedRoute
+  ScrollRestorationRoute: typeof ScrollRestorationRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/scroll-restoration': {
+      id: '/scroll-restoration'
+      path: '/scroll-restoration'
+      fullPath: '/scroll-restoration'
+      preLoaderRoute: typeof ScrollRestorationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/imported': {
       id: '/imported'
       path: '/imported'
@@ -107,6 +130,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentsRoute: ComponentsRoute,
   CssRoute: CssRoute,
   ImportedRoute: ImportedRoute,
+  ScrollRestorationRoute: ScrollRestorationRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

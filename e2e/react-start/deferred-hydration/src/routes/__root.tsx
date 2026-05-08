@@ -154,6 +154,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link to="/imported" preload="intent">
             Imported
           </Link>
+          <Link to="/scroll-restoration">Scroll</Link>
         </nav>
         {children}
         <Scripts />

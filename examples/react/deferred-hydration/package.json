@@ -1,0 +1,40 @@
+{
+  "name": "tanstack-start-example-deferred-hydration",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "build:app": "vite build && tsc --noEmit",
+    "preview": "srvx --prod --dir=. -s dist/client --entry dist/server/server.js",
+    "start": "srvx --prod --dir=. -s dist/client --entry dist/server/server.js",
+    "bench": "node ./scripts/bench.mjs",
+    "bench:lighthouse": "node ./scripts/lighthouse.mjs",
+    "bench:lighthouse:stability": "node ./scripts/lighthouse-stability.mjs",
+    "bench:analyze": "node ./scripts/analyze-results.mjs",
+    "bench:analyze:collected": "node ./scripts/analyze-collected-results.mjs",
+    "test:e2e": "playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-start": "workspace:*",
+    "@tanstack/react-table": "^8.21.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-is": "^19.0.0",
+    "recharts": "^3.8.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "lighthouse": "^13.3.0",
+    "srvx": "^0.11.9",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.0",
+    "web-vitals": "^5.1.0"
+  }
+}
