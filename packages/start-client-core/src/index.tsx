@@ -84,6 +84,17 @@ export {
   flattenMiddlewares,
   executeMiddleware,
 } from './createServerFn'
+export {
+  createCsrfMiddleware,
+  csrfSymbol,
+  getCsrfRequestValidationResult,
+  isCsrfRequestAllowed,
+} from './createCsrfMiddleware'
+export type {
+  CsrfMatcher,
+  CsrfMiddlewareOptions,
+  CsrfSecFetchSite,
+} from './createCsrfMiddleware'
 
 export {
   TSS_FORMDATA_CONTEXT,

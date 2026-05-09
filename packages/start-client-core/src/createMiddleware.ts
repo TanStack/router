@@ -771,6 +771,10 @@ export interface RequestServerOptions<TRegister, TMiddlewares> {
   context: Expand<AssignAllServerRequestContext<TRegister, TMiddlewares>>
   next: RequestServerNextFn<TRegister, TMiddlewares>
   /**
+   * Type of Start handler currently processing this request.
+   */
+  handlerType: 'serverFn' | 'router'
+  /**
    * Metadata about the server function being invoked.
    * This is only present when the request is handling a server function call.
    * For regular page requests, this will be undefined.

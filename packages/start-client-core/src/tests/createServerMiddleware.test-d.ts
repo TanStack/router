@@ -675,6 +675,7 @@ test('createMiddleware with type request, no middleware or context', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
       serverFnMeta?: ServerFnMeta
     }>()
 
@@ -698,6 +699,7 @@ test('createMiddleware with type request, no middleware with context', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
       serverFnMeta?: ServerFnMeta
     }>()
 
@@ -722,6 +724,7 @@ test('createMiddleware with type request, middleware and context', () => {
         next: RequestServerNextFn<{}, undefined>
         pathname: string
         context: undefined
+        handlerType: 'serverFn' | 'router'
         serverFnMeta?: ServerFnMeta
       }>()
 
@@ -746,6 +749,7 @@ test('createMiddleware with type request, middleware and context', () => {
         next: RequestServerNextFn<{}, undefined>
         pathname: string
         context: { a: string }
+        handlerType: 'serverFn' | 'router'
         serverFnMeta?: ServerFnMeta
       }>()
 
@@ -769,6 +773,7 @@ test('createMiddleware with type request can return Response directly', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
       serverFnMeta?: ServerFnMeta
     }>()
 
@@ -789,6 +794,7 @@ test('createMiddleware with type request can return Promise<Response>', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
       serverFnMeta?: ServerFnMeta
     }>()
 
@@ -804,6 +810,7 @@ test('createMiddleware with type request can return sync Response', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
       serverFnMeta?: ServerFnMeta
     }>()
 
