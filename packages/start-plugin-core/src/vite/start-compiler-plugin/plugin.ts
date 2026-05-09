@@ -28,7 +28,12 @@ import type {
   GenerateFunctionIdFnOptional,
   ServerFn,
 } from '../../start-compiler/types'
-import type { EnvironmentModuleNode, PluginOption } from 'vite'
+import type {
+  DevEnvironment,
+  EnvironmentModuleNode,
+  HotUpdateOptions,
+  PluginOption,
+} from 'vite'
 
 // Re-export from shared constants for backwards compatibility
 export { SERVER_FN_LOOKUP }
@@ -276,20 +281,27 @@ export function startCompilerPlugin(
                   )
                 }
 
-                await this.environment.transformRequest(
+                await (this.environment as DevEnvironment).transformRequest(
                   `${id}?${SERVER_FN_LOOKUP}`,
                 )
               },
-
               resolveId: async (source: string, importer?: string) => {
-                const r = await this.resolve(source, importer)
-
-                if (r) {
-                  if (!r.external) {
-                    return cleanId(r.id)
+                try {
+                  const r = await this.resolve(source, importer)
+                  if (r) {
+                    if (!r.external) {
+                      return cleanId(r.id)
+                    }
                   }
+                } catch (err) {
+                  if (
+                    err instanceof Error &&
+                    err.message.includes('Plugin driver is already dropped')
+                  ) {
+                    return null
+                  }
+                  throw err
                 }
-
                 return null
               },
             })
@@ -311,7 +323,7 @@ export function startCompilerPlugin(
         },
       },
 
-      hotUpdate(ctx) {
+      hotUpdate(ctx: HotUpdateOptions) {
         const compiler = compilers.get(this.environment.name)
         const idsToInvalidate = new Set<string>()
         const transitiveCompilerImportersToInvalidate = new Set<string>()
@@ -462,7 +474,7 @@ export function startCompilerPlugin(
                     )
                   }
 
-                  await this.environment.transformRequest(
+                  await (this.environment as DevEnvironment).transformRequest(
                     `${absPath}?${SERVER_FN_LOOKUP}`,
                   )
 
@@ -501,6 +513,7 @@ export function startCompilerPlugin(
           this.error(
             `No getServerFnById implementation found for caller environment: ${this.environment.name}`,
           )
+          return
         }
 
         if (this.environment.mode !== 'build') {

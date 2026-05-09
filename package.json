@@ -57,8 +57,8 @@
     "@tanstack/query-core": "^5.99.0",
     "@tanstack/react-query": "^5.99.0",
     "@tanstack/solid-query": "^5.99.0",
-    "@tanstack/vue-query": "^5.99.0",
     "@tanstack/vite-config": "0.5.2",
+    "@tanstack/vue-query": "^5.99.0",
     "@types/node": "25.0.9",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
@@ -143,5 +143,8 @@
       "@tanstack/start-static-server-functions": "workspace:*",
       "@tanstack/nitro-v2-vite-plugin": "workspace:*"
     }
+  },
+  "dependencies": {
+    "@tanstack/react-start": "1.167.57"
   }
 }
