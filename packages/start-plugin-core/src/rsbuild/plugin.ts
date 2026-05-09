@@ -196,6 +196,17 @@ export function tanStackStartRsbuild(
               'import.meta.env.TSS_INLINE_CSS_ENABLED': JSON.stringify(
                 inlineCssEnabled ? 'true' : 'false',
               ),
+              'process.env.TSS_DISABLE_CSRF_MIDDLEWARE_WARNING': JSON.stringify(
+                startConfig.serverFns.disableCsrfMiddlewareWarning
+                  ? 'true'
+                  : 'false',
+              ),
+              'import.meta.env.TSS_DISABLE_CSRF_MIDDLEWARE_WARNING':
+                JSON.stringify(
+                  startConfig.serverFns.disableCsrfMiddlewareWarning
+                    ? 'true'
+                    : 'false',
+                ),
             },
           },
           server: {
