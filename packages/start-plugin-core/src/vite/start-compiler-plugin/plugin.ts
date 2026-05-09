@@ -196,7 +196,8 @@ export function startCompilerPlugin(
   opts: StartCompilerPluginOptions,
 ): PluginOption {
   const compilers = new Map<string, ReturnType<typeof createStartCompiler>>()
-  const compilerContextStorage = new AsyncLocalStorage<StartCompilerPluginContext>()
+  const compilerContextStorage =
+    new AsyncLocalStorage<StartCompilerPluginContext>()
 
   const getCompilerContext = () => {
     const context = compilerContextStorage.getStore()
