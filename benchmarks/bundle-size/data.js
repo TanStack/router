@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778344615523,
+  "lastUpdate": 1778364855711,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -15794,6 +15794,102 @@ window.BENCHMARK_DATA = {
             "value": 56728,
             "unit": "bytes",
             "extra": "raw=173453; brotli=49869; initial_gzip=56595"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "34962865+shkumbinhasani@users.noreply.github.com",
+            "name": "Shkumbin Hasani",
+            "username": "shkumbinhasani"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1c061aff9185cdf5fdc08c0136382a9dce0302f",
+          "message": "fix(router-core): fix missing closing paren in CSS.supports check for view transition types (#7369)",
+          "timestamp": "2026-05-10T00:11:51+02:00",
+          "tree_id": "29f063571dc7f0efa64cf267fbf3c265cdc10439",
+          "url": "https://github.com/TanStack/router/commit/b1c061aff9185cdf5fdc08c0136382a9dce0302f"
+        },
+        "date": 1778364854732,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89386,
+            "unit": "bytes",
+            "extra": "raw=280647; brotli=77673; initial_gzip=89245"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92998,
+            "unit": "bytes",
+            "extra": "raw=292432; brotli=80788; initial_gzip=92858"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36363,
+            "unit": "bytes",
+            "extra": "raw=108916; brotli=32742; initial_gzip=36236"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41194,
+            "unit": "bytes",
+            "extra": "raw=123470; brotli=37009; initial_gzip=41066"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54564,
+            "unit": "bytes",
+            "extra": "raw=155147; brotli=48995; initial_gzip=54430"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59813,
+            "unit": "bytes",
+            "extra": "raw=171710; brotli=53646; initial_gzip=59680"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104419,
+            "unit": "bytes",
+            "extra": "raw=330252; brotli=90283; initial_gzip=104279"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107939,
+            "unit": "bytes",
+            "extra": "raw=340831; brotli=93378; initial_gzip=107799"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 101986,
+            "unit": "bytes",
+            "extra": "raw=324581; brotli=87691; initial_gzip=101812"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105364,
+            "unit": "bytes",
+            "extra": "raw=335264; brotli=90574; initial_gzip=105190"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50803,
+            "unit": "bytes",
+            "extra": "raw=156140; brotli=44835; initial_gzip=50671"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56728,
+            "unit": "bytes",
+            "extra": "raw=173454; brotli=49889; initial_gzip=56595"
           }
         ]
       }
