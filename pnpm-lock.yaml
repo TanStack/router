@@ -65,8 +65,8 @@ importers:
   .:
     dependencies:
       '@tanstack/react-start':
-        specifier: 1.167.57
-        version: 1.167.57(@rsbuild/core@2.0.1(core-js@3.40.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1))
+        specifier: workspace:*
+        version: link:packages/react-start
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: ^0.18.2
@@ -11453,7 +11453,7 @@ importers:
     devDependencies:
       '@netlify/vite-plugin-tanstack-start':
         specifier: ^1.1.4
-        version: 1.1.4(@tanstack/react-start@1.167.57(@rsbuild/core@2.0.1(core-js@3.40.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1)))(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.9.2)(rollup@4.56.0)(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1))
+        version: 1.1.4(@tanstack/react-start@packages+react-start)(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.9.2)(rollup@4.56.0)(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1))
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1))
@@ -18888,24 +18888,6 @@ packages:
     resolution: {integrity: sha512-OY2bCqPemT1LlqJ8Y2CUau4KELnIhhG9Ol3ZndPbdnB095pRbPo1cHuXTndg8iIwtoHTgwZjyaDnQ0xD0mYwAw==}
     peerDependencies:
       react: ^19.2.3
-
-  '@tanstack/react-start@1.167.57':
-    resolution: {integrity: sha512-cF4tV7bsmbG6naT2W+Jl26J+wuFRdWiqzRJJnbblrhAlwCIrXWEKPuKmQg5aVWTI8QzgEIkctEit/IRx3Uzc/w==}
-    engines: {node: '>=22.12.0'}
-    hasBin: true
-    peerDependencies:
-      '@rsbuild/core': ^2.0.0
-      '@vitejs/plugin-rsc': '*'
-      react: ^19.2.3
-      react-dom: ^19.2.3
-      vite: ^8.0.0
-    peerDependenciesMeta:
-      '@rsbuild/core':
-        optional: true
-      '@vitejs/plugin-rsc':
-        optional: true
-      vite:
-        optional: true
 
   '@tanstack/react-store@0.9.3':
     resolution: {integrity: sha512-y2iHd/N9OkoQbFJLUX1T9vbc2O9tjH0pQRgTcx1/Nz4IlwLvkgpuglXUx+mXt0g5ZDFrEeDnONPqkbfxXJKwRg==}
@@ -29611,12 +29593,12 @@ snapshots:
 
   '@netlify/types@2.1.0': {}
 
-  '@netlify/vite-plugin-tanstack-start@1.1.4(@tanstack/react-start@1.167.57(@rsbuild/core@2.0.1(core-js@3.40.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1)))(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.9.2)(rollup@4.56.0)(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1))':
+  '@netlify/vite-plugin-tanstack-start@1.1.4(@tanstack/react-start@packages+react-start)(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.9.2)(rollup@4.56.0)(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1))':
     dependencies:
       '@netlify/vite-plugin': 2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.9.2)(rollup@4.56.0)(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1))
       vite: 8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1)
     optionalDependencies:
-      '@tanstack/react-start': 1.167.57(@rsbuild/core@2.0.1(core-js@3.40.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1))
+      '@tanstack/react-start': link:packages/react-start
       '@tanstack/solid-start': link:packages/solid-start
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -32256,23 +32238,6 @@ snapshots:
       '@tanstack/query-core': 5.99.0
       react: 19.2.3
 
-  '@tanstack/react-start@1.167.57(@rsbuild/core@2.0.1(core-js@3.40.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1))':
-    dependencies:
-      '@tanstack/react-router': link:packages/react-router
-      '@tanstack/react-start-client': link:packages/react-start-client
-      '@tanstack/react-start-rsc': link:packages/react-start-rsc
-      '@tanstack/react-start-server': link:packages/react-start-server
-      '@tanstack/router-utils': link:packages/router-utils
-      '@tanstack/start-client-core': link:packages/start-client-core
-      '@tanstack/start-plugin-core': link:packages/start-plugin-core
-      '@tanstack/start-server-core': link:packages/start-server-core
-      pathe: 2.0.3
-      react: 19.2.3
-      react-dom: 19.2.3(react@19.2.3)
-    optionalDependencies:
-      '@rsbuild/core': 2.0.1(core-js@3.40.0)
-      vite: 8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1)
-
   '@tanstack/react-store@0.9.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tanstack/store': 0.9.3
@@ -33498,7 +33463,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.1.0
-      vitest: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(typescript@6.0.2))(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1))
+      vitest: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@27.0.0(postcss@8.5.8))(msw@2.7.0(@types/node@25.0.9)(typescript@6.0.2))(vite@8.0.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.21.0)(yaml@2.8.1))
 
   '@vitest/utils@4.1.4':
     dependencies:
