@@ -126,6 +126,7 @@ describe('buildSitemap', () => {
 
     it('applies custom filter function', () => {
       const startConfig = makeStartConfig({
+        pages: [{ path: '/visible' }, { path: '/hidden' }],
         sitemap: {
           enabled: true,
           host: 'https://example.com',
@@ -133,7 +134,6 @@ describe('buildSitemap', () => {
           filter: (page: any) => page.path !== '/hidden',
         },
       })
-      startConfig.pages = [{ path: '/visible' }, { path: '/hidden' }]
       buildSitemap({ startConfig, publicDir: '/dist' })
       const xml = writtenFiles['/dist/sitemap.xml']
       expect(xml).toContain('https://example.com/visible')
