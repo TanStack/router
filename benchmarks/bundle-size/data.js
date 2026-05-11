@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778364855711,
+  "lastUpdate": 1778527134276,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -15817,6 +15817,102 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/b1c061aff9185cdf5fdc08c0136382a9dce0302f"
         },
         "date": 1778364854732,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89386,
+            "unit": "bytes",
+            "extra": "raw=280647; brotli=77673; initial_gzip=89245"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92998,
+            "unit": "bytes",
+            "extra": "raw=292432; brotli=80788; initial_gzip=92858"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36363,
+            "unit": "bytes",
+            "extra": "raw=108916; brotli=32742; initial_gzip=36236"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41194,
+            "unit": "bytes",
+            "extra": "raw=123470; brotli=37009; initial_gzip=41066"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54564,
+            "unit": "bytes",
+            "extra": "raw=155147; brotli=48995; initial_gzip=54430"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59813,
+            "unit": "bytes",
+            "extra": "raw=171710; brotli=53646; initial_gzip=59680"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104419,
+            "unit": "bytes",
+            "extra": "raw=330252; brotli=90283; initial_gzip=104279"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107939,
+            "unit": "bytes",
+            "extra": "raw=340831; brotli=93378; initial_gzip=107799"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 101986,
+            "unit": "bytes",
+            "extra": "raw=324581; brotli=87691; initial_gzip=101812"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105364,
+            "unit": "bytes",
+            "extra": "raw=335264; brotli=90574; initial_gzip=105190"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50803,
+            "unit": "bytes",
+            "extra": "raw=156140; brotli=44835; initial_gzip=50671"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56728,
+            "unit": "bytes",
+            "extra": "raw=173454; brotli=49889; initial_gzip=56595"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "manuel.schiller@caligano.de",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "038cd123b70bc6154d75abb6404a744c376f8f6a",
+          "message": "fix: fix jiti usage for tsconfig paths (#7382)\n\n* Enable jiti tsconfig path aliases\n\nAgent-Logs-Url: https://github.com/TanStack/router/sessions/0a481c9b-eb97-4543-acc5-71d43b97d386\n\nCo-authored-by: schiller-manuel <6340397+schiller-manuel@users.noreply.github.com>\n\n* Use fixture for jiti tsconfig aliases\n\nAgent-Logs-Url: https://github.com/TanStack/router/sessions/182b9baa-9e54-4813-a322-c33a1da5417d\n\nCo-authored-by: schiller-manuel <6340397+schiller-manuel@users.noreply.github.com>\n\n* Track fixture path alias helper\n\nAgent-Logs-Url: https://github.com/TanStack/router/sessions/182b9baa-9e54-4813-a322-c33a1da5417d\n\nCo-authored-by: schiller-manuel <6340397+schiller-manuel@users.noreply.github.com>\n\n* Add router-generator changeset\n\nAgent-Logs-Url: https://github.com/TanStack/router/sessions/ab1a42cc-7326-4e36-a656-f01179221cee\n\nCo-authored-by: schiller-manuel <6340397+schiller-manuel@users.noreply.github.com>\n\n* Format virtual config fixture\n\nAgent-Logs-Url: https://github.com/TanStack/router/sessions/22194166-b3a7-431e-b723-ad594d4b0405\n\nCo-authored-by: schiller-manuel <6340397+schiller-manuel@users.noreply.github.com>\n\n---------\n\nCo-authored-by: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com>\nCo-authored-by: schiller-manuel <6340397+schiller-manuel@users.noreply.github.com>",
+          "timestamp": "2026-05-11T21:16:18+02:00",
+          "tree_id": "faa9bc2b283c1da2369371636588d1662e4728a9",
+          "url": "https://github.com/TanStack/router/commit/038cd123b70bc6154d75abb6404a744c376f8f6a"
+        },
+        "date": 1778527133164,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
