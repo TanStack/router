@@ -418,7 +418,15 @@ async function resolveManifest(
     const cacheKey = inlineCss ? 'inline-css' : 'linked-css'
     let cachedFinalManifestPromise = cachedFinalManifestPromises.get(cacheKey)
     if (!cachedFinalManifestPromise) {
-      cachedFinalManifestPromise = computeFinalManifest()
+      cachedFinalManifestPromise = computeFinalManifest().catch((error) => {
+        if (
+          cachedFinalManifestPromises.get(cacheKey) ===
+          cachedFinalManifestPromise
+        ) {
+          cachedFinalManifestPromises.delete(cacheKey)
+        }
+        throw error
+      })
       cachedFinalManifestPromises.set(cacheKey, cachedFinalManifestPromise)
     }
     return cachedFinalManifestPromise
