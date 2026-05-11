@@ -176,6 +176,35 @@ const spaSchema = z.object({
     })),
 })
 
+const inlineCssSchema = z
+  .union([
+    z.boolean(),
+    z.object({
+      /**
+       * Inline route CSS into the server-rendered HTML response.
+       *
+       * @experimental This option is experimental!
+       */
+      enabled: z.boolean().optional().default(true),
+      /**
+       * Emit build-time templates that allow `transformAssets` to rewrite
+       * `url(...)` references inside inlined CSS at runtime.
+       */
+      transformAssets: z.boolean().optional().default(false),
+    }),
+  ])
+  .optional()
+  .default(false)
+  .transform((value) => {
+    if (typeof value === 'boolean') {
+      return { enabled: value, transformAssets: false }
+    }
+
+    return value
+  })
+
+export type InlineCssInputOptions = z.input<typeof inlineCssSchema>
+
 const pageSchema = pageBaseSchema.extend({
   prerender: pagePrerenderOptionsSchema.optional(),
 })
@@ -214,7 +243,7 @@ export const tanstackStartOptionsObjectSchema = z.object({
            *
            * @experimental This option is experimental!
            */
-          inlineCss: z.boolean().optional().default(false),
+          inlineCss: inlineCssSchema,
         })
         .optional()
         .default({}),

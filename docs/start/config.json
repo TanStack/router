@@ -146,6 +146,10 @@
               "to": "framework/react/guide/cdn-asset-urls"
             },
             {
+              "label": "CSS Styling",
+              "to": "framework/react/guide/css-styling"
+            },
+            {
               "label": "Client Entry Point",
               "to": "framework/react/guide/client-entry-point"
             },
@@ -261,6 +265,10 @@
             {
               "label": "Early Hints",
               "to": "framework/solid/guide/early-hints"
+            },
+            {
+              "label": "CSS Styling",
+              "to": "framework/solid/guide/css-styling"
             },
             {
               "label": "Client Entry Point",

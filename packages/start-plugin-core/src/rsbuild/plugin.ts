@@ -162,7 +162,8 @@ export function tanStackStartRsbuild(
           routerBasepath,
           serverFnBase: startConfig.serverFns.base,
         })
-        const inlineCssEnabled = !isDev && startConfig.server.build.inlineCss
+        const inlineCssEnabled =
+          !isDev && startConfig.server.build.inlineCss.enabled
 
         return mergeRsbuildConfig(rsbuildConfig, {
           source: {

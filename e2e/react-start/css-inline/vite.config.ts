@@ -3,6 +3,8 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 
 const outDir = process.env.E2E_DIST_DIR ?? 'dist-vite-ssr'
+const transformInlineCssAssets =
+  process.env.CSS_INLINE_TRANSFORM_ASSETS === 'true'
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
@@ -16,7 +18,9 @@ export default defineConfig({
     tanstackStart({
       server: {
         build: {
-          inlineCss: true,
+          inlineCss: transformInlineCssAssets
+            ? { enabled: true, transformAssets: true }
+            : true,
         },
       },
     }),

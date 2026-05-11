@@ -106,7 +106,7 @@ Static Early Hints are collected from the final Start manifest resolved for the 
 - CDN URL rewrites are reflected in Early Hints.
 - `crossOrigin` returned from `transformAssets` is reflected in Early Hints.
 - Per-request transforms with `cache: false` are reflected in Early Hints for that request.
-- Inlined CSS assets are skipped when Start's inline CSS build option inlines them into the HTML.
+- Inlined CSS assets are skipped when Start's [CSS inlining](./css-styling#css-inlining) build option inlines them into the HTML.
 
 ## Dynamic Hints
 

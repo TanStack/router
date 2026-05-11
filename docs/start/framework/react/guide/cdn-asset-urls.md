@@ -9,8 +9,6 @@ title: CDN Asset URLs
 
 When deploying to production, you may want to serve your static assets (JavaScript, CSS) from a CDN. The `transformAssets` option on `createStartHandler` lets you rewrite asset URLs at runtime - for example, prepending a CDN origin that is only known when the server starts.
 
-`transformAssetUrls` still works, but it is deprecated and now delegates to `transformAssets` with a development warning.
-
 ## Why Runtime URL Rewriting?
 
 Vite's `base` config is evaluated at build time. If your CDN URL is determined at deploy time (via environment variables, dynamic configuration, etc.), you need a way to rewrite URLs at runtime. `transformAssets` solves this for the URLs that TanStack Start manages in its manifest:
@@ -18,6 +16,7 @@ Vite's `base` config is evaluated at build time. If your CDN URL is determined a
 - `<link rel="modulepreload">` tags (JS preloads)
 - `<link rel="stylesheet">` tags (CSS)
 - The client entry `<script>` tag
+- `url(...)` and `@import` URLs inside [inlined CSS](./css-styling#css-inlining) when CSS URL templates are enabled
 
 ## Basic Usage
 
@@ -84,7 +83,7 @@ Kinds not listed in the per-kind record receive no `crossOrigin` attribute. Like
 
 ### Callback
 
-For more control, pass a callback that receives `{ kind, url }` and returns a string, or `{ href, crossOrigin? }` (or a `Promise` of either). By default, the transformed manifest is cached after the first request (`cache: true`), so the callback only runs once in production:
+For more control, pass a callback that receives an asset context and returns a string, or `{ href, crossOrigin? }` (or a `Promise` of either). The context is discriminated by `kind`; when `kind === 'css-url'`, it also includes `stylesheetHref`. By default, the transformed manifest is cached after the first request (`cache: true`), so the callback only runs once in production:
 
 ```tsx
 // src/server.ts
@@ -96,10 +95,10 @@ import { createServerEntry } from '@tanstack/react-start/server-entry'
 
 const handler = createStartHandler({
   handler: defaultStreamHandler,
-  transformAssets: ({ kind, url }) => {
-    const href = `https://cdn.example.com${url}`
+  transformAssets: (asset) => {
+    const href = `https://cdn.example.com${asset.url}`
 
-    if (kind === 'modulepreload') {
+    if (asset.kind === 'modulepreload') {
       return {
         href,
         crossOrigin: 'anonymous',
@@ -122,8 +121,58 @@ The `kind` parameter tells you what kind of asset URL is being transformed:
 | `'modulepreload'` | JS module preload URL (`<link rel="modulepreload">`) |
 | `'stylesheet'`    | CSS stylesheet URL (`<link rel="stylesheet">`)       |
 | `'clientEntry'`   | Client entry module URL (used in `import('...')`)    |
+| `'css-url'`       | `url(...)` or `@import` URL inside inlined CSS       |
 
-`crossOrigin` applies to manifest-managed link tags. For the client entry, returning `{ href }` is equivalent to returning a string.
+For `kind === 'css-url'`, the context also includes `stylesheetHref`, which is the manifest stylesheet href whose CSS content is being inlined.
+
+`crossOrigin` applies to manifest-managed link tags. For the client entry and CSS-internal URLs, returning `{ href }` is equivalent to returning a string.
+
+### Inlined CSS URLs
+
+When Start's [CSS inlining](./css-styling#css-inlining) is enabled, Start can also run `transformAssets` for URLs inside the inlined CSS content. This covers relative and root-relative `url(...)` and `@import` values, such as fonts and background images.
+
+Because Start does not parse CSS at runtime, this requires opting into build-time CSS URL templates:
+
+```ts
+tanstackStart({
+  server: {
+    build: {
+      inlineCss: {
+        enabled: true,
+        transformAssets: true,
+      },
+    },
+  },
+})
+```
+
+Passing `inlineCss: true` still inlines route CSS, but it does not emit the template metadata needed for runtime CSS URL transforms.
+
+Relative CSS URLs are resolved against the emitted stylesheet href before your transform runs:
+
+```css
+/* emitted stylesheet href: /assets/dashboard.css */
+.card {
+  background-image: url('./dot.svg');
+}
+```
+
+Your callback receives `/assets/dot.svg`:
+
+```tsx
+const handler = createStartHandler({
+  handler: defaultStreamHandler,
+  transformAssets: (asset) => {
+    if (asset.kind === 'css-url') {
+      return `https://cdn.example.com${asset.url}`
+    }
+
+    return `https://cdn.example.com${asset.url}`
+  },
+})
+```
+
+Absolute URLs, protocol-relative URLs, data URLs, and hash references inside CSS are left unchanged and are not passed to `transformAssets`. If CSS URL templates were not enabled for the build, URLs inside inlined CSS are left unchanged at runtime.
 
 ### Object Form (Explicit Cache Control)
 
@@ -186,15 +235,15 @@ transformAssets: {
     const region = ctx.request.headers.get('x-region') || 'us'
     const cdnBase = await fetchCdnBaseForRegion(region)
 
-    return ({ kind, url }) => {
-      if (kind === 'modulepreload') {
+    return (asset) => {
+      if (asset.kind === 'modulepreload') {
         return {
-          href: `${cdnBase}${url}`,
+          href: `${cdnBase}${asset.url}`,
           crossOrigin: 'anonymous',
         }
       }
 
-      return { href: `${cdnBase}${url}` }
+      return { href: `${cdnBase}${asset.url}` }
     }
   },
 }
@@ -282,7 +331,7 @@ Using an empty string rather than `'./'` is important - both produce relative cl
 
 ## What This Does Not Cover
 
-`transformAssets` only rewrites URLs in the TanStack Start manifest - the tags emitted during SSR for preloading and bootstrapping the application.
+`transformAssets` rewrites URLs in the TanStack Start manifest - the tags emitted during SSR for preloading and bootstrapping the application - and URLs inside CSS that Start inlines into the HTML when CSS URL templates are enabled.
 
 It does not rewrite asset URLs imported directly in your components:
 

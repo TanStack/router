@@ -445,7 +445,7 @@ describe('buildStartManifest', () => {
         '/dashboard': { filePath: '/routes/dashboard.tsx' },
       },
       basePath: '/assets',
-      inlineCss: true,
+      inlineCss: { enabled: true, transformAssets: false },
     })
 
     expect(manifest.inlineCss?.styles['/assets/root.css']).toBe(
@@ -454,6 +454,41 @@ describe('buildStartManifest', () => {
     expect(manifest.inlineCss?.styles['/assets/dashboard.css']).toBe(
       '.card{background:url(/assets/dot.svg)}',
     )
+  })
+
+  test('emits inline CSS URL templates when transformAssets is enabled', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      importedCss: ['root.css'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeTestBuild({
+        'entry.js': entryChunk,
+        'root.css': makeCssAsset(
+          'root.css',
+          '@import "./theme.css" screen;.card{background:url("./dot.svg")} .skip{background:url(data:image/svg+xml,foo)}',
+        ),
+      }),
+      routeTreeRoutes: {
+        __root__: {},
+      },
+      basePath: '/assets',
+      inlineCss: { enabled: true, transformAssets: true },
+    })
+
+    expect(manifest.inlineCss?.styles['/assets/root.css']).toBe(
+      '@import "/assets/theme.css" screen;.card{background:url("/assets/dot.svg")}.skip{background:url(data:image/svg+xml,foo)}',
+    )
+    expect(manifest.inlineCss?.templates?.['/assets/root.css']).toEqual({
+      strings: [
+        '@import "',
+        '" screen;.card{background:url("',
+        '")}.skip{background:url(data:image/svg+xml,foo)}',
+      ],
+      urls: ['/assets/theme.css', '/assets/dot.svg'],
+    })
   })
 
   test('throws when inline CSS content is missing for a stylesheet asset', () => {
@@ -472,7 +507,7 @@ describe('buildStartManifest', () => {
           __root__: {},
         },
         basePath: '/assets',
-        inlineCss: true,
+        inlineCss: { enabled: true, transformAssets: false },
       }),
     ).toThrow('could not find CSS content')
   })

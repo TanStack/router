@@ -25,7 +25,6 @@ import { requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
 import {
-  adaptTransformAssetUrlsConfigToTransformAssets,
   buildManifestWithClientEntry,
   resolveTransformAssetsConfig,
   transformManifestAssets,
@@ -37,6 +36,7 @@ import {
   createResponseLinkHeaderEntries,
   getResponseLinkHeaderEntries,
 } from './early-hints'
+import { resolveInlineCssForRequest } from './inlineCss'
 
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
@@ -69,10 +69,10 @@ import type {
 import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 import type {
   StartManifestWithClientEntry,
-  TransformAssetUrls,
   TransformAssets,
   TransformAssetsFn,
 } from './transformAssetUrls'
+import type { HandlerInlineCssOption } from './inlineCss'
 
 type TODO = any
 
@@ -82,6 +82,17 @@ type AnyMiddlewareServerFn =
 
 export interface CreateStartHandlerOptions {
   handler: HandlerCallback<AnyRouter>
+  /**
+   * Controls whether Start inlines build-collected CSS by default at runtime.
+   *
+   * This only has an effect when the build was created with
+   * `server.build.inlineCss` enabled. Pass a callback to decide per request.
+   * `handler(request, { inlineCss })` overrides this value for that
+   * request.
+   *
+   * @default true
+   */
+  inlineCss?: HandlerInlineCssOption
   /**
    * Transform asset URLs and attributes at runtime, e.g. to prepend a CDN prefix.
    *
@@ -146,7 +157,8 @@ export interface CreateStartHandlerOptions {
    * })
    * ```
    *
-   * `kind` is one of `'modulepreload' | 'stylesheet' | 'clientEntry'`.
+   * `kind` is one of `'modulepreload' | 'stylesheet' | 'clientEntry' | 'css-url'`.
+   * `css-url` is used for `url(...)` and `@import` URLs inside inlined CSS and also includes `stylesheetHref`.
    * `crossOrigin` applies to manifest-managed `<link>` assets.
    *
    * By default, the transformed manifest is cached after the first request
@@ -156,63 +168,13 @@ export interface CreateStartHandlerOptions {
    * (object form only) to compute the transformed manifest in the background at
    * server startup.
    *
-   * Note: This only transforms URLs managed by TanStack Start's manifest
-   * (JS preloads, CSS links, and the client entry script). For asset imports
-   * used directly in components (e.g. `import logo from './logo.svg'`),
-   * configure Vite's `experimental.renderBuiltUrl` in your vite.config.ts.
+   * Note: This transforms URLs managed by TanStack Start's manifest (JS
+   * preloads, CSS links, and the client entry script) and URLs inside inlined
+   * CSS. For asset imports used directly in components (e.g.
+   * `import logo from './logo.svg'`), configure Vite's
+   * `experimental.renderBuiltUrl` in your vite.config.ts.
    */
   transformAssets?: TransformAssets
-  /**
-   * @deprecated Use `transformAssets` instead.
-   *
-   * **String** — a URL prefix prepended to every asset URL (cached by default):
-   * ```ts
-   * createStartHandler({
-   *   handler: defaultStreamHandler,
-   *   transformAssetUrls: 'https://cdn.example.com',
-   * })
-   * ```
-   *
-   * **Callback** — receives `{ url, type }` and returns a new URL
-   * (cached by default — runs once on first request):
-   * ```ts
-   * createStartHandler({
-   *   handler: defaultStreamHandler,
-   *   transformAssetUrls: ({ url, type }) => {
-   *     return `https://cdn.example.com${url}`
-   *   },
-   * })
-   * ```
-   *
-   * **Object** — for explicit cache control:
-   * ```ts
-   * createStartHandler({
-   *   handler: defaultStreamHandler,
-   *   transformAssetUrls: {
-   *     transform: ({ url }) => {
-   *       const region = getRequest().headers.get('x-region') || 'us'
-   *       return `https://cdn-${region}.example.com${url}`
-   *     },
-   *     cache: false, // transform per-request
-   *   },
-   * })
-   * ```
-   *
-   * `type` is one of `'modulepreload' | 'stylesheet' | 'clientEntry'`.
-   *
-   * By default, the transformed manifest is cached after the first request
-   * (`cache: true`). Set `cache: false` for per-request transforms.
-   *
-   * If you're using a cached transform, you can optionally set `warmup: true`
-   * (object form only) to compute the transformed manifest in the background at
-   * server startup.
-   *
-   * Note: This only transforms URLs managed by TanStack Start's manifest
-   * (JS preloads, CSS links, and the client entry script). For asset imports
-   * used directly in components (e.g. `import logo from './logo.svg'`),
-   * configure Vite's `experimental.renderBuiltUrl` in your vite.config.ts.
-   */
-  transformAssetUrls?: TransformAssetUrls
 }
 
 function getStartResponseHeaders(opts: { router: AnyRouter }) {
@@ -347,12 +309,6 @@ const defaultCsrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === 'serverFn',
 })
 
-/**
- * Cached final manifest (with client entry script tag). In production,
- * this is computed once and reused for every request when caching is enabled.
- */
-let cachedFinalManifestPromise: Promise<Manifest> | undefined
-
 async function loadEntries(): Promise<Entries> {
   const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
     // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
@@ -438,13 +394,18 @@ async function resolveManifest(
   matchedRoutes: ReadonlyArray<AnyRoute> | undefined,
   transformFn: TransformAssetsFn | undefined,
   cache: boolean,
+  inlineCss: boolean,
+  cachedFinalManifestPromises: Map<string, Promise<Manifest>>,
 ): Promise<Manifest> {
   const base = await getBaseManifest(matchedRoutes)
 
   const computeFinalManifest = async () => {
     return transformFn
-      ? await transformManifestAssets(base, transformFn, { clone: !cache })
-      : buildManifestWithClientEntry(base)
+      ? await transformManifestAssets(base, transformFn, {
+          clone: !cache,
+          inlineCss,
+        })
+      : buildManifestWithClientEntry(base, { inlineCss })
   }
 
   // In dev, always compute fresh to include route-specific dev styles.
@@ -454,8 +415,11 @@ async function resolveManifest(
 
   // In prod, cache unless we're explicitly doing per-request transforms.
   if (!transformFn || cache) {
+    const cacheKey = inlineCss ? 'inline-css' : 'linked-css'
+    let cachedFinalManifestPromise = cachedFinalManifestPromises.get(cacheKey)
     if (!cachedFinalManifestPromise) {
       cachedFinalManifestPromise = computeFinalManifest()
+      cachedFinalManifestPromises.set(cacheKey, cachedFinalManifestPromise)
     }
     return cachedFinalManifestPromise
   }
@@ -613,30 +577,21 @@ export function createStartHandler<TRegister = Register>(
     typeof cbOrOptions === 'function' ? cbOrOptions : cbOrOptions.handler
   const transformAssetsOption: TransformAssets | undefined =
     typeof cbOrOptions === 'function' ? undefined : cbOrOptions.transformAssets
-  const transformAssetUrlsOption: TransformAssetUrls | undefined =
-    typeof cbOrOptions === 'function'
-      ? undefined
-      : cbOrOptions.transformAssetUrls
+  const inlineCssOption: CreateStartHandlerOptions['inlineCss'] =
+    typeof cbOrOptions === 'function' ? undefined : cbOrOptions.inlineCss
+
+  const cachedFinalManifestPromises = new Map<string, Promise<Manifest>>()
 
   const transformOption =
     transformAssetsOption !== undefined
       ? resolveTransformAssetsConfig(transformAssetsOption)
-      : transformAssetUrlsOption !== undefined
-        ? resolveTransformAssetsConfig(
-            adaptTransformAssetUrlsConfigToTransformAssets(
-              transformAssetUrlsOption,
-            ),
-          )
-        : undefined
+      : undefined
 
   const warmupTransformManifest =
-    (!!transformAssetsOption &&
-      typeof transformAssetsOption === 'object' &&
-      'warmup' in transformAssetsOption &&
-      transformAssetsOption.warmup === true) ||
-    (!!transformAssetUrlsOption &&
-      typeof transformAssetUrlsOption === 'object' &&
-      transformAssetUrlsOption.warmup === true)
+    !!transformAssetsOption &&
+    typeof transformAssetsOption === 'object' &&
+    'warmup' in transformAssetsOption &&
+    transformAssetsOption.warmup === true
 
   // Pre-resolve the transform function and cache flag
   const resolvedTransformConfig = transformOption
@@ -678,7 +633,7 @@ export function createStartHandler<TRegister = Register>(
     warmupTransformManifest &&
     cache &&
     process.env.TSS_DEV_SERVER !== 'true' &&
-    !cachedFinalManifestPromise
+    !cachedFinalManifestPromises.has('inline-css')
   ) {
     // NOTE: Do not call resolveManifest() here.
     // resolveManifest() reads from cachedFinalManifestPromise, and since we set
@@ -688,14 +643,17 @@ export function createStartHandler<TRegister = Register>(
       const base = await getBaseManifest(undefined)
       const transformFn = await getTransformFn({ warmup: true })
       return transformFn
-        ? await transformManifestAssets(base, transformFn, { clone: false })
-        : buildManifestWithClientEntry(base)
+        ? await transformManifestAssets(base, transformFn, {
+            clone: false,
+            inlineCss: true,
+          })
+        : buildManifestWithClientEntry(base, { inlineCss: true })
     })()
-    cachedFinalManifestPromise = warmupPromise
+    cachedFinalManifestPromises.set('inline-css', warmupPromise)
     warmupPromise.catch(() => {
       // If warmup fails, allow the next request to retry.
-      if (cachedFinalManifestPromise === warmupPromise) {
-        cachedFinalManifestPromise = undefined
+      if (cachedFinalManifestPromises.get('inline-css') === warmupPromise) {
+        cachedFinalManifestPromises.delete('inline-css')
       }
       cachedCreateTransformPromise = undefined
     })
@@ -860,6 +818,12 @@ export function createStartHandler<TRegister = Register>(
           matchedRoutes,
           await getTransformFn({ warmup: false, request }),
           cache,
+          await resolveInlineCssForRequest({
+            request,
+            handlerInlineCss: inlineCssOption,
+            requestInlineCss: requestOpts?.inlineCss,
+          }),
+          cachedFinalManifestPromises,
         )
 
         const onEarlyHints = requestOpts?.onEarlyHints

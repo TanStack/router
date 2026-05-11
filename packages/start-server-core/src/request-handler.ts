@@ -45,7 +45,19 @@ type EarlyHintsOptions = {
   responseLinkHeader?: boolean | ResponseLinkHeaderOptions
 }
 
+type InlineCssOptions = {
+  /**
+   * Controls whether Start inlines build-collected CSS for this request.
+   *
+   * This only has an effect when the build was created with
+   * `server.build.inlineCss` enabled. Defaults to `true` so builds with inline
+   * CSS enabled continue to inline CSS unless a request opts out.
+   */
+  inlineCss?: boolean
+}
+
 export type RequestOptions<TRegister> = EarlyHintsOptions &
+  InlineCssOptions &
   (TRegister extends {
     server: { requestContext: infer TRequestContext }
   }

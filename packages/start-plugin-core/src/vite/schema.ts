@@ -4,6 +4,7 @@ import {
   tanstackStartOptionsObjectSchema,
 } from '../schema'
 import type { CompileStartFrameworkOptions } from '../types'
+import type { InlineCssInputOptions } from '../schema'
 
 export const tanstackStartViteOptionsSchema = tanstackStartOptionsObjectSchema
   .extend({
@@ -27,4 +28,10 @@ export function parseStartConfig(
 
 export type TanStackStartViteInputConfig = z.input<
   typeof tanstackStartViteOptionsSchema
->
+> & {
+  server?: {
+    build?: {
+      inlineCss?: InlineCssInputOptions
+    }
+  }
+}
