@@ -1,11 +1,6 @@
 // @ts-nocheck
 
-import {
-  index,
-  layout,
-  rootRoute,
-  route,
-} from '@tanstack/virtual-file-routes'
+import { index, layout, rootRoute, route } from '@tanstack/virtual-file-routes'
 import { helloSubtree } from '@/virtual-routes'
 
 export default rootRoute('root.tsx', [
