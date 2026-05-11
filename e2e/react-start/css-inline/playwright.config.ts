@@ -5,9 +5,17 @@ import packageJson from './package.json' with { type: 'json' }
 
 const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
 const inlineCssTransformAssets =
-  process.env.CSS_INLINE_TRANSFORM_ASSETS ?? 'false'
-const transformAssetsSuffix =
-  inlineCssTransformAssets === 'true' ? '-transform-assets' : ''
+  process.env.CSS_INLINE_TRANSFORM_ASSETS || 'false'
+if (!['true', 'false'].includes(inlineCssTransformAssets)) {
+  throw new Error(
+    `CSS_INLINE_TRANSFORM_ASSETS must be "true" or "false". Received: ${JSON.stringify(inlineCssTransformAssets)}`,
+  )
+}
+
+const isInlineCssTransformAssets = inlineCssTransformAssets === 'true'
+const transformAssetsSuffix = isInlineCssTransformAssets
+  ? '-transform-assets'
+  : ''
 const distDir =
   process.env.E2E_DIST_DIR ?? `dist-${toolchain}${transformAssetsSuffix}-ssr`
 const e2ePortKey =

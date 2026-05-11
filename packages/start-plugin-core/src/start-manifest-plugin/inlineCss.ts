@@ -126,18 +126,18 @@ export function processInlineCssUrls(options: {
           }
 
           const rebasedUrl = rebaseCssUrl(rule.value.url, options.cssHref)
+          if (templates) {
+            urls.push(rebasedUrl)
+          }
+
           const value = {
             url: templates
-              ? createInlineCssUrlPlaceholder(urls.length)
+              ? createInlineCssUrlPlaceholder(urls.length - 1)
               : rebasedUrl,
             loc: rule.value.loc,
             ...(rule.value.media ? { media: rule.value.media } : {}),
             ...(rule.value.layer ? { layer: rule.value.layer } : {}),
             ...(rule.value.supports ? { supports: rule.value.supports } : {}),
-          }
-
-          if (templates) {
-            urls.push(rebasedUrl)
           }
 
           return {

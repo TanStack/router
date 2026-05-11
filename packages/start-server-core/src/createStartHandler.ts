@@ -598,6 +598,10 @@ export function createStartHandler<TRegister = Register>(
   const cache = resolvedTransformConfig ? resolvedTransformConfig.cache : true
   const shouldCacheCreateTransform =
     cache && process.env.TSS_DEV_SERVER !== 'true'
+  const handlerDefaultInlineCss =
+    typeof inlineCssOption === 'function'
+      ? undefined
+      : (inlineCssOption ?? true)
 
   // Memoize a single createTransform() result when caching is enabled outside
   // of the dev server.
@@ -631,10 +635,14 @@ export function createStartHandler<TRegister = Register>(
   // Background warmup for cached transforms (production only)
   if (
     warmupTransformManifest &&
+    handlerDefaultInlineCss !== undefined &&
     cache &&
     process.env.TSS_DEV_SERVER !== 'true' &&
-    !cachedFinalManifestPromises.has('inline-css')
+    !cachedFinalManifestPromises.has(
+      handlerDefaultInlineCss ? 'inline-css' : 'linked-css',
+    )
   ) {
+    const warmupCacheKey = handlerDefaultInlineCss ? 'inline-css' : 'linked-css'
     // NOTE: Do not call resolveManifest() here.
     // resolveManifest() reads from cachedFinalManifestPromise, and since we set
     // cachedFinalManifestPromise to this warmup promise, that would create a
@@ -645,15 +653,17 @@ export function createStartHandler<TRegister = Register>(
       return transformFn
         ? await transformManifestAssets(base, transformFn, {
             clone: false,
-            inlineCss: true,
+            inlineCss: handlerDefaultInlineCss,
           })
-        : buildManifestWithClientEntry(base, { inlineCss: true })
+        : buildManifestWithClientEntry(base, {
+            inlineCss: handlerDefaultInlineCss,
+          })
     })()
-    cachedFinalManifestPromises.set('inline-css', warmupPromise)
+    cachedFinalManifestPromises.set(warmupCacheKey, warmupPromise)
     warmupPromise.catch(() => {
       // If warmup fails, allow the next request to retry.
-      if (cachedFinalManifestPromises.get('inline-css') === warmupPromise) {
-        cachedFinalManifestPromises.delete('inline-css')
+      if (cachedFinalManifestPromises.get(warmupCacheKey) === warmupPromise) {
+        cachedFinalManifestPromises.delete(warmupCacheKey)
       }
       cachedCreateTransformPromise = undefined
     })
