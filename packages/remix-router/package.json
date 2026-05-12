@@ -1,0 +1,81 @@
+{
+  "name": "@tanstack/remix-router",
+  "version": "0.0.1-experimental",
+  "description": "TanStack Router binding for Remix 3 (experimental). Renders TanStack Router's framework-agnostic core through remix/ui's component runtime.",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TanStack/router.git",
+    "directory": "packages/remix-router"
+  },
+  "homepage": "https://tanstack.com/router",
+  "keywords": [
+    "remix",
+    "remix-3",
+    "router",
+    "routing",
+    "tanstack",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "test:eslint": "eslint",
+    "test:types": "tsc --noEmit",
+    "test:unit": "vitest",
+    "test:unit:dev": "vitest --watch",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "type": "module",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    },
+    "./ssr/server": {
+      "types": "./dist/ssr/server.d.ts",
+      "default": "./dist/ssr/server.js"
+    },
+    "./ssr/client": {
+      "types": "./dist/ssr/client.d.ts",
+      "default": "./dist/ssr/client.js"
+    },
+    "./vite": {
+      "types": "./dist/vite/index.d.ts",
+      "default": "./dist/vite/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "dependencies": {
+    "@tanstack/history": "workspace:*",
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/store": "^0.9.3",
+    "isbot": "^5.1.28"
+  },
+  "devDependencies": {
+    "@remix-run/ui": "^0.1.1",
+    "@types/node": ">=20",
+    "jsdom": "^25.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.4"
+  },
+  "peerDependencies": {
+    "@remix-run/ui": ">=0.1.0"
+  }
+}

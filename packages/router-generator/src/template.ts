@@ -216,6 +216,64 @@ export function getTargetTemplate(config: Config): TargetTemplate {
           },
         },
       }
+    case 'remix':
+      return {
+        fullPkg: '@tanstack/remix-router',
+        subPkg: 'remix-router',
+        rootRoute: {
+          template: () =>
+            [
+              '/** @jsxRuntime automatic */\n',
+              '/** @jsxImportSource @remix-run/ui */\n',
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
+              "function RootComponent(_handle) { return () => (<><div>Hello \"%%tsrPath%%\"!</div><Outlet /></>) };\n",
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              "import { Outlet, createRootRoute } from '@tanstack/remix-router';",
+            tsrExportStart: () => 'export const Route = createRootRoute(',
+            tsrExportEnd: () => ');',
+          },
+        },
+        route: {
+          template: () =>
+            [
+              '/** @jsxRuntime automatic */\n',
+              '/** @jsxImportSource @remix-run/ui */\n',
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+              "function RouteComponent(_handle) { return () => <div>Hello \"%%tsrPath%%\"!</div> };\n",
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              "import { createFileRoute } from '@tanstack/remix-router';",
+            tsrExportStart: (routePath) =>
+              `export const Route = createFileRoute(${serializeRoutePath(routePath)})(`,
+            tsrExportEnd: () => ');',
+          },
+        },
+        lazyRoute: {
+          template: () =>
+            [
+              '/** @jsxRuntime automatic */\n',
+              '/** @jsxImportSource @remix-run/ui */\n',
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+              "function RouteComponent(_handle) { return () => <div>Hello \"%%tsrPath%%\"!</div> };\n",
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              "import { createLazyFileRoute } from '@tanstack/remix-router';",
+            tsrExportStart: (routePath) =>
+              `export const Route = createLazyFileRoute(${serializeRoutePath(routePath)})(`,
+            tsrExportEnd: () => ');',
+          },
+        },
+      }
     default:
       throw new Error(`router-generator: Unknown target type: ${target}`)
   }

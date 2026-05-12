@@ -1,6 +1,11 @@
 export { createStartHandler } from './createStartHandler'
 export type { CreateStartHandlerOptions } from './createStartHandler'
 
+// Server-function dispatch primitive. Exposed so framework-specific
+// handlers (e.g. `@tanstack/remix-start`) can wire `${serverFnBase}/<id>`
+// requests through the same RPC runtime without re-implementing it.
+export { handleServerAction } from './server-functions-handler'
+
 export type {
   TransformAssets,
   TransformAssetsFn,

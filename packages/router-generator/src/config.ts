@@ -20,7 +20,7 @@ export type TokenMatcherJson = string | z.infer<typeof tokenJsonRegexSchema>
 export type TokenMatcher = z.infer<typeof tokenMatcherSchema>
 
 export const baseConfigSchema = z.object({
-  target: z.enum(['react', 'solid', 'vue']).optional().default('react'),
+  target: z.enum(['react', 'solid', 'vue', 'remix']).optional().default('react'),
   virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
@@ -49,6 +49,7 @@ export type BaseConfig = z.infer<typeof baseConfigSchema>
 export const configSchema = baseConfigSchema.extend({
   generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   disableTypes: z.boolean().optional().default(false),
+  verboseFileRoutes: z.boolean().optional(),
   addExtensions: z
     .union([z.boolean(), z.string()])
     .optional()

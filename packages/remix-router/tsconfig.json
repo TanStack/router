@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@remix-run/ui",
+    "types": ["node"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "target": "es2022",
+    "lib": ["es2022", "dom", "dom.iterable"]
+  },
+  "include": ["src", "eslint.config.ts"]
+}
