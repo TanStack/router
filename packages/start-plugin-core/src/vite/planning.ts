@@ -138,6 +138,7 @@ export function createViteDefineConfig(opts: {
   devSsrStylesBasepath: string
   inlineCssEnabled: boolean
   staticNodeEnv: boolean
+  disableCsrfMiddlewareWarning: boolean
 }) {
   return {
     ...defineReplaceEnv('TSS_SERVER_FN_BASE', opts.serverFnBase),
@@ -160,6 +161,10 @@ export function createViteDefineConfig(opts: {
     ...defineReplaceEnv(
       'TSS_INLINE_CSS_ENABLED',
       opts.inlineCssEnabled ? 'true' : 'false',
+    ),
+    ...defineReplaceEnv(
+      'TSS_DISABLE_CSRF_MIDDLEWARE_WARNING',
+      opts.disableCsrfMiddlewareWarning ? 'true' : 'false',
     ),
     ...(opts.command === 'build' && opts.staticNodeEnv
       ? {

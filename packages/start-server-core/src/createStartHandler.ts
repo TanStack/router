@@ -1,6 +1,8 @@
 import { createMemoryHistory } from '@tanstack/history'
 import {
+  createCsrfMiddleware,
   createNullProtoObject,
+  csrfSymbol,
   flattenMiddlewares,
   mergeHeaders,
   safeObjectMerge,
@@ -340,6 +342,10 @@ interface Entries {
 // that can cause race conditions during module initialization
 let entriesPromise: Promise<Entries> | undefined
 let baseManifestPromise: Promise<StartManifestWithClientEntry> | undefined
+let hasWarnedMissingCsrfMiddleware = false
+const defaultCsrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === 'serverFn',
+})
 
 /**
  * Cached final manifest (with client entry script tag). In production,
@@ -368,6 +374,39 @@ function getEntries() {
     entriesPromise = loadEntries()
   }
   return entriesPromise
+}
+
+function hasCsrfMiddleware(
+  middlewares: Array<AnyRequestMiddleware | AnyFunctionMiddleware>,
+): boolean {
+  return middlewares.some((middleware) => csrfSymbol in middleware)
+}
+
+function warnMissingCsrfMiddlewareOnce() {
+  if (hasWarnedMissingCsrfMiddleware) return
+  hasWarnedMissingCsrfMiddleware = true
+
+  console.warn(`TanStack Start server functions are not protected by the CSRF middleware.
+
+Server functions are same-origin RPC endpoints and should be protected from cross-site requests.
+
+Add the CSRF middleware in src/start.ts:
+
+  const csrfMiddleware = createCsrfMiddleware({
+    filter: (ctx) => ctx.handlerType === 'serverFn',
+  })
+
+  export const startInstance = createStart(() => ({
+    requestMiddleware: [csrfMiddleware],
+  }))
+
+If you intentionally handle CSRF another way, disable this warning:
+
+  tanstackStart({
+    serverFns: {
+      disableCsrfMiddlewareWarning: true,
+    },
+  })`)
 }
 
 /**
@@ -682,6 +721,7 @@ export function createStartHandler<TRegister = Register>(
       }
 
       const entries = await getEntries()
+      const hasStartInstance = !!entries.startEntry.startInstance
       const startOptions: AnyStartInstanceOptions =
         (await entries.startEntry.startInstance?.getOptions()) ||
         ({} as AnyStartInstanceOptions)
@@ -697,12 +737,15 @@ export function createStartHandler<TRegister = Register>(
 
       const requestStartOptions = {
         ...startOptions,
+        requestMiddleware: hasStartInstance
+          ? startOptions.requestMiddleware
+          : [defaultCsrfMiddleware],
         serializationAdapters,
       }
 
       // Flatten request middlewares once
-      const flattenedRequestMiddlewares = startOptions.requestMiddleware
-        ? flattenMiddlewares(startOptions.requestMiddleware)
+      const flattenedRequestMiddlewares = requestStartOptions.requestMiddleware
+        ? flattenMiddlewares(requestStartOptions.requestMiddleware)
         : []
 
       // Create set for deduplication
@@ -745,6 +788,14 @@ export function createStartHandler<TRegister = Register>(
 
       // Check for server function requests first (early exit)
       if (SERVER_FN_BASE && url.pathname.startsWith(SERVER_FN_BASE)) {
+        if (
+          process.env.NODE_ENV !== 'production' &&
+          process.env.TSS_DISABLE_CSRF_MIDDLEWARE_WARNING !== 'true' &&
+          !hasCsrfMiddleware(flattenedRequestMiddlewares)
+        ) {
+          warnMissingCsrfMiddlewareOnce()
+        }
+
         const serverFnId = url.pathname
           .slice(SERVER_FN_BASE.length)
           .split('/')[0]
@@ -778,6 +829,7 @@ export function createStartHandler<TRegister = Register>(
         const ctx = await executeMiddleware([...middlewares, serverFnHandler], {
           request,
           pathname: url.pathname,
+          handlerType: 'serverFn',
           context: createNullProtoObject(requestOpts?.context),
         })
 
@@ -937,6 +989,7 @@ export function createStartHandler<TRegister = Register>(
         {
           request,
           pathname: url.pathname,
+          handlerType: 'router',
           context: createNullProtoObject(requestOpts?.context),
         },
       )
@@ -1107,6 +1160,7 @@ async function handleServerRoutes({
     context,
     params: routeParams,
     pathname,
+    handlerType: 'router',
   })
 
   // RFC 9110 §9.3.2: HEAD must carry the same header fields as GET but no body.
