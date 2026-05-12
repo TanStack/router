@@ -59,6 +59,7 @@ ts-perf
 /examples/*/*/package-lock.json
 
 .netlify
+.vercel
 
 nx-cloud.env
 .nx/cache
