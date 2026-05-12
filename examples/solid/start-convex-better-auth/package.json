@@ -15,7 +15,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-router": "^1.169.2",
     "@tanstack/solid-router-devtools": "^1.166.13",
-    "@tanstack/solid-start": "^1.167.61",
+    "@tanstack/solid-start": "^1.167.62",
     "better-auth": "^1.3.27",
     "clsx": "^2.1.1",
     "convex": "^1.28.2",

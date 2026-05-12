@@ -1,5 +1,11 @@
 # @tanstack/router-generator
 
+## 1.166.42
+
+### Patch Changes
+
+- Bump jiti dependency to 2.7.0. ([#7355](https://github.com/TanStack/router/pull/7355))
+
 ## 1.166.41
 
 ### Patch Changes
