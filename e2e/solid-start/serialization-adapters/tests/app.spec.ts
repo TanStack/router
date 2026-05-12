@@ -41,7 +41,7 @@ async function checkNestedData(page: Page) {
 }
 test.use({
   whitelistErrors: [
-    /Failed to load resource: the server responded with a status of 499/,
+    'Failed to load resource: the server responded with a status of 499',
   ],
 })
 test.describe('SSR serialization adapters', () => {

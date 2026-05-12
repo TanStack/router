@@ -1,5 +1,6 @@
+import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
-import { dirname, join, relative } from 'node:path'
+import path, { dirname, join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -9,7 +10,7 @@ import {
   rootRoute,
   route,
 } from '@tanstack/virtual-file-routes'
-import { Generator, getConfig } from '../src'
+import { Generator, getConfig, virtualGetRouteNodes } from '../src'
 import type { Config } from '../src'
 
 function makeFolderDir(folder: string) {
@@ -47,12 +48,18 @@ function setupConfig(
   const { generatedRouteTree = `/routeTree.gen.ts`, ...rest } = inlineConfig
   const dir = makeFolderDir(folder)
 
-  const config = getConfig({
-    disableLogging: true,
-    routesDirectory: dir + '/routes',
-    generatedRouteTree: dir + generatedRouteTree,
-    ...rest,
-  })
+  const configFilePath = join(dir, 'tsr.config.json')
+  const configDirectory = existsSync(configFilePath) ? dir : undefined
+
+  const config = getConfig(
+    {
+      disableLogging: true,
+      routesDirectory: dir + '/routes',
+      generatedRouteTree: dir + generatedRouteTree,
+      ...rest,
+    },
+    configDirectory,
+  )
   return config
 }
 
@@ -98,24 +105,6 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         config.virtualRouteConfig = virtualRouteConfig
       }
       break
-    case 'virtual-config-file-named-export':
-      config.virtualRouteConfig = './routes.ts'
-      break
-    case 'virtual-config-file-default-export':
-      config.virtualRouteConfig = './routes.ts'
-      break
-    case 'virtual-physical-empty-path-merge':
-      config.virtualRouteConfig = './routes.ts'
-      break
-    case 'virtual-physical-empty-path-conflict-root':
-      config.virtualRouteConfig = './routes.ts'
-      break
-    case 'virtual-physical-empty-path-conflict-virtual':
-      config.virtualRouteConfig = './routes.ts'
-      break
-    case 'virtual-physical-no-prefix':
-      config.virtualRouteConfig = './routes.ts'
-      break
     case 'virtual-with-escaped-underscore':
       {
         // Test case for escaped underscores in physical routes mounted via virtual config
@@ -148,19 +137,6 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         ].join(''),
       }
       break
-    case 'file-modification-verboseFileRoutes-true':
-      config.verboseFileRoutes = true
-      break
-    case 'file-modification-verboseFileRoutes-false':
-      config.verboseFileRoutes = false
-      break
-    // these two folders contain type tests which are executed separately
-    case 'nested-verboseFileRoutes-true':
-      config.verboseFileRoutes = true
-      break
-    case 'nested-verboseFileRoutes-false':
-      config.verboseFileRoutes = false
-      break
     case 'routeFileIgnore':
       config.routeFileIgnorePattern = 'ignoredPattern'
       config.routeFileIgnorePrefix = 'imIgnored'
@@ -168,6 +144,60 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'routeFilePrefix':
       config.routeFileIgnorePattern = 'ignoredPattern'
       config.routeFilePrefix = 'r&'
+      break
+    case 'regex-tokens-inline':
+      // Test inline config with RegExp tokens
+      // indexToken matches patterns like "index-page", "home-page"
+      // routeToken matches patterns like "main-layout", "protected-layout"
+      config.indexToken = /[a-z]+-page/
+      config.routeToken = /[a-z]+-layout/
+      break
+    case 'virtual-sibling-routes':
+      {
+        // Test case for issue #5822: Virtual routes should respect explicit sibling relationships
+        // Routes /posts and /posts/$id should remain siblings under the layout,
+        // NOT auto-nested based on path matching
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          layout('_main', 'layout.tsx', [
+            route('/posts', 'posts.tsx'),
+            route('/posts/$id', 'post-detail.tsx'),
+          ]),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
+    case 'virtual-root-sibling-routes':
+      {
+        // Test case for issue #5431: Virtual routes that are siblings at the root level
+        // should NOT be auto-nested based on shared path prefix.
+        // /device/$id and /device/$id/history/$filename are both children of root,
+        // NOT parent-child of each other.
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          route('/device/$id', 'device/route.tsx'),
+          route('/device/$id/history/$filename', 'history/route.tsx'),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
+    case 'add-extensions-custom':
+      config.addExtensions = '.js'
+      break
+    case 'virtual-nested-layouts-with-virtual-route':
+      {
+        // Test case for nested layouts with a virtual file-less route in between.
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          index('home.tsx'),
+          layout('first', 'layout/first-layout.tsx', [
+            layout('layout/second-layout.tsx', [
+              route('route-without-file', [
+                route('/layout-a', 'a.tsx'),
+                route('/layout-b', 'b.tsx'),
+              ]),
+            ]),
+          ]),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
       break
     default:
       break
@@ -197,8 +227,49 @@ async function preprocess(folderName: string) {
     await fs.copyFile(templatePath, makeRoutePath('foo.tsx'))
     await fs.copyFile(lazyTemplatePath, makeRoutePath('initiallyLazy.tsx'))
     await fs.copyFile(templatePath, makeRoutePath('bar.lazy.tsx'))
+    await fs.copyFile(templatePath, makeRoutePath('double-quotes.tsx'))
+    await fs.copyFile(templatePath, makeRoutePath('template-literal.tsx'))
+    await fs.copyFile(templatePath, makeRoutePath('duplicate-import.tsx'))
     await makeEmptyFile('initiallyEmpty.tsx')
     await makeEmptyFile('initiallyEmpty.lazy.tsx')
+
+    await fs.writeFile(
+      makeRoutePath('double-quotes.tsx'),
+      (await fs.readFile(makeRoutePath('double-quotes.tsx'), 'utf-8')).replace(
+        "createFileRoute('/foo/bar')",
+        'createFileRoute("/foo/bar")',
+      ),
+    )
+
+    await fs.writeFile(
+      makeRoutePath('template-literal.tsx'),
+      (
+        await fs.readFile(makeRoutePath('template-literal.tsx'), 'utf-8')
+      ).replace("createFileRoute('/foo/bar')", 'createFileRoute(`/foo/bar`)'),
+    )
+
+    await fs.writeFile(
+      makeRoutePath('duplicate-import.tsx'),
+      [
+        "import { createFileRoute } from '@tanstack/react-router'",
+        "import * as React from 'react'",
+        "import { Link, Outlet } from '@tanstack/react-router'",
+        '',
+        "export const Route = createFileRoute('/foo/bar')({",
+        '  component: PostsLayoutComponent,',
+        '})',
+        '',
+        'function PostsLayoutComponent() {',
+        '  return (',
+        '    <>',
+        '      <Link to="/">Home</Link>',
+        '      <Outlet />',
+        '    </>',
+        '  )',
+        '}',
+        '',
+      ].join('\n'),
+    )
   } else if (folderName === 'custom-scaffolding') {
     const makeEmptyFile = async (...file: Array<string>) => {
       const filePath = join(makeFolderDir(folderName), 'routes', ...file)
@@ -217,8 +288,7 @@ async function preprocess(folderName: string) {
 
 async function postprocess(folderName: string) {
   switch (folderName) {
-    case 'file-modification-verboseFileRoutes-false':
-    case 'file-modification-verboseFileRoutes-true': {
+    case 'file-modification': {
       const routeFiles = await readDir(folderName, 'routes', '(test)')
       await Promise.all(
         routeFiles
@@ -256,7 +326,7 @@ function shouldThrow(folderName: string) {
     return `Conflicting configuration paths were found for the following routes: "/", "/".`
   }
   if (folderName === 'virtual-physical-empty-path-conflict-root') {
-    return `Conflicting configuration paths were found for the following routes: "/__root", "/__root".`
+    return 'Invalid route path "" was found.'
   }
   if (folderName === 'virtual-physical-empty-path-conflict-virtual') {
     return `Conflicting configuration paths were found for the following routes: "/about", "/about".`
@@ -301,6 +371,22 @@ describe('generator works', async () => {
       await postprocess(folderName)
     },
   )
+
+  it('physical() mount returns absolute physicalDirectories', async () => {
+    const folderName = 'virtual-physical-no-prefix'
+    const dir = makeFolderDir(folderName)
+    const config = await setupConfig(folderName)
+
+    const { physicalDirectories } = await virtualGetRouteNodes(config, dir, {
+      indexTokenSegmentRegex: /^(?:index)$/,
+      routeTokenSegmentRegex: /^(?:route)$/,
+    })
+
+    expect(physicalDirectories.length).toBeGreaterThan(0)
+    physicalDirectories.forEach((physicalDir) => {
+      expect(path.isAbsolute(physicalDir)).toBe(true)
+    })
+  })
 
   it.each(folderNames)(
     'should create directory for routeTree if it does not exist',

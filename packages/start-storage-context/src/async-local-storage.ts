@@ -1,5 +1,11 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { Awaitable, RegisteredRouter } from '@tanstack/router-core'
+import type {
+  Awaitable,
+  RegisteredRouter,
+  RouterManagedTag,
+} from '@tanstack/router-core'
+
+export type StartHandlerType = 'router' | 'serverFn'
 
 export interface StartStorageContext {
   getRouter: () => Awaitable<RegisteredRouter>
@@ -11,6 +17,15 @@ export interface StartStorageContext {
   // Track middlewares that have already executed in the request phase
   // to prevent duplicate execution
   executedRequestMiddlewares: Set<any>
+  // Type of handler processing this request
+  handlerType: StartHandlerType
+
+  /**
+   * Additional assets to inject for this request.
+   * Plugins can push RouterManagedTag items here during request processing.
+   * Merged into manifest at dehydration time without mutating cached manifest.
+   */
+  requestAssets?: Array<RouterManagedTag>
 }
 
 // Use a global symbol to ensure the same AsyncLocalStorage instance is shared

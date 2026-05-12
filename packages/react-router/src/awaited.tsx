@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import { TSR_DEFERRED_PROMISE, defer } from '@tanstack/router-core'
+import { reactUse } from './utils'
 
 export type AwaitOptions<T> = {
   promise: Promise<T>
@@ -8,9 +9,8 @@ export type AwaitOptions<T> = {
 
 /** Suspend until a deferred promise resolves or rejects and return its data. */
 export function useAwaited<T>({ promise: _promise }: AwaitOptions<T>): T {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (React.use) {
-    const data = React.use(_promise)
+  if (reactUse) {
+    const data = reactUse(_promise)
     return data
   }
   const promise = defer(_promise)

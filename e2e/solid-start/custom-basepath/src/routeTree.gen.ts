@@ -113,7 +113,7 @@ export interface FileRoutesByFullPath {
   '/redirect/throw-it': typeof RedirectThrowItRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts/': typeof PostsIndexRoute
-  '/redirect': typeof RedirectIndexRoute
+  '/redirect/': typeof RedirectIndexRoute
   '/users/': typeof UsersIndexRoute
   '/api/users/$userId': typeof ApiUsersUserIdRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
@@ -165,7 +165,7 @@ export interface FileRouteTypes {
     | '/redirect/throw-it'
     | '/users/$userId'
     | '/posts/'
-    | '/redirect'
+    | '/redirect/'
     | '/users/'
     | '/api/users/$userId'
     | '/posts/$postId/deep'
@@ -270,7 +270,7 @@ declare module '@tanstack/solid-router' {
     '/redirect/': {
       id: '/redirect/'
       path: '/redirect'
-      fullPath: '/redirect'
+      fullPath: '/redirect/'
       preLoaderRoute: typeof RedirectIndexRouteImport
       parentRoute: typeof rootRouteImport
     }

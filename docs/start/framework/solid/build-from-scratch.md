@@ -4,7 +4,7 @@ title: Build a Project from Scratch
 ---
 
 > [!NOTE]
-> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](./guide/routing) guide.
+> If you already created a project with the CLI or by cloning an example from the [Getting Started](./getting-started) guide, you can skip this guide and move on to the [Routing](./guide/routing) guide.
 
 _So you want to build a TanStack Start project from scratch?_
 
@@ -65,7 +65,7 @@ npm i solid-js vite-plugin-solid
 and some TypeScript:
 
 ```shell
-npm i -D typescript @types/node vite-tsconfig-paths
+npm i -D typescript @types/node
 ```
 
 ## Update Configuration Files
@@ -88,7 +88,6 @@ Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import viteSolid from 'vite-plugin-solid'
 
@@ -96,8 +95,10 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  resolve: {
+    tsconfigPaths: true,
+  },
   plugins: [
-    tsConfigPaths(),
     tanstackStart(),
     // solid's vite plugin must come after start's vite plugin
     viteSolid({ ssr: true }),

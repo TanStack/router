@@ -8,11 +8,10 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WithoutLoaderRouteImport } from './routes/without-loader'
 import { Route as ViewportTestRouteImport } from './routes/viewport-test'
+import { Route as SharedSingletonRouteImport } from './routes/shared-singleton'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
@@ -30,6 +29,11 @@ const WithoutLoaderRoute = WithoutLoaderRouteImport.update({
 const ViewportTestRoute = ViewportTestRouteImport.update({
   id: '/viewport-test',
   path: '/viewport-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SharedSingletonRoute = SharedSingletonRouteImport.update({
+  id: '/shared-singleton',
+  path: '/shared-singleton',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsRoute = PostsRouteImport.update({
@@ -74,6 +78,7 @@ const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/posts': typeof PostsRouteWithChildren
+  '/shared-singleton': typeof SharedSingletonRoute
   '/viewport-test': typeof ViewportTestRoute
   '/without-loader': typeof WithoutLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
@@ -83,6 +88,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/shared-singleton': typeof SharedSingletonRoute
   '/viewport-test': typeof ViewportTestRoute
   '/without-loader': typeof WithoutLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
@@ -95,6 +101,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/posts': typeof PostsRouteWithChildren
+  '/shared-singleton': typeof SharedSingletonRoute
   '/viewport-test': typeof ViewportTestRoute
   '/without-loader': typeof WithoutLoaderRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
@@ -108,6 +115,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/posts'
+    | '/shared-singleton'
     | '/viewport-test'
     | '/without-loader'
     | '/posts/$postId'
@@ -117,6 +125,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/shared-singleton'
     | '/viewport-test'
     | '/without-loader'
     | '/posts/$postId'
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_layout'
     | '/posts'
+    | '/shared-singleton'
     | '/viewport-test'
     | '/without-loader'
     | '/_layout/_layout-2'
@@ -141,6 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   PostsRoute: typeof PostsRouteWithChildren
+  SharedSingletonRoute: typeof SharedSingletonRoute
   ViewportTestRoute: typeof ViewportTestRoute
   WithoutLoaderRoute: typeof WithoutLoaderRoute
 }
@@ -161,6 +172,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ViewportTestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/shared-singleton': {
+      id: '/shared-singleton'
+      path: '/shared-singleton'
+      fullPath: '/shared-singleton'
+      preLoaderRoute: typeof SharedSingletonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
@@ -171,7 +189,7 @@ declare module '@tanstack/react-router' {
     '/_layout': {
       id: '/_layout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -199,7 +217,7 @@ declare module '@tanstack/react-router' {
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }
@@ -218,97 +236,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof LayoutLayout2Route
     }
   }
-}
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/_layout' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout',
-    FileRoutesByPath['/_layout']['parentRoute'],
-    FileRoutesByPath['/_layout']['id'],
-    FileRoutesByPath['/_layout']['path'],
-    FileRoutesByPath['/_layout']['fullPath']
-  >
-}
-declare module './routes/posts' {
-  const createFileRoute: CreateFileRoute<
-    '/posts',
-    FileRoutesByPath['/posts']['parentRoute'],
-    FileRoutesByPath['/posts']['id'],
-    FileRoutesByPath['/posts']['path'],
-    FileRoutesByPath['/posts']['fullPath']
-  >
-}
-declare module './routes/viewport-test' {
-  const createFileRoute: CreateFileRoute<
-    '/viewport-test',
-    FileRoutesByPath['/viewport-test']['parentRoute'],
-    FileRoutesByPath['/viewport-test']['id'],
-    FileRoutesByPath['/viewport-test']['path'],
-    FileRoutesByPath['/viewport-test']['fullPath']
-  >
-}
-declare module './routes/without-loader' {
-  const createFileRoute: CreateFileRoute<
-    '/without-loader',
-    FileRoutesByPath['/without-loader']['parentRoute'],
-    FileRoutesByPath['/without-loader']['id'],
-    FileRoutesByPath['/without-loader']['path'],
-    FileRoutesByPath['/without-loader']['fullPath']
-  >
-}
-declare module './routes/_layout/_layout-2' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/_layout-2',
-    FileRoutesByPath['/_layout/_layout-2']['parentRoute'],
-    FileRoutesByPath['/_layout/_layout-2']['id'],
-    FileRoutesByPath['/_layout/_layout-2']['path'],
-    FileRoutesByPath['/_layout/_layout-2']['fullPath']
-  >
-}
-declare module './routes/posts.$postId' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/$postId',
-    FileRoutesByPath['/posts/$postId']['parentRoute'],
-    FileRoutesByPath['/posts/$postId']['id'],
-    FileRoutesByPath['/posts/$postId']['path'],
-    FileRoutesByPath['/posts/$postId']['fullPath']
-  >
-}
-declare module './routes/posts.index' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/',
-    FileRoutesByPath['/posts/']['parentRoute'],
-    FileRoutesByPath['/posts/']['id'],
-    FileRoutesByPath['/posts/']['path'],
-    FileRoutesByPath['/posts/']['fullPath']
-  >
-}
-declare module './routes/_layout/_layout-2/layout-a' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/_layout-2/layout-a',
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['parentRoute'],
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['id'],
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['path'],
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['fullPath']
-  >
-}
-declare module './routes/_layout/_layout-2/layout-b' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/_layout-2/layout-b',
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['parentRoute'],
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['id'],
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['path'],
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['fullPath']
-  >
 }
 
 interface LayoutLayout2RouteChildren {
@@ -352,6 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   PostsRoute: PostsRouteWithChildren,
+  SharedSingletonRoute: SharedSingletonRoute,
   ViewportTestRoute: ViewportTestRoute,
   WithoutLoaderRoute: WithoutLoaderRoute,
 }

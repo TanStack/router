@@ -20,7 +20,27 @@ By default, TanStack Start does not include path aliases. However, you can easil
 
 In this example, we've defined the path alias `~/*` that maps to the `./src/*` directory. This means that you can now import files from the `src` directory using the `~` prefix.
 
-After updating your `tsconfig.json` file, you'll need to install the `vite-tsconfig-paths` plugin to enable path aliases in your TanStack Start project. You can do this by running the following command:
+After updating your `tsconfig.json` file, you'll need to make changes to `vite.config.ts` to ensure that Vite resolves the path aliases correctly.
+
+## Vite 8
+
+Vite 8+ has [built-in support for path aliases](https://vite.dev/config/shared-options#resolve-tsconfigpaths), which is disabled by default. To enable it, simply add the following configuration to your `vite.config.ts` file:
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  resolve: {
+    // This enables built-in support for path aliases defined in tsconfig.json
+    tsconfigPaths: true,
+  },
+})
+```
+
+## Vite 7 and earlier
+
+For Vite 7 and earlier, install the `vite-tsconfig-paths` plugin to enable path aliases in your TanStack Start project. You can do this by running the following command:
 
 ```sh
 npm install -D vite-tsconfig-paths
@@ -34,14 +54,12 @@ import { defineConfig } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
-  vite: {
-    plugins: [
-      // this is the plugin that enables path aliases
-      viteTsConfigPaths({
-        projects: ['./tsconfig.json'],
-      }),
-    ],
-  },
+  plugins: [
+    // this is the plugin that enables path aliases
+    viteTsConfigPaths({
+      projects: ['./tsconfig.json'],
+    }),
+  ],
 })
 ```
 

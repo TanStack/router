@@ -1,6 +1,7 @@
+'use client'
+
 export {
   defer,
-  TSR_DEFERRED_PROMISE,
   isMatch,
   joinPaths,
   cleanPath,
@@ -10,7 +11,6 @@ export {
   resolvePath,
   interpolatePath,
   rootRouteId,
-  defaultSerializeError,
   defaultParseSearch,
   defaultStringifySearch,
   parseSearchWith,
@@ -73,6 +73,7 @@ export type {
   ResolveRouteContext,
   SearchSerializer,
   SearchParser,
+  SearchMiddleware,
   TrailingSlashOption,
   Manifest,
   RouterManagedTag,
@@ -105,6 +106,7 @@ export type {
   CreateFileRoute,
   SerializationAdapter,
   AnySerializationAdapter,
+  SerializableExtensions,
 } from '@tanstack/router-core'
 
 export {
@@ -235,14 +237,18 @@ export {
 
 export type { UseMatchRouteOptions, MakeMatchRouteOptions } from './Matches'
 
-export { matchContext } from './matchContext'
 export { Match, Outlet } from './Match'
 
 export { useMatch } from './useMatch'
 export { useLoaderDeps } from './useLoaderDeps'
 export { useLoaderData } from './useLoaderData'
 
-export { redirect, isRedirect, createRouterConfig } from '@tanstack/router-core'
+export {
+  redirect,
+  isRedirect,
+  createRouterConfig,
+  DEFAULT_PROTOCOL_ALLOWLIST,
+} from '@tanstack/router-core'
 
 export {
   RouteApi,
@@ -268,13 +274,7 @@ export type {
 
 export { createRouter, Router } from './router'
 
-export {
-  componentTypes,
-  lazyFn,
-  SearchParamError,
-  PathParamError,
-  getInitialRouterState,
-} from '@tanstack/router-core'
+export { lazyFn, SearchParamError } from '@tanstack/router-core'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type { RouterProps } from './RouterProvider'
@@ -292,20 +292,11 @@ export { useNavigate, Navigate } from './useNavigate'
 export { useParams } from './useParams'
 export { useSearch } from './useSearch'
 
-export {
-  getRouterContext, // SSR
-} from './routerContext'
-
 export { useRouteContext } from './useRouteContext'
 export { useRouter } from './useRouter'
 export { useRouterState } from './useRouterState'
 export { useLocation } from './useLocation'
 export { useCanGoBack } from './useCanGoBack'
-
-export {
-  useLayoutEffect, // SSR
-  useStableCallback,
-} from './utils'
 
 export { CatchNotFound, DefaultGlobalNotFound } from './not-found'
 export { notFound, isNotFound } from '@tanstack/router-core'
@@ -338,11 +329,15 @@ export type {
   InferSelected,
   ValidateUseSearchResult,
   ValidateUseParamsResult,
+  SerializerExtensions,
+  RegisteredSerializableInput,
+  Serializable,
 } from '@tanstack/router-core'
 
 export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
+export { useTags } from './headContentUtils'
 export { Scripts } from './Scripts'
 export type * from './ssr/serializer'
 export { composeRewrites } from '@tanstack/router-core'

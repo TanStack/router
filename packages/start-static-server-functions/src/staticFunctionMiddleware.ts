@@ -133,7 +133,7 @@ export const staticFunctionMiddleware = createMiddleware({ type: 'function' })
       typeof document !== 'undefined'
     ) {
       const response = await fetchItem({
-        functionId: ctx.functionId,
+        functionId: ctx.serverFnMeta.id,
         data: ctx.data,
       })
 
@@ -148,9 +148,12 @@ export const staticFunctionMiddleware = createMiddleware({ type: 'function' })
   })
   .server(async (ctx) => {
     const response = await ctx.next()
-    if (process.env.NODE_ENV === 'production') {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      process.env.TSS_CLIENT_OUTPUT_DIR
+    ) {
       await addItemToCache({
-        functionId: ctx.functionId,
+        functionId: ctx.serverFnMeta.id,
         response: { result: (response as any).result, context: ctx },
         data: ctx.data,
       })

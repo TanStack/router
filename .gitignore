@@ -24,6 +24,11 @@ coverage
 packages/router-generator/tests/**/*.gen.ts
 packages/router-generator/tests/**/*.gen.js
 **/port*.txt
+**/test-results/**
+
+# Playwright artifacts
+**/playwright-report/
+**/blob-report/
 
 # misc
 .DS_Store
@@ -79,3 +84,6 @@ vite.config.ts.timestamp_*
 **/llms
 
 **/.tanstack
+
+# eslint-plugin-start perf fixtures
+/e2e/eslint-plugin-start/src/perf/generated

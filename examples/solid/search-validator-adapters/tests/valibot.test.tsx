@@ -25,7 +25,7 @@ test('can navigate to the route', async () => {
     return (
       <div>
         <div>{search().search}</div>
-        <Link from="/users/valibot" search={{ search: 'updated' }}>
+        <Link from="/users/valibot/" search={{ search: 'updated' }}>
           Update
         </Link>
       </div>

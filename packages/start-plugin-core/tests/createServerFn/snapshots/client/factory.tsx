@@ -24,8 +24,8 @@ const adminMiddleware = createMiddleware({
 });
 export const createAuthServerFn = createServerFn().middleware([authMiddleware]);
 const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware]);
-export const myAuthedFn = createAuthServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im15QXV0aGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9"));
-export const deleteUserFn = createAdminServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImRlbGV0ZVVzZXJGbl9jcmVhdGVTZXJ2ZXJGbl9oYW5kbGVyIn0"));
+export const myAuthedFn = createAuthServerFn().handler(createClientRpc("3bb88b23926fa224cea3dcfb877026757733d95b42e3b66cf7f06bb89dab06a3"));
+export const deleteUserFn = createAdminServerFn().handler(createClientRpc("44d9483a9412daaacaa5a8aee6b02294333a0e61b5d3b17ba6bcb34fd2bdce31"));
 function createFakeFn() {
   return {
     handler: cb => {

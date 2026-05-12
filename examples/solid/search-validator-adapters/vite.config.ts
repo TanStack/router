@@ -11,13 +11,17 @@ export default defineConfig({
     watch: false,
     environment: 'jsdom',
     typecheck: { enabled: true },
+    server: {
+      deps: {
+        inline: [/@solidjs/, /@tanstack\/solid-store/],
+      },
+    },
   },
   plugins: [
     tailwindcss(),
     tanstackRouter({
       target: 'solid',
       autoCodeSplitting: true,
-      verboseFileRoutes: false,
     }),
     solid(),
   ],

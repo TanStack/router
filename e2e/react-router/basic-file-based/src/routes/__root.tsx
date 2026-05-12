@@ -164,6 +164,15 @@ function RootComponent() {
           }}
         >
           Pathless Layout
+        </Link>{' '}
+        <Link
+          to="/fullpath-test"
+          data-testid="link-to-fullpath-test"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          FullPath Test
         </Link>
       </div>
       <hr />

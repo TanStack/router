@@ -22,16 +22,16 @@
               "to": "framework/react/getting-started"
             },
             {
-              "label": "Quick Start",
-              "to": "framework/react/quick-start"
-            },
-            {
               "label": "Build from Scratch",
               "to": "framework/react/build-from-scratch"
             },
             {
               "label": "Comparison",
               "to": "framework/react/comparison"
+            },
+            {
+              "label": "Start vs Next.js",
+              "to": "framework/react/start-vs-nextjs"
             },
             {
               "label": "Migrate from Next.js",
@@ -49,10 +49,6 @@
             {
               "label": "Getting Started",
               "to": "framework/solid/getting-started"
-            },
-            {
-              "label": "Quick Start",
-              "to": "framework/solid/quick-start"
             },
             {
               "label": "Build from Scratch",
@@ -82,12 +78,20 @@
               "to": "framework/react/guide/code-execution-patterns"
             },
             {
+              "label": "Import Protection",
+              "to": "framework/react/guide/import-protection"
+            },
+            {
               "label": "Environment Variables",
               "to": "framework/react/guide/environment-variables"
             },
             {
               "label": "Server Functions",
               "to": "framework/react/guide/server-functions"
+            },
+            {
+              "label": "Server Components",
+              "to": "framework/react/guide/server-components"
             },
             {
               "label": "Static Server Functions",
@@ -132,6 +136,14 @@
             {
               "label": "Server Entry Point",
               "to": "framework/react/guide/server-entry-point"
+            },
+            {
+              "label": "Early Hints",
+              "to": "framework/react/guide/early-hints"
+            },
+            {
+              "label": "CDN Asset URLs",
+              "to": "framework/react/guide/cdn-asset-urls"
             },
             {
               "label": "Client Entry Point",
@@ -195,6 +207,10 @@
               "to": "framework/solid/guide/code-execution-patterns"
             },
             {
+              "label": "Import Protection",
+              "to": "framework/solid/guide/import-protection"
+            },
+            {
               "label": "Environment Variables",
               "to": "framework/solid/guide/environment-variables"
             },
@@ -241,6 +257,10 @@
             {
               "label": "Server Entry Point",
               "to": "framework/solid/guide/server-entry-point"
+            },
+            {
+              "label": "Early Hints",
+              "to": "framework/solid/guide/early-hints"
             },
             {
               "label": "Client Entry Point",
@@ -404,6 +424,19 @@
             {
               "label": "Fetching Data from External API",
               "to": "framework/react/tutorial/fetching-external-api"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Reading and Writing a File",
+              "to": "framework/solid/tutorial/reading-writing-file"
+            },
+            {
+              "label": "Fetching Data from External API",
+              "to": "framework/solid/tutorial/fetching-external-api"
             }
           ]
         }

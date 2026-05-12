@@ -80,6 +80,7 @@ declare module '@tanstack/router-core' {
     in out TParams,
     in out TRouterContext,
     in out TRouteContextFn,
+    in out TRouteId,
     in out TServerMiddlewares,
     in out THandlers,
   > {

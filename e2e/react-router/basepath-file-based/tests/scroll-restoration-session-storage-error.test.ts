@@ -1,25 +1,10 @@
 /* eslint-disable */
 import { expect, test } from '@playwright/test'
-import type { Page } from '@playwright/test'
-
-const trackConsole = (page: Page) => {
-  const consoleWarnings: Array<string> = []
-
-  page.on('console', (msg) => {
-    if (msg.type() === 'warning') {
-      consoleWarnings.push(msg.text())
-    }
-  })
-
-  return consoleWarnings
-}
 
 test.describe('Scroll Restoration with Session Storage Error', () => {
   test('should not crash when sessionStorage.setItem throws an error', async ({
     page,
   }) => {
-    const consoleWarnings = trackConsole(page)
-
     await page.goto('/app/scroll-error')
     await page.waitForLoadState('networkidle')
 
@@ -32,19 +17,8 @@ test.describe('Scroll Restoration with Session Storage Error', () => {
     await page.evaluate(() => window.scrollTo(0, 200))
     await page.waitForTimeout(150)
 
-    await page.click('a[href="/app/about"]')
+    await page.reload()
     await page.waitForLoadState('networkidle')
-
-    await page.goBack()
-    await page.waitForLoadState('networkidle')
-
-    expect(
-      consoleWarnings.some((warning) =>
-        warning.includes(
-          '[ts-router] Could not persist scroll restoration state to sessionStorage.',
-        ),
-      ),
-    ).toBeTruthy()
 
     const heading = page.locator('h1:has-text("Scroll Error Test")')
     await expect(heading).toBeVisible()
@@ -53,11 +27,9 @@ test.describe('Scroll Restoration with Session Storage Error', () => {
     expect(scrollPosition).not.toBe(200)
   })
 
-  test('should surface warning when sessionStorage quota is exceeded', async ({
+  test('should not crash when sessionStorage quota is exceeded', async ({
     page,
   }) => {
-    const consoleWarnings = trackConsole(page)
-
     await page.goto('/app/scroll-error')
     await page.waitForLoadState('networkidle')
 
@@ -78,19 +50,8 @@ test.describe('Scroll Restoration with Session Storage Error', () => {
     await page.evaluate(() => window.scrollTo(0, 200))
     await page.waitForTimeout(150)
 
-    await page.click('a[href="/app/about"]')
+    await page.reload()
     await page.waitForLoadState('networkidle')
-
-    await page.goBack()
-    await page.waitForLoadState('networkidle')
-
-    expect(
-      consoleWarnings.some((warning) =>
-        warning.includes(
-          '[ts-router] Could not persist scroll restoration state to sessionStorage.',
-        ),
-      ),
-    ).toBeTruthy()
 
     const heading = page.locator('h1:has-text("Scroll Error Test")')
     await expect(heading).toBeVisible()

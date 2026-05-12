@@ -1,19 +1,15 @@
 import { Box, Button, Card, Container, Flex, Theme } from '@radix-ui/themes';
-import '@radix-ui/themes/styles.css';
 import { HeadContent, Link, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { Suspense } from 'react';
-import { getAuth, getSignInUrl } from '../authkit/serverFunctions';
+import { getSignInUrl } from '@workos/authkit-tanstack-react-start';
+import { AuthKitProvider, getAuthAction } from '@workos/authkit-tanstack-react-start/client';
 import Footer from '../components/footer';
 import SignInButton from '../components/sign-in-button';
+import appCssUrl from '../app.css?url';
 import type { ReactNode } from 'react';
 
 export const Route = createRootRoute({
-  beforeLoad: async () => {
-    const { user } = await getAuth();
-
-    return { user };
-  },
   head: () => ({
     meta: [
       {
@@ -27,12 +23,15 @@ export const Route = createRootRoute({
         title: 'AuthKit Example in TanStack Start',
       },
     ],
+    links: [{ rel: 'stylesheet', href: appCssUrl }],
   }),
-  loader: async ({ context }) => {
-    const { user } = context;
+  loader: async () => {
+    // getAuthAction() returns auth state without accessToken, safe for client
+    // Pass to AuthKitProvider as initialAuth to avoid loading flicker
+    const auth = await getAuthAction();
     const url = await getSignInUrl();
     return {
-      user,
+      auth,
       url,
     };
   },
@@ -41,53 +40,59 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
-  const { user, url } = Route.useLoaderData();
+  const { auth, url } = Route.useLoaderData();
   return (
     <RootDocument>
-      <Theme accentColor="iris" panelBackground="solid" style={{ backgroundColor: 'var(--gray-1)' }}>
-        <Container style={{ backgroundColor: 'var(--gray-1)' }}>
-          <Flex direction="column" gap="5" p="5" height="100vh">
-            <Box asChild flexGrow="1">
-              <Card size="4">
-                <Flex direction="column" height="100%">
-                  <Flex asChild justify="between">
-                    <header>
-                      <Flex gap="4">
-                        <Button asChild variant="soft">
-                          <Link to="/">Home</Link>
-                        </Button>
+      <AuthKitProvider initialAuth={auth}>
+        <Theme accentColor="iris" panelBackground="solid" style={{ backgroundColor: 'var(--gray-1)' }}>
+          <Container style={{ backgroundColor: 'var(--gray-1)' }}>
+            <Flex direction="column" gap="5" p="5" height="100vh">
+              <Box asChild flexGrow="1">
+                <Card size="4">
+                  <Flex direction="column" height="100%">
+                    <Flex asChild justify="between">
+                      <header>
+                        <Flex gap="4">
+                          <Button asChild variant="soft">
+                            <Link to="/">Home</Link>
+                          </Button>
 
-                        <Button asChild variant="soft">
-                          <Link to="/account">Account</Link>
-                        </Button>
-                      </Flex>
+                          <Button asChild variant="soft">
+                            <Link to="/account">Account</Link>
+                          </Button>
 
-                      <Suspense fallback={<div>Loading...</div>}>
-                        <SignInButton user={user} url={url} />
-                      </Suspense>
-                    </header>
+                          <Button asChild variant="soft">
+                            <Link to="/client">Client Demo</Link>
+                          </Button>
+                        </Flex>
+
+                        <Suspense fallback={<div>Loading...</div>}>
+                          <SignInButton user={auth.user} url={url} />
+                        </Suspense>
+                      </header>
+                    </Flex>
+
+                    <Flex flexGrow="1" align="center" justify="center">
+                      <main>
+                        <Outlet />
+                      </main>
+                    </Flex>
                   </Flex>
-
-                  <Flex flexGrow="1" align="center" justify="center">
-                    <main>
-                      <Outlet />
-                    </main>
-                  </Flex>
-                </Flex>
-              </Card>
-            </Box>
-            <Footer />
-          </Flex>
-        </Container>
-      </Theme>
-      <TanStackRouterDevtools position="bottom-right" />
+                </Card>
+              </Box>
+              <Footer />
+            </Flex>
+          </Container>
+        </Theme>
+        <TanStackRouterDevtools position="bottom-right" />
+      </AuthKitProvider>
     </RootDocument>
   );
 }
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html>
+    <html lang="en">
       <head>
         <HeadContent />
       </head>

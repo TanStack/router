@@ -1,31 +1,32 @@
-import { expect, request } from '@playwright/test'
+import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
+// Whitelist errors that can occur in CI:
+// - net::ERR_NAME_NOT_RESOLVED: transient network issues
+// - 504 (Outdated Optimize Dep): Vite dependency optimization reload
+const whitelistErrors = [
+  'Failed to load resource: net::ERR_NAME_NOT_RESOLVED',
+  'Failed to load resource: the server responded with a status of 504',
+]
+
 test.describe('CSS styles in SSR (dev mode)', () => {
-  // Warmup: trigger Vite's dependency optimization before running tests
-  // This prevents "504 (Outdated Optimize Dep)" errors during actual tests
-  test.beforeAll(async ({ baseURL }) => {
-    const context = await request.newContext()
-    try {
-      // Hit both pages to trigger any dependency optimization
-      await context.get(baseURL!)
-      await context.get(`${baseURL}/modules`)
-      // Give Vite time to complete optimization
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      // Hit again after optimization
-      await context.get(baseURL!)
-    } catch {
-      // Ignore errors during warmup
-    } finally {
-      await context.dispose()
-    }
-  })
+  test.use({ whitelistErrors })
+
+  // Helper to build full URL from baseURL and path
+  // Playwright's goto with absolute paths (like '/modules') ignores baseURL's path portion
+  // So we need to manually construct the full URL
+  const buildUrl = (baseURL: string, path: string) => {
+    return baseURL.replace(/\/$/, '') + path
+  }
 
   test.describe('with JavaScript disabled', () => {
-    test.use({ javaScriptEnabled: false })
+    test.use({ javaScriptEnabled: false, whitelistErrors })
 
-    test('global CSS is applied on initial page load', async ({ page }) => {
-      await page.goto('/')
+    test('global CSS is applied on initial page load', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.goto(buildUrl(baseURL!, '/'))
 
       const element = page.getByTestId('global-styled')
       await expect(element).toBeVisible()
@@ -48,8 +49,11 @@ test.describe('CSS styles in SSR (dev mode)', () => {
       expect(borderRadius).toBe('12px')
     })
 
-    test('CSS modules are applied on initial page load', async ({ page }) => {
-      await page.goto('/modules')
+    test('CSS modules are applied on initial page load', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.goto(buildUrl(baseURL!, '/modules'))
 
       const card = page.getByTestId('module-card')
       await expect(card).toBeVisible()
@@ -77,8 +81,8 @@ test.describe('CSS styles in SSR (dev mode)', () => {
       expect(borderRadius).toBe('8px')
     })
 
-    test('global CSS class names are NOT scoped', async ({ page }) => {
-      await page.goto('/')
+    test('global CSS class names are NOT scoped', async ({ page, baseURL }) => {
+      await page.goto(buildUrl(baseURL!, '/'))
 
       const element = page.getByTestId('global-styled')
       await expect(element).toBeVisible()
@@ -87,40 +91,87 @@ test.describe('CSS styles in SSR (dev mode)', () => {
       const className = await element.getAttribute('class')
       expect(className).toBe('global-container')
     })
+
+    test('Sass mixin styles are applied on initial page load', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.goto(buildUrl(baseURL!, '/sass-mixin'))
+
+      const element = page.getByTestId('mixin-styled')
+      await expect(element).toBeVisible()
+
+      // Verify the mixin is applied (display: flex from center-mixin)
+      const display = await element.evaluate(
+        (el) => getComputedStyle(el).display,
+      )
+      expect(display).toBe('flex')
+
+      const justifyContent = await element.evaluate(
+        (el) => getComputedStyle(el).justifyContent,
+      )
+      expect(justifyContent).toBe('center')
+
+      const alignItems = await element.evaluate(
+        (el) => getComputedStyle(el).alignItems,
+      )
+      expect(alignItems).toBe('center')
+
+      // Verify other styles from mixin-consumer.scss
+      // #a855f7 (purple-500) in RGB is rgb(168, 85, 247)
+      const backgroundColor = await element.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(168, 85, 247)')
+
+      const padding = await element.evaluate(
+        (el) => getComputedStyle(el).padding,
+      )
+      expect(padding).toBe('24px')
+    })
   })
 
-  test('styles persist after hydration', async ({ page }) => {
-    await page.goto('/')
+  test('styles persist after hydration', async ({ page, baseURL }) => {
+    await page.goto(buildUrl(baseURL!, '/'))
 
-    // Wait for hydration
-    await page.waitForTimeout(1000)
-
+    // Wait for hydration and styles to be applied
     const element = page.getByTestId('global-styled')
-    const backgroundColor = await element.evaluate(
-      (el) => getComputedStyle(el).backgroundColor,
-    )
-    expect(backgroundColor).toBe('rgb(59, 130, 246)')
+    await expect(element).toBeVisible()
+
+    // Wait for CSS to be applied (background color should not be transparent)
+    await expect(async () => {
+      const backgroundColor = await element.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(59, 130, 246)')
+    }).toPass({ timeout: 5000 })
   })
 
-  test('CSS modules styles persist after hydration', async ({ page }) => {
-    await page.goto('/modules')
+  test('CSS modules styles persist after hydration', async ({
+    page,
+    baseURL,
+  }) => {
+    await page.goto(buildUrl(baseURL!, '/modules'))
 
-    // Wait for hydration
-    await page.waitForTimeout(1000)
-
+    // Wait for hydration and styles to be applied
     const card = page.getByTestId('module-card')
-    const backgroundColor = await card.evaluate(
-      (el) => getComputedStyle(el).backgroundColor,
-    )
-    expect(backgroundColor).toBe('rgb(240, 253, 244)')
+    await expect(card).toBeVisible()
+
+    // Wait for CSS to be applied (background color should not be transparent)
+    await expect(async () => {
+      const backgroundColor = await card.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(240, 253, 244)')
+    }).toPass({ timeout: 5000 })
   })
 
   test('styles work correctly after client-side navigation', async ({
     page,
+    baseURL,
   }) => {
     // Start from home
-    await page.goto('/')
-    await page.waitForTimeout(1000)
+    await page.goto(buildUrl(baseURL!, '/'))
 
     // Verify initial styles
     const globalElement = page.getByTestId('global-styled')
@@ -132,7 +183,7 @@ test.describe('CSS styles in SSR (dev mode)', () => {
 
     // Navigate to modules page
     await page.getByTestId('nav-modules').click()
-    await page.waitForURL('/modules')
+    await page.waitForURL('**/modules')
 
     // Verify CSS modules styles
     const card = page.getByTestId('module-card')
@@ -144,7 +195,7 @@ test.describe('CSS styles in SSR (dev mode)', () => {
 
     // Navigate back to home
     await page.getByTestId('nav-home').click()
-    await page.waitForURL('/')
+    await page.waitForURL(/\/([^/]*)(\/)?($|\?)/)
 
     // Verify global styles still work
     await expect(globalElement).toBeVisible()

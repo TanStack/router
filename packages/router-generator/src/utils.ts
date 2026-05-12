@@ -3,7 +3,7 @@ import * as fsp from 'node:fs/promises'
 import path from 'node:path'
 import * as prettier from 'prettier'
 import { rootPathId } from './filesystem/physical/rootPathId'
-import type { Config } from './config'
+import type { Config, TokenMatcher } from './config'
 import type { ImportDeclaration, RouteNode } from './types'
 
 /**
@@ -13,7 +13,6 @@ import type { ImportDeclaration, RouteNode } from './types'
  */
 export class RoutePrefixMap {
   private prefixToRoute: Map<string, RouteNode> = new Map()
-  private layoutRoutes: Array<RouteNode> = []
 
   constructor(routes: Array<RouteNode>) {
     for (const route of routes) {
@@ -34,20 +33,7 @@ export class RoutePrefixMap {
 
       // Index by exact path for direct lookups
       this.prefixToRoute.set(route.routePath, route)
-
-      if (
-        route._fsRouteType === 'pathless_layout' ||
-        route._fsRouteType === 'layout' ||
-        route._fsRouteType === '__root'
-      ) {
-        this.layoutRoutes.push(route)
-      }
     }
-
-    // Sort by path length descending for longest-match-first
-    this.layoutRoutes.sort(
-      (a, b) => (b.routePath?.length ?? 0) - (a.routePath?.length ?? 0),
-    )
   }
 
   /**
@@ -414,8 +400,80 @@ export function isSegmentPathless(
   return !hasEscapedLeadingUnderscore(originalSegment)
 }
 
-function escapeRegExp(s: string): string {
+export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function sanitizeTokenFlags(flags?: string): string | undefined {
+  if (!flags) return flags
+
+  // Prevent stateful behavior with RegExp.prototype.test/exec
+  // g = global, y = sticky
+  return flags.replace(/[gy]/g, '')
+}
+
+export function createTokenRegex(
+  token: TokenMatcher,
+  opts: {
+    type: 'segment' | 'filename'
+  },
+): RegExp {
+  // Defensive check: if token is undefined/null, throw a clear error
+  // (runtime safety for config loading edge cases)
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (token === undefined || token === null) {
+    throw new Error(
+      `createTokenRegex: token is ${token}. This usually means the config was not properly parsed with defaults.`,
+    )
+  }
+
+  try {
+    if (typeof token === 'string') {
+      return opts.type === 'segment'
+        ? new RegExp(`^${escapeRegExp(token)}$`)
+        : new RegExp(`[./]${escapeRegExp(token)}[.]`)
+    }
+
+    if (token instanceof RegExp) {
+      const flags = sanitizeTokenFlags(token.flags)
+      return opts.type === 'segment'
+        ? new RegExp(`^(?:${token.source})$`, flags)
+        : new RegExp(`[./](?:${token.source})[.]`, flags)
+    }
+
+    // Handle JSON regex object form: { regex: string, flags?: string }
+    if (typeof token === 'object' && 'regex' in token) {
+      const flags = sanitizeTokenFlags(token.flags)
+      return opts.type === 'segment'
+        ? new RegExp(`^(?:${token.regex})$`, flags)
+        : new RegExp(`[./](?:${token.regex})[.]`, flags)
+    }
+
+    throw new Error(
+      `createTokenRegex: invalid token type. Expected string, RegExp, or { regex, flags } object, got: ${typeof token}`,
+    )
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      const pattern =
+        typeof token === 'string'
+          ? token
+          : token instanceof RegExp
+            ? token.source
+            : token.regex
+      throw new Error(
+        `Invalid regex pattern in token config: "${pattern}". ${e.message}`,
+      )
+    }
+    throw e
+  }
+}
+
+function isBracketWrappedSegment(segment: string): boolean {
+  return segment.startsWith('[') && segment.endsWith(']')
+}
+
+export function unwrapBracketWrappedSegment(segment: string): string {
+  return isBracketWrappedSegment(segment) ? segment.slice(1, -1) : segment
 }
 
 export function removeLeadingUnderscores(s: string, routeToken: string) {
@@ -459,8 +517,13 @@ export function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-export function removeExt(d: string, keepExtension: boolean = false) {
-  return keepExtension ? d : d.substring(0, d.lastIndexOf('.')) || d
+export function removeExt(d: string, addExtensions: boolean | string = false) {
+  if (typeof addExtensions === 'string') {
+    const dotIndex = d.lastIndexOf('.')
+    if (dotIndex === -1) return d
+    return d.substring(0, dotIndex) + addExtensions
+  }
+  return addExtensions ? d : d.substring(0, d.lastIndexOf('.')) || d
 }
 
 /**
@@ -609,28 +672,13 @@ export const getResolvedRouteNodeVariableName = (
 }
 
 /**
- * Checks if a given RouteNode is valid for augmenting it with typing based on conditions.
- * Also asserts that the RouteNode is defined.
- *
- * @param routeNode - The RouteNode to check.
- * @returns A boolean indicating whether the RouteNode is defined.
- */
-export function isRouteNodeValidForAugmentation(
-  routeNode?: RouteNode,
-): routeNode is RouteNode {
-  if (!routeNode || routeNode.isVirtual) {
-    return false
-  }
-  return true
-}
-
-/**
  * Infers the path for use by TS
  */
-export const inferPath = (routeNode: RouteNode): string => {
-  return routeNode.cleanedPath === '/'
-    ? routeNode.cleanedPath
-    : (routeNode.cleanedPath?.replace(/\/$/, '') ?? '')
+const inferPath = (routeNode: RouteNode): string => {
+  if (routeNode.cleanedPath === '/') {
+    return routeNode.cleanedPath ?? ''
+  }
+  return routeNode.cleanedPath?.replace(/\/$/, '') ?? ''
 }
 
 /**
@@ -647,7 +695,25 @@ export const inferFullPath = (routeNode: RouteNode): string => {
     ),
   )
 
-  return routeNode.cleanedPath === '/' ? fullPath : fullPath.replace(/\/$/, '')
+  if (fullPath === '') {
+    return '/'
+  }
+
+  // Preserve trailing slash for index routes (routePath ends with '/')
+  // This ensures types match runtime behavior
+  const isIndexRoute = routeNode.routePath?.endsWith('/')
+  if (isIndexRoute) {
+    return fullPath
+  }
+
+  return fullPath.replace(/\/$/, '')
+}
+
+const shouldPreferIndexRoute = (
+  current: RouteNode,
+  existing: RouteNode,
+): boolean => {
+  return existing.cleanedPath === '/' && current.cleanedPath !== '/'
 }
 
 /**
@@ -656,9 +722,22 @@ export const inferFullPath = (routeNode: RouteNode): string => {
 export const createRouteNodesByFullPath = (
   routeNodes: Array<RouteNode>,
 ): Map<string, RouteNode> => {
-  return new Map(
-    routeNodes.map((routeNode) => [inferFullPath(routeNode), routeNode]),
-  )
+  const map = new Map<string, RouteNode>()
+
+  for (const routeNode of routeNodes) {
+    const fullPath = inferFullPath(routeNode)
+
+    if (fullPath === '/' && map.has('/')) {
+      const existing = map.get('/')!
+      if (shouldPreferIndexRoute(routeNode, existing)) {
+        continue
+      }
+    }
+
+    map.set(fullPath, routeNode)
+  }
+
+  return map
 }
 
 /**
@@ -667,12 +746,22 @@ export const createRouteNodesByFullPath = (
 export const createRouteNodesByTo = (
   routeNodes: Array<RouteNode>,
 ): Map<string, RouteNode> => {
-  return new Map(
-    dedupeBranchesAndIndexRoutes(routeNodes).map((routeNode) => [
-      inferTo(routeNode),
-      routeNode,
-    ]),
-  )
+  const map = new Map<string, RouteNode>()
+
+  for (const routeNode of dedupeBranchesAndIndexRoutes(routeNodes)) {
+    const to = inferTo(routeNode)
+
+    if (to === '/' && map.has('/')) {
+      const existing = map.get('/')!
+      if (shouldPreferIndexRoute(routeNode, existing)) {
+        continue
+      }
+    }
+
+    map.set(to, routeNode)
+  }
+
+  return map
 }
 
 /**
@@ -692,7 +781,7 @@ export const createRouteNodesById = (
 /**
  * Infers to path
  */
-export const inferTo = (routeNode: RouteNode): string => {
+const inferTo = (routeNode: RouteNode): string => {
   const fullPath = inferFullPath(routeNode)
 
   if (fullPath === '/') return fullPath
@@ -703,7 +792,7 @@ export const inferTo = (routeNode: RouteNode): string => {
 /**
  * Dedupes branches and index routes
  */
-export const dedupeBranchesAndIndexRoutes = (
+const dedupeBranchesAndIndexRoutes = (
   routes: Array<RouteNode>,
 ): Array<RouteNode> => {
   return routes.filter((route) => {
@@ -731,6 +820,15 @@ export function checkRouteFullPathUniqueness(
   _routes: Array<RouteNode>,
   config: Config,
 ) {
+  const emptyPathRoutes = _routes.filter((d) => d.routePath === '')
+  if (emptyPathRoutes.length) {
+    const errorMessage = `Invalid route path "" was found. Root routes must be defined via __root.tsx (createRootRoute), not createFileRoute('') or a route file that resolves to an empty path.
+Conflicting files: \n ${emptyPathRoutes
+      .map((d) => path.resolve(config.routesDirectory, d.filePath))
+      .join('\n ')}\n`
+    throw new Error(errorMessage)
+  }
+
   const routes = _routes.map((d) => {
     const inferredFullPath = inferFullPath(d)
     return { ...d, inferredFullPath }
@@ -816,14 +914,6 @@ export function buildImportString(
     : ''
 }
 
-export function lowerCaseFirstChar(value: string) {
-  if (!value[0]) {
-    return value
-  }
-
-  return value[0].toLowerCase() + value.slice(1)
-}
-
 export function mergeImportDeclarations(
   imports: Array<ImportDeclaration>,
 ): Array<ImportDeclaration> {
@@ -894,7 +984,7 @@ export function buildFileRoutesByPathInterface(opts: {
 }`
 }
 
-export function getImportPath(
+function getImportPath(
   node: RouteNode,
   config: Config,
   generatedRouteTreePath: string,

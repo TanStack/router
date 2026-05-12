@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
-import { StartCompiler } from '../../src/start-compiler-plugin/compiler'
+import { StartCompiler } from '../../src/start-compiler/compiler'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -23,9 +23,12 @@ const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
 async function compile(opts: {
   env: 'client' | 'server'
   code: string
+  parserFilename?: string
   isProviderFile: boolean
+  mode: 'dev' | 'build'
 }) {
-  let id = 'test.ts'
+  // Use an absolute path inside the test root to ensure consistent filename output
+  let id = '/test/src/test.ts'
 
   if (opts.isProviderFile) {
     id += `?${TSS_SERVERFN_SPLIT_PARAM}`
@@ -45,6 +48,7 @@ async function compile(opts: {
         kind: 'Root',
       },
     ],
+    getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
     },
@@ -52,6 +56,7 @@ async function compile(opts: {
   const result = await compiler.compile({
     code: opts.code,
     id,
+    parserFilename: opts.parserFilename,
   })
   return result
 }
@@ -74,6 +79,8 @@ describe('createServerFn compiles correctly', async () => {
         env: env.type,
         isProviderFile: env.isProviderFile,
         code,
+        parserFilename: `/test/src/${filename}`,
+        mode: 'build',
       })
 
       const folder =
@@ -100,6 +107,7 @@ describe('createServerFn compiles correctly', async () => {
       code,
       env: 'client',
       isProviderFile: false,
+      mode: 'build',
     })
 
     // Server caller (route file - no split param)
@@ -108,6 +116,7 @@ describe('createServerFn compiles correctly', async () => {
       code,
       env: 'server',
       isProviderFile: false,
+      mode: 'build',
     })
 
     // Server provider (extracted file - has split param)
@@ -116,19 +125,20 @@ describe('createServerFn compiles correctly', async () => {
       code,
       env: 'server',
       isProviderFile: true,
+      mode: 'build',
     })
 
     expect(compiledResultClient!.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from '@tanstack/react-start/client-rpc';
       import { createServerFn } from '@tanstack/react-start';
-      const myServerFn = createServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im15U2VydmVyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9"));"
+      const myServerFn = createServerFn().handler(createClientRpc("2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b"));"
     `)
 
     // Server caller: no second argument (implementation from extracted chunk)
     expect(compiledResultServerCaller!.code).toMatchInlineSnapshot(`
       "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc';
       import { createServerFn } from '@tanstack/react-start';
-      const myServerFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im15U2VydmVyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", () => import("test.ts?tss-serverfn-split").then(m => m["myServerFn_createServerFn_handler"])));"
+      const myServerFn = createServerFn().handler(createSsrRpc("2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b"));"
     `)
 
     // Server provider: has second argument (this is the implementation file)
@@ -138,7 +148,11 @@ describe('createServerFn compiles correctly', async () => {
       const myFunc = () => {
         return 'hello from the server';
       };
-      const myServerFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im15U2VydmVyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => myServerFn.__executeServer(opts, signal));
+      const myServerFn_createServerFn_handler = createServerRpc({
+        id: "2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b",
+        name: "myServerFn",
+        filename: "src/test.ts"
+      }, opts => myServerFn.__executeServer(opts));
       const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler, myFunc);
       export { myServerFn_createServerFn_handler };"
     `)
@@ -161,13 +175,14 @@ describe('createServerFn compiles correctly', async () => {
       code,
       env: 'client',
       isProviderFile: false,
+      mode: 'build',
     })
 
     expect(compiledResult!.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from '@tanstack/react-start/client-rpc';
       import { createServerFn } from '@tanstack/react-start';
-      export const exportedFn = createServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9"));
-      const nonExportedFn = createServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im5vbkV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9"));"
+      export const exportedFn = createServerFn().handler(createClientRpc("c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864"));
+      const nonExportedFn = createServerFn().handler(createClientRpc("f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2"));"
     `)
 
     // Server caller (route file) - no second argument
@@ -175,13 +190,14 @@ describe('createServerFn compiles correctly', async () => {
       code,
       env: 'server',
       isProviderFile: false,
+      mode: 'build',
     })
 
     expect(compiledResultServerCaller!.code).toMatchInlineSnapshot(`
       "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc';
       import { createServerFn } from '@tanstack/react-start';
-      export const exportedFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", () => import("test.ts?tss-serverfn-split").then(m => m["exportedFn_createServerFn_handler"])));
-      const nonExportedFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im5vbkV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", () => import("test.ts?tss-serverfn-split").then(m => m["nonExportedFn_createServerFn_handler"])));"
+      export const exportedFn = createServerFn().handler(createSsrRpc("c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864"));
+      const nonExportedFn = createServerFn().handler(createSsrRpc("f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2"));"
     `)
 
     // Server provider (extracted file) - has second argument
@@ -189,18 +205,27 @@ describe('createServerFn compiles correctly', async () => {
       code,
       env: 'server',
       isProviderFile: true,
+      mode: 'build',
     })
 
     expect(compiledResultServerProvider!.code).toMatchInlineSnapshot(`
       "import { createServerRpc } from '@tanstack/react-start/server-rpc';
       import { createServerFn } from '@tanstack/react-start';
       const exportedVar = 'exported';
-      const exportedFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => exportedFn.__executeServer(opts, signal));
+      const exportedFn_createServerFn_handler = createServerRpc({
+        id: "c306c96e9256c7604f2a6022c4c94eb89f863274c022bc45b03970f067ea9864",
+        name: "exportedFn",
+        filename: "src/test.ts"
+      }, opts => exportedFn.__executeServer(opts));
       const exportedFn = createServerFn().handler(exportedFn_createServerFn_handler, async () => {
         return exportedVar;
       });
       const nonExportedVar = 'non-exported';
-      const nonExportedFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im5vbkV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => nonExportedFn.__executeServer(opts, signal));
+      const nonExportedFn_createServerFn_handler = createServerRpc({
+        id: "f4403dc0b18e216dfe0a9711cab028bc1b9768175daa9236d7115e29c99d76c2",
+        name: "nonExportedFn",
+        filename: "src/test.ts"
+      }, opts => nonExportedFn.__executeServer(opts));
       const nonExportedFn = createServerFn().handler(nonExportedFn_createServerFn_handler, async () => {
         return nonExportedVar;
       });
@@ -229,22 +254,19 @@ describe('createServerFn compiles correctly', async () => {
           kind: 'Root',
         },
       ],
+      getKnownServerFns: () => ({}),
       resolveId: resolveIdMock,
+      mode: 'build',
     })
 
     await compiler.compile({
       code,
-      id: 'test.ts',
+      id: '/test/src/test.ts',
     })
 
-    // resolveId should only be called once during init() for the library itself
-    // It should NOT be called again to resolve the import binding because
-    // the fast path uses knownRootImports map for O(1) lookup
-    expect(resolveIdMock).toHaveBeenCalledTimes(1)
-    expect(resolveIdMock).toHaveBeenCalledWith(
-      '@tanstack/react-start',
-      undefined,
-    )
+    // Direct known-library imports use the knownRootImports fast path, so they
+    // do not need resolveId.
+    expect(resolveIdMock).not.toHaveBeenCalled()
   })
 
   test('should use slow path for factory pattern (resolveId called for import resolution)', async () => {
@@ -280,26 +302,222 @@ describe('createServerFn compiles correctly', async () => {
           kind: 'Root',
         },
       ],
+      getKnownServerFns: () => ({}),
       resolveId: resolveIdMock,
+      mode: 'build',
     })
 
     await compiler.compile({
       code: factoryCode,
-      id: 'test.ts',
+      id: '/test/src/test.ts',
     })
 
-    // resolveId should be called exactly twice:
-    // 1. Once during init() for '@tanstack/react-start'
-    // 2. Once to resolve './factory' import (slow path - not in knownRootImports)
+    // resolveId should only be called for './factory'. Direct known-library
+    // imports use the knownRootImports fast path.
     //
     // Note: The factory module's import from '@tanstack/react-start' ALSO uses
     // the fast path (knownRootImports), so no additional resolveId call is needed there.
+    expect(resolveIdMock).toHaveBeenCalledTimes(1)
+    expect(resolveIdMock).toHaveBeenNthCalledWith(
+      1,
+      './factory',
+      '/test/src/test.ts',
+    )
+  })
+
+  test('should resolve local named re-exports of createServerFn', async () => {
+    const code = `
+      import { createFooServerFn } from './factory'
+      const myServerFn = createFooServerFn().handler(async () => {
+        return 'hello'
+      })`
+
+    const resolveIdMock = vi.fn(async (id: string) => id)
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      loadModule: async (id) => {
+        if (id === './factory') {
+          compiler.ingestModule({
+            code: `
+              export { createServerFn as createFooServerFn } from '@tanstack/react-start'
+            `,
+            id: './factory',
+          })
+        }
+      },
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      getKnownServerFns: () => ({}),
+      resolveId: resolveIdMock,
+      mode: 'build',
+    })
+
+    const result = await compiler.compile({
+      code,
+      id: '/test/src/test.ts',
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('createClientRpc')
+    expect(resolveIdMock).toHaveBeenCalledTimes(1)
+    expect(resolveIdMock).toHaveBeenNthCalledWith(
+      1,
+      './factory',
+      '/test/src/test.ts',
+    )
+  })
+
+  test('should resolve export-star re-export chains of createServerFn', async () => {
+    const code = `
+      import { createFooServerFn } from './factory'
+      const myServerFn = createFooServerFn().handler(async () => {
+        return 'hello'
+      })`
+
+    const resolveIdMock = vi.fn(async (id: string) => id)
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      loadModule: async (id) => {
+        if (id === './factory') {
+          compiler.ingestModule({
+            code: `
+              export * from './factory-inner'
+            `,
+            id: './factory',
+          })
+        }
+
+        if (id === './factory-inner') {
+          compiler.ingestModule({
+            code: `
+              export { createServerFn as createFooServerFn } from '@tanstack/react-start'
+            `,
+            id: './factory-inner',
+          })
+        }
+      },
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      getKnownServerFns: () => ({}),
+      resolveId: resolveIdMock,
+      mode: 'build',
+    })
+
+    const result = await compiler.compile({
+      code,
+      id: '/test/src/test.ts',
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('createClientRpc')
     expect(resolveIdMock).toHaveBeenCalledTimes(2)
     expect(resolveIdMock).toHaveBeenNthCalledWith(
       1,
-      '@tanstack/react-start',
-      undefined,
+      './factory',
+      '/test/src/test.ts',
     )
-    expect(resolveIdMock).toHaveBeenNthCalledWith(2, './factory', 'test.ts')
+    expect(resolveIdMock).toHaveBeenNthCalledWith(
+      2,
+      './factory-inner',
+      './factory',
+    )
+  })
+
+  test('reuses deduped custom IDs across compiler instances', async () => {
+    const serverFnsById: Record<
+      string,
+      {
+        functionName: string
+        functionId: string
+        extractedFilename: string
+        filename: string
+        isClientReferenced?: boolean
+      }
+    > = {}
+
+    function createCompiler() {
+      return new StartCompiler({
+        env: 'server',
+        ...getDefaultTestOptions('server'),
+        mode: 'build',
+        loadModule: async () => {},
+        lookupKinds: new Set(['ServerFn']),
+        lookupConfigurations: [
+          {
+            libName: '@tanstack/react-start',
+            rootExport: 'createServerFn',
+            kind: 'Root',
+          },
+        ],
+        resolveId: async (id) => id,
+        generateFunctionId: ({ functionName }) =>
+          functionName === 'greetUser_createServerFn_handler'
+            ? 'constant_id'
+            : undefined,
+        getKnownServerFns: () => serverFnsById,
+        onServerFnsById: (discovered) => {
+          Object.assign(serverFnsById, discovered)
+        },
+      })
+    }
+
+    const firstCompiler = createCompiler()
+    await firstCompiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const greetUser = createServerFn().handler(async () => 'first')
+      `,
+      id: '/test/src/submit-post-formdata.tsx',
+    })
+
+    await firstCompiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const greetUser = createServerFn().handler(async () => 'second')
+      `,
+      id: '/test/src/formdata-redirect/index.tsx',
+    })
+
+    expect(
+      Object.values(serverFnsById)
+        .map((serverFn) => serverFn.functionId)
+        .sort(),
+    ).toEqual(['constant_id', 'constant_id_1'])
+
+    const secondCompiler = createCompiler()
+    const firstResult = await secondCompiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const greetUser = createServerFn().handler(async () => 'first')
+      `,
+      id: '/test/src/submit-post-formdata.tsx',
+    })
+
+    const secondResult = await secondCompiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const greetUser = createServerFn().handler(async () => 'second')
+      `,
+      id: '/test/src/formdata-redirect/index.tsx',
+    })
+
+    expect(firstResult!.code).toContain('createSsrRpc("constant_id"')
+    expect(secondResult!.code).toContain('createSsrRpc("constant_id_1"')
   })
 })

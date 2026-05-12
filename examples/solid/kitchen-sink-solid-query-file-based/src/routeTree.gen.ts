@@ -123,7 +123,7 @@ export interface FileRoutesByFullPath {
   '/route-b': typeof PathlessLayoutRouteBRoute
   '/foo/bar': typeof FooBarRoute
   '/dashboard/': typeof DashboardIndexRoute
-  '/expensive': typeof ExpensiveIndexRoute
+  '/expensive/': typeof ExpensiveIndexRoute
   '/dashboard/invoices/$invoiceId': typeof DashboardInvoicesInvoiceIdRoute
   '/dashboard/users/user': typeof DashboardUsersUserRoute
   '/dashboard/invoices/': typeof DashboardInvoicesIndexRoute
@@ -176,7 +176,7 @@ export interface FileRouteTypes {
     | '/route-b'
     | '/foo/bar'
     | '/dashboard/'
-    | '/expensive'
+    | '/expensive/'
     | '/dashboard/invoices/$invoiceId'
     | '/dashboard/users/user'
     | '/dashboard/invoices/'
@@ -238,14 +238,14 @@ declare module '@tanstack/solid-router' {
     '/_pathlessLayout': {
       id: '/_pathlessLayout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof PathlessLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
       id: '/_auth'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -266,7 +266,7 @@ declare module '@tanstack/solid-router' {
     '/expensive/': {
       id: '/expensive/'
       path: '/expensive'
-      fullPath: '/expensive'
+      fullPath: '/expensive/'
       preLoaderRoute: typeof ExpensiveIndexRouteImport
       parentRoute: typeof rootRouteImport
     }

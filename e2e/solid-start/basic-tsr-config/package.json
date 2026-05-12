@@ -15,14 +15,13 @@
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
     "solid-js": "^1.9.10",
-    "vite": "^7.1.7"
+    "vite": "^8.0.0"
   },
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
-    "srvx": "^0.10.0",
-    "typescript": "^5.7.2",
-    "vite-plugin-solid": "^2.11.10",
-    "vite-tsconfig-paths": "^5.1.4"
+    "srvx": "^0.11.9",
+    "typescript": "^6.0.2",
+    "vite-plugin-solid": "^2.11.11"
   }
 }

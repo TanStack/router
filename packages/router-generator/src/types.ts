@@ -13,6 +13,13 @@ export type RouteNode = {
   children?: Array<RouteNode>
   parent?: RouteNode
   createFileRouteProps?: Set<string>
+  /**
+   * For virtual routes: the routePath of the explicit parent from virtual config.
+   * Used to prevent auto-nesting siblings based on path prefix matching (#5822, #5431).
+   * Falls back to path-based inference if the explicit parent is not found
+   * (e.g., when the parent is a virtual file-less route that gets filtered out).
+   */
+  _virtualParentRoutePath?: string
 }
 
 export interface GetRouteNodesResult {
@@ -60,7 +67,7 @@ export type HandleNodeAccumulator = {
   routeNodesByPath: Map<string, RouteNode>
 }
 
-export type GetRoutesByFileMapResultValue = { routePath: string }
+export type GetRoutesByFileMapResultValue = { routeId: string }
 export type GetRoutesByFileMapResult = Map<
   string,
   GetRoutesByFileMapResultValue

@@ -9,9 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/[index]'
-import { Route as RouteRouteImport } from './routes/[route]'
-import { Route as LazyRouteImport } from './routes/[lazy]'
+import { Route as Char91indexChar93RouteImport } from './routes/[index]'
+import { Route as Char91routeChar93RouteImport } from './routes/[route]'
+import { Route as Char91lazyChar93RouteImport } from './routes/[lazy]'
 import { Route as Foo_barRouteImport } from './routes/foo[_]bar'
 import { Route as BlogRouteImport } from './routes/blog[_]'
 import { Route as Api_v2_usersRouteImport } from './routes/api[_]v2[_]users'
@@ -19,19 +19,19 @@ import { Route as Prefix_middle_suffixRouteImport } from './routes/[_]prefix[_]m
 import { Route as LayoutRouteImport } from './routes/[_]layout'
 import { Route as AuthRouteRouteImport } from './routes/[_]auth.route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as NestedIndexRouteImport } from './routes/nested.[index]'
+import { Route as NestedChar91indexChar93RouteImport } from './routes/nested.[index]'
 
-const IndexRoute = IndexRouteImport.update({
+const Char91indexChar93Route = Char91indexChar93RouteImport.update({
   id: '/index',
   path: '/index',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RouteRoute = RouteRouteImport.update({
+const Char91routeChar93Route = Char91routeChar93RouteImport.update({
   id: '/route',
   path: '/route',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LazyRoute = LazyRouteImport.update({
+const Char91lazyChar93Route = Char91lazyChar93RouteImport.update({
   id: '/lazy',
   path: '/lazy',
   getParentRoute: () => rootRouteImport,
@@ -71,7 +71,7 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NestedIndexRoute = NestedIndexRouteImport.update({
+const NestedChar91indexChar93Route = NestedChar91indexChar93RouteImport.update({
   id: '/nested/index',
   path: '/nested/index',
   getParentRoute: () => rootRouteImport,
@@ -85,10 +85,10 @@ export interface FileRoutesByFullPath {
   '/api_v2_users': typeof Api_v2_usersRoute
   '/blog_': typeof BlogRoute
   '/foo_bar': typeof Foo_barRoute
-  '/index': typeof IndexRoute
-  '/lazy': typeof LazyRoute
-  '/route': typeof RouteRoute
-  '/nested/index': typeof NestedIndexRoute
+  '/index': typeof Char91indexChar93Route
+  '/lazy': typeof Char91lazyChar93Route
+  '/route': typeof Char91routeChar93Route
+  '/nested/index': typeof NestedChar91indexChar93Route
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -98,10 +98,10 @@ export interface FileRoutesByTo {
   '/api_v2_users': typeof Api_v2_usersRoute
   '/blog_': typeof BlogRoute
   '/foo_bar': typeof Foo_barRoute
-  '/index': typeof IndexRoute
-  '/lazy': typeof LazyRoute
-  '/route': typeof RouteRoute
-  '/nested/index': typeof NestedIndexRoute
+  '/index': typeof Char91indexChar93Route
+  '/lazy': typeof Char91lazyChar93Route
+  '/route': typeof Char91routeChar93Route
+  '/nested/index': typeof NestedChar91indexChar93Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -112,10 +112,10 @@ export interface FileRoutesById {
   '/api_v2_users': typeof Api_v2_usersRoute
   '/blog_': typeof BlogRoute
   '/foo_bar': typeof Foo_barRoute
-  '/index': typeof IndexRoute
-  '/lazy': typeof LazyRoute
-  '/route': typeof RouteRoute
-  '/nested/index': typeof NestedIndexRoute
+  '/index': typeof Char91indexChar93Route
+  '/lazy': typeof Char91lazyChar93Route
+  '/route': typeof Char91routeChar93Route
+  '/nested/index': typeof NestedChar91indexChar93Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,10 +167,10 @@ export interface RootRouteChildren {
   Api_v2_usersRoute: typeof Api_v2_usersRoute
   BlogRoute: typeof BlogRoute
   Foo_barRoute: typeof Foo_barRoute
-  IndexRoute: typeof IndexRoute
-  LazyRoute: typeof LazyRoute
-  RouteRoute: typeof RouteRoute
-  NestedIndexRoute: typeof NestedIndexRoute
+  Char91indexChar93Route: typeof Char91indexChar93Route
+  Char91lazyChar93Route: typeof Char91lazyChar93Route
+  Char91routeChar93Route: typeof Char91routeChar93Route
+  NestedChar91indexChar93Route: typeof NestedChar91indexChar93Route
 }
 
 declare module '@tanstack/react-router' {
@@ -179,21 +179,21 @@ declare module '@tanstack/react-router' {
       id: '/index'
       path: '/index'
       fullPath: '/index'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof Char91indexChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/route': {
       id: '/route'
       path: '/route'
       fullPath: '/route'
-      preLoaderRoute: typeof RouteRouteImport
+      preLoaderRoute: typeof Char91routeChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lazy': {
       id: '/lazy'
       path: '/lazy'
       fullPath: '/lazy'
-      preLoaderRoute: typeof LazyRouteImport
+      preLoaderRoute: typeof Char91lazyChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/foo_bar': {
@@ -249,7 +249,7 @@ declare module '@tanstack/react-router' {
       id: '/nested/index'
       path: '/nested/index'
       fullPath: '/nested/index'
-      preLoaderRoute: typeof NestedIndexRouteImport
+      preLoaderRoute: typeof NestedChar91indexChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -263,10 +263,10 @@ const rootRouteChildren: RootRouteChildren = {
   Api_v2_usersRoute: Api_v2_usersRoute,
   BlogRoute: BlogRoute,
   Foo_barRoute: Foo_barRoute,
-  IndexRoute: IndexRoute,
-  LazyRoute: LazyRoute,
-  RouteRoute: RouteRoute,
-  NestedIndexRoute: NestedIndexRoute,
+  Char91indexChar93Route: Char91indexChar93Route,
+  Char91lazyChar93Route: Char91lazyChar93Route,
+  Char91routeChar93Route: Char91routeChar93Route,
+  NestedChar91indexChar93Route: NestedChar91indexChar93Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

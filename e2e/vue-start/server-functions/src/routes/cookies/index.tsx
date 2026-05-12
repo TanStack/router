@@ -14,7 +14,7 @@ function RouteComponent() {
   return (
     <Link
       data-testid="link-to-set"
-      from="/cookies"
+      from="/cookies/"
       to="./set"
       search={search.value}
     >

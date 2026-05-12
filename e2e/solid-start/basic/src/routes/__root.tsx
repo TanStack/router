@@ -10,7 +10,7 @@ import {
 import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
 import { HydrationScript } from 'solid-js/web'
 import { NotFound } from '~/components/NotFound'
-import appCss from '~/styles/app.css?url'
+import '~/styles/app.css'
 import { seo } from '~/utils/seo'
 
 export const Route = createRootRoute({
@@ -27,7 +27,6 @@ export const Route = createRootRoute({
       }),
     ],
     links: [
-      { rel: 'stylesheet', href: appCss },
       {
         rel: 'apple-touch-icon',
         sizes: '180x180',

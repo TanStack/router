@@ -1,4 +1,4 @@
-import { tanstackViteConfig } from '@tanstack/config/vite'
+import { tanstackViteConfig } from '@tanstack/vite-config'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { mergeConfig, defineConfig } from 'vitest/config'
 
@@ -9,6 +9,7 @@ const config = defineConfig({
 export default mergeConfig(
   config,
   tanstackViteConfig({
+    tsconfigPath: './tsconfig.server-entry.json',
     srcDir: './src/default-entry',
     exclude: ['./src/default-entry/client.tsx'],
     entry: ['./src/default-entry/server.ts'],

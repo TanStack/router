@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest'
 import {
   detectKindsInCode,
   StartCompiler,
-} from '../../src/start-compiler-plugin/compiler'
+} from '../../src/start-compiler/compiler'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -38,6 +38,7 @@ async function compile(opts: {
         kind: 'ClientOnlyJSX',
       },
     ],
+    getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
     },

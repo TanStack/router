@@ -24,7 +24,7 @@ function RouteComponent() {
         <button
           onClick={() =>
             navigate({
-              from: '/relative/useNavigate/path',
+              from: '/relative/useNavigate/path/',
               to: './$path',
               params: { path: path === 'a' ? 'b' : 'a' },
             })

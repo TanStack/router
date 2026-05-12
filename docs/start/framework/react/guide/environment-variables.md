@@ -5,6 +5,8 @@ title: Environment Variables
 
 Learn how to securely configure and use environment variables in your TanStack Start application across different contexts (server functions, client code, and build processes).
 
+> **Read env per-request, not at module scope.** On Cloudflare Workers and other edge SSR runtimes, env vars are injected at request time — module-level `process.env.X` reads run before the env exists and evaluate to `undefined` even on the server. Always read `process.env` inside `.handler()`, middleware `.server()`, server-route handlers, or other per-request callbacks. Reading at module scope also risks inlining secrets into the client bundle. (On Cloudflare Workers specifically, the canonical way to read env from anywhere — including module scope — is the [`cloudflare:workers` env binding](https://developers.cloudflare.com/workers/configuration/environment-variables/).)
+
 ## Quick Start
 
 TanStack Start automatically loads `.env` files and makes variables available in both server and client contexts with proper security boundaries.
@@ -294,9 +296,17 @@ const clientEnvSchema = z.object({
 })
 
 // Validate server environment
+// NOTE: Module-level parse runs at module load. Fine for Node.js;
+// on Cloudflare Workers (and other edge runtimes) `process.env` is
+// empty at module load, so wrap this in a function and call it
+// inside `.handler()` instead:
+//
+//   export const getServerEnv = () => envSchema.parse(process.env)
+//
+// Then read `getServerEnv()` per-request from server functions/middleware.
 export const serverEnv = envSchema.parse(process.env)
 
-// Validate client environment
+// Validate client environment (build-time, always safe)
 export const clientEnv = clientEnvSchema.parse(import.meta.env)
 ```
 
@@ -464,6 +474,79 @@ interface ImportMetaEnv {
 1. Configure variables on hosting platform
 2. Validate required variables at build time
 3. Use deployment-specific `.env` files
+
+## Server Build Configuration
+
+### Static `NODE_ENV` Replacement
+
+By default, TanStack Start statically replaces `process.env.NODE_ENV` in **server builds** at build time. This enables dead code elimination (tree-shaking) for development-only code paths in your server bundle.
+
+**Why this matters:** Vite automatically replaces `process.env.NODE_ENV` in client builds, but server builds run in Node.js where `process.env` is a real runtime object. Without static replacement, code like this would remain in your production server bundle:
+
+```typescript
+if (process.env.NODE_ENV === 'development') {
+  // This code would NOT be eliminated without static replacement
+  enableDevTools()
+  logDebugInfo()
+}
+```
+
+With static replacement enabled (the default), the bundler sees `"production" === 'development'` and eliminates the entire block.
+
+### Configuring Static Replacement
+
+The replacement is controlled by the `server.build.staticNodeEnv` option:
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      server: {
+        build: {
+          // Replace process.env.NODE_ENV at build time (default: true)
+          staticNodeEnv: true,
+        },
+      },
+    }),
+    viteReact(),
+  ],
+})
+```
+
+The replacement value is determined in this order:
+
+1. `process.env.NODE_ENV` at build time (if set)
+2. Vite's `mode` (e.g., from `--mode staging`)
+3. `"production"` (fallback)
+
+### When to Disable Static Replacement
+
+Set `staticNodeEnv: false` if you need `NODE_ENV` to remain dynamic at runtime:
+
+```ts
+tanstackStart({
+  server: {
+    build: {
+      staticNodeEnv: false, // Keep NODE_ENV dynamic at runtime
+    },
+  },
+})
+```
+
+Common reasons to disable:
+
+- **Same build, multiple environments**: Deploying one build artifact to staging and production
+- **Runtime environment detection**: Code that must check the actual runtime environment
+- **Testing production builds locally**: Running production builds with `NODE_ENV=development`
+
+> **Note:** Disabling static replacement means development-only code paths will remain in your production bundle and be evaluated at runtime.
+
+> **Important:** If you disable `staticNodeEnv`, you **must** set `NODE_ENV=production` at runtime when running your server in production. Without this, React (and possibly other libraries) will run in development mode, which is significantly slower and includes extra warnings and checks not intended for production use.
 
 ## Related Resources
 

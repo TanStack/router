@@ -1,9 +1,20 @@
 import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
-import invariant from 'tiny-invariant'
+import { invariant } from '../invariant'
+import {
+  createInlineCssPlaceholderAsset,
+  createInlineCssStyleAsset,
+  getStylesheetHref,
+  isInlinableStylesheet,
+} from '../manifest'
+import { decodePath } from '../utils'
+import { createLRUCache } from '../lru-cache'
+import { rootRouteId } from '../root'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
+import { dehydrateSsrMatchId } from './ssr-match-id'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
+import type { LRUCache } from '../lru-cache'
 import type { DehydratedMatch, DehydratedRouter } from './types'
 import type { AnySerializationAdapter } from './serializer/transformer'
 import type { AnyRouter } from '../router'
@@ -27,9 +38,13 @@ declare module '../router' {
 
 const SCOPE_ID = 'tsr'
 
+const TSR_PREFIX = GLOBAL_TSR + '.router='
+const P_PREFIX = GLOBAL_TSR + '.p(()=>'
+const P_SUFFIX = ')'
+
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   const dehydratedMatch: DehydratedMatch = {
-    i: match.id,
+    i: dehydrateSsrMatchId(match.id),
     u: match.updatedAt,
     s: match.status,
   }
@@ -45,6 +60,9 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
     if (match[key] !== undefined) {
       dehydratedMatch[shorthand] = match[key]
     }
+  }
+  if (match.globalNotFound) {
+    dehydratedMatch.g = true
   }
   return dehydratedMatch
 }
@@ -115,6 +133,10 @@ class ScriptBuffer {
     if (bufferedScripts.length === 0) {
       return undefined
     }
+    // Optimization: if only one script, avoid join
+    if (bufferedScripts.length === 1) {
+      return bufferedScripts[0] + ';document.currentScript.remove()'
+    }
     // Append cleanup script and join - avoid push() to not mutate then iterate
     return bufferedScripts.join(';') + ';document.currentScript.remove()'
   }
@@ -136,28 +158,175 @@ class ScriptBuffer {
   }
 }
 
+const isProd = process.env.NODE_ENV === 'production'
+
+type FilteredRoutes = Manifest['routes']
+
+type ManifestLRU = LRUCache<string, FilteredRoutes>
+type InlineCssLRU = LRUCache<string, string>
+
+const MANIFEST_CACHE_SIZE = 100
+const manifestCaches = new WeakMap<Manifest, ManifestLRU>()
+const inlineCssCaches = new WeakMap<Manifest, InlineCssLRU>()
+
+function getManifestCache(manifest: Manifest): ManifestLRU {
+  const cache = manifestCaches.get(manifest)
+  if (cache) return cache
+  const newCache = createLRUCache<string, FilteredRoutes>(MANIFEST_CACHE_SIZE)
+  manifestCaches.set(manifest, newCache)
+  return newCache
+}
+
+function getInlineCssCache(manifest: Manifest): InlineCssLRU {
+  const cache = inlineCssCaches.get(manifest)
+  if (cache) return cache
+  const newCache = createLRUCache<string, string>(MANIFEST_CACHE_SIZE)
+  inlineCssCaches.set(manifest, newCache)
+  return newCache
+}
+
+function getInlineCssHrefsForMatches(
+  manifest: Manifest | undefined,
+  matches: Array<AnyRouteMatch>,
+) {
+  const styles = manifest?.inlineCss?.styles
+  if (!styles) return []
+
+  const seen = new Set<string>()
+  const hrefs: Array<string> = []
+
+  for (const match of matches) {
+    const assets = manifest?.routes[match.routeId]?.assets ?? []
+    for (const asset of assets) {
+      const href = getStylesheetHref(asset)
+      if (!href || seen.has(href) || styles[href] === undefined) {
+        continue
+      }
+      seen.add(href)
+      hrefs.push(href)
+    }
+  }
+
+  return hrefs
+}
+
+function getInlineCssForHrefs(manifest: Manifest, hrefs: Array<string>) {
+  const styles = manifest.inlineCss?.styles
+  if (!styles || hrefs.length === 0) return undefined
+
+  const cacheKey = hrefs.join('\0')
+  if (isProd) {
+    const cached = getInlineCssCache(manifest).get(cacheKey)
+    if (cached !== undefined) return cached
+  }
+
+  const css = hrefs.map((href) => styles[href]!).join('')
+
+  if (isProd) {
+    getInlineCssCache(manifest).set(cacheKey, css)
+  }
+
+  return css
+}
+
+function getInlineCssAssetForMatches(
+  manifest: Manifest | undefined,
+  matches: Array<AnyRouteMatch>,
+) {
+  if (!manifest?.inlineCss) return undefined
+
+  const hrefs = getInlineCssHrefsForMatches(manifest, matches)
+  const css = getInlineCssForHrefs(manifest, hrefs)
+
+  return css === undefined ? undefined : createInlineCssStyleAsset(css)
+}
+
+function stripInlinedStylesheetAssets(
+  manifest: Manifest,
+  routes: FilteredRoutes,
+  matches: Array<AnyRouteMatch>,
+): FilteredRoutes {
+  if (!manifest.inlineCss) {
+    return routes
+  }
+
+  const nextRoutes: FilteredRoutes = {}
+
+  for (const [routeId, route] of Object.entries(routes)) {
+    const assets = route.assets?.filter(
+      (asset) => !isInlinableStylesheet(manifest, asset),
+    )
+
+    const nextRoute = { ...route }
+    if (assets) {
+      if (assets.length > 0) {
+        nextRoute.assets = assets
+      } else {
+        delete nextRoute.assets
+      }
+    }
+    nextRoutes[routeId] = nextRoute
+  }
+
+  if (getInlineCssAssetForMatches(manifest, matches)) {
+    const rootRoute = nextRoutes[rootRouteId] ?? {}
+    nextRoutes[rootRouteId] = {
+      ...rootRoute,
+      assets: [createInlineCssPlaceholderAsset(), ...(rootRoute.assets ?? [])],
+    }
+  }
+
+  return nextRoutes
+}
+
 export function attachRouterServerSsrUtils({
   router,
   manifest,
+  getRequestAssets,
+  includeUnmatchedRouteAssets = true,
 }: {
   router: AnyRouter
   manifest: Manifest | undefined
+  getRequestAssets?: () => Array<RouterManagedTag> | undefined
+  includeUnmatchedRouteAssets?: boolean
 }) {
   router.ssr = {
-    manifest,
+    get manifest() {
+      const requestAssets = getRequestAssets?.()
+      const inlineCssAsset = getInlineCssAssetForMatches(
+        manifest,
+        router.stores.matches.get(),
+      )
+      if (!requestAssets?.length && !inlineCssAsset) return manifest
+      // Merge request-scoped assets into root route without mutating cached manifest
+      return {
+        ...manifest,
+        routes: {
+          ...manifest?.routes,
+          [rootRouteId]: {
+            ...manifest?.routes?.[rootRouteId],
+            assets: [
+              ...(requestAssets ?? []),
+              ...(inlineCssAsset ? [inlineCssAsset] : []),
+              ...(manifest?.routes?.[rootRouteId]?.assets ?? []),
+            ],
+          },
+        },
+      }
+    },
   }
   let _dehydrated = false
   let _serializationFinished = false
   const renderFinishedListeners: Array<() => void> = []
   const serializationFinishedListeners: Array<() => void> = []
   const scriptBuffer = new ScriptBuffer(router)
-  let injectedHtmlBuffer: Array<string> = []
+  let injectedHtmlBuffer = ''
 
   router.serverSsr = {
     injectHtml: (html: string) => {
       if (!html) return
       // Buffer the HTML so it can be retrieved via takeBufferedHtml()
-      injectedHtmlBuffer.push(html)
+      injectedHtmlBuffer += html
       // Emit event to notify subscribers that new HTML is available
       router.emit({
         type: 'onInjectedHtml',
@@ -168,9 +337,15 @@ export function attachRouterServerSsrUtils({
       const html = `<script${router.options.ssr?.nonce ? ` nonce='${router.options.ssr.nonce}'` : ''}>${script}</script>`
       router.serverSsr!.injectHtml(html)
     },
-    dehydrate: async () => {
-      invariant(!_dehydrated, 'router is already dehydrated!')
-      let matchesToDehydrate = router.state.matches
+    dehydrate: async (opts?: { requestAssets?: Array<RouterManagedTag> }) => {
+      if (_dehydrated) {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error('Invariant failed: router is already dehydrated!')
+        }
+
+        invariant()
+      }
+      let matchesToDehydrate = router.stores.matches.get()
       if (router.isShell()) {
         // In SPA mode we only want to dehydrate the root match
         matchesToDehydrate = matchesToDehydrate.slice(0, 1)
@@ -178,36 +353,62 @@ export function attachRouterServerSsrUtils({
       const matches = matchesToDehydrate.map(dehydrateMatch)
 
       let manifestToDehydrate: Manifest | undefined = undefined
-      // For currently matched routes, send full manifest (preloads + assets)
-      // For all other routes, only send assets (no preloads as they are handled via dynamic imports)
+      // For currently matched routes, send full manifest (preloads + assets).
+      // For unmatched routes, include assets only when includeUnmatchedRouteAssets
+      // is true; otherwise omit them entirely. Preloads for unmatched routes are
+      // still excluded because they are handled via dynamic imports.
       if (manifest) {
-        const currentRouteIds = new Set(
-          router.state.matches.map((k) => k.routeId),
-        )
-        const filteredRoutes = Object.fromEntries(
-          Object.entries(manifest.routes).flatMap(
-            ([routeId, routeManifest]) => {
-              if (currentRouteIds.has(routeId)) {
-                return [[routeId, routeManifest]]
-              } else if (
-                routeManifest.assets &&
-                routeManifest.assets.length > 0
-              ) {
-                return [
-                  [
-                    routeId,
-                    {
-                      assets: routeManifest.assets,
-                    },
-                  ],
-                ]
+        // Prod-only caching; in dev manifests may be replaced/updated (HMR)
+        const currentRouteIdsList = matchesToDehydrate.map((m) => m.routeId)
+        const manifestCacheKey = `${currentRouteIdsList.join('\0')}\0includeUnmatchedRouteAssets=${includeUnmatchedRouteAssets}`
+
+        let filteredRoutes: FilteredRoutes | undefined
+
+        if (isProd) {
+          filteredRoutes = getManifestCache(manifest).get(manifestCacheKey)
+        }
+
+        if (!filteredRoutes) {
+          const currentRouteIds = new Set(currentRouteIdsList)
+          const nextFilteredRoutes: FilteredRoutes = {}
+
+          for (const routeId in manifest.routes) {
+            const routeManifest = manifest.routes[routeId]!
+            if (currentRouteIds.has(routeId)) {
+              nextFilteredRoutes[routeId] = routeManifest
+            } else if (
+              includeUnmatchedRouteAssets &&
+              routeManifest.assets &&
+              routeManifest.assets.length > 0
+            ) {
+              nextFilteredRoutes[routeId] = {
+                assets: routeManifest.assets,
               }
-              return []
-            },
-          ),
-        )
+            }
+          }
+
+          filteredRoutes = stripInlinedStylesheetAssets(
+            manifest,
+            nextFilteredRoutes,
+            matchesToDehydrate,
+          )
+
+          if (isProd) {
+            getManifestCache(manifest).set(manifestCacheKey, filteredRoutes)
+          }
+        }
+
         manifestToDehydrate = {
-          routes: filteredRoutes,
+          routes: { ...filteredRoutes },
+        }
+
+        // Merge request-scoped assets into root route (without mutating cached manifest)
+        if (opts?.requestAssets?.length) {
+          const existingRoot = manifestToDehydrate.routes[rootRouteId]
+          manifestToDehydrate.routes[rootRouteId] = {
+            ...existingRoot,
+            assets: [...opts.requestAssets, ...(existingRoot?.assets ?? [])],
+          }
         }
       }
       const dehydratedRouter: DehydratedRouter = {
@@ -216,7 +417,7 @@ export function attachRouterServerSsrUtils({
       }
       const lastMatchId = matchesToDehydrate[matchesToDehydrate.length - 1]?.id
       if (lastMatchId) {
-        dehydratedRouter.lastMatchId = lastMatchId
+        dehydratedRouter.lastMatchId = dehydrateSsrMatchId(lastMatchId)
       }
       const dehydratedData = await router.options.dehydrate?.()
       if (dehydratedData) {
@@ -251,11 +452,18 @@ export function attachRouterServerSsrUtils({
         refs: new Map(),
         plugins,
         onSerialize: (data, initial) => {
-          let serialized = initial ? GLOBAL_TSR + '.router=' + data : data
+          let serialized = initial ? TSR_PREFIX + data : data
           if (trackPlugins.didRun) {
-            serialized = GLOBAL_TSR + '.p(()=>' + serialized + ')'
+            serialized = P_PREFIX + serialized + P_SUFFIX
           }
           scriptBuffer.enqueue(serialized)
+        },
+        onError: (err: unknown) => {
+          console.error('Serialization error:', err)
+          if (err && (err as any).stack) {
+            console.error((err as any).stack)
+          }
+          signalSerializationComplete()
         },
         scopeId: SCOPE_ID,
         onDone: () => {
@@ -263,10 +471,6 @@ export function attachRouterServerSsrUtils({
           // Flush all pending scripts synchronously before signaling completion
           // This ensures all scripts are injected before onSerializationFinished is emitted
           scriptBuffer.flush()
-          signalSerializationComplete()
-        },
-        onError: (err) => {
-          console.error('Serialization error:', err)
           signalSerializationComplete()
         },
       })
@@ -309,11 +513,11 @@ export function attachRouterServerSsrUtils({
       scriptBuffer.liftBarrier()
     },
     takeBufferedHtml() {
-      if (injectedHtmlBuffer.length === 0) {
+      if (!injectedHtmlBuffer) {
         return undefined
       }
-      const buffered = injectedHtmlBuffer.join('')
-      injectedHtmlBuffer = []
+      const buffered = injectedHtmlBuffer
+      injectedHtmlBuffer = ''
       return buffered
     },
     cleanup() {
@@ -321,7 +525,7 @@ export function attachRouterServerSsrUtils({
       if (!router.serverSsr) return
       renderFinishedListeners.length = 0
       serializationFinishedListeners.length = 0
-      injectedHtmlBuffer = []
+      injectedHtmlBuffer = ''
       scriptBuffer.cleanup()
       router.serverSsr = undefined
     },
@@ -347,4 +551,31 @@ export function getOrigin(request: Request) {
     return new URL(request.url).origin
   } catch {}
   return 'http://localhost'
+}
+
+// server and browser can decode/encode characters differently in paths and search params.
+// Server generally strictly follows the WHATWG URL Standard, while browsers may differ for legacy reasons.
+// for example, in paths "|" is not encoded on the server but is encoded on chromium (and not on firefox) while "대" is encoded on both sides.
+// Another anomaly is that in Node new URLSearchParams and new URL also decode/encode characters differently.
+// new URLSearchParams() encodes "|" while new URL() does not, and in this instance
+// chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
+export function getNormalizedURL(url: string | URL, base?: string | URL) {
+  // ensure backslashes are encoded correctly in the URL
+  if (typeof url === 'string') url = url.replace('\\', '%5C')
+
+  const rawUrl = new URL(url, base)
+  const { path: decodedPathname, handledProtocolRelativeURL } = decodePath(
+    rawUrl.pathname,
+  )
+  const searchParams = new URLSearchParams(rawUrl.search)
+  const normalizedHref =
+    decodedPathname +
+    (searchParams.size > 0 ? '?' : '') +
+    searchParams.toString() +
+    rawUrl.hash
+
+  return {
+    url: new URL(normalizedHref, rawUrl.origin),
+    handledProtocolRelativeURL,
+  }
 }

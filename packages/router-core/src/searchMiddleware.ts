@@ -21,13 +21,14 @@ export function retainSearchParams<TSearchSchema extends object>(
     if (keys === true) {
       return { ...search, ...result }
     }
-    // add missing keys from search to result
+    const copy = { ...result }
+    // add missing keys from search to copy
     keys.forEach((key) => {
-      if (!(key in result)) {
-        result[key] = search[key]
+      if (!(key in copy)) {
+        copy[key] = search[key]
       }
     })
-    return result
+    return copy
   }
 }
 
@@ -55,7 +56,7 @@ export function stripSearchParams<
     if (input === true) {
       return {}
     }
-    const result = next(search) as Record<string, unknown>
+    const result = { ...next(search) } as Record<string, unknown>
     if (Array.isArray(input)) {
       input.forEach((key) => {
         delete result[key]

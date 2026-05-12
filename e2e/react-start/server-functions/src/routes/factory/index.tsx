@@ -22,11 +22,14 @@ export const Route = createFileRoute('/factory/')({
   component: RouteComponent,
 })
 
-const fnInsideRoute = createServerFn({ method: 'GET' }).handler(() => {
-  return {
-    name: 'fnInsideRoute',
-  }
-})
+const fnInsideRoute = createServerFn({ method: 'GET' }).handler(
+  ({ method }) => {
+    return {
+      name: 'fnInsideRoute',
+      method,
+    }
+  },
+)
 
 const functions = {
   fnInsideRoute: {
@@ -34,6 +37,7 @@ const functions = {
     type: 'serverFn',
     expected: {
       name: 'fnInsideRoute',
+      method: 'GET',
     },
   },
   fooFnInsideFactoryFile: {
@@ -43,6 +47,7 @@ const functions = {
     expected: {
       name: 'fooFnInsideFactoryFile',
       context: { foo: 'foo', method: 'GET' },
+      method: 'GET',
     },
   },
   fooFn: {
@@ -52,6 +57,7 @@ const functions = {
     expected: {
       name: 'fooFn',
       context: { foo: 'foo', method: 'GET' },
+      method: 'GET',
     },
   },
   fooFnPOST: {
@@ -61,6 +67,7 @@ const functions = {
     expected: {
       name: 'fooFnPOST',
       context: { foo: 'foo', method: 'POST' },
+      method: 'POST',
     },
   },
   barFn: {
@@ -70,6 +77,7 @@ const functions = {
     expected: {
       name: 'barFn',
       context: { foo: 'foo', method: 'GET', bar: 'bar' },
+      method: 'GET',
     },
   },
   barFnPOST: {
@@ -79,6 +87,7 @@ const functions = {
     expected: {
       name: 'barFnPOST',
       context: { foo: 'foo', method: 'POST', bar: 'bar' },
+      method: 'POST',
     },
   },
   localFn: {
@@ -94,6 +103,7 @@ const functions = {
         local: 'local',
         another: 'another',
       },
+      method: 'GET',
     },
   },
   localFnPOST: {
@@ -109,6 +119,7 @@ const functions = {
         local: 'local',
         another: 'another',
       },
+      method: 'POST',
     },
   },
   composedFn: {
@@ -123,6 +134,7 @@ const functions = {
         another: 'another',
         local: 'local',
       },
+      method: 'GET',
     },
   },
   fakeFn: {
@@ -141,6 +153,7 @@ const functions = {
     expected: {
       name: 'reexportedFactoryFn',
       context: { reexport: 'reexport-middleware-executed' },
+      method: 'GET',
     },
   },
   // Test that star re-exported factories (using `export * from './module'`) work correctly
@@ -151,6 +164,7 @@ const functions = {
     expected: {
       name: 'starReexportedFactoryFn',
       context: { starReexport: 'star-reexport-middleware-executed' },
+      method: 'GET',
     },
   },
   // Test that nested star re-exported factories (A -> B -> C chain) work correctly
@@ -161,6 +175,7 @@ const functions = {
     expected: {
       name: 'nestedReexportedFactoryFn',
       context: { nested: 'nested-middleware-executed' },
+      method: 'GET',
     },
   },
 } satisfies Record<string, TestCase>
@@ -224,9 +239,7 @@ function Test({ fn, type, expected }: TestCase) {
 function RouteComponent() {
   return (
     <div className="p-2 m-2 grid gap-2" data-testid="factory-route-component">
-      <h1 className="font-bold text-lg">
-        Server functions middleware E2E tests
-      </h1>
+      <h1 className="font-bold text-lg">Server functions factory E2E tests</h1>
       {Object.entries(functions).map(([name, testCase]) => (
         <Test key={name} {...testCase} />
       ))}

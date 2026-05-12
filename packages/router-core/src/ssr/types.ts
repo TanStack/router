@@ -9,6 +9,7 @@ export interface DehydratedMatch {
   u: MakeRouteMatch['updatedAt']
   s: MakeRouteMatch['status']
   ssr?: MakeRouteMatch['ssr']
+  g?: true
 }
 
 export interface DehydratedRouter {

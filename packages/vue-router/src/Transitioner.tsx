@@ -4,8 +4,9 @@ import {
   handleHashScroll,
   trimPathRight,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
+import { batch, useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
 
 // Track mount state per router to avoid double-loading
@@ -25,32 +26,26 @@ export function useTransitionerSetup() {
   const router = useRouter()
 
   // Skip on server - no transitions needed
-  if (router.isServer) {
+  if (isServer ?? router.isServer) {
     return
   }
 
-  const isLoading = useRouterState({
-    select: ({ isLoading }) => isLoading,
-  })
+  const isLoading = useStore(router.stores.isLoading, (value) => value)
 
   // Track if we're in a transition - using a ref to track async transitions
   const isTransitioning = Vue.ref(false)
 
   // Track pending state changes
-  const hasPendingMatches = useRouterState({
-    select: (s) => s.matches.some((d) => d.status === 'pending'),
-  })
+  const hasPending = useStore(router.stores.hasPending, (value) => value)
 
   const previousIsLoading = usePrevious(() => isLoading.value)
 
   const isAnyPending = Vue.computed(
-    () => isLoading.value || isTransitioning.value || hasPendingMatches.value,
+    () => isLoading.value || isTransitioning.value || hasPending.value,
   )
   const previousIsAnyPending = usePrevious(() => isAnyPending.value)
 
-  const isPagePending = Vue.computed(
-    () => isLoading.value || hasPendingMatches.value,
-  )
+  const isPagePending = Vue.computed(() => isLoading.value || hasPending.value)
   const previousIsPagePending = usePrevious(() => isPagePending.value)
 
   // Implement startTransition similar to React/Solid
@@ -60,7 +55,7 @@ export function useTransitionerSetup() {
     isTransitioning.value = true
     // Also update the router state so useMatch knows we're transitioning
     try {
-      router.__store.setState((s) => ({ ...s, isTransitioning: true }))
+      router.stores.isTransitioning.set(true)
     } catch {
       // Ignore errors if component is unmounted
     }
@@ -71,7 +66,7 @@ export function useTransitionerSetup() {
       Vue.nextTick(() => {
         try {
           isTransitioning.value = false
-          router.__store.setState((s) => ({ ...s, isTransitioning: false }))
+          router.stores.isTransitioning.set(false)
         } catch {
           // Ignore errors if component is unmounted
         }
@@ -140,11 +135,12 @@ export function useTransitionerSetup() {
   Vue.onMounted(() => {
     isMounted.value = true
     if (!isAnyPending.value) {
-      router.__store.setState((s) =>
-        s.status === 'pending'
-          ? { ...s, status: 'idle', resolvedLocation: s.location }
-          : s,
-      )
+      if (router.stores.status.get() === 'pending') {
+        batch(() => {
+          router.stores.status.set('idle')
+          router.stores.resolvedLocation.set(router.stores.location.get())
+        })
+      }
     }
   })
 
@@ -184,7 +180,10 @@ export function useTransitionerSetup() {
         if (previousIsLoading.value.previous && !newValue) {
           router.emit({
             type: 'onLoad',
-            ...getLocationChangeInfo(router.state),
+            ...getLocationChangeInfo(
+              router.stores.location.get(),
+              router.stores.resolvedLocation.get(),
+            ),
           })
         }
       } catch {
@@ -200,7 +199,10 @@ export function useTransitionerSetup() {
       if (previousIsPagePending.value.previous && !newValue) {
         router.emit({
           type: 'onBeforeRouteMount',
-          ...getLocationChangeInfo(router.state),
+          ...getLocationChangeInfo(
+            router.stores.location.get(),
+            router.stores.resolvedLocation.get(),
+          ),
         })
       }
     } catch {
@@ -211,17 +213,19 @@ export function useTransitionerSetup() {
   Vue.watch(isAnyPending, (newValue) => {
     if (!isMounted.value) return
     try {
-      if (!newValue && router.__store.state.status === 'pending') {
-        router.__store.setState((s) => ({
-          ...s,
-          status: 'idle',
-          resolvedLocation: s.location,
-        }))
+      if (!newValue && router.stores.status.get() === 'pending') {
+        batch(() => {
+          router.stores.status.set('idle')
+          router.stores.resolvedLocation.set(router.stores.location.get())
+        })
       }
 
       // The router was pending and now it's not
       if (previousIsAnyPending.value.previous && !newValue) {
-        const changeInfo = getLocationChangeInfo(router.state)
+        const changeInfo = getLocationChangeInfo(
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
+        )
         router.emit({
           type: 'onResolved',
           ...changeInfo,

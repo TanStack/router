@@ -4009,8 +4009,7 @@ test('when passing a component with props to createLink and navigating to the ro
 
 test('that createLink refs forward correctly', () => {
   // copied from: https://tanstack.com/router/latest/docs/framework/react/guide/custom-link#basic-example
-  interface BasicLinkProps
-    extends React.AnchorHTMLAttributes<HTMLAnchorElement> {}
+  interface BasicLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {}
   const BasicLinkComponent = React.forwardRef<
     HTMLAnchorElement,
     BasicLinkProps

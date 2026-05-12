@@ -59,11 +59,16 @@ export {
 export type {
   CompiledFetcherFnOptions,
   CompiledFetcherFn,
+  CustomFetch,
   Fetcher,
   RscStream,
   FetcherBaseOptions,
   ServerFn,
   ServerFnCtx,
+  ServerFnOptions,
+  ServerFnStrict,
+  ServerFnStrictInput,
+  ServerFnStrictOutput,
   MiddlewareFn,
   ServerFnMiddlewareOptions,
   ServerFnMiddlewareResult,
@@ -79,6 +84,17 @@ export {
   flattenMiddlewares,
   executeMiddleware,
 } from './createServerFn'
+export {
+  createCsrfMiddleware,
+  csrfSymbol,
+  getCsrfRequestValidationResult,
+  isCsrfRequestAllowed,
+} from './createCsrfMiddleware'
+export type {
+  CsrfMatcher,
+  CsrfMiddlewareOptions,
+  CsrfSecFetchSite,
+} from './createCsrfMiddleware'
 
 export {
   TSS_FORMDATA_CONTEXT,
@@ -93,7 +109,11 @@ export {
   X_TSS_CONTEXT,
   validateFramedProtocolVersion,
 } from './constants'
-export type { FrameType as FrameTypeValue } from './constants'
+export type {
+  FrameType as FrameTypeValue,
+  ClientFnMeta,
+  ServerFnMeta,
+} from './constants'
 
 export type * from './serverRoute'
 
@@ -104,6 +124,7 @@ export type {
   AnyStartInstance,
   AnyStartInstanceOptions,
   StartInstance,
+  StartInstanceOptions,
 } from './createStart'
 export type { Register } from '@tanstack/router-core'
 
@@ -111,3 +132,4 @@ export { getRouterInstance } from './getRouterInstance'
 export { getDefaultSerovalPlugins } from './getDefaultSerovalPlugins'
 export { getGlobalStartContext } from './getGlobalStartContext'
 export { safeObjectMerge, createNullProtoObject } from './safeObjectMerge'
+export { trackPostProcessPromise } from './client-rpc/serverFnFetcher'

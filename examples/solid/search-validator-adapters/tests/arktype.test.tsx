@@ -26,7 +26,7 @@ test('can navigate to the route', async () => {
     return (
       <div>
         <div>{search().search}</div>
-        <Link from="/users/arktype" search={{ search: 'updated' }}>
+        <Link from="/users/arktype/" search={{ search: 'updated' }}>
           Update
         </Link>
       </div>

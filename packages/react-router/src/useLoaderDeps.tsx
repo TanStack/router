@@ -37,7 +37,7 @@ export type UseLoaderDepsRoute<out TId> = <
   TStructuralSharing extends boolean = boolean,
 >(
   opts?: UseLoaderDepsBaseOptions<TRouter, TId, TSelected, TStructuralSharing> &
-    StructuralSharingOption<TRouter, TSelected, false>,
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ) => UseLoaderDepsResult<TRouter, TId, TSelected>
 
 /**

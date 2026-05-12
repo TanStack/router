@@ -1,5 +1,5 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
-import { tanstackViteConfig } from '@tanstack/config/vite'
+import { tanstackViteConfig } from '@tanstack/vite-config'
 import { copyFilesPlugin } from '@tanstack/router-utils'
 import packageJson from './package.json'
 
@@ -21,6 +21,7 @@ const config = defineConfig({
 export default mergeConfig(
   config,
   tanstackViteConfig({
+    tsconfigPath: './tsconfig.build.json',
     srcDir: './src',
     exclude: ['./src/default-entry'],
     entry: [
@@ -30,7 +31,10 @@ export default mergeConfig(
       './src/ssr-rpc.ts',
       './src/server-rpc.ts',
       './src/server.tsx',
+      './src/plugin/rsbuild.ts',
       './src/plugin/vite.ts',
+      './src/server-only.ts',
+      './src/client-only.ts',
     ],
     externalDeps: [
       '@tanstack/solid-start-client',

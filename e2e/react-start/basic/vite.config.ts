@@ -1,45 +1,19 @@
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
-import { isSpaMode } from './tests/utils/isSpaMode'
-import { isPrerender } from './tests/utils/isPrerender'
 import tailwindcss from '@tailwindcss/vite'
+import { getStartModeConfig } from './start-mode-config'
 
-const spaModeConfiguration = {
-  enabled: true,
-  prerender: {
-    outputPath: 'index.html',
-  },
-}
-
-const prerenderConfiguration = {
-  enabled: true,
-  filter: (page: { path: string }) =>
-    ![
-      '/this-route-does-not-exist',
-      '/redirect',
-      '/i-do-not-exist',
-      '/not-found/via-beforeLoad',
-      '/not-found/via-loader',
-      '/users',
-    ].some((p) => page.path.includes(p)),
-  maxRedirects: 100,
-}
+const outDir = process.env.E2E_DIST_DIR ?? 'dist'
+const startModeConfig = getStartModeConfig()
 
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
+  build: {
+    outDir,
+  },
   server: {
     port: 3000,
   },
-  plugins: [
-    tailwindcss(),
-    tsConfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
-    tanstackStart({
-      spa: isSpaMode ? spaModeConfiguration : undefined,
-      prerender: isPrerender ? prerenderConfiguration : undefined,
-    }),
-    viteReact(),
-  ],
+  plugins: [tailwindcss(), tanstackStart(startModeConfig), viteReact()],
 })

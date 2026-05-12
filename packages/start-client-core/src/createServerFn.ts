@@ -6,6 +6,11 @@ import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
 import { createNullProtoObject, safeObjectMerge } from './safeObjectMerge'
 import type {
+  ClientFnMeta,
+  ServerFnMeta,
+  TSS_SERVER_FUNCTION,
+} from './constants'
+import type {
   AnyValidator,
   Constrain,
   Expand,
@@ -16,12 +21,10 @@ import type {
   ValidateSerializableInput,
   Validator,
 } from '@tanstack/router-core'
-import type { TSS_SERVER_FUNCTION } from './constants'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   AssignAllServerFnContext,
-  FunctionMiddlewareClientFnResult,
   FunctionMiddlewareServerFnResult,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
@@ -29,26 +32,51 @@ import type {
 
 type TODO = any
 
+export type ServerFnStrict = boolean | { input?: boolean; output?: boolean }
+
+export interface ServerFnOptions<
+  TMethod extends Method = Method,
+  TStrict extends ServerFnStrict = true,
+> {
+  method?: TMethod
+  strict?: TStrict
+}
+
+export type ServerFnStrictInput<TStrict extends ServerFnStrict> =
+  TStrict extends false
+    ? false
+    : TStrict extends { input: infer TInput extends boolean }
+      ? TInput
+      : true
+
+export type ServerFnStrictOutput<TStrict extends ServerFnStrict> =
+  TStrict extends false
+    ? false
+    : TStrict extends { output: infer TOutput extends boolean }
+      ? TOutput
+      : true
+
 export type CreateServerFn<TRegister> = <
   TMethod extends Method,
+  TStrict extends ServerFnStrict = true,
   TResponse = unknown,
   TMiddlewares = undefined,
   TInputValidator = undefined,
 >(
-  options?: {
-    method?: TMethod
-  },
+  options?: ServerFnOptions<TMethod, TStrict>,
   __opts?: ServerFnBaseOptions<
     TRegister,
     TMethod,
     TResponse,
     TMiddlewares,
-    TInputValidator
+    TInputValidator,
+    TStrict
   >,
-) => ServerFnBuilder<TRegister, TMethod>
+) => ServerFnBuilder<TRegister, TMethod, TStrict>
 
 export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
   const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
+    any,
     any,
     any,
     any,
@@ -60,8 +88,8 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
     resolvedOptions.method = 'GET' as Method
   }
 
-  const res: ServerFnBuilder<Register, Method> = {
-    options: resolvedOptions as any,
+  const res: ServerFnBuilder<Register, Method, ServerFnStrict> = {
+    options: resolvedOptions,
     middleware: (middleware) => {
       // multiple calls to `middleware()` merge the middlewares with the previously supplied ones
       // this is primarily useful for letting users create their own abstractions on top of `createServerFn`
@@ -110,6 +138,12 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       // We want to make sure the new function has the same
       // properties as the original function
 
+      // Propagate the declared HTTP method onto the extracted handler
+      // so the manifest-exported symbol (resolved by getServerFnById)
+      // carries `method`, enabling the server handler to reject
+      // mismatched HTTP methods before parsing request payloads.
+      ;(extractedFn as any).method = resolvedOptions.method
+
       return Object.assign(
         async (opts?: CompiledFetcherFnOptions) => {
           // Start by executing the client-side middleware chain
@@ -119,6 +153,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             data: opts?.data as any,
             headers: opts?.headers,
             signal: opts?.signal,
+            fetch: opts?.fetch,
             context: createNullProtoObject(),
           })
 
@@ -133,21 +168,27 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
         {
           // This copies over the URL, function ID
           ...extractedFn,
+          // Expose the declared HTTP method so the server handler
+          // can reject mismatched methods before parsing payloads
+          method: resolvedOptions.method,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: async (opts: any, signal: AbortSignal) => {
+          __executeServer: async (opts: any) => {
             const startContext = getStartContextServerOnly()
             const serverContextAfterGlobalMiddlewares =
               startContext.contextAfterGlobalMiddlewares
-            // Use safeObjectMerge for opts.context which comes from client
             const ctx = {
               ...extractedFn,
               ...opts,
+              // Ensure we use the full serverFnMeta from the provider file's extractedFn
+              // (which has id, name, filename) rather than the partial one from SSR/client
+              // callers (which only has id)
+              serverFnMeta: extractedFn.serverFnMeta,
+              // Merge client context first so trusted server middleware context wins.
               context: safeObjectMerge(
-                serverContextAfterGlobalMiddlewares,
                 opts.context,
+                serverContextAfterGlobalMiddlewares,
               ),
-              signal,
               request: startContext.request,
             }
 
@@ -167,8 +208,8 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
         },
       ) as any
     },
-  } as ServerFnBuilder<Register, Method>
-  const fun = (options?: { method?: Method }) => {
+  } as ServerFnBuilder<Register, Method, ServerFnStrict>
+  const fun = (options?: ServerFnOptions<Method, ServerFnStrict>) => {
     const newOptions = {
       ...resolvedOptions,
       ...options,
@@ -248,6 +289,8 @@ export async function executeMiddleware(
             context: safeObjectMerge(ctx.context, userCtx.context),
             sendContext: safeObjectMerge(ctx.sendContext, userCtx.sendContext),
             headers: mergeHeaders(ctx.headers, userCtx.headers),
+            _callSiteFetch: ctx._callSiteFetch,
+            fetch: ctx._callSiteFetch ?? userCtx.fetch ?? ctx.fetch,
             result:
               userCtx.result !== undefined
                 ? userCtx.result
@@ -257,21 +300,20 @@ export async function executeMiddleware(
             error: userCtx.error ?? (ctx as any).error,
           }
 
-          try {
-            return await callNextMiddleware(nextCtx)
-          } catch (error: any) {
-            return {
-              ...nextCtx,
-              error,
-            }
+          const result = await callNextMiddleware(nextCtx)
+
+          if (result.error) {
+            throw result.error
           }
+
+          return result
         }
 
         // Execute the middleware
         const result = await middlewareFn({
           ...ctx,
-          next: userNext as any,
-        } as any)
+          next: userNext,
+        })
 
         // If result is NOT a ctx object, we need to return it as
         // the { result }
@@ -313,6 +355,7 @@ export async function executeMiddleware(
     headers: opts.headers || {},
     sendContext: opts.sendContext || {},
     context: opts.context || createNullProtoObject(),
+    _callSiteFetch: opts.fetch,
   })
 }
 
@@ -321,6 +364,7 @@ export type CompiledFetcherFnOptions = {
   data: unknown
   headers?: HeadersInit
   signal?: AbortSignal
+  fetch?: CustomFetch
   context?: any
 }
 
@@ -332,41 +376,60 @@ export type Fetcher<TMiddlewares, TInputValidator, TResponse> =
 export interface FetcherBase {
   [TSS_SERVER_FUNCTION]: true
   url: string
+  method: Method
   __executeServer: (opts: {
     method: Method
     data: unknown
     headers?: HeadersInit
     context?: any
-    signal: AbortSignal
   }) => Promise<unknown>
 }
 
-export interface OptionalFetcher<TMiddlewares, TInputValidator, TResponse>
-  extends FetcherBase {
+export interface OptionalFetcher<
+  TMiddlewares,
+  TInputValidator,
+  TResponse,
+> extends FetcherBase {
   (
     options?: OptionalFetcherDataOptions<TMiddlewares, TInputValidator>,
   ): Promise<Awaited<TResponse>>
 }
 
-export interface RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
-  extends FetcherBase {
+export interface RequiredFetcher<
+  TMiddlewares,
+  TInputValidator,
+  TResponse,
+> extends FetcherBase {
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TInputValidator>,
   ): Promise<Awaited<TResponse>>
 }
 
+// Ideally, this type should just be `export type CustomFetch = typeof globalThis.fetch`, but that conflicts with the type overrides the `bun-types` package - a dependency of unplugin.
+// Relevant bun issues:
+// - https://github.com/oven-sh/bun/issues/23500
+// - https://github.com/oven-sh/bun/issues/23741
+export type CustomFetch = typeof fetch extends (...args: infer A) => infer R
+  ? (...args: A) => R
+  : never
+
 export type FetcherBaseOptions = {
   headers?: HeadersInit
   signal?: AbortSignal
+  fetch?: CustomFetch
 }
 
-export interface OptionalFetcherDataOptions<TMiddlewares, TInputValidator>
-  extends FetcherBaseOptions {
+export interface OptionalFetcherDataOptions<
+  TMiddlewares,
+  TInputValidator,
+> extends FetcherBaseOptions {
   data?: Expand<IntersectAllValidatorInputs<TMiddlewares, TInputValidator>>
 }
 
-export interface RequiredFetcherDataOptions<TMiddlewares, TInputValidator>
-  extends FetcherBaseOptions {
+export interface RequiredFetcherDataOptions<
+  TMiddlewares,
+  TInputValidator,
+> extends FetcherBaseOptions {
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TInputValidator>>
 }
 
@@ -376,12 +439,18 @@ export type RscStream<T> = {
 
 export type Method = 'GET' | 'POST'
 
-export type ServerFnReturnType<TRegister, TResponse> =
-  TResponse extends PromiseLike<infer U>
-    ? Promise<ServerFnReturnType<TRegister, U>>
-    : TResponse extends Response
-      ? TResponse
-      : ValidateSerializableInput<TRegister, TResponse>
+export type ServerFnReturnType<
+  TRegister,
+  TResponse,
+  TStrict extends ServerFnStrict = true,
+> =
+  ServerFnStrictOutput<TStrict> extends false
+    ? TResponse
+    : TResponse extends PromiseLike<infer U>
+      ? Promise<ServerFnReturnType<TRegister, U, TStrict>>
+      : TResponse extends Response
+        ? TResponse
+        : ValidateSerializableInput<TRegister, TResponse>
 
 export type ServerFn<
   TRegister,
@@ -389,14 +458,21 @@ export type ServerFn<
   TMiddlewares,
   TInputValidator,
   TResponse,
+  TStrict extends ServerFnStrict = true,
 > = (
-  ctx: ServerFnCtx<TRegister, TMiddlewares, TInputValidator>,
-) => ServerFnReturnType<TRegister, TResponse>
+  ctx: ServerFnCtx<TRegister, TMethod, TMiddlewares, TInputValidator>,
+) => ServerFnReturnType<TRegister, TResponse, TStrict>
 
-export interface ServerFnCtx<TRegister, TMiddlewares, TInputValidator> {
+export interface ServerFnCtx<
+  TRegister,
+  TMethod,
+  TMiddlewares,
+  TInputValidator,
+> {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>>
+  serverFnMeta: ServerFnMeta
   context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
-  signal: AbortSignal
+  method: TMethod
 }
 
 export type CompiledFetcherFn<TRegister, TResponse> = {
@@ -404,6 +480,7 @@ export type CompiledFetcherFn<TRegister, TResponse> = {
     opts: CompiledFetcherFnOptions & ServerFnBaseOptions<TRegister, Method>,
   ): Promise<TResponse>
   url: string
+  serverFnMeta: ServerFnMeta
 }
 
 export type ServerFnBaseOptions<
@@ -412,49 +489,62 @@ export type ServerFnBaseOptions<
   TResponse = unknown,
   TMiddlewares = unknown,
   TInputValidator = unknown,
+  TStrict extends ServerFnStrict = true,
 > = {
   method: TMethod
+  strict?: TStrict
   middleware?: Constrain<
     TMiddlewares,
     ReadonlyArray<AnyFunctionMiddleware | AnyRequestMiddleware>
   >
-  inputValidator?: ConstrainValidator<TRegister, TMethod, TInputValidator>
+  inputValidator?: ConstrainValidator<
+    TRegister,
+    TMethod,
+    TInputValidator,
+    TStrict
+  >
   extractedFn?: CompiledFetcherFn<TRegister, TResponse>
   serverFn?: ServerFn<
     TRegister,
     TMethod,
     TMiddlewares,
     TInputValidator,
-    TResponse
+    TResponse,
+    TStrict
   >
-  functionId: string
 }
 
 export type ValidateValidatorInput<
   TRegister,
   TMethod extends Method,
   TInputValidator,
-> = TMethod extends 'POST'
-  ? ResolveValidatorInput<TInputValidator> extends FormData
+  TStrict extends ServerFnStrict = true,
+> =
+  ServerFnStrictInput<TStrict> extends false
     ? ResolveValidatorInput<TInputValidator>
-    : ValidateSerializable<
-        ResolveValidatorInput<TInputValidator>,
-        RegisteredSerializableInput<TRegister>
-      >
-  : ValidateSerializable<
-      ResolveValidatorInput<TInputValidator>,
-      RegisteredSerializableInput<TRegister>
-    >
+    : TMethod extends 'POST'
+      ? ResolveValidatorInput<TInputValidator> extends FormData
+        ? ResolveValidatorInput<TInputValidator>
+        : ValidateSerializable<
+            ResolveValidatorInput<TInputValidator>,
+            RegisteredSerializableInput<TRegister>
+          >
+      : ValidateSerializable<
+          ResolveValidatorInput<TInputValidator>,
+          RegisteredSerializableInput<TRegister>
+        >
 
 export type ValidateValidator<
   TRegister,
   TMethod extends Method,
   TInputValidator,
+  TStrict extends ServerFnStrict = true,
 > =
   ValidateValidatorInput<
     TRegister,
     TMethod,
-    TInputValidator
+    TInputValidator,
+    TStrict
   > extends infer TInput
     ? Validator<TInput, any>
     : never
@@ -463,17 +553,19 @@ export type ConstrainValidator<
   TRegister,
   TMethod extends Method,
   TInputValidator,
+  TStrict extends ServerFnStrict = true,
 > =
   | (unknown extends TInputValidator
       ? TInputValidator
       : ResolveValidatorInput<TInputValidator> extends ValidateValidator<
             TRegister,
             TMethod,
-            TInputValidator
+            TInputValidator,
+            TStrict
           >
         ? TInputValidator
         : never)
-  | ValidateValidator<TRegister, TMethod, TInputValidator>
+  | ValidateValidator<TRegister, TMethod, TInputValidator, TStrict>
 
 export type AppendMiddlewares<TMiddlewares, TNewMiddlewares> =
   TMiddlewares extends ReadonlyArray<any>
@@ -487,6 +579,7 @@ export interface ServerFnMiddleware<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
+  TStrict extends ServerFnStrict,
 > {
   middleware: <const TNewMiddlewares>(
     middlewares: Constrain<
@@ -497,7 +590,8 @@ export interface ServerFnMiddleware<
     TRegister,
     TMethod,
     AppendMiddlewares<TMiddlewares, TNewMiddlewares>,
-    TInputValidator
+    TInputValidator,
+    TStrict
   >
 }
 
@@ -506,38 +600,67 @@ export interface ServerFnAfterMiddleware<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+  TStrict extends ServerFnStrict,
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
       TInputValidator,
-      undefined
+      undefined,
+      TStrict
     >,
-    ServerFnMiddleware<TRegister, TMethod, TMiddlewares, undefined>,
-    ServerFnValidator<TRegister, TMethod, TMiddlewares>,
-    ServerFnHandler<TRegister, TMethod, TMiddlewares, TInputValidator> {
-  <TNewMethod extends Method = TMethod>(options?: {
-    method?: TNewMethod
-  }): ServerFnAfterMiddleware<
+    ServerFnMiddleware<TRegister, TMethod, TMiddlewares, undefined, TStrict>,
+    ServerFnValidator<TRegister, TMethod, TMiddlewares, TStrict>,
+    ServerFnHandler<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    > {
+  <
+    TNewMethod extends Method = TMethod,
+    TNewStrict extends ServerFnStrict = TStrict,
+  >(
+    options?: ServerFnOptions<TNewMethod, TNewStrict>,
+  ): ServerFnAfterMiddleware<
     TRegister,
     TNewMethod,
     TMiddlewares,
-    TInputValidator
+    TInputValidator,
+    TNewStrict
   >
 }
 
-export type ValidatorFn<TRegister, TMethod extends Method, TMiddlewares> = <
+export type ValidatorFn<
+  TRegister,
+  TMethod extends Method,
+  TMiddlewares,
+  TStrict extends ServerFnStrict,
+> = <TInputValidator>(
+  inputValidator: ConstrainValidator<
+    TRegister,
+    TMethod,
+    TInputValidator,
+    TStrict
+  >,
+) => ServerFnAfterValidator<
+  TRegister,
+  TMethod,
+  TMiddlewares,
   TInputValidator,
->(
-  inputValidator: ConstrainValidator<TRegister, TMethod, TInputValidator>,
-) => ServerFnAfterValidator<TRegister, TMethod, TMiddlewares, TInputValidator>
+  TStrict
+>
 
 export interface ServerFnValidator<
   TRegister,
   TMethod extends Method,
   TMiddlewares,
+  TStrict extends ServerFnStrict,
 > {
-  inputValidator: ValidatorFn<TRegister, TMethod, TMiddlewares>
+  inputValidator: ValidatorFn<TRegister, TMethod, TMiddlewares, TStrict>
 }
 
 export interface ServerFnAfterValidator<
@@ -545,29 +668,55 @@ export interface ServerFnAfterValidator<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+  TStrict extends ServerFnStrict,
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
       TInputValidator,
-      undefined
+      undefined,
+      TStrict
     >,
-    ServerFnMiddleware<TRegister, TMethod, TMiddlewares, TInputValidator>,
-    ServerFnHandler<TRegister, TMethod, TMiddlewares, TInputValidator> {}
+    ServerFnMiddleware<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    >,
+    ServerFnHandler<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    > {}
 
 export interface ServerFnAfterTyper<
   TRegister,
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+  TStrict extends ServerFnStrict,
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
       TInputValidator,
-      undefined
+      undefined,
+      TStrict
     >,
-    ServerFnHandler<TRegister, TMethod, TMiddlewares, TInputValidator> {}
+    ServerFnHandler<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    > {}
 
 // Handler
 export interface ServerFnHandler<
@@ -575,6 +724,7 @@ export interface ServerFnHandler<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
+  TStrict extends ServerFnStrict,
 > {
   handler: <TNewResponse>(
     fn?: ServerFn<
@@ -582,28 +732,42 @@ export interface ServerFnHandler<
       TMethod,
       TMiddlewares,
       TInputValidator,
-      TNewResponse
+      TNewResponse,
+      TStrict
     >,
   ) => Fetcher<TMiddlewares, TInputValidator, TNewResponse>
 }
 
-export interface ServerFnBuilder<TRegister, TMethod extends Method = 'GET'>
-  extends ServerFnWithTypes<
+export interface ServerFnBuilder<
+  TRegister,
+  TMethod extends Method = 'GET',
+  TStrict extends ServerFnStrict = true,
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       undefined,
       undefined,
-      undefined
+      undefined,
+      TStrict
     >,
-    ServerFnMiddleware<TRegister, TMethod, undefined, undefined>,
-    ServerFnValidator<TRegister, TMethod, undefined>,
-    ServerFnHandler<TRegister, TMethod, undefined, undefined> {
+    ServerFnMiddleware<TRegister, TMethod, undefined, undefined, TStrict>,
+    ServerFnValidator<TRegister, TMethod, undefined, TStrict>,
+    ServerFnHandler<TRegister, TMethod, undefined, undefined, TStrict> {
+  <
+    TNewMethod extends Method = TMethod,
+    TNewStrict extends ServerFnStrict = TStrict,
+  >(
+    options?: ServerFnOptions<TNewMethod, TNewStrict>,
+  ): ServerFnBuilder<TRegister, TNewMethod, TNewStrict>
   options: ServerFnBaseOptions<
     TRegister,
     TMethod,
     unknown,
     undefined,
-    undefined
+    undefined,
+    TStrict
   >
 }
 
@@ -613,25 +777,28 @@ export interface ServerFnWithTypes<
   in out TMiddlewares,
   in out TInputValidator,
   in out TResponse,
+  in out TStrict extends ServerFnStrict,
 > {
   '~types': ServerFnTypes<
     TRegister,
     TMethod,
     TMiddlewares,
     TInputValidator,
-    TResponse
+    TResponse,
+    TStrict
   >
   options: ServerFnBaseOptions<
     TRegister,
     TMethod,
     unknown,
     undefined,
-    undefined
+    undefined,
+    TStrict
   >
   [TSS_SERVER_FUNCTION_FACTORY]: true
 }
 
-export type AnyServerFn = ServerFnWithTypes<any, any, any, any, any>
+export type AnyServerFn = ServerFnWithTypes<any, any, any, any, any, any>
 
 export interface ServerFnTypes<
   in out TRegister,
@@ -639,8 +806,10 @@ export interface ServerFnTypes<
   in out TMiddlewares,
   in out TInputValidator,
   in out TResponse,
+  in out TStrict extends ServerFnStrict,
 > {
   method: TMethod
+  strict: TStrict
   middlewares: TMiddlewares
   inputValidator: TInputValidator
   response: TResponse
@@ -685,7 +854,10 @@ export type ServerFnMiddlewareOptions = {
   signal?: AbortSignal
   sendContext?: any
   context?: any
-  functionId: string
+  serverFnMeta: ClientFnMeta
+  fetch?: CustomFetch
+  /** @internal - Preserves the call-site fetch to ensure it has highest priority over middleware */
+  _callSiteFetch?: CustomFetch
 }
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
@@ -736,22 +908,19 @@ function serverFnBaseToMiddleware(
     '~types': undefined!,
     options: {
       inputValidator: options.inputValidator,
-      client: async ({ next, sendContext, ...ctx }) => {
+      client: async ({ next, sendContext, fetch, ...ctx }) => {
         const payload = {
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
+          fetch,
         } as any
 
         // Execute the extracted function
         // but not before serializing the context
         const res = await options.extractedFn?.(payload)
 
-        return next(res) as unknown as FunctionMiddlewareClientFnResult<
-          any,
-          any,
-          any
-        >
+        return next(res)
       },
       server: async ({ next, ...ctx }) => {
         // Execute the server function

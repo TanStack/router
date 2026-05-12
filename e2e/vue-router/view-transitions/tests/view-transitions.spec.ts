@@ -31,7 +31,12 @@ test('navigation uses View Transitions API', async ({ page }) => {
   await page.getByRole('link', { name: 'Next Page ->' }).click()
   await expect(page).toHaveURL(/\/how-it-works$/)
 
-  const calls = await page.evaluate(() => (window as any).__viewTransitionCalls)
-  expect(Array.isArray(calls)).toBe(true)
-  expect(calls.length).toBeGreaterThan(0)
+  await expect
+    .poll(async () => {
+      const calls = await page.evaluate(
+        () => (window as any).__viewTransitionCalls,
+      )
+      return calls.length
+    })
+    .toBeGreaterThan(0)
 })

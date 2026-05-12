@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { useRouter } from './useRouter'
 import type {
@@ -12,12 +14,12 @@ import type {
   RegisteredRouter,
 } from '@tanstack/router-core'
 
-interface ShouldBlockFnLocation<
+type ShouldBlockFnLocation<
   out TRouteId,
   out TFullPath,
   out TAllParams,
   out TFullSearchSchema,
-> {
+> = {
   routeId: TRouteId
   fullPath: TFullPath
   pathname: string

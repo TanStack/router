@@ -40,7 +40,7 @@ export interface FileRoutesByFullPath {
   '/': typeof indexRoute
   '/api/_auth': typeof ApiChar91_Char93authDotrouteRoute
   '/api/_hello': typeof ApiChar91_Char93helloRoute
-  '/api': typeof ApiIndexRoute
+  '/api/': typeof ApiIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof indexRoute
@@ -57,7 +57,7 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/_auth' | '/api/_hello' | '/api'
+  fullPaths: '/' | '/api/_auth' | '/api/_hello' | '/api/'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/api/_auth' | '/api/_hello' | '/api'
   id: '__root__' | '/' | '/api/_auth' | '/api/_hello' | '/api/'
@@ -82,7 +82,7 @@ declare module '@tanstack/react-router' {
     '/api/': {
       id: '/api/'
       path: '/api'
-      fullPath: '/api'
+      fullPath: '/api/'
       preLoaderRoute: typeof ApiIndexRouteImport
       parentRoute: typeof rootRouteImport
     }

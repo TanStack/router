@@ -1,12 +1,12 @@
 import { Button, Flex, Heading, Text } from '@radix-ui/themes';
 import { Link, createFileRoute } from '@tanstack/react-router';
-import { getSignInUrl } from '../authkit/serverFunctions';
+import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
 import SignInButton from '../components/sign-in-button';
 
 export const Route = createFileRoute('/')({
   component: Home,
-  loader: async ({ context }) => {
-    const { user } = context;
+  loader: async () => {
+    const { user } = await getAuth();
     const url = await getSignInUrl();
     return { user, url };
   },
@@ -21,7 +21,7 @@ function Home() {
         <>
           <Heading size="8">Welcome back{user?.firstName && `, ${user?.firstName}`}</Heading>
           <Text size="5" color="gray">
-            You are now authenticated into the application
+            You are now authenticated into the TanStack Start application
           </Text>
           <Flex align="center" gap="3" mt="4">
             <Button asChild size="3" variant="soft">

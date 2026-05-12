@@ -1,20 +1,109 @@
+import type * as babel from '@babel/core'
+import type * as t from '@babel/types'
 import type { TanStackStartOutputConfig } from './schema'
 
 export type CompileStartFrameworkOptions = 'react' | 'solid' | 'vue'
 
-export interface TanStackStartVitePluginCoreOptions {
+export type ServerFnLookupAccess = { origin: 'client' } | { origin: 'server' }
+
+export type SerializationRuntime = 'client' | 'server'
+
+export interface SerializationAdapterModuleRef {
+  module: string
+  export: string
+  isFactory?: boolean
+}
+
+export type SerializationAdapterByRuntime = Partial<
+  Record<SerializationRuntime, SerializationAdapterModuleRef>
+>
+
+export type SerializationAdapterConfig =
+  | SerializationAdapterModuleRef
+  | SerializationAdapterByRuntime
+
+export type StartCompilerEnvironment = 'client' | 'server'
+
+export interface StartCompilerImportTransformImport {
+  libName: string
+  rootExport: string
+}
+
+export interface StartCompilerTransformCandidate {
+  path: babel.NodePath<t.CallExpression>
+}
+
+export interface StartCompilerTransformContext {
+  readonly ast: t.File
+  readonly code: string
+  readonly id: string
+  readonly env: StartCompilerEnvironment
+  readonly envName: string
+  readonly mode: 'dev' | 'build'
+  readonly root: string
+  readonly framework: CompileStartFrameworkOptions
+  readonly providerEnvName: string
+  readonly types: typeof t
+  parseExpression: (code: string) => t.Expression
+}
+
+export interface StartCompilerImportTransform {
+  name: string
+  environment?:
+    | StartCompilerEnvironment
+    | Array<StartCompilerEnvironment>
+    | undefined
+  imports: Array<StartCompilerImportTransformImport>
+  detect: RegExp
+  order?: 'pre' | 'post' | undefined
+  transform: (
+    candidates: Array<StartCompilerTransformCandidate>,
+    context: StartCompilerTransformContext,
+  ) => void
+}
+
+export interface NormalizedBasePaths {
+  publicBase: string
+  assetBase: {
+    dev: string
+    build: string
+  }
+}
+
+export interface NormalizedOutputDirectories {
+  client: string
+  server: string
+}
+
+export interface NormalizedClientChunk {
+  fileName: string
+  isEntry: boolean
+  imports: Array<string>
+  dynamicImports: Array<string>
+  css: Array<string>
+  routeFilePaths: Array<string>
+}
+
+export interface NormalizedClientBuild {
+  entryChunkFileName: string
+  chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
+  chunkFileNamesByRouteFilePath: ReadonlyMap<string, ReadonlyArray<string>>
+  cssFilesBySourcePath: ReadonlyMap<string, ReadonlyArray<string>>
+  cssContentByFileName?: ReadonlyMap<string, string>
+}
+
+export interface TanStackStartCoreOptions {
   framework: CompileStartFrameworkOptions
   defaultEntryPaths: {
     client: string
     server: string
     start: string
   }
-  serverFn?: {
-    ssr?: {
-      getServerFnById?: string
-    }
-    providerEnv?: string
-  }
+  providerEnvironmentName: string
+  ssrIsProvider: boolean
+  serializationAdapters?: Array<SerializationAdapterConfig> | undefined
+  compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
 }
 
 export interface ResolvedStartConfig {
@@ -22,12 +111,11 @@ export interface ResolvedStartConfig {
   startFilePath: string | undefined
   routerFilePath: string
   srcDirectory: string
-  viteAppBase: string
-  serverFnProviderEnv: string
+  basePaths: NormalizedBasePaths
+  outputDirectories: NormalizedOutputDirectories
 }
 
 export type GetConfigFn = () => {
   startConfig: TanStackStartOutputConfig
   resolvedStartConfig: ResolvedStartConfig
-  corePluginOpts: TanStackStartVitePluginCoreOptions
 }

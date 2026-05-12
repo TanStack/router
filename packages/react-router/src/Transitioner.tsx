@@ -1,4 +1,7 @@
+'use client'
+
 import * as React from 'react'
+import { batch, useStore } from '@tanstack/react-store'
 import {
   getLocationChangeInfo,
   handleHashScroll,
@@ -6,7 +9,6 @@ import {
 } from '@tanstack/router-core'
 import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
 
 export function Transitioner() {
   const router = useRouter()
@@ -14,20 +16,15 @@ export function Transitioner() {
 
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   // Track pending state changes
-  const { hasPendingMatches, isLoading } = useRouterState({
-    select: (s) => ({
-      isLoading: s.isLoading,
-      hasPendingMatches: s.matches.some((d) => d.status === 'pending'),
-    }),
-    structuralSharing: true,
-  })
+  const isLoading = useStore(router.stores.isLoading, (value) => value)
+  const hasPending = useStore(router.stores.hasPending, (value) => value)
 
   const previousIsLoading = usePrevious(isLoading)
 
-  const isAnyPending = isLoading || isTransitioning || hasPendingMatches
+  const isAnyPending = isLoading || isTransitioning || hasPending
   const previousIsAnyPending = usePrevious(isAnyPending)
 
-  const isPagePending = isLoading || hasPendingMatches
+  const isPagePending = isLoading || hasPending
   const previousIsPagePending = usePrevious(isPagePending)
 
   router.startTransition = (fn: () => void) => {
@@ -95,7 +92,10 @@ export function Transitioner() {
     if (previousIsLoading && !isLoading) {
       router.emit({
         type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
-        ...getLocationChangeInfo(router.state),
+        ...getLocationChangeInfo(
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
+        ),
       })
     }
   }, [previousIsLoading, router, isLoading])
@@ -105,24 +105,29 @@ export function Transitioner() {
     if (previousIsPagePending && !isPagePending) {
       router.emit({
         type: 'onBeforeRouteMount',
-        ...getLocationChangeInfo(router.state),
+        ...getLocationChangeInfo(
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
+        ),
       })
     }
   }, [isPagePending, previousIsPagePending, router])
 
   useLayoutEffect(() => {
     if (previousIsAnyPending && !isAnyPending) {
-      const changeInfo = getLocationChangeInfo(router.state)
+      const changeInfo = getLocationChangeInfo(
+        router.stores.location.get(),
+        router.stores.resolvedLocation.get(),
+      )
       router.emit({
         type: 'onResolved',
         ...changeInfo,
       })
 
-      router.__store.setState((s: typeof router.state) => ({
-        ...s,
-        status: 'idle',
-        resolvedLocation: s.location,
-      }))
+      batch(() => {
+        router.stores.status.set('idle')
+        router.stores.resolvedLocation.set(router.stores.location.get())
+      })
 
       if (changeInfo.hrefChanged) {
         handleHashScroll(router)

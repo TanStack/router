@@ -5,7 +5,6 @@ import { isbot } from 'isbot'
 import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Component } from 'vue'
-import type { ReadableStream } from 'node:stream/web'
 
 function prependDoctype(
   readable: globalThis.ReadableStream,
@@ -63,7 +62,7 @@ export const renderRouterToStream = async ({
     }
 
     return new Response(`<!DOCTYPE html>${fullHtml}`, {
-      status: router.state.statusCode,
+      status: router.stores.statusCode.get(),
       headers: responseHeaders,
     })
   }
@@ -75,11 +74,11 @@ export const renderRouterToStream = async ({
   const doctypedStream = prependDoctype(readable)
   const responseStream = transformReadableStreamWithRouter(
     router,
-    doctypedStream as unknown as ReadableStream,
+    doctypedStream,
   )
 
   return new Response(responseStream as any, {
-    status: router.state.statusCode,
+    status: router.stores.statusCode.get(),
     headers: responseHeaders,
   })
 }

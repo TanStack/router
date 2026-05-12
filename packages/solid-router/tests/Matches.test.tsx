@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest'
+import { createSignal } from 'solid-js'
 import {
   cleanup,
   fireEvent,
@@ -9,6 +10,7 @@ import {
 import { createMemoryHistory } from '@tanstack/history'
 import {
   Link,
+  MatchRoute,
   Outlet,
   RouterProvider,
   createRootRoute,
@@ -112,6 +114,8 @@ const defaultRouter = createRouter({
 
 type DefaultRouter = typeof defaultRouter
 
+afterEach(() => cleanup())
+
 test('when filtering useMatches by loaderData', async () => {
   render(() => <RouterProvider router={defaultRouter} />)
 
@@ -148,6 +152,85 @@ test('should show pendingComponent of root route', async () => {
 
   expect(await rendered.findByTestId('root-pending')).toBeInTheDocument()
   expect(await rendered.findByTestId('root-content')).toBeInTheDocument()
+})
+
+test('MatchRoute updates for navigation and reactive params changes', async () => {
+  function Layout() {
+    const [postId, setPostId] = createSignal('123')
+
+    return (
+      <div>
+        <button onClick={() => setPostId('456')}>Change Match Params</button>
+        <MatchRoute to="/posts/$postId" params={{ postId: postId() }}>
+          {(match) => (
+            <span data-testid="function-match">
+              {match ? match.postId : 'no-match'}
+            </span>
+          )}
+        </MatchRoute>
+        <MatchRoute to="/posts/$postId" params={{ postId: postId() }}>
+          <span data-testid="plain-match">plain-match</span>
+        </MatchRoute>
+        <Outlet />
+      </div>
+    )
+  }
+
+  const rootRoute = createRootRoute({
+    component: Layout,
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => null,
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'posts/$postId',
+    component: () => null,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  render(() => <RouterProvider router={router} />)
+
+  await waitFor(() => {
+    expect(screen.getByTestId('function-match')).toHaveTextContent('no-match')
+    expect(screen.queryByTestId('plain-match')).not.toBeInTheDocument()
+  })
+
+  router.history.push('/posts/123')
+
+  await waitFor(() => {
+    expect(screen.getByTestId('function-match')).toHaveTextContent('123')
+    expect(screen.getByTestId('plain-match')).toBeInTheDocument()
+  })
+
+  fireEvent.click(screen.getByRole('button', { name: 'Change Match Params' }))
+
+  await waitFor(() => {
+    expect(screen.getByTestId('function-match')).toHaveTextContent('no-match')
+    expect(screen.queryByTestId('plain-match')).not.toBeInTheDocument()
+  })
+
+  router.history.push('/posts/456')
+
+  await waitFor(() => {
+    expect(screen.getByTestId('function-match')).toHaveTextContent('456')
+    expect(screen.getByTestId('plain-match')).toBeInTheDocument()
+  })
+
+  router.history.push('/')
+
+  await waitFor(() => {
+    expect(screen.getByTestId('function-match')).toHaveTextContent('no-match')
+    expect(screen.queryByTestId('plain-match')).not.toBeInTheDocument()
+  })
 })
 
 describe('matching on different param types', () => {
@@ -308,7 +391,6 @@ describe('matching on different param types', () => {
     },
   ]
 
-  afterEach(() => cleanup())
   test.each(testCases)(
     '$name',
     async ({ name, path, params, matchParams, nav }) => {
