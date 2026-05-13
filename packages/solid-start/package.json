@@ -115,11 +115,11 @@
     "pathe": "^2.0.3"
   },
   "devDependencies": {
-    "@solidjs/web": "2.0.0-beta.11",
+    "@solidjs/web": "2.0.0-beta.12",
     "@tanstack/intent": "^0.0.14",
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",
-    "solid-js": "2.0.0-beta.11",
+    "solid-js": "2.0.0-beta.12",
     "vite": "*"
   },
   "peerDependencies": {

@@ -85,6 +85,7 @@
     "overrides": {
       "@types/babel__traverse": "^7.28.0",
       "vite-plugin-dts": "4.2.3",
+      "vite-plugin-solid@3.0.0-next.5>babel-preset-solid": "2.0.0-beta.12",
       "react": "$react",
       "react-dom": "$react-dom",
       "@types/react": "$@types/react",

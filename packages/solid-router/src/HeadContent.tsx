@@ -24,7 +24,7 @@ export function HeadContent(props: HeadContentProps) {
       <HydrationScript />
       <For each={tags()}>
         {(tag) => {
-          const t = tag() as any
+          const t = tag as any
           return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
         }}
       </For>

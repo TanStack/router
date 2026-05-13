@@ -1,5 +1,5 @@
 import { For, createEffect, createMemo } from 'solid-js'
-import { Portal, isServer } from '@solidjs/web'
+import { HydrationScript, Portal, isServer } from '@solidjs/web'
 import { Asset } from './Asset'
 import { useHydrated } from './ClientOnly'
 import { useRouter } from './useRouter'
@@ -44,17 +44,23 @@ export function HeadContent(props: HeadContentProps) {
   })
 
   const content = () => (
-    <For each={filteredTags()}>
-      {(tag) => {
-        const t = tag() as any
-        return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
-      }}
-    </For>
+    <>
+      <HydrationScript />
+      <For each={filteredTags()}>
+        {(tag) => {
+          const t = tag as any
+          return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
+        }}
+      </For>
+    </>
   )
 
   return (isServer ?? router.isServer) ? (
     content()
   ) : (
-    <Portal mount={document.head}>{content()}</Portal>
+    <>
+      <HydrationScript />
+      <Portal mount={document.head}>{content()}</Portal>
+    </>
   )
 }
