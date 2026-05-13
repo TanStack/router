@@ -1,4 +1,5 @@
-import { createIsomorphicFn, createMiddleware } from '@tanstack/start-fn-stubs'
+import { createIsomorphicFn } from '@tanstack/start-fn-stubs'
+import { createMiddleware } from './createMiddleware'
 import type {
   RequestMiddlewareAfterServer,
   RequestServerOptions,
@@ -76,8 +77,8 @@ type CreateCsrfMiddleware = <TRegister, TMiddlewares>(
   opts?: CsrfMiddlewareOptions<TRegister, TMiddlewares>,
 ) => RequestMiddlewareAfterServer<{}, undefined, undefined>
 
-const innerCreateCsrfMiddleware = ((opts: any = {}) => {
-  const middleware = createMiddleware().server(async (ctx: any) => {
+const innerCreateCsrfMiddleware: CreateCsrfMiddleware = (opts = {}) => {
+  const middleware = createMiddleware().server(async (ctx) => {
     const csrfCtx = ctx as RequestServerOptions<any, any> & typeof ctx
 
     if (opts.filter && !(await opts.filter(csrfCtx))) {
@@ -96,7 +97,7 @@ const innerCreateCsrfMiddleware = ((opts: any = {}) => {
   }
 
   return middleware
-}) as any as CreateCsrfMiddleware
+}
 
 export const createCsrfMiddleware: CreateCsrfMiddleware =
   createIsomorphicFn().server(innerCreateCsrfMiddleware) as CreateCsrfMiddleware
