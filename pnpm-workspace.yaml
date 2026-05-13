@@ -19,3 +19,44 @@ packages:
   - 'e2e/solid-start/*'
   - 'e2e/vue-start/*'
   - 'e2e/eslint-plugin-start'
+
+allowBuilds:
+  # root dependency
+  '@swc/core': true # required for TypeScript compilation
+  nx: true
+  unrs-resolver: false # not directly required for build
+  esbuild: true
+
+  # @clerk/tanstack-start-adapter
+  '@clerk/shared': false # optional auth integration, not required for build
+
+  # prisma
+  '@prisma/engines': false # only required for auth e2e examples
+  prisma: false # only required for auth e2e examples
+
+  #msw
+  msw: false # only required for trellaux examples
+
+  # workerd
+  workerd: false # only required for auth e2e examples
+
+  # @angular/build
+  '@parcel/watcher': false # optional dep of @angular/build
+
+  # @tanstack/vue-store
+  vue-demi: false # only required for vue 2 support
+
+  # next js
+  sharp: false # not directly required for build
+
+  # @datadog
+  '@datadog/pprof': false # transitive dep
+
+  # @firebase
+  '@firebase/util': false # transitive dep
+
+  # @sentry
+  '@sentry/cli': false # transitive dep
+
+  # protobufjs
+  protobufjs: false # transitive dep
