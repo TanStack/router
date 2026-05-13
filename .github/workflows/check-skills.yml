@@ -72,7 +72,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true # review job pushes a generated branch
 
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -95,18 +95,17 @@ jobs:
           VERSION: ${{ github.event.release.tag_name || 'manual' }}
         run: |
           BRANCH="skills/review-${VERSION}"
-          REMOTE_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git fetch "$REMOTE_URL" "$BRANCH:refs/remotes/origin/$BRANCH" || true
+          git fetch origin "$BRANCH:refs/remotes/origin/$BRANCH" || true
           if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
             git checkout -B "$BRANCH" "origin/$BRANCH"
           else
             git checkout -b "$BRANCH"
             git commit --allow-empty -m "chore: review intent skills for ${VERSION}"
-            git push "$REMOTE_URL" "$BRANCH"
+            git push origin "$BRANCH"
           fi
 
           PR_URL="$(gh pr list --head "$BRANCH" --json url --jq '.[0].url')"
