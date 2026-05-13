@@ -33,14 +33,14 @@ jobs:
       current_json_b64: ${{ steps.capture.outputs.current_json_b64 }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@main
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
 
       - name: Measure Bundle Size
         run: pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache
@@ -62,7 +62,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -111,12 +111,12 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@main
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
 
       - name: Measure Bundle Size
         run: pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache
