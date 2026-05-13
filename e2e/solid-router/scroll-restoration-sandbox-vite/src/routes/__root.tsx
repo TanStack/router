@@ -49,12 +49,12 @@ function Nav(props: { type: 'header' | 'footer' }) {
       <For each={navLinks}>
         {(options) => (
           <Link
-            {...options()}
+            {...options}
             activeProps={{
               class: 'font-bold',
             }}
           >
-            {prefix()}-{options().to}
+            {prefix()}-{options.to}
           </Link>
         )}
       </For>

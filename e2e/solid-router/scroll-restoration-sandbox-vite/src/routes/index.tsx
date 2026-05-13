@@ -25,10 +25,10 @@ function HomeComponent() {
       <For each={indexLinks}>
         {(options) => (
           <div class="border p-2">
-            <h4>{options().to} tests</h4>
+            <h4>{options.to} tests</h4>
             <p>
-              <Link {...options()} hash="at-the-bottom">
-                {options().to}#at-the-bottom
+              <Link {...options} hash="at-the-bottom">
+                {options.to}#at-the-bottom
               </Link>
             </p>
           </div>

@@ -31,7 +31,7 @@ function Test(props: { method: HttpMethods }) {
           handler: HttpMethods & 'ANY'
         }>
         return json
-      } catch (e) {}
+      } catch (e) { }
       // handle HEAD and OPTIONS that have no body
       const result = {
         handler: response.headers.get('x-handler') as HttpMethods & 'ANY',
@@ -58,7 +58,7 @@ function RouteComponent() {
   return (
     <div class="p-2 m-2 grid gap-2" data-testid="route-component">
       <h3>Server Route has only ANY handler</h3>
-      <For each={HttpMethods}>{(method) => <Test method={method()} />}</For>
+      <For each={HttpMethods}>{(method) => <Test method={method} />}</For>
     </div>
   )
 }
