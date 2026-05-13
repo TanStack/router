@@ -5,5 +5,6 @@ export {
   type ClientOnlyFn,
   type IsomorphicFnBase,
 } from './createIsomorphicFn'
+export { createMiddleware } from './createMiddleware'
 
 export { createServerOnlyFn, createClientOnlyFn } from './envOnly'

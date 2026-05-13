@@ -1,4 +1,3 @@
-import { AsyncLocalStorage } from 'node:async_hooks'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { resolve as resolvePath } from 'pathe'
 import {
@@ -45,20 +44,6 @@ type ModuleInvalidationEnvironment = {
       seen?: Set<EnvironmentModuleNode>,
     ) => void
   }
-}
-
-type StartCompilerPluginContext = {
-  environment: {
-    name: string
-    mode: string
-    transformRequest: (url: string) => Promise<unknown>
-  }
-  load: (options: { id: string }) => Promise<{ code?: string | null }>
-  resolve: (
-    source: string,
-    importer?: string,
-  ) => Promise<{ id: string; external?: boolean | string } | null>
-  error: (message: string) => never
 }
 
 function invalidateMatchingFileModules(
@@ -196,17 +181,6 @@ export function startCompilerPlugin(
   opts: StartCompilerPluginOptions,
 ): PluginOption {
   const compilers = new Map<string, ReturnType<typeof createStartCompiler>>()
-  const compilerContextStorage =
-    new AsyncLocalStorage<StartCompilerPluginContext>()
-
-  const getCompilerContext = () => {
-    const context = compilerContextStorage.getStore()
-    if (!context) {
-      throw new Error('Start compiler Vite context is unavailable.')
-    }
-
-    return context
-  }
 
   // Shared registry of server functions across all environments
   const serverFnsById: Record<string, ServerFn> = {}
@@ -288,30 +262,27 @@ export function startCompilerPlugin(
                   ? createViteDevServerFnModuleSpecifierEncoder(root)
                   : undefined,
               loadModule: async (id: string) => {
-                const compilerContext = getCompilerContext()
-
                 if (mode === 'build') {
-                  const loaded = await compilerContext.load({ id })
+                  const loaded = await this.load({ id })
                   const code = loaded.code ?? ''
 
                   compiler!.ingestModule({ code, id })
                   return
                 }
 
-                if (compilerContext.environment.mode !== 'dev') {
-                  compilerContext.error(
-                    `could not load module ${id}: unknown environment mode ${compilerContext.environment.mode}`,
+                if (this.environment.mode !== 'dev') {
+                  this.error(
+                    `could not load module ${id}: unknown environment mode ${this.environment.mode}`,
                   )
                 }
 
-                await compilerContext.environment.transformRequest(
+                await this.environment.transformRequest(
                   `${id}?${SERVER_FN_LOOKUP}`,
                 )
               },
 
               resolveId: async (source: string, importer?: string) => {
-                const compilerContext = getCompilerContext()
-                const r = await compilerContext.resolve(source, importer)
+                const r = await this.resolve(source, importer)
 
                 if (r) {
                   if (!r.external) {
@@ -331,15 +302,11 @@ export function startCompilerPlugin(
             compilerTransforms,
           })
 
-          const result = await compilerContextStorage.run(
-            this as unknown as StartCompilerPluginContext,
-            () =>
-              compiler.compile({
-                id,
-                code,
-                detectedKinds,
-              }),
-          )
+          const result = await compiler.compile({
+            id,
+            code,
+            detectedKinds,
+          })
           return result
         },
       },

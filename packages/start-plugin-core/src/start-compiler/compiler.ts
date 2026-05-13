@@ -694,6 +694,7 @@ export class StartCompiler {
         ['createIsomorphicFn', 'IsomorphicFn'],
         ['createServerOnlyFn', 'ServerOnlyFn'],
         ['createClientOnlyFn', 'ClientOnlyFn'],
+        ['createMiddleware', 'Middleware'],
       ]),
     )
 
@@ -705,6 +706,7 @@ export class StartCompiler {
         ['createIsomorphicFn', 'IsomorphicFn'],
         ['createServerOnlyFn', 'ServerOnlyFn'],
         ['createClientOnlyFn', 'ClientOnlyFn'],
+        ['createMiddleware', 'Middleware'],
       ]),
     )
 
