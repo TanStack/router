@@ -96,8 +96,8 @@ allowBuilds:
   # workerd
   workerd: false # only required for auth e2e examples
 
-  # @angular/build
-  '@parcel/watcher': false # optional dep of @angular/build
+  # listhen
+  '@parcel/watcher': true
 
   # @tanstack/vue-store
   vue-demi: false # only required for vue 2 support
