@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { resolveInlineCssForRequest } from '../src/inlineCss'
+import {
+  getStaticHandlerInlineCssDefault,
+  resolveInlineCssForRequest,
+} from '../src/inlineCss'
 
 describe('createStartHandler inlineCss option', () => {
   const request = new Request('https://example.com/')
@@ -54,5 +57,12 @@ describe('createStartHandler inlineCss option', () => {
     ).resolves.toBe(true)
 
     expect(handlerInlineCss).not.toHaveBeenCalled()
+  })
+
+  it('returns a static inline CSS default only for non-callback options', () => {
+    expect(getStaticHandlerInlineCssDefault(undefined)).toBe(true)
+    expect(getStaticHandlerInlineCssDefault(true)).toBe(true)
+    expect(getStaticHandlerInlineCssDefault(false)).toBe(false)
+    expect(getStaticHandlerInlineCssDefault(() => true)).toBe(undefined)
   })
 })

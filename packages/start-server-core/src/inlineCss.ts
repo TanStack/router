@@ -4,6 +4,16 @@ export type HandlerInlineCssOption =
   | boolean
   | ((ctx: { request: Request }) => Awaitable<boolean>)
 
+export function getStaticHandlerInlineCssDefault(
+  handlerInlineCss: HandlerInlineCssOption | undefined,
+) {
+  if (typeof handlerInlineCss === 'function') {
+    return undefined
+  }
+
+  return handlerInlineCss ?? true
+}
+
 export async function resolveInlineCssForRequest(opts: {
   request: Request
   handlerInlineCss: HandlerInlineCssOption | undefined

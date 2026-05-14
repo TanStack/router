@@ -24,19 +24,11 @@ import {
 import { requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
+import { createEarlyHintsCollector } from './early-hints'
 import {
-  buildManifestWithClientEntry,
-  resolveTransformAssetsConfig,
-  transformManifestAssets,
-} from './transformAssetUrls'
-import {
-  collectDynamicHintsFromMatches,
-  collectStaticHintsFromManifest,
-  createEarlyHintsEvent,
-  createResponseLinkHeaderEntries,
-  getResponseLinkHeaderEntries,
-} from './early-hints'
-import { resolveInlineCssForRequest } from './inlineCss'
+  createCachedBaseManifestLoader,
+  createFinalManifestResolver,
+} from './finalManifest'
 
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
@@ -51,28 +43,13 @@ import type {
 } from '@tanstack/start-client-core'
 import type { RequestHandler } from './request-handler'
 import type {
-  EarlyHint,
-  EarlyHintsEvent,
-  EarlyHintsPhase,
-  OnEarlyHints,
-  ResponseLinkHeaderEntry,
-  ResponseLinkHeaderFilter,
-  ResponseLinkHeaderOptions,
-} from './early-hints'
-import type {
   AnyRoute,
   AnyRouter,
   AnySerializationAdapter,
-  Manifest,
   Register,
 } from '@tanstack/router-core'
 import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
-import type {
-  StartManifestWithClientEntry,
-  TransformAssets,
-  TransformAssetsFn,
-} from './transformAssetUrls'
-import type { HandlerInlineCssOption } from './inlineCss'
+import type { FinalManifestOptions } from './finalManifest'
 
 type TODO = any
 
@@ -80,101 +57,8 @@ type AnyMiddlewareServerFn =
   | AnyRequestMiddleware['options']['server']
   | AnyFunctionMiddleware['options']['server']
 
-export interface CreateStartHandlerOptions {
+export interface CreateStartHandlerOptions extends FinalManifestOptions {
   handler: HandlerCallback<AnyRouter>
-  /**
-   * Controls whether Start inlines build-collected CSS by default at runtime.
-   *
-   * This only has an effect when the build was created with
-   * `server.build.inlineCss` enabled. Pass a callback to decide per request.
-   * `handler(request, { inlineCss })` overrides this value for that
-   * request.
-   *
-   * @default true
-   */
-  inlineCss?: HandlerInlineCssOption
-  /**
-   * Transform asset URLs and attributes at runtime, e.g. to prepend a CDN prefix.
-   *
-   * **String** — a URL prefix prepended to every asset URL (cached by default):
-   * ```ts
-   * createStartHandler({
-   *   handler: defaultStreamHandler,
-   *   transformAssets: 'https://cdn.example.com',
-   * })
-   * ```
-   *
-   * **Object shorthand** — a URL prefix with optional `crossOrigin`:
-   * ```ts
-   * createStartHandler({
-   *   handler: defaultStreamHandler,
-   *   transformAssets: {
-   *     prefix: 'https://cdn.example.com',
-   *     crossOrigin: 'anonymous',
-   *   },
-   * })
-   * ```
-   *
-   * `crossOrigin` accepts a single value or a per-kind record:
-   * ```ts
-   * transformAssets: {
-   *   prefix: 'https://cdn.example.com',
-   *   crossOrigin: {
-   *     modulepreload: 'anonymous',
-   *     stylesheet: 'use-credentials',
-   *   },
-   * }
-   * ```
-   *
-   * **Callback** — receives `{ kind, url }` and returns either a string URL or
-   * `{ href, crossOrigin? }` (cached by default — runs once on first request):
-   * ```ts
-   * createStartHandler({
-   *   handler: defaultStreamHandler,
-   *   transformAssets: ({ kind, url }) => {
-   *     const href = `https://cdn.example.com${url}`
-   *
-   *     if (kind === 'modulepreload') {
-   *       return { href, crossOrigin: 'anonymous' }
-   *     }
-   *
-   *     return { href }
-   *   },
-   * })
-   * ```
-   *
-   * **Object** — for explicit cache control:
-   * ```ts
-   * createStartHandler({
-   *   handler: defaultStreamHandler,
-   *   transformAssets: {
-   *     transform: ({ url }) => {
-   *       const region = getRequest().headers.get('x-region') || 'us'
-   *       return { href: `https://cdn-${region}.example.com${url}` }
-   *     },
-   *     cache: false,
-   *   },
-   * })
-   * ```
-   *
-   * `kind` is one of `'modulepreload' | 'stylesheet' | 'clientEntry' | 'css-url'`.
-   * `css-url` is used for `url(...)` and `@import` URLs inside inlined CSS and also includes `stylesheetHref`.
-   * `crossOrigin` applies to manifest-managed `<link>` assets.
-   *
-   * By default, the transformed manifest is cached after the first request
-   * (`cache: true`). Set `cache: false` for per-request transforms.
-   *
-   * If you're using a cached transform, you can optionally set `warmup: true`
-   * (object form only) to compute the transformed manifest in the background at
-   * server startup.
-   *
-   * Note: This transforms URLs managed by TanStack Start's manifest (JS
-   * preloads, CSS links, and the client entry script) and URLs inside inlined
-   * CSS. For asset imports used directly in components (e.g.
-   * `import logo from './logo.svg'`), configure Vite's
-   * `experimental.renderBuiltUrl` in your vite.config.ts.
-   */
-  transformAssets?: TransformAssets
 }
 
 function getStartResponseHeaders(opts: { router: AnyRouter }) {
@@ -187,106 +71,6 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
     }),
   )
   return headers
-}
-
-function notifyEarlyHints(
-  phase: EarlyHintsPhase,
-  event: EarlyHintsEvent,
-  onEarlyHints: OnEarlyHints,
-) {
-  try {
-    const result = onEarlyHints(event)
-    if (result) {
-      void Promise.resolve(result).catch((err) => {
-        console.error(`Error sending ${phase} early hints:`, err)
-      })
-    }
-  } catch (err) {
-    console.error(`Error sending ${phase} early hints:`, err)
-  }
-}
-
-function getResponseLinkHeaderFilter(
-  responseLinkHeader: boolean | ResponseLinkHeaderOptions | undefined,
-): ResponseLinkHeaderFilter | undefined {
-  if (typeof responseLinkHeader !== 'object') {
-    return undefined
-  }
-
-  return responseLinkHeader.filter
-}
-
-function appendResponseLinkHeaders(opts: {
-  responseHeaders: Headers
-  entries: ReadonlyArray<ResponseLinkHeaderEntry>
-  filter?: ResponseLinkHeaderFilter
-}) {
-  if (!opts.filter) {
-    for (const entry of opts.entries) {
-      opts.responseHeaders.append('Link', entry.link)
-    }
-    return
-  }
-
-  const links = getResponseLinkHeaderEntries(opts)
-
-  for (const link of links) {
-    opts.responseHeaders.append('Link', link)
-  }
-}
-
-function collectResponseLinkHeaderEntries(opts: {
-  phase: EarlyHintsPhase
-  event: EarlyHintsEvent
-  entries: Array<ResponseLinkHeaderEntry>
-}) {
-  for (let index = 0; index < opts.event.hints.length; index++) {
-    opts.entries.push({
-      phase: opts.phase,
-      hint: opts.event.hints[index]!,
-      link: opts.event.links[index]!,
-    })
-  }
-}
-
-function handleCollectedEarlyHints(opts: {
-  phase: EarlyHintsPhase
-  hints: ReadonlyArray<EarlyHint>
-  sentLinks: Set<string>
-  sentHints?: Array<EarlyHint>
-  onEarlyHints?: OnEarlyHints
-  responseLinkHeaderEntries?: Array<ResponseLinkHeaderEntry>
-}) {
-  const event = opts.onEarlyHints
-    ? createEarlyHintsEvent({
-        phase: opts.phase,
-        hints: opts.hints,
-        sentLinks: opts.sentLinks,
-        sentHints: opts.sentHints!,
-      })
-    : undefined
-
-  if (event) {
-    notifyEarlyHints(opts.phase, event, opts.onEarlyHints!)
-  }
-
-  if (!opts.responseLinkHeaderEntries) return
-
-  if (event) {
-    collectResponseLinkHeaderEntries({
-      phase: opts.phase,
-      event,
-      entries: opts.responseLinkHeaderEntries,
-    })
-    return
-  }
-
-  createResponseLinkHeaderEntries({
-    phase: opts.phase,
-    hints: opts.hints,
-    sentLinks: opts.sentLinks,
-    entries: opts.responseLinkHeaderEntries,
-  })
 }
 
 interface PluginAdaptersEntry {
@@ -303,11 +87,21 @@ interface Entries {
 // Cached entries - promises stored immediately to prevent concurrent imports
 // that can cause race conditions during module initialization
 let entriesPromise: Promise<Entries> | undefined
-let baseManifestPromise: Promise<StartManifestWithClientEntry> | undefined
 let hasWarnedMissingCsrfMiddleware = false
 const defaultCsrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === 'serverFn',
 })
+const getCachedBaseManifest = createCachedBaseManifestLoader(() =>
+  getStartManifest(),
+)
+const getProdBaseManifest: typeof getStartManifest = () =>
+  getCachedBaseManifest()
+const getBaseManifest =
+  process.env.TSS_DEV_SERVER === 'true' ? getStartManifest : getProdBaseManifest
+const createEarlyHintsForRequest: typeof createEarlyHintsCollector =
+  process.env.TSS_DEV_SERVER === 'true'
+    ? () => undefined
+    : createEarlyHintsCollector
 
 async function loadEntries(): Promise<Entries> {
   const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
@@ -363,77 +157,6 @@ If you intentionally handle CSRF another way, disable this warning:
       disableCsrfMiddlewareWarning: true,
     },
   })`)
-}
-
-/**
- * Returns the raw manifest data (without client entry script tag baked in).
- * In dev mode, always returns fresh data. In prod, cached.
- */
-function getBaseManifest(
-  matchedRoutes?: ReadonlyArray<AnyRoute>,
-): Promise<StartManifestWithClientEntry> {
-  // In dev mode, always get fresh manifest (no caching) to include route-specific dev styles
-  if (process.env.TSS_DEV_SERVER === 'true') {
-    return getStartManifest(matchedRoutes)
-  }
-  // In prod, cache the base manifest
-  if (!baseManifestPromise) {
-    baseManifestPromise = getStartManifest()
-  }
-  return baseManifestPromise
-}
-
-/**
- * Resolves a final Manifest for a given request.
- *
- * - No transform: builds client entry script tag and returns (cached in prod).
- * - Cached transform: transforms all URLs + builds script tag, caches result.
- * - Per-request transform: deep-clones base manifest, transforms per-request.
- */
-async function resolveManifest(
-  matchedRoutes: ReadonlyArray<AnyRoute> | undefined,
-  transformFn: TransformAssetsFn | undefined,
-  cache: boolean,
-  inlineCss: boolean,
-  cachedFinalManifestPromises: Map<string, Promise<Manifest>>,
-): Promise<Manifest> {
-  const base = await getBaseManifest(matchedRoutes)
-
-  const computeFinalManifest = async () => {
-    return transformFn
-      ? await transformManifestAssets(base, transformFn, {
-          clone: !cache,
-          inlineCss,
-        })
-      : buildManifestWithClientEntry(base, { inlineCss })
-  }
-
-  // In dev, always compute fresh to include route-specific dev styles.
-  if (process.env.TSS_DEV_SERVER === 'true') {
-    return computeFinalManifest()
-  }
-
-  // In prod, cache unless we're explicitly doing per-request transforms.
-  if (!transformFn || cache) {
-    const cacheKey = inlineCss ? 'inline-css' : 'linked-css'
-    let cachedFinalManifestPromise = cachedFinalManifestPromises.get(cacheKey)
-    if (!cachedFinalManifestPromise) {
-      cachedFinalManifestPromise = computeFinalManifest().catch((error) => {
-        if (
-          cachedFinalManifestPromises.get(cacheKey) ===
-          cachedFinalManifestPromise
-        ) {
-          cachedFinalManifestPromises.delete(cacheKey)
-        }
-        throw error
-      })
-      cachedFinalManifestPromises.set(cacheKey, cachedFinalManifestPromise)
-    }
-    return cachedFinalManifestPromise
-  }
-
-  // Per-request transform — deep-clone and transform every time.
-  return computeFinalManifest()
 }
 
 // Pre-computed constants
@@ -580,100 +303,22 @@ function handlerToMiddleware(
 export function createStartHandler<TRegister = Register>(
   cbOrOptions: HandlerCallback<AnyRouter> | CreateStartHandlerOptions,
 ): RequestHandler<TRegister> {
-  // Normalize the overloaded argument
+  const handlerOptions: FinalManifestOptions =
+    typeof cbOrOptions === 'function' ? {} : cbOrOptions
   const cb: HandlerCallback<AnyRouter> =
     typeof cbOrOptions === 'function' ? cbOrOptions : cbOrOptions.handler
-  const transformAssetsOption: TransformAssets | undefined =
-    typeof cbOrOptions === 'function' ? undefined : cbOrOptions.transformAssets
-  const inlineCssOption: CreateStartHandlerOptions['inlineCss'] =
-    typeof cbOrOptions === 'function' ? undefined : cbOrOptions.inlineCss
+  const finalManifestResolver = createFinalManifestResolver({
+    ...handlerOptions,
+    cacheCreateTransform: process.env.TSS_DEV_SERVER !== 'true',
+  })
+  const resolveManifestForRequest =
+    process.env.TSS_DEV_SERVER === 'true'
+      ? finalManifestResolver.resolveUncached
+      : finalManifestResolver.resolveCached
 
-  const cachedFinalManifestPromises = new Map<string, Promise<Manifest>>()
-
-  const transformOption =
-    transformAssetsOption !== undefined
-      ? resolveTransformAssetsConfig(transformAssetsOption)
-      : undefined
-
-  const warmupTransformManifest =
-    !!transformAssetsOption &&
-    typeof transformAssetsOption === 'object' &&
-    'warmup' in transformAssetsOption &&
-    transformAssetsOption.warmup === true
-
-  // Pre-resolve the transform function and cache flag
-  const resolvedTransformConfig = transformOption
-  const cache = resolvedTransformConfig ? resolvedTransformConfig.cache : true
-  const shouldCacheCreateTransform =
-    cache && process.env.TSS_DEV_SERVER !== 'true'
-  const handlerDefaultInlineCss =
-    typeof inlineCssOption === 'function'
-      ? undefined
-      : (inlineCssOption ?? true)
-
-  // Memoize a single createTransform() result when caching is enabled outside
-  // of the dev server.
-  let cachedCreateTransformPromise: Promise<TransformAssetsFn> | undefined
-
-  const getTransformFn = async (
-    opts: { warmup: true } | { warmup: false; request: Request },
-  ): Promise<TransformAssetsFn | undefined> => {
-    if (!resolvedTransformConfig) return undefined
-
-    if (resolvedTransformConfig.type === 'createTransform') {
-      if (shouldCacheCreateTransform) {
-        if (!cachedCreateTransformPromise) {
-          cachedCreateTransformPromise = Promise.resolve(
-            resolvedTransformConfig.createTransform(opts),
-          ).catch((error) => {
-            cachedCreateTransformPromise = undefined
-            throw error
-          })
-        }
-
-        return cachedCreateTransformPromise
-      }
-
-      return resolvedTransformConfig.createTransform(opts)
-    }
-
-    return resolvedTransformConfig.transformFn
-  }
-
-  // Background warmup for cached transforms (production only)
-  if (
-    warmupTransformManifest &&
-    handlerDefaultInlineCss !== undefined &&
-    cache &&
-    process.env.TSS_DEV_SERVER !== 'true' &&
-    !cachedFinalManifestPromises.has(
-      handlerDefaultInlineCss ? 'inline-css' : 'linked-css',
-    )
-  ) {
-    const warmupCacheKey = handlerDefaultInlineCss ? 'inline-css' : 'linked-css'
-    // NOTE: Do not call resolveManifest() here.
-    // resolveManifest() reads from cachedFinalManifestPromise, and since we set
-    // cachedFinalManifestPromise to this warmup promise, that would create a
-    // self-referential promise and hang forever.
-    const warmupPromise = (async () => {
-      const base = await getBaseManifest(undefined)
-      const transformFn = await getTransformFn({ warmup: true })
-      return transformFn
-        ? await transformManifestAssets(base, transformFn, {
-            clone: false,
-            inlineCss: handlerDefaultInlineCss,
-          })
-        : buildManifestWithClientEntry(base, {
-            inlineCss: handlerDefaultInlineCss,
-          })
-    })()
-    cachedFinalManifestPromises.set(warmupCacheKey, warmupPromise)
-    warmupPromise.catch(() => {
-      // If warmup fails, allow the next request to retry.
-      if (cachedFinalManifestPromises.get(warmupCacheKey) === warmupPromise) {
-        cachedFinalManifestPromises.delete(warmupCacheKey)
-      }
-      cachedCreateTransformPromise = undefined
+  if (process.env.TSS_DEV_SERVER !== 'true') {
+    finalManifestResolver.warmup({
+      getBaseManifest: () => getBaseManifest(undefined),
     })
   }
 
@@ -832,50 +477,18 @@ export function createStartHandler<TRegister = Register>(
           )
         }
 
-        const manifest = await resolveManifest(
-          matchedRoutes,
-          await getTransformFn({ warmup: false, request }),
-          cache,
-          await resolveInlineCssForRequest({
-            request,
-            handlerInlineCss: inlineCssOption,
-            requestInlineCss: requestOpts?.inlineCss,
-          }),
-          cachedFinalManifestPromises,
-        )
+        const manifest = await resolveManifestForRequest({
+          request,
+          requestInlineCss: requestOpts?.inlineCss,
+          getBaseManifest: () => getBaseManifest(matchedRoutes),
+        })
 
-        const onEarlyHints = requestOpts?.onEarlyHints
-        const responseLinkHeader = requestOpts?.responseLinkHeader
-        const shouldCollectEarlyHints =
-          process.env.TSS_DEV_SERVER !== 'true' &&
-          (!!onEarlyHints || !!responseLinkHeader)
-        const sentEarlyHintLinks = shouldCollectEarlyHints
-          ? new Set<string>()
-          : undefined
-        const sentEarlyHints = onEarlyHints ? new Array<EarlyHint>() : undefined
-        const responseLinkHeaderEntries =
-          shouldCollectEarlyHints && responseLinkHeader
-            ? new Array<ResponseLinkHeaderEntry>()
-            : undefined
-        const responseLinkHeaderFilter = shouldCollectEarlyHints
-          ? getResponseLinkHeaderFilter(responseLinkHeader)
-          : undefined
+        const earlyHints = createEarlyHintsForRequest({
+          onEarlyHints: requestOpts?.onEarlyHints,
+          responseLinkHeader: requestOpts?.responseLinkHeader,
+        })
 
-        if (
-          shouldCollectEarlyHints &&
-          sentEarlyHintLinks &&
-          matchedRoutes?.length
-        ) {
-          const hints = collectStaticHintsFromManifest(manifest, matchedRoutes)
-          handleCollectedEarlyHints({
-            phase: 'static',
-            hints,
-            sentLinks: sentEarlyHintLinks,
-            sentHints: sentEarlyHints,
-            onEarlyHints,
-            responseLinkHeaderEntries,
-          })
-        }
+        earlyHints?.collectStatic({ manifest, matchedRoutes })
 
         const routerInstance = await getRouter()
 
@@ -894,18 +507,7 @@ export function createStartHandler<TRegister = Register>(
           return routerInstance.state.redirect
         }
 
-        if (shouldCollectEarlyHints && sentEarlyHintLinks) {
-          const loadedMatches = routerInstance.stores.matches.get()
-          const hints = collectDynamicHintsFromMatches(loadedMatches)
-          handleCollectedEarlyHints({
-            phase: 'dynamic',
-            hints,
-            sentLinks: sentEarlyHintLinks,
-            sentHints: sentEarlyHints,
-            onEarlyHints,
-            responseLinkHeaderEntries,
-          })
-        }
+        earlyHints?.collectDynamic(routerInstance.stores.matches.get())
 
         // Pass request-scoped assets to dehydrate for manifest injection
         const ctx = getStartContext({ throwIfNotFound: false })
@@ -916,13 +518,7 @@ export function createStartHandler<TRegister = Register>(
         const responseHeaders = getStartResponseHeaders({
           router: routerInstance,
         })
-        if (responseLinkHeaderEntries?.length) {
-          appendResponseLinkHeaders({
-            responseHeaders,
-            entries: responseLinkHeaderEntries,
-            filter: responseLinkHeaderFilter,
-          })
-        }
+        earlyHints?.appendResponseHeaders(responseHeaders)
         cbWillCleanup = true
 
         return cb({

@@ -47,8 +47,24 @@
           "mode": "ssr"
         },
         {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "name": "transform-assets",
+          "env": {
+            "CSS_INLINE_TRANSFORM_ASSETS": "true"
+          }
+        },
+        {
           "toolchain": "rsbuild",
           "mode": "ssr"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr",
+          "name": "transform-assets",
+          "env": {
+            "CSS_INLINE_TRANSFORM_ASSETS": "true"
+          }
         }
       ]
     }

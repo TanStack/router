@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  buildManifestWithClientEntry,
   resolveTransformAssetsConfig,
   transformManifestAssets,
 } from '../src/transformAssetUrls'
@@ -324,6 +325,99 @@ describe('transformAssets', () => {
       kind: 'stylesheet',
       url: '/assets/app.css',
     })
+  })
+
+  it('preserves inline CSS style order when template transforms resolve out of order', async () => {
+    const resolvers = new Map<string, (value: string) => void>()
+    const transformFn = vi.fn((context) => {
+      if (context.kind !== 'css-url') {
+        return context.url
+      }
+
+      return new Promise<string>((resolve) => {
+        resolvers.set(context.url, resolve)
+      })
+    })
+
+    const manifestPromise = transformManifestAssets(
+      {
+        manifest: {
+          inlineCss: {
+            styles: {
+              '/assets/a.css': '.a{background:url(/assets/a.png)}',
+              '/assets/b.css': '.b{background:url(/assets/b.png)}',
+            },
+            templates: {
+              '/assets/a.css': {
+                strings: ['.a{background:url("', '")}'],
+                urls: ['/assets/a.png'],
+              },
+              '/assets/b.css': {
+                strings: ['.b{background:url("', '")}'],
+                urls: ['/assets/b.png'],
+              },
+            },
+          },
+          routes: {},
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+    )
+
+    await vi.waitFor(() => {
+      expect(resolvers.size).toBe(2)
+    })
+
+    resolvers.get('/assets/b.png')!('https://cdn.example.com/assets/b.png')
+    resolvers.get('/assets/a.png')!('https://cdn.example.com/assets/a.png')
+
+    const manifest = await manifestPromise
+
+    expect(Object.keys(manifest.inlineCss!.styles)).toEqual([
+      '/assets/a.css',
+      '/assets/b.css',
+    ])
+    expect(manifest.inlineCss?.styles['/assets/a.css']).toBe(
+      '.a{background:url("https://cdn.example.com/assets/a.png")}',
+    )
+    expect(manifest.inlineCss?.styles['/assets/b.css']).toBe(
+      '.b{background:url("https://cdn.example.com/assets/b.png")}',
+    )
+  })
+
+  it('clones inline CSS when building a manifest without transforms', () => {
+    const source = {
+      manifest: {
+        inlineCss: {
+          styles: {
+            '/assets/app.css': '.app{color:red}',
+          },
+          templates: {
+            '/assets/app.css': {
+              strings: ['.app{background:url("', '")}'],
+              urls: ['/assets/bg.png'],
+            },
+          },
+        },
+        routes: {
+          __root__: {},
+        },
+      },
+      clientEntry: '/assets/entry.js',
+    }
+
+    const manifest = buildManifestWithClientEntry(source)
+    manifest.inlineCss!.styles['/assets/app.css'] = '.mutated{}'
+    manifest.inlineCss!.templates!['/assets/app.css']!.urls[0] =
+      '/assets/mutated.png'
+
+    expect(source.manifest.inlineCss.styles['/assets/app.css']).toBe(
+      '.app{color:red}',
+    )
+    expect(
+      source.manifest.inlineCss.templates['/assets/app.css']!.urls[0],
+    ).toBe('/assets/bg.png')
   })
 
   describe('object shorthand', () => {
