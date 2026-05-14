@@ -78,7 +78,7 @@ type CreateCsrfMiddleware = <TRegister, TMiddlewares>(
 
 const innerCreateCsrfMiddleware = ((opts: any = {}) => {
   const middleware = createMiddleware().server(async (ctx: any) => {
-    const csrfCtx = ctx as RequestServerOptions<any, any> & typeof ctx
+    const csrfCtx = ctx as RequestServerOptions<any, any>
 
     if (opts.filter && !(await opts.filter(csrfCtx))) {
       return ctx.next()
