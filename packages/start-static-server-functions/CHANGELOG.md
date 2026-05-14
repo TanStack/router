@@ -1,5 +1,16 @@
 # @tanstack/start-static-server-functions
 
+## 1.166.41
+
+### Patch Changes
+
+- Update seroval dependencies to version 1.5.4. ([#7340](https://github.com/TanStack/router/pull/7340))
+
+- Updated dependencies [[`35e88f0`](https://github.com/TanStack/router/commit/35e88f04996d71019a1868b7b06ecb4ddbc9df9e)]:
+  - @tanstack/start-client-core@1.168.2
+  - @tanstack/react-start@1.167.64
+  - @tanstack/solid-start@1.167.61
+
 ## 1.166.40
 
 ### Patch Changes

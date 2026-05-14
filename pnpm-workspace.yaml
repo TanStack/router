@@ -19,3 +19,100 @@ packages:
   - 'e2e/solid-start/*'
   - 'e2e/vue-start/*'
   - 'e2e/eslint-plugin-start'
+
+overrides:
+  '@types/babel__traverse': '^7.28.0'
+  vite-plugin-dts: 4.2.3
+  solid-js: 1.9.12
+  react: $react
+  react-dom: $react-dom
+  '@types/react': $@types/react
+  '@types/react-dom': $@types/react-dom
+  eslint: $eslint
+  vite: $vite
+  '@types/node': $@types/node
+  '@playwright/test': $@playwright/test
+  '@tanstack/query-core': $@tanstack/query-core
+  '@tanstack/react-query': $@tanstack/react-query
+  '@tanstack/solid-query': $@tanstack/solid-query
+  '@tanstack/vue-query': $@tanstack/vue-query
+  '@tanstack/history': 'workspace:*'
+  '@tanstack/router-core': 'workspace:*'
+  '@tanstack/react-router': 'workspace:*'
+  '@tanstack/router-cli': 'workspace:*'
+  '@tanstack/router-devtools': 'workspace:*'
+  '@tanstack/router-devtools-core': 'workspace:^'
+  '@tanstack/react-router-devtools': 'workspace:^'
+  '@tanstack/solid-router-devtools': 'workspace:^'
+  '@tanstack/router-generator': 'workspace:*'
+  '@tanstack/virtual-file-routes': 'workspace:*'
+  '@tanstack/router-plugin': 'workspace:*'
+  '@tanstack/router-vite-plugin': 'workspace:*'
+  '@tanstack/router-ssr-query-core': 'workspace:*'
+  '@tanstack/react-router-ssr-query': 'workspace:*'
+  '@tanstack/solid-router-ssr-query': 'workspace:*'
+  '@tanstack/vue-router-ssr-query': 'workspace:*'
+  '@tanstack/zod-adapter': 'workspace:*'
+  '@tanstack/valibot-adapter': 'workspace:*'
+  '@tanstack/arktype-adapter': 'workspace:*'
+  '@tanstack/react-start': 'workspace:*'
+  '@tanstack/react-start-rsc': 'workspace:*'
+  '@tanstack/react-start-client': 'workspace:*'
+  '@tanstack/react-start-server': 'workspace:*'
+  '@tanstack/solid-start': 'workspace:*'
+  '@tanstack/solid-start-client': 'workspace:*'
+  '@tanstack/solid-start-server': 'workspace:*'
+  '@tanstack/vue-start': 'workspace:*'
+  '@tanstack/vue-start-client': 'workspace:*'
+  '@tanstack/vue-start-server': 'workspace:*'
+  '@tanstack/start-plugin-core': 'workspace:*'
+  '@tanstack/start-client-core': 'workspace:*'
+  '@tanstack/start-server-core': 'workspace:*'
+  '@tanstack/start-storage-context': 'workspace:*'
+  '@tanstack/vue-router': 'workspace:*'
+  '@tanstack/vue-router-devtools': 'workspace:*'
+  '@tanstack/eslint-plugin-router': 'workspace:*'
+  '@tanstack/router-utils': 'workspace:*'
+  '@tanstack/start-static-server-functions': 'workspace:*'
+  '@tanstack/nitro-v2-vite-plugin': 'workspace:*'
+
+allowBuilds:
+  # root dependency
+  '@swc/core': true # required for TypeScript compilation
+  nx: true
+  unrs-resolver: false # not directly required for build
+  esbuild: true
+
+  # @clerk/tanstack-start-adapter
+  '@clerk/shared': false # optional auth integration, not required for build
+
+  # prisma
+  '@prisma/engines': false # only required for auth e2e examples
+  prisma: false # only required for auth e2e examples
+
+  #msw
+  msw: false # only required for trellaux examples
+
+  # workerd
+  workerd: false # only required for auth e2e examples
+
+  # listhen
+  '@parcel/watcher': true
+
+  # @tanstack/vue-store
+  vue-demi: false # only required for vue 2 support
+
+  # next js
+  sharp: false # not directly required for build
+
+  # @datadog
+  '@datadog/pprof': false # transitive dep
+
+  # @firebase
+  '@firebase/util': false # transitive dep
+
+  # @sentry
+  '@sentry/cli': false # transitive dep
+
+  # protobufjs
+  protobufjs: false # transitive dep

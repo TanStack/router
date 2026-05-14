@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.169.2
+
+### Patch Changes
+
+- Update seroval dependencies to version 1.5.4. ([#7340](https://github.com/TanStack/router/pull/7340))
+
 ## 1.169.1
 
 ### Patch Changes

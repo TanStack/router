@@ -188,6 +188,8 @@ export function tanStackStartVite(
             inlineCssEnabled:
               command === 'build' && startConfig.server.build.inlineCss,
             staticNodeEnv: startConfig.server.build.staticNodeEnv,
+            disableCsrfMiddlewareWarning:
+              startConfig.serverFns.disableCsrfMiddlewareWarning,
           }),
           builder: {
             sharedPlugins: true,

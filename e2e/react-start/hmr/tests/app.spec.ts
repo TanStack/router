@@ -1,7 +1,8 @@
-import { expect } from '@playwright/test'
-import { test } from '@tanstack/router-e2e-utils'
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { expect } from '@playwright/test'
+import { test } from '@tanstack/router-e2e-utils'
+
 import type { Page } from '@playwright/test'
 
 const whitelistErrors = [
@@ -1145,6 +1146,7 @@ test.describe('react-start hmr', () => {
       "createServerOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-baseline'",
       "createClientOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-client-only'",
     )
+
     await reloadPageAndWaitForText(
       page,
       '/server-fn-hmr',
