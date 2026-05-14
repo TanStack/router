@@ -21,6 +21,7 @@ export default mergeConfig(
     srcDir: './src',
     entry: [
       './src/index.tsx',
+      './src/createCsrfMiddleware.ts',
       './src/createServerRpc.ts',
       './src/createSsrRpc.ts',
       './src/fake-start-server-fn-resolver.ts',

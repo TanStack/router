@@ -1,5 +1,4 @@
 ---
-'@tanstack/start-client-core': minor
 '@tanstack/start-plugin-core': patch
 '@tanstack/start-server-core': patch
 '@tanstack/start-fn-stubs': patch

@@ -1,8 +1,6 @@
 import { createMemoryHistory } from '@tanstack/history'
 import {
-  createCsrfMiddleware,
   createNullProtoObject,
-  csrfSymbol,
   flattenMiddlewares,
   mergeHeaders,
   safeObjectMerge,
@@ -21,6 +19,7 @@ import {
   getStartContext,
   runWithStartContext,
 } from '@tanstack/start-storage-context'
+import { createCsrfMiddleware, csrfSymbol } from './createCsrfMiddleware'
 import { requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'

@@ -47,6 +47,12 @@
         "default": "./dist/esm/index.js"
       }
     },
+    "./createCsrfMiddleware": {
+      "import": {
+        "types": "./dist/esm/createCsrfMiddleware.d.ts",
+        "default": "./dist/esm/createCsrfMiddleware.js"
+      }
+    },
     "./createServerRpc": {
       "import": {
         "types": "./dist/esm/createServerRpc.d.ts",
