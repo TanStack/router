@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/solid-router'
 
-export const Route = createFileRoute('/대한민국/wildcard/$')({
+export const Route = createFileRoute('/대한민국/wildcard/$')({
   component: RouteComponent,
 })
 

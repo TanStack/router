@@ -74,7 +74,7 @@ test.describe('Prerender Static Path Discovery', () => {
       expect(html).toContain('under-layout')
     })
 
-    test('should contain prerendered content from route prerenderParams', () => {
+    test('should contain prerendered content from yielded route prerenderParams', () => {
       const htmlPath = join(distDir, 'prerender-params/hello-world/index.html')
 
       expect(existsSync(htmlPath)).toBe(true)

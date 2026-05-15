@@ -11,16 +11,18 @@ import {
 import { getBundlerOptions } from '../utils'
 import { getServerOutputDirectory } from './output-directory'
 import type { TanStackStartOutputConfig } from '../schema'
-import type { PrerenderHandler } from '../prerender'
+import type { PrerenderHandler, PrerenderPageSink } from '../prerender'
 import type { Dirent } from 'node:fs'
 import type { PreviewServer, ResolvedConfig, ViteBuilder } from 'vite'
 
 export async function prerenderWithVite({
   startConfig,
   builder,
+  pageSink,
 }: {
   startConfig: TanStackStartOutputConfig
   builder: ViteBuilder
+  pageSink?: PrerenderPageSink
 }) {
   const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
 
@@ -87,6 +89,7 @@ export async function prerenderWithVite({
   return prerender({
     startConfig,
     handler,
+    pageSink,
   })
 }
 

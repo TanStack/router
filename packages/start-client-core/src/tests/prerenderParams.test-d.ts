@@ -225,3 +225,45 @@ test('prerenderParams infers and requires search params', () => {
 
   expectTypeOf(missingSearch).toEqualTypeOf<typeof missingSearch>()
 })
+
+test('prerenderParams accepts sync and async generators', () => {
+  const syncGenerator = {
+    *prerenderParams(ctx) {
+      expectTypeOf(ctx.routePath).toEqualTypeOf<'/posts/$slug'>()
+      expectTypeOf(ctx.signal).toEqualTypeOf<AbortSignal>()
+
+      yield {
+        params: {
+          slug: 'hello-world',
+        },
+      }
+    },
+  } satisfies FileBaseRouteOptions<
+    unknown,
+    AnyRoute,
+    string,
+    '/posts/$slug',
+    undefined,
+    { slug: string }
+  >
+
+  const asyncGenerator = {
+    async *prerenderParams() {
+      yield {
+        params: {
+          slug: 'hello-world',
+        },
+      }
+    },
+  } satisfies FileBaseRouteOptions<
+    unknown,
+    AnyRoute,
+    string,
+    '/posts/$slug',
+    undefined,
+    { slug: string }
+  >
+
+  expectTypeOf(syncGenerator).toEqualTypeOf<typeof syncGenerator>()
+  expectTypeOf(asyncGenerator).toEqualTypeOf<typeof asyncGenerator>()
+})

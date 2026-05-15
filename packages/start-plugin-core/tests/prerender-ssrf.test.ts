@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { prerender, validateAndNormalizePrerenderPages } from '../src/prerender'
+import { prerender, validateAndNormalizePrerenderPage } from '../src/prerender'
 
 vi.mock('../src/utils', async () => {
   const actual = await vi.importActual<any>('../src/utils')
@@ -122,18 +122,14 @@ describe('prerender pages validation', () => {
 
   it('preserves encoded path delimiters while decoding unicode path params', () => {
     expect(
-      validateAndNormalizePrerenderPages(
-        [
-          {
-            path: '/posts/%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD%2Fdocs%3Fdraft%23intro?tag=router+start',
-          },
-        ],
+      validateAndNormalizePrerenderPage(
+        {
+          path: '/posts/%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD%2Fdocs%3Fdraft%23intro?tag=router+start',
+        },
         new URL('http://localhost'),
       ),
-    ).toEqual([
-      {
-        path: '/posts/대한민국%2Fdocs%3Fdraft%23intro?tag=router+start',
-      },
-    ])
+    ).toEqual({
+      path: '/posts/대한민국%2Fdocs%3Fdraft%23intro?tag=router+start',
+    })
   })
 })

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { runPrerenderParams } from '../src/prerender-params-runner'
+import {
+  collectPrerenderParams,
+  runPrerenderParams,
+} from '../src/prerender-params-runner'
+import type { Page } from '../src/schema'
 
 const logger = {
   warn: vi.fn(),
@@ -19,7 +23,7 @@ function createRouteTree(optionsById: Record<string, any>) {
   } as any
 }
 
-describe('runPrerenderParams', () => {
+describe('collectPrerenderParams', () => {
   it('expands dynamic route params into pages', async () => {
     const routeTree = createRouteTree({
       '/posts/$slug': {
@@ -35,7 +39,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const pages = await runPrerenderParams({
+    const pages = await collectPrerenderParams({
       routeTree,
       pages: [],
       logger,
@@ -47,6 +51,49 @@ describe('runPrerenderParams', () => {
         sitemap: { priority: 0.7, lastmod: '2026-05-05' },
         prerender: { retryDelay: 100, retryCount: 1 },
       },
+    ])
+  })
+
+  it('supports sync, async, and generator prerenderParams returns', async () => {
+    const routeTree = createRouteTree({
+      '/sync/$slug': {
+        prerenderParams: () => [{ params: { slug: 'array' } }],
+      },
+      '/async/$slug': {
+        prerenderParams: async () => [{ params: { slug: 'promise' } }],
+      },
+      '/yield/$slug': {
+        *prerenderParams() {
+          yield { params: { slug: 'generator' } }
+        },
+      },
+      '/async-yield/$slug': {
+        async *prerenderParams() {
+          await Promise.resolve()
+          yield { params: { slug: 'async-generator' } }
+        },
+      },
+      '/promise-yield/$slug': {
+        async prerenderParams() {
+          return (function* () {
+            yield { params: { slug: 'promise-generator' } }
+          })()
+        },
+      },
+    })
+
+    const pages = await collectPrerenderParams({
+      routeTree,
+      pages: [],
+      logger,
+    })
+
+    expect(pages.map((page) => page.path)).toEqual([
+      '/sync/array',
+      '/async/promise',
+      '/yield/generator',
+      '/async-yield/async-generator',
+      '/promise-yield/promise-generator',
     ])
   })
 
@@ -71,7 +118,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const pages = await runPrerenderParams({
+    const pages = await collectPrerenderParams({
       routeTree,
       pages: [],
       logger,
@@ -100,7 +147,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const pages = await runPrerenderParams({
+    const pages = await collectPrerenderParams({
       routeTree,
       pages: [],
       logger,
@@ -126,7 +173,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const pages = await runPrerenderParams({
+    const pages = await collectPrerenderParams({
       routeTree,
       pages: [],
       logger,
@@ -182,7 +229,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const pages = await runPrerenderParams({
+    const pages = await collectPrerenderParams({
       routeTree,
       pages: [],
       logger,
@@ -242,7 +289,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const pages = await runPrerenderParams({
+    const pages = await collectPrerenderParams({
       routeTree,
       pages: [],
       logger,
@@ -267,7 +314,7 @@ describe('runPrerenderParams', () => {
     })
 
     await expect(
-      runPrerenderParams({
+      collectPrerenderParams({
         routeTree,
         pages: [],
         logger,
@@ -296,7 +343,7 @@ describe('runPrerenderParams', () => {
         },
       })
 
-      const result = runPrerenderParams({
+      const result = collectPrerenderParams({
         routeTree,
         pages: [],
         logger,
@@ -313,6 +360,63 @@ describe('runPrerenderParams', () => {
     }
   })
 
+  it('passes timeout aborts to async generators through the signal', async () => {
+    vi.useFakeTimers()
+    try {
+      const routeTree = createRouteTree({
+        '/products/$slug': {
+          async *prerenderParams({ signal }: any) {
+            yield { params: { slug: 'router' } }
+            await new Promise((_, reject) => {
+              signal.addEventListener('abort', () => reject(signal.reason))
+            })
+          },
+        },
+      })
+
+      const result = collectPrerenderParams({
+        routeTree,
+        pages: [],
+        logger,
+        prerenderParamsTimeout: 100,
+      })
+      const expectation = expect(result).rejects.toThrow(
+        'prerenderParams for route /products/$slug timed out',
+      )
+
+      await vi.advanceTimersByTimeAsync(100)
+      await expectation
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('closes sync iterators when a yielded entry is invalid', async () => {
+    const close = vi.fn(() => ({ done: true, value: undefined }))
+    const iterator = {
+      next: vi.fn(() => ({ done: false, value: {} })),
+      return: close,
+    }
+    const routeTree = createRouteTree({
+      '/products/$slug': {
+        prerenderParams: () => ({
+          [Symbol.iterator]: () => iterator,
+        }),
+      },
+    })
+
+    await expect(
+      collectPrerenderParams({
+        routeTree,
+        pages: [],
+        logger,
+      }),
+    ).rejects.toThrow(
+      'prerenderParams entry for route /products/$slug must include params',
+    )
+    expect(close).toHaveBeenCalledTimes(1)
+  })
+
   it('aborts prerenderParams when the process is interrupted', async () => {
     const prerenderParams = vi.fn(({ signal }) => {
       return new Promise((_, reject) => {
@@ -327,7 +431,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const result = runPrerenderParams({
+    const result = collectPrerenderParams({
       routeTree,
       pages: [],
       logger,
@@ -345,7 +449,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const pages = await runPrerenderParams({
+    const pages = await collectPrerenderParams({
       routeTree,
       pages: [{ path: '/about', sitemap: { priority: 0.5 } }],
       logger,
@@ -373,7 +477,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const pages = await runPrerenderParams({
+    const pages = await collectPrerenderParams({
       routeTree,
       pages: [
         {
@@ -394,7 +498,7 @@ describe('runPrerenderParams', () => {
     ])
   })
 
-  it('lets the first generated page take precedence over generated duplicates', async () => {
+  it('drops generated duplicates after the first emission', async () => {
     const routeTree = createRouteTree({
       '/posts/$slug': {
         sitemap: { changefreq: 'daily' },
@@ -413,7 +517,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const pages = await runPrerenderParams({
+    const pages = await collectPrerenderParams({
       routeTree,
       pages: [],
       logger,
@@ -425,7 +529,6 @@ describe('runPrerenderParams', () => {
         sitemap: {
           changefreq: 'daily',
           priority: 0.7,
-          lastmod: '2026-05-05',
         },
         prerender: { retryCount: 1 },
       },
@@ -442,7 +545,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const pages = await runPrerenderParams({
+    const pages = await collectPrerenderParams({
       routeTree,
       pages: [],
       logger,
@@ -460,7 +563,7 @@ describe('runPrerenderParams', () => {
       },
     })
 
-    const pages = await runPrerenderParams({
+    const pages = await collectPrerenderParams({
       routeTree,
       pages: [],
       logger,
@@ -480,7 +583,7 @@ describe('runPrerenderParams', () => {
     })
 
     await expect(
-      runPrerenderParams({
+      collectPrerenderParams({
         routeTree,
         pages: [],
         logger,
@@ -488,7 +591,7 @@ describe('runPrerenderParams', () => {
     ).rejects.toThrow('Missing prerenderParams values for route /posts/$slug')
   })
 
-  it('throws when prerenderParams does not return an array', async () => {
+  it('throws when prerenderParams does not return an array or iterable', async () => {
     const routeTree = createRouteTree({
       '/posts/$slug': {
         prerenderParams: () => undefined,
@@ -496,13 +599,13 @@ describe('runPrerenderParams', () => {
     })
 
     await expect(
-      runPrerenderParams({
+      collectPrerenderParams({
         routeTree,
         pages: [],
         logger,
       }),
     ).rejects.toThrow(
-      'prerenderParams for route /posts/$slug must return an array',
+      'prerenderParams for route /posts/$slug must return an array or iterable',
     )
   })
 
@@ -514,7 +617,7 @@ describe('runPrerenderParams', () => {
     })
 
     await expect(
-      runPrerenderParams({
+      collectPrerenderParams({
         routeTree,
         pages: [],
         logger,
@@ -535,7 +638,7 @@ describe('runPrerenderParams', () => {
     })
 
     await expect(
-      runPrerenderParams({
+      collectPrerenderParams({
         routeTree,
         pages: [],
         logger,
@@ -547,11 +650,125 @@ describe('runPrerenderParams', () => {
     const pages = [{ path: '/about', sitemap: { priority: 0.5 } }]
 
     await expect(
-      runPrerenderParams({
+      collectPrerenderParams({
         routeTree: undefined,
         pages,
         logger,
       }),
     ).resolves.toEqual(pages)
+  })
+})
+
+describe('runPrerenderParams streaming', () => {
+  it('emits generated pages before explicit pages', async () => {
+    const routeTree = createRouteTree({
+      '/posts/$slug': {
+        prerenderParams: () => [
+          { params: { slug: 'first' } },
+          { params: { slug: 'second' } },
+        ],
+      },
+    })
+
+    const emitted: Array<string> = []
+    await runPrerenderParams({
+      routeTree,
+      pages: [{ path: '/about' }],
+      logger,
+      onPage: (page) => {
+        emitted.push(page.path)
+      },
+    })
+
+    expect(emitted).toEqual([
+      '/posts/first',
+      '/posts/second',
+      '/about',
+    ])
+  })
+
+  it('streams entries from async generators without buffering them all', async () => {
+    const yields: Array<number> = []
+    const routeTree = createRouteTree({
+      '/posts/$slug': {
+        async *prerenderParams() {
+          for (let i = 0; i < 5; i++) {
+            yields.push(i)
+            yield { params: { slug: `post-${i}` } }
+          }
+        },
+      },
+    })
+
+    const seenAtEmission: Array<number> = []
+    await runPrerenderParams({
+      routeTree,
+      pages: [],
+      logger,
+      onPage: () => {
+        seenAtEmission.push(yields.length)
+      },
+    })
+
+    expect(seenAtEmission).toEqual([1, 2, 3, 4, 5])
+  })
+
+  it('awaits async onPage callbacks before pulling the next entry', async () => {
+    const order: Array<string> = []
+    const routeTree = createRouteTree({
+      '/posts/$slug': {
+        async *prerenderParams() {
+          order.push('yield-1')
+          yield { params: { slug: 'first' } }
+          order.push('yield-2')
+          yield { params: { slug: 'second' } }
+        },
+      },
+    })
+
+    await runPrerenderParams({
+      routeTree,
+      pages: [],
+      logger,
+      onPage: async (page) => {
+        order.push(`emit-${page.path}`)
+        await Promise.resolve()
+        order.push(`done-${page.path}`)
+      },
+    })
+
+    expect(order).toEqual([
+      'yield-1',
+      'emit-/posts/first',
+      'done-/posts/first',
+      'yield-2',
+      'emit-/posts/second',
+      'done-/posts/second',
+    ])
+  })
+
+  it('skips emission for filtered or duplicate generated pages', async () => {
+    const routeTree = createRouteTree({
+      '/posts/$slug': {
+        prerenderParams: () => [
+          { params: { slug: 'keep' } },
+          { params: { slug: 'drop' } },
+          { params: { slug: 'keep' } },
+        ],
+      },
+    })
+
+    const emitted: Array<Page> = []
+    await runPrerenderParams({
+      routeTree,
+      pages: [],
+      logger,
+      filter: (page) => page.path !== '/posts/drop',
+      onPage: (page) => {
+        emitted.push(page)
+      },
+    })
+
+    expect(emitted.map((page) => page.path)).toEqual(['/posts/keep'])
   })
 })
