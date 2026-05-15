@@ -228,6 +228,14 @@ export function startCompilerPlugin(
       configResolved(config) {
         root = config.root
       },
+      buildStart() {
+        if (this.environment.mode === 'build') {
+          // Vite app builds can run multiple Rolldown build phases with fresh
+          // plugin drivers. The compiler host closes over this hook context for
+          // load/resolve, so do not reuse it after a previous driver was closed.
+          compilers.delete(this.environment.name)
+        }
+      },
       transform: {
         filter: {
           id: {
