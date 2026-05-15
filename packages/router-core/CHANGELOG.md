@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.170.1
+
+### Patch Changes
+
+- Add runtime-configurable inline CSS and opt-in CSS URL templates for transformAssets. ([#7380](https://github.com/TanStack/router/pull/7380))
+
 ## 1.170.0
 
 ### Minor Changes
