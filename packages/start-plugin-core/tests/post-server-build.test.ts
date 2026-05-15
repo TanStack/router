@@ -7,10 +7,36 @@ vi.mock('@tanstack/start-server-core', () => ({
 }))
 
 vi.mock('../src/build-sitemap', () => ({
-  buildSitemap: vi.fn(),
+  createSitemapWriter: vi.fn(() => ({
+    write: () => {},
+    close: async () => {},
+  })),
 }))
 
 describe('postServerBuild', () => {
+  it('throws when sitemap is enabled without a host', async () => {
+    const prerender = vi.fn(async () => {})
+    const { postBuild } = await import('../src/post-build')
+
+    await expect(
+      postBuild({
+        startConfig: {
+          sitemap: { enabled: true, outputPath: 'sitemap.xml' },
+          pages: [{ path: '/guide/start' }],
+          router: { basepath: '' },
+          serverFns: { base: '' },
+          spa: { enabled: false },
+        } as any,
+        adapter: {
+          getClientOutputDirectory: () => '/client',
+          prerender,
+        },
+      }),
+    ).rejects.toThrow(
+      'Sitemap host is not set and required to build the sitemap.',
+    )
+  })
+
   it('does not enable prerendering when pages array is empty and prerender config is absent', async () => {
     const prerender = vi.fn(async () => {})
     const { postBuild } = await import('../src/post-build')
@@ -100,6 +126,7 @@ describe('postServerBuild', () => {
           enabled: true,
         }),
       }),
+      expect.anything(),
     )
   })
 
@@ -139,6 +166,7 @@ describe('postServerBuild', () => {
           autoStaticPathsDiscovery: false,
         }),
       }),
+      expect.anything(),
     )
   })
 })

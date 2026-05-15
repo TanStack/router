@@ -28,7 +28,7 @@ export async function postBuildWithRsbuild({
       getClientOutputDirectory() {
         return clientOutputDirectory
       },
-      async prerender(startConfig) {
+      async prerender(startConfig, options) {
         const handler = await createRsbuildPrerenderHandler({
           clientOutputDirectory,
           serverOutputDirectory,
@@ -39,6 +39,7 @@ export async function postBuildWithRsbuild({
         return prerender({
           startConfig,
           handler,
+          pageSink: options?.pageSink,
         })
       },
     },

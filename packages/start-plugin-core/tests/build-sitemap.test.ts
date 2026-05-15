@@ -1,8 +1,9 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { buildSitemap } from '../src/build-sitemap'
+import { createSitemapWriter } from '../src/build-sitemap'
+import type { Page } from '../src/schema'
 
 const tempDirs: Array<string> = []
 
@@ -12,30 +13,41 @@ afterEach(() => {
   }
 })
 
-describe('buildSitemap', () => {
-  it('includes generated page search params unless excluded', () => {
-    const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
-    tempDirs.push(publicDir)
+async function writeSitemap(opts: {
+  host: string
+  outputPath?: string
+  pages: Array<Page>
+}) {
+  const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
+  tempDirs.push(publicDir)
 
-    buildSitemap({
-      publicDir,
-      startConfig: {
-        sitemap: {
-          enabled: true,
-          host: 'https://example.com',
-          outputPath: 'sitemap.xml',
+  const outputPath = opts.outputPath ?? 'sitemap.xml'
+  const writer = createSitemapWriter({
+    host: opts.host,
+    outputPath,
+    publicDir,
+  })
+
+  for (const page of opts.pages) {
+    writer.write(page)
+  }
+  await writer.close()
+
+  return readFileSync(join(publicDir, outputPath), 'utf-8')
+}
+
+describe('createSitemapWriter', () => {
+  it('includes generated page search params unless excluded', async () => {
+    const sitemap = await writeSitemap({
+      host: 'https://example.com',
+      pages: [
+        { path: '/products/router?page=2&tag=start' },
+        {
+          path: '/products/draft?preview=true',
+          sitemap: { exclude: true },
         },
-        pages: [
-          { path: '/products/router?page=2&tag=start' },
-          {
-            path: '/products/draft?preview=true',
-            sitemap: { exclude: true },
-          },
-        ],
-      } as any,
+      ],
     })
-
-    const sitemap = readFileSync(join(publicDir, 'sitemap.xml'), 'utf-8')
 
     expect(sitemap).toContain(
       '<loc>https://example.com/products/router?page=2&amp;tag=start</loc>',
@@ -43,39 +55,26 @@ describe('buildSitemap', () => {
     expect(sitemap).not.toContain('preview=true')
   })
 
-  it('preserves sitemap metadata for query URLs without duplicating host slashes', () => {
-    const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
-    tempDirs.push(publicDir)
-
-    buildSitemap({
-      publicDir,
-      startConfig: {
-        sitemap: {
-          enabled: true,
-          host: 'https://example.com/',
-          outputPath: 'sitemap.xml',
-        },
-        pages: [
-          {
-            path: '/blog/router?tag=router+start',
-            sitemap: {
-              lastmod: new Date('2026-05-05T12:30:00.000Z'),
-              priority: 0.8,
-              changefreq: 'weekly',
-              alternateRefs: [
-                {
-                  href: 'https://example.com/ko/blog/router',
-                  hreflang: 'ko',
-                },
-              ],
-            },
+  it('preserves sitemap metadata for query URLs without duplicating host slashes', async () => {
+    const sitemap = await writeSitemap({
+      host: 'https://example.com/',
+      pages: [
+        {
+          path: '/blog/router?tag=router+start',
+          sitemap: {
+            lastmod: new Date('2026-05-05T12:30:00.000Z'),
+            priority: 0.8,
+            changefreq: 'weekly',
+            alternateRefs: [
+              {
+                href: 'https://example.com/ko/blog/router',
+                hreflang: 'ko',
+              },
+            ],
           },
-        ],
-      } as any,
+        },
+      ],
     })
-
-    const sitemap = readFileSync(join(publicDir, 'sitemap.xml'), 'utf-8')
-    const pagesJson = readFileSync(join(publicDir, 'pages.json'), 'utf-8')
 
     expect(sitemap).toContain(
       '<loc>https://example.com/blog/router?tag=router+start</loc>',
@@ -86,108 +85,50 @@ describe('buildSitemap', () => {
     expect(sitemap).toContain('href="https://example.com/ko/blog/router"')
     expect(sitemap).toContain('hreflang="ko"')
     expect(sitemap).not.toContain('https://example.com//blog/router')
-    expect(pagesJson).toContain('/blog/router?tag=router+start')
   })
 
-  it('preserves a deployment base path from the sitemap host', () => {
-    const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
-    tempDirs.push(publicDir)
-
-    buildSitemap({
-      publicDir,
-      startConfig: {
-        sitemap: {
-          enabled: true,
-          host: 'https://example.com/docs/',
-          outputPath: 'sitemap.xml',
-        },
-        pages: [{ path: '/guide/start' }],
-      } as any,
+  it('preserves a deployment base path from the sitemap host', async () => {
+    const sitemap = await writeSitemap({
+      host: 'https://example.com/docs/',
+      pages: [{ path: '/guide/start' }],
     })
-
-    const sitemap = readFileSync(join(publicDir, 'sitemap.xml'), 'utf-8')
 
     expect(sitemap).toContain('<loc>https://example.com/docs/guide/start</loc>')
     expect(sitemap).not.toContain('https://example.com/docs//guide/start')
   })
 
-  it('skips sitemap generation when pages exist but sitemap config is omitted', () => {
-    const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
-    tempDirs.push(publicDir)
-
-    buildSitemap({
-      publicDir,
-      startConfig: {
-        pages: [{ path: '/guide/start' }],
-      } as any,
-    })
-
-    expect(existsSync(join(publicDir, 'sitemap.xml'))).toBe(false)
-    expect(existsSync(join(publicDir, 'pages.json'))).toBe(false)
-  })
-
-  it('throws when sitemap is explicitly enabled without a host', () => {
-    const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
-    tempDirs.push(publicDir)
-
-    expect(() =>
-      buildSitemap({
-        publicDir,
-        startConfig: {
+  it('writes advanced sitemap metadata', async () => {
+    const sitemap = await writeSitemap({
+      host: 'https://example.com',
+      pages: [
+        {
+          path: '/news/router-launch',
           sitemap: {
-            enabled: true,
-            outputPath: 'sitemap.xml',
-          },
-          pages: [{ path: '/guide/start' }],
-        } as any,
-      }),
-    ).toThrow('Sitemap host is not set and required to build the sitemap.')
-  })
-
-  it('writes advanced sitemap metadata', () => {
-    const publicDir = mkdtempSync(join(tmpdir(), 'tanstack-start-sitemap-'))
-    tempDirs.push(publicDir)
-
-    buildSitemap({
-      publicDir,
-      startConfig: {
-        sitemap: {
-          enabled: true,
-          host: 'https://example.com',
-          outputPath: 'sitemap.xml',
-        },
-        pages: [
-          {
-            path: '/news/router-launch',
-            sitemap: {
-              alternateRefs: [
-                {
-                  href: 'https://example.com/ko/news/router-launch',
-                  hreflang: 'ko',
-                },
-              ],
-              images: [
-                {
-                  loc: 'https://example.com/router.png',
-                  title: 'Router',
-                  caption: 'TanStack Router',
-                },
-              ],
-              news: {
-                publication: {
-                  name: 'TanStack',
-                  language: 'en',
-                },
-                publicationDate: '2026-05-05',
-                title: 'Router Launch',
+            alternateRefs: [
+              {
+                href: 'https://example.com/ko/news/router-launch',
+                hreflang: 'ko',
               },
+            ],
+            images: [
+              {
+                loc: 'https://example.com/router.png',
+                title: 'Router',
+                caption: 'TanStack Router',
+              },
+            ],
+            news: {
+              publication: {
+                name: 'TanStack',
+                language: 'en',
+              },
+              publicationDate: '2026-05-05',
+              title: 'Router Launch',
             },
           },
-        ],
-      } as any,
+        },
+      ],
     })
-
-    const sitemap = readFileSync(join(publicDir, 'sitemap.xml'), 'utf-8')
 
     expect(sitemap).toContain(
       'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"',

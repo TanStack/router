@@ -1,6 +1,7 @@
 import type { AnyRoute } from '@tanstack/router-core'
 import type {
   PrerenderParamsEntry,
+  PrerenderParamsResult,
   RoutePrerenderOptions,
   RouteSitemapOptions,
 } from '@tanstack/start-client-core'
@@ -15,8 +16,10 @@ export interface PrerenderRouteOptions {
     routePath: string
     signal: AbortSignal
   }) =>
-    | ReadonlyArray<PrerenderParamsEntry<Record<string, unknown>>>
-    | Promise<ReadonlyArray<PrerenderParamsEntry<Record<string, unknown>>>>
+    | PrerenderParamsResult<PrerenderParamsEntry<Record<string, unknown>>>
+    | Promise<
+        PrerenderParamsResult<PrerenderParamsEntry<Record<string, unknown>>>
+      >
   prerender?: RoutePrerenderOptions
   sitemap?: RouteSitemapOptions
 }

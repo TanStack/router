@@ -19,7 +19,7 @@ import { Route as EditingARouteImport } from './routes/editing-a'
 import { Route as ComponentTypesTestRouteImport } from './routes/component-types-test'
 import { Route as AnchorRouteImport } from './routes/anchor'
 import { Route as LayoutRouteImport } from './routes/_layout'
-import { Route as Char45824Char54620Char48124Char44397RouteRouteImport } from './routes/대한민국/route'
+import { Route as Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteImport } from './routes/대한민국/route'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as NonNestedRouteRouteImport } from './routes/non-nested/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -47,8 +47,8 @@ import { Route as NonNestedDeepRouteRouteImport } from './routes/non-nested/deep
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
 import { Route as ParamsPsWildcardIndexRouteImport } from './routes/params-ps/wildcard/index'
 import { Route as ParamsPsNamedIndexRouteImport } from './routes/params-ps/named/index'
-import { Route as Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport } from './routes/대한민국/🚀.$id'
-import { Route as Char45824Char54620Char48124Char44397WildcardSplatRouteImport } from './routes/대한민국/wildcard.$'
+import { Route as Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520Char55357Char56960IdRouteImport } from './routes/대한민국/🚀.$id'
+import { Route as Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520WildcardSplatRouteImport } from './routes/대한민국/wildcard.$'
 import { Route as TransitionTypingCreateResourceRouteImport } from './routes/transition/typing/create-resource'
 import { Route as TransitionCountCreateResourceRouteImport } from './routes/transition/count/create-resource'
 import { Route as RelativeUseNavigateRelativeUseNavigateBRouteImport } from './routes/relative/useNavigate/relative-useNavigate-b'
@@ -164,12 +164,14 @@ const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char45824Char54620Char48124Char44397RouteRoute =
-  Char45824Char54620Char48124Char44397RouteRouteImport.update({
-    id: '/대한민국',
-    path: '/대한민국',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRoute =
+  Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteImport.update(
+    {
+      id: '/대한민국',
+      path: '/대한민국',
+      getParentRoute: () => rootRouteImport,
+    } as any,
+  )
 const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
   id: '/search-params',
   path: '/search-params',
@@ -307,18 +309,24 @@ const ParamsPsNamedIndexRoute = ParamsPsNamedIndexRouteImport.update({
   path: '/params-ps/named/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char45824Char54620Char48124Char44397Char55357Char56960IdRoute =
-  Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport.update({
-    id: '/🚀/$id',
-    path: '/🚀/$id',
-    getParentRoute: () => Char45824Char54620Char48124Char44397RouteRoute,
-  } as any)
-const Char45824Char54620Char48124Char44397WildcardSplatRoute =
-  Char45824Char54620Char48124Char44397WildcardSplatRouteImport.update({
-    id: '/wildcard/$',
-    path: '/wildcard/$',
-    getParentRoute: () => Char45824Char54620Char48124Char44397RouteRoute,
-  } as any)
+const Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520Char55357Char56960IdRoute =
+  Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520Char55357Char56960IdRouteImport.update(
+    {
+      id: '/🚀/$id',
+      path: '/🚀/$id',
+      getParentRoute: () =>
+        Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRoute,
+    } as any,
+  )
+const Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520WildcardSplatRoute =
+  Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520WildcardSplatRouteImport.update(
+    {
+      id: '/wildcard/$',
+      path: '/wildcard/$',
+      getParentRoute: () =>
+        Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRoute,
+    } as any,
+  )
 const TransitionTypingCreateResourceRoute =
   TransitionTypingCreateResourceRouteImport.update({
     id: '/transition/typing/create-resource',
@@ -685,7 +693,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
-  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
+  '/대한민국': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
@@ -747,8 +755,8 @@ export interface FileRoutesByFullPath {
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
   '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
   '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
-  '/대한민국/wildcard/$': typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
-  '/대한민국/🚀/$id': typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
+  '/대한민국/wildcard/$': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520WildcardSplatRoute
+  '/대한민국/🚀/$id': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520Char55357Char56960IdRoute
   '/params-ps/named/': typeof ParamsPsNamedIndexRoute
   '/params-ps/wildcard/': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
@@ -788,7 +796,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/non-nested': typeof NonNestedRouteRouteWithChildren
-  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
+  '/대한민국': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
@@ -843,8 +851,8 @@ export interface FileRoutesByTo {
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
   '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
   '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
-  '/대한민국/wildcard/$': typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
-  '/대한민국/🚀/$id': typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
+  '/대한민국/wildcard/$': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520WildcardSplatRoute
+  '/대한민국/🚀/$id': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520Char55357Char56960IdRoute
   '/params-ps/named': typeof ParamsPsNamedIndexRoute
   '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
@@ -884,7 +892,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
-  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
+  '/대한민국': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
@@ -949,8 +957,8 @@ export interface FileRoutesById {
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
   '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
   '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
-  '/대한민국/wildcard/$': typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
-  '/대한민국/🚀/$id': typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
+  '/대한민국/wildcard/$': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520WildcardSplatRoute
+  '/대한민국/🚀/$id': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520Char55357Char56960IdRoute
   '/params-ps/named/': typeof ParamsPsNamedIndexRoute
   '/params-ps/wildcard/': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
@@ -993,7 +1001,7 @@ export interface FileRouteTypes {
     | '/'
     | '/non-nested'
     | '/search-params'
-    | '/대한민국'
+    | '/대한민국'
     | '/anchor'
     | '/component-types-test'
     | '/editing-a'
@@ -1055,8 +1063,8 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/relative-useNavigate-b'
     | '/transition/count/create-resource'
     | '/transition/typing/create-resource'
-    | '/대한민국/wildcard/$'
-    | '/대한민국/🚀/$id'
+    | '/대한민국/wildcard/$'
+    | '/대한민국/🚀/$id'
     | '/params-ps/named/'
     | '/params-ps/wildcard/'
     | '/redirect/$target/'
@@ -1096,7 +1104,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/non-nested'
-    | '/대한민국'
+    | '/대한민국'
     | '/anchor'
     | '/component-types-test'
     | '/editing-a'
@@ -1151,8 +1159,8 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/relative-useNavigate-b'
     | '/transition/count/create-resource'
     | '/transition/typing/create-resource'
-    | '/대한민국/wildcard/$'
-    | '/대한민국/🚀/$id'
+    | '/대한민국/wildcard/$'
+    | '/대한민국/🚀/$id'
     | '/params-ps/named'
     | '/params-ps/wildcard'
     | '/redirect/$target'
@@ -1191,7 +1199,7 @@ export interface FileRouteTypes {
     | '/'
     | '/non-nested'
     | '/search-params'
-    | '/대한민국'
+    | '/대한민국'
     | '/_layout'
     | '/anchor'
     | '/component-types-test'
@@ -1256,8 +1264,8 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/relative-useNavigate-b'
     | '/transition/count/create-resource'
     | '/transition/typing/create-resource'
-    | '/대한민국/wildcard/$'
-    | '/대한민국/🚀/$id'
+    | '/대한민국/wildcard/$'
+    | '/대한민국/🚀/$id'
     | '/params-ps/named/'
     | '/params-ps/wildcard/'
     | '/redirect/$target/'
@@ -1299,7 +1307,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NonNestedRouteRoute: typeof NonNestedRouteRouteWithChildren
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
-  Char45824Char54620Char48124Char44397RouteRoute: typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
+  Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRoute: typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
   ComponentTypesTestRoute: typeof ComponentTypesTestRoute
@@ -1413,11 +1421,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/대한민국': {
-      id: '/대한민국'
-      path: '/대한민국'
-      fullPath: '/대한민국'
-      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteRouteImport
+    '/대한민국': {
+      id: '/대한민국'
+      path: '/대한민국'
+      fullPath: '/대한민국'
+      preLoaderRoute: typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search-params': {
@@ -1609,19 +1617,19 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ParamsPsNamedIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/대한민국/🚀/$id': {
-      id: '/대한민국/🚀/$id'
+    '/대한민국/🚀/$id': {
+      id: '/대한민국/🚀/$id'
       path: '/🚀/$id'
-      fullPath: '/대한민국/🚀/$id'
-      preLoaderRoute: typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport
-      parentRoute: typeof Char45824Char54620Char48124Char44397RouteRoute
+      fullPath: '/대한민국/🚀/$id'
+      preLoaderRoute: typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520Char55357Char56960IdRouteImport
+      parentRoute: typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRoute
     }
-    '/대한민국/wildcard/$': {
-      id: '/대한민국/wildcard/$'
+    '/대한민국/wildcard/$': {
+      id: '/대한민국/wildcard/$'
       path: '/wildcard/$'
-      fullPath: '/대한민국/wildcard/$'
-      preLoaderRoute: typeof Char45824Char54620Char48124Char44397WildcardSplatRouteImport
-      parentRoute: typeof Char45824Char54620Char48124Char44397RouteRoute
+      fullPath: '/대한민국/wildcard/$'
+      preLoaderRoute: typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520WildcardSplatRouteImport
+      parentRoute: typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRoute
     }
     '/transition/typing/create-resource': {
       id: '/transition/typing/create-resource'
@@ -2298,22 +2306,22 @@ const SearchParamsRouteRouteChildren: SearchParamsRouteRouteChildren = {
 const SearchParamsRouteRouteWithChildren =
   SearchParamsRouteRoute._addFileChildren(SearchParamsRouteRouteChildren)
 
-interface Char45824Char54620Char48124Char44397RouteRouteChildren {
-  Char45824Char54620Char48124Char44397WildcardSplatRoute: typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
-  Char45824Char54620Char48124Char44397Char55357Char56960IdRoute: typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
+interface Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteChildren {
+  Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520WildcardSplatRoute: typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520WildcardSplatRoute
+  Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520Char55357Char56960IdRoute: typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520Char55357Char56960IdRoute
 }
 
-const Char45824Char54620Char48124Char44397RouteRouteChildren: Char45824Char54620Char48124Char44397RouteRouteChildren =
+const Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteChildren: Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteChildren =
   {
-    Char45824Char54620Char48124Char44397WildcardSplatRoute:
-      Char45824Char54620Char48124Char44397WildcardSplatRoute,
-    Char45824Char54620Char48124Char44397Char55357Char56960IdRoute:
-      Char45824Char54620Char48124Char44397Char55357Char56960IdRoute,
+    Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520WildcardSplatRoute:
+      Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520WildcardSplatRoute,
+    Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520Char55357Char56960IdRoute:
+      Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520Char55357Char56960IdRoute,
   }
 
-const Char45824Char54620Char48124Char44397RouteRouteWithChildren =
-  Char45824Char54620Char48124Char44397RouteRoute._addFileChildren(
-    Char45824Char54620Char48124Char44397RouteRouteChildren,
+const Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteWithChildren =
+  Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRoute._addFileChildren(
+    Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteChildren,
   )
 
 interface LayoutLayout2RouteChildren {
@@ -2506,8 +2514,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NonNestedRouteRoute: NonNestedRouteRouteWithChildren,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
-  Char45824Char54620Char48124Char44397RouteRoute:
-    Char45824Char54620Char48124Char44397RouteRouteWithChildren,
+  Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRoute:
+    Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520RouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,
   ComponentTypesTestRoute: ComponentTypesTestRoute,

@@ -29,7 +29,7 @@ declare module '@tanstack/router-core' {
     prerenderParams?: (
       ctx: PrerenderParamsContext<TPath>,
     ) => Awaitable<
-      ReadonlyArray<
+      PrerenderParamsResult<
         PrerenderParamsEntry<
           Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>,
           Expand<ResolveFullSearchSchemaInput<TParentRoute, TSearchValidator>>
@@ -45,6 +45,11 @@ export interface PrerenderParamsContext<TPath extends string = string> {
   routePath: TPath
   signal: AbortSignal
 }
+
+export type PrerenderParamsResult<TEntry> =
+  | ReadonlyArray<TEntry>
+  | Iterable<TEntry>
+  | AsyncIterable<TEntry>
 
 type PrerenderParamsSearch<TSearch> = unknown extends TSearch
   ? { search?: Record<string, unknown> }

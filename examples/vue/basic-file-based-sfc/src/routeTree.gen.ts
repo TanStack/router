@@ -8,7 +8,7 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { lazyRouteComponent } from '@tanstack/vue-router'
+import { createFileRoute, lazyRouteComponent } from '@tanstack/vue-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
@@ -32,17 +32,28 @@ import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layo
 import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
 import { Route as groupLayoutInsidelayoutRouteImport } from './routes/(group)/_layout.insidelayout'
 
+const Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520ComponentRouteImport =
+  createFileRoute('/대한민국')()
+
+const Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520ComponentRoute =
+  Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520ComponentRouteImport.update(
+    {
+      id: '/대한민국',
+      path: '/대한민국',
+      getParentRoute: () => rootRouteImport,
+    } as any,
+  ).update({
+    component: lazyRouteComponent(
+      () => import('./routes/대한민국.component.vue'),
+      'default',
+    ),
+  })
 const Char45824Char54620Char48124Char44397Route =
   Char45824Char54620Char48124Char44397RouteImport.update({
     id: '/대한민국',
     path: '/대한민국',
     getParentRoute: () => rootRouteImport,
-  } as any).update({
-    component: lazyRouteComponent(
-      () => import('./routes/대한민국.component.vue'),
-      'default',
-    ),
-  })
+  } as any)
 const RemountDepsRoute = RemountDepsRouteImport.update({
   id: '/remountDeps',
   path: '/remountDeps',
@@ -255,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
+  '/대한민국': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520ComponentRoute
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
@@ -273,6 +285,7 @@ export interface FileRoutesByTo {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
+  '/대한민국': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520ComponentRoute
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
@@ -294,6 +307,7 @@ export interface FileRoutesById {
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
+  '/대한민국': typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520ComponentRoute
   '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/(group)/_layout': typeof groupLayoutRouteWithChildren
   '/(group)/inside': typeof groupInsideRoute
@@ -317,6 +331,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/remountDeps'
     | '/대한민국'
+    | '/대한민국'
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
@@ -335,6 +350,7 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/remountDeps'
     | '/대한민국'
+    | '/대한민국'
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
@@ -355,6 +371,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/remountDeps'
     | '/대한민국'
+    | '/대한민국'
     | '/(another-group)/onlyrouteinside'
     | '/(group)/_layout'
     | '/(group)/inside'
@@ -378,6 +395,7 @@ export interface RootRouteChildren {
   PostsRoute: typeof PostsRouteWithChildren
   RemountDepsRoute: typeof RemountDepsRoute
   Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
+  Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520ComponentRoute: typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520ComponentRoute
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupLayoutRoute: typeof groupLayoutRouteWithChildren
   groupInsideRoute: typeof groupInsideRoute
@@ -388,6 +406,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/vue-router' {
   interface FileRoutesByPath {
+    '/대한민국': {
+      id: '/대한민국'
+      path: '/대한민국'
+      fullPath: '/대한민국'
+      preLoaderRoute: typeof Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520ComponentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/대한민국': {
       id: '/대한민국'
       path: '/대한민국'
@@ -590,6 +615,8 @@ const rootRouteChildren: RootRouteChildren = {
   RemountDepsRoute: RemountDepsRoute,
   Char45824Char54620Char48124Char44397Route:
     Char45824Char54620Char48124Char44397Route,
+  Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520ComponentRoute:
+    Char4355Char4450Char4370Char4449Char4523Char4358Char4469Char4523Char4352Char4462Char4520ComponentRoute,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupLayoutRoute: groupLayoutRouteWithChildren,
   groupInsideRoute: groupInsideRoute,
