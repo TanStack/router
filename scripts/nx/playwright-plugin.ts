@@ -232,12 +232,12 @@ function buildModeTargets(
     const shardCount = modeMetadata.shards ?? 1
     const distDir = `dist-${modeMetadata.toolchain}-${modeMetadata.mode}${variantPathSuffix}`
     const modeEnv = {
+      ...modeMetadata.env,
       MODE: modeMetadata.mode,
       TOOLCHAIN: modeMetadata.toolchain,
       E2E_TOOLCHAIN: modeMetadata.toolchain,
       E2E_DIST: distDir,
       E2E_DIST_DIR: distDir,
-      ...modeMetadata.env,
     }
     const modePortKey = `${packageName}-${modeMetadata.toolchain}-${modeMetadata.mode}${variantPathSuffix}`
     const modeDescription = `${modeMetadata.toolchain}/${modeMetadata.mode}${modeMetadata.name ? `/${modeMetadata.name}` : ''}`
