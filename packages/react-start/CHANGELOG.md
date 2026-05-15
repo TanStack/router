@@ -1,5 +1,23 @@
 # @tanstack/react-start
 
+## 1.168.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- Updated dependencies [[`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14), [`5ae2ae5`](https://github.com/TanStack/router/commit/5ae2ae5e0f8ce32e02667a482ea9be52a6150240)]:
+  - @tanstack/react-router@1.170.0
+  - @tanstack/react-start-client@1.167.0
+  - @tanstack/react-start-rsc@0.1.0
+  - @tanstack/react-start-server@1.167.0
+  - @tanstack/router-utils@1.162.0
+  - @tanstack/start-client-core@1.169.0
+  - @tanstack/start-plugin-core@1.170.0
+  - @tanstack/start-server-core@1.168.0
+
 ## 1.167.65
 
 ### Patch Changes

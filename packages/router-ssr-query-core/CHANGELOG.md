@@ -1,5 +1,11 @@
 # @tanstack/router-ssr-query-core
 
+## 1.169.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
 ## 1.168.0
 
 ### Minor Changes

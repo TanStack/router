@@ -1,5 +1,17 @@
 # @tanstack/solid-router
 
+## 1.170.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- Updated dependencies [[`b1c061a`](https://github.com/TanStack/router/commit/b1c061aff9185cdf5fdc08c0136382a9dce0302f), [`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14)]:
+  - @tanstack/router-core@1.170.0
+  - @tanstack/history@1.162.0
+
 ## 1.169.2
 
 ### Patch Changes

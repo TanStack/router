@@ -1,5 +1,11 @@
 # @tanstack/eslint-plugin-start
 
+## 0.1.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
 ## 0.0.1
 
 ### Patch Changes

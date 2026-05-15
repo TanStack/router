@@ -1,5 +1,23 @@
 # @tanstack/start-plugin-core
 
+## 1.170.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- add createCsrfMiddleware based on Sec-Fetch-Site header, auto-apply to unconfigured servers, warn for others ([#7373](https://github.com/TanStack/router/pull/7373))
+
+- Updated dependencies [[`b1c061a`](https://github.com/TanStack/router/commit/b1c061aff9185cdf5fdc08c0136382a9dce0302f), [`038cd12`](https://github.com/TanStack/router/commit/038cd123b70bc6154d75abb6404a744c376f8f6a), [`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14), [`5ae2ae5`](https://github.com/TanStack/router/commit/5ae2ae5e0f8ce32e02667a482ea9be52a6150240)]:
+  - @tanstack/router-core@1.170.0
+  - @tanstack/router-generator@1.167.0
+  - @tanstack/router-plugin@1.168.0
+  - @tanstack/router-utils@1.162.0
+  - @tanstack/start-client-core@1.169.0
+  - @tanstack/start-server-core@1.168.0
+
 ## 1.169.20
 
 ### Patch Changes
