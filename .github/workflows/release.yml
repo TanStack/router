@@ -20,53 +20,21 @@ permissions:
 jobs:
   release:
     name: Release
-    if: "!contains(github.event.head_commit.message, 'ci: changeset release')"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-          persist-credentials: true # release job pushes version changes
-      - name: Check for changesets
-        id: changesets
-        run: |
-          CHANGESET_FILES=$(ls .changeset/*.md 2>/dev/null | grep -v README.md || true)
-          if [ -z "$CHANGESET_FILES" ]; then
-            echo "has_changesets=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_changesets=true" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Start Nx Agents
-        if: steps.changesets.outputs.has_changesets == 'true'
-        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
+          persist-credentials: true # changesets/action pushes Release PR commits
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
-      - name: Run Tests
-        if: steps.changesets.outputs.has_changesets == 'true'
-        run: pnpm run test:ci --parallel=3
-      - name: Stop Nx Agents
-        if: ${{ always() && steps.changesets.outputs.has_changesets == 'true' }}
-        run: npx nx-cloud stop-all-agents
+      - name: Run Build
+        run: pnpm run build:all
       - name: Enter Pre-Release Mode
         if: "contains(github.ref_name, '-pre') && !hashFiles('.changeset/pre.json')"
         run: pnpm changeset pre enter pre
-      - name: Version Packages
-        run: pnpm run changeset:version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Commit and Push Version Changes
-        id: commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          if git commit -m "ci: changeset release"; then
-            git push origin "HEAD:${GITHUB_REF_NAME}"
-            echo "committed=true" >> "$GITHUB_OUTPUT"
-          fi
       - name: Determine dist-tag
-        if: steps.commit.outputs.committed == 'true'
         id: dist-tag
         run: |
           BRANCH="${GITHUB_REF_NAME}"
@@ -77,18 +45,18 @@ jobs:
           else
             echo "latest=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Publish Packages
-        if: steps.commit.outputs.committed == 'true'
+      - name: Create Release Pull Request or Publish
+        id: changesets
+        uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
+        with:
+          version: pnpm run changeset:version
+          publish: pnpm run changeset:publish ${{ steps.dist-tag.outputs.tag && format('--tag {0}', steps.dist-tag.outputs.tag) }}
+          title: 'ci: Version Packages'
+          commit: 'ci: changeset release'
         env:
-          DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
-        run: |
-          if [ -n "$DIST_TAG" ]; then
-            pnpm run changeset:publish --tag "$DIST_TAG"
-          else
-            pnpm run changeset:publish
-          fi
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create GitHub Release
-        if: steps.commit.outputs.committed == 'true'
+        if: steps.changesets.outputs.published == 'true'
         run: node scripts/create-github-release.mjs ${{ steps.dist-tag.outputs.prerelease == 'true' && '--prerelease' }} ${{ steps.dist-tag.outputs.latest == 'true' && '--latest' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
