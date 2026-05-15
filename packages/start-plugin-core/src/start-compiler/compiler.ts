@@ -40,6 +40,8 @@ type Binding =
       resolvedKind?: Kind
     }
 
+type ImportBinding = Extract<Binding, { type: 'import' }>
+
 type Kind = 'None' | `Root` | `Builder` | LookupKind
 
 export type BuiltInLookupKind =
@@ -270,6 +272,12 @@ export type LookupConfig = {
   kind: LookupKind | 'Root' // 'Root' for builder pattern, LookupKind for direct call
 }
 
+interface ExportResolution {
+  moduleInfo: ModuleInfo
+  localName: string
+  binding: Binding
+}
+
 interface ModuleInfo {
   id: string
   bindings: Map<string, Binding>
@@ -463,7 +471,7 @@ export class StartCompiler {
   private resolveIdCache = new Map<string, string | null>()
   private exportResolutionCache = new Map<
     string,
-    Map<string, { moduleInfo: ModuleInfo; binding: Binding } | null>
+    Map<string, ExportResolution | null>
   >()
   // Fast lookup for direct imports from known libraries (e.g., '@tanstack/react-start')
   // Maps: libName → (exportName → Kind)
@@ -702,10 +710,12 @@ export class StartCompiler {
     this.knownRootImports.set(
       '@tanstack/start-client-core',
       new Map<string, Kind>([
+        ['createServerFn', 'Root'],
         ['createIsomorphicFn', 'IsomorphicFn'],
         ['createServerOnlyFn', 'ServerOnlyFn'],
         ['createClientOnlyFn', 'ClientOnlyFn'],
         ['createMiddleware', 'Middleware'],
+        ['createStart', 'Root'],
       ]),
     )
 
@@ -1456,7 +1466,7 @@ export class StartCompiler {
 
     // TODO improve cycle detection? should we throw here instead of returning 'None'?
     // prevent cycles
-    const vKey = `${id}:${ident}`
+    const vKey = `${cleanId(id)}:${ident}`
     if (visited.has(vKey)) {
       return 'None'
     }
@@ -1475,7 +1485,7 @@ export class StartCompiler {
     moduleInfo: ModuleInfo,
     exportName: string,
     visitedModules = new Set<string>(),
-  ): Promise<{ moduleInfo: ModuleInfo; binding: Binding } | undefined> {
+  ): Promise<ExportResolution | undefined> {
     const isBuildMode = this.mode === 'build'
 
     // Check cache first (only for top-level calls in build mode)
@@ -1500,7 +1510,7 @@ export class StartCompiler {
     if (localBindingName) {
       const binding = moduleInfo.bindings.get(localBindingName)
       if (binding) {
-        const result = { moduleInfo, binding }
+        const result = { moduleInfo, localName: localBindingName, binding }
         // Cache the result (build mode only)
         if (isBuildMode) {
           this.getExportResolutionCache(moduleInfo.id).set(exportName, result)
@@ -1549,6 +1559,155 @@ export class StartCompiler {
     return undefined
   }
 
+  private async resolveBindingTarget(
+    resolution: ExportResolution,
+    visited = new Set<string>(),
+  ): Promise<ExportResolution | undefined> {
+    const key = `${cleanId(resolution.moduleInfo.id)}:${resolution.localName}`
+    if (visited.has(key)) {
+      return undefined
+    }
+    visited.add(key)
+
+    if (resolution.binding.type !== 'import') {
+      return resolution
+    }
+
+    const target = await this.resolveIdCached(
+      resolution.binding.source,
+      resolution.moduleInfo.id,
+    )
+    if (!target) {
+      return undefined
+    }
+
+    const importedModule = await this.getModuleInfo(target)
+    const found = await this.findExportInModule(
+      importedModule,
+      resolution.binding.importedName,
+    )
+    if (!found) {
+      return undefined
+    }
+
+    return this.resolveBindingTarget(found, visited)
+  }
+
+  private async resolveKnownImportKind(
+    binding: ImportBinding,
+    resolved?: ExportResolution,
+  ): Promise<Kind> {
+    const directKind =
+      this.knownRootImports.get(binding.source)?.get(binding.importedName) ??
+      'None'
+    if (directKind !== 'None') {
+      return directKind
+    }
+
+    if (!resolved) {
+      return 'None'
+    }
+
+    for (const [source, exports] of this.knownRootImports) {
+      const kind = exports.get(binding.importedName)
+      if (!kind) {
+        continue
+      }
+
+      let targetId: string | null
+      try {
+        targetId = await this.resolveIdCached(source, resolved.moduleInfo.id)
+      } catch {
+        continue
+      }
+
+      if (!targetId) {
+        continue
+      }
+
+      try {
+        const rootModule = await this.getModuleInfo(targetId)
+        const found = await this.findExportInModule(
+          rootModule,
+          binding.importedName,
+        )
+        const target = found
+          ? ((await this.resolveBindingTarget(found)) ?? found)
+          : undefined
+
+        // Match by resolved binding identity, not by export name alone.
+        if (
+          target &&
+          cleanId(resolved.moduleInfo.id) === cleanId(target.moduleInfo.id) &&
+          resolved.localName === target.localName
+        ) {
+          return kind
+        }
+      } catch {
+        continue
+      }
+    }
+
+    return 'None'
+  }
+
+  private async resolveImportKind(
+    binding: ImportBinding,
+    fileId: string,
+    visited: Set<string>,
+  ): Promise<Kind> {
+    const directKnownKind = await this.resolveKnownImportKind(binding)
+    if (directKnownKind !== 'None') {
+      binding.resolvedKind = directKnownKind
+      return directKnownKind
+    }
+
+    if (binding.importedName === '*') {
+      return 'None'
+    }
+
+    const target = await this.resolveIdCached(binding.source, fileId)
+    if (!target) {
+      return 'None'
+    }
+
+    const importedModule = await this.getModuleInfo(target)
+    const found = await this.findExportInModule(
+      importedModule,
+      binding.importedName,
+    )
+    if (!found) {
+      return 'None'
+    }
+
+    const knownKind = await this.resolveKnownImportKind(binding, found)
+    if (knownKind !== 'None') {
+      found.binding.resolvedKind = knownKind
+      binding.resolvedKind = knownKind
+      return knownKind
+    }
+
+    if (found.binding.resolvedKind) {
+      return found.binding.resolvedKind
+    }
+
+    // Import aliases can form cycles, e.g. A re-exports from B while B
+    // re-exports from A. Track the exported binding before following it.
+    const vKey = `${cleanId(found.moduleInfo.id)}:${found.localName}`
+    if (visited.has(vKey)) {
+      return 'None'
+    }
+    visited.add(vKey)
+
+    const resolvedKind = await this.resolveBindingKind(
+      found.binding,
+      found.moduleInfo.id,
+      visited,
+    )
+    found.binding.resolvedKind = resolvedKind
+    return resolvedKind
+  }
+
   private async resolveBindingKind(
     binding: Binding,
     fileId: string,
@@ -1558,49 +1717,7 @@ export class StartCompiler {
       return binding.resolvedKind
     }
     if (binding.type === 'import') {
-      // Fast path: check if this is a direct import from a known library
-      // (e.g., import { createServerFn } from '@tanstack/react-start')
-      // This avoids async resolveId calls for the common case
-      const knownExports = this.knownRootImports.get(binding.source)
-      if (knownExports) {
-        const kind = knownExports.get(binding.importedName)
-        if (kind) {
-          binding.resolvedKind = kind
-          return kind
-        }
-      }
-
-      // Slow path: resolve through the module graph
-      const target = await this.resolveIdCached(binding.source, fileId)
-      if (!target) {
-        return 'None'
-      }
-
-      const importedModule = await this.getModuleInfo(target)
-
-      // Find the export, recursively searching through export * from chains
-      const found = await this.findExportInModule(
-        importedModule,
-        binding.importedName,
-      )
-
-      if (!found) {
-        return 'None'
-      }
-
-      const { moduleInfo: foundModule, binding: foundBinding } = found
-
-      if (foundBinding.resolvedKind) {
-        return foundBinding.resolvedKind
-      }
-
-      const resolvedKind = await this.resolveBindingKind(
-        foundBinding,
-        foundModule.id,
-        visited,
-      )
-      foundBinding.resolvedKind = resolvedKind
-      return resolvedKind
+      return this.resolveImportKind(binding, fileId, visited)
     }
 
     const resolvedKind = await this.resolveExprKind(
@@ -1744,36 +1861,15 @@ export class StartCompiler {
           binding.type === 'import' &&
           binding.importedName === '*'
         ) {
-          const knownExports = this.knownRootImports.get(binding.source)
-          const knownKind = knownExports?.get(callee.property.name)
-          if (knownKind) {
-            return knownKind
-          }
-
-          // resolve the property from the target module
-          const targetModuleId = await this.resolveIdCached(
-            binding.source,
+          return this.resolveImportKind(
+            {
+              type: 'import',
+              source: binding.source,
+              importedName: callee.property.name,
+            },
             fileId,
+            visited,
           )
-          if (targetModuleId) {
-            const targetModule = await this.getModuleInfo(targetModuleId)
-            const localBindingName = targetModule.exports.get(
-              callee.property.name,
-            )
-            if (localBindingName) {
-              const exportedBinding =
-                targetModule.bindings.get(localBindingName)
-              if (exportedBinding) {
-                return await this.resolveBindingKind(
-                  exportedBinding,
-                  targetModule.id,
-                  visited,
-                )
-              }
-            }
-          } else {
-            return 'None'
-          }
         }
       }
       return this.resolveExprKind(callee.object, fileId, visited)

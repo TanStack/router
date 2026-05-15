@@ -886,6 +886,75 @@ describe('re-export chain resolution', () => {
     expect(result!.code).not.toContain('deep-server')
   })
 
+  test.each([
+    {
+      name: 'named re-export cycle',
+      virtualModules: {
+        './factory-a': `
+          export { createServerOnlyFn } from './factory-b'
+        `,
+        './factory-b': `
+          export { createServerOnlyFn } from './factory-a'
+        `,
+      },
+    },
+    {
+      name: 'import alias cycle',
+      virtualModules: {
+        './factory-a': `
+          import { createServerOnlyFn } from './factory-b'
+          export { createServerOnlyFn }
+        `,
+        './factory-b': `
+          import { createServerOnlyFn } from './factory-a'
+          export { createServerOnlyFn }
+        `,
+      },
+    },
+    {
+      name: 'export-star cycle',
+      virtualModules: {
+        './factory-a': `
+          export * from './factory-b'
+        `,
+        './factory-b': `
+          export * from './factory-a'
+        `,
+      },
+    },
+  ])('handles circular import chain: $name', async ({ virtualModules }) => {
+    const compiler: StartCompiler = new StartCompiler({
+      env: 'server',
+      envName: 'ssr',
+      root: '/test',
+      framework: 'react' as const,
+      providerEnvName: 'ssr',
+      lookupKinds: new Set(['ServerOnlyFn']),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      loadModule: async (id) => {
+        const code = virtualModules[id as keyof typeof virtualModules]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      resolveId: async (id) => {
+        return id in virtualModules ? id : null
+      },
+      mode: 'build',
+    })
+
+    const result = await compiler.compile({
+      id: 'circular-import-test.ts',
+      code: `
+        import { createServerOnlyFn } from './factory-a'
+        const myFn = createServerOnlyFn(() => 'server-only-value')
+      `,
+    })
+
+    expect(result).toBeNull()
+  })
+
   test('ingestModule populates module metadata for later resolution', async () => {
     const compiler: StartCompiler = new StartCompiler({
       env: 'server',

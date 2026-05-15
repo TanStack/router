@@ -4,7 +4,7 @@ import {
   csrfSymbol,
   getCsrfRequestValidationResult,
   isCsrfRequestAllowed,
-} from '../src/createCsrfMiddleware'
+} from '@tanstack/start-client-core'
 import type { RequestServerOptions } from '@tanstack/start-client-core'
 import type { Register } from '@tanstack/router-core'
 
