@@ -33,6 +33,18 @@ describe('final manifest resolver', () => {
     expect(loadBaseManifest).toHaveBeenCalledTimes(1)
   })
 
+  it('evicts rejected cached base manifest promises so requests can retry', async () => {
+    const loadBaseManifest = vi
+      .fn<() => Promise<StartManifestWithClientEntry>>()
+      .mockRejectedValueOnce(new Error('transient'))
+      .mockResolvedValueOnce(baseManifest)
+    const getBaseManifest = createCachedBaseManifestLoader(loadBaseManifest)
+
+    await expect(getBaseManifest()).rejects.toThrow('transient')
+    await expect(getBaseManifest()).resolves.toBe(baseManifest)
+    expect(loadBaseManifest).toHaveBeenCalledTimes(2)
+  })
+
   it('caches inline and linked final manifests independently', async () => {
     const getBaseManifest = vi.fn(async () => baseManifest)
     const transformAssets: TransformAssetsFn = ({ url }) => url

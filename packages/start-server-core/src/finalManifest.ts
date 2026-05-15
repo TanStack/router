@@ -78,7 +78,10 @@ export function createCachedBaseManifestLoader(
 
   return () => {
     if (!baseManifestPromise) {
-      baseManifestPromise = loadBaseManifest()
+      baseManifestPromise = loadBaseManifest().catch((error) => {
+        baseManifestPromise = undefined
+        throw error
+      })
     }
 
     return baseManifestPromise
