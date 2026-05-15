@@ -8,88 +8,450 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+permissions: {}
+
 env:
-  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+  # Must match scripts/release/published-packages.json.
+  PUBLISHED_PACKAGES_SHA256: '42960df4a8848378e251c847b201826dc2990e64c6c3c76b8769e02deb35087c'
   SERVER_PRESET: 'node-server'
 
-permissions:
-  contents: write
-  id-token: write
-  pull-requests: write
-
 jobs:
-  release:
-    name: Release
-    if: "!contains(github.event.head_commit.message, 'ci: changeset release')"
+  preflight:
+    name: Preflight
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      should_release: ${{ steps.release.outputs.should_release }}
+      has_changesets: ${{ steps.release.outputs.has_changesets }}
+      release_mode: ${{ steps.release.outputs.release_mode }}
+      dist_tag: ${{ steps.release.outputs.dist_tag }}
+      latest: ${{ steps.release.outputs.latest }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Determine release inputs
+        id: release
+        env:
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+
+          SHOULD_RELEASE=true
+          if [[ "${HEAD_COMMIT_MESSAGE:-}" == *"ci: changeset release"* ]]; then
+            SHOULD_RELEASE=false
+          fi
+
+          RELEASE_MODE=
+          DIST_TAG=
+          LATEST=false
+          PRERELEASE=false
+
+          case "$GITHUB_REF_NAME" in
+            main)
+              RELEASE_MODE=latest
+              DIST_TAG=latest
+              LATEST=true
+              ;;
+            *-pre)
+              RELEASE_MODE=pre
+              PRERELEASE=true
+              if [ -f .changeset/pre.json ]; then
+                DIST_TAG="$(jq -r '.tag' .changeset/pre.json)"
+              else
+                DIST_TAG=pre
+              fi
+              ;;
+            *-maint)
+              RELEASE_MODE=maint
+              DIST_TAG=maint
+              ;;
+            *)
+              echo "Unexpected release branch: $GITHUB_REF_NAME" >&2
+              exit 1
+              ;;
+          esac
+
+          HAS_CHANGESETS=false
+          for file in .changeset/*.md; do
+            [ -e "$file" ] || continue
+            [ "$file" = ".changeset/README.md" ] && continue
+            HAS_CHANGESETS=true
+            break
+          done
+
+          echo "should_release=$SHOULD_RELEASE" >> "$GITHUB_OUTPUT"
+          echo "has_changesets=$HAS_CHANGESETS" >> "$GITHUB_OUTPUT"
+          echo "release_mode=$RELEASE_MODE" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: Test
+    needs: preflight
+    if: needs.preflight.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-          persist-credentials: true # release job pushes version changes
-      - name: Check for changesets
-        id: changesets
-        run: |
-          CHANGESET_FILES=$(ls .changeset/*.md 2>/dev/null | grep -v README.md || true)
-          if [ -z "$CHANGESET_FILES" ]; then
-            echo "has_changesets=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_changesets=true" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Start Nx Agents
-        if: steps.changesets.outputs.has_changesets == 'true'
-        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
+          persist-credentials: false
+
       - name: Setup Tools
+        if: needs.preflight.outputs.has_changesets == 'true'
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+
+      - name: Start Nx Agents
+        if: needs.preflight.outputs.has_changesets == 'true'
+        run: pnpm exec nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
+
       - name: Run Tests
-        if: steps.changesets.outputs.has_changesets == 'true'
+        if: needs.preflight.outputs.has_changesets == 'true'
         run: pnpm run test:ci --parallel=3
+
       - name: Stop Nx Agents
-        if: ${{ always() && steps.changesets.outputs.has_changesets == 'true' }}
-        run: npx nx-cloud stop-all-agents
+        if: ${{ always() && needs.preflight.outputs.has_changesets == 'true' }}
+        run: pnpm exec nx-cloud stop-all-agents
+
+      - name: No changesets
+        if: needs.preflight.outputs.has_changesets != 'true'
+        run: |
+          echo "No changesets found; skipping release tests."
+
+  version:
+    name: Version
+    needs: [preflight, test]
+    if: needs.preflight.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    outputs:
+      committed: ${{ steps.commit.outputs.committed }}
+      release_commit: ${{ steps.commit.outputs.release_commit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@739bfe42ca9233c5e6aca07c1a25a9d34aca49b0 # v6.0.7
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install dependencies without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
       - name: Enter Pre-Release Mode
-        if: "contains(github.ref_name, '-pre') && !hashFiles('.changeset/pre.json')"
-        run: pnpm changeset pre enter pre
+        if: needs.preflight.outputs.release_mode == 'pre'
+        run: |
+          if [ ! -f .changeset/pre.json ]; then
+            pnpm changeset pre enter pre
+          fi
+
       - name: Version Packages
         run: pnpm run changeset:version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          npm_config_ignore_scripts: 'true'
+          PNPM_CONFIG_IGNORE_SCRIPTS: 'true'
+
       - name: Commit and Push Version Changes
         id: commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          if git commit -m "ci: changeset release"; then
-            git push origin "HEAD:${GITHUB_REF_NAME}"
-            echo "committed=true" >> "$GITHUB_OUTPUT"
+
+          if git diff --cached --quiet; then
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+            echo "release_commit=" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-      - name: Determine dist-tag
-        if: steps.commit.outputs.committed == 'true'
-        id: dist-tag
-        run: |
-          BRANCH="${GITHUB_REF_NAME}"
-          if [[ "$BRANCH" == *-pre ]]; then
-            echo "prerelease=true" >> "$GITHUB_OUTPUT"
-          elif [[ "$BRANCH" == *-maint ]]; then
-            echo "tag=maint" >> "$GITHUB_OUTPUT"
-          else
-            echo "latest=true" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Publish Packages
-        if: steps.commit.outputs.committed == 'true'
+
+          git commit -m "ci: changeset release"
+          RELEASE_COMMIT="$(git rev-parse HEAD)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: bearer ${GITHUB_TOKEN}" push origin "HEAD:${GITHUB_REF_NAME}"
+
+          echo "committed=true" >> "$GITHUB_OUTPUT"
+          echo "release_commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
+
+  package:
+    name: Package
+    needs: [preflight, version]
+    if: needs.preflight.outputs.should_release == 'true' && needs.version.outputs.committed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    env:
+      NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+    outputs:
+      package_count: ${{ steps.manifest.outputs.package_count }}
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.version.outputs.release_commit }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Tools
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+
+      - name: Build Packages
+        run: pnpm run build:all
+
+      - name: Create release tarballs and manifest
+        id: manifest
         env:
-          DIST_TAG: ${{ steps.dist-tag.outputs.tag }}
+          DIST_TAG: ${{ needs.preflight.outputs.dist_tag }}
+          RELEASE_MODE: ${{ needs.preflight.outputs.release_mode }}
+          HAS_CHANGESETS: ${{ needs.preflight.outputs.has_changesets }}
         run: |
-          if [ -n "$DIST_TAG" ]; then
-            pnpm run changeset:publish --tag "$DIST_TAG"
-          else
-            pnpm run changeset:publish
+          set -euo pipefail
+
+          node scripts/release/create-release-manifest.mjs
+          PACKAGE_COUNT="$(jq -r '.packageCount' release-artifacts/release-manifest.json)"
+          echo "package_count=$PACKAGE_COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release artifacts
+        if: steps.manifest.outputs.package_count != '0'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-artifacts
+          path: |
+            release-artifacts/release-manifest.json
+            release-artifacts/published-packages.json
+            release-artifacts/tarballs/*.tgz
+          retention-days: 2
+          if-no-files-found: error
+
+  review:
+    name: Review Tarballs
+    needs: [preflight, version, package]
+    if: needs.package.outputs.package_count != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.version.outputs.release_commit }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: release-artifacts
+          path: release-artifacts
+
+      - name: Review packed tarballs
+        run: node scripts/release/review-tarballs.mjs release-artifacts
+
+      - name: Upload review report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-review
+          path: release-artifacts/release-review.md
+          retention-days: 2
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: [preflight, version, package, review]
+    if: needs.package.outputs.package_count != '0'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      actions: read
+      id-token: write
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: release-artifacts
+          path: release-artifacts
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.8.0
+          package-manager-cache: false
+
+      - name: Verify release manifest
+        env:
+          EXPECTED_REF_NAME: ${{ github.ref_name }}
+          EXPECTED_COMMIT: ${{ needs.version.outputs.release_commit }}
+          EXPECTED_RELEASE_MODE: ${{ needs.preflight.outputs.release_mode }}
+          EXPECTED_DIST_TAG: ${{ needs.preflight.outputs.dist_tag }}
+          EXPECTED_ALLOWLIST_SHA256: ${{ env.PUBLISHED_PACKAGES_SHA256 }}
+        run: |
+          set -euo pipefail
+
+          test "$(jq -r '.schemaVersion' release-artifacts/release-manifest.json)" = "1"
+          test "$(jq -r '.refName' release-artifacts/release-manifest.json)" = "$EXPECTED_REF_NAME"
+          test "$(jq -r '.commit' release-artifacts/release-manifest.json)" = "$EXPECTED_COMMIT"
+          test "$(jq -r '.releaseMode' release-artifacts/release-manifest.json)" = "$EXPECTED_RELEASE_MODE"
+          test "$(jq -r '.distTag' release-artifacts/release-manifest.json)" = "$EXPECTED_DIST_TAG"
+          test "$(jq -r '.hasChangesets' release-artifacts/release-manifest.json)" = "true"
+          test "$(jq -r '.allowlistSha256' release-artifacts/release-manifest.json)" = "$EXPECTED_ALLOWLIST_SHA256"
+          test "$(sha256sum release-artifacts/published-packages.json | cut -d ' ' -f 1)" = "$EXPECTED_ALLOWLIST_SHA256"
+
+          PACKAGE_COUNT="$(jq -r '.packageCount' release-artifacts/release-manifest.json)"
+          test "$PACKAGE_COUNT" != "0"
+          test "$PACKAGE_COUNT" = "$(jq -r '.packages | length' release-artifacts/release-manifest.json)"
+
+          DUPLICATE_PACKAGES="$(jq -r '.packages | group_by(.name)[] | select(length > 1) | .[0].name' release-artifacts/release-manifest.json)"
+          if [ -n "$DUPLICATE_PACKAGES" ]; then
+            echo "Duplicate packages in manifest:" >&2
+            echo "$DUPLICATE_PACKAGES" >&2
+            exit 1
           fi
+
+          while IFS=$'\t' read -r name package_path dist_tag tarball expected_sha; do
+            if [ "$(jq -r --arg name "$name" '.[$name] // empty' release-artifacts/published-packages.json)" != "$package_path" ]; then
+              echo "Unexpected package in manifest: $name" >&2
+              exit 1
+            fi
+
+            if [ "$dist_tag" != "$EXPECTED_DIST_TAG" ]; then
+              echo "Unexpected dist-tag for $name: $dist_tag" >&2
+              exit 1
+            fi
+
+            tarball_path="release-artifacts/tarballs/$tarball"
+            if [ ! -f "$tarball_path" ]; then
+              echo "Missing tarball: $tarball" >&2
+              exit 1
+            fi
+
+            actual_sha="$(sha256sum "$tarball_path" | cut -d ' ' -f 1)"
+            if [ "$actual_sha" != "$expected_sha" ]; then
+              echo "SHA256 mismatch for $tarball" >&2
+              exit 1
+            fi
+          done < <(jq -r '.packages[] | [.name, .path, .distTag, .tarball, .sha256] | @tsv' release-artifacts/release-manifest.json)
+
+      - name: Publish verified tarballs
+        env:
+          npm_config_ignore_scripts: 'true'
+        run: |
+          set -euo pipefail
+
+          jq -r '.packages[] | [.name, .version, .distTag, .tarball] | @tsv' release-artifacts/release-manifest.json > /tmp/packages-to-publish.tsv
+
+          while IFS=$'\t' read -r name version dist_tag tarball; do
+            if npm view "${name}@${version}" version >/dev/null 2>&1; then
+              echo "${name}@${version} already exists on npm" >&2
+              exit 1
+            fi
+          done < /tmp/packages-to-publish.tsv
+
+          while IFS=$'\t' read -r name version dist_tag tarball; do
+            echo "Publishing ${name}@${version} with dist-tag ${dist_tag}"
+            npm publish "release-artifacts/tarballs/${tarball}" --tag "$dist_tag" --access public --provenance --ignore-scripts
+          done < /tmp/packages-to-publish.tsv
+
+          while IFS=$'\t' read -r name version dist_tag tarball; do
+            published_version=
+            for attempt in 1 2 3 4 5; do
+              published_version="$(npm view "${name}@${version}" version 2>/dev/null || true)"
+              if [ "$published_version" = "$version" ]; then
+                break
+              fi
+              sleep 10
+            done
+
+            if [ "$published_version" != "$version" ]; then
+              echo "Failed to verify ${name}@${version} on npm" >&2
+              exit 1
+            fi
+          done < /tmp/packages-to-publish.tsv
+
+  tag-packages:
+    name: Tag Packages
+    needs: [version, package, publish]
+    if: needs.package.outputs.package_count != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.version.outputs.release_commit }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: release-artifacts
+          path: release-artifacts
+
+      - name: Create and push package tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/release/tag-packages.mjs release-artifacts/release-manifest.json
+
+  github-release:
+    name: GitHub Release
+    needs: [preflight, version, package, publish, tag-packages]
+    if: needs.package.outputs.package_count != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.version.outputs.release_commit }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: release-artifacts
+          path: release-artifacts
+
+      - name: Download review report
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: release-review
+          path: release-artifacts
+
       - name: Create GitHub Release
-        if: steps.commit.outputs.committed == 'true'
-        run: node scripts/create-github-release.mjs ${{ steps.dist-tag.outputs.prerelease == 'true' && '--prerelease' }} ${{ steps.dist-tag.outputs.latest == 'true' && '--latest' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRERELEASE_FLAG: ${{ needs.preflight.outputs.prerelease == 'true' && '--prerelease' || '' }}
+          LATEST_FLAG: ${{ needs.preflight.outputs.latest == 'true' && '--latest' || '' }}
+        run: node scripts/create-github-release.mjs --manifest release-artifacts/release-manifest.json --review release-artifacts/release-review.md $PRERELEASE_FLAG $LATEST_FLAG
