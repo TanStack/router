@@ -3,13 +3,25 @@ id: css-styling
 title: CSS Styling
 ---
 
-TanStack Start supports the CSS patterns your bundler supports, and adds SSR-aware route asset discovery on top. The important distinction is whether CSS is rendered as an explicit route `head().links` stylesheet, or whether it is discovered from the route's JavaScript/CSS module graph.
+TanStack Start supports the CSS patterns your bundler supports, and adds SSR-aware route asset discovery on top.
 
-That distinction affects SSR stylesheet tags, Early Hints, `transformAssets`, and CSS inlining.
+Use this guide to choose how to import CSS in a React Start app, and how to configure production CSS behavior such as SSR stylesheet links, Early Hints, and CSS inlining.
 
-## CSS URL Imports
+## Choose a CSS Pattern
 
-Import CSS with `?url` when you want a URL string for the emitted stylesheet and want to render the `<link rel="stylesheet">` yourself.
+Start handles CSS differently depending on how you import it.
+
+| Pattern                                  | Use it when                                           | SSR behavior                                          | Production features                                 |
+| ---------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------- |
+| `import css from './app.css?url'`        | You want to put a stylesheet URL in route `head()`    | Rendered from `head().links`                          | Dynamic Early Hints                                 |
+| `import './global.css'`                  | You want global CSS attached to a route chunk         | Discovered from the Start manifest for matched routes | Static Early Hints, `transformAssets`, CSS inlining |
+| `import styles from './card.module.css'` | You want scoped class names attached to a route chunk | Discovered from the Start manifest for matched routes | Static Early Hints, `transformAssets`, CSS inlining |
+
+Use `?url` when the stylesheet is part of your route head output. Use side-effect CSS imports or CSS modules when you want Start to treat the generated stylesheet as a route asset.
+
+## Use `?url` for Explicit Stylesheet Links
+
+Import CSS with `?url` when you want the bundler to return the emitted stylesheet URL and you want to render the `<link rel="stylesheet">` yourself.
 
 ```tsx
 // src/routes/__root.tsx
@@ -24,18 +36,20 @@ export const Route = createRootRoute({
 })
 ```
 
-This pattern is useful for explicit global stylesheets, especially when you already want the stylesheet to be part of route `head()` output. The CSS file is emitted by the bundler and the URL is placed in the final document by `HeadContent`.
+This pattern is useful for explicit global stylesheets, especially when you already want the stylesheet to be part of route `head()` output. The CSS file is emitted by the bundler, and `HeadContent` places the stylesheet link in the final document.
 
-`?url` imports are not Start manifest-managed stylesheet assets. Because of that:
+`?url` stylesheet links are route head output, not Start manifest-managed stylesheet assets. Because of that:
 
-- They are discovered when route `head()` runs, not during static manifest discovery.
+- They are discovered when route `head()` runs.
 - They can appear in the `dynamic` Early Hints phase as route `head().links` entries.
-- They are not passed through Start's runtime `transformAssets` option.
-- They are not eligible for Start CSS inlining.
+- They are not rewritten by Start's runtime [`transformAssets`](./cdn-asset-urls) option.
+- They are not inlined by Start CSS inlining.
 
-## Side-Effect CSS Imports
+Use this pattern when explicit control of the route head is more important than Start's manifest-managed CSS features.
 
-Import CSS without assigning it when you want global CSS classes or styles to be bundled as a dependency of the route/component module.
+## Use Side-Effect Imports for Global Route CSS
+
+Import CSS without assigning it when you want global selectors, global class names, or CSS custom properties to be bundled with a route or component module.
 
 ```tsx
 // src/routes/index.tsx
@@ -53,17 +67,20 @@ function Home() {
 
 The class names remain global. Start discovers the generated CSS asset from the client build and attaches it to the matching route manifest entry. During SSR, `HeadContent` renders stylesheet links for the matched route tree, so the page is styled before hydration.
 
-Where you import the file controls the scope:
+Where you import the CSS controls when it is loaded:
 
 - Import in the root route or app shell to apply it to every page.
-- Import in a leaf route to apply it only when that route's chunk is part of the match.
-- Import from a component loaded with `import()` or `React.lazy` only when the CSS is not needed for the initial route render. That CSS loads with the async chunk instead of being part of Start's static route manifest, so it is not rendered as an initial SSR `<link rel="stylesheet">` by `HeadContent`, and it is not available for static Early Hints or CSS inlining.
+- Import in a layout route to apply it to that layout and its child routes.
+- Import in a leaf route to load it only when that route is matched.
+- Import from a component loaded with `import()` or `React.lazy` only when the CSS is not needed for the initial route render.
 
-Manifest-managed CSS from side-effect imports can be included in static Early Hints, transformed with `transformAssets`, and inlined with Start CSS inlining.
+CSS imported from an async component loads with that async chunk. It is not part of Start's static route manifest for the initial route match, so `HeadContent` does not render it as an initial SSR stylesheet link, and it is not available for static Early Hints or CSS inlining.
 
-## CSS Modules
+Side-effect CSS imports are a good fit for app-wide CSS resets, design tokens, global utility classes, and route-level global styles.
 
-CSS modules work the same way as side-effect CSS imports from Start's route discovery perspective, but the class names are scoped by the bundler.
+## Use CSS Modules for Scoped Route CSS
+
+CSS modules work like side-effect CSS imports from Start's route asset discovery perspective, but the class names are scoped by the bundler.
 
 ```tsx
 // src/routes/modules.tsx
@@ -79,44 +96,34 @@ function Modules() {
 }
 ```
 
-The generated stylesheet is discovered from the route chunk graph, linked during SSR for matched routes, and loaded during client navigation when the route chunk loads. CSS modules are the best fit for route-local or component-local styling where you want scoped class names.
+The generated stylesheet is discovered from the route chunk graph, linked during SSR for matched routes, and loaded during client navigation when the route chunk loads.
 
-Like side-effect CSS imports, CSS modules can be included in static Early Hints, transformed with `transformAssets`, and inlined with Start CSS inlining.
+Use CSS modules for route-local or component-local styling when you want scoped class names and Start-managed stylesheet assets.
 
-## Choosing a Pattern
+## Know When CSS Is Discovered
 
-| Pattern                               | Use For                               | Discovery                        | Early Hints     | CSS Inlining |
-| ------------------------------------- | ------------------------------------- | -------------------------------- | --------------- | ------------ |
-| `import css from '?url'`              | Explicit stylesheet links in `head()` | Runtime route `head()` discovery | `dynamic` phase | No           |
-| `import './global.css'`               | Global classes in the route graph     | Static Start manifest discovery  | `static` phase  | Yes          |
-| `import styles from './x.module.css'` | Scoped classes in the route graph     | Static Start manifest discovery  | `static` phase  | Yes          |
+The import pattern you choose controls when Start can see the stylesheet.
 
-Use `?url` when the stylesheet is part of your route head contract. Use side-effect CSS imports or CSS modules when you want Start to treat the stylesheet as a route asset.
+CSS from side-effect imports and CSS modules is discovered at build time. Start inspects the client build output, records CSS emitted for route chunks, and uses that manifest during SSR. Because Start already knows about these stylesheets before route loaders run, they can be sent in the `static` Early Hints phase as `rel=preload; as=style` links.
 
-## Discovery and Early Hints
+CSS imported with `?url` is different. Start sees that stylesheet only when route `head()` returns the link, which happens after `router.load()`. These links can still be sent as Early Hints, but only in the `dynamic` phase with other supported route `head().links` entries.
 
-Start has two relevant discovery points for stylesheet assets.
+Use this rule of thumb:
 
-Static manifest discovery happens at build time. Start inspects the client build output, records CSS emitted for route chunks, and uses that manifest during SSR. These CSS assets are available before route loaders complete, so they can be emitted during the `static` Early Hints phase as `rel=preload; as=style` links.
-
-Dynamic head discovery happens after `router.load()` when route `head()` results are known. This is where `?url` stylesheet links appear. These links can be emitted during the `dynamic` Early Hints phase, along with other supported route `head().links` entries.
-
-The phases matter when you send Early Hints:
-
-- `static` hints are earliest and include manifest-managed CSS from side-effect imports and CSS modules.
-- `dynamic` hints are redirect-safe and include `?url` stylesheet links returned from route `head()`.
-- If you send `allLinks` in the `dynamic` phase, Start can coalesce static manifest assets and dynamic head links into one response.
+- Use side-effect imports or CSS modules when you want Start to discover route CSS as early as possible.
+- Use `?url` when you want explicit route `head()` control and are comfortable with later discovery.
+- Use `allLinks` in the `dynamic` phase when you want one combined Early Hints response with both static manifest assets and dynamic head links.
 - If CSS inlining is enabled, inlined manifest-managed stylesheet assets are skipped by static Early Hints because they are embedded in the HTML.
 
-See the [Early Hints guide](./early-hints) for the full callback and response header APIs.
+See the [Early Hints guide](./early-hints) for the callback and response header APIs.
 
-## CSS Inlining
+## Inline Route CSS in Production
 
 > **Experimental:** CSS inlining is experimental and subject to change.
 
 CSS inlining embeds Start manifest-managed route CSS directly into the server-rendered HTML response for production builds. This can improve the first render by avoiding blocking stylesheet requests for the CSS needed by the initial route match.
 
-Enable it with `server.build.inlineCss` in the Start plugin options. Passing `true` is shorthand for `{ enabled: true, transformAssets: false }`:
+Enable it with `server.build.inlineCss` in the Start plugin options. Passing `true` is shorthand for `{ enabled: true, transformAssets: false }`.
 
 ```ts
 // vite.config.ts
@@ -136,50 +143,18 @@ export default defineConfig({
 })
 ```
 
-For Rsbuild, use the same Start option:
-
-```ts
-// rsbuild.config.ts
-import { defineConfig } from '@rsbuild/core'
-import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
-
-export default defineConfig({
-  plugins: [
-    tanstackStart({
-      server: {
-        build: {
-          inlineCss: true,
-        },
-      },
-    }),
-  ],
-})
-```
-
 This option only affects production builds. Development mode keeps using Start's normal development CSS handling.
-
-If you need `transformAssets` to rewrite `url(...)` or `@import` references inside the inlined CSS at runtime, opt into build-time CSS URL templates:
-
-```ts
-tanstackStart({
-  server: {
-    build: {
-      inlineCss: {
-        enabled: true,
-        transformAssets: true,
-      },
-    },
-  },
-})
-```
 
 CSS inlining applies to CSS discovered from side-effect imports and CSS modules, because those stylesheets are Start manifest assets. It does not inline CSS imported with `?url` and returned from `head().links`, because those links are dynamic route head output rather than manifest-managed stylesheet assets.
 
-When CSS inlining is enabled, Start still emits the CSS files in the client build. It only changes the SSR document: stylesheet links managed by the Start manifest are replaced with a single inline `<style>` tag for the matched routes. The inline style is preserved during hydration to avoid duplicate stylesheet links and hydration mismatches.
+When CSS inlining is enabled, Start still emits CSS files in the client build. It only changes the SSR document: stylesheet links managed by the Start manifest are replaced with a single inline `<style>` tag for the matched routes. The inline style is preserved during hydration to avoid duplicate stylesheet links and hydration mismatches.
 
-You can also control inlining at runtime in your server entry. This only affects builds that were created with `server.build.inlineCss` enabled:
+### Control Inlining at Runtime
+
+You can control inlining per request in your server entry. This only affects builds created with `server.build.inlineCss` enabled.
 
 ```tsx
+// src/server.ts
 import {
   createStartHandler,
   defaultStreamHandler,
@@ -194,7 +169,7 @@ const handler = createStartHandler({
 export default createServerEntry({ fetch: handler })
 ```
 
-For custom runtime wrappers, `handler(request, { inlineCss })` overrides the handler-level `inlineCss` setting for that request:
+For custom runtime wrappers, `handler(request, { inlineCss })` overrides the handler-level `inlineCss` setting for that request.
 
 ```tsx
 export default createServerEntry({
@@ -226,28 +201,9 @@ Start embeds it as:
 }
 ```
 
-Root-relative URLs are left unchanged at build time, but can still be transformed at runtime with `transformAssets`. Absolute URLs, protocol-relative URLs, data URLs, and hash references are left unchanged and are not passed to `transformAssets`.
+Root-relative URLs are left unchanged at build time. Absolute URLs, protocol-relative URLs, data URLs, and hash references are also left unchanged.
 
-### Asset Transforms
-
-When CSS is inlined, there is no stylesheet `<link>` left for `transformAssets` to rewrite. That is usually the point: the browser does not need to fetch the stylesheet separately.
-
-For URLs inside the CSS content, such as fonts or background images, Start calls `transformAssets` with `kind: 'css-url'` only when the build was created with `server.build.inlineCss: { enabled: true, transformAssets: true }`. The context also includes `stylesheetHref`, and relative CSS URLs are resolved against that stylesheet href before your transform runs.
-
-```tsx
-createStartHandler({
-  handler: defaultStreamHandler,
-  transformAssets: (asset) => {
-    if (asset.kind === 'css-url') {
-      return `https://cdn.example.com${asset.url}`
-    }
-
-    return asset.url
-  },
-})
-```
-
-See the [CDN Asset URLs guide](./cdn-asset-urls#inlined-css-urls) for the full `transformAssets` reference.
+If you need to rewrite CSS-internal URLs at runtime, such as prepending a CDN origin to fonts or background images, opt into CSS URL templates with `server.build.inlineCss: { enabled: true, transformAssets: true }`. See [Transform URLs Inside Inlined CSS](./cdn-asset-urls#transform-urls-inside-inlined-css) for the detailed `transformAssets` behavior.
 
 ### Tradeoffs
 
@@ -261,3 +217,16 @@ Consider these tradeoffs before enabling it:
 - CSS files are still emitted for client navigation and browser caching after the initial response.
 
 Use CSS inlining when the reduced request overhead is worth the larger HTML response for your deployment and route structure.
+
+## Configure Production CSS Behavior
+
+Use these options together based on what you need in production.
+
+| Need                                      | Use                                                  |
+| ----------------------------------------- | ---------------------------------------------------- |
+| Explicit stylesheet links in route head   | `?url` imports returned from `head().links`          |
+| SSR links for route CSS                   | Side-effect imports or CSS modules                   |
+| Earliest CSS Early Hints                  | Side-effect imports or CSS modules with static hints |
+| Redirect-safe stylesheet Early Hints      | `?url` imports with dynamic hints                    |
+| Fewer blocking CSS requests on first load | `server.build.inlineCss`                             |
+| Runtime CDN rewriting for Start assets    | [`transformAssets`](./cdn-asset-urls)                |
