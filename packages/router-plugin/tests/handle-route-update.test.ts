@@ -17,9 +17,10 @@ const getStoreConfig: GetStoreConfig = () => ({
 })
 
 const getHandleRouteUpdate = () => {
-  return new Function(
-    `return ${getHandleRouteUpdateCode([])}`,
-  )() as (routeId: string, newRoute: AnyRoute) => void
+  return new Function(`return ${getHandleRouteUpdateCode([])}`)() as (
+    routeId: string,
+    newRoute: AnyRoute,
+  ) => void
 }
 
 function createTestHistory() {
