@@ -6,6 +6,7 @@ import {
   getStylesheetHref,
   isInlinableStylesheet,
 } from '../manifest'
+import { isNotFound } from '../not-found'
 import { decodePath } from '../utils'
 import { createLRUCache } from '../lru-cache'
 import { rootRouteId } from '../root'
@@ -58,7 +59,18 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
 
   for (const [key, shorthand] of properties) {
     if (match[key] !== undefined) {
-      dehydratedMatch[shorthand] = match[key]
+      let value = match[key]
+      if (
+        key === 'error' &&
+        isNotFound(value) &&
+        typeof value.routeId === 'string'
+      ) {
+        value = {
+          ...value,
+          routeId: dehydrateSsrMatchId(value.routeId),
+        }
+      }
+      dehydratedMatch[shorthand] = value
     }
   }
   if (match.globalNotFound) {
@@ -279,6 +291,15 @@ function stripInlinedStylesheetAssets(
   return nextRoutes
 }
 
+function dehydrateManifestRouteKeys(routes: FilteredRoutes): FilteredRoutes {
+  return Object.fromEntries(
+    Object.entries(routes).map(([routeId, routeManifest]) => [
+      dehydrateSsrMatchId(routeId),
+      routeManifest,
+    ]),
+  )
+}
+
 export function attachRouterServerSsrUtils({
   router,
   manifest,
@@ -399,13 +420,14 @@ export function attachRouterServerSsrUtils({
         }
 
         manifestToDehydrate = {
-          routes: { ...filteredRoutes },
+          routes: dehydrateManifestRouteKeys(filteredRoutes),
         }
 
         // Merge request-scoped assets into root route (without mutating cached manifest)
         if (opts?.requestAssets?.length) {
-          const existingRoot = manifestToDehydrate.routes[rootRouteId]
-          manifestToDehydrate.routes[rootRouteId] = {
+          const dehydratedRootRouteId = dehydrateSsrMatchId(rootRouteId)
+          const existingRoot = manifestToDehydrate.routes[dehydratedRootRouteId]
+          manifestToDehydrate.routes[dehydratedRootRouteId] = {
             ...existingRoot,
             assets: [...opts.requestAssets, ...(existingRoot?.assets ?? [])],
           }
