@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.0
+
+### Minor Changes
+
+- params.priority route option as tie breaker in route matching algorithm ([#7411](https://github.com/TanStack/router/pull/7411))
+
 ## 1.170.1
 
 ### Patch Changes

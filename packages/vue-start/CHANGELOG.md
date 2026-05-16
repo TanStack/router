@@ -1,5 +1,17 @@
 # @tanstack/vue-start
 
+## 1.168.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.169.2
+  - @tanstack/start-plugin-core@1.170.3
+  - @tanstack/start-server-core@1.168.2
+  - @tanstack/vue-router@1.170.2
+  - @tanstack/vue-start-client@1.167.2
+  - @tanstack/vue-start-server@1.167.2
+
 ## 1.168.2
 
 ### Patch Changes
