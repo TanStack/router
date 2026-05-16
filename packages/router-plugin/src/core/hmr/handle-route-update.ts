@@ -18,7 +18,8 @@ type AnyRouteWithPrivateProps = AnyRoute & {
 
 type AnyRouterWithPrivateMaps = AnyRouter & {
   routesById: Record<string, AnyRoute>
-  routesByPath: Record<string, AnyRoute>
+  buildRouteTree: () => Parameters<AnyRouter['setRoutes']>[0]
+  setRoutes: AnyRouter['setRoutes']
   stores: AnyRouter['stores'] & {
     cachedMatchStores: Map<
       string,
@@ -54,18 +55,19 @@ function handleRouteUpdate(
     return
   }
 
-  // Keys whose identity must remain stable to prevent React from
-  // unmounting/remounting the component tree.  React Fast Refresh already
-  // handles hot-updating the function bodies of these components — our job
-  // is only to update non-component route options (loader, head, etc.).
-  // For code-split (splittable) routes, the lazyRouteComponent wrapper is
-  // already cached in the bundler hot data so its identity is stable.
-  // For unsplittable routes (e.g. root routes), the component is a plain
-  // function reference that gets recreated on every module re-execution,
-  // so we must explicitly preserve the old reference.
+  // Generated route-tree options are not present on the freshly imported route
+  // module, but they must stay on the live route before rebuilding indexes.
+  const generatedRouteOptionKeys = new Set(['id', 'path', 'getParentRoute'])
+  const generatedRouteOptions: Record<string, unknown> = {}
+  generatedRouteOptionKeys.forEach((key) => {
+    if (key in oldRoute.options) {
+      generatedRouteOptions[key] = oldRoute.options[key]
+    }
+  })
+
   const removedKeys = new Set<string>()
   Object.keys(oldRoute.options).forEach((key) => {
-    if (!(key in newRoute.options)) {
+    if (!generatedRouteOptionKeys.has(key) && !(key in newRoute.options)) {
       removedKeys.add(key)
       delete oldRoute.options[key]
     }
@@ -76,6 +78,15 @@ function handleRouteUpdate(
   const preserveComponentIdentity =
     oldHasShellComponent === newHasShellComponent
 
+  // Keys whose identity must remain stable to prevent React from
+  // unmounting/remounting the component tree.  React Fast Refresh already
+  // handles hot-updating the function bodies of these components — our job
+  // is only to update non-component route options (loader, head, etc.).
+  // For code-split (splittable) routes, the lazyRouteComponent wrapper is
+  // already cached in the bundler hot data so its identity is stable.
+  // For unsplittable routes (e.g. root routes), the component is a plain
+  // function reference that gets recreated on every module re-execution,
+  // so we must explicitly preserve the old reference.
   // Preserve component identity so React doesn't remount.
   // React Fast Refresh patches the function bodies in-place.
   const componentKeys = '__TSR_COMPONENT_TYPES__' as unknown as Array<string>
@@ -87,19 +98,18 @@ function handleRouteUpdate(
     })
   }
 
-  oldRoute.options = newRoute.options
-  oldRoute.update(newRoute.options)
+  const nextOptions = {
+    ...newRoute.options,
+    ...generatedRouteOptions,
+  }
+
+  oldRoute.options = nextOptions
+  oldRoute.update(nextOptions)
   oldRoute._componentsPromise = undefined
   oldRoute._lazyPromise = undefined
 
-  router.routesById[oldRoute.id] = oldRoute
-  router.routesByPath[oldRoute.fullPath] = oldRoute
-
-  router.processedTree.matchCache.clear()
-  router.processedTree.flatCache?.clear()
-  router.processedTree.singleCache.clear()
+  router.setRoutes(router.buildRouteTree())
   router.resolvePathCache.clear()
-  walkReplaceSegmentTree(oldRoute, router.processedTree.segmentTree)
 
   const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
   const activeMatch = router.stores.matches.get().find(filter)
@@ -147,21 +157,6 @@ function handleRouteUpdate(
     }
 
     router.invalidate({ filter, sync: true })
-  }
-
-  function walkReplaceSegmentTree(
-    route: AnyRouteWithPrivateProps,
-    node: AnyRouter['processedTree']['segmentTree'],
-  ) {
-    if (node.route?.id === route.id) node.route = route
-    if (node.index) walkReplaceSegmentTree(route, node.index)
-    node.static?.forEach((child) => walkReplaceSegmentTree(route, child))
-    node.staticInsensitive?.forEach((child) =>
-      walkReplaceSegmentTree(route, child),
-    )
-    node.dynamic?.forEach((child) => walkReplaceSegmentTree(route, child))
-    node.optional?.forEach((child) => walkReplaceSegmentTree(route, child))
-    node.wildcard?.forEach((child) => walkReplaceSegmentTree(route, child))
   }
 
   function getStoreMatch(matchId: string) {

@@ -42,9 +42,16 @@ if (import.meta.hot) {
           return;
         }
         ;
+        const generatedRouteOptionKeys = new Set(["id", "path", "getParentRoute"]);
+        const generatedRouteOptions = {};
+        generatedRouteOptionKeys.forEach(key => {
+          if (key in oldRoute.options) {
+            generatedRouteOptions[key] = oldRoute.options[key];
+          }
+        });
         const removedKeys = new Set();
         Object.keys(oldRoute.options).forEach(key => {
-          if (!(key in newRoute.options)) {
+          if (!generatedRouteOptionKeys.has(key) && !(key in newRoute.options)) {
             removedKeys.add(key);
             delete oldRoute.options[key];
           }
@@ -61,17 +68,16 @@ if (import.meta.hot) {
           });
         }
         ;
-        oldRoute.options = newRoute.options;
-        oldRoute.update(newRoute.options);
+        const nextOptions = {
+          ...newRoute.options,
+          ...generatedRouteOptions
+        };
+        oldRoute.options = nextOptions;
+        oldRoute.update(nextOptions);
         oldRoute._componentsPromise = undefined;
         oldRoute._lazyPromise = undefined;
-        router.routesById[oldRoute.id] = oldRoute;
-        router.routesByPath[oldRoute.fullPath] = oldRoute;
-        router.processedTree.matchCache.clear();
-        router.processedTree.flatCache?.clear();
-        router.processedTree.singleCache.clear();
+        router.setRoutes(router.buildRouteTree());
         router.resolvePathCache.clear();
-        walkReplaceSegmentTree(oldRoute, router.processedTree.segmentTree);
         const filter = m => m.routeId === oldRoute.id;
         const activeMatch = router.stores.matches.get().find(filter);
         const pendingMatch = router.stores.pendingMatches.get().find(filter);
@@ -109,15 +115,6 @@ if (import.meta.hot) {
           });
         }
         ;
-        function walkReplaceSegmentTree(route, node) {
-          if (node.route?.id === route.id) node.route = route;
-          if (node.index) walkReplaceSegmentTree(route, node.index);
-          node.static?.forEach(child => walkReplaceSegmentTree(route, child));
-          node.staticInsensitive?.forEach(child => walkReplaceSegmentTree(route, child));
-          node.dynamic?.forEach(child => walkReplaceSegmentTree(route, child));
-          node.optional?.forEach(child => walkReplaceSegmentTree(route, child));
-          node.wildcard?.forEach(child => walkReplaceSegmentTree(route, child));
-        }
         function getStoreMatch(matchId) {
           return router.stores.pendingMatchStores.get(matchId)?.get() || router.stores.matchStores.get(matchId)?.get() || router.stores.cachedMatchStores.get(matchId)?.get();
         }

@@ -918,6 +918,46 @@ const shouldPreferIndexRoute = (
   return existing.cleanedPath === '/' && current.cleanedPath !== '/'
 }
 
+const isIndexRouteNode = (routeNode: RouteNode): boolean => {
+  return routeNode.routePath?.endsWith('/') ?? false
+}
+
+const isPathlessRouteNode = (routeNode: RouteNode): boolean => {
+  return routeNode._fsRouteType === 'pathless_layout'
+}
+
+const shouldReplaceRouteNodeForTo = (
+  current: RouteNode,
+  existing: RouteNode,
+): boolean => {
+  const currentIsIndex = isIndexRouteNode(current)
+  const existingIsIndex = isIndexRouteNode(existing)
+  if (currentIsIndex !== existingIsIndex) {
+    return currentIsIndex
+  }
+
+  const currentIsPathless = isPathlessRouteNode(current)
+  const existingIsPathless = isPathlessRouteNode(existing)
+  if (currentIsPathless !== existingIsPathless) {
+    return !currentIsPathless
+  }
+
+  return true
+}
+
+const shouldReplaceRouteNodeForFullPath = (
+  current: RouteNode,
+  existing: RouteNode,
+): boolean => {
+  const currentIsPathless = isPathlessRouteNode(current)
+  const existingIsPathless = isPathlessRouteNode(existing)
+  if (currentIsPathless !== existingIsPathless) {
+    return !currentIsPathless
+  }
+
+  return true
+}
+
 /**
  * Creates a map from fullPath to routeNode
  */
@@ -934,6 +974,11 @@ export const createRouteNodesByFullPath = (
       if (shouldPreferIndexRoute(routeNode, existing)) {
         continue
       }
+    }
+
+    const existing = map.get(fullPath)
+    if (existing && !shouldReplaceRouteNodeForFullPath(routeNode, existing)) {
+      continue
     }
 
     map.set(fullPath, routeNode)
@@ -953,11 +998,9 @@ export const createRouteNodesByTo = (
   for (const routeNode of dedupeBranchesAndIndexRoutes(routeNodes)) {
     const to = inferTo(routeNode)
 
-    if (to === '/' && map.has('/')) {
-      const existing = map.get('/')!
-      if (shouldPreferIndexRoute(routeNode, existing)) {
-        continue
-      }
+    const existing = map.get(to)
+    if (existing && !shouldReplaceRouteNodeForTo(routeNode, existing)) {
+      continue
     }
 
     map.set(to, routeNode)

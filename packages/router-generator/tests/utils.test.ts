@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   RoutePrefixMap,
   cleanPath,
+  createRouteNodesByFullPath,
+  createRouteNodesByTo,
   determineInitialRoutePath,
   hasEscapedLeadingUnderscore,
   hasEscapedTrailingUnderscore,
@@ -55,6 +57,69 @@ describe('inferFullPath', () => {
     } as unknown as RouteNode
 
     expect(inferFullPath(node)).toBe('/__foo')
+  })
+})
+
+describe('createRouteNodesByTo', () => {
+  const createRoute = (
+    overrides: Partial<RouteNode> & { routePath: string },
+  ): RouteNode => ({
+    filePath: 'test.tsx',
+    fullPath: overrides.routePath,
+    variableName: 'Test',
+    _fsRouteType: 'static',
+    cleanedPath: overrides.routePath.endsWith('/')
+      ? '/'
+      : overrides.routePath.split('/').at(-1),
+    ...overrides,
+  })
+
+  it('prefers index routes over pathless layouts for duplicate public to paths', () => {
+    const pathlessRoute = createRoute({
+      routePath: '/livestock/$farmId/medicine/_form',
+      _fsRouteType: 'pathless_layout',
+      variableName: 'Pathless',
+    })
+    const indexRoute = createRoute({
+      routePath: '/livestock/$farmId/medicine/',
+      cleanedPath: '/',
+      variableName: 'Index',
+    })
+
+    const map = createRouteNodesByTo([pathlessRoute, indexRoute])
+
+    expect(map.get('/livestock/$farmId/medicine')).toBe(indexRoute)
+  })
+})
+
+describe('createRouteNodesByFullPath', () => {
+  const createRoute = (
+    overrides: Partial<RouteNode> & { routePath: string },
+  ): RouteNode => ({
+    filePath: 'test.tsx',
+    fullPath: overrides.routePath,
+    variableName: 'Test',
+    _fsRouteType: 'static',
+    cleanedPath: overrides.routePath.endsWith('/')
+      ? '/'
+      : overrides.routePath.split('/').at(-1),
+    ...overrides,
+  })
+
+  it('prefers concrete routes over pathless layouts for duplicate full paths', () => {
+    const concreteRoute = createRoute({
+      routePath: '/livestock/$farmId/medicine',
+      variableName: 'Concrete',
+    })
+    const pathlessRoute = createRoute({
+      routePath: '/livestock/$farmId/medicine/_form',
+      _fsRouteType: 'pathless_layout',
+      variableName: 'Pathless',
+    })
+
+    const map = createRouteNodesByFullPath([concreteRoute, pathlessRoute])
+
+    expect(map.get('/livestock/$farmId/medicine')).toBe(concreteRoute)
   })
 })
 
