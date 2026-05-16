@@ -4,7 +4,11 @@ import path from 'node:path'
 import * as prettier from 'prettier'
 import { rootPathId } from './filesystem/physical/rootPathId'
 import type { Config, TokenMatcher } from './config'
-import type { ImportDeclaration, RouteNode } from './types'
+import type {
+  ImportDeclaration,
+  RouteNode,
+  RoutePathSegmentMetadata,
+} from './types'
 
 /**
  * Prefix map for O(1) parent route lookups.
@@ -244,6 +248,169 @@ export function hasEscapedTrailingUnderscore(originalSegment: string): boolean {
   )
 }
 
+export function countRoutePathSegments(routePath?: string): number {
+  const path = routePath ?? ''
+  let count = 0
+  let inSegment = false
+
+  for (let i = 0; i < path.length; i++) {
+    if (path[i] === '/') {
+      inSegment = false
+      continue
+    }
+
+    if (!inSegment) {
+      count++
+      inSegment = true
+    }
+  }
+
+  return count
+}
+
+export function countSlashSeparatedParts(path: string): number {
+  let count = 1
+
+  for (let i = 0; i < path.length; i++) {
+    if (path[i] === '/') count++
+  }
+
+  return count
+}
+
+export function hasRoutePathSegmentMetadata(
+  metadata: RoutePathSegmentMetadata | undefined,
+): metadata is RoutePathSegmentMetadata {
+  return !!(
+    metadata?.literalLeadingUnderscore || metadata?.literalTrailingUnderscore
+  )
+}
+
+function mergeRoutePathSegmentMetadata(
+  current: RoutePathSegmentMetadata | undefined,
+  incoming: RoutePathSegmentMetadata | undefined,
+): RoutePathSegmentMetadata | undefined {
+  const hasCurrent = hasRoutePathSegmentMetadata(current)
+  const hasIncoming = hasRoutePathSegmentMetadata(incoming)
+
+  if (!hasCurrent) return hasIncoming ? incoming : undefined
+  if (!hasIncoming) return current
+
+  return {
+    literalLeadingUnderscore:
+      current.literalLeadingUnderscore || incoming.literalLeadingUnderscore,
+    literalTrailingUnderscore:
+      current.literalTrailingUnderscore || incoming.literalTrailingUnderscore,
+  }
+}
+
+export function createRoutePathSegmentMetadata(
+  routePath: string = '/',
+  originalPath?: string,
+): Array<RoutePathSegmentMetadata | undefined> | undefined {
+  if (!originalPath) return undefined
+
+  const routeSegments = routePath.split('/')
+  const originalSegments = originalPath.split('/')
+  const metadata = new Array<RoutePathSegmentMetadata | undefined>(
+    routeSegments.length,
+  )
+  let hasMetadata = false
+
+  for (let i = 0; i < routeSegments.length; i++) {
+    const segment = routeSegments[i]!
+    const originalSegment = originalSegments[i] || ''
+    const literalLeadingUnderscore =
+      segment.startsWith('_') && hasEscapedLeadingUnderscore(originalSegment)
+    const literalTrailingUnderscore =
+      segment.endsWith('_') && hasEscapedTrailingUnderscore(originalSegment)
+
+    if (!literalLeadingUnderscore && !literalTrailingUnderscore) continue
+
+    hasMetadata = true
+    metadata[i] = {
+      literalLeadingUnderscore: literalLeadingUnderscore || undefined,
+      literalTrailingUnderscore: literalTrailingUnderscore || undefined,
+    }
+  }
+
+  return hasMetadata ? metadata : undefined
+}
+
+export function createLiteralRoutePathSegmentMetadata(
+  routePath: string,
+  parent?: RouteNode,
+  literalNewSegments = false,
+): Array<RoutePathSegmentMetadata | undefined> | undefined {
+  const routeSegments = routePath.split('/')
+  const metadata = new Array<RoutePathSegmentMetadata | undefined>(
+    routeSegments.length,
+  )
+  const parentDepth = countRoutePathSegments(parent?.routePath)
+  let hasMetadata = false
+  let depth = 0
+
+  for (let i = 0; i < routeSegments.length; i++) {
+    const segment = routeSegments[i]
+    metadata[i] = parent?._routePathSegmentMetadata?.[i]
+    hasMetadata ||= hasRoutePathSegmentMetadata(metadata[i])
+
+    if (!segment) continue
+
+    if (literalNewSegments && depth >= parentDepth) {
+      const literalLeadingUnderscore = segment.startsWith('_')
+      const literalTrailingUnderscore = segment.endsWith('_')
+
+      if (literalLeadingUnderscore || literalTrailingUnderscore) {
+        metadata[i] = mergeRoutePathSegmentMetadata(metadata[i], {
+          literalLeadingUnderscore: literalLeadingUnderscore || undefined,
+          literalTrailingUnderscore: literalTrailingUnderscore || undefined,
+        })
+        hasMetadata = true
+      }
+    }
+
+    depth++
+  }
+
+  return hasMetadata ? metadata : undefined
+}
+
+export function joinRoutePathSegmentMetadata(
+  routePath: string,
+  prefixPath: string,
+  prefixMetadata: Array<RoutePathSegmentMetadata | undefined> | undefined,
+  childMetadata: Array<RoutePathSegmentMetadata | undefined> | undefined,
+): Array<RoutePathSegmentMetadata | undefined> | undefined {
+  const metadata = new Array<RoutePathSegmentMetadata | undefined>(
+    countSlashSeparatedParts(routePath),
+  )
+  let hasMetadata = false
+
+  if (prefixMetadata) {
+    for (let i = 0; i < prefixMetadata.length && i < metadata.length; i++) {
+      metadata[i] = prefixMetadata[i]
+      hasMetadata ||= hasRoutePathSegmentMetadata(metadata[i])
+    }
+  }
+
+  const offset = countRoutePathSegments(prefixPath)
+  if (childMetadata) {
+    for (let i = 1; i < childMetadata.length; i++) {
+      const targetIndex = offset + i
+      if (targetIndex >= metadata.length) break
+
+      metadata[targetIndex] = mergeRoutePathSegmentMetadata(
+        metadata[targetIndex],
+        childMetadata[i],
+      )
+      hasMetadata ||= hasRoutePathSegmentMetadata(metadata[targetIndex])
+    }
+  }
+
+  return hasMetadata ? metadata : undefined
+}
+
 const backslashRegex = /\\/g
 
 export function replaceBackslash(s: string) {
@@ -314,6 +481,23 @@ export function removeUnderscores(s?: string) {
     .replace(underscoreSlashRegex, '/')
 }
 
+function removeUnderscoresFromSegment(
+  segment: string,
+  metadata?: RoutePathSegmentMetadata,
+): string {
+  let result = segment
+
+  if (result.startsWith('_') && !metadata?.literalLeadingUnderscore) {
+    result = result.slice(1)
+  }
+
+  if (result.endsWith('_') && !metadata?.literalTrailingUnderscore) {
+    result = result.slice(0, -1)
+  }
+
+  return result
+}
+
 /**
  * Removes underscores from a path, but preserves underscores that were escaped
  * in the original path (indicated by [_] syntax).
@@ -330,30 +514,50 @@ export function removeUnderscoresWithEscape(
   if (!originalPath) return removeUnderscores(routePath) ?? ''
 
   const routeSegments = routePath.split('/')
+  const metadata = createRoutePathSegmentMetadata(routePath, originalPath)
+  const newSegments = new Array<string>(routeSegments.length)
+
+  for (let i = 0; i < routeSegments.length; i++) {
+    newSegments[i] = removeUnderscoresFromSegment(
+      routeSegments[i]!,
+      metadata?.[i],
+    )
+  }
+
+  return newSegments.join('/')
+}
+
+export function removeLayoutSegmentsAndUnderscoresWithEscape(
+  routePath: string = '/',
+  originalPath?: string,
+  routePathSegmentMetadata?: Array<RoutePathSegmentMetadata | undefined>,
+): string {
+  if (!originalPath) {
+    return removeUnderscores(removeLayoutSegments(routePath)) ?? ''
+  }
+
+  const metadata =
+    routePathSegmentMetadata ??
+    createRoutePathSegmentMetadata(routePath, originalPath)
+
+  const routeSegments = routePath.split('/')
   const originalSegments = originalPath.split('/')
+  const newSegments: Array<string> = []
 
-  const newSegments = routeSegments.map((segment, i) => {
+  for (let i = 0; i < routeSegments.length; i++) {
+    const segment = routeSegments[i]!
     const originalSegment = originalSegments[i] || ''
+    const segmentMetadata = metadata?.[i]
 
-    // Check if leading underscore is escaped
-    const leadingEscaped = hasEscapedLeadingUnderscore(originalSegment)
-    // Check if trailing underscore is escaped
-    const trailingEscaped = hasEscapedTrailingUnderscore(originalSegment)
-
-    let result = segment
-
-    // Remove leading underscore only if not escaped
-    if (result.startsWith('_') && !leadingEscaped) {
-      result = result.slice(1)
+    if (
+      !segmentMetadata?.literalLeadingUnderscore &&
+      isSegmentPathless(segment, originalSegment)
+    ) {
+      continue
     }
 
-    // Remove trailing underscore only if not escaped
-    if (result.endsWith('_') && !trailingEscaped) {
-      result = result.slice(0, -1)
-    }
-
-    return result
-  })
+    newSegments.push(removeUnderscoresFromSegment(segment, segmentMetadata))
+  }
 
   return newSegments.join('/')
 }
@@ -686,12 +890,10 @@ const inferPath = (routeNode: RouteNode): string => {
  */
 export const inferFullPath = (routeNode: RouteNode): string => {
   const fullPath = removeGroups(
-    removeUnderscoresWithEscape(
-      removeLayoutSegmentsWithEscape(
-        routeNode.routePath,
-        routeNode.originalRoutePath,
-      ),
+    removeLayoutSegmentsAndUnderscoresWithEscape(
+      routeNode.routePath,
       routeNode.originalRoutePath,
+      routeNode._routePathSegmentMetadata,
     ),
   )
 

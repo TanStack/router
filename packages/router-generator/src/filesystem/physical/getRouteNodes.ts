@@ -2,9 +2,11 @@ import path from 'node:path'
 import * as fsp from 'node:fs/promises'
 import {
   cleanPath,
+  createRoutePathSegmentMetadata,
   determineInitialRoutePath,
   escapeRegExp,
   hasEscapedLeadingUnderscore,
+  joinRoutePathSegmentMetadata,
   removeExt,
   replaceBackslash,
   routePathToVariable,
@@ -126,10 +128,17 @@ export async function getRouteNodes(
         const filePath = replaceBackslash(
           path.join(normalizedDir, node.filePath),
         )
+        const prefixPath = cleanPath(`/${normalizedDir}`)
         const routePath = cleanPath(`/${normalizedDir}${node.routePath}`)
 
         node.variableName = routePathToVariable(
           cleanPath(`/${normalizedDir}/${removeExt(node.filePath)}`),
+        )
+        node._routePathSegmentMetadata = joinRoutePathSegmentMetadata(
+          routePath,
+          prefixPath,
+          undefined,
+          node._routePathSegmentMetadata,
         )
         node.routePath = routePath
         // Keep originalRoutePath aligned with routePath for escape detection
@@ -334,6 +343,10 @@ export async function getRouteNodes(
             variableName,
             _fsRouteType: routeType,
             originalRoutePath,
+            _routePathSegmentMetadata: createRoutePathSegmentMetadata(
+              routePath,
+              originalRoutePath,
+            ),
           })
         }
       }),

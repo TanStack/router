@@ -10,6 +10,7 @@ import {
   mergeImportDeclarations,
   multiSortBy,
   removeExt,
+  removeLayoutSegmentsAndUnderscoresWithEscape,
   removeLayoutSegmentsWithEscape,
   removeLeadingUnderscores,
   removeTrailingUnderscores,
@@ -36,6 +37,24 @@ describe('inferFullPath', () => {
 
     // This avoids inferred fullPath "" which breaks match.fullPath unions
     expect(inferFullPath(node)).toBe('/')
+  })
+
+  it('preserves escaped leading underscores after removing pathless ancestors', () => {
+    const node = {
+      routePath: '/_layout/_foo',
+      originalRoutePath: '/_layout/[_]foo',
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/_foo')
+  })
+
+  it('preserves multiple escaped leading underscores after removing pathless ancestors', () => {
+    const node = {
+      routePath: '/_layout/__foo',
+      originalRoutePath: '/_layout/[__foo]',
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/__foo')
   })
 })
 
@@ -350,6 +369,7 @@ describe('hasEscapedLeadingUnderscore', () => {
   it('returns true for fully escaped segment starting with underscore', () => {
     expect(hasEscapedLeadingUnderscore('[_layout]')).toBe(true)
     expect(hasEscapedLeadingUnderscore('[_foo]')).toBe(true)
+    expect(hasEscapedLeadingUnderscore('[__foo]')).toBe(true)
     expect(hasEscapedLeadingUnderscore('[_1nd3x]')).toBe(true)
     expect(hasEscapedLeadingUnderscore('[_]')).toBe(true)
   })
@@ -381,6 +401,7 @@ describe('hasEscapedTrailingUnderscore', () => {
   it('returns true for fully escaped segment ending with underscore', () => {
     expect(hasEscapedTrailingUnderscore('[blog_]')).toBe(true)
     expect(hasEscapedTrailingUnderscore('[foo_]')).toBe(true)
+    expect(hasEscapedTrailingUnderscore('[foo__]')).toBe(true)
     expect(hasEscapedTrailingUnderscore('[_r0ut3_]')).toBe(true)
     expect(hasEscapedTrailingUnderscore('[_]')).toBe(true)
   })
@@ -415,6 +436,7 @@ describe('isSegmentPathless', () => {
 
   it('returns false for fully escaped segment', () => {
     expect(isSegmentPathless('_layout', '[_layout]')).toBe(false)
+    expect(isSegmentPathless('__layout', '[__layout]')).toBe(false)
     expect(isSegmentPathless('_1nd3x', '[_1nd3x]')).toBe(false)
   })
 
@@ -530,6 +552,51 @@ describe('removeLayoutSegmentsWithEscape', () => {
   it('handles root path', () => {
     expect(removeLayoutSegmentsWithEscape('/')).toBe('/')
     expect(removeLayoutSegmentsWithEscape()).toBe('/')
+  })
+})
+
+describe('removeLayoutSegmentsAndUnderscoresWithEscape', () => {
+  it('removes layout segments and preserves escaped underscores in remaining segments', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/_foo',
+        '/_layout/[_]foo',
+      ),
+    ).toBe('/_foo')
+  })
+
+  it('removes multiple layout segments before escaped underscores', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/_nested/_foo',
+        '/_layout/_nested/[_]foo',
+      ),
+    ).toBe('/_foo')
+  })
+
+  it('preserves multiple escaped leading underscores in remaining segments', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/__foo',
+        '/_layout/[__foo]',
+      ),
+    ).toBe('/__foo')
+
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/__foo',
+        '/_layout/[_][_]foo',
+      ),
+    ).toBe('/__foo')
+  })
+
+  it('removes non-escaped underscores from remaining segments', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/foo_/bar_',
+        '/_layout/foo_/bar_',
+      ),
+    ).toBe('/foo/bar')
   })
 })
 
