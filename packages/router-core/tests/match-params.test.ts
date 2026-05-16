@@ -339,6 +339,66 @@ describe('params.parse route selection', () => {
       expect(findRouteMatch('/123', processedTree)?.route.id).toBe('/$z')
     })
 
+    it('treats missing params.priority as 0', () => {
+      const priorityOneParse = vi.fn(() => false)
+      const defaultPriorityParse = vi.fn((params: Record<string, string>) => {
+        return params
+      })
+      const priorityNegativeOneParse = vi.fn(
+        (params: Record<string, string>) => {
+          return params
+        },
+      )
+
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/$default',
+            fullPath: '/$default',
+            path: '$default',
+            options: {
+              params: {
+                parse: defaultPriorityParse,
+              },
+            },
+          },
+          {
+            id: '/$low',
+            fullPath: '/$low',
+            path: '$low',
+            options: {
+              params: {
+                parse: priorityNegativeOneParse,
+                priority: -1,
+              },
+            },
+          },
+          {
+            id: '/$high',
+            fullPath: '/$high',
+            path: '$high',
+            options: {
+              params: {
+                parse: priorityOneParse,
+                priority: 1,
+              },
+            },
+          },
+        ]),
+      )
+
+      expect(findRouteMatch('/123', processedTree)?.route.id).toBe('/$default')
+      expect(priorityOneParse).toHaveBeenCalledWith({ high: '123' })
+      expect(defaultPriorityParse).toHaveBeenCalledWith({ default: '123' })
+      expect(priorityNegativeOneParse).toHaveBeenCalledWith({ low: '123' })
+      expect(
+        priorityOneParse.mock.invocationCallOrder[0]!,
+      ).toBeLessThan(defaultPriorityParse.mock.invocationCallOrder[0]!)
+      expect(
+        defaultPriorityParse.mock.invocationCallOrder[0]!,
+      ).toBeLessThan(priorityNegativeOneParse.mock.invocationCallOrder[0]!)
+    })
+
     it('falls through to the next params.parse route by params.priority', () => {
       const lowerPriorityParse = vi.fn((params: Record<string, string>) => {
         return params
