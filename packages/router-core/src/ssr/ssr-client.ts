@@ -94,6 +94,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     nonce,
   }
 
+  // Allow the user to handle custom hydration data before matching routes.
+  // This lets hydration install router config that affects matching, e.g. rewrites.
+  await router.options.hydrate?.(dehydratedData)
+
   // Hydrate the router state
   const matches = router.matchRoutes(router.stores.location.get())
 
@@ -163,9 +167,6 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   })
 
   router.stores.setMatches(matches)
-
-  // Allow the user to handle custom hydration data
-  await router.options.hydrate?.(dehydratedData)
 
   // now that all necessary data is hydrated:
   // 1) fully reconstruct the route context
