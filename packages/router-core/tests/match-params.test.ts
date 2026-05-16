@@ -375,9 +375,9 @@ describe('params.parse route selection', () => {
       expect(findRouteMatch('/42', processedTree)?.route.id).toBe('/$number')
       expect(higherPriorityParse).toHaveBeenCalledWith({ uuid: '42' })
       expect(lowerPriorityParse).toHaveBeenCalledWith({ number: '42' })
-      expect(
-        higherPriorityParse.mock.invocationCallOrder[0]!,
-      ).toBeLessThan(lowerPriorityParse.mock.invocationCallOrder[0]!)
+      expect(higherPriorityParse.mock.invocationCallOrder[0]!).toBeLessThan(
+        lowerPriorityParse.mock.invocationCallOrder[0]!,
+      )
     })
 
     it('declaration order breaks ties between params.parse routes', () => {
