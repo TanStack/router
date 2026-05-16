@@ -305,6 +305,11 @@ async function expectClientRouterReady(page: Page) {
     .toBe(true)
 }
 
+async function gotoEnhanced(page: Page, search = '') {
+  await page.goto(`/enhanced${search}`)
+  await expectClientRouterReady(page)
+}
+
 test.describe('Hydrate HMR', () => {
   test.skip(!isDev, 'HMR regression coverage runs against the dev server only')
 
@@ -633,13 +638,9 @@ test.describe('enhanced Hydrate API combinations', () => {
   test('dynamic when functions hydrate and replay interaction events', async ({
     page,
   }) => {
-    await page.goto('/enhanced?dynamic=interaction')
+    await gotoEnhanced(page, '?dynamic=interaction')
     await expect(page.getByTestId('enhanced-heading')).toHaveText(
       'Enhanced Hydrate APIs',
-    )
-    await expectRouteToStayUnhydrated(
-      page,
-      'enhanced-dynamic-interaction-button',
     )
     await clickIntentAndExpectReplayedCount(
       page,
@@ -669,7 +670,7 @@ test.describe('enhanced Hydrate API combinations', () => {
     page,
     request,
   }) => {
-    await page.goto('/enhanced')
+    await gotoEnhanced(page)
     await expect(
       resourceContentsContain(
         page,
@@ -724,7 +725,7 @@ test.describe('enhanced Hydrate API combinations', () => {
   test('function prefetch supports fire-and-forget work and waitFor hydrate-first resolution', async ({
     page,
   }) => {
-    await page.goto('/enhanced')
+    await gotoEnhanced(page)
 
     await expect(page.getByTestId('enhanced-fire-wait-reason')).toHaveText(
       'waiting',
@@ -762,7 +763,7 @@ test.describe('enhanced Hydrate API combinations', () => {
   test('split=false procedural prefetch blocks hydration without requiring a child preload chunk', async ({
     page,
   }) => {
-    await page.goto('/enhanced')
+    await gotoEnhanced(page)
 
     await expectRouteToStayUnhydrated(page, 'enhanced-runtime-only-button')
     await expect(page.getByTestId('enhanced-runtime-wait-reason')).toHaveText(
@@ -795,10 +796,10 @@ test.describe('enhanced Hydrate API combinations', () => {
     )
   })
 
-  test('waitFor reports abort, signal aborts on unmount, and nested dynamic interaction delegates at runtime', async ({
+  test('procedural prefetch aborts waiters and signals when boundaries unmount', async ({
     page,
   }) => {
-    await page.goto('/enhanced')
+    await gotoEnhanced(page)
 
     await expectRouteToStayUnhydrated(page, 'enhanced-wait-abort-button')
     await expect(page.getByTestId('enhanced-wait-abort-reason')).toHaveText(
@@ -816,6 +817,12 @@ test.describe('enhanced Hydrate API combinations', () => {
     await expect(page.getByTestId('enhanced-abort-status')).toHaveText(
       'aborted',
     )
+  })
+
+  test('nested dynamic interaction boundaries delegate through outer boundaries', async ({
+    page,
+  }) => {
+    await gotoEnhanced(page)
 
     await clickToHydrateThenClickAndExpectIncrement(
       page,

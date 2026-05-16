@@ -1,27 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { Hydrate } from '@tanstack/react-start'
-import {
-  idle,
-  interaction,
-  media,
-  visible,
-} from '@tanstack/react-start/hydration'
+import { interaction, media } from '@tanstack/react-start/hydration'
 import { EnhancedNestedWidget } from '../shared/EnhancedNestedWidget'
-import type { HydrateOptions } from '@tanstack/react-start'
-
-type DynamicHydrationMode = 'interaction' | 'visible'
 
 type EnhancedSearch = {
-  dynamic?: DynamicHydrationMode
+  dynamic?: 'interaction'
 }
 
 export const Route = createFileRoute('/enhanced')({
   validateSearch: (search: Record<string, unknown>): EnhancedSearch => ({
-    dynamic:
-      search.dynamic === 'visible' || search.dynamic === 'interaction'
-        ? search.dynamic
-        : undefined,
+    dynamic: search.dynamic === 'interaction' ? 'interaction' : undefined,
   }),
   component: EnhancedHydrationPage,
 })
@@ -30,6 +19,10 @@ type DeferredGate = {
   promise: Promise<void>
   resolve: () => void
 }
+
+const clickIntent = interaction({ events: 'click' })
+const pointerOverIntent = interaction({ events: 'pointerover' })
+const doubleClickIntent = interaction({ events: 'dblclick' })
 
 function createDeferredGate(): DeferredGate {
   let resolve!: () => void
@@ -45,9 +38,12 @@ function useDeferredGate() {
   return ref.current
 }
 
-const belowFoldProps = {
-  when: () => visible({ rootMargin: '0px' }),
-} satisfies HydrateOptions
+function mergeStatus<T extends Record<string, string>>(
+  setStatus: React.Dispatch<React.SetStateAction<T>>,
+  patch: Partial<T>,
+) {
+  setStatus((current) => ({ ...current, ...patch }))
+}
 
 function InteractiveBox(props: { id: string; label: string }) {
   const [count, setCount] = React.useState(0)
@@ -68,102 +64,71 @@ function InteractiveBox(props: { id: string; label: string }) {
   )
 }
 
-function dynamicFromSearch(mode: DynamicHydrationMode | undefined) {
-  return mode === 'visible'
-    ? visible({ rootMargin: '0px' })
-    : interaction({ events: 'click' })
-}
-
-function EnhancedHydrationPage() {
+function DynamicWhenExamples() {
   const search = Route.useSearch()
   const searchDrivenHydration = React.useCallback(
-    () => dynamicFromSearch(search.dynamic),
+    () => (search.dynamic === 'interaction' ? clickIntent : doubleClickIntent),
     [search.dynamic],
   )
-  const [rerenders, setRerenders] = React.useState(0)
-  const splitGate = useDeferredGate()
-  const fireGate = useDeferredGate()
-  const runtimeGate = useDeferredGate()
-  const [splitWaitReason, setSplitWaitReason] = React.useState('idle')
-  const [splitPreload, setSplitPreload] = React.useState('idle')
-  const [splitQuery, setSplitQuery] = React.useState('idle')
-  const [fireStatus, setFireStatus] = React.useState('idle')
-  const [fireWaitReason, setFireWaitReason] = React.useState('idle')
-  const [firePreload, setFirePreload] = React.useState('idle')
-  const [fireQuery, setFireQuery] = React.useState('idle')
-  const [hydrateFirstReason, setHydrateFirstReason] = React.useState('idle')
-  const [runtimeWaitReason, setRuntimeWaitReason] = React.useState('idle')
-  const [runtimeStatus, setRuntimeStatus] = React.useState('idle')
-  const [waitAbortReason, setWaitAbortReason] = React.useState('idle')
-  const [abortStatus, setAbortStatus] = React.useState('idle')
-  const [showWaitAbortBoundary, setShowWaitAbortBoundary] = React.useState(true)
-  const [showAbortBoundary, setShowAbortBoundary] = React.useState(true)
 
   return (
-    <section>
-      <h1 data-testid="enhanced-heading">Enhanced Hydrate APIs</h1>
-      <p data-testid="enhanced-rerenders">{rerenders}</p>
-      <button
-        data-testid="enhanced-rerender"
-        onClick={() => setRerenders((count) => count + 1)}
-      >
-        rerender parent
-      </button>
-
+    <>
       <p className="dh-note">
-        Dynamic visible uses reusable <code>HydrateOptions</code> spread props.
+        Dynamic callbacks are client-only. The first boundary always hydrates on
+        click; the second reads typed router search state before choosing its
+        interaction event.
       </p>
-      <div className="dh-spacer">Scroll to dynamic visible</div>
-      <Hydrate {...belowFoldProps}>
-        <InteractiveBox id="enhanced-dynamic-visible" label="dynamic visible" />
+      <Hydrate when={() => clickIntent}>
+        <InteractiveBox
+          id="enhanced-dynamic-interaction"
+          label="dynamic interaction"
+        />
       </Hydrate>
-
-      <p className="dh-note">
-        This callback reads typed TanStack Router search state, so it must not
-        run during server rendering.
-      </p>
-      <div className="dh-spacer">Scroll to conditional dynamic boundary</div>
       <Hydrate when={searchDrivenHydration}>
         <InteractiveBox
           id="enhanced-dynamic-conditional"
           label="conditional dynamic"
         />
       </Hydrate>
+    </>
+  )
+}
 
-      <p className="dh-note">
-        Dynamic interaction stays unhydrated across parent rerenders and
-        hydrates on click.
-      </p>
-      <Hydrate when={() => interaction({ events: 'click' })}>
-        <InteractiveBox
-          id="enhanced-dynamic-interaction"
-          label="dynamic interaction"
-        />
-      </Hydrate>
+function SplitPrefetchExample() {
+  const gate = useDeferredGate()
+  const [status, setStatus] = React.useState({
+    wait: 'idle',
+    preload: 'idle',
+    query: 'idle',
+  })
 
-      <p data-testid="enhanced-split-wait-reason">{splitWaitReason}</p>
-      <p data-testid="enhanced-split-preload">{splitPreload}</p>
-      <p data-testid="enhanced-split-query">{splitQuery}</p>
+  return (
+    <>
+      <p data-testid="enhanced-split-wait-reason">{status.wait}</p>
+      <p data-testid="enhanced-split-preload">{status.preload}</p>
+      <p data-testid="enhanced-split-query">{status.query}</p>
       <button
         data-testid="enhanced-release-split-prefetch"
-        onClick={() => splitGate.resolve()}
+        onClick={() => gate.resolve()}
       >
         release split prefetch
       </button>
       <Hydrate
-        when={interaction({ events: 'click' })}
+        when={clickIntent}
         prefetch={async ({ waitFor, preload, signal, element }) => {
-          setSplitQuery(element ? 'element' : 'missing-element')
-          const waitForReason = waitFor(interaction({ events: 'pointerover' }))
-          setSplitWaitReason('waiting')
-          const reason = await waitForReason
-          setSplitWaitReason(reason)
+          mergeStatus(setStatus, {
+            query: element ? 'element' : 'missing-element',
+            wait: 'waiting',
+          })
+
+          const reason = await waitFor(pointerOverIntent)
+          mergeStatus(setStatus, { wait: reason })
           if (reason === 'abort' || signal.aborted) return
 
-          await Promise.all([
-            preload().then(() => setSplitPreload('done')),
-            splitGate.promise.then(() => setSplitQuery('done')),
-          ])
+          await preload()
+          mergeStatus(setStatus, { preload: 'done' })
+          await gate.promise
+          mergeStatus(setStatus, { query: 'done' })
         }}
       >
         <InteractiveBox
@@ -171,29 +136,41 @@ function EnhancedHydrationPage() {
           label="procedural split enhanced-procedural-split-child"
         />
       </Hydrate>
+    </>
+  )
+}
 
-      <p data-testid="enhanced-fire-status">{fireStatus}</p>
-      <p data-testid="enhanced-fire-wait-reason">{fireWaitReason}</p>
-      <p data-testid="enhanced-fire-preload">{firePreload}</p>
-      <p data-testid="enhanced-fire-query">{fireQuery}</p>
+function FireAndForgetPrefetchExample() {
+  const gate = useDeferredGate()
+  const [status, setStatus] = React.useState({
+    wait: 'idle',
+    work: 'idle',
+    query: 'idle',
+  })
+
+  return (
+    <>
+      <p data-testid="enhanced-fire-status">{status.work}</p>
+      <p data-testid="enhanced-fire-wait-reason">{status.wait}</p>
+      <p data-testid="enhanced-fire-query">{status.query}</p>
       <button
         data-testid="enhanced-release-fire-prefetch"
-        onClick={() => fireGate.resolve()}
+        onClick={() => gate.resolve()}
       >
         release fire-and-forget prefetch
       </button>
       <Hydrate
-        when={interaction({ events: 'click' })}
-        prefetch={({ waitFor, preload }) => {
-          const waitForReason = waitFor(interaction({ events: 'pointerover' }))
-          setFireWaitReason('waiting')
-          void waitForReason.then((reason) => {
-            setFireWaitReason(reason)
+        when={clickIntent}
+        prefetch={({ waitFor }) => {
+          mergeStatus(setStatus, { wait: 'waiting' })
+          void waitFor(pointerOverIntent).then((reason) => {
+            mergeStatus(setStatus, { wait: reason })
             if (reason === 'abort') return
 
-            setFireStatus('started')
-            void preload().then(() => setFirePreload('done'))
-            void fireGate.promise.then(() => setFireQuery('done'))
+            mergeStatus(setStatus, { work: 'started' })
+            void gate.promise.then(() => {
+              mergeStatus(setStatus, { query: 'done' })
+            })
           })
         }}
       >
@@ -202,39 +179,57 @@ function EnhancedHydrationPage() {
           label="fire and forget enhanced-fire-and-forget-child"
         />
       </Hydrate>
+    </>
+  )
+}
 
-      <p data-testid="enhanced-hydrate-first-reason">{hydrateFirstReason}</p>
+function HydrateFirstPrefetchExample() {
+  const [reason, setReason] = React.useState('idle')
+
+  return (
+    <>
+      <p data-testid="enhanced-hydrate-first-reason">{reason}</p>
       <Hydrate
-        when={interaction({ events: 'click' })}
+        when={clickIntent}
         prefetch={async ({ waitFor }) => {
-          const reason = await waitFor(interaction({ events: 'dblclick' }))
-          setHydrateFirstReason(reason)
+          setReason(await waitFor(doubleClickIntent))
         }}
       >
         <InteractiveBox id="enhanced-hydrate-first" label="hydrate first" />
       </Hydrate>
+    </>
+  )
+}
 
-      <p data-testid="enhanced-runtime-wait-reason">{runtimeWaitReason}</p>
-      <p data-testid="enhanced-runtime-status">{runtimeStatus}</p>
+function RuntimeOnlyPrefetchExample() {
+  const gate = useDeferredGate()
+  const [status, setStatus] = React.useState({
+    wait: 'idle',
+    ready: 'idle',
+  })
+
+  return (
+    <>
+      <p data-testid="enhanced-runtime-wait-reason">{status.wait}</p>
+      <p data-testid="enhanced-runtime-status">{status.ready}</p>
       <button
         data-testid="enhanced-release-runtime-prefetch"
-        onClick={() => runtimeGate.resolve()}
+        onClick={() => gate.resolve()}
       >
         release runtime-only prefetch
       </button>
       <Hydrate
-        when={interaction({ events: 'click' })}
+        when={clickIntent}
         split={false}
         prefetch={async ({ waitFor, preload }) => {
-          const waitForReason = waitFor(interaction({ events: 'pointerover' }))
-          setRuntimeWaitReason('waiting')
-          const reason = await waitForReason
-          setRuntimeWaitReason(reason)
+          mergeStatus(setStatus, { wait: 'waiting' })
+          const reason = await waitFor(pointerOverIntent)
+          mergeStatus(setStatus, { wait: reason })
           if (reason === 'abort') return
 
-          await runtimeGate.promise
+          await gate.promise
           await preload()
-          setRuntimeStatus('ready')
+          mergeStatus(setStatus, { ready: 'ready' })
         }}
       >
         <InteractiveBox
@@ -242,51 +237,67 @@ function EnhancedHydrationPage() {
           label="runtime only enhanced-runtime-only-child"
         />
       </Hydrate>
+    </>
+  )
+}
 
-      <p data-testid="enhanced-wait-abort-reason">{waitAbortReason}</p>
+function WaitForAbortExample() {
+  const [showBoundary, setShowBoundary] = React.useState(true)
+  const [reason, setReason] = React.useState('idle')
+
+  return (
+    <>
+      <p data-testid="enhanced-wait-abort-reason">{reason}</p>
       <button
         data-testid="enhanced-hide-wait-abort"
-        onClick={() => setShowWaitAbortBoundary(false)}
+        onClick={() => setShowBoundary(false)}
       >
         hide waitFor abort boundary
       </button>
-      {showWaitAbortBoundary ? (
+      {showBoundary ? (
         <Hydrate
-          when={interaction({ events: 'click' })}
+          when={clickIntent}
           prefetch={async ({ waitFor }) => {
-            const waitForReason = waitFor(
-              interaction({ events: 'pointerover' }),
-            )
-            setWaitAbortReason('waiting')
-            const reason = await waitForReason
-            setWaitAbortReason(reason)
+            setReason('waiting')
+            setReason(await waitFor(pointerOverIntent))
           }}
         >
           <InteractiveBox id="enhanced-wait-abort" label="wait abort" />
         </Hydrate>
       ) : null}
+    </>
+  )
+}
 
-      <p data-testid="enhanced-abort-status">{abortStatus}</p>
+function SignalAbortExample() {
+  const [showBoundary, setShowBoundary] = React.useState(true)
+  const [status, setStatus] = React.useState('idle')
+
+  return (
+    <>
+      <p data-testid="enhanced-abort-status">{status}</p>
       <button
         data-testid="enhanced-hide-abort"
-        onClick={() => setShowAbortBoundary(false)}
+        onClick={() => setShowBoundary(false)}
       >
         hide abort boundary
       </button>
-      {showAbortBoundary ? (
+      {showBoundary ? (
         <Hydrate
-          when={interaction({ events: 'click' })}
+          when={clickIntent}
           prefetch={async ({ signal }) => {
-            setAbortStatus('listening')
+            setStatus('listening')
             await new Promise<void>((resolve) => {
               const onAbort = () => {
-                setAbortStatus('aborted')
+                setStatus('aborted')
                 resolve()
               }
+
               if (signal.aborted) {
                 onAbort()
                 return
               }
+
               signal.addEventListener('abort', onAbort, { once: true })
             })
           }}
@@ -294,22 +305,35 @@ function EnhancedHydrationPage() {
           <InteractiveBox id="enhanced-abort" label="abort" />
         </Hydrate>
       ) : null}
+    </>
+  )
+}
 
+function NestedDynamicExamples() {
+  return (
+    <>
       <Hydrate when={media('(max-width: 1px)')}>
-        <Hydrate when={() => interaction({ events: 'click' })}>
+        <Hydrate when={() => clickIntent}>
           <InteractiveBox id="enhanced-dynamic-nested" label="dynamic nested" />
         </Hydrate>
       </Hydrate>
       <EnhancedNestedWidget />
+    </>
+  )
+}
 
-      <Hydrate
-        when={interaction({ events: 'click' })}
-        prefetch={async ({ waitFor }) => {
-          await waitFor(idle({ timeout: 1 }))
-        }}
-      >
-        <InteractiveBox id="enhanced-idle-prefetch" label="idle prefetch" />
-      </Hydrate>
+function EnhancedHydrationPage() {
+  return (
+    <section>
+      <h1 data-testid="enhanced-heading">Enhanced Hydrate APIs</h1>
+      <DynamicWhenExamples />
+      <SplitPrefetchExample />
+      <FireAndForgetPrefetchExample />
+      <HydrateFirstPrefetchExample />
+      <RuntimeOnlyPrefetchExample />
+      <WaitForAbortExample />
+      <SignalAbortExample />
+      <NestedDynamicExamples />
     </section>
   )
 }
