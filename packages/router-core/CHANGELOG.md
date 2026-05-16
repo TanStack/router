@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.1
+
+### Patch Changes
+
+- Run custom router hydration before the initial client route match so hydrated router configuration, such as request-specific URL rewrites, can be installed before SSR hydration compares matches. ([#7416](https://github.com/TanStack/router/pull/7416))
+
 ## 1.171.0
 
 ### Minor Changes
