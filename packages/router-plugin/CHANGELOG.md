@@ -1,5 +1,11 @@
 # @tanstack/router-plugin
 
+## 1.168.5
+
+### Patch Changes
+
+- Fix Vite Fast Refresh detection for root routes created with `createRootRouteWithContext` type arguments. ([#7420](https://github.com/TanStack/router/pull/7420))
+
 ## 1.168.4
 
 ### Patch Changes

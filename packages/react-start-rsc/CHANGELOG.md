@@ -1,5 +1,12 @@
 # @tanstack/react-start-rsc
 
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-plugin-core@1.170.5
+
 ## 0.1.4
 
 ### Patch Changes
