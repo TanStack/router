@@ -1,9 +1,11 @@
 import * as React from 'react';
 import { createRootRoute } from '@tanstack/react-router';
-const TSRComponent = () => <div>root hmr</div>;
 export const Route = createRootRoute({
-  component: TSRComponent
+  component: RootComponent
 });
+function RootComponent() {
+  return <div>Hello</div>;
+}
 const hot = import.meta.hot;
 if (hot && typeof window !== 'undefined') {
   hot.data ??= {};
@@ -19,7 +21,7 @@ if (hot && typeof window !== 'undefined') {
       ignoredExportsById
     };
   })();
-  tsrReactRefresh.ignoredExportsById.set("createRootRoute-inline-component.tsx", ['Route']);
+  tsrReactRefresh.ignoredExportsById.set("createRootRoute.tsx", ['Route']);
 }
 export function TSRFastRefreshAnchor() {
   return null;

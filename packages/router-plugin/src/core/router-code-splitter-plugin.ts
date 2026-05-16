@@ -21,7 +21,7 @@ import {
   tsrSplit,
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
-import { debug, normalizePath } from './utils'
+import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
 import { createRouterPluginContext } from './router-plugin-context'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
@@ -240,11 +240,6 @@ export function createRouterCodeSplitterPlugin(
     return result
   }
 
-  const includedCode = [
-    'createFileRoute(',
-    'createRootRoute(',
-    'createRootRouteWithContext(',
-  ]
   return [
     {
       name: 'tanstack-router:code-splitter:compile-reference-file',
@@ -258,17 +253,14 @@ export function createRouterCodeSplitterPlugin(
             include: /\.(m|c)?(j|t)sx?$/,
           },
           code: {
-            include: includedCode,
+            include: routeFactoryCallCodeFilter,
           },
         },
         handler(code, id) {
           const normalizedId = normalizePath(id)
           const generatorFileInfo =
             routerPluginContext.routesByFile.get(normalizedId)
-          if (
-            generatorFileInfo &&
-            includedCode.some((included) => code.includes(included))
-          ) {
+          if (generatorFileInfo) {
             return handleCompilingReferenceFile(
               code,
               normalizedId,

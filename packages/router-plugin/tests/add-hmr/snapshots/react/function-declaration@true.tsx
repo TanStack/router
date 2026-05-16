@@ -17,7 +17,6 @@ export const Route = createFileRoute('/posts')({
 });
 const hot = import.meta.hot;
 if (hot && typeof window !== 'undefined') {
-  ;
   hot.data ??= {};
   const tsrReactRefresh = window.__TSR_REACT_REFRESH__ ??= (() => {
     const ignoredExportsById = new Map();
