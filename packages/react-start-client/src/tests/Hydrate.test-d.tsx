@@ -50,7 +50,7 @@ test('HydrateOptions supports reusable spread props', () => {
   const withFunctionPrefetch = {
     when: visible(),
     split: false,
-    prefetch: async (ctx) => {
+    prefetch: (ctx) => {
       expectTypeOf(ctx.element).toEqualTypeOf<Element | null>()
       expectTypeOf(ctx.signal).toEqualTypeOf<AbortSignal>()
       expectTypeOf(ctx.preload).returns.toEqualTypeOf<Promise<void>>()

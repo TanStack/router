@@ -1646,8 +1646,8 @@ export class StartCompiler {
       return 'None'
     }
 
-    for (const [source, exports] of this.knownRootImports) {
-      const kind = exports.get(binding.importedName)
+    for (const [source, rootExports] of this.knownRootImports) {
+      const kind = rootExports.get(binding.importedName)
       if (!kind) {
         continue
       }

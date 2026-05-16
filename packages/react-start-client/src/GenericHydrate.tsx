@@ -65,6 +65,7 @@ function useHydrationGate(props: InternalHydrateProps) {
   )
   if (isDynamicHydrate) {
     dynamicHydrateStrategyRef.current ??=
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       (isServer ?? typeof window === 'undefined')
         ? dynamicHydrateStrategy
         : when()
@@ -102,12 +103,14 @@ function useHydrationGate(props: InternalHydrateProps) {
   }
 
   shouldPreserveServerHTMLRef.current ??=
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined') || !hydrated
   shouldDeferInitialHydrationRef.current ??=
     !hydrated && shouldDeferHydration(hydrateStrategy)
 
   if (!gateRef.current) {
     gateRef.current =
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       (isServer ?? typeof window === 'undefined')
         ? createResolvedGate(id, hydrateStrategy._t!)
         : getOrCreateGate(id, hydrateStrategy._t!)
@@ -116,6 +119,7 @@ function useHydrationGate(props: InternalHydrateProps) {
   gateRef.current.when = hydrateStrategy._t!
 
   if (
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     !(isServer ?? typeof window === 'undefined') &&
     hydrateStrategy._t !== 'never' &&
     (!shouldDeferInitialHydrationRef.current ||
@@ -153,6 +157,7 @@ function useHydrationGate(props: InternalHydrateProps) {
 
   React.useEffect(() => {
     if (
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       (isServer ?? typeof window === 'undefined') ||
       !latestRef.current.prefetch
     ) {
@@ -223,10 +228,13 @@ function useHydrationGate(props: InternalHydrateProps) {
   useLayoutEffect(() => {
     const gate = gateRef.current!
     if (
-      gate.resolved ||
       !shouldDeferInitialHydrationRef.current ||
       hydrateStrategy._t === 'never'
     ) {
+      return
+    }
+
+    if (gate.resolved) {
       return
     }
 
@@ -307,6 +315,7 @@ function useHydrationGate(props: InternalHydrateProps) {
   return {
     gate: gateRef.current,
     markerRef,
+    markerElementRef,
     hydrateStrategy,
     markerHydrateType,
     prefetchError,
@@ -315,7 +324,11 @@ function useHydrationGate(props: InternalHydrateProps) {
 }
 
 function HydrationGate(props: { gate: Gate; children: React.ReactNode }) {
-  if (isServer ?? typeof window === 'undefined') {
+  if (
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    isServer ??
+    typeof window === 'undefined'
+  ) {
     return props.children as React.JSX.Element
   }
 
@@ -357,6 +370,7 @@ export function GenericHydrate(props: HydrateProps): React.JSX.Element {
     gate,
     hydrateStrategy,
     markerHydrateType,
+    markerElementRef,
     markerRef,
     prefetchError,
     shouldPreserveServerHTML,
@@ -408,7 +422,10 @@ export function GenericHydrate(props: HydrateProps): React.JSX.Element {
           <HydratedBoundary
             id={gate.id}
             onHydrated={props.onHydrated}
-            onStrategyHydrated={hydrateStrategy._o}
+            onStrategyHydrated={(id) => {
+              markerElementRef.current?.removeAttribute(hydrateWhenAttribute)
+              hydrateStrategy._o?.(id)
+            }}
           >
             {props.children}
           </HydratedBoundary>

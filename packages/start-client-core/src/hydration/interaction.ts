@@ -88,7 +88,8 @@ function queueHydrationReplayEvent(marker: Element, event: Event) {
   if (!event.bubbles) return
 
   const id = marker.getAttribute(hydrateIdAttribute)
-  if (!id || marker.getAttribute(hydrateWhenAttribute) === 'never') return
+  const when = marker.getAttribute(hydrateWhenAttribute)
+  if (!id || !when || when === 'never') return
 
   const target = event.target
   if (!target) return

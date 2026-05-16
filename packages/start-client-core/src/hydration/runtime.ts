@@ -152,15 +152,14 @@ export function getMarkerGate(marker: Element) {
 
 export function resolveHydrationMarker(marker: Element) {
   const id = marker.getAttribute(hydrateIdAttribute)
-  if (!id || marker.getAttribute(hydrateWhenAttribute) === 'never') {
+  const when = marker.getAttribute(hydrateWhenAttribute)
+  if (!id || !when || when === 'never') {
     return
   }
 
   const gate = gateRegistry.get(id)
   if (gate) {
-    if (gate.when !== 'never') {
-      gate.resolve()
-    }
+    if (gate.when !== 'never') gate.resolve()
     return
   }
 

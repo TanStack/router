@@ -92,7 +92,11 @@ function ServerDynamicHydrate(props: HydrateProps): React.JSX.Element {
 /* @__NO_SIDE_EFFECTS__ */
 export function Hydrate(props: HydrateProps): React.JSX.Element {
   if (typeof props.when === 'function') {
-    if (isServer ?? typeof window === 'undefined') {
+    if (
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      isServer ??
+      typeof window === 'undefined'
+    ) {
       return <ServerDynamicHydrate {...props} />
     }
 

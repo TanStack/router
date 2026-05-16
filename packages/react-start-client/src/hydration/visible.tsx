@@ -64,7 +64,11 @@ export function VisibleHydrate(
         resolvePromise()
       },
     }
-    if (isServer ?? typeof window === 'undefined') {
+    if (
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      isServer ??
+      typeof window === 'undefined'
+    ) {
       nextGate.s()
     }
 

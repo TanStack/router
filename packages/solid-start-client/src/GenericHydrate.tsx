@@ -77,7 +77,8 @@ export function GenericHydrate(props: InternalHydrateProps) {
   const when = props.when
   const dynamicHydrate = typeof when === 'function'
   const initialHydrateStrategy: HydrationStrategy = dynamicHydrate
-    ? (isServer ?? typeof window === 'undefined')
+    ? // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      (isServer ?? typeof window === 'undefined')
       ? dynamicHydrateStrategy
       : when()
     : when
@@ -90,14 +91,17 @@ export function GenericHydrate(props: InternalHydrateProps) {
   const id = props.h ? `${props.h}${uniqueId}` : uniqueId
   const initialHydrateType = initialHydrateStrategy._t!
   const shouldPreserveServerHTML =
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined') || !hydrated()
   const shouldDeferInitialHydration =
     !hydrated() && shouldDeferHydration(initialHydrateStrategy)
   const gate: HydrationGateRecord =
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined')
       ? createResolvedGate(id, initialHydrateType)
       : getOrCreateGate(id, initialHydrateType)
   const [ready, setReady] = Solid.createSignal(
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined') ||
       (!shouldDeferInitialHydration && initialHydrateType !== 'never'),
   )
@@ -113,6 +117,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
   let markerElement: HTMLDivElement | undefined
 
   if (
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     !(isServer ?? typeof window === 'undefined') &&
     initialHydrateType !== 'never' &&
     (!shouldDeferInitialHydration ||
@@ -304,6 +309,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
 
   Solid.createRenderEffect(() => {
     if (
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       (isServer ?? typeof window === 'undefined') ||
       gate.resolved ||
       initialHydrateStrategy._t === 'never' ||
@@ -355,7 +361,10 @@ export function GenericHydrate(props: InternalHydrateProps) {
             <HydratedBoundary
               id={id}
               onHydrated={props.onHydrated}
-              onStrategyHydrated={initialHydrateStrategy._o}
+              onStrategyHydrated={(id) => {
+                markerElement?.removeAttribute(hydrateWhenAttribute)
+                initialHydrateStrategy._o?.(id)
+              }}
             >
               {props.children}
             </HydratedBoundary>

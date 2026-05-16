@@ -527,7 +527,6 @@ function transformHydrateAst(options: {
           if (getJSXElementName(path.node) !== localName) return
 
           if (options.env === 'server') {
-            let strippedFallback = false
             path.node.openingElement.attributes =
               path.node.openingElement.attributes.filter((item) => {
                 if (
@@ -537,7 +536,7 @@ function transformHydrateAst(options: {
                   if (item.value) {
                     stripBindingsOnlyReferencedBy(path, item.value)
                   }
-                  strippedFallback = true
+                  state.modified = true
                   return false
                 }
 
@@ -552,7 +551,7 @@ function transformHydrateAst(options: {
                       'fallback',
                     )
                   ) {
-                    strippedFallback = true
+                    state.modified = true
                   }
                   return item.argument.properties.length > 0
                 }
@@ -569,16 +568,12 @@ function transformHydrateAst(options: {
                     init &&
                     stripObjectExpressionProperty(path, init, 'fallback')
                   ) {
-                    strippedFallback = true
+                    state.modified = true
                   }
                 }
 
                 return true
               })
-
-            if (strippedFallback) {
-              state.modified = true
-            }
           }
 
           const split = getBooleanProp(path.node.openingElement, 'split')

@@ -30,7 +30,7 @@ function getModuleExportName(node: t.Identifier | t.StringLiteral) {
 function addVariableDeclarationModuleInfo(
   declaration: t.VariableDeclaration,
   bindings: Map<string, ModuleInfoBinding>,
-  exports?: Map<string, string>,
+  exportMap?: Map<string, string>,
 ) {
   for (const declarator of declaration.declarations) {
     for (const name of collectIdentifiersFromPattern(declarator.id)) {
@@ -38,7 +38,7 @@ function addVariableDeclarationModuleInfo(
         type: 'var',
         init: declarator.init ?? null,
       })
-      exports?.set(name, name)
+      exportMap?.set(name, name)
     }
   }
 }
@@ -46,10 +46,10 @@ function addVariableDeclarationModuleInfo(
 function addDeclarationModuleInfo(
   declaration: t.Declaration,
   bindings: Map<string, ModuleInfoBinding>,
-  exports?: Map<string, string>,
+  exportMap?: Map<string, string>,
 ) {
   if (t.isVariableDeclaration(declaration)) {
-    addVariableDeclarationModuleInfo(declaration, bindings, exports)
+    addVariableDeclarationModuleInfo(declaration, bindings, exportMap)
     return
   }
 
@@ -62,7 +62,7 @@ function addDeclarationModuleInfo(
       type: 'var',
       init: null,
     })
-    exports?.set(declaration.id.name, declaration.id.name)
+    exportMap?.set(declaration.id.name, declaration.id.name)
   }
 }
 
@@ -402,7 +402,7 @@ export function collectLocalBindingsFromStatement(
 
 export function extractModuleInfoFromAst(ast: t.File): ExtractedModuleInfo {
   const bindings = new Map<string, ModuleInfoBinding>()
-  const exports = new Map<string, string>()
+  const exportMap = new Map<string, string>()
   const reExportAllSources: Array<string> = []
 
   for (const node of ast.program.body) {
@@ -444,13 +444,13 @@ export function extractModuleInfoFromAst(ast: t.File): ExtractedModuleInfo {
 
     if (t.isExportNamedDeclaration(node)) {
       if (node.declaration) {
-        addDeclarationModuleInfo(node.declaration, bindings, exports)
+        addDeclarationModuleInfo(node.declaration, bindings, exportMap)
       }
 
       for (const specifier of node.specifiers) {
         if (t.isExportNamespaceSpecifier(specifier)) {
           const exported = getModuleExportName(specifier.exported)
-          exports.set(exported, exported)
+          exportMap.set(exported, exported)
           if (node.source) {
             bindings.set(exported, {
               type: 'import',
@@ -461,7 +461,7 @@ export function extractModuleInfoFromAst(ast: t.File): ExtractedModuleInfo {
         } else if (t.isExportSpecifier(specifier)) {
           const local = getModuleExportName(specifier.local)
           const exported = getModuleExportName(specifier.exported)
-          exports.set(exported, local)
+          exportMap.set(exported, local)
 
           if (node.source) {
             bindings.set(local, {
@@ -478,7 +478,7 @@ export function extractModuleInfoFromAst(ast: t.File): ExtractedModuleInfo {
     if (t.isExportDefaultDeclaration(node)) {
       const declaration = node.declaration
       if (t.isIdentifier(declaration)) {
-        exports.set('default', declaration.name)
+        exportMap.set('default', declaration.name)
       } else if (
         (t.isFunctionDeclaration(declaration) ||
           t.isClassDeclaration(declaration)) &&
@@ -488,14 +488,14 @@ export function extractModuleInfoFromAst(ast: t.File): ExtractedModuleInfo {
           type: 'var',
           init: null,
         })
-        exports.set('default', declaration.id.name)
+        exportMap.set('default', declaration.id.name)
       } else {
         const synth = '__default_export__'
         bindings.set(synth, {
           type: 'var',
           init: t.isExpression(declaration) ? declaration : null,
         })
-        exports.set('default', synth)
+        exportMap.set('default', synth)
       }
       continue
     }
@@ -507,7 +507,7 @@ export function extractModuleInfoFromAst(ast: t.File): ExtractedModuleInfo {
 
   return {
     bindings,
-    exports,
+    exports: exportMap,
     reExportAllSources,
   }
 }
