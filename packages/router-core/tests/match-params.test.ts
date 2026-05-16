@@ -391,12 +391,12 @@ describe('params.parse route selection', () => {
       expect(priorityOneParse).toHaveBeenCalledWith({ high: '123' })
       expect(defaultPriorityParse).toHaveBeenCalledWith({ default: '123' })
       expect(priorityNegativeOneParse).toHaveBeenCalledWith({ low: '123' })
-      expect(
-        priorityOneParse.mock.invocationCallOrder[0]!,
-      ).toBeLessThan(defaultPriorityParse.mock.invocationCallOrder[0]!)
-      expect(
+      expect(priorityOneParse.mock.invocationCallOrder[0]!).toBeLessThan(
         defaultPriorityParse.mock.invocationCallOrder[0]!,
-      ).toBeLessThan(priorityNegativeOneParse.mock.invocationCallOrder[0]!)
+      )
+      expect(defaultPriorityParse.mock.invocationCallOrder[0]!).toBeLessThan(
+        priorityNegativeOneParse.mock.invocationCallOrder[0]!,
+      )
     })
 
     it('falls through to the next params.parse route by params.priority', () => {
