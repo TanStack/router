@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778885896033,
+  "lastUpdate": 1778897455691,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -16297,6 +16297,102 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/13432ad9ff9f5f8d438de6d5ab30223b401b917b"
         },
         "date": 1778885894695,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89386,
+            "unit": "bytes",
+            "extra": "raw=280647; brotli=77673; initial_gzip=89245"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92998,
+            "unit": "bytes",
+            "extra": "raw=292432; brotli=80788; initial_gzip=92858"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36363,
+            "unit": "bytes",
+            "extra": "raw=108916; brotli=32742; initial_gzip=36236"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41194,
+            "unit": "bytes",
+            "extra": "raw=123470; brotli=37009; initial_gzip=41066"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54564,
+            "unit": "bytes",
+            "extra": "raw=155147; brotli=48995; initial_gzip=54430"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59813,
+            "unit": "bytes",
+            "extra": "raw=171710; brotli=53646; initial_gzip=59680"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104419,
+            "unit": "bytes",
+            "extra": "raw=330252; brotli=90283; initial_gzip=104279"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107939,
+            "unit": "bytes",
+            "extra": "raw=340831; brotli=93378; initial_gzip=107799"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 101984,
+            "unit": "bytes",
+            "extra": "raw=324585; brotli=87773; initial_gzip=101808"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105357,
+            "unit": "bytes",
+            "extra": "raw=335268; brotli=90617; initial_gzip=105181"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50803,
+            "unit": "bytes",
+            "extra": "raw=156140; brotli=44835; initial_gzip=50671"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56728,
+            "unit": "bytes",
+            "extra": "raw=173454; brotli=49889; initial_gzip=56595"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "manuel.schiller@caligano.de",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "742941e2f1bf069c950d0a4985b2cd733639509e",
+          "message": "fix: Fix literal underscore paths under pathless layouts (#7408)",
+          "timestamp": "2026-05-16T04:08:22+02:00",
+          "tree_id": "30766c7bd7812482da384f08b37fe8af7e3c724a",
+          "url": "https://github.com/TanStack/router/commit/742941e2f1bf069c950d0a4985b2cd733639509e"
+        },
+        "date": 1778897454664,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
