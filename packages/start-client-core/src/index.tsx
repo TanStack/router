@@ -126,7 +126,7 @@ export type {
   StartInstance,
   StartInstanceOptions,
 } from './createStart'
-export type { Register } from '@tanstack/router-core'
+export type { Register } from './register'
 
 export { getRouterInstance } from './getRouterInstance'
 export { getDefaultSerovalPlugins } from './getDefaultSerovalPlugins'

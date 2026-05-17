@@ -1,5 +1,6 @@
 import { createMiddleware } from './createMiddleware'
 import type { TSS_SERVER_FUNCTION } from './constants'
+import type { Register } from './register'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
@@ -8,7 +9,6 @@ import type {
 import type { CustomFetch } from './createServerFn'
 import type {
   AnySerializationAdapter,
-  Register,
   SSROption,
 } from '@tanstack/router-core'
 
