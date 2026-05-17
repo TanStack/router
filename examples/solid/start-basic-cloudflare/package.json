@@ -12,9 +12,9 @@
     "postinstall": "npm run cf-typegen"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.170.3",
+    "@tanstack/solid-router": "^1.170.4",
     "@tanstack/solid-router-devtools": "^1.167.0",
-    "@tanstack/solid-start": "^1.168.5",
+    "@tanstack/solid-start": "^1.168.6",
     "solid-js": "^1.9.10"
   },
   "devDependencies": {

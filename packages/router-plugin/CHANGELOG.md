@@ -1,5 +1,16 @@
 # @tanstack/router-plugin
 
+## 1.168.6
+
+### Patch Changes
+
+- Fix route mismatch warnings, HMR route index refresh, and generated route type preferences for duplicate pathless/index routes. ([#7422](https://github.com/TanStack/router/pull/7422))
+
+- Updated dependencies [[`b60eb36`](https://github.com/TanStack/router/commit/b60eb36e59e8a468ee0742cbcf7f47aca1ff1c67)]:
+  - @tanstack/router-core@1.171.2
+  - @tanstack/router-generator@1.167.5
+  - @tanstack/react-router@1.170.4
+
 ## 1.168.5
 
 ### Patch Changes

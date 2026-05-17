@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.2
+
+### Patch Changes
+
+- Fix route mismatch warnings, HMR route index refresh, and generated route type preferences for duplicate pathless/index routes. ([#7422](https://github.com/TanStack/router/pull/7422))
+
 ## 1.171.1
 
 ### Patch Changes
