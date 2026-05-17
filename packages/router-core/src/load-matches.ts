@@ -34,10 +34,21 @@ type InnerLoadContext = {
   preload?: boolean
   forceStaleReload?: boolean
   onReady?: () => Promise<void>
+  isLatest?: () => boolean
   sync?: boolean
+  cancelled?: boolean
 }
 
+const isStaleLoad = (inner: InnerLoadContext): boolean =>
+  inner.isLatest?.() === false ||
+  (!inner.preload && inner.router.latestLocation.href !== inner.location.href)
+
 const triggerOnReady = (inner: InnerLoadContext): void | Promise<void> => {
+  if (isStaleLoad(inner)) {
+    inner.cancelled = true
+    return
+  }
+
   if (!inner.rendered) {
     inner.rendered = true
     return inner.onReady?.()
@@ -117,52 +128,59 @@ const handleRedirectAndNotFound = (
   match: AnyRouteMatch | undefined,
   err: unknown,
 ): void => {
-  if (!isRedirect(err) && !isNotFound(err)) return
+  const redirect = isRedirect(err) ? err : undefined
+  const notFound = isNotFound(err) ? err : undefined
 
-  if (isRedirect(err) && err.redirectHandled && !err.options.reloadDocument) {
-    throw err
+  if (!redirect && !notFound) return
+
+  if (redirect?.redirectHandled && !redirect.options.reloadDocument) {
+    throw redirect
   }
 
   // in case of a redirecting match during preload, the match does not exist
   if (match) {
+    // If a rendered client match redirects, the stale render may observe the
+    // redirected status before the redirect navigation replaces it.
+    const keepLoadPromise =
+      redirect &&
+      inner.rendered &&
+      !(isServer ?? inner.router.isServer) &&
+      !inner.preload
+
     match._nonReactive.beforeLoadPromise?.resolve()
     match._nonReactive.loaderPromise?.resolve()
     match._nonReactive.beforeLoadPromise = undefined
     match._nonReactive.loaderPromise = undefined
 
-    match._nonReactive.error = err
+    if (!keepLoadPromise) {
+      match._nonReactive.error = err
 
-    inner.updateMatch(match.id, (prev) => ({
-      ...prev,
-      status: isRedirect(err)
-        ? 'redirected'
-        : isNotFound(err)
-          ? 'notFound'
-          : prev.status === 'pending'
-            ? 'success'
-            : prev.status,
-      context: buildMatchContext(inner, match.index),
-      isFetching: false,
-      error: err,
-    }))
+      inner.updateMatch(match.id, (prev) => ({
+        ...prev,
+        status: redirect ? 'redirected' : 'notFound',
+        context: buildMatchContext(inner, match.index),
+        isFetching: false,
+        error: err,
+      }))
 
-    if (isNotFound(err) && !err.routeId) {
+      match._nonReactive.loadPromise?.resolve()
+    }
+
+    if (notFound && !notFound.routeId) {
       // Stamp the throwing match's routeId so that the finalization step in
       // loadMatches knows where the notFound originated.  The actual boundary
       // resolution (walking up to the nearest notFoundComponent) is deferred to
       // the finalization step, where firstBadMatchIndex is stable and
       // headMaxIndex can be capped correctly.
-      err.routeId = match.routeId
+      notFound.routeId = match.routeId
     }
-
-    match._nonReactive.loadPromise?.resolve()
   }
 
-  if (isRedirect(err)) {
+  if (redirect) {
     inner.rendered = true
-    err.options._fromLocation = inner.location
-    err.redirectHandled = true
-    err = inner.router.resolveRedirect(err)
+    redirect.options._fromLocation = inner.location
+    redirect.redirectHandled = true
+    err = inner.router.resolveRedirect(redirect)
   }
 
   throw err
@@ -967,6 +985,7 @@ export async function loadMatches(arg: {
   preload?: boolean
   forceStaleReload?: boolean
   onReady?: () => Promise<void>
+  isLatest?: () => boolean
   updateMatch: UpdateMatchFn
   sync?: boolean
 }): Promise<Array<MakeRouteMatch>> {
@@ -999,6 +1018,10 @@ export async function loadMatches(arg: {
         if (!inner.preload) throw err
       }
       break
+    }
+
+    if (inner.cancelled) {
+      return inner.matches
     }
 
     if (inner.serialError || inner.firstBadMatchIndex != null) {

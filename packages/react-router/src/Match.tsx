@@ -22,6 +22,8 @@ import { ClientOnly } from './ClientOnly'
 import { useLayoutEffect } from './utils'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
+const resolvedPromise = Promise.resolve()
+
 export const Match = React.memo(function MatchImpl({
   matchId,
 }: {
@@ -277,6 +279,11 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     )
   }
 
+  const getRedirectPromise = (match: Parameters<typeof getMatchPromise>[0]) =>
+    getMatchPromise(match, 'loadPromise') ??
+    router.latestLoadPromise ??
+    resolvedPromise
+
   if (isServer ?? router.isServer) {
     const match = router.stores.matchStores.get(matchId)?.get()
     if (!match) {
@@ -313,7 +320,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     }
 
     if (match.status === 'pending') {
-      throw getMatchPromise(match, 'loadPromise')
+      throw getRedirectPromise(match)
     }
 
     if (match.status === 'notFound') {
@@ -431,7 +438,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         }
       }
     }
-    throw getMatchPromise(match, 'loadPromise')
+    throw getRedirectPromise(match)
   }
 
   if (match.status === 'notFound') {
