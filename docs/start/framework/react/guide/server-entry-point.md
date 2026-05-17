@@ -64,7 +64,7 @@ export default createServerEntry({
 
 When your server needs to pass additional, typed data into request handlers (for example, authenticated user info, a database connection, or per-request flags), register a request context type via TypeScript module augmentation. The registered context is delivered as the second argument to the server `fetch` handler and is available throughout the server-side middleware chain — including global middleware, request/function middleware, server routes, server functions, and the router itself.
 
-To add types for your request context, augment the `Register` interface from `@tanstack/react-router` with a `server.requestContext` property. The runtime `context` you pass to `handler.fetch` will then match that type. Example:
+To add types for your request context, augment the `Register` interface from `@tanstack/react-start` with a `server.requestContext` property. The runtime `context` you pass to `handler.fetch` will then match that type. Example:
 
 ```tsx
 import handler, { createServerEntry } from '@tanstack/react-start/server-entry'
@@ -74,7 +74,7 @@ type MyRequestContext = {
   foo: number
 }
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/react-start' {
   interface Register {
     server: {
       requestContext: MyRequestContext
