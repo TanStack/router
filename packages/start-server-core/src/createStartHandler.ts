@@ -40,6 +40,7 @@ import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   AnyStartInstanceOptions,
+  Register,
   RouteMethod,
   RouteMethodHandlerFn,
   RouterEntry,
@@ -50,7 +51,6 @@ import type {
   AnyRoute,
   AnyRouter,
   AnySerializationAdapter,
-  Register,
 } from '@tanstack/router-core'
 import type {
   HandlerCallback,
