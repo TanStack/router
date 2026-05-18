@@ -1,5 +1,6 @@
 import type { NavigateOptions } from '@tanstack/router-core'
 import type * as App from './app'
+import { getRequiredLink, waitForRequiredLink } from '../setup-helpers'
 
 const appModulePath = './dist/app.js'
 const { mountTestApp } = (await import(appModulePath)) as typeof App
@@ -36,75 +37,52 @@ export function setup() {
         router.navigate(opts)
       })
 
+    const click = (testId: string, cache?: Map<string, HTMLAnchorElement>) =>
+      new Promise<void>((resolveNext) => {
+        resolveRendered = resolveNext
+
+        getRequiredLink(container!, testId, cache).dispatchEvent(
+          new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+          }),
+        )
+      })
+
     await router.load()
 
+    const cachedLinks = new Map<string, HTMLAnchorElement>()
+    for (const testId of ['go-items-1', 'go-items-2', 'go-search', 'go-ctx']) {
+      await waitForRequiredLink(container, testId, cachedLinks)
+    }
+
     const steps = [
-      () =>
-        navigate({
-          to: '/items/$id',
-          params: { id: 1 },
-          replace: true,
-        }),
-      () =>
-        navigate({
-          from: '/items/$id',
-          to: './details',
-          replace: true,
-        }),
+      () => click('go-items-1', cachedLinks),
+      () => click('items-details'),
       () =>
         navigate({
           to: '/items/$id/details',
           params: { id: 2 },
           replace: true,
         }),
-      () =>
-        navigate({
-          from: '/items/$id/details',
-          to: '..',
-          replace: true,
-        }),
-      () =>
-        navigate({
-          to: '/search',
-          search: { page: 1, filter: 'all', junk: 'group-0' },
-          replace: true,
-        }),
-      () =>
-        navigate({
-          from: '/search',
-          to: '.',
-          replace: true,
-          search: (prev: { page: number; filter: string }) => ({
-            page: prev.page + 1,
-            filter: prev.filter,
-            junk: 'local-updater',
-          }),
-        }),
+      () => click('items-parent'),
+      () => click('go-search', cachedLinks),
+      () => click('search-next-page'),
       () =>
         navigate({
           to: '/search',
           search: { page: 1, filter: 'all' },
           replace: true,
         }),
-      () =>
-        navigate({
-          to: '/ctx/$id',
-          params: { id: 1 },
-          search: true,
-          replace: true,
-        }),
+      () => click('go-ctx', cachedLinks),
       () =>
         navigate({
           to: '/ctx/$id',
           params: { id: 2 },
           replace: true,
         }),
-      () =>
-        navigate({
-          to: '/items/$id',
-          params: { id: 2 },
-          replace: true,
-        }),
+      () => click('go-items-2', cachedLinks),
     ] as const
 
     next = () => {
