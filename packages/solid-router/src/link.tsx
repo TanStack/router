@@ -66,14 +66,13 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): ComponentProps<'a'> {
   const router = useRouter()
+  const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
+  const shouldHydrateHash = !isServer && !!router.options.ssr
+  const hasHydrated = useHydrated()
 
   if (isServer) {
     return getServerLinkProps(router, options as any)
   }
-
-  const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
-  const shouldHydrateHash = !isServer && !!router.options.ssr
-  const hasHydrated = useHydrated()
 
   let hasRenderFetched = false
 
