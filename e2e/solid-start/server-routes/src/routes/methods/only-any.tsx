@@ -31,7 +31,7 @@ function Test(props: { method: HttpMethods }) {
           handler: HttpMethods & 'ANY'
         }>
         return json
-      } catch (e) { }
+      } catch (e) {}
       // handle HEAD and OPTIONS that have no body
       const result = {
         handler: response.headers.get('x-handler') as HttpMethods & 'ANY',

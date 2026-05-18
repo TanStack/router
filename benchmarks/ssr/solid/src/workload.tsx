@@ -31,7 +31,7 @@ function ParamsProbe(props: { salt: number }) {
 
   createEffect(
     () => params(),
-    () => { },
+    () => {},
   )
 
   return null
@@ -46,7 +46,7 @@ function SearchProbe(props: { salt: number }) {
 
   createEffect(
     () => search(),
-    () => { },
+    () => {},
   )
 
   return null

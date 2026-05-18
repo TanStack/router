@@ -31,7 +31,7 @@ function normalizeFilter(value: unknown) {
   return typeof value === 'string' && value.length > 0 ? value : 'all'
 }
 
-const noop = () => { }
+const noop = () => {}
 const rootSelectors = Array.from({ length: 10 }, (_, index) => index)
 const routeSelectors = Array.from({ length: 6 }, (_, index) => index)
 const linkGroups = Array.from({ length: 4 }, (_, index) => index)
@@ -39,7 +39,7 @@ const linkGroups = Array.from({ length: 4 }, (_, index) => index)
 function PerfValue(props: { value: () => number }) {
   createRenderEffect(
     () => props.value(),
-    () => { },
+    () => {},
   )
 
   return null
