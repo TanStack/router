@@ -798,6 +798,7 @@ export const Link: LinkComponent<'a'> = (props) => {
     '_asChild',
     'children',
   ])
+  const useFastAnchor = canUseFastAnchor(props as any)
 
   const [_, linkProps] = splitProps(useLinkProps(rest as unknown as any), [
     'type',
@@ -833,6 +834,36 @@ export const Link: LinkComponent<'a'> = (props) => {
   }
 
   if (!local._asChild) {
+    if (useFastAnchor) {
+      const anchorProps = linkProps as any
+
+      return (
+        <a
+          href={linkProps.href}
+          ref={linkProps.ref as any}
+          onClick={linkProps.onClick}
+          onBlur={linkProps.onBlur}
+          onFocus={linkProps.onFocus}
+          onMouseEnter={linkProps.onMouseEnter}
+          onMouseOver={linkProps.onMouseOver}
+          onMouseLeave={linkProps.onMouseLeave}
+          onMouseOut={linkProps.onMouseOut}
+          onTouchStart={linkProps.onTouchStart}
+          target={linkProps.target}
+          role={linkProps.role}
+          aria-disabled={linkProps['aria-disabled']}
+          aria-current={linkProps['aria-current']}
+          data-status={anchorProps['data-status']}
+          data-transitioning={anchorProps['data-transitioning']}
+          data-testid={anchorProps['data-testid']}
+          style={linkProps.style}
+          class={linkProps.class}
+        >
+          {children()}
+        </a>
+      )
+    }
+
     return <a {...linkProps}>{children()}</a>
   }
 
@@ -841,6 +872,65 @@ export const Link: LinkComponent<'a'> = (props) => {
       {children()}
     </Dynamic>
   )
+}
+
+const FAST_ANCHOR_PROP_KEYS = new Set([
+  'activeOptions',
+  'activeProps',
+  'children',
+  'class',
+  'data-testid',
+  'from',
+  'hash',
+  'hashScrollIntoView',
+  'ignoreBlocker',
+  'inactiveProps',
+  'mask',
+  'onBlur',
+  'onClick',
+  'onFocus',
+  'onMouseEnter',
+  'onMouseLeave',
+  'onMouseOut',
+  'onMouseOver',
+  'onTouchStart',
+  'params',
+  'preload',
+  'preloadDelay',
+  'ref',
+  'reloadDocument',
+  'replace',
+  'resetScroll',
+  'search',
+  'startTransition',
+  'state',
+  'style',
+  'target',
+  'to',
+  'unsafeRelative',
+  'viewTransition',
+])
+
+function canUseFastAnchor(props: Record<string, any>) {
+  for (const key in props) {
+    if (!FAST_ANCHOR_PROP_KEYS.has(key)) return false
+  }
+
+  return (
+    isFastAnchorStateProps(props.activeProps) &&
+    isFastAnchorStateProps(props.inactiveProps)
+  )
+}
+
+function isFastAnchorStateProps(value: unknown) {
+  if (value == null) return true
+  if (typeof value !== 'object') return false
+
+  for (const key in value) {
+    if (key !== 'class' && key !== 'style') return false
+  }
+
+  return true
 }
 
 function isCtrlEvent(e: MouseEvent) {
