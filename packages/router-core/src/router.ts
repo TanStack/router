@@ -970,36 +970,6 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: LRUCache<string, string>
-  /**
-   * Cache of `getMatchedRoutes` results keyed by pathname. The function is a
-   * pure derivation of `(pathname, routesById, processedTree)`; the route tree
-   * only changes via `setRoutes`, which clears this cache. Result objects are
-   * not mutated by callers — `routeParams` is always copied before mutation
-   * (e.g. router.ts:1730 `Object.assign(Object.create(null), routeParams)`)
-   * and `matchedRoutes` is spread before appending (e.g. router.ts:1879).
-   * Called once per `buildLocation` (i.e. once per `<Link>` per navigation)
-   * and once per `useBlocker` predicate evaluation.
-   */
-  matchedRoutesCache!: LRUCache<string, ReturnType<GetMatchRoutesFn>>
-  /**
-   * Cache of `matchRoutesLightweight` results. Keyed on the identity of
-   * `currentLocation` (stable within a navigation) combined with the
-   * terminal match id from `stores.matchesId.state` (which governs the
-   * `canReuseParams` branch). Both inputs are stable across the burst of
-   * 13 `buildLocation` calls observed per navigation in the solid bench.
-   */
-  matchRoutesLightweightCache: WeakMap<
-    ParsedLocation,
-    {
-      lastStateMatchId: string | undefined
-      result: {
-        matchedRoutes: ReadonlyArray<AnyRoute>
-        fullPath: string
-        search: Record<string, unknown>
-        params: Record<string, unknown>
-      }
-    }
-  > = new WeakMap()
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1127,11 +1097,9 @@ export class RouterCore<
       ) {
         const cached = globalThis.__TSR_CACHE__
         this.resolvePathCache = cached.resolvePathCache
-        this.matchedRoutesCache = createLRUCache(1000)
         processRouteTreeResult = cached.processRouteTreeResult as any
       } else {
         this.resolvePathCache = createLRUCache(1000)
-        this.matchedRoutesCache = createLRUCache(1000)
         processRouteTreeResult = this.buildRouteTree()
         // only cache if nothing else is cached yet
         if (
@@ -1249,11 +1217,6 @@ export class RouterCore<
     this.routesById = routesById as RoutesById<TRouteTree>
     this.routesByPath = routesByPath as RoutesByPath<TRouteTree>
     this.processedTree = processedTree
-    // Route tree changed — invalidate pathname→matched-routes cache.
-    // matchRoutesLightweightCache is a WeakMap keyed on `ParsedLocation`
-    // instances; existing entries naturally become unreachable when the
-    // associated location goes out of scope, so no explicit clear is needed.
-    this.matchedRoutesCache?.clear()
 
     const notFoundRoute = this.options.notFoundRoute
 
@@ -1704,15 +1667,11 @@ export class RouterCore<
   }
 
   getMatchedRoutes: GetMatchRoutesFn = (pathname) => {
-    const cached = this.matchedRoutesCache.get(pathname)
-    if (cached) return cached
-    const result = getMatchedRoutes({
+    return getMatchedRoutes({
       pathname,
       routesById: this.routesById,
       processedTree: this.processedTree,
-    }) as ReturnType<GetMatchRoutesFn>
-    this.matchedRoutesCache.set(pathname, result)
-    return result
+    })
   }
 
   /**
@@ -1726,14 +1685,6 @@ export class RouterCore<
     search: Record<string, unknown>
     params: Record<string, unknown>
   } {
-    // Determine current state-derived key first, since cache validity depends
-    // on it (the canReuseParams branch reads stores.matchesId.state).
-    const lastStateMatchId = last(this.stores.matchesId.state)
-    const cachedEntry = this.matchRoutesLightweightCache.get(location)
-    if (cachedEntry && cachedEntry.lastStateMatchId === lastStateMatchId) {
-      return cachedEntry.result
-    }
-
     const { matchedRoutes, routeParams, parsedParams } = this.getMatchedRoutes(
       location.pathname,
     )
@@ -1762,6 +1713,7 @@ export class RouterCore<
     }
 
     // Determine params: reuse from state if possible, otherwise parse
+    const lastStateMatchId = last(this.stores.matchesId.state)
     const lastStateMatch =
       lastStateMatchId &&
       this.stores.activeMatchStoresById.get(lastStateMatchId)?.state
@@ -1794,17 +1746,12 @@ export class RouterCore<
       params = strictParams
     }
 
-    const result = {
+    return {
       matchedRoutes,
       fullPath: lastRoute.fullPath,
       search: accumulatedSearch,
       params,
     }
-    this.matchRoutesLightweightCache.set(location, {
-      lastStateMatchId,
-      result,
-    })
-    return result
   }
 
   cancelMatch = (id: string) => {
@@ -3093,27 +3040,9 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 }
 
 /**
- * Cache of built middleware chains keyed by the terminal route of a route
- * chain. The terminal route uniquely identifies the chain (parents are
- * fixed by the route tree shape), so the produced closure is safe to
- * reuse across calls. The closure itself is stateless between invocations
- * — it only reads its argument-supplied `dest` and `_includeValidateSearch`
- * via a per-call mutable `context`. Reusing the chain avoids reconstructing
- * arrays of middleware closures (`buildMiddlewareChain` self-time was
- * ~573 µs / 1.05% of the solid client-nav benchmark, called once per
- * `buildLocation`, i.e. once per mounted `<Link>` per navigation).
- *
- * Keyed weakly so route trees can be garbage-collected.
+ * TODO: once caches are persisted across requests on the server,
+ * we can cache the built middleware chain using `last(destRoutes)` as the key
  */
-const middlewareChainCache = new WeakMap<
-  AnyRoute,
-  (
-    search: any,
-    dest: BuildNextOptions,
-    _includeValidateSearch: boolean,
-  ) => any
->()
-
 function applySearchMiddleware({
   search,
   dest,
@@ -3125,14 +3054,7 @@ function applySearchMiddleware({
   destRoutes: ReadonlyArray<AnyRoute>
   _includeValidateSearch: boolean | undefined
 }) {
-  const lastRoute = destRoutes[destRoutes.length - 1]
-  let middleware = lastRoute
-    ? middlewareChainCache.get(lastRoute)
-    : undefined
-  if (!middleware) {
-    middleware = buildMiddlewareChain(destRoutes)
-    if (lastRoute) middlewareChainCache.set(lastRoute, middleware)
-  }
+  const middleware = buildMiddlewareChain(destRoutes)
   return middleware(search, dest, _includeValidateSearch ?? false)
 }
 
