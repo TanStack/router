@@ -23,7 +23,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/setup@6ddd247a7748fef503de0818293a732f6447fd92 # main
       - name: Fix formatting
         run: pnpm format
       - name: Generate labeler config
