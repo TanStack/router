@@ -62,11 +62,11 @@
     "@tanstack/router-ssr-query-core": "workspace:*"
   },
   "devDependencies": {
-    "@tanstack/vue-query": "^5.92.0",
+    "@tanstack/vue-query": "^5.100.11",
     "@tanstack/vue-router": "workspace:*",
-    "@vitejs/plugin-vue-jsx": "^4.1.2",
+    "@vitejs/plugin-vue-jsx": "^4.2.0",
     "vite": "*",
-    "vue": "^3.5.25"
+    "vue": "^3.5.34"
   },
   "peerDependencies": {
     "@tanstack/query-core": ">=5.90.0",

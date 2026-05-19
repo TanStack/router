@@ -10,28 +10,28 @@
     "test:unit": "vitest"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.0",
     "@tanstack/arktype-adapter": "^1.167.0",
-    "@tanstack/react-query": "^5.90.0",
+    "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-router": "^1.170.4",
     "@tanstack/react-router-devtools": "^1.167.0",
     "@tanstack/router-plugin": "^1.168.6",
     "@tanstack/valibot-adapter": "^1.167.0",
     "@tanstack/zod-adapter": "^1.167.0",
-    "arktype": "^2.1.7",
+    "arktype": "^2.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^4.2.2",
-    "valibot": "1.0.0-beta.15",
-    "zod": "^3.24.2"
+    "tailwindcss": "^4.3.0",
+    "valibot": "1.4.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.2.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.0.2",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0"
+    "vite": "^8.0.13"
   }
 }

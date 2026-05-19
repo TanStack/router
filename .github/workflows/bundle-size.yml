@@ -126,7 +126,7 @@ jobs:
       - name: Measure Bundle Size
         run: pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache
       - name: Publish Benchmark Dashboard
-        uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b # v1.20.7
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
         with:
           tool: customSmallerIsBetter
           name: Bundle Size (gzip)

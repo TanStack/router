@@ -75,21 +75,21 @@
   "dependencies": {
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
-    "@tanstack/vue-store": "^0.9.3",
-    "@vue/runtime-dom": "^3.5.25",
-    "isbot": "^5.1.22",
-    "jsesc": "^3.0.2"
+    "@tanstack/vue-store": "^0.11.0",
+    "@vue/runtime-dom": "^3.5.34",
+    "isbot": "^5.1.40",
+    "jsesc": "^3.1.0"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/vue": "^8.1.0",
     "@types/jsesc": "^3.0.3",
-    "@vitejs/plugin-vue": "^5.2.3",
-    "@vitejs/plugin-vue-jsx": "^4.1.2",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "@vitejs/plugin-vue-jsx": "^4.2.0",
     "combinate": "^1.1.11",
     "vite": "*",
-    "vue": "^3.5.25",
-    "zod": "^3.23.8",
+    "vue": "^3.5.34",
+    "zod": "^3.25.76",
     "@types/node": ">=20"
   },
   "peerDependencies": {

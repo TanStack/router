@@ -8,17 +8,17 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.2.2",
+    "@tailwindcss/postcss": "^4.3.0",
     "@tanstack/solid-router": "^1.170.4",
     "@tanstack/solid-router-devtools": "^1.167.0",
-    "postcss": "^8.5.1",
-    "solid-js": "^1.9.10",
-    "tailwindcss": "^4.2.2"
+    "postcss": "^8.5.15",
+    "solid-js": "^1.9.13",
+    "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.1",
+    "@rsbuild/core": "^2.0.6",
     "@rsbuild/plugin-babel": "^1.1.2",
-    "@rsbuild/plugin-solid": "^1.1.1",
+    "@rsbuild/plugin-solid": "^1.2.0",
     "@tanstack/router-plugin": "^1.168.6",
     "typescript": "^6.0.2"
   }

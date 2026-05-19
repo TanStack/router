@@ -15,18 +15,18 @@
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
-    "vue": "^3.5.25",
-    "zod": "^3.24.2"
+    "vue": "^3.5.34",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.0",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "srvx": "^0.11.9",
-    "tailwindcss": "^4.2.2",
+    "srvx": "^0.11.15",
+    "tailwindcss": "^4.3.0",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
-    "@vitejs/plugin-vue": "^6.0.5",
+    "vite": "^8.0.13",
+    "@vitejs/plugin-vue": "^6.0.7",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
-    "vue-tsc": "^3.1.8"
+    "vue-tsc": "^3.3.1"
   }
 }

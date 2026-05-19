@@ -17,16 +17,16 @@
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
-    "@rsbuild/core": "^2.0.1",
+    "@playwright/test": "^1.60.0",
+    "@rsbuild/core": "^2.0.6",
     "@rsbuild/plugin-react": "^2.0.0",
-    "@tailwindcss/postcss": "^4.2.2",
+    "@tailwindcss/postcss": "^4.3.0",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "postcss": "^8.5.1",
-    "tailwindcss": "^4.2.2",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.0",
     "typescript": "^6.0.2"
   }
 }

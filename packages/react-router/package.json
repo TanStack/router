@@ -101,20 +101,20 @@
   },
   "dependencies": {
     "@tanstack/history": "workspace:*",
-    "@tanstack/react-store": "^0.9.3",
+    "@tanstack/react-store": "^0.11.0",
     "@tanstack/router-core": "workspace:*",
-    "isbot": "^5.1.22"
+    "isbot": "^5.1.40"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.2.0",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@vitejs/plugin-react": "^4.7.0",
     "combinate": "^1.1.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vibe-rules": "^0.2.57",
+    "vibe-rules": "^0.3.91",
     "vite": "*",
-    "zod": "^3.24.2",
+    "zod": "^3.25.76",
     "@types/node": ">=20"
   },
   "peerDependencies": {

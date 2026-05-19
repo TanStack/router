@@ -82,13 +82,13 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-storage-context": "workspace:*",
-    "fetchdts": "^0.1.6",
-    "h3-v2": "npm:h3@2.0.1-rc.20",
+    "fetchdts": "^0.1.7",
+    "h3-v2": "npm:h3@2.0.1-rc.22",
     "seroval": "^1.5.4"
   },
   "devDependencies": {
-    "@standard-schema/spec": "^1.0.0",
-    "cookie-es": "^3.0.0",
+    "@standard-schema/spec": "^1.1.0",
+    "cookie-es": "^3.1.1",
     "vite": "*",
     "@types/node": ">=20"
   }

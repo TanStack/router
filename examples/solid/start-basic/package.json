@@ -14,16 +14,16 @@
     "@tanstack/solid-router-devtools": "^1.167.0",
     "@tanstack/solid-start": "^1.168.6",
     "redaxios": "^0.5.1",
-    "solid-js": "^1.9.10",
-    "tailwind-merge": "^2.6.0"
+    "solid-js": "^1.9.13",
+    "tailwind-merge": "^2.6.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.0",
     "@types/node": "^22.5.4",
     "nitro": "^3.0.260311-beta",
-    "tailwindcss": "^4.2.2",
+    "tailwindcss": "^4.3.0",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
-    "vite-plugin-solid": "^2.11.11"
+    "vite": "^8.0.13",
+    "vite-plugin-solid": "^2.11.12"
   }
 }
