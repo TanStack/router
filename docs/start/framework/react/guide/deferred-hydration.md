@@ -89,6 +89,21 @@ Poor candidates are parts of the page users may need immediately:
 Measure each boundary. A useful boundary reduces startup JavaScript or hydration
 work without making expected interactions feel late.
 
+## Comparison To Astro Islands
+
+Astro starts static and asks "what should come alive?" Each answer is an
+isolated framework root dropped into HTML. Islands are independent runtimes
+sharing a DOM.
+
+TanStack Start starts fully interactive and asks "what can wait?" The whole
+document hydrates as one React tree by default; `Hydrate` boundaries are gates
+inside that tree. Context, state, and events flow through normally, and
+hydration is parent-first.
+
+Same trigger vocabulary, different substrate: Astro composes runtimes, Start
+schedules one. That is why Start gets `interaction()`, `condition()`, and intent
+bubbling, and why Astro gets multi-framework.
+
 ## The Three Decisions
 
 Each `Hydrate` boundary has three performance decisions:
