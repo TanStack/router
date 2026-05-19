@@ -24,15 +24,20 @@ on:
       - 'docs/**'
       - 'packages/*/src/**'
 
+permissions: {}
+
 jobs:
   notify:
     name: Notify TanStack Intent
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 2
+          persist-credentials: false
 
       - name: Collect changed files
         id: changes
@@ -41,7 +46,7 @@ jobs:
           echo "files=$FILES" >> "$GITHUB_OUTPUT"
 
       - name: Dispatch to intent repo
-        uses: peter-evans/repository-dispatch@v3
+        uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0 # v3
         with:
           token: ${{ secrets.INTENT_NOTIFY_TOKEN }}
           repository: TanStack/intent
