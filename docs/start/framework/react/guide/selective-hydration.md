@@ -5,7 +5,7 @@ title: Selective Client-Side Hydration
 
 ## What is Selective Hydration?
 
-In TanStack Start, routes are server-side rendered by default and then "hydrated" on the client - meaning React attaches event handlers and makes the page interactive. The `hydrate` option gives you **page-level** control over which routes should include the React hydration bundle and become interactive on the client.
+In TanStack Start, routes are server-side rendered by default and then "hydrated" on the client — meaning React attaches event handlers and makes the page interactive. The `hydrate` option gives you **page-level** control over which routes should include the React hydration bundle and become interactive on the client.
 
 **Note:** This is **page-level** selective hydration, meaning the entire page either hydrates or doesn't. For **component-level** selective hydration (Server Components), where individual components can opt in or out of hydration, stay tuned for upcoming releases from TanStack Router.
 
@@ -15,10 +15,10 @@ When you set `hydrate: false` on a route:
 - ✅ All content loads instantly with no JavaScript required
 - ✅ External scripts from the `head()` option still work
 - ❌ React is not loaded or hydrated (no interactivity)
-- ❌ No `useState`, `useEffect`, or event handlers
-- ❌ Navigation becomes traditional full-page reloads
+- ❌ No event handlers or reactive state on the client
+- ❌ Navigation to or from this route happens via a full-page reload
 
-**Important:** `hydrate: false` should only be used when you want a truly static site with absolutely no React on the client. Most applications should keep the default `hydrate: true` behavior, even for primarily static content, as you typically need at least some client-side interactivity for navigation, analytics, or other features.
+**Important:** `hydrate: false` should only be used when you want a truly static page with absolutely no React on the client. Most applications should keep the default `hydrate: true` behavior, even for primarily static content, as you typically need at least some client-side interactivity for navigation, analytics, or other features.
 
 ## How does this compare to `ssr: false`?
 
@@ -51,10 +51,10 @@ ssr: false, hydrate: false
 
 **When to use `hydrate: false`:**
 
-- Truly static sites where you want zero React on the client
+- Truly static pages where you want zero React on the client
 - Pages where you're willing to give up client-side navigation and all interactivity
 - Print-only views or embedded content
-- **Note:** This is a very rare use case - most sites should use `hydrate: true` (default)
+- **Note:** This is a very rare use case — most sites should use `hydrate: true` (default)
 
 **When to use `ssr: false`:**
 
@@ -86,7 +86,7 @@ export const router = createRouter({
 
 ### Omitting `hydrate` (default behavior)
 
-When you don't specify the `hydrate` option, the default behavior is to hydrate. The page is server-rendered and React hydrates it on the client, making it fully interactive:
+When you don't specify the `hydrate` option, the route hydrates normally:
 
 ```tsx
 // src/routes/posts/$postId.tsx
@@ -97,19 +97,6 @@ export const Route = createFileRoute('/posts/$postId')({
   },
   component: PostPage,
 })
-
-function PostPage() {
-  const { post } = Route.useLoaderData()
-  const [likes, setLikes] = useState(0)
-
-  return (
-    <div>
-      <h1>{post.title}</h1>
-      <p>{post.content}</p>
-      <button onClick={() => setLikes(likes + 1)}>Like ({likes})</button>
-    </div>
-  )
-}
 ```
 
 **Result:**
@@ -117,7 +104,6 @@ function PostPage() {
 - ✅ Server renders the HTML
 - ✅ Loader data is sent to the client
 - ✅ React hydrates and attaches event handlers
-- ✅ The "Like" button works
 
 ### Explicitly setting `hydrate: true`
 
@@ -157,9 +143,6 @@ This disables client-side hydration. The page is server-rendered but React is no
 // src/routes/legal/privacy.tsx
 export const Route = createFileRoute('/legal/privacy')({
   hydrate: false,
-  loader: async () => {
-    return { lastUpdated: '2024-01-15' }
-  },
   head: () => ({
     meta: [
       { title: 'Privacy Policy' },
@@ -172,12 +155,10 @@ export const Route = createFileRoute('/legal/privacy')({
 })
 
 function PrivacyPage() {
-  const { lastUpdated } = Route.useLoaderData()
-
   return (
     <div>
       <h1>Privacy Policy</h1>
-      <p>Last updated: {lastUpdated}</p>
+      <p>Last updated: 2024-01-15</p>
       <p>This is a static page with no JavaScript...</p>
       {/* This button won't work (no event handlers attached) */}
       <button onClick={() => alert('This will not work')}>
@@ -196,12 +177,11 @@ function PrivacyPage() {
 - ❌ React is NOT loaded on the client
 - ❌ No JavaScript bundle downloaded
 - ❌ Event handlers don't work
-- ❌ `useState`, `useEffect`, etc. don't run
+- ❌ Reactive state and effects don't run
 
 **What gets excluded when `hydrate: false`:**
 
-- React runtime bundle
-- React DOM bundle
+- The React framework runtime
 - TanStack Router client bundle
 - Your application code
 - Hydration data script (`window.$_TSR`)
@@ -215,6 +195,22 @@ function PrivacyPage() {
 - External scripts from `head()`
 - CSS and stylesheets
 - Images and static assets
+
+### Client-side navigation **into** a `hydrate: false` route
+
+`hydrate: false` controls the **initial page load**, not subsequent client-side navigations. Once the app has hydrated on any route, React stays loaded for the lifetime of the tab — there's no way to "un-hydrate" partway through a session. As a result:
+
+- A direct/initial load of a `hydrate: false` route → no JavaScript, no React, plain HTML.
+- A client-side navigation (via `<Link>`) into the same route from an already-hydrated page → renders normally, the same as any other route. The `hydrate: false` option is a **no-op** in this case.
+
+If a route truly must be static every time it's visited (e.g. a `/legal/privacy` you want consistently served as plain HTML), reach the route via a full-page navigation:
+
+```tsx
+// Force a fresh page load so `hydrate: false` takes effect
+<Link to="/legal/privacy" reloadDocument>
+  Privacy
+</Link>
+```
 
 ### Adding interactivity with plain JavaScript
 
@@ -278,7 +274,7 @@ function PrivacyPage() {
 
 - Keep scripts small and self-contained — they ship inline in the HTML, so anything you'd reach for via npm packages should be loaded with a separate `{ src }` script entry instead.
 - Prefer delegated listeners on `document` over per-element handlers. The HTML emitted by React doesn't include event listeners, so attribute-driven (`data-toggle`, `aria-controls`, etc.) selectors are the cleanest hook.
-- Read/write DOM attributes directly. There's no Virtual DOM here — anything you mutate stays mutated until the next navigation.
+- Read/write DOM attributes directly. Anything you mutate stays mutated until the next navigation.
 - For larger amounts of behavior, point a `{ src: '/path/to/widget.js' }` script at a separate file that you build/deploy alongside your app.
 
 ## Inheritance
@@ -301,7 +297,7 @@ This differs from the `ssr` option, which allows child routes to be "more restri
 
 **Why this design?**
 
-Hydration is an all-or-nothing operation for the entire page. You can't hydrate part of a React tree without hydrating its ancestors. This ensures:
+Hydration is an all-or-nothing operation for the entire page. You can't hydrate part of a component tree without hydrating its ancestors. This ensures:
 
 - ✅ Predictable behavior
 - ✅ No partial hydration issues
@@ -405,7 +401,7 @@ Please ensure all routes in the match have consistent hydrate settings.
 
 Use `hydrate: false` only when:
 
-- You want a **truly static site** with zero React on the client
+- You want a **truly static page** with zero React on the client
 - You're willing to give up **all client-side navigation** and interactivity
 - You want to avoid the overhead of loading React entirely
 - Examples: Print-only views, embedded content, purely informational pages
@@ -422,16 +418,7 @@ For general interactive features (forms, dashboards, real-time updates, user int
 
 ## Performance Impact
 
-When you use `hydrate: false`:
-
-**Bundle Size Savings:**
-
-- React Runtime: ~130KB (gzipped: ~45KB)
-- React DOM: ~130KB (gzipped: ~45KB)
-- TanStack Router Client: ~40KB (gzipped: ~12KB)
-- Your App Code: Varies
-
-**Total Savings:** ~300KB+ (gzipped: ~100KB+) per page
+When `hydrate: false` is in effect for the **initial page load**, the page ships only the SSR HTML plus any inline `head().scripts` and external `head().scripts` — no JavaScript framework runtime, no router client bundle, and no application code.
 
 **Load Time Improvements:**
 
@@ -482,7 +469,7 @@ export const Route = createFileRoute('/settings')({
 
 ## Development Mode
 
-In development mode, React Refresh (HMR) is kept even when `hydrate: false` is set. This allows you to:
+In development mode, Hot Module Replacement (HMR) is kept even when `hydrate: false` is set. This allows you to:
 
 - ✅ See changes instantly during development
 - ✅ Test the no-JavaScript experience in production builds
@@ -504,8 +491,9 @@ pnpm preview
 **Check:**
 
 1. Are any parent routes setting `hydrate: true`?
-2. Are you in development mode? (React Refresh is kept for HMR)
-3. Did you rebuild after changing the option?
+2. Are you in development mode? (HMR is kept enabled)
+3. Did you navigate in from another route? (`hydrate: false` only applies on initial load — see [Client-side navigation **into** a `hydrate: false` route](#client-side-navigation-into-a-hydrate-false-route))
+4. Did you rebuild after changing the option?
 
 ```bash
 pnpm build
@@ -513,14 +501,14 @@ pnpm build
 
 ### My interactive features stopped working
 
-If you set `hydrate: false`, all React features will stop working:
+If you set `hydrate: false`, all React features will stop working on initial load:
 
 - Event handlers (`onClick`, `onChange`)
-- Hooks (`useState`, `useEffect`, `useQuery`)
+- Reactive state and effects
 - Context providers
 - Client-side routing
 
-**Solution:** Explicitly set `hydrate: true` or remove the option (which defaults to hydrating).
+**Solution:** Explicitly set `hydrate: true` or remove the option (which defaults to hydrating). For limited interactivity without React, see [Adding interactivity with plain JavaScript](#adding-interactivity-with-plain-javascript).
 
 ### I'm seeing hydration errors
 
@@ -537,7 +525,7 @@ The `hydrate` option gives you precise **page-level** control over client-side R
 
 - **Default (omitted)**: Pages hydrate by default - Full SSR + Hydration = Interactive pages
 - **`hydrate: true`**: Explicitly ensures a page is hydrated (useful for conflict resolution or documenting intent)
-- **`hydrate: false`**: Static server-rendered pages with no JavaScript
+- **`hydrate: false`**: Static server-rendered pages with no JavaScript (on initial load only — see [Client-side navigation](#client-side-navigation-into-a-hydrate-false-route))
 - **Opt-in/opt-out mechanism**: Conflicts occur only when explicit `true` and `false` values are both present
 - **Inheritance**: If any route has `hydrate: false`, the page won't hydrate
 
