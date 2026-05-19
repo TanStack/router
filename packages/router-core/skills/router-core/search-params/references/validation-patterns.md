@@ -74,7 +74,7 @@ const schema = z.object({
         .optional(),
     }),
     {},
-  ).prefault({}),
+  ).default({}),
 })
 ```
 

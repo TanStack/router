@@ -60,6 +60,8 @@ export function parseStartConfig(
   corePluginOpts: { framework: CompileStartFrameworkOptions },
   root: string,
 ) {
+  const rawOptions = opts ?? {}
+  const rawRouterOptions = rawOptions.router ?? {}
   const options = tanstackStartOptionsSchema.parse(opts)
 
   const srcDirectory = options.srcDirectory
@@ -67,13 +69,13 @@ export function parseStartConfig(
   const routesDirectory = path.resolve(
     root,
     srcDirectory,
-    options.router.routesDirectory ?? 'routes',
+    rawRouterOptions.routesDirectory ?? 'routes',
   )
 
   const generatedRouteTree = path.resolve(
     root,
     srcDirectory,
-    options.router.generatedRouteTree ?? 'routeTree.gen.ts',
+    rawRouterOptions.generatedRouteTree ?? 'routeTree.gen.ts',
   )
 
   return {
