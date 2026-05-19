@@ -44,6 +44,12 @@
         "default": "./dist/esm/client.js"
       }
     },
+    "./hydration": {
+      "import": {
+        "types": "./dist/esm/hydration.d.ts",
+        "default": "./dist/esm/hydration.js"
+      }
+    },
     "./client-rpc": {
       "import": {
         "types": "./dist/esm/client-rpc.d.ts",

@@ -13,6 +13,7 @@ Each package has `minimal` and `full` scenarios:
 - `minimal`: Small route app with `__root` + index route that renders `hello world`
 - `full`: Same route shape plus a broad root-level harness that imports/uses the full hooks/components surface
 - Start `full` scenarios also exercise `createServerFn`, `createMiddleware`, and `useServerFn`
+- Start `deferred-hydration` scenarios match the minimal route shape and wrap the index route content in `Hydrate`
 
 ## Design Notes
 

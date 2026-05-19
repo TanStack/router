@@ -4,7 +4,7 @@
  */
 
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { logDiff } from '@tanstack/router-utils'
+import { decodeIdentifier, logDiff } from '@tanstack/router-utils'
 import { getConfig, splitGroupingsSchema } from './config'
 import {
   compileCodeSplitReferenceRoute,
@@ -20,7 +20,6 @@ import {
   tsrShared,
   tsrSplit,
 } from './constants'
-import { decodeIdentifier } from './code-splitter/path-ids'
 import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
 import { createRouterPluginContext } from './router-plugin-context'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
@@ -177,11 +176,14 @@ export function createRouterCodeSplitterPlugin(
       hmrStyle,
       hmrRouteId: generatorNodeInfo.routeId,
       sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
-      compilerPlugins: getReferenceRouteCompilerPlugins({
-        targetFramework: userConfig.target,
-        addHmr,
-        hmrStyle,
-      }),
+      compilerPlugins: [
+        ...(getReferenceRouteCompilerPlugins({
+          targetFramework: userConfig.target,
+          addHmr,
+          hmrStyle,
+        }) ?? []),
+        ...(userConfig.codeSplittingOptions?.compilerPlugins ?? []),
+      ],
     })
 
     if (compiledReferenceRoute === null) {

@@ -48,6 +48,12 @@
         "default": "./dist/esm/index.js"
       }
     },
+    "./hydration": {
+      "import": {
+        "types": "./dist/esm/hydration.d.ts",
+        "default": "./dist/esm/hydration.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
