@@ -12,9 +12,20 @@ describe('client-nav', () => {
    * but it does support `beforeAll` and `afterAll`.
    *
    * So it looks like we're setting up in duplicate, but in reality, it's only running once per environment, as intended.
+   *
+   * Under CodSpeed we also pre-warm hot paths inside `beforeAll`: CodSpeed
+   * does not honor tinybench's `warmupIterations`, so without this the first
+   * measured iteration absorbs V8 JIT tier-up cost (especially Solid's proxy
+   * traps), which the profiler attributes to the un-symbolized "NodeJS
+   * internals" bucket.
    */
 
-  beforeAll(test.before)
+  beforeAll(async () => {
+    await test.before()
+    for (let i = 0; i < 30; i++) {
+      await test.tick()
+    }
+  })
   afterAll(test.after)
 
   bench(
