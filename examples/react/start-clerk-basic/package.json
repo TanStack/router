@@ -10,24 +10,24 @@
     "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
-    "@clerk/tanstack-react-start": "^0.27.14",
+    "@clerk/tanstack-react-start": "^0.29.11",
     "@tanstack/react-router": "^1.170.4",
     "@tanstack/react-router-devtools": "^1.167.0",
     "@tanstack/react-start": "^1.168.6",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "srvx": "^0.11.9",
-    "tailwind-merge": "^2.6.0"
+    "srvx": "^0.11.15",
+    "tailwind-merge": "^2.6.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.0",
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "tailwindcss": "^4.2.2",
+    "tailwindcss": "^4.3.0",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0"
+    "vite": "^8.0.13"
   }
 }

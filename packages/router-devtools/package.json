@@ -64,10 +64,10 @@
   "dependencies": {
     "@tanstack/react-router-devtools": "workspace:*",
     "clsx": "^2.1.1",
-    "goober": "^2.1.16"
+    "goober": "^2.1.19"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^4.7.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "vite": "*"
