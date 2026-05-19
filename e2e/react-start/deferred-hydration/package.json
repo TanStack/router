@@ -24,18 +24,18 @@
     "@tanstack/react-start": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vite": "^8.0.0"
+    "vite": "^8.0.13"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.1",
+    "@rsbuild/core": "^2.0.6",
     "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "rolldown": "1.0.0-rc.18",
-    "srvx": "^0.11.9",
+    "@vitejs/plugin-react": "^6.0.2",
+    "rolldown": "1.0.1",
+    "srvx": "^0.11.15",
     "typescript": "^6.0.2"
   },
   "nx": {

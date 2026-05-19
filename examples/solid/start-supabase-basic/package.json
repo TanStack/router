@@ -12,20 +12,20 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@supabase/ssr": "^0.5.2",
-    "@supabase/supabase-js": "^2.48.1",
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.106.0",
     "@tanstack/solid-router": "^1.170.4",
     "@tanstack/solid-router-devtools": "^1.167.0",
     "@tanstack/solid-start": "^1.168.6",
-    "solid-js": "^1.9.9",
+    "solid-js": "^1.9.13",
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.0",
     "@types/node": "^22.5.4",
-    "tailwindcss": "^4.2.2",
+    "tailwindcss": "^4.3.0",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
-    "vite-plugin-solid": "^2.11.11"
+    "vite": "^8.0.13",
+    "vite-plugin-solid": "^2.11.12"
   }
 }

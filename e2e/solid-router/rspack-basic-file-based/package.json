@@ -13,18 +13,18 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "redaxios": "^0.5.1",
-    "solid-js": "^1.9.10"
+    "solid-js": "^1.9.13"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
-    "@rsbuild/core": "^2.0.1",
+    "@playwright/test": "^1.60.0",
+    "@rsbuild/core": "^2.0.6",
     "@rsbuild/plugin-babel": "^1.1.2",
-    "@rsbuild/plugin-solid": "^1.1.1",
-    "@tailwindcss/postcss": "^4.2.2",
+    "@rsbuild/plugin-solid": "^1.2.0",
+    "@tailwindcss/postcss": "^4.3.0",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
-    "postcss": "^8.5.1",
-    "tailwindcss": "^4.2.2",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.0",
     "typescript": "^6.0.2"
   }
 }

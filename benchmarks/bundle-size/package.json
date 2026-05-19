@@ -13,20 +13,20 @@
     "@tanstack/solid-start": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "solid-js": "^1.9.10",
-    "vue": "^3.5.16"
+    "solid-js": "^1.9.13",
+    "vue": "^3.5.34"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.1",
+    "@rsbuild/core": "^2.0.6",
     "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/router-plugin": "workspace:^",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "@vitejs/plugin-vue": "^6.0.5",
+    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-vue": "^6.0.7",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
-    "vite-plugin-solid": "^2.11.11"
+    "vite": "^8.0.13",
+    "vite-plugin-solid": "^2.11.12"
   }
 }
