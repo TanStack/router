@@ -14,7 +14,9 @@ export function CatchBoundary(
   return (
     <Solid.Errored
       fallback={(error, reset) => {
-        props.onCatch?.(error)
+        const resolvedError = Solid.untrack(() => error() as Error)
+
+        props.onCatch?.(resolvedError)
 
         Solid.createEffect(props.getResetKey, () => {
           // We trigger reset here. For a fully deferred effect we might need usePrevious,
@@ -25,7 +27,7 @@ export function CatchBoundary(
         return (
           <Dynamic
             component={props.errorComponent ?? ErrorComponent}
-            error={error}
+            error={resolvedError}
             reset={reset}
           />
         )
