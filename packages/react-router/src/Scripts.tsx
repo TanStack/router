@@ -14,6 +14,20 @@ function applyFilter(
   return filter ? filter(script, ctx) : script
 }
 
+const HYDRATE_CONFLICT_MESSAGE =
+  '[TanStack Router] Conflicting `hydrate` options detected in route matches: ' +
+  'some routes set `hydrate: false` while others set `hydrate: true`. ' +
+  'The page will not hydrate. Align route `hydrate` settings to silence this warning.'
+
+const warnedConflictRouters = new WeakSet<object>()
+
+function warnHydrateConflictOnce(router: object) {
+  if (process.env.NODE_ENV === 'production') return
+  if (warnedConflictRouters.has(router)) return
+  warnedConflictRouters.add(router)
+  console.warn(HYDRATE_CONFLICT_MESSAGE)
+}
+
 /**
  * Render body script tags collected from route matches and SSR manifests.
  * Should be placed near the end of the document body.
@@ -89,8 +103,9 @@ export const Scripts = () => {
     const activeMatches = router.stores.matches.get()
     const assetScripts = getAssetScripts(activeMatches)
     const scripts = getScripts(activeMatches)
-    const shouldHydrate = getHydrateStatus(activeMatches, router).shouldHydrate
-    return renderScripts(router, scripts, assetScripts, shouldHydrate)
+    const status = getHydrateStatus(activeMatches, router)
+    if (status.hasConflict) warnHydrateConflictOnce(router)
+    return renderScripts(router, scripts, assetScripts, status.shouldHydrate)
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
@@ -108,14 +123,8 @@ export const Scripts = () => {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   React.useEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && status.hasConflict) {
-      console.warn(
-        '[TanStack Router] Conflicting `hydrate` options detected in route matches: ' +
-          'some routes set `hydrate: false` while others set `hydrate: true`. ' +
-          'The page will not hydrate. Align route `hydrate` settings to silence this warning.',
-      )
-    }
-  }, [status.hasConflict])
+    if (status.hasConflict) warnHydrateConflictOnce(router)
+  }, [router, status.hasConflict])
 
   return renderScripts(router, scripts, assetScripts, status.shouldHydrate)
 }

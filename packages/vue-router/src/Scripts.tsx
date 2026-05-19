@@ -13,6 +13,20 @@ function applyFilter(
   return filter ? filter(script, ctx) : script
 }
 
+const HYDRATE_CONFLICT_MESSAGE =
+  '[TanStack Router] Conflicting `hydrate` options detected in route matches: ' +
+  'some routes set `hydrate: false` while others set `hydrate: true`. ' +
+  'The page will not hydrate. Align route `hydrate` settings to silence this warning.'
+
+const warnedConflictRouters = new WeakSet<object>()
+
+function warnHydrateConflictOnce(router: object) {
+  if (process.env.NODE_ENV === 'production') return
+  if (warnedConflictRouters.has(router)) return
+  warnedConflictRouters.add(router)
+  console.warn(HYDRATE_CONFLICT_MESSAGE)
+}
+
 export const Scripts = Vue.defineComponent({
   name: 'Scripts',
   setup() {
@@ -81,17 +95,12 @@ export const Scripts = Vue.defineComponent({
       }
     })
 
+    // Emit eagerly so SSR also surfaces conflicts; warnHydrateConflictOnce
+    // dedupes per router instance. The watcher catches runtime changes on the
+    // client (e.g. after a navigation reveals a new conflicting route).
+    if (hydrateStatus.value.hasConflict) warnHydrateConflictOnce(router)
     Vue.watchEffect(() => {
-      if (
-        process.env.NODE_ENV !== 'production' &&
-        hydrateStatus.value.hasConflict
-      ) {
-        console.warn(
-          '[TanStack Router] Conflicting `hydrate` options detected in route matches: ' +
-            'some routes set `hydrate: false` while others set `hydrate: true`. ' +
-            'The page will not hydrate. Align route `hydrate` settings to silence this warning.',
-        )
-      }
+      if (hydrateStatus.value.hasConflict) warnHydrateConflictOnce(router)
     })
 
     const mounted = Vue.ref(false)

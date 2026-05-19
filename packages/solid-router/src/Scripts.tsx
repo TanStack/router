@@ -12,6 +12,20 @@ function applyFilter(
   return filter ? filter(script, ctx) : script
 }
 
+const HYDRATE_CONFLICT_MESSAGE =
+  '[TanStack Router] Conflicting `hydrate` options detected in route matches: ' +
+  'some routes set `hydrate: false` while others set `hydrate: true`. ' +
+  'The page will not hydrate. Align route `hydrate` settings to silence this warning.'
+
+const warnedConflictRouters = new WeakSet<object>()
+
+function warnHydrateConflictOnce(router: object) {
+  if (process.env.NODE_ENV === 'production') return
+  if (warnedConflictRouters.has(router)) return
+  warnedConflictRouters.add(router)
+  console.warn(HYDRATE_CONFLICT_MESSAGE)
+}
+
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
@@ -76,14 +90,12 @@ export const Scripts = () => {
       .filter(Boolean) as Array<RouterManagedTag>
   })
 
+  // Reachable on both SSR and client. warnHydrateConflictOnce dedupes per
+  // router instance, so emitting eagerly here avoids the SSR blind spot of
+  // running the check only in a client effect.
+  if (hydrateStatus().hasConflict) warnHydrateConflictOnce(router)
   Solid.createEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && hydrateStatus().hasConflict) {
-      console.warn(
-        '[TanStack Router] Conflicting `hydrate` options detected in route matches: ' +
-          'some routes set `hydrate: false` while others set `hydrate: true`. ' +
-          'The page will not hydrate. Align route `hydrate` settings to silence this warning.',
-      )
-    }
+    if (hydrateStatus().hasConflict) warnHydrateConflictOnce(router)
   })
 
   let serverBufferedScript: RouterManagedTag | undefined = undefined

@@ -380,11 +380,10 @@ When TanStack Start detects conflicting explicit settings:
 1. **Does not hydrate the page** (safer default - respects the `false` setting)
 2. **Logs a warning** to help you debug:
 
-```
-⚠️ [TanStack Router] Conflicting hydrate options detected in route matches.
-Some routes have hydrate: false while others have hydrate: true.
-The page will NOT be hydrated, but this may not be the intended behavior.
-Please ensure all routes in the match have consistent hydrate settings.
+```text
+[TanStack Router] Conflicting `hydrate` options detected in route matches:
+some routes set `hydrate: false` while others set `hydrate: true`.
+The page will not hydrate. Align route `hydrate` settings to silence this warning.
 ```
 
 **How to resolve conflicts:**
