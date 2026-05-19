@@ -14,7 +14,7 @@ export const tanstackStartRsbuildOptionsSchema =
         .optional(),
     })
     .optional()
-    .default({})
+    .prefault({})
 
 export function parseStartConfig(
   opts: z.input<typeof tanstackStartRsbuildOptionsSchema>,

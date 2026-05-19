@@ -13,7 +13,7 @@ export const tanstackStartViteOptionsSchema = tanstackStartOptionsObjectSchema
       .optional(),
   })
   .optional()
-  .default({})
+  .prefault({})
 
 export function parseStartConfig(
   opts: z.input<typeof tanstackStartViteOptionsSchema>,
