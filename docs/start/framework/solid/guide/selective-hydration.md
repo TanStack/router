@@ -216,6 +216,71 @@ function PrivacyPage() {
 - CSS and stylesheets
 - Images and static assets
 
+### Adding interactivity with plain JavaScript
+
+Solid event handlers don't run when `hydrate: false`, but you can still add interactivity by attaching a regular `<script>` via the route's `head()` option. The script is included in the SSR HTML and executes in the browser — no Solid required.
+
+The pattern that scales well is **event delegation**: bind one listener on `document` that looks at `data-*` attributes on the clicked element. This works regardless of when elements appear in the DOM and keeps the script self-contained.
+
+```tsx
+// src/routes/legal/privacy.tsx
+export const Route = createFileRoute('/legal/privacy')({
+  hydrate: false,
+  head: () => ({
+    meta: [{ title: 'Privacy Policy' }],
+    scripts: [
+      {
+        children: `
+          document.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-toggle]')
+            if (!button) return
+            const targetId = button.getAttribute('aria-controls')
+            const target = targetId ? document.getElementById(targetId) : null
+            if (!target) return
+            const isOpen = button.getAttribute('aria-expanded') === 'true'
+            button.setAttribute('aria-expanded', String(!isOpen))
+            target.hidden = isOpen
+          })
+        `,
+      },
+    ],
+  }),
+  component: PrivacyPage,
+})
+
+function PrivacyPage() {
+  return (
+    <div>
+      <h1>Privacy Policy</h1>
+
+      {/* Solid `onClick` would do nothing here — drive the toggle from the
+          delegated listener in `head().scripts` above. */}
+      <button
+        type="button"
+        data-toggle
+        aria-controls="changelog-panel"
+        aria-expanded="false"
+      >
+        Show changelog
+      </button>
+      <div id="changelog-panel" hidden>
+        <ul>
+          <li>2024-01-15: Updated cookie policy</li>
+          <li>2023-10-01: Added GDPR section</li>
+        </ul>
+      </div>
+    </div>
+  )
+}
+```
+
+**Guidelines:**
+
+- Keep scripts small and self-contained — they ship inline in the HTML, so anything you'd reach for via npm packages should be loaded with a separate `{ src }` script entry instead.
+- Prefer delegated listeners on `document` over per-element handlers. The HTML emitted by Solid doesn't include event listeners, so attribute-driven (`data-toggle`, `aria-controls`, etc.) selectors are the cleanest hook.
+- Read/write DOM attributes directly. Anything you mutate stays mutated until the next navigation.
+- For larger amounts of behavior, point a `{ src: '/path/to/widget.js' }` script at a separate file that you build/deploy alongside your app.
+
 ## Inheritance
 
 A child route inherits the `hydrate` configuration of its parent. If **any route** in the match has `hydrate: false`, the entire page will not be hydrated:
