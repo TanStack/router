@@ -1,0 +1,9 @@
+{
+  "name": "nx-fix-ci-claude-agent-sdk-cache",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Isolated install of @anthropic-ai/claude-agent-sdk pinned to 0.2.70 for fix-ci. Managed by nx self-healing CI; safe to delete.",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.2.70"
+  }
+}
