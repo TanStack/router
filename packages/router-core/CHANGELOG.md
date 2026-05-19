@@ -1,5 +1,23 @@
 # @tanstack/router-core
 
+## 1.171.2
+
+### Patch Changes
+
+- Fix route mismatch warnings, HMR route index refresh, and generated route type preferences for duplicate pathless/index routes. ([#7422](https://github.com/TanStack/router/pull/7422))
+
+## 1.171.1
+
+### Patch Changes
+
+- Run custom router hydration before the initial client route match so hydrated router configuration, such as request-specific URL rewrites, can be installed before SSR hydration compares matches. ([#7416](https://github.com/TanStack/router/pull/7416))
+
+## 1.171.0
+
+### Minor Changes
+
+- params.priority route option as tie breaker in route matching algorithm ([#7411](https://github.com/TanStack/router/pull/7411))
+
 ## 1.170.1
 
 ### Patch Changes

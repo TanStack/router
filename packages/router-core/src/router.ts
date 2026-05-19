@@ -1935,7 +1935,7 @@ export class RouterCore<
           const roundTrip = this.getMatchedRoutes(nextPathname)
           if (roundTrip.foundRoute?.id !== destRoute.id) {
             console.warn(
-              `Generated path "${nextPathname}" for route "${destRoute.id}" did not match the same route after params.stringify.`,
+              `Generated path "${nextPathname}" for route "${destRoute.id}" matched route "${roundTrip.foundRoute?.id}" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.`,
             )
           }
         } catch {

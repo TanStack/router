@@ -8,7 +8,7 @@ export {
   hydrateWhenAttribute,
 } from './hydration/constants'
 export const hydrateIdSelector = `[${hydrateIdAttribute}]`
-export { idle, scheduleIdle } from './hydration/idle'
+export { idle } from './hydration/idle'
 export type { IdleHydrationOptions } from './hydration/idle'
 export { interaction } from './hydration/interaction'
 export { load } from './hydration/load'
