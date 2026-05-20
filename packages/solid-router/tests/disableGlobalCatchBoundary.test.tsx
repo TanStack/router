@@ -29,9 +29,7 @@ function TestErrorBoundary(props: { children: JSX.Element }) {
   return (
     <ErrorBoundary
       fallback={(err) => (
-        <div>
-          External Error Boundary Caught: {(err() as Error).message}
-        </div>
+        <div>External Error Boundary Caught: {(err() as Error).message}</div>
       )}
     >
       {props.children}
