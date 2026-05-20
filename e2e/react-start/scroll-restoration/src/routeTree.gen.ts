@@ -12,7 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as testsWithSearchRouteImport } from './routes/(tests)/with-search'
 import { Route as testsWithLoaderRouteImport } from './routes/(tests)/with-loader'
+import { Route as testsResetScrollFalseCRouteImport } from './routes/(tests)/reset-scroll-false-c'
+import { Route as testsResetScrollFalseBRouteImport } from './routes/(tests)/reset-scroll-false-b'
+import { Route as testsResetScrollFalseARouteImport } from './routes/(tests)/reset-scroll-false-a'
 import { Route as testsNormalPageRouteImport } from './routes/(tests)/normal-page'
+import { Route as testsNestedScrollSearchRouteImport } from './routes/(tests)/nested-scroll-search'
+import { Route as testsNestedScrollCarryOverBRouteImport } from './routes/(tests)/nested-scroll-carry-over-b'
+import { Route as testsNestedScrollCarryOverARouteImport } from './routes/(tests)/nested-scroll-carry-over-a'
+import { Route as testsNestedScrollAwayRouteImport } from './routes/(tests)/nested-scroll-away'
 import { Route as testsHashScrollReproRouteImport } from './routes/(tests)/hash-scroll-repro'
 import { Route as testsHashScrollAboutRouteImport } from './routes/(tests)/hash-scroll-about'
 
@@ -31,9 +38,46 @@ const testsWithLoaderRoute = testsWithLoaderRouteImport.update({
   path: '/with-loader',
   getParentRoute: () => rootRouteImport,
 } as any)
+const testsResetScrollFalseCRoute = testsResetScrollFalseCRouteImport.update({
+  id: '/(tests)/reset-scroll-false-c',
+  path: '/reset-scroll-false-c',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsResetScrollFalseBRoute = testsResetScrollFalseBRouteImport.update({
+  id: '/(tests)/reset-scroll-false-b',
+  path: '/reset-scroll-false-b',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsResetScrollFalseARoute = testsResetScrollFalseARouteImport.update({
+  id: '/(tests)/reset-scroll-false-a',
+  path: '/reset-scroll-false-a',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const testsNormalPageRoute = testsNormalPageRouteImport.update({
   id: '/(tests)/normal-page',
   path: '/normal-page',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsNestedScrollSearchRoute = testsNestedScrollSearchRouteImport.update({
+  id: '/(tests)/nested-scroll-search',
+  path: '/nested-scroll-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsNestedScrollCarryOverBRoute =
+  testsNestedScrollCarryOverBRouteImport.update({
+    id: '/(tests)/nested-scroll-carry-over-b',
+    path: '/nested-scroll-carry-over-b',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const testsNestedScrollCarryOverARoute =
+  testsNestedScrollCarryOverARouteImport.update({
+    id: '/(tests)/nested-scroll-carry-over-a',
+    path: '/nested-scroll-carry-over-a',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const testsNestedScrollAwayRoute = testsNestedScrollAwayRouteImport.update({
+  id: '/(tests)/nested-scroll-away',
+  path: '/nested-scroll-away',
   getParentRoute: () => rootRouteImport,
 } as any)
 const testsHashScrollReproRoute = testsHashScrollReproRouteImport.update({
@@ -51,7 +95,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/hash-scroll-about': typeof testsHashScrollAboutRoute
   '/hash-scroll-repro': typeof testsHashScrollReproRoute
+  '/nested-scroll-away': typeof testsNestedScrollAwayRoute
+  '/nested-scroll-carry-over-a': typeof testsNestedScrollCarryOverARoute
+  '/nested-scroll-carry-over-b': typeof testsNestedScrollCarryOverBRoute
+  '/nested-scroll-search': typeof testsNestedScrollSearchRoute
   '/normal-page': typeof testsNormalPageRoute
+  '/reset-scroll-false-a': typeof testsResetScrollFalseARoute
+  '/reset-scroll-false-b': typeof testsResetScrollFalseBRoute
+  '/reset-scroll-false-c': typeof testsResetScrollFalseCRoute
   '/with-loader': typeof testsWithLoaderRoute
   '/with-search': typeof testsWithSearchRoute
 }
@@ -59,7 +110,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/hash-scroll-about': typeof testsHashScrollAboutRoute
   '/hash-scroll-repro': typeof testsHashScrollReproRoute
+  '/nested-scroll-away': typeof testsNestedScrollAwayRoute
+  '/nested-scroll-carry-over-a': typeof testsNestedScrollCarryOverARoute
+  '/nested-scroll-carry-over-b': typeof testsNestedScrollCarryOverBRoute
+  '/nested-scroll-search': typeof testsNestedScrollSearchRoute
   '/normal-page': typeof testsNormalPageRoute
+  '/reset-scroll-false-a': typeof testsResetScrollFalseARoute
+  '/reset-scroll-false-b': typeof testsResetScrollFalseBRoute
+  '/reset-scroll-false-c': typeof testsResetScrollFalseCRoute
   '/with-loader': typeof testsWithLoaderRoute
   '/with-search': typeof testsWithSearchRoute
 }
@@ -68,7 +126,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/(tests)/hash-scroll-about': typeof testsHashScrollAboutRoute
   '/(tests)/hash-scroll-repro': typeof testsHashScrollReproRoute
+  '/(tests)/nested-scroll-away': typeof testsNestedScrollAwayRoute
+  '/(tests)/nested-scroll-carry-over-a': typeof testsNestedScrollCarryOverARoute
+  '/(tests)/nested-scroll-carry-over-b': typeof testsNestedScrollCarryOverBRoute
+  '/(tests)/nested-scroll-search': typeof testsNestedScrollSearchRoute
   '/(tests)/normal-page': typeof testsNormalPageRoute
+  '/(tests)/reset-scroll-false-a': typeof testsResetScrollFalseARoute
+  '/(tests)/reset-scroll-false-b': typeof testsResetScrollFalseBRoute
+  '/(tests)/reset-scroll-false-c': typeof testsResetScrollFalseCRoute
   '/(tests)/with-loader': typeof testsWithLoaderRoute
   '/(tests)/with-search': typeof testsWithSearchRoute
 }
@@ -78,7 +143,14 @@ export interface FileRouteTypes {
     | '/'
     | '/hash-scroll-about'
     | '/hash-scroll-repro'
+    | '/nested-scroll-away'
+    | '/nested-scroll-carry-over-a'
+    | '/nested-scroll-carry-over-b'
+    | '/nested-scroll-search'
     | '/normal-page'
+    | '/reset-scroll-false-a'
+    | '/reset-scroll-false-b'
+    | '/reset-scroll-false-c'
     | '/with-loader'
     | '/with-search'
   fileRoutesByTo: FileRoutesByTo
@@ -86,7 +158,14 @@ export interface FileRouteTypes {
     | '/'
     | '/hash-scroll-about'
     | '/hash-scroll-repro'
+    | '/nested-scroll-away'
+    | '/nested-scroll-carry-over-a'
+    | '/nested-scroll-carry-over-b'
+    | '/nested-scroll-search'
     | '/normal-page'
+    | '/reset-scroll-false-a'
+    | '/reset-scroll-false-b'
+    | '/reset-scroll-false-c'
     | '/with-loader'
     | '/with-search'
   id:
@@ -94,7 +173,14 @@ export interface FileRouteTypes {
     | '/'
     | '/(tests)/hash-scroll-about'
     | '/(tests)/hash-scroll-repro'
+    | '/(tests)/nested-scroll-away'
+    | '/(tests)/nested-scroll-carry-over-a'
+    | '/(tests)/nested-scroll-carry-over-b'
+    | '/(tests)/nested-scroll-search'
     | '/(tests)/normal-page'
+    | '/(tests)/reset-scroll-false-a'
+    | '/(tests)/reset-scroll-false-b'
+    | '/(tests)/reset-scroll-false-c'
     | '/(tests)/with-loader'
     | '/(tests)/with-search'
   fileRoutesById: FileRoutesById
@@ -103,7 +189,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   testsHashScrollAboutRoute: typeof testsHashScrollAboutRoute
   testsHashScrollReproRoute: typeof testsHashScrollReproRoute
+  testsNestedScrollAwayRoute: typeof testsNestedScrollAwayRoute
+  testsNestedScrollCarryOverARoute: typeof testsNestedScrollCarryOverARoute
+  testsNestedScrollCarryOverBRoute: typeof testsNestedScrollCarryOverBRoute
+  testsNestedScrollSearchRoute: typeof testsNestedScrollSearchRoute
   testsNormalPageRoute: typeof testsNormalPageRoute
+  testsResetScrollFalseARoute: typeof testsResetScrollFalseARoute
+  testsResetScrollFalseBRoute: typeof testsResetScrollFalseBRoute
+  testsResetScrollFalseCRoute: typeof testsResetScrollFalseCRoute
   testsWithLoaderRoute: typeof testsWithLoaderRoute
   testsWithSearchRoute: typeof testsWithSearchRoute
 }
@@ -131,11 +224,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof testsWithLoaderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(tests)/reset-scroll-false-c': {
+      id: '/(tests)/reset-scroll-false-c'
+      path: '/reset-scroll-false-c'
+      fullPath: '/reset-scroll-false-c'
+      preLoaderRoute: typeof testsResetScrollFalseCRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/reset-scroll-false-b': {
+      id: '/(tests)/reset-scroll-false-b'
+      path: '/reset-scroll-false-b'
+      fullPath: '/reset-scroll-false-b'
+      preLoaderRoute: typeof testsResetScrollFalseBRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/reset-scroll-false-a': {
+      id: '/(tests)/reset-scroll-false-a'
+      path: '/reset-scroll-false-a'
+      fullPath: '/reset-scroll-false-a'
+      preLoaderRoute: typeof testsResetScrollFalseARouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(tests)/normal-page': {
       id: '/(tests)/normal-page'
       path: '/normal-page'
       fullPath: '/normal-page'
       preLoaderRoute: typeof testsNormalPageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/nested-scroll-search': {
+      id: '/(tests)/nested-scroll-search'
+      path: '/nested-scroll-search'
+      fullPath: '/nested-scroll-search'
+      preLoaderRoute: typeof testsNestedScrollSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/nested-scroll-carry-over-b': {
+      id: '/(tests)/nested-scroll-carry-over-b'
+      path: '/nested-scroll-carry-over-b'
+      fullPath: '/nested-scroll-carry-over-b'
+      preLoaderRoute: typeof testsNestedScrollCarryOverBRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/nested-scroll-carry-over-a': {
+      id: '/(tests)/nested-scroll-carry-over-a'
+      path: '/nested-scroll-carry-over-a'
+      fullPath: '/nested-scroll-carry-over-a'
+      preLoaderRoute: typeof testsNestedScrollCarryOverARouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/nested-scroll-away': {
+      id: '/(tests)/nested-scroll-away'
+      path: '/nested-scroll-away'
+      fullPath: '/nested-scroll-away'
+      preLoaderRoute: typeof testsNestedScrollAwayRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(tests)/hash-scroll-repro': {
@@ -159,7 +301,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   testsHashScrollAboutRoute: testsHashScrollAboutRoute,
   testsHashScrollReproRoute: testsHashScrollReproRoute,
+  testsNestedScrollAwayRoute: testsNestedScrollAwayRoute,
+  testsNestedScrollCarryOverARoute: testsNestedScrollCarryOverARoute,
+  testsNestedScrollCarryOverBRoute: testsNestedScrollCarryOverBRoute,
+  testsNestedScrollSearchRoute: testsNestedScrollSearchRoute,
   testsNormalPageRoute: testsNormalPageRoute,
+  testsResetScrollFalseARoute: testsResetScrollFalseARoute,
+  testsResetScrollFalseBRoute: testsResetScrollFalseBRoute,
+  testsResetScrollFalseCRoute: testsResetScrollFalseCRoute,
   testsWithLoaderRoute: testsWithLoaderRoute,
   testsWithSearchRoute: testsWithSearchRoute,
 }

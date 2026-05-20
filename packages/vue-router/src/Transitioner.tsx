@@ -1,9 +1,5 @@
 import * as Vue from 'vue'
-import {
-  getLocationChangeInfo,
-  handleHashScroll,
-  trimPathRight,
-} from '@tanstack/router-core'
+import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { batch, useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
@@ -230,10 +226,6 @@ export function useTransitionerSetup() {
           type: 'onResolved',
           ...changeInfo,
         })
-
-        if (changeInfo.hrefChanged) {
-          handleHashScroll(router)
-        }
       }
     } catch {
       // Ignore errors if component is unmounted

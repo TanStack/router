@@ -9,26 +9,18 @@ import type { AnyRouter } from '../router'
 type InlineScrollRestorationScriptOptions = {
   storageKey: string
   key?: string
-  behavior?: ScrollToOptions['behavior']
-  shouldScrollRestoration?: boolean
 }
 
 const defaultInlineScrollRestorationScript = `(${minifiedScrollRestorationScript})(${escapeHtml(
   JSON.stringify({
     storageKey,
-    shouldScrollRestoration: true,
   } satisfies InlineScrollRestorationScriptOptions),
 )})`
 
 function getScrollRestorationScript(
   options: InlineScrollRestorationScriptOptions,
 ) {
-  if (
-    options.storageKey === storageKey &&
-    options.shouldScrollRestoration === true &&
-    options.key === undefined &&
-    options.behavior === undefined
-  ) {
+  if (options.storageKey === storageKey && options.key === undefined) {
     return defaultInlineScrollRestorationScript
   }
 
@@ -58,7 +50,6 @@ export function getScrollRestorationScriptForRouter(router: AnyRouter) {
 
   return getScrollRestorationScript({
     storageKey,
-    shouldScrollRestoration: true,
     key: userKey,
   })
 }
