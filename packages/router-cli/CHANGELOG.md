@@ -1,5 +1,14 @@
 # @tanstack/router-cli
 
+## 1.167.6
+
+### Patch Changes
+
+- Update chokidar to v5. ([#7439](https://github.com/TanStack/router/pull/7439))
+
+- Updated dependencies []:
+  - @tanstack/router-generator@1.167.6
+
 ## 1.167.5
 
 ### Patch Changes
