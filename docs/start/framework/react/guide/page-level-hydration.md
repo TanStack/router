@@ -11,16 +11,17 @@ In TanStack Start, routes are server-side rendered by default and then "hydrated
 
 **Note:** This is **page-level** hydration control — the entire page either hydrates or it doesn't. For **component-level** opt-in/opt-out hydration (Server Components), where individual components can opt in or out of hydration, stay tuned for upcoming releases from TanStack Router.
 
-When you set `hydrate: false` on a route:
+When you set `hydrate: false` on a route, the route's **initial page load**:
 
-- ✅ The page is still server-side rendered (SSR) and SEO-friendly
-- ✅ All content loads instantly with no JavaScript required
-- ✅ External scripts from the `head()` option still work
-- ❌ React is not loaded or hydrated (no interactivity)
-- ❌ No event handlers or reactive state on the client
-- ❌ Navigation to or from this route happens via a full-page reload
+- ✅ Is still server-side rendered (SSR) and SEO-friendly
+- ✅ Ships all content with no JavaScript required
+- ✅ Includes external scripts from the `head()` option
+- ❌ Does not load or hydrate React (no interactivity from React)
+- ❌ Has no React event handlers or reactive state
 
-**Important:** `hydrate: false` should only be used when you want a truly static page with absolutely no React on the client. Most applications should keep the default `hydrate: true` behavior, even for primarily static content, as you typically need at least some client-side interactivity for navigation, analytics, or other features.
+See [Client-side navigation **into** a `hydrate: false` route](#client-side-navigation-into-a-hydrate-false-route) for current navigation behavior and how it will be configurable in a future release.
+
+**Important:** `hydrate: false` is the right call when you want a truly static initial render with no React. Most applications should keep the default `hydrate: true`, even for primarily static content, as you typically need at least some client-side interactivity for navigation, analytics, or other features.
 
 ## How does this compare to `ssr: false`?
 
@@ -53,10 +54,10 @@ ssr: false, hydrate: false
 
 **When to use `hydrate: false`:**
 
-- Truly static pages where you want zero React on the client
-- Pages where you're willing to give up client-side navigation and all interactivity
+- Truly static pages where you want zero React on the initial page load (and, in a future release, optionally on subsequent navigations as well)
+- Pages where you're willing to skip client-side hydration on first paint
 - Print-only views or embedded content
-- **Note:** This is a very rare use case — most sites should use `hydrate: true` (default)
+- **Note:** Most sites should use `hydrate: true` (default). `hydrate: false` is the right call for a small set of pages — legal/marketing/embeddable content that doesn't need client interactivity to be useful.
 
 **When to use `ssr: false`:**
 
@@ -200,15 +201,16 @@ function PrivacyPage() {
 
 ### Client-side navigation **into** a `hydrate: false` route
 
-`hydrate: false` controls the **initial page load**, not subsequent client-side navigations. Once the app has hydrated on any route, React stays loaded for the lifetime of the tab — there's no way to "un-hydrate" partway through a session. As a result:
+In this release, `hydrate: false` controls the **initial page load**. Once the app has hydrated on any route in a tab, React stays loaded for the lifetime of that tab and an SPA navigation into a `hydrate: false` route renders normally — the route is _not_ unhydrated mid-session. As a result, today:
 
 - A direct/initial load of a `hydrate: false` route → no JavaScript, no React, plain HTML.
-- A client-side navigation (via `<Link>`) into the same route from an already-hydrated page → renders normally, the same as any other route. The `hydrate: false` option is a **no-op** in this case.
+- A client-side navigation (via `<Link>`) into the same route from an already-hydrated page → renders normally, the same as any other route. The `hydrate: false` option is effectively a **no-op** in this case.
 
-If a route truly must be static every time it's visited (e.g. a `/legal/privacy` you want consistently served as plain HTML), reach the route via a full-page navigation:
+> A future release will add a router option to configure navigation behavior for `hydrate: false` routes — for example, performing a hard navigation or document-replace when entering one. That will also enable removing those routes' code from the main client bundle entirely. Until then, the per-link escape hatch below is the way to opt into hard-navigation semantics on a case-by-case basis.
+
+If a route must be re-rendered as plain HTML every time it's visited today, you can force a fresh page load per-link with `reloadDocument`:
 
 ```tsx
-// Force a fresh page load so `hydrate: false` takes effect
 <Link to="/legal/privacy" reloadDocument>
   Privacy
 </Link>
@@ -398,14 +400,14 @@ The page will not hydrate. Align route `hydrate` settings to silence this warnin
 
 ### 📄 When to use `hydrate: false`:
 
-**Important:** This is a very rare use case. Most applications should keep the default hydration behavior.
+**Important:** This isn't the right setting for most pages. Keep the default hydration behavior unless the page is genuinely non-interactive.
 
-Use `hydrate: false` only when:
+Use `hydrate: false` when:
 
-- You want a **truly static page** with zero React on the client
-- You're willing to give up **all client-side navigation** and interactivity
-- You want to avoid the overhead of loading React entirely
-- Examples: Print-only views, embedded content, purely informational pages
+- You want a **truly static page** with zero React on the initial load (and, in a future release, optionally on subsequent navigations as well)
+- You don't need React-driven interactivity to render the page on first paint
+- You want to avoid the overhead of loading and running React for that page
+- Examples: Print-only views, embedded content, purely informational pages, legal/policy pages, marketing landing pages
 
 ### ⚡ When to explicitly use `hydrate: true`:
 
