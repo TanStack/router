@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779209130901,
+  "lastUpdate": 1779259492637,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -17353,6 +17353,114 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/5fa9e555f3a2edb5e45586623e6bcbfa7f7c7a6b"
         },
         "date": 1779209129734,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89421,
+            "unit": "bytes",
+            "extra": "raw=280786; brotli=77765; initial_gzip=89281"
+          },
+          {
+            "name": "react-router.full",
+            "value": 93034,
+            "unit": "bytes",
+            "extra": "raw=292571; brotli=80812; initial_gzip=92894"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36419,
+            "unit": "bytes",
+            "extra": "raw=109071; brotli=32756; initial_gzip=36291"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41233,
+            "unit": "bytes",
+            "extra": "raw=123625; brotli=37046; initial_gzip=41105"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54605,
+            "unit": "bytes",
+            "extra": "raw=155286; brotli=49043; initial_gzip=54470"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59850,
+            "unit": "bytes",
+            "extra": "raw=171849; brotli=53669; initial_gzip=59718"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104465,
+            "unit": "bytes",
+            "extra": "raw=330401; brotli=90254; initial_gzip=104324"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 105551,
+            "unit": "bytes",
+            "extra": "raw=332083; brotli=91387; initial_gzip=104654"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107980,
+            "unit": "bytes",
+            "extra": "raw=340980; brotli=93292; initial_gzip=107838"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102026,
+            "unit": "bytes",
+            "extra": "raw=324724; brotli=87704; initial_gzip=101850"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105402,
+            "unit": "bytes",
+            "extra": "raw=335407; brotli=90597; initial_gzip=105226"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50880,
+            "unit": "bytes",
+            "extra": "raw=156305; brotli=44871; initial_gzip=50746"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 55094,
+            "unit": "bytes",
+            "extra": "raw=165051; brotli=48880; initial_gzip=51665"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56791,
+            "unit": "bytes",
+            "extra": "raw=173619; brotli=49989; initial_gzip=56656"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "fpellet@ensc.fr",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f6258f23ee37a35fb908b3293e49bab3058e57f",
+          "message": "chore: update zod to v4.4.3 (#7441)\n\n* chore: update zod to v4.4.3\n\n* fix(start): preserve route path defaults\n\n* fix(examples): resolve zod 4 build failures",
+          "timestamp": "2026-05-20T08:41:45+02:00",
+          "tree_id": "d42f2605ab4f0614e65e2605ccde3f376322eed4",
+          "url": "https://github.com/TanStack/router/commit/9f6258f23ee37a35fb908b3293e49bab3058e57f"
+        },
+        "date": 1779259491078,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
