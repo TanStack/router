@@ -14,15 +14,15 @@ export const tanstackStartRsbuildOptionsSchema =
         .optional(),
     })
     .optional()
-    .default({})
+    .prefault({})
 
 export function parseStartConfig(
   opts: z.input<typeof tanstackStartRsbuildOptionsSchema>,
   corePluginOpts: { framework: CompileStartFrameworkOptions },
   root: string,
 ) {
-  const { rsbuild: _rsbuild, ...coreOptions } =
-    tanstackStartRsbuildOptionsSchema.parse(opts)
+  tanstackStartRsbuildOptionsSchema.parse(opts)
+  const { rsbuild: _rsbuild, ...coreOptions } = opts ?? {}
 
   return parseCoreStartConfig(coreOptions, corePluginOpts, root)
 }

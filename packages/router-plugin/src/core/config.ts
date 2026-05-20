@@ -93,7 +93,11 @@ export type HmrOptions = {
 }
 
 const codeSplittingOptionsSchema = z.object({
-  splitBehavior: z.function().optional(),
+  splitBehavior: z
+    .custom<
+      CodeSplittingOptions['splitBehavior']
+    >((value) => typeof value === 'function')
+    .optional(),
   defaultBehavior: splitGroupingsSchema.optional(),
   deleteNodes: z.array(z.string()).optional(),
   addHmr: z.boolean().optional().default(true),

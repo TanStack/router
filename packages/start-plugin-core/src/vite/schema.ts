@@ -13,15 +13,15 @@ export const tanstackStartViteOptionsSchema = tanstackStartOptionsObjectSchema
       .optional(),
   })
   .optional()
-  .default({})
+  .prefault({})
 
 export function parseStartConfig(
   opts: z.input<typeof tanstackStartViteOptionsSchema>,
   corePluginOpts: { framework: CompileStartFrameworkOptions },
   root: string,
 ) {
-  const { vite: _vite, ...coreOptions } =
-    tanstackStartViteOptionsSchema.parse(opts)
+  tanstackStartViteOptionsSchema.parse(opts)
+  const { vite: _vite, ...coreOptions } = opts ?? {}
 
   return parseCoreStartConfig(coreOptions, corePluginOpts, root)
 }
