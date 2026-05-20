@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   RoutePrefixMap,
   cleanPath,
+  createLiteralRoutePathSegmentMetadata,
+  createRoutePathSegmentMetadata,
   createRouteNodesByFullPath,
   createRouteNodesByTo,
   determineInitialRoutePath,
@@ -57,6 +59,88 @@ describe('inferFullPath', () => {
     } as unknown as RouteNode
 
     expect(inferFullPath(node)).toBe('/__foo')
+  })
+
+  it('preserves explicit literal leading underscores on index routes after removing pathless ancestors', () => {
+    const parent = {
+      routePath: '/_layout',
+    } as unknown as RouteNode
+    const node = {
+      routePath: '/_layout/_nested/',
+      originalRoutePath: '/_layout/_nested/',
+      _routePathSegmentMetadata: createLiteralRoutePathSegmentMetadata(
+        '/_layout/_nested',
+        parent,
+        true,
+      ),
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/_nested/')
+  })
+
+  it('removes pathless index route segments when they are not marked literal', () => {
+    const node = {
+      routePath: '/_layout/_nested/',
+      originalRoutePath: '/_layout/_nested/',
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/')
+  })
+
+  it('preserves escaped trailing underscores on index routes', () => {
+    const node = {
+      routePath: '/_layout/foo_/',
+      originalRoutePath: '/_layout/foo[_]/',
+      _routePathSegmentMetadata: createRoutePathSegmentMetadata(
+        '/_layout/foo_/',
+        '/_layout/foo[_]/',
+      ),
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/foo_/')
+  })
+
+  it('removes unescaped trailing underscores on index routes', () => {
+    const node = {
+      routePath: '/_layout/foo_/',
+      originalRoutePath: '/_layout/foo_/',
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/foo/')
+  })
+})
+
+describe('createRoutePathSegmentMetadata', () => {
+  it('preserves escaped trailing underscores on index routes', () => {
+    const metadata = createRoutePathSegmentMetadata('/foo_/', '/foo[_]/')
+
+    expect(metadata).toHaveLength(3)
+    expect(metadata?.[1]).toEqual({ literalTrailingUnderscore: true })
+  })
+
+  it('preserves mixed escaped leading and trailing underscores', () => {
+    const metadata = createRoutePathSegmentMetadata('/_foo_/', '/[_]foo[_]/')
+
+    expect(metadata).toHaveLength(3)
+    expect(metadata?.[1]).toEqual({
+      literalLeadingUnderscore: true,
+      literalTrailingUnderscore: true,
+    })
+  })
+
+  it('tracks multiple literal underscore segments independently', () => {
+    const metadata = createRoutePathSegmentMetadata(
+      '/_foo/bar_/_baz_/',
+      '/[_]foo/bar[_]/[_baz_]/',
+    )
+
+    expect(metadata).toHaveLength(5)
+    expect(metadata?.[1]).toEqual({ literalLeadingUnderscore: true })
+    expect(metadata?.[2]).toEqual({ literalTrailingUnderscore: true })
+    expect(metadata?.[3]).toEqual({
+      literalLeadingUnderscore: true,
+      literalTrailingUnderscore: true,
+    })
   })
 })
 
@@ -662,6 +746,24 @@ describe('removeLayoutSegmentsAndUnderscoresWithEscape', () => {
         '/_layout/foo_/bar_',
       ),
     ).toBe('/foo/bar')
+  })
+
+  it('preserves escaped trailing underscores after removing pathless ancestors', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/foo_/',
+        '/_layout/foo[_]/',
+      ),
+    ).toBe('/foo_/')
+  })
+
+  it('preserves mixed escaped leading and trailing underscores after removing pathless ancestors', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/_foo_/',
+        '/_layout/[_]foo[_]/',
+      ),
+    ).toBe('/_foo_/')
   })
 })
 
