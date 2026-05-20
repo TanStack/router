@@ -64,6 +64,8 @@ ts-perf
 nx-cloud.env
 .nx/cache
 .nx/workspace-data
+.nx/polygraph
+.nx/self-healing
 
 gpt/db.json
 
