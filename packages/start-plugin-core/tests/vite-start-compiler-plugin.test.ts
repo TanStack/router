@@ -19,6 +19,25 @@ import { mergeHotUpdateModules } from '../src/vite/start-compiler-plugin/hot-upd
 import type { Plugin } from 'vite'
 import type { EnvironmentModuleNode } from 'vite'
 
+function getPerEnvironmentServerFnPlugin(type: 'client' | 'server') {
+  const name = type === 'client' ? 'client' : 'ssr'
+  const plugins = startCompilerPlugin({
+    framework: 'react',
+    providerEnvName: 'ssr',
+    environments: [{ name, type }],
+  }) as Array<Plugin>
+
+  return plugins.find(
+    (candidate) => candidate.name === `tanstack-start-core::server-fn:${name}`,
+  )!
+}
+
+function matchesTransformCodeFilter(plugin: Plugin, code: string) {
+  const include = (plugin.transform as any).filter.code.include as Array<RegExp>
+
+  return include.some((pattern) => pattern.test(code))
+}
+
 describe('Vite dev server module specifiers', () => {
   test('encodes app files as root-relative dev server paths', () => {
     const encode = createViteDevServerFnModuleSpecifierEncoder('/repo/app')
@@ -80,6 +99,31 @@ describe('mergeHotUpdateModules', () => {
       route,
       provider,
     ])
+  })
+})
+
+describe('startCompilerPlugin Vite transform filter', () => {
+  test('matches server function handlers split by AST round-tripping', () => {
+    // Omit the literal `createServerFn` identifier so this exercises the
+    // whitespace-tolerant `.handler(` filter itself.
+    const code = `
+      export const ping = create({ method: 'GET' }).
+      inputValidator((d: { x?: string } = {}) => d).
+      handler(async () => 'ok')
+    `
+
+    expect(
+      matchesTransformCodeFilter(
+        getPerEnvironmentServerFnPlugin('client'),
+        code,
+      ),
+    ).toBe(true)
+    expect(
+      matchesTransformCodeFilter(
+        getPerEnvironmentServerFnPlugin('server'),
+        code,
+      ),
+    ).toBe(true)
   })
 })
 
