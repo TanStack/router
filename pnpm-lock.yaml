@@ -12725,12 +12725,15 @@ importers:
         specifier: workspace:*
         version: link:../router-generator
       chokidar:
-        specifier: ^3.6.0
-        version: 3.6.0
+        specifier: ^5.0.0
+        version: 5.0.0
       yargs:
         specifier: ^17.7.2
         version: 17.7.2
     devDependencies:
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
       '@types/yargs':
         specifier: ^17.0.33
         version: 17.0.33
@@ -12898,8 +12901,8 @@ importers:
         specifier: workspace:*
         version: link:../virtual-file-routes
       chokidar:
-        specifier: ^3.6.0
-        version: 3.6.0
+        specifier: ^5.0.0
+        version: 5.0.0
       unplugin:
         specifier: ^3.0.0
         version: 3.0.0
