@@ -17,7 +17,7 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
     "http-proxy-middleware": "^3.0.5",
     "js-cookie": "^3.0.5",
     "redaxios": "^0.5.1",
