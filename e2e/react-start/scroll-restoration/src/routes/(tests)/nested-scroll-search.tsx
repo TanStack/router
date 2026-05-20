@@ -1,13 +1,10 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { zodValidator } from '@tanstack/zod-adapter'
 
 export const Route = createFileRoute('/(tests)/nested-scroll-search')({
-  validateSearch: zodValidator(
-    z.object({
-      query: z.string().optional(),
-    }),
-  ),
+  validateSearch: z.object({
+    query: z.string().optional(),
+  }),
   component: Component,
 })
 
