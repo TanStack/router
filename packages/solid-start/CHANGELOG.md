@@ -1,5 +1,12 @@
 # @tanstack/solid-start
 
+## 1.168.9
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-plugin-core@1.171.2
+
 ## 1.168.8
 
 ### Patch Changes
