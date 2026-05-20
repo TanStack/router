@@ -28,6 +28,7 @@ declare module '@tanstack/router-core' {
     meta?: Array<Vue.ComponentOptions['meta'] | undefined>
     links?: Array<Vue.ComponentOptions['link'] | undefined>
     scripts?: Array<Vue.ComponentOptions['script'] | undefined>
+    styles?: Array<Vue.ComponentOptions['style'] | undefined>
     headScripts?: Array<Vue.ComponentOptions['script'] | undefined>
   }
 }
