@@ -104,6 +104,35 @@ Same trigger vocabulary, different substrate: Astro composes runtimes, Start
 schedules one. That is why Start gets `interaction()`, `condition()`, and intent
 bubbling, and why Astro gets multi-framework.
 
+## Comparison To React Selective Hydration
+
+React's selective hydration controls the order in which server-rendered
+boundaries hydrate. Deferred hydration controls whether and when each
+boundary hydrates at all.
+
+When React hydrates a streaming SSR page, every server-rendered
+`<Suspense>` boundary will eventually hydrate. Selective hydration just
+decides the order: each boundary hydrates as soon as its code arrives,
+and React jumps a boundary to the front of the queue if the user clicks
+inside it. The work is fixed by what the server rendered; React
+schedules it to feel responsive.
+
+Deferred hydration changes what is in the queue in the first place. A
+`Hydrate` boundary names a condition — `visible()`, `idle()`,
+`interaction()`, `media()`, `condition()`, or `never()` — and the
+boundary stays as static server HTML until that condition fires. By
+default the child JavaScript also moves into a separate chunk that the
+browser does not download until the boundary is about to hydrate. If the
+condition never fires, the boundary never hydrates and its code is never
+fetched.
+
+The two compose. A `Hydrate` boundary decides whether and when React
+starts hydrating a subtree; once it opens, anything inside it (including
+`<Suspense>` boundaries) flows back into React's normal hydration
+scheduler. Use `<Suspense>` when hydration must happen and you want React
+to prioritize it well. Use `Hydrate` when hydration might not need to
+happen at all.
+
 ## The Three Decisions
 
 Each `Hydrate` boundary has three performance decisions:
