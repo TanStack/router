@@ -52,6 +52,7 @@ import type {
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
+  HistoryAction,
   HistoryLocation,
   HistoryState,
   ParsedHistoryState,
@@ -740,7 +741,10 @@ export type GetMatchRoutesFn = (pathname: string) => {
 
 export type EmitFn = (routerEvent: RouterEvent) => void
 
-export type LoadFn = (opts?: { sync?: boolean }) => Promise<void>
+export type LoadFn = (opts?: {
+  sync?: boolean
+  action?: { type: HistoryAction }
+}) => Promise<void>
 
 export type CommitLocationFn = ({
   viewTransition,
@@ -881,6 +885,20 @@ export function getLocationChangeInfo(
   const hrefChanged = fromLocation?.href !== toLocation.href
   const hashChanged = fromLocation?.hash !== toLocation.hash
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
+}
+
+/**
+ * Symbol-keyed slot on ParsedLocation carrying the HistoryAction that
+ * triggered the current load. Read by the scroll-restoration listener to
+ * decide whether to skip stale window scroll restoration in favor of hash
+ * navigation. Symbol keys are excluded from Object.keys/JSON/spread, so this
+ * is invisible to user code.
+ * @private
+ */
+export const historyActionKey: unique symbol = Symbol()
+
+export type ParsedLocationWithHistoryAction = ParsedLocation & {
+  [historyActionKey]?: HistoryAction
 }
 
 export type CreateRouterFn = <
@@ -2403,7 +2421,8 @@ export class RouterCore<
     })
   }
 
-  load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
+  load: LoadFn = async (opts): Promise<void> => {
+    const historyAction = opts?.action?.type
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
     let loadPromise: Promise<void>
@@ -2415,6 +2434,13 @@ export class RouterCore<
       this.startTransition(async () => {
         try {
           this.beforeLoad()
+          // Stamp action onto the location instance via symbol key so downstream
+          // emitters of locationChangeInfo (e.g. onRendered from Match) can read
+          // it. Cleared on no-action loads (invalidate, same-URL commit, SSR
+          // hydration) since action describes the load event, not the URL.
+          ;(this.latestLocation as ParsedLocationWithHistoryAction)[
+            historyActionKey
+          ] = historyAction
           const next = this.latestLocation
           const prevLocation = this.stores.resolvedLocation.get()
           const locationChangeInfo = getLocationChangeInfo(next, prevLocation)

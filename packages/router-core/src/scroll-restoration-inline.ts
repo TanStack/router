@@ -1,9 +1,4 @@
-export default function (options: {
-  storageKey: string
-  key?: string
-  behavior?: ScrollToOptions['behavior']
-  shouldScrollRestoration?: boolean
-}) {
+export default function (options: { storageKey: string; key?: string }) {
   let byKey
 
   try {
@@ -15,13 +10,9 @@ export default function (options: {
 
   const resolvedKey = options.key || window.history.state?.__TSR_key
   const elementEntries = resolvedKey ? byKey[resolvedKey] : undefined
+  let windowRestored = false
 
-  if (
-    options.shouldScrollRestoration &&
-    elementEntries &&
-    typeof elementEntries === 'object' &&
-    Object.keys(elementEntries).length > 0
-  ) {
+  if (elementEntries && typeof elementEntries === 'object') {
     for (const elementSelector in elementEntries) {
       const entry = elementEntries[elementSelector]
 
@@ -40,8 +31,8 @@ export default function (options: {
         window.scrollTo({
           top: scrollY,
           left: scrollX,
-          behavior: options.behavior,
         })
+        windowRestored = true
       } else if (elementSelector) {
         let element
 
@@ -57,9 +48,9 @@ export default function (options: {
         }
       }
     }
-
-    return
   }
+
+  if (windowRestored) return
 
   const hash = window.location.hash.split('#', 2)[1]
 
@@ -77,5 +68,5 @@ export default function (options: {
     return
   }
 
-  window.scrollTo({ top: 0, left: 0, behavior: options.behavior })
+  window.scrollTo({ top: 0, left: 0 })
 }
