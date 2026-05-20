@@ -59,6 +59,12 @@
         "default": "./dist/esm/createSsrRpc.js"
       }
     },
+    "./request-response": {
+      "import": {
+        "types": "./dist/esm/request-response.d.ts",
+        "default": "./dist/esm/request-response.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "imports": {
