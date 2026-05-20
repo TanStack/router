@@ -15,5 +15,11 @@ interface ParsedLocation {
   hash: string
   maskedLocation?: ParsedLocation
   unmaskOnReload?: boolean
+  getUrl: () => URL
+  origin: string
 }
 ```
+
+> [!NOTE]
+> `getUrl()` returns a memoized `URL` that is created on demand. In hot loops,
+> repeatedly calling this method may have a negative performance impact.

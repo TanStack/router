@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
+import { replaceEqualDeep } from '../src/utils'
 import { createTestRouter } from './routerTestUtils'
 
 describe('buildLocation - params function receives parsed params', () => {
@@ -1412,8 +1413,10 @@ describe('buildLocation - location output structure', () => {
     // Verify all expected properties exist
     expect(location).toEqual({
       external: false,
+      getUrl: expect.any(Function),
       hash: 'section',
       href: '/posts?page=1#section',
+      origin: 'http://localhost:3000',
       pathname: '/posts',
       publicHref: '/posts?page=1#section',
       search: {
@@ -1450,6 +1453,93 @@ describe('buildLocation - location output structure', () => {
 
     expect(location.searchStr).toBe('')
     expect(location.href).toBe('/posts')
+  })
+
+  test('location should expose a memoized lazy getUrl method', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+
+    const routeTree = rootRoute.addChildren([postsRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/posts'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/posts',
+      search: { page: 1 },
+      hash: 'section',
+    })
+
+    expect(location.getUrl).toBeDefined()
+    expect(location.getUrl()).toBe(location.getUrl())
+    expect(location.getUrl().pathname).toBe('/posts')
+    expect(location.getUrl().search).toBe('?page=1')
+    expect(location.getUrl().hash).toBe('#section')
+  })
+
+  test('router state location should expose getUrl after parsing history', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+
+    const routeTree = rootRoute.addChildren([postsRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/posts?page=1#section'],
+      }),
+    })
+
+    await router.load()
+
+    expect(router.state.location.getUrl().pathname).toBe('/posts')
+    expect(router.state.location.getUrl().search).toBe('?page=1')
+    expect(router.state.location.getUrl().hash).toBe('#section')
+  })
+
+  test('replaceEqualDeep should preserve getUrl on structurally shared locations', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+
+    const routeTree = rootRoute.addChildren([postsRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/posts?page=1#section'],
+      }),
+    })
+
+    await router.load()
+
+    const prev = router.state.location
+    const next = router.buildLocation({
+      to: '/posts',
+      search: { page: 2 },
+      hash: 'section',
+    })
+
+    const shared = replaceEqualDeep(prev, next)
+
+    expect(shared).not.toBe(prev)
+    expect(shared.getUrl).toBe(prev.getUrl)
+    expect(shared.search).not.toBe(prev.search)
+    expect(shared.getUrl().pathname).toBe('/posts')
+    expect(shared.getUrl().search).toBe('?page=2')
+    expect(shared.getUrl().hash).toBe('#section')
   })
 })
 

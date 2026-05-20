@@ -90,6 +90,8 @@ describe('buildLocation - route masks', () => {
     expect(location.maskedLocation).toBeDefined()
     expect(location.maskedLocation!.pathname).toBe('/photos/123')
     expect(location.pathname).toBe('/photos/123/modal')
+    expect(location.maskedLocation!.getUrl().pathname).toBe('/photos/123')
+    expect(location.getUrl().pathname).toBe('/photos/123/modal')
   })
 
   test('should set params to {} when maskParams is false', () => {
@@ -619,6 +621,185 @@ describe('buildLocation - route masks', () => {
     expect(location.maskedLocation).toBeDefined()
     expect(location.maskedLocation!.pathname).toBe(
       '/articles/article-5/replies/10',
+    )
+  })
+})
+
+describe('masked history __tempLocation', () => {
+  const cloneHistoryWithState = (
+    history: ReturnType<typeof createMemoryHistory>,
+  ) => {
+    const clonedHistory = createMemoryHistory({
+      initialEntries: [history.location.href],
+    })
+
+    clonedHistory.location.state = structuredClone(history.location.state)
+
+    return clonedHistory
+  }
+
+  const createMaskRouter = (
+    routeMasks?: Array<RouteMask<any>>,
+    history = createMemoryHistory({ initialEntries: ['/'] }),
+  ) => {
+    const rootRoute = new BaseRootRoute({})
+    const photoRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/photos/$photoId',
+    })
+    const modalRoute = new BaseRoute({
+      getParentRoute: () => photoRoute,
+      path: '/modal',
+    })
+
+    const routeTree = rootRoute.addChildren([
+      photoRoute.addChildren([modalRoute]),
+    ])
+
+    const router = createTestRouter({
+      routeTree,
+      history,
+      routeMasks,
+    })
+
+    return { history, router }
+  }
+
+  test('masked route reload preserves the internal location through cloned history state', async () => {
+    const { history, router } = createMaskRouter([
+      {
+        routeTree: null as any,
+        from: '/photos/$photoId/modal',
+        to: '/photos/$photoId',
+        params: true,
+      },
+    ])
+
+    await router.load()
+    await router.navigate({
+      to: '/photos/$photoId/modal',
+      params: { photoId: '123' },
+      state: { modal: true } as any,
+    })
+
+    expect(history.location.href).toBe('/photos/123')
+    const reloadedHistory = cloneHistoryWithState(history)
+    const reloadedRouter = createMaskRouter(
+      [
+        {
+          routeTree: null as any,
+          from: '/photos/$photoId/modal',
+          to: '/photos/$photoId',
+          params: true,
+        },
+      ],
+      reloadedHistory,
+    ).router
+
+    expect(reloadedRouter.state.location.pathname).toBe('/photos/123/modal')
+    expect(reloadedRouter.state.location.href).toBe('/photos/123/modal')
+    expect(reloadedRouter.state.location.maskedLocation?.pathname).toBe(
+      '/photos/123',
+    )
+    expect(reloadedRouter.state.location.maskedLocation?.href).toBe(
+      '/photos/123',
+    )
+  })
+
+  test('default route masks survive reload when no unmask key is present', async () => {
+    const { history, router } = createMaskRouter([
+      {
+        routeTree: null as any,
+        from: '/photos/$photoId/modal',
+        to: '/photos/$photoId',
+        params: true,
+      },
+    ])
+
+    await router.load()
+    await router.navigate({
+      to: '/photos/$photoId/modal',
+      params: { photoId: '123' },
+    })
+
+    const reloadedHistory = cloneHistoryWithState(history)
+    const reloadedRouter = createMaskRouter(
+      [
+        {
+          routeTree: null as any,
+          from: '/photos/$photoId/modal',
+          to: '/photos/$photoId',
+          params: true,
+        },
+      ],
+      reloadedHistory,
+    ).router
+
+    expect(reloadedRouter.state.location.pathname).toBe('/photos/123/modal')
+    expect(reloadedRouter.state.location.maskedLocation?.pathname).toBe(
+      '/photos/123',
+    )
+  })
+
+  test('ignores __tempLocation when __tempKey does not match', async () => {
+    const { history, router } = createMaskRouter([
+      {
+        routeTree: null as any,
+        from: '/photos/$photoId/modal',
+        to: '/photos/$photoId',
+        params: true,
+        unmaskOnReload: true,
+      },
+    ])
+
+    await router.load()
+    await router.navigate({
+      to: '/photos/$photoId/modal',
+      params: { photoId: '123' },
+    })
+
+    const reloadedHistory = cloneHistoryWithState(history)
+    reloadedHistory.location.state.__tempKey = 'stale-temp-key'
+
+    const reloadedRouter = createMaskRouter(
+      [
+        {
+          routeTree: null as any,
+          from: '/photos/$photoId/modal',
+          to: '/photos/$photoId',
+          params: true,
+          unmaskOnReload: true,
+        },
+      ],
+      reloadedHistory,
+    ).router
+
+    expect(reloadedRouter.state.location.pathname).toBe('/photos/123')
+    expect(reloadedRouter.state.location.maskedLocation).toBeUndefined()
+  })
+
+  test('explicit masks also survive reload through cloned history state', async () => {
+    const { history, router } = createMaskRouter()
+
+    await router.load()
+    await router.navigate({
+      to: '/photos/$photoId/modal',
+      params: { photoId: '123' },
+      state: { modal: true } as any,
+      mask: {
+        to: '/photos/$photoId',
+        params: { photoId: '123' },
+      },
+    })
+
+    expect(history.location.href).toBe('/photos/123')
+    const reloadedHistory = cloneHistoryWithState(history)
+    const reloadedRouter = createMaskRouter(undefined, reloadedHistory).router
+
+    expect(reloadedRouter.state.location.pathname).toBe('/photos/123/modal')
+    expect(reloadedRouter.state.location.href).toBe('/photos/123/modal')
+    expect(reloadedRouter.state.location.maskedLocation?.pathname).toBe(
+      '/photos/123',
     )
   })
 })
