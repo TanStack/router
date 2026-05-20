@@ -2406,43 +2406,55 @@ export class RouterCore<
   load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
-    let loadPromise: Promise<void>
     const previousLocation =
       this.stores.resolvedLocation.get() ?? this.stores.location.get()
 
-    // eslint-disable-next-line prefer-const
-    loadPromise = new Promise<void>((resolve) => {
-      this.startTransition(async () => {
-        try {
-          this.beforeLoad()
-          const next = this.latestLocation
-          const prevLocation = this.stores.resolvedLocation.get()
-          const locationChangeInfo = getLocationChangeInfo(next, prevLocation)
+    const loadPromise = createControlledPromise<void>()
+    const commitLocationPromise = this.commitLocationPromise
+    this.latestLoadPromise = loadPromise
 
-          if (!this.stores.redirect.get()) {
-            this.emit({
-              type: 'onBeforeNavigate',
-              ...locationChangeInfo,
-            })
-          }
+    this.startTransition(async () => {
+      try {
+        this.beforeLoad()
+        const next = this.latestLocation
+        const prevLocation = this.stores.resolvedLocation.get()
+        const locationChangeInfo = getLocationChangeInfo(next, prevLocation)
 
+        if (!this.stores.redirect.get()) {
           this.emit({
-            type: 'onBeforeLoad',
+            type: 'onBeforeNavigate',
             ...locationChangeInfo,
           })
+        }
 
-          await loadMatches({
-            router: this,
-            sync: opts?.sync,
-            forceStaleReload: previousLocation.href === next.href,
-            matches: this.stores.pendingMatches.get(),
-            location: next,
-            updateMatch: this.updateMatch,
-            // eslint-disable-next-line @typescript-eslint/require-await
-            onReady: async () => {
-              // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
-              this.startTransition(() => {
-                this.startViewTransition(async () => {
+        this.emit({
+          type: 'onBeforeLoad',
+          ...locationChangeInfo,
+        })
+
+        await loadMatches({
+          router: this,
+          sync: opts?.sync,
+          forceStaleReload: previousLocation.href === next.href,
+          matches: this.stores.pendingMatches.get(),
+          location: next,
+          updateMatch: this.updateMatch,
+          isLatest: () => this.latestLoadPromise === loadPromise,
+          onReady: async () => {
+            if (this.latestLoadPromise !== loadPromise) {
+              return
+            }
+
+            const commitPromise = createControlledPromise<void>()
+
+            // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
+            this.startTransition(() => {
+              this.startViewTransition(async () => {
+                try {
+                  if (this.latestLoadPromise !== loadPromise) {
+                    return
+                  }
+
                   // this.viewTransitionPromise = createControlledPromise<true>()
 
                   // Commit the pending matches. If a previous match was
@@ -2511,10 +2523,7 @@ export class RouterCore<
                       this.stores.setCached([
                         ...this.stores.cachedMatches.get(),
                         ...exitingMatches!.filter(
-                          (d) =>
-                            d.status !== 'error' &&
-                            d.status !== 'notFound' &&
-                            d.status !== 'redirected',
+                          (d) => d.status === 'success',
                         ),
                       ])
                       this.clearExpiredCache()
@@ -2534,49 +2543,55 @@ export class RouterCore<
                       )
                     }
                   }
-                })
+                } finally {
+                  commitPromise.resolve()
+                }
               })
-            },
-          })
-        } catch (err) {
-          if (isRedirect(err)) {
-            redirect = err
-            if (!(isServer ?? this.isServer)) {
-              this.navigate({
-                ...redirect.options,
-                replace: true,
-                ignoreBlocker: true,
-              })
-            }
-          } else if (isNotFound(err)) {
-            notFound = err
+            })
+
+            await commitPromise
+          },
+        })
+      } catch (err) {
+        if (isRedirect(err)) {
+          redirect = err
+          if (!(isServer ?? this.isServer)) {
+            this.navigate({
+              ...redirect.options,
+              replace: true,
+              ignoreBlocker: true,
+            })
           }
+        } else if (isNotFound(err)) {
+          notFound = err
+        }
 
-          const nextStatusCode = redirect
-            ? redirect.status
-            : notFound
-              ? 404
-              : this.stores.matches.get().some((d) => d.status === 'error')
-                ? 500
-                : 200
+        const nextStatusCode = redirect
+          ? redirect.status
+          : notFound
+            ? 404
+            : this.stores.matches.get().some((d) => d.status === 'error')
+              ? 500
+              : 200
 
+        if (this.latestLoadPromise === loadPromise) {
           this.batch(() => {
             this.stores.statusCode.set(nextStatusCode)
             this.stores.redirect.set(redirect)
           })
         }
+      }
 
-        if (this.latestLoadPromise === loadPromise) {
-          this.commitLocationPromise?.resolve()
-          this.latestLoadPromise = undefined
+      if (this.latestLoadPromise === loadPromise) {
+        commitLocationPromise?.resolve()
+        this.latestLoadPromise = undefined
+        if (this.commitLocationPromise === commitLocationPromise) {
           this.commitLocationPromise = undefined
         }
+      }
 
-        resolve()
-      })
+      loadPromise.resolve()
     })
-
-    this.latestLoadPromise = loadPromise
 
     await loadPromise
 

@@ -88,6 +88,65 @@ describe('callbacks', () => {
         expect.objectContaining({ id: '/bar/bar' }),
       )
     })
+
+    it('does not resolve a newer commit promise from an older load', async () => {
+      const history = createMemoryHistory()
+      let unblock!: () => void
+      const blockerPromise = new Promise<void>((resolve) => {
+        unblock = resolve
+      })
+      let blockerCalled = false
+      let nestedNavigatePromise: Promise<void> | undefined
+      let nestedNavigateSettled = false
+
+      const rootRoute = new BaseRootRoute({})
+
+      let router!: ReturnType<typeof createTestRouter>
+      const fooRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/foo',
+        onEnter: () => {
+          history.block({
+            blockerFn: () => {
+              blockerCalled = true
+              return blockerPromise.then(() => false)
+            },
+          })
+          nestedNavigatePromise = router.navigate({ to: '/bar' })
+          nestedNavigatePromise.then(() => {
+            nestedNavigateSettled = true
+          })
+        },
+      })
+
+      const barRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/bar',
+      })
+
+      router = createTestRouter({
+        routeTree: rootRoute.addChildren([fooRoute, barRoute]),
+        history,
+      })
+
+      const unsubscribe = history.subscribe(() => router.load())
+      try {
+        await router.navigate({ to: '/foo' })
+        expect(blockerCalled).toBe(true)
+        expect(nestedNavigatePromise).toBeDefined()
+
+        await Promise.resolve()
+        expect(nestedNavigateSettled).toBe(false)
+
+        unblock()
+        await nestedNavigatePromise
+
+        expect(nestedNavigateSettled).toBe(true)
+        expect(router.state.location.pathname).toBe('/bar')
+      } finally {
+        unsubscribe()
+      }
+    })
   })
 
   describe('onLeave', () => {
