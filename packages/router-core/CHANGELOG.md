@@ -1,5 +1,13 @@
 # @tanstack/router-core
 
+## 1.171.4
+
+### Patch Changes
+
+- Fix hash navigation being overridden by stale scroll restoration entries. ([#7447](https://github.com/TanStack/router/pull/7447))
+
+- Preserve carried scroll positions across SPA navigations that create new restoration keys. ([#7447](https://github.com/TanStack/router/pull/7447))
+
 ## 1.171.3
 
 ### Patch Changes
