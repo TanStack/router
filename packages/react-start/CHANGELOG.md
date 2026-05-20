@@ -1,5 +1,13 @@
 # @tanstack/react-start
 
+## 1.168.9
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-plugin-core@1.171.2
+  - @tanstack/react-start-rsc@0.1.9
+
 ## 1.168.8
 
 ### Patch Changes

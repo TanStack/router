@@ -1,5 +1,11 @@
 # @tanstack/router-generator
 
+## 1.167.8
+
+### Patch Changes
+
+- Preserve escaped underscore segments when generating index routes across physical and virtual route trees, including pathless layouts, `physical()` prefixes, and `__virtual.ts` subtrees. ([#7453](https://github.com/TanStack/router/pull/7453))
+
 ## 1.167.7
 
 ### Patch Changes
