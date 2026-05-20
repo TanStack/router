@@ -887,22 +887,10 @@ export function getLocationChangeInfo(
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
 
-const locationHistoryActions = new WeakMap<ParsedLocation, HistoryAction>()
-
-export function getLocationHistoryAction(location: ParsedLocation) {
-  return locationHistoryActions.get(location)
-}
-
-function setLocationHistoryAction(
-  location: ParsedLocation,
-  action: HistoryAction | undefined,
-) {
-  if (action) {
-    locationHistoryActions.set(location, action)
-  } else {
-    locationHistoryActions.delete(location)
-  }
-}
+export const locationHistoryActions = new WeakMap<
+  ParsedLocation,
+  HistoryAction
+>()
 
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
@@ -2446,7 +2434,11 @@ export class RouterCore<
       this.startTransition(async () => {
         try {
           this.beforeLoad()
-          setLocationHistoryAction(this.latestLocation, historyAction)
+          if (historyAction) {
+            locationHistoryActions.set(this.latestLocation, historyAction)
+          } else {
+            locationHistoryActions.delete(this.latestLocation)
+          }
           const next = this.latestLocation
           const prevLocation = this.stores.resolvedLocation.get()
           const locationChangeInfo = getLocationChangeInfo(next, prevLocation)
