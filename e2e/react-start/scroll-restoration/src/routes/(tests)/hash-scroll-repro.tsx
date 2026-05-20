@@ -44,7 +44,25 @@ function Component() {
           >
             Invalidate
           </button>
+          <Link
+            to="/hash-scroll-repro"
+            hash="one"
+            className="rounded border px-3 py-2"
+            data-testid="hash-scroll-section-one-link"
+          >
+            #one
+          </Link>
         </div>
+      </div>
+
+      <div
+        data-scroll-restoration-id="hash-scroll-nested"
+        data-testid="hash-scroll-nested"
+        className="mt-4 h-24 overflow-auto rounded border p-2"
+      >
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div key={i}>Nested scroll row {i}</div>
+        ))}
       </div>
 
       <div className="mt-6 grid gap-10">
