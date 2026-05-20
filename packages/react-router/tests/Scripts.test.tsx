@@ -1040,7 +1040,7 @@ describe('data script rendering', () => {
   })
 })
 
-describe('selective hydration scripts', () => {
+describe('page-level hydration scripts', () => {
   // A minimal scriptFilter that demonstrates the wiring without depending on
   // Start's clientEntryScriptFilter. Drops scripts marked TEST_DROP and
   // unwraps TEST_KEEP_PREFIX from anything else when shouldHydrate is false.

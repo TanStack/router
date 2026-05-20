@@ -1,13 +1,15 @@
 ---
-id: selective-hydration
-title: Selective Client-Side Hydration
+id: page-level-hydration
+title: Page-Level Hydration
 ---
 
-## What is Selective Hydration?
+> **Heads up:** this is _not_ React 18's "Selective Hydration" (priority-based subtree hydration driven by user interaction). The feature here lives at a different granularity — it controls **whether** a route hydrates at all, not in what order subtrees come online.
 
-In TanStack Start, routes are server-side rendered by default and then "hydrated" on the client — meaning React attaches event handlers and makes the page interactive. The `hydrate` option gives you **page-level** control over which routes should include the React hydration bundle and become interactive on the client.
+## What is Page-Level Hydration?
 
-**Note:** This is **page-level** selective hydration, meaning the entire page either hydrates or doesn't. For **component-level** selective hydration (Server Components), where individual components can opt in or out of hydration, stay tuned for upcoming releases from TanStack Router.
+In TanStack Start, routes are server-side rendered by default and then "hydrated" on the client — meaning React attaches event handlers and makes the page interactive. The `hydrate` route option gives you **page-level** control: a route either hydrates or it doesn't.
+
+**Note:** This is **page-level** hydration control — the entire page either hydrates or it doesn't. For **component-level** opt-in/opt-out hydration (Server Components), where individual components can opt in or out of hydration, stay tuned for upcoming releases from TanStack Router.
 
 When you set `hydrate: false` on a route:
 
@@ -528,7 +530,7 @@ The `hydrate` option gives you precise **page-level** control over client-side R
 - **Opt-in/opt-out mechanism**: Conflicts occur only when explicit `true` and `false` values are both present
 - **Inheritance**: If any route has `hydrate: false`, the page won't hydrate
 
-**Note:** This is **page-level** selective hydration. For **component-level** selective hydration (Server Components), stay tuned for upcoming releases from TanStack Router.
+**Note:** This is **page-level** hydration control. For **component-level** opt-in/opt-out hydration (Server Components), stay tuned for upcoming releases from TanStack Router.
 
 Use `hydrate: false` for truly static pages to:
 

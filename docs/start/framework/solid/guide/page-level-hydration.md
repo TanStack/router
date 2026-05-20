@@ -1,5 +1,5 @@
 ---
-ref: docs/start/framework/react/guide/selective-hydration.md
+ref: docs/start/framework/react/guide/page-level-hydration.md
 replace:
   {
     'React': 'Solid',
