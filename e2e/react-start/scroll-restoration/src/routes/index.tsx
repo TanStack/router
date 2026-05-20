@@ -43,6 +43,9 @@ function HomeComponent() {
         <p>
           <Link to="/nested-scroll-search">/nested-scroll-search</Link>
         </p>
+        <p>
+          <Link to="/reset-scroll-false-a">/reset-scroll-false-a</Link>
+        </p>
       </div>
     </div>
   )

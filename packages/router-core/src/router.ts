@@ -887,18 +887,21 @@ export function getLocationChangeInfo(
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
 
-/**
- * Symbol-keyed slot on ParsedLocation carrying the HistoryAction that
- * triggered the current load. Read by the scroll-restoration listener to
- * decide whether to skip stale window scroll restoration in favor of hash
- * navigation. Symbol keys are excluded from Object.keys/JSON/spread, so this
- * is invisible to user code.
- * @private
- */
-export const historyActionKey: unique symbol = Symbol()
+const locationHistoryActions = new WeakMap<ParsedLocation, HistoryAction>()
 
-export type ParsedLocationWithHistoryAction = ParsedLocation & {
-  [historyActionKey]?: HistoryAction
+export function getLocationHistoryAction(location: ParsedLocation) {
+  return locationHistoryActions.get(location)
+}
+
+function setLocationHistoryAction(
+  location: ParsedLocation,
+  action: HistoryAction | undefined,
+) {
+  if (action) {
+    locationHistoryActions.set(location, action)
+  } else {
+    locationHistoryActions.delete(location)
+  }
 }
 
 export type CreateRouterFn = <
@@ -2134,6 +2137,7 @@ export class RouterCore<
     ignoreBlocker,
     ...next
   }) => {
+    let historyAction: HistoryAction | undefined
     const isSameState = () => {
       // the following props are ignored but may still be provided when navigating,
       // temporarily add the previous values to the next state so they don't affect
@@ -2209,7 +2213,9 @@ export class RouterCore<
 
       this.shouldViewTransition = viewTransition
 
-      this.history[next.replace ? 'replace' : 'push'](
+      historyAction = next.replace ? 'REPLACE' : 'PUSH'
+
+      this.history[historyAction === 'REPLACE' ? 'replace' : 'push'](
         nextHistory.publicHref,
         nextHistory.state,
         { ignoreBlocker },
@@ -2219,7 +2225,13 @@ export class RouterCore<
     this.resetNextScroll = next.resetScroll ?? true
 
     if (!this.history.subscribers.size) {
-      this.load()
+      this.load(
+        historyAction
+          ? {
+              action: { type: historyAction },
+            }
+          : undefined,
+      )
     }
 
     return this.commitLocationPromise
@@ -2434,17 +2446,7 @@ export class RouterCore<
       this.startTransition(async () => {
         try {
           this.beforeLoad()
-          // Stamp action onto the location instance via symbol key so downstream
-          // emitters of locationChangeInfo (e.g. onRendered from Match) can read
-          // it. Only set when an action is present; no-action loads (invalidate,
-          // same-URL commit, SSR hydration) leave the key absent so that
-          // deep-equality checks (e.g. toEqual) on location objects are not
-          // affected by an extraneous Symbol → undefined entry.
-          if (historyAction !== undefined) {
-            ;(this.latestLocation as ParsedLocationWithHistoryAction)[
-              historyActionKey
-            ] = historyAction
-          }
+          setLocationHistoryAction(this.latestLocation, historyAction)
           const next = this.latestLocation
           const prevLocation = this.stores.resolvedLocation.get()
           const locationChangeInfo = getLocationChangeInfo(next, prevLocation)
