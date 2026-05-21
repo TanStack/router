@@ -10,10 +10,10 @@
     "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.170.6",
+    "@tanstack/solid-router": "^1.170.7",
     "@tanstack/solid-router-devtools": "^1.167.0",
-    "@tanstack/solid-start": "^1.168.9",
-    "@tanstack/start-static-server-functions": "^1.167.6",
+    "@tanstack/solid-start": "^1.168.10",
+    "@tanstack/start-static-server-functions": "^1.167.7",
     "solid-js": "^1.9.10",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0"

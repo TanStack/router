@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.5
+
+### Patch Changes
+
+- Fix hash scrolling with `resetScroll={false}` ([#7464](https://github.com/TanStack/router/pull/7464))
+
 ## 1.171.4
 
 ### Patch Changes

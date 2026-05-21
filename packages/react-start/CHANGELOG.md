@@ -1,5 +1,20 @@
 # @tanstack/react-start
 
+## 1.168.10
+
+### Patch Changes
+
+- Explicitly re-export public API names from `@tanstack/start-client-core` (`createServerFn`, `createMiddleware`, `createStart`, `createCsrfMiddleware`, `createIsomorphicFn`, `createClientOnlyFn`, `createServerOnlyFn`) alongside the existing `export *`. The explicit named re-exports are registered at link time (via Vite SSR's `defineExport` at `fileStartIndex`), so the namespace has these getters before any import body runs — survives the cold-start SSR cycle through user middleware where `export *` would otherwise produce a partial facade (`createMiddleware is not a function`). Workaround for vitejs/vite#22491 / #22493. ([#7466](https://github.com/TanStack/router/pull/7466))
+
+- Updated dependencies []:
+  - @tanstack/react-router@1.170.7
+  - @tanstack/react-start-client@1.168.2
+  - @tanstack/react-start-rsc@0.1.10
+  - @tanstack/react-start-server@1.167.7
+  - @tanstack/start-client-core@1.170.2
+  - @tanstack/start-plugin-core@1.171.3
+  - @tanstack/start-server-core@1.169.2
+
 ## 1.168.9
 
 ### Patch Changes
