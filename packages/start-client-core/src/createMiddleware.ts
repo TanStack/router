@@ -12,11 +12,11 @@ import type {
   Constrain,
   Expand,
   IntersectAssign,
+  Register,
   ResolveValidatorInput,
   ResolveValidatorOutput,
   ValidateSerializableInput,
 } from '@tanstack/router-core'
-import type { Register } from './register'
 
 export type CreateMiddlewareFn<TRegister> = <TType extends MiddlewareType>(
   options?: {
