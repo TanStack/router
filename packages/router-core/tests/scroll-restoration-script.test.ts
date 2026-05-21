@@ -134,4 +134,22 @@ describe('getScrollRestorationScriptForRouter', () => {
     expect(() => runScrollRestorationScript(script)).not.toThrow()
     expect(scrollTo).toHaveBeenCalledWith(0, 0)
   })
+
+  test('falls back safely when restoration key is missing from storage', () => {
+    const router = createScrollRestorationRouter()
+    const script = getScrollRestorationScriptForRouter(router)
+    const scrollTo = vi.fn()
+
+    window.history.replaceState({ __TSR_key: 'history-key' }, '', '/')
+    window.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        'other-key': { window: { scrollX: 1, scrollY: 2 } },
+      }),
+    )
+    vi.stubGlobal('scrollTo', scrollTo)
+
+    expect(() => runScrollRestorationScript(script)).not.toThrow()
+    expect(scrollTo).toHaveBeenCalledWith(0, 0)
+  })
 })
