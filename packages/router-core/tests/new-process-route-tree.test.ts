@@ -516,6 +516,154 @@ describe('findRouteMatch', () => {
       expect(result?.route.id).toBe('/aa{$id}bb')
       expect(result?.rawParams).toEqual({ id: 'foo' })
     })
+
+    it('sorts parsed dynamic siblings by params priority', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/a/{$low}',
+            fullPath: '/a/{$low}',
+            path: 'a/{$low}',
+            options: {
+              params: {
+                priority: 1,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+          {
+            id: '/a/{$high}',
+            fullPath: '/a/{$high}',
+            path: 'a/{$high}',
+            options: {
+              params: {
+                priority: 10,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(findRouteMatch('/a/value', processedTree)?.route.id).toBe(
+        '/a/{$high}',
+      )
+    })
+
+    it('falls back to lower priority parsed dynamic siblings', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/a/{$low}',
+            fullPath: '/a/{$low}',
+            path: 'a/{$low}',
+            options: {
+              params: {
+                priority: 1,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+          {
+            id: '/a/{$high}',
+            fullPath: '/a/{$high}',
+            path: 'a/{$high}',
+            options: {
+              params: {
+                priority: 10,
+                parse: () => false,
+              },
+            },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      const result = findRouteMatch('/a/value', processedTree)
+      expect(result?.route.id).toBe('/a/{$low}')
+      expect(result?.rawParams).toEqual({ low: 'value' })
+    })
+
+    it('sorts parsed optional siblings by params priority', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/a/{-$low}',
+            fullPath: '/a/{-$low}',
+            path: 'a/{-$low}',
+            options: {
+              params: {
+                priority: 1,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+          {
+            id: '/a/{-$high}',
+            fullPath: '/a/{-$high}',
+            path: 'a/{-$high}',
+            options: {
+              params: {
+                priority: 10,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(findRouteMatch('/a/value', processedTree)?.route.id).toBe(
+        '/a/{-$high}',
+      )
+    })
+
+    it('sorts parsed wildcard siblings by params priority', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/a/low{$}-low',
+            fullPath: '/a/low{$}',
+            path: 'a/low{$}',
+            options: {
+              params: {
+                priority: 1,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+          {
+            id: '/a/low{$}-high',
+            fullPath: '/a/low{$}',
+            path: 'a/low{$}',
+            options: {
+              params: {
+                priority: 10,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(findRouteMatch('/a/low/value', processedTree)?.route).toBe(
+        tree.children[1],
+      )
+    })
   })
 
   describe('basic matching', () => {
@@ -1719,5 +1867,47 @@ describe('processRouteMasks', { sequential: true }, () => {
     const res = findFlatMatch('/a/b/file/path.txt', processedTree)
     expect(res?.route.from).toBe('/a/b/{$}.txt')
     expect(res?.rawParams).toEqual({ '*': 'file/path', _splat: 'file/path' })
+  })
+
+  it('sorts dynamic route masks by specificity', () => {
+    const { processedTree: maskTree } = processRouteTree(routeTree)
+    processRouteMasks(
+      [
+        { from: '/a/$param', routeTree },
+        { from: '/a/file-{$param}.txt', routeTree },
+      ],
+      maskTree,
+    )
+    const res = findFlatMatch('/a/file-value.txt', maskTree)
+    expect(res?.route.from).toBe('/a/file-{$param}.txt')
+    expect(res?.rawParams).toEqual({ param: 'value' })
+  })
+
+  it('sorts optional route masks by specificity', () => {
+    const { processedTree: maskTree } = processRouteTree(routeTree)
+    processRouteMasks(
+      [
+        { from: '/a/{-$param}', routeTree },
+        { from: '/a/file-{-$param}.txt', routeTree },
+      ],
+      maskTree,
+    )
+    const res = findFlatMatch('/a/file-value.txt', maskTree)
+    expect(res?.route.from).toBe('/a/file-{-$param}.txt')
+    expect(res?.rawParams).toEqual({ param: 'value' })
+  })
+
+  it('sorts wildcard route masks by specificity', () => {
+    const { processedTree: maskTree } = processRouteTree(routeTree)
+    processRouteMasks(
+      [
+        { from: '/a/$', routeTree },
+        { from: '/a/file-{$}.txt', routeTree },
+      ],
+      maskTree,
+    )
+    const res = findFlatMatch('/a/file-path.txt', maskTree)
+    expect(res?.route.from).toBe('/a/file-{$}.txt')
+    expect(res?.rawParams).toEqual({ '*': 'path', _splat: 'path' })
   })
 })

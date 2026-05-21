@@ -214,6 +214,19 @@ describe('Optional Path Parameters', () => {
         end: '/a/file{$}.txt'.length,
       })
     })
+
+    it.each(['foo{}', 'foo{id}', 'foo{-$}', 'foo{-id}'])(
+      'falls back to pathname for invalid closed curly segment %s',
+      (part) => {
+        expect(readSegment(`/a/${part}/rest`, 3)).toEqual({
+          type: SEGMENT_TYPE_PATHNAME,
+          prefix: '',
+          value: part,
+          suffix: '',
+          end: `/a/${part}`.length,
+        })
+      },
+    )
   })
 
   describe('interpolatePath with optional params', () => {

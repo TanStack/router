@@ -185,7 +185,7 @@ function parseSegments<TRouteLike extends RouteLike>(
   start: number,
   node: AnySegmentNode<TRouteLike>,
   depth: number,
-  sortables: Array<Array<DynamicSegmentNode<TRouteLike>>> | undefined,
+  sortables: Array<Array<DynamicSegmentNode<TRouteLike>>>,
   onRoute?: (route: TRouteLike) => void,
 ) {
   if (onRoute) onRoute(route)
@@ -271,29 +271,36 @@ function parseSegments<TRouteLike extends RouteLike>(
           if (existingNode) {
             nextNode = existingNode
           } else {
-            const next = createDynamicNode<TRouteLike>(
+            const next: DynamicSegmentNode<TRouteLike> = {
               kind,
-              path,
-              actuallyCaseSensitive,
+              depth: 0,
+              pathless: null,
+              index: null,
+              static: null,
+              staticInsensitive: null,
+              dynamic: null,
+              optional: null,
+              wildcard: null,
+              route: null,
+              fullPath: path,
+              parent: null,
+              parse: null,
+              priority: 0,
+              caseSensitive: actuallyCaseSensitive,
               prefix,
               suffix,
-            )
+            }
             nextNode = next
             next.parent = node
             next.depth = depth
-            if (kind === SEGMENT_TYPE_PARAM) {
-              node.dynamic ??= []
-              node.dynamic.push(next)
-              if (node.dynamic.length === 2) sortables?.push(node.dynamic)
-            } else if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
-              node.optional ??= []
-              node.optional.push(next)
-              if (node.optional.length === 2) sortables?.push(node.optional)
-            } else {
-              node.wildcard ??= []
-              node.wildcard.push(next)
-              if (node.wildcard.length === 2) sortables?.push(node.wildcard)
-            }
+            const target =
+              kind === SEGMENT_TYPE_PARAM
+                ? (node.dynamic ??= [])
+                : kind === SEGMENT_TYPE_OPTIONAL_PARAM
+                  ? (node.optional ??= [])
+                  : (node.wildcard ??= [])
+            target.push(next)
+            if (target.length === 2) sortables.push(target)
           }
           break
         }
@@ -371,7 +378,8 @@ function sortDynamic(
     priority: number
   },
 ) {
-  if (!!a.parse !== !!b.parse) return a.parse ? -1 : 1
+  if (a.parse && !b.parse) return -1
+  if (!a.parse && b.parse) return 1
   if (a.parse && b.parse && (a.priority || b.priority))
     return b.priority - a.priority
   if (a.prefix && b.prefix && a.prefix !== b.prefix) {
@@ -382,9 +390,12 @@ function sortDynamic(
     if (a.suffix.endsWith(b.suffix)) return -1
     if (b.suffix.endsWith(a.suffix)) return 1
   }
-  if (!!a.prefix !== !!b.prefix) return a.prefix ? -1 : 1
-  if (!!a.suffix !== !!b.suffix) return a.suffix ? -1 : 1
-  if (a.caseSensitive !== b.caseSensitive) return a.caseSensitive ? -1 : 1
+  if (a.prefix && !b.prefix) return -1
+  if (!a.prefix && b.prefix) return 1
+  if (a.suffix && !b.suffix) return -1
+  if (!a.suffix && b.suffix) return 1
+  if (a.caseSensitive && !b.caseSensitive) return -1
+  if (!a.caseSensitive && b.caseSensitive) return 1
 
   // Equal specificity preserves route declaration order through stable sort.
   return 0
@@ -408,41 +419,6 @@ function createStaticNode<T extends RouteLike>(
     parent: null,
     parse: null,
     priority: 0,
-  }
-}
-
-/**
- * Keys must be declared in the same order as in `SegmentNode` type,
- * to ensure they are represented as the same object class in the engine.
- */
-function createDynamicNode<T extends RouteLike>(
-  kind:
-    | typeof SEGMENT_TYPE_PARAM
-    | typeof SEGMENT_TYPE_WILDCARD
-    | typeof SEGMENT_TYPE_OPTIONAL_PARAM,
-  fullPath: string,
-  caseSensitive: boolean,
-  prefix?: string,
-  suffix?: string,
-): DynamicSegmentNode<T> {
-  return {
-    kind,
-    depth: 0,
-    pathless: null,
-    index: null,
-    static: null,
-    staticInsensitive: null,
-    dynamic: null,
-    optional: null,
-    wildcard: null,
-    route: null,
-    fullPath,
-    parent: null,
-    parse: null,
-    priority: 0,
-    caseSensitive,
-    prefix,
-    suffix,
   }
 }
 
@@ -601,7 +577,7 @@ export function findSingleMatch(
     // if we haven't seen this route before, process it now
     tree = createStaticNode<{ from: string }>('/')
     const data = new Uint16Array(6)
-    parseSegments(caseSensitive, data, { from }, 1, tree, 0, undefined)
+    parseSegments(caseSensitive, data, { from }, 1, tree, 0, [])
     processedTree.singleCache.set(key, tree)
   }
   return findMatch(path, tree, fuzzy)
@@ -1256,11 +1232,17 @@ function isFrameMoreSpecific(
   next: MatchStackFrame<any>,
 ): boolean {
   if (!prev) return true
-  if (next.statics !== prev.statics) return next.statics > prev.statics
-  if (next.dynamics !== prev.dynamics) return next.dynamics > prev.dynamics
-  if (next.optionals !== prev.optionals) return next.optionals > prev.optionals
-  const nextIndex = next.node.kind === SEGMENT_TYPE_INDEX
-  const prevIndex = prev.node.kind === SEGMENT_TYPE_INDEX
-  if (nextIndex !== prevIndex) return nextIndex
-  return next.depth > prev.depth
+  return (
+    next.statics > prev.statics ||
+    (next.statics === prev.statics &&
+      (next.dynamics > prev.dynamics ||
+        (next.dynamics === prev.dynamics &&
+          (next.optionals > prev.optionals ||
+            (next.optionals === prev.optionals &&
+              ((next.node.kind === SEGMENT_TYPE_INDEX) >
+                (prev.node.kind === SEGMENT_TYPE_INDEX) ||
+                ((next.node.kind === SEGMENT_TYPE_INDEX) ===
+                  (prev.node.kind === SEGMENT_TYPE_INDEX) &&
+                  next.depth > prev.depth)))))))
+  )
 }

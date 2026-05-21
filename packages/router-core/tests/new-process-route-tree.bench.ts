@@ -163,6 +163,75 @@ function makeSortableFanoutMasks(): Array<BenchMask> {
   }))
 }
 
+function makeParsedPriorityFanoutRouteTree(): BenchRoute {
+  return {
+    id: '__root__',
+    fullPath: '/',
+    path: '/',
+    isRoot: true,
+    children: [
+      {
+        id: '/priority',
+        fullPath: '/priority',
+        path: 'priority',
+        children: Array.from({ length: 64 }, (_, index) => ({
+          id: `/priority/item-{$value}-${index}`,
+          fullPath: `/priority/item-{$value}-${index}`,
+          path: `item-{$value}-${index}`,
+          options: {
+            params: {
+              parse: (params) => params,
+              priority: index % 8,
+            },
+          },
+        })),
+      },
+    ],
+  }
+}
+
+function makeOptionalFanoutRouteTree(): BenchRoute {
+  return {
+    id: '__root__',
+    fullPath: '/',
+    path: '/',
+    isRoot: true,
+    children: [
+      {
+        id: '/optional',
+        fullPath: '/optional',
+        path: 'optional',
+        children: Array.from({ length: 64 }, (_, index) => ({
+          id: `/optional/prefix-${index}{-$value}.suffix-${index}`,
+          fullPath: `/optional/prefix-${index}{-$value}.suffix-${index}`,
+          path: `prefix-${index}{-$value}.suffix-${index}`,
+        })),
+      },
+    ],
+  }
+}
+
+function makeWildcardFanoutRouteTree(): BenchRoute {
+  return {
+    id: '__root__',
+    fullPath: '/',
+    path: '/',
+    isRoot: true,
+    children: [
+      {
+        id: '/wildcard',
+        fullPath: '/wildcard',
+        path: 'wildcard',
+        children: Array.from({ length: 64 }, (_, index) => ({
+          id: `/wildcard/prefix-${index}{$}.suffix-${index}`,
+          fullPath: `/wildcard/prefix-${index}{$}.suffix-${index}`,
+          path: `prefix-${index}{$}.suffix-${index}`,
+        })),
+      },
+    ],
+  }
+}
+
 function makeDecodeRouteTree(): BenchRoute {
   return {
     id: '__root__',
@@ -230,7 +299,9 @@ function verifyDecodeBench() {
   const processed = processRouteTree(makeDecodeRouteTree()).processedTree
   const plain = findRouteMatch(makeDecodePaths(false)[0]!, processed)
   if (plain?.rawParams.first !== 'first-0') {
-    throw new Error(`Expected plain param decode, got ${plain?.rawParams.first}`)
+    throw new Error(
+      `Expected plain param decode, got ${plain?.rawParams.first}`,
+    )
   }
 
   const encoded = findRouteMatch(makeDecodePaths(true)[0]!, processed)
@@ -247,13 +318,20 @@ describe('new process route tree', () => {
   const routeTree = makeRouteTree()
   const staticHeavyTree = makeStaticHeavyRouteTree()
   const sortableFanoutTree = makeSortableFanoutRouteTree()
+  const parsedPriorityFanoutTree = makeParsedPriorityFanoutRouteTree()
+  const optionalFanoutTree = makeOptionalFanoutRouteTree()
+  const wildcardFanoutTree = makeWildcardFanoutRouteTree()
   const staticHeavyMasks = makeStaticHeavyMasks()
   const sortableFanoutMasks = makeSortableFanoutMasks()
   const masksProcessed = processRouteTree(makeRouteTree()).processedTree
   const decodeProcessed = processRouteTree(makeDecodeRouteTree()).processedTree
+  const sortableFanoutProcessed =
+    processRouteTree(sortableFanoutTree).processedTree
   const encodedDecodePaths = makeDecodePaths(true)
+  const plainDecodePaths = makeDecodePaths(false)
   const mixedDecodePaths = makeMixedDecodePaths()
   let encodedDecodeIndex = 0
+  let plainDecodeIndex = 0
   let mixedDecodeIndex = 0
 
   bench('processRouteTree mixed tree', () => {
@@ -266,6 +344,18 @@ describe('new process route tree', () => {
 
   bench('processRouteTree sortable dynamic fanout', () => {
     processRouteTree(sortableFanoutTree)
+  })
+
+  bench('processRouteTree parsed priority fanout', () => {
+    processRouteTree(parsedPriorityFanoutTree)
+  })
+
+  bench('processRouteTree optional fanout', () => {
+    processRouteTree(optionalFanoutTree)
+  })
+
+  bench('processRouteTree wildcard fanout', () => {
+    processRouteTree(wildcardFanoutTree)
   })
 
   bench('processRouteMasks static-heavy singleton dynamics', () => {
@@ -289,6 +379,17 @@ describe('new process route tree', () => {
     encodedDecodeIndex = (encodedDecodeIndex + 16) % encodedDecodePaths.length
   })
 
+  bench('findRouteMatch decode plain params uncached batch', () => {
+    for (let index = 0; index < 16; index++) {
+      const path =
+        plainDecodePaths[(plainDecodeIndex + index) % plainDecodePaths.length]!
+      if (!findRouteMatch(path, decodeProcessed)) {
+        throw new Error(`No plain decode match for ${path}`)
+      }
+    }
+    plainDecodeIndex = (plainDecodeIndex + 16) % plainDecodePaths.length
+  })
+
   bench('findRouteMatch decode mixed90 params uncached batch', () => {
     for (let index = 0; index < 16; index++) {
       const path =
@@ -300,4 +401,13 @@ describe('new process route tree', () => {
     mixedDecodeIndex = (mixedDecodeIndex + 16) % mixedDecodePaths.length
   })
 
+  bench('findRouteMatch sortable dynamic fanout', () => {
+    const result = findRouteMatch(
+      '/sort/prefix-63value.suffix-63',
+      sortableFanoutProcessed,
+    )
+    if (result?.route.id !== '/sort/prefix-63{$value}.suffix-63') {
+      throw new Error(`Unexpected sortable fanout match ${result?.route.id}`)
+    }
+  })
 })
