@@ -302,60 +302,51 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       }
     }
 
-    if (!shouldResetScroll) {
-      return
-    }
-
     ignoreScroll = true
 
     try {
       const hash = event.toLocation.hash
       const hashScrollIntoViewOptions =
         event.toLocation.state.__hashScrollIntoViewOptions ?? true
-      const action = locationHistoryActions.get(event.toLocation)
-      const skipWindowRestore =
-        hash &&
-        hashScrollIntoViewOptions &&
-        (action === 'PUSH' || action === 'REPLACE')
-
-      const elementEntries = router.isScrollRestoring
-        ? scrollRestorationCache[cacheKey]
-        : undefined
       let windowRestored = false
 
-      if (elementEntries) {
-        for (const elementSelector in elementEntries) {
-          const { scrollX, scrollY } = elementEntries[elementSelector]!
+      if (shouldResetScroll) {
+        const action = locationHistoryActions.get(event.toLocation)
+        const skipWindowRestore =
+          hash &&
+          hashScrollIntoViewOptions &&
+          (action === 'PUSH' || action === 'REPLACE')
 
-          if (elementSelector === windowScrollTarget) {
-            if (skipWindowRestore) {
-              continue
-            }
+        const elementEntries = router.isScrollRestoring
+          ? scrollRestorationCache[cacheKey]
+          : undefined
 
-            scrollTo({
-              top: scrollY,
-              left: scrollX,
-              behavior,
-            })
-            windowRestored = true
-          } else {
-            const element = getElement(elementSelector)
-            if (element) {
-              element.scrollLeft = scrollX
-              element.scrollTop = scrollY
+        if (elementEntries) {
+          for (const elementSelector in elementEntries) {
+            const { scrollX, scrollY } = elementEntries[elementSelector]!
+
+            if (elementSelector === windowScrollTarget) {
+              if (skipWindowRestore) {
+                continue
+              }
+
+              scrollTo({
+                top: scrollY,
+                left: scrollX,
+                behavior,
+              })
+              windowRestored = true
+            } else {
+              const element = getElement(elementSelector)
+              if (element) {
+                element.scrollLeft = scrollX
+                element.scrollTop = scrollY
+              }
             }
           }
         }
-      }
 
-      if (!windowRestored) {
-        if (hash) {
-          if (hashScrollIntoViewOptions) {
-            document
-              .getElementById(hash)
-              ?.scrollIntoView(hashScrollIntoViewOptions)
-          }
-        } else {
+        if (!windowRestored && !hash) {
           const scrollOptions = {
             top: 0,
             left: 0,
@@ -370,6 +361,10 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
             }
           }
         }
+      }
+
+      if (!windowRestored && hash && hashScrollIntoViewOptions) {
+        document.getElementById(hash)?.scrollIntoView(hashScrollIntoViewOptions)
       }
     } finally {
       ignoreScroll = false

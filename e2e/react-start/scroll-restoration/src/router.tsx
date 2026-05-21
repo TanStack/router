@@ -9,6 +9,10 @@ export function getRouter() {
     scrollRestoration: true,
     scrollToTopSelectors: ['[data-scroll-restoration-id="carry-over-reset"]'],
     getScrollRestorationKey: (location) => {
+      if (location.pathname === '/ssr-scroll-key') {
+        return 'ssr-scroll-key'
+      }
+
       if (location.pathname === '/hash-scroll-repro') {
         return location.pathname
       }
