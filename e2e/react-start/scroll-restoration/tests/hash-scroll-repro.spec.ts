@@ -141,3 +141,19 @@ test('hash navigation still runs when only nested scroll entries restore', async
     })
     .toBe(nestedScrollTop)
 })
+
+test('hash navigation scrolls when resetScroll is false', async ({ page }) => {
+  await page.goto('/hash-scroll-repro#one')
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByTestId('hash-scroll-section-one')).toBeInViewport()
+
+  const scrollYBeforeHashNavigation = await page.evaluate(() => window.scrollY)
+
+  await page.getByTestId('hash-scroll-section-four-no-reset-link').click()
+
+  await expect(page).toHaveURL(/#four$/)
+  await expect(page.getByTestId('hash-scroll-section-four')).toBeInViewport()
+  await expect
+    .poll(async () => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(scrollYBeforeHashNavigation)
+})

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as testsWithSearchRouteImport } from './routes/(tests)/with-search'
 import { Route as testsWithLoaderRouteImport } from './routes/(tests)/with-loader'
+import { Route as testsSsrScrollKeyRouteImport } from './routes/(tests)/ssr-scroll-key'
 import { Route as testsResetScrollFalseCRouteImport } from './routes/(tests)/reset-scroll-false-c'
 import { Route as testsResetScrollFalseBRouteImport } from './routes/(tests)/reset-scroll-false-b'
 import { Route as testsResetScrollFalseARouteImport } from './routes/(tests)/reset-scroll-false-a'
@@ -36,6 +37,11 @@ const testsWithSearchRoute = testsWithSearchRouteImport.update({
 const testsWithLoaderRoute = testsWithLoaderRouteImport.update({
   id: '/(tests)/with-loader',
   path: '/with-loader',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsSsrScrollKeyRoute = testsSsrScrollKeyRouteImport.update({
+  id: '/(tests)/ssr-scroll-key',
+  path: '/ssr-scroll-key',
   getParentRoute: () => rootRouteImport,
 } as any)
 const testsResetScrollFalseCRoute = testsResetScrollFalseCRouteImport.update({
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/reset-scroll-false-a': typeof testsResetScrollFalseARoute
   '/reset-scroll-false-b': typeof testsResetScrollFalseBRoute
   '/reset-scroll-false-c': typeof testsResetScrollFalseCRoute
+  '/ssr-scroll-key': typeof testsSsrScrollKeyRoute
   '/with-loader': typeof testsWithLoaderRoute
   '/with-search': typeof testsWithSearchRoute
 }
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/reset-scroll-false-a': typeof testsResetScrollFalseARoute
   '/reset-scroll-false-b': typeof testsResetScrollFalseBRoute
   '/reset-scroll-false-c': typeof testsResetScrollFalseCRoute
+  '/ssr-scroll-key': typeof testsSsrScrollKeyRoute
   '/with-loader': typeof testsWithLoaderRoute
   '/with-search': typeof testsWithSearchRoute
 }
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/(tests)/reset-scroll-false-a': typeof testsResetScrollFalseARoute
   '/(tests)/reset-scroll-false-b': typeof testsResetScrollFalseBRoute
   '/(tests)/reset-scroll-false-c': typeof testsResetScrollFalseCRoute
+  '/(tests)/ssr-scroll-key': typeof testsSsrScrollKeyRoute
   '/(tests)/with-loader': typeof testsWithLoaderRoute
   '/(tests)/with-search': typeof testsWithSearchRoute
 }
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/reset-scroll-false-a'
     | '/reset-scroll-false-b'
     | '/reset-scroll-false-c'
+    | '/ssr-scroll-key'
     | '/with-loader'
     | '/with-search'
   fileRoutesByTo: FileRoutesByTo
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/reset-scroll-false-a'
     | '/reset-scroll-false-b'
     | '/reset-scroll-false-c'
+    | '/ssr-scroll-key'
     | '/with-loader'
     | '/with-search'
   id:
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/(tests)/reset-scroll-false-a'
     | '/(tests)/reset-scroll-false-b'
     | '/(tests)/reset-scroll-false-c'
+    | '/(tests)/ssr-scroll-key'
     | '/(tests)/with-loader'
     | '/(tests)/with-search'
   fileRoutesById: FileRoutesById
@@ -197,6 +209,7 @@ export interface RootRouteChildren {
   testsResetScrollFalseARoute: typeof testsResetScrollFalseARoute
   testsResetScrollFalseBRoute: typeof testsResetScrollFalseBRoute
   testsResetScrollFalseCRoute: typeof testsResetScrollFalseCRoute
+  testsSsrScrollKeyRoute: typeof testsSsrScrollKeyRoute
   testsWithLoaderRoute: typeof testsWithLoaderRoute
   testsWithSearchRoute: typeof testsWithSearchRoute
 }
@@ -222,6 +235,13 @@ declare module '@tanstack/react-router' {
       path: '/with-loader'
       fullPath: '/with-loader'
       preLoaderRoute: typeof testsWithLoaderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/ssr-scroll-key': {
+      id: '/(tests)/ssr-scroll-key'
+      path: '/ssr-scroll-key'
+      fullPath: '/ssr-scroll-key'
+      preLoaderRoute: typeof testsSsrScrollKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(tests)/reset-scroll-false-c': {
@@ -309,6 +329,7 @@ const rootRouteChildren: RootRouteChildren = {
   testsResetScrollFalseARoute: testsResetScrollFalseARoute,
   testsResetScrollFalseBRoute: testsResetScrollFalseBRoute,
   testsResetScrollFalseCRoute: testsResetScrollFalseCRoute,
+  testsSsrScrollKeyRoute: testsSsrScrollKeyRoute,
   testsWithLoaderRoute: testsWithLoaderRoute,
   testsWithSearchRoute: testsWithSearchRoute,
 }
