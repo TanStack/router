@@ -128,6 +128,11 @@ export type {
 } from './createStart'
 export type { Register } from '@tanstack/router-core'
 
+export {
+  clientEntryScriptFilter,
+  isClientEntryScript,
+  stripClientEntryImport,
+} from './clientEntryScript'
 export { getRouterInstance } from './getRouterInstance'
 export { getDefaultSerovalPlugins } from './getDefaultSerovalPlugins'
 export { getGlobalStartContext } from './getGlobalStartContext'

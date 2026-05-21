@@ -8,7 +8,12 @@ import type {
   RouteById,
   RouteIds,
 } from './routeInfo'
-import type { AnyRouter, RegisteredRouter, SSROption } from './router'
+import type {
+  AnyRouter,
+  HydrateOption,
+  RegisteredRouter,
+  SSROption,
+} from './router'
 import type { Constrain, ControlledPromise } from './utils'
 
 export type AnyMatchAndValue = { match: any; value: any }
@@ -170,6 +175,8 @@ export interface RouteMatch<
   staticData: StaticDataRouteOption
   /** This attribute is not reactive */
   ssr?: SSROption
+  /** This attribute is not reactive */
+  hydrate?: HydrateOption
   _forcePending?: boolean
   _displayPending?: boolean
 }
@@ -193,6 +200,7 @@ export interface PreValidationErrorHandlingRouteMatch<
     | { status: 'error'; error: unknown }
   staticData: StaticDataRouteOption
   ssr?: boolean | 'data-only'
+  hydrate?: boolean
 }
 
 export type MakePreValidationErrorHandlingRouteMatchUnion<

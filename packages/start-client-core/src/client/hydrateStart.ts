@@ -5,6 +5,7 @@ import {
   pluginSerializationAdapters,
 } from '#tanstack-start-plugin-adapters'
 import { getRouter } from '#tanstack-router-entry'
+import { clientEntryScriptFilter } from '../clientEntryScript'
 import { ServerFunctionSerializationAdapter } from './ServerFunctionSerializationAdapter'
 import type { AnyRouter, AnySerializationAdapter } from '@tanstack/router-core'
 import type { AnyStartInstanceOptions } from '../createStart'
@@ -32,6 +33,8 @@ async function hydrateStart(): Promise<AnyRouter> {
     window.__TSS_START_OPTIONS__ = startOptions as AnyStartInstanceOptions
     serializationAdapters = startOptions.serializationAdapters
     router.options.defaultSsr = startOptions.defaultSsr
+    router.options.scriptFilter =
+      router.options.scriptFilter ?? clientEntryScriptFilter
   } else {
     serializationAdapters = []
     window.__TSS_START_OPTIONS__ = {

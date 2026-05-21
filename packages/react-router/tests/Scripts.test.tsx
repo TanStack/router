@@ -1039,3 +1039,135 @@ describe('data script rendering', () => {
     expect(scriptEl!.textContent).toBe('console.log("empty type")')
   })
 })
+
+describe('page-level hydration scripts', () => {
+  // A minimal scriptFilter that demonstrates the wiring without depending on
+  // Start's clientEntryScriptFilter. Drops scripts marked TEST_DROP and
+  // unwraps TEST_KEEP_PREFIX from anything else when shouldHydrate is false.
+  const TEST_DROP_MARKER = 'data-test-drop'
+  const TEST_KEEP_PREFIX = 'KEEP:'
+  const testScriptFilter = (
+    script: any,
+    { shouldHydrate }: { shouldHydrate: boolean },
+  ) => {
+    if (shouldHydrate) return script
+    if (script.attrs?.[TEST_DROP_MARKER]) return null
+    if (
+      typeof script.children === 'string' &&
+      script.children.startsWith(TEST_KEEP_PREFIX)
+    ) {
+      return {
+        ...script,
+        children: script.children.slice(TEST_KEEP_PREFIX.length),
+      }
+    }
+    return script
+  }
+
+  test('hydrate: false invokes scriptFilter for inline scripts', async () => {
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        {
+          type: 'module',
+          children: 'KEEP:window.__tsr_inline_kept = true',
+        },
+      ],
+      component: () => {
+        return (
+          <div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+    ;(rootRoute.options as any).hydrate = false
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => {
+        return <div>index</div>
+      },
+    })
+
+    document.head.innerHTML = ''
+    document.querySelectorAll('body script').forEach((s) => s.remove())
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: false,
+      scriptFilter: testScriptFilter,
+    })
+
+    await router.load()
+    await act(() => render(<RouterProvider router={router} />))
+
+    const headScripts = document.head.textContent || ''
+
+    expect(headScripts).toContain('window.__tsr_inline_kept = true')
+    expect(headScripts).not.toContain('KEEP:')
+  })
+
+  test('hydrate: false invokes scriptFilter for manifest asset scripts', async () => {
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+    ;(rootRoute.options as any).hydrate = false
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => {
+        return <div>index</div>
+      },
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
+      scriptFilter: testScriptFilter,
+    })
+
+    ;(router as any).ssr = {
+      manifest: {
+        routes: {
+          [rootRoute.id]: {
+            assets: [
+              {
+                tag: 'script',
+                attrs: {
+                  type: 'module',
+                  async: true,
+                  [TEST_DROP_MARKER]: 'true',
+                },
+                children: 'import("/assets/client.js")',
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    await router.load()
+
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
+    )
+
+    expect(html).not.toContain('import(&quot;/assets/client.js&quot;)')
+  })
+})

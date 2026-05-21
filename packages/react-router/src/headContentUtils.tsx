@@ -4,6 +4,7 @@ import {
   deepEqual,
   escapeHtml,
   getAssetCrossOrigin,
+  getHydrateStatus,
   isInlinableStylesheet,
   resolveManifestAssetLink,
 } from '@tanstack/router-core'
@@ -143,26 +144,29 @@ function buildTagsFromMatches(
     })
 
   const preloadLinks: Array<RouterManagedTag> = []
-  matches
-    .map((match) => router.looseRoutesById[match.routeId]!)
-    .forEach((route) =>
-      router.ssr?.manifest?.routes[route.id]?.preloads
-        ?.filter(Boolean)
-        .forEach((preload) => {
-          const preloadLink = resolveManifestAssetLink(preload)
-          preloadLinks.push({
-            tag: 'link',
-            attrs: {
-              rel: 'modulepreload',
-              href: preloadLink.href,
-              crossOrigin:
-                getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
-                preloadLink.crossOrigin,
-              nonce,
-            },
-          })
-        }),
-    )
+  const { shouldHydrate } = getHydrateStatus(matches, router)
+  if (shouldHydrate) {
+    matches
+      .map((match) => router.looseRoutesById[match.routeId]!)
+      .forEach((route) =>
+        router.ssr?.manifest?.routes[route.id]?.preloads
+          ?.filter(Boolean)
+          .forEach((preload) => {
+            const preloadLink = resolveManifestAssetLink(preload)
+            preloadLinks.push({
+              tag: 'link',
+              attrs: {
+                rel: 'modulepreload',
+                href: preloadLink.href,
+                crossOrigin:
+                  getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
+                  preloadLink.crossOrigin,
+                nonce,
+              },
+            })
+          }),
+      )
+  }
 
   const styles = (
     matches
@@ -374,6 +378,12 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const preloadLinks = useStore(
     router.stores.matches,
     (matches) => {
+      const { shouldHydrate } = getHydrateStatus(matches, router)
+
+      if (!shouldHydrate) {
+        return []
+      }
+
       const preloadLinks: Array<RouterManagedTag> = []
 
       matches

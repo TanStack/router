@@ -126,6 +126,10 @@
               "to": "framework/react/guide/selective-ssr"
             },
             {
+              "label": "Page-Level Hydration",
+              "to": "framework/react/guide/page-level-hydration"
+            },
+            {
               "label": "SPA Mode",
               "to": "framework/react/guide/spa-mode"
             },
@@ -257,6 +261,10 @@
             {
               "label": "Selective SSR",
               "to": "framework/solid/guide/selective-ssr"
+            },
+            {
+              "label": "Page-Level Hydration",
+              "to": "framework/solid/guide/page-level-hydration"
             },
             {
               "label": "SPA Mode",
