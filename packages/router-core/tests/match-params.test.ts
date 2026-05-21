@@ -611,6 +611,44 @@ describe('params.parse route selection', () => {
       expect(usernameResult?.route.id).toBe('/users/$username')
       expect(usernameResult?.rawParams).toEqual({ username: 'johndoe' })
     })
+
+    it('child params.parse sees merged parent and child params', () => {
+      const childParse = vi.fn((params: Record<string, string>) => params)
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/$org',
+            fullPath: '/$org',
+            path: '$org',
+            options: {
+              params: {
+                parse: (params) => params,
+              },
+            },
+            children: [
+              {
+                id: '/$org/users/$user',
+                fullPath: '/$org/users/$user',
+                path: 'users/$user',
+                options: {
+                  params: {
+                    parse: childParse,
+                  },
+                },
+              },
+            ],
+          },
+        ]),
+      )
+
+      const result = findRouteMatch('/tanstack/users/tanner', processedTree)
+      expect(result?.route.id).toBe('/$org/users/$user')
+      expect(result?.rawParams).toEqual({ org: 'tanstack', user: 'tanner' })
+      expect(childParse).toHaveBeenCalledWith({
+        org: 'tanstack',
+        user: 'tanner',
+      })
+    })
   })
 
   describe('pathless routes', () => {
@@ -784,6 +822,34 @@ describe('params.parse route selection', () => {
       const result = findRouteMatch('/a', processedTree)
       expect(result?.route.id).toBe('/a/$')
       expect(result?.rawParams).toEqual({ '*': '', _splat: '' })
+    })
+
+    it('optional prefix/suffix params.parse failure falls back', () => {
+      const optionalParse = vi.fn(() => false)
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/file{-$id}.txt',
+            fullPath: '/file{-$id}.txt',
+            path: 'file{-$id}.txt',
+            options: {
+              params: {
+                parse: optionalParse,
+              },
+            },
+          },
+          {
+            id: '/file{$name}.txt',
+            fullPath: '/file{$name}.txt',
+            path: 'file{$name}.txt',
+          },
+        ]),
+      )
+
+      const result = findRouteMatch('/file123.txt', processedTree)
+      expect(result?.route.id).toBe('/file{$name}.txt')
+      expect(result?.rawParams).toEqual({ name: '123' })
+      expect(optionalParse).toHaveBeenCalledWith({ id: '123' })
     })
   })
 })

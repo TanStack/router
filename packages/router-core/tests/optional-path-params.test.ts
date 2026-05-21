@@ -175,6 +175,47 @@ describe('Optional Path Parameters', () => {
     })
   })
 
+  describe('parseSegment with non-zero starts', () => {
+    function readSegment(path: string, start: number) {
+      const segment = parseSegment(path, start)
+      return {
+        type: segment[0],
+        prefix: path.slice(start, segment[1]),
+        value: path.slice(segment[2], segment[3]),
+        suffix: path.slice(segment[4], segment[5]),
+        end: segment[5],
+      }
+    }
+
+    it('parses curly required and optional params with absolute offsets', () => {
+      expect(readSegment('/a/prefix{$id}.txt/rest', 3)).toEqual({
+        type: SEGMENT_TYPE_PARAM,
+        prefix: 'prefix',
+        value: 'id',
+        suffix: '.txt',
+        end: '/a/prefix{$id}.txt'.length,
+      })
+
+      expect(readSegment('/a/prefix{-$id}.txt/rest', 3)).toEqual({
+        type: SEGMENT_TYPE_OPTIONAL_PARAM,
+        prefix: 'prefix',
+        value: 'id',
+        suffix: '.txt',
+        end: '/a/prefix{-$id}.txt'.length,
+      })
+    })
+
+    it('parses curly wildcard suffixes with absolute offsets', () => {
+      expect(readSegment('/a/file{$}.txt', 3)).toEqual({
+        type: SEGMENT_TYPE_WILDCARD,
+        prefix: 'file',
+        value: '$',
+        suffix: '.txt',
+        end: '/a/file{$}.txt'.length,
+      })
+    })
+  })
+
   describe('interpolatePath with optional params', () => {
     it.each([
       {

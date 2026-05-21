@@ -127,6 +127,13 @@ describe('findRouteMatch', () => {
         const tree = makeTree(['/a/{$}b', '/a/$'])
         expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/{$}b')
       })
+
+      it('wildcard suffix only matches against the remaining path tail', () => {
+        const tree = makeTree(['/a/b/{$}/b/c', '/a/b/$'])
+        const result = findRouteMatch('/a/b/c', tree)
+        expect(result?.route.id).toBe('/a/b/$')
+        expect(result?.rawParams).toEqual({ '*': 'c', _splat: 'c' })
+      })
     })
 
     describe('prefix / suffix lengths', () => {
@@ -482,6 +489,33 @@ describe('findRouteMatch', () => {
         '/A{$id}B',
       )
     })
+
+    it('case sensitive prefix/suffix miss falls through to an insensitive sibling', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/aa{$id}bb',
+            fullPath: '/aa{$id}bb',
+            path: 'aa{$id}bb',
+            options: { caseSensitive: false },
+          },
+          {
+            id: '/A{$id}B',
+            fullPath: '/A{$id}B',
+            path: 'A{$id}B',
+            options: { caseSensitive: true },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      const result = findRouteMatch('/aafooBB', processedTree)
+      expect(result?.route.id).toBe('/aa{$id}bb')
+      expect(result?.rawParams).toEqual({ id: 'foo' })
+    })
   })
 
   describe('basic matching', () => {
@@ -505,6 +539,20 @@ describe('findRouteMatch', () => {
     it('single wildcard', () => {
       const tree = makeTree(['/$'])
       expect(findRouteMatch('/a/b/c', tree)?.route.id).toBe('/$')
+    })
+
+    it('literal dollar after the segment start stays static', () => {
+      const tree = makeTree(['/price$', '/price$x'])
+      expect(findRouteMatch('/price$', tree)?.route.id).toBe('/price$')
+      expect(findRouteMatch('/price$x', tree)?.route.id).toBe('/price$x')
+      expect(findRouteMatch('/priceabc', tree)).toBeNull()
+    })
+
+    it('malformed curly param syntax stays static', () => {
+      const tree = makeTree(['/foo{$id', '/foo{-$id'])
+      expect(findRouteMatch('/foo{$id', tree)?.route.id).toBe('/foo{$id')
+      expect(findRouteMatch('/foo{-$id', tree)?.route.id).toBe('/foo{-$id')
+      expect(findRouteMatch('/foo123bar', tree)).toBeNull()
     })
 
     describe('prefix / suffix variations', () => {
