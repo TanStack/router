@@ -660,30 +660,39 @@ export function processRouteTree<
   const routesById = {} as Record<string, TRouteLike>
   const routesByPath = {} as Record<string, TRouteLike>
   let index = 0
-  parseSegments(caseSensitive, data, routeTree, 1, segmentTree, 0, sortables, (route) => {
-    initRoute?.(route, index)
+  parseSegments(
+    caseSensitive,
+    data,
+    routeTree,
+    1,
+    segmentTree,
+    0,
+    sortables,
+    (route) => {
+      initRoute?.(route, index)
 
-    if (route.id in routesById) {
-      if (process.env.NODE_ENV !== 'production') {
-        throw new Error(
-          `Invariant failed: Duplicate routes found with id: ${String(route.id)}`,
-        )
+      if (route.id in routesById) {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error(
+            `Invariant failed: Duplicate routes found with id: ${String(route.id)}`,
+          )
+        }
+
+        invariant()
       }
 
-      invariant()
-    }
+      routesById[route.id] = route
 
-    routesById[route.id] = route
-
-    if (index !== 0 && route.path) {
-      const trimmedFullPath = trimPathRight(route.fullPath)
-      if (!routesByPath[trimmedFullPath] || route.fullPath.endsWith('/')) {
-        routesByPath[trimmedFullPath] = route
+      if (index !== 0 && route.path) {
+        const trimmedFullPath = trimPathRight(route.fullPath)
+        if (!routesByPath[trimmedFullPath] || route.fullPath.endsWith('/')) {
+          routesByPath[trimmedFullPath] = route
+        }
       }
-    }
 
-    index++
-  })
+      index++
+    },
+  )
   for (const list of sortables) list.sort(sortDynamic)
   const processedTree: ProcessedTree<TRouteLike, any, any> = {
     segmentTree,
