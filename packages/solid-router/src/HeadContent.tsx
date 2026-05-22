@@ -1,7 +1,6 @@
 import { For } from 'solid-js'
-import { HydrationScript, Portal, isServer } from '@solidjs/web'
+import { HydrationScript } from '@solidjs/web'
 import { Asset } from './Asset'
-import { useRouter } from './useRouter'
 import { useTags } from './headContentUtils'
 import type { AssetCrossOriginConfig } from '@tanstack/router-core'
 
@@ -11,32 +10,20 @@ export interface HeadContentProps {
 
 /**
  * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
- * When using full document hydration (hydrating from `<html>`), this component should be rendered in the `<body>`
- * to ensure it's part of the reactive tree and updates correctly during client-side navigation.
- * The component uses portals internally to render content into the `<head>` element.
+ * Place this component inside the `<head>` of your document so the rendered tags end up in the right place.
  */
 export function HeadContent(props: HeadContentProps) {
   const tags = useTags(props.assetCrossOrigin)
-  const router = useRouter()
 
-  const content = () => (
+  return (
     <>
       <HydrationScript />
       <For each={tags()}>
         {(tag) => {
-          const t = tag() as any
+          const t = tag as any
           return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
         }}
       </For>
-    </>
-  )
-
-  return (isServer ?? router.isServer) ? (
-    content()
-  ) : (
-    <>
-      <HydrationScript />
-      <Portal mount={document.head}>{content()}</Portal>
     </>
   )
 }

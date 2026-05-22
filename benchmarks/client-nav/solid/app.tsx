@@ -68,7 +68,7 @@ function LinkPanel() {
     <>
       <For each={linkGroups}>
         {(groupIndexAccessor) => {
-          const groupIndex = groupIndexAccessor()
+          const groupIndex = groupIndexAccessor
           const itemsId = groupIndex === 0 ? 1 : groupIndex + 2
           const ctxId = groupIndex + 1
 

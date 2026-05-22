@@ -131,8 +131,7 @@ function RouteComponent() {
   return (
     <For each={testCases}>
       {(t) => {
-        const item = t()
-        return <PrimitiveComponent serverFn={item.serverFn} data={item.data} />
+        return <PrimitiveComponent serverFn={t.serverFn} data={t.data} />
       }}
     </For>
   )

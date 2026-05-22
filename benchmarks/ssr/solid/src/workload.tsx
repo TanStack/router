@@ -75,9 +75,9 @@ function LinkProbe(props: { salt: number }) {
 export function RouteWorkload() {
   return (
     <>
-      <For each={probes}>{(probe) => <ParamsProbe salt={probe() + 1} />}</For>
-      <For each={probes}>{(probe) => <SearchProbe salt={probe() + 11} />}</For>
-      <For each={probes}>{(probe) => <LinkProbe salt={probe() + 21} />}</For>
+      <For each={probes}>{(probe) => <ParamsProbe salt={probe + 1} />}</For>
+      <For each={probes}>{(probe) => <SearchProbe salt={probe + 11} />}</For>
+      <For each={probes}>{(probe) => <LinkProbe salt={probe + 21} />}</For>
     </>
   )
 }

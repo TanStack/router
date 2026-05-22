@@ -14,12 +14,12 @@
     "@sentry/solid": "^10.32.0",
     "@sentry/tracing": "^7.120.4",
     "@sentry/vite-plugin": "^4.6.1",
-    "@solidjs/web": "2.0.0-beta.10",
+    "@solidjs/web": "2.0.0-beta.14",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.10",
+    "solid-js": "2.0.0-beta.14",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

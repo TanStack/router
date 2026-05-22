@@ -208,7 +208,7 @@ function RouteComponent() {
       <h1 class="font-bold text-lg">Server functions middleware E2E tests</h1>
       <For each={Object.entries(functions)}>
         {(entry) => {
-          const [, testCase] = entry()
+          const [, testCase] = entry
           return <Test {...testCase} />
         }}
       </For>
