@@ -288,6 +288,32 @@ test('Direct POST submitting FormData to a Server function returns the correct m
   expect(result).toBe(expected)
 })
 
+test('CSRF middleware rejects cross-site Server function requests', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/submit-post-formdata')
+  await page.waitForLoadState('networkidle')
+
+  const actionUrl = await page
+    .getByTestId('submit-post-formdata-form')
+    .getAttribute('action')
+
+  expect(actionUrl).toBeTruthy()
+
+  const response = await request.post(actionUrl!, {
+    headers: {
+      'Sec-Fetch-Site': 'cross-site',
+    },
+    multipart: {
+      name: 'Sean',
+    },
+  })
+
+  expect(response.status()).toBe(403)
+  await expect(response.text()).resolves.toBe('Forbidden')
+})
+
 test("server function's dead code is preserved if already there", async ({
   page,
 }) => {

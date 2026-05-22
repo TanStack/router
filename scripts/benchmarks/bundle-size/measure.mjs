@@ -64,6 +64,13 @@ const SCENARIOS = [
     case: 'minimal',
   },
   {
+    id: 'react-start.deferred-hydration',
+    dir: 'react-start-deferred-hydration',
+    framework: 'react',
+    packageName: '@tanstack/react-start',
+    case: 'deferred-hydration',
+  },
+  {
     id: 'react-start.full',
     dir: 'react-start-full',
     framework: 'react',
@@ -94,6 +101,13 @@ const SCENARIOS = [
     framework: 'solid',
     packageName: '@tanstack/solid-start',
     case: 'minimal',
+  },
+  {
+    id: 'solid-start.deferred-hydration',
+    dir: 'solid-start-deferred-hydration',
+    framework: 'solid',
+    packageName: '@tanstack/solid-start',
+    case: 'deferred-hydration',
   },
   {
     id: 'solid-start.full',
@@ -168,6 +182,10 @@ function resolveManifestChunkKey(manifest, keyOrFile) {
   return undefined
 }
 
+function isJsFile(file) {
+  return file.endsWith('.js') || file.endsWith('.mjs')
+}
+
 function collectInitialJsFiles(manifest, entryKey) {
   const visitedKeys = new Set()
   const files = new Set()
@@ -184,7 +202,7 @@ function collectInitialJsFiles(manifest, entryKey) {
       return
     }
 
-    if (typeof chunk.file === 'string' && chunk.file.endsWith('.js')) {
+    if (typeof chunk.file === 'string' && isJsFile(chunk.file)) {
       files.add(chunk.file)
     }
 
@@ -197,6 +215,18 @@ function collectInitialJsFiles(manifest, entryKey) {
   }
 
   visitByKey(entryKey)
+
+  return [...files].sort()
+}
+
+function collectAllViteJsFiles(manifest) {
+  const files = new Set()
+
+  for (const chunk of Object.values(manifest)) {
+    if (typeof chunk?.file === 'string' && isJsFile(chunk.file)) {
+      files.add(chunk.file)
+    }
+  }
 
   return [...files].sort()
 }
@@ -461,36 +491,63 @@ function collectRsbuildInitialJsFiles(manifest, entryKey) {
   }
 
   return files
-    .filter(
-      (file) =>
-        typeof file === 'string' &&
-        (file.endsWith('.js') || file.endsWith('.mjs')),
-    )
+    .filter((file) => typeof file === 'string' && isJsFile(file))
     .sort()
+}
+
+function collectRsbuildAllJsFiles(manifest) {
+  const files = new Set()
+
+  for (const file of manifest.allFiles || []) {
+    if (typeof file === 'string' && isJsFile(file)) {
+      files.add(file)
+    }
+  }
+
+  if (files.size === 0) {
+    for (const entry of Object.values(manifest.entries || {})) {
+      for (const file of entry?.initial?.js || []) {
+        if (typeof file === 'string' && isJsFile(file)) {
+          files.add(file)
+        }
+      }
+      for (const file of entry?.async?.js || []) {
+        if (typeof file === 'string' && isJsFile(file)) {
+          files.add(file)
+        }
+      }
+    }
+  }
+
+  return [...files].sort()
 }
 
 async function resolveBundleFiles({ outDir, scenario }) {
   if (scenario.toolchain === 'rsbuild') {
     const manifestInfo = await resolveRsbuildManifest(outDir, scenario.id)
-    const jsFiles = collectRsbuildInitialJsFiles(
+    const initialJsFiles = collectRsbuildInitialJsFiles(
       manifestInfo.manifest,
       manifestInfo.entryKey,
     )
+    const jsFiles = collectRsbuildAllJsFiles(manifestInfo.manifest)
 
     return {
       ...manifestInfo,
+      initialJsFiles,
       jsFiles,
     }
   }
 
   const manifestInfo = await resolveManifestAndEntry(outDir, scenario.id)
-  const jsFiles = collectInitialJsFiles(
+  const initialJsFiles = collectInitialJsFiles(
     manifestInfo.manifest,
     manifestInfo.entryKey,
   )
+  const jsFiles = collectAllViteJsFiles(manifestInfo.manifest)
 
   return {
     ...manifestInfo,
+    initialJsFiles,
     jsFiles,
   }
 }
@@ -589,6 +646,10 @@ async function main() {
 
     const bundleInfo = await resolveBundleFiles({ outDir, scenario })
     const sizes = bytesForFiles(bundleInfo.manifestOutDir, bundleInfo.jsFiles)
+    const initialSizes = bytesForFiles(
+      bundleInfo.manifestOutDir,
+      bundleInfo.initialJsFiles,
+    )
 
     metrics.push({
       id: scenario.id,
@@ -599,7 +660,11 @@ async function main() {
       case: scenario.case,
       entryKey: bundleInfo.entryKey,
       manifestPath: path.relative(outDir, bundleInfo.manifestPath),
+      initialJsFiles: bundleInfo.initialJsFiles,
       jsFiles: bundleInfo.jsFiles,
+      initialRawBytes: initialSizes.rawBytes,
+      initialGzipBytes: initialSizes.gzipBytes,
+      initialBrotliBytes: initialSizes.brotliBytes,
       ...sizes,
     })
   }
@@ -617,7 +682,7 @@ async function main() {
     name: metric.id,
     unit: 'bytes',
     value: metric.gzipBytes,
-    extra: `raw=${metric.rawBytes}; brotli=${metric.brotliBytes}`,
+    extra: `raw=${metric.rawBytes}; brotli=${metric.brotliBytes}; initial_gzip=${metric.initialGzipBytes}`,
   }))
 
   const currentPath = path.join(resultsDir, 'current.json')

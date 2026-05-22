@@ -10,13 +10,13 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/solid-router": "^1.169.1",
-    "@tanstack/solid-router-devtools": "^1.166.13",
+    "@tanstack/solid-router": "^1.170.7",
+    "@tanstack/solid-router-devtools": "^1.167.0",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "solid-motionone": "^1.0.4",
     "tailwindcss": "^4.2.2",
-    "zod": "^3.24.2"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "^6.0.2",

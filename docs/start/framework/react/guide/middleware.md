@@ -440,6 +440,51 @@ export const startInstance = createStart(() => {
 > [!NOTE]
 > Global **request** middleware runs before **every request, including server routes, SSR and server functions**.
 
+### CSRF Middleware
+
+Server functions are same-origin RPC endpoints and should be protected from cross-site requests. If your app does not define `src/start.ts`, TanStack Start installs its CSRF middleware automatically for server functions.
+
+If you define a custom `src/start.ts`, add `createCsrfMiddleware()` explicitly:
+
+```tsx
+// src/start.ts
+import { createStart, createCsrfMiddleware } from '@tanstack/react-start'
+
+const csrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === 'serverFn',
+})
+
+export const startInstance = createStart(() => ({
+  requestMiddleware: [csrfMiddleware],
+}))
+```
+
+By default, `Origin` and `Referer` checks compare against the incoming request URL origin. If your deployment needs to allow a different public origin, configure it on the CSRF middleware with `createCsrfMiddleware({ origin: 'https://app.example.com' })`.
+
+By default, `createCsrfMiddleware()` validates every request handled by the middleware. Use `filter: (ctx) => ctx.handlerType === 'serverFn'` when installing it globally for server function protection. It verifies same-origin browser request metadata with `Sec-Fetch-Site`, `Origin`, or `Referer` headers and rejects requests that cannot be proven same-origin.
+
+You can also use the same middleware to protect any other route.
+
+```tsx
+export const Route = createFileRoute('/api/foo')({
+  server: {
+    middleware: [createCsrfMiddleware()],
+    handlers: { GET: () => {...} }
+  }
+})
+```
+
+If you define `src/start.ts` without the CSRF middleware, Start shows a development warning for server function requests. If you intentionally handle CSRF another way, disable the warning:
+
+```tsx
+// vite.config.ts or rsbuild.config.ts
+tanstackStart({
+  serverFns: {
+    disableCsrfMiddlewareWarning: true,
+  },
+})
+```
+
 ### Global Server Function Middleware
 
 To have a middleware run for **every server function in your application**, add it to the `functionMiddleware` array in your `src/start.ts` file:

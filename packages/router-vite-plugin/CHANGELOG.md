@@ -1,5 +1,107 @@
 # @tanstack/router-vite-plugin
 
+## 1.167.10
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.10
+
+## 1.167.9
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.9
+
+## 1.167.8
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.8
+
+## 1.167.7
+
+### Patch Changes
+
+- Updated dependencies [[`c0f439c`](https://github.com/TanStack/router/commit/c0f439c59b04b7e49a0ab3aa2a0c550f522949e5), [`5fa9e55`](https://github.com/TanStack/router/commit/5fa9e555f3a2edb5e45586623e6bcbfa7f7c7a6b)]:
+  - @tanstack/router-plugin@1.168.7
+
+## 1.167.6
+
+### Patch Changes
+
+- Updated dependencies [[`b60eb36`](https://github.com/TanStack/router/commit/b60eb36e59e8a468ee0742cbcf7f47aca1ff1c67)]:
+  - @tanstack/router-plugin@1.168.6
+
+## 1.167.5
+
+### Patch Changes
+
+- Updated dependencies [[`8146db7`](https://github.com/TanStack/router/commit/8146db7e54f5d508f1fb7d3927edd0a2f71dc930)]:
+  - @tanstack/router-plugin@1.168.5
+
+## 1.167.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.4
+
+## 1.167.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.3
+
+## 1.167.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.2
+
+## 1.167.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.1
+
+## 1.167.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- Updated dependencies [[`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14)]:
+  - @tanstack/router-plugin@1.168.0
+
+## 1.166.50
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.167.35
+
+## 1.166.49
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.167.34
+
+## 1.166.48
+
+### Patch Changes
+
+- Updated dependencies [[`056337e`](https://github.com/TanStack/router/commit/056337ef02ccbeaf45ec8533a227761be869e8f3)]:
+  - @tanstack/router-plugin@1.167.33
+
 ## 1.166.47
 
 ### Patch Changes

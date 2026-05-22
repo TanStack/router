@@ -559,6 +559,7 @@ async function buildTransformResultProvider(opts: {
 
     const result: TransformResult = {
       code,
+      filename: resource ?? file,
       map,
       originalCode,
       lineIndex: buildLineIndex(code),
@@ -844,7 +845,7 @@ async function getMarkerKindForFile(opts: {
         return undefined
       }
 
-      const imports = getImportSources(code)
+      const imports = getImportSources(code, opts.file)
       const hasServerOnly = imports.some((source) =>
         opts.config.markerSpecifiers.serverOnly.has(source),
       )
@@ -1107,7 +1108,7 @@ export function registerImportProtection(
 
         const matchers = getRulesForEnvironment(config, envName)
         const relativeFile = getImportProtectionRelativePath(config.root, file)
-        const importSources = getImportSources(ctx.code)
+        const importSources = getImportSources(ctx.code, file)
         const transformedImportSources = new Set(importSources)
         const transformInputFileSystem = shared.inputFileSystems[envName]
         const loadOriginalCodeForTransform: OriginalCodeLoader =
@@ -1127,12 +1128,13 @@ export function registerImportProtection(
               )
             : undefined
         const buildImportSources = originalCode
-          ? getImportSources(originalCode)
+          ? getImportSources(originalCode, file)
           : []
         const buildTransformResult: TransformResult | undefined =
           config.command === 'build'
             ? {
                 code: ctx.code,
+                filename: file,
                 map: undefined,
                 originalCode,
                 lineIndex: buildLineIndex(ctx.code),
@@ -1191,7 +1193,7 @@ export function registerImportProtection(
           let exportNames: Array<string> = []
 
           try {
-            exportNames = getNamedExports(ctx.code)
+            exportNames = getNamedExports(ctx.code, file)
           } catch {
             exportNames = []
           }
@@ -1215,7 +1217,7 @@ export function registerImportProtection(
         const deniedSpecifierReplacements = new Map<string, string>()
         const exportsBySource = (() => {
           try {
-            return getMockExportNamesBySource(ctx.code)
+            return getMockExportNamesBySource(ctx.code, file)
           } catch {
             return new Map<string, Array<string>>()
           }

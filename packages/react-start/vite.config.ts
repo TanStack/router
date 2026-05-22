@@ -27,6 +27,7 @@ export default mergeConfig(
     entry: [
       './src/index.ts',
       './src/client.tsx',
+      './src/hydration.ts',
       './src/client-rpc.ts',
       './src/server.tsx',
       './src/server.rsc.ts',

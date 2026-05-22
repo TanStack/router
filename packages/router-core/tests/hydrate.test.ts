@@ -4,6 +4,7 @@ import { BaseRootRoute, BaseRoute, notFound } from '../src'
 import { hydrate } from '../src/ssr/client'
 import { createTestRouter } from './routerTestUtils'
 import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
+import type { LocationRewrite } from '../src'
 import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { AnyRouteMatch } from '../src'
 
@@ -393,6 +394,73 @@ describe('hydrate', () => {
 
     expect(loadSpy).not.toHaveBeenCalled()
     expect((mockRouter.state.matches[0] as AnyRouteMatch).id).toBe('/')
+  })
+
+  it('should run custom hydration before matching routes', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/public'] })
+
+    const rootRoute = new BaseRootRoute({})
+    const internalRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/internal',
+      component: () => 'Internal',
+    })
+
+    const rewrite: LocationRewrite = {
+      input: ({ url }) => {
+        if (url.pathname === '/public') {
+          url.pathname = '/internal'
+        }
+        return url
+      },
+    }
+
+    mockRouter = createTestRouter({
+      routeTree: rootRoute.addChildren([internalRoute]),
+      history,
+      isServer: true,
+      hydrate: (dehydrated: { rewrite?: boolean }) => {
+        if (dehydrated.rewrite) {
+          mockRouter.update({ rewrite })
+        }
+      },
+    })
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: { routes: {} },
+        dehydratedData: { rewrite: true },
+        lastMatchId: '/internal/internal',
+        matches: [
+          {
+            i: '__root__/',
+            s: 'success',
+            ssr: true,
+            u: Date.now(),
+          },
+          {
+            i: '/internal/internal',
+            s: 'success',
+            ssr: true,
+            u: Date.now(),
+          },
+        ],
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(mockRouter)
+
+    expect(mockRouter.state.location.pathname).toBe('/internal')
+    expect(mockRouter.state.location.publicHref).toBe('/public')
+    expect(
+      mockRouter.state.matches.map((match: AnyRouteMatch) => match.routeId),
+    ).toEqual(['__root__', '/internal'])
   })
 
   it('should handle errors during route context hydration', async () => {

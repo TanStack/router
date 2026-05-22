@@ -55,6 +55,11 @@ test('SSR inlines active nested route CSS without manifest stylesheet links', as
   const inlineCss = styleMatches[0]?.[1]
   expect(inlineCss?.length).toBeGreaterThan(100)
   expect(inlineCss).not.toContain('\n')
+  if (process.env.CSS_INLINE_TRANSFORM_ASSETS === 'true') {
+    expect(inlineCss).toContain('cdn=1')
+  } else {
+    expect(inlineCss).not.toContain('cdn=1')
+  }
 
   await page.goto(url)
 
@@ -90,6 +95,35 @@ test('SSR inlines active nested route CSS without manifest stylesheet links', as
   expect(errors.filter((error) => /hydration|Hydration/.test(error))).toEqual(
     [],
   )
+})
+
+test('runtime request options can disable inline CSS', async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  const url = buildUrl(baseURL!, '/app/dashboard')
+  const response = await request.get(url, {
+    headers: {
+      'x-inline-css': 'false',
+    },
+  })
+  const html = await response.text()
+
+  expect(response.ok()).toBe(true)
+  expect(html).toMatch(/<link[^>]+rel="stylesheet"/)
+  expect(html).not.toMatch(/<style\b[^>]*>[\s\S]*background[\s\S]*<\/style>/)
+
+  await page.setExtraHTTPHeaders({
+    'x-inline-css': 'false',
+  })
+  await page.goto(url)
+
+  await expect(page.getByTestId('dashboard-card')).toBeVisible()
+  await expect.poll(() => getInlineCssTexts(page)).toHaveLength(0)
+  await expect
+    .poll(() => getStyle(page, 'dashboard-card', 'background-color'))
+    .toBe('rgb(254, 249, 195)')
 })
 
 test('client navigation keeps nested CSS module styles applied', async ({

@@ -41,15 +41,9 @@ const importProtectionOptionsSchema = z
      */
     mockAccess: z.enum(['error', 'warn', 'off']).optional(),
     onViolation: z
-      .function()
-      .args(z.any())
-      .returns(
-        z.union([
-          z.boolean(),
-          z.void(),
-          z.promise(z.union([z.boolean(), z.void()])),
-        ]),
-      )
+      .custom<
+        (violation: unknown) => boolean | void | Promise<boolean | void>
+      >((value) => typeof value === 'function')
       .optional(),
     include: z.array(patternSchema).optional(),
     exclude: z.array(patternSchema).optional(),
@@ -66,6 +60,8 @@ export function parseStartConfig(
   corePluginOpts: { framework: CompileStartFrameworkOptions },
   root: string,
 ) {
+  const rawOptions = opts ?? {}
+  const rawRouterOptions = rawOptions.router ?? {}
   const options = tanstackStartOptionsSchema.parse(opts)
 
   const srcDirectory = options.srcDirectory
@@ -73,13 +69,13 @@ export function parseStartConfig(
   const routesDirectory = path.resolve(
     root,
     srcDirectory,
-    options.router.routesDirectory ?? 'routes',
+    rawRouterOptions.routesDirectory ?? 'routes',
   )
 
   const generatedRouteTree = path.resolve(
     root,
     srcDirectory,
-    options.router.generatedRouteTree ?? 'routeTree.gen.ts',
+    rawRouterOptions.generatedRouteTree ?? 'routeTree.gen.ts',
   )
 
   return {
@@ -149,14 +145,12 @@ const pagePrerenderOptionsSchema = z.object({
   retryCount: z.number().optional(),
   retryDelay: z.number().optional(),
   onSuccess: z
-    .function()
-    .args(
-      z.object({
-        page: pageBaseSchema,
-        html: z.string(),
-      }),
-    )
-    .returns(z.any())
+    .custom<
+      (result: {
+        page: z.infer<typeof pageBaseSchema>
+        html: string
+      }) => unknown
+    >((value) => typeof value === 'function')
     .optional(),
   headers: z.record(z.string(), z.string()).optional(),
 })
@@ -166,7 +160,7 @@ const spaSchema = z.object({
   maskPath: z.string().optional().default('/'),
   prerender: pagePrerenderOptionsSchema
     .optional()
-    .default({})
+    .prefault({})
     .transform((opts) => ({
       outputPath: opts.outputPath ?? '/_shell',
       crawlLinks: false,
@@ -175,6 +169,35 @@ const spaSchema = z.object({
       enabled: true,
     })),
 })
+
+const inlineCssSchema = z
+  .union([
+    z.boolean(),
+    z.object({
+      /**
+       * Inline route CSS into the server-rendered HTML response.
+       *
+       * @experimental This option is experimental!
+       */
+      enabled: z.boolean().optional().default(true),
+      /**
+       * Emit build-time templates that allow `transformAssets` to rewrite
+       * `url(...)` references inside inlined CSS at runtime.
+       */
+      transformAssets: z.boolean().optional().default(false),
+    }),
+  ])
+  .optional()
+  .default(false)
+  .transform((value) => {
+    if (typeof value === 'boolean') {
+      return { enabled: value, transformAssets: false }
+    }
+
+    return value
+  })
+
+export type InlineCssInputOptions = z.input<typeof inlineCssSchema>
 
 const pageSchema = pageBaseSchema.extend({
   prerender: pagePrerenderOptionsSchema.optional(),
@@ -187,22 +210,22 @@ export const tanstackStartOptionsObjectSchema = z.object({
       entry: z.string().optional(),
     })
     .optional()
-    .default({}),
+    .prefault({}),
   router: z
     .object({
       entry: z.string().optional(),
       basepath: z.string().optional(),
     })
-    .and(tsrConfig.optional().default({}))
+    .and(tsrConfig.optional().prefault({}))
     .optional()
-    .default({}),
+    .prefault({}),
   client: z
     .object({
       entry: z.string().optional(),
       base: z.string().optional().default('/_build'),
     })
     .optional()
-    .default({}),
+    .prefault({}),
   server: z
     .object({
       entry: z.string().optional(),
@@ -214,29 +237,28 @@ export const tanstackStartOptionsObjectSchema = z.object({
            *
            * @experimental This option is experimental!
            */
-          inlineCss: z.boolean().optional().default(false),
+          inlineCss: inlineCssSchema,
         })
         .optional()
-        .default({}),
+        .prefault({}),
     })
     .optional()
-    .default({}),
+    .prefault({}),
   serverFns: z
     .object({
       base: z.string().optional().default('/_serverFn'),
+      disableCsrfMiddlewareWarning: z.boolean().optional().default(false),
       generateFunctionId: z
-        .function()
-        .args(
-          z.object({
-            filename: z.string(),
-            functionName: z.string(),
-          }),
-        )
-        .returns(z.string().optional())
+        .custom<
+          (opts: {
+            filename: string
+            functionName: string
+          }) => string | undefined
+        >((value) => typeof value === 'function')
         .optional(),
     })
     .optional()
-    .default({}),
+    .prefault({}),
   pages: z.array(pageSchema).optional().default([]),
   sitemap: z
     .object({
@@ -249,7 +271,11 @@ export const tanstackStartOptionsObjectSchema = z.object({
     .object({
       enabled: z.boolean().optional(),
       concurrency: z.number().optional(),
-      filter: z.function().args(pageSchema).returns(z.any()).optional(),
+      filter: z
+        .custom<
+          (page: z.infer<typeof pageSchema>) => unknown
+        >((value) => typeof value === 'function')
+        .optional(),
       failOnError: z.boolean().optional(),
       autoStaticPathsDiscovery: z.boolean().optional(),
       maxRedirects: z.number().min(0).optional(),
@@ -264,17 +290,17 @@ export const tanstackStartOptionsObjectSchema = z.object({
           basepath: z.string().optional(),
         })
         .optional()
-        .default({}),
+        .prefault({}),
     })
     .optional()
-    .default({}),
+    .prefault({}),
   spa: spaSchema.optional(),
   importProtection: importProtectionOptionsSchema,
 })
 
 export const tanstackStartOptionsSchema = tanstackStartOptionsObjectSchema
   .optional()
-  .default({})
+  .prefault({})
 
 export type Page = z.infer<typeof pageSchema>
 

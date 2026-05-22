@@ -25,6 +25,14 @@ export const value = data`
 
       expect(() => parseAst({ code })).not.toThrow()
     })
+
+    test('parses angle-bracket type assertions in .ts files without JSX', () => {
+      const code = `export function cast<T>(value: any): T {
+  return <T>value
+}`
+
+      expect(() => parseAst({ code, filename: 'cast.ts' })).not.toThrow()
+    })
   })
 
   describe('type alias declarations', () => {
@@ -115,7 +123,7 @@ type TypeOnly = string;
 export { value, type TypeOnly };`
       const result = transform(code)
       expect(result).toContain('export { value }')
-      expect(result).not.toContain('TypeOnly')
+      expect(result).toContain('type TypeOnly = string')
     })
 
     test('removes entire export if all specifiers are type-only', () => {
@@ -125,8 +133,8 @@ export { type Foo, type Bar };
 export const value = 1;`
       const result = transform(code)
       expect(result).not.toContain('export { type Foo')
-      expect(result).not.toContain('Foo')
-      expect(result).not.toContain('Bar')
+      expect(result).toContain('type Foo = string')
+      expect(result).toContain('type Bar = number')
       expect(result).toContain('export const value = 1')
     })
   })
@@ -225,9 +233,11 @@ export { helper, type HelperType };`
       expect(result).not.toContain('./types')
       expect(result).not.toContain('HelperType')
 
-      // Should remove type declarations
-      expect(result).not.toContain('type LocalType')
-      expect(result).not.toContain('interface LocalInterface')
+      // Should preserve local type declarations
+      expect(result).toContain('type LocalType = string')
+      expect(result).toContain('interface LocalInterface')
+
+      // Should remove exported type declarations
       expect(result).not.toContain('type ExportedType')
       expect(result).not.toContain('interface ExportedInterface')
 

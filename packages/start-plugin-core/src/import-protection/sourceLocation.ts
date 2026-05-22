@@ -8,8 +8,8 @@ import {
 } from './analysis'
 import { getOrCreate, normalizeFilePath } from './utils'
 import type { ImportAnalysis } from './analysis'
-import type { ParsedAst } from './ast'
 import type { Loc } from './trace'
+import type { ParseAstResult } from '@tanstack/router-utils'
 import type { RawSourceMap } from 'source-map'
 
 // Source-map type compatible with both Rollup's SourceMap and source-map's
@@ -31,12 +31,13 @@ export interface SourceMapLike {
 // Transform result provider (replaces ctx.load() which doesn't work in dev)
 export interface TransformResult {
   code: string
+  filename?: string
   map: SourceMapLike | undefined
   originalCode: string | undefined
   originalResult?: TransformResult
   /** Precomputed line index for `code` (index → line/col). */
   lineIndex?: LineIndex
-  parsedAst?: ParsedAst
+  parsedAst?: ParseAstResult
   analysis?: ImportAnalysis
 }
 
@@ -335,6 +336,7 @@ export function getOrCreateOriginalTransformResult(
   if (!result.originalResult) {
     result.originalResult = {
       code: result.originalCode,
+      filename: result.filename,
       map: undefined,
       originalCode: result.originalCode,
     }

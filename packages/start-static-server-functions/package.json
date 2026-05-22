@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-static-server-functions",
-  "version": "1.166.40",
+  "version": "1.167.7",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -60,7 +60,7 @@
   },
   "dependencies": {
     "@tanstack/start-client-core": "workspace:*",
-    "seroval": "^1.5.0"
+    "seroval": "^1.5.4"
   },
   "devDependencies": {
     "vite": "*",

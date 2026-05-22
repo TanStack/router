@@ -35,6 +35,17 @@
     "vite": "^8.0.0"
   },
   "nx": {
+    "targets": {
+      "test:e2e": {
+        "parallelism": false
+      },
+      "test:e2e--vite-ssr": {
+        "parallelism": false
+      },
+      "test:e2e--rsbuild-ssr": {
+        "parallelism": false
+      }
+    },
     "metadata": {
       "playwrightModes": [
         {

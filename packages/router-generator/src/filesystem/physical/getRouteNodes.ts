@@ -2,9 +2,11 @@ import path from 'node:path'
 import * as fsp from 'node:fs/promises'
 import {
   cleanPath,
+  createRoutePathSegmentMetadata,
   determineInitialRoutePath,
   escapeRegExp,
   hasEscapedLeadingUnderscore,
+  joinRoutePathSegmentMetadata,
   removeExt,
   replaceBackslash,
   routePathToVariable,
@@ -126,16 +128,26 @@ export async function getRouteNodes(
         const filePath = replaceBackslash(
           path.join(normalizedDir, node.filePath),
         )
-        const routePath = cleanPath(`/${normalizedDir}${node.routePath}`)
+        const { routePath: prefixPath, originalRoutePath: originalPrefixPath } =
+          normalizedDir
+            ? determineInitialRoutePath(normalizedDir)
+            : { routePath: '', originalRoutePath: '' }
+        const routePath = cleanPath(`${prefixPath}${node.routePath}`)
 
         node.variableName = routePathToVariable(
-          cleanPath(`/${normalizedDir}/${removeExt(node.filePath)}`),
+          cleanPath(`${prefixPath}/${removeExt(node.filePath)}`),
+        )
+        node._routePathSegmentMetadata = joinRoutePathSegmentMetadata(
+          routePath,
+          prefixPath,
+          createRoutePathSegmentMetadata(prefixPath, originalPrefixPath),
+          node._routePathSegmentMetadata,
         )
         node.routePath = routePath
         // Keep originalRoutePath aligned with routePath for escape detection
         if (node.originalRoutePath) {
           node.originalRoutePath = cleanPath(
-            `/${normalizedDir}${node.originalRoutePath}`,
+            `${originalPrefixPath}${node.originalRoutePath}`,
           )
         }
         node.filePath = filePath
@@ -304,10 +316,6 @@ export async function getRouteNodes(
                 routePath = '/'
               }
 
-              if (lastOriginalSegment === updatedLastRouteSegment) {
-                originalRoutePath = '/'
-              }
-
               // For layout routes, don't use '/' fallback - an empty path means
               // "layout for the parent path" which is important for physical() mounts
               // where route.tsx at root should have empty path, not '/'
@@ -334,6 +342,10 @@ export async function getRouteNodes(
             variableName,
             _fsRouteType: routeType,
             originalRoutePath,
+            _routePathSegmentMetadata: createRoutePathSegmentMetadata(
+              routePath,
+              originalRoutePath,
+            ),
           })
         }
       }),

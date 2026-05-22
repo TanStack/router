@@ -9,13 +9,13 @@
     "start": "dev"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.169.1",
-    "@tanstack/react-router-devtools": "^1.166.13",
-    "@tanstack/router-plugin": "^1.167.32",
+    "@tanstack/react-router": "^1.170.7",
+    "@tanstack/react-router-devtools": "^1.167.0",
+    "@tanstack/router-plugin": "^1.168.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "zod": "^3.24.2"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/react": "^19.0.8",

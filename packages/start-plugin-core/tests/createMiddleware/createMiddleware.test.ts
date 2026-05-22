@@ -158,4 +158,114 @@ describe('createMiddleware compiles correctly', async () => {
     expect(resolveIdMock).toHaveBeenCalledTimes(1)
     expect(resolveIdMock).toHaveBeenNthCalledWith(1, './factory', 'test.ts')
   })
+
+  test('should resolve createMiddleware from start-client-core implementation file', async () => {
+    const virtualModules: Record<string, string> = {
+      '@tanstack/start-client-core': `
+        export { createMiddleware } from './createMiddleware'
+        export { createIsomorphicFn } from '@tanstack/start-fn-stubs'
+      `,
+      '/virtual/compiler-known/middleware-factory.ts': `
+        export const createMiddleware = () => ({
+          server: () => createMiddleware(),
+        })
+      `,
+    }
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      lookupKinds: new Set(['Middleware', 'IsomorphicFn']),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      resolveId: async (source) => {
+        if (source === '@tanstack/start-client-core') {
+          return '@tanstack/start-client-core'
+        }
+
+        if (source === './createMiddleware') {
+          return '/virtual/compiler-known/middleware-factory.ts'
+        }
+
+        return null
+      },
+    })
+
+    const result = await compiler.compile({
+      id: '/repo/packages/start-client-core/src/createCsrfMiddleware.ts',
+      code: `
+        import { createIsomorphicFn } from '@tanstack/start-fn-stubs'
+        import { createMiddleware } from './createMiddleware'
+
+        const innerCreateCsrfMiddleware = () => {
+          return createMiddleware().server(() => 'server-only-middleware')
+        }
+
+        export const createCsrfMiddleware = createIsomorphicFn()
+          .server(innerCreateCsrfMiddleware)
+      `,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).not.toContain('server-only-middleware')
+    expect(result!.code).not.toContain('createIsomorphicFn')
+  })
+
+  test('should resolve namespace createMiddleware from start-client-core implementation file', async () => {
+    const virtualModules: Record<string, string> = {
+      '@tanstack/start-client-core': `
+        export { createMiddleware } from './createMiddleware'
+      `,
+      '/virtual/compiler-known/middleware-factory.ts': `
+        export const createMiddleware = () => ({
+          server: () => createMiddleware(),
+        })
+      `,
+    }
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      lookupKinds: new Set(['Middleware']),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      resolveId: async (source) => {
+        if (source === '@tanstack/start-client-core') {
+          return '@tanstack/start-client-core'
+        }
+
+        if (source === './createMiddleware') {
+          return '/virtual/compiler-known/middleware-factory.ts'
+        }
+
+        return null
+      },
+    })
+
+    const result = await compiler.compile({
+      id: '/repo/packages/start-client-core/src/internal.ts',
+      code: `
+        import * as middlewareModule from './createMiddleware'
+
+        export const middleware = middlewareModule.createMiddleware().server(() => {
+          return 'server-only-middleware'
+        })
+      `,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).not.toContain('server-only-middleware')
+  })
 })

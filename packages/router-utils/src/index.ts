@@ -10,3 +10,24 @@ export { logDiff } from './logger'
 export { hash } from './hash'
 
 export { copyFilesPlugin } from './copy-files-plugin'
+
+export { createIdentifier, decodeIdentifier } from './path-ids'
+
+export {
+  buildDeclarationMap,
+  buildDependencyGraph,
+  collectIdentifiersFromNode,
+  collectIdentifiersFromPattern,
+  collectLocalBindingsFromStatement,
+  collectModuleLevelRefsFromNode,
+  expandDestructuredDeclarations,
+  expandSharedDestructuredDeclarators,
+  expandTransitively,
+  extractModuleInfoFromAst,
+  removeBindingsTransitivelyDependingOn,
+  removeModuleLevelBindings,
+  retainModuleLevelDeclarations,
+  stripUnreferencedTopLevelExpressionStatements,
+  unwrapExportedDeclarations,
+} from './compiler-helpers'
+export type { ExtractedModuleInfo, ModuleInfoBinding } from './compiler-helpers'

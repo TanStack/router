@@ -6,8 +6,17 @@ import {
   getObjectPropertyKeyName,
   getUniqueProgramIdentifier,
   normalizePath,
+  routeFactoryCallCodeFilter,
 } from '../src/core/utils'
 import type { NodePath } from '@babel/core'
+
+function matchesRouteFactoryCallCodeFilter(code: string) {
+  return routeFactoryCallCodeFilter.some((pattern) => {
+    const result = pattern.test(code)
+    pattern.lastIndex = 0
+    return result
+  })
+}
 
 function getProgramPath(code: string): NodePath<t.Program> {
   const ast = parseAst({ code })
@@ -97,6 +106,38 @@ describe('getUniqueProgramIdentifier', () => {
     expect(first.name).toBe('TSRComponent')
     expect(second.name).toBe('TSRComponent2')
     expect(first.name).not.toBe(second.name)
+  })
+})
+
+describe('routeFactoryCallCodeFilter', () => {
+  it('matches route factory calls with TypeScript type arguments', () => {
+    expect(
+      matchesRouteFactoryCallCodeFilter(
+        'createRootRouteWithContext<MyContext>()({})',
+      ),
+    ).toBe(true)
+  })
+
+  it('matches route factory calls without TypeScript type arguments', () => {
+    expect(
+      matchesRouteFactoryCallCodeFilter('createRootRouteWithContext()({})'),
+    ).toBe(true)
+    expect(matchesRouteFactoryCallCodeFilter('createRootRoute({})')).toBe(true)
+    expect(
+      matchesRouteFactoryCallCodeFilter("createFileRoute('/posts')({})"),
+    ).toBe(true)
+  })
+
+  it('matches route factory calls with whitespace before invocation', () => {
+    expect(
+      matchesRouteFactoryCallCodeFilter(
+        'createRootRouteWithContext <MyContext>()({})',
+      ),
+    ).toBe(true)
+    expect(matchesRouteFactoryCallCodeFilter('createRootRoute ({})')).toBe(true)
+    expect(
+      matchesRouteFactoryCallCodeFilter("createFileRoute ('/posts')({})"),
+    ).toBe(true)
   })
 })
 

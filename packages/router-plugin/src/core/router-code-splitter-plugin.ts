@@ -4,7 +4,7 @@
  */
 
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { logDiff } from '@tanstack/router-utils'
+import { decodeIdentifier, logDiff } from '@tanstack/router-utils'
 import { getConfig, splitGroupingsSchema } from './config'
 import {
   compileCodeSplitReferenceRoute,
@@ -20,8 +20,7 @@ import {
   tsrShared,
   tsrSplit,
 } from './constants'
-import { decodeIdentifier } from './code-splitter/path-ids'
-import { debug, normalizePath } from './utils'
+import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
 import { createRouterPluginContext } from './router-plugin-context'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
@@ -116,12 +115,13 @@ export function createRouterCodeSplitterPlugin(
 
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
+      filename: id,
     })
 
     if (fromCode.groupings !== undefined) {
       const res = splitGroupingsSchema.safeParse(fromCode.groupings)
       if (!res.success) {
-        const message = res.error.errors.map((e) => e.message).join('. ')
+        const message = res.error.issues.map((e) => e.message).join('. ')
         throw new Error(
           `The groupings for the route "${id}" are invalid.\n${message}`,
         )
@@ -137,7 +137,7 @@ export function createRouterCodeSplitterPlugin(
     if (pluginSplitBehavior) {
       const res = splitGroupingsSchema.safeParse(pluginSplitBehavior)
       if (!res.success) {
-        const message = res.error.errors.map((e) => e.message).join('. ')
+        const message = res.error.issues.map((e) => e.message).join('. ')
         throw new Error(
           `The groupings returned when using \`splitBehavior\` for the route "${id}" are invalid.\n${message}`,
         )
@@ -150,6 +150,7 @@ export function createRouterCodeSplitterPlugin(
     // Compute shared bindings before compiling the reference route
     const sharedBindings = computeSharedBindings({
       code,
+      filename: id,
       codeSplitGroupings: splitGroupings,
     })
     if (sharedBindings.size > 0) {
@@ -175,11 +176,14 @@ export function createRouterCodeSplitterPlugin(
       hmrStyle,
       hmrRouteId: generatorNodeInfo.routeId,
       sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
-      compilerPlugins: getReferenceRouteCompilerPlugins({
-        targetFramework: userConfig.target,
-        addHmr,
-        hmrStyle,
-      }),
+      compilerPlugins: [
+        ...(getReferenceRouteCompilerPlugins({
+          targetFramework: userConfig.target,
+          addHmr,
+          hmrStyle,
+        }) ?? []),
+        ...(userConfig.codeSplittingOptions?.compilerPlugins ?? []),
+      ],
     })
 
     if (compiledReferenceRoute === null) {
@@ -238,11 +242,6 @@ export function createRouterCodeSplitterPlugin(
     return result
   }
 
-  const includedCode = [
-    'createFileRoute(',
-    'createRootRoute(',
-    'createRootRouteWithContext(',
-  ]
   return [
     {
       name: 'tanstack-router:code-splitter:compile-reference-file',
@@ -256,17 +255,14 @@ export function createRouterCodeSplitterPlugin(
             include: /\.(m|c)?(j|t)sx?$/,
           },
           code: {
-            include: includedCode,
+            include: routeFactoryCallCodeFilter,
           },
         },
         handler(code, id) {
           const normalizedId = normalizePath(id)
           const generatorFileInfo =
             routerPluginContext.routesByFile.get(normalizedId)
-          if (
-            generatorFileInfo &&
-            includedCode.some((included) => code.includes(included))
-          ) {
+          if (generatorFileInfo) {
             return handleCompilingReferenceFile(
               code,
               normalizedId,

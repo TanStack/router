@@ -52,7 +52,7 @@ export function registerRouterPlugins(
           },
           plugins: [
             routesManifestPlugin(),
-            ...(opts.startPluginOpts?.prerender?.enabled === true
+            ...(opts.startPluginOpts.prerender?.enabled === true
               ? [prerenderRoutesPlugin()]
               : []),
           ],

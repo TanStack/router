@@ -1,5 +1,6 @@
 import type * as babel from '@babel/core'
 import type * as t from '@babel/types'
+import type { GeneratorResult } from '@tanstack/router-utils'
 import type { TanStackStartOutputConfig } from './schema'
 
 export type CompileStartFrameworkOptions = 'react' | 'solid' | 'vue'
@@ -62,6 +63,36 @@ export interface StartCompilerImportTransform {
   ) => void
 }
 
+export interface StartCompilerTransformResult {
+  code: string
+  map?: GeneratorResult['map'] | null
+}
+
+export interface StartCompilerVirtualModuleContext {
+  readonly id: string
+  readonly root: string
+  readonly env: StartCompilerEnvironment
+  readonly envName: string
+  readonly code?: string
+}
+
+export interface StartCompilerPlugin {
+  name: string
+  environment?:
+    | StartCompilerEnvironment
+    | Array<StartCompilerEnvironment>
+    | undefined
+  detect?: RegExp | undefined
+  virtualModuleIdPattern?: RegExp | undefined
+  transformAst?: (
+    context: StartCompilerTransformContext,
+  ) => boolean | null | undefined
+  loadVirtualModule?: (
+    context: StartCompilerVirtualModuleContext,
+  ) => StartCompilerTransformResult | null
+  invalidateModule?: (context: { id: string; envName: string }) => void
+}
+
 export interface NormalizedBasePaths {
   publicBase: string
   assetBase: {
@@ -82,6 +113,7 @@ export interface NormalizedClientChunk {
   dynamicImports: Array<string>
   css: Array<string>
   routeFilePaths: Array<string>
+  hydrationIds: Array<string>
 }
 
 export interface NormalizedClientBuild {

@@ -52,6 +52,7 @@ import type {
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
+  HistoryAction,
   HistoryLocation,
   HistoryState,
   ParsedHistoryState,
@@ -740,7 +741,10 @@ export type GetMatchRoutesFn = (pathname: string) => {
 
 export type EmitFn = (routerEvent: RouterEvent) => void
 
-export type LoadFn = (opts?: { sync?: boolean }) => Promise<void>
+export type LoadFn = (opts?: {
+  sync?: boolean
+  action?: { type: HistoryAction }
+}) => Promise<void>
 
 export type CommitLocationFn = ({
   viewTransition,
@@ -882,6 +886,11 @@ export function getLocationChangeInfo(
   const hashChanged = fromLocation?.hash !== toLocation.hash
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
+
+export const locationHistoryActions = new WeakMap<
+  ParsedLocation,
+  HistoryAction
+>()
 
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
@@ -1179,7 +1188,7 @@ export class RouterCore<
       typeof window.CSS?.supports === 'function'
     ) {
       this.isViewTransitionTypesSupported = window.CSS.supports(
-        'selector(:active-view-transition-type(a)',
+        'selector(:active-view-transition-type(a))',
       )
     }
   }
@@ -1935,7 +1944,7 @@ export class RouterCore<
           const roundTrip = this.getMatchedRoutes(nextPathname)
           if (roundTrip.foundRoute?.id !== destRoute.id) {
             console.warn(
-              `Generated path "${nextPathname}" for route "${destRoute.id}" did not match the same route after params.stringify.`,
+              `Generated path "${nextPathname}" for route "${destRoute.id}" matched route "${roundTrip.foundRoute?.id}" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.`,
             )
           }
         } catch {
@@ -2116,6 +2125,7 @@ export class RouterCore<
     ignoreBlocker,
     ...next
   }) => {
+    let historyAction: HistoryAction | undefined
     const isSameState = () => {
       // the following props are ignored but may still be provided when navigating,
       // temporarily add the previous values to the next state so they don't affect
@@ -2191,7 +2201,9 @@ export class RouterCore<
 
       this.shouldViewTransition = viewTransition
 
-      this.history[next.replace ? 'replace' : 'push'](
+      historyAction = next.replace ? 'REPLACE' : 'PUSH'
+
+      this.history[historyAction === 'REPLACE' ? 'replace' : 'push'](
         nextHistory.publicHref,
         nextHistory.state,
         { ignoreBlocker },
@@ -2201,7 +2213,13 @@ export class RouterCore<
     this.resetNextScroll = next.resetScroll ?? true
 
     if (!this.history.subscribers.size) {
-      this.load()
+      this.load(
+        historyAction
+          ? {
+              action: { type: historyAction },
+            }
+          : undefined,
+      )
     }
 
     return this.commitLocationPromise
@@ -2403,7 +2421,8 @@ export class RouterCore<
     })
   }
 
-  load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
+  load: LoadFn = async (opts): Promise<void> => {
+    const historyAction = opts?.action?.type
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
     let loadPromise: Promise<void>
@@ -2415,6 +2434,11 @@ export class RouterCore<
       this.startTransition(async () => {
         try {
           this.beforeLoad()
+          if (historyAction) {
+            locationHistoryActions.set(this.latestLocation, historyAction)
+          } else {
+            locationHistoryActions.delete(this.latestLocation)
+          }
           const next = this.latestLocation
           const prevLocation = this.stores.resolvedLocation.get()
           const locationChangeInfo = getLocationChangeInfo(next, prevLocation)

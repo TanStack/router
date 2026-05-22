@@ -21,6 +21,30 @@ const time = await getServerTime()
 
 Server functions provide server capabilities (database access, environment variables, file system) while maintaining type safety across the network boundary.
 
+## Same-Origin Requests
+
+Server functions are same-origin RPC endpoints for your application. Browser requests to server functions should come from the same origin, verified with Fetch Metadata (`Sec-Fetch-Site`), `Origin`, or `Referer` headers. Use server routes for public APIs or endpoints that intentionally support cross-origin requests.
+
+TanStack Start provides `createCsrfMiddleware()` to protect server functions from cross-site requests. If your app does not define `src/start.ts`, Start installs this middleware automatically for server functions. If you define `src/start.ts`, add the middleware explicitly:
+
+```tsx
+// src/start.ts
+import { createStart, createCsrfMiddleware } from '@tanstack/react-start'
+
+const csrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === 'serverFn',
+})
+
+export const startInstance = createStart(() => ({
+  requestMiddleware: [csrfMiddleware],
+}))
+```
+
+By default, `Origin` and `Referer` checks compare against the incoming request URL origin. If your deployment needs to allow a different public origin, configure it on the CSRF middleware with `createCsrfMiddleware({ origin: 'https://app.example.com' })`.
+
+> [!TIP]
+> Requests without any of these headers (`Sec-Fetch-Site`, `Origin`, or `Referer`) are rejected by default. If your deployment strips these headers and you have another layer that guarantees same-origin server function requests, you can opt in with `createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === 'serverFn', allowRequestsWithoutOriginCheck: true })`.
+
 ## Basic Usage
 
 Server functions are created with `createServerFn()` and can specify HTTP method:
@@ -190,6 +214,43 @@ export const submitForm = createServerFn({ method: 'POST' })
     return { success: true }
   })
 ```
+
+### Serialization Type Checking
+
+Server function inputs and outputs cross the network boundary, so TypeScript checks that they are serializable:
+
+- Input validator input types must be serializable. `FormData` is also allowed for `POST` server functions.
+- Handler return types must be serializable. `Response` objects are allowed.
+
+This default behavior is called `strict` mode. If you intentionally need to opt out of these type-level serialization checks, pass the `strict` option to `createServerFn`:
+
+```tsx
+// Disable input and output serialization type checks
+export const looseServerFn = createServerFn({ strict: false })
+  .inputValidator((data: { value: unknown }) => data)
+  .handler(async ({ data }) => {
+    return data.value
+  })
+
+// Disable only input serialization type checks
+export const looseInputServerFn = createServerFn({
+  strict: { input: false },
+})
+  .inputValidator((data: { value: unknown }) => data)
+  .handler(async () => {
+    return { ok: true }
+  })
+
+// Disable only output serialization type checks
+export const looseOutputServerFn = createServerFn({
+  strict: { output: false },
+}).handler(async () => {
+  return getCustomSerializedValue()
+})
+```
+
+> [!WARNING]
+> `strict: false` only relaxes TypeScript's serialization checks. Values still need to be handled correctly by the runtime serialization layer when they are sent between the client and server. Prefer the default `strict: true` unless you know why the default serializability rules are too restrictive for a specific server function.
 
 ## Error Handling & Redirects
 

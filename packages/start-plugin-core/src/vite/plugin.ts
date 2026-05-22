@@ -186,8 +186,10 @@ export function tanStackStartVite(
               startConfig.dev.ssrStyles.basepath ??
               resolvedStartConfig.basePaths.publicBase,
             inlineCssEnabled:
-              command === 'build' && startConfig.server.build.inlineCss,
+              command === 'build' && startConfig.server.build.inlineCss.enabled,
             staticNodeEnv: startConfig.server.build.staticNodeEnv,
+            disableCsrfMiddlewareWarning:
+              startConfig.serverFns.disableCsrfMiddlewareWarning,
           }),
           builder: {
             sharedPlugins: true,

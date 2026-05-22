@@ -41,7 +41,7 @@ With asset URL transforms (CDN):
 ```ts
 export default createStartHandler({
   handler: defaultStreamHandler,
-  transformAssetUrls: 'https://cdn.example.com',
+  transformAssets: 'https://cdn.example.com',
 })
 ```
 
