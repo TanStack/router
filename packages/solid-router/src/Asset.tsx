@@ -13,19 +13,73 @@ export function Asset({
     case 'title':
       return <Title attrs={attrs} children={children} />
     case 'meta':
-      return <meta {...attrs} />
+      return <HeadElement tag="meta" attrs={attrs} />
     case 'link':
-      return <link {...attrs} />
+      return <HeadElement tag="link" attrs={attrs} />
     case 'style':
-      if (typeof children === 'string') {
-        return <style {...attrs} innerHTML={children} />
-      }
-      return <style {...attrs} />
+      return <HeadElement tag="style" attrs={attrs} children={children} />
     case 'script':
       return <Script attrs={attrs} children={children} />
     default:
       return null
   }
+}
+
+function HeadElement(props: {
+  tag: 'meta' | 'link' | 'style'
+  attrs?: Record<string, any>
+  children?: unknown
+}): JSX.Element | null {
+  const router = useRouter()
+
+  // Server: render the element in the tree so it's part of the SSR'd HTML.
+  // (Where <HeadContent /> is placed determines where it appears in the SSR
+  // output; the head-content design supports rendering in <body> for full-
+  // document hydration.)
+  if (isServer ?? router.isServer) {
+    const { tag, attrs, children } = props
+    if (tag === 'style' && typeof children === 'string') {
+      return <style {...attrs} innerHTML={children} />
+    }
+    if (tag === 'style') return <style {...attrs} />
+    if (tag === 'meta') return <meta {...attrs} />
+    return <link {...attrs} />
+  }
+
+  // Client: imperatively insert the element into document.head so it lands
+  // in <head> even when <HeadContent /> is placed in <body>, and reactively
+  // update on attribute/children changes via createEffect cleanup.
+  createEffect(
+    () => ({ tag: props.tag, attrs: props.attrs, children: props.children }),
+    ({ tag, attrs, children }) => {
+      const el = document.createElement(tag)
+
+      if (attrs) {
+        for (const [key, value] of Object.entries(attrs)) {
+          if (value !== undefined && value !== false && value !== null) {
+            el.setAttribute(
+              key,
+              typeof value === 'boolean' ? '' : String(value),
+            )
+          }
+        }
+      }
+
+      if (tag === 'style' && typeof children === 'string') {
+        el.textContent = children
+      }
+
+      document.head.appendChild(el)
+
+      return () => {
+        if (el.parentNode) {
+          el.parentNode.removeChild(el)
+        }
+      }
+    },
+  )
+
+  return null
 }
 
 function Title(props: {
