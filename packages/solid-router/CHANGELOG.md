@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 2.0.0-beta.18
+
+### Patch Changes
+
+- Upgrade to solidjs beta 14 ([#7415](https://github.com/TanStack/router/pull/7415))
+
 ## 2.0.0-beta.17
 
 ### Patch Changes
