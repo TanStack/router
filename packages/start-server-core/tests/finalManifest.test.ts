@@ -124,7 +124,7 @@ describe('final manifest resolver', () => {
 
     await expect(warmupPromise).resolves.toBe(requestManifest)
     expect(requestManifest.inlineCss).toBeUndefined()
-    expect(transformAssets).toHaveBeenCalledTimes(1)
+    expect(transformAssets).toHaveBeenCalledTimes(2)
   })
 
   it('does not warm up when the inline CSS default is request-dependent', () => {
@@ -157,8 +157,7 @@ describe('final manifest resolver', () => {
     })
 
     expect(manifest.inlineCss).toBeDefined()
-    expect(manifest.routes.__root__?.assets?.at(-1)).toMatchObject({
-      tag: 'script',
+    expect(manifest.routes.__root__?.scripts?.at(-1)).toMatchObject({
       attrs: {
         type: 'module',
         async: true,

@@ -40,15 +40,7 @@ const createTestManifest = (
     routes: {
       [routeId]: {
         preloads: [options?.preloadHref ?? '/main.js'],
-        assets: [
-          {
-            tag: 'link',
-            attrs: {
-              rel: 'stylesheet',
-              href: options?.stylesheetHref ?? '/main.css',
-            },
-          },
-        ],
+        css: [options?.stylesheetHref ?? '/main.css'],
       },
     },
   }) satisfies Manifest
@@ -231,13 +223,12 @@ describe('scripts with async/defer attributes', () => {
 
   test('server keeps manifest src scripts in document order', async () => {
     const clientEntryAsset = {
-      tag: 'script',
       attrs: {
         src: '/entry.js',
         type: 'module',
         async: true,
       },
-    } satisfies Manifest['routes'][string]['assets'][number]
+    } satisfies NonNullable<Manifest['routes'][string]['scripts']>[number]
 
     const rootRoute = createRootRoute({
       component: () => {
@@ -270,7 +261,7 @@ describe('scripts with async/defer attributes', () => {
       manifest: {
         routes: {
           [rootRoute.id]: {
-            assets: [clientEntryAsset],
+            scripts: [clientEntryAsset],
           },
         },
       },
@@ -517,7 +508,7 @@ describe('ssr HeadContent', () => {
     ).toHaveLength(1)
   })
 
-  test('applies assetCrossOrigin to manifest assets and preloads', async () => {
+  test('applies assetCrossOrigin to manifest stylesheets and preloads', async () => {
     const history = createTestBrowserHistory()
     const stylesheetHref = '/asset-cross-origin.css'
     const preloadHref = '/asset-cross-origin.js'
@@ -586,6 +577,58 @@ describe('ssr HeadContent', () => {
         .querySelector(`link[rel="modulepreload"][href="${preloadHref}"]`)
         ?.getAttribute('crossorigin'),
     ).toBe('anonymous')
+  })
+
+  test('renders runtime manifest inlineStyle', async () => {
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            {createPortal(<HeadContent />, document.head)}
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: {
+        inlineStyle: {
+          attrs: { id: 'runtime-inline-style' },
+          children: '.runtime{color:red}',
+        },
+        routes: {
+          [rootRoute.id]: {},
+        },
+      },
+    }
+
+    await router.load()
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('style#runtime-inline-style'),
+      ).toBeTruthy()
+    })
+
+    expect(
+      document.head.querySelector('style#runtime-inline-style')?.textContent,
+    ).toBe('.runtime{color:red}')
   })
 
   test('renders preload as script links for iife manifest preloads', async () => {
@@ -677,14 +720,10 @@ describe('ssr HeadContent', () => {
             preloads: [
               { href: preloadHref, crossOrigin: 'use-credentials' as const },
             ],
-            assets: [
+            css: [
               {
-                tag: 'link',
-                attrs: {
-                  rel: 'stylesheet',
-                  href: stylesheetHref,
-                  crossOrigin: 'use-credentials',
-                },
+                href: stylesheetHref,
+                crossOrigin: 'use-credentials',
               },
             ],
           },

@@ -99,10 +99,10 @@ function getViteAdditionalRouteAssets(options: {
     )
   }
 
-  const { getStylesheetAsset } = createManifestAssetResolvers(options.basePath)
+  const { getStylesheetLink } = createManifestAssetResolvers(options.basePath)
 
   return {
-    [rootRouteId]: [getStylesheetAsset(options.cssCodeSplitDisabledFileName)],
+    [rootRouteId]: [getStylesheetLink(options.cssCodeSplitDisabledFileName)],
   }
 }
 

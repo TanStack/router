@@ -1,8 +1,12 @@
-import { buildDevStylesUrl, rootRouteId } from '@tanstack/router-core'
+import {
+  DEV_STYLES_ATTR,
+  buildDevStylesUrl,
+  rootRouteId,
+} from '@tanstack/router-core'
 import type {
   AnyRoute,
   ManifestAssetLink,
-  RouterManagedTag,
+  ServerManifestRoute,
 } from '@tanstack/router-core'
 import type { StartManifestWithClientEntry } from './transformAssetUrls'
 
@@ -10,7 +14,6 @@ import type { StartManifestWithClientEntry } from './transformAssetUrls'
 // Defaults to vite `base` (set via TSS_DEV_SSR_STYLES_BASEPATH in the plugin),
 // aligning dev styles with how other CSS/JS assets are served.
 const DEV_SSR_STYLES_BASEPATH = process.env.TSS_DEV_SSR_STYLES_BASEPATH || '/'
-
 /**
  * @description Returns the router manifest data that should be sent to the client.
  * This includes only the assets and preloads for the current route and any
@@ -28,14 +31,15 @@ export async function getStartManifest(
 ): Promise<StartManifestWithClientEntry> {
   const { tsrStartManifest } = await import('tanstack-start-manifest:v')
   const startManifest = tsrStartManifest()
+  let routes = startManifest.routes
+  let rootRoute = routes[rootRouteId]
 
-  const rootRoute = {
-    ...startManifest.routes[rootRouteId],
-    assets: [...(startManifest.routes[rootRouteId]?.assets ?? [])],
-  }
-  const routes = {
-    ...startManifest.routes,
-    [rootRouteId]: rootRoute,
+  const updateRootRoute = (nextRootRoute: ServerManifestRoute) => {
+    rootRoute = nextRootRoute
+    routes = {
+      ...routes,
+      [rootRouteId]: rootRoute,
+    }
   }
 
   // Inject dev styles link in dev mode (when SSR styles are enabled)
@@ -45,25 +49,32 @@ export async function getStartManifest(
     matchedRoutes
   ) {
     const matchedRouteIds = matchedRoutes.map((route) => route.id)
-    rootRoute.assets.push({
-      tag: 'link',
-      attrs: {
-        rel: 'stylesheet',
-        href: buildDevStylesUrl(DEV_SSR_STYLES_BASEPATH, matchedRouteIds),
-        'data-tanstack-router-dev-styles': 'true',
-      },
+    updateRootRoute({
+      ...rootRoute,
+      css: [
+        ...(rootRoute?.css ?? []),
+        {
+          href: buildDevStylesUrl(DEV_SSR_STYLES_BASEPATH, matchedRouteIds),
+          [DEV_STYLES_ATTR]: true,
+        },
+      ],
     })
   }
 
   if (process.env.TSS_DEV_SERVER === 'true') {
     const mod = await import('tanstack-start-injected-head-scripts:v')
     if (mod.injectedHeadScripts) {
-      rootRoute.assets.push({
-        tag: 'script',
-        attrs: {
-          type: 'module',
-        },
-        children: mod.injectedHeadScripts,
+      updateRootRoute({
+        ...rootRoute,
+        scripts: [
+          ...(rootRoute?.scripts ?? []),
+          {
+            attrs: {
+              type: 'module',
+            },
+            children: mod.injectedHeadScripts,
+          },
+        ],
       })
     }
   }
@@ -72,21 +83,25 @@ export async function getStartManifest(
     ...(startManifest.scriptFormat
       ? { scriptFormat: startManifest.scriptFormat }
       : {}),
-    inlineCss: startManifest.inlineCss,
+    ...(startManifest.inlineCss ? { inlineCss: startManifest.inlineCss } : {}),
     routes: Object.fromEntries(
       Object.entries(routes).flatMap(([k, v]) => {
         const result = {} as {
           preloads?: Array<ManifestAssetLink>
-          assets?: Array<RouterManagedTag>
+          scripts?: ServerManifestRoute['scripts']
+          css?: ServerManifestRoute['css']
         }
-        const assets = v.assets
         let hasData = false
         if (v.preloads && v.preloads.length > 0) {
           result['preloads'] = v.preloads
           hasData = true
         }
-        if (assets.length > 0) {
-          result['assets'] = assets
+        if (v.scripts && v.scripts.length > 0) {
+          result['scripts'] = v.scripts
+          hasData = true
+        }
+        if (v.css?.length) {
+          result['css'] = v.css
           hasData = true
         }
         if (!hasData) {

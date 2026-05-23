@@ -27,23 +27,19 @@ export const Scripts = Vue.defineComponent({
         return []
       }
 
-      matches
-        .map((match) => router.looseRoutesById[match.routeId]!)
-        .forEach((route) => {
-          const routeManifest = manifest.routes[route.id]
+      matches.forEach((match) => {
+        const routeManifest = manifest.routes[match.routeId]
 
-          routeManifest?.assets
-            ?.filter((d) => d.tag === 'script')
-            .forEach((asset) => {
-              const scriptAsset = {
-                tag: 'script',
-                attrs: { ...asset.attrs, nonce },
-                children: asset.children,
-              } satisfies RouterManagedTag
+        routeManifest?.scripts?.forEach((asset) => {
+          const scriptAsset = {
+            tag: 'script',
+            attrs: { ...asset.attrs, nonce },
+            children: asset.children,
+          } satisfies RouterManagedTag
 
-              assetScripts.push(scriptAsset)
-            })
+          assetScripts.push(scriptAsset)
         })
+      })
 
       return assetScripts
     }

@@ -9,10 +9,6 @@ type ScriptRenderAsset = RouterManagedTag & {
   preventScriptHoist?: boolean
 }
 
-function isExternalManifestScript(asset: RouterManagedTag) {
-  return asset.tag === 'script' && typeof asset.attrs?.src === 'string'
-}
-
 /**
  * Render body script tags collected from route matches and SSR manifests.
  * Should be placed near the end of the document body.
@@ -29,26 +25,24 @@ export const Scripts = () => {
       return []
     }
 
-    matches
-      .map((match) => router.looseRoutesById[match.routeId]!)
-      .forEach((route) => {
-        const routeManifest = manifest.routes[route.id]
+    for (const match of matches) {
+      const scripts = manifest.routes[match.routeId]?.scripts
 
-        routeManifest?.assets
-          ?.filter((d) => d.tag === 'script')
-          .forEach((asset) => {
-            const scriptAsset = {
-              tag: 'script',
-              attrs: { ...asset.attrs, nonce },
-              children: asset.children,
-              ...(isExternalManifestScript(asset)
-                ? { preventScriptHoist: true }
-                : {}),
-            } satisfies ScriptRenderAsset
+      if (!scripts) {
+        continue
+      }
 
-            assetScripts.push(scriptAsset)
-          })
-      })
+      for (const asset of scripts) {
+        assetScripts.push({
+          tag: 'script',
+          attrs: { ...asset.attrs, nonce },
+          children: asset.children,
+          ...(typeof asset.attrs?.src === 'string'
+            ? { preventScriptHoist: true }
+            : {}),
+        })
+      }
+    }
 
     return assetScripts
   }

@@ -1,7 +1,7 @@
 declare module 'tanstack-start-manifest:v' {
-  import type { Manifest } from '@tanstack/router-core'
+  import type { ServerManifest } from '@tanstack/router-core'
 
-  export const tsrStartManifest: () => Manifest & { clientEntry: string }
+  export const tsrStartManifest: () => ServerManifest & { clientEntry: string }
 }
 
 declare module 'tanstack-start-route-tree:v' {

@@ -1,15 +1,17 @@
 import {
   getManifestScriptFormat,
   resolveManifestAssetLink,
+  resolveManifestCssLink,
 } from '@tanstack/router-core'
 
 import type {
   AssetCrossOrigin,
   Awaitable,
-  Manifest,
   ManifestAssetLink,
-  RouterManagedTag,
+  ManifestCssLink,
+  ManifestScript,
   ScriptFormat,
+  ServerManifest,
 } from '@tanstack/router-core'
 
 export type { AssetCrossOrigin }
@@ -211,7 +213,7 @@ async function transformInlineCssTemplate(options: {
 }
 
 async function transformInlineCssStyles(
-  inlineCss: NonNullable<Manifest['inlineCss']>,
+  inlineCss: NonNullable<ServerManifest['inlineCss']>,
   transformFn: TransformAssetsFn,
 ) {
   const transformedStyles: Record<string, string> = {}
@@ -321,7 +323,7 @@ export function resolveTransformAssetsConfig(
 }
 
 export interface StartManifestWithClientEntry {
-  manifest: Manifest
+  manifest: ServerManifest
   clientEntry: string
 }
 
@@ -333,9 +335,8 @@ export function buildClientEntryScriptTag(
   clientEntry: string,
   scriptFormat: ScriptFormat = 'module',
   crossOrigin?: AssetCrossOrigin,
-): RouterManagedTag {
+): ManifestScript {
   return {
-    tag: 'script',
     attrs: {
       ...(scriptFormat === 'module' ? { type: 'module' } : {}),
       async: true,
@@ -345,22 +346,36 @@ export function buildClientEntryScriptTag(
   }
 }
 
-function assignManifestAssetLink(
+type AssignableManifestLink = ManifestAssetLink | ManifestCssLink
+
+function assignManifestLink(
   link: ManifestAssetLink,
   next: { href: string; crossOrigin?: AssetCrossOrigin },
-): ManifestAssetLink {
+): ManifestAssetLink
+function assignManifestLink(
+  link: ManifestCssLink,
+  next: { href: string; crossOrigin?: AssetCrossOrigin },
+): ManifestCssLink
+function assignManifestLink(
+  link: AssignableManifestLink,
+  next: { href: string; crossOrigin?: AssetCrossOrigin },
+): AssignableManifestLink {
   if (typeof link === 'string') {
     return next.crossOrigin ? next : next.href
   }
 
-  return next.crossOrigin ? next : { href: next.href }
-}
+  const nextLink: Exclude<ManifestCssLink, string> = {
+    ...link,
+    href: next.href,
+  }
 
-function buildManifestAssetLink(
-  href: string,
-  crossOrigin?: AssetCrossOrigin,
-): ManifestAssetLink {
-  return crossOrigin ? { href, crossOrigin } : href
+  if (next.crossOrigin) {
+    nextLink.crossOrigin = next.crossOrigin
+  } else {
+    delete nextLink.crossOrigin
+  }
+
+  return nextLink
 }
 
 function appendUniqueManifestAssetLink(
@@ -376,6 +391,34 @@ function appendUniqueManifestAssetLink(
   return [...(target ?? []), link]
 }
 
+function addClientEntryToManifest(
+  manifest: ServerManifest,
+  clientEntry: string,
+) {
+  const rootRoute = manifest.routes.__root__ ?? {}
+  const rootScripts = rootRoute.scripts ?? []
+  const scripts = rootScripts.some(
+    (script) => script.attrs?.src === clientEntry,
+  )
+    ? rootScripts
+    : [
+        ...rootScripts,
+        buildClientEntryScriptTag(
+          clientEntry,
+          getManifestScriptFormat(manifest),
+        ),
+      ]
+
+  manifest.routes = {
+    ...manifest.routes,
+    __root__: {
+      ...rootRoute,
+      preloads: appendUniqueManifestAssetLink(rootRoute.preloads, clientEntry),
+      scripts,
+    },
+  }
+}
+
 export async function transformManifestAssets(
   source: StartManifestWithClientEntry,
   transformFn: TransformAssetsFn,
@@ -383,10 +426,28 @@ export async function transformManifestAssets(
     clone?: boolean
     inlineCss?: boolean
   },
-): Promise<Manifest> {
+): Promise<ServerManifest> {
   const manifest = structuredClone(source.manifest)
   const inlineCssEnabled = _opts?.inlineCss !== false
-  const scriptFormat = getManifestScriptFormat(manifest)
+  const scriptTransforms = new Map<
+    string,
+    Promise<Exclude<TransformAssetResult, string>>
+  >()
+  const transformScript = (url: string) => {
+    const cached = scriptTransforms.get(url)
+    if (cached) {
+      return cached
+    }
+
+    const transformed = Promise.resolve(
+      transformFn({
+        url,
+        kind: 'script',
+      }),
+    ).then(normalizeTransformAssetResult)
+    scriptTransforms.set(url, transformed)
+    return transformed
+  }
 
   if (!inlineCssEnabled) {
     delete manifest.inlineCss
@@ -397,33 +458,16 @@ export async function transformManifestAssets(
     )
   }
 
-  const transformedClientEntry = normalizeTransformAssetResult(
-    await transformFn({
-      url: source.clientEntry,
-      kind: 'script',
-    }),
-  )
+  addClientEntryToManifest(manifest, source.clientEntry)
 
   for (const route of Object.values(manifest.routes)) {
     if (route.preloads) {
       route.preloads = await Promise.all(
         route.preloads.map(async (link) => {
           const resolved = resolveManifestAssetLink(link)
-          if (resolved.href === source.clientEntry) {
-            return assignManifestAssetLink(link, {
-              href: transformedClientEntry.href,
-              crossOrigin: transformedClientEntry.crossOrigin,
-            })
-          }
+          const result = await transformScript(resolved.href)
 
-          const result = normalizeTransformAssetResult(
-            await transformFn({
-              url: resolved.href,
-              kind: 'script',
-            }),
-          )
-
-          return assignManifestAssetLink(link, {
+          return assignManifestLink(link, {
             href: result.href,
             crossOrigin: result.crossOrigin,
           })
@@ -431,60 +475,52 @@ export async function transformManifestAssets(
       )
     }
 
-    if (route.assets && !manifest.inlineCss) {
-      for (const asset of route.assets) {
-        if (asset.tag === 'link' && asset.attrs?.href) {
-          const rel = asset.attrs.rel
-          const relTokens = typeof rel === 'string' ? rel.split(/\s+/) : []
-
-          if (!relTokens.includes('stylesheet')) {
-            continue
-          }
-
+    if (route.css && !manifest.inlineCss) {
+      route.css = await Promise.all(
+        route.css.map(async (link) => {
+          const resolved = resolveManifestCssLink(link)
           const result = normalizeTransformAssetResult(
             await transformFn({
-              url: asset.attrs.href,
+              url: resolved.href,
               kind: 'stylesheet',
             }),
           )
 
-          asset.attrs.href = result.href
-          if (result.crossOrigin) {
-            asset.attrs.crossOrigin = result.crossOrigin
-          } else {
-            delete asset.attrs.crossOrigin
-          }
+          return assignManifestLink(link, {
+            href: result.href,
+            crossOrigin: result.crossOrigin,
+          })
+        }),
+      )
+    }
+
+    if (route.scripts) {
+      for (const script of route.scripts) {
+        const src = script.attrs?.src
+        if (typeof src !== 'string') {
+          continue
+        }
+
+        const result = await transformScript(src)
+
+        script.attrs = {
+          ...script.attrs,
+          src: result.href,
+        }
+        if (result.crossOrigin) {
+          script.attrs.crossOrigin = result.crossOrigin
+        } else {
+          delete script.attrs.crossOrigin
         }
       }
     }
   }
 
-  const entryScript = buildClientEntryScriptTag(
-    transformedClientEntry.href,
-    scriptFormat,
-    transformedClientEntry.crossOrigin,
-  )
-  const entryPreload = buildManifestAssetLink(
-    transformedClientEntry.href,
-    transformedClientEntry.crossOrigin,
-  )
-  const rootRoute = manifest.routes.__root__ ?? {}
-
-  return {
-    ...manifest,
-    routes: {
-      ...manifest.routes,
-      __root__: {
-        ...rootRoute,
-        preloads: appendUniqueManifestAssetLink(rootRoute.preloads, entryPreload),
-        assets: [...(rootRoute.assets ?? []), entryScript],
-      },
-    },
-  }
+  return manifest
 }
 
 /**
- * Builds a final Manifest from a StartManifestWithClientEntry without any
+ * Builds a final ServerManifest from a StartManifestWithClientEntry without any
  * URL transforms. Used when no transformAssets option is provided.
  *
  * Returns a new manifest object so the cached base manifest is never mutated.
@@ -492,31 +528,20 @@ export async function transformManifestAssets(
 export function buildManifestWithClientEntry(
   source: StartManifestWithClientEntry,
   opts?: { inlineCss?: boolean },
-): Manifest {
-  const scriptFormat = getManifestScriptFormat(source.manifest)
-  const entryScript = buildClientEntryScriptTag(
-    source.clientEntry,
-    scriptFormat,
-  )
-  const rootRoute = source.manifest.routes.__root__ ?? {}
-
-  return {
+): ServerManifest {
+  const manifest: ServerManifest = {
     ...(source.manifest.scriptFormat
       ? { scriptFormat: source.manifest.scriptFormat }
       : {}),
-    ...(opts?.inlineCss === false
-      ? {}
-      : { inlineCss: structuredClone(source.manifest.inlineCss) }),
+    ...(opts?.inlineCss !== false && source.manifest.inlineCss
+      ? { inlineCss: structuredClone(source.manifest.inlineCss) }
+      : {}),
     routes: {
       ...source.manifest.routes,
-      __root__: {
-        ...rootRoute,
-        preloads: appendUniqueManifestAssetLink(
-          rootRoute.preloads,
-          source.clientEntry,
-        ),
-        assets: [...(rootRoute.assets ?? []), entryScript],
-      },
     },
   }
+
+  addClientEntryToManifest(manifest, source.clientEntry)
+
+  return manifest
 }

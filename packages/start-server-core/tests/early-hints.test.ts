@@ -8,7 +8,11 @@ import {
   serializeEarlyHint,
 } from '../src/early-hints'
 import type { EarlyHint } from '../src/early-hints'
-import type { AnyRoute, AnyRouteMatch, Manifest } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  AnyRouteMatch,
+  ServerManifest,
+} from '@tanstack/router-core'
 
 describe('early hints', () => {
   afterEach(() => {
@@ -51,45 +55,23 @@ describe('early hints', () => {
   })
 
   it('collects static route JS and stylesheet hints with crossOrigin', () => {
-    const manifest: Manifest = {
+    const manifest: ServerManifest = {
       routes: {
         __root__: {
           preloads: [
             '/assets/root.js',
             { href: '/assets/shared.js', crossOrigin: 'anonymous' },
           ],
-          assets: [
+          css: [
             {
-              tag: 'link',
-              attrs: {
-                rel: 'stylesheet preload',
-                href: '/assets/root.css',
-                crossOrigin: 'use-credentials',
-                type: 'text/css',
-                media: 'print',
-                integrity: 'sha256-root',
-                referrerPolicy: 'no-referrer',
-                fetchPriority: 'high',
-              },
-            },
-            {
-              tag: 'link',
-              attrs: { rel: 'icon', href: '/favicon.ico' },
+              href: '/assets/root.css',
+              crossOrigin: 'use-credentials',
             },
           ],
         },
         '/posts': {
           preloads: ['/assets/posts.js'],
-          assets: [
-            {
-              tag: 'link',
-              attrs: { rel: 'modulepreload', href: '/assets/posts-extra.js' },
-            },
-            {
-              tag: 'link',
-              attrs: { rel: 'stylesheet', href: '/assets/posts.css' },
-            },
-          ],
+          css: ['/assets/posts.css'],
         },
       },
     }
@@ -112,19 +94,14 @@ describe('early hints', () => {
         rel: 'preload',
         as: 'style',
         crossOrigin: 'use-credentials',
-        type: 'text/css',
-        integrity: 'sha256-root',
-        referrerPolicy: 'no-referrer',
-        fetchPriority: 'high',
       },
       { href: '/assets/posts.js', rel: 'modulepreload', as: 'script' },
-      { href: '/assets/posts-extra.js', rel: 'modulepreload', as: 'script' },
       { href: '/assets/posts.css', rel: 'preload', as: 'style' },
     ])
   })
 
   it('skips static stylesheet hints when inline CSS is enabled', () => {
-    const manifest: Manifest = {
+    const manifest: ServerManifest = {
       inlineCss: {
         styles: {
           '/assets/posts.css': '.posts{}',
@@ -133,12 +110,7 @@ describe('early hints', () => {
       routes: {
         '/posts': {
           preloads: ['/assets/posts.js'],
-          assets: [
-            {
-              tag: 'link',
-              attrs: { rel: 'stylesheet', href: '/assets/posts.css' },
-            },
-          ],
+          css: ['/assets/posts.css'],
         },
       },
     }
@@ -153,7 +125,7 @@ describe('early hints', () => {
   })
 
   it('collects static route JS hints as preload script for iife manifests', () => {
-    const manifest: Manifest = {
+    const manifest: ServerManifest = {
       scriptFormat: 'iife',
       routes: {
         '/posts': {
@@ -376,7 +348,7 @@ describe('early hints', () => {
       },
       responseLinkHeader: true,
     })!
-    const manifest: Manifest = {
+    const manifest: ServerManifest = {
       routes: {
         __root__: {
           preloads: ['/assets/app.js'],

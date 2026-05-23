@@ -1,13 +1,14 @@
 import {
   getScriptPreloadAttrs,
   getStylesheetHref,
+  resolveManifestCssLink,
 } from '@tanstack/router-core'
 import type {
   AnyRoute,
   AnyRouteMatch,
   AssetCrossOrigin,
-  Manifest,
   RouterManagedTag,
+  ServerManifest,
 } from '@tanstack/router-core'
 
 export type EarlyHint = {
@@ -49,7 +50,7 @@ export type ResponseLinkHeaderOptions = {
 
 export interface EarlyHintsCollector {
   collectStatic: (opts: {
-    manifest: Manifest
+    manifest: ServerManifest
     matchedRoutes?: ReadonlyArray<AnyRoute>
   }) => void
   collectDynamic: (matches: ReadonlyArray<AnyRouteMatch>) => void
@@ -174,7 +175,7 @@ function linkAttrsToEarlyHint(
 }
 
 export function collectStaticHintsFromManifest(
-  manifest: Manifest,
+  manifest: ServerManifest,
   matchedRoutes: ReadonlyArray<AnyRoute>,
 ): Array<EarlyHint> {
   const hints: Array<EarlyHint> = []
@@ -194,27 +195,22 @@ export function collectStaticHintsFromManifest(
       hints.push(hint)
     }
 
-    for (const asset of routeManifest.assets ?? []) {
-      if (asset.tag !== 'link') continue
-
-      const stylesheetHref = getStylesheetHref(asset)
-      if (stylesheetHref) {
-        if (manifest.inlineCss?.styles[stylesheetHref] !== undefined) continue
-
-        const hint: EarlyHint = {
-          href: stylesheetHref,
-          rel: 'preload',
-          as: 'style',
-        }
-        addEarlyHintFetchAttrs(hint, asset.attrs)
-        hints.push(hint)
+    for (const link of routeManifest.css ?? []) {
+      const resolvedLink = resolveManifestCssLink(link)
+      const stylesheetHref = getStylesheetHref(link)
+      if (manifest.inlineCss?.styles[stylesheetHref] !== undefined) {
         continue
       }
 
-      const hint = linkAttrsToEarlyHint(asset.attrs)
-      if (hint) {
-        hints.push(hint)
+      const hint: EarlyHint = {
+        href: stylesheetHref,
+        rel: 'preload',
+        as: 'style',
       }
+      if (resolvedLink.crossOrigin !== undefined) {
+        hint.crossOrigin = resolvedLink.crossOrigin
+      }
+      hints.push(hint)
     }
   }
 

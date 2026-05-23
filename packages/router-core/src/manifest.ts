@@ -1,6 +1,8 @@
 export type AssetCrossOrigin = 'anonymous' | 'use-credentials'
 export type ScriptFormat = 'module' | 'iife'
 
+export const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
+
 export type AssetCrossOriginConfig =
   | AssetCrossOrigin
   | Partial<Record<'script' | 'stylesheet', AssetCrossOrigin>>
@@ -66,87 +68,154 @@ export function resolveManifestAssetLink(link: ManifestAssetLink) {
 
 export type Manifest = {
   scriptFormat?: ScriptFormat
-  inlineCss?: {
-    styles: Record<string, string>
-    templates?: Record<
-      string,
-      {
-        strings: Array<string>
-        urls: Array<string>
-      }
-    >
-  }
-  routes: Record<
-    string,
-    {
-      filePath?: string
-      preloads?: Array<ManifestAssetLink>
-      assets?: Array<RouterManagedTag>
-    }
-  >
+  inlineStyle?: ManifestInlineCss
+  routes: Record<string, ManifestRoute>
+}
+
+export type ServerManifest = {
+  scriptFormat?: ScriptFormat
+  inlineCss?: ServerManifestInlineCss
+  routes: Record<string, ServerManifestRoute>
+}
+
+export type ServerManifestInlineCss = {
+  styles: Record<string, string>
+  templates?: Record<string, InlineCssTemplate>
+}
+
+export type InlineCssTemplate = {
+  strings: Array<string>
+  urls: Array<string>
+}
+
+export type ManifestRoute = {
+  filePath?: string
+  preloads?: Array<ManifestAssetLink>
+  scripts?: Array<ManifestScript>
+  css?: Array<ManifestCssLink>
+}
+
+export type ServerManifestRoute = ManifestRoute
+
+export type ManifestRouteAssets = Pick<
+  ManifestRoute,
+  'preloads' | 'scripts' | 'css'
+>
+
+export type RouterManagedTitleTag = {
+  tag: 'title'
+  attrs?: Record<string, any>
+  children: string
+}
+
+export type RouterManagedMetaTag = {
+  tag: 'meta'
+  attrs?: Record<string, any>
+  children?: never
+}
+
+export type RouterManagedLinkTag = {
+  tag: 'link'
+  attrs?: Record<string, any>
+  children?: never
+}
+
+export type RouterManagedScriptTag = {
+  tag: 'script'
+  attrs?: Record<string, any>
+  children?: string
+}
+
+export type ManifestScript = Omit<RouterManagedScriptTag, 'tag'>
+
+export type RouterManagedStyleTag = {
+  tag: 'style'
+  attrs?: Record<string, any>
+  children?: string
+  inlineCss?: true
 }
 
 export type RouterManagedTag =
-  | {
-      tag: 'title'
-      attrs?: Record<string, any>
-      children: string
+  | RouterManagedTitleTag
+  | RouterManagedMetaTag
+  | RouterManagedLinkTag
+  | RouterManagedScriptTag
+  | RouterManagedStyleTag
+
+export function appendUniqueUserTags(
+  target: Array<RouterManagedTag>,
+  tags: Array<RouterManagedTag>,
+) {
+  if (tags.length === 0) {
+    return
+  }
+
+  if (tags.length === 1) {
+    target.push(tags[0]!)
+    return
+  }
+
+  const seen = new Set<string>()
+  for (const tag of tags) {
+    const key = JSON.stringify(tag)
+    if (seen.has(key)) {
+      continue
     }
+    seen.add(key)
+    target.push(tag)
+  }
+}
+
+export type ManifestCssLink =
+  | string
   | {
-      tag: 'meta' | 'link'
-      attrs?: Record<string, any>
-      children?: never
-    }
-  | {
-      tag: 'script'
-      attrs?: Record<string, any>
-      children?: string
-    }
-  | {
-      tag: 'style'
-      attrs?: Record<string, any>
-      children?: string
-      inlineCss?: true
+      href: string
+      crossOrigin?: AssetCrossOrigin
+      [DEV_STYLES_ATTR]?: true
     }
 
-export function getStylesheetHref(asset: RouterManagedTag) {
-  if (asset.tag !== 'link') return undefined
+export type ManifestInlineCss = {
+  attrs?: Record<string, any>
+  children?: string
+}
 
-  const rel = asset.attrs?.rel
-  const href = asset.attrs?.href
-  if (typeof href !== 'string') return undefined
+export type RouterManagedInlineCssTag = RouterManagedStyleTag & {
+  inlineCss: true
+}
 
-  const relTokens = typeof rel === 'string' ? rel.split(/\s+/) : []
-  if (!relTokens.includes('stylesheet')) return undefined
+export function getStylesheetHref(asset: ManifestCssLink) {
+  return resolveManifestCssLink(asset).href
+}
 
-  return href
+export function resolveManifestCssLink(link: ManifestCssLink) {
+  if (typeof link === 'string') {
+    return { href: link, crossOrigin: undefined }
+  }
+
+  return link
 }
 
 export function isInlinableStylesheet(
-  manifest: Manifest | undefined,
-  asset: RouterManagedTag,
+  manifest: ServerManifest | undefined,
+  asset: ManifestCssLink,
 ) {
   const href = getStylesheetHref(asset)
-  return !!href && manifest?.inlineCss?.styles[href] !== undefined
+  return manifest?.inlineCss?.styles[href] !== undefined
 }
 
-export function createInlineCssStyleAsset(css: string): RouterManagedTag {
+export function createInlineCssStyleAsset(css: string): ManifestInlineCss {
   return {
-    tag: 'style',
     attrs: {
       suppressHydrationWarning: true,
     },
-    inlineCss: true,
     children: css,
   }
 }
 
-export function createInlineCssPlaceholderAsset(): RouterManagedTag {
+export function createInlineCssPlaceholderAsset(): ManifestInlineCss {
   return {
-    tag: 'style',
     attrs: {
       suppressHydrationWarning: true,
     },
-    inlineCss: true,
   }
 }

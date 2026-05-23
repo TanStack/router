@@ -62,30 +62,25 @@ setOnClientReference(
 
     if (!ctx || runtime === 'rsbuild') return
 
-    if (!ctx.requestAssets) ctx.requestAssets = []
+    if (!ctx.requestAssets) ctx.requestAssets = {}
     const seenHrefs = new Set<string>()
-    for (const asset of ctx.requestAssets) {
-      if (asset.tag === 'link' && asset.attrs?.href) {
-        seenHrefs.add(asset.attrs.href as string)
-      }
+    for (const preload of ctx.requestAssets.preloads ?? []) {
+      seenHrefs.add(typeof preload === 'string' ? preload : preload.href)
+    }
+    for (const stylesheet of ctx.requestAssets.css ?? []) {
+      seenHrefs.add(typeof stylesheet === 'string' ? stylesheet : stylesheet.href)
     }
 
     for (const href of deps.js) {
       if (seenHrefs.has(href)) continue
       seenHrefs.add(href)
-      ctx.requestAssets.push({
-        tag: 'link',
-        attrs: { rel: 'modulepreload', href },
-      })
+      ctx.requestAssets.preloads = [...(ctx.requestAssets.preloads ?? []), href]
     }
 
     for (const href of deps.css) {
       if (seenHrefs.has(href)) continue
       seenHrefs.add(href)
-      ctx.requestAssets.push({
-        tag: 'link',
-        attrs: { rel: 'preload', href, as: 'style' },
-      })
+      ctx.requestAssets.css = [...(ctx.requestAssets.css ?? []), href]
     }
   },
 )

@@ -8,7 +8,7 @@ import {
 import type { HandlerCallback } from './handlerCallback'
 import type { AnyHeaders } from './headers'
 import type { AnyRouter } from '../router'
-import type { Manifest } from '../manifest'
+import type { ServerManifest } from '../manifest'
 
 export type RequestHandler<TRouter extends AnyRouter> = (
   cb: HandlerCallback<TRouter>,
@@ -21,7 +21,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }: {
   createRouter: () => TRouter
   request: Request
-  getRouterManifest?: () => Manifest | Promise<Manifest>
+  getRouterManifest?: () => ServerManifest | Promise<ServerManifest>
 }): RequestHandler<TRouter> {
   return async (cb) => {
     const router = createRouter()

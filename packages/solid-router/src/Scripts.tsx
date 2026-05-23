@@ -16,23 +16,21 @@ export const Scripts = () => {
       return []
     }
 
-      matches
-        .map((match) => router.looseRoutesById[match.routeId]!)
-        .forEach((route) => {
-        const routeManifest = manifest.routes[route.id]
+    for (const match of matches) {
+      const scripts = manifest.routes[match.routeId]?.scripts
 
-        routeManifest?.assets
-          ?.filter((d) => d.tag === 'script')
-          .forEach((asset) => {
-            const scriptAsset = {
-              tag: 'script',
-              attrs: { ...asset.attrs, nonce },
-              children: asset.children,
-            } satisfies RouterManagedTag
+      if (!scripts) {
+        continue
+      }
 
-            assetScripts.push(scriptAsset)
-          })
-      })
+      for (const asset of scripts) {
+        assetScripts.push({
+          tag: 'script',
+          attrs: { ...asset.attrs, nonce },
+          children: asset.children,
+        })
+      }
+    }
 
     return assetScripts
   }
@@ -67,10 +65,7 @@ function renderScripts(
   scripts: Array<RouterManagedTag>,
   assetScripts: Array<RouterManagedTag>,
 ) {
-  const allScripts = [
-    ...scripts,
-    ...assetScripts,
-  ] as Array<RouterManagedTag>
+  const allScripts = [...scripts, ...assetScripts] as Array<RouterManagedTag>
 
   if ((isServer ?? router.isServer) && router.serverSsr) {
     const serverBufferedScript = router.serverSsr.takeBufferedScripts()
@@ -81,7 +76,7 @@ function renderScripts(
 
   return (
     <>
-      {allScripts.map((asset, i) => (
+      {allScripts.map((asset) => (
         <Asset {...asset} />
       ))}
     </>

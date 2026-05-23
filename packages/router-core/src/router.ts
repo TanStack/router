@@ -98,7 +98,11 @@ import type {
   CommitLocationOptions,
   NavigateFn,
 } from './RouterProvider'
-import type { Manifest, RouterManagedTag } from './manifest'
+import type {
+  Manifest,
+  ManifestRouteAssets,
+  RouterManagedTag,
+} from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
@@ -804,7 +808,7 @@ export interface ServerSsr {
   cleanup: () => void
   onSerializationFinished: (listener: () => void) => void
   dehydrate: (opts?: {
-    requestAssets?: Array<RouterManagedTag>
+    requestAssets?: ManifestRouteAssets
   }) => Promise<void>
   takeBufferedScripts: () => RouterManagedTag | undefined
   /**

@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
+    "@tanstack/router-core": "workspace:*",
     "@tanstack/router-e2e-utils": "workspace:*",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
