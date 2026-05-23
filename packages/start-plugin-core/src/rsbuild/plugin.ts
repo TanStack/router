@@ -1,7 +1,6 @@
 import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { hasKeys } from '@tanstack/router-core'
 import { joinURL } from 'ufo'
 import {
   applyResolvedBaseAndOutput,
@@ -95,6 +94,18 @@ export function tanStackStartRsbuild(
   return {
     name: 'tanstack-start-rsbuild',
     setup(api: RsbuildPluginAPI) {
+      const startCompilerEnvironments = [
+        { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' as const },
+        { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' as const },
+        ...(serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
+        !rscEnabled
+          ? [{ name: serverFnProviderEnv, type: 'server' as const }]
+          : []),
+      ]
+      const startCompilerServerEnvironmentNames = startCompilerEnvironments
+        .filter((env) => env.type === 'server')
+        .map((env) => env.name)
+
       // ---------------------------------------------------------------
       // 1. modifyRsbuildConfig — resolve config, set up environments
       // ---------------------------------------------------------------
@@ -258,6 +269,7 @@ export function tanStackStartRsbuild(
         // so defer this read until transform time instead of falling back to
         // process.cwd() during plugin setup.
         root: () => resolvedStartConfig.root || process.cwd(),
+        environments: startCompilerEnvironments,
         providerEnvName: serverFnProviderEnv,
         generateFunctionId: startPluginOpts.serverFns?.generateFunctionId,
         compilerTransforms: corePluginOpts.compilerTransforms,
@@ -272,14 +284,7 @@ export function tanStackStartRsbuild(
       registerImportProtection(api, {
         getConfig,
         framework: corePluginOpts.framework,
-        environments: [
-          { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' },
-          { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' },
-          ...(serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
-          !rscEnabled
-            ? [{ name: serverFnProviderEnv, type: 'server' as const }]
-            : []),
-        ],
+        environments: startCompilerEnvironments,
       })
 
       // ---------------------------------------------------------------
@@ -299,6 +304,37 @@ export function tanStackStartRsbuild(
         scriptFormat,
       })
       updateServerFnResolver = virtualModuleState.updateServerFnResolver
+
+      if (!rscEnabled) {
+        api.modifyRspackConfig((config, utils) => {
+          if (
+            !startCompilerServerEnvironmentNames.includes(
+              utils.environment.name,
+            )
+          ) {
+            return
+          }
+
+          config.plugins.push({
+            apply(compiler: RspackCompiler) {
+              compiler.hooks.finishMake.tapPromise(
+                {
+                  name: 'TanStackStartServerFnResolverRebuild',
+                  stage: -10,
+                },
+                async (compilation: RspackCompilationExtended) => {
+                  virtualModuleState.updateServerFnResolver()
+
+                  await rebuildModulesContaining(
+                    compilation,
+                    virtualModuleState.serverFnResolverPath,
+                  )
+                },
+              )
+            },
+          })
+        })
+      }
 
       // ---------------------------------------------------------------
       // 4. Client build stats capture via processAssets
@@ -491,10 +527,6 @@ export function tanStackStartRsbuild(
                     stage: -10,
                   },
                   async (compilation: RspackCompilationExtended) => {
-                    if (!hasKeys(serverFnsById)) {
-                      return
-                    }
-
                     const resolverContent =
                       virtualModuleState.generateCurrentResolverContent(true)
                     virtualModuleState.tryUpdateServerFnResolver(
@@ -586,13 +618,23 @@ export function tanStackStartRsbuild(
         api.onAfterCreateCompiler(({ compiler }) => {
           // MultiCompiler has a `compilers` array; single compiler does not
           if ('compilers' in compiler) {
-            const serverCompiler = compiler.compilers.find(
-              (c) => c.name === RSBUILD_ENVIRONMENT_NAMES.server,
-            )
-            if (serverCompiler) {
-              compiler.setDependencies(serverCompiler, [
-                RSBUILD_ENVIRONMENT_NAMES.client,
-              ])
+            for (const environmentName of startCompilerServerEnvironmentNames) {
+              const serverCompiler = compiler.compilers.find(
+                (c) => c.name === environmentName,
+              )
+              if (serverCompiler) {
+                const dependencies: Array<string> = [
+                  RSBUILD_ENVIRONMENT_NAMES.client,
+                ]
+                if (
+                  environmentName === RSBUILD_ENVIRONMENT_NAMES.server &&
+                  serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server
+                ) {
+                  dependencies.push(serverFnProviderEnv)
+                }
+
+                compiler.setDependencies(serverCompiler, dependencies)
+              }
             }
           }
         })
