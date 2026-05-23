@@ -5,6 +5,14 @@ import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+type ScriptRenderAsset = RouterManagedTag & {
+  preventScriptHoist?: boolean
+}
+
+function isExternalManifestScript(asset: RouterManagedTag) {
+  return asset.tag === 'script' && typeof asset.attrs?.src === 'string'
+}
+
 /**
  * Render body script tags collected from route matches and SSR manifests.
  * Should be placed near the end of the document body.
@@ -14,7 +22,7 @@ export const Scripts = () => {
   const nonce = router.options.ssr?.nonce
 
   const getAssetScripts = (matches: Array<any>) => {
-    const assetScripts: Array<RouterManagedTag> = []
+    const assetScripts: Array<ScriptRenderAsset> = []
     const manifest = router.ssr?.manifest
 
     if (!manifest) {
@@ -23,17 +31,24 @@ export const Scripts = () => {
 
     matches
       .map((match) => router.looseRoutesById[match.routeId]!)
-      .forEach((route) =>
-        manifest.routes[route.id]?.assets
+      .forEach((route) => {
+        const routeManifest = manifest.routes[route.id]
+
+        routeManifest?.assets
           ?.filter((d) => d.tag === 'script')
           .forEach((asset) => {
-            assetScripts.push({
+            const scriptAsset = {
               tag: 'script',
               attrs: { ...asset.attrs, nonce },
               children: asset.children,
-            } as any)
-          }),
-      )
+              ...(isExternalManifestScript(asset)
+                ? { preventScriptHoist: true }
+                : {}),
+            } satisfies ScriptRenderAsset
+
+            assetScripts.push(scriptAsset)
+          })
+      })
 
     return assetScripts
   }
@@ -79,18 +94,15 @@ export const Scripts = () => {
 function renderScripts(
   router: ReturnType<typeof useRouter>,
   scripts: Array<RouterManagedTag>,
-  assetScripts: Array<RouterManagedTag>,
+  assetScripts: Array<ScriptRenderAsset>,
 ) {
-  let serverBufferedScript: RouterManagedTag | undefined = undefined
+  const allScripts = [...scripts, ...assetScripts] as Array<ScriptRenderAsset>
 
-  if (router.serverSsr) {
-    serverBufferedScript = router.serverSsr.takeBufferedScripts()
-  }
-
-  const allScripts = [...scripts, ...assetScripts] as Array<RouterManagedTag>
-
-  if (serverBufferedScript) {
-    allScripts.unshift(serverBufferedScript)
+  if ((isServer ?? router.isServer) && router.serverSsr) {
+    const serverBufferedScript = router.serverSsr.takeBufferedScripts()
+    if (serverBufferedScript) {
+      allScripts.unshift(serverBufferedScript)
+    }
   }
 
   return (

@@ -1,8 +1,9 @@
 export type AssetCrossOrigin = 'anonymous' | 'use-credentials'
+export type ScriptFormat = 'module' | 'iife'
 
 export type AssetCrossOriginConfig =
   | AssetCrossOrigin
-  | Partial<Record<'modulepreload' | 'stylesheet', AssetCrossOrigin>>
+  | Partial<Record<'script' | 'stylesheet', AssetCrossOrigin>>
 
 export type ManifestAssetLink =
   | string
@@ -13,7 +14,7 @@ export type ManifestAssetLink =
 
 export function getAssetCrossOrigin(
   assetCrossOrigin: AssetCrossOriginConfig | undefined,
-  kind: 'modulepreload' | 'stylesheet',
+  kind: 'script' | 'stylesheet',
 ): AssetCrossOrigin | undefined {
   if (!assetCrossOrigin) {
     return undefined
@@ -26,6 +27,35 @@ export function getAssetCrossOrigin(
   return assetCrossOrigin[kind]
 }
 
+export function getManifestScriptFormat(
+  manifest: { scriptFormat?: ScriptFormat } | undefined,
+): ScriptFormat {
+  return manifest?.scriptFormat ?? 'module'
+}
+
+export function getScriptPreloadAttrs(
+  manifest: { scriptFormat?: ScriptFormat } | undefined,
+  link: ManifestAssetLink,
+  assetCrossOrigin?: AssetCrossOriginConfig,
+): {
+  rel: 'modulepreload' | 'preload'
+  as?: 'script'
+  href: string
+  crossOrigin?: AssetCrossOrigin
+} {
+  const preloadLink = resolveManifestAssetLink(link)
+  const crossOrigin =
+    getAssetCrossOrigin(assetCrossOrigin, 'script') ?? preloadLink.crossOrigin
+
+  return {
+    ...(getManifestScriptFormat(manifest) === 'iife'
+      ? { rel: 'preload', as: 'script' }
+      : { rel: 'modulepreload' }),
+    href: preloadLink.href,
+    ...(crossOrigin ? { crossOrigin } : {}),
+  }
+}
+
 export function resolveManifestAssetLink(link: ManifestAssetLink) {
   if (typeof link === 'string') {
     return { href: link, crossOrigin: undefined }
@@ -35,6 +65,7 @@ export function resolveManifestAssetLink(link: ManifestAssetLink) {
 }
 
 export type Manifest = {
+  scriptFormat?: ScriptFormat
   inlineCss?: {
     styles: Record<string, string>
     templates?: Record<

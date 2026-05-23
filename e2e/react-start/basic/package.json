@@ -73,6 +73,14 @@
         },
         {
           "toolchain": "rsbuild",
+          "mode": "ssr",
+          "name": "iife",
+          "env": {
+            "TSS_RSB_CLIENT_OUTPUT": "iife"
+          }
+        },
+        {
+          "toolchain": "rsbuild",
           "mode": "spa"
         },
         {

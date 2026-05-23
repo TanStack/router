@@ -403,6 +403,9 @@ export function attachRouterServerSsrUtils({
         }
 
         manifestToDehydrate = {
+          ...(manifest.scriptFormat
+            ? { scriptFormat: manifest.scriptFormat }
+            : {}),
           routes: { ...filteredRoutes },
         }
 

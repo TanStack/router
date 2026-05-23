@@ -152,6 +152,34 @@ describe('early hints', () => {
     ])
   })
 
+  it('collects static route JS hints as preload script for iife manifests', () => {
+    const manifest: Manifest = {
+      scriptFormat: 'iife',
+      routes: {
+        '/posts': {
+          preloads: [
+            '/assets/posts.js',
+            { href: '/assets/shared.js', crossOrigin: 'anonymous' },
+          ],
+        },
+      },
+    }
+
+    expect(
+      collectStaticHintsFromManifest(manifest, [
+        { id: '/posts' },
+      ] as Array<AnyRoute>),
+    ).toEqual([
+      { href: '/assets/posts.js', rel: 'preload', as: 'script' },
+      {
+        href: '/assets/shared.js',
+        rel: 'preload',
+        as: 'script',
+        crossOrigin: 'anonymous',
+      },
+    ])
+  })
+
   it('collects dynamic hints from route head links', () => {
     const matches = [
       {

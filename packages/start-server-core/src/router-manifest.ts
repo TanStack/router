@@ -29,10 +29,14 @@ export async function getStartManifest(
   const { tsrStartManifest } = await import('tanstack-start-manifest:v')
   const startManifest = tsrStartManifest()
 
-  const rootRoute = (startManifest.routes[rootRouteId] =
-    startManifest.routes[rootRouteId] || {})
-
-  rootRoute.assets = rootRoute.assets || []
+  const rootRoute = {
+    ...startManifest.routes[rootRouteId],
+    assets: [...(startManifest.routes[rootRouteId]?.assets ?? [])],
+  }
+  const routes = {
+    ...startManifest.routes,
+    [rootRouteId]: rootRoute,
+  }
 
   // Inject dev styles link in dev mode (when SSR styles are enabled)
   if (
@@ -51,31 +55,38 @@ export async function getStartManifest(
     })
   }
 
-  // Collect injected head scripts in dev mode (returned separately so we can
-  // build the client entry script tag after URL transforms are applied)
-  let injectedHeadScripts: string | undefined
   if (process.env.TSS_DEV_SERVER === 'true') {
     const mod = await import('tanstack-start-injected-head-scripts:v')
     if (mod.injectedHeadScripts) {
-      injectedHeadScripts = mod.injectedHeadScripts
+      rootRoute.assets.push({
+        tag: 'script',
+        attrs: {
+          type: 'module',
+        },
+        children: mod.injectedHeadScripts,
+      })
     }
   }
 
   const manifest = {
+    ...(startManifest.scriptFormat
+      ? { scriptFormat: startManifest.scriptFormat }
+      : {}),
     inlineCss: startManifest.inlineCss,
     routes: Object.fromEntries(
-      Object.entries(startManifest.routes).flatMap(([k, v]) => {
+      Object.entries(routes).flatMap(([k, v]) => {
         const result = {} as {
           preloads?: Array<ManifestAssetLink>
           assets?: Array<RouterManagedTag>
         }
+        const assets = v.assets
         let hasData = false
         if (v.preloads && v.preloads.length > 0) {
           result['preloads'] = v.preloads
           hasData = true
         }
-        if (v.assets && v.assets.length > 0) {
-          result['assets'] = v.assets
+        if (assets.length > 0) {
+          result['assets'] = assets
           hasData = true
         }
         if (!hasData) {
@@ -89,6 +100,5 @@ export async function getStartManifest(
   return {
     manifest: manifest as StartManifestWithClientEntry['manifest'],
     clientEntry: startManifest.clientEntry,
-    injectedHeadScripts,
   }
 }

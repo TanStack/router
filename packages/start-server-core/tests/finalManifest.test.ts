@@ -157,9 +157,13 @@ describe('final manifest resolver', () => {
     })
 
     expect(manifest.inlineCss).toBeDefined()
-    expect(manifest.routes.__root__?.assets?.[0]).toMatchObject({
+    expect(manifest.routes.__root__?.assets?.at(-1)).toMatchObject({
       tag: 'script',
-      children: 'import("https://cdn.example.com/assets/entry.js")',
+      attrs: {
+        type: 'module',
+        async: true,
+        src: 'https://cdn.example.com/assets/entry.js',
+      },
     })
   })
 })

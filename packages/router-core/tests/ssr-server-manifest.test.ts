@@ -136,6 +136,28 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     expect(manifest.routes['/']?.preloads).toEqual(['/assets/index.js'])
   })
 
+  test('preserves script format when dehydrating the manifest', async () => {
+    const router = buildRouter()
+    const manifest: Manifest = {
+      ...buildManifest(),
+      scriptFormat: 'iife',
+    }
+
+    attachRouterServerSsrUtils({
+      router,
+      manifest,
+    })
+
+    await router.load()
+    await router.serverSsr!.dehydrate()
+
+    const script = router.serverSsr!.takeBufferedScripts()
+    expect(script?.children).toBeTruthy()
+    const dehydratedManifest = parseSerializedRouter(script!.children!).manifest!
+
+    expect(dehydratedManifest.scriptFormat).toBe('iife')
+  })
+
   test('inlines stylesheet assets for SSR and strips stylesheet links from dehydration', async () => {
     const router = buildRouter()
     const manifest = buildInlineManifest()

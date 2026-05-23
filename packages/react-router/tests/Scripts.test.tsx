@@ -32,9 +32,11 @@ const createTestManifest = (
   options?: {
     stylesheetHref?: string
     preloadHref?: string
+    scriptFormat?: Manifest['scriptFormat']
   },
 ) =>
   ({
+    ...(options?.scriptFormat ? { scriptFormat: options.scriptFormat } : {}),
     routes: {
       [routeId]: {
         preloads: [options?.preloadHref ?? '/main.js'],
@@ -225,6 +227,66 @@ describe('scripts with async/defer attributes', () => {
 
     expect(html).toMatch(/<script[^>]*src="script\.js"[^>]*async=""/)
     expect(html).toMatch(/<script[^>]*src="script2\.js"[^>]*defer=""/)
+  })
+
+  test('server keeps manifest src scripts in document order', async () => {
+    const clientEntryAsset = {
+      tag: 'script',
+      attrs: {
+        src: '/entry.js',
+        type: 'module',
+        async: true,
+      },
+    } satisfies Manifest['routes'][string]['assets'][number]
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <html>
+            <head />
+            <body>
+              <main data-testid="content">content</main>
+              <Outlet />
+              <Scripts />
+            </body>
+          </html>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
+    })
+    router.ssr = {
+      manifest: {
+        routes: {
+          [rootRoute.id]: {
+            assets: [clientEntryAsset],
+          },
+        },
+      },
+    }
+
+    await router.load()
+
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
+    )
+    const contentIndex = html.indexOf('<main data-testid="content">')
+    const scriptIndex = html.indexOf('src="/entry.js"')
+
+    expect(contentIndex).toBeGreaterThan(-1)
+    expect(scriptIndex).toBeGreaterThan(contentIndex)
+    expect(html).not.toContain('client-entry')
   })
 
   test('client renders scripts with attributes (including async/defer)', async () => {
@@ -467,7 +529,7 @@ describe('ssr HeadContent', () => {
             {createPortal(
               <HeadContent
                 assetCrossOrigin={{
-                  modulepreload: 'anonymous',
+                  script: 'anonymous',
                   stylesheet: 'use-credentials',
                 }}
               />,
@@ -524,6 +586,58 @@ describe('ssr HeadContent', () => {
         .querySelector(`link[rel="modulepreload"][href="${preloadHref}"]`)
         ?.getAttribute('crossorigin'),
     ).toBe('anonymous')
+  })
+
+  test('renders preload as script links for iife manifest preloads', async () => {
+    const history = createTestBrowserHistory()
+    const preloadHref = '/iife-preload.js'
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            {createPortal(<HeadContent />, document.head)}
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id, {
+        preloadHref,
+        scriptFormat: 'iife',
+      }),
+    }
+
+    await router.load()
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector(
+          `link[rel="preload"][as="script"][href="${preloadHref}"]`,
+        ),
+      ).toBeTruthy()
+    })
+
+    expect(
+      document.head.querySelector(
+        `link[rel="modulepreload"][href="${preloadHref}"]`,
+      ),
+    ).toBeFalsy()
   })
 
   test('assetCrossOrigin overrides manifest crossOrigin values', async () => {

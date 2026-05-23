@@ -1,6 +1,6 @@
 import {
+  getScriptPreloadAttrs,
   getStylesheetHref,
-  resolveManifestAssetLink,
 } from '@tanstack/router-core'
 import type {
   AnyRoute,
@@ -184,9 +184,13 @@ export function collectStaticHintsFromManifest(
     if (!routeManifest) continue
 
     for (const link of routeManifest.preloads ?? []) {
-      const { href, crossOrigin } = resolveManifestAssetLink(link)
-      const hint: EarlyHint = { href, rel: 'modulepreload', as: 'script' }
-      if (crossOrigin !== undefined) hint.crossOrigin = crossOrigin
+      const attrs = getScriptPreloadAttrs(manifest, link)
+      const hint: EarlyHint = {
+        href: attrs.href,
+        rel: attrs.rel,
+        as: 'script',
+      }
+      if (attrs.crossOrigin !== undefined) hint.crossOrigin = attrs.crossOrigin
       hints.push(hint)
     }
 

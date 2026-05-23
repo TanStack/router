@@ -22,8 +22,12 @@ import {
 import { Scripts } from '../src/Scripts'
 import type { Manifest } from '@tanstack/router-core'
 
-const createTestManifest = (routeId: string) =>
+const createTestManifest = (
+  routeId: string,
+  options?: { scriptFormat?: Manifest['scriptFormat'] },
+) =>
   ({
+    ...(options?.scriptFormat ? { scriptFormat: options.scriptFormat } : {}),
     routes: {
       [routeId]: {
         preloads: ['/main.js'],
@@ -161,7 +165,7 @@ describe('ssr HeadContent', () => {
           <Teleport to="head">
             <HeadContent
               assetCrossOrigin={{
-                modulepreload: 'anonymous',
+                script: 'anonymous',
                 stylesheet: 'use-credentials',
               }}
             />
@@ -207,6 +211,48 @@ describe('ssr HeadContent', () => {
         .querySelector('link[rel="modulepreload"]')
         ?.getAttribute('crossorigin'),
     ).toBe('anonymous')
+  })
+
+  test('renders preload as script links for iife manifest preloads', async () => {
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <Teleport to="head">
+            <HeadContent />
+          </Teleport>
+          <Outlet />
+        </>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id, { scriptFormat: 'iife' }),
+    }
+
+    await router.load()
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('link[rel="preload"][as="script"]'),
+      ).toBeTruthy()
+    })
+
+    expect(document.head.querySelector('link[rel="modulepreload"]')).toBeFalsy()
   })
 
   test('derives title, dedupes meta, and allows non-loader HeadContent', async () => {

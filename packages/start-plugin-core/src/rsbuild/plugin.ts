@@ -10,7 +10,7 @@ import {
 } from '../config-context'
 import { normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
-import { parseStartConfig } from './schema'
+import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
   RSBUILD_ENVIRONMENT_NAMES,
   RSBUILD_RSC_LAYERS,
@@ -40,6 +40,7 @@ import type {
   rspack as rspackNamespaceType,
 } from '@rsbuild/core'
 import type { TanStackStartRsbuildInputConfig } from './schema'
+import type { ScriptFormat } from '@tanstack/router-core'
 
 // Detect whether this plugin source is running from inside the TanStack
 // Router monorepo (packages/start-plugin-core/src/rsbuild/plugin.ts). When
@@ -78,6 +79,9 @@ export function tanStackStartRsbuild(
   const { getConfig, resolvedStartConfig } = configContext
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
   const ssrIsProvider = corePluginOpts.ssrIsProvider
+  const scriptFormat = rsbuildClientOutputSchema.parse(
+    startPluginOpts.rsbuild?.client?.output ?? 'module',
+  ) satisfies ScriptFormat
 
   // RSC plugin instances — created lazily when rspack namespace is available
   let rscPlugins: RscPluginPair | undefined
@@ -155,6 +159,7 @@ export function tanStackStartRsbuild(
           publicBase: resolvedStartConfig.basePaths.publicBase,
           serverFnProviderEnv,
           environmentOverrides: corePluginOpts.rsbuild?.environments,
+          scriptFormat,
           rsc: rscOpts,
           dev: isDev,
         })
@@ -290,6 +295,7 @@ export function tanStackStartRsbuild(
         getDevClientEntryUrl: (publicBase: string) =>
           joinURL(publicBase, 'static/js/index.js'),
         rscEnabled,
+        scriptFormat,
       })
       updateServerFnResolver = virtualModuleState.updateServerFnResolver
 

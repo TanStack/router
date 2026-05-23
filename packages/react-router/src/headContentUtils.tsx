@@ -4,8 +4,8 @@ import {
   deepEqual,
   escapeHtml,
   getAssetCrossOrigin,
+  getScriptPreloadAttrs,
   isInlinableStylesheet,
-  resolveManifestAssetLink,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -149,15 +149,14 @@ function buildTagsFromMatches(
       router.ssr?.manifest?.routes[route.id]?.preloads
         ?.filter(Boolean)
         .forEach((preload) => {
-          const preloadLink = resolveManifestAssetLink(preload)
           preloadLinks.push({
             tag: 'link',
             attrs: {
-              rel: 'modulepreload',
-              href: preloadLink.href,
-              crossOrigin:
-                getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
-                preloadLink.crossOrigin,
+              ...getScriptPreloadAttrs(
+                router.ssr?.manifest,
+                preload,
+                assetCrossOrigin,
+              ),
               nonce,
             },
           })
@@ -382,15 +381,14 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
           router.ssr?.manifest?.routes[route.id]?.preloads
             ?.filter(Boolean)
             .forEach((preload) => {
-              const preloadLink = resolveManifestAssetLink(preload)
               preloadLinks.push({
                 tag: 'link',
                 attrs: {
-                  rel: 'modulepreload',
-                  href: preloadLink.href,
-                  crossOrigin:
-                    getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
-                    preloadLink.crossOrigin,
+                  ...getScriptPreloadAttrs(
+                    router.ssr?.manifest,
+                    preload,
+                    assetCrossOrigin,
+                  ),
                   nonce,
                 },
               })

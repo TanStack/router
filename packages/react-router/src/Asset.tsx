@@ -14,10 +14,15 @@ interface ScriptAttrs {
   suppressHydrationWarning?: boolean
 }
 
+const noopScriptHandler = () => {}
+
 export function Asset(
-  asset: RouterManagedTag & { nonce?: string },
+  asset: RouterManagedTag & {
+    nonce?: string
+    preventScriptHoist?: boolean
+  },
 ): React.ReactElement | null {
-  const { attrs, children, nonce } = asset
+  const { attrs, children, nonce, preventScriptHoist } = asset
 
   switch (asset.tag) {
     case 'title':
@@ -61,7 +66,11 @@ export function Asset(
         />
       )
     case 'script':
-      return <Script attrs={attrs}>{children}</Script>
+      return (
+        <Script attrs={attrs} preventScriptHoist={preventScriptHoist}>
+          {children}
+        </Script>
+      )
     default:
       return null
   }
@@ -106,9 +115,11 @@ function InlineCssStyle({
 function Script({
   attrs,
   children,
+  preventScriptHoist,
 }: {
   attrs?: ScriptAttrs
   children?: string
+  preventScriptHoist?: boolean
 }) {
   const router = useRouter()
   const hydrated = useHydrated()
@@ -228,7 +239,20 @@ function Script({
   // --- Server rendering ---
   if (isServer ?? router.isServer) {
     if (attrs?.src) {
-      return <script {...attrs} suppressHydrationWarning />
+      if (!preventScriptHoist) {
+        return <script {...attrs} suppressHydrationWarning />
+      }
+
+      return (
+        <script
+          {...attrs}
+          // React hoists async src scripts into <head> during SSR unless they
+          // have an event handler. Start's client entry must stay after router
+          // dehydration.
+          onLoad={noopScriptHandler}
+          suppressHydrationWarning
+        />
+      )
     }
 
     if (typeof children === 'string') {

@@ -2,8 +2,8 @@ import * as Vue from 'vue'
 import {
   escapeHtml,
   getAssetCrossOrigin,
+  getScriptPreloadAttrs,
   isInlinableStylesheet,
-  resolveManifestAssetLink,
 } from '@tanstack/router-core'
 import { useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
@@ -100,15 +100,14 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
         router.ssr?.manifest?.routes[route.id]?.preloads
           ?.filter(Boolean)
           .forEach((preload) => {
-            const preloadLink = resolveManifestAssetLink(preload)
             preloadMeta.push({
               tag: 'link',
               attrs: {
-                rel: 'modulepreload',
-                href: preloadLink.href,
-                crossOrigin:
-                  getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
-                  preloadLink.crossOrigin,
+                ...getScriptPreloadAttrs(
+                  router.ssr?.manifest,
+                  preload,
+                  assetCrossOrigin,
+                ),
               },
             })
           }),

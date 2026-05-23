@@ -12,7 +12,11 @@ import {
   normalizeViteClientChunk,
 } from '../vite/start-manifest-plugin/normalized-client-build'
 import { processInlineCssUrls } from './inlineCss'
-import type { ManifestAssetLink, RouterManagedTag } from '@tanstack/router-core'
+import type {
+  ManifestAssetLink,
+  RouterManagedTag,
+  ScriptFormat,
+} from '@tanstack/router-core'
 import type { InlineCssTemplate } from './inlineCss'
 import type { NormalizedClientBuild, NormalizedClientChunk } from '../types'
 
@@ -46,6 +50,7 @@ type DedupeRoute = {
 }
 
 export interface StartManifest {
+  scriptFormat?: ScriptFormat
   routes: Record<string, RouteTreeRoute>
   clientEntry: string
   inlineCss?: {
@@ -168,6 +173,7 @@ export function buildStartManifest(options: {
   routeTreeRoutes: RouteTreeRoutes
   basePath: string
   inlineCss?: InlineCssOptions
+  scriptFormat?: ScriptFormat
   additionalRouteAssets?: Partial<
     Record<string, ReadonlyArray<RouterManagedTag>>
   >
@@ -199,6 +205,10 @@ export function buildStartManifest(options: {
   const result: StartManifest = {
     routes,
     clientEntry: assetResolvers.getAssetPath(scannedChunks.entryChunk.fileName),
+  }
+
+  if (options.scriptFormat === 'iife') {
+    result.scriptFormat = 'iife'
   }
 
   if (options.inlineCss?.enabled) {

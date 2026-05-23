@@ -1,4 +1,7 @@
-import { resolveManifestAssetLink, rootRouteId } from '@tanstack/router-core'
+import {
+  getManifestScriptFormat,
+  resolveManifestAssetLink,
+} from '@tanstack/router-core'
 
 import type {
   AssetCrossOrigin,
@@ -6,6 +9,7 @@ import type {
   Manifest,
   ManifestAssetLink,
   RouterManagedTag,
+  ScriptFormat,
 } from '@tanstack/router-core'
 
 export type { AssetCrossOrigin }
@@ -13,15 +17,11 @@ export type { AssetCrossOrigin }
 export type TransformAssetsContext =
   | {
       url: string
-      kind: 'modulepreload'
+      kind: 'script'
     }
   | {
       url: string
       kind: 'stylesheet'
-    }
-  | {
-      url: string
-      kind: 'clientEntry'
     }
   | {
       url: string
@@ -33,7 +33,7 @@ export type TransformAssetKind = TransformAssetsContext['kind']
 
 type TransformAssetsShorthandCrossOriginKind = Exclude<
   TransformAssetKind,
-  'clientEntry' | 'css-url'
+  'css-url'
 >
 
 export type TransformAssetResult =
@@ -114,7 +114,7 @@ export type TransformAssetsOptions =
  * crossOrigin: 'anonymous'
  *
  * // Different values per kind
- * crossOrigin: { modulepreload: 'anonymous', stylesheet: 'use-credentials' }
+ * crossOrigin: { script: 'anonymous', stylesheet: 'use-credentials' }
  * ```
  */
 export type TransformAssetsCrossOriginConfig =
@@ -136,7 +136,7 @@ export interface TransformAssetsObjectShorthand {
   /** URL prefix prepended to every asset URL. */
   prefix: string
   /**
-   * Optional crossOrigin attribute applied to manifest-managed `<link>` assets.
+   * Optional crossOrigin attribute applied to transformed script and stylesheet assets.
    *
    * Accepts a single value or a per-kind record.
    */
@@ -287,7 +287,7 @@ export function resolveTransformAssetsConfig(
       transformFn: ({ url, kind }) => {
         const href = `${prefix}${url}`
 
-        if (kind === 'clientEntry' || kind === 'css-url') {
+        if (kind === 'css-url') {
           return { href }
         }
 
@@ -323,30 +323,25 @@ export function resolveTransformAssetsConfig(
 export interface StartManifestWithClientEntry {
   manifest: Manifest
   clientEntry: string
-  /** Script content prepended before the client entry import (dev only) */
-  injectedHeadScripts?: string
 }
 
 /**
  * Builds the client entry `<script>` tag from a (possibly transformed) client
- * entry URL and optional injected head scripts.
+ * entry URL.
  */
 export function buildClientEntryScriptTag(
   clientEntry: string,
-  injectedHeadScripts?: string,
+  scriptFormat: ScriptFormat = 'module',
+  crossOrigin?: AssetCrossOrigin,
 ): RouterManagedTag {
-  const clientEntryLiteral = JSON.stringify(clientEntry)
-  let script = `import(${clientEntryLiteral})`
-  if (injectedHeadScripts) {
-    script = `${injectedHeadScripts};${script}`
-  }
   return {
     tag: 'script',
     attrs: {
-      type: 'module',
+      ...(scriptFormat === 'module' ? { type: 'module' } : {}),
       async: true,
+      src: clientEntry,
+      ...(crossOrigin ? { crossOrigin } : {}),
     },
-    children: script,
   }
 }
 
@@ -361,6 +356,26 @@ function assignManifestAssetLink(
   return next.crossOrigin ? next : { href: next.href }
 }
 
+function buildManifestAssetLink(
+  href: string,
+  crossOrigin?: AssetCrossOrigin,
+): ManifestAssetLink {
+  return crossOrigin ? { href, crossOrigin } : href
+}
+
+function appendUniqueManifestAssetLink(
+  target: Array<ManifestAssetLink> | undefined,
+  link: ManifestAssetLink,
+) {
+  const href = resolveManifestAssetLink(link).href
+
+  if (target?.some((item) => resolveManifestAssetLink(item).href === href)) {
+    return target
+  }
+
+  return [...(target ?? []), link]
+}
+
 export async function transformManifestAssets(
   source: StartManifestWithClientEntry,
   transformFn: TransformAssetsFn,
@@ -371,6 +386,7 @@ export async function transformManifestAssets(
 ): Promise<Manifest> {
   const manifest = structuredClone(source.manifest)
   const inlineCssEnabled = _opts?.inlineCss !== false
+  const scriptFormat = getManifestScriptFormat(manifest)
 
   if (!inlineCssEnabled) {
     delete manifest.inlineCss
@@ -381,15 +397,29 @@ export async function transformManifestAssets(
     )
   }
 
+  const transformedClientEntry = normalizeTransformAssetResult(
+    await transformFn({
+      url: source.clientEntry,
+      kind: 'script',
+    }),
+  )
+
   for (const route of Object.values(manifest.routes)) {
     if (route.preloads) {
       route.preloads = await Promise.all(
         route.preloads.map(async (link) => {
           const resolved = resolveManifestAssetLink(link)
+          if (resolved.href === source.clientEntry) {
+            return assignManifestAssetLink(link, {
+              href: transformedClientEntry.href,
+              crossOrigin: transformedClientEntry.crossOrigin,
+            })
+          }
+
           const result = normalizeTransformAssetResult(
             await transformFn({
               url: resolved.href,
-              kind: 'modulepreload',
+              kind: 'script',
             }),
           )
 
@@ -429,24 +459,28 @@ export async function transformManifestAssets(
     }
   }
 
-  const transformedClientEntry = normalizeTransformAssetResult(
-    await transformFn({
-      url: source.clientEntry,
-      kind: 'clientEntry',
-    }),
+  const entryScript = buildClientEntryScriptTag(
+    transformedClientEntry.href,
+    scriptFormat,
+    transformedClientEntry.crossOrigin,
   )
-
-  const rootRoute = (manifest.routes[rootRouteId] =
-    manifest.routes[rootRouteId] || {})
-  rootRoute.assets = rootRoute.assets || []
-  rootRoute.assets.push(
-    buildClientEntryScriptTag(
-      transformedClientEntry.href,
-      source.injectedHeadScripts,
-    ),
+  const entryPreload = buildManifestAssetLink(
+    transformedClientEntry.href,
+    transformedClientEntry.crossOrigin,
   )
+  const rootRoute = manifest.routes.__root__ ?? {}
 
-  return manifest
+  return {
+    ...manifest,
+    routes: {
+      ...manifest.routes,
+      __root__: {
+        ...rootRoute,
+        preloads: appendUniqueManifestAssetLink(rootRoute.preloads, entryPreload),
+        assets: [...(rootRoute.assets ?? []), entryScript],
+      },
+    },
+  }
 }
 
 /**
@@ -459,24 +493,30 @@ export function buildManifestWithClientEntry(
   source: StartManifestWithClientEntry,
   opts?: { inlineCss?: boolean },
 ): Manifest {
-  const scriptTag = buildClientEntryScriptTag(
+  const scriptFormat = getManifestScriptFormat(source.manifest)
+  const entryScript = buildClientEntryScriptTag(
     source.clientEntry,
-    source.injectedHeadScripts,
+    scriptFormat,
   )
-
-  const baseRootRoute = source.manifest.routes[rootRouteId]
-  const routes = {
-    ...source.manifest.routes,
-    [rootRouteId]: {
-      ...baseRootRoute,
-      assets: [...(baseRootRoute?.assets || []), scriptTag],
-    },
-  }
+  const rootRoute = source.manifest.routes.__root__ ?? {}
 
   return {
+    ...(source.manifest.scriptFormat
+      ? { scriptFormat: source.manifest.scriptFormat }
+      : {}),
     ...(opts?.inlineCss === false
       ? {}
       : { inlineCss: structuredClone(source.manifest.inlineCss) }),
-    routes,
+    routes: {
+      ...source.manifest.routes,
+      __root__: {
+        ...rootRoute,
+        preloads: appendUniqueManifestAssetLink(
+          rootRoute.preloads,
+          source.clientEntry,
+        ),
+        assets: [...(rootRoute.assets ?? []), entryScript],
+      },
+    },
   }
 }

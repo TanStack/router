@@ -1087,6 +1087,36 @@ describe('buildStartManifest', () => {
       deserializeSerializedManifest(serializeStartManifest(manifest)),
     ).toEqual(manifest)
   })
+
+  test('buildStartManifest includes scriptFormat only for iife output', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+    })
+    const routeTreeRoutes = {
+      __root__: {
+        filePath: '/routes/__root.tsx',
+      },
+    }
+
+    expect(
+      buildStartManifest({
+        clientBuild: normalizeTestBuild({ 'entry.js': entryChunk }),
+        routeTreeRoutes,
+        basePath: '/assets',
+        scriptFormat: 'module',
+      }).scriptFormat,
+    ).toBeUndefined()
+
+    expect(
+      buildStartManifest({
+        clientBuild: normalizeTestBuild({ 'entry.js': entryChunk }),
+        routeTreeRoutes,
+        basePath: '/assets',
+        scriptFormat: 'iife',
+      }).scriptFormat,
+    ).toBe('iife')
+  })
 })
 
 describe('route tree dedupe in buildStartManifest', () => {

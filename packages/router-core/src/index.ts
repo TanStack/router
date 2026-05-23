@@ -74,10 +74,13 @@ export type {
   AssetCrossOrigin,
   AssetCrossOriginConfig,
   ManifestAssetLink,
+  ScriptFormat,
 } from './manifest'
 export {
   createInlineCssStyleAsset,
   getAssetCrossOrigin,
+  getManifestScriptFormat,
+  getScriptPreloadAttrs,
   getStylesheetHref,
   isInlinableStylesheet,
   resolveManifestAssetLink,

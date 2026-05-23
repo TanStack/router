@@ -15,9 +15,9 @@ This guide is about asset URL rewriting. For choosing CSS import patterns and co
 
 The `transformAssets` option on `createStartHandler` rewrites URLs that Start manages in its SSR manifest:
 
-- `<link rel="modulepreload">` tags for JavaScript preloads
+- JavaScript preload links (`<link rel="modulepreload">` for module output, or `<link rel="preload" as="script">` for IIFE output)
 - `<link rel="stylesheet">` tags for manifest-managed CSS
-- The client entry module URL
+- The client entry script URL
 - `url(...)` and `@import` URLs inside [inlined CSS](./css-styling#inline-route-css-in-production) when CSS URL templates are enabled
 
 It does not rewrite every URL in your app. In particular, it does not rewrite arbitrary route `head().links` entries, including CSS imported with `?url` and returned from route `head()` functions. See [What This Does Not Rewrite](#what-this-does-not-rewrite) for the main exclusions.
@@ -75,7 +75,7 @@ export default createServerEntry({ fetch: handler })
 transformAssets: {
   prefix: 'https://cdn.example.com',
   crossOrigin: {
-    modulepreload: 'anonymous',
+    script: 'anonymous',
     stylesheet: 'use-credentials',
   },
 }
@@ -94,13 +94,13 @@ or:
 ```tsx
 <HeadContent
   assetCrossOrigin={{
-    modulepreload: 'anonymous',
+    script: 'anonymous',
     stylesheet: 'use-credentials',
   }}
 />
 ```
 
-If both `transformAssets` and `assetCrossOrigin` set a cross-origin value, `assetCrossOrigin` overrides the value from `transformAssets`. `assetCrossOrigin` only applies to manifest-managed `modulepreload` and stylesheet links, not arbitrary links returned from route `head()` functions.
+If both `transformAssets` and `assetCrossOrigin` set a cross-origin value, `assetCrossOrigin` overrides the value from `transformAssets`. `assetCrossOrigin` only applies to manifest-managed script and stylesheet links, not arbitrary links returned from route `head()` functions.
 
 ## Use a Callback for Per-Asset Logic
 
@@ -119,7 +119,7 @@ const handler = createStartHandler({
   transformAssets: (asset) => {
     const href = `https://cdn.example.com${asset.url}`
 
-    if (asset.kind === 'modulepreload') {
+    if (asset.kind === 'script') {
       return {
         href,
         crossOrigin: 'anonymous',
@@ -135,16 +135,15 @@ export default createServerEntry({ fetch: handler })
 
 The `kind` field tells you which asset URL is being transformed.
 
-| `kind`            | Description                                    |
-| ----------------- | ---------------------------------------------- |
-| `'modulepreload'` | JavaScript module preload URL                  |
-| `'stylesheet'`    | Manifest-managed CSS stylesheet URL            |
-| `'clientEntry'`   | Client entry module URL                        |
-| `'css-url'`       | `url(...)` or `@import` URL inside inlined CSS |
+| `kind`         | Description                                    |
+| -------------- | ---------------------------------------------- |
+| `'script'`     | JavaScript preload or client entry script URL  |
+| `'stylesheet'` | Manifest-managed CSS stylesheet URL            |
+| `'css-url'`    | `url(...)` or `@import` URL inside inlined CSS |
 
 For `kind === 'css-url'`, the context also includes `stylesheetHref`, which is the manifest stylesheet href whose CSS content is being inlined.
 
-`crossOrigin` applies to manifest-managed link tags. For the client entry and CSS-internal URLs, returning `{ href }` is equivalent to returning a string.
+`crossOrigin` applies to manifest-managed script and stylesheet tags. For CSS-internal URLs, returning `{ href }` is equivalent to returning a string.
 
 By default, callback results are cached after the first request in production. Use the object form with `cache: false` only when the transform depends on per-request data.
 
@@ -171,7 +170,7 @@ const handler = createStartHandler({
           ? 'https://cdn-eu.example.com'
           : 'https://cdn-us.example.com'
 
-      if (kind === 'modulepreload') {
+      if (kind === 'script') {
         return {
           href: `${cdnBase}${url}`,
           crossOrigin: 'anonymous',
@@ -210,7 +209,7 @@ transformAssets: {
     const cdnBase = await fetchCdnBaseForRegion(region)
 
     return (asset) => {
-      if (asset.kind === 'modulepreload') {
+      if (asset.kind === 'script') {
         return {
           href: `${cdnBase}${asset.url}`,
           crossOrigin: 'anonymous',
@@ -320,7 +319,7 @@ Warmup has no effect in development mode or when `cache: false`.
 
 ## Use Relative Vite Asset Paths for Client Navigation
 
-`transformAssets` rewrites the URLs in the SSR HTML: modulepreload hints, stylesheet links, and the client entry module. This means the browser's initial page load can fetch those assets from the CDN.
+`transformAssets` rewrites the URLs in the SSR HTML: script preload hints, stylesheet links, and the client entry script. This means the browser's initial page load can fetch those assets from the CDN.
 
 When users navigate client-side, TanStack Router lazy-loads route chunks using `import()` calls with paths baked in by the bundler. With Vite's default `base: '/'`, those paths are absolute, such as `/assets/about-abc123.js`, and resolve against the app server origin instead of the CDN.
 
@@ -336,7 +335,7 @@ export default defineConfig({
 })
 ```
 
-With `base: ''`, the client entry module can be loaded from the CDN by `transformAssets`, and relative `import()` calls resolve against that same CDN origin. This keeps lazy-loaded route chunks on the CDN during client-side navigation.
+With `base: ''`, the client entry script can be loaded from the CDN by `transformAssets`, and relative `import()` calls resolve against that same CDN origin. This keeps lazy-loaded route chunks on the CDN during client-side navigation.
 
 Using an empty string rather than `'./'` is important. Both produce relative client-side imports, but `base: ''` preserves the root-relative paths in the SSR manifest so `transformAssets` can prepend the CDN origin correctly.
 
