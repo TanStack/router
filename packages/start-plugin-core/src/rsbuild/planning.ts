@@ -240,7 +240,7 @@ export function resolveRsbuildOutputDirectory(opts: {
 }
 
 function normalizeEntryPath(path: string) {
-  return path.replaceAll('\\', '/')
+  return path.includes('\\') ? path.replaceAll('\\', '/') : path
 }
 
 function resolveFromRoot(specifier: string, root: string): string {

@@ -3,11 +3,7 @@ import {
   buildDevStylesUrl,
   rootRouteId,
 } from '@tanstack/router-core'
-import type {
-  AnyRoute,
-  ManifestAssetLink,
-  ServerManifestRoute,
-} from '@tanstack/router-core'
+import type { AnyRoute, ServerManifestRoute } from '@tanstack/router-core'
 import type { StartManifestWithClientEntry } from './transformAssetUrls'
 
 // Pre-computed constant for dev styles URL basepath.
@@ -79,37 +75,32 @@ export async function getStartManifest(
     }
   }
 
+  const manifestRoutes: Record<string, ServerManifestRoute> = {}
+
+  for (const k in routes) {
+    const v = routes[k]!
+    const result = {} as ServerManifestRoute
+
+    if (v.preloads && v.preloads.length > 0) {
+      result.preloads = v.preloads
+    }
+    if (v.scripts && v.scripts.length > 0) {
+      result.scripts = v.scripts
+    }
+    if (v.css?.length) {
+      result.css = v.css
+    }
+    if (result.preloads || result.scripts || result.css) {
+      manifestRoutes[k] = result
+    }
+  }
+
   const manifest = {
     ...(startManifest.scriptFormat
       ? { scriptFormat: startManifest.scriptFormat }
       : {}),
     ...(startManifest.inlineCss ? { inlineCss: startManifest.inlineCss } : {}),
-    routes: Object.fromEntries(
-      Object.entries(routes).flatMap(([k, v]) => {
-        const result = {} as {
-          preloads?: Array<ManifestAssetLink>
-          scripts?: ServerManifestRoute['scripts']
-          css?: ServerManifestRoute['css']
-        }
-        let hasData = false
-        if (v.preloads && v.preloads.length > 0) {
-          result['preloads'] = v.preloads
-          hasData = true
-        }
-        if (v.scripts && v.scripts.length > 0) {
-          result['scripts'] = v.scripts
-          hasData = true
-        }
-        if (v.css?.length) {
-          result['css'] = v.css
-          hasData = true
-        }
-        if (!hasData) {
-          return []
-        }
-        return [[k, result]]
-      }),
-    ),
+    routes: manifestRoutes,
   }
 
   return {

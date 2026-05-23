@@ -78,9 +78,10 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }
 
 function getRequestHeaders(opts: { router: AnyRouter }): Headers {
-  const matchHeaders = opts.router.stores.matches
-    .get()
-    .map<AnyHeaders>((match) => match.headers)
+  const matchHeaders: Array<AnyHeaders> = []
+  for (const match of opts.router.stores.matches.get()) {
+    matchHeaders.push(match.headers)
+  }
 
   // Handle Redirects
   const redirect = opts.router.stores.redirect.get()

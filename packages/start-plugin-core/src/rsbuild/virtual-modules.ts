@@ -566,18 +566,20 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     },
 
     updateServerFnResolver() {
-      for (const environmentName of new Set([
-        RSBUILD_ENVIRONMENT_NAMES.server,
-        ...(hasSeparateProviderEnvironment ? [opts.providerEnvName] : []),
-      ])) {
+      const updateEnvironment = (environmentName: string) => {
         if (!needsServerFnResolver(environmentName)) {
-          continue
+          return
         }
 
         writeResolverContent(
           environmentName,
           generateResolverContent(environmentName),
         )
+      }
+
+      updateEnvironment(RSBUILD_ENVIRONMENT_NAMES.server)
+      if (hasSeparateProviderEnvironment) {
+        updateEnvironment(opts.providerEnvName)
       }
     },
 

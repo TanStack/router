@@ -34,9 +34,7 @@ type RouteTreeRoute = {
 
 type RouteTreeRoutes = Record<string, RouteTreeRoute>
 
-type AdditionalRouteManifestEntry =
-  | ManifestCssLink
-  | ManifestScript
+type AdditionalRouteManifestEntry = ManifestCssLink | ManifestScript
 
 interface ScannedClientChunks {
   entryChunk: NormalizedClientChunk
@@ -165,9 +163,7 @@ function normalizeAttrs(attrs: Record<string, any> | undefined) {
 function mergeRouteChunkData(options: {
   route: RouteTreeRoute
   chunk: NormalizedClientChunk
-  getChunkCssAssets: (
-    chunk: NormalizedClientChunk,
-  ) => Array<ManifestCssLink>
+  getChunkCssAssets: (chunk: NormalizedClientChunk) => Array<ManifestCssLink>
   getChunkPreloads: (chunk: NormalizedClientChunk) => Array<string>
 }) {
   const stylesheets = options.getChunkCssAssets(options.chunk)
@@ -238,14 +234,10 @@ export function buildStartManifest(options: {
     additionalRouteAssets: options.additionalRouteAssets,
   })
 
-  dedupeNestedRouteManifestEntries(
-    rootRouteId,
-    routes[rootRouteId]!,
-    routes,
-  )
+  dedupeNestedRouteManifestEntries(rootRouteId, routes[rootRouteId]!, routes)
 
   // Prune routes with no manifest data
-  for (const routeId of Object.keys(routes)) {
+  for (const routeId in routes) {
     const route = routes[routeId]!
     const hasScripts = route.scripts && route.scripts.length > 0
     const hasCssLinks = route.css && route.css.length > 0
@@ -371,10 +363,7 @@ export function createChunkCssAssetCollector(options: {
   chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
   getStylesheetLink: (cssFile: string) => ManifestCssLink
 }) {
-  const linksByChunk = new Map<
-    NormalizedClientChunk,
-    Array<ManifestCssLink>
-  >()
+  const linksByChunk = new Map<NormalizedClientChunk, Array<ManifestCssLink>>()
   const stateByChunk = new Map<NormalizedClientChunk, number>()
 
   const appendAsset = (
@@ -456,7 +445,7 @@ function buildInlineCssManifestData(options: {
 
   const { getAssetPath } = createManifestAssetResolvers(options.basePath)
   const styles: Record<string, string> = {}
-  const templates: Record<string, InlineCssTemplate> = {}
+  let templates: Record<string, InlineCssTemplate> | undefined
   const missingHrefs = new Set(stylesheetHrefs)
 
   for (const [cssFile, css] of options.cssContentByFileName) {
@@ -473,6 +462,7 @@ function buildInlineCssManifestData(options: {
 
     styles[cssHref] = result.css
     if (result.template) {
+      templates ||= {}
       templates[cssHref] = result.template
     }
     missingHrefs.delete(cssHref)
@@ -488,7 +478,7 @@ function buildInlineCssManifestData(options: {
 
   return {
     styles,
-    ...(Object.keys(templates).length ? { templates } : {}),
+    ...(templates ? { templates } : {}),
   }
 }
 
@@ -599,9 +589,7 @@ function mergeReachableHydrationChunkData(options: {
   route: RouteTreeRoute
   chunk: NormalizedClientChunk
   chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
-  getChunkCssAssets: (
-    chunk: NormalizedClientChunk,
-  ) => Array<ManifestCssLink>
+  getChunkCssAssets: (chunk: NormalizedClientChunk) => Array<ManifestCssLink>
 }) {
   const visitedStaticChunks = new Set<string>()
   const mergedHydrationChunks = new Set<string>()

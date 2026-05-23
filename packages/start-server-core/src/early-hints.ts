@@ -196,11 +196,11 @@ export function collectStaticHintsFromManifest(
     }
 
     for (const link of routeManifest.css ?? []) {
-      const resolvedLink = resolveManifestCssLink(link)
       const stylesheetHref = getStylesheetHref(link)
       if (manifest.inlineCss?.styles[stylesheetHref] !== undefined) {
         continue
       }
+      const resolvedLink = resolveManifestCssLink(link)
 
       const hint: EarlyHint = {
         href: stylesheetHref,

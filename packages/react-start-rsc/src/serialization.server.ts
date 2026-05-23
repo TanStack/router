@@ -60,7 +60,13 @@ setOnClientReference(
       }
     }
 
-    if (!ctx || runtime === 'rsbuild') return
+    if (
+      !ctx ||
+      runtime === 'rsbuild' ||
+      (!deps.js.length && !deps.css.length)
+    ) {
+      return
+    }
 
     if (!ctx.requestAssets) ctx.requestAssets = {}
     const seenHrefs = new Set<string>()
@@ -68,19 +74,37 @@ setOnClientReference(
       seenHrefs.add(typeof preload === 'string' ? preload : preload.href)
     }
     for (const stylesheet of ctx.requestAssets.css ?? []) {
-      seenHrefs.add(typeof stylesheet === 'string' ? stylesheet : stylesheet.href)
+      seenHrefs.add(
+        typeof stylesheet === 'string' ? stylesheet : stylesheet.href,
+      )
     }
 
+    let nextPreloads: typeof ctx.requestAssets.preloads | undefined
     for (const href of deps.js) {
       if (seenHrefs.has(href)) continue
       seenHrefs.add(href)
-      ctx.requestAssets.preloads = [...(ctx.requestAssets.preloads ?? []), href]
+      if (!nextPreloads) {
+        nextPreloads = ctx.requestAssets.preloads
+          ? ctx.requestAssets.preloads.slice()
+          : []
+      }
+      nextPreloads.push(href)
+    }
+    if (nextPreloads) {
+      ctx.requestAssets.preloads = nextPreloads
     }
 
+    let nextCss: typeof ctx.requestAssets.css | undefined
     for (const href of deps.css) {
       if (seenHrefs.has(href)) continue
       seenHrefs.add(href)
-      ctx.requestAssets.css = [...(ctx.requestAssets.css ?? []), href]
+      if (!nextCss) {
+        nextCss = ctx.requestAssets.css ? ctx.requestAssets.css.slice() : []
+      }
+      nextCss.push(href)
+    }
+    if (nextCss) {
+      ctx.requestAssets.css = nextCss
     }
   },
 )

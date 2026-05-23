@@ -16,6 +16,25 @@ interface ScriptAttrs {
 
 const noopScriptHandler = () => {}
 
+function setScriptAttrs(
+  script: HTMLScriptElement,
+  attrs: ScriptAttrs | undefined,
+) {
+  if (!attrs) {
+    return
+  }
+
+  for (const [key, value] of Object.entries(attrs)) {
+    if (
+      key !== 'suppressHydrationWarning' &&
+      value !== undefined &&
+      value !== false
+    ) {
+      script.setAttribute(key, typeof value === 'boolean' ? '' : String(value))
+    }
+  }
+}
+
 export function Asset(
   asset: RouterManagedTag & {
     nonce?: string
@@ -152,36 +171,19 @@ function Script({
           return attrs.src
         }
       })()
-      const existingScript = Array.from(
-        document.querySelectorAll('script[src]'),
-      ).find((el) => (el as HTMLScriptElement).src === normSrc)
-
-      if (existingScript) {
-        return
+      for (const el of document.querySelectorAll('script[src]')) {
+        if ((el as HTMLScriptElement).src === normSrc) {
+          return
+        }
       }
 
       const script = document.createElement('script')
 
-      for (const [key, value] of Object.entries(attrs)) {
-        if (
-          key !== 'suppressHydrationWarning' &&
-          value !== undefined &&
-          value !== false
-        ) {
-          script.setAttribute(
-            key,
-            typeof value === 'boolean' ? '' : String(value),
-          )
-        }
-      }
+      setScriptAttrs(script, attrs)
 
       document.head.appendChild(script)
 
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      }
+      return () => script.remove()
     }
 
     if (typeof children === 'string') {
@@ -189,48 +191,29 @@ function Script({
         typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
       const nonceAttr =
         typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
-      const existingScript = Array.from(
-        document.querySelectorAll('script:not([src])'),
-      ).find((el) => {
-        if (!(el instanceof HTMLScriptElement)) return false
+      for (const el of document.querySelectorAll('script:not([src])')) {
+        if (!(el instanceof HTMLScriptElement)) {
+          continue
+        }
+
         const sType = el.getAttribute('type') ?? 'text/javascript'
         const sNonce = el.getAttribute('nonce') ?? undefined
-        return (
+        if (
           el.textContent === children &&
           sType === typeAttr &&
           sNonce === nonceAttr
-        )
-      })
-
-      if (existingScript) {
-        return
+        ) {
+          return
+        }
       }
 
       const script = document.createElement('script')
       script.textContent = children
-
-      if (attrs) {
-        for (const [key, value] of Object.entries(attrs)) {
-          if (
-            key !== 'suppressHydrationWarning' &&
-            value !== undefined &&
-            value !== false
-          ) {
-            script.setAttribute(
-              key,
-              typeof value === 'boolean' ? '' : String(value),
-            )
-          }
-        }
-      }
+      setScriptAttrs(script, attrs)
 
       document.head.appendChild(script)
 
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      }
+      return () => script.remove()
     }
 
     return undefined

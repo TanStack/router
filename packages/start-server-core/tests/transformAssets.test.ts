@@ -152,6 +152,40 @@ describe('transformAssets', () => {
     ])
   })
 
+  it('does not duplicate an object-form client entry preload', async () => {
+    const transformFn = vi.fn(({ url }) => ({
+      href: `https://cdn.example.com${url}`,
+      crossOrigin: 'anonymous' as const,
+    }))
+
+    const manifest = await transformManifestAssets(
+      {
+        manifest: {
+          routes: {
+            __root__: {
+              preloads: [
+                { href: '/assets/entry.js', crossOrigin: 'use-credentials' },
+              ],
+            },
+          },
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+    )
+
+    expect(manifest.routes.__root__?.preloads).toEqual([
+      {
+        href: 'https://cdn.example.com/assets/entry.js',
+        crossOrigin: 'anonymous',
+      },
+    ])
+    expect(transformFn).toHaveBeenCalledTimes(1)
+    expect(transformFn.mock.calls).toEqual([
+      [{ kind: 'script', url: '/assets/entry.js' }],
+    ])
+  })
+
   it('reuses the transformed client entry URL for matching preload and script tags', async () => {
     let signature = 0
     const transformFn = vi.fn(({ url }) => ({
@@ -258,10 +292,10 @@ describe('transformAssets', () => {
     const source: StartManifestWithClientEntry = {
       manifest: {
         routes: {
-            __root__: {
-              preloads: ['/assets/app.js'],
-              css: ['/assets/app.css'],
-            },
+          __root__: {
+            preloads: ['/assets/app.js'],
+            css: ['/assets/app.css'],
+          },
         },
       },
       clientEntry: '/assets/entry.js',

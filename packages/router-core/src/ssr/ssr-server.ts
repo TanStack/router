@@ -195,14 +195,25 @@ function getInlineCssHrefsForMatches(
   manifest: ServerManifest | undefined,
   matches: Array<AnyRouteMatch>,
 ) {
-  const inlineStyles = manifest?.inlineCss?.styles
-  if (!inlineStyles) return []
+  if (!manifest) {
+    return []
+  }
+
+  const inlineStyles = manifest.inlineCss?.styles
+  if (!inlineStyles) {
+    return []
+  }
 
   const seen = new Set<string>()
   const hrefs: Array<string> = []
+  const routes = manifest.routes
 
   for (const match of matches) {
-    const cssLinks = manifest?.routes[match.routeId]?.css ?? []
+    const cssLinks = routes[match.routeId]?.css
+    if (!cssLinks) {
+      continue
+    }
+
     for (const link of cssLinks) {
       const href = getStylesheetHref(link)
       if (seen.has(href) || inlineStyles[href] === undefined) {
@@ -226,7 +237,10 @@ function getInlineCssForHrefs(manifest: ServerManifest, hrefs: Array<string>) {
     if (cached !== undefined) return cached
   }
 
-  const css = hrefs.map((href) => styles[href]!).join('')
+  let css = ''
+  for (const href of hrefs) {
+    css += styles[href]!
+  }
 
   if (isProd) {
     getInlineCssCache(manifest).set(cacheKey, css)
@@ -256,24 +270,46 @@ function stripInlinedStylesheetAssets(
   }
 
   const nextRoutes: FilteredRoutes = {}
+  let changed = false
 
   for (const [routeId, route] of Object.entries(routes)) {
-    const cssLinks = route.css?.filter(
-      (link) => !isInlinableStylesheet(manifest, link),
-    )
+    const css = route.css
+    let cssLinks: typeof css | undefined
 
-    const nextRoute = { ...route }
-    if (cssLinks) {
-      if (cssLinks.length > 0) {
-        nextRoute.css = cssLinks
-      } else {
-        delete nextRoute.css
+    if (css) {
+      if (css.length === 0) {
+        changed = true
+        cssLinks = []
+      }
+
+      for (let i = 0; i < css.length; i++) {
+        const link = css[i]!
+        if (!isInlinableStylesheet(manifest, link)) {
+          if (cssLinks) {
+            cssLinks.push(link)
+          }
+          continue
+        }
+
+        changed = true
+        if (!cssLinks) {
+          cssLinks = css.slice(0, i)
+        }
       }
     }
-    nextRoutes[routeId] = nextRoute
+
+    if (cssLinks) {
+      nextRoutes[routeId] =
+        cssLinks.length > 0 ? { ...route, css: cssLinks } : { ...route }
+      if (cssLinks.length === 0) {
+        delete nextRoutes[routeId].css
+      }
+    } else {
+      nextRoutes[routeId] = route
+    }
   }
 
-  return nextRoutes
+  return changed ? nextRoutes : routes
 }
 
 function hasRouteAssets(route: ManifestRoute) {
@@ -288,24 +324,21 @@ function mergeRequestAssetsIntoRootRoute(
   rootRoute: ManifestRoute | undefined,
   requestAssets: ManifestRouteAssets | undefined,
 ): ManifestRoute {
-  const preloads = [
-    ...(requestAssets?.preloads ?? []),
-    ...(rootRoute?.preloads ?? []),
-  ]
-  const scripts = [
-    ...(requestAssets?.scripts ?? []),
-    ...(rootRoute?.scripts ?? []),
-  ]
-  const cssLinks = [
-    ...(requestAssets?.css ?? []),
-    ...(rootRoute?.css ?? []),
-  ]
+  const preloads = requestAssets?.preloads?.length
+    ? [...requestAssets.preloads, ...(rootRoute?.preloads ?? [])]
+    : rootRoute?.preloads
+  const scripts = requestAssets?.scripts?.length
+    ? [...requestAssets.scripts, ...(rootRoute?.scripts ?? [])]
+    : rootRoute?.scripts
+  const cssLinks = requestAssets?.css?.length
+    ? [...requestAssets.css, ...(rootRoute?.css ?? [])]
+    : rootRoute?.css
 
   return {
     ...(rootRoute ?? {}),
-    ...(preloads.length ? { preloads } : {}),
-    ...(scripts.length ? { scripts } : {}),
-    ...(cssLinks.length ? { css: cssLinks } : {}),
+    ...(preloads?.length ? { preloads } : {}),
+    ...(scripts?.length ? { scripts } : {}),
+    ...(cssLinks?.length ? { css: cssLinks } : {}),
   }
 }
 

@@ -382,10 +382,14 @@ function appendUniqueManifestAssetLink(
   target: Array<ManifestAssetLink> | undefined,
   link: ManifestAssetLink,
 ) {
-  const href = resolveManifestAssetLink(link).href
+  const href = typeof link === 'string' ? link : link.href
 
-  if (target?.some((item) => resolveManifestAssetLink(item).href === href)) {
-    return target
+  if (target) {
+    for (const item of target) {
+      if ((typeof item === 'string' ? item : item.href) === href) {
+        return target
+      }
+    }
   }
 
   return [...(target ?? []), link]
@@ -461,7 +465,7 @@ export async function transformManifestAssets(
   addClientEntryToManifest(manifest, source.clientEntry)
 
   for (const route of Object.values(manifest.routes)) {
-    if (route.preloads) {
+    if (route.preloads?.length) {
       route.preloads = await Promise.all(
         route.preloads.map(async (link) => {
           const resolved = resolveManifestAssetLink(link)
@@ -475,7 +479,7 @@ export async function transformManifestAssets(
       )
     }
 
-    if (route.css && !manifest.inlineCss) {
+    if (route.css?.length && !manifest.inlineCss) {
       route.css = await Promise.all(
         route.css.map(async (link) => {
           const resolved = resolveManifestCssLink(link)
@@ -494,7 +498,7 @@ export async function transformManifestAssets(
       )
     }
 
-    if (route.scripts) {
+    if (route.scripts?.length) {
       for (const script of route.scripts) {
         const src = script.attrs?.src
         if (typeof src !== 'string') {

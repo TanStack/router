@@ -34,7 +34,7 @@ function attrsMatch(attrs: Record<string, any>, element: Element) {
     }
   }
 
-  return expectedAttrCount === element.getAttributeNames().length
+  return expectedAttrCount === element.attributes.length
 }
 
 function reconcileHydratedHead(
@@ -61,10 +61,7 @@ function reconcileHydratedHead(
     }
 
     for (const element of hydratedLinks) {
-      if (
-        !matchedHeadElements.has(element) &&
-        attrsMatch(attrs!, element)
-      ) {
+      if (!matchedHeadElements.has(element) && attrsMatch(attrs!, element)) {
         matchedHeadElements.add(element)
         const key = JSON.stringify(tag)
         ;(preservedHeadTagElements[key] ||= []).push(element)

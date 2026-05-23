@@ -31,13 +31,11 @@ export const Scripts = Vue.defineComponent({
         const routeManifest = manifest.routes[match.routeId]
 
         routeManifest?.scripts?.forEach((asset) => {
-          const scriptAsset = {
+          assetScripts.push({
             tag: 'script',
             attrs: { ...asset.attrs, nonce },
             children: asset.children,
-          } satisfies RouterManagedTag
-
-          assetScripts.push(scriptAsset)
+          })
         })
       })
 

@@ -124,7 +124,7 @@ describe('final manifest resolver', () => {
 
     await expect(warmupPromise).resolves.toBe(requestManifest)
     expect(requestManifest.inlineCss).toBeUndefined()
-    expect(transformAssets).toHaveBeenCalledTimes(2)
+    expect(transformAssets).toHaveBeenCalledTimes(1)
   })
 
   it('does not warm up when the inline CSS default is request-dependent', () => {

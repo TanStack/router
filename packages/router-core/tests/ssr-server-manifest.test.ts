@@ -152,9 +152,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     const router = buildRouter()
     const manifest = buildManifest()
     const requestAssets: ManifestRouteAssets = {
-      preloads: [
-        { href: '/assets/rsc-client.js', crossOrigin: 'anonymous' },
-      ],
+      preloads: [{ href: '/assets/rsc-client.js', crossOrigin: 'anonymous' }],
       scripts: [
         {
           attrs: {
@@ -164,9 +162,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
           children: 'console.log("request")',
         },
       ],
-      css: [
-        { href: '/assets/rsc-client.css', crossOrigin: 'use-credentials' },
-      ],
+      css: [{ href: '/assets/rsc-client.css', crossOrigin: 'use-credentials' }],
     }
 
     attachRouterServerSsrUtils({
@@ -202,9 +198,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     const router = buildRouter()
     const manifest = buildManifest()
     const requestAssets: ManifestRouteAssets = {
-      preloads: [
-        { href: '/assets/rsc-client.js', crossOrigin: 'anonymous' },
-      ],
+      preloads: [{ href: '/assets/rsc-client.js', crossOrigin: 'anonymous' }],
     }
 
     attachRouterServerSsrUtils({
@@ -233,9 +227,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     await router.load()
     await router.serverSsr!.dehydrate({
       requestAssets: {
-        preloads: [
-          { href: '/assets/rsc-client.js', crossOrigin: 'anonymous' },
-        ],
+        preloads: [{ href: '/assets/rsc-client.js', crossOrigin: 'anonymous' }],
         scripts: [
           {
             attrs: {
@@ -256,7 +248,9 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
 
     const script = router.serverSsr!.takeBufferedScripts()
     expect(script?.children).toBeTruthy()
-    const dehydratedManifest = parseSerializedRouter(script!.children!).manifest!
+    const dehydratedManifest = parseSerializedRouter(
+      script!.children!,
+    ).manifest!
 
     expect(dehydratedManifest.routes.__root__).toMatchObject({
       preloads: [
@@ -295,15 +289,15 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     await router.load()
     await router.serverSsr!.dehydrate({
       requestAssets: {
-        preloads: [
-          { href: '/assets/rsc-client.js', crossOrigin: 'anonymous' },
-        ],
+        preloads: [{ href: '/assets/rsc-client.js', crossOrigin: 'anonymous' }],
       },
     })
 
     const script = router.serverSsr!.takeBufferedScripts()
     expect(script?.children).toBeTruthy()
-    const dehydratedManifest = parseSerializedRouter(script!.children!).manifest!
+    const dehydratedManifest = parseSerializedRouter(
+      script!.children!,
+    ).manifest!
 
     expect(dehydratedManifest.routes.__root__?.preloads).toEqual([
       { href: '/assets/rsc-client.js', crossOrigin: 'anonymous' },
@@ -352,6 +346,72 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
           : asset.href === '/assets/shared.css',
       ),
     ).toBe(false)
+    expect(dehydratedManifest.routes['/']?.preloads).toEqual([
+      '/assets/index.js',
+    ])
+  })
+
+  test('strips only inlinable stylesheet links from dehydrated manifest data', async () => {
+    const router = buildRouter()
+    const manifest: ServerManifest = {
+      inlineCss: {
+        styles: {
+          '/assets/root-inline.css': '.root{color:red}',
+          '/assets/index-inline.css': '.index{color:blue}',
+        },
+      },
+      routes: {
+        __root__: {
+          css: [
+            '/assets/root-inline.css',
+            {
+              href: '/assets/root-linked.css',
+              crossOrigin: 'anonymous',
+            },
+          ],
+        },
+        '/': {
+          css: [
+            {
+              href: '/assets/index-inline.css',
+              crossOrigin: 'use-credentials',
+            },
+            '/assets/index-linked.css',
+          ],
+          preloads: ['/assets/index.js'],
+        },
+      },
+    }
+
+    attachRouterServerSsrUtils({
+      router,
+      manifest,
+      includeUnmatchedRouteAssets: false,
+    })
+
+    await router.load()
+
+    expect(router.ssr!.manifest?.inlineStyle).toMatchObject({
+      children: '.root{color:red}.index{color:blue}',
+    })
+
+    await router.serverSsr!.dehydrate()
+
+    const script = router.serverSsr!.takeBufferedScripts()
+    expect(script?.children).toBeTruthy()
+    const dehydratedManifest = parseSerializedRouter(
+      script!.children!,
+    ).manifest!
+
+    expect(dehydratedManifest.routes.__root__?.css).toEqual([
+      {
+        href: '/assets/root-linked.css',
+        crossOrigin: 'anonymous',
+      },
+    ])
+    expect(dehydratedManifest.routes['/']?.css).toEqual([
+      '/assets/index-linked.css',
+    ])
     expect(dehydratedManifest.routes['/']?.preloads).toEqual([
       '/assets/index.js',
     ])

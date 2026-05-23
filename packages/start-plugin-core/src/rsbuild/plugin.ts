@@ -63,6 +63,7 @@ type RscPluginPair = ReturnType<
 type RspackConfig = Parameters<ModifyRspackConfigFn>[0]
 type RspackCompiler = Rspack.Compiler
 type RspackCompilationExtended = Rspack.Compilation
+type RspackAsset = ReturnType<RspackCompilationExtended['getAssets']>[number]
 
 export function tanStackStartRsbuild(
   corePluginOpts: TanStackStartRsbuildPluginCoreOptions,
@@ -626,18 +627,32 @@ export function tanStackStartRsbuild(
                           .PROCESS_ASSETS_STAGE_OPTIMIZE_SIZE,
                     },
                     () => {
-                      const assetsWithPlaceholder = compilation
-                        .getAssets()
-                        .flatMap((asset) => {
-                          if (!asset.name.endsWith('.js')) return []
+                      let assetsWithPlaceholder:
+                        | Array<{ asset: RspackAsset; sourceStr: string }>
+                        | undefined
 
-                          const sourceStr = String(asset.source.source())
-                          return sourceStr.includes(manifestPlaceholderLiteral)
-                            ? [{ asset, sourceStr }]
-                            : []
+                      for (const asset of compilation.getAssets()) {
+                        if (!asset.name.endsWith('.js')) {
+                          continue
+                        }
+
+                        const sourceStr = String(asset.source.source())
+                        if (!sourceStr.includes(manifestPlaceholderLiteral)) {
+                          continue
+                        }
+
+                        if (!assetsWithPlaceholder) {
+                          assetsWithPlaceholder = []
+                        }
+                        assetsWithPlaceholder.push({
+                          asset,
+                          sourceStr,
                         })
+                      }
 
-                      if (assetsWithPlaceholder.length === 0) return
+                      if (!assetsWithPlaceholder) {
+                        return
+                      }
 
                       const clientBuild = getClientBuild()
                       if (!clientBuild) {
@@ -726,25 +741,25 @@ function rebuildModulesContaining(
   compilation: RspackCompilationExtended,
   identifierFragment: string,
 ): Promise<void> {
-  const modulesToRebuild = Array.from(compilation.modules).filter((mod) =>
-    mod.identifier().includes(identifierFragment),
-  )
+  const rebuilds: Array<Promise<void>> = []
+  for (const mod of compilation.modules) {
+    if (!mod.identifier().includes(identifierFragment)) {
+      continue
+    }
 
-  if (modulesToRebuild.length === 0) {
-    return Promise.resolve()
+    rebuilds.push(
+      new Promise<void>((resolve, reject) => {
+        compilation.rebuildModule(mod, (err: Error | null) => {
+          if (err) reject(err)
+          else resolve()
+        })
+      }),
+    )
   }
 
-  return Promise.all(
-    modulesToRebuild.map(
-      (mod) =>
-        new Promise<void>((resolve, reject) => {
-          compilation.rebuildModule(mod, (err: Error | null) => {
-            if (err) reject(err)
-            else resolve()
-          })
-        }),
-    ),
-  ).then(() => undefined)
+  return rebuilds.length === 0
+    ? Promise.resolve()
+    : Promise.all(rebuilds).then(() => undefined)
 }
 
 /**

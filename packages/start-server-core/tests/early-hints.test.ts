@@ -124,6 +124,35 @@ describe('early hints', () => {
     ])
   })
 
+  it('skips object-form static stylesheet hints when inline CSS is enabled', () => {
+    const manifest: ServerManifest = {
+      inlineCss: {
+        styles: {
+          '/assets/posts.css': '.posts{}',
+        },
+      },
+      routes: {
+        '/posts': {
+          preloads: ['/assets/posts.js'],
+          css: [
+            {
+              href: '/assets/posts.css',
+              crossOrigin: 'use-credentials',
+            },
+          ],
+        },
+      },
+    }
+
+    expect(
+      collectStaticHintsFromManifest(manifest, [
+        { id: '/posts' },
+      ] as Array<AnyRoute>),
+    ).toEqual([
+      { href: '/assets/posts.js', rel: 'modulepreload', as: 'script' },
+    ])
+  })
+
   it('collects static route JS hints as preload script for iife manifests', () => {
     const manifest: ServerManifest = {
       scriptFormat: 'iife',
