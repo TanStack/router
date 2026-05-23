@@ -45,12 +45,16 @@ test.describe('transformAssets with CDN prefix', () => {
     const html = await getSSRHtml(page)
 
     // All script preload links should point to the CDN origin
-    const scriptPreloads = html.match(/rel="modulepreload"[^>]*href="([^"]+)"/g)
+    const scriptPreloads = Array.from(
+      html.matchAll(
+        /<link\b(?=[^>]*\brel="modulepreload")(?=[^>]*\bhref="([^"]+)")[^>]*>/g,
+      ),
+    )
     expect(scriptPreloads).toBeTruthy()
-    expect(scriptPreloads!.length).toBeGreaterThan(0)
+    expect(scriptPreloads.length).toBeGreaterThan(0)
 
-    for (const match of scriptPreloads!) {
-      const href = match.match(/href="([^"]+)"/)?.[1]
+    for (const match of scriptPreloads) {
+      const href = match[1]
       expect(href).toBeTruthy()
       expect(href).toMatch(/^http:\/\/localhost:\d+\//)
     }

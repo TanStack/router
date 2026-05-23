@@ -14,6 +14,26 @@ import {
 } from '../../src/vite/import-protection-plugin/virtualModules'
 import type { ViolationInfo } from '../../src/import-protection/trace'
 
+type MockValue = {
+  toString: () => string
+  valueOf: () => string
+  toJSON: () => string
+}
+
+type MockFunction = {
+  (): MockValue
+}
+
+function evaluateGeneratedModule<T>(code: string): T {
+  const exports: Record<string, unknown> = {}
+  const runnableCode = code
+    .replace(/export default mock;?/g, 'exports.default = mock;')
+    .replace(/export const ([A-Za-z_$][\w$]*) = ([^;]+);/g, 'exports.$1 = $2;')
+
+  new Function('exports', runnableCode)(exports)
+  return exports as T
+}
+
 describe('loadSilentMockModule', () => {
   test('returns mock code', () => {
     const result = loadSilentMockModule()
@@ -22,6 +42,17 @@ describe('loadSilentMockModule', () => {
     expect(result.code).toContain('Proxy')
     expect(result.code).toContain('@__NO_SIDE_EFFECTS__')
     expect(result.code).toContain('@__PURE__')
+  })
+
+  test('supports primitive conversion for called mocks', async () => {
+    const result = loadSilentMockModule()
+    const mod = evaluateGeneratedModule<{ default: MockFunction }>(result.code)
+    const value = mod.default()
+
+    expect(String(value)).toBe('[import-protection mock]')
+    expect(value.toString()).toBe('[import-protection mock]')
+    expect(value.valueOf()).toBe('[import-protection mock]')
+    expect(JSON.stringify(value)).toBe('"[import-protection mock]"')
   })
 })
 
@@ -268,7 +299,16 @@ describe('generateSelfContainedMockModule', () => {
   test('is self-contained (no imports)', () => {
     const result = generateSelfContainedMockModule(['foo'])
     // Should not import from any other module
-    expect(result.code).not.toMatch(/\bimport\b/)
+    expect(result.code).not.toMatch(/^\s*import\s/m)
+  })
+
+  test('supports primitive conversion for named export calls', async () => {
+    const result = generateSelfContainedMockModule(['getSecret'])
+    const mod = evaluateGeneratedModule<{ getSecret: MockFunction }>(
+      result.code,
+    )
+
+    expect(String(mod.getSecret())).toBe('[import-protection mock]')
   })
 })
 
