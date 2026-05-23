@@ -44,7 +44,7 @@ describe('loadSilentMockModule', () => {
     expect(result.code).toContain('@__PURE__')
   })
 
-  test('supports primitive conversion for called mocks', async () => {
+  test('supports primitive conversion for called mocks', () => {
     const result = loadSilentMockModule()
     const mod = evaluateGeneratedModule<{ default: MockFunction }>(result.code)
     const value = mod.default()
@@ -302,7 +302,7 @@ describe('generateSelfContainedMockModule', () => {
     expect(result.code).not.toMatch(/^\s*import\s/m)
   })
 
-  test('supports primitive conversion for named export calls', async () => {
+  test('supports primitive conversion for named export calls', () => {
     const result = generateSelfContainedMockModule(['getSecret'])
     const mod = evaluateGeneratedModule<{ getSecret: MockFunction }>(
       result.code,
