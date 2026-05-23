@@ -807,9 +807,7 @@ export interface ServerSsr {
   setRenderFinished: () => void
   cleanup: () => void
   onSerializationFinished: (listener: () => void) => void
-  dehydrate: (opts?: {
-    requestAssets?: ManifestRouteAssets
-  }) => Promise<void>
+  dehydrate: (opts?: { requestAssets?: ManifestRouteAssets }) => Promise<void>
   takeBufferedScripts: () => RouterManagedTag | undefined
   /**
    * Takes any buffered HTML that was injected.

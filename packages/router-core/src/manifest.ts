@@ -195,14 +195,6 @@ export function resolveManifestCssLink(link: ManifestCssLink) {
   return link
 }
 
-export function isInlinableStylesheet(
-  manifest: ServerManifest | undefined,
-  asset: ManifestCssLink,
-) {
-  const href = getStylesheetHref(asset)
-  return manifest?.inlineCss?.styles[href] !== undefined
-}
-
 export function createInlineCssStyleAsset(css: string): ManifestInlineCss {
   return {
     attrs: {

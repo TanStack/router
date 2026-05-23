@@ -67,16 +67,13 @@ function buildInlineManifest(): ServerManifest {
   }
 }
 
-async function dehydrateManifest(options?: {
-  includeUnmatchedRouteAssets?: boolean
-}) {
+async function dehydrateManifest() {
   const router = buildRouter()
   const manifest = buildManifest()
 
   attachRouterServerSsrUtils({
     router,
     manifest,
-    includeUnmatchedRouteAssets: options?.includeUnmatchedRouteAssets,
   })
 
   await router.load()
@@ -107,18 +104,8 @@ function parseSerializedRouter(serialized: string): DehydratedRouter {
 }
 
 describe('attachRouterServerSsrUtils manifest dehydration', () => {
-  test('includes unmatched route assets by default', async () => {
+  test('omits unmatched route assets by default', async () => {
     const manifest = await dehydrateManifest()
-
-    expect(manifest.routes['/posts']).toEqual({
-      css: ['/assets/shared.css'],
-    })
-  })
-
-  test('omits unmatched route assets when disabled', async () => {
-    const manifest = await dehydrateManifest({
-      includeUnmatchedRouteAssets: false,
-    })
 
     expect(manifest.routes['/posts']).toBeUndefined()
     expect(manifest.routes['/']?.preloads).toEqual(['/assets/index.js'])
@@ -312,7 +299,6 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     attachRouterServerSsrUtils({
       router,
       manifest,
-      includeUnmatchedRouteAssets: false,
     })
 
     await router.load()
@@ -386,7 +372,6 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     attachRouterServerSsrUtils({
       router,
       manifest,
-      includeUnmatchedRouteAssets: false,
     })
 
     await router.load()

@@ -4,7 +4,6 @@ import {
   createInlineCssPlaceholderAsset,
   createInlineCssStyleAsset,
   getStylesheetHref,
-  isInlinableStylesheet,
 } from '../manifest'
 import { decodePath } from '../utils'
 import { createLRUCache } from '../lru-cache'
@@ -168,148 +167,182 @@ const isProd = process.env.NODE_ENV === 'production'
 
 type FilteredRoutes = Manifest['routes']
 
-type ManifestLRU = LRUCache<string, FilteredRoutes>
-type InlineCssLRU = LRUCache<string, string>
+type PreparedMatchedManifestRoutes = {
+  routes: FilteredRoutes
+  hasStrippedRoutes: boolean
+  inlineCssHrefs?: Array<string>
+  inlineCss?: string
+}
+
+type ManifestLRU = LRUCache<string, PreparedMatchedManifestRoutes>
 
 const MANIFEST_CACHE_SIZE = 100
 const manifestCaches = new WeakMap<ServerManifest, ManifestLRU>()
-const inlineCssCaches = new WeakMap<ServerManifest, InlineCssLRU>()
 
 function getManifestCache(manifest: ServerManifest): ManifestLRU {
   const cache = manifestCaches.get(manifest)
   if (cache) return cache
-  const newCache = createLRUCache<string, FilteredRoutes>(MANIFEST_CACHE_SIZE)
+  const newCache = createLRUCache<string, PreparedMatchedManifestRoutes>(
+    MANIFEST_CACHE_SIZE,
+  )
   manifestCaches.set(manifest, newCache)
   return newCache
 }
 
-function getInlineCssCache(manifest: ServerManifest): InlineCssLRU {
-  const cache = inlineCssCaches.get(manifest)
-  if (cache) return cache
-  const newCache = createLRUCache<string, string>(MANIFEST_CACHE_SIZE)
-  inlineCssCaches.set(manifest, newCache)
-  return newCache
-}
-
-function getInlineCssHrefsForMatches(
-  manifest: ServerManifest | undefined,
-  matches: Array<AnyRouteMatch>,
+function getInlineCssForPreparedRoutes(
+  manifest: ServerManifest,
+  preparedRoutes: PreparedMatchedManifestRoutes,
 ) {
-  if (!manifest) {
-    return []
-  }
+  if (preparedRoutes.inlineCss !== undefined) return preparedRoutes.inlineCss
 
-  const inlineStyles = manifest.inlineCss?.styles
-  if (!inlineStyles) {
-    return []
-  }
-
-  const seen = new Set<string>()
-  const hrefs: Array<string> = []
-  const routes = manifest.routes
-
-  for (const match of matches) {
-    const cssLinks = routes[match.routeId]?.css
-    if (!cssLinks) {
-      continue
-    }
-
-    for (const link of cssLinks) {
-      const href = getStylesheetHref(link)
-      if (seen.has(href) || inlineStyles[href] === undefined) {
-        continue
-      }
-      seen.add(href)
-      hrefs.push(href)
-    }
-  }
-
-  return hrefs
-}
-
-function getInlineCssForHrefs(manifest: ServerManifest, hrefs: Array<string>) {
   const styles = manifest.inlineCss?.styles
-  if (!styles || hrefs.length === 0) return undefined
-
-  const cacheKey = hrefs.join('\0')
-  if (isProd) {
-    const cached = getInlineCssCache(manifest).get(cacheKey)
-    if (cached !== undefined) return cached
-  }
+  const hrefs = preparedRoutes.inlineCssHrefs
+  if (!styles || !hrefs?.length) return undefined
 
   let css = ''
   for (const href of hrefs) {
     css += styles[href]!
   }
 
-  if (isProd) {
-    getInlineCssCache(manifest).set(cacheKey, css)
-  }
-
+  preparedRoutes.inlineCss = css
   return css
 }
 
-function getInlineCssAssetForMatches(
-  manifest: ServerManifest | undefined,
-  matches: Array<AnyRouteMatch>,
+function getInlineCssAssetForPreparedRoutes(
+  manifest: ServerManifest,
+  preparedRoutes: PreparedMatchedManifestRoutes,
 ) {
-  if (!manifest?.inlineCss) return undefined
-
-  const hrefs = getInlineCssHrefsForMatches(manifest, matches)
-  const css = getInlineCssForHrefs(manifest, hrefs)
+  const css = getInlineCssForPreparedRoutes(manifest, preparedRoutes)
 
   return css === undefined ? undefined : createInlineCssStyleAsset(css)
 }
 
-function stripInlinedStylesheetAssets(
+function getMatchedRoutesCacheKey(matches: Array<AnyRouteMatch>) {
+  let cacheKey = ''
+  for (let i = 0; i < matches.length; i++) {
+    cacheKey += (i === 0 ? '' : '\0') + matches[i]!.routeId
+  }
+  return cacheKey
+}
+
+function getPreparedMatchedManifestRoutes(
   manifest: ServerManifest,
-  routes: FilteredRoutes,
-): FilteredRoutes {
-  if (!manifest.inlineCss) {
-    return routes
-  }
-
-  const nextRoutes: FilteredRoutes = {}
-  let changed = false
-
-  for (const [routeId, route] of Object.entries(routes)) {
-    const css = route.css
-    let cssLinks: typeof css | undefined
-
-    if (css) {
-      if (css.length === 0) {
-        changed = true
-        cssLinks = []
-      }
-
-      for (let i = 0; i < css.length; i++) {
-        const link = css[i]!
-        if (!isInlinableStylesheet(manifest, link)) {
-          if (cssLinks) {
-            cssLinks.push(link)
-          }
-          continue
-        }
-
-        changed = true
-        if (!cssLinks) {
-          cssLinks = css.slice(0, i)
-        }
-      }
-    }
-
-    if (cssLinks) {
-      nextRoutes[routeId] =
-        cssLinks.length > 0 ? { ...route, css: cssLinks } : { ...route }
-      if (cssLinks.length === 0) {
-        delete nextRoutes[routeId].css
-      }
-    } else {
-      nextRoutes[routeId] = route
+  matches: Array<AnyRouteMatch>,
+  cacheKey: string,
+) {
+  if (isProd) {
+    const cached = getManifestCache(manifest).get(cacheKey)
+    if (cached) {
+      return cached
     }
   }
 
-  return changed ? nextRoutes : routes
+  const preparedRoutes = prepareMatchedManifestRoutes(manifest, matches)
+
+  if (isProd) {
+    getManifestCache(manifest).set(cacheKey, preparedRoutes)
+  }
+
+  return preparedRoutes
+}
+
+function prepareMatchedManifestRoutes(
+  manifest: ServerManifest,
+  matches: Array<AnyRouteMatch>,
+): PreparedMatchedManifestRoutes {
+  const inlineStyles = manifest.inlineCss?.styles
+  const routes: FilteredRoutes = {}
+
+  if (!inlineStyles) {
+    for (const match of matches) {
+      const route = manifest.routes[match.routeId]
+      if (route) {
+        routes[match.routeId] = route
+      }
+    }
+    return { routes, hasStrippedRoutes: false }
+  }
+
+  const inlineCssHrefs: Array<string> = []
+  const seenInlineCssHrefs = new Set<string>()
+  let hasStrippedRoutes = false
+
+  for (const match of matches) {
+    const routeId = match.routeId
+    const route = manifest.routes[routeId]
+    if (!route) {
+      continue
+    }
+
+    const nextRoute = stripInlinedStylesheetAssetsFromRoute(
+      inlineStyles,
+      route,
+      inlineCssHrefs,
+      seenInlineCssHrefs,
+    )
+
+    if (nextRoute !== route) {
+      hasStrippedRoutes = true
+    }
+    routes[routeId] = nextRoute
+  }
+
+  return {
+    routes,
+    hasStrippedRoutes,
+    ...(inlineCssHrefs.length ? { inlineCssHrefs } : {}),
+  }
+}
+
+function stripInlinedStylesheetAssetsFromRoute(
+  inlineStyles: Record<string, string>,
+  route: ManifestRoute,
+  inlineCssHrefs: Array<string>,
+  seenInlineCssHrefs: Set<string>,
+): ManifestRoute {
+  const css = route.css
+  if (!css) {
+    return route
+  }
+
+  if (css.length === 0) {
+    const nextRoute = { ...route }
+    delete nextRoute.css
+    return nextRoute
+  }
+
+  let cssLinks: typeof css | undefined
+  for (let i = 0; i < css.length; i++) {
+    const link = css[i]!
+    const href = getStylesheetHref(link)
+    if (inlineStyles[href] === undefined) {
+      if (cssLinks) {
+        cssLinks.push(link)
+      }
+      continue
+    }
+
+    if (!seenInlineCssHrefs.has(href)) {
+      seenInlineCssHrefs.add(href)
+      inlineCssHrefs.push(href)
+    }
+
+    if (!cssLinks) {
+      cssLinks = css.slice(0, i)
+    }
+  }
+
+  if (!cssLinks) {
+    return route
+  }
+
+  if (cssLinks.length > 0) {
+    return { ...route, css: cssLinks }
+  }
+
+  const nextRoute = { ...route }
+  delete nextRoute.css
+  return nextRoute
 }
 
 function hasRouteAssets(route: ManifestRoute) {
@@ -346,12 +379,10 @@ export function attachRouterServerSsrUtils({
   router,
   manifest,
   getRequestAssets,
-  includeUnmatchedRouteAssets = true,
 }: {
   router: AnyRouter
   manifest: ServerManifest | undefined
   getRequestAssets?: () => ManifestRouteAssets | undefined
-  includeUnmatchedRouteAssets?: boolean
 }) {
   router.ssr = {
     get manifest() {
@@ -359,18 +390,31 @@ export function attachRouterServerSsrUtils({
 
       const requestAssets = getRequestAssets?.()
       const matches = router.stores.matches.get()
-      const inlineCssAsset = getInlineCssAssetForMatches(manifest, matches)
+      const hasAssets = hasRequestAssets(requestAssets)
 
-      if (
-        !hasRequestAssets(requestAssets) &&
-        !inlineCssAsset &&
-        !manifest.inlineCss
-      ) {
+      if (!hasAssets && !manifest.inlineCss) {
         return manifest
       }
 
-      const routes = stripInlinedStylesheetAssets(manifest, manifest.routes)
-      if (!hasRequestAssets(requestAssets)) {
+      let inlineCssAsset: Manifest['inlineStyle'] | undefined
+      let routes = manifest.routes
+      if (manifest.inlineCss) {
+        const cacheKey = getMatchedRoutesCacheKey(matches)
+        const preparedManifest = getPreparedMatchedManifestRoutes(
+          manifest,
+          matches,
+          cacheKey,
+        )
+        inlineCssAsset = getInlineCssAssetForPreparedRoutes(
+          manifest,
+          preparedManifest,
+        )
+        if (preparedManifest.hasStrippedRoutes) {
+          routes = { ...manifest.routes, ...preparedManifest.routes }
+        }
+      }
+
+      if (!hasAssets) {
         return {
           ...(manifest.scriptFormat
             ? { scriptFormat: manifest.scriptFormat }
@@ -436,73 +480,37 @@ export function attachRouterServerSsrUtils({
       const matches = matchesToDehydrate.map(dehydrateMatch)
 
       let manifestToDehydrate: Manifest | undefined = undefined
-      // For currently matched routes, send full manifest data.
-      // For unmatched routes, include renderable assets only when includeUnmatchedRouteAssets
-      // is true; otherwise omit them entirely. Preloads for unmatched routes are
-      // still excluded because they are handled via dynamic imports.
+      // Only currently matched routes are dehydrated. Other route assets are
+      // loaded through dynamic imports when those routes become active.
       if (manifest) {
-        // Prod-only caching; in dev manifests may be replaced/updated (HMR)
-        const currentRouteIdsList = matchesToDehydrate.map((m) => m.routeId)
-        const manifestCacheKey = `${currentRouteIdsList.join('\0')}\0includeUnmatchedRouteAssets=${includeUnmatchedRouteAssets}`
-
-        let filteredRoutes: FilteredRoutes | undefined
-
-        if (isProd) {
-          filteredRoutes = getManifestCache(manifest).get(manifestCacheKey)
-        }
-
-        if (!filteredRoutes) {
-          const currentRouteIds = new Set(currentRouteIdsList)
-          const nextFilteredRoutes: FilteredRoutes = {}
-
-          for (const routeId in manifest.routes) {
-            const routeManifest = manifest.routes[routeId]!
-            if (currentRouteIds.has(routeId)) {
-              nextFilteredRoutes[routeId] = routeManifest
-            } else if (
-              includeUnmatchedRouteAssets &&
-              hasRouteAssets(routeManifest)
-            ) {
-              nextFilteredRoutes[routeId] = {
-                ...(routeManifest.scripts
-                  ? { scripts: routeManifest.scripts }
-                  : {}),
-                ...(routeManifest.css ? { css: routeManifest.css } : {}),
-              }
-            }
-          }
-
-          filteredRoutes = stripInlinedStylesheetAssets(
-            manifest,
-            nextFilteredRoutes,
-          )
-
-          if (isProd) {
-            getManifestCache(manifest).set(manifestCacheKey, filteredRoutes)
-          }
-        }
-
-        const inlineCssAsset = getInlineCssAssetForMatches(
+        const cacheKey = getMatchedRoutesCacheKey(matchesToDehydrate)
+        const preparedManifest = getPreparedMatchedManifestRoutes(
           manifest,
           matchesToDehydrate,
+          cacheKey,
         )
 
         manifestToDehydrate = {
           ...(manifest.scriptFormat
             ? { scriptFormat: manifest.scriptFormat }
             : {}),
-          ...(inlineCssAsset
+          ...(preparedManifest.inlineCssHrefs
             ? { inlineStyle: createInlineCssPlaceholderAsset() }
             : {}),
-          routes: { ...filteredRoutes },
+          routes: preparedManifest.routes,
         }
 
         // Merge request-scoped assets into root route (without mutating cached manifest)
         const requestAssets = opts?.requestAssets
         if (hasRequestAssets(requestAssets)) {
           const existingRoot = manifestToDehydrate.routes[rootRouteId]
-          manifestToDehydrate.routes[rootRouteId] =
-            mergeRequestAssetsIntoRootRoute(existingRoot, requestAssets)
+          manifestToDehydrate.routes = {
+            ...manifestToDehydrate.routes,
+            [rootRouteId]: mergeRequestAssetsIntoRootRoute(
+              existingRoot,
+              requestAssets,
+            ),
+          }
         }
       }
       const dehydratedRouter: DehydratedRouter = {

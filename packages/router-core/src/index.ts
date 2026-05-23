@@ -99,7 +99,6 @@ export {
   getManifestScriptFormat,
   getScriptPreloadAttrs,
   getStylesheetHref,
-  isInlinableStylesheet,
   resolveManifestAssetLink,
   resolveManifestCssLink,
 } from './manifest'
