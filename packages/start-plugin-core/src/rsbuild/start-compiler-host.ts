@@ -217,9 +217,7 @@ export function registerStartCompilerTransforms(
 
   for (const env of environments) {
     const compilerTransforms =
-      env.name === opts.providerEnvName
-        ? opts.compilerTransforms
-        : undefined
+      env.name === opts.providerEnvName ? opts.compilerTransforms : undefined
     const envCodeFilters = getTransformCodeFilterForEnv(env.type, {
       compilerTransforms,
       compilerPlugins,
@@ -417,9 +415,8 @@ export function registerStartCompilerTransforms(
           },
         )
 
-        compiler.hooks.compile.tap(
-          'TanStackStartCompilerMetadataCleanup',
-          () => getServerFnMetadata(utils.environment.name).clear(),
+        compiler.hooks.compile.tap('TanStackStartCompilerMetadataCleanup', () =>
+          getServerFnMetadata(utils.environment.name).clear(),
         )
 
         compiler.hooks.finishMake.tap(

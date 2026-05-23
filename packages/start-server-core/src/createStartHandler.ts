@@ -497,7 +497,6 @@ export function createStartHandler<TRegister = Register>(
           manifest,
           getRequestAssets: () =>
             getStartContext({ throwIfNotFound: false })?.requestAssets,
-          includeUnmatchedRouteAssets: false,
         })
 
         routerInstance.update({ additionalContext: { serverContext } })

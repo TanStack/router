@@ -66,9 +66,11 @@ interface FinalManifestTransformResolver {
 export interface FinalManifestResolver {
   warmup: (opts: {
     getBaseManifest: GetBaseManifest
-    }) => Promise<ServerManifest> | undefined
+  }) => Promise<ServerManifest> | undefined
   resolveCached: (opts: FinalManifestRequestOptions) => Promise<ServerManifest>
-  resolveUncached: (opts: FinalManifestRequestOptions) => Promise<ServerManifest>
+  resolveUncached: (
+    opts: FinalManifestRequestOptions,
+  ) => Promise<ServerManifest>
 }
 
 export function createCachedBaseManifestLoader(

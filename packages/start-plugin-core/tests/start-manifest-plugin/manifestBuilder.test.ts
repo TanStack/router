@@ -691,12 +691,8 @@ describe('buildStartManifest', () => {
     })
 
     const expectedLink = makeStylesheetLink('/assets/shared-hydrate.css')
-    expect(manifest.routes['/about']!.css).toEqual([
-      expectedLink,
-    ])
-    expect(manifest.routes['/posts']!.css).toEqual([
-      expectedLink,
-    ])
+    expect(manifest.routes['/about']!.css).toEqual([expectedLink])
+    expect(manifest.routes['/posts']!.css).toEqual([expectedLink])
     expect(manifest.routes['/about']!.preloads).toEqual([
       '/assets/about.js',
       '/assets/shared-widget.js',
