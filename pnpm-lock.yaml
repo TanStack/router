@@ -178,6 +178,9 @@ importers:
       typescript59:
         specifier: npm:typescript@5.9
         version: typescript@5.9.3
+      vibe-rules:
+        specifier: ^0.2.57
+        version: 0.2.57
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -12442,9 +12445,6 @@ importers:
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
-      vibe-rules:
-        specifier: ^0.2.57
-        version: 0.2.57
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -12590,9 +12590,6 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
-      '@tanstack/react-start-server':
-        specifier: workspace:*
-        version: link:../react-start-server
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -12642,18 +12639,12 @@ importers:
 
   packages/react-start-server:
     dependencies:
-      '@tanstack/history':
-        specifier: workspace:*
-        version: link:../history
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-      '@tanstack/start-client-core':
-        specifier: workspace:*
-        version: link:../start-client-core
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
@@ -12732,15 +12723,9 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../react-router-devtools
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
       csstype:
         specifier: ^3.0.10
         version: 3.2.3
-      goober:
-        specifier: ^2.1.16
-        version: 2.1.16(csstype@3.2.3)
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -12822,18 +12807,9 @@ importers:
       '@babel/core':
         specifier: ^7.28.5
         version: 7.28.5
-      '@babel/plugin-syntax-jsx':
-        specifier: ^7.27.1
-        version: 7.27.1(@babel/core@7.28.5)
-      '@babel/plugin-syntax-typescript':
-        specifier: ^7.27.1
-        version: 7.27.1(@babel/core@7.28.5)
       '@babel/template':
         specifier: ^7.27.2
         version: 7.27.2
-      '@babel/traverse':
-        specifier: ^7.28.5
-        version: 7.28.5
       '@babel/types':
         specifier: ^7.28.5
         version: 7.28.5
@@ -12852,9 +12828,6 @@ importers:
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
-      '@tanstack/virtual-file-routes':
-        specifier: workspace:*
-        version: link:../virtual-file-routes
       chokidar:
         specifier: ^5.0.0
         version: 5.0.0
@@ -12880,9 +12853,6 @@ importers:
       '@types/babel__template':
         specifier: ^7.4.4
         version: 7.4.4
-      '@types/babel__traverse':
-        specifier: ^7.28.0
-        version: 7.28.0
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -12901,9 +12871,6 @@ importers:
 
   packages/router-utils:
     dependencies:
-      '@babel/core':
-        specifier: ^7.28.5
-        version: 7.28.5
       '@babel/generator':
         specifier: ^7.28.5
         version: 7.28.5
@@ -12929,15 +12896,9 @@ importers:
         specifier: ^0.2.15
         version: 0.2.15
     devDependencies:
-      '@types/babel__core':
-        specifier: ^7.20.5
-        version: 7.20.5
       '@types/babel__generator':
         specifier: ^7.27.0
         version: 7.27.0
-      '@types/diff':
-        specifier: ^7.0.2
-        version: 7.0.2
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -12957,9 +12918,6 @@ importers:
 
   packages/solid-router:
     dependencies:
-      '@solid-devtools/logger':
-        specifier: ^0.9.4
-        version: 0.9.7(solid-js@1.9.12)
       '@solid-primitives/refs':
         specifier: ^1.0.8
         version: 1.1.0(solid-js@1.9.12)
@@ -12988,9 +12946,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      eslint-plugin-solid:
-        specifier: ^0.14.5
-        version: 0.14.5(eslint@9.22.0(jiti@2.7.0))(typescript@6.0.2)
       solid-js:
         specifier: 1.9.12
         version: 1.9.12
@@ -13112,9 +13067,6 @@ importers:
         specifier: 1.9.12
         version: 1.9.12
     devDependencies:
-      '@solidjs/testing-library':
-        specifier: ^0.8.10
-        version: 0.8.10(solid-js@1.9.12)
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -13127,21 +13079,12 @@ importers:
 
   packages/solid-start-server:
     dependencies:
-      '@solidjs/meta':
-        specifier: ^0.29.4
-        version: 0.29.4(solid-js@1.9.12)
-      '@tanstack/history':
-        specifier: workspace:*
-        version: link:../history
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
       '@tanstack/solid-router':
         specifier: workspace:*
         version: link:../solid-router
-      '@tanstack/start-client-core':
-        specifier: workspace:*
-        version: link:../start-client-core
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
@@ -13198,9 +13141,6 @@ importers:
       '@babel/types':
         specifier: ^7.28.5
         version: 7.28.5
-      '@rolldown/pluginutils':
-        specifier: 1.0.1
-        version: 1.0.1
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -13213,9 +13153,6 @@ importers:
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
-      '@tanstack/start-client-core':
-        specifier: workspace:*
-        version: link:../start-client-core
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
@@ -13394,9 +13331,6 @@ importers:
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
-      jsesc:
-        specifier: ^3.0.2
-        version: 3.1.0
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.6.3
@@ -13404,15 +13338,9 @@ importers:
       '@testing-library/vue':
         specifier: ^8.1.0
         version: 8.1.0(@vue/compiler-sfc@3.5.25)(vue@3.5.25(typescript@6.0.2))
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
-      '@vitejs/plugin-vue':
-        specifier: ^5.2.3
-        version: 5.2.4(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.2.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@6.0.2))
@@ -13462,10 +13390,10 @@ importers:
       '@tanstack/router-ssr-query-core':
         specifier: workspace:*
         version: link:../router-ssr-query-core
-    devDependencies:
       '@tanstack/vue-query':
         specifier: ^5.99.0
         version: 5.99.0(vue@3.5.25(typescript@6.0.2))
+    devDependencies:
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../vue-router
@@ -13534,12 +13462,6 @@ importers:
         specifier: workspace:*
         version: link:../vue-router
     devDependencies:
-      '@testing-library/jest-dom':
-        specifier: ^6.6.3
-        version: 6.6.3
-      '@testing-library/vue':
-        specifier: ^8.1.0
-        version: 8.1.0(@vue/compiler-sfc@3.5.25)(vue@3.5.25(typescript@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.2.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@6.0.2))
@@ -13552,15 +13474,9 @@ importers:
 
   packages/vue-start-server:
     dependencies:
-      '@tanstack/history':
-        specifier: workspace:*
-        version: link:../history
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-      '@tanstack/start-client-core':
-        specifier: workspace:*
-        version: link:../start-client-core
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
@@ -16356,9 +16272,6 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@nothing-but/utils@0.17.0':
-    resolution: {integrity: sha512-TuCHcHLOqDL0SnaAxACfuRHBNRgNJcNn9X0GiH5H3YSDBVquCr3qEIG3FOQAuMyZCbu9w8nk2CHhOsn7IvhIwQ==}
-
   '@nx/devkit@22.6.5':
     resolution: {integrity: sha512-9kvAI+kk2pfEXLqS8OyjI9XvWmp+Gdn7jPfxDAz8BOqxMyPy3p5hYl+jc4TIsLOWunAFl8azqrcYsHzEpaWCIA==}
     peerDependencies:
@@ -18610,33 +18523,8 @@ packages:
   '@so-ric/colorspace@1.1.6':
     resolution: {integrity: sha512-/KiKkpHNOBgkFJwu9sh48LkHSMYGyuTcSFK/qMBdnOAlrRJzRSXAOFB5qwzaVQuDl8wAvHVMkaASQDReTahxuw==}
 
-  '@solid-devtools/debugger@0.26.0':
-    resolution: {integrity: sha512-36QxZ+s/lY60E+Pb9q0eTsdqgaog4c823WIj5dC2LFdGrGXbVGBQEj6k7CgvMnEETdwndrd0Fm72fQyYPlZrVA==}
-    peerDependencies:
-      solid-js: 1.9.12
-
-  '@solid-devtools/logger@0.9.7':
-    resolution: {integrity: sha512-JHZ0ejkQnRoMcV8bgqogSYFlYdo0wJ1S/vAHEROSHQk1jNtErTXJwLrCXdR+LNuBWhJJ0aq/y7Pjit/ssvKrDw==}
-    peerDependencies:
-      solid-js: 1.9.12
-
-  '@solid-devtools/shared@0.19.0':
-    resolution: {integrity: sha512-OGo6l84f9X5YEAqSEM4Xl94+xKXSqmACMzKWsAqO0BStLBMVL0vIVu286AQk5XkNxn11/EB9wrdkZc9GUzKlxA==}
-    peerDependencies:
-      solid-js: 1.9.12
-
-  '@solid-primitives/bounds@0.0.122':
-    resolution: {integrity: sha512-kUq/IprOdFr/rg2upon5lQGOoTnDAmxQS4ASKK2l+VwoKSctdPwgu/4qJxEITZikL+nB0myYZzBZWptySV0cRg==}
-    peerDependencies:
-      solid-js: 1.9.12
-
   '@solid-primitives/context@0.3.2':
     resolution: {integrity: sha512-6fvTtpK17PFHnUf/UOc1TzBjd+kLFjtA62aRFEm1kDP9ufTo7FYW2kUzQAWbfbRHi30yjBJtopbR8qd6nShwyg==}
-    peerDependencies:
-      solid-js: 1.9.12
-
-  '@solid-primitives/cursor@0.0.115':
-    resolution: {integrity: sha512-8nEmUN/sacXPChwuJOAi6Yi6VnxthW/Jk8VGvvcF38AenjUvOA6FHI6AkJILuFXjQw1PGxia1YbH/Mn77dPiOA==}
     peerDependencies:
       solid-js: 1.9.12
 
@@ -18660,16 +18548,6 @@ packages:
     peerDependencies:
       solid-js: 1.9.12
 
-  '@solid-primitives/media@2.3.0':
-    resolution: {integrity: sha512-7+C3wfbWnGE/WPoNsqcp/EeOP2aNNB92RCpsWhBth8E5lZo/J+rK6jMb7umVsK0zguT8HBpeXp1pFyFbcsHStA==}
-    peerDependencies:
-      solid-js: 1.9.12
-
-  '@solid-primitives/platform@0.1.2':
-    resolution: {integrity: sha512-sSxcZfuUrtxcwV0vdjmGnZQcflACzMfLriVeIIWXKp8hzaS3Or3tO6EFQkTd3L8T5dTq+kTtLvPscXIpL0Wzdg==}
-    peerDependencies:
-      solid-js: 1.9.12
-
   '@solid-primitives/props@3.2.2':
     resolution: {integrity: sha512-lZOTwFJajBrshSyg14nBMEP0h8MXzPowGO0s3OeiR3z6nXHTfj0FhzDtJMv+VYoRJKQHG2QRnJTgCzK6erARAw==}
     peerDependencies:
@@ -18677,11 +18555,6 @@ packages:
 
   '@solid-primitives/refs@1.1.0':
     resolution: {integrity: sha512-QJ3bTSQOlPdHBP2m6llrT13FvVzAwZfx41lTN8lQrRwwcZoWb7kfCAjhaohPnwkAsQ6nJpLjtGfT5GOyuCA4tA==}
-    peerDependencies:
-      solid-js: 1.9.12
-
-  '@solid-primitives/resize-observer@2.1.0':
-    resolution: {integrity: sha512-tO9MDAc2pNjpcRd5B8LWbiR1qzIgvGZ5BtTuO98N7CLwd+fnuyGwtlQtJpz5hcLcTnoawpQYLpiRGNgaYW+YzQ==}
     peerDependencies:
       solid-js: 1.9.12
 
@@ -18700,28 +18573,8 @@ packages:
     peerDependencies:
       solid-js: 1.9.12
 
-  '@solid-primitives/scheduled@1.5.0':
-    resolution: {integrity: sha512-RVw24IRNh1FQ4DCMb3OahB70tXIwc5vH8nhR4nNPsXwUPQeuOkLsDI5BlxaPk0vyZgqw9lDpufgI3HnPwplgDw==}
-    peerDependencies:
-      solid-js: 1.9.12
-
-  '@solid-primitives/static-store@0.0.8':
-    resolution: {integrity: sha512-ZecE4BqY0oBk0YG00nzaAWO5Mjcny8Fc06CdbXadH9T9lzq/9GefqcSe/5AtdXqjvY/DtJ5C6CkcjPZO0o/eqg==}
-    peerDependencies:
-      solid-js: 1.9.12
-
-  '@solid-primitives/static-store@0.1.0':
-    resolution: {integrity: sha512-6Coau0Kv/dF83UQpbBzc+gnJafOQAPe2jCbB4jmTK5UocsR5cWmFBVRm3kin+nZFVaO4WkuELw0cKANWgTVh8Q==}
-    peerDependencies:
-      solid-js: 1.9.12
-
   '@solid-primitives/static-store@0.1.2':
     resolution: {integrity: sha512-ReK+5O38lJ7fT+L6mUFvUr6igFwHBESZF+2Ug842s7fvlVeBdIVEdTCErygff6w7uR6+jrr7J8jQo+cYrEq4Iw==}
-    peerDependencies:
-      solid-js: 1.9.12
-
-  '@solid-primitives/styles@0.0.114':
-    resolution: {integrity: sha512-SFXr16mgr6LvZAIj6L7i59HHg+prAmIF8VP/U3C6jSHz68Eh1G71vaWr9vlJVpy/j6bh1N8QUzu5CgtvIC92OQ==}
     peerDependencies:
       solid-js: 1.9.12
 
@@ -19328,9 +19181,6 @@ packages:
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
 
-  '@types/diff@7.0.2':
-    resolution: {integrity: sha512-JSWRMozjFKsGlEjiiKajUjIJVKuKdE3oVy2DNtK+fUo8q82nhFZ2CPQwicAIkXrofahDXrWJ7mjelvZphMS98Q==}
-
   '@types/eslint-scope@3.7.7':
     resolution: {integrity: sha512-MzMFlSLBqNF2gcHWO0G1vP/YQyfvrxZ0bF+u7mzUdZ1/xK4A4sru+nraZz5i3iEIk1l1uyicaDVTB4QbbEkAYg==}
 
@@ -19369,9 +19219,6 @@ packages:
 
   '@types/jsdom@28.0.0':
     resolution: {integrity: sha512-A8TBQQC/xAOojy9kM8E46cqT00sF0h7dWjV8t8BJhUi2rG6JRh7XXQo/oLoENuZIQEpXsxLccLCnknyQd7qssQ==}
-
-  '@types/jsesc@3.0.3':
-    resolution: {integrity: sha512-YZZ9ZOAiiSVC6KApWd/fTCDTdTOOMiRU4Lq3/VSmXNPse8IvCVOn5kYRRLu900Ub1lTPurVZFI5unEqLDJR7wg==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -19835,13 +19682,6 @@ packages:
     peerDependencies:
       vite: ^8.0.14
       vue: ^3.0.0
-
-  '@vitejs/plugin-vue@5.2.4':
-    resolution: {integrity: sha512-7Yx/SXSOcQq5HiiV3orevHUFn+pmMB4cgbEkDYgnkUWb0WfeQ/wa2yFv6D5ICiCQOVpjA7vYDXrC7AGO8yjDHA==}
-    engines: {node: ^18.0.0 || >=20.0.0}
-    peerDependencies:
-      vite: ^8.0.14
-      vue: ^3.2.25
 
   '@vitejs/plugin-vue@6.0.5':
     resolution: {integrity: sha512-bL3AxKuQySfk1iGcBsQnoRVexTPJq0Z/ixFVM8OhVJAP6ZXXXLtM7NFKWhLl30Kg7uTBqIaPXbh+nuQCuBDedg==}
@@ -29814,8 +29654,6 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.0
 
-  '@nothing-but/utils@0.17.0': {}
-
   '@nx/devkit@22.6.5(nx@22.6.5(@swc-node/register@1.11.1(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@swc/core@1.15.33(@swc/helpers@0.5.23))(@swc/types@0.1.26)(typescript@6.0.2))(@swc/core@1.15.33(@swc/helpers@0.5.23)))':
     dependencies:
       '@zkochan/js-yaml': 0.0.7
@@ -31925,57 +31763,8 @@ snapshots:
       color: 5.0.2
       text-hex: 1.0.0
 
-  '@solid-devtools/debugger@0.26.0(solid-js@1.9.12)':
-    dependencies:
-      '@nothing-but/utils': 0.17.0
-      '@solid-devtools/shared': 0.19.0(solid-js@1.9.12)
-      '@solid-primitives/bounds': 0.0.122(solid-js@1.9.12)
-      '@solid-primitives/cursor': 0.0.115(solid-js@1.9.12)
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.12)
-      '@solid-primitives/keyboard': 1.3.0(solid-js@1.9.12)
-      '@solid-primitives/platform': 0.1.2(solid-js@1.9.12)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.12)
-      '@solid-primitives/scheduled': 1.5.0(solid-js@1.9.12)
-      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.12)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.12)
-      solid-js: 1.9.12
-
-  '@solid-devtools/logger@0.9.7(solid-js@1.9.12)':
-    dependencies:
-      '@nothing-but/utils': 0.17.0
-      '@solid-devtools/debugger': 0.26.0(solid-js@1.9.12)
-      '@solid-devtools/shared': 0.19.0(solid-js@1.9.12)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.12)
-      solid-js: 1.9.12
-
-  '@solid-devtools/shared@0.19.0(solid-js@1.9.12)':
-    dependencies:
-      '@nothing-but/utils': 0.17.0
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.12)
-      '@solid-primitives/media': 2.3.0(solid-js@1.9.12)
-      '@solid-primitives/refs': 1.1.0(solid-js@1.9.12)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.12)
-      '@solid-primitives/scheduled': 1.5.0(solid-js@1.9.12)
-      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.12)
-      '@solid-primitives/styles': 0.0.114(solid-js@1.9.12)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.12)
-      solid-js: 1.9.12
-
-  '@solid-primitives/bounds@0.0.122(solid-js@1.9.12)':
-    dependencies:
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.12)
-      '@solid-primitives/resize-observer': 2.1.0(solid-js@1.9.12)
-      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.12)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.12)
-      solid-js: 1.9.12
-
   '@solid-primitives/context@0.3.2(solid-js@1.9.12)':
     dependencies:
-      solid-js: 1.9.12
-
-  '@solid-primitives/cursor@0.0.115(solid-js@1.9.12)':
-    dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.12)
       solid-js: 1.9.12
 
   '@solid-primitives/event-listener@2.4.0(solid-js@1.9.12)':
@@ -32002,18 +31791,6 @@ snapshots:
       '@solid-primitives/utils': 6.3.2(solid-js@1.9.12)
       solid-js: 1.9.12
 
-  '@solid-primitives/media@2.3.0(solid-js@1.9.12)':
-    dependencies:
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.12)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.12)
-      '@solid-primitives/static-store': 0.1.0(solid-js@1.9.12)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.12)
-      solid-js: 1.9.12
-
-  '@solid-primitives/platform@0.1.2(solid-js@1.9.12)':
-    dependencies:
-      solid-js: 1.9.12
-
   '@solid-primitives/props@3.2.2(solid-js@1.9.12)':
     dependencies:
       '@solid-primitives/utils': 6.3.2(solid-js@1.9.12)
@@ -32022,14 +31799,6 @@ snapshots:
   '@solid-primitives/refs@1.1.0(solid-js@1.9.12)':
     dependencies:
       '@solid-primitives/utils': 6.3.0(solid-js@1.9.12)
-      solid-js: 1.9.12
-
-  '@solid-primitives/resize-observer@2.1.0(solid-js@1.9.12)':
-    dependencies:
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.12)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.12)
-      '@solid-primitives/static-store': 0.1.0(solid-js@1.9.12)
-      '@solid-primitives/utils': 6.3.2(solid-js@1.9.12)
       solid-js: 1.9.12
 
   '@solid-primitives/resize-observer@2.1.3(solid-js@1.9.12)':
@@ -32050,29 +31819,9 @@ snapshots:
       '@solid-primitives/utils': 6.3.2(solid-js@1.9.12)
       solid-js: 1.9.12
 
-  '@solid-primitives/scheduled@1.5.0(solid-js@1.9.12)':
-    dependencies:
-      solid-js: 1.9.12
-
-  '@solid-primitives/static-store@0.0.8(solid-js@1.9.12)':
-    dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.12)
-      solid-js: 1.9.12
-
-  '@solid-primitives/static-store@0.1.0(solid-js@1.9.12)':
-    dependencies:
-      '@solid-primitives/utils': 6.3.2(solid-js@1.9.12)
-      solid-js: 1.9.12
-
   '@solid-primitives/static-store@0.1.2(solid-js@1.9.12)':
     dependencies:
       '@solid-primitives/utils': 6.3.2(solid-js@1.9.12)
-      solid-js: 1.9.12
-
-  '@solid-primitives/styles@0.0.114(solid-js@1.9.12)':
-    dependencies:
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.12)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.12)
       solid-js: 1.9.12
 
   '@solid-primitives/transition-group@1.1.2(solid-js@1.9.12)':
@@ -32739,8 +32488,6 @@ snapshots:
 
   '@types/deep-eql@4.0.2': {}
 
-  '@types/diff@7.0.2': {}
-
   '@types/eslint-scope@3.7.7':
     dependencies:
       '@types/eslint': 9.6.1
@@ -32798,8 +32545,6 @@ snapshots:
       '@types/tough-cookie': 4.0.5
       parse5: 7.3.0
       undici-types: 7.24.4
-
-  '@types/jsesc@3.0.3': {}
 
   '@types/json-schema@7.0.15': {}
 
@@ -33601,11 +33346,6 @@ snapshots:
       vue: 3.5.25(typescript@6.0.2)
     transitivePeerDependencies:
       - supports-color
-
-  '@vitejs/plugin-vue@5.2.4(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@6.0.2))':
-    dependencies:
-      vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-      vue: 3.5.25(typescript@6.0.2)
 
   '@vitejs/plugin-vue@6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.8.3))':
     dependencies:

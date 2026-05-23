@@ -60,8 +60,8 @@
     "@tanstack/query-core": "^5.99.0",
     "@tanstack/react-query": "^5.99.0",
     "@tanstack/solid-query": "^5.99.0",
-    "@tanstack/vue-query": "^5.99.0",
     "@tanstack/vite-config": "0.5.2",
+    "@tanstack/vue-query": "^5.99.0",
     "@types/node": "25.0.9",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
@@ -86,6 +86,7 @@
     "typescript57": "npm:typescript@5.7",
     "typescript58": "npm:typescript@5.8",
     "typescript59": "npm:typescript@5.9",
+    "vibe-rules": "^0.2.57",
     "vite": "^8.0.14",
     "vitest": "^4.1.4"
   }
