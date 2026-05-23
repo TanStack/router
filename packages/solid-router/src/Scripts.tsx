@@ -2,13 +2,13 @@ import * as Solid from 'solid-js'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type { AnyRouteMatch, RouterManagedTag } from '@tanstack/router-core'
 
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
 
-  const getAssetScripts = (matches: Array<any>) => {
+  const getAssetScripts = (matches: Array<AnyRouteMatch>) => {
     const assetScripts: Array<RouterManagedTag> = []
     const manifest = router.ssr?.manifest
 
@@ -35,7 +35,7 @@ export const Scripts = () => {
     return assetScripts
   }
 
-  const getScripts = (matches: Array<any>): Array<RouterManagedTag> =>
+  const getScripts = (matches: Array<AnyRouteMatch>): Array<RouterManagedTag> =>
     (
       matches
         .map((match) => match.scripts!)
