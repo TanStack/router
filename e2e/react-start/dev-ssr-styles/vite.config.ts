@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
-import { ssrStylesMode, useNitro } from './env'
+import { ssrStylesMode, useNitro, viteBundledDev } from './env'
 
 function getSsrStylesConfig() {
   switch (ssrStylesMode) {
@@ -20,6 +20,7 @@ export default defineConfig(async () => {
 
   return {
     resolve: { tsconfigPaths: true },
+    experimental: viteBundledDev ? { bundledDev: true } : undefined,
     server: {
       port: 3000,
     },
