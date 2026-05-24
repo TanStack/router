@@ -19,7 +19,6 @@
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^3.6.0",
-    "vite": "^8.0.14",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -31,6 +30,7 @@
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
+    "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11"
   }
 }

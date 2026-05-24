@@ -21,7 +21,6 @@
     "@tanstack/vue-start": "workspace:^",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^3.6.0",
-    "vite": "^8.0.14",
     "vue": "^3.5.25"
   },
   "devDependencies": {
@@ -35,6 +34,7 @@
     "prisma": "^7.0.0",
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vite": "^8.0.14"
   }
 }
