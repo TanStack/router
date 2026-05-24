@@ -42,7 +42,10 @@ describe('getRsbuildResolvedImportProtectionCheck', () => {
     }
 
     expect(
-      getRsbuildResolvedImportProtectionCheck('src/marked-server-only.ts', matchers),
+      getRsbuildResolvedImportProtectionCheck(
+        'src/marked-server-only.ts',
+        matchers,
+      ),
     ).toEqual({ type: 'marker' })
   })
 })

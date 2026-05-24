@@ -36,9 +36,8 @@ describe('postBuildWithRsbuild', () => {
       ].join('\n'),
     )
 
-    const { postBuildWithRsbuild } = await import(
-      '../../src/rsbuild/post-build'
-    )
+    const { postBuildWithRsbuild } =
+      await import('../../src/rsbuild/post-build')
 
     try {
       await postBuildWithRsbuild({

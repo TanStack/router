@@ -1723,8 +1723,10 @@ export function registerImportProtection(
             edge.resolved,
           )
 
-          const importProtectionCheck =
-            getRsbuildResolvedImportProtectionCheck(relativeResolved, matchers)
+          const importProtectionCheck = getRsbuildResolvedImportProtectionCheck(
+            relativeResolved,
+            matchers,
+          )
           if (!importProtectionCheck) {
             continue
           }
