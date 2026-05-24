@@ -1,5 +1,14 @@
 # @tanstack/solid-start
 
+## 1.168.12
+
+### Patch Changes
+
+- Add Vite bundled dev mode support for TanStack Start. Start now recognizes Vite's `experimental.bundledDev` opt-in, uses the bundled dev client entry in the dev manifest, keeps server requests pointed at the latest client build output, and preserves import-protection behavior for bundled client dev. ([#7482](https://github.com/TanStack/router/pull/7482))
+
+- Updated dependencies [[`90adda9`](https://github.com/TanStack/router/commit/90adda91aab7212cbcdb6159176b39d9ed01b827)]:
+  - @tanstack/start-plugin-core@1.171.5
+
 ## 1.168.11
 
 ### Patch Changes

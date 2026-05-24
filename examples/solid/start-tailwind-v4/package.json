@@ -12,7 +12,7 @@
   "dependencies": {
     "@tanstack/solid-router": "^1.170.8",
     "@tanstack/solid-router-devtools": "^1.167.0",
-    "@tanstack/solid-start": "^1.168.11",
+    "@tanstack/solid-start": "^1.168.12",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
