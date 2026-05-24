@@ -37,11 +37,36 @@
     "typescript": "^6.0.2"
   },
   "nx": {
+    "targets": {
+      "test:e2e": {
+        "parallelism": false
+      },
+      "test:e2e--vite-ssr": {
+        "parallelism": false
+      },
+      "test:e2e--vite-ssr--bundled-dev": {
+        "parallelism": false
+      },
+      "test:e2e--rsbuild-ssr": {
+        "parallelism": false
+      }
+    },
     "metadata": {
       "playwrightModes": [
         {
           "toolchain": "vite",
-          "mode": "ssr"
+          "mode": "ssr",
+          "env": {
+            "E2E_VITE_BUNDLED_DEV": "false"
+          }
+        },
+        {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "name": "bundled-dev",
+          "env": {
+            "E2E_VITE_BUNDLED_DEV": "true"
+          }
         },
         {
           "toolchain": "rsbuild",

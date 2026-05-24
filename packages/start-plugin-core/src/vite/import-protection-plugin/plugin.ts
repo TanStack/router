@@ -1,4 +1,5 @@
 import { normalizePath } from 'vite'
+import { dirname, relative } from 'pathe'
 
 import { resolveViteId } from '../../utils'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
@@ -55,6 +56,7 @@ import {
   buildLineIndex,
   createImportSpecifierLocationIndex,
   findImportStatementLocationFromTransformed,
+  findOriginalUsageLocation,
   findPostCompileUsageLocation,
   normalizeSourceMap,
   pickOriginalCodeFromSourcesContent,
@@ -203,6 +205,7 @@ export function importProtectionPlugin(
     enabled: true,
     root: '',
     command: 'build',
+    bundledDev: false,
     srcDirectory: '',
     framework: opts.framework,
     effectiveBehavior: 'error',
@@ -225,10 +228,10 @@ export function importProtectionPlugin(
   const shared: SharedState = { fileMarkerKind: new Map() }
 
   /**
-   * Build the best available trace for a module and enrich each step with
-   * line/column locations.  Tries the plugin's own ImportGraph first, then
-   * Vite's moduleGraph (authoritative on warm start), keeping whichever is
-   * longer.  Annotates the last step with the denied specifier + location.
+   * Build the best available source trace for a module and enrich each step
+   * with line/column locations.  The plugin's own ImportGraph is preferred;
+   * Vite's moduleGraph is only a dev fallback for warm starts where Vite may
+   * skip resolveId for cached modules.
    *
    * Shared by {@link buildViolationInfo} and {@link processPendingViolations}.
    */
@@ -301,17 +304,17 @@ export function importProtectionPlugin(
     >,
     traceOverride?: Array<TraceStep>,
   ): Promise<ViolationInfo> {
-    const sourceCandidates = buildSourceCandidates(
-      source,
+    const resolved =
       'resolved' in overrides && typeof overrides.resolved === 'string'
         ? overrides.resolved
-        : undefined,
-      config.root,
-    )
+        : undefined
+    const sourceCandidates = buildSourceCandidates(source, resolved, config.root)
+    addImporterRelativeSourceCandidates(sourceCandidates, importer, resolved)
 
     const loc = await resolveImporterLocation(
       provider,
       env,
+      envType,
       importer,
       sourceCandidates,
     )
@@ -344,12 +347,14 @@ export function importProtectionPlugin(
   async function resolveImporterLocation(
     provider: TransformResultProvider,
     env: EnvState,
+    envType: 'client' | 'server',
     importer: string,
     sourceCandidates: Iterable<string>,
   ): Promise<Loc | undefined> {
     for (const candidate of sourceCandidates) {
       const loc =
         (await findPostCompileUsageLocation(provider, importer, candidate)) ||
+        findOriginalUsageLocation(provider, importer, candidate, envType) ||
         (await findImportStatementLocationFromTransformed(
           provider,
           importer,
@@ -360,6 +365,38 @@ export function importProtectionPlugin(
       if (loc) return loc
     }
     return undefined
+  }
+
+  function addImporterRelativeSourceCandidates(
+    candidates: Set<string>,
+    importer: string,
+    resolved: string | undefined,
+  ): void {
+    if (!resolved) {
+      return
+    }
+
+    const importerFile = normalizeFilePath(importer)
+    const resolvedFile = normalizeFilePath(resolved)
+    const relativeSource = normalizePath(
+      relative(dirname(importerFile), resolvedFile),
+    )
+
+    if (!relativeSource) {
+      return
+    }
+
+    const importSource = relativeSource.startsWith('.')
+      ? relativeSource
+      : `./${relativeSource}`
+
+    for (const candidate of buildSourceCandidates(
+      importSource,
+      undefined,
+      config.root,
+    )) {
+      candidates.add(candidate)
+    }
   }
 
   /**
@@ -860,7 +897,9 @@ export function importProtectionPlugin(
 
     while (qi < queue.length) {
       const current = queue[qi++]!
-      if (visited.has(current)) continue
+      if (visited.has(current)) {
+        continue
+      }
       visited.add(current)
 
       if (env.graph.entries.has(current)) {
@@ -884,6 +923,48 @@ export function importProtectionPlugin(
     }
 
     return hasUnknownEdge ? 'unknown' : 'unreachable'
+  }
+
+  function checkSourceGraphReachability(
+    env: EnvState,
+    file: string,
+  ): 'reachable' | 'unreachable' {
+    const visited = new Set<string>()
+    const queue: Array<string> = [file]
+    let qi = 0
+
+    while (qi < queue.length) {
+      const current = queue[qi++]!
+      if (visited.has(current)) {
+        continue
+      }
+      visited.add(current)
+
+      if (env.graph.entries.has(current)) {
+        return 'reachable'
+      }
+
+      const importers = env.graph.reverseEdges.get(current)
+      if (!importers || importers.size === 0) {
+        if (current !== file) {
+          return 'reachable'
+        }
+
+        const routesDirectory = normalizePath(`${config.srcDirectory}/routes`)
+        if (isInsideDirectory(current, routesDirectory)) {
+          return 'reachable'
+        }
+        continue
+      }
+
+      for (const [parent] of importers) {
+        if (!visited.has(parent)) {
+          queue.push(parent)
+        }
+      }
+    }
+
+    return 'unreachable'
   }
 
   /**
@@ -946,13 +1027,20 @@ export function importProtectionPlugin(
       if (filtered === 'await-transform') continue
 
       const { active, edgeSurvivalApplied } = filtered
-
+      const isBundledClientDev =
+        config.command === 'serve' &&
+        config.bundledDev &&
+        active.some((pv) => pv.info.envType === 'client')
       // Wait for entries before running reachability.  registerEntries()
       // populates entries at buildStart; resolveId(!importer) may add more.
-      const status =
-        env.graph.entries.size > 0
-          ? checkPostTransformReachability(env, file)
-          : 'unknown'
+      let status: 'reachable' | 'unreachable' | 'unknown'
+      if (isBundledClientDev && edgeSurvivalApplied) {
+        status = checkSourceGraphReachability(env, file)
+      } else if (env.graph.entries.size > 0) {
+        status = checkPostTransformReachability(env, file)
+      } else {
+        status = 'unknown'
+      }
 
       if (status === 'reachable') {
         for (const pv of active) {
@@ -960,6 +1048,12 @@ export function importProtectionPlugin(
         }
         toDelete.push(file)
       } else if (status === 'unreachable') {
+        if (isBundledClientDev) {
+          // Bundled dev can transform a child before its route/importer has
+          // recorded the source edge.  Keep confirmed-surviving violations
+          // pending until a real source importer makes them reachable.
+          continue
+        }
         toDelete.push(file)
       } else if (config.command === 'serve') {
         // 'unknown' reachability — some graph edges lack transform data.
@@ -1007,6 +1101,7 @@ export function importProtectionPlugin(
       const loc = await resolveImporterLocation(
         env.transformResultProvider,
         env,
+        pv.info.envType,
         pv.info.importer,
         sourceCandidates,
       )
@@ -1200,6 +1295,7 @@ export function importProtectionPlugin(
       configResolved(viteConfig) {
         config.root = viteConfig.root
         config.command = viteConfig.command
+        config.bundledDev = !!viteConfig.experimental.bundledDev
 
         const { startConfig, resolvedStartConfig } = opts.getConfig()
         config.srcDirectory = resolvedStartConfig.srcDirectory
@@ -1356,7 +1452,16 @@ export function importProtectionPlugin(
         if (internalVirtualId) return internalVirtualId
 
         if (!importer) {
-          env.graph.addEntry(source)
+          const normalizedSource = normalizeFilePath(source)
+          const isBundledClientSourceEntry =
+            config.command === 'serve' &&
+            config.bundledDev &&
+            envType === 'client' &&
+            isInsideDirectory(normalizedSource, config.srcDirectory)
+
+          if (!isBundledClientSourceEntry) {
+            env.graph.addEntry(source)
+          }
           // Flush pending violations now that an additional entry is known
           // and reachability analysis may have new roots.
           await processPendingViolations(env, this.warn.bind(this))
@@ -1369,15 +1474,26 @@ export function importProtectionPlugin(
 
         const normalizedImporter = normalizeFilePath(importer)
         const isDirectLookup = importer.includes(SERVER_FN_LOOKUP_QUERY)
+        const isBundledClientDev =
+          config.command === 'serve' && config.bundledDev && envType === 'client'
+
+        if (isBundledClientDev) {
+          const routesDirectory = normalizePath(`${config.srcDirectory}/routes`)
+          if (isInsideDirectory(normalizedImporter, routesDirectory)) {
+            env.graph.addEntry(normalizedImporter)
+          }
+        }
 
         if (isDirectLookup) {
           env.serverFnLookupModules.add(normalizedImporter)
         }
 
-        const isPreTransformResolve =
+        const isServerFnPreTransformResolve =
           isDirectLookup ||
-          env.serverFnLookupModules.has(normalizedImporter) ||
-          isScanResolve
+          env.serverFnLookupModules.has(normalizedImporter)
+        const isPreTransformResolve =
+          isServerFnPreTransformResolve || isScanResolve
+        const shouldRecordGraphEdge = !isServerFnPreTransformResolve
 
         // Dev mock mode: defer all violations (including pre-transform
         // resolves) until post-transform data is available, then
@@ -1526,7 +1642,7 @@ export function importProtectionPlugin(
         // 1. Specifier-based denial
         const specifierMatch = matchesAny(source, matchers.specifiers)
         if (specifierMatch) {
-          if (!isPreTransformResolve) {
+          if (shouldRecordGraphEdge) {
             env.graph.addEdge(source, normalizedImporter, source)
           }
           const info = await buildViolationInfo(
@@ -1592,11 +1708,11 @@ export function importProtectionPlugin(
           const relativePath = getRelativePath(resolved)
 
           // Propagate pre-transform status transitively
-          if (isPreTransformResolve && !isScanResolve) {
+          if (isServerFnPreTransformResolve) {
             env.serverFnLookupModules.add(resolved)
           }
 
-          if (!isPreTransformResolve) {
+          if (shouldRecordGraphEdge) {
             env.graph.addEdge(resolved, normalizedImporter, source)
           }
 
