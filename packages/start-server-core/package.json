@@ -64,6 +64,9 @@
   "imports": {
     "#tanstack-start-server-fn-resolver": {
       "default": "./dist/esm/fake-start-server-fn-resolver.js"
+    },
+    "#tanstack-start-plugin-adapters": {
+      "default": "./dist/esm/empty-plugin-adapters.js"
     }
   },
   "sideEffects": false,

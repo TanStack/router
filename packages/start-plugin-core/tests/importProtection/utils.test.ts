@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { getImportSources } from '../../src/import-protection/analysis'
+import { escapeRegExp } from '../../src/utils'
 
 import {
   buildResolutionCandidates,
@@ -8,7 +9,6 @@ import {
   checkFileDenial,
   dedupeViolationKey,
   dedupePatterns,
-  escapeRegExp,
   getOrCreate,
   isInsideDirectory,
   isFileExcluded,

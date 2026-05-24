@@ -30,7 +30,7 @@ export default defineConfig(({ command }) =>
         './src/hydration/runtime.ts',
         './src/fake-entries/start.ts',
         './src/fake-entries/router.ts',
-        './src/fake-entries/plugin-adapters.ts',
+        './src/empty-plugin-adapters.ts',
       ],
       cjs: false,
       externalDeps: [

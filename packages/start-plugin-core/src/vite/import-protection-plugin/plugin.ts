@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs'
 import { normalizePath } from 'vite'
 import { dirname, relative } from 'pathe'
 
-import { resolveViteId } from '../../utils'
+import { escapeRegExp, resolveViteId } from '../../utils'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
 import {
   ImportGraph,
@@ -29,7 +29,6 @@ import {
   debugLog,
   dedupePatterns,
   dedupeViolationKey,
-  escapeRegExp,
   getOrCreate,
   isFileExcluded,
   isInsideDirectory,
