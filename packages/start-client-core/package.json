@@ -91,7 +91,7 @@
     },
     "#tanstack-start-plugin-adapters": {
       "types": "./src/start-entry.d.ts",
-      "default": "./dist/esm/fake-entries/plugin-adapters.js"
+      "default": "./dist/esm/empty-plugin-adapters.js"
     }
   },
   "sideEffects": false,

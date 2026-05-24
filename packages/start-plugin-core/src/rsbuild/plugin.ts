@@ -7,7 +7,7 @@ import {
   applyResolvedRouterBasepath,
   createStartConfigContext,
 } from '../config-context'
-import { normalizePath } from '../utils'
+import { escapeRegExp, normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
 import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
@@ -758,10 +758,6 @@ export function tanStackStartRsbuild(
       }
     },
   }
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 const defaultRspackWatchIgnored = /[\\/](?:\.git|node_modules)[\\/]/

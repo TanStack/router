@@ -258,9 +258,13 @@ export function tanStackStartVite(
         normalizedStartPluginOpts.vite?.installDevServerMiddleware,
     }),
     previewServerPlugin(),
-    serializationAdaptersPlugin({
-      adapters: corePluginOpts.serializationAdapters,
-    }),
+    ...(corePluginOpts.serializationAdapters?.length
+      ? [
+          serializationAdaptersPlugin({
+            adapters: corePluginOpts.serializationAdapters,
+          }),
+        ]
+      : []),
   ]
 }
 

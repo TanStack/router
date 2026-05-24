@@ -92,10 +92,6 @@ export function clearNormalizeFilePathCache(): void {
   normalizeFilePathCache.clear()
 }
 
-export function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 /** Get a value from a Map, creating it with `factory` if absent. */
 export function getOrCreate<TKey, TValue>(
   map: Map<TKey, TValue>,

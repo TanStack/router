@@ -2,6 +2,7 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
 import { generateServerFnResolverModule } from '../start-compiler/server-fn-resolver-module'
 import { buildStartManifest } from '../start-manifest-plugin/manifestBuilder'
+import { escapeRegExp } from '../utils'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type {
   RsbuildPluginAPI,
@@ -265,6 +266,7 @@ export function registerVirtualModules(
   const hasSeparateProviderEnvironment =
     !opts.rscEnabled &&
     opts.providerEnvName !== RSBUILD_ENVIRONMENT_NAMES.server
+  const hasSerializationAdapters = Boolean(opts.serializationAdapters?.length)
 
   function isProviderEnvironment(environmentName: string): boolean {
     return environmentName === opts.providerEnvName
@@ -384,14 +386,16 @@ export function registerVirtualModules(
       content[paths.serverFnResolver] = 'export {}'
     }
 
-    // Plugin adapters — both environments get environment-specific content
-    content[paths.pluginAdapters] = generateSerializationAdaptersModule({
-      adapters: opts.serializationAdapters,
-      runtime:
-        environmentName === RSBUILD_ENVIRONMENT_NAMES.client
-          ? 'client'
-          : 'server',
-    })
+    if (hasSerializationAdapters) {
+      // Plugin adapters — both environments get environment-specific content
+      content[paths.pluginAdapters] = generateSerializationAdaptersModule({
+        adapters: opts.serializationAdapters,
+        runtime:
+          environmentName === RSBUILD_ENVIRONMENT_NAMES.client
+            ? 'client'
+            : 'server',
+      })
+    }
 
     // --- RSC virtual modules ---
     if (rscPaths) {
@@ -430,7 +434,10 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
   const aliasMap: Record<string, string> = {
     [VIRTUAL_MODULES.startManifest]: paths.manifest,
     [VIRTUAL_MODULES.serverFnResolver]: paths.serverFnResolver,
-    [VIRTUAL_MODULES.pluginAdapters]: paths.pluginAdapters,
+  }
+
+  if (hasSerializationAdapters) {
+    aliasMap[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters
   }
 
   // Add RSC virtual module aliases
@@ -470,15 +477,18 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
 
     // Rewrite scheme-like IDs to the VirtualModulesPlugin-backed file paths.
     for (const [moduleId, virtualFilePath] of Object.entries(aliasMap)) {
-      const escaped = moduleId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       const NMR = utils.rspack.NormalModuleReplacementPlugin
-      config.plugins.push(new NMR(new RegExp(`^${escaped}$`), virtualFilePath))
+      config.plugins.push(
+        new NMR(new RegExp(`^${escapeRegExp(moduleId)}$`), virtualFilePath),
+      )
     }
 
     const resolve = config.resolve
     const resolveAlias = (resolve.alias ??= {}) as Record<string, string>
     resolveAlias[VIRTUAL_MODULES.serverFnResolver] = paths.serverFnResolver
-    resolveAlias[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters
+    if (hasSerializationAdapters) {
+      resolveAlias[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters
+    }
 
     // Add RSC-specific resolve aliases
     if (rscPaths) {
