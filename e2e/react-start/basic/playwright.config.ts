@@ -57,6 +57,9 @@ export default defineConfig({
       PORT: String(PORT),
       E2E_DIST_DIR: distDir,
       E2E_PORT_KEY: e2ePortKey,
+      ...(process.env.TSS_RSB_CLIENT_OUTPUT
+        ? { TSS_RSB_CLIENT_OUTPUT: process.env.TSS_RSB_CLIENT_OUTPUT }
+        : {}),
     },
   },
 

@@ -1,7 +1,6 @@
 import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { hasKeys } from '@tanstack/router-core'
 import { joinURL } from 'ufo'
 import {
   applyResolvedBaseAndOutput,
@@ -10,7 +9,7 @@ import {
 } from '../config-context'
 import { normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
-import { parseStartConfig } from './schema'
+import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
   RSBUILD_ENVIRONMENT_NAMES,
   RSBUILD_RSC_LAYERS,
@@ -40,6 +39,7 @@ import type {
   rspack as rspackNamespaceType,
 } from '@rsbuild/core'
 import type { TanStackStartRsbuildInputConfig } from './schema'
+import type { ScriptFormat } from '@tanstack/router-core'
 
 // Detect whether this plugin source is running from inside the TanStack
 // Router monorepo (packages/start-plugin-core/src/rsbuild/plugin.ts). When
@@ -62,6 +62,7 @@ type RscPluginPair = ReturnType<
 type RspackConfig = Parameters<ModifyRspackConfigFn>[0]
 type RspackCompiler = Rspack.Compiler
 type RspackCompilationExtended = Rspack.Compilation
+type RspackAsset = ReturnType<RspackCompilationExtended['getAssets']>[number]
 
 export function tanStackStartRsbuild(
   corePluginOpts: TanStackStartRsbuildPluginCoreOptions,
@@ -78,6 +79,9 @@ export function tanStackStartRsbuild(
   const { getConfig, resolvedStartConfig } = configContext
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
   const ssrIsProvider = corePluginOpts.ssrIsProvider
+  const scriptFormat = rsbuildClientOutputSchema.parse(
+    startPluginOpts.rsbuild?.client?.output ?? 'module',
+  ) satisfies ScriptFormat
 
   // RSC plugin instances — created lazily when rspack namespace is available
   let rscPlugins: RscPluginPair | undefined
@@ -90,6 +94,18 @@ export function tanStackStartRsbuild(
   return {
     name: 'tanstack-start-rsbuild',
     setup(api: RsbuildPluginAPI) {
+      const startCompilerEnvironments = [
+        { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' as const },
+        { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' as const },
+        ...(serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
+        !rscEnabled
+          ? [{ name: serverFnProviderEnv, type: 'server' as const }]
+          : []),
+      ]
+      const startCompilerServerEnvironmentNames = startCompilerEnvironments
+        .filter((env) => env.type === 'server')
+        .map((env) => env.name)
+
       // ---------------------------------------------------------------
       // 1. modifyRsbuildConfig — resolve config, set up environments
       // ---------------------------------------------------------------
@@ -155,6 +171,7 @@ export function tanStackStartRsbuild(
           publicBase: resolvedStartConfig.basePaths.publicBase,
           serverFnProviderEnv,
           environmentOverrides: corePluginOpts.rsbuild?.environments,
+          scriptFormat,
           rsc: rscOpts,
           dev: isDev,
         })
@@ -252,6 +269,7 @@ export function tanStackStartRsbuild(
         // so defer this read until transform time instead of falling back to
         // process.cwd() during plugin setup.
         root: () => resolvedStartConfig.root || process.cwd(),
+        environments: startCompilerEnvironments,
         providerEnvName: serverFnProviderEnv,
         generateFunctionId: startPluginOpts.serverFns?.generateFunctionId,
         compilerTransforms: corePluginOpts.compilerTransforms,
@@ -266,14 +284,7 @@ export function tanStackStartRsbuild(
       registerImportProtection(api, {
         getConfig,
         framework: corePluginOpts.framework,
-        environments: [
-          { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' },
-          { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' },
-          ...(serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server &&
-          !rscEnabled
-            ? [{ name: serverFnProviderEnv, type: 'server' as const }]
-            : []),
-        ],
+        environments: startCompilerEnvironments,
       })
 
       // ---------------------------------------------------------------
@@ -290,8 +301,40 @@ export function tanStackStartRsbuild(
         getDevClientEntryUrl: (publicBase: string) =>
           joinURL(publicBase, 'static/js/index.js'),
         rscEnabled,
+        scriptFormat,
       })
       updateServerFnResolver = virtualModuleState.updateServerFnResolver
+
+      if (!rscEnabled) {
+        api.modifyRspackConfig((config, utils) => {
+          if (
+            !startCompilerServerEnvironmentNames.includes(
+              utils.environment.name,
+            )
+          ) {
+            return
+          }
+
+          config.plugins.push({
+            apply(compiler: RspackCompiler) {
+              compiler.hooks.finishMake.tapPromise(
+                {
+                  name: 'TanStackStartServerFnResolverRebuild',
+                  stage: -10,
+                },
+                async (compilation: RspackCompilationExtended) => {
+                  virtualModuleState.updateServerFnResolver()
+
+                  await rebuildModulesContaining(
+                    compilation,
+                    virtualModuleState.serverFnResolverPath,
+                  )
+                },
+              )
+            },
+          })
+        })
+      }
 
       // ---------------------------------------------------------------
       // 4. Client build stats capture via processAssets
@@ -484,10 +527,6 @@ export function tanStackStartRsbuild(
                     stage: -10,
                   },
                   async (compilation: RspackCompilationExtended) => {
-                    if (!hasKeys(serverFnsById)) {
-                      return
-                    }
-
                     const resolverContent =
                       virtualModuleState.generateCurrentResolverContent(true)
                     virtualModuleState.tryUpdateServerFnResolver(
@@ -579,13 +618,23 @@ export function tanStackStartRsbuild(
         api.onAfterCreateCompiler(({ compiler }) => {
           // MultiCompiler has a `compilers` array; single compiler does not
           if ('compilers' in compiler) {
-            const serverCompiler = compiler.compilers.find(
-              (c) => c.name === RSBUILD_ENVIRONMENT_NAMES.server,
-            )
-            if (serverCompiler) {
-              compiler.setDependencies(serverCompiler, [
-                RSBUILD_ENVIRONMENT_NAMES.client,
-              ])
+            for (const environmentName of startCompilerServerEnvironmentNames) {
+              const serverCompiler = compiler.compilers.find(
+                (c) => c.name === environmentName,
+              )
+              if (serverCompiler) {
+                const dependencies: Array<string> = [
+                  RSBUILD_ENVIRONMENT_NAMES.client,
+                ]
+                if (
+                  environmentName === RSBUILD_ENVIRONMENT_NAMES.server &&
+                  serverFnProviderEnv !== RSBUILD_ENVIRONMENT_NAMES.server
+                ) {
+                  dependencies.push(serverFnProviderEnv)
+                }
+
+                compiler.setDependencies(serverCompiler, dependencies)
+              }
             }
           }
         })
@@ -620,18 +669,32 @@ export function tanStackStartRsbuild(
                           .PROCESS_ASSETS_STAGE_OPTIMIZE_SIZE,
                     },
                     () => {
-                      const assetsWithPlaceholder = compilation
-                        .getAssets()
-                        .flatMap((asset) => {
-                          if (!asset.name.endsWith('.js')) return []
+                      let assetsWithPlaceholder:
+                        | Array<{ asset: RspackAsset; sourceStr: string }>
+                        | undefined
 
-                          const sourceStr = String(asset.source.source())
-                          return sourceStr.includes(manifestPlaceholderLiteral)
-                            ? [{ asset, sourceStr }]
-                            : []
+                      for (const asset of compilation.getAssets()) {
+                        if (!asset.name.endsWith('.js')) {
+                          continue
+                        }
+
+                        const sourceStr = String(asset.source.source())
+                        if (!sourceStr.includes(manifestPlaceholderLiteral)) {
+                          continue
+                        }
+
+                        if (!assetsWithPlaceholder) {
+                          assetsWithPlaceholder = []
+                        }
+                        assetsWithPlaceholder.push({
+                          asset,
+                          sourceStr,
                         })
+                      }
 
-                      if (assetsWithPlaceholder.length === 0) return
+                      if (!assetsWithPlaceholder) {
+                        return
+                      }
 
                       const clientBuild = getClientBuild()
                       if (!clientBuild) {
@@ -720,25 +783,25 @@ function rebuildModulesContaining(
   compilation: RspackCompilationExtended,
   identifierFragment: string,
 ): Promise<void> {
-  const modulesToRebuild = Array.from(compilation.modules).filter((mod) =>
-    mod.identifier().includes(identifierFragment),
-  )
+  const rebuilds: Array<Promise<void>> = []
+  for (const mod of compilation.modules) {
+    if (!mod.identifier().includes(identifierFragment)) {
+      continue
+    }
 
-  if (modulesToRebuild.length === 0) {
-    return Promise.resolve()
+    rebuilds.push(
+      new Promise<void>((resolve, reject) => {
+        compilation.rebuildModule(mod, (err: Error | null) => {
+          if (err) reject(err)
+          else resolve()
+        })
+      }),
+    )
   }
 
-  return Promise.all(
-    modulesToRebuild.map(
-      (mod) =>
-        new Promise<void>((resolve, reject) => {
-          compilation.rebuildModule(mod, (err: Error | null) => {
-            if (err) reject(err)
-            else resolve()
-          })
-        }),
-    ),
-  ).then(() => undefined)
+  return rebuilds.length === 0
+    ? Promise.resolve()
+    : Promise.all(rebuilds).then(() => undefined)
 }
 
 /**

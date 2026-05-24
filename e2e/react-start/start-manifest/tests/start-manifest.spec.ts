@@ -66,7 +66,7 @@ async function loadBuiltStartManifest() {
   const manifestModule = await import(moduleUrl)
 
   return manifestModule.tsrStartManifest() as {
-    routes: Record<string, { assets?: Array<unknown> }>
+    routes: Record<string, { css?: Array<string | { href: string }> }>
   }
 }
 
@@ -318,9 +318,9 @@ test('built start manifest preserves shared layout asset identity across sibling
 
   const manifest = await loadBuiltStartManifest()
 
-  const sharedAAsset = manifest.routes['/shared-a']?.assets?.[0]
-  const sharedBAsset = manifest.routes['/shared-b']?.assets?.[0]
-  const sharedCAsset = manifest.routes['/shared-c']?.assets?.[0]
+  const sharedAAsset = manifest.routes['/shared-a']?.css?.[0]
+  const sharedBAsset = manifest.routes['/shared-b']?.css?.[0]
+  const sharedCAsset = manifest.routes['/shared-c']?.css?.[0]
 
   expect(sharedAAsset).toBeTruthy()
   expect(sharedAAsset).toBe(sharedBAsset)

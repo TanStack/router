@@ -14,6 +14,7 @@ import type {
 } from '../types'
 import type { InlineCssOptions } from '../start-manifest-plugin/manifestBuilder'
 import type { ServerFn } from '../start-compiler/types'
+import type { ScriptFormat } from '@tanstack/router-core'
 
 type RspackNamespace = typeof rspackNamespaceType
 type RspackVirtualModulesPlugin = InstanceType<
@@ -66,9 +67,17 @@ export interface VirtualModuleState {
 // Manifest module codegen
 // ---------------------------------------------------------------------------
 
-function generateManifestModuleDev(devClientEntryUrl: string): string {
+function getScriptFormatProperty(scriptFormat: ScriptFormat): string {
+  return scriptFormat === 'iife' ? `  scriptFormat: 'iife',\n` : ''
+}
+
+function generateManifestModuleDev(
+  devClientEntryUrl: string,
+  scriptFormat: ScriptFormat,
+): string {
+  const scriptFormatProperty = getScriptFormatProperty(scriptFormat)
   return `const fallbackManifest = {
-  routes: {},
+${scriptFormatProperty}  routes: {},
   clientEntry: '${devClientEntryUrl}',
 }
 export const tsrStartManifest = () => globalThis[${JSON.stringify(DEV_START_MANIFEST_GLOBAL)}] ?? fallbackManifest`
@@ -78,6 +87,7 @@ function buildStartManifestData(
   clientBuild: NormalizedClientBuild,
   publicBase: string,
   inlineCss: InlineCssOptions,
+  scriptFormat: ScriptFormat,
 ) {
   const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
   return buildStartManifest({
@@ -85,6 +95,7 @@ function buildStartManifestData(
     routeTreeRoutes,
     basePath: publicBase,
     inlineCss,
+    scriptFormat,
   })
 }
 
@@ -92,9 +103,10 @@ function serializeStartManifestData(
   clientBuild: NormalizedClientBuild,
   publicBase: string,
   inlineCss: InlineCssOptions,
+  scriptFormat: ScriptFormat,
 ): string {
   return JSON.stringify(
-    buildStartManifestData(clientBuild, publicBase, inlineCss),
+    buildStartManifestData(clientBuild, publicBase, inlineCss, scriptFormat),
   )
 }
 
@@ -103,13 +115,14 @@ function generateManifestModuleBuild(
   publicBase: string,
   _devClientEntryUrl: string,
   inlineCss: InlineCssOptions,
+  scriptFormat: ScriptFormat,
 ): string {
   if (!clientBuild) {
     return `const tsrStartManifestData = ${JSON.stringify(START_MANIFEST_PLACEHOLDER)}
 export const tsrStartManifest = () => tsrStartManifestData`
   }
 
-  return `export const tsrStartManifest = () => (${serializeStartManifestData(clientBuild, publicBase, inlineCss)})`
+  return `export const tsrStartManifest = () => (${serializeStartManifestData(clientBuild, publicBase, inlineCss, scriptFormat)})`
 }
 
 // ---------------------------------------------------------------------------
@@ -220,6 +233,7 @@ export interface RegisterVirtualModulesOptions {
   getDevClientEntryUrl: (publicBase: string) => string
   /** Whether RSC virtual modules should be registered. */
   rscEnabled?: boolean | undefined
+  scriptFormat: ScriptFormat
 }
 
 /**
@@ -363,12 +377,13 @@ export function registerVirtualModules(
         resolvedStartConfig.basePaths.publicBase,
       )
       content[paths.manifest] = isDev
-        ? generateManifestModuleDev(devClientEntryUrl)
+        ? generateManifestModuleDev(devClientEntryUrl, opts.scriptFormat)
         : generateManifestModuleBuild(
             clientBuild,
             resolvedStartConfig.basePaths.publicBase,
             devClientEntryUrl,
             startConfig.server.build.inlineCss,
+            opts.scriptFormat,
           )
     } else {
       content[paths.manifest] = 'export default {}'
@@ -514,6 +529,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
         !isDev
           ? startConfig.server.build.inlineCss
           : { enabled: false, transformAssets: false },
+        opts.scriptFormat,
       )
     },
 
@@ -527,6 +543,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
         !isDev
           ? startConfig.server.build.inlineCss
           : { enabled: false, transformAssets: false },
+        opts.scriptFormat,
       )
     },
 
@@ -543,23 +560,26 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
           clientBuild,
           resolvedStartConfig.basePaths.publicBase,
           { enabled: false, transformAssets: false },
+          opts.scriptFormat,
         )
       }
     },
 
     updateServerFnResolver() {
-      for (const environmentName of new Set([
-        RSBUILD_ENVIRONMENT_NAMES.server,
-        ...(hasSeparateProviderEnvironment ? [opts.providerEnvName] : []),
-      ])) {
+      const updateEnvironment = (environmentName: string) => {
         if (!needsServerFnResolver(environmentName)) {
-          continue
+          return
         }
 
         writeResolverContent(
           environmentName,
           generateResolverContent(environmentName),
         )
+      }
+
+      updateEnvironment(RSBUILD_ENVIRONMENT_NAMES.server)
+      if (hasSeparateProviderEnvironment) {
+        updateEnvironment(opts.providerEnvName)
       }
     },
 

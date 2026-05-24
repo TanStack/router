@@ -7,6 +7,11 @@ import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import type { LocationRewrite } from '../src'
 import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { AnyRouteMatch } from '../src'
+import type { Manifest } from '../src/manifest'
+
+const testManifest: Manifest = {
+  routes: {},
+}
 
 describe('hydrate', () => {
   let mockWindow: { $_TSR?: TsrSsrGlobal }
@@ -93,7 +98,7 @@ describe('hydrate', () => {
     const mockBuffer = [vi.fn(), vi.fn()]
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: {},
         lastMatchId: '/',
         matches: [],
@@ -122,7 +127,7 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: {},
         lastMatchId: '/',
         matches: [],
@@ -142,7 +147,6 @@ describe('hydrate', () => {
   })
 
   it('should set manifest in router.ssr', async () => {
-    const testManifest = { routes: {} }
     mockWindow.$_TSR = {
       router: {
         manifest: testManifest,
@@ -198,7 +202,7 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: {},
         lastMatchId: '/',
         matches: dehydratedMatches,
@@ -246,7 +250,7 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: {},
         lastMatchId: '/',
         matches: dehydratedMatches,
@@ -289,7 +293,7 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: {},
         lastMatchId: '/',
         matches: dehydratedMatches,
@@ -333,7 +337,7 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: {},
         lastMatchId: '/',
         matches: dehydratedMatches,
@@ -369,7 +373,7 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: {},
         lastMatchId: dehydrateSsrMatchId('/'),
         matches: [
@@ -428,7 +432,7 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: { rewrite: true },
         lastMatchId: '/internal/internal',
         matches: [
@@ -478,7 +482,7 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: {},
         lastMatchId: '/',
         matches: [

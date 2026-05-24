@@ -2065,6 +2065,9 @@ importers:
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.58.0
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../../../packages/router-core
       '@tanstack/router-e2e-utils':
         specifier: workspace:*
         version: link:../../e2e-utils

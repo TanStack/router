@@ -8,8 +8,9 @@ test('SSR scroll restoration uses a custom restoration key', async ({
   const customKeyScrollY = 650
   const historyKeyScrollY = 80
 
-  await page.goto('/')
-  await page.evaluate(
+  // Seed storage during document initialization so a hydrated previous page
+  // cannot persist an empty in-memory scroll cache over these entries.
+  await page.addInitScript(
     ({ customKeyScrollY, historyKeyScrollY, storageKey }) => {
       window.sessionStorage.setItem(
         storageKey,
@@ -22,13 +23,11 @@ test('SSR scroll restoration uses a custom restoration key', async ({
           },
         }),
       )
+      window.history.replaceState({ __TSR_key: 'history-key' }, '')
     },
     { customKeyScrollY, historyKeyScrollY, storageKey },
   )
 
-  await page.addInitScript(() => {
-    window.history.replaceState({ __TSR_key: 'history-key' }, '')
-  })
   await page.route(/\/assets\/.*\.js$/, (route) => route.abort())
 
   await page.goto('/ssr-scroll-key', { waitUntil: 'domcontentloaded' })
