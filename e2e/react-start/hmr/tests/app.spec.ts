@@ -14,6 +14,7 @@ const whitelistErrors = [
 ]
 
 const hmrExpect = expect.configure({ timeout: 20_000 })
+const isViteBundledDev = process.env.E2E_VITE_BUNDLED_DEV === 'true'
 
 const routeFilePaths = {
   index: 'routes/index.tsx',
@@ -265,6 +266,11 @@ async function replaceRouteTextAndWait(
   to: string,
   assertion: () => Promise<void>,
 ) {
+  if (isViteBundledDev) {
+    // Rolldown may still be compiling a lazy route entry immediately after
+    // hydration. Avoid writing a follow-up edit while that compile is settling.
+    await page.waitForTimeout(500)
+  }
   await routeFileEditor.replaceText(routeFileKey, from, to)
   await assertion()
 }
@@ -276,6 +282,9 @@ async function rewriteRouteFile(
   assertion: () => Promise<void>,
   options: { allowNoop?: boolean } = {},
 ) {
+  if (isViteBundledDev) {
+    await page.waitForTimeout(500)
+  }
   await routeFileEditor.rewriteFile(routeFileKey, updater, options)
   await assertion()
 }

@@ -57,6 +57,8 @@ test('Consistent server function returns both on client and server for GET and P
       .textContent()) || ''
   expect(expected).not.toBe('')
 
+  await expect(page.getByTestId('consistent-client-hydrated')).toBeAttached()
+
   await page.getByTestId('test-consistent-server-fn-calls-btn').click()
   await page.waitForLoadState('networkidle')
 

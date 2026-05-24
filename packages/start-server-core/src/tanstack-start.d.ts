@@ -21,7 +21,3 @@ declare module '#tanstack-start-server-fn-resolver' {
     access: ServerFnLookupAccess,
   ): Promise<ServerFn>
 }
-
-declare module 'tanstack-start-injected-head-scripts:v' {
-  export const injectedHeadScripts: string | undefined
-}

@@ -18,14 +18,14 @@
     "@tanstack/solid-start": "^1.168.11",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.5.4",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
+    "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11"
   }
 }

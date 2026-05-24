@@ -17,8 +17,8 @@ describe('postBuildWithRsbuild', () => {
       expect(await response.text()).toBe('ok')
     })
 
-    vi.doMock('../src/prerender', async () => {
-      const actual = await vi.importActual<any>('../src/prerender')
+    vi.doMock('../../src/prerender', async () => {
+      const actual = await vi.importActual<any>('../../src/prerender')
       return {
         ...actual,
         prerender: prerenderSpy,
@@ -36,7 +36,8 @@ describe('postBuildWithRsbuild', () => {
       ].join('\n'),
     )
 
-    const { postBuildWithRsbuild } = await import('../src/rsbuild/post-build')
+    const { postBuildWithRsbuild } =
+      await import('../../src/rsbuild/post-build')
 
     try {
       await postBuildWithRsbuild({
