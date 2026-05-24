@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs'
 import { extname, resolve as resolvePath } from 'node:path'
 
 import {
@@ -16,8 +17,9 @@ import {
 import {
   findOriginalUnsafeUsagePosFromResult,
   getImportSources,
-  getMockExportNamesBySource,
-  getNamedExports,
+  getImportSourcesFromResult,
+  getMockExportNamesBySourceFromResult,
+  getNamedExportsFromResult,
 } from '../import-protection/analysis'
 import { rewriteDeniedImports } from '../import-protection/rewrite'
 import {
@@ -54,7 +56,6 @@ import {
   clearNormalizeFilePathCache,
   dedupePatterns,
   dedupeViolationKey,
-  isFileExcluded,
   normalizeFilePath,
 } from '../import-protection/utils'
 
@@ -95,6 +96,82 @@ type RspackModuleGraphConnection = {
 }
 type OriginalCodeLoader = (file: string) => Promise<string | undefined>
 const importSpecifierLocationIndex = createImportSpecifierLocationIndex()
+
+type PerfTiming = {
+  count: number
+  totalMs: number
+  maxMs: number
+}
+
+type PerfCollector = {
+  count: (name: string, value?: number) => void
+  time: (name: string, startedAt: number) => void
+  flush: (root: string, envName: string, phase: string) => void
+}
+
+function isPerfEnabled(): boolean {
+  return (
+    process.env.TSR_IMPORT_PROTECTION_PERF === '1' ||
+    process.env.TSR_IMPORT_PROTECTION_PERF === 'true'
+  )
+}
+
+function createPerfCollector(): PerfCollector {
+  const counters = new Map<string, number>()
+  const timings = new Map<string, PerfTiming>()
+  const flushEnvironments = new Set<string>()
+  let flushCount = 0
+
+  return {
+    count(name, value = 1) {
+      counters.set(name, (counters.get(name) ?? 0) + value)
+    },
+    time(name, startedAt) {
+      const duration = performance.now() - startedAt
+      const timing = timings.get(name)
+      if (timing) {
+        timing.count++
+        timing.totalMs += duration
+        timing.maxMs = Math.max(timing.maxMs, duration)
+      } else {
+        timings.set(name, { count: 1, totalMs: duration, maxMs: duration })
+      }
+    },
+    flush(root, envName, phase) {
+      flushCount++
+      flushEnvironments.add(envName)
+
+      const payload = {
+        adapter: 'rsbuild',
+        root,
+        phase,
+        flushCount,
+        flushEnvironments: Array.from(flushEnvironments).sort(),
+        counters: Object.fromEntries(counters),
+        timings: Object.fromEntries(
+          Array.from(timings, ([name, timing]) => [
+            name,
+            {
+              count: timing.count,
+              totalMs: Number(timing.totalMs.toFixed(3)),
+              avgMs: Number((timing.totalMs / timing.count).toFixed(3)),
+              maxMs: Number(timing.maxMs.toFixed(3)),
+            },
+          ]),
+        ),
+      }
+
+      const file = process.env.TSR_IMPORT_PROTECTION_PERF_FILE
+      if (file) {
+        writeFileSync(file, `${JSON.stringify(payload, null, 2)}\n`)
+      } else {
+        console.warn(
+          `[import-protection:perf] ${JSON.stringify(payload, null, 2)}`,
+        )
+      }
+    },
+  }
+}
 
 interface EnvRules {
   specifiers: Array<CompiledMatcher>
@@ -394,17 +471,20 @@ async function resolveAgainstImporter(opts: {
   importerId: string
   source: string
   extensionlessResolver: ExtensionlessAbsoluteIdResolver
+  perf?: PerfCollector
 }): Promise<string | null> {
-  const normalizedImporter = normalizeFilePath(opts.importerId)
-  const cacheKey = `${normalizedImporter}:${opts.source}`
+  const importerDir =
+    opts.ctx.context ?? opts.importerId.replace(/[/\\][^/\\]*$/, '')
+  const normalizedImporterDir = normalizeFilePath(importerDir)
+  const cacheKey = `${normalizedImporterDir}:${opts.source}`
 
   if (opts.envState.resolveCache.has(cacheKey)) {
+    opts.perf?.count('resolve.cached')
     return opts.envState.resolveCache.get(cacheKey) ?? null
   }
 
-  const importerDir =
-    opts.ctx.context ?? opts.importerId.replace(/[/\\][^/\\]*$/, '')
-
+  const startedAt = opts.perf ? performance.now() : 0
+  opts.perf?.count('resolve.calls')
   const resolved = await new Promise<string | null>((resolve, reject) => {
     opts.ctx.resolve(importerDir, opts.source, (error, result) => {
       if (error) {
@@ -414,7 +494,13 @@ async function resolveAgainstImporter(opts: {
 
       resolve(typeof result === 'string' ? result : null)
     })
-  }).catch(() => null)
+  })
+    .catch(() => null)
+    .finally(() => {
+      if (opts.perf) {
+        opts.perf.time('resolve', startedAt)
+      }
+    })
 
   if (!resolved) {
     opts.envState.resolveCache.set(cacheKey, null)
@@ -531,6 +617,7 @@ async function buildTransformResultProvider(opts: {
   root: string
   loadOriginalCode: OriginalCodeLoader
   preloaded?: Map<string, TransformResult>
+  perf?: PerfCollector
 }): Promise<TransformResultProvider> {
   const cache = new Map<string, TransformResult>()
 
@@ -540,29 +627,45 @@ async function buildTransformResultProvider(opts: {
     }
   }
 
+  opts.perf?.count('processAssets.provider.modules', opts.modules.length)
+
   for (const module of opts.modules) {
     const source = module.originalSource()
     if (!source) continue
 
+    const sourceAndMapStartedAt = opts.perf ? performance.now() : 0
     const sourceAndMap = source.sourceAndMap()
+    if (opts.perf) {
+      opts.perf.time(
+        'processAssets.provider.sourceAndMap',
+        sourceAndMapStartedAt,
+      )
+    }
     const code = String(sourceAndMap.source)
     const map = normalizeSourceMap(sourceAndMap.map as SourceMapLike | null)
     const file = getModuleFile(module)
     const resource = getModuleResource(module)
 
+    const originalCodeStartedAt = opts.perf ? performance.now() : 0
     const originalCode = map?.sourcesContent
       ? (pickOriginalCodeFromSourcesContent(map, resource ?? file, opts.root) ??
         (resource ? await opts.loadOriginalCode(resource) : undefined))
       : resource
         ? await opts.loadOriginalCode(resource)
         : undefined
+    if (opts.perf) {
+      opts.perf.time(
+        'processAssets.provider.originalCode',
+        originalCodeStartedAt,
+      )
+    }
 
     const result: TransformResult = {
       code,
       filename: resource ?? file,
       map,
       originalCode,
-      lineIndex: buildLineIndex(code),
+      perf: opts.perf,
     }
 
     if (!hasTransformResult(cache, file)) {
@@ -603,9 +706,14 @@ function addEntryModulesToGraph(opts: {
 function buildCompilationGraph(opts: {
   compilation: RspackCompilation
   modules: Array<RspackModule>
-}): { graph: ImportGraph; edges: Array<CompilationEdge> } {
+}): {
+  graph: ImportGraph
+  edges: Array<CompilationEdge>
+  inactiveEdges: Array<CompilationEdge>
+} {
   const graph = new ImportGraph()
   const edges: Array<CompilationEdge> = []
+  const inactiveEdges: Array<CompilationEdge> = []
 
   addEntryModulesToGraph({
     compilation: opts.compilation,
@@ -619,16 +727,20 @@ function buildCompilationGraph(opts: {
 
     for (const connection of connections) {
       if (!connection.module) continue
-      if (!isActiveConnection(connection)) continue
 
       const resolved = getModuleFile(connection.module)
       const specifier = getConnectionRequest(connection.dependency)
-      graph.addEdge(resolved, importer, specifier)
-      edges.push({ importer, specifier, resolved })
+
+      if (isActiveConnection(connection)) {
+        graph.addEdge(resolved, importer, specifier)
+        edges.push({ importer, specifier, resolved })
+      } else {
+        inactiveEdges.push({ importer, specifier, resolved })
+      }
     }
   }
 
-  return { graph, edges }
+  return { graph, edges, inactiveEdges }
 }
 
 function isActiveConnection(connection: RspackModuleGraphConnection): boolean {
@@ -772,6 +884,7 @@ async function buildViolationInfo(opts: {
   provider: TransformResultProvider
   graph: ImportGraph
   importLocCache: ImportLocCache
+  perf?: PerfCollector
   envName: string
   envType: 'client' | 'server'
   importer: string
@@ -781,6 +894,10 @@ async function buildViolationInfo(opts: {
   pattern?: string | RegExp
   preferOriginalCode?: boolean
 }): Promise<ViolationInfo> {
+  const startedAt = opts.perf ? performance.now() : 0
+  opts.perf?.count('violations.enriched')
+
+  const importerLocStartedAt = opts.perf ? performance.now() : 0
   const importerLoc = await resolveImporterLocation({
     provider: opts.provider,
     importLocCache: opts.importLocCache,
@@ -793,7 +910,11 @@ async function buildViolationInfo(opts: {
     preferOriginalCode: opts.preferOriginalCode,
     envType: opts.envType,
   })
+  if (opts.perf) {
+    opts.perf.time('violations.resolveImporterLocation', importerLocStartedAt)
+  }
 
+  const traceStartedAt = opts.perf ? performance.now() : 0
   const trace = await rebuildAndAnnotateTrace({
     provider: opts.provider,
     graph: opts.graph,
@@ -803,12 +924,19 @@ async function buildViolationInfo(opts: {
     importerLoc,
     maxTraceDepth: opts.config.maxTraceDepth,
   })
+  if (opts.perf) {
+    opts.perf.time('violations.trace', traceStartedAt)
+  }
 
+  const snippetStartedAt = opts.perf ? performance.now() : 0
   const snippet = importerLoc
     ? buildCodeSnippet(opts.provider, opts.importer, importerLoc)
     : undefined
+  if (opts.perf && importerLoc) {
+    opts.perf.time('violations.snippet', snippetStartedAt)
+  }
 
-  return {
+  const info = {
     env: opts.envName,
     envType: opts.envType,
     behavior: opts.config.effectiveBehavior,
@@ -821,6 +949,12 @@ async function buildViolationInfo(opts: {
     trace,
     snippet,
   }
+
+  if (opts.perf) {
+    opts.perf.time('violations.enrich', startedAt)
+  }
+
+  return info
 }
 
 async function getMarkerKindForFile(opts: {
@@ -874,6 +1008,7 @@ async function reportViolation(opts: {
   envState: EnvRuntimeState
   compilation: RspackCompilation
   rspack: RspackNamespace
+  perf?: PerfCollector
   info: ViolationInfo
 }): Promise<void> {
   const key = dedupeKey(opts.info)
@@ -881,14 +1016,21 @@ async function reportViolation(opts: {
     opts.config.logMode !== 'always' &&
     opts.envState.seenViolations.has(key)
   ) {
+    opts.perf?.count('violations.deduped')
     return
   }
 
   opts.envState.seenViolations.add(key)
+  opts.perf?.count('violations.reported')
 
   if (opts.config.onViolation) {
+    const startedAt = opts.perf ? performance.now() : 0
     const result = await opts.config.onViolation(opts.info)
+    if (opts.perf) {
+      opts.perf.time('violations.onViolation', startedAt)
+    }
     if (result === false) {
+      opts.perf?.count('violations.suppressed')
       return
     }
   }
@@ -911,9 +1053,11 @@ export function registerImportProtection(
     environments: Array<{ name: string; type: 'client' | 'server' }>
   },
 ): void {
+  const perf = isPerfEnabled() ? createPerfCollector() : undefined
   const extensionlessResolver = new ExtensionlessAbsoluteIdResolver()
   const envStates = new Map<string, EnvRuntimeState>()
   const fileReadCache = new Map<string, Promise<string | undefined>>()
+  const shouldCheckImporterCache = new Map<string, boolean>()
 
   const config: PluginConfig = {
     enabled: true,
@@ -1037,19 +1181,39 @@ export function registerImportProtection(
     }
   }
 
+  function shouldCheckImporter(file: string): boolean {
+    const normalizedFile = normalizeFilePath(file)
+    const cached = shouldCheckImporterCache.get(normalizedFile)
+    if (cached !== undefined) {
+      perf?.count('shouldCheckImporter.cached')
+      return cached
+    }
+
+    const result = shouldCheckImportProtectionImporter(config, normalizedFile)
+    shouldCheckImporterCache.set(normalizedFile, result)
+    return result
+  }
+
   api.onBeforeBuild(() => {
+    const startedAt = perf ? performance.now() : 0
     applyUserConfig()
     clearNormalizeFilePathCache()
     extensionlessResolver.clear()
     fileReadCache.clear()
+    shouldCheckImporterCache.clear()
     envStates.clear()
+    if (perf) {
+      perf.time('onBeforeBuild', startedAt)
+    }
   })
 
   api.onBeforeDevCompile(() => {
+    const startedAt = perf ? performance.now() : 0
     applyUserConfig()
     clearNormalizeFilePathCache()
     extensionlessResolver.clear()
     fileReadCache.clear()
+    shouldCheckImporterCache.clear()
 
     for (const envState of envStates.values()) {
       envState.resolveCache.clear()
@@ -1057,9 +1221,13 @@ export function registerImportProtection(
       envState.deferredFileViolations.length = 0
       envState.deferredFileViolationKeys.clear()
     }
+    if (perf) {
+      perf.time('onBeforeDevCompile', startedAt)
+    }
   })
 
   api.modifyRspackConfig((rspackConfig, utils) => {
+    const startedAt = perf ? performance.now() : 0
     applyUserConfig()
 
     const envName = utils.environment.name
@@ -1082,6 +1250,9 @@ export function registerImportProtection(
         )
       },
     })
+    if (perf) {
+      perf.time('modifyRspackConfig', startedAt)
+    }
   })
 
   for (const environment of opts.environments) {
@@ -1092,140 +1263,178 @@ export function registerImportProtection(
         order: 'post',
       },
       async (ctx) => {
-        if (!config.enabled) {
-          return ctx.code
-        }
+        const startedAt = perf ? performance.now() : 0
+        perf?.count('transform.calls')
+        perf?.count(`transform.env.${environment.name}`)
 
-        const envName = environment.name
-        const envType = getImportProtectionEnvType(config, envName)
-        const envState = getOrCreateEnvState(envStates, envName)
-        const id = ctx.resource
-        const file = normalizeFilePath(ctx.resourcePath)
+        try {
+          if (!config.enabled) {
+            return ctx.code
+          }
 
-        if (!shouldCheckImportProtectionImporter(config, file)) {
-          return ctx.code
-        }
+          const envName = environment.name
+          const envType = getImportProtectionEnvType(config, envName)
+          const envState = getOrCreateEnvState(envStates, envName)
+          const id = ctx.resource
+          const file = normalizeFilePath(ctx.resourcePath)
 
-        const matchers = getRulesForEnvironment(config, envName)
-        const relativeFile = getImportProtectionRelativePath(config.root, file)
-        const importSources = getImportSources(ctx.code, file)
-        const transformedImportSources = new Set(importSources)
-        const transformInputFileSystem = shared.inputFileSystems[envName]
-        const loadOriginalCodeForTransform: OriginalCodeLoader =
-          transformInputFileSystem
-            ? (target) =>
-                loadOriginalCodeFromInputFileSystem(
-                  transformInputFileSystem,
-                  target,
-                )
-            : () => Promise.resolve(undefined)
-        const originalCode =
-          config.command === 'build'
-            ? await loadOriginalCode(
-                fileReadCache,
-                file,
-                loadOriginalCodeForTransform,
-              )
-            : undefined
-        const buildImportSources = originalCode
-          ? getImportSources(originalCode, file)
-          : []
-        const buildTransformResult: TransformResult | undefined =
-          config.command === 'build'
-            ? {
-                code: ctx.code,
-                filename: file,
-                map: undefined,
-                originalCode,
-                lineIndex: buildLineIndex(ctx.code),
-              }
-            : undefined
+          if (!shouldCheckImporter(file)) {
+            perf?.count('transform.skippedImporter')
+            return ctx.code
+          }
 
-        if (config.command === 'build') {
-          const relativeBuildFile = getImportProtectionRelativePath(
+          const matchers = getRulesForEnvironment(config, envName)
+          const relativeFile = getImportProtectionRelativePath(
             config.root,
             file,
           )
-          addTransformResult(
-            envState.buildTransformResults,
-            file,
-            buildTransformResult!,
-          )
-          addTransformResult(
-            envState.buildTransformResults,
-            relativeBuildFile,
-            buildTransformResult!,
-          )
-          if (id !== file) {
-            addTransformResult(
-              envState.buildTransformResults,
-              id,
-              buildTransformResult!,
+          const transformResult: TransformResult = {
+            code: ctx.code,
+            filename: file,
+            map: undefined,
+            originalCode: undefined,
+            perf,
+          }
+          const importSources = getImportSourcesFromResult(transformResult)
+          perf?.count('transform.importSources', importSources.length)
+          const transformedImportSources = new Set(importSources)
+          const transformInputFileSystem = shared.inputFileSystems[envName]
+          const loadOriginalCodeForTransform: OriginalCodeLoader =
+            transformInputFileSystem
+              ? (target) =>
+                  loadOriginalCodeFromInputFileSystem(
+                    transformInputFileSystem,
+                    target,
+                  )
+              : () => Promise.resolve(undefined)
+          const originalCodeStartedAt = perf ? performance.now() : 0
+          const originalCode =
+            config.command === 'build'
+              ? await loadOriginalCode(
+                  fileReadCache,
+                  file,
+                  loadOriginalCodeForTransform,
+                )
+              : undefined
+          if (perf && config.command === 'build') {
+            perf.time('transform.originalCode.load', originalCodeStartedAt)
+          }
+          transformResult.originalCode = originalCode
+          const originalTransformResult = originalCode
+            ? getOrCreateOriginalTransformResult(transformResult)
+            : undefined
+          const buildImportSourcesStartedAt = perf ? performance.now() : 0
+          const buildImportSources = originalTransformResult
+            ? getImportSourcesFromResult(originalTransformResult)
+            : []
+          if (perf && originalCode) {
+            perf.time(
+              'transform.originalImportAnalysis',
+              buildImportSourcesStartedAt,
+            )
+            perf.count(
+              'transform.originalImportSources',
+              buildImportSources.length,
             )
           }
-        }
-
-        const hasServerOnlyMarker = importSources.some((source) =>
-          config.markerSpecifiers.serverOnly.has(source),
-        )
-        const hasClientOnlyMarker = importSources.some((source) =>
-          config.markerSpecifiers.clientOnly.has(source),
-        )
-
-        if (hasServerOnlyMarker && hasClientOnlyMarker) {
-          throw new Error(
-            `[import-protection] File "${relativeFile}" has both server-only and client-only markers. This is not allowed.`,
-          )
-        }
-
-        const markerKind = hasServerOnlyMarker
-          ? ('server' as const)
-          : hasClientOnlyMarker
-            ? ('client' as const)
-            : undefined
-
-        const fileMatch = checkFileDenial(relativeFile, matchers)
-        const markerViolation =
-          (envType === 'client' && markerKind === 'server') ||
-          (envType === 'server' && markerKind === 'client')
-
-        if (fileMatch || markerViolation) {
-          let exportNames: Array<string> = []
-
-          try {
-            exportNames = getNamedExports(ctx.code, file)
-          } catch {
-            exportNames = []
-          }
+          const buildTransformResult: TransformResult | undefined =
+            config.command === 'build' ? transformResult : undefined
 
           if (config.command === 'build') {
-            return generateSelfContainedMockModule(exportNames)
+            const relativeBuildFile = getImportProtectionRelativePath(
+              config.root,
+              file,
+            )
+            addTransformResult(
+              envState.buildTransformResults,
+              file,
+              buildTransformResult!,
+            )
+            addTransformResult(
+              envState.buildTransformResults,
+              relativeBuildFile,
+              buildTransformResult!,
+            )
+            if (id !== file) {
+              addTransformResult(
+                envState.buildTransformResults,
+                id,
+                buildTransformResult!,
+              )
+            }
           }
 
-          const runtimeId = ensureRuntimeMockModule({
-            shared,
-            envName,
-            mode: config.mockAccess,
-            env: envName,
-            importer: file,
-            specifier: relativeFile,
-          })
+          const hasServerOnlyMarker = importSources.some((source) =>
+            config.markerSpecifiers.serverOnly.has(source),
+          )
+          const hasClientOnlyMarker = importSources.some((source) =>
+            config.markerSpecifiers.clientOnly.has(source),
+          )
 
-          return generateDevSelfDenialModule(exportNames, runtimeId)
-        }
-
-        const deniedSpecifierReplacements = new Map<string, string>()
-        const exportsBySource = (() => {
-          try {
-            return getMockExportNamesBySource(ctx.code, file)
-          } catch {
-            return new Map<string, Array<string>>()
+          if (hasServerOnlyMarker && hasClientOnlyMarker) {
+            throw new Error(
+              `[import-protection] File "${relativeFile}" has both server-only and client-only markers. This is not allowed.`,
+            )
           }
-        })()
 
-        for (const source of importSources) {
-          const specifierMatch = matchesAny(source, matchers.specifiers)
-          if (!specifierMatch && config.command === 'build') {
+          const markerKind = hasServerOnlyMarker
+            ? ('server' as const)
+            : hasClientOnlyMarker
+              ? ('client' as const)
+              : undefined
+
+          const fileMatch = checkFileDenial(relativeFile, matchers)
+          const markerViolation =
+            (envType === 'client' && markerKind === 'server') ||
+            (envType === 'server' && markerKind === 'client')
+
+          if (fileMatch || markerViolation) {
+            let exportNames: Array<string> = []
+
+            try {
+              exportNames = getNamedExportsFromResult(transformResult)
+            } catch {
+              exportNames = []
+            }
+
+            if (config.command === 'build') {
+              return generateSelfContainedMockModule(exportNames)
+            }
+
+            const runtimeId = ensureRuntimeMockModule({
+              shared,
+              envName,
+              mode: config.mockAccess,
+              env: envName,
+              importer: file,
+              specifier: relativeFile,
+            })
+
+            return generateDevSelfDenialModule(exportNames, runtimeId)
+          }
+
+          const deniedSpecifierReplacements = new Map<string, string>()
+          let exportsBySource: Map<string, Array<string>> | undefined
+          const getExportsBySource = () => {
+            if (exportsBySource) {
+              return exportsBySource
+            }
+
+            try {
+              exportsBySource =
+                getMockExportNamesBySourceFromResult(transformResult)
+            } catch {
+              exportsBySource = new Map<string, Array<string>>()
+            }
+            return exportsBySource
+          }
+
+          for (const source of importSources) {
+            const specifierMatch = matchesAny(source, matchers.specifiers)
+            if (!specifierMatch) {
+              continue
+            }
+
             const resolved = await resolveAgainstImporter({
               envState,
               config,
@@ -1233,141 +1442,114 @@ export function registerImportProtection(
               importerId: id,
               source,
               extensionlessResolver,
+              perf,
             })
 
-            if (resolved) {
+            const runtimeId =
+              config.command === 'build'
+                ? ensureSilentMockModule(shared, envName)
+                : ensureRuntimeMockModule({
+                    shared,
+                    envName,
+                    mode: config.mockAccess,
+                    env: envName,
+                    importer: file,
+                    specifier: source,
+                  })
+
+            const replacement = ensureMockEdgeModule({
+              shared,
+              envName,
+              payload: {
+                exports: getExportsBySource().get(source) ?? [],
+                runtimeId,
+                violation: {
+                  env: envName,
+                  envType,
+                  importer: file,
+                  specifier: source,
+                  ...(resolved ? { resolved } : {}),
+                  patternText: serializePattern(specifierMatch.pattern),
+                },
+              },
+            })
+
+            deniedSpecifierReplacements.set(source, replacement)
+          }
+
+          if (config.command === 'build') {
+            for (const source of buildImportSources) {
+              if (transformedImportSources.has(source)) {
+                continue
+              }
+
+              if (matchesAny(source, matchers.specifiers)) {
+                continue
+              }
+
+              if (
+                !hasOriginalUnsafeUsage(buildTransformResult, source, envType)
+              ) {
+                continue
+              }
+
+              const resolved = await resolveAgainstImporter({
+                envState,
+                config,
+                ctx,
+                importerId: id,
+                source,
+                extensionlessResolver,
+                perf,
+              })
+
+              if (!resolved) {
+                continue
+              }
+
               const relativeResolved = getImportProtectionRelativePath(
                 config.root,
                 resolved,
               )
               const buildFileMatch = checkFileDenial(relativeResolved, matchers)
-              if (
-                buildFileMatch &&
-                hasOriginalUnsafeUsage(buildTransformResult, source, envType)
-              ) {
-                deferFileViolation(envState, {
-                  importer: file,
-                  specifier: source,
-                  resolved,
-                  relativeResolved,
-                  pattern: buildFileMatch.pattern,
-                  useOriginalLocation: true,
-                })
+              if (!buildFileMatch) {
+                continue
               }
-            }
 
-            continue
-          }
-
-          if (!specifierMatch) {
-            continue
-          }
-
-          const resolved = await resolveAgainstImporter({
-            envState,
-            config,
-            ctx,
-            importerId: id,
-            source,
-            extensionlessResolver,
-          })
-
-          const runtimeId =
-            config.command === 'build'
-              ? ensureSilentMockModule(shared, envName)
-              : ensureRuntimeMockModule({
-                  shared,
-                  envName,
-                  mode: config.mockAccess,
-                  env: envName,
-                  importer: file,
-                  specifier: source,
-                })
-
-          const replacement = ensureMockEdgeModule({
-            shared,
-            envName,
-            payload: {
-              exports: exportsBySource.get(source) ?? [],
-              runtimeId,
-              violation: {
-                env: envName,
-                envType,
+              deferFileViolation(envState, {
                 importer: file,
                 specifier: source,
-                ...(resolved ? { resolved } : {}),
-                patternText: serializePattern(specifierMatch.pattern),
-              },
-            },
-          })
-
-          deniedSpecifierReplacements.set(source, replacement)
-        }
-
-        if (config.command === 'build') {
-          for (const source of buildImportSources) {
-            if (transformedImportSources.has(source)) {
-              continue
+                resolved,
+                relativeResolved,
+                pattern: buildFileMatch.pattern,
+                useOriginalLocation: true,
+              })
             }
-
-            if (matchesAny(source, matchers.specifiers)) {
-              continue
-            }
-
-            const resolved = await resolveAgainstImporter({
-              envState,
-              config,
-              ctx,
-              importerId: id,
-              source,
-              extensionlessResolver,
-            })
-
-            if (!resolved) {
-              continue
-            }
-
-            const relativeResolved = getImportProtectionRelativePath(
-              config.root,
-              resolved,
-            )
-            const buildFileMatch = checkFileDenial(relativeResolved, matchers)
-            if (
-              !buildFileMatch ||
-              !hasOriginalUnsafeUsage(buildTransformResult, source, envType)
-            ) {
-              continue
-            }
-
-            deferFileViolation(envState, {
-              importer: file,
-              specifier: source,
-              resolved,
-              relativeResolved,
-              pattern: buildFileMatch.pattern,
-              useOriginalLocation: true,
-            })
           }
-        }
 
-        if (deniedSpecifierReplacements.size === 0) {
-          return ctx.code
-        }
+          if (deniedSpecifierReplacements.size === 0) {
+            return ctx.code
+          }
 
-        const rewritten = rewriteDeniedImports(
-          ctx.code,
-          id,
-          new Set(deniedSpecifierReplacements.keys()),
-          (source) => deniedSpecifierReplacements.get(source) ?? source,
-        )
+          const rewritten = rewriteDeniedImports(
+            ctx.code,
+            id,
+            new Set(deniedSpecifierReplacements.keys()),
+            (source) => deniedSpecifierReplacements.get(source) ?? source,
+          )
 
-        if (!rewritten) {
-          return ctx.code
-        }
+          if (!rewritten) {
+            return ctx.code
+          }
 
-        return {
-          code: rewritten.code,
-          map: normalizeSourceMap(rewritten.map) ?? null,
+          return {
+            code: rewritten.code,
+            map: normalizeSourceMap(rewritten.map) ?? null,
+          }
+        } finally {
+          if (perf) {
+            perf.time('transform', startedAt)
+          }
         }
       },
     )
@@ -1379,137 +1561,122 @@ export function registerImportProtection(
       environments: opts.environments.map((environment) => environment.name),
     },
     async (context: ProcessAssetsContext) => {
-      if (!config.enabled) {
-        return
-      }
-
       const envName = context.environment.name
-      const envType = getImportProtectionEnvType(config, envName)
-      const envState = getOrCreateEnvState(envStates, envName)
-      const matchers = getRulesForEnvironment(config, envName)
-      const processFileReadCache = new Map<
-        string,
-        Promise<string | undefined>
-      >()
-      const loadOriginalCodeFromCompilation: OriginalCodeLoader = (file) =>
-        loadOriginalCode(
-          processFileReadCache,
-          file,
-          context.compilation.inputFileSystem
-            ? (target) =>
-                loadOriginalCodeFromInputFileSystem(
-                  context.compilation.inputFileSystem!,
-                  target,
-                )
-            : () => Promise.resolve(undefined),
-        )
-      const allModules = Array.from(context.compilation.modules)
-      const relevantModules = allModules.filter(isImportProtectionSourceModule)
+      const startedAt = perf ? performance.now() : 0
+      perf?.count('processAssets.calls')
+      perf?.count(`processAssets.env.${envName}`)
 
-      const provider = await buildTransformResultProvider({
-        modules: relevantModules,
-        root: config.root,
-        loadOriginalCode: loadOriginalCodeFromCompilation,
-        preloaded: envState.buildTransformResults,
-      })
-      const importLocCache = new ImportLocCache()
-      const markerKindCache = new Map<
-        string,
-        Promise<'server' | 'client' | undefined>
-      >()
-      const { graph, edges } = buildCompilationGraph({
-        compilation: context.compilation,
-        modules: relevantModules,
-      })
-      const liveFileEdgeKeys = new Set(
-        edges
-          .filter((edge) => !!edge.specifier)
-          .map(
-            (edge) =>
-              `${normalizeFilePath(edge.importer)}::${edge.specifier!}::${normalizeFilePath(edge.resolved)}`,
-          ),
-      )
-      const survivingModules = new Set<string>()
-      for (const module of relevantModules) {
-        for (const candidate of buildResolutionCandidates(
-          getModuleFile(module),
-        )) {
-          survivingModules.add(candidate)
+      try {
+        if (!config.enabled) {
+          return
         }
-      }
 
-      const didModuleSurvive = (id: string): boolean =>
-        buildResolutionCandidates(id).some((candidate) =>
-          survivingModules.has(candidate),
-        )
-
-      for (const module of relevantModules) {
-        const payload = getMockEdgePayloadFromFile(getModuleFile(module))
-        if (!payload) {
-          continue
-        }
-        if (
-          !shouldCheckImportProtectionImporter(
-            config,
-            payload.violation.importer,
+        const envType = getImportProtectionEnvType(config, envName)
+        const envState = getOrCreateEnvState(envStates, envName)
+        const matchers = getRulesForEnvironment(config, envName)
+        const processFileReadCache = new Map<
+          string,
+          Promise<string | undefined>
+        >()
+        const loadOriginalCodeFromCompilation: OriginalCodeLoader = (file) =>
+          loadOriginalCode(
+            processFileReadCache,
+            file,
+            context.compilation.inputFileSystem
+              ? (target) =>
+                  loadOriginalCodeFromInputFileSystem(
+                    context.compilation.inputFileSystem!,
+                    target,
+                  )
+              : () => Promise.resolve(undefined),
           )
-        ) {
-          continue
-        }
-
-        const info = await buildViolationInfo({
-          config,
-          provider,
-          graph,
-          importLocCache,
-          envName,
-          envType,
-          importer: payload.violation.importer,
-          source: payload.violation.specifier,
-          resolved: payload.violation.resolved,
-          type: 'specifier',
-          pattern: payload.violation.patternText,
-          preferOriginalCode: true,
-        })
-
-        await reportViolation({
-          config,
-          envState,
-          compilation: context.compilation,
-          rspack: context.compiler.rspack,
-          info,
-        })
-      }
-
-      for (const edge of edges) {
-        if (!edge.specifier) {
-          continue
-        }
-        if (!shouldCheckImportProtectionImporter(config, edge.importer)) {
-          continue
-        }
-
-        const relativeResolved = getImportProtectionRelativePath(
-          config.root,
-          edge.resolved,
+        const allModules = Array.from(context.compilation.modules)
+        const relevantModules = allModules.filter(
+          isImportProtectionSourceModule,
         )
-        if (isFileExcluded(relativeResolved, matchers)) {
-          continue
+        perf?.count('processAssets.modules.total', allModules.length)
+        perf?.count('processAssets.modules.relevant', relevantModules.length)
+
+        const providerStartedAt = perf ? performance.now() : 0
+        const provider = await buildTransformResultProvider({
+          modules: relevantModules,
+          root: config.root,
+          loadOriginalCode: loadOriginalCodeFromCompilation,
+          preloaded: envState.buildTransformResults,
+          perf,
+        })
+        if (perf) {
+          perf.time('processAssets.provider.build', providerStartedAt)
         }
-        const fileMatch = checkFileDenial(relativeResolved, matchers)
-        if (fileMatch) {
+        const importLocCache = new ImportLocCache()
+        const markerKindCache = new Map<
+          string,
+          Promise<'server' | 'client' | undefined>
+        >()
+        const graphStartedAt = perf ? performance.now() : 0
+        const { graph, edges, inactiveEdges } = buildCompilationGraph({
+          compilation: context.compilation,
+          modules: relevantModules,
+        })
+        if (perf) {
+          perf.time('processAssets.graph.build', graphStartedAt)
+          perf.count('processAssets.graph.edges', edges.length)
+          perf.count(
+            'processAssets.graph.inactiveEdges',
+            inactiveEdges.length,
+          )
+        }
+        const liveFileEdgeKeys = new Set(
+          edges
+            .filter((edge) => !!edge.specifier)
+            .map(
+              (edge) =>
+                `${normalizeFilePath(edge.importer)}::${edge.specifier!}::${normalizeFilePath(edge.resolved)}`,
+            ),
+        )
+        const candidateCache = new Map<string, Array<string>>()
+        const getCandidates = (id: string) => {
+          const normalized = normalizeFilePath(id)
+          let candidates = candidateCache.get(normalized)
+          if (!candidates) {
+            candidates = buildResolutionCandidates(normalized)
+            candidateCache.set(normalized, candidates)
+          }
+          return candidates
+        }
+        const survivingModules = new Set<string>()
+        for (const module of relevantModules) {
+          for (const candidate of getCandidates(getModuleFile(module))) {
+            survivingModules.add(candidate)
+          }
+        }
+
+        const didModuleSurvive = (id: string): boolean =>
+          getCandidates(id).some((candidate) => survivingModules.has(candidate))
+
+        for (const module of relevantModules) {
+          const payload = getMockEdgePayloadFromFile(getModuleFile(module))
+          if (!payload) {
+            continue
+          }
+          if (!shouldCheckImporter(payload.violation.importer)) {
+            continue
+          }
+
           const info = await buildViolationInfo({
             config,
             provider,
             graph,
             importLocCache,
+            perf,
             envName,
             envType,
-            importer: edge.importer,
-            source: edge.specifier,
-            resolved: edge.resolved,
-            type: 'file',
-            pattern: fileMatch.pattern,
+            importer: payload.violation.importer,
+            source: payload.violation.specifier,
+            resolved: payload.violation.resolved,
+            type: 'specifier',
+            pattern: payload.violation.patternText,
+            preferOriginalCode: true,
           })
 
           await reportViolation({
@@ -1517,84 +1684,201 @@ export function registerImportProtection(
             envState,
             compilation: context.compilation,
             rspack: context.compiler.rspack,
+            perf,
             info,
           })
-          continue
         }
 
-        const markerKind = await getMarkerKindForFile({
-          config,
-          provider,
-          loadOriginalCode: loadOriginalCodeFromCompilation,
-          markerKindCache,
-          file: edge.resolved,
-        })
-        const violatesMarker =
-          (envType === 'client' && markerKind === 'server') ||
-          (envType === 'server' && markerKind === 'client')
+        for (const edge of edges) {
+          if (!edge.specifier) {
+            continue
+          }
+          if (!shouldCheckImporter(edge.importer)) {
+            continue
+          }
 
-        if (!violatesMarker) {
-          continue
+          const relativeResolved = getImportProtectionRelativePath(
+            config.root,
+            edge.resolved,
+          )
+          const fileMatch = checkFileDenial(relativeResolved, matchers)
+          if (fileMatch) {
+            const info = await buildViolationInfo({
+              config,
+              provider,
+              graph,
+              importLocCache,
+              perf,
+              envName,
+              envType,
+              importer: edge.importer,
+              source: edge.specifier,
+              resolved: edge.resolved,
+              type: 'file',
+              pattern: fileMatch.pattern,
+            })
+
+            await reportViolation({
+              config,
+              envState,
+              compilation: context.compilation,
+              rspack: context.compiler.rspack,
+              perf,
+              info,
+            })
+            continue
+          }
+
+          const markerKind = await getMarkerKindForFile({
+            config,
+            provider,
+            loadOriginalCode: loadOriginalCodeFromCompilation,
+            markerKindCache,
+            file: edge.resolved,
+          })
+          const violatesMarker =
+            (envType === 'client' && markerKind === 'server') ||
+            (envType === 'server' && markerKind === 'client')
+
+          if (!violatesMarker) {
+            continue
+          }
+
+          const info = await buildViolationInfo({
+            config,
+            provider,
+            graph,
+            importLocCache,
+            perf,
+            envName,
+            envType,
+            importer: edge.importer,
+            source: edge.specifier,
+            resolved: edge.resolved,
+            type: 'marker',
+          })
+
+          await reportViolation({
+            config,
+            envState,
+            compilation: context.compilation,
+            rspack: context.compiler.rspack,
+            perf,
+            info,
+          })
         }
 
-        const info = await buildViolationInfo({
-          config,
-          provider,
-          graph,
-          importLocCache,
-          envName,
-          envType,
-          importer: edge.importer,
-          source: edge.specifier,
-          resolved: edge.resolved,
-          type: 'marker',
-        })
+        if (config.command === 'build') {
+          const seenInactiveFileEdgeKeys = new Set<string>()
+          for (const edge of inactiveEdges) {
+            if (!edge.specifier) {
+              continue
+            }
+            if (!shouldCheckImporter(edge.importer)) {
+              continue
+            }
+            const liveEdgeKey = `${normalizeFilePath(edge.importer)}::${edge.specifier}::${normalizeFilePath(edge.resolved)}`
+            if (liveFileEdgeKeys.has(liveEdgeKey)) {
+              continue
+            }
+            if (seenInactiveFileEdgeKeys.has(liveEdgeKey)) {
+              continue
+            }
+            seenInactiveFileEdgeKeys.add(liveEdgeKey)
+            if (!didModuleSurvive(edge.resolved)) {
+              continue
+            }
+            if (!didModuleSurvive(edge.importer)) {
+              continue
+            }
 
-        await reportViolation({
-          config,
-          envState,
-          compilation: context.compilation,
-          rspack: context.compiler.rspack,
-          info,
-        })
-      }
+            const transformResult = provider.getTransformResult(edge.importer)
+            if (
+              !hasOriginalUnsafeUsage(transformResult, edge.specifier, envType)
+            ) {
+              continue
+            }
 
-      for (const violation of envState.deferredFileViolations) {
-        const liveEdgeKey = `${normalizeFilePath(violation.importer)}::${violation.specifier}::${normalizeFilePath(violation.resolved)}`
-        if (liveFileEdgeKeys.has(liveEdgeKey)) {
-          continue
+            const relativeResolved = getImportProtectionRelativePath(
+              config.root,
+              edge.resolved,
+            )
+            const fileMatch = checkFileDenial(relativeResolved, matchers)
+            if (!fileMatch) {
+              continue
+            }
+
+            const info = await buildViolationInfo({
+              config,
+              provider,
+              graph,
+              importLocCache,
+              perf,
+              envName,
+              envType,
+              importer: edge.importer,
+              source: edge.specifier,
+              resolved: edge.resolved,
+              type: 'file',
+              pattern: fileMatch.pattern,
+              preferOriginalCode: true,
+            })
+
+            await reportViolation({
+              config,
+              envState,
+              compilation: context.compilation,
+              rspack: context.compiler.rspack,
+              perf,
+              info,
+            })
+          }
         }
 
-        if (!didModuleSurvive(violation.resolved)) {
-          continue
+        for (const violation of envState.deferredFileViolations) {
+          const liveEdgeKey = `${normalizeFilePath(violation.importer)}::${violation.specifier}::${normalizeFilePath(violation.resolved)}`
+          if (liveFileEdgeKeys.has(liveEdgeKey)) {
+            continue
+          }
+
+          if (!didModuleSurvive(violation.resolved)) {
+            continue
+          }
+
+          if (!didModuleSurvive(violation.importer)) {
+            continue
+          }
+
+          const info = await buildViolationInfo({
+            config,
+            provider,
+            graph,
+            importLocCache,
+            perf,
+            envName,
+            envType,
+            importer: violation.importer,
+            source: violation.specifier,
+            resolved: violation.resolved,
+            type: 'file',
+            pattern: violation.pattern,
+            preferOriginalCode: violation.useOriginalLocation,
+          })
+
+          await reportViolation({
+            config,
+            envState,
+            compilation: context.compilation,
+            rspack: context.compiler.rspack,
+            perf,
+            info,
+          })
         }
-
-        if (!didModuleSurvive(violation.importer)) {
-          continue
+      } finally {
+        if (perf) {
+          perf.time('processAssets', startedAt)
+          perf.flush(config.root, envName, 'processAssets')
         }
-
-        const info = await buildViolationInfo({
-          config,
-          provider,
-          graph,
-          importLocCache,
-          envName,
-          envType,
-          importer: violation.importer,
-          source: violation.specifier,
-          resolved: violation.resolved,
-          type: 'file',
-          pattern: violation.pattern,
-          preferOriginalCode: violation.useOriginalLocation,
-        })
-
-        await reportViolation({
-          config,
-          envState,
-          compilation: context.compilation,
-          rspack: context.compiler.rspack,
-          info,
-        })
       }
     },
   )
