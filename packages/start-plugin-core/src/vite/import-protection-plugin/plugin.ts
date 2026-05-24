@@ -1704,9 +1704,10 @@ export function importProtectionPlugin(
                 skipSelf: true,
               }
               if ('attributes' in _options) {
-                const resolveOptionsWithAttributes = resolveOptions as typeof resolveOptions & {
-                  attributes?: unknown
-                }
+                const resolveOptionsWithAttributes =
+                  resolveOptions as typeof resolveOptions & {
+                    attributes?: unknown
+                  }
                 resolveOptionsWithAttributes.attributes = _options.attributes
               }
               primary = await this.resolve(source, importer, resolveOptions)

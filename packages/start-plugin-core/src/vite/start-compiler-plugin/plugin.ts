@@ -296,7 +296,8 @@ export function startCompilerPlugin(
       buildStart() {
         if (
           this.environment.mode === 'build' ||
-          (bundledDev && this.environment.name === VITE_ENVIRONMENT_NAMES.client)
+          (bundledDev &&
+            this.environment.name === VITE_ENVIRONMENT_NAMES.client)
         ) {
           // Vite app builds can run multiple Rolldown build phases with fresh
           // plugin drivers. The compiler host closes over this hook context for

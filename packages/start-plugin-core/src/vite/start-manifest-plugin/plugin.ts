@@ -1,10 +1,7 @@
 import { joinURL } from 'ufo'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { rootRouteId } from '@tanstack/router-core'
-import {
-  DEV_CLIENT_ENTRY,
-  START_ENVIRONMENT_NAMES,
-} from '../../constants'
+import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../../constants'
 import {
   buildStartManifest,
   createManifestAssetResolvers,

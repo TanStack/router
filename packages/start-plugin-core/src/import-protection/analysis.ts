@@ -198,10 +198,7 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
     getOrCreate(mockNamesBySource, source, () => new Set<string>()).add(name)
   }
 
-  const addMemberBinding = (
-    localName: string,
-    source: string,
-  ) => {
+  const addMemberBinding = (localName: string, source: string) => {
     getOrCreate(memberBindingSources, localName, () => new Set<string>()).add(
       source,
     )

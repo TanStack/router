@@ -1621,10 +1621,7 @@ export function registerImportProtection(
         if (perf) {
           perf.time('processAssets.graph.build', graphStartedAt)
           perf.count('processAssets.graph.edges', edges.length)
-          perf.count(
-            'processAssets.graph.inactiveEdges',
-            inactiveEdges.length,
-          )
+          perf.count('processAssets.graph.inactiveEdges', inactiveEdges.length)
         }
         const liveFileEdgeKeys = new Set(
           edges
