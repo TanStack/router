@@ -88,6 +88,16 @@ const SCENARIOS = [
     case: 'minimal',
   },
   {
+    id: 'react-start.rsbuild.minimal-iife',
+    dir: 'react-start-minimal',
+    outDir: 'react-start-rsbuild-minimal-iife',
+    toolchain: 'rsbuild',
+    rsbuildClientOutput: 'iife',
+    framework: 'react',
+    packageName: '@tanstack/react-start',
+    case: 'minimal-iife',
+  },
+  {
     id: 'react-start.rsbuild.full',
     dir: 'react-start-full',
     outDir: 'react-start-rsbuild-full',
@@ -115,6 +125,20 @@ const SCENARIOS = [
     dir: 'solid-start-full',
     framework: 'solid',
     packageName: '@tanstack/solid-start',
+    case: 'full',
+  },
+  {
+    id: 'vue-start.minimal',
+    dir: 'vue-start-minimal',
+    framework: 'vue',
+    packageName: '@tanstack/vue-start',
+    case: 'minimal',
+  },
+  {
+    id: 'vue-start.full',
+    dir: 'vue-start-full',
+    framework: 'vue',
+    packageName: '@tanstack/vue-start',
     case: 'full',
   },
 ]
@@ -533,15 +557,21 @@ async function buildViteScenario({ root, outDir, sourcemap }) {
   })
 }
 
-async function buildRsbuildScenario({ root, outDir, sourcemap }) {
+async function buildRsbuildScenario({ root, outDir, scenario, sourcemap }) {
   const configFile = path.join(root, 'rsbuild.config.ts')
   const { createRsbuild, loadConfig } = await importFromRoot(
     root,
     '@rsbuild/core',
   )
   const previousOutDir = process.env.BUNDLE_SIZE_DIST_DIR
+  const previousClientOutput = process.env.BUNDLE_SIZE_RSB_CLIENT_OUTPUT
 
   process.env.BUNDLE_SIZE_DIST_DIR = outDir
+  if (scenario.rsbuildClientOutput) {
+    process.env.BUNDLE_SIZE_RSB_CLIENT_OUTPUT = scenario.rsbuildClientOutput
+  } else {
+    delete process.env.BUNDLE_SIZE_RSB_CLIENT_OUTPUT
+  }
 
   try {
     const { content } = await loadConfig({
@@ -572,6 +602,11 @@ async function buildRsbuildScenario({ root, outDir, sourcemap }) {
     } else {
       process.env.BUNDLE_SIZE_DIST_DIR = previousOutDir
     }
+    if (previousClientOutput === undefined) {
+      delete process.env.BUNDLE_SIZE_RSB_CLIENT_OUTPUT
+    } else {
+      process.env.BUNDLE_SIZE_RSB_CLIENT_OUTPUT = previousClientOutput
+    }
   }
 }
 
@@ -581,7 +616,7 @@ async function buildScenario({ root, outDir, scenario, sourcemap }) {
 
   try {
     if (scenario.toolchain === 'rsbuild') {
-      await buildRsbuildScenario({ root, outDir, sourcemap })
+      await buildRsbuildScenario({ root, outDir, scenario, sourcemap })
       return
     }
 

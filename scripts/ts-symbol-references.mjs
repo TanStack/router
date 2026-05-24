@@ -82,8 +82,16 @@ if (!sourceFile) {
   fail(`File is not in the TypeScript program: ${args.file}`)
 }
 
-const symbolNode = findSymbolNode(sourceFile, args.symbol, args.line, args.column)
-const refs = service.findReferences(sourceFile.fileName, symbolNode.getStart(sourceFile))
+const symbolNode = findSymbolNode(
+  sourceFile,
+  args.symbol,
+  args.line,
+  args.column,
+)
+const refs = service.findReferences(
+  sourceFile.fileName,
+  symbolNode.getStart(sourceFile),
+)
 
 if (!refs?.length) {
   fail(`No references found for ${args.symbol}`)
@@ -181,9 +189,7 @@ function findSymbolNode(sourceFile, symbol, line, column) {
     .map((node) => `  ${formatLocation(sourceFile, node.getStart(sourceFile))}`)
     .join('\n')
 
-  fail(
-    `Symbol is ambiguous. Pass --line and --column for one of:\n${options}`,
-  )
+  fail(`Symbol is ambiguous. Pass --line and --column for one of:\n${options}`)
 }
 
 function visitIdentifiers(node, onIdentifier) {

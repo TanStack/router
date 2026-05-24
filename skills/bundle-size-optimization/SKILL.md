@@ -11,15 +11,15 @@ Optimize measured client bundles, not source text. The source of truth is `@benc
 
 ## Commands
 
-| Need               | Command                                                                                                                                                                                                       |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Full benchmark     | `CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache --skipNxCache >/tmp/bundle-size-build.log 2>&1 && pnpm benchmark:bundle-size:query`                   |
-| One scenario       | `CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache --skipNxCache -- --scenario react-router.minimal >/tmp/bundle-size-build.log 2>&1 && pnpm benchmark:bundle-size:query --id react-router.minimal` |
-| Read result        | `pnpm benchmark:bundle-size:query --id react-router.minimal`                                                                                                                                                  |
-| Compare results    | `pnpm benchmark:bundle-size:diff --baseline /tmp/base-current.json --id react-router.minimal`                                                                                                                 |
-| History deltas     | `git fetch --quiet origin gh-pages && pnpm benchmark:bundle-size:history --id react-router.minimal --top-deltas 20`                                                                                           |
+| Need               | Command                                                                                                                                                                                                                                                              |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full benchmark     | `CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache --skipNxCache >/tmp/bundle-size-build.log 2>&1 && pnpm benchmark:bundle-size:query`                                                                           |
+| One scenario       | `CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache --skipNxCache -- --scenario react-router.minimal >/tmp/bundle-size-build.log 2>&1 && pnpm benchmark:bundle-size:query --id react-router.minimal`              |
+| Read result        | `pnpm benchmark:bundle-size:query --id react-router.minimal`                                                                                                                                                                                                         |
+| Compare results    | `pnpm benchmark:bundle-size:diff --baseline /tmp/base-current.json --id react-router.minimal`                                                                                                                                                                        |
+| History deltas     | `git fetch --quiet origin gh-pages && pnpm benchmark:bundle-size:history --id react-router.minimal --top-deltas 20`                                                                                                                                                  |
 | Source attribution | `CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache --skipNxCache -- --scenario react-router.minimal --analysis >/tmp/bundle-size-build.log 2>&1 && pnpm benchmark:bundle-size:analyze --id react-router.minimal` |
-| Symbol refs        | `pnpm ts:symbol-references -- --project packages/router-core/tsconfig.json --file packages/router-core/src/utils.ts --symbol last`                                                                              |
+| Symbol refs        | `pnpm ts:symbol-references -- --project packages/router-core/tsconfig.json --file packages/router-core/src/utils.ts --symbol last`                                                                                                                                   |
 
 ## Rules
 
