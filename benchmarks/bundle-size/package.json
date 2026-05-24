@@ -5,6 +5,14 @@
   "scripts": {
     "build": "node ../../scripts/benchmarks/bundle-size/measure.mjs"
   },
+  "nx": {
+    "targets": {
+      "build": {
+        "cache": false,
+        "dependsOn": []
+      }
+    }
+  },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
