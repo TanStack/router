@@ -31,7 +31,7 @@ export function createDevClientEntryPlugin(opts: {
         }
 
         return (
-          getReactRefreshPreambleCode(this.environment.config.base) +
+          getReactRefreshPreambleCode(reactRefresh.id) +
           `\nawait import(${clientEntry})`
         )
       }
@@ -42,19 +42,31 @@ export function createDevClientEntryPlugin(opts: {
 }
 
 function shouldInjectReactRefreshPreamble(
-  environment: any,
+  environment: ReactRefreshEnvironment | undefined,
   framework: CompileStartFrameworkOptions,
 ) {
+  const config = environment?.config
+
   return (
     framework === 'react' &&
-    environment?.config?.command === 'serve' &&
-    environment.config.consumer === 'client' &&
-    environment.config.server?.hmr !== false
+    config?.command === 'serve' &&
+    config.consumer === 'client' &&
+    config.server?.hmr !== false
   )
 }
 
-function getReactRefreshPreambleCode(base = '/') {
-  return `import { injectIntoGlobalHook } from ${JSON.stringify(`${base}@react-refresh`)};
+interface ReactRefreshEnvironment {
+  config?: {
+    command?: string
+    consumer?: string
+    server?: {
+      hmr?: boolean
+    }
+  }
+}
+
+function getReactRefreshPreambleCode(reactRefreshId: string) {
+  return `import { injectIntoGlobalHook } from ${JSON.stringify(reactRefreshId)};
 injectIntoGlobalHook(window);
 window.$RefreshReg$ = () => {};
 window.$RefreshSig$ = () => (type) => type;

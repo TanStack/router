@@ -1132,13 +1132,13 @@ export function importProtectionPlugin(
       }
 
       const importers = env.graph.reverseEdges.get(current)
-      if (!importers || importers.size === 0) {
-        if (current !== file) {
-          return 'reachable'
-        }
+      if (!importers) {
+        continue
+      }
 
+      if (importers.size === 0) {
         const routesDirectory = normalizePath(`${config.srcDirectory}/routes`)
-        if (isInsideDirectory(current, routesDirectory)) {
+        if (current === file || isInsideDirectory(current, routesDirectory)) {
           return 'reachable'
         }
         continue

@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import { importProtectionPlugin } from '../../src/vite/import-protection-plugin/plugin'
 
-describe('importProtectionPlugin resolveId', () => {
+describe('importProtectionPlugin', () => {
   test('returns the nested resolver result when a resolved import is allowed', async () => {
     const root = '/repo'
     const plugin = createPlugin(root)
@@ -38,9 +38,53 @@ describe('importProtectionPlugin resolveId', () => {
       skipSelf: true,
     })
   })
+
+  test('keeps bundled-dev client violations pending until route importers are known', async () => {
+    const root = '/repo'
+    const { plugin, transformCachePlugin } = createPlugins(root, {
+      command: 'serve',
+      bundledDev: true,
+    })
+    plugin.buildStart()
+
+    const routeFile = `${root}/src/routes/leak.tsx`
+    const deniedFile = `${root}/src/lib/secret.server.ts`
+    const warn = vi.fn()
+    const resolve = vi.fn(async (source: string) =>
+      source === '../lib/secret.server' ? { id: deniedFile } : null,
+    )
+
+    await transformCachePlugin.transform.handler.call(
+      {
+        environment: { name: 'client' },
+        resolve,
+        warn,
+        error(message: string) {
+          throw new Error(message)
+        },
+        getCombinedSourcemap: () => null,
+      },
+      `import { secret } from '../lib/secret.server'
+export const value = secret
+`,
+      routeFile,
+    )
+
+    expect(warn).not.toHaveBeenCalled()
+  })
 })
 
 function createPlugin(root: string): any {
+  return createPlugins(root).plugin
+}
+
+function createPlugins(
+  root: string,
+  opts: {
+    command?: 'build' | 'serve'
+    bundledDev?: boolean
+  } = {},
+): { plugin: any; transformCachePlugin: any } {
   const plugins = importProtectionPlugin({
     framework: 'react',
     providerEnvName: 'ssr',
@@ -62,12 +106,16 @@ function createPlugin(root: string): any {
   const plugin = plugins.find(
     (item) => item.name === 'tanstack-start-core:import-protection',
   )!
+  const transformCachePlugin = plugins.find(
+    (item) =>
+      item.name === 'tanstack-start-core:import-protection-transform-cache',
+  )!
 
   plugin.configResolved({
     root,
-    command: 'build',
-    experimental: { bundledDev: false },
+    command: opts.command ?? 'build',
+    experimental: { bundledDev: opts.bundledDev ?? false },
   })
 
-  return plugin
+  return { plugin, transformCachePlugin }
 }

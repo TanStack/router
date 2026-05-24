@@ -50,7 +50,7 @@ describe('createDevClientEntryPlugin', () => {
     )
 
     expect(code).toContain(
-      'import { injectIntoGlobalHook } from "/base/@react-refresh"',
+      'import { injectIntoGlobalHook } from "/@react-refresh"',
     )
     expect(code).toContain('injectIntoGlobalHook(window)')
     expect(code).toContain(
