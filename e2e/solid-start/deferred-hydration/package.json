@@ -21,7 +21,7 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
     "solid-js": "^1.9.10",
-    "vite": "^8.0.0"
+    "vite": "^8.0.14"
   },
   "devDependencies": {
     "@rsbuild/core": "^2.0.1",
@@ -29,7 +29,6 @@
     "@rsbuild/plugin-solid": "^1.1.1",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
-    "rolldown": "1.0.0-rc.18",
     "srvx": "^0.11.9",
     "typescript": "^6.0.2",
     "vite-plugin-solid": "^2.11.11"

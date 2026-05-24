@@ -18,7 +18,7 @@
     "@types/node": "^22.7.4",
     "vite-plugin-solid": "^2.11.11",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
+    "vite": "^8.0.14",
     "vite-plugin-dts": "^4.5.4"
   },
   "keywords": [],
