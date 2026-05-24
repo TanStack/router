@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { ClientOnly, createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { createServerFn } from '@tanstack/react-start'
 
@@ -116,6 +116,9 @@ function ConsistentServerFnCalls() {
       >
         Test Consistent server function responses
       </button>
+      <ClientOnly>
+        <span data-testid="consistent-client-hydrated" hidden />
+      </ClientOnly>
     </div>
   )
 }

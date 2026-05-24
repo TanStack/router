@@ -1,9 +1,8 @@
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:net'
 import { resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from '../package.json' with { type: 'json' }
 import type { ChildProcess } from 'node:child_process'
 import type { Page, Request } from '@playwright/test'
 
@@ -33,6 +32,71 @@ interface ServerFnRequest {
 interface DevServer {
   child: ChildProcess
   logs: Array<string>
+  port: number
+}
+
+let navigationId = 0
+
+async function delay(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function getAvailablePort(): Promise<number> {
+  return await new Promise((resolvePromise, reject) => {
+    const server = createServer()
+
+    server.unref()
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address()
+
+      if (!address || typeof address === 'string') {
+        server.close(() => reject(new Error('Could not allocate a port')))
+        return
+      }
+
+      const { port } = address
+      server.close((error) => {
+        if (error) {
+          reject(error)
+          return
+        }
+
+        resolvePromise(port)
+      })
+    })
+  })
+}
+
+async function canListen(port: number): Promise<boolean> {
+  return await new Promise((resolvePromise) => {
+    const server = createServer()
+
+    const finish = (value: boolean) => {
+      server.removeAllListeners()
+      resolvePromise(value)
+    }
+
+    server.unref()
+    server.once('error', () => finish(false))
+    server.listen(port, '127.0.0.1', () => {
+      server.close((error) => finish(!error))
+    })
+  })
+}
+
+async function waitForPortAvailable(port: number): Promise<void> {
+  const start = Date.now()
+
+  while (Date.now() - start < 10_000) {
+    if (await canListen(port)) {
+      return
+    }
+
+    await delay(100)
+  }
+
+  throw new Error(`Timed out waiting for port ${port} to be released`)
 }
 
 function startRsbuildDevServer(
@@ -42,7 +106,7 @@ function startRsbuildDevServer(
   const logs: Array<string> = []
   const child = spawn(
     'pnpm',
-    ['exec', 'rsbuild', 'dev', '--port', String(port)],
+    ['exec', 'rsbuild', 'dev', '--host', '127.0.0.1', '--port', String(port)],
     {
       cwd: appDir,
       detached: true,
@@ -60,7 +124,7 @@ function startRsbuildDevServer(
   child.stdout?.on('data', (chunk: Buffer) => logs.push(chunk.toString()))
   child.stderr?.on('data', (chunk: Buffer) => logs.push(chunk.toString()))
 
-  return { child, logs }
+  return { child, logs, port }
 }
 
 function killDevServer(devServer: DevServer, signal: NodeJS.Signals) {
@@ -100,7 +164,7 @@ async function waitForHttpOk(devServer: DevServer, url: string): Promise<void> {
       // Wait until the dev server starts accepting requests.
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 250))
+    await delay(250)
   }
 
   throw new Error(
@@ -152,6 +216,8 @@ async function stopDevServer(devServer: DevServer): Promise<void> {
       doneTimer = setTimeout(done, 500)
     }, 3000)
   })
+
+  await waitForPortAvailable(devServer.port)
 }
 
 async function waitForRetry<T>(
@@ -173,7 +239,7 @@ async function waitForRetry<T>(
       return await action()
     } catch (error) {
       lastError = error
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await delay(500)
     }
   }
 
@@ -211,9 +277,12 @@ async function exerciseServerFunctions(
   baseURL: string,
   expectedUsername = 'TEST',
 ) {
-  const response = await page.goto(`${baseURL}/consistent`, {
-    waitUntil: 'networkidle',
-  })
+  const response = await page.goto(
+    `${baseURL}/consistent?testRun=${navigationId++}`,
+    {
+      waitUntil: 'networkidle',
+    },
+  )
   expect(response?.ok()).toBe(true)
 
   const expectedLocator = page.getByTestId(
@@ -223,6 +292,8 @@ async function exerciseServerFunctions(
     JSON.stringify({ payload: { username: expectedUsername } }),
   )
   const expected = (await expectedLocator.textContent()) || ''
+
+  await expect(page.getByTestId('consistent-client-hydrated')).toBeAttached()
 
   await page.getByTestId('test-consistent-server-fn-calls-btn').click()
   await page.waitForLoadState('networkidle')
@@ -281,8 +352,8 @@ test('rsbuild build cache warm restart keeps server function registry', async ({
 
   rmSync(cacheDir, { recursive: true, force: true })
 
-  const port = await getTestServerPort(`${packageJson.name}-rsbuild-cache`)
-  const baseURL = `http://localhost:${port}`
+  const port = await getAvailablePort()
+  const baseURL = `http://127.0.0.1:${port}`
   let devServer = startRsbuildDevServer(port)
 
   try {
@@ -315,8 +386,8 @@ test('rsbuild without build cache keeps server function registry', async ({
 
   rmSync(cacheDir, { recursive: true, force: true })
 
-  const port = await getTestServerPort(`${packageJson.name}-rsbuild-no-cache`)
-  const baseURL = `http://localhost:${port}`
+  const port = await getAvailablePort()
+  const baseURL = `http://127.0.0.1:${port}`
   const devServer = startRsbuildDevServer(port, false)
 
   try {
@@ -340,8 +411,8 @@ test('rsbuild watch updates and removes server function metadata', async ({
   const updatedSource = originalSource.replaceAll("'TEST'", "'WATCH'")
   rmSync(cacheDir, { recursive: true, force: true })
 
-  const port = await getTestServerPort(`${packageJson.name}-rsbuild-watch`)
-  const baseURL = `http://localhost:${port}`
+  const port = await getAvailablePort()
+  const baseURL = `http://127.0.0.1:${port}`
   const devServer = startRsbuildDevServer(port)
 
   try {
