@@ -27,7 +27,7 @@
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.1",
     "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.6.0",
+    "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

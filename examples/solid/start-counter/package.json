@@ -15,7 +15,7 @@
     "@tanstack/solid-start": "^1.168.11",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
-    "tailwind-merge": "^2.6.0",
+    "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

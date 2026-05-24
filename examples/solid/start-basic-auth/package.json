@@ -19,7 +19,7 @@
     "@tanstack/solid-start": "^1.168.11",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",

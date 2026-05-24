@@ -14,9 +14,9 @@
     "@tanstack/solid-router": "^1.170.8",
     "@tanstack/solid-router-devtools": "^1.167.0",
     "@tanstack/solid-start": "^1.168.11",
-    "start-authjs": "^1.0.0",
     "solid-js": "^1.9.10",
-    "tailwind-merge": "^2.6.0"
+    "start-authjs": "^1.0.0",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",

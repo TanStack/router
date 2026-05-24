@@ -14,7 +14,7 @@
     "@tanstack/solid-router-devtools": "^1.167.0",
     "@tanstack/solid-start": "^1.168.11",
     "solid-js": "^1.9.10",
-    "tailwind-merge": "^2.6.0",
+    "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
