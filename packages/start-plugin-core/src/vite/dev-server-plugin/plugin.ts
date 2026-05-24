@@ -158,8 +158,6 @@ export function devServerPlugin({
               'cannot install vite dev server middleware for TanStack Start since the SSR environment is not a RunnableDevEnvironment',
             )
           }
-          const serverRunner = serverEnv.runner
-
           viteDevServer.middlewares.use(async (req, res) => {
             // fix the request URL to match the original URL
             // otherwise, the request URL will '/index.html'
@@ -169,6 +167,8 @@ export function devServerPlugin({
             const webReq = new NodeRequest({ req, res })
 
             try {
+              const serverRunner = serverEnv.runner
+
               // Import and resolve the request by running the server request entry point
               // this request entry point must implement the `fetch` API as follows:
               /**
