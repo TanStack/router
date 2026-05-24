@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   createRsbuildEnvironmentPlan,
   resolveRsbuildOutputDirectory,
-} from '../src/rsbuild/planning'
+} from '../../src/rsbuild/planning'
 
 describe('resolveRsbuildOutputDirectory', () => {
   test('uses explicit environment distPath string', () => {
