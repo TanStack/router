@@ -57,24 +57,6 @@ export async function getStartManifest(
     })
   }
 
-  if (process.env.TSS_DEV_SERVER === 'true') {
-    const mod = await import('tanstack-start-injected-head-scripts:v')
-    if (mod.injectedHeadScripts) {
-      updateRootRoute({
-        ...rootRoute,
-        scripts: [
-          ...(rootRoute?.scripts ?? []),
-          {
-            attrs: {
-              type: 'module',
-            },
-            children: mod.injectedHeadScripts,
-          },
-        ],
-      })
-    }
-  }
-
   const manifestRoutes: Record<string, ServerManifestRoute> = {}
 
   for (const k in routes) {

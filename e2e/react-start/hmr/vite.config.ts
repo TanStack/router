@@ -4,9 +4,11 @@ import tailwindcss from '@tailwindcss/vite'
 import viteReact from '@vitejs/plugin-react'
 
 const outDir = process.env.E2E_DIST_DIR ?? 'dist'
+const bundledDev = process.env.E2E_VITE_BUNDLED_DEV === 'true'
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
+  experimental: bundledDev ? { bundledDev: true } : undefined,
   build: {
     outDir,
   },

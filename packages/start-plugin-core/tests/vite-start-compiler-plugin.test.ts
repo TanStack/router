@@ -220,8 +220,8 @@ describe('startCompilerPlugin Vite virtual modules', () => {
 
     const configResolved = transformPlugin.configResolved as any
     await (typeof configResolved === 'function'
-      ? configResolved({ root })
-      : configResolved.handler({ root }))
+      ? configResolved({ root, experimental: { bundledDev: false } })
+      : configResolved.handler({ root, experimental: { bundledDev: false } }))
 
     const transformRequest = vi.fn(async (id: string) => {
       await (transformPlugin.transform as any).handler.call(

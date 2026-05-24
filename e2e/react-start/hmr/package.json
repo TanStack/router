@@ -42,6 +42,9 @@
       "test:e2e--vite-ssr": {
         "parallelism": false
       },
+      "test:e2e--vite-ssr--bundled-dev": {
+        "parallelism": false
+      },
       "test:e2e--rsbuild-ssr": {
         "parallelism": false
       }
@@ -50,7 +53,18 @@
       "playwrightModes": [
         {
           "toolchain": "vite",
-          "mode": "ssr"
+          "mode": "ssr",
+          "env": {
+            "E2E_VITE_BUNDLED_DEV": "false"
+          }
+        },
+        {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "name": "bundled-dev",
+          "env": {
+            "E2E_VITE_BUNDLED_DEV": "true"
+          }
         },
         {
           "toolchain": "rsbuild",

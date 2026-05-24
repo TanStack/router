@@ -13216,9 +13216,6 @@ importers:
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
-      cheerio:
-        specifier: ^1.0.0
-        version: 1.0.0
       exsolve:
         specifier: ^1.0.7
         version: 1.0.7

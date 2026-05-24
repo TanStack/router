@@ -125,18 +125,6 @@ export const tsrStartManifest = () => tsrStartManifestData`
   return `export const tsrStartManifest = () => (${serializeStartManifestData(clientBuild, publicBase, inlineCss, scriptFormat)})`
 }
 
-// ---------------------------------------------------------------------------
-// Injected head scripts codegen
-// ---------------------------------------------------------------------------
-
-function generateInjectedHeadScripts(scripts?: string): string {
-  return `export const injectedHeadScripts = ${scripts ? JSON.stringify(scripts) : 'undefined'}`
-}
-
-// ---------------------------------------------------------------------------
-// RSC virtual module codegen
-// ---------------------------------------------------------------------------
-
 /**
  * Generate virtual:tanstack-rsc-runtime content.
  * In the RSC layer this re-exports from react-server-dom-rspack/server.
@@ -252,7 +240,6 @@ export function registerVirtualModules(
   // Virtual module paths keyed by module ID
   const paths = {
     manifest: virtualPath(root, VIRTUAL_MODULES.startManifest),
-    injectedHeadScripts: virtualPath(root, VIRTUAL_MODULES.injectedHeadScripts),
     serverFnResolver: virtualPath(root, VIRTUAL_MODULES.serverFnResolver),
     pluginAdapters: virtualPath(root, VIRTUAL_MODULES.pluginAdapters),
   }
@@ -389,9 +376,6 @@ export function registerVirtualModules(
       content[paths.manifest] = 'export default {}'
     }
 
-    // Injected head scripts — only server
-    content[paths.injectedHeadScripts] = generateInjectedHeadScripts()
-
     // Server fn resolver — SSR and provider environments
     if (needsServerFnResolver(environmentName)) {
       content[paths.serverFnResolver] = generateResolverContent(environmentName)
@@ -445,7 +429,6 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
   // rspack validates request schemes before normal alias resolution.
   const aliasMap: Record<string, string> = {
     [VIRTUAL_MODULES.startManifest]: paths.manifest,
-    [VIRTUAL_MODULES.injectedHeadScripts]: paths.injectedHeadScripts,
     [VIRTUAL_MODULES.serverFnResolver]: paths.serverFnResolver,
     [VIRTUAL_MODULES.pluginAdapters]: paths.pluginAdapters,
   }
