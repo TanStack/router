@@ -56,6 +56,7 @@ import {
   clearNormalizeFilePathCache,
   dedupePatterns,
   dedupeViolationKey,
+  isFileExcluded,
   normalizeFilePath,
 } from '../import-protection/utils'
 
@@ -64,6 +65,7 @@ import type {
   ImportProtectionOptions,
 } from '../schema'
 import type { CompiledMatcher } from '../import-protection/matchers'
+import type { FileMatchers } from '../import-protection/utils'
 import type {
   SourceMapLike,
   TransformResult,
@@ -251,6 +253,10 @@ interface MockEdgePayload {
   }
 }
 
+type ResolvedImportProtectionCheck =
+  | { type: 'file'; fileMatch: FileMatchers['files'][number] }
+  | { type: 'marker' }
+
 const IMPORT_PROTECTION_VIRTUAL_DIR = 'node_modules/.virtual/import-protection'
 const MOCK_EDGE_FILE_PREFIX = 'mock-edge-'
 const MOCK_RUNTIME_FILE_PREFIX = 'mock-runtime-'
@@ -277,6 +283,24 @@ function serializePattern(pattern: string | RegExp): string {
 
 function dedupeKey(info: ViolationInfo): string {
   return dedupeViolationKey(info)
+}
+
+export function getRsbuildResolvedImportProtectionCheck(
+  relativeResolved: string,
+  matchers: FileMatchers,
+): ResolvedImportProtectionCheck | undefined {
+  if (isFileExcluded(relativeResolved, matchers)) {
+    return undefined
+  }
+
+  const fileMatch = matchers.files.find((matcher) =>
+    matcher.test(relativeResolved),
+  )
+  if (fileMatch) {
+    return { type: 'file', fileMatch }
+  }
+
+  return { type: 'marker' }
 }
 
 function getOrCreateEnvState(
@@ -1698,8 +1722,14 @@ export function registerImportProtection(
             config.root,
             edge.resolved,
           )
-          const fileMatch = checkFileDenial(relativeResolved, matchers)
-          if (fileMatch) {
+
+          const importProtectionCheck =
+            getRsbuildResolvedImportProtectionCheck(relativeResolved, matchers)
+          if (!importProtectionCheck) {
+            continue
+          }
+
+          if (importProtectionCheck.type === 'file') {
             const info = await buildViolationInfo({
               config,
               provider,
@@ -1712,7 +1742,7 @@ export function registerImportProtection(
               source: edge.specifier,
               resolved: edge.resolved,
               type: 'file',
-              pattern: fileMatch.pattern,
+              pattern: importProtectionCheck.fileMatch.pattern,
             })
 
             await reportViolation({
