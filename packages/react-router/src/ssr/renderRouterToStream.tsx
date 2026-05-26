@@ -59,14 +59,16 @@ export const renderRouterToStream = async ({
                 pipeable.pipe(reactAppPassthrough)
               },
             }),
-        onError: (error, info) => {
-          console.error('Error in renderToPipeableStream:', error, info)
-          // Destroy the passthrough stream on error
+        onShellError(error) {
+          console.error('Error in renderToPipeableStream:', error)
           if (!reactAppPassthrough.destroyed) {
             reactAppPassthrough.destroy(
               error instanceof Error ? error : new Error(String(error)),
             )
           }
+        },
+        onError: (error, info) => {
+          console.error('Error in renderToPipeableStream:', error, info)
         },
       })
     } catch (e) {
