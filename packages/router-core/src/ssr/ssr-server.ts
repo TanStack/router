@@ -86,13 +86,13 @@ class ScriptBuffer {
 
   constructor(router: AnyRouter) {
     this.router = router
-    // Copy INITIAL_SCRIPTS to avoid mutating the shared array
-    this._queue = INITIAL_SCRIPTS.slice()
+    // Copy INITIAL_SCRIPTS and trim to avoid unnecessary whitespace in HTML output
+    this._queue = INITIAL_SCRIPTS.map((s) => s.trim())
   }
 
   enqueue(script: string) {
     if (this._cleanedUp) return
-    this._queue.push(script)
+    this._queue.push(script.trim())
     // If barrier is lifted, schedule injection (if not already scheduled)
     if (this._scriptBarrierLifted && !this._pendingMicrotask) {
       this._pendingMicrotask = true
