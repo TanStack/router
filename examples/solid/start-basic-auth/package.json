@@ -16,7 +16,7 @@
     "@prisma/client": "^7.0.0",
     "@tanstack/solid-router": "^1.170.8",
     "@tanstack/solid-router-devtools": "^1.167.0",
-    "@tanstack/solid-start": "^1.168.13",
+    "@tanstack/solid-start": "^1.168.14",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^3.6.0"
