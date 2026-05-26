@@ -1,5 +1,11 @@
 # @tanstack/solid-start-client
 
+## 1.168.5
+
+### Patch Changes
+
+- [#7492](https://github.com/TanStack/router/pull/7492) [`71fb329`](https://github.com/TanStack/router/commit/71fb3297e93a126e1bcfd9eeb0626cc4b8df8dd8) - Avoid pulling the client hydration entry into root `@tanstack/react-start` and `@tanstack/solid-start` imports by re-exporting `Hydrate` from framework client Hydrate-only subpaths.
+
 ## 1.168.4
 
 ### Patch Changes
