@@ -1,10 +1,6 @@
 import { createMemoryHistory } from '@tanstack/history'
 import { mergeHeaders } from './headers'
-import {
-  attachRouterServerSsrUtils,
-  getNormalizedURL,
-  getOrigin,
-} from './ssr-server'
+import { attachRouterServerSsrUtils, getNormalizedURL } from './ssr-server'
 import type { HandlerCallback } from './handlerCallback'
 import type { AnyHeaders } from './headers'
 import type { AnyRouter } from '../router'
@@ -36,7 +32,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
       const { url } = getNormalizedURL(request.url, 'http://localhost')
-      const origin = getOrigin(request)
+      const origin = url.origin
       const href = url.href.replace(url.origin, '')
 
       // Create a history for the router
