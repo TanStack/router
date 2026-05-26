@@ -15,7 +15,14 @@ export {
   createServerOnlyFn,
   createStart,
 } from '@tanstack/start-client-core'
-export { Hydrate } from '@tanstack/solid-start-client'
+
+// Keep root `@tanstack/solid-start` imports from evaluating the client barrel.
+// The barrel also exports `hydrateStart`, which imports the virtual client
+// entry. That virtual entry imports the user's router module, so route modules
+// that import the root package can be pulled back into the same graph and
+// create circular HMR updates. Re-exporting from the Hydrate-only subpath
+// preserves the public API without introducing that import edge.
+export { Hydrate } from '@tanstack/solid-start-client/Hydrate'
 export type {
   HydrateOptions,
   HydrateProps,
@@ -24,4 +31,4 @@ export type {
   HydrationPrefetchStrategy,
   HydrationStrategy,
   HydrationWhen,
-} from '@tanstack/solid-start-client'
+} from '@tanstack/solid-start-client/Hydrate'

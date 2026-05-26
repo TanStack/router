@@ -54,6 +54,12 @@
         "default": "./dist/esm/hydration.js"
       }
     },
+    "./Hydrate": {
+      "import": {
+        "types": "./dist/esm/Hydrate.d.ts",
+        "default": "./dist/esm/Hydrate.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
