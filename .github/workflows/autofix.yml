@@ -2,8 +2,6 @@ name: autofix.ci # needed to securely identify the workflow
 
 on:
   pull_request:
-  push:
-    branches: [main, alpha, beta]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
@@ -19,9 +17,11 @@ jobs:
     if: ${{ github.event_name == 'push' || !github.event.pull_request.draft }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@main
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Fix formatting
         run: pnpm format
       - name: Generate labeler config

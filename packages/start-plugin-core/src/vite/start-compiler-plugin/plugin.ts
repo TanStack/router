@@ -1,4 +1,3 @@
-import { AsyncLocalStorage } from 'node:async_hooks'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { resolve as resolvePath } from 'pathe'
 import {
@@ -9,12 +8,18 @@ import {
 import { detectKindsInCode } from '../../start-compiler/compiler'
 import { getTransformCodeFilterForEnv } from '../../start-compiler/config'
 import {
+  createCompilerVirtualModuleIdPattern,
   createStartCompiler,
+  loadCompilerVirtualModule,
   mergeServerFnsById,
 } from '../../start-compiler/host'
 import { generateServerFnResolverModule } from '../../start-compiler/server-fn-resolver-module'
 import { cleanId } from '../../start-compiler/utils'
 import { createVirtualModule } from '../createVirtualModule'
+import {
+  MissingHydrateSourceError,
+  createHydrateCompilerPlugin,
+} from '../../hydrate-when-transform'
 import { resolveViteId } from '../../utils'
 import {
   createViteDevServerFnModuleSpecifierEncoder,
@@ -24,12 +29,13 @@ import { mergeHotUpdateModules } from './hot-update'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerImportTransform,
+  StartCompilerPlugin,
 } from '../../types'
 import type {
   GenerateFunctionIdFnOptional,
   ServerFn,
 } from '../../start-compiler/types'
-import type { EnvironmentModuleNode, PluginOption } from 'vite'
+import type { Environment, EnvironmentModuleNode, PluginOption } from 'vite'
 
 // Re-export from shared constants for backwards compatibility
 export { SERVER_FN_LOOKUP }
@@ -47,18 +53,30 @@ type ModuleInvalidationEnvironment = {
   }
 }
 
-type StartCompilerPluginContext = {
-  environment: {
-    name: string
-    mode: string
-    transformRequest: (url: string) => Promise<unknown>
-  }
-  load: (options: { id: string }) => Promise<{ code?: string | null }>
-  resolve: (
-    source: string,
-    importer?: string,
-  ) => Promise<{ id: string; external?: boolean | string } | null>
+type ViteModuleLoadOptions = {
+  devId?: string
+  load: (options: { id: string }) => Promise<{ code?: string | null } | null>
   error: (message: string) => never
+}
+
+async function loadViteModuleFromEnvironment(
+  environment: Environment,
+  id: string,
+  opts: ViteModuleLoadOptions,
+): Promise<string | undefined> {
+  if (environment.mode === 'build') {
+    const loaded = await opts.load({ id })
+    return loaded?.code ?? ''
+  }
+
+  if (environment.mode === 'dev') {
+    await environment.transformRequest(opts.devId ?? id)
+    return undefined
+  }
+
+  opts.error(
+    `could not load module ${id}: unknown environment mode ${environment.mode}`,
+  )
 }
 
 function invalidateMatchingFileModules(
@@ -117,6 +135,25 @@ function invalidateServerFnLookupModules(
     ids,
     (fileModule) => fileModule.id?.includes(SERVER_FN_LOOKUP) ?? false,
   )
+}
+
+function invalidateCompilerVirtualModules(
+  environment: ModuleInvalidationEnvironment,
+  ids: Iterable<string>,
+  pattern: RegExp | undefined,
+) {
+  if (!pattern) {
+    return []
+  }
+
+  return invalidateMatchingFileModules(environment, ids, (fileModule) => {
+    if (!fileModule.id) {
+      return false
+    }
+
+    pattern.lastIndex = 0
+    return pattern.test(fileModule.id)
+  })
 }
 
 function getServerFnProviderIds(ids: Iterable<string>) {
@@ -185,6 +222,7 @@ export interface StartCompilerPluginOptions {
    */
   generateFunctionId?: GenerateFunctionIdFnOptional
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  compilerPlugins?: Array<StartCompilerPlugin> | undefined
   serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
   /**
    * The Vite environment name for the server function provider.
@@ -196,17 +234,15 @@ export function startCompilerPlugin(
   opts: StartCompilerPluginOptions,
 ): PluginOption {
   const compilers = new Map<string, ReturnType<typeof createStartCompiler>>()
-  const compilerContextStorage =
-    new AsyncLocalStorage<StartCompilerPluginContext>()
-
-  const getCompilerContext = () => {
-    const context = compilerContextStorage.getStore()
-    if (!context) {
-      throw new Error('Start compiler Vite context is unavailable.')
-    }
-
-    return context
-  }
+  const compilerPlugins = [
+    createHydrateCompilerPlugin(),
+    ...(opts.compilerPlugins ?? []),
+  ]
+  const compilerVirtualModuleIdPattern =
+    createCompilerVirtualModuleIdPattern(compilerPlugins)
+  const environmentByName = new Map(
+    opts.environments.map((environment) => [environment.name, environment]),
+  )
 
   // Shared registry of server functions across all environments
   const serverFnsById: Record<string, ServerFn> = {}
@@ -216,6 +252,7 @@ export function startCompilerPlugin(
   }
 
   let root = process.cwd()
+  let bundledDev = false
   // Determine which environments need the resolver (getServerFnById)
   // SSR environment always needs the resolver for server-side calls
   // Provider environment needs it for the actual implementation
@@ -244,6 +281,7 @@ export function startCompilerPlugin(
     // Derive transform code filter from KindDetectionPatterns (single source of truth)
     const transformCodeFilter = getTransformCodeFilterForEnv(environment.type, {
       compilerTransforms,
+      compilerPlugins,
     })
     return {
       name: `tanstack-start-core::server-fn:${environment.name}`,
@@ -253,6 +291,24 @@ export function startCompilerPlugin(
       },
       configResolved(config) {
         root = config.root
+        bundledDev = !!config.experimental.bundledDev
+      },
+      buildStart() {
+        if (
+          this.environment.mode === 'build' ||
+          (bundledDev &&
+            this.environment.name === VITE_ENVIRONMENT_NAMES.client)
+        ) {
+          // Vite app builds can run multiple Rolldown build phases with fresh
+          // plugin drivers. The compiler host closes over this hook context for
+          // load/resolve, so do not reuse it after a previous driver was closed.
+          compilers.delete(this.environment.name)
+        }
+      },
+      watchChange(id) {
+        if (bundledDev && this.environment.mode === 'dev') {
+          compilers.get(this.environment.name)?.invalidateModule(id)
+        }
       },
       transform: {
         filter: {
@@ -280,6 +336,7 @@ export function startCompilerPlugin(
               providerEnvName: opts.providerEnvName,
               generateFunctionId: opts.generateFunctionId,
               compilerTransforms,
+              compilerPlugins,
               serverFnProviderModuleDirectives,
               onServerFnsById,
               getKnownServerFns: () => serverFnsById,
@@ -288,30 +345,22 @@ export function startCompilerPlugin(
                   ? createViteDevServerFnModuleSpecifierEncoder(root)
                   : undefined,
               loadModule: async (id: string) => {
-                const compilerContext = getCompilerContext()
-
-                if (mode === 'build') {
-                  const loaded = await compilerContext.load({ id })
-                  const code = loaded.code ?? ''
-
-                  compiler!.ingestModule({ code, id })
-                  return
-                }
-
-                if (compilerContext.environment.mode !== 'dev') {
-                  compilerContext.error(
-                    `could not load module ${id}: unknown environment mode ${compilerContext.environment.mode}`,
-                  )
-                }
-
-                await compilerContext.environment.transformRequest(
-                  `${id}?${SERVER_FN_LOOKUP}`,
+                const code = await loadViteModuleFromEnvironment(
+                  this.environment,
+                  id,
+                  {
+                    load: (options) => this.load(options),
+                    error: (message) => this.error(message),
+                    devId: `${id}?${SERVER_FN_LOOKUP}`,
+                  },
                 )
+                if (code !== undefined) {
+                  compiler!.ingestModule({ code, id })
+                }
               },
 
               resolveId: async (source: string, importer?: string) => {
-                const compilerContext = getCompilerContext()
-                const r = await compilerContext.resolve(source, importer)
+                const r = await this.resolve(source, importer)
 
                 if (r) {
                   if (!r.external) {
@@ -331,15 +380,12 @@ export function startCompilerPlugin(
             compilerTransforms,
           })
 
-          const result = await compilerContextStorage.run(
-            this as unknown as StartCompilerPluginContext,
-            () =>
-              compiler.compile({
-                id,
-                code,
-                detectedKinds,
-              }),
-          )
+          const result = await compiler.compile({
+            id,
+            code,
+            detectedKinds,
+          })
+
           return result
         },
       },
@@ -349,17 +395,22 @@ export function startCompilerPlugin(
         const idsToInvalidate = new Set<string>()
         const transitiveCompilerImportersToInvalidate = new Set<string>()
         const importerModulesToInvalidate = new Set<EnvironmentModuleNode>()
+        const changedIds: Array<string> = []
 
         ctx.modules.forEach((m) => {
           if (m.id) {
             idsToInvalidate.add(m.id)
-            const deleted = compiler?.invalidateModule(m.id)
+            changedIds.push(m.id)
+          }
+        })
 
-            if (deleted) {
+        const deletedIds = compiler?.invalidateModules(changedIds) ?? new Set()
+
+        ctx.modules.forEach((m) => {
+          if (m.id) {
+            if (deletedIds.has(cleanId(m.id))) {
               transitiveCompilerImportersToInvalidate.add(cleanId(m.id))
-            }
 
-            if (deleted) {
               m.importers.forEach((importer) => {
                 if (importer.id) {
                   idsToInvalidate.add(importer.id)
@@ -374,54 +425,54 @@ export function startCompilerPlugin(
         })
 
         const finishHotUpdate = async () => {
-          if (environment.type === 'server' && compiler) {
-            const pendingImporters = [
-              ...transitiveCompilerImportersToInvalidate,
-            ]
-            const seenImporters = new Set(pendingImporters)
+          if (
+            environment.type === 'server' &&
+            compiler &&
+            transitiveCompilerImportersToInvalidate.size > 0
+          ) {
+            const seenImporters = new Set(
+              transitiveCompilerImportersToInvalidate,
+            )
+            const nestedImporters =
+              await compiler.getTransitiveImporters(seenImporters)
 
-            while (pendingImporters.length > 0) {
-              const importerId = pendingImporters.pop()!
-              const nestedImporters =
-                await compiler.getTransitiveImporters(importerId)
-
-              for (const nestedImporterId of nestedImporters) {
-                if (seenImporters.has(nestedImporterId)) {
-                  continue
-                }
-
-                seenImporters.add(nestedImporterId)
-                pendingImporters.push(nestedImporterId)
-              }
+            for (const nestedImporterId of nestedImporters) {
+              seenImporters.add(nestedImporterId)
             }
 
             for (const importerId of seenImporters) {
               idsToInvalidate.add(importerId)
-              compiler.invalidateModule(importerId)
             }
+            compiler.invalidateModules(seenImporters)
           }
 
           invalidateModuleNodes(this.environment, importerModulesToInvalidate)
           invalidateServerFnLookupModules(this.environment, idsToInvalidate)
+          const compilerVirtualModules = invalidateCompilerVirtualModules(
+            this.environment,
+            idsToInvalidate,
+            compilerVirtualModuleIdPattern,
+          )
 
           if (environment.type !== 'server') {
-            return
+            return mergeHotUpdateModules(ctx.modules, compilerVirtualModules)
           }
 
           invalidateModuleNodes(this.environment, ctx.modules)
 
           const providerIdsToInvalidate =
             getServerFnProviderIds(idsToInvalidate)
-          for (const providerId of providerIdsToInvalidate) {
-            compiler?.invalidateModule(providerId)
-          }
+          compiler?.invalidateModules(providerIdsToInvalidate)
 
           const providerModules = invalidateServerFnProviderModules(
             this.environment,
             [...idsToInvalidate, ...providerIdsToInvalidate],
           )
 
-          return mergeHotUpdateModules(ctx.modules, providerModules)
+          return mergeHotUpdateModules(ctx.modules, [
+            ...compilerVirtualModules,
+            ...providerModules,
+          ])
         }
 
         return finishHotUpdate()
@@ -445,6 +496,45 @@ export function startCompilerPlugin(
         handler(code, id) {
           const compiler = compilers.get(this.environment.name)
           compiler?.ingestModule({ code, id: cleanId(id) })
+        },
+      },
+    },
+    {
+      name: 'tanstack-start-core:compiler-virtual-module',
+      enforce: 'pre',
+      load: {
+        filter: {
+          id: compilerVirtualModuleIdPattern ?? /$^/,
+        },
+        async handler(id) {
+          const environment = environmentByName.get(this.environment.name)
+          if (!environment || !compilerVirtualModuleIdPattern) {
+            return null
+          }
+
+          const loadVirtualModule = () =>
+            loadCompilerVirtualModule(compilerPlugins, {
+              id,
+              root,
+              env: environment.type,
+              envName: this.environment.name,
+            })
+
+          try {
+            return loadVirtualModule()
+          } catch (error) {
+            if (!(error instanceof MissingHydrateSourceError)) {
+              throw error
+            }
+          }
+
+          const sourceId = cleanId(id)
+          await loadViteModuleFromEnvironment(this.environment, sourceId, {
+            load: (options) => this.load(options),
+            error: (message) => this.error(message),
+          })
+
+          return loadVirtualModule()
         },
       },
     },
@@ -476,7 +566,7 @@ export function startCompilerPlugin(
                 typeof decoded.file === 'string' &&
                 typeof decoded.export === 'string'
               ) {
-                // Use the Vite strategy to decode the module specifier
+                // Use the Vite when to decode the module specifier
                 // back to the original source file path.
                 const sourceFile = decodeViteDevServerModuleSpecifier(
                   decoded.file,

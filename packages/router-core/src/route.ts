@@ -188,6 +188,13 @@ export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
 export type ParamsOptions<in out TPath extends string, in out TParams> = {
   params?: {
     parse?: ParseParamsFn<TPath, TParams> & ValidateParsedParams<TPath, TParams>
+    /**
+     * When multiple route candidates use `params.parse` during matching,
+     * higher priorities are tried first.
+     *
+     * @default 0
+     */
+    priority?: number
     stringify?: StringifyParamsFn<TPath, TParams>
   }
 

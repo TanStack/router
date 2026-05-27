@@ -3,6 +3,8 @@ import { pluginReact } from '@rsbuild/plugin-react'
 import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
 
 const outDir = process.env.E2E_DIST_DIR ?? 'dist-rsbuild-ssr'
+const transformInlineCssAssets =
+  process.env.CSS_INLINE_TRANSFORM_ASSETS === 'true'
 
 export default defineConfig({
   plugins: [
@@ -10,7 +12,9 @@ export default defineConfig({
     tanstackStart({
       server: {
         build: {
-          inlineCss: true,
+          inlineCss: transformInlineCssAssets
+            ? { enabled: true, transformAssets: true }
+            : true,
         },
       },
     }),

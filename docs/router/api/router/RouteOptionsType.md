@@ -84,6 +84,14 @@ The `RouteOptions` type accepts an object with the following properties:
 - A function that will be called when this route is matched and passed the raw params from the current location and return valid parsed params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function returns parsed params, its return value will be used as the route's params and the return type will be inferred into the rest of the router.
 - Experimental: returning `false` during incoming route matching skips this route and allows matching to continue to another candidate route.
 
+### `params.priority` property
+
+- Type: `number`
+- Optional
+- Defaults to `0`
+- Controls the matching order when multiple route candidates with `params.parse` can match the same URL segment. Higher numbers are tried first. If a higher-priority route's `params.parse` returns `false`, matching continues to the next candidate.
+- This only affects competing candidates that use `params.parse`; normal route specificity still applies, so static routes continue to match before dynamic, optional, or wildcard routes.
+
 ### `params.stringify` method
 
 - Type: `(params: TParams) => Record<string, string>`

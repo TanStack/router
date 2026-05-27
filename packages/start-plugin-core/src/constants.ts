@@ -23,6 +23,8 @@ export const ENTRY_POINTS = {
   router: '#tanstack-router-entry',
 } as const
 
+export const DEV_CLIENT_ENTRY = 'virtual:tanstack-start-dev-client-entry'
+
 export const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
 
 // matches

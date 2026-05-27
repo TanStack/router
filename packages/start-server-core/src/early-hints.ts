@@ -1,13 +1,14 @@
 import {
+  getScriptPreloadAttrs,
   getStylesheetHref,
-  resolveManifestAssetLink,
+  resolveManifestCssLink,
 } from '@tanstack/router-core'
 import type {
   AnyRoute,
   AnyRouteMatch,
   AssetCrossOrigin,
-  Manifest,
   RouterManagedTag,
+  ServerManifest,
 } from '@tanstack/router-core'
 
 export type EarlyHint = {
@@ -45,6 +46,15 @@ export type ResponseLinkHeaderFilter = (
 
 export type ResponseLinkHeaderOptions = {
   filter?: ResponseLinkHeaderFilter
+}
+
+export interface EarlyHintsCollector {
+  collectStatic: (opts: {
+    manifest: ServerManifest
+    matchedRoutes?: ReadonlyArray<AnyRoute>
+  }) => void
+  collectDynamic: (matches: ReadonlyArray<AnyRouteMatch>) => void
+  appendResponseHeaders: (headers: Headers) => void
 }
 
 const LINK_PARAM_TOKEN_RE = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
@@ -165,7 +175,7 @@ function linkAttrsToEarlyHint(
 }
 
 export function collectStaticHintsFromManifest(
-  manifest: Manifest,
+  manifest: ServerManifest,
   matchedRoutes: ReadonlyArray<AnyRoute>,
 ): Array<EarlyHint> {
   const hints: Array<EarlyHint> = []
@@ -175,33 +185,32 @@ export function collectStaticHintsFromManifest(
     if (!routeManifest) continue
 
     for (const link of routeManifest.preloads ?? []) {
-      const { href, crossOrigin } = resolveManifestAssetLink(link)
-      const hint: EarlyHint = { href, rel: 'modulepreload', as: 'script' }
-      if (crossOrigin !== undefined) hint.crossOrigin = crossOrigin
+      const attrs = getScriptPreloadAttrs(manifest, link)
+      const hint: EarlyHint = {
+        href: attrs.href,
+        rel: attrs.rel,
+        as: 'script',
+      }
+      if (attrs.crossOrigin !== undefined) hint.crossOrigin = attrs.crossOrigin
       hints.push(hint)
     }
 
-    for (const asset of routeManifest.assets ?? []) {
-      if (asset.tag !== 'link') continue
-
-      const stylesheetHref = getStylesheetHref(asset)
-      if (stylesheetHref) {
-        if (manifest.inlineCss?.styles[stylesheetHref] !== undefined) continue
-
-        const hint: EarlyHint = {
-          href: stylesheetHref,
-          rel: 'preload',
-          as: 'style',
-        }
-        addEarlyHintFetchAttrs(hint, asset.attrs)
-        hints.push(hint)
+    for (const link of routeManifest.css ?? []) {
+      const stylesheetHref = getStylesheetHref(link)
+      if (manifest.inlineCss?.styles[stylesheetHref] !== undefined) {
         continue
       }
+      const resolvedLink = resolveManifestCssLink(link)
 
-      const hint = linkAttrsToEarlyHint(asset.attrs)
-      if (hint) {
-        hints.push(hint)
+      const hint: EarlyHint = {
+        href: stylesheetHref,
+        rel: 'preload',
+        as: 'style',
       }
+      if (resolvedLink.crossOrigin !== undefined) {
+        hint.crossOrigin = resolvedLink.crossOrigin
+      }
+      hints.push(hint)
     }
   }
 
@@ -291,5 +300,155 @@ export function getResponseLinkHeaderEntries(opts: {
   } catch (err) {
     console.error('Error filtering response Link headers:', err)
     return []
+  }
+}
+
+function notifyEarlyHints(
+  phase: EarlyHintsPhase,
+  event: EarlyHintsEvent,
+  onEarlyHints: OnEarlyHints,
+) {
+  try {
+    const result = onEarlyHints(event)
+    if (result) {
+      void Promise.resolve(result).catch((err) => {
+        console.error(`Error sending ${phase} early hints:`, err)
+      })
+    }
+  } catch (err) {
+    console.error(`Error sending ${phase} early hints:`, err)
+  }
+}
+
+function getResponseLinkHeaderFilter(
+  responseLinkHeader: boolean | ResponseLinkHeaderOptions | undefined,
+): ResponseLinkHeaderFilter | undefined {
+  if (typeof responseLinkHeader !== 'object') {
+    return undefined
+  }
+
+  return responseLinkHeader.filter
+}
+
+function appendResponseLinkHeaders(opts: {
+  responseHeaders: Headers
+  entries: ReadonlyArray<ResponseLinkHeaderEntry>
+  filter?: ResponseLinkHeaderFilter
+}) {
+  for (const link of getResponseLinkHeaderEntries(opts)) {
+    opts.responseHeaders.append('Link', link)
+  }
+}
+
+function collectResponseLinkHeaderEntries(opts: {
+  phase: EarlyHintsPhase
+  event: EarlyHintsEvent
+  entries: Array<ResponseLinkHeaderEntry>
+}) {
+  for (let index = 0; index < opts.event.hints.length; index++) {
+    opts.entries.push({
+      phase: opts.phase,
+      hint: opts.event.hints[index]!,
+      link: opts.event.links[index]!,
+    })
+  }
+}
+
+function collectEarlyHintsPhase(opts: {
+  phase: EarlyHintsPhase
+  hints: ReadonlyArray<EarlyHint>
+  sentLinks: Set<string>
+  sentHints?: Array<EarlyHint>
+  onEarlyHints?: OnEarlyHints
+  responseLinkHeaderEntries?: Array<ResponseLinkHeaderEntry>
+}) {
+  const event = opts.onEarlyHints
+    ? createEarlyHintsEvent({
+        phase: opts.phase,
+        hints: opts.hints,
+        sentLinks: opts.sentLinks,
+        sentHints: opts.sentHints!,
+      })
+    : undefined
+
+  if (event) {
+    notifyEarlyHints(opts.phase, event, opts.onEarlyHints!)
+  }
+
+  if (!opts.responseLinkHeaderEntries) return
+
+  if (event) {
+    collectResponseLinkHeaderEntries({
+      phase: opts.phase,
+      event,
+      entries: opts.responseLinkHeaderEntries,
+    })
+    return
+  }
+
+  createResponseLinkHeaderEntries({
+    phase: opts.phase,
+    hints: opts.hints,
+    sentLinks: opts.sentLinks,
+    entries: opts.responseLinkHeaderEntries,
+  })
+}
+
+export function createEarlyHintsCollector(
+  opts:
+    | {
+        onEarlyHints?: OnEarlyHints
+        responseLinkHeader?: boolean | ResponseLinkHeaderOptions
+      }
+    | undefined,
+): EarlyHintsCollector | undefined {
+  if (
+    process.env.TSS_DEV_SERVER === 'true' ||
+    (!opts?.onEarlyHints && !opts?.responseLinkHeader)
+  ) {
+    return undefined
+  }
+
+  const sentLinks = new Set<string>()
+  const sentHints = opts.onEarlyHints ? new Array<EarlyHint>() : undefined
+  const responseLinkHeaderEntries = opts.responseLinkHeader
+    ? new Array<ResponseLinkHeaderEntry>()
+    : undefined
+  const responseLinkHeaderFilter = getResponseLinkHeaderFilter(
+    opts.responseLinkHeader,
+  )
+
+  return {
+    collectStatic: ({ manifest, matchedRoutes }) => {
+      if (!matchedRoutes?.length) return
+
+      collectEarlyHintsPhase({
+        phase: 'static',
+        hints: collectStaticHintsFromManifest(manifest, matchedRoutes),
+        sentLinks,
+        sentHints,
+        onEarlyHints: opts.onEarlyHints,
+        responseLinkHeaderEntries,
+      })
+    },
+    collectDynamic: (matches) => {
+      collectEarlyHintsPhase({
+        phase: 'dynamic',
+        hints: collectDynamicHintsFromMatches(matches),
+        sentLinks,
+        sentHints,
+        onEarlyHints: opts.onEarlyHints,
+        responseLinkHeaderEntries,
+      })
+    },
+    appendResponseHeaders: (headers) => {
+      if (!responseLinkHeaderEntries?.length) return
+
+      appendResponseLinkHeaders({
+        responseHeaders: headers,
+        entries: responseLinkHeaderEntries,
+        filter: responseLinkHeaderFilter,
+      })
+    },
   }
 }

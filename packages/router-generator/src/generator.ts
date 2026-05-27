@@ -17,6 +17,8 @@ import {
   buildRouteTreeConfig,
   checkFileExists,
   checkRouteFullPathUniqueness,
+  countRoutePathSegments,
+  countSlashSeparatedParts,
   createRouteNodesByFullPath,
   createRouteNodesById,
   createRouteNodesByTo,
@@ -33,9 +35,8 @@ import {
   removeExt,
   removeGroups,
   removeLastSegmentFromPath,
-  removeLayoutSegmentsWithEscape,
+  removeLayoutSegmentsAndUnderscoresWithEscape,
   removeTrailingSlash,
-  removeUnderscoresWithEscape,
   replaceBackslash,
   trimPathLeft,
 } from './utils'
@@ -51,6 +52,7 @@ import type {
   HandleNodeAccumulator,
   ImportDeclaration,
   RouteNode,
+  RoutePathSegmentMetadata,
 } from './types'
 import type { Config } from './config'
 import type { Logger } from './logger'
@@ -68,6 +70,32 @@ interface fs {
   >
   chmod: (filePath: string, mode: number) => Promise<void>
   chown: (filePath: string, uid: number, gid: number) => Promise<void>
+}
+
+function getRoutePathSegmentMetadataForPath(
+  node: RouteNode,
+  routePath: string,
+  parentRoutePath?: string,
+): Array<RoutePathSegmentMetadata | undefined> | undefined {
+  if (!node._routePathSegmentMetadata) return undefined
+
+  const segments = routePath.split('/')
+  const result = new Array<RoutePathSegmentMetadata | undefined>(
+    segments.length,
+  )
+  const parentSegmentCount = countRoutePathSegments(parentRoutePath)
+  let hasMetadata = false
+  let segmentCount = 0
+
+  for (let i = 0; i < segments.length; i++) {
+    if (!segments[i]) continue
+    const sourceIndex = parentSegmentCount + segmentCount + 1
+    result[i] = node._routePathSegmentMetadata[sourceIndex]
+    hasMetadata ||= !!result[i]
+    segmentCount++
+  }
+
+  return hasMetadata ? result : undefined
 }
 
 const DefaultFileSystem: fs = {
@@ -392,7 +420,10 @@ export class Generator {
 
     const preRouteNodes = multiSortBy(beforeRouteNodes, [
       (d) => (d.routePath === '/' ? -1 : 1),
-      (d) => d.routePath?.split('/').length,
+      (d) =>
+        d.routePath === undefined
+          ? undefined
+          : countSlashSeparatedParts(d.routePath),
       (d) => (d.filePath.match(this.indexTokenFilenameRegex) ? 1 : -1),
       (d) => (d.filePath.match(Generator.componentPieceRegex) ? 1 : -1),
       (d) => (d.filePath.match(this.routeTokenFilenameRegex) ? -1 : 1),
@@ -587,7 +618,10 @@ export class Generator {
 
     const sortedRouteNodes = multiSortBy(acc.routeNodes, [
       (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
-      (d) => d.routePath?.split('/').length,
+      (d) =>
+        d.routePath === undefined
+          ? undefined
+          : countSlashSeparatedParts(d.routePath),
       (d) => {
         const segments = d.routePath?.split('/').filter(Boolean) ?? []
         const last = segments[segments.length - 1] ?? ''
@@ -1430,29 +1464,39 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     node.path = determineNodePath(node)
 
     const trimmedPath = trimPathLeft(node.path ?? '')
-    const trimmedOriginalPath = trimPathLeft(
-      node.originalRoutePath?.replace(
-        node.parent?.originalRoutePath ?? '',
-        '',
-      ) ?? '',
+    const originalPath =
+      node.originalRoutePath && node.parent?.originalRoutePath
+        ? node.originalRoutePath.replace(node.parent.originalRoutePath, '') ||
+          '/'
+        : node.originalRoutePath
+    const routePathSegmentMetadata = getRoutePathSegmentMetadataForPath(
+      node,
+      node.path ?? '/',
+      node.parent?.routePath,
     )
+    const trimmedOriginalPath = trimPathLeft(originalPath ?? '')
 
     const split = trimmedPath.split('/')
+    const pathSplit = (node.path ?? '').split('/')
     const originalSplit = trimmedOriginalPath.split('/')
     const lastRouteSegment = split[split.length - 1] ?? trimmedPath
     const lastOriginalSegment =
       originalSplit[originalSplit.length - 1] ?? trimmedOriginalPath
+    const lastRouteSegmentMetadata =
+      routePathSegmentMetadata?.[pathSplit.length - 1]
 
     // A segment is non-path if it starts with underscore AND the underscore is not escaped
     node.isNonPath =
-      isSegmentPathless(lastRouteSegment, lastOriginalSegment) ||
+      (!lastRouteSegmentMetadata?.literalLeadingUnderscore &&
+        isSegmentPathless(lastRouteSegment, lastOriginalSegment)) ||
       split.every((part) => this.routeGroupPatternRegex.test(part))
 
-    // Use escape-aware functions to compute cleanedPath
+    // Use a single pass so layout removal does not desync escaped underscore checks.
     node.cleanedPath = removeGroups(
-      removeUnderscoresWithEscape(
-        removeLayoutSegmentsWithEscape(node.path, node.originalRoutePath),
-        node.originalRoutePath,
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        node.path,
+        originalPath,
+        routePathSegmentMetadata,
       ),
     )
 
@@ -1530,13 +1574,17 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
               candidate.originalRoutePath ?? '',
               '',
             ) || '/'
+          const routePathSegmentMetadataRelativeToParent =
+            getRoutePathSegmentMetadataForPath(
+              node,
+              pathRelativeToParent,
+              candidate.routePath,
+            )
           node.cleanedPath = removeGroups(
-            removeUnderscoresWithEscape(
-              removeLayoutSegmentsWithEscape(
-                pathRelativeToParent,
-                originalPathRelativeToParent,
-              ),
+            removeLayoutSegmentsAndUnderscoresWithEscape(
+              pathRelativeToParent,
               originalPathRelativeToParent,
+              routePathSegmentMetadataRelativeToParent,
             ),
           )
           break

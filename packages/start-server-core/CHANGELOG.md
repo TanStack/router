@@ -1,5 +1,118 @@
 # @tanstack/start-server-core
 
+## 1.169.4
+
+### Patch Changes
+
+- Fix serialization adapter module resolution in TanStack Start. Vite dev now uses clean runtime-specific virtual module IDs instead of browser requests containing encoded null-byte virtual IDs, which avoids reverse proxy failures. When no serialization adapters are configured, Vite and Rsbuild now resolve `#tanstack-start-plugin-adapters` through the package empty-adapter fallback. ([#7484](https://github.com/TanStack/router/pull/7484))
+
+- Publish matching TanStack Start dev server packages so fresh installs do not pair a Start plugin that no longer provides `tanstack-start-injected-head-scripts:v` with an older Start server runtime that still imports it. ([#7487](https://github.com/TanStack/router/pull/7487))
+
+- Updated dependencies [[`a82cec6`](https://github.com/TanStack/router/commit/a82cec69474c366b36efdb3f43c4efe8311c485a)]:
+  - @tanstack/start-client-core@1.170.4
+
+## 1.169.3
+
+### Patch Changes
+
+- Add support for Rsbuild client output formats, including module output by default and IIFE output for classic script environments. ([#7477](https://github.com/TanStack/router/pull/7477))
+
+  Client entry scripts and preloads are now represented as root route manifest assets, script preloads follow the manifest script format, and script asset cross-origin configuration uses the `script` key. The `transformAssets` script callback context now exposes only `kind: 'script'` and `url`, keeping script format handling internal to manifest rendering.
+
+- Updated dependencies [[`51a97a1`](https://github.com/TanStack/router/commit/51a97a167fb3ef1b8ca70fbb63db635158f43509)]:
+  - @tanstack/router-core@1.171.6
+  - @tanstack/start-client-core@1.170.3
+  - @tanstack/start-storage-context@1.167.8
+
+## 1.169.2
+
+### Patch Changes
+
+- Updated dependencies [[`5268ba4`](https://github.com/TanStack/router/commit/5268ba4566233ea58880df85f167ad0401a93a46)]:
+  - @tanstack/router-core@1.171.5
+  - @tanstack/start-client-core@1.170.2
+  - @tanstack/start-storage-context@1.167.7
+
+## 1.169.1
+
+### Patch Changes
+
+- Updated dependencies [[`0300f87`](https://github.com/TanStack/router/commit/0300f87ec5a7f878ffbe0b181acf84cba9139960), [`0300f87`](https://github.com/TanStack/router/commit/0300f87ec5a7f878ffbe0b181acf84cba9139960)]:
+  - @tanstack/router-core@1.171.4
+  - @tanstack/start-client-core@1.170.1
+  - @tanstack/start-storage-context@1.167.6
+
+## 1.169.0
+
+### Minor Changes
+
+- Add deferred Hydrate boundary support for TanStack Start. ([#7362](https://github.com/TanStack/router/pull/7362))
+
+  Hydrate boundaries can now be code-split by the Start compiler, preload their generated client chunks, preserve server-rendered fallback HTML, and replay interaction-triggered events after hydration. The compiler integration now uses a Start-owned compiler plugin for Hydrate virtual modules across Vite and Rsbuild, with dev invalidation for generated virtual modules.
+
+  Shared AST utilities used by the router code-splitter and Hydrate virtual modules were moved into `@tanstack/router-utils` so both pipelines can retain referenced top-level declarations, unwrap local exports, and let dead-code elimination remove unused route module code.
+
+### Patch Changes
+
+- Updated dependencies [[`5fa9e55`](https://github.com/TanStack/router/commit/5fa9e555f3a2edb5e45586623e6bcbfa7f7c7a6b)]:
+  - @tanstack/start-client-core@1.170.0
+  - @tanstack/router-core@1.171.3
+  - @tanstack/start-storage-context@1.167.5
+
+## 1.168.4
+
+### Patch Changes
+
+- Updated dependencies [[`b60eb36`](https://github.com/TanStack/router/commit/b60eb36e59e8a468ee0742cbcf7f47aca1ff1c67)]:
+  - @tanstack/router-core@1.171.2
+  - @tanstack/start-client-core@1.169.4
+  - @tanstack/start-storage-context@1.167.4
+
+## 1.168.3
+
+### Patch Changes
+
+- Updated dependencies [[`d9cf933`](https://github.com/TanStack/router/commit/d9cf9331b83fcbd2abfee75d839d862f9bb18e6b)]:
+  - @tanstack/router-core@1.171.1
+  - @tanstack/start-client-core@1.169.3
+  - @tanstack/start-storage-context@1.167.3
+
+## 1.168.2
+
+### Patch Changes
+
+- Updated dependencies [[`d533f87`](https://github.com/TanStack/router/commit/d533f87976704098a40b48f160b37c28c8182806)]:
+  - @tanstack/router-core@1.171.0
+  - @tanstack/start-client-core@1.169.2
+  - @tanstack/start-storage-context@1.167.2
+
+## 1.168.1
+
+### Patch Changes
+
+- Add runtime-configurable inline CSS and opt-in CSS URL templates for transformAssets. ([#7380](https://github.com/TanStack/router/pull/7380))
+
+- Updated dependencies [[`2387a2e`](https://github.com/TanStack/router/commit/2387a2eea0683004cc400b9f71bed5944eb60110)]:
+  - @tanstack/router-core@1.170.1
+  - @tanstack/start-client-core@1.169.1
+  - @tanstack/start-storage-context@1.167.1
+
+## 1.168.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- add createCsrfMiddleware based on Sec-Fetch-Site header, auto-apply to unconfigured servers, warn for others ([#7373](https://github.com/TanStack/router/pull/7373))
+
+- Updated dependencies [[`b1c061a`](https://github.com/TanStack/router/commit/b1c061aff9185cdf5fdc08c0136382a9dce0302f), [`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14)]:
+  - @tanstack/router-core@1.170.0
+  - @tanstack/history@1.162.0
+  - @tanstack/start-client-core@1.169.0
+  - @tanstack/start-storage-context@1.167.0
+
 ## 1.167.30
 
 ### Patch Changes

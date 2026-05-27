@@ -1,19 +1,32 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { pathToFileURL } from 'node:url'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { z } from 'zod'
 import { TRANSFORM_ID_REGEX } from '../constants'
 import { detectKindsInCode } from '../start-compiler/compiler'
 import { getTransformCodeFilterForEnv } from '../start-compiler/config'
 import {
   createStartCompiler,
+  loadCompilerVirtualModule,
   matchesCodeFilters,
   mergeServerFnsById,
 } from '../start-compiler/host'
 import { cleanId } from '../start-compiler/utils'
-import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
+import { createHydrateCompilerPlugin } from '../hydrate-when-transform'
+import {
+  SERVER_FN_BUILD_INFO_CONTEXT_KEY,
+  SERVER_FN_BUILD_INFO_FIELD,
+} from './start-compiler-metadata'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
+import type {
+  ServerFnBuildInfo,
+  ServerFnBuildInfoLoaderContext,
+} from './start-compiler-metadata'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerImportTransform,
+  StartCompilerPlugin,
+  StartCompilerTransformResult,
 } from '../types'
 import type {
   DevServerFnModuleSpecifierEncoder,
@@ -25,21 +38,78 @@ type RsbuildTransformContext = Parameters<
   Parameters<RsbuildPluginAPI['transform']>[1]
 >[0]
 type RsbuildInputFileSystem = NonNullable<Rspack.Compiler['inputFileSystem']>
+type ServerFnMetadataById = Map<string, ServerFnBuildInfo>
+type StartCompilerEnvironment = {
+  name: string
+  type: 'client' | 'server'
+}
+
+const serverFnSchema = z.object({
+  functionName: z.string(),
+  functionId: z.string(),
+  extractedFilename: z.string(),
+  filename: z.string(),
+  isClientReferenced: z.boolean().optional(),
+})
+
+const serverFnBuildInfoSchema = z.object({
+  version: z.literal(1),
+  serverFnsById: z.record(z.string(), serverFnSchema),
+})
 
 /**
- * Rsbuild dev server fn ref strategy: uses file:// URLs for absolute paths.
+ * In Rsbuild dev, use file:// URLs for absolute server function paths.
  * These are directly importable by Node's ESM VM runner without any bundler
  * path conventions (unlike Vite's /@id/ prefix).
  */
 const rsbuildDevServerFnModuleSpecifierEncoder: DevServerFnModuleSpecifierEncoder =
   ({ extractedFilename }) => pathToFileURL(extractedFilename).href
 
+const currentDir = dirname(fileURLToPath(import.meta.url))
+const metadataLoaderFilename = 'start-compiler-metadata-loader.js'
+const EMPTY_SERVER_FN_BUILD_INFO: ServerFnBuildInfo = {
+  version: 1,
+  serverFnsById: {},
+}
+
+function resolveMetadataLoader(): string {
+  return resolve(currentDir, metadataLoaderFilename)
+}
+
+function readServerFnBuildInfo(
+  module: Rspack.Module,
+): Record<string, ServerFn> | null {
+  const result = serverFnBuildInfoSchema.safeParse(
+    module.buildInfo[SERVER_FN_BUILD_INFO_FIELD],
+  )
+  if (!result.success) {
+    return null
+  }
+
+  return result.data.serverFnsById
+}
+
+function setServerFnBuildInfoLoaderContext(
+  loaderContext: Rspack.LoaderContext & ServerFnBuildInfoLoaderContext,
+  module: Rspack.Module,
+) {
+  loaderContext[SERVER_FN_BUILD_INFO_CONTEXT_KEY] = (metadata) => {
+    if (metadata) {
+      module.buildInfo[SERVER_FN_BUILD_INFO_FIELD] = metadata
+    } else if (module.buildInfo[SERVER_FN_BUILD_INFO_FIELD]) {
+      module.buildInfo[SERVER_FN_BUILD_INFO_FIELD] = EMPTY_SERVER_FN_BUILD_INFO
+    }
+  }
+}
+
 export interface StartCompilerHostOptions {
   framework: CompileStartFrameworkOptions
   root: string | (() => string)
+  environments: Array<StartCompilerEnvironment>
   providerEnvName: string
   generateFunctionId?: GenerateFunctionIdFnOptional
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  compilerPlugins?: Array<StartCompilerPlugin> | undefined
   serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
   serverFnsById?: Record<string, ServerFn>
   onServerFnsByIdChange?: () => void
@@ -58,47 +128,114 @@ export function registerStartCompilerTransforms(
   serverFnsById: Record<string, ServerFn>
 } {
   const compilers = new Map<string, ReturnType<typeof createStartCompiler>>()
+  // Serialize access to each StartCompiler's mutable per-environment caches.
+  const compilerQueues = new Map<string, Promise<void>>()
   const inputFileSystems = new Map<string, RsbuildInputFileSystem>()
   const transformContextStorage =
     new AsyncLocalStorage<RsbuildTransformContext>()
+  const serverFnMetadataByEnvironment = new Map<string, ServerFnMetadataById>()
+  const serverFnsByEnvironment = new Map<string, Record<string, ServerFn>>()
   const serverFnsById = opts.serverFnsById ?? {}
   const getRoot = () =>
     typeof opts.root === 'function' ? opts.root() : opts.root
+  const getServerFnMetadata = (environmentName: string) => {
+    let metadataById = serverFnMetadataByEnvironment.get(environmentName)
 
-  const onServerFnsById = (d: Record<string, ServerFn>) => {
-    mergeServerFnsById(serverFnsById, d)
+    if (!metadataById) {
+      metadataById = new Map()
+      serverFnMetadataByEnvironment.set(environmentName, metadataById)
+    }
+
+    return metadataById
+  }
+  const runCompilerTask = async <T>(
+    environmentName: string,
+    task: () => Promise<T>,
+  ): Promise<T> => {
+    const previous = compilerQueues.get(environmentName) ?? Promise.resolve()
+    const next = previous.catch(() => undefined).then(task)
+
+    compilerQueues.set(
+      environmentName,
+      next.then(
+        () => undefined,
+        () => undefined,
+      ),
+    )
+
+    return next
+  }
+
+  const replaceServerFnsByIdFromEnvironmentSnapshots = () => {
+    const nextServerFnsById: Record<string, ServerFn> = {}
+
+    for (const snapshot of serverFnsByEnvironment.values()) {
+      mergeServerFnsById(nextServerFnsById, snapshot)
+    }
+
+    for (const key of Object.keys(serverFnsById)) {
+      delete serverFnsById[key]
+    }
+
+    Object.assign(serverFnsById, nextServerFnsById)
     opts.onServerFnsByIdChange?.()
   }
+  const compilerPlugins = [
+    createHydrateCompilerPlugin(),
+    ...(opts.compilerPlugins ?? []),
+  ]
 
   const isDev = api.context.action === 'dev'
   const mode = isDev ? 'dev' : 'build'
+  const metadataLoader = resolveMetadataLoader()
 
-  const environments: Array<{
-    name: string
-    type: 'client' | 'server'
-  }> = [
-    { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' },
-    { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' },
-  ]
+  const environments = opts.environments
 
-  // Pre-compute code filter patterns per environment type
-  const codeFilters: Record<'client' | 'server', Array<RegExp>> = {
-    client: getTransformCodeFilterForEnv('client'),
-    server: getTransformCodeFilterForEnv('server', {
-      compilerTransforms: opts.compilerTransforms,
-    }),
-  }
+  // Rspack persistent cache restores modules without re-running api.transform.
+  // Keep server function modules cacheable by writing discovered metadata into
+  // buildInfo from a real loader, then replaying it from cached modules.
+  api.modifyRspackConfig((config, utils) => {
+    if (!environments.some((env) => env.name === utils.environment.name)) {
+      return
+    }
+
+    const rules = config.module.rules ?? []
+    rules.push({
+      test: TRANSFORM_ID_REGEX[0],
+      enforce: 'post',
+      use: [
+        {
+          loader: metadataLoader,
+          options: {
+            metadataById: getServerFnMetadata(utils.environment.name),
+          },
+        },
+      ],
+    })
+    config.module.rules = rules
+  })
 
   for (const env of environments) {
-    const envCodeFilters = codeFilters[env.type]
     const compilerTransforms =
-      env.name === RSBUILD_ENVIRONMENT_NAMES.server
-        ? opts.compilerTransforms
-        : undefined
+      env.name === opts.providerEnvName ? opts.compilerTransforms : undefined
+    const envCodeFilters = getTransformCodeFilterForEnv(env.type, {
+      compilerTransforms,
+      compilerPlugins,
+    })
     const serverFnProviderModuleDirectives =
       env.name === opts.providerEnvName
         ? opts.serverFnProviderModuleDirectives
         : undefined
+    let activeServerFnMetadata: Record<string, ServerFn> | undefined
+    const onServerFnsById = (d: Record<string, ServerFn>) => {
+      mergeServerFnsById(serverFnsById, d)
+
+      if (activeServerFnMetadata) {
+        mergeServerFnsById(activeServerFnMetadata, d)
+      }
+
+      opts.onServerFnsByIdChange?.()
+    }
 
     api.transform(
       {
@@ -109,17 +246,36 @@ export function registerStartCompilerTransforms(
       async (ctx: RsbuildTransformContext) => {
         return transformContextStorage.run(ctx, async () => {
           const code = ctx.code
-          const id = ctx.resourcePath + (ctx.resourceQuery || '')
+          let nextCode = code
+          let previousResult: {
+            code: string
+            map: StartCompilerTransformResult['map']
+          } | null = null
+          const id = ctx.resource
+          const root = getRoot()
+
+          const virtualResult = loadCompilerVirtualModule(compilerPlugins, {
+            code,
+            id,
+            root,
+            env: env.type,
+            envName: env.name,
+          })
+          if (virtualResult) {
+            nextCode = virtualResult.code
+            previousResult = {
+              code: virtualResult.code,
+              map: virtualResult.map ?? null,
+            }
+          }
 
           // Quick string-level check: does this file contain any patterns for this env?
-          if (!matchesCodeFilters(code, envCodeFilters)) {
-            return code
+          if (!matchesCodeFilters(nextCode, envCodeFilters)) {
+            return previousResult ?? nextCode
           }
 
           let compiler = compilers.get(env.name)
           if (!compiler) {
-            const root = getRoot()
-
             compiler = createStartCompiler({
               env: env.type,
               envName: env.name,
@@ -129,6 +285,7 @@ export function registerStartCompilerTransforms(
               providerEnvName: opts.providerEnvName,
               generateFunctionId: opts.generateFunctionId,
               compilerTransforms,
+              compilerPlugins,
               serverFnProviderModuleDirectives,
               onServerFnsById,
               getKnownServerFns: () => serverFnsById,
@@ -197,30 +354,95 @@ export function registerStartCompilerTransforms(
             compilers.set(env.name, compiler)
           }
 
-          const detectedKinds = detectKindsInCode(code, env.type, {
+          const detectedKinds = detectKindsInCode(nextCode, env.type, {
             compilerTransforms,
           })
-          const result = await compiler.compile({ id, code, detectedKinds })
+          const discoveredServerFnsById: Record<string, ServerFn> = {}
+          const result = await runCompilerTask(env.name, async () => {
+            activeServerFnMetadata = discoveredServerFnsById
 
-          if (!result) {
-            return code
+            try {
+              return await compiler.compile({
+                id,
+                code: nextCode,
+                detectedKinds,
+              })
+            } finally {
+              activeServerFnMetadata = undefined
+            }
+          })
+
+          getServerFnMetadata(env.name).set(id, {
+            version: 1,
+            serverFnsById: discoveredServerFnsById,
+          })
+
+          if (result) {
+            return {
+              code: result.code,
+              map: result.map ?? null,
+            }
           }
 
-          return {
-            code: result.code,
-            map: result.map ?? null,
-          }
+          return previousResult ?? nextCode
         })
       },
     )
   }
 
   api.modifyRspackConfig((config, utils) => {
+    if (!environments.some((env) => env.name === utils.environment.name)) {
+      return
+    }
+
     config.plugins.push({
       apply(compiler: Rspack.Compiler) {
         if (compiler.inputFileSystem) {
           inputFileSystems.set(utils.environment.name, compiler.inputFileSystem)
         }
+
+        compiler.hooks.compilation.tap(
+          'TanStackStartCompilerMetadataLoaderContext',
+          (compilation) => {
+            utils.rspack.NormalModule.getCompilationHooks(
+              compilation,
+            ).loader.tap(
+              'TanStackStartCompilerMetadataLoaderContext',
+              (loaderContext, module) => {
+                setServerFnBuildInfoLoaderContext(loaderContext, module)
+              },
+            )
+          },
+        )
+
+        compiler.hooks.compile.tap('TanStackStartCompilerMetadataCleanup', () =>
+          getServerFnMetadata(utils.environment.name).clear(),
+        )
+
+        compiler.hooks.finishMake.tap(
+          {
+            name: 'TanStackStartCompilerCachedServerFnMetadata',
+            stage: -20,
+          },
+          (compilation) => {
+            const restoredServerFnsById: Record<string, ServerFn> = {}
+
+            for (const module of compilation.modules) {
+              const metadata = readServerFnBuildInfo(module)
+              if (!metadata) {
+                continue
+              }
+
+              mergeServerFnsById(restoredServerFnsById, metadata)
+            }
+
+            serverFnsByEnvironment.set(
+              utils.environment.name,
+              restoredServerFnsById,
+            )
+            replaceServerFnsByIdFromEnvironmentSnapshots()
+          },
+        )
 
         compiler.hooks.watchRun.tap(
           'TanStackStartCompilerModuleInvalidation',

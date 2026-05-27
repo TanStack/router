@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest'
 import { deserialize } from 'seroval'
 import { shouldRebaseInlineCssUrls } from '../../src/start-manifest-plugin/inlineCss'
 import {
-  appendUniqueAssets,
   appendUniqueStrings,
   buildStartManifest,
   createChunkCssAssetCollector,
@@ -14,6 +13,7 @@ import {
   scanClientChunks,
   type StartManifest,
 } from '../../src/start-manifest-plugin/manifestBuilder'
+import type { ManifestCssLink } from '@tanstack/router-core'
 import type { Rollup } from 'vite'
 
 function normalizeTestBuild(bundle: Rollup.OutputBundle) {
@@ -71,6 +71,14 @@ function makeCssAsset(fileName: string, source: string): Rollup.OutputAsset {
     needsCodeReference: false,
     originalFileNames: [],
   } as unknown as Rollup.OutputAsset
+}
+
+function makeStylesheetLink(href: string): ManifestCssLink {
+  return href
+}
+
+function getManifestCssHref(link: ManifestCssLink) {
+  return typeof link === 'string' ? link : link.href
 }
 
 describe('getRouteFilePathsFromModuleIds', () => {
@@ -131,112 +139,6 @@ describe('appendUniqueStrings', () => {
   })
 })
 
-describe('appendUniqueAssets', () => {
-  test('dedupes by asset identity while preserving order', () => {
-    const baseAsset = {
-      tag: 'link',
-      attrs: {
-        rel: 'stylesheet',
-        href: '/assets/a.css',
-        type: 'text/css',
-      },
-    } as const
-    const duplicateAsset = {
-      tag: 'link',
-      attrs: {
-        rel: 'stylesheet',
-        href: '/assets/a.css',
-        type: 'text/css',
-      },
-    } as const
-    const newAsset = {
-      tag: 'link',
-      attrs: {
-        rel: 'stylesheet',
-        href: '/assets/b.css',
-        type: 'text/css',
-      },
-    } as const
-
-    expect(appendUniqueAssets([baseAsset], [duplicateAsset, newAsset])).toEqual(
-      [baseAsset, newAsset],
-    )
-  })
-
-  test('returns original target array when nothing new is appended', () => {
-    const target = [
-      {
-        tag: 'link' as const,
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/a.css',
-          type: 'text/css',
-        },
-      },
-    ]
-
-    expect(
-      appendUniqueAssets(target, [
-        {
-          tag: 'link' as const,
-          attrs: {
-            rel: 'stylesheet',
-            href: '/assets/a.css',
-            type: 'text/css',
-          },
-        },
-      ]),
-    ).toBe(target)
-  })
-
-  test('keeps distinct link assets with different attributes', () => {
-    const stylesheetA = {
-      tag: 'link' as const,
-      attrs: {
-        rel: 'stylesheet',
-        href: '/assets/a.css',
-        media: 'screen',
-        type: 'text/css',
-      },
-    }
-    const stylesheetB = {
-      tag: 'link' as const,
-      attrs: {
-        rel: 'stylesheet',
-        href: '/assets/a.css',
-        media: 'print',
-        type: 'text/css',
-      },
-    }
-
-    expect(appendUniqueAssets([stylesheetA], [stylesheetB])).toEqual([
-      stylesheetA,
-      stylesheetB,
-    ])
-  })
-
-  test('keeps distinct script assets with different attributes', () => {
-    const scriptA = {
-      tag: 'script' as const,
-      attrs: {
-        src: '/assets/app.js',
-        type: 'module',
-        async: true,
-      },
-    }
-    const scriptB = {
-      tag: 'script' as const,
-      attrs: {
-        src: '/assets/app.js',
-        type: 'module',
-        defer: true,
-      },
-    }
-
-    expect(appendUniqueAssets([scriptA], [scriptB])).toEqual([scriptA, scriptB])
-  })
-})
-
 describe('scanClientChunks', () => {
   test('collects entry chunk and route chunk mappings', () => {
     const entryChunk = makeChunk({ fileName: 'entry.js', isEntry: true })
@@ -259,6 +161,17 @@ describe('scanClientChunks', () => {
     ])
   })
 
+  test('detects Hydrate metadata from chunk module ids', () => {
+    const chunk = normalizeTestChunk(
+      makeChunk({
+        fileName: 'widget.js',
+        moduleIds: ['/routes/posts.tsx?tss-hydrate=posts_widget'],
+      }),
+    )
+
+    expect(chunk.hydrationIds).toEqual(['posts_widget'])
+  })
+
   test('throws when no entry chunk exists', () => {
     const routeChunk = makeChunk({
       fileName: 'posts.js',
@@ -272,7 +185,7 @@ describe('scanClientChunks', () => {
 })
 
 describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
-  test('reuses cached stylesheet assets', () => {
+  test('reuses cached stylesheet links', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
       imports: ['shared.js'],
@@ -287,37 +200,20 @@ describe('createManifestAssetResolvers + createChunkCssAssetCollector', () => {
       ['shared.js', normalizeTestChunk(sharedChunk)],
     ])
 
-    const resolvers = createManifestAssetResolvers('/assets')
-    const cssAssetCollector = createChunkCssAssetCollector({
+    const linkResolvers = createManifestAssetResolvers('/assets')
+    const cssLinkCollector = createChunkCssAssetCollector({
       chunksByFileName,
-      getStylesheetAsset: resolvers.getStylesheetAsset,
+      getStylesheetLink: linkResolvers.getStylesheetLink,
     })
 
-    const assets = cssAssetCollector.getChunkCssAssets(
+    const links = cssLinkCollector.getChunkCssAssets(
       chunksByFileName.get('entry.js')!,
     )
 
-    expect(assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/shared.css',
-          type: 'text/css',
-        },
-      },
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/entry.css',
-          type: 'text/css',
-        },
-      },
-    ])
+    expect(links).toEqual(['/assets/shared.css', '/assets/entry.css'])
 
-    expect(resolvers.getStylesheetAsset('shared.css')).toBe(
-      resolvers.getStylesheetAsset('shared.css'),
+    expect(linkResolvers.getStylesheetLink('shared.css')).toBe(
+      linkResolvers.getStylesheetLink('shared.css'),
     )
   })
 })
@@ -352,15 +248,14 @@ describe('createChunkCssAssetCollector', () => {
 
     const { getChunkCssAssets } = createChunkCssAssetCollector({
       chunksByFileName,
-      getStylesheetAsset: (cssFile) => ({
-        tag: 'link',
-        attrs: { rel: 'stylesheet', href: `/${cssFile}`, type: 'text/css' },
+      getStylesheetLink: (cssFile) => ({
+        href: `/${cssFile}`,
       }),
     })
 
-    const assets = getChunkCssAssets(chunksByFileName.get('a.js')!)
+    const links = getChunkCssAssets(chunksByFileName.get('a.js')!)
 
-    expect(assets.map((asset: any) => asset.attrs.href)).toEqual([
+    expect(links.map(getManifestCssHref)).toEqual([
       '/shared.css',
       '/b.css',
       '/c.css',
@@ -386,14 +281,13 @@ describe('createChunkCssAssetCollector', () => {
 
     const { getChunkCssAssets } = createChunkCssAssetCollector({
       chunksByFileName,
-      getStylesheetAsset: (cssFile) => ({
-        tag: 'link',
-        attrs: { rel: 'stylesheet', href: `/${cssFile}`, type: 'text/css' },
+      getStylesheetLink: (cssFile) => ({
+        href: `/${cssFile}`,
       }),
     })
 
-    const assets = getChunkCssAssets(chunksByFileName.get('a.js')!)
-    const hrefs = assets.map((a: any) => a.attrs.href)
+    const links = getChunkCssAssets(chunksByFileName.get('a.js')!)
+    const hrefs = links.map(getManifestCssHref)
 
     expect(hrefs).toContain('/a.css')
     expect(hrefs).toContain('/b.css')
@@ -445,7 +339,7 @@ describe('buildStartManifest', () => {
         '/dashboard': { filePath: '/routes/dashboard.tsx' },
       },
       basePath: '/assets',
-      inlineCss: true,
+      inlineCss: { enabled: true, transformAssets: false },
     })
 
     expect(manifest.inlineCss?.styles['/assets/root.css']).toBe(
@@ -456,7 +350,42 @@ describe('buildStartManifest', () => {
     )
   })
 
-  test('throws when inline CSS content is missing for a stylesheet asset', () => {
+  test('emits inline CSS URL templates when transformAssets is enabled', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      importedCss: ['root.css'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeTestBuild({
+        'entry.js': entryChunk,
+        'root.css': makeCssAsset(
+          'root.css',
+          '@import "./theme.css" screen;.card{background:url("./dot.svg")} .skip{background:url(data:image/svg+xml,foo)}',
+        ),
+      }),
+      routeTreeRoutes: {
+        __root__: {},
+      },
+      basePath: '/assets',
+      inlineCss: { enabled: true, transformAssets: true },
+    })
+
+    expect(manifest.inlineCss?.styles['/assets/root.css']).toBe(
+      '@import "/assets/theme.css" screen;.card{background:url("/assets/dot.svg")}.skip{background:url(data:image/svg+xml,foo)}',
+    )
+    expect(manifest.inlineCss?.templates?.['/assets/root.css']).toEqual({
+      strings: [
+        '@import "',
+        '" screen;.card{background:url("',
+        '")}.skip{background:url(data:image/svg+xml,foo)}',
+      ],
+      urls: ['/assets/theme.css', '/assets/dot.svg'],
+    })
+  })
+
+  test('throws when inline CSS content is missing for a stylesheet link', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
       isEntry: true,
@@ -472,19 +401,19 @@ describe('buildStartManifest', () => {
           __root__: {},
         },
         basePath: '/assets',
-        inlineCss: true,
+        inlineCss: { enabled: true, transformAssets: false },
       }),
     ).toThrow('could not find CSS content')
   })
 
-  test('allows callers to attach additional route assets', () => {
+  test('allows callers to attach additional route stylesheet links', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
       isEntry: true,
       moduleIds: ['/src/entry.tsx'],
     })
 
-    const assetResolvers = createManifestAssetResolvers('/assets')
+    const linkResolvers = createManifestAssetResolvers('/assets')
 
     const manifest = buildStartManifest({
       clientBuild: normalizeViteClientBuild({
@@ -496,30 +425,85 @@ describe('buildStartManifest', () => {
       },
       basePath: '/assets',
       additionalRouteAssets: {
-        __root__: [assetResolvers.getStylesheetAsset('style.css')],
+        __root__: [linkResolvers.getStylesheetLink('style.css')],
       },
     })
 
-    expect(manifest.routes.__root__!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/style.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes.__root__!.css).toEqual([
+      makeStylesheetLink('/assets/style.css'),
     ])
   })
 
-  test('rejects additional route assets for unknown route ids', () => {
+  test('dedupes duplicate additional route scripts on the same route', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      moduleIds: ['/src/entry.tsx'],
+    })
+    const script = {
+      attrs: {
+        src: '/assets/custom.js',
+        type: 'module',
+      },
+    } as const
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+      additionalRouteAssets: {
+        __root__: [script, script],
+      },
+    })
+
+    expect(manifest.routes.__root__!.scripts).toEqual([script])
+  })
+
+  test('dedupes additional route scripts already owned by ancestor routes', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      moduleIds: ['/src/entry.tsx'],
+    })
+    const script = {
+      attrs: {
+        src: '/assets/custom.js',
+        type: 'module',
+      },
+    } as const
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+      additionalRouteAssets: {
+        __root__: [script],
+        '/about': [script],
+      },
+    })
+
+    expect(manifest.routes.__root__!.scripts).toEqual([script])
+    expect(manifest.routes['/about']?.scripts).toBeUndefined()
+  })
+
+  test('rejects additional route entries for unknown route ids', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
       isEntry: true,
       moduleIds: ['/src/entry.tsx'],
     })
 
-    const assetResolvers = createManifestAssetResolvers('/assets')
+    const linkResolvers = createManifestAssetResolvers('/assets')
 
     expect(() =>
       buildStartManifest({
@@ -532,7 +516,7 @@ describe('buildStartManifest', () => {
         },
         basePath: '/assets',
         additionalRouteAssets: {
-          '/missing': [assetResolvers.getStylesheetAsset('style.css')],
+          '/missing': [linkResolvers.getStylesheetLink('style.css')],
         },
       }),
     ).toThrow(
@@ -540,7 +524,7 @@ describe('buildStartManifest', () => {
     )
   })
 
-  test('dedupes route css gathered through overlapping chunk imports', () => {
+  test('dedupes route CSS gathered through overlapping chunk imports', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
       isEntry: true,
@@ -580,31 +564,232 @@ describe('buildStartManifest', () => {
       basePath: '/assets',
     })
 
-    expect(manifest.routes['/about']!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/shared.css',
-          type: 'text/css',
-        },
+    expect(manifest.routes['/about']!.css).toEqual([
+      makeStylesheetLink('/assets/shared.css'),
+      makeStylesheetLink('/assets/branch-a.css'),
+      makeStylesheetLink('/assets/branch-b.css'),
+    ])
+  })
+
+  test('adds Hydrate chunk CSS without preloading deferred component JS by default', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+    })
+    const routeChunk = makeChunk({
+      fileName: 'about.js',
+      dynamicImports: ['about-widget.js'],
+      moduleIds: ['/routes/about.tsx?tsr-split=component'],
+    })
+    const widgetChunk = makeChunk({
+      fileName: 'about-widget.js',
+      importedCss: ['about-widget.css'],
+      moduleIds: ['/routes/about.tsx?tss-hydrate=about_widget'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'about.js': routeChunk,
+        'about-widget.js': widgetChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
       },
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/branch-a.css',
-          type: 'text/css',
-        },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes['/about']!.css).toEqual([
+      makeStylesheetLink('/assets/about-widget.css'),
+    ])
+    expect(manifest.routes['/about']!.preloads).toEqual(['/assets/about.js'])
+  })
+
+  test('adds nested Hydrate chunk CSS without preloading deferred component JS by default', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+    })
+    const routeChunk = makeChunk({
+      fileName: 'about.js',
+      dynamicImports: ['parent-widget.js'],
+      moduleIds: ['/routes/about.tsx?tsr-split=component'],
+    })
+    const parentWidgetChunk = makeChunk({
+      fileName: 'parent-widget.js',
+      dynamicImports: ['child-widget.js'],
+      importedCss: ['parent-widget.css'],
+      moduleIds: ['/routes/about.tsx?tss-hydrate=parent_widget'],
+    })
+    const childWidgetChunk = makeChunk({
+      fileName: 'child-widget.js',
+      importedCss: ['child-widget.css'],
+      moduleIds: ['/routes/about.tsx?tss-hydrate=child_widget'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'about.js': routeChunk,
+        'parent-widget.js': parentWidgetChunk,
+        'child-widget.js': childWidgetChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
       },
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/branch-b.css',
-          type: 'text/css',
-        },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes['/about']!.css).toEqual([
+      makeStylesheetLink('/assets/parent-widget.css'),
+      makeStylesheetLink('/assets/child-widget.css'),
+    ])
+    expect(manifest.routes['/about']!.preloads).toEqual(['/assets/about.js'])
+  })
+
+  test('adds shared component Hydrate CSS to every statically importing route', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+    })
+    const aboutRouteChunk = makeChunk({
+      fileName: 'about.js',
+      imports: ['shared-widget.js'],
+      moduleIds: ['/routes/about.tsx?tsr-split=component'],
+    })
+    const postsRouteChunk = makeChunk({
+      fileName: 'posts.js',
+      imports: ['shared-widget.js'],
+      moduleIds: ['/routes/posts.tsx?tsr-split=component'],
+    })
+    const sharedWidgetChunk = makeChunk({
+      fileName: 'shared-widget.js',
+      dynamicImports: ['shared-hydrate.js'],
+    })
+    const sharedHydrateChunk = makeChunk({
+      fileName: 'shared-hydrate.js',
+      importedCss: ['shared-hydrate.css'],
+      moduleIds: ['/components/Shared.tsx?tss-hydrate=shared_widget'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'about.js': aboutRouteChunk,
+        'posts.js': postsRouteChunk,
+        'shared-widget.js': sharedWidgetChunk,
+        'shared-hydrate.js': sharedHydrateChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about', '/posts'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+        '/posts': { filePath: '/routes/posts.tsx' },
       },
+      basePath: '/assets',
+    })
+
+    const expectedLink = makeStylesheetLink('/assets/shared-hydrate.css')
+    expect(manifest.routes['/about']!.css).toEqual([expectedLink])
+    expect(manifest.routes['/posts']!.css).toEqual([expectedLink])
+    expect(manifest.routes['/about']!.preloads).toEqual([
+      '/assets/about.js',
+      '/assets/shared-widget.js',
+    ])
+    expect(manifest.routes['/posts']!.preloads).toEqual([
+      '/assets/posts.js',
+      '/assets/shared-widget.js',
+    ])
+  })
+
+  test('does not add unrelated Hydrate CSS from the global entry graph to root', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      imports: ['app-shell.js'],
+    })
+    const appShellChunk = makeChunk({
+      fileName: 'app-shell.js',
+      dynamicImports: ['about-widget.js'],
+    })
+    const aboutWidgetChunk = makeChunk({
+      fileName: 'about-widget.js',
+      importedCss: ['about-widget.css'],
+      moduleIds: ['/routes/about.tsx?tss-hydrate=about_widget'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'app-shell.js': appShellChunk,
+        'about-widget.js': aboutWidgetChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: { children: ['/about'] } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes.__root__!.css).toBeUndefined()
+    expect(manifest.routes.__root__!.preloads).toEqual([
+      '/assets/entry.js',
+      '/assets/app-shell.js',
+    ])
+  })
+
+  test('adds root-owned Hydrate CSS without walking unrelated entry graph hydration', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      imports: ['app-shell.js'],
+    })
+    const rootChunk = makeChunk({
+      fileName: 'root.js',
+      dynamicImports: ['root-widget.js'],
+      moduleIds: ['/routes/__root.tsx?tsr-split=component'],
+    })
+    const rootWidgetChunk = makeChunk({
+      fileName: 'root-widget.js',
+      importedCss: ['root-widget.css'],
+      moduleIds: ['/routes/__root.tsx?tss-hydrate=root_widget'],
+    })
+    const appShellChunk = makeChunk({
+      fileName: 'app-shell.js',
+      dynamicImports: ['about-widget.js'],
+    })
+    const aboutWidgetChunk = makeChunk({
+      fileName: 'about-widget.js',
+      importedCss: ['about-widget.css'],
+      moduleIds: ['/routes/about.tsx?tss-hydrate=about_widget'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeViteClientBuild({
+        'entry.js': entryChunk,
+        'root.js': rootChunk,
+        'root-widget.js': rootWidgetChunk,
+        'app-shell.js': appShellChunk,
+        'about-widget.js': aboutWidgetChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: {
+          filePath: '/routes/__root.tsx',
+          children: ['/about'],
+        } as any,
+        '/about': { filePath: '/routes/about.tsx' },
+      },
+      basePath: '/assets',
+    })
+
+    expect(manifest.routes.__root__!.css).toEqual([
+      makeStylesheetLink('/assets/root-widget.css'),
+    ])
+    expect(manifest.routes.__root__!.preloads).toEqual([
+      '/assets/root.js',
+      '/assets/entry.js',
+      '/assets/app-shell.js',
     ])
   })
 
@@ -640,13 +825,11 @@ describe('buildStartManifest', () => {
     })
 
     expect(
-      manifest.routes['/field-detail-panel']!.assets!.map(
-        (asset: any) => asset.attrs.href,
-      ),
+      manifest.routes['/field-detail-panel']!.css!.map(getManifestCssHref),
     ).toEqual(['/assets/tabs.css', '/assets/field-detail-panel.css'])
   })
 
-  test('dedupes route css already owned by ancestor routes', () => {
+  test('dedupes route CSS already owned by ancestor routes', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
       isEntry: true,
@@ -677,46 +860,37 @@ describe('buildStartManifest', () => {
       basePath: '/assets',
     })
 
-    expect(manifest.routes.__root__!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/main.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes.__root__!.css).toEqual([
+      makeStylesheetLink('/assets/main.css'),
     ])
 
-    expect(manifest.routes['/about']!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/about.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes['/about']!.css).toEqual([
+      makeStylesheetLink('/assets/about.css'),
     ])
   })
 
-  test('serializeStartManifest preserves shared asset identity across routes', () => {
-    const sharedAsset = {
-      tag: 'link' as const,
-      attrs: {
-        rel: 'stylesheet',
-        href: '/assets/shared.css',
-        type: 'text/css',
-      },
-    }
+  test('serializeStartManifest preserves shared link identity across routes', () => {
+    const sharedLink = {
+      href: '/assets/shared.css',
+      crossOrigin: 'anonymous',
+    } satisfies ManifestCssLink
     const manifest: StartManifest = {
       routes: {
         __root__: {
           children: ['/a', '/b', '/c'],
         },
-        '/a': { assets: [sharedAsset], preloads: ['/assets/a.js'] },
-        '/b': { assets: [sharedAsset], preloads: ['/assets/b.js'] },
-        '/c': { assets: [sharedAsset], preloads: ['/assets/c.js'] },
+        '/a': {
+          css: [sharedLink],
+          preloads: ['/assets/a.js'],
+        },
+        '/b': {
+          css: [sharedLink],
+          preloads: ['/assets/b.js'],
+        },
+        '/c': {
+          css: [sharedLink],
+          preloads: ['/assets/c.js'],
+        },
       },
       clientEntry: '/assets/entry.js',
     }
@@ -725,16 +899,16 @@ describe('buildStartManifest', () => {
       serializeStartManifest(manifest),
     )
 
-    const aAsset = evaluated.routes['/a']?.assets?.[0]
-    const bAsset = evaluated.routes['/b']?.assets?.[0]
-    const cAsset = evaluated.routes['/c']?.assets?.[0]
+    const aLink = evaluated.routes['/a']?.css?.[0]
+    const bLink = evaluated.routes['/b']?.css?.[0]
+    const cLink = evaluated.routes['/c']?.css?.[0]
 
-    expect(aAsset).toBeDefined()
-    expect(aAsset).toBe(bAsset)
-    expect(bAsset).toBe(cAsset)
+    expect(aLink).toBeDefined()
+    expect(aLink).toBe(bLink)
+    expect(bLink).toBe(cLink)
   })
 
-  test('serializeStartManifest preserves non-asset fields unchanged', () => {
+  test('serializeStartManifest preserves non-link fields unchanged', () => {
     const manifest: StartManifest = {
       routes: {
         __root__: {
@@ -745,9 +919,8 @@ describe('buildStartManifest', () => {
           filePath: '/routes/posts.tsx',
           children: ['/posts/$postId'],
           preloads: ['/assets/posts.js'],
-          assets: [
+          scripts: [
             {
-              tag: 'script' as const,
               attrs: {
                 src: '/assets/posts.js',
                 type: 'module',
@@ -765,7 +938,7 @@ describe('buildStartManifest', () => {
     ).toEqual(manifest)
   })
 
-  test('serializeStartManifest handles manifests without route assets', () => {
+  test('serializeStartManifest handles manifests without route links', () => {
     const manifest: StartManifest = {
       routes: {
         __root__: {
@@ -784,10 +957,40 @@ describe('buildStartManifest', () => {
       deserializeSerializedManifest(serializeStartManifest(manifest)),
     ).toEqual(manifest)
   })
+
+  test('buildStartManifest includes scriptFormat only for iife output', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+    })
+    const routeTreeRoutes = {
+      __root__: {
+        filePath: '/routes/__root.tsx',
+      },
+    }
+
+    expect(
+      buildStartManifest({
+        clientBuild: normalizeTestBuild({ 'entry.js': entryChunk }),
+        routeTreeRoutes,
+        basePath: '/assets',
+        scriptFormat: 'module',
+      }).scriptFormat,
+    ).toBeUndefined()
+
+    expect(
+      buildStartManifest({
+        clientBuild: normalizeTestBuild({ 'entry.js': entryChunk }),
+        routeTreeRoutes,
+        basePath: '/assets',
+        scriptFormat: 'iife',
+      }).scriptFormat,
+    ).toBe('iife')
+  })
 })
 
 describe('route tree dedupe in buildStartManifest', () => {
-  test('dedupes assets and preloads only along the active ancestor path', () => {
+  test('dedupes stylesheet links and preloads only along the active ancestor path', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
       isEntry: true,
@@ -846,65 +1049,30 @@ describe('route tree dedupe in buildStartManifest', () => {
       basePath: '/assets',
     })
 
-    expect(manifest.routes.__root__!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/shared.css',
-          type: 'text/css',
-        },
-      },
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/root.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes.__root__!.css).toEqual([
+      makeStylesheetLink('/assets/shared.css'),
+      makeStylesheetLink('/assets/root.css'),
     ])
     expect(manifest.routes.__root__!.preloads).toEqual([
       '/assets/entry.js',
       '/assets/root-shared.js',
     ])
-    expect(manifest.routes['/parent']!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/parent.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes['/parent']!.css).toEqual([
+      makeStylesheetLink('/assets/parent.css'),
     ])
     expect(manifest.routes['/parent']!.preloads).toEqual([
       '/assets/parent.js',
       '/assets/parent-only.js',
     ])
-    expect(manifest.routes['/child']!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/child.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes['/child']!.css).toEqual([
+      makeStylesheetLink('/assets/child.css'),
     ])
     expect(manifest.routes['/child']!.preloads).toEqual([
       '/assets/child.js',
       '/assets/child-only.js',
     ])
-    expect(manifest.routes['/sibling']!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/sibling.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes['/sibling']!.css).toEqual([
+      makeStylesheetLink('/assets/sibling.css'),
     ])
     expect(manifest.routes['/sibling']!.preloads).toEqual([
       '/assets/sibling.js',
@@ -964,37 +1132,16 @@ describe('route tree dedupe in buildStartManifest', () => {
       basePath: '/assets',
     })
 
-    expect(manifest.routes['/a-child']!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/deep.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes['/a-child']!.css).toEqual([
+      makeStylesheetLink('/assets/deep.css'),
     ])
     expect(manifest.routes['/a-child']!.preloads).toEqual([
       '/assets/a-child.js',
       '/assets/deep.js',
     ])
-    expect(manifest.routes['/b-child']!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/deep.css',
-          type: 'text/css',
-        },
-      },
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/b-child.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes['/b-child']!.css).toEqual([
+      makeStylesheetLink('/assets/deep.css'),
+      makeStylesheetLink('/assets/b-child.css'),
     ])
     expect(manifest.routes['/b-child']!.preloads).toEqual([
       '/assets/b-child.js',
@@ -1073,65 +1220,30 @@ describe('route tree dedupe in buildStartManifest', () => {
       basePath: '/assets',
     })
 
-    expect(manifest.routes.__root__!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/shared-root.css',
-          type: 'text/css',
-        },
-      },
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/root.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes.__root__!.css).toEqual([
+      makeStylesheetLink('/assets/shared-root.css'),
+      makeStylesheetLink('/assets/root.css'),
     ])
     expect(manifest.routes.__root__!.preloads).toEqual([
       '/assets/entry.js',
       '/assets/shared-root.js',
     ])
-    expect(manifest.routes['/level-one']!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/level-one.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes['/level-one']!.css).toEqual([
+      makeStylesheetLink('/assets/level-one.css'),
     ])
     expect(manifest.routes['/level-one']!.preloads).toEqual([
       '/assets/level-one.js',
       '/assets/level-one-only.js',
     ])
-    expect(manifest.routes['/level-two']!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/level-two.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes['/level-two']!.css).toEqual([
+      makeStylesheetLink('/assets/level-two.css'),
     ])
     expect(manifest.routes['/level-two']!.preloads).toEqual([
       '/assets/level-two.js',
       '/assets/level-two-only.js',
     ])
-    expect(manifest.routes['/level-three']!.assets).toEqual([
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: '/assets/level-three.css',
-          type: 'text/css',
-        },
-      },
+    expect(manifest.routes['/level-three']!.css).toEqual([
+      makeStylesheetLink('/assets/level-three.css'),
     ])
     expect(manifest.routes['/level-three']!.preloads).toEqual([
       '/assets/level-three.js',
@@ -1223,7 +1335,7 @@ describe('multi-chunk routes must merge assets and preloads', () => {
     const postsRoute = manifest.routes['/posts']!
 
     // Both chunks' CSS should be present
-    const cssHrefs = postsRoute.assets!.map((a: any) => a.attrs.href)
+    const cssHrefs = postsRoute.css!.map(getManifestCssHref)
     expect(cssHrefs).toContain('/assets/component.css')
     expect(cssHrefs).toContain('/assets/loader.css')
 
@@ -1270,7 +1382,7 @@ describe('multi-chunk routes must merge assets and preloads', () => {
     })
 
     const postsRoute = manifest.routes['/posts']!
-    const cssHrefs = postsRoute.assets!.map((a: any) => a.attrs.href)
+    const cssHrefs = postsRoute.css!.map(getManifestCssHref)
     const preloadHrefs = postsRoute.preloads!
 
     expect(
@@ -1283,7 +1395,7 @@ describe('multi-chunk routes must merge assets and preloads', () => {
 })
 
 describe('buildStartManifest route pruning', () => {
-  test('routes with no assets or preloads are pruned from returned manifest', () => {
+  test('routes with no manifest data are pruned from returned manifest', () => {
     const entryChunk = makeChunk({
       fileName: 'entry.js',
       isEntry: true,
@@ -1301,7 +1413,7 @@ describe('buildStartManifest route pruning', () => {
       basePath: '/assets',
     })
 
-    // /about has no matching chunks, so no assets or preloads.
+    // /about has no matching chunks, so no manifest data.
     // It should be pruned from the manifest.
     expect(manifest.routes['/about']).toBeUndefined()
   })

@@ -1,5 +1,74 @@
 # @tanstack/router-core
 
+## 1.171.6
+
+### Patch Changes
+
+- Add support for Rsbuild client output formats, including module output by default and IIFE output for classic script environments. ([#7477](https://github.com/TanStack/router/pull/7477))
+
+  Client entry scripts and preloads are now represented as root route manifest assets, script preloads follow the manifest script format, and script asset cross-origin configuration uses the `script` key. The `transformAssets` script callback context now exposes only `kind: 'script'` and `url`, keeping script format handling internal to manifest rendering.
+
+## 1.171.5
+
+### Patch Changes
+
+- Fix hash scrolling with `resetScroll={false}` ([#7464](https://github.com/TanStack/router/pull/7464))
+
+## 1.171.4
+
+### Patch Changes
+
+- Fix hash navigation being overridden by stale scroll restoration entries. ([#7447](https://github.com/TanStack/router/pull/7447))
+
+- Preserve carried scroll positions across SPA navigations that create new restoration keys. ([#7447](https://github.com/TanStack/router/pull/7447))
+
+## 1.171.3
+
+### Patch Changes
+
+- Add deferred Hydrate boundary support for TanStack Start. ([#7362](https://github.com/TanStack/router/pull/7362))
+
+  Hydrate boundaries can now be code-split by the Start compiler, preload their generated client chunks, preserve server-rendered fallback HTML, and replay interaction-triggered events after hydration. The compiler integration now uses a Start-owned compiler plugin for Hydrate virtual modules across Vite and Rsbuild, with dev invalidation for generated virtual modules.
+
+  Shared AST utilities used by the router code-splitter and Hydrate virtual modules were moved into `@tanstack/router-utils` so both pipelines can retain referenced top-level declarations, unwrap local exports, and let dead-code elimination remove unused route module code.
+
+## 1.171.2
+
+### Patch Changes
+
+- Fix route mismatch warnings, HMR route index refresh, and generated route type preferences for duplicate pathless/index routes. ([#7422](https://github.com/TanStack/router/pull/7422))
+
+## 1.171.1
+
+### Patch Changes
+
+- Run custom router hydration before the initial client route match so hydrated router configuration, such as request-specific URL rewrites, can be installed before SSR hydration compares matches. ([#7416](https://github.com/TanStack/router/pull/7416))
+
+## 1.171.0
+
+### Minor Changes
+
+- params.priority route option as tie breaker in route matching algorithm ([#7411](https://github.com/TanStack/router/pull/7411))
+
+## 1.170.1
+
+### Patch Changes
+
+- Add runtime-configurable inline CSS and opt-in CSS URL templates for transformAssets. ([#7380](https://github.com/TanStack/router/pull/7380))
+
+## 1.170.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- fix(router-core): fix missing closing paren in CSS.supports check for view transition types ([#7369](https://github.com/TanStack/router/pull/7369))
+
+- Updated dependencies [[`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14)]:
+  - @tanstack/history@1.162.0
+
 ## 1.169.2
 
 ### Patch Changes
