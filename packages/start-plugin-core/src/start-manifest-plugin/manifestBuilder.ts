@@ -7,11 +7,6 @@ import {
   resolveManifestCssLink,
   rootRouteId,
 } from '@tanstack/router-core'
-import {
-  getRouteFilePathsFromModuleIds,
-  normalizeViteClientBuild,
-  normalizeViteClientChunk,
-} from '../vite/start-manifest-plugin/normalized-client-build'
 import { processInlineCssUrls } from './inlineCss'
 import type {
   ManifestAssetLink,
@@ -58,7 +53,6 @@ type DedupeRoute = {
 export interface StartManifest {
   scriptFormat?: ScriptFormat
   routes: Record<string, RouteTreeRoute>
-  clientEntry: string
   inlineCss?: {
     styles: Record<string, string>
     templates?: Record<string, InlineCssTemplate>
@@ -187,6 +181,56 @@ function appendRouteStylesheets(
   route.css = appendUniqueStylesheets(route.css, stylesheets)
 }
 
+function appendRouteScripts(
+  route: RouteTreeRoute,
+  scripts: Array<ManifestScript>,
+) {
+  if (scripts.length === 0) {
+    return
+  }
+
+  route.scripts = [...(route.scripts ?? []), ...scripts]
+}
+
+function buildScript(src: string, scriptFormat: ScriptFormat): ManifestScript {
+  return {
+    attrs: {
+      ...(scriptFormat === 'module' ? { type: 'module' } : {}),
+      async: true,
+      src,
+    },
+  }
+}
+
+function appendEntryChunkScripts(options: {
+  route: RouteTreeRoute
+  chunk: NormalizedClientChunk
+  scriptFormat: ScriptFormat
+  getAssetPath: (fileName: string) => string
+}) {
+  const scripts: Array<ManifestScript> = []
+
+  if (options.scriptFormat === 'iife') {
+    for (let i = 0; i < options.chunk.imports.length; i++) {
+      scripts.push(
+        buildScript(
+          options.getAssetPath(options.chunk.imports[i]!),
+          options.scriptFormat,
+        ),
+      )
+    }
+  }
+
+  scripts.push(
+    buildScript(
+      options.getAssetPath(options.chunk.fileName),
+      options.scriptFormat,
+    ),
+  )
+
+  appendRouteScripts(options.route, scripts)
+}
+
 function appendAdditionalRouteEntries(
   route: RouteTreeRoute,
   entries: ReadonlyArray<AdditionalRouteManifestEntry>,
@@ -207,9 +251,7 @@ function appendAdditionalRouteEntries(
   }
 
   appendRouteStylesheets(route, stylesheets)
-  if (scripts.length > 0) {
-    route.scripts = [...(route.scripts ?? []), ...scripts]
-  }
+  appendRouteScripts(route, scripts)
 }
 
 export function buildStartManifest(options: {
@@ -234,6 +276,13 @@ export function buildStartManifest(options: {
     additionalRouteAssets: options.additionalRouteAssets,
   })
 
+  appendEntryChunkScripts({
+    route: routes[rootRouteId]!,
+    chunk: scannedChunks.entryChunk,
+    scriptFormat: options.scriptFormat ?? 'module',
+    getAssetPath: assetResolvers.getAssetPath,
+  })
+
   dedupeNestedRouteManifestEntries(rootRouteId, routes[rootRouteId]!, routes)
 
   // Prune routes with no manifest data
@@ -249,7 +298,6 @@ export function buildStartManifest(options: {
 
   const result: StartManifest = {
     routes,
-    clientEntry: assetResolvers.getAssetPath(scannedChunks.entryChunk.fileName),
   }
 
   if (options.scriptFormat === 'iife') {
@@ -504,7 +552,7 @@ export function buildRouteManifestRoutes(options: {
   for (const [routeId, route] of Object.entries(options.routeTreeRoutes)) {
     if (!route.filePath) {
       if (routeId === rootRouteId) {
-        routes[routeId] = route
+        routes[routeId] = { ...route }
         continue
       }
 
@@ -513,7 +561,7 @@ export function buildRouteManifestRoutes(options: {
 
     const chunks = options.routeChunksByFilePath.get(route.filePath)
     if (!chunks) {
-      routes[routeId] = route
+      routes[routeId] = { ...route }
       continue
     }
 
@@ -632,12 +680,6 @@ function mergeReachableHydrationChunkData(options: {
   }
 
   visitStaticChunk(options.chunk)
-}
-
-export {
-  getRouteFilePathsFromModuleIds,
-  normalizeViteClientBuild,
-  normalizeViteClientChunk,
 }
 
 function dedupeNestedRouteManifestEntries(

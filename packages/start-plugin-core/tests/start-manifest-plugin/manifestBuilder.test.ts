@@ -6,15 +6,17 @@ import {
   buildStartManifest,
   createChunkCssAssetCollector,
   createManifestAssetResolvers,
-  getRouteFilePathsFromModuleIds,
-  normalizeViteClientBuild,
-  normalizeViteClientChunk,
   serializeStartManifest,
   scanClientChunks,
   type StartManifest,
 } from '../../src/start-manifest-plugin/manifestBuilder'
 import type { ManifestCssLink } from '@tanstack/router-core'
 import type { Rollup } from 'vite'
+import {
+  getRouteFilePathsFromModuleIds,
+  normalizeViteClientBuild,
+  normalizeViteClientChunk,
+} from '../../src/vite/start-manifest-plugin/normalized-client-build'
 
 function normalizeTestBuild(bundle: Rollup.OutputBundle) {
   return normalizeViteClientBuild(bundle)
@@ -461,7 +463,16 @@ describe('buildStartManifest', () => {
       },
     })
 
-    expect(manifest.routes.__root__!.scripts).toEqual([script])
+    expect(manifest.routes.__root__!.scripts).toEqual([
+      script,
+      {
+        attrs: {
+          type: 'module',
+          async: true,
+          src: '/assets/entry.js',
+        },
+      },
+    ])
   })
 
   test('dedupes additional route scripts already owned by ancestor routes', () => {
@@ -492,7 +503,16 @@ describe('buildStartManifest', () => {
       },
     })
 
-    expect(manifest.routes.__root__!.scripts).toEqual([script])
+    expect(manifest.routes.__root__!.scripts).toEqual([
+      script,
+      {
+        attrs: {
+          type: 'module',
+          async: true,
+          src: '/assets/entry.js',
+        },
+      },
+    ])
     expect(manifest.routes['/about']?.scripts).toBeUndefined()
   })
 
@@ -892,7 +912,6 @@ describe('buildStartManifest', () => {
           preloads: ['/assets/c.js'],
         },
       },
-      clientEntry: '/assets/entry.js',
     }
 
     const evaluated = deserializeSerializedManifest(
@@ -930,7 +949,6 @@ describe('buildStartManifest', () => {
           ],
         },
       },
-      clientEntry: '/assets/entry.js',
     }
 
     expect(
@@ -950,7 +968,6 @@ describe('buildStartManifest', () => {
           preloads: ['/assets/posts.js'],
         },
       },
-      clientEntry: '/assets/entry.js',
     }
 
     expect(
@@ -986,6 +1003,64 @@ describe('buildStartManifest', () => {
         scriptFormat: 'iife',
       }).scriptFormat,
     ).toBe('iife')
+  })
+
+  test('buildStartManifest emits client entry assets as root route scripts', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      imports: ['runtime.js', 'vendor.js'],
+    })
+    const runtimeChunk = makeChunk({ fileName: 'runtime.js' })
+    const vendorChunk = makeChunk({ fileName: 'vendor.js' })
+    const routeTreeRoutes = {
+      __root__: {
+        filePath: '/routes/__root.tsx',
+      },
+    }
+
+    const moduleManifest = buildStartManifest({
+      clientBuild: normalizeTestBuild({
+        'entry.js': entryChunk,
+        'runtime.js': runtimeChunk,
+        'vendor.js': vendorChunk,
+      }),
+      routeTreeRoutes,
+      basePath: '/assets',
+      scriptFormat: 'module',
+    })
+
+    expect(moduleManifest.routes.__root__?.scripts).toEqual([
+      {
+        attrs: {
+          type: 'module',
+          async: true,
+          src: '/assets/entry.js',
+        },
+      },
+    ])
+
+    const iifeManifest = buildStartManifest({
+      clientBuild: normalizeTestBuild({
+        'entry.js': entryChunk,
+        'runtime.js': runtimeChunk,
+        'vendor.js': vendorChunk,
+      }),
+      routeTreeRoutes,
+      basePath: '/assets',
+      scriptFormat: 'iife',
+    })
+
+    expect(iifeManifest.routes.__root__?.preloads).toEqual([
+      '/assets/entry.js',
+      '/assets/runtime.js',
+      '/assets/vendor.js',
+    ])
+    expect(iifeManifest.routes.__root__?.scripts).toEqual([
+      { attrs: { async: true, src: '/assets/runtime.js' } },
+      { attrs: { async: true, src: '/assets/vendor.js' } },
+      { attrs: { async: true, src: '/assets/entry.js' } },
+    ])
   })
 })
 
