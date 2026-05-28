@@ -77,7 +77,6 @@ overrides:
   '@tanstack/router-utils': 'workspace:*'
   '@tanstack/start-static-server-functions': 'workspace:*'
   '@tanstack/nitro-v2-vite-plugin': 'workspace:*'
-  '@rspack/core': npm:@rspack-canary/core@2.0.4-canary-32cafdc6-20260518042857
 
 allowBuilds:
   # root dependency
