@@ -345,9 +345,8 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#dehydrate-method)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration)
    */
-  dehydrate?: () => Constrain<
-    TDehydrated,
-    ValidateSerializableInput<Register, TDehydrated>
+  dehydrate?: () => Awaitable<
+    Constrain<TDehydrated, ValidateSerializableInput<Register, TDehydrated>>
   >
   /**
    * A function that will be called when the router is hydrated.
@@ -791,30 +790,45 @@ export type ClearCacheFn<TRouter extends AnyRouter> = (opts?: {
 }) => void
 
 export interface ServerSsr {
-  /**
-   * Injects HTML synchronously into the stream.
-   * Emits an onInjectedHtml event that listeners can handle.
-   * If no subscriber is listening, the HTML is buffered and can be retrieved via takeBufferedHtml().
-   */
+  /** Framework-only: injects router-owned HTML into the SSR stream. */
   injectHtml: (html: string) => void
-  /**
-   * Injects a script tag synchronously into the stream.
-   */
+  /** Framework-only: injects a router-owned script tag into the SSR stream. */
   injectScript: (script: string) => void
   isDehydrated: () => boolean
   isSerializationFinished: () => boolean
+  /** Framework-only: atomically reserves the pass-through stream path if safe. */
+  reserveStreamFastPath: () => boolean
+  /** Framework-only. */
+  onInjectedHtml: (listener: () => void) => () => void
+  /** Framework-only. */
   onRenderFinished: (listener: () => void) => void
+  /** Framework-only. */
   setRenderFinished: () => void
+  /** Framework-only. */
   cleanup: () => void
-  onSerializationFinished: (listener: () => void) => void
-  dehydrate: (opts?: { requestAssets?: ManifestRouteAssets }) => Promise<void>
-  takeBufferedScripts: () => RouterManagedTag | undefined
   /**
-   * Takes any buffered HTML that was injected.
-   * Returns the buffered HTML string (which may include multiple script tags) or undefined if empty.
+   * Register a listener invoked when the SSR request lifecycle ends (success,
+   * error, abort, or stream lifetime expiry). Use to tear down per-request
+   * resources whose references would otherwise pin the router (e.g. query
+   * cache subscriptions, gcTime timers, abort controllers).
+   *
+   * Listeners run synchronously and exactly once. Errors are caught and logged.
    */
+  onCleanup: (listener: () => void) => void
+  /** Framework-only. */
+  onSerializationFinished: (listener: () => void) => () => void
+  /** Framework-only. */
+  dehydrate: (opts?: { requestAssets?: ManifestRouteAssets }) => Promise<void>
+  /** Framework-only. */
+  takeBufferedScripts: () => RouterManagedTag | undefined
+  /** Framework-only: takes buffered router-owned HTML. */
   takeBufferedHtml: () => string | undefined
+  /** Framework-only. */
   liftScriptBarrier: () => void
+}
+
+export interface RouterSsrLifecycle {
+  onServerSsrAttach?: Array<(serverSsr: ServerSsr) => void>
 }
 
 export type AnyRouterWithContext<TContext> = RouterCore<
@@ -2976,6 +2990,8 @@ export class RouterCore<
   }
 
   serverSsr?: ServerSsr
+
+  serverSsrLifecycle?: RouterSsrLifecycle
 
   hasNotFoundMatch = () => {
     return this.stores.matches

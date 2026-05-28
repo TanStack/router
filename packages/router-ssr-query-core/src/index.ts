@@ -46,10 +46,61 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
     const sentQueries = new Set<string>()
     const queryStream = createPushableStream()
     let unsubscribe: (() => void) | undefined = undefined
+    let cleanupRegistered = false
+    let tornDown = false
+
+    const teardown = () => {
+      if (tornDown) return
+      tornDown = true
+      try {
+        unsubscribe?.()
+      } catch {
+        // ignore
+      }
+      unsubscribe = undefined
+      try {
+        if (!queryStream.isClosed()) queryStream.close()
+      } catch {
+        // ignore
+      }
+      // Cancel any in-flight queries and clear the cache. Removing queries
+      // cancels their gcTime setTimeout handles which would otherwise pin
+      // the queryClient (and transitively the router via router.context)
+      // alive for the full gcTime window (default 5min) per SSR request.
+      try {
+        queryClient.cancelQueries()
+      } catch {
+        // ignore
+      }
+      try {
+        queryClient.clear()
+      } catch {
+        // ignore
+      }
+      sentQueries.clear()
+    }
+
+    // Register teardown as soon as SSR attaches. attachRouterServerSsrUtils()
+    // runs before router.load(), so this covers redirects/errors thrown before
+    // router.options.dehydrate() can run.
+    const registerCleanup = (serverSsr = router.serverSsr) => {
+      if (cleanupRegistered) return
+      if (!serverSsr) return
+      serverSsr.onCleanup(teardown)
+      cleanupRegistered = true
+    }
+    router.serverSsrLifecycle = {
+      ...router.serverSsrLifecycle,
+      onServerSsrAttach: [
+        ...(router.serverSsrLifecycle?.onServerSsrAttach ?? []),
+        registerCleanup,
+      ],
+    }
+
     router.options.dehydrate =
       async (): Promise<DehydratedRouterQueryState> => {
         router.serverSsr!.onRenderFinished(() => {
-          queryStream.close()
+          if (!queryStream.isClosed()) queryStream.close()
           unsubscribe?.()
           unsubscribe = undefined
         })
@@ -204,12 +255,19 @@ function createPushableStream(): PushableStream {
 
   return {
     stream,
-    enqueue: (chunk) => controllerRef.enqueue(chunk),
+    enqueue: (chunk) => {
+      if (!_isClosed) controllerRef.enqueue(chunk)
+    },
     close: () => {
+      if (_isClosed) return
       controllerRef.close()
       _isClosed = true
     },
     isClosed: () => _isClosed,
-    error: (err: unknown) => controllerRef.error(err),
+    error: (err: unknown) => {
+      if (_isClosed) return
+      _isClosed = true
+      controllerRef.error(err)
+    },
   }
 }

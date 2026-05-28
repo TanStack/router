@@ -128,4 +128,22 @@ test.describe('Query heavy route (9 useSuspenseQuery)', () => {
       .count()
     expect(serverSourceCount).toBe(9)
   })
+
+  test('emits query stream data before stream end marker', async ({
+    request,
+  }) => {
+    const response = await request.get('/query-heavy')
+    const html = await response.text()
+    const endMarker = '$_TSR.e()'
+    const endIndex = html.indexOf(endMarker)
+    const lastScriptOpen = html.lastIndexOf('<script', endIndex)
+    const lastScriptClose = html.lastIndexOf('</script>', endIndex)
+
+    expect(endIndex).toBeGreaterThan(-1)
+    expect(lastScriptOpen).toBeGreaterThan(lastScriptClose)
+    expect(html.indexOf('slow-async')).toBeGreaterThan(-1)
+    expect(html.indexOf('slow-async')).toBeLessThan(endIndex)
+    expect(html.slice(lastScriptOpen, endIndex)).toContain('.return(void 0)')
+    expect(endIndex).toBeLessThan(html.indexOf('</body>'))
+  })
 })
