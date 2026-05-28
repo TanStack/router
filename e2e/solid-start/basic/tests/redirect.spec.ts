@@ -190,7 +190,7 @@ test.describe('redirects', () => {
 
       await page.goto(`/redirect/${target}/serverFn/via-useServerFn?${q}`)
 
-  await waitForRouterIdle(page)
+      await waitForRouterIdle(page)
 
       const button = page.getByTestId('redirect-on-click')
 

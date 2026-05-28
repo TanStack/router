@@ -95,7 +95,7 @@ test.describe('redirects', () => {
       }) => {
         await page.goto(`/redirect/internal/via-${thrower}`)
 
-          await waitForPostsIndex(page)
+        await waitForPostsIndex(page)
       })
     })
   })
@@ -208,7 +208,7 @@ test.describe('redirects', () => {
 
         await page.goto(`/redirect/${target}/serverFn/via-useServerFn?${q}`)
 
-  await waitForRouterIdle(page)
+        await waitForRouterIdle(page)
 
         const button = page.getByTestId('redirect-on-click')
 
