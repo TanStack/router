@@ -27,15 +27,14 @@ type ImportManifestEntry = {
 }
 
 type ClientManifest = Record<string, ImportManifestEntry>
-type ServerConsumerModuleMap =
-  | null
-  | Record<string, Record<string, ImportManifestEntry>>
-type ModuleLoading =
-  | null
-  | {
-      prefix: string
-      crossOrigin?: 'use-credentials' | ''
-    }
+type ServerConsumerModuleMap = null | Record<
+  string,
+  Record<string, ImportManifestEntry>
+>
+type ModuleLoading = null | {
+  prefix: string
+  crossOrigin?: 'use-credentials' | ''
+}
 
 declare const __rspack_rsc_manifest__: {
   moduleLoading: ModuleLoading
