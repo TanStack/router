@@ -1,5 +1,5 @@
 import {
-  buildManifestWithClientEntry,
+  buildManifest,
   resolveTransformAssetsConfig,
   transformManifestAssets,
 } from './transformAssetUrls'
@@ -11,16 +11,11 @@ import type { ServerManifest } from '@tanstack/router-core'
 import type { HandlerInlineCssOption } from './inlineCss'
 import type {
   CreateTransformAssetsContext,
-  StartManifestWithClientEntry,
   TransformAssets,
   TransformAssetsFn,
 } from './transformAssetUrls'
 
-export type {
-  HandlerInlineCssOption,
-  StartManifestWithClientEntry,
-  TransformAssets,
-}
+export type { HandlerInlineCssOption, TransformAssets }
 
 export interface FinalManifestOptions {
   /**
@@ -37,8 +32,8 @@ export interface FinalManifestOptions {
    * Transform manifest-managed asset URLs and attributes at runtime, e.g. to
    * prepend a CDN prefix.
    *
-   * This covers JS preloads, CSS links, the client entry script, and URLs
-   * inside build-collected inline CSS. Asset imports used directly in
+   * This covers JS preloads, manifest script tags, CSS links, and URLs inside
+   * build-collected inline CSS. Asset imports used directly in
    * components should be handled by the bundler instead.
    */
   transformAssets?: TransformAssets
@@ -46,7 +41,7 @@ export interface FinalManifestOptions {
 
 type FinalManifestCacheKey = 'inline-css' | 'linked-css'
 type FinalManifestCache = Map<FinalManifestCacheKey, Promise<ServerManifest>>
-export type GetBaseManifest = () => Promise<StartManifestWithClientEntry>
+export type GetBaseManifest = () => Promise<ServerManifest>
 
 export interface FinalManifestRequestOptions {
   request: Request
@@ -76,7 +71,7 @@ export interface FinalManifestResolver {
 export function createCachedBaseManifestLoader(
   loadBaseManifest: GetBaseManifest,
 ): GetBaseManifest {
-  let baseManifestPromise: Promise<StartManifestWithClientEntry> | undefined
+  let baseManifestPromise: Promise<ServerManifest> | undefined
 
   return () => {
     if (!baseManifestPromise) {
@@ -241,7 +236,7 @@ function getOrCreateCachedFinalManifestPromise(
 }
 
 async function buildFinalManifest(opts: {
-  base: StartManifestWithClientEntry
+  base: ServerManifest
   transformFn: TransformAssetsFn | undefined
   inlineCss: boolean
 }): Promise<ServerManifest> {
@@ -249,11 +244,11 @@ async function buildFinalManifest(opts: {
     ? await transformManifestAssets(opts.base, opts.transformFn, {
         inlineCss: opts.inlineCss,
       })
-    : buildManifestWithClientEntry(opts.base, { inlineCss: opts.inlineCss })
+    : buildManifest(opts.base, { inlineCss: opts.inlineCss })
 }
 
 async function resolveFinalManifest(opts: {
-  getBaseManifest: () => Promise<StartManifestWithClientEntry>
+  getBaseManifest: () => Promise<ServerManifest>
   transformFn: TransformAssetsFn | undefined
   cache: boolean
   inlineCss: boolean
@@ -283,7 +278,7 @@ function warmupFinalManifest(opts: {
   handlerDefaultInlineCss: boolean | undefined
   cache: boolean
   finalManifestCache: FinalManifestCache
-  getBaseManifest: () => Promise<StartManifestWithClientEntry>
+  getBaseManifest: () => Promise<ServerManifest>
   getTransformFn: () => Promise<TransformAssetsFn | undefined>
   onError?: () => void
 }): Promise<ServerManifest> | undefined {

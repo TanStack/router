@@ -3,8 +3,11 @@ import {
   buildDevStylesUrl,
   rootRouteId,
 } from '@tanstack/router-core'
-import type { AnyRoute, ServerManifestRoute } from '@tanstack/router-core'
-import type { StartManifestWithClientEntry } from './transformAssetUrls'
+import type {
+  AnyRoute,
+  ServerManifest,
+  ServerManifestRoute,
+} from '@tanstack/router-core'
 
 // Pre-computed constant for dev styles URL basepath.
 // Defaults to vite `base` (set via TSS_DEV_SSR_STYLES_BASEPATH in the plugin),
@@ -16,15 +19,12 @@ const DEV_SSR_STYLES_BASEPATH = process.env.TSS_DEV_SSR_STYLES_BASEPATH || '/'
  * special assets that are needed for the client. It does not include relationships
  * between routes or any other data that is not needed for the client.
  *
- * The client entry URL is returned separately so that it can be transformed
- * (e.g. for CDN rewriting) before being embedded into the `<script>` tag.
- *
  * @param matchedRoutes - In dev mode, the matched routes are used to build
  * the dev styles URL for route-scoped CSS collection.
  */
 export async function getStartManifest(
   matchedRoutes?: ReadonlyArray<AnyRoute>,
-): Promise<StartManifestWithClientEntry> {
+): Promise<ServerManifest> {
   const { tsrStartManifest } = await import('tanstack-start-manifest:v')
   const startManifest = tsrStartManifest()
   let routes = startManifest.routes
@@ -85,11 +85,5 @@ export async function getStartManifest(
     routes: manifestRoutes,
   }
 
-  return {
-    manifest: manifest as StartManifestWithClientEntry['manifest'],
-    clientEntry: startManifest.clientEntry,
-    ...(startManifest.clientEntryImports
-      ? { clientEntryImports: startManifest.clientEntryImports }
-      : {}),
-  }
+  return manifest
 }

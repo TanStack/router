@@ -12,13 +12,13 @@ vi.mock('@tanstack/start-server-core', () => ({
 describe('startManifestPlugin', () => {
   test('uses the virtual client entry during unbundled dev', () => {
     expect(loadDevManifest({ bundledDev: false })).toContain(
-      `clientEntry: '/@id/${DEV_CLIENT_ENTRY}'`,
+      `src: '/@id/${DEV_CLIENT_ENTRY}'`,
     )
   })
 
   test('uses the bundled client entry during bundled dev', () => {
     expect(loadDevManifest({ bundledDev: true })).toContain(
-      `clientEntry: '/assets/index.js'`,
+      `src: '/assets/index.js'`,
     )
   })
 })

@@ -8,15 +8,14 @@ import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
 // repro is:
 //
 //   - `client.output: 'iife'` — emit the client entry as a self-executing
-//     script. `<Scripts />` reads `scriptFormat` from the manifest and
-//     switches between `<script type="module">` and plain `<script>`;
-//     setting IIFE here exercises the plain-script path.
+//     script. The manifest uses plain script tags and classic script preloads;
+//     setting IIFE here exercises that non-module asset path.
 //
 //   - Client `runtimeChunk: 'single'` — extracts the webpack runtime into
 //     its own chunk. With IIFE plain scripts, the entry can't bootstrap
 //     until the runtime has executed, so `<Scripts />` has to emit a
 //     `<script>` for the runtime chunk (not just a preload). This was
-//     the regression the upstream `clientEntryImports` fix addresses.
+//     the regression this fixture covers.
 //
 //   - `client.distPath.root` + `distPath.js: ''` — flat layout, JS at the
 //     dist root. Matches the path `express-server.ts` serves via

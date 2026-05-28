@@ -5,12 +5,12 @@ import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../../constants'
 import {
   buildStartManifest,
   createManifestAssetResolvers,
-  normalizeViteClientBuild,
   serializeStartManifest,
 } from '../../start-manifest-plugin/manifestBuilder'
 import { createVirtualModule } from '../createVirtualModule'
 import type { GetConfigFn, NormalizedClientBuild } from '../../types'
 import type { PluginOption, Rollup } from 'vite'
+import { normalizeViteClientBuild } from './normalized-client-build'
 
 type StartManifestEnvironment = {
   config: {
@@ -137,8 +137,12 @@ function getAssetFileNameByName(
 
 function getEmptyStartManifestModule(clientEntry: string) {
   return `export const tsrStartManifest = () => ({
-      routes: {},
-      clientEntry: '${clientEntry}',
+      routes: {
+        __root__: {
+          preloads: ['${clientEntry}'],
+          scripts: [{ attrs: { type: 'module', async: true, src: '${clientEntry}' } }],
+        },
+      },
     })`
 }
 

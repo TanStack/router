@@ -72,14 +72,27 @@ function getScriptFormatProperty(scriptFormat: ScriptFormat): string {
   return scriptFormat === 'iife' ? `  scriptFormat: 'iife',\n` : ''
 }
 
+function getEntryScriptAttrs(
+  entryUrl: string,
+  scriptFormat: ScriptFormat,
+): string {
+  return scriptFormat === 'module'
+    ? `{ type: 'module', async: true, src: '${entryUrl}' }`
+    : `{ async: true, src: '${entryUrl}' }`
+}
+
 function generateManifestModuleDev(
   devClientEntryUrl: string,
   scriptFormat: ScriptFormat,
 ): string {
   const scriptFormatProperty = getScriptFormatProperty(scriptFormat)
   return `const fallbackManifest = {
-${scriptFormatProperty}  routes: {},
-  clientEntry: '${devClientEntryUrl}',
+${scriptFormatProperty}  routes: {
+    __root__: {
+      preloads: ['${devClientEntryUrl}'],
+      scripts: [{ attrs: ${getEntryScriptAttrs(devClientEntryUrl, scriptFormat)} }],
+    },
+  },
 }
 export const tsrStartManifest = () => globalThis[${JSON.stringify(DEV_START_MANIFEST_GLOBAL)}] ?? fallbackManifest`
 }
