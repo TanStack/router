@@ -325,6 +325,7 @@ export function resolveTransformAssetsConfig(
 export interface StartManifestWithClientEntry {
   manifest: ServerManifest
   clientEntry: string
+  clientEntryImports?: Array<string>
 }
 
 /**
@@ -462,6 +463,14 @@ export async function transformManifestAssets(
     )
   }
 
+  // Sibling chunks the entry boots from (e.g. an extracted runtime under
+  // IIFE) get the same treatment as the entry, and land before it in
+  // `__root__.scripts`.
+  if (source.clientEntryImports) {
+    for (const importUrl of source.clientEntryImports) {
+      addClientEntryToManifest(manifest, importUrl)
+    }
+  }
   addClientEntryToManifest(manifest, source.clientEntry)
 
   for (const route of Object.values(manifest.routes)) {
@@ -545,6 +554,11 @@ export function buildManifestWithClientEntry(
     },
   }
 
+  if (source.clientEntryImports) {
+    for (const importUrl of source.clientEntryImports) {
+      addClientEntryToManifest(manifest, importUrl)
+    }
+  }
   addClientEntryToManifest(manifest, source.clientEntry)
 
   return manifest

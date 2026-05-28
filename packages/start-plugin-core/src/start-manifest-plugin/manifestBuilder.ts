@@ -59,6 +59,7 @@ export interface StartManifest {
   scriptFormat?: ScriptFormat
   routes: Record<string, RouteTreeRoute>
   clientEntry: string
+  clientEntryImports?: Array<string>
   inlineCss?: {
     styles: Record<string, string>
     templates?: Record<string, InlineCssTemplate>
@@ -254,6 +255,12 @@ export function buildStartManifest(options: {
 
   if (options.scriptFormat === 'iife') {
     result.scriptFormat = 'iife'
+
+    if (scannedChunks.entryChunk.imports.length > 0) {
+      result.clientEntryImports = scannedChunks.entryChunk.imports.map(
+        (importedFileName) => assetResolvers.getAssetPath(importedFileName),
+      )
+    }
   }
 
   if (options.inlineCss?.enabled) {

@@ -1,7 +1,10 @@
 declare module 'tanstack-start-manifest:v' {
   import type { ServerManifest } from '@tanstack/router-core'
 
-  export const tsrStartManifest: () => ServerManifest & { clientEntry: string }
+  export const tsrStartManifest: () => ServerManifest & {
+    clientEntry: string
+    clientEntryImports?: Array<string>
+  }
 }
 
 declare module 'tanstack-start-route-tree:v' {

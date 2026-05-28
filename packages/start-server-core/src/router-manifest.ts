@@ -88,5 +88,8 @@ export async function getStartManifest(
   return {
     manifest: manifest as StartManifestWithClientEntry['manifest'],
     clientEntry: startManifest.clientEntry,
+    ...(startManifest.clientEntryImports
+      ? { clientEntryImports: startManifest.clientEntryImports }
+      : {}),
   }
 }
