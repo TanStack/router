@@ -24,7 +24,7 @@ async function waitForRouterIdle(page: Page) {
 async function waitForPostsIndex(page: Page) {
   await page.waitForURL(POSTS_URL)
   expect(page.url()).toBe(POSTS_URL)
-      await waitForRouterIdle(page)
+  await waitForRouterIdle(page)
   await expect(page.getByTestId('PostsIndexComponent')).toBeInViewport()
 }
 
@@ -190,7 +190,7 @@ test.describe('redirects', () => {
 
       await page.goto(`/redirect/${target}/serverFn/via-useServerFn?${q}`)
 
-  await waitForRouterIdle(page)
+      await waitForRouterIdle(page)
 
       const button = page.getByTestId('redirect-on-click')
 
