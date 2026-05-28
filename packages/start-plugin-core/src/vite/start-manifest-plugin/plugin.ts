@@ -8,9 +8,9 @@ import {
   serializeStartManifest,
 } from '../../start-manifest-plugin/manifestBuilder'
 import { createVirtualModule } from '../createVirtualModule'
+import { normalizeViteClientBuild } from './normalized-client-build'
 import type { GetConfigFn, NormalizedClientBuild } from '../../types'
 import type { PluginOption, Rollup } from 'vite'
-import { normalizeViteClientBuild } from './normalized-client-build'
 
 type StartManifestEnvironment = {
   config: {
