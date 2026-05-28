@@ -128,23 +128,26 @@ export async function getRouteNodes(
         const filePath = replaceBackslash(
           path.join(normalizedDir, node.filePath),
         )
-        const prefixPath = cleanPath(`/${normalizedDir}`)
-        const routePath = cleanPath(`/${normalizedDir}${node.routePath}`)
+        const { routePath: prefixPath, originalRoutePath: originalPrefixPath } =
+          normalizedDir
+            ? determineInitialRoutePath(normalizedDir)
+            : { routePath: '', originalRoutePath: '' }
+        const routePath = cleanPath(`${prefixPath}${node.routePath}`)
 
         node.variableName = routePathToVariable(
-          cleanPath(`/${normalizedDir}/${removeExt(node.filePath)}`),
+          cleanPath(`${prefixPath}/${removeExt(node.filePath)}`),
         )
         node._routePathSegmentMetadata = joinRoutePathSegmentMetadata(
           routePath,
           prefixPath,
-          undefined,
+          createRoutePathSegmentMetadata(prefixPath, originalPrefixPath),
           node._routePathSegmentMetadata,
         )
         node.routePath = routePath
         // Keep originalRoutePath aligned with routePath for escape detection
         if (node.originalRoutePath) {
           node.originalRoutePath = cleanPath(
-            `/${normalizedDir}${node.originalRoutePath}`,
+            `${originalPrefixPath}${node.originalRoutePath}`,
           )
         }
         node.filePath = filePath
@@ -311,10 +314,6 @@ export async function getRouteNodes(
             if (indexTokenSegmentRegex.test(updatedLastRouteSegment)) {
               if (routePathSegments.length === 1) {
                 routePath = '/'
-              }
-
-              if (lastOriginalSegment === updatedLastRouteSegment) {
-                originalRoutePath = '/'
               }
 
               // For layout routes, don't use '/' fallback - an empty path means

@@ -52,6 +52,7 @@ import type {
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
+  HistoryAction,
   HistoryLocation,
   HistoryState,
   ParsedHistoryState,
@@ -97,7 +98,11 @@ import type {
   CommitLocationOptions,
   NavigateFn,
 } from './RouterProvider'
-import type { Manifest, RouterManagedTag } from './manifest'
+import type {
+  Manifest,
+  ManifestRouteAssets,
+  RouterManagedTag,
+} from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
@@ -740,7 +745,10 @@ export type GetMatchRoutesFn = (pathname: string) => {
 
 export type EmitFn = (routerEvent: RouterEvent) => void
 
-export type LoadFn = (opts?: { sync?: boolean }) => Promise<void>
+export type LoadFn = (opts?: {
+  sync?: boolean
+  action?: { type: HistoryAction }
+}) => Promise<void>
 
 export type CommitLocationFn = ({
   viewTransition,
@@ -799,9 +807,7 @@ export interface ServerSsr {
   setRenderFinished: () => void
   cleanup: () => void
   onSerializationFinished: (listener: () => void) => void
-  dehydrate: (opts?: {
-    requestAssets?: Array<RouterManagedTag>
-  }) => Promise<void>
+  dehydrate: (opts?: { requestAssets?: ManifestRouteAssets }) => Promise<void>
   takeBufferedScripts: () => RouterManagedTag | undefined
   /**
    * Takes any buffered HTML that was injected.
@@ -882,6 +888,11 @@ export function getLocationChangeInfo(
   const hashChanged = fromLocation?.hash !== toLocation.hash
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
+
+export const locationHistoryActions = new WeakMap<
+  ParsedLocation,
+  HistoryAction
+>()
 
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
@@ -2116,6 +2127,7 @@ export class RouterCore<
     ignoreBlocker,
     ...next
   }) => {
+    let historyAction: HistoryAction | undefined
     const isSameState = () => {
       // the following props are ignored but may still be provided when navigating,
       // temporarily add the previous values to the next state so they don't affect
@@ -2191,7 +2203,9 @@ export class RouterCore<
 
       this.shouldViewTransition = viewTransition
 
-      this.history[next.replace ? 'replace' : 'push'](
+      historyAction = next.replace ? 'REPLACE' : 'PUSH'
+
+      this.history[historyAction === 'REPLACE' ? 'replace' : 'push'](
         nextHistory.publicHref,
         nextHistory.state,
         { ignoreBlocker },
@@ -2201,7 +2215,13 @@ export class RouterCore<
     this.resetNextScroll = next.resetScroll ?? true
 
     if (!this.history.subscribers.size) {
-      this.load()
+      this.load(
+        historyAction
+          ? {
+              action: { type: historyAction },
+            }
+          : undefined,
+      )
     }
 
     return this.commitLocationPromise
@@ -2403,7 +2423,8 @@ export class RouterCore<
     })
   }
 
-  load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
+  load: LoadFn = async (opts): Promise<void> => {
+    const historyAction = opts?.action?.type
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
     let loadPromise: Promise<void>
@@ -2415,6 +2436,11 @@ export class RouterCore<
       this.startTransition(async () => {
         try {
           this.beforeLoad()
+          if (historyAction) {
+            locationHistoryActions.set(this.latestLocation, historyAction)
+          } else {
+            locationHistoryActions.delete(this.latestLocation)
+          }
           const next = this.latestLocation
           const prevLocation = this.stores.resolvedLocation.get()
           const locationChangeInfo = getLocationChangeInfo(next, prevLocation)

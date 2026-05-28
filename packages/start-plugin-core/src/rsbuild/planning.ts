@@ -5,6 +5,7 @@ import { ENTRY_POINTS } from '../constants'
 import type { EnvironmentConfig } from '@rsbuild/core'
 import type { ResolvedStartEntryPlan } from '../planning'
 import type { RsbuildEnvironmentOverrides } from './types'
+import type { ScriptFormat } from '@tanstack/router-core'
 
 const require = createRequire(import.meta.url)
 
@@ -74,6 +75,7 @@ export function createRsbuildEnvironmentPlan(opts: {
   publicBase: string
   serverFnProviderEnv: string
   environmentOverrides?: RsbuildEnvironmentOverrides
+  scriptFormat?: ScriptFormat
   rsc?: boolean | undefined
   dev?: boolean | undefined
 }): RsbuildEnvironmentPlanResult {
@@ -89,6 +91,20 @@ export function createRsbuildEnvironmentPlan(opts: {
       : {}),
   }
   const environmentOverrides = opts.environmentOverrides ?? {}
+  const scriptFormat = opts.scriptFormat ?? 'module'
+  const clientOutputModule = scriptFormat === 'module'
+  const userClientOutputModule =
+    environmentOverrides.client?.output?.module ??
+    environmentOverrides.all?.output?.module
+
+  if (
+    typeof userClientOutputModule === 'boolean' &&
+    userClientOutputModule !== clientOutputModule
+  ) {
+    throw new Error(
+      'TanStack Start rsbuild.client.output controls environments.client.output.module. Remove environments.client.output.module or set rsbuild.client.output to match it.',
+    )
+  }
 
   return {
     environments: {
@@ -104,7 +120,7 @@ export function createRsbuildEnvironmentPlan(opts: {
           },
           output: {
             target: 'web',
-            module: true,
+            module: clientOutputModule,
             distPath: {
               root: opts.clientOutputDirectory,
               js: `${RSBUILD_CLIENT_ASSETS_DIR}/js`,
@@ -236,7 +252,7 @@ export function resolveRsbuildOutputDirectory(opts: {
 }
 
 function normalizeEntryPath(path: string) {
-  return path.replaceAll('\\', '/')
+  return path.includes('\\') ? path.replaceAll('\\', '/') : path
 }
 
 function resolveFromRoot(specifier: string, root: string): string {

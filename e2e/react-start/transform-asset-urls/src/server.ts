@@ -27,7 +27,7 @@ const createTransformAssetsFn =
   ({ kind, url }) => {
     const href = `${cdn}${url}`
 
-    if (kind === 'modulepreload') {
+    if (kind === 'script') {
       return {
         href,
         crossOrigin: 'anonymous',

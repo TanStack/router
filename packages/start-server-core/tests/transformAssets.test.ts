@@ -4,6 +4,7 @@ import {
   resolveTransformAssetsConfig,
   transformManifestAssets,
 } from '../src/transformAssetUrls'
+import type { StartManifestWithClientEntry } from '../src/transformAssetUrls'
 
 describe('transformAssets', () => {
   it('supports string shorthand', async () => {
@@ -15,7 +16,10 @@ describe('transformAssets', () => {
     }
 
     expect(
-      config.transformFn({ kind: 'modulepreload', url: '/assets/app.js' }),
+      config.transformFn({
+        kind: 'script',
+        url: '/assets/app.js',
+      }),
     ).toEqual({ href: 'https://cdn.example.com/assets/app.js' })
   })
 
@@ -26,26 +30,21 @@ describe('transformAssets', () => {
           routes: {
             __root__: {
               preloads: ['/assets/app.js'],
-              assets: [
-                {
-                  tag: 'link',
-                  attrs: { rel: 'stylesheet', href: '/assets/app.css' },
-                },
-              ],
+              css: ['/assets/app.css'],
             },
           },
         },
         clientEntry: '/assets/entry.js',
       },
-      ({ kind, url }) => {
-        if (kind === 'modulepreload') {
+      (context) => {
+        if (context.kind === 'script') {
           return {
-            href: `https://cdn.example.com${url}`,
+            href: `https://cdn.example.com${context.url}`,
             crossOrigin: 'anonymous',
           }
         }
 
-        return { href: `https://cdn.example.com${url}` }
+        return { href: `https://cdn.example.com${context.url}` }
       },
       { clone: true },
     )
@@ -55,14 +54,14 @@ describe('transformAssets', () => {
         href: 'https://cdn.example.com/assets/app.js',
         crossOrigin: 'anonymous',
       },
-    ])
-    expect(manifest.routes.__root__?.assets?.[0]).toEqual({
-      tag: 'link',
-      attrs: {
-        rel: 'stylesheet',
-        href: 'https://cdn.example.com/assets/app.css',
+      {
+        href: 'https://cdn.example.com/assets/entry.js',
+        crossOrigin: 'anonymous',
       },
-    })
+    ])
+    expect(manifest.routes.__root__?.css?.[0]).toBe(
+      'https://cdn.example.com/assets/app.css',
+    )
   })
 
   it('preserves string preload format when transform returns no crossOrigin', async () => {
@@ -72,7 +71,6 @@ describe('transformAssets', () => {
           routes: {
             __root__: {
               preloads: ['/assets/app.js'],
-              assets: [],
             },
           },
         },
@@ -86,20 +84,217 @@ describe('transformAssets', () => {
     expect(manifest.routes.__root__?.preloads?.[0]).toBe(
       'https://cdn.example.com/assets/app.js',
     )
+    expect(manifest.routes.__root__?.preloads?.[1]).toBe(
+      'https://cdn.example.com/assets/entry.js',
+    )
+  })
+
+  it('passes script context for route preloads and client entry assets', async () => {
+    const transformFn = vi.fn(({ url }) => ({
+      href: `https://cdn.example.com${url}`,
+    }))
+
+    await transformManifestAssets(
+      {
+        manifest: {
+          scriptFormat: 'iife',
+          routes: {
+            __root__: {
+              preloads: ['/assets/app.js'],
+            },
+          },
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+    )
+
+    expect(transformFn).toHaveBeenCalledWith({
+      kind: 'script',
+      url: '/assets/app.js',
+    })
+    expect(transformFn).toHaveBeenCalledWith({
+      kind: 'script',
+      url: '/assets/entry.js',
+    })
+    expect(transformFn).toHaveBeenCalledTimes(2)
+    expect(transformFn.mock.calls).toEqual([
+      [{ kind: 'script', url: '/assets/app.js' }],
+      [{ kind: 'script', url: '/assets/entry.js' }],
+    ])
+  })
+
+  it('does not duplicate the client entry preload when it already exists', async () => {
+    const transformFn = vi.fn(({ url }) => ({
+      href: `https://cdn.example.com${url}`,
+    }))
+
+    const manifest = await transformManifestAssets(
+      {
+        manifest: {
+          routes: {
+            __root__: {
+              preloads: ['/assets/entry.js'],
+            },
+          },
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+    )
+
+    expect(manifest.routes.__root__?.preloads).toEqual([
+      'https://cdn.example.com/assets/entry.js',
+    ])
+    expect(transformFn).toHaveBeenCalledTimes(1)
+    expect(transformFn.mock.calls).toEqual([
+      [{ kind: 'script', url: '/assets/entry.js' }],
+    ])
+  })
+
+  it('does not duplicate an object-form client entry preload', async () => {
+    const transformFn = vi.fn(({ url }) => ({
+      href: `https://cdn.example.com${url}`,
+      crossOrigin: 'anonymous' as const,
+    }))
+
+    const manifest = await transformManifestAssets(
+      {
+        manifest: {
+          routes: {
+            __root__: {
+              preloads: [
+                { href: '/assets/entry.js', crossOrigin: 'use-credentials' },
+              ],
+            },
+          },
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+    )
+
+    expect(manifest.routes.__root__?.preloads).toEqual([
+      {
+        href: 'https://cdn.example.com/assets/entry.js',
+        crossOrigin: 'anonymous',
+      },
+    ])
+    expect(transformFn).toHaveBeenCalledTimes(1)
+    expect(transformFn.mock.calls).toEqual([
+      [{ kind: 'script', url: '/assets/entry.js' }],
+    ])
+  })
+
+  it('reuses the transformed client entry URL for matching preload and script tags', async () => {
+    let signature = 0
+    const transformFn = vi.fn(({ url }) => ({
+      href: `https://cdn.example.com${url}?sig=${++signature}`,
+    }))
+
+    const manifest = await transformManifestAssets(
+      {
+        manifest: {
+          routes: {
+            __root__: {},
+          },
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+    )
+
+    const preload = manifest.routes.__root__?.preloads?.[0]
+    const script = manifest.routes.__root__?.scripts?.[0]
+    expect(preload).toBe(script?.attrs?.src)
+    expect(transformFn.mock.calls).toEqual([
+      [{ kind: 'script', url: '/assets/entry.js' }],
+    ])
+  })
+
+  it('does not duplicate the client entry script when it already exists', async () => {
+    let signature = 0
+    const transformFn = vi.fn(({ url }) => ({
+      href: `https://cdn.example.com${url}?sig=${++signature}`,
+    }))
+
+    const manifest = await transformManifestAssets(
+      {
+        manifest: {
+          routes: {
+            __root__: {
+              scripts: [
+                {
+                  attrs: {
+                    type: 'module',
+                    async: true,
+                    src: '/assets/entry.js',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+    )
+
+    expect(manifest.routes.__root__?.preloads).toEqual([
+      'https://cdn.example.com/assets/entry.js?sig=1',
+    ])
+    expect(manifest.routes.__root__?.scripts).toEqual([
+      {
+        attrs: {
+          type: 'module',
+          async: true,
+          src: 'https://cdn.example.com/assets/entry.js?sig=1',
+        },
+      },
+    ])
+    expect(transformFn.mock.calls).toEqual([
+      [{ kind: 'script', url: '/assets/entry.js' }],
+    ])
+  })
+
+  it('adds external client entry script tags to root scripts for module and iife formats', () => {
+    const moduleManifest = buildManifestWithClientEntry({
+      manifest: { routes: { __root__: {} } },
+      clientEntry: '/assets/entry.js',
+    })
+
+    expect(moduleManifest.routes.__root__?.scripts?.at(-1)).toEqual({
+      attrs: {
+        type: 'module',
+        async: true,
+        src: '/assets/entry.js',
+      },
+    })
+    expect(moduleManifest.routes.__root__?.preloads).toEqual([
+      '/assets/entry.js',
+    ])
+
+    const iifeManifest = buildManifestWithClientEntry({
+      manifest: { scriptFormat: 'iife', routes: { __root__: {} } },
+      clientEntry: '/assets/entry.js',
+    })
+
+    expect(iifeManifest.routes.__root__?.scripts?.at(-1)).toEqual({
+      attrs: {
+        async: true,
+        src: '/assets/entry.js',
+      },
+    })
+    expect(iifeManifest.routes.__root__?.preloads).toEqual(['/assets/entry.js'])
   })
 
   it('does not mutate the source manifest when clone is false', async () => {
-    const source = {
+    const source: StartManifestWithClientEntry = {
       manifest: {
         routes: {
           __root__: {
             preloads: ['/assets/app.js'],
-            assets: [
-              {
-                tag: 'link' as const,
-                attrs: { rel: 'stylesheet', href: '/assets/app.css' },
-              },
-            ],
+            css: ['/assets/app.css'],
           },
         },
       },
@@ -118,13 +313,10 @@ describe('transformAssets', () => {
     expect(source.manifest.routes.__root__?.preloads?.[0]).toBe(
       '/assets/app.js',
     )
-    expect(source.manifest.routes.__root__?.assets?.[0]).toEqual({
-      tag: 'link',
-      attrs: { rel: 'stylesheet', href: '/assets/app.css' },
-    })
+    expect(source.manifest.routes.__root__?.css?.[0]).toBe('/assets/app.css')
   })
 
-  it('only treats stylesheet links in route.assets as stylesheet transforms', async () => {
+  it('transforms manifest stylesheet links', async () => {
     const transformFn = vi.fn(({ url }) => ({
       href: `https://cdn.example.com${url}`,
     }))
@@ -135,16 +327,7 @@ describe('transformAssets', () => {
           routes: {
             __root__: {
               preloads: [],
-              assets: [
-                {
-                  tag: 'link',
-                  attrs: { rel: 'stylesheet preload', href: '/assets/app.css' },
-                },
-                {
-                  tag: 'link',
-                  attrs: { rel: 'icon', href: '/favicon.ico' },
-                },
-              ],
+              css: ['/assets/app.css'],
             },
           },
         },
@@ -158,34 +341,56 @@ describe('transformAssets', () => {
       kind: 'stylesheet',
       url: '/assets/app.css',
     })
-    expect(transformFn).not.toHaveBeenCalledWith({
-      kind: 'stylesheet',
-      url: '/favicon.ico',
-    })
-    expect(manifest.routes.__root__?.assets).toEqual([
+    expect(manifest.routes.__root__?.css).toEqual([
+      'https://cdn.example.com/assets/app.css',
+    ])
+    expect(manifest.routes.__root__?.scripts).toEqual([
       {
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet preload',
-          href: 'https://cdn.example.com/assets/app.css',
-        },
-      },
-      {
-        tag: 'link',
-        attrs: {
-          rel: 'icon',
-          href: '/favicon.ico',
-        },
-      },
-      {
-        tag: 'script',
         attrs: {
           type: 'module',
           async: true,
+          src: 'https://cdn.example.com/assets/entry.js',
         },
-        children: 'import("https://cdn.example.com/assets/entry.js")',
       },
     ])
+    expect(manifest.routes.__root__?.scripts?.at(-1)).toEqual({
+      attrs: {
+        type: 'module',
+        async: true,
+        src: 'https://cdn.example.com/assets/entry.js',
+      },
+    })
+  })
+
+  it('transforms existing manifest route script src values', async () => {
+    const manifest = await transformManifestAssets(
+      {
+        manifest: {
+          routes: {
+            __root__: {
+              scripts: [
+                {
+                  attrs: {
+                    src: '/assets/route-script.js',
+                    type: 'module',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      ({ url }) => ({ href: `https://cdn.example.com${url}` }),
+      { clone: true },
+    )
+
+    expect(manifest.routes.__root__?.scripts?.[0]).toEqual({
+      attrs: {
+        src: 'https://cdn.example.com/assets/route-script.js',
+        type: 'module',
+      },
+    })
   })
 
   it('transforms CSS URLs inside inlined stylesheet templates with css-url context', async () => {
@@ -218,12 +423,7 @@ describe('transformAssets', () => {
           },
           routes: {
             __root__: {
-              assets: [
-                {
-                  tag: 'link',
-                  attrs: { rel: 'stylesheet', href: '/assets/app.css' },
-                },
-              ],
+              css: ['/assets/app.css'],
             },
           },
         },
@@ -303,12 +503,7 @@ describe('transformAssets', () => {
           },
           routes: {
             __root__: {
-              assets: [
-                {
-                  tag: 'link',
-                  attrs: { rel: 'stylesheet', href: '/assets/app.css' },
-                },
-              ],
+              css: ['/assets/app.css'],
             },
           },
         },
@@ -317,10 +512,7 @@ describe('transformAssets', () => {
       transformFn,
     )
 
-    expect(manifest.routes.__root__?.assets?.[0]).toEqual({
-      tag: 'link',
-      attrs: { rel: 'stylesheet', href: '/assets/app.css' },
-    })
+    expect(manifest.routes.__root__?.css?.[0]).toBe('/assets/app.css')
     expect(transformFn).not.toHaveBeenCalledWith({
       kind: 'stylesheet',
       url: '/assets/app.css',
@@ -431,7 +623,10 @@ describe('transformAssets', () => {
       if (config.type !== 'transform') throw new Error('expected transform')
 
       expect(
-        config.transformFn({ kind: 'modulepreload', url: '/assets/app.js' }),
+        config.transformFn({
+          kind: 'script',
+          url: '/assets/app.js',
+        }),
       ).toEqual({ href: 'https://cdn.example.com/assets/app.js' })
     })
 
@@ -444,7 +639,10 @@ describe('transformAssets', () => {
       if (config.type !== 'transform') throw new Error('expected transform')
 
       expect(
-        config.transformFn({ kind: 'modulepreload', url: '/assets/app.js' }),
+        config.transformFn({
+          kind: 'script',
+          url: '/assets/app.js',
+        }),
       ).toEqual({
         href: 'https://cdn.example.com/assets/app.js',
         crossOrigin: 'anonymous',
@@ -458,9 +656,13 @@ describe('transformAssets', () => {
       })
 
       expect(
-        config.transformFn({ kind: 'clientEntry', url: '/assets/entry.js' }),
+        config.transformFn({
+          kind: 'script',
+          url: '/assets/entry.js',
+        }),
       ).toEqual({
         href: 'https://cdn.example.com/assets/entry.js',
+        crossOrigin: 'anonymous',
       })
 
       expect(
@@ -478,7 +680,7 @@ describe('transformAssets', () => {
       const config = resolveTransformAssetsConfig({
         prefix: 'https://cdn.example.com',
         crossOrigin: {
-          modulepreload: 'anonymous',
+          script: 'anonymous',
           stylesheet: 'use-credentials',
         },
       })
@@ -486,7 +688,10 @@ describe('transformAssets', () => {
       if (config.type !== 'transform') throw new Error('expected transform')
 
       expect(
-        config.transformFn({ kind: 'modulepreload', url: '/assets/app.js' }),
+        config.transformFn({
+          kind: 'script',
+          url: '/assets/app.js',
+        }),
       ).toEqual({
         href: 'https://cdn.example.com/assets/app.js',
         crossOrigin: 'anonymous',
@@ -499,11 +704,15 @@ describe('transformAssets', () => {
         crossOrigin: 'use-credentials',
       })
 
-      // clientEntry not specified in the per-kind record — no crossOrigin
+      // client entry is a script, so script crossOrigin applies
       expect(
-        config.transformFn({ kind: 'clientEntry', url: '/assets/entry.js' }),
+        config.transformFn({
+          kind: 'script',
+          url: '/assets/entry.js',
+        }),
       ).toEqual({
         href: 'https://cdn.example.com/assets/entry.js',
+        crossOrigin: 'anonymous',
       })
     })
 
@@ -513,15 +722,19 @@ describe('transformAssets', () => {
       if (config.type !== 'transform') throw new Error('expected transform')
 
       expect(
-        config.transformFn({ kind: 'modulepreload', url: '/assets/app.js' }),
+        config.transformFn({
+          kind: 'script',
+          url: '/assets/app.js',
+        }),
       ).toEqual({ href: '/assets/app.js' })
     })
 
-    it('applies object shorthand crossOrigin to manifest assets', async () => {
+    it('applies object shorthand crossOrigin to manifest stylesheets and preloads', async () => {
       const config = resolveTransformAssetsConfig({
         prefix: 'https://cdn.example.com',
         crossOrigin: {
-          modulepreload: 'anonymous',
+          script: 'anonymous',
+          stylesheet: 'use-credentials',
         },
       })
 
@@ -533,12 +746,7 @@ describe('transformAssets', () => {
             routes: {
               __root__: {
                 preloads: ['/assets/app.js'],
-                assets: [
-                  {
-                    tag: 'link',
-                    attrs: { rel: 'stylesheet', href: '/assets/app.css' },
-                  },
-                ],
+                css: ['/assets/app.css'],
               },
             },
           },
@@ -553,15 +761,15 @@ describe('transformAssets', () => {
           href: 'https://cdn.example.com/assets/app.js',
           crossOrigin: 'anonymous',
         },
+        {
+          href: 'https://cdn.example.com/assets/entry.js',
+          crossOrigin: 'anonymous',
+        },
       ])
 
-      // Stylesheet has no crossOrigin in the per-kind config
-      expect(manifest.routes.__root__?.assets?.[0]).toEqual({
-        tag: 'link',
-        attrs: {
-          rel: 'stylesheet',
-          href: 'https://cdn.example.com/assets/app.css',
-        },
+      expect(manifest.routes.__root__?.css?.[0]).toEqual({
+        href: 'https://cdn.example.com/assets/app.css',
+        crossOrigin: 'use-credentials',
       })
     })
   })

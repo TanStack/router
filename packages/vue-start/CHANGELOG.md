@@ -1,5 +1,94 @@
 # @tanstack/vue-start
 
+## 1.168.13
+
+### Patch Changes
+
+- Fix serialization adapter module resolution in TanStack Start. Vite dev now uses clean runtime-specific virtual module IDs instead of browser requests containing encoded null-byte virtual IDs, which avoids reverse proxy failures. When no serialization adapters are configured, Vite and Rsbuild now resolve `#tanstack-start-plugin-adapters` through the package empty-adapter fallback. ([#7484](https://github.com/TanStack/router/pull/7484))
+
+- Publish matching TanStack Start dev server packages so fresh installs do not pair a Start plugin that no longer provides `tanstack-start-injected-head-scripts:v` with an older Start server runtime that still imports it. ([#7487](https://github.com/TanStack/router/pull/7487))
+
+- Updated dependencies [[`a82cec6`](https://github.com/TanStack/router/commit/a82cec69474c366b36efdb3f43c4efe8311c485a), [`d8be4f8`](https://github.com/TanStack/router/commit/d8be4f8adf912128c96b7f83e9a6c49fb24b5eed)]:
+  - @tanstack/start-plugin-core@1.171.6
+  - @tanstack/start-client-core@1.170.4
+  - @tanstack/start-server-core@1.169.4
+  - @tanstack/vue-start-client@1.167.9
+  - @tanstack/vue-start-server@1.167.9
+
+## 1.168.12
+
+### Patch Changes
+
+- Add Vite bundled dev mode support for TanStack Start. Start now recognizes Vite's `experimental.bundledDev` opt-in, uses the bundled dev client entry in the dev manifest, keeps server requests pointed at the latest client build output, and preserves import-protection behavior for bundled client dev. ([#7482](https://github.com/TanStack/router/pull/7482))
+
+- Updated dependencies [[`90adda9`](https://github.com/TanStack/router/commit/90adda91aab7212cbcdb6159176b39d9ed01b827)]:
+  - @tanstack/start-plugin-core@1.171.5
+
+## 1.168.11
+
+### Patch Changes
+
+- Add support for Rsbuild client output formats, including module output by default and IIFE output for classic script environments. ([#7477](https://github.com/TanStack/router/pull/7477))
+
+  Client entry scripts and preloads are now represented as root route manifest assets, script preloads follow the manifest script format, and script asset cross-origin configuration uses the `script` key. The `transformAssets` script callback context now exposes only `kind: 'script'` and `url`, keeping script format handling internal to manifest rendering.
+
+- Fix Rsbuild server function metadata replay when Rspack restores modules from its persistent cache. ([#7477](https://github.com/TanStack/router/pull/7477))
+
+  Server function metadata is now stored on Rspack module build info and replayed from cached modules before resolver modules are rebuilt, preventing warm restarts from losing server function registrations.
+
+- Updated dependencies [[`51a97a1`](https://github.com/TanStack/router/commit/51a97a167fb3ef1b8ca70fbb63db635158f43509), [`51a97a1`](https://github.com/TanStack/router/commit/51a97a167fb3ef1b8ca70fbb63db635158f43509)]:
+  - @tanstack/vue-router@1.170.8
+  - @tanstack/start-plugin-core@1.171.4
+  - @tanstack/start-server-core@1.169.3
+  - @tanstack/start-client-core@1.170.3
+  - @tanstack/vue-start-client@1.167.8
+  - @tanstack/vue-start-server@1.167.8
+
+## 1.168.10
+
+### Patch Changes
+
+- Explicitly re-export public API names from `@tanstack/start-client-core` (`createServerFn`, `createMiddleware`, `createStart`, `createCsrfMiddleware`, `createIsomorphicFn`, `createClientOnlyFn`, `createServerOnlyFn`) alongside the existing `export *`. The explicit named re-exports are registered at link time (via Vite SSR's `defineExport` at `fileStartIndex`), so the namespace has these getters before any import body runs — survives the cold-start SSR cycle through user middleware where `export *` would otherwise produce a partial facade (`createMiddleware is not a function`). Workaround for vitejs/vite#22491 / #22493. ([#7466](https://github.com/TanStack/router/pull/7466))
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.2
+  - @tanstack/start-plugin-core@1.171.3
+  - @tanstack/start-server-core@1.169.2
+  - @tanstack/vue-router@1.170.7
+  - @tanstack/vue-start-client@1.167.7
+  - @tanstack/vue-start-server@1.167.7
+
+## 1.168.9
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-plugin-core@1.171.2
+
+## 1.168.8
+
+### Patch Changes
+
+- Updated dependencies [[`0300f87`](https://github.com/TanStack/router/commit/0300f87ec5a7f878ffbe0b181acf84cba9139960)]:
+  - @tanstack/vue-router@1.170.6
+  - @tanstack/start-client-core@1.170.1
+  - @tanstack/start-plugin-core@1.171.1
+  - @tanstack/start-server-core@1.169.1
+  - @tanstack/vue-start-client@1.167.6
+  - @tanstack/vue-start-server@1.167.6
+
+## 1.168.7
+
+### Patch Changes
+
+- Updated dependencies [[`5fa9e55`](https://github.com/TanStack/router/commit/5fa9e555f3a2edb5e45586623e6bcbfa7f7c7a6b)]:
+  - @tanstack/start-client-core@1.170.0
+  - @tanstack/start-plugin-core@1.171.0
+  - @tanstack/start-server-core@1.169.0
+  - @tanstack/vue-start-client@1.167.5
+  - @tanstack/vue-start-server@1.167.5
+  - @tanstack/vue-router@1.170.5
+
 ## 1.168.6
 
 ### Patch Changes

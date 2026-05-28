@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { enableSwcReactServerComponents } from '../src/rsbuild/swc-rsc'
+import { enableSwcReactServerComponents } from '../../src/rsbuild/swc-rsc'
 
 describe('enableSwcReactServerComponents', () => {
   test('clones rspack rules without structuredClone so function fields survive', () => {

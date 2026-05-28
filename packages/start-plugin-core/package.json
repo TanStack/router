@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-plugin-core",
-  "version": "1.170.6",
+  "version": "1.171.6",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -95,7 +95,6 @@
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
-    "cheerio": "^1.0.0",
     "exsolve": "^1.0.7",
     "lightningcss": "^1.32.0",
     "pathe": "^2.0.3",

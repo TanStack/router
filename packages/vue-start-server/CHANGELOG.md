@@ -1,5 +1,53 @@
 # @tanstack/vue-start-server
 
+## 1.167.9
+
+### Patch Changes
+
+- Updated dependencies [[`a82cec6`](https://github.com/TanStack/router/commit/a82cec69474c366b36efdb3f43c4efe8311c485a), [`d8be4f8`](https://github.com/TanStack/router/commit/d8be4f8adf912128c96b7f83e9a6c49fb24b5eed)]:
+  - @tanstack/start-client-core@1.170.4
+  - @tanstack/start-server-core@1.169.4
+
+## 1.167.8
+
+### Patch Changes
+
+- Updated dependencies [[`51a97a1`](https://github.com/TanStack/router/commit/51a97a167fb3ef1b8ca70fbb63db635158f43509)]:
+  - @tanstack/router-core@1.171.6
+  - @tanstack/vue-router@1.170.8
+  - @tanstack/start-server-core@1.169.3
+  - @tanstack/start-client-core@1.170.3
+
+## 1.167.7
+
+### Patch Changes
+
+- Updated dependencies [[`5268ba4`](https://github.com/TanStack/router/commit/5268ba4566233ea58880df85f167ad0401a93a46)]:
+  - @tanstack/router-core@1.171.5
+  - @tanstack/start-client-core@1.170.2
+  - @tanstack/start-server-core@1.169.2
+  - @tanstack/vue-router@1.170.7
+
+## 1.167.6
+
+### Patch Changes
+
+- Updated dependencies [[`0300f87`](https://github.com/TanStack/router/commit/0300f87ec5a7f878ffbe0b181acf84cba9139960), [`0300f87`](https://github.com/TanStack/router/commit/0300f87ec5a7f878ffbe0b181acf84cba9139960)]:
+  - @tanstack/router-core@1.171.4
+  - @tanstack/vue-router@1.170.6
+  - @tanstack/start-client-core@1.170.1
+  - @tanstack/start-server-core@1.169.1
+
+## 1.167.5
+
+### Patch Changes
+
+- Updated dependencies [[`5fa9e55`](https://github.com/TanStack/router/commit/5fa9e555f3a2edb5e45586623e6bcbfa7f7c7a6b)]:
+  - @tanstack/start-client-core@1.170.0
+  - @tanstack/start-server-core@1.169.0
+  - @tanstack/router-core@1.171.3
+  - @tanstack/vue-router@1.170.5
+
 ## 1.167.4
 
 ### Patch Changes

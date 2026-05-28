@@ -252,6 +252,7 @@ export function startCompilerPlugin(
   }
 
   let root = process.cwd()
+  let bundledDev = false
   // Determine which environments need the resolver (getServerFnById)
   // SSR environment always needs the resolver for server-side calls
   // Provider environment needs it for the actual implementation
@@ -290,13 +291,23 @@ export function startCompilerPlugin(
       },
       configResolved(config) {
         root = config.root
+        bundledDev = !!config.experimental.bundledDev
       },
       buildStart() {
-        if (this.environment.mode === 'build') {
+        if (
+          this.environment.mode === 'build' ||
+          (bundledDev &&
+            this.environment.name === VITE_ENVIRONMENT_NAMES.client)
+        ) {
           // Vite app builds can run multiple Rolldown build phases with fresh
           // plugin drivers. The compiler host closes over this hook context for
           // load/resolve, so do not reuse it after a previous driver was closed.
           compilers.delete(this.environment.name)
+        }
+      },
+      watchChange(id) {
+        if (bundledDev && this.environment.mode === 'dev') {
+          compilers.get(this.environment.name)?.invalidateModule(id)
         }
       },
       transform: {

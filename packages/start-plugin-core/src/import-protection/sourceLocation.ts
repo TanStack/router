@@ -28,6 +28,11 @@ export interface SourceMapLike {
   mappings: string
 }
 
+export interface ImportProtectionPerfRecorder {
+  count: (name: string, value?: number) => void
+  time: (name: string, startedAt: number) => void
+}
+
 // Transform result provider (replaces ctx.load() which doesn't work in dev)
 export interface TransformResult {
   code: string
@@ -39,6 +44,7 @@ export interface TransformResult {
   lineIndex?: LineIndex
   parsedAst?: ParseAstResult
   analysis?: ImportAnalysis
+  perf?: ImportProtectionPerfRecorder
 }
 
 /**
@@ -253,6 +259,25 @@ async function mapGeneratedToOriginal(
 
 const consumerCache = new WeakMap<object, Promise<SourceMapConsumer | null>>()
 
+function getOriginalCode(
+  result: TransformResult,
+  importerFile: string | undefined,
+  root: string | undefined,
+): string | undefined {
+  if (result.originalCode === undefined && importerFile && root) {
+    const map = result.map
+    if (map?.sourcesContent) {
+      result.originalCode = pickOriginalCodeFromSourcesContent(
+        map,
+        importerFile,
+        root,
+      )
+    }
+  }
+
+  return result.originalCode
+}
+
 function toRawSourceMap(map: SourceMapLike): RawSourceMap {
   return {
     ...map,
@@ -328,7 +353,11 @@ export type FindImportSpecifierLocationIndex = (
 
 export function getOrCreateOriginalTransformResult(
   result: TransformResult,
+  importerFile?: string,
+  root?: string,
 ): TransformResult | undefined {
+  getOriginalCode(result, importerFile, root)
+
   if (!result.originalCode) {
     return undefined
   }
@@ -339,6 +368,10 @@ export function getOrCreateOriginalTransformResult(
       filename: result.filename,
       map: undefined,
       originalCode: result.originalCode,
+    }
+
+    if (result.perf) {
+      result.originalResult.perf = result.perf
     }
   }
 
@@ -442,12 +475,17 @@ export function findOriginalUsageLocation(
   importerId: string,
   source: string,
   envType?: 'client' | 'server',
+  root?: string,
 ): Loc | undefined {
   try {
     const importerFile = normalizeFilePath(importerId)
     const res = provider.getTransformResult(importerId)
     if (!res) return undefined
-    const originalResult = getOrCreateOriginalTransformResult(res)
+    const originalResult = getOrCreateOriginalTransformResult(
+      res,
+      importerFile,
+      root,
+    )
     if (!originalResult) return undefined
 
     const pos = envType
@@ -518,13 +556,14 @@ export function buildCodeSnippet(
   moduleId: string,
   loc: Loc,
   contextLines: number = 2,
+  root?: string,
 ): CodeSnippet | undefined {
   try {
     const importerFile = normalizeFilePath(moduleId)
     const res = provider.getTransformResult(moduleId)
     if (!res) return undefined
 
-    const sourceCode = res.originalCode ?? res.code
+    const sourceCode = getOriginalCode(res, importerFile, root) ?? res.code
     const targetLine = loc.line // 1-indexed
     const targetCol = loc.column // 1-indexed
 

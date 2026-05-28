@@ -37,7 +37,8 @@ async function createStartServer() {
 }
 
 createStartServer().then((app) => {
-  app.listen(port, () => {
+  app.listen(port, (error) => {
+    if (error) throw error
     console.info(`Start Server: http://localhost:${port}`)
   })
 })

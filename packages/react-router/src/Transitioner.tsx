@@ -2,11 +2,7 @@
 
 import * as React from 'react'
 import { batch, useStore } from '@tanstack/react-store'
-import {
-  getLocationChangeInfo,
-  handleHashScroll,
-  trimPathRight,
-} from '@tanstack/router-core'
+import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
 
@@ -128,10 +124,6 @@ export function Transitioner() {
         router.stores.status.set('idle')
         router.stores.resolvedLocation.set(router.stores.location.get())
       })
-
-      if (changeInfo.hrefChanged) {
-        handleHashScroll(router)
-      }
     }
   }, [isAnyPending, previousIsAnyPending, router])
 

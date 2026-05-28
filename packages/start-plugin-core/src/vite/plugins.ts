@@ -1,20 +1,76 @@
 import { normalizePath } from 'vite'
-import { ENTRY_POINTS } from '../constants'
+import { DEV_CLIENT_ENTRY } from '../constants'
 import { createVirtualModule } from './createVirtualModule'
-import type { GetConfigFn, ResolvedStartConfig } from '../types'
+import type {
+  CompileStartFrameworkOptions,
+  GetConfigFn,
+  ResolvedStartConfig,
+} from '../types'
 import type { PluginOption, ViteBuilder } from 'vite'
 
-export function createVirtualClientEntryPlugin(opts: {
+export function createDevClientEntryPlugin(opts: {
+  framework: CompileStartFrameworkOptions
   getClientEntry: () => string
 }): PluginOption {
   return createVirtualModule({
-    name: 'tanstack-start-core:virtual-client-entry',
-    moduleId: ENTRY_POINTS.client,
+    name: 'tanstack-start-core:dev-client-entry',
+    moduleId: DEV_CLIENT_ENTRY,
     enforce: 'pre',
-    load() {
-      return `import ${JSON.stringify(normalizePath(opts.getClientEntry()).replaceAll('\\', '/'))}`
+    async load() {
+      const clientEntry = JSON.stringify(
+        normalizePath(opts.getClientEntry()).replaceAll('\\', '/'),
+      )
+
+      if (shouldInjectReactRefreshPreamble(this.environment, opts.framework)) {
+        const reactRefresh = await this.resolve?.('/@react-refresh')
+
+        if (!reactRefresh) {
+          throw new Error(
+            'TanStack Start React dev mode requires the React Refresh runtime, but /@react-refresh could not be resolved. Add @vitejs/plugin-react or another compatible React Refresh Vite plugin to your Vite config.',
+          )
+        }
+
+        return (
+          getReactRefreshPreambleCode(reactRefresh.id) +
+          `\nawait import(${clientEntry})`
+        )
+      }
+
+      return `import ${clientEntry}`
     },
   })
+}
+
+function shouldInjectReactRefreshPreamble(
+  environment: ReactRefreshEnvironment | undefined,
+  framework: CompileStartFrameworkOptions,
+) {
+  const config = environment?.config
+
+  return (
+    framework === 'react' &&
+    config?.command === 'serve' &&
+    config.consumer === 'client' &&
+    config.server?.hmr !== false
+  )
+}
+
+interface ReactRefreshEnvironment {
+  config?: {
+    command?: string
+    consumer?: string
+    server?: {
+      hmr?: boolean
+    }
+  }
+}
+
+function getReactRefreshPreambleCode(reactRefreshId: string) {
+  return `import { injectIntoGlobalHook } from ${JSON.stringify(reactRefreshId)};
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;
+window.__vite_plugin_react_preamble_installed__ = true;`
 }
 
 export function createPostBuildPlugin(opts: {
