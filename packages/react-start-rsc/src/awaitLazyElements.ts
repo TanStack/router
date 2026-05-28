@@ -2,13 +2,13 @@ import { ReactElement, ReactLazy, ReactSuspense } from './reactSymbols'
 
 /**
  * Optional callback for collecting CSS hrefs during tree traversal.
- * Only called when processing explicitly marked RSC CSS stylesheet links.
+ * Only called server-side when processing <link rel="stylesheet" data-rsc-css-href>
  */
 export type CssHrefCollector = (href: string) => void
 
 /**
  * Yields pending lazy element payloads from a tree, stopping at Suspense boundaries.
- * Also collects CSS hrefs from explicitly marked RSC CSS stylesheet links.
+ * Also collects CSS hrefs from <link rel="stylesheet" data-rsc-css-href> elements.
  */
 function* findPendingLazyPayloads(
   obj: unknown,
@@ -26,9 +26,8 @@ function* findPendingLazyPayloads(
     return
   }
 
-  // Collect CSS hrefs from explicit Start-managed CSS markers. Do not collect
-  // ordinary React 19 stylesheet resources here: preiniting those before render
-  // marks them inserted and bypasses React's suspensey stylesheet commit wait.
+  // Collect CSS hrefs from <link rel="stylesheet" data-rsc-css-href>
+  // The active RSC bundler adapter injects these for CSS module imports
   if (
     el.$$typeof === ReactElement &&
     el.type === 'link' &&
@@ -75,7 +74,8 @@ function* findPendingLazyPayloads(
  * This ensures client component chunks are fully loaded before rendering,
  * preventing Suspense boundaries from flashing during SWR navigation.
  *
- * Also collects CSS hrefs from explicitly marked RSC CSS stylesheet links.
+ * Also collects CSS hrefs from <link rel="stylesheet" data-rsc-css-href>
+ * elements for preloading in <head>.
  *
  * @param tree - The tree to process
  * @param cssCollector - Optional callback to collect CSS hrefs (server-only)
