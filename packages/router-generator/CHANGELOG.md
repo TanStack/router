@@ -1,5 +1,56 @@
 # @tanstack/router-generator
 
+## 1.167.5
+
+### Patch Changes
+
+- Fix route mismatch warnings, HMR route index refresh, and generated route type preferences for duplicate pathless/index routes. ([#7422](https://github.com/TanStack/router/pull/7422))
+
+- Updated dependencies [[`b60eb36`](https://github.com/TanStack/router/commit/b60eb36e59e8a468ee0742cbcf7f47aca1ff1c67)]:
+  - @tanstack/router-core@1.171.2
+
+## 1.167.4
+
+### Patch Changes
+
+- Updated dependencies [[`d9cf933`](https://github.com/TanStack/router/commit/d9cf9331b83fcbd2abfee75d839d862f9bb18e6b)]:
+  - @tanstack/router-core@1.171.1
+
+## 1.167.3
+
+### Patch Changes
+
+- Updated dependencies [[`d533f87`](https://github.com/TanStack/router/commit/d533f87976704098a40b48f160b37c28c8182806)]:
+  - @tanstack/router-core@1.171.0
+
+## 1.167.2
+
+### Patch Changes
+
+- Fix literal underscore route paths when they are nested under pathless layouts. Virtual `route()` paths now treat leading and trailing underscores as literal URL path characters, while physical file routes continue to use bracket escapes for literal underscore segments. ([#7408](https://github.com/TanStack/router/pull/7408))
+
+## 1.167.1
+
+### Patch Changes
+
+- Updated dependencies [[`2387a2e`](https://github.com/TanStack/router/commit/2387a2eea0683004cc400b9f71bed5944eb60110)]:
+  - @tanstack/router-core@1.170.1
+
+## 1.167.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- Resolve tsconfig path aliases when loading virtual route config files. ([#7382](https://github.com/TanStack/router/pull/7382))
+
+- Updated dependencies [[`b1c061a`](https://github.com/TanStack/router/commit/b1c061aff9185cdf5fdc08c0136382a9dce0302f), [`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14)]:
+  - @tanstack/router-core@1.170.0
+  - @tanstack/router-utils@1.162.0
+  - @tanstack/virtual-file-routes@1.162.0
+
 ## 1.166.42
 
 ### Patch Changes

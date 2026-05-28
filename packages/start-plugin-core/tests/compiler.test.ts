@@ -185,6 +185,29 @@ describe('detectKindsInCode', () => {
         new Set(['ClientOnlyFn']),
       )
     })
+
+    test('resets external transform regex state between detections', () => {
+      const compilerTransforms: Array<StartCompilerImportTransform> = [
+        {
+          name: 'global-detect',
+          environment: 'server',
+          imports: [{ libName: '@example/runtime', rootExport: 'renderThing' }],
+          detect: /\brenderThing\b/g,
+          transform: () => {},
+        },
+      ]
+      const code = `
+        import { renderThing } from '@example/runtime'
+        renderThing()
+      `
+
+      expect(detectKindsInCode(code, 'server', { compilerTransforms })).toEqual(
+        new Set(['External:global-detect']),
+      )
+      expect(detectKindsInCode(code, 'server', { compilerTransforms })).toEqual(
+        new Set(['External:global-detect']),
+      )
+    })
   })
 
   describe('detects multiple kinds in same file', () => {
@@ -611,6 +634,53 @@ test('ingestModule handles empty code gracefully', () => {
   }).not.toThrow()
 })
 
+test('compile caches modules without detected candidates for transitive importer traversal', async () => {
+  const compiler = new StartCompiler({
+    env: 'client',
+    ...getDefaultTestOptions('client'),
+    lookupKinds: new Set(['ServerFn']),
+    lookupConfigurations: [],
+    getKnownServerFns: () => ({}),
+    loadModule: async () => {},
+    resolveId: async (source, importer) => {
+      if (source === './leaf' && importer === '/src/plain.ts') {
+        return '/src/leaf.ts'
+      }
+
+      if (source === './plain' && importer === '/src/parent.ts') {
+        return '/src/plain.ts'
+      }
+
+      return null
+    },
+  })
+
+  await compiler.compile({
+    id: '/src/plain.ts',
+    code: `
+      import { value } from './leaf'
+      export const plain = value
+    `,
+    detectedKinds: new Set(),
+  })
+
+  await compiler.compile({
+    id: '/src/parent.ts',
+    code: `
+      import { plain } from './plain'
+      export const parent = plain
+    `,
+    detectedKinds: new Set(),
+  })
+
+  expect(await compiler.getTransitiveImporters('/src/leaf.ts')).toEqual(
+    new Set(['/src/plain.ts', '/src/parent.ts']),
+  )
+  expect(await compiler.getTransitiveImporters(['/src/leaf.ts'])).toEqual(
+    new Set(['/src/plain.ts', '/src/parent.ts']),
+  )
+})
+
 describe('calling result of createServerOnlyFn/createClientOnlyFn', () => {
   // This tests the fix for https://github.com/TanStack/router/issues/6643
   // When a file has both createServerFn and createServerOnlyFn, and the result
@@ -884,6 +954,75 @@ describe('re-export chain resolution', () => {
     expect(result).not.toBeNull()
     expect(result!.code).toContain('deep-client')
     expect(result!.code).not.toContain('deep-server')
+  })
+
+  test.each([
+    {
+      name: 'named re-export cycle',
+      virtualModules: {
+        './factory-a': `
+          export { createServerOnlyFn } from './factory-b'
+        `,
+        './factory-b': `
+          export { createServerOnlyFn } from './factory-a'
+        `,
+      },
+    },
+    {
+      name: 'import alias cycle',
+      virtualModules: {
+        './factory-a': `
+          import { createServerOnlyFn } from './factory-b'
+          export { createServerOnlyFn }
+        `,
+        './factory-b': `
+          import { createServerOnlyFn } from './factory-a'
+          export { createServerOnlyFn }
+        `,
+      },
+    },
+    {
+      name: 'export-star cycle',
+      virtualModules: {
+        './factory-a': `
+          export * from './factory-b'
+        `,
+        './factory-b': `
+          export * from './factory-a'
+        `,
+      },
+    },
+  ])('handles circular import chain: $name', async ({ virtualModules }) => {
+    const compiler: StartCompiler = new StartCompiler({
+      env: 'server',
+      envName: 'ssr',
+      root: '/test',
+      framework: 'react' as const,
+      providerEnvName: 'ssr',
+      lookupKinds: new Set(['ServerOnlyFn']),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      loadModule: async (id) => {
+        const code = virtualModules[id as keyof typeof virtualModules]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      resolveId: async (id) => {
+        return id in virtualModules ? id : null
+      },
+      mode: 'build',
+    })
+
+    const result = await compiler.compile({
+      id: 'circular-import-test.ts',
+      code: `
+        import { createServerOnlyFn } from './factory-a'
+        const myFn = createServerOnlyFn(() => 'server-only-value')
+      `,
+    })
+
+    expect(result).toBeNull()
   })
 
   test('ingestModule populates module metadata for later resolution', async () => {

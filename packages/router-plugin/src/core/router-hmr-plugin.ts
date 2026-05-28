@@ -2,7 +2,7 @@ import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import { compileCodeSplitReferenceRoute } from './code-splitter/compilers'
 import { getReferenceRouteCompilerPlugins } from './code-splitter/plugins/framework-plugins'
 import { createRouteHmrStatement } from './hmr'
-import { debug, normalizePath } from './utils'
+import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
 import { getConfig } from './config'
 import { createRouterPluginContext } from './router-plugin-context'
 import type { UnpluginFactory } from 'unplugin'
@@ -14,12 +14,6 @@ import type { RouterPluginContext } from './router-plugin-context'
  * It is only added to the composed plugin in dev when autoCodeSplitting is disabled, since the code splitting plugin
  * handles HMR for code-split routes itself.
  */
-
-const includeCode = [
-  'createFileRoute(',
-  'createRootRoute(',
-  'createRootRouteWithContext(',
-]
 
 export function createRouterHmrPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
@@ -41,7 +35,7 @@ export function createRouterHmrPlugin(
         // this is necessary for webpack / rspack to avoid matching .html files
         id: /\.(m|c)?(j|t)sx?$/,
         code: {
-          include: includeCode,
+          include: routeFactoryCallCodeFilter,
         },
       },
       handler(code, id) {

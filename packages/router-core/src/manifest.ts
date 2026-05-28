@@ -37,6 +37,13 @@ export function resolveManifestAssetLink(link: ManifestAssetLink) {
 export type Manifest = {
   inlineCss?: {
     styles: Record<string, string>
+    templates?: Record<
+      string,
+      {
+        strings: Array<string>
+        urls: Array<string>
+      }
+    >
   }
   routes: Record<
     string,

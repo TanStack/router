@@ -1265,7 +1265,43 @@ describe('buildLocation - params edge cases', () => {
 
       expect(location.pathname).toBe('/no')
       expect(warn).toHaveBeenCalledWith(
-        'Generated path "/no" for route "/$foo" did not match the same route after params.stringify.',
+        'Generated path "/no" for route "/$foo" matched route "/no" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.',
+      )
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  test('buildLocation should warn in development when a generated path matches an optional route template', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const timeRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/time',
+    })
+    const dayRoute = new BaseRoute({
+      getParentRoute: () => timeRoute,
+      path: '{-$day}',
+    })
+
+    const routeTree = rootRoute.addChildren([timeRoute.addChildren([dayRoute])])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    try {
+      const location = router.buildLocation({
+        to: '/time',
+      })
+
+      expect(location.pathname).toBe('/time')
+      expect(warn).toHaveBeenCalledWith(
+        'Generated path "/time" for route "/time" matched route "/time/{-$day}" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.',
       )
     } finally {
       warn.mockRestore()

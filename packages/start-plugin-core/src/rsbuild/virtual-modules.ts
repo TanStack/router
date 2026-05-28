@@ -12,6 +12,7 @@ import type {
   NormalizedClientBuild,
   SerializationAdapterConfig,
 } from '../types'
+import type { InlineCssOptions } from '../start-manifest-plugin/manifestBuilder'
 import type { ServerFn } from '../start-compiler/types'
 
 type RspackNamespace = typeof rspackNamespaceType
@@ -76,7 +77,7 @@ export const tsrStartManifest = () => globalThis[${JSON.stringify(DEV_START_MANI
 function buildStartManifestData(
   clientBuild: NormalizedClientBuild,
   publicBase: string,
-  inlineCss: boolean,
+  inlineCss: InlineCssOptions,
 ) {
   const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
   return buildStartManifest({
@@ -90,7 +91,7 @@ function buildStartManifestData(
 function serializeStartManifestData(
   clientBuild: NormalizedClientBuild,
   publicBase: string,
-  inlineCss: boolean,
+  inlineCss: InlineCssOptions,
 ): string {
   return JSON.stringify(
     buildStartManifestData(clientBuild, publicBase, inlineCss),
@@ -101,7 +102,7 @@ function generateManifestModuleBuild(
   clientBuild: NormalizedClientBuild | undefined,
   publicBase: string,
   _devClientEntryUrl: string,
-  inlineCss: boolean,
+  inlineCss: InlineCssOptions,
 ): string {
   if (!clientBuild) {
     return `const tsrStartManifestData = ${JSON.stringify(START_MANIFEST_PLACEHOLDER)}
@@ -510,7 +511,9 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
         newClientBuild,
         resolvedStartConfig.basePaths.publicBase,
         devClientEntryUrl,
-        !isDev && startConfig.server.build.inlineCss,
+        !isDev
+          ? startConfig.server.build.inlineCss
+          : { enabled: false, transformAssets: false },
       )
     },
 
@@ -521,7 +524,9 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
       return serializeStartManifestData(
         newClientBuild,
         resolvedStartConfig.basePaths.publicBase,
-        !isDev && startConfig.server.build.inlineCss,
+        !isDev
+          ? startConfig.server.build.inlineCss
+          : { enabled: false, transformAssets: false },
       )
     },
 
@@ -537,7 +542,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
         )[DEV_START_MANIFEST_GLOBAL] = buildStartManifestData(
           clientBuild,
           resolvedStartConfig.basePaths.publicBase,
-          false,
+          { enabled: false, transformAssets: false },
         )
       }
     },

@@ -7,23 +7,24 @@ title: CDN Asset URLs
 
 > **Experimental:** `transformAssets` is experimental and subject to change.
 
-When deploying to production, you may want to serve your static assets (JavaScript, CSS) from a CDN. The `transformAssets` option on `createStartHandler` lets you rewrite asset URLs at runtime - for example, prepending a CDN origin that is only known when the server starts.
+Use this guide when you need TanStack Start to rewrite manifest-managed asset URLs at runtime. The most common use case is serving JavaScript and CSS from a CDN whose origin is known only when the server starts, or varies per request.
 
-`transformAssetUrls` still works, but it is deprecated and now delegates to `transformAssets` with a development warning.
+This guide is about asset URL rewriting. For choosing CSS import patterns and configuring CSS inlining, see the [CSS Styling guide](./css-styling).
 
-## Why Runtime URL Rewriting?
+## What `transformAssets` Rewrites
 
-Vite's `base` config is evaluated at build time. If your CDN URL is determined at deploy time (via environment variables, dynamic configuration, etc.), you need a way to rewrite URLs at runtime. `transformAssets` solves this for the URLs that TanStack Start manages in its manifest:
+The `transformAssets` option on `createStartHandler` rewrites URLs that Start manages in its SSR manifest:
 
-- `<link rel="modulepreload">` tags (JS preloads)
-- `<link rel="stylesheet">` tags (CSS)
-- The client entry `<script>` tag
+- `<link rel="modulepreload">` tags for JavaScript preloads
+- `<link rel="stylesheet">` tags for manifest-managed CSS
+- The client entry module URL
+- `url(...)` and `@import` URLs inside [inlined CSS](./css-styling#inline-route-css-in-production) when CSS URL templates are enabled
 
-## Basic Usage
+It does not rewrite every URL in your app. In particular, it does not rewrite arbitrary route `head().links` entries, including CSS imported with `?url` and returned from route `head()` functions. See [What This Does Not Rewrite](#what-this-does-not-rewrite) for the main exclusions.
 
-### String Prefix
+## Use a Static CDN Prefix
 
-The simplest usage is passing a string. Every manifest asset URL will be prefixed with it:
+Pass a string when every Start-managed asset should receive the same URL prefix.
 
 ```tsx
 // src/server.ts
@@ -41,13 +42,13 @@ const handler = createStartHandler({
 export default createServerEntry({ fetch: handler })
 ```
 
-If `CDN_ORIGIN` is `https://cdn.example.com` and an asset URL is `/assets/index-abc123.js`, the resulting URL will be `https://cdn.example.com/assets/index-abc123.js`.
+If `CDN_ORIGIN` is `https://cdn.example.com` and an asset URL is `/assets/index-abc123.js`, Start renders `https://cdn.example.com/assets/index-abc123.js`.
 
-When the string is empty (or not set), the URLs are left unchanged.
+When the string is empty or not set, URLs are left unchanged.
 
-### Object Shorthand (Prefix + CrossOrigin)
+## Add Cross-Origin Attributes
 
-If you also need to set `crossOrigin` on manifest-managed `<link>` tags, use the object shorthand with `prefix` and `crossOrigin`:
+Use the object shorthand when you also need to set `crossOrigin` on manifest-managed `<link>` tags.
 
 ```tsx
 // src/server.ts
@@ -68,7 +69,7 @@ const handler = createStartHandler({
 export default createServerEntry({ fetch: handler })
 ```
 
-`crossOrigin` accepts either a single value applied to all asset kinds, or a per-kind record (matching the `HeadContent assetCrossOrigin` shape):
+`crossOrigin` accepts either one value for all supported link kinds, or a per-kind record that matches the `HeadContent assetCrossOrigin` shape.
 
 ```tsx
 transformAssets: {
@@ -80,11 +81,30 @@ transformAssets: {
 }
 ```
 
-Kinds not listed in the per-kind record receive no `crossOrigin` attribute. Like the string shorthand, the object shorthand is always cached (`cache: true`).
+Kinds not listed in the per-kind record receive no `crossOrigin` attribute. The string shorthand and object shorthand are cached by default.
 
-### Callback
+You can also set cross-origin behavior from your app shell with `HeadContent`:
 
-For more control, pass a callback that receives `{ kind, url }` and returns a string, or `{ href, crossOrigin? }` (or a `Promise` of either). By default, the transformed manifest is cached after the first request (`cache: true`), so the callback only runs once in production:
+```tsx
+<HeadContent assetCrossOrigin="anonymous" />
+```
+
+or:
+
+```tsx
+<HeadContent
+  assetCrossOrigin={{
+    modulepreload: 'anonymous',
+    stylesheet: 'use-credentials',
+  }}
+/>
+```
+
+If both `transformAssets` and `assetCrossOrigin` set a cross-origin value, `assetCrossOrigin` overrides the value from `transformAssets`. `assetCrossOrigin` only applies to manifest-managed `modulepreload` and stylesheet links, not arbitrary links returned from route `head()` functions.
+
+## Use a Callback for Per-Asset Logic
+
+Pass a callback when the output depends on the asset kind or URL. The callback returns a string, `{ href, crossOrigin? }`, or a `Promise` of either.
 
 ```tsx
 // src/server.ts
@@ -96,10 +116,10 @@ import { createServerEntry } from '@tanstack/react-start/server-entry'
 
 const handler = createStartHandler({
   handler: defaultStreamHandler,
-  transformAssets: ({ kind, url }) => {
-    const href = `https://cdn.example.com${url}`
+  transformAssets: (asset) => {
+    const href = `https://cdn.example.com${asset.url}`
 
-    if (kind === 'modulepreload') {
+    if (asset.kind === 'modulepreload') {
       return {
         href,
         crossOrigin: 'anonymous',
@@ -113,30 +133,33 @@ const handler = createStartHandler({
 export default createServerEntry({ fetch: handler })
 ```
 
-If you need per-request behavior (for example, choosing a CDN based on a header), use the object form with `cache: false`.
+The `kind` field tells you which asset URL is being transformed.
 
-The `kind` parameter tells you what kind of asset URL is being transformed:
+| `kind`            | Description                                    |
+| ----------------- | ---------------------------------------------- |
+| `'modulepreload'` | JavaScript module preload URL                  |
+| `'stylesheet'`    | Manifest-managed CSS stylesheet URL            |
+| `'clientEntry'`   | Client entry module URL                        |
+| `'css-url'`       | `url(...)` or `@import` URL inside inlined CSS |
 
-| `kind`            | Description                                          |
-| ----------------- | ---------------------------------------------------- |
-| `'modulepreload'` | JS module preload URL (`<link rel="modulepreload">`) |
-| `'stylesheet'`    | CSS stylesheet URL (`<link rel="stylesheet">`)       |
-| `'clientEntry'`   | Client entry module URL (used in `import('...')`)    |
+For `kind === 'css-url'`, the context also includes `stylesheetHref`, which is the manifest stylesheet href whose CSS content is being inlined.
 
-`crossOrigin` applies to manifest-managed link tags. For the client entry, returning `{ href }` is equivalent to returning a string.
+`crossOrigin` applies to manifest-managed link tags. For the client entry and CSS-internal URLs, returning `{ href }` is equivalent to returning a string.
 
-### Object Form (Explicit Cache Control)
+By default, callback results are cached after the first request in production. Use the object form with `cache: false` only when the transform depends on per-request data.
 
-For per-request transforms - where the CDN URL depends on request-specific data like headers - use the object form with `cache: false`:
+## Handle Per-Request CDN Selection
+
+Use the object form with `cache: false` when the CDN origin depends on the current request, such as a request header, tenant, or region.
 
 ```tsx
 // src/server.ts
 import {
   createStartHandler,
   defaultStreamHandler,
+  getRequest,
 } from '@tanstack/react-start/server'
 import { createServerEntry } from '@tanstack/react-start/server-entry'
-import { getRequest } from '@tanstack/react-start/server'
 
 const handler = createStartHandler({
   handler: defaultStreamHandler,
@@ -164,16 +187,16 @@ const handler = createStartHandler({
 export default createServerEntry({ fetch: handler })
 ```
 
-The object form accepts:
+The object form accepts these properties:
 
 | Property          | Type                                                                                                                            | Description                                                                                                                   |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `transform`       | `string \| (asset) => string \| { href, crossOrigin? } \| Promise<...>`                                                         | A string prefix or callback, same as the shorthand forms above.                                                               |
 | `createTransform` | `(ctx: { warmup: true } \| { warmup: false; request: Request }) => (asset) => string \| { href, crossOrigin? } \| Promise<...>` | Async factory that runs once per manifest computation and returns a per-asset transform. Mutually exclusive with `transform`. |
 | `cache`           | `boolean`                                                                                                                       | Whether to cache the transformed manifest. Defaults to `true`.                                                                |
-| `warmup`          | `boolean`                                                                                                                       | When `true`, warms up the cached manifest on server startup (prod only). Defaults to `false`.                                 |
+| `warmup`          | `boolean`                                                                                                                       | When `true`, warms up the cached manifest on server startup in production. Defaults to `false`.                               |
 
-If you need to do async work once per manifest computation (e.g. fetch a CDN origin from a service) and then transform many URLs, prefer `createTransform`:
+Use `createTransform` when you need to do async work once per manifest computation, then transform many URLs with the result.
 
 ```ts
 transformAssets: {
@@ -186,37 +209,102 @@ transformAssets: {
     const region = ctx.request.headers.get('x-region') || 'us'
     const cdnBase = await fetchCdnBaseForRegion(region)
 
-    return ({ kind, url }) => {
-      if (kind === 'modulepreload') {
+    return (asset) => {
+      if (asset.kind === 'modulepreload') {
         return {
-          href: `${cdnBase}${url}`,
+          href: `${cdnBase}${asset.url}`,
           crossOrigin: 'anonymous',
         }
       }
 
-      return { href: `${cdnBase}${url}` }
+      return { href: `${cdnBase}${asset.url}` }
     }
   },
 }
 ```
 
-## Caching Behavior
+For a static CDN prefix, prefer the string or object shorthand. They are simpler and use the default cached manifest.
 
-By default, all forms of `transformAssets` cache the transformed manifest after the first request (`cache: true`). This means the transform function runs once on the first request, and the result is reused for every subsequent request in production.
+## Transform URLs Inside Inlined CSS
 
-| Form                                   | Default cache | Behavior                                                   |
-| -------------------------------------- | ------------- | ---------------------------------------------------------- |
-| String prefix                          | `true`        | Computed once, cached forever in prod.                     |
-| Callback                               | `true`        | Runs once on first request, cached forever in prod.        |
-| Object with `cache: true` (or omitted) | `true`        | Same as above.                                             |
-| Object with `cache: false`             | `false`       | Deep-clones base manifest and transforms on every request. |
+When Start's [CSS inlining](./css-styling#inline-route-css-in-production) is enabled, Start can also run `transformAssets` for URLs inside the inlined CSS content. This covers relative and root-relative `url(...)` and `@import` values, such as fonts and background images.
 
-Use `cache: false` only when the transform depends on per-request data (e.g., geo-routing based on request headers). For static CDN prefixes, the default `cache: true` is recommended.
+Because Start does not parse CSS at runtime, this requires opting into build-time CSS URL templates:
 
-### Optional Warmup (Avoid First-Request Latency)
+```ts
+tanstackStart({
+  server: {
+    build: {
+      inlineCss: {
+        enabled: true,
+        transformAssets: true,
+      },
+    },
+  },
+})
+```
 
-If you're using the object form with `cache: true`, you can set `warmup: true`
-to compute the transformed manifest in the background at server startup.
+Passing `inlineCss: true` still inlines route CSS, but it does not emit the template metadata needed for runtime CSS URL transforms.
+
+Relative CSS URLs are resolved against the emitted stylesheet href before your transform runs.
+
+```css
+/* emitted stylesheet href: /assets/dashboard.css */
+.card {
+  background-image: url('./dot.svg');
+}
+```
+
+Your callback receives `/assets/dot.svg` with `kind: 'css-url'`. For example, you can serve JavaScript and CSS files from one CDN origin, and font or image URLs referenced inside inlined CSS from another origin.
+
+```tsx
+const handler = createStartHandler({
+  handler: defaultStreamHandler,
+  transformAssets: (asset) => {
+    if (asset.kind === 'css-url') {
+      return `https://static-assets.example.com${asset.url}`
+    }
+
+    return `https://cdn.example.com${asset.url}`
+  },
+})
+```
+
+When `asset.kind === 'css-url'`, the URL came from inside an inlined CSS file, such as a `url(...)` or `@import` reference. The callback context also includes `stylesheetHref`, which identifies the generated stylesheet that contained that URL. Use it when the transform needs to vary based on the source stylesheet.
+
+```tsx
+transformAssets: (asset) => {
+  if (asset.kind === 'css-url') {
+    const cdnBase = asset.stylesheetHref.includes('/admin-')
+      ? 'https://admin-cdn.example.com'
+      : 'https://cdn.example.com'
+
+    return `${cdnBase}${asset.url}`
+  }
+
+  return `https://cdn.example.com${asset.url}`
+}
+```
+
+Absolute URLs, protocol-relative URLs, data URLs, and hash references inside CSS are left unchanged and are not passed to `transformAssets`. If CSS URL templates were not enabled for the build, URLs inside inlined CSS are left unchanged at runtime.
+
+## Choose When URL Rewrites Are Cached
+
+In most apps, the CDN URL is the same for every request. Keep the default caching behavior for that case. Start computes the transformed manifest once in production, then reuses it for later requests.
+
+Only turn caching off when the result can change per request, such as choosing a CDN by region, tenant, header, or cookie.
+
+| Form                                 | Default cache | Behavior                                                    |
+| ------------------------------------ | ------------- | ----------------------------------------------------------- |
+| String prefix                        | `true`        | Computed once, cached in production.                        |
+| Object shorthand                     | `true`        | Computed once, cached in production.                        |
+| Callback                             | `true`        | Runs once on first request, cached in production.           |
+| Object with `cache: true` or omitted | `true`        | Same as above.                                              |
+| Object with `cache: false`           | `false`       | Deep-clones the base manifest and transforms every request. |
+
+Use `cache: false` only when the transform depends on per-request data. For static CDN prefixes, the default `cache: true` is faster and simpler.
+
+If you want to avoid doing the first cached rewrite during the first user request, set `warmup: true`. Start will compute the transformed manifest in the background when the server starts.
 
 ```ts
 transformAssets: {
@@ -226,85 +314,82 @@ transformAssets: {
 }
 ```
 
-This has no effect in development mode, or when `cache: false`.
+Warmup has no effect in development mode or when `cache: false`.
 
 > **Note:** In development mode (`TSS_DEV_SERVER`), caching is always skipped regardless of the `cache` setting, so you always get fresh manifests.
 
-## With `HeadContent assetCrossOrigin`
+## Use Relative Vite Asset Paths for Client Navigation
 
-If you want to set cross-origin behavior from the app shell instead of the server entry, `HeadContent` also accepts `assetCrossOrigin`:
+`transformAssets` rewrites the URLs in the SSR HTML: modulepreload hints, stylesheet links, and the client entry module. This means the browser's initial page load can fetch those assets from the CDN.
 
-```tsx
-<HeadContent assetCrossOrigin="anonymous" />
-```
+When users navigate client-side, TanStack Router lazy-loads route chunks using `import()` calls with paths baked in by the bundler. With Vite's default `base: '/'`, those paths are absolute, such as `/assets/about-abc123.js`, and resolve against the app server origin instead of the CDN.
 
-or:
-
-```tsx
-<HeadContent
-  assetCrossOrigin={{
-    modulepreload: 'anonymous',
-    stylesheet: 'use-credentials',
-  }}
-/>
-```
-
-If both `transformAssets` and `assetCrossOrigin` set a cross-origin value, `assetCrossOrigin` overrides the value from `transformAssets`.
-
-`assetCrossOrigin` only applies to manifest-managed `modulepreload` and stylesheet links, not arbitrary links you return from route `head()` functions.
-
-## Recommended: Set `base: ''` for Client-Side Navigation
-
-`transformAssets` rewrites the URLs in the SSR HTML - modulepreload hints, stylesheets, and the client entry script. This means the browser's initial page load fetches all assets from the CDN.
-
-However, when users navigate client-side (e.g., clicking a `<Link>`), TanStack Router lazy-loads route chunks using `import()` calls with paths that were baked in at build time by Vite. By default, Vite uses `base: '/'`, which produces absolute paths like `/assets/about-abc123.js`. These resolve against the app server's origin, not the CDN - even though the entry module was loaded from the CDN.
-
-To fix this, set `base: ''` in your Vite config:
+For Vite builds, set `base: ''` so Vite generates relative import paths for client-side chunks.
 
 ```ts
 // vite.config.ts
+import { defineConfig } from 'vite'
+
 export default defineConfig({
   base: '',
   // ... plugins, etc.
 })
 ```
 
-With `base: ''`, Vite generates relative import paths for client-side chunks. Since the client entry module was loaded from the CDN (thanks to `transformAssets`), all relative `import()` calls resolve against the CDN origin. This ensures that lazy-loaded route chunks during client-side navigation are also served from the CDN.
+With `base: ''`, the client entry module can be loaded from the CDN by `transformAssets`, and relative `import()` calls resolve against that same CDN origin. This keeps lazy-loaded route chunks on the CDN during client-side navigation.
 
-Using an empty string rather than `'./'` is important - both produce relative client-side imports, but `base: ''` preserves the correct root-relative paths (`/assets/...`) in the SSR manifest so that `transformAssets` can properly prepend the CDN origin.
+Using an empty string rather than `'./'` is important. Both produce relative client-side imports, but `base: ''` preserves the root-relative paths in the SSR manifest so `transformAssets` can prepend the CDN origin correctly.
 
-| `base` setting  | SSR assets (initial load)   | Client-side navigation chunks  |
-| --------------- | --------------------------- | ------------------------------ |
-| `'/'` (default) | CDN (via `transformAssets`) | App server                     |
-| `''`            | CDN (via `transformAssets`) | CDN (relative to entry module) |
+| `base` setting  | SSR assets on initial load    | Client-side navigation chunks |
+| --------------- | ----------------------------- | ----------------------------- |
+| `'/'` (default) | CDN through `transformAssets` | App server                    |
+| `''`            | CDN through `transformAssets` | CDN, relative to entry module |
 
-> **Tip:** `base: ''` is recommended whenever you use `transformAssets` so that all assets - both on initial load and during client-side navigation - are consistently served from the CDN.
+Use `base: ''` whenever you use `transformAssets` with Vite and want initial-load assets and client-navigation chunks served from the same CDN.
 
-## What This Does Not Cover
+## What This Does Not Rewrite
 
-`transformAssets` only rewrites URLs in the TanStack Start manifest - the tags emitted during SSR for preloading and bootstrapping the application.
+`transformAssets` rewrites Start manifest-managed assets and, when CSS URL templates are enabled, URLs inside CSS that Start inlines into the HTML.
 
-It does not rewrite asset URLs imported directly in your components:
+It does not rewrite arbitrary links returned from route `head()` functions:
 
 ```tsx
-// This import resolves to a URL at build time by Vite
+import { createRootRoute } from '@tanstack/react-router'
+import appCss from '../styles/app.css?url'
+
+export const Route = createRootRoute({
+  head: () => ({
+    links: [{ rel: 'stylesheet', href: appCss }],
+  }),
+})
+```
+
+If this stylesheet must use a CDN URL, use a bundler-level option or build-time configuration for that URL. If you want Start to manage the generated stylesheet URL, import the CSS as a side effect or CSS module instead. See [Choose a CSS Pattern](./css-styling#choose-a-css-pattern).
+
+`transformAssets` also does not rewrite asset URLs imported directly in your components:
+
+```tsx
+// This import resolves to a URL at build time by Vite.
 import logo from './logo.svg'
 
 function Header() {
-  return <img src={logo} /> // This URL is NOT affected by transformAssets
+  return <img src={logo} /> // This URL is not affected by transformAssets.
 }
 ```
 
-For these asset imports, use Vite's `experimental.renderBuiltUrl` in your `vite.config.ts`:
+For these asset imports in Vite builds, use Vite's `experimental.renderBuiltUrl` in your `vite.config.ts`.
 
 ```ts
 // vite.config.ts
+import { defineConfig } from 'vite'
+
 export default defineConfig({
   experimental: {
     renderBuiltUrl(filename, { hostType }) {
       if (hostType === 'js') {
         return { relative: true }
       }
+
       return `https://cdn.example.com/${filename}`
     },
   },

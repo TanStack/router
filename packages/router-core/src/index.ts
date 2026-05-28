@@ -185,6 +185,7 @@ export type {
   RouteContextFn,
   ContextOptions,
   RouteContextOptions,
+  SsrContextOptions,
   BeforeLoadContextOptions,
   RootRouteOptions,
   RootRouteOptionsExtensions,

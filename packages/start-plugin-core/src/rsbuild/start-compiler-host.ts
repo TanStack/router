@@ -5,15 +5,19 @@ import { detectKindsInCode } from '../start-compiler/compiler'
 import { getTransformCodeFilterForEnv } from '../start-compiler/config'
 import {
   createStartCompiler,
+  loadCompilerVirtualModule,
   matchesCodeFilters,
   mergeServerFnsById,
 } from '../start-compiler/host'
 import { cleanId } from '../start-compiler/utils'
+import { createHydrateCompilerPlugin } from '../hydrate-when-transform'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerImportTransform,
+  StartCompilerPlugin,
+  StartCompilerTransformResult,
 } from '../types'
 import type {
   DevServerFnModuleSpecifierEncoder,
@@ -27,7 +31,7 @@ type RsbuildTransformContext = Parameters<
 type RsbuildInputFileSystem = NonNullable<Rspack.Compiler['inputFileSystem']>
 
 /**
- * Rsbuild dev server fn ref strategy: uses file:// URLs for absolute paths.
+ * Rsbuild dev server fn ref when: uses file:// URLs for absolute paths.
  * These are directly importable by Node's ESM VM runner without any bundler
  * path conventions (unlike Vite's /@id/ prefix).
  */
@@ -40,6 +44,7 @@ export interface StartCompilerHostOptions {
   providerEnvName: string
   generateFunctionId?: GenerateFunctionIdFnOptional
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
+  compilerPlugins?: Array<StartCompilerPlugin> | undefined
   serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
   serverFnsById?: Record<string, ServerFn>
   onServerFnsByIdChange?: () => void
@@ -69,6 +74,10 @@ export function registerStartCompilerTransforms(
     mergeServerFnsById(serverFnsById, d)
     opts.onServerFnsByIdChange?.()
   }
+  const compilerPlugins = [
+    createHydrateCompilerPlugin(),
+    ...(opts.compilerPlugins ?? []),
+  ]
 
   const isDev = api.context.action === 'dev'
   const mode = isDev ? 'dev' : 'build'
@@ -83,9 +92,12 @@ export function registerStartCompilerTransforms(
 
   // Pre-compute code filter patterns per environment type
   const codeFilters: Record<'client' | 'server', Array<RegExp>> = {
-    client: getTransformCodeFilterForEnv('client'),
+    client: getTransformCodeFilterForEnv('client', {
+      compilerPlugins,
+    }),
     server: getTransformCodeFilterForEnv('server', {
       compilerTransforms: opts.compilerTransforms,
+      compilerPlugins,
     }),
   }
 
@@ -109,17 +121,36 @@ export function registerStartCompilerTransforms(
       async (ctx: RsbuildTransformContext) => {
         return transformContextStorage.run(ctx, async () => {
           const code = ctx.code
+          let nextCode = code
+          let previousResult: {
+            code: string
+            map: StartCompilerTransformResult['map']
+          } | null = null
           const id = ctx.resourcePath + (ctx.resourceQuery || '')
+          const root = getRoot()
+
+          const virtualResult = loadCompilerVirtualModule(compilerPlugins, {
+            code,
+            id,
+            root,
+            env: env.type,
+            envName: env.name,
+          })
+          if (virtualResult) {
+            nextCode = virtualResult.code
+            previousResult = {
+              code: virtualResult.code,
+              map: virtualResult.map ?? null,
+            }
+          }
 
           // Quick string-level check: does this file contain any patterns for this env?
-          if (!matchesCodeFilters(code, envCodeFilters)) {
-            return code
+          if (!matchesCodeFilters(nextCode, envCodeFilters)) {
+            return previousResult ?? nextCode
           }
 
           let compiler = compilers.get(env.name)
           if (!compiler) {
-            const root = getRoot()
-
             compiler = createStartCompiler({
               env: env.type,
               envName: env.name,
@@ -129,6 +160,7 @@ export function registerStartCompilerTransforms(
               providerEnvName: opts.providerEnvName,
               generateFunctionId: opts.generateFunctionId,
               compilerTransforms,
+              compilerPlugins,
               serverFnProviderModuleDirectives,
               onServerFnsById,
               getKnownServerFns: () => serverFnsById,
@@ -197,19 +229,23 @@ export function registerStartCompilerTransforms(
             compilers.set(env.name, compiler)
           }
 
-          const detectedKinds = detectKindsInCode(code, env.type, {
+          const detectedKinds = detectKindsInCode(nextCode, env.type, {
             compilerTransforms,
           })
-          const result = await compiler.compile({ id, code, detectedKinds })
+          const result = await compiler.compile({
+            id,
+            code: nextCode,
+            detectedKinds,
+          })
 
-          if (!result) {
-            return code
+          if (result) {
+            return {
+              code: result.code,
+              map: result.map ?? null,
+            }
           }
 
-          return {
-            code: result.code,
-            map: result.map ?? null,
-          }
+          return previousResult ?? nextCode
         })
       },
     )

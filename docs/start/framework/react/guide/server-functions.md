@@ -21,6 +21,30 @@ const time = await getServerTime()
 
 Server functions provide server capabilities (database access, environment variables, file system) while maintaining type safety across the network boundary.
 
+## Same-Origin Requests
+
+Server functions are same-origin RPC endpoints for your application. Browser requests to server functions should come from the same origin, verified with Fetch Metadata (`Sec-Fetch-Site`), `Origin`, or `Referer` headers. Use server routes for public APIs or endpoints that intentionally support cross-origin requests.
+
+TanStack Start provides `createCsrfMiddleware()` to protect server functions from cross-site requests. If your app does not define `src/start.ts`, Start installs this middleware automatically for server functions. If you define `src/start.ts`, add the middleware explicitly:
+
+```tsx
+// src/start.ts
+import { createStart, createCsrfMiddleware } from '@tanstack/react-start'
+
+const csrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === 'serverFn',
+})
+
+export const startInstance = createStart(() => ({
+  requestMiddleware: [csrfMiddleware],
+}))
+```
+
+By default, `Origin` and `Referer` checks compare against the incoming request URL origin. If your deployment needs to allow a different public origin, configure it on the CSRF middleware with `createCsrfMiddleware({ origin: 'https://app.example.com' })`.
+
+> [!TIP]
+> Requests without any of these headers (`Sec-Fetch-Site`, `Origin`, or `Referer`) are rejected by default. If your deployment strips these headers and you have another layer that guarantees same-origin server function requests, you can opt in with `createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === 'serverFn', allowRequestsWithoutOriginCheck: true })`.
+
 ## Basic Usage
 
 Server functions are created with `createServerFn()` and can specify HTTP method:

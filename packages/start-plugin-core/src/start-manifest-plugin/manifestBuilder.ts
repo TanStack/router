@@ -11,8 +11,9 @@ import {
   normalizeViteClientBuild,
   normalizeViteClientChunk,
 } from '../vite/start-manifest-plugin/normalized-client-build'
-import { rebaseInlineCssUrls } from './inlineCss'
+import { processInlineCssUrls } from './inlineCss'
 import type { ManifestAssetLink, RouterManagedTag } from '@tanstack/router-core'
+import type { InlineCssTemplate } from './inlineCss'
 import type { NormalizedClientBuild, NormalizedClientChunk } from '../types'
 
 const VISITING_CHUNK = 1
@@ -49,7 +50,13 @@ export interface StartManifest {
   clientEntry: string
   inlineCss?: {
     styles: Record<string, string>
+    templates?: Record<string, InlineCssTemplate>
   }
+}
+
+export interface InlineCssOptions {
+  enabled: boolean
+  transformAssets: boolean
 }
 
 export function appendUniqueStrings(
@@ -160,7 +167,7 @@ export function buildStartManifest(options: {
   clientBuild: NormalizedClientBuild
   routeTreeRoutes: RouteTreeRoutes
   basePath: string
-  inlineCss?: boolean
+  inlineCss?: InlineCssOptions
   additionalRouteAssets?: Partial<
     Record<string, ReadonlyArray<RouterManagedTag>>
   >
@@ -194,11 +201,12 @@ export function buildStartManifest(options: {
     clientEntry: assetResolvers.getAssetPath(scannedChunks.entryChunk.fileName),
   }
 
-  if (options.inlineCss) {
+  if (options.inlineCss?.enabled) {
     result.inlineCss = buildInlineCssManifestData({
       routes,
       basePath: options.basePath,
       cssContentByFileName: options.clientBuild.cssContentByFileName,
+      transformAssets: options.inlineCss.transformAssets,
     })
   }
 
@@ -370,6 +378,7 @@ function buildInlineCssManifestData(options: {
   routes: Record<string, RouteTreeRoute>
   basePath: string
   cssContentByFileName: ReadonlyMap<string, string> | undefined
+  transformAssets: boolean
 }): StartManifest['inlineCss'] {
   const stylesheetHrefs = new Set<string>()
 
@@ -394,6 +403,7 @@ function buildInlineCssManifestData(options: {
 
   const { getAssetPath } = createManifestAssetResolvers(options.basePath)
   const styles: Record<string, string> = {}
+  const templates: Record<string, InlineCssTemplate> = {}
   const missingHrefs = new Set(stylesheetHrefs)
 
   for (const [cssFile, css] of options.cssContentByFileName) {
@@ -402,7 +412,16 @@ function buildInlineCssManifestData(options: {
       continue
     }
 
-    styles[cssHref] = rebaseInlineCssUrls({ css, cssHref })
+    const result = processInlineCssUrls({
+      css,
+      cssHref,
+      templates: options.transformAssets,
+    })
+
+    styles[cssHref] = result.css
+    if (result.template) {
+      templates[cssHref] = result.template
+    }
     missingHrefs.delete(cssHref)
   }
 
@@ -414,7 +433,10 @@ function buildInlineCssManifestData(options: {
     )
   }
 
-  return { styles }
+  return {
+    styles,
+    ...(Object.keys(templates).length ? { templates } : {}),
+  }
 }
 
 export function buildRouteManifestRoutes(options: {
@@ -462,10 +484,35 @@ export function buildRouteManifestRoutes(options: {
         getChunkCssAssets,
         getChunkPreloads: options.assetResolvers.getChunkPreloads,
       })
+
+      if (routeId !== rootRouteId) {
+        mergeReachableHydrationChunkData({
+          route: targetRoute,
+          chunk,
+          chunksByFileName: options.chunksByFileName,
+          getChunkCssAssets,
+        })
+      }
     }
   }
 
   const rootRoute = (routes[rootRouteId] = routes[rootRouteId] || {})
+  const rootRouteTreeRoute = options.routeTreeRoutes[rootRouteId]
+  const rootRouteChunks = rootRouteTreeRoute?.filePath
+    ? options.routeChunksByFilePath.get(rootRouteTreeRoute.filePath)
+    : undefined
+
+  if (rootRouteChunks) {
+    for (const chunk of rootRouteChunks) {
+      mergeReachableHydrationChunkData({
+        route: rootRoute,
+        chunk,
+        chunksByFileName: options.chunksByFileName,
+        getChunkCssAssets,
+      })
+    }
+  }
+
   mergeRouteChunkData({
     route: rootRoute,
     chunk: options.entryChunk,
@@ -493,6 +540,54 @@ export function buildRouteManifestRoutes(options: {
   }
 
   return routes
+}
+
+function mergeReachableHydrationChunkData(options: {
+  route: RouteTreeRoute
+  chunk: NormalizedClientChunk
+  chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
+  getChunkCssAssets: (chunk: NormalizedClientChunk) => Array<RouterManagedTag>
+}) {
+  const visitedStaticChunks = new Set<string>()
+  const mergedHydrationChunks = new Set<string>()
+
+  const mergeHydrationChunk = (chunk: NormalizedClientChunk) => {
+    if (mergedHydrationChunks.has(chunk.fileName)) return
+    mergedHydrationChunks.add(chunk.fileName)
+
+    options.route.assets = appendUniqueAssets(
+      options.route.assets,
+      options.getChunkCssAssets(chunk),
+    )
+
+    for (const dynamicImport of chunk.dynamicImports) {
+      const dynamicChunk = options.chunksByFileName.get(dynamicImport)
+      if (dynamicChunk?.hydrationIds.length) {
+        mergeHydrationChunk(dynamicChunk)
+      }
+    }
+  }
+
+  const visitStaticChunk = (chunk: NormalizedClientChunk) => {
+    if (visitedStaticChunks.has(chunk.fileName)) return
+    visitedStaticChunks.add(chunk.fileName)
+
+    for (const importedFileName of chunk.imports) {
+      const importedChunk = options.chunksByFileName.get(importedFileName)
+      if (importedChunk) {
+        visitStaticChunk(importedChunk)
+      }
+    }
+
+    for (const dynamicImport of chunk.dynamicImports) {
+      const dynamicChunk = options.chunksByFileName.get(dynamicImport)
+      if (dynamicChunk?.hydrationIds.length) {
+        mergeHydrationChunk(dynamicChunk)
+      }
+    }
+  }
+
+  visitStaticChunk(options.chunk)
 }
 
 export {

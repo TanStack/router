@@ -520,4 +520,59 @@ describe('createServerFn compiles correctly', async () => {
     expect(firstResult!.code).toContain('createSsrRpc("constant_id"')
     expect(secondResult!.code).toContain('createSsrRpc("constant_id_1"')
   })
+
+  test('should resolve createServerFn from the same binding as a known root export', async () => {
+    const virtualModules: Record<string, string> = {
+      '@tanstack/start-client-core': `
+        export { createServerFn } from './createServerFn'
+      `,
+      '/virtual/compiler-known/server-fn-factory.ts': `
+        export const createServerFn = () => ({
+          handler: () => createServerFn(),
+        })
+      `,
+    }
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      root: '/test',
+      mode: 'build',
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      resolveId: async (source) => {
+        if (source === '@tanstack/start-client-core') {
+          return '@tanstack/start-client-core'
+        }
+
+        if (source === './createServerFn') {
+          return '/virtual/compiler-known/server-fn-factory.ts'
+        }
+
+        return null
+      },
+    })
+
+    const result = await compiler.compile({
+      id: '/test/src/internal-server-fn.ts',
+      code: `
+        import { createServerFn } from './createServerFn'
+
+        export const getMessage = createServerFn().handler(() => {
+          return 'server-only-value'
+        })
+      `,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('createClientRpc')
+    expect(result!.code).not.toContain('server-only-value')
+  })
 })

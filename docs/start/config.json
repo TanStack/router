@@ -118,6 +118,10 @@
               "to": "framework/react/guide/hydration-errors"
             },
             {
+              "label": "Deferred Hydration",
+              "to": "framework/react/guide/deferred-hydration"
+            },
+            {
               "label": "Selective SSR",
               "to": "framework/react/guide/selective-ssr"
             },
@@ -144,6 +148,10 @@
             {
               "label": "CDN Asset URLs",
               "to": "framework/react/guide/cdn-asset-urls"
+            },
+            {
+              "label": "CSS Styling",
+              "to": "framework/react/guide/css-styling"
             },
             {
               "label": "Client Entry Point",
@@ -243,6 +251,10 @@
               "to": "framework/solid/guide/hydration-errors"
             },
             {
+              "label": "Deferred Hydration",
+              "to": "framework/solid/guide/deferred-hydration"
+            },
+            {
               "label": "Selective SSR",
               "to": "framework/solid/guide/selective-ssr"
             },
@@ -261,6 +273,10 @@
             {
               "label": "Early Hints",
               "to": "framework/solid/guide/early-hints"
+            },
+            {
+              "label": "CSS Styling",
+              "to": "framework/solid/guide/css-styling"
             },
             {
               "label": "Client Entry Point",

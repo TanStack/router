@@ -1419,6 +1419,7 @@ describe('findRouteMatch', () => {
                     "parent": [Circular],
                     "parse": null,
                     "pathless": null,
+                    "priority": 0,
                     "route": {
                       "fullPath": "/$foo/",
                       "id": "/$foo/_layout/",
@@ -1434,6 +1435,7 @@ describe('findRouteMatch', () => {
                   "parent": [Circular],
                   "parse": [Function],
                   "pathless": null,
+                  "priority": 0,
                   "route": {
                     "children": [
                       {
@@ -1470,6 +1472,7 @@ describe('findRouteMatch', () => {
                       "parent": [Circular],
                       "parse": null,
                       "pathless": null,
+                      "priority": 0,
                       "route": {
                         "fullPath": "/$foo/bar",
                         "id": "/$foo/_layout/bar",
@@ -1485,6 +1488,7 @@ describe('findRouteMatch', () => {
                 },
               ],
               "prefix": undefined,
+              "priority": 0,
               "route": null,
               "static": null,
               "staticInsensitive": Map {
@@ -1498,6 +1502,7 @@ describe('findRouteMatch', () => {
                   "parent": [Circular],
                   "parse": null,
                   "pathless": null,
+                  "priority": 0,
                   "route": {
                     "fullPath": "/$foo/hello",
                     "id": "/$foo/hello",
@@ -1524,6 +1529,7 @@ describe('findRouteMatch', () => {
             "parent": [Circular],
             "parse": null,
             "pathless": null,
+            "priority": 0,
             "route": {
               "fullPath": "/",
               "id": "/",
@@ -1539,6 +1545,7 @@ describe('findRouteMatch', () => {
           "parent": null,
           "parse": null,
           "pathless": null,
+          "priority": 0,
           "route": null,
           "static": null,
           "staticInsensitive": null,

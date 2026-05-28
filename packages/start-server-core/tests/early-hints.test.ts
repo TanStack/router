@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   collectDynamicHintsFromMatches,
   collectStaticHintsFromManifest,
+  createEarlyHintsCollector,
   createEarlyHintsEvent,
   getResponseLinkHeaderEntries,
   serializeEarlyHint,
@@ -10,6 +11,10 @@ import type { EarlyHint } from '../src/early-hints'
 import type { AnyRoute, AnyRouteMatch, Manifest } from '@tanstack/router-core'
 
 describe('early hints', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('formats Link header values', () => {
     const hints = [
       {
@@ -333,5 +338,51 @@ describe('early hints', () => {
         },
       }),
     ).toEqual([])
+  })
+
+  it('creates a production-gated collector for callbacks and response Link headers', () => {
+    const events: Array<unknown> = []
+    const collector = createEarlyHintsCollector({
+      onEarlyHints: (event) => {
+        events.push(event)
+      },
+      responseLinkHeader: true,
+    })!
+    const manifest: Manifest = {
+      routes: {
+        __root__: {
+          preloads: ['/assets/app.js'],
+        },
+      },
+    }
+    const headers = new Headers()
+
+    collector.collectStatic({
+      manifest,
+      matchedRoutes: [{ id: '__root__' } as AnyRoute],
+    })
+    collector.collectDynamic([])
+    collector.appendResponseHeaders(headers)
+
+    expect(events).toHaveLength(2)
+    expect(headers.get('Link')).toBe(
+      '</assets/app.js>; rel=modulepreload; as=script',
+    )
+  })
+
+  it('does not create a collector when no early-hints options are enabled', () => {
+    expect(createEarlyHintsCollector(undefined)).toBeUndefined()
+    expect(createEarlyHintsCollector({})).toBeUndefined()
+  })
+
+  it('does not create a collector in the dev server', () => {
+    vi.stubEnv('TSS_DEV_SERVER', 'true')
+
+    expect(
+      createEarlyHintsCollector({
+        onEarlyHints: () => {},
+        responseLinkHeader: true,
+      }),
+    ).toBeUndefined()
   })
 })

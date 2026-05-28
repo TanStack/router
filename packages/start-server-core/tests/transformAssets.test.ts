@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  adaptTransformAssetUrlsToTransformAssets,
+  buildManifestWithClientEntry,
   resolveTransformAssetsConfig,
   transformManifestAssets,
 } from '../src/transformAssetUrls'
@@ -62,19 +62,6 @@ describe('transformAssets', () => {
         rel: 'stylesheet',
         href: 'https://cdn.example.com/assets/app.css',
       },
-    })
-  })
-
-  it('adapts deprecated transformAssetUrls functions', async () => {
-    const fn = vi.fn(({ url }: { url: string; type: string }) => `cdn:${url}`)
-    const adapted = adaptTransformAssetUrlsToTransformAssets(fn)
-
-    await expect(
-      adapted({ kind: 'stylesheet', url: '/assets/app.css' }),
-    ).resolves.toEqual({ href: 'cdn:/assets/app.css' })
-    expect(fn).toHaveBeenCalledWith({
-      type: 'stylesheet',
-      url: '/assets/app.css',
     })
   })
 
@@ -201,6 +188,238 @@ describe('transformAssets', () => {
     ])
   })
 
+  it('transforms CSS URLs inside inlined stylesheet templates with css-url context', async () => {
+    const transformFn = vi.fn((context) => {
+      if (context.kind === 'css-url') {
+        return `https://cdn.example.com${context.url}`
+      }
+
+      return context.url
+    })
+
+    const manifest = await transformManifestAssets(
+      {
+        manifest: {
+          inlineCss: {
+            styles: {
+              '/assets/app.css':
+                '@font-face{src:url(/assets/font.woff2)}.card{background:url(/images/bg.png)}.icon{background:url(data:image/svg+xml,foo)}',
+            },
+            templates: {
+              '/assets/app.css': {
+                strings: [
+                  '@font-face{src:url("',
+                  '")}.card{background:url("',
+                  '")}.icon{background:url(data:image/svg+xml,foo)}',
+                ],
+                urls: ['/assets/font.woff2', '/images/bg.png'],
+              },
+            },
+          },
+          routes: {
+            __root__: {
+              assets: [
+                {
+                  tag: 'link',
+                  attrs: { rel: 'stylesheet', href: '/assets/app.css' },
+                },
+              ],
+            },
+          },
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+    )
+
+    expect(manifest.inlineCss?.styles['/assets/app.css']).toBe(
+      '@font-face{src:url("https://cdn.example.com/assets/font.woff2")}.card{background:url("https://cdn.example.com/images/bg.png")}.icon{background:url(data:image/svg+xml,foo)}',
+    )
+    expect(transformFn).toHaveBeenCalledWith({
+      kind: 'css-url',
+      url: '/assets/font.woff2',
+      stylesheetHref: '/assets/app.css',
+    })
+    expect(transformFn).toHaveBeenCalledWith({
+      kind: 'css-url',
+      url: '/images/bg.png',
+      stylesheetHref: '/assets/app.css',
+    })
+    expect(transformFn).not.toHaveBeenCalledWith({
+      kind: 'css-url',
+      url: 'data:image/svg+xml,foo',
+      stylesheetHref: '/assets/app.css',
+    })
+  })
+
+  it('leaves inlined CSS URLs unchanged when template metadata is absent', async () => {
+    const transformFn = vi.fn((context) => {
+      if (context.kind === 'css-url') {
+        return `https://cdn.example.com${context.url}`
+      }
+
+      return context.url
+    })
+
+    const manifest = await transformManifestAssets(
+      {
+        manifest: {
+          inlineCss: {
+            styles: {
+              '/assets/app.css': '.card{background:url(/images/bg.png)}',
+            },
+          },
+          routes: {},
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+    )
+
+    expect(manifest.inlineCss?.styles['/assets/app.css']).toBe(
+      '.card{background:url(/images/bg.png)}',
+    )
+    expect(transformFn).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'css-url' }),
+    )
+  })
+
+  it('does not transform stylesheet link hrefs when inline CSS is enabled', async () => {
+    const transformFn = vi.fn((context) => {
+      if (context.kind === 'stylesheet') {
+        return `https://cdn.example.com${context.url}`
+      }
+
+      return context.url
+    })
+
+    const manifest = await transformManifestAssets(
+      {
+        manifest: {
+          inlineCss: {
+            styles: {
+              '/assets/app.css': '.root{color:red}',
+            },
+          },
+          routes: {
+            __root__: {
+              assets: [
+                {
+                  tag: 'link',
+                  attrs: { rel: 'stylesheet', href: '/assets/app.css' },
+                },
+              ],
+            },
+          },
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+    )
+
+    expect(manifest.routes.__root__?.assets?.[0]).toEqual({
+      tag: 'link',
+      attrs: { rel: 'stylesheet', href: '/assets/app.css' },
+    })
+    expect(transformFn).not.toHaveBeenCalledWith({
+      kind: 'stylesheet',
+      url: '/assets/app.css',
+    })
+  })
+
+  it('preserves inline CSS style order when template transforms resolve out of order', async () => {
+    const resolvers = new Map<string, (value: string) => void>()
+    const transformFn = vi.fn((context) => {
+      if (context.kind !== 'css-url') {
+        return context.url
+      }
+
+      return new Promise<string>((resolve) => {
+        resolvers.set(context.url, resolve)
+      })
+    })
+
+    const manifestPromise = transformManifestAssets(
+      {
+        manifest: {
+          inlineCss: {
+            styles: {
+              '/assets/a.css': '.a{background:url(/assets/a.png)}',
+              '/assets/b.css': '.b{background:url(/assets/b.png)}',
+            },
+            templates: {
+              '/assets/a.css': {
+                strings: ['.a{background:url("', '")}'],
+                urls: ['/assets/a.png'],
+              },
+              '/assets/b.css': {
+                strings: ['.b{background:url("', '")}'],
+                urls: ['/assets/b.png'],
+              },
+            },
+          },
+          routes: {},
+        },
+        clientEntry: '/assets/entry.js',
+      },
+      transformFn,
+    )
+
+    await vi.waitFor(() => {
+      expect(resolvers.size).toBe(2)
+    })
+
+    resolvers.get('/assets/b.png')!('https://cdn.example.com/assets/b.png')
+    resolvers.get('/assets/a.png')!('https://cdn.example.com/assets/a.png')
+
+    const manifest = await manifestPromise
+
+    expect(Object.keys(manifest.inlineCss!.styles)).toEqual([
+      '/assets/a.css',
+      '/assets/b.css',
+    ])
+    expect(manifest.inlineCss?.styles['/assets/a.css']).toBe(
+      '.a{background:url("https://cdn.example.com/assets/a.png")}',
+    )
+    expect(manifest.inlineCss?.styles['/assets/b.css']).toBe(
+      '.b{background:url("https://cdn.example.com/assets/b.png")}',
+    )
+  })
+
+  it('clones inline CSS when building a manifest without transforms', () => {
+    const source = {
+      manifest: {
+        inlineCss: {
+          styles: {
+            '/assets/app.css': '.app{color:red}',
+          },
+          templates: {
+            '/assets/app.css': {
+              strings: ['.app{background:url("', '")}'],
+              urls: ['/assets/bg.png'],
+            },
+          },
+        },
+        routes: {
+          __root__: {},
+        },
+      },
+      clientEntry: '/assets/entry.js',
+    }
+
+    const manifest = buildManifestWithClientEntry(source)
+    manifest.inlineCss!.styles['/assets/app.css'] = '.mutated{}'
+    manifest.inlineCss!.templates!['/assets/app.css']!.urls[0] =
+      '/assets/mutated.png'
+
+    expect(source.manifest.inlineCss.styles['/assets/app.css']).toBe(
+      '.app{color:red}',
+    )
+    expect(
+      source.manifest.inlineCss.templates['/assets/app.css']!.urls[0],
+    ).toBe('/assets/bg.png')
+  })
+
   describe('object shorthand', () => {
     it('supports { prefix } — same as string shorthand', () => {
       const config = resolveTransformAssetsConfig({
@@ -242,6 +461,16 @@ describe('transformAssets', () => {
         config.transformFn({ kind: 'clientEntry', url: '/assets/entry.js' }),
       ).toEqual({
         href: 'https://cdn.example.com/assets/entry.js',
+      })
+
+      expect(
+        config.transformFn({
+          kind: 'css-url',
+          url: '/assets/font.woff2',
+          stylesheetHref: '/assets/app.css',
+        }),
+      ).toEqual({
+        href: 'https://cdn.example.com/assets/font.woff2',
       })
     })
 

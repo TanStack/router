@@ -131,6 +131,29 @@ function PostComponent() {
 
 <!-- ::end:framework -->
 
+## Prioritizing Parsed Path Param Routes
+
+When multiple dynamic, optional, or wildcard routes can match the same URL, routes with `params.parse` are tried before equivalent routes without it. If multiple matching candidates use `params.parse`, you can use `params.priority` to control which candidate is tried first.
+
+Higher `params.priority` values are tried first. The default priority is `0`, and if a higher-priority route's `params.parse` returns `false`, matching continues to the next candidate route.
+
+```tsx title="src/routes/posts.$postId.tsx"
+export const Route = createFileRoute('/posts/$postId')({
+  params: {
+    priority: 10,
+    parse: ({ postId }) => {
+      if (!/^\d+$/.test(postId)) return false
+      return { postId: Number(postId) }
+    },
+    stringify: ({ postId }) => ({ postId: String(postId) }),
+  },
+})
+```
+
+With a fallback `/posts/$slug` route, `/posts/123` can match the parsed numeric route first, while `/posts/hello-world` can fall through to the slug route when `params.parse` returns `false`.
+
+`params.priority` only affects competing candidates that use `params.parse`. It does not override normal route specificity, so static routes still match before dynamic, optional, or wildcard routes.
+
 ## Navigating with Path Params
 
 When navigating to a route with path params, TypeScript will require you to pass the params either as an object or as a function that returns an object of params.

@@ -1,5 +1,51 @@
 # @tanstack/router-cli
 
+## 1.167.5
+
+### Patch Changes
+
+- Updated dependencies [[`b60eb36`](https://github.com/TanStack/router/commit/b60eb36e59e8a468ee0742cbcf7f47aca1ff1c67)]:
+  - @tanstack/router-generator@1.167.5
+
+## 1.167.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-generator@1.167.4
+
+## 1.167.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-generator@1.167.3
+
+## 1.167.2
+
+### Patch Changes
+
+- Updated dependencies [[`742941e`](https://github.com/TanStack/router/commit/742941e2f1bf069c950d0a4985b2cd733639509e)]:
+  - @tanstack/router-generator@1.167.2
+
+## 1.167.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-generator@1.167.1
+
+## 1.167.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- Updated dependencies [[`038cd12`](https://github.com/TanStack/router/commit/038cd123b70bc6154d75abb6404a744c376f8f6a), [`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14)]:
+  - @tanstack/router-generator@1.167.0
+
 ## 1.166.43
 
 ### Patch Changes

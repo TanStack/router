@@ -9,8 +9,10 @@
     "build:rsbuild": "rsbuild build && tsc --noEmit",
     "start": "node server.js",
     "test:e2e:vite": "E2E_TOOLCHAIN=vite playwright test --project=chromium",
+    "test:e2e:vite:transform-assets": "E2E_TOOLCHAIN=vite CSS_INLINE_TRANSFORM_ASSETS=true playwright test --project=chromium",
     "test:e2e:rsbuild": "E2E_TOOLCHAIN=rsbuild playwright test --project=chromium",
-    "test:e2e": "pnpm run test:e2e:vite && pnpm run test:e2e:rsbuild"
+    "test:e2e:rsbuild:transform-assets": "E2E_TOOLCHAIN=rsbuild CSS_INLINE_TRANSFORM_ASSETS=true playwright test --project=chromium",
+    "test:e2e": "pnpm run test:e2e:vite && pnpm run test:e2e:vite:transform-assets && pnpm run test:e2e:rsbuild && pnpm run test:e2e:rsbuild:transform-assets"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -45,8 +47,24 @@
           "mode": "ssr"
         },
         {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "name": "transform-assets",
+          "env": {
+            "CSS_INLINE_TRANSFORM_ASSETS": "true"
+          }
+        },
+        {
           "toolchain": "rsbuild",
           "mode": "ssr"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr",
+          "name": "transform-assets",
+          "env": {
+            "CSS_INLINE_TRANSFORM_ASSETS": "true"
+          }
         }
       ]
     }
