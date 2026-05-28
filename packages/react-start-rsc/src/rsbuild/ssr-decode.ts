@@ -5,182 +5,125 @@
  * Flight decode.
  */
 
-import { createFromReadableStream } from 'react-server-dom-rspack/client.node'
+import { createFromReadableStream as decodeFlightStream } from 'react-server-dom-rspack/client.node'
 
-type ResolvedAssetDeps = {
+type ClientReferenceDeps = {
   js: Array<string>
   css: Array<string>
 }
 
 type OnClientReference = (reference: {
   id: string
-  deps: ResolvedAssetDeps
+  deps: ClientReferenceDeps
   runtime: 'rsbuild'
 }) => void
 
-declare const __rspack_rsc_manifest__:
-  | {
-      moduleLoading?: {
-        prefix?: string
-      }
-    }
-  | undefined
-
-let onClientReference: OnClientReference | undefined
-
-const FLIGHT_IMPORT_ROW_TAG = 'I'.charCodeAt(0)
-const FLIGHT_IMPORT_METADATA_START_OFFSET = 2
-const FLIGHT_ROW_SEPARATOR = ':'
-const FLIGHT_ROW_TERMINATOR = '\n'
-const FIRST_CHUNK_FILE_INDEX = 1
-const CHUNK_PAIR_SIZE = 2
-
-function getModuleLoadingPrefix() {
-  if (typeof __rspack_rsc_manifest__ === 'undefined') return ''
-  return __rspack_rsc_manifest__.moduleLoading?.prefix ?? ''
+type ImportManifestEntry = {
+  id: string
+  chunks: Array<string>
+  cssFiles?: Array<string>
+  name: string
+  async?: boolean
 }
 
-function emitClientReferencePreloads(
-  emit: OnClientReference,
-  id: string,
-  chunks: Array<unknown>,
-  prefix: string,
-) {
-  let js: Array<string> | undefined
+type ClientManifest = Record<string, ImportManifestEntry>
+type ServerConsumerModuleMap =
+  | null
+  | Record<string, Record<string, ImportManifestEntry>>
+type ModuleLoading =
+  | null
+  | {
+      prefix: string
+      crossOrigin?: 'use-credentials' | ''
+    }
 
-  // Rsbuild's RSC import metadata stores client reference chunks as alternating
-  // metadata/file entries. The file entries are the browser JS modules that
-  // need to be surfaced to the SSR layer as modulepreload hrefs.
-  for (let i = FIRST_CHUNK_FILE_INDEX; i < chunks.length; i += CHUNK_PAIR_SIZE) {
-    const chunkFile = chunks[i]
-    if (typeof chunkFile === 'string') {
-      if (!js) js = []
-      js.push(prefix + chunkFile)
+declare const __rspack_rsc_manifest__: {
+  moduleLoading: ModuleLoading
+  serverConsumerModuleMap: ServerConsumerModuleMap
+  clientManifest: ClientManifest
+}
+
+const CHUNK_FILENAME_INDEX = 1
+const CHUNK_PAIR_SIZE = 2
+
+let onClientReference: OnClientReference | undefined
+let clientReferenceDepsByModuleId: Map<string, ClientReferenceDeps> | undefined
+
+function getClientReferenceDepsByModuleId() {
+  if (clientReferenceDepsByModuleId) return clientReferenceDepsByModuleId
+
+  clientReferenceDepsByModuleId = new Map()
+  const prefix = __rspack_rsc_manifest__.moduleLoading?.prefix ?? ''
+
+  for (const entry of Object.values(__rspack_rsc_manifest__.clientManifest)) {
+    let deps = clientReferenceDepsByModuleId.get(entry.id)
+    if (!deps) {
+      deps = { js: [], css: [] }
+      clientReferenceDepsByModuleId.set(entry.id, deps)
+    }
+
+    // React/Rspack stores JS chunks as chunk id/filename pairs. CSS files are
+    // separate manifest entries and are already emitted as public hrefs.
+    for (
+      let i = CHUNK_FILENAME_INDEX;
+      i < entry.chunks.length;
+      i += CHUNK_PAIR_SIZE
+    ) {
+      deps.js.push(prefix + entry.chunks[i])
+    }
+
+    if (entry.cssFiles) {
+      deps.css.push(...entry.cssFiles)
     }
   }
 
-  if (!js) return
+  return clientReferenceDepsByModuleId
+}
 
-  emit({
-    id,
-    deps: { js, css: [] },
+function emitClientReferencePreloadsForModule(moduleId: string) {
+  const deps = getClientReferenceDepsByModuleId().get(moduleId)
+  if (!onClientReference || !deps) return
+
+  if (deps.js.length === 0 && deps.css.length === 0) {
+    return
+  }
+
+  onClientReference({
+    id: moduleId,
+    deps,
     runtime: 'rsbuild',
   })
 }
 
-function getFlightImportMetadataStart(row: string) {
-  const colonIndex = row.indexOf(FLIGHT_ROW_SEPARATOR)
-  if (
-    colonIndex === -1 ||
-    row.charCodeAt(colonIndex + 1) !== FLIGHT_IMPORT_ROW_TAG
-  ) {
-    return -1
-  }
+if (__rspack_rsc_manifest__.serverConsumerModuleMap) {
+  __rspack_rsc_manifest__.serverConsumerModuleMap = new Proxy(
+    __rspack_rsc_manifest__.serverConsumerModuleMap,
+    {
+      get(target, property, receiver) {
+        const moduleExports = Reflect.get(target, property, receiver)
 
-  return colonIndex + FLIGHT_IMPORT_METADATA_START_OFFSET
-}
+        if (typeof property === 'string' && moduleExports !== undefined) {
+          emitClientReferencePreloadsForModule(property)
+        }
 
-function processFlightRowForPreloads(
-  row: string,
-  prefix: string,
-  emit: OnClientReference,
-) {
-  const metadataStart = getFlightImportMetadataStart(row)
-  if (metadataStart === -1) return
-
-  try {
-    const metadata = JSON.parse(row.slice(metadataStart))
-    if (!Array.isArray(metadata)) return
-
-    const [id, chunks] = metadata
-    if (typeof id !== 'string' || !Array.isArray(chunks)) return
-
-    emitClientReferencePreloads(emit, id, chunks, prefix)
-  } catch {
-    // Ignore Flight rows that are not plain JSON import metadata.
-  }
-}
-
-function processBufferedFlightRows(
-  buffer: string,
-  prefix: string,
-  emit: OnClientReference,
-) {
-  let rowStart = 0
-  let newlineIndex = buffer.indexOf(FLIGHT_ROW_TERMINATOR, rowStart)
-
-  while (newlineIndex !== -1) {
-    processFlightRowForPreloads(
-      buffer.slice(rowStart, newlineIndex),
-      prefix,
-      emit,
-    )
-    rowStart = newlineIndex + 1
-    newlineIndex = buffer.indexOf(FLIGHT_ROW_TERMINATOR, rowStart)
-  }
-
-  return rowStart === 0 ? buffer : buffer.slice(rowStart)
-}
-
-async function collectClientReferencePreloads(
-  stream: ReadableStream<Uint8Array>,
-  prefix: string,
-  emit: OnClientReference,
-) {
-  const reader = stream.getReader()
-  const decoder = new TextDecoder()
-  let buffered = ''
-
-  try {
-    for (;;) {
-      const { value, done } = await reader.read()
-      if (done) break
-
-      buffered += decoder.decode(value, { stream: true })
-      buffered = processBufferedFlightRows(buffered, prefix, emit)
-    }
-
-    buffered += decoder.decode()
-    if (buffered) processFlightRowForPreloads(buffered, prefix, emit)
-  } finally {
-    reader.releaseLock()
-  }
+        return moduleExports
+      },
+    },
+  )
 }
 
 function setOnClientReference(callback: OnClientReference | undefined) {
   onClientReference = callback
 }
 
-async function createFromReadableStreamCollectingClientPreloads<T = unknown>(
+async function createFromReadableStreamWithClientPreloads<T = unknown>(
   stream: ReadableStream<Uint8Array>,
   options?: object,
 ): Promise<T> {
-  const emit = onClientReference
-
-  if (!emit || typeof stream.tee !== 'function') {
-    return createFromReadableStream<T>(stream, options)
-  }
-
-  const prefix = getModuleLoadingPrefix()
-
-  // Decode the Flight stream normally while a second reader scans the same
-  // bytes for import rows. This lets SSR collect client component JS discovered
-  // during RSC decode and attach it to the renderable proxy, so pages like
-  // /rsc-client-preload can emit extra <link rel="modulepreload"> tags for
-  // nested client components before hydration starts.
-  const [decodeStream, preloadStream] = stream.tee()
-  const preloadPromise = collectClientReferencePreloads(
-    preloadStream,
-    prefix,
-    emit,
-  )
-
-  const result = await createFromReadableStream<T>(decodeStream, options)
-  await preloadPromise
-  return result
+  return decodeFlightStream<T>(stream, options)
 }
 
 export {
   setOnClientReference,
-  createFromReadableStreamCollectingClientPreloads as createFromReadableStream,
+  createFromReadableStreamWithClientPreloads as createFromReadableStream,
 }
