@@ -1,5 +1,14 @@
 # @tanstack/start-plugin-core
 
+## 1.171.7
+
+### Patch Changes
+
+- [#7501](https://github.com/TanStack/router/pull/7501) [`9c09bca`](https://github.com/TanStack/router/commit/9c09bca59e9613e9a6fd9b7149b0737898e705d6) - fix(start): emit client entry scripts from the root route manifest. When `scriptFormat: 'iife'` and the entry chunk has static-import siblings (e.g. an extracted runtime via `optimization.runtimeChunk: 'single'`), the manifest now includes those async siblings before the async client entry in root route scripts, fixing hydration for IIFE bundles with extracted runtimes.
+
+- Updated dependencies [[`9c09bca`](https://github.com/TanStack/router/commit/9c09bca59e9613e9a6fd9b7149b0737898e705d6)]:
+  - @tanstack/start-server-core@1.169.5
+
 ## 1.171.6
 
 ### Patch Changes
