@@ -48,7 +48,6 @@ export function createSsrStreamResponse<TRouter extends AnyRouter>(
 
       try {
         await response.body!.cancel(reason)
-        return
       } catch {
         // ignore; fallback cleanup below still releases router SSR state
       }

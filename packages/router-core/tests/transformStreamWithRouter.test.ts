@@ -45,6 +45,7 @@ function makeRouter(opts: Partial<FakeServerSsr> = {}): {
   finishSerialization: () => void
 } {
   const cleanupCalls = { count: 0 }
+  let cleanedUp = false
   let buffered = ''
   const injectedListeners: Array<() => void> = []
   const serializationListeners: Array<() => void> = []
@@ -74,7 +75,10 @@ function makeRouter(opts: Partial<FakeServerSsr> = {}): {
       },
       setRenderFinished: () => {},
       cleanup: () => {
+        if (cleanedUp) return
+        cleanedUp = true
         cleanupCalls.count++
+        router.serverSsr = undefined
       },
       liftScriptBarrier: () => {},
       ...opts,
@@ -140,9 +144,9 @@ async function readAll(s: ReadableStream<Uint8Array>): Promise<string> {
     if (done) break
     // Buffer.from accepts any ArrayBufferView regardless of realm (jsdom env).
     out += Buffer.from(
-      (value).buffer,
-      (value).byteOffset,
-      (value).byteLength,
+      value.buffer,
+      value.byteOffset,
+      value.byteLength,
     ).toString('utf8')
   }
   return out

@@ -136,13 +136,14 @@ test.describe('Query heavy route (9 useSuspenseQuery)', () => {
     const html = await response.text()
     const endMarker = '$_TSR.e()'
     const endIndex = html.indexOf(endMarker)
+    const slowAsyncPayloadIndex = html.indexOf('"slow-async-3"')
     const lastScriptOpen = html.lastIndexOf('<script', endIndex)
     const lastScriptClose = html.lastIndexOf('</script>', endIndex)
 
     expect(endIndex).toBeGreaterThan(-1)
     expect(lastScriptOpen).toBeGreaterThan(lastScriptClose)
-    expect(html.indexOf('slow-async')).toBeGreaterThan(-1)
-    expect(html.indexOf('slow-async')).toBeLessThan(endIndex)
+    expect(slowAsyncPayloadIndex).toBeGreaterThan(-1)
+    expect(slowAsyncPayloadIndex).toBeLessThan(endIndex)
     expect(html.slice(lastScriptOpen, endIndex)).toContain('.return(void 0)')
     expect(endIndex).toBeLessThan(html.indexOf('</body>'))
   })
