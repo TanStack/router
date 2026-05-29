@@ -33,7 +33,7 @@
     "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js",
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js",
     "test:types:ts60": "tsc",
-    "test:unit": "exit 0; vitest",
+    "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"

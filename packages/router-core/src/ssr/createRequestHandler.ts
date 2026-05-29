@@ -5,6 +5,7 @@ import {
   getNormalizedURL,
   getOrigin,
 } from './ssr-server'
+import { normalizeSsrResponse } from './handlerCallback'
 import type { HandlerCallback } from './handlerCallback'
 import type { AnyHeaders } from './headers'
 import type { AnyRouter } from '../router'
@@ -25,8 +26,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }): RequestHandler<TRouter> {
   return async (cb) => {
     const router = createRouter()
-    // Track whether the callback will handle cleanup
-    let cbWillCleanup = false
+    let responseOwnsCleanup = false
 
     try {
       attachRouterServerSsrUtils({
@@ -58,19 +58,19 @@ export function createRequestHandler<TRouter extends AnyRouter>({
         router,
       })
 
-      // Mark that the callback will handle cleanup
-      cbWillCleanup = true
-      return cb({
+      const response = await cb({
         request,
         router,
         responseHeaders,
       })
+      const ssrResponse = normalizeSsrResponse(response)
+      responseOwnsCleanup = ssrResponse.serverSsrCleanup === 'stream'
+      return ssrResponse.response
     } finally {
-      if (!cbWillCleanup) {
+      if (!responseOwnsCleanup) {
         // Clean up router SSR state if the callback won't handle it
         // (e.g., if an error occurred before the callback was invoked).
-        // When the callback runs, it handles cleanup (either via transformStreamWithRouter
-        // for streaming, or directly in renderRouterToString for non-streaming).
+        // Transformed streaming response bodies clean up when consumed/cancelled.
         router.serverSsr?.cleanup()
       }
     }
