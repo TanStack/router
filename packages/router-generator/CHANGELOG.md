@@ -1,5 +1,12 @@
 # @tanstack/router-generator
 
+## 1.167.11
+
+### Patch Changes
+
+- Updated dependencies [[`d1997b6`](https://github.com/TanStack/router/commit/d1997b66d7c24c1d64772bb8bab5caf9c6d9cc48)]:
+  - @tanstack/router-core@1.171.7
+
 ## 1.167.10
 
 ### Patch Changes
