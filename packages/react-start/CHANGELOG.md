@@ -1,5 +1,20 @@
 # @tanstack/react-start
 
+## 1.168.17
+
+### Patch Changes
+
+- [#7505](https://github.com/TanStack/router/pull/7505) [`2f53749`](https://github.com/TanStack/router/commit/2f5374945e2138559a51464f45a5152eae67e1dd) - Preserve primitive values thrown from beforeLoad error handling.
+
+- Updated dependencies [[`2f53749`](https://github.com/TanStack/router/commit/2f5374945e2138559a51464f45a5152eae67e1dd)]:
+  - @tanstack/react-router@1.170.10
+  - @tanstack/react-start-client@1.168.7
+  - @tanstack/react-start-rsc@0.1.16
+  - @tanstack/react-start-server@1.167.12
+  - @tanstack/start-client-core@1.170.6
+  - @tanstack/start-plugin-core@1.171.9
+  - @tanstack/start-server-core@1.169.7
+
 ## 1.168.16
 
 ### Patch Changes
