@@ -32,6 +32,7 @@ export function getStartModeConfig() {
               '/redirect',
               '/i-do-not-exist',
               '/not-found',
+              '/primitive-beforeload-error',
               '/specialChars/search',
               '/specialChars/hash',
               '/specialChars/malformed',

@@ -173,6 +173,42 @@ describe('beforeLoad skip or exec', () => {
     expect(beforeLoad).toHaveBeenCalledTimes(1)
   })
 
+  test('preserves primitive errors thrown from beforeLoad', async () => {
+    const beforeLoad = vi.fn<BeforeLoad>(() => {
+      throw 'primitive error'
+    })
+    const router = setup({ beforeLoad })
+
+    await router.navigate({ to: '/foo' })
+
+    expect(router.state.statusCode).toBe(500)
+    expect(router.state.matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '/foo/foo',
+          status: 'error',
+          error: 'primitive error',
+        }),
+      ]),
+    )
+  })
+
+  test('does not mutate object errors thrown from beforeLoad', async () => {
+    const thrown = { type: 'domain-error' }
+    const beforeLoad = vi.fn<BeforeLoad>(() => {
+      throw thrown
+    })
+    const router = setup({ beforeLoad })
+
+    await router.navigate({ to: '/foo' })
+
+    expect(router.state.statusCode).toBe(500)
+    expect(router.state.matches.find((d) => d.id === '/foo/foo')?.error).toBe(
+      thrown,
+    )
+    expect(thrown).toEqual({ type: 'domain-error' })
+  })
+
   test('exec if resolved preload (success)', async () => {
     const beforeLoad = vi.fn()
     const router = setup({ beforeLoad })
