@@ -1,5 +1,16 @@
 # @tanstack/react-start-rsc
 
+## 0.1.17
+
+### Patch Changes
+
+- [#7509](https://github.com/TanStack/router/pull/7509) [`9cb7a00`](https://github.com/TanStack/router/commit/9cb7a003e6e5fa3706711870c7b10a5266356e3b) - feat(rsbuild): add RSC support
+
+- Updated dependencies [[`9cb7a00`](https://github.com/TanStack/router/commit/9cb7a003e6e5fa3706711870c7b10a5266356e3b)]:
+  - @tanstack/start-plugin-core@1.171.10
+  - @tanstack/start-server-core@1.169.8
+  - @tanstack/react-start-server@1.167.13
+
 ## 0.1.16
 
 ### Patch Changes
