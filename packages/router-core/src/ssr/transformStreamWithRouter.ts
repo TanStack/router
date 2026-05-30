@@ -227,7 +227,9 @@ export function transformStreamWithRouter(
   // between-chunk text buffer; keep bounded to avoid unbounded memory
   let leftover = ''
 
-  // captured closing tags from </body> onward
+  // Captured closing tags that must stay after router-injected scripts.
+  // Some renderers, like Solid, continue streaming boundary chunks after
+  // </html>; those chunks should still pass through before these tags.
   let pendingClosingTags = ''
 
   // conservative cap: enough to hold any partial closing tag + a bit
@@ -404,9 +406,11 @@ export function transformStreamWithRouter(
           }
         }
 
-        // If we already saw </body>, everything else is part of tail; buffer it.
+        // If we already saw </body>, keep streaming app chunks before the
+        // captured closing tags instead of buffering them until render end.
         if (pendingClosingTags) {
-          pendingClosingTags += chunkString
+          flushPendingRouterHtml()
+          safeEnqueue(chunkString)
           leftover = ''
           continue
         }
@@ -419,9 +423,11 @@ export function transformStreamWithRouter(
           htmlEndIndex !== -1 &&
           bodyEndIndex < htmlEndIndex
         ) {
-          pendingClosingTags = chunkString.slice(bodyEndIndex)
+          const htmlEndTagEnd = htmlEndIndex + HTML_END_TAG.length
+          pendingClosingTags = chunkString.slice(bodyEndIndex, htmlEndTagEnd)
           safeEnqueue(chunkString.slice(0, bodyEndIndex))
           flushPendingRouterHtml()
+          safeEnqueue(chunkString.slice(htmlEndTagEnd))
           leftover = ''
           continue
         }
