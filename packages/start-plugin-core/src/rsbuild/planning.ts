@@ -25,6 +25,8 @@ export const RSBUILD_RSC_LAYERS = {
   ssr: 'server-side-rendering',
 } as const
 
+export const RSBUILD_CLIENT_ASSETS_DIR = 'assets'
+
 export type RsbuildEnvironmentName =
   (typeof RSBUILD_ENVIRONMENT_NAMES)[keyof typeof RSBUILD_ENVIRONMENT_NAMES]
 
@@ -121,6 +123,16 @@ export function createRsbuildEnvironmentPlan(opts: {
             module: clientOutputModule,
             distPath: {
               root: opts.clientOutputDirectory,
+              js: `${RSBUILD_CLIENT_ASSETS_DIR}/js`,
+              jsAsync: `${RSBUILD_CLIENT_ASSETS_DIR}/js/async`,
+              css: `${RSBUILD_CLIENT_ASSETS_DIR}/css`,
+              cssAsync: `${RSBUILD_CLIENT_ASSETS_DIR}/css/async`,
+              svg: `${RSBUILD_CLIENT_ASSETS_DIR}/svg`,
+              font: `${RSBUILD_CLIENT_ASSETS_DIR}/font`,
+              wasm: `${RSBUILD_CLIENT_ASSETS_DIR}/wasm`,
+              image: `${RSBUILD_CLIENT_ASSETS_DIR}/image`,
+              media: `${RSBUILD_CLIENT_ASSETS_DIR}/media`,
+              assets: `${RSBUILD_CLIENT_ASSETS_DIR}/assets`,
             },
             assetPrefix: opts.publicBase,
           },

@@ -1,6 +1,17 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
+function getStylesheetHrefs(html: string): Array<string> {
+  return Array.from(
+    html.matchAll(/<link\b[^>]*>/g),
+    (match) => match[0],
+  ).flatMap((tag) => {
+    const rel = tag.match(/\brel="([^"]*)"/)?.[1]
+    const href = tag.match(/\bhref="([^"]*)"/)?.[1]
+    return rel?.split(/\s+/).includes('stylesheet') && href ? [href] : []
+  })
+}
+
 /**
  * RSC No-JavaScript Tests
  *
@@ -329,5 +340,22 @@ test.describe('RSC No-JavaScript Rendering', () => {
       (el) => getComputedStyle(el).backgroundColor,
     )
     expect(bgColorB).toBe('rgb(204, 251, 241)') // #ccfbf1
+
+    const widgetC = page.getByTestId('client-widget-c')
+    await expect(widgetC).toHaveCount(0)
+
+    const stylesheetHrefs = getStylesheetHrefs(html!)
+    const linkedCss = await Promise.all(
+      stylesheetHrefs.map(async (href) => {
+        const response = await page.request.get(new URL(href, page.url()).href)
+        return response.text()
+      }),
+    )
+    expect(linkedCss.join('\n')).not.toContain('serverb-note')
+
+    const note = page.getByTestId('serverb-note')
+    await expect(note).toBeVisible()
+    await expect(note).toHaveCSS('background-color', 'rgb(219, 234, 254)')
+    await expect(note).toHaveCSS('border-color', 'rgb(59, 130, 246)')
   })
 })

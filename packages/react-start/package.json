@@ -188,7 +188,7 @@
     }
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.1",
+    "@rsbuild/core": "^2.0.8",
     "@types/node": ">=20"
   }
 }
