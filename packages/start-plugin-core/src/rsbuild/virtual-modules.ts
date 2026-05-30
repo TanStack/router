@@ -433,7 +433,7 @@ export function registerVirtualModules(
         : `export function createFromReadableStream() { throw new Error('RSC browser decode is only available in the client environment') }
 export function createFromFetch() { throw new Error('RSC browser decode is only available in the client environment') }`
       content[rscPaths.rscSsrDecode] = isServerEnv
-        ? `export * from '@tanstack/react-start/rsbuild/ssr-decode'`
+        ? `export { setOnClientReference, createFromReadableStream } from '@tanstack/react-start/rsbuild/ssr-decode'`
         : `export function setOnClientReference() {}
 export function createFromReadableStream() { throw new Error('RSC SSR decode is only available in the server environment') }`
     }

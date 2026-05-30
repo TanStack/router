@@ -22,6 +22,11 @@
           "toolchain": "vite",
           "mode": "ssr",
           "shards": 6
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr",
+          "shards": 6
         }
       ]
     }
