@@ -1,5 +1,11 @@
 # @tanstack/solid-router-ssr-query
 
+## 2.0.0-beta.20
+
+### Patch Changes
+
+- Fix two related issues with HeadContent in solid-router ([#7510](https://github.com/TanStack/router/pull/7510))
+
 ## 2.0.0-beta.19
 
 ### Patch Changes
