@@ -73,9 +73,7 @@ function HeadElement(props: {
         innerHTML:
           typeof props.children === 'string' ? props.children : undefined,
       }
-      element = (
-        <style {...attrs} />
-      ) as unknown as Element
+      element = (<style {...attrs} />) as unknown as Element
       break
     }
     case 'meta':
