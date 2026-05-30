@@ -67,16 +67,17 @@ function HeadElement(props: {
   // SSR attributes).
   let element: Element
   switch (props.tag) {
-    case 'style':
+    case 'style': {
+      const attrs = {
+        ...props.attrs,
+        innerHTML:
+          typeof props.children === 'string' ? props.children : undefined,
+      }
       element = (
-        <style
-          {...props.attrs}
-          innerHTML={
-            typeof props.children === 'string' ? props.children : undefined
-          }
-        />
+        <style {...attrs} />
       ) as unknown as Element
       break
+    }
     case 'meta':
       element = (<meta {...props.attrs} />) as unknown as Element
       break
