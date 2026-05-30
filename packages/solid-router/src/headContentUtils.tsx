@@ -197,6 +197,13 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     })),
   )
 
+  // Cache tag objects by key across renders so that unchanged tags keep a
+  // stable object identity. `<For>` keys by reference, so reusing the previous
+  // object for an unchanged tag lets it reconcile the existing DOM node in
+  // place instead of remounting it. Remounting head nodes on navigation
+  // detaches/re-fetches stylesheets (e.g. the app stylesheet), causing a FOUC.
+  let tagsByKey = new Map<string, RouterManagedTag>()
+
   return Solid.createMemo((prev: Array<RouterManagedTag> | undefined) => {
     const next = uniqBy(
       [
@@ -209,15 +216,24 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       getTagKey,
     )
 
+    const nextTagsByKey = new Map<string, RouterManagedTag>()
+    const stable = next.map((tag) => {
+      const key = getTagKey(tag)
+      const reused = tagsByKey.get(key) ?? tag
+      nextTagsByKey.set(key, reused)
+      return reused
+    })
+    tagsByKey = nextTagsByKey
+
     if (
       prev &&
-      prev.length === next.length &&
-      prev.every((tag, index) => getTagKey(tag) === getTagKey(next[index]!))
+      prev.length === stable.length &&
+      prev.every((tag, index) => tag === stable[index])
     ) {
       return prev
     }
 
-    return next
+    return stable
   })
 }
 

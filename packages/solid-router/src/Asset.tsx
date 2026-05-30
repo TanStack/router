@@ -1,5 +1,5 @@
 import { isServer } from '@tanstack/router-core/isServer'
-import { createEffect } from 'solid-js'
+import { createEffect, onCleanup, onSettled } from 'solid-js'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { JSX } from '@solidjs/web'
@@ -25,89 +25,104 @@ export function Asset({
   }
 }
 
+// On the client, relocate a rendered head element into document.head so head
+// tags end up in the right place even when <HeadContent /> is rendered in
+// <body>. The *same* node that Solid rendered/hydrated is moved — never
+// recreated — so the server-rendered node stays claimed (its hydration id is
+// preserved) and stylesheets/scripts are not refetched or re-executed.
+//
+// When <HeadContent /> is placed in <head> (the SSR/hydration case), the node
+// is already in document.head, so this is a no-op and the element is left
+// exactly where Solid hydrated it.
+function useRelocateToHead(getEl: () => Node | undefined) {
+  onSettled(() => {
+    const el = getEl()
+    if (el && el.parentNode !== document.head) {
+      document.head.appendChild(el)
+    }
+  })
+
+  onCleanup(() => {
+    const el = getEl()
+    if (el?.parentNode) {
+      el.parentNode.removeChild(el)
+    }
+  })
+}
+
 function HeadElement(props: {
   tag: 'meta' | 'link' | 'style'
   attrs?: Record<string, any>
   children?: unknown
 }): JSX.Element | null {
-  const router = useRouter()
-
-  // Server: render the element in the tree so it's part of the SSR'd HTML.
-  // (Where <HeadContent /> is placed determines where it appears in the SSR
-  // output; the head-content design supports rendering in <body> for full-
-  // document hydration.)
-  if (isServer ?? router.isServer) {
-    const { tag, attrs, children } = props
-    if (tag === 'style' && typeof children === 'string') {
-      return <style {...attrs} innerHTML={children} />
-    }
-    if (tag === 'style') return <style {...attrs} />
-    if (tag === 'meta') return <meta {...attrs} />
-    return <link {...attrs} />
+  // Each branch must live in its own `case` block so the Solid compiler emits
+  // exactly ONE getNextElement() per invocation. Sequential `if ... return`
+  // statements compile to multiple getNextElement() calls that all execute,
+  // desyncing the hydration key counter (causing "expected <style>" mismatches
+  // and unclaimed nodes).
+  //
+  // We capture the element via the JSX return value (a real DOM node in Solid)
+  // rather than a `ref` attribute: a `ref` compiles to a _$ref() call that
+  // interferes with attribute spreading on hydration-claimed nodes (wiping the
+  // SSR attributes).
+  let element: Element
+  switch (props.tag) {
+    case 'style':
+      element = (
+        <style
+          {...props.attrs}
+          innerHTML={
+            typeof props.children === 'string' ? props.children : undefined
+          }
+        />
+      ) as unknown as Element
+      break
+    case 'meta':
+      element = (<meta {...props.attrs} />) as unknown as Element
+      break
+    default:
+      element = (<link {...props.attrs} />) as unknown as Element
   }
 
-  // Client: imperatively insert the element into document.head so it lands
-  // in <head> even when <HeadContent /> is placed in <body>, and reactively
-  // update on attribute/children changes via createEffect cleanup.
-  createEffect(
-    () => ({ tag: props.tag, attrs: props.attrs, children: props.children }),
-    ({ tag, attrs, children }) => {
-      const el = document.createElement(tag)
+  // Move the rendered/hydrated element into <head> when <HeadContent /> is
+  // placed in <body>. No-op when already in <head>. Called unconditionally so
+  // server and client register the same primitives (see Title).
+  useRelocateToHead(() => element)
 
-      if (attrs) {
-        for (const [key, value] of Object.entries(attrs)) {
-          if (value !== undefined && value !== false && value !== null) {
-            el.setAttribute(
-              key,
-              typeof value === 'boolean' ? '' : String(value),
-            )
-          }
-        }
-      }
-
-      if (tag === 'style' && typeof children === 'string') {
-        el.textContent = children
-      }
-
-      document.head.appendChild(el)
-
-      return () => {
-        if (el.parentNode) {
-          el.parentNode.removeChild(el)
-        }
-      }
-    },
-  )
-
-  return null
+  return element as unknown as JSX.Element
 }
 
 function Title(props: {
   attrs?: Record<string, any>
   children?: unknown
 }): JSX.Element | null {
-  const router = useRouter()
-  const attrs = props.attrs
-  const children = props.children
+  let el: HTMLTitleElement | undefined
 
-  // Server: render <title> normally
-  if (isServer ?? router.isServer) {
-    return <title {...attrs}>{children as string}</title>
-  }
+  // IMPORTANT: call these hooks UNCONDITIONALLY (do not guard with isServer).
+  // Solid's hydration relies on the component body registering the same
+  // reactive primitives in the same order on the server and the client. An
+  // `if (!isServer)` guard would skip them on the server but run them on the
+  // client, desyncing the hydration owner tree and causing the server <title>
+  // to be left unclaimed (and a duplicate appended). These hooks are no-ops
+  // during SSR anyway.
 
-  // Client: imperatively set document.title so it updates during
-  // client-side navigation (JSX <title> in <head> doesn't reliably
-  // update the browser's document.title).
+  // Move the rendered/hydrated <title> into <head> when <HeadContent /> is
+  // placed in <body>. No-op when already in <head>.
+  useRelocateToHead(() => el)
+
+  // Keep document.title in sync during client-side navigation.
   createEffect(
-    () => children,
+    () => props.children,
     (titleText) => {
       document.title = typeof titleText === 'string' ? titleText : ''
     },
   )
 
-  // Still render the <title> element in the DOM for consistency,
-  // but the imperative assignment above is what actually drives the update.
-  return <title {...attrs}>{children as string}</title>
+  return (
+    <title ref={(e) => (el = e)} {...props.attrs}>
+      {props.children as string}
+    </title>
+  )
 }
 
 function Script(props: {
@@ -146,7 +161,9 @@ function Script(props: {
   }
 
   // For executable scripts, use imperative DOM injection so the browser
-  // actually executes them during client-side navigation.
+  // actually executes them during client-side navigation. The injection is
+  // idempotent (it checks for an already-present matching script), so the
+  // server-rendered script node is reused rather than duplicated.
   createEffect(
     () => ({ attrs, children, dataScript }) as const,
     ({ attrs, children, dataScript }) => {
