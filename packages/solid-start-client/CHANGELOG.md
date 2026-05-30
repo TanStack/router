@@ -1,5 +1,14 @@
 # @tanstack/solid-start-client
 
+## 2.0.0-beta.19
+
+### Patch Changes
+
+- Fix two related issues with HeadContent in solid-router ([#7510](https://github.com/TanStack/router/pull/7510))
+
+- Updated dependencies [[`129d043`](https://github.com/TanStack/router/commit/129d043f2d2b6049a9e151398d05ad73b97f4005)]:
+  - @tanstack/solid-router@2.0.0-beta.19
+
 ## 2.0.0-beta.18
 
 ### Patch Changes
