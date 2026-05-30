@@ -60,6 +60,9 @@ setOnClientReference(
       }
     }
 
+    // Rsbuild injects collected assets when the decoded RSC is actually
+    // rendered via ReactDOM.preinit/preloadModule. Keeping them off the
+    // request manifest avoids emitting assets for decoded-but-unrendered trees.
     if (
       !ctx ||
       runtime === 'rsbuild' ||
