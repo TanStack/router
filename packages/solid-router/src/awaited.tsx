@@ -31,7 +31,10 @@ export function Await<T>(
   },
 ) {
   if (!('fallback' in props)) {
-    const [resource] = Solid.createResource(() => defer(props.promise), (p) => p)
+    const [resource] = Solid.createResource(
+      () => defer(props.promise),
+      (p) => p,
+    )
 
     return (
       <Solid.Show when={resource()}>
