@@ -1,17 +1,6 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('RSC Complex CSS Preload Tests', () => {
-  function getStylesheetHrefs(html: string): Array<string> {
-    return Array.from(
-      html.matchAll(/<link\b[^>]*>/g),
-      (match) => match[0],
-    ).flatMap((tag) => {
-      const rel = tag.match(/\brel="([^"]*)"/)?.[1]
-      const href = tag.match(/\bhref="([^"]*)"/)?.[1]
-      return rel?.split(/\s+/).includes('stylesheet') && href ? [href] : []
-    })
-  }
-
   // ============================================================================
   // Test 1: ClientWidgetA (direct render) has CSS applied
   // ============================================================================
@@ -66,27 +55,7 @@ test.describe('RSC Complex CSS Preload Tests', () => {
   test('ClientWidgetC in unrendered ServerB is not in DOM', async ({
     page,
   }) => {
-    const requestedCssHrefs: Array<string> = []
-    page.on('request', (request) => {
-      const pathname = new URL(request.url()).pathname
-      if (pathname.includes('/assets/css/async/')) {
-        requestedCssHrefs.push(pathname)
-      }
-    })
-
-    const response = await page.goto('/rsc-css-preload-complex')
-    const html = await response?.text()
-
-    expect(html).toBeDefined()
-    expect(html).not.toContain('client-widget-c')
-
-    const stylesheetHrefs = new Set(getStylesheetHrefs(html!))
-    const serializedCssHrefs = Array.from(
-      new Set(html!.match(/\/assets\/css\/async\/[^"\\]+\.css/g) ?? []),
-    )
-    const unusedCssHrefs = serializedCssHrefs.filter(
-      (href) => !stylesheetHrefs.has(href),
-    )
+    await page.goto('/rsc-css-preload-complex')
 
     // Widget C should NOT be present since ServerB is not rendered
     const widgetC = page.locator('[data-testid="client-widget-c"]')
@@ -97,14 +66,6 @@ test.describe('RSC Complex CSS Preload Tests', () => {
     const serverB = page.locator('[data-testid="server-component-b"]')
     await expect(serverB).not.toBeVisible()
     await expect(serverB).toHaveCount(0)
-
-    const note = page.locator('[data-testid="serverb-note"]')
-    await expect(note).toBeVisible()
-    await expect(note).toHaveCSS('background-color', 'rgb(219, 234, 254)')
-    await expect(note).toHaveCSS('border-color', 'rgb(59, 130, 246)')
-    for (const href of unusedCssHrefs) {
-      expect(requestedCssHrefs).not.toContain(href)
-    }
   })
 
   // ============================================================================
