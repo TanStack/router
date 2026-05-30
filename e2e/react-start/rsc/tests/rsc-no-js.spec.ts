@@ -2,8 +2,9 @@ import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
 function getStylesheetHrefs(html: string): Array<string> {
-  return Array.from(html.matchAll(/<link\b[^>]*>/g), (match) =>
-    match[0],
+  return Array.from(
+    html.matchAll(/<link\b[^>]*>/g),
+    (match) => match[0],
   ).flatMap((tag) => {
     const rel = tag.match(/\brel="([^"]*)"/)?.[1]
     const href = tag.match(/\bhref="([^"]*)"/)?.[1]
