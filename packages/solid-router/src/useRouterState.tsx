@@ -35,7 +35,7 @@ export function useRouterState<
   // implementation does not provide subscribe() semantics.
   const _isServer = isServer ?? router.isServer
   if (_isServer) {
-    const state = router.stores.__store.state as RouterState<
+    const state = router.stores.__store.get() as RouterState<
       TRouter['routeTree']
     >
     const selected = (
@@ -47,7 +47,7 @@ export function useRouterState<
   }
 
   if (!opts?.select) {
-    return (() => router.stores.__store.state) as Accessor<
+    return (() => router.stores.__store.get()) as Accessor<
       UseRouterStateResult<TRouter, TSelected>
     >
   }
@@ -55,7 +55,7 @@ export function useRouterState<
   const select = opts.select
 
   return Solid.createMemo((prev: TSelected | undefined) => {
-    const res = select(router.stores.__store.state)
+    const res = select(router.stores.__store.get())
     if (prev === undefined) return res
     return replaceEqualDeep(prev, res)
   }) as Accessor<UseRouterStateResult<TRouter, TSelected>>

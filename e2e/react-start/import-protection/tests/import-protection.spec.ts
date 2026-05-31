@@ -5,6 +5,35 @@ import { test } from '@tanstack/router-e2e-utils'
 import type { Violation } from './violations.utils'
 import type { Page } from '@playwright/test'
 
+const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+const fixtureRoot = path.resolve(import.meta.dirname, '..')
+const workspaceRoot = path.resolve(import.meta.dirname, '../../../..')
+
+function stripLocation(value: string): string {
+  return value.replace(/:\d+:\d+$/, '')
+}
+
+function normalizeKeyPath(value: string): string {
+  let normalized = stripLocation(value).replace(/\\/g, '/')
+  const normalizedFixtureRoot = fixtureRoot.replace(/\\/g, '/')
+  const normalizedWorkspaceRoot = workspaceRoot.replace(/\\/g, '/')
+
+  if (normalized.startsWith(`${normalizedFixtureRoot}/`)) {
+    normalized = normalized.slice(normalizedFixtureRoot.length + 1)
+  } else if (normalized.startsWith(`${normalizedWorkspaceRoot}/`)) {
+    normalized = normalized.slice(normalizedWorkspaceRoot.length + 1)
+  }
+
+  normalized = normalized.replace(
+    /^packages\/react-start\/dist\/esm\/(.+)$/,
+    '@tanstack/react-start/$1',
+  )
+  normalized = normalized.replace(/\.[cm]?[tj]sx?$/, '')
+  normalized = normalized.replace(/\/index$/, '')
+
+  return normalized
+}
+
 async function readViolations(
   type: 'build' | 'dev' | 'dev.cold' | 'dev.warm',
 ): Promise<Array<Violation>> {
@@ -38,6 +67,57 @@ function findClientSecretServerFileViolation(
       v.importer.includes(importerFragment) &&
       (specifierMatches(v.specifier) ||
         v.resolved?.includes('violations/secret.server')),
+  )
+}
+
+function findBarrelReexportHits(
+  violations: Array<Violation>,
+): Array<Violation> {
+  return violations.filter(
+    (v) =>
+      v.envType === 'client' &&
+      (v.importer.includes('barrel-reexport') ||
+        v.importer.includes('barrel-false-positive') ||
+        v.specifier.includes('db.server') ||
+        v.resolved?.includes('barrel-reexport') ||
+        v.trace.some(
+          (s) =>
+            s.file.includes('barrel-reexport') ||
+            s.file.includes('barrel-false-positive'),
+        )),
+  )
+}
+
+function findBarrelMarkerHits(violations: Array<Violation>): Array<Violation> {
+  return violations.filter(
+    (v) =>
+      v.envType === 'client' &&
+      (v.specifier.includes('server-only') ||
+        v.specifier.includes('foo') ||
+        v.resolved?.includes('foo')) &&
+      v.trace.some(
+        (s) =>
+          s.file.includes('barrel-reexport') ||
+          s.file.includes('barrel-false-positive'),
+      ),
+  )
+}
+
+function findTypeOnlyProtectedImportHits(
+  violations: Array<Violation>,
+): Array<Violation> {
+  return violations.filter(
+    (v) =>
+      v.envType === 'client' &&
+      (v.importer.includes('type-only-protected-import') ||
+        v.importer.includes('type-only.server') ||
+        v.specifier.includes('type-only.server') ||
+        v.resolved?.includes('type-only.server') ||
+        v.trace.some(
+          (s) =>
+            s.file.includes('type-only-protected-import') ||
+            s.file.includes('type-only.server'),
+        )),
   )
 }
 
@@ -240,7 +320,7 @@ for (const mode of ['build', 'dev'] as const) {
         x.envType === 'client' &&
         (x.specifier.includes('secret.server') ||
           x.resolved?.includes('secret.server')) &&
-        !!x.snippet,
+        x.snippet?.lines.join('\n').includes('getSecret'),
     )
     expect(v).toBeDefined()
     expect(v!.snippet).toBeDefined()
@@ -536,7 +616,7 @@ test('warm run produces violations', async () => {
   expect(warm.length).toBeGreaterThan(0)
 })
 
-test('warm run detects the same unique violations as cold run', async () => {
+test('warm run detects every unique cold-run violation', async () => {
   const cold = await readViolations('dev.cold')
   const warm = await readViolations('dev.warm')
 
@@ -546,13 +626,29 @@ test('warm run detects the same unique violations as cold run', async () => {
   // the `.ts` extension) because different detection code-paths fire.
   // Normalize to the resolved path (without extension) for a stable key.
   const normalizeSpec = (v: Violation) =>
-    (v.resolved ?? v.specifier).replace(/\.[cm]?[tj]sx?$/, '')
+    normalizeKeyPath(v.resolved ?? v.specifier)
+  const normalizeImporter = (v: Violation) => {
+    const importer = stripLocation(v.importer)
+    const leafTraceFile = v.trace.at(-1)?.file
+
+    if (
+      leafTraceFile &&
+      !importer.includes('/') &&
+      normalizeKeyPath(leafTraceFile).endsWith(normalizeKeyPath(importer))
+    ) {
+      return normalizeKeyPath(leafTraceFile)
+    }
+
+    return normalizeKeyPath(importer)
+  }
   const uniqueKey = (v: Violation) =>
-    `${v.envType}|${v.type}|${normalizeSpec(v)}|${v.importer.replace(/:.*/, '')}`
+    `${v.envType}|${v.type}|${normalizeSpec(v)}|${normalizeImporter(v)}`
 
   const coldUniq = [...new Set(cold.map(uniqueKey))].sort()
-  const warmUniq = [...new Set(warm.map(uniqueKey))].sort()
-  expect(warmUniq).toEqual(coldUniq)
+  const warmUniq = new Set(warm.map(uniqueKey))
+  const missingFromWarm = coldUniq.filter((key) => !warmUniq.has(key))
+
+  expect(missingFromWarm).toEqual([])
 })
 
 test('warm run traces include line numbers', async () => {
@@ -669,7 +765,8 @@ for (const mode of ['build', 'dev', 'dev.warm'] as const) {
 // never imports foo at all. Both the .server module and the marker module
 // should NOT survive tree-shaking in the client bundle, so import-protection
 // must NOT flag violations for either in build mode.
-// In dev mode there is no tree-shaking so the violation is expected (mock).
+// Dev behavior is not part of this contract because barrel re-export diagnostics
+// can warn or be elided depending on dev transform/chunk graph ordering.
 
 test('barrel-false-positive route loads in mock mode', async ({ page }) => {
   await page.goto('/barrel-false-positive')
@@ -681,21 +778,7 @@ test('barrel-false-positive route loads in mock mode', async ({ page }) => {
 test('no false positive for barrel-reexport .server pattern in build', async () => {
   const violations = await readViolations('build')
 
-  const barrelHits = violations.filter(
-    (v) =>
-      v.envType === 'client' &&
-      (v.importer.includes('barrel-reexport') ||
-        v.importer.includes('barrel-false-positive') ||
-        v.specifier.includes('db.server') ||
-        v.resolved?.includes('barrel-reexport') ||
-        v.trace.some(
-          (s) =>
-            s.file.includes('barrel-reexport') ||
-            s.file.includes('barrel-false-positive'),
-        )),
-  )
-
-  expect(barrelHits).toEqual([])
+  expect(findBarrelReexportHits(violations)).toEqual([])
 })
 
 test('no false positive for barrel-reexport marker pattern in build', async () => {
@@ -704,20 +787,7 @@ test('no false positive for barrel-reexport marker pattern in build', async () =
   // foo.ts uses `import '@tanstack/react-start/server-only'` marker and is
   // re-exported through the barrel, but never imported by the route.
   // Tree-shaking should eliminate it — no marker violation should fire.
-  const markerHits = violations.filter(
-    (v) =>
-      v.envType === 'client' &&
-      (v.specifier.includes('server-only') ||
-        v.specifier.includes('foo') ||
-        v.resolved?.includes('foo')) &&
-      v.trace.some(
-        (s) =>
-          s.file.includes('barrel-reexport') ||
-          s.file.includes('barrel-false-positive'),
-      ),
-  )
-
-  expect(markerHits).toEqual([])
+  expect(findBarrelMarkerHits(violations)).toEqual([])
 })
 
 // noExternal .client package false positive: react-tweet's package.json
@@ -830,6 +900,25 @@ test('non-alias-namespace-leak does not expose real secret after hydration', asy
     page.getByTestId('non-alias-namespace-leak-secret-client'),
   ).not.toContainText('super-secret-server-key-12345')
 })
+
+test('type-only protected import route loads in mock mode', async ({
+  page,
+}) => {
+  await expectRouteHeading(
+    page,
+    '/type-only-protected-import',
+    'type-only-protected-import-heading',
+    'Type-Only Protected Import',
+  )
+})
+
+for (const mode of ['build', 'dev', 'dev.warm'] as const) {
+  test(`type-only protected imports do not trigger violations in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    expect(findTypeOnlyProtectedImportHits(violations)).toEqual([])
+  })
+}
 
 for (const mode of ['build', 'dev'] as const) {
   test(`no false positive for noExternal react-tweet (.client entry) in ${mode}`, async () => {

@@ -37,9 +37,7 @@ export const Match = Vue.defineComponent({
     // Derive routeId from initial props.matchId — stable for this component's
     // lifetime. The routeId never changes for a given route position in the
     // tree, even when matchId changes (loaderDepsHash, etc).
-    const routeId = router.stores.activeMatchStoresById.get(
-      props.matchId,
-    )?.routeId
+    const routeId = router.stores.matchStores.get(props.matchId)?.routeId
 
     if (!routeId) {
       if (process.env.NODE_ENV !== 'production') {
@@ -56,11 +54,11 @@ export const Match = Vue.defineComponent({
     const isChildOfRoot =
       (router.routesById[routeId] as AnyRoute)?.parentRoute?.id === rootRouteId
 
-    // Single stable store subscription — getMatchStoreByRouteId returns a
+    // Single stable store subscription — getRouteMatchStore returns a
     // cached computed store that resolves routeId → current match state
     // through the signal graph. No bridge needed.
     const activeMatch = useStore(
-      router.stores.getMatchStoreByRouteId(routeId),
+      router.stores.getRouteMatchStore(routeId),
       (value) => value,
     )
     const isPendingMatchRef = useStore(
@@ -268,8 +266,8 @@ const OnRendered = Vue.defineComponent({
             router.emit({
               type: 'onRendered',
               ...getLocationChangeInfo(
-                router.stores.location.state,
-                router.stores.resolvedLocation.state,
+                router.stores.location.get(),
+                router.stores.resolvedLocation.get(),
               ),
             })
             prevHref = currentHref
@@ -297,7 +295,7 @@ export const MatchInner = Vue.defineComponent({
     // Use routeId from context (provided by parent Match) — stable string.
     const routeId = Vue.inject(routeIdContext)!
     const activeMatch = useStore(
-      router.stores.getMatchStoreByRouteId(routeId),
+      router.stores.getRouteMatchStore(routeId),
       (value) => value,
     )
 
@@ -337,6 +335,7 @@ export const MatchInner = Vue.defineComponent({
           ssr: match.ssr,
           _forcePending: match._forcePending,
           _displayPending: match._displayPending,
+          _nonReactive: match._nonReactive,
         },
         remountKey,
       }
@@ -349,6 +348,22 @@ export const MatchInner = Vue.defineComponent({
 
     const match = Vue.computed(() => combinedState.value?.match)
     const remountKey = Vue.computed(() => combinedState.value?.remountKey)
+
+    const getMatchPromise = (
+      match: {
+        id: string
+        _nonReactive: {
+          displayPendingPromise?: Promise<void>
+          minPendingPromise?: Promise<void>
+          loadPromise?: Promise<void>
+        }
+      },
+      key: 'displayPendingPromise' | 'minPendingPromise' | 'loadPromise',
+    ) => {
+      return (
+        router.getMatch(match.id)?._nonReactive[key] ?? match._nonReactive[key]
+      )
+    }
 
     return (): VNode | null => {
       // If match doesn't exist, return null (component is being unmounted or not ready)
@@ -390,7 +405,7 @@ export const MatchInner = Vue.defineComponent({
 
           invariant()
         }
-        throw router.getMatch(match.value.id)?._nonReactive.loadPromise
+        throw getMatchPromise(match.value, 'loadPromise')
       }
 
       if (match.value.status === 'error') {
@@ -483,7 +498,7 @@ export const Outlet = Vue.defineComponent({
 
     // Parent state via stable routeId store — single subscription
     const parentMatch = useStore(
-      router.stores.getMatchStoreByRouteId(parentRouteId),
+      router.stores.getRouteMatchStore(parentRouteId),
       (v) => v,
     )
 
@@ -508,7 +523,7 @@ export const Outlet = Vue.defineComponent({
     const childMatchData = Vue.computed(() => {
       const childId = childMatchIdMap.value[parentRouteId]
       if (!childId) return null
-      const child = router.stores.activeMatchStoresById.get(childId)?.state
+      const child = router.stores.matchStores.get(childId)?.get()
       if (!child) return null
 
       return {

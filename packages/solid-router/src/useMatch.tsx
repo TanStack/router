@@ -76,37 +76,58 @@ export function useMatch<
 
   const match = () => {
     if (opts.from) {
-      const ids = router.stores.matchesId.state
-      for (const id of ids) {
-        const matchStore = router.stores.activeMatchStoresById.get(id)
-        if (matchStore?.routeId === opts.from) {
-          return matchStore.state
-        }
-      }
-
-      return undefined
+      return router.stores.getRouteMatchStore(opts.from).get()
     }
 
     return nearestMatch?.match()
   }
+
+  Solid.createEffect(
+    () => {
+      const selectedMatch = match()
+      const hasPendingMatch = opts.from
+        ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
+        : (nearestMatch?.hasPending() ?? false)
+      const isTransitioning = router.stores.isTransitioning.get()
+
+      return { selectedMatch, hasPendingMatch, isTransitioning }
+    },
+    ({ selectedMatch, hasPendingMatch, isTransitioning }) => {
+    if (selectedMatch !== undefined) {
+      return
+    }
+
+    if (
+      !hasPendingMatch &&
+      !isTransitioning &&
+      (opts.shouldThrow ?? true)
+    ) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+        )
+      }
+
+      invariant()
+    }
+    },
+  )
 
   return Solid.createMemo((prev: TSelected | undefined) => {
     const selectedMatch = match()
 
     if (selectedMatch === undefined) {
       const hasPendingMatch = opts.from
-        ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
+        ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
         : (nearestMatch?.hasPending() ?? false)
-      const isTransitioning = router.stores.isTransitioning.state
 
-      if (!hasPendingMatch && !isTransitioning && (opts.shouldThrow ?? true)) {
-        if (process.env.NODE_ENV !== 'production') {
-          throw new Error(
-            `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-          )
-        }
-        invariant()
+      if (
+        prev !== undefined &&
+        (hasPendingMatch || router.stores.isTransitioning.get())
+      ) {
+        return prev
       }
+
       return undefined
     }
 

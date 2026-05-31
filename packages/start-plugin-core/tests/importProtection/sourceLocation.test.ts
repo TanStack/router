@@ -1,14 +1,19 @@
 import { describe, expect, test } from 'vitest'
 import {
+  createImportSpecifierLocationIndex,
   ImportLocCache,
   buildCodeSnippet,
   buildLineIndex,
+  findOriginalUsageLocation,
+  getOrCreateOriginalTransformResult,
+  normalizeSourceMap,
   pickOriginalCodeFromSourcesContent,
-} from '../../src/import-protection-plugin/sourceLocation'
+} from '../../src/import-protection/sourceLocation'
 import type {
   SourceMapLike,
+  TransformResult,
   TransformResultProvider,
-} from '../../src/import-protection-plugin/sourceLocation'
+} from '../../src/import-protection/sourceLocation'
 
 describe('pickOriginalCodeFromSourcesContent', () => {
   test('picks exact matching source by path', () => {
@@ -140,6 +145,137 @@ describe('buildLineIndex', () => {
   })
 })
 
+function makeTransformResult(code: string): TransformResult {
+  return {
+    code,
+    map: undefined,
+    originalCode: undefined,
+  }
+}
+
+describe('createImportSpecifierLocationIndex', () => {
+  test('finds first matching import location across static and dynamic forms', () => {
+    const finder = createImportSpecifierLocationIndex()
+    const code = [
+      `const later = import('./secret.server')`,
+      `import { getSecret } from './secret.server'`,
+    ].join('\n')
+
+    expect(
+      finder.find(makeTransformResult(code), './secret.server'),
+    ).toBeGreaterThanOrEqual(0)
+  })
+
+  test('reuses cached per-result index without changing results', () => {
+    const finder = createImportSpecifierLocationIndex()
+    const result = makeTransformResult(
+      `import { getSecret } from './secret.server'`,
+    )
+
+    const first = finder.find(result, './secret.server')
+    const second = finder.find(result, './secret.server')
+
+    expect(second).toBe(first)
+    expect(result.analysis?.importSpecifierLocationIndex).toBeDefined()
+  })
+
+  test('returns -1 when source is absent', () => {
+    const finder = createImportSpecifierLocationIndex()
+    expect(
+      finder.find(makeTransformResult('const x = 1'), './secret.server'),
+    ).toBe(-1)
+  })
+
+  test('finds dynamic imports with options', () => {
+    const finder = createImportSpecifierLocationIndex()
+    const code =
+      "const data = import('./secret.server', { with: { type: 'json' } })"
+
+    expect(
+      finder.find(makeTransformResult(code), './secret.server'),
+    ).toBeGreaterThanOrEqual(0)
+  })
+
+  test('finds specifier locations in decorated modules', () => {
+    const finder = createImportSpecifierLocationIndex()
+    const code = [
+      `@sealed class Example {}`,
+      `import { value } from './secret.server'`,
+    ].join('\n')
+
+    expect(finder.find(makeTransformResult(code), './secret.server')).toBe(
+      code.indexOf('./secret.server'),
+    )
+  })
+
+  test('finds import attributes syntax', () => {
+    const finder = createImportSpecifierLocationIndex()
+    const code = "import data from './secret.server' with { type: 'json' }"
+
+    expect(
+      finder.find(makeTransformResult(code), './secret.server'),
+    ).toBeGreaterThanOrEqual(0)
+  })
+
+  test('finds export-all declarations', () => {
+    const finder = createImportSpecifierLocationIndex()
+    const code = "export * from './secret.server'"
+
+    expect(
+      finder.find(makeTransformResult(code), './secret.server'),
+    ).toBeGreaterThanOrEqual(0)
+  })
+
+  test('returns earliest occurrence when the same specifier appears multiple times', () => {
+    const finder = createImportSpecifierLocationIndex()
+    const code = [
+      `export * from './secret.server'`,
+      `import { getSecret } from './secret.server'`,
+      `const later = import('./secret.server')`,
+    ].join('\n')
+
+    const idx = finder.find(makeTransformResult(code), './secret.server')
+    expect(idx).toBe(code.indexOf('./secret.server'))
+  })
+
+  test('reuses a lazily created original transform result', () => {
+    const result = makeTransformResult(`import { x } from './safe'`)
+    result.originalCode = `import { y } from './secret.server'`
+
+    const first = getOrCreateOriginalTransformResult(result)
+    const second = getOrCreateOriginalTransformResult(result)
+
+    expect(first).toBe(second)
+    expect(first?.code).toBe(result.originalCode)
+  })
+})
+
+describe('normalizeSourceMap', () => {
+  test('normalizes sourcemap version, file, names, and sourcesContent', () => {
+    const normalized = normalizeSourceMap({
+      version: '3',
+      sources: ['src/a.ts'],
+      names: undefined as unknown as Array<string>,
+      sourcesContent: [null, 'A'],
+      mappings: '',
+    })
+
+    expect(normalized).toEqual({
+      version: 3,
+      file: '',
+      sources: ['src/a.ts'],
+      names: [],
+      sourcesContent: ['', 'A'],
+      mappings: '',
+    })
+  })
+
+  test('returns undefined for missing map', () => {
+    expect(normalizeSourceMap(undefined)).toBeUndefined()
+    expect(normalizeSourceMap(null)).toBeUndefined()
+  })
+})
+
 describe('buildCodeSnippet', () => {
   function makeProvider(
     code: string,
@@ -232,6 +368,75 @@ describe('buildCodeSnippet', () => {
 
     expect(snippet).toBeDefined()
     expect(snippet!.lines.length).toBe(4)
+  })
+})
+
+describe('findOriginalUsageLocation', () => {
+  function makeProvider(
+    code: string,
+    originalCode?: string,
+  ): TransformResultProvider {
+    return {
+      getTransformResult: () => ({
+        code,
+        map: undefined,
+        originalCode,
+      }),
+    }
+  }
+
+  test('prefers original usage site over import site when original code is available', () => {
+    const provider = makeProvider(
+      'const secretServerFn = createServerFn().handler(rpc())\n',
+      [
+        "import { createServerFn } from '@tanstack/react-start'",
+        "import { getSecret } from './secret.server'",
+        '',
+        'export const secretServerFn = createServerFn().handler(async () => {',
+        '  return getSecret()',
+        '})',
+        '',
+        'export function leakyReference() {',
+        '  return getSecret()',
+        '}',
+      ].join('\n'),
+    )
+
+    expect(
+      findOriginalUsageLocation(
+        provider,
+        '/test/compiler-leak.ts',
+        './secret.server',
+        'client',
+      ),
+    ).toEqual({
+      file: '/test/compiler-leak.ts',
+      line: 9,
+      column: 10,
+    })
+  })
+
+  test('returns undefined when original usage only exists inside compiler-safe boundary', () => {
+    const provider = makeProvider(
+      'export const safe = noop\n',
+      [
+        "import { createServerOnlyFn } from '@tanstack/react-start'",
+        "import { getSecret } from './secret.server'",
+        '',
+        'export const safe = createServerOnlyFn(() => {',
+        '  return getSecret()',
+        '})',
+      ].join('\n'),
+    )
+
+    expect(
+      findOriginalUsageLocation(
+        provider,
+        '/test/boundary-safe.ts',
+        './secret.server',
+        'client',
+      ),
+    ).toBeUndefined()
   })
 })
 

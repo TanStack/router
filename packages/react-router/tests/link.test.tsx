@@ -27,6 +27,7 @@ import {
   createRouteMask,
   createRouter,
   getRouteApi,
+  notFound,
   redirect,
   retainSearchParams,
   stripSearchParams,
@@ -175,6 +176,96 @@ describe('Link', () => {
     await expect(
       screen.findByRole('header', { name: 'Posts' }),
     ).rejects.toThrow()
+  })
+
+  test('does not forward internal Link props to the DOM', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    const internalPropNames = [
+      'activeProps',
+      'inactiveProps',
+      'activeOptions',
+      'to',
+      'from',
+      'preload',
+      'preloadDelay',
+      'preloadIntentProximity',
+      'hashScrollIntoView',
+      'replace',
+      'startTransition',
+      'resetScroll',
+      'viewTransition',
+      'ignoreBlocker',
+      'params',
+      'search',
+      'hash',
+      'state',
+      'mask',
+      'reloadDocument',
+      'unsafeRelative',
+    ].map((propName) => propName.toLowerCase())
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link
+          to="/posts"
+          from="/"
+          activeProps={{ className: 'active' }}
+          inactiveProps={{ className: 'inactive' }}
+          activeOptions={{
+            exact: true,
+            includeHash: true,
+            includeSearch: true,
+          }}
+          preload="intent"
+          preloadDelay={50}
+          preloadIntentProximity={123}
+          hashScrollIntoView={true}
+          replace={true}
+          startTransition={true}
+          resetScroll={true}
+          viewTransition={true}
+          ignoreBlocker={true}
+          params={{}}
+          search={{ foo: 'bar' }}
+          hash="details"
+          state={{}}
+          mask={{ to: '/posts', hash: 'masked' }}
+          reloadDocument={true}
+          unsafeRelative="path"
+        >
+          Posts
+        </Link>
+      ),
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const renderedAttributeNames = postsLink
+      .getAttributeNames()
+      .map((attributeName) => attributeName.toLowerCase())
+
+    for (const propName of internalPropNames) {
+      expect(renderedAttributeNames).not.toContain(propName)
+    }
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
   })
 
   test('when the current route is the root', async () => {
@@ -1895,6 +1986,115 @@ describe('Link', () => {
     )
     expect(errorText).toBeInTheDocument()
     expect(notFoundComponent).not.toBeCalled()
+  })
+
+  test('404 thrown in child will bubble up to the root with beforeLoad', async () => {
+    const rootRoute = createRootRoute({
+      notFoundComponent: () => <div>Root notFoundComponent</div>,
+      beforeLoad: () => ({ ok: true }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/nonExistingPost">Non existing post</Link>
+          </>
+        )
+      },
+    })
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '$postId',
+      params: {
+        parse: (p) => {
+          if (p.postId === 'nonExistingPost') {
+            throw new Error('Post not exists')
+          }
+          return {
+            postId: p.postId,
+          }
+        },
+        stringify: (p) => ({ postId: p.postId }),
+      },
+      onError: () => {
+        throw notFound()
+      },
+      component: () => <div>Existing Post</div>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', {
+      name: 'Non existing post',
+    })
+    await act(() => fireEvent.click(postsLink))
+
+    const errorText = await screen.findByText('Root notFoundComponent')
+    expect(errorText).toBeInTheDocument()
+  })
+
+  test('404 thrown in child will bubble up to the root with async loader', async () => {
+    const rootRoute = createRootRoute({
+      notFoundComponent: () => <div>Root notFoundComponent</div>,
+      loader: async () => {
+        await sleep(0)
+        return { ok: true }
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/nonExistingPost">Non existing post</Link>
+          </>
+        )
+      },
+    })
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '$postId',
+      params: {
+        parse: (p) => {
+          if (p.postId === 'nonExistingPost') {
+            throw new Error('Post not exists')
+          }
+          return {
+            postId: p.postId,
+          }
+        },
+        stringify: (p) => ({ postId: p.postId }),
+      },
+      onError: () => {
+        throw notFound()
+      },
+      component: () => <div>Existing Post</div>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', {
+      name: 'Non existing post',
+    })
+    await act(() => fireEvent.click(postsLink))
+
+    const errorText = await screen.findByText('Root notFoundComponent')
+    expect(errorText).toBeInTheDocument()
   })
 
   test('when navigating to /posts with params', async () => {

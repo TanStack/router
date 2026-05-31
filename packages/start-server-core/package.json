@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-server-core",
-  "version": "1.167.9",
+  "version": "1.169.8",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -59,11 +59,20 @@
         "default": "./dist/esm/createSsrRpc.js"
       }
     },
+    "./request-response": {
+      "import": {
+        "types": "./dist/esm/request-response.d.ts",
+        "default": "./dist/esm/request-response.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "imports": {
     "#tanstack-start-server-fn-resolver": {
       "default": "./dist/esm/fake-start-server-fn-resolver.js"
+    },
+    "#tanstack-start-plugin-adapters": {
+      "default": "./dist/esm/empty-plugin-adapters.js"
     }
   },
   "sideEffects": false,
@@ -82,18 +91,14 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-storage-context": "workspace:*",
-    "h3-v2": "npm:h3@2.0.1-rc.16",
-    "seroval": "^1.4.2"
+    "fetchdts": "^0.1.6",
+    "h3-v2": "npm:h3@2.0.1-rc.20",
+    "seroval": "^1.5.4"
   },
   "devDependencies": {
     "@standard-schema/spec": "^1.0.0",
-    "@tanstack/intent": "^0.0.14",
-    "cookie-es": "^2.0.0",
-    "fetchdts": "^0.1.6",
+    "cookie-es": "^3.0.0",
     "vite": "*",
     "@types/node": ">=20"
-  },
-  "bin": {
-    "intent": "./bin/intent.js"
   }
 }

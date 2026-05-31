@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/solid-router'
-
 import { Route as rootRouteImport } from './routes/root'
 import { Route as postsPostsRouteImport } from './routes/posts/posts'
 import { Route as layoutFirstLayoutRouteImport } from './routes/layout/first-layout'
@@ -253,115 +251,6 @@ declare module '@tanstack/solid-router' {
       parentRoute: typeof layoutSecondLayoutRoute
     }
   }
-}
-
-declare module './routes/home' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/layout/first-layout' {
-  const createFileRoute: CreateFileRoute<
-    '/_first',
-    FileRoutesByPath['/_first']['parentRoute'],
-    FileRoutesByPath['/_first']['id'],
-    FileRoutesByPath['/_first']['path'],
-    FileRoutesByPath['/_first']['fullPath']
-  >
-}
-declare module './routes/posts/posts' {
-  const createFileRoute: CreateFileRoute<
-    '/posts',
-    FileRoutesByPath['/posts']['parentRoute'],
-    FileRoutesByPath['/posts']['id'],
-    FileRoutesByPath['/posts']['path'],
-    FileRoutesByPath['/posts']['fullPath']
-  >
-}
-declare module './routes/file-based-subtree/hello/route' {
-  const createFileRoute: CreateFileRoute<
-    '/classic/hello',
-    FileRoutesByPath['/classic/hello']['parentRoute'],
-    FileRoutesByPath['/classic/hello']['id'],
-    FileRoutesByPath['/classic/hello']['path'],
-    FileRoutesByPath['/classic/hello']['fullPath']
-  >
-}
-declare module './routes/posts/posts-home' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/',
-    FileRoutesByPath['/posts/']['parentRoute'],
-    FileRoutesByPath['/posts/']['id'],
-    FileRoutesByPath['/posts/']['path'],
-    FileRoutesByPath['/posts/']['fullPath']
-  >
-}
-declare module './routes/layout/second-layout' {
-  const createFileRoute: CreateFileRoute<
-    '/_first/_second-layout',
-    FileRoutesByPath['/_first/_second-layout']['parentRoute'],
-    FileRoutesByPath['/_first/_second-layout']['id'],
-    FileRoutesByPath['/_first/_second-layout']['path'],
-    FileRoutesByPath['/_first/_second-layout']['fullPath']
-  >
-}
-declare module './routes/posts/posts-detail' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/$postId',
-    FileRoutesByPath['/posts/$postId']['parentRoute'],
-    FileRoutesByPath['/posts/$postId']['id'],
-    FileRoutesByPath['/posts/$postId']['path'],
-    FileRoutesByPath['/posts/$postId']['fullPath']
-  >
-}
-declare module './routes/file-based-subtree/hello/universe' {
-  const createFileRoute: CreateFileRoute<
-    '/classic/hello/universe',
-    FileRoutesByPath['/classic/hello/universe']['parentRoute'],
-    FileRoutesByPath['/classic/hello/universe']['id'],
-    FileRoutesByPath['/classic/hello/universe']['path'],
-    FileRoutesByPath['/classic/hello/universe']['fullPath']
-  >
-}
-declare module './routes/file-based-subtree/hello/world' {
-  const createFileRoute: CreateFileRoute<
-    '/classic/hello/world',
-    FileRoutesByPath['/classic/hello/world']['parentRoute'],
-    FileRoutesByPath['/classic/hello/world']['id'],
-    FileRoutesByPath['/classic/hello/world']['path'],
-    FileRoutesByPath['/classic/hello/world']['fullPath']
-  >
-}
-declare module './routes/file-based-subtree/hello/index' {
-  const createFileRoute: CreateFileRoute<
-    '/classic/hello/',
-    FileRoutesByPath['/classic/hello/']['parentRoute'],
-    FileRoutesByPath['/classic/hello/']['id'],
-    FileRoutesByPath['/classic/hello/']['path'],
-    FileRoutesByPath['/classic/hello/']['fullPath']
-  >
-}
-declare module './routes/a' {
-  const createFileRoute: CreateFileRoute<
-    '/_first/_second-layout/route-without-file/layout-a',
-    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['parentRoute'],
-    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['id'],
-    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['path'],
-    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['fullPath']
-  >
-}
-declare module './routes/b' {
-  const createFileRoute: CreateFileRoute<
-    '/_first/_second-layout/route-without-file/layout-b',
-    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['parentRoute'],
-    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['id'],
-    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['path'],
-    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['fullPath']
-  >
 }
 
 interface layoutSecondLayoutRouteChildren {

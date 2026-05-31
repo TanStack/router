@@ -1,5 +1,34 @@
 # @tanstack/router-devtools-core
 
+## 1.168.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- Updated dependencies [[`b1c061a`](https://github.com/TanStack/router/commit/b1c061aff9185cdf5fdc08c0136382a9dce0302f), [`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14)]:
+  - @tanstack/router-core@1.170.0
+
+## 1.167.3
+
+### Patch Changes
+
+- shorten internal non-minifiable store names for byte shaving ([#7152](https://github.com/TanStack/router/pull/7152))
+
+- Updated dependencies [[`6355bb7`](https://github.com/TanStack/router/commit/6355bb75f7637ba77f06a923c18fdaf37720bb48)]:
+  - @tanstack/router-core@1.168.11
+
+## 1.167.2
+
+### Patch Changes
+
+- migrate createStore > createAtom for simpler API ([#7150](https://github.com/TanStack/router/pull/7150))
+
+- Updated dependencies [[`459057c`](https://github.com/TanStack/router/commit/459057cd2d90cff20d20e51d4964b0a8c950555e)]:
+  - @tanstack/router-core@1.168.10
+
 ## 1.167.1
 
 ### Patch Changes

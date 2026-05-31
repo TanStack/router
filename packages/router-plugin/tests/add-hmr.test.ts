@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import { getReferenceRouteCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
+import { createRouteHmrStatement } from '../src/core/hmr'
 import { frameworks } from './constants'
 
 function getFrameworkDir(framework: string) {
@@ -69,36 +70,84 @@ describe('add-hmr works', () => {
     )
   })
 
-  it('initializes import.meta.hot.data before storing stable split components', () => {
-    const code = `
-import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({
-  component: component,
-})
-
-function component() {
-  return <div>posts</div>
-}
-`
+  it('supports configurable webpackHot HMR code generation', async () => {
+    const filename = 'arrow-function.tsx'
+    const framework = 'react'
+    const file = await readFile(
+      path.join(getFrameworkDir(framework).files, filename),
+    )
+    const code = file.toString()
 
     const compileResult = compileCodeSplitReferenceRoute({
       code,
-      filename: 'posts.tsx',
-      id: 'posts.tsx',
+      filename,
+      id: filename,
       addHmr: true,
+      hmrStyle: 'webpack',
       codeSplitGroupings: defaultCodeSplitGroupings,
-      targetFramework: 'react',
+      targetFramework: framework,
       compilerPlugins: getReferenceRouteCompilerPlugins({
-        targetFramework: 'react',
+        targetFramework: framework,
         addHmr: true,
+        hmrStyle: 'webpack',
       }),
     })
 
-    expect(compileResult?.code).toContain('import.meta.hot.data ??= {}')
-    expect(compileResult?.code).toContain(
-      'import.meta.hot.data["tsr-split-component:component"] = TSRSplitComponent',
+    await expect(compileResult?.code || code).toMatchFileSnapshot(
+      path.join(
+        getFrameworkDir(framework).snapshots,
+        filename.replace('.tsx', '@webpack-hot.tsx'),
+      ),
     )
+  })
+
+  it('supports configurable webpackHot unsplittable HMR generation', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'webpack',
+      targetFramework: 'react',
+    })
+    const output = JSON.stringify(statement)
+
+    expect(output).toContain('webpackHot')
+    expect(output).not.toContain('import.meta.hot')
+    expect(output).toContain('oldHasShellComponent')
+    expect(output).toContain('__routeContext')
+  })
+
+  it('supports configurable Vite unsplittable HMR generation', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'vite',
+      targetFramework: 'react',
+    })
+    const output = JSON.stringify(statement)
+
+    expect(output).toContain('MetaProperty')
+    expect(output).toContain('hot')
+    expect(output).not.toContain('webpackHot')
+    expect(output).toContain('newModule')
+  })
+
+  it('uses a generated route id fallback for Vite HMR', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'vite',
+      targetFramework: 'react',
+      routeId: '/posts',
+    })
+    const output = JSON.stringify(statement)
+
+    expect(output).toContain('tsr-route-id')
+    expect(output).toContain('/posts')
+  })
+
+  it('normalizes the generated root route id for Vite HMR', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'vite',
+      targetFramework: 'react',
+      routeId: '/__root',
+    })
+    const output = JSON.stringify(statement)
+
+    expect(output).toContain('__root__')
+    expect(output).not.toContain('/__root')
   })
 })

@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type { ParsedLocation } from '@tanstack/router-core'
 
@@ -25,22 +26,22 @@ function handleHashScrollWithLocation(_router: any, location: ParsedLocation) {
 export function Transitioner() {
   const router = useRouter()
   let mountLoadForRouter = { router, mounted: false }
-  const isLoading = Solid.createMemo(() => router.stores.isLoading.state)
+  const isLoading = Solid.createMemo(() => router.stores.isLoading.get())
+
+  if (isServer ?? router.isServer) {
+    return null
+  }
 
   const [isSolidTransitioning] = [() => false]
 
   // Track pending state changes
-  const hasPendingMatches = Solid.createMemo(
-    () => router.stores.hasPendingMatches.state,
-  )
+  const hasPending = Solid.createMemo(() => router.stores.hasPending.get())
 
   const isAnyPending = Solid.createMemo(
-    () => isLoading() || isSolidTransitioning() || hasPendingMatches(),
+    () => isLoading() || isSolidTransitioning() || hasPending(),
   )
 
-  const isPagePending = Solid.createMemo(
-    () => isLoading() || hasPendingMatches(),
-  )
+  const isPagePending = Solid.createMemo(() => isLoading() || hasPending())
 
   router.startTransition = (fn: () => void | Promise<void>) => {
     Solid.runWithOwner(null, fn)
@@ -114,14 +115,15 @@ export function Transitioner() {
       tryLoad()
     })
   })
+
   Solid.createRenderEffect(
     () =>
       [
         isLoading(),
         isPagePending(),
         isAnyPending(),
-        router.stores.location.state,
-        router.stores.resolvedLocation.state,
+        router.stores.location.get(),
+        router.stores.resolvedLocation.get(),
       ] as const,
     (
       [
@@ -166,17 +168,17 @@ export function Transitioner() {
 
         Solid.runWithOwner(null, () => {
           router.batch(() => {
-            router.stores.status.setState(() => 'idle')
+            router.stores.status.set('idle')
             // Use `loc` from the source tuple to avoid reading
-            // router.stores.location.state inside the effect callback
-            router.stores.resolvedLocation.setState(() => loc)
+            // router.stores.location.get() inside the effect callback
+            router.stores.resolvedLocation.set(loc)
           })
         })
 
         if (changeInfo.hrefChanged) {
           // Pass the already-captured location to avoid a reactive read
           // inside the effect callback (handleHashScroll would otherwise
-          // read router.stores.location.state which triggers a warning)
+          // read router.stores.location.get() which triggers a warning)
           handleHashScrollWithLocation(router, loc)
         }
       }

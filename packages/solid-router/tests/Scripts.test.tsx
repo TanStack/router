@@ -21,20 +21,16 @@ import {
 import { Scripts } from '../src/Scripts'
 import type { Manifest } from '@tanstack/router-core'
 
-const createTestManifest = (routeId: string) =>
+const createTestManifest = (
+  routeId: string,
+  options?: { scriptFormat?: Manifest['scriptFormat'] },
+) =>
   ({
+    ...(options?.scriptFormat ? { scriptFormat: options.scriptFormat } : {}),
     routes: {
       [routeId]: {
         preloads: ['/main.js'],
-        assets: [
-          {
-            tag: 'link',
-            attrs: {
-              rel: 'stylesheet',
-              href: '/main.css',
-            },
-          },
-        ],
+        css: ['/main.css'],
       },
     },
   }) satisfies Manifest
@@ -223,7 +219,88 @@ describe('ssr scripts', () => {
     ).toHaveLength(1)
   })
 
-  test('applies assetCrossOrigin to manifest assets and preloads', async () => {
+  test('keeps manifest stylesheet links mounted when preload counts change', async () => {
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <HeadContent />
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const aRoute = createRoute({
+      path: '/a',
+      getParentRoute: () => rootRoute,
+      component: () => <Link to="/b">Go to B</Link>,
+    })
+
+    const bRoute = createRoute({
+      path: '/b',
+      getParentRoute: () => rootRoute,
+      component: () => <Link to="/a">Go to A</Link>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([aRoute, bRoute]),
+    })
+
+    router.ssr = {
+      manifest: {
+        routes: {
+          [rootRoute.id]: {
+            preloads: ['/root.js'],
+            css: ['/main.css'],
+          },
+          [aRoute.id]: {
+            preloads: ['/a.js'],
+          },
+          [bRoute.id]: {
+            preloads: ['/b.js', '/b-child.js'],
+          },
+        },
+      },
+    }
+
+    await router.navigate({ to: '/a' })
+    await router.load()
+
+    render(() => <RouterProvider router={router} />)
+
+    const getStylesheetLink = () =>
+      Array.from(document.head.querySelectorAll('link[rel="stylesheet"]')).find(
+        (link) => link.getAttribute('href') === '/main.css',
+      )
+
+    await waitFor(() => {
+      expect(getStylesheetLink()).toBeInstanceOf(HTMLLinkElement)
+    })
+
+    const initialLink = getStylesheetLink()
+    expect(initialLink).toBeInstanceOf(HTMLLinkElement)
+
+    fireEvent.click(screen.getByRole('link', { name: 'Go to B' }))
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/b')
+    })
+
+    await screen.findByRole('link', { name: 'Go to A' })
+
+    expect(getStylesheetLink()).toBe(initialLink)
+    expect(
+      Array.from(
+        document.head.querySelectorAll('link[rel="stylesheet"]'),
+      ).filter((link) => link.getAttribute('href') === '/main.css'),
+    ).toHaveLength(1)
+  })
+
+  test('applies assetCrossOrigin to manifest stylesheets and preloads', async () => {
     const history = createTestBrowserHistory()
 
     const rootRoute = createRootRoute({
@@ -232,7 +309,7 @@ describe('ssr scripts', () => {
           <>
             <HeadContent
               assetCrossOrigin={{
-                modulepreload: 'anonymous',
+                script: 'anonymous',
                 stylesheet: 'use-credentials',
               }}
             />
@@ -278,6 +355,100 @@ describe('ssr scripts', () => {
         .querySelector('link[rel="modulepreload"]')
         ?.getAttribute('crossorigin'),
     ).toBe('anonymous')
+  })
+
+  test('renders runtime manifest inlineStyle', async () => {
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <HeadContent />
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: {
+        inlineStyle: {
+          attrs: { id: 'runtime-inline-style' },
+          children: '.runtime{color:red}',
+        },
+        routes: {
+          [rootRoute.id]: {},
+        },
+      },
+    }
+
+    await router.load()
+
+    render(() => <RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('style#runtime-inline-style'),
+      ).toBeTruthy()
+    })
+
+    expect(
+      document.head.querySelector('style#runtime-inline-style')?.textContent,
+    ).toBe('.runtime{color:red}')
+  })
+
+  test('renders preload as script links for iife manifest preloads', async () => {
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <HeadContent />
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id, { scriptFormat: 'iife' }),
+    }
+
+    await router.load()
+
+    render(() => <RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('link[rel="preload"][as="script"]'),
+      ).toBeTruthy()
+    })
+
+    expect(document.head.querySelector('link[rel="modulepreload"]')).toBeFalsy()
   })
 })
 

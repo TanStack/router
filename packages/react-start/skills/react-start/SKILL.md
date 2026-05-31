@@ -22,6 +22,8 @@ This skill builds on start-core. Read [start-core](../../../start-client-core/sk
 
 This skill covers the React-specific bindings, setup, and patterns for TanStack Start.
 
+For React Server Components patterns, see [react-start/server-components](./server-components/SKILL.md).
+
 > **CRITICAL**: All code is ISOMORPHIC by default. Loaders run on BOTH server and client. Use `createServerFn` for server-only logic.
 
 > **CRITICAL**: Do not confuse `@tanstack/react-start` with Next.js or Remix. They are completely different frameworks with different APIs.

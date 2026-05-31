@@ -15,8 +15,8 @@ export function CatchNotFound(props: {
   const router = useRouter()
 
   if (isServer ?? router.isServer) {
-    const pathname = router.stores.location.state.pathname
-    const status = router.stores.status.state
+    const pathname = router.stores.location.get().pathname
+    const status = router.stores.status.get()
     const resetKey = `not-found-${pathname}-${status}`
 
     return (

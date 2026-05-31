@@ -3,7 +3,7 @@ import { fetchAuth } from '~/library/server'
 
 const CONVEX_URL = import.meta.env.VITE_CONVEX_URL
 if (!CONVEX_URL) {
-  console.error('missing envar CONVEX_URL')
+  throw new Error('missing envar CONVEX_URL')
 }
 
 // Set up Convex client with auth

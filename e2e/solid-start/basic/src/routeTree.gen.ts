@@ -16,6 +16,7 @@ import { Route as RawStreamRouteImport } from './routes/raw-stream'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
+import { Route as DeferredWithoutSuspenseRouteImport } from './routes/deferred-without-suspense'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SpecialCharsRouteRouteImport } from './routes/specialChars/route'
@@ -102,6 +103,11 @@ const LinksRoute = LinksRouteImport.update({
 const InlineScriptsRoute = InlineScriptsRouteImport.update({
   id: '/inline-scripts',
   path: '/inline-scripts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeferredWithoutSuspenseRoute = DeferredWithoutSuspenseRouteImport.update({
+  id: '/deferred-without-suspense',
+  path: '/deferred-without-suspense',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeferredRoute = DeferredRouteImport.update({
@@ -386,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/deferred': typeof DeferredRoute
+  '/deferred-without-suspense': typeof DeferredWithoutSuspenseRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
@@ -443,6 +450,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/deferred': typeof DeferredRoute
+  '/deferred-without-suspense': typeof DeferredWithoutSuspenseRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
@@ -500,6 +508,7 @@ export interface FileRoutesById {
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
+  '/deferred-without-suspense': typeof DeferredWithoutSuspenseRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
@@ -562,6 +571,7 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/specialChars'
     | '/deferred'
+    | '/deferred-without-suspense'
     | '/inline-scripts'
     | '/links'
     | '/posts'
@@ -619,6 +629,7 @@ export interface FileRouteTypes {
     | '/'
     | '/specialChars'
     | '/deferred'
+    | '/deferred-without-suspense'
     | '/inline-scripts'
     | '/links'
     | '/scripts'
@@ -675,6 +686,7 @@ export interface FileRouteTypes {
     | '/specialChars'
     | '/_layout'
     | '/deferred'
+    | '/deferred-without-suspense'
     | '/inline-scripts'
     | '/links'
     | '/posts'
@@ -737,6 +749,7 @@ export interface RootRouteChildren {
   SpecialCharsRouteRoute: typeof SpecialCharsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
+  DeferredWithoutSuspenseRoute: typeof DeferredWithoutSuspenseRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
@@ -803,6 +816,13 @@ declare module '@tanstack/solid-router' {
       path: '/inline-scripts'
       fullPath: '/inline-scripts'
       preLoaderRoute: typeof InlineScriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deferred-without-suspense': {
+      id: '/deferred-without-suspense'
+      path: '/deferred-without-suspense'
+      fullPath: '/deferred-without-suspense'
+      preLoaderRoute: typeof DeferredWithoutSuspenseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/deferred': {
@@ -1377,6 +1397,7 @@ const rootRouteChildren: RootRouteChildren = {
   SpecialCharsRouteRoute: SpecialCharsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
+  DeferredWithoutSuspenseRoute: DeferredWithoutSuspenseRoute,
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,

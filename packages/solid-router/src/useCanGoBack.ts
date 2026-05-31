@@ -4,6 +4,6 @@ import { useRouter } from './useRouter'
 export function useCanGoBack() {
   const router = useRouter()
   return Solid.createMemo(
-    () => router.stores.location.state.state.__TSR_index !== 0,
+    () => router.stores.location.get().state.__TSR_index !== 0,
   )
 }

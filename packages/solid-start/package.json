@@ -92,7 +92,19 @@
         "default": "./dist/esm/client-only.js"
       }
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./hydration": {
+      "import": {
+        "types": "./dist/esm/hydration.d.ts",
+        "default": "./dist/esm/hydration.js"
+      }
+    },
+    "./plugin/rsbuild": {
+      "import": {
+        "types": "./dist/esm/plugin/rsbuild.d.ts",
+        "default": "./dist/esm/plugin/rsbuild.js"
+      }
+    }
   },
   "sideEffects": false,
   "files": [
@@ -116,18 +128,24 @@
   },
   "devDependencies": {
     "@solidjs/web": "2.0.0-beta.14",
-    "@tanstack/intent": "^0.0.14",
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",
     "solid-js": "2.0.0-beta.14",
-    "vite": "*"
+    "vite": "*",
+    "@rsbuild/core": "^2.0.8"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-0 <3.0.0",
     "solid-js": ">=2.0.0-0 <3.0.0",
-    "vite": ">=7.0.0"
+    "vite": ">=7.0.0",
+    "@rsbuild/core": "^2.0.0"
   },
-  "bin": {
-    "intent": "./bin/intent.js"
+  "peerDependenciesMeta": {
+    "@rsbuild/core": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
   }
 }

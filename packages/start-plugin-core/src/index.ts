@@ -1,6 +1,8 @@
 export type { TanStackStartInputConfig } from './schema'
-
-export { TanStackStartVitePluginCore } from './plugin'
-export { resolveViteId } from './utils'
-
-export { VITE_ENVIRONMENT_NAMES } from './constants'
+export type {
+  StartCompilerImportTransform,
+  StartCompilerTransformCandidate,
+  StartCompilerTransformContext,
+  TanStackStartCoreOptions,
+} from './types'
+export { START_ENVIRONMENT_NAMES } from './constants'

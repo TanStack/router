@@ -57,6 +57,15 @@ export default defineConfig({
 
 Deploy: `npx wrangler login && pnpm run deploy`
 
+> **Worker env is per-request.** Cloudflare Workers inject env vars at request time. `process.env.X` at module scope evaluates to `undefined` even on the server. The Cloudflare-canonical way to read env (including from module scope) is the `cloudflare:workers` env binding:
+>
+> ```ts
+> import { env } from 'cloudflare:workers'
+> const apiHost = env.API_HOST
+> ```
+>
+> Or read `process.env.X` per-request inside `.handler()` / middleware `.server()`. See [Cloudflare's environment-variables docs](https://developers.cloudflare.com/workers/configuration/environment-variables/) and [start-core/execution-model](../execution-model/SKILL.md).
+
 ### Netlify
 
 ```bash

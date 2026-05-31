@@ -49,7 +49,6 @@ export type BaseConfig = z.infer<typeof baseConfigSchema>
 export const configSchema = baseConfigSchema.extend({
   generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   disableTypes: z.boolean().optional().default(false),
-  verboseFileRoutes: z.boolean().optional(),
   addExtensions: z
     .union([z.boolean(), z.string()])
     .optional()
@@ -61,7 +60,7 @@ export const configSchema = baseConfigSchema.extend({
   routeTreeFileFooter: z
     .union([
       z.array(z.string()).optional().default([]),
-      z.function().returns(z.array(z.string())),
+      z.custom<() => Array<string>>((value) => typeof value === 'function'),
     ])
     .optional(),
   autoCodeSplitting: z.boolean().optional(),

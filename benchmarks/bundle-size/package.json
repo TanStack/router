@@ -25,7 +25,9 @@
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
-    "vite-plugin-solid": "^3.0.0-next.5"
+    "vite": "^8.0.14",
+    "vite-plugin-solid": "^3.0.0-next.5",
+    "@rsbuild/core": "^2.0.8",
+    "@rsbuild/plugin-react": "^2.0.0"
   }
 }

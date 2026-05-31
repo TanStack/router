@@ -32,7 +32,7 @@ export const renderRouterToString = ({
       html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
     }
     return new Response(`<!DOCTYPE html>${html}`, {
-      status: router.stores.statusCode.state,
+      status: router.stores.statusCode.get(),
       headers: responseHeaders,
     })
   } catch (error) {

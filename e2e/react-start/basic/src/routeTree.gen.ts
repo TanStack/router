@@ -14,7 +14,9 @@ import { Route as TypeOnlyReexportRouteImport } from './routes/type-only-reexpor
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as RawStreamRouteImport } from './routes/raw-stream'
+import { Route as PrimitiveBeforeloadErrorRouteImport } from './routes/primitive-beforeload-error'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as PlainTsTypeAssertionRouteImport } from './routes/plain-ts-type-assertion'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as DeferredRouteImport } from './routes/deferred'
@@ -103,9 +105,20 @@ const RawStreamRoute = RawStreamRouteImport.update({
   path: '/raw-stream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrimitiveBeforeloadErrorRoute =
+  PrimitiveBeforeloadErrorRouteImport.update({
+    id: '/primitive-beforeload-error',
+    path: '/primitive-beforeload-error',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlainTsTypeAssertionRoute = PlainTsTypeAssertionRouteImport.update({
+  id: '/plain-ts-type-assertion',
+  path: '/plain-ts-type-assertion',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LinksRoute = LinksRouteImport.update({
@@ -443,7 +456,9 @@ export interface FileRoutesByFullPath {
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
+  '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
   '/posts': typeof PostsRouteWithChildren
+  '/primitive-beforeload-error': typeof PrimitiveBeforeloadErrorRoute
   '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
@@ -509,6 +524,8 @@ export interface FileRoutesByTo {
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
+  '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
+  '/primitive-beforeload-error': typeof PrimitiveBeforeloadErrorRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
   '/type-only-reexport': typeof TypeOnlyReexportRoute
@@ -572,7 +589,9 @@ export interface FileRoutesById {
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
+  '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
   '/posts': typeof PostsRouteWithChildren
+  '/primitive-beforeload-error': typeof PrimitiveBeforeloadErrorRoute
   '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
@@ -643,7 +662,9 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/inline-scripts'
     | '/links'
+    | '/plain-ts-type-assertion'
     | '/posts'
+    | '/primitive-beforeload-error'
     | '/raw-stream'
     | '/scripts'
     | '/stream'
@@ -709,6 +730,8 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/inline-scripts'
     | '/links'
+    | '/plain-ts-type-assertion'
+    | '/primitive-beforeload-error'
     | '/scripts'
     | '/stream'
     | '/type-only-reexport'
@@ -771,7 +794,9 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/inline-scripts'
     | '/links'
+    | '/plain-ts-type-assertion'
     | '/posts'
+    | '/primitive-beforeload-error'
     | '/raw-stream'
     | '/scripts'
     | '/stream'
@@ -842,7 +867,9 @@ export interface RootRouteChildren {
   DeferredRoute: typeof DeferredRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
+  PlainTsTypeAssertionRoute: typeof PlainTsTypeAssertionRoute
   PostsRoute: typeof PostsRouteWithChildren
+  PrimitiveBeforeloadErrorRoute: typeof PrimitiveBeforeloadErrorRoute
   RawStreamRoute: typeof RawStreamRouteWithChildren
   ScriptsRoute: typeof ScriptsRoute
   StreamRoute: typeof StreamRoute
@@ -894,11 +921,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RawStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/primitive-beforeload-error': {
+      id: '/primitive-beforeload-error'
+      path: '/primitive-beforeload-error'
+      fullPath: '/primitive-beforeload-error'
+      preLoaderRoute: typeof PrimitiveBeforeloadErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plain-ts-type-assertion': {
+      id: '/plain-ts-type-assertion'
+      path: '/plain-ts-type-assertion'
+      fullPath: '/plain-ts-type-assertion'
+      preLoaderRoute: typeof PlainTsTypeAssertionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/links': {
@@ -1598,7 +1639,9 @@ const rootRouteChildren: RootRouteChildren = {
   DeferredRoute: DeferredRoute,
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
+  PlainTsTypeAssertionRoute: PlainTsTypeAssertionRoute,
   PostsRoute: PostsRouteWithChildren,
+  PrimitiveBeforeloadErrorRoute: PrimitiveBeforeloadErrorRoute,
   RawStreamRoute: RawStreamRouteWithChildren,
   ScriptsRoute: ScriptsRoute,
   StreamRoute: StreamRoute,

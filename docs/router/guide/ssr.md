@@ -8,6 +8,8 @@ title: SSR
 
 Server Side Rendering (SSR) is the process of rendering a component on the server and sending the HTML markup to the client. The client then hydrates the markup into a fully interactive component.
 
+> **TanStack Router is not Next.js, Remix, or React Router DOM.** When generating routes or components, do **not** use `src/pages/`, `app/layout.tsx`, `_app/index.tsx`, `getServerSideProps`, `getStaticProps`, Remix-style `loader`/`action` exports, or imports from `react-router-dom` or `next/`. TanStack uses `src/routes/` with `createFileRoute`, `Link`/`useNavigate`/`redirect` from `@tanstack/react-router`, and (for Start) `createServerFn` from `@tanstack/<framework>-start`. Wrong-framework code typically fails to build or produces conflicting `/` routes at runtime.
+
 There are usually two different flavors of SSR to be considered:
 
 - Non-streaming SSR

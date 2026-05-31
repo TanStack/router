@@ -1,6 +1,32 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import {
+  singleRawStreamFn,
+  multipleRawStreamsFn,
+  jsonEndsFirstFn,
+  rawEndsFirstFn,
+  largeBinaryFn,
+  mixedStreamingFn,
+  textHintPureTextFn,
+  textHintPureBinaryFn,
+  textHintMixedFn,
+  binaryHintTextFn,
+  binaryHintBinaryFn,
+  interleavedStreamsFn,
+  burstPauseBurstFn,
+  threeStreamsFn,
+  emptyStreamFn,
+  errorStreamFn,
+  lateRawStreamFn,
+  multipleLateStreamsFn,
+  mixedImmediateLateFn,
+  createStreamConsumer,
+  consumeBinaryStream,
+  collectBytes,
+  compareBytes,
+  TEST7_EXPECTED,
+  TEST8_EXPECTED,
+  TEST9_EXPECTED,
   TEST10_EXPECTED,
   TEST11_EXPECTED,
   TEST12_STREAM_A_EXPECTED,
@@ -9,29 +35,10 @@ import {
   TEST14_STREAM_A_EXPECTED,
   TEST14_STREAM_B_EXPECTED,
   TEST14_STREAM_C_EXPECTED,
-  TEST7_EXPECTED,
-  TEST8_EXPECTED,
-  TEST9_EXPECTED,
-  binaryHintBinaryFn,
-  binaryHintTextFn,
-  burstPauseBurstFn,
-  collectBytes,
-  compareBytes,
-  consumeBinaryStream,
-  createStreamConsumer,
-  emptyStreamFn,
-  errorStreamFn,
-  interleavedStreamsFn,
-  jsonEndsFirstFn,
-  largeBinaryFn,
-  mixedStreamingFn,
-  multipleRawStreamsFn,
-  rawEndsFirstFn,
-  singleRawStreamFn,
-  textHintMixedFn,
-  textHintPureBinaryFn,
-  textHintPureTextFn,
-  threeStreamsFn,
+  LATE_STREAM_EXPECTED,
+  LATE_STREAM_A_EXPECTED,
+  LATE_STREAM_B_EXPECTED,
+  IMMEDIATE_STREAM_EXPECTED,
 } from '../../raw-stream-fns'
 
 export const Route = createFileRoute('/raw-stream/client-call')({
@@ -548,6 +555,109 @@ function ClientCallTests() {
         >
           {JSON.stringify(results.test16)}
         </pre>
+      </div>
+
+      {/* Late RawStream Tests Section */}
+      <h2 className="mt-8">Late RawStream Tests (RPC)</h2>
+      <p className="text-gray-600">
+        These tests verify RawStreams wrapped in Promises (discovered after
+        initial serialization phase).
+      </p>
+
+      {/* Test 17: Single Late RawStream */}
+      <div className="border p-4 rounded">
+        <h3 data-testid="test17-title">Test 17: Single Late RawStream</h3>
+        <button
+          data-testid="test17-btn"
+          onClick={() =>
+            runTest('test17', lateRawStreamFn, async (result) => {
+              // lateData is a Promise<RawStream>, await it first
+              const rawStream = await result.lateData
+              const bytes = await collectBytes(rawStream)
+              const comparison = compareBytes(bytes, LATE_STREAM_EXPECTED)
+              return {
+                message: result.message,
+                ...comparison,
+              }
+            })
+          }
+          disabled={loading.test17}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          {loading.test17 ? 'Loading...' : 'Run Test'}
+        </button>
+        <pre data-testid="test17-result">{JSON.stringify(results.test17)}</pre>
+      </div>
+
+      {/* Test 18: Multiple Late RawStreams */}
+      <div className="border p-4 rounded">
+        <h3 data-testid="test18-title">Test 18: Multiple Late RawStreams</h3>
+        <button
+          data-testid="test18-btn"
+          onClick={() =>
+            runTest('test18', multipleLateStreamsFn, async (result) => {
+              // Both are Promise<RawStream>
+              const [rawStreamA, rawStreamB] = await Promise.all([
+                result.streamA,
+                result.streamB,
+              ])
+              const [bytesA, bytesB] = await Promise.all([
+                collectBytes(rawStreamA),
+                collectBytes(rawStreamB),
+              ])
+              const comparisonA = compareBytes(bytesA, LATE_STREAM_A_EXPECTED)
+              const comparisonB = compareBytes(bytesB, LATE_STREAM_B_EXPECTED)
+              return {
+                message: result.message,
+                streamA: comparisonA,
+                streamB: comparisonB,
+              }
+            })
+          }
+          disabled={loading.test18}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          {loading.test18 ? 'Loading...' : 'Run Test'}
+        </button>
+        <pre data-testid="test18-result">{JSON.stringify(results.test18)}</pre>
+      </div>
+
+      {/* Test 19: Mixed Immediate and Late RawStreams */}
+      <div className="border p-4 rounded">
+        <h3 data-testid="test19-title">
+          Test 19: Mixed Immediate and Late RawStreams
+        </h3>
+        <button
+          data-testid="test19-btn"
+          onClick={() =>
+            runTest('test19', mixedImmediateLateFn, async (result) => {
+              // immediate is RawStream (direct), late is Promise<RawStream>
+              const [immediateBytes, lateStream] = await Promise.all([
+                collectBytes(result.immediate),
+                result.late,
+              ])
+              const lateBytes = await collectBytes(lateStream)
+              const immediateComparison = compareBytes(
+                immediateBytes,
+                IMMEDIATE_STREAM_EXPECTED,
+              )
+              const lateComparison = compareBytes(
+                lateBytes,
+                LATE_STREAM_EXPECTED,
+              )
+              return {
+                message: result.message,
+                immediate: immediateComparison,
+                late: lateComparison,
+              }
+            })
+          }
+          disabled={loading.test19}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          {loading.test19 ? 'Loading...' : 'Run Test'}
+        </button>
+        <pre data-testid="test19-result">{JSON.stringify(results.test19)}</pre>
       </div>
     </div>
   )

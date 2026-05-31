@@ -10,13 +10,13 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.168.10",
-    "@tanstack/react-router-devtools": "^1.166.11",
-    "@tanstack/react-start": "^1.167.16",
+    "@tanstack/react-router": "^1.170.10",
+    "@tanstack/react-router-devtools": "^1.167.0",
+    "@tanstack/react-start": "^1.168.18",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^2.6.0",
-    "zod": "^3.24.2"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -26,6 +26,6 @@
     "@vitejs/plugin-react": "^6.0.1",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0"
+    "vite": "^8.0.14"
   }
 }
