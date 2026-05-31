@@ -7,6 +7,10 @@ export type {
   ConfigInput,
   ConfigOutput,
   CodeSplittingOptions,
+  DeleteNodeCallback,
+  DeleteNodeCallbackContext,
+  DeleteNodeCallbackResult,
+  DeleteNodeReplacement,
   DeletableNodes,
   HmrOptions,
 } from './core/config'

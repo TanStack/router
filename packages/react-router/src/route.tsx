@@ -19,6 +19,7 @@ import type {
   AnyRoute,
   AnyRouter,
   ConstrainLiteral,
+  DefaultLifecycleDehydrateFn,
   ErrorComponentProps,
   NotFoundError,
   NotFoundRouteProps,
@@ -47,6 +48,9 @@ import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
 import type { UseRouteContextRoute } from './useRouteContext'
 import type { LinkComponentRoute } from './link'
+
+type NormalizeRouteContext<T> = [T] extends [never] ? AnyContext : T
+type NormalizeRouteLoader<T> = [T] extends [never] ? undefined : T
 
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
@@ -182,7 +186,7 @@ export class Route<
   in out TSearchValidator = undefined,
   in out TParams = ResolveParams<TPath>,
   in out TRouterContext = AnyContext,
-  in out TRouteContextFn = AnyContext,
+  in out TContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
   in out TLoaderDeps extends Record<string, any> = {},
   in out TLoaderFn = undefined,
@@ -202,7 +206,7 @@ export class Route<
     TSearchValidator,
     TParams,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
@@ -223,7 +227,7 @@ export class Route<
       TSearchValidator,
       TParams,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
@@ -250,7 +254,7 @@ export class Route<
       TLoaderDeps,
       TLoaderFn,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TSSR,
       TServerMiddlewares,
@@ -336,13 +340,17 @@ export function createRoute<
   >,
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TChildren = unknown,
   TSSR = unknown,
   const TServerMiddlewares = unknown,
+  THandlers = undefined,
+  TContextDehydrateFn = DefaultLifecycleDehydrateFn<TContextFn>,
+  TBeforeLoadDehydrateFn = DefaultLifecycleDehydrateFn<TBeforeLoadFn>,
+  TLoaderDehydrateFn = DefaultLifecycleDehydrateFn<TLoaderFn>,
 >(
   options: RouteOptions<
     TRegister,
@@ -356,10 +364,14 @@ export function createRoute<
     TLoaderDeps,
     TLoaderFn,
     AnyContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TSSR,
-    TServerMiddlewares
+    TServerMiddlewares,
+    THandlers,
+    TContextDehydrateFn,
+    TBeforeLoadDehydrateFn,
+    TLoaderDehydrateFn
   >,
 ): Route<
   TRegister,
@@ -371,13 +383,15 @@ export function createRoute<
   TSearchValidator,
   TParams,
   AnyContext,
-  TRouteContextFn,
-  TBeforeLoadFn,
+  NormalizeRouteContext<TContextFn>,
+  NormalizeRouteContext<TBeforeLoadFn>,
   TLoaderDeps,
-  TLoaderFn,
+  NormalizeRouteLoader<TLoaderFn>,
   TChildren,
+  unknown,
   TSSR,
-  TServerMiddlewares
+  TServerMiddlewares,
+  THandlers
 > {
   return new Route<
     TRegister,
@@ -389,13 +403,15 @@ export function createRoute<
     TSearchValidator,
     TParams,
     AnyContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
+    NormalizeRouteContext<TContextFn>,
+    NormalizeRouteContext<TBeforeLoadFn>,
     TLoaderDeps,
-    TLoaderFn,
+    NormalizeRouteLoader<TLoaderFn>,
     TChildren,
+    unknown,
     TSSR,
-    TServerMiddlewares
+    TServerMiddlewares,
+    THandlers
   >(
     // TODO: Help us TypeChris, you're our only hope!
     options as any,
@@ -403,6 +419,7 @@ export function createRoute<
 }
 
 export type AnyRootRoute = RootRoute<
+  any,
   any,
   any,
   any,
@@ -428,37 +445,48 @@ export type AnyRootRoute = RootRoute<
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
     TRegister = Register,
-    TRouteContextFn = AnyContext,
+    TContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TSearchValidator = undefined,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderFn = undefined,
     TSSR = unknown,
     TServerMiddlewares = unknown,
+    TContextDehydrateFn = DefaultLifecycleDehydrateFn<TContextFn>,
+    TBeforeLoadDehydrateFn = DefaultLifecycleDehydrateFn<TBeforeLoadFn>,
+    TLoaderDehydrateFn = DefaultLifecycleDehydrateFn<TLoaderFn>,
   >(
     options?: RootRouteOptions<
       TRegister,
       TSearchValidator,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
       TSSR,
-      TServerMiddlewares
+      TServerMiddlewares,
+      undefined,
+      TContextDehydrateFn,
+      TBeforeLoadDehydrateFn,
+      TLoaderDehydrateFn
     >,
   ) => {
     return createRootRoute<
       TRegister,
       TSearchValidator,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
       TSSR,
-      TServerMiddlewares
-    >(options)
+      TServerMiddlewares,
+      undefined,
+      TContextDehydrateFn,
+      TBeforeLoadDehydrateFn,
+      TLoaderDehydrateFn
+    >(options as any)
   }
 }
 
@@ -471,7 +499,7 @@ export class RootRoute<
   in out TRegister = unknown,
   in out TSearchValidator = undefined,
   in out TRouterContext = {},
-  in out TRouteContextFn = AnyContext,
+  in out TContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
   in out TLoaderDeps extends Record<string, any> = {},
   in out TLoaderFn = undefined,
@@ -485,7 +513,7 @@ export class RootRoute<
     TRegister,
     TSearchValidator,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
@@ -500,7 +528,7 @@ export class RootRoute<
       TRegister,
       TSearchValidator,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
@@ -519,7 +547,7 @@ export class RootRoute<
       TRegister,
       TSearchValidator,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
@@ -594,34 +622,40 @@ export function createRootRoute<
   TRegister = Register,
   TSearchValidator = undefined,
   TRouterContext = {},
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
   const TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextDehydrateFn = DefaultLifecycleDehydrateFn<TContextFn>,
+  TBeforeLoadDehydrateFn = DefaultLifecycleDehydrateFn<TBeforeLoadFn>,
+  TLoaderDehydrateFn = DefaultLifecycleDehydrateFn<TLoaderFn>,
 >(
   options?: RootRouteOptions<
     TRegister,
     TSearchValidator,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
     TSSR,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    TContextDehydrateFn,
+    TBeforeLoadDehydrateFn,
+    TLoaderDehydrateFn
   >,
 ): RootRoute<
   TRegister,
   TSearchValidator,
   TRouterContext,
-  TRouteContextFn,
-  TBeforeLoadFn,
+  NormalizeRouteContext<TContextFn>,
+  NormalizeRouteContext<TBeforeLoadFn>,
   TLoaderDeps,
-  TLoaderFn,
+  NormalizeRouteLoader<TLoaderFn>,
   unknown,
   unknown,
   TSSR,
@@ -632,16 +666,16 @@ export function createRootRoute<
     TRegister,
     TSearchValidator,
     TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
+    NormalizeRouteContext<TContextFn>,
+    NormalizeRouteContext<TBeforeLoadFn>,
     TLoaderDeps,
-    TLoaderFn,
+    NormalizeRouteLoader<TLoaderFn>,
     unknown,
     unknown,
     TSSR,
     TServerMiddlewares,
     THandlers
-  >(options)
+  >(options as any)
 }
 
 export function createRouteMask<
@@ -677,7 +711,7 @@ export class NotFoundRoute<
   TRegister,
   TParentRoute extends AnyRootRoute,
   TRouterContext = AnyContext,
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TSearchValidator = undefined,
   TLoaderDeps extends Record<string, any> = {},
@@ -695,7 +729,7 @@ export class NotFoundRoute<
   TSearchValidator,
   {},
   TRouterContext,
-  TRouteContextFn,
+  TContextFn,
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,
@@ -717,7 +751,7 @@ export class NotFoundRoute<
         TLoaderDeps,
         TLoaderFn,
         TRouterContext,
-        TRouteContextFn,
+        TContextFn,
         TBeforeLoadFn,
         TSSR,
         TServerMiddlewares

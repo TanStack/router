@@ -51,7 +51,7 @@ export const Route = createFileRoute('/search/searchPlaceholder')({
   component: SearchComponent,
   validateSearch: search,
   loaderDeps: ({ search }) => ({ search }),
-  context: (ctx) => ({
+  onLoad: (ctx) => ({
     searchQueryOptions: queryOptions({
       queryKey: ['searchPlaceholder'],
       queryFn: () => fn({ data: ctx.deps.search }),

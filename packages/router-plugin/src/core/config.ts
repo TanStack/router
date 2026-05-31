@@ -8,6 +8,7 @@ import type {
   RegisteredRouter,
   RouteIds,
 } from '@tanstack/router-core'
+import type * as t from '@babel/types'
 import type { CodeSplitGroupings } from './constants'
 import type { ReferenceRouteCompilerPlugin } from './code-splitter/plugins'
 
@@ -99,14 +100,42 @@ const codeSplittingOptionsSchema = z.object({
     >((value) => typeof value === 'function')
     .optional(),
   defaultBehavior: splitGroupingsSchema.optional(),
-  deleteNodes: z.array(z.string()).optional(),
+  deleteNodes: z
+    .array(
+      z.custom<DeletableNodes>(
+        (value) => typeof value === 'string' || typeof value === 'function',
+      ),
+    )
+    .optional(),
   addHmr: z.boolean().optional().default(true),
 })
 
 type FileRouteKeys = keyof (Parameters<
   CreateFileRoute<any, any, any, any, any>
 >[0] & {})
-export type DeletableNodes = FileRouteKeys | (string & {})
+export type DeleteNodeReplacement = t.ObjectProperty | t.ObjectMethod
+export type DeleteNodeCallbackResult =
+  | boolean
+  | void
+  | DeleteNodeReplacement
+  | {
+      action: 'delete'
+    }
+  | {
+      action: 'replace'
+      node: DeleteNodeReplacement
+    }
+export type DeleteNodeCallbackContext = {
+  key: string
+  path: ReadonlyArray<string>
+  dotPath: string
+  prop: t.ObjectProperty | t.ObjectMethod
+  parent: t.ObjectExpression
+}
+export type DeleteNodeCallback = (
+  ctx: DeleteNodeCallbackContext,
+) => DeleteNodeCallbackResult
+export type DeletableNodes = FileRouteKeys | (string & {}) | DeleteNodeCallback
 
 export const configSchema = generatorConfigSchema.extend({
   enableRouteGeneration: z.boolean().optional(),

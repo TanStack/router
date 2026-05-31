@@ -470,6 +470,7 @@ export function createStartHandler<TRegister = Register>(
           origin: router.options.origin ?? origin,
           ...{
             defaultSsr: requestStartOptions.defaultSsr,
+            defaultDehydrate: requestStartOptions.defaultDehydrate,
             serializationAdapters: [
               ...requestStartOptions.serializationAdapters,
               ...(router.options.serializationAdapters || []),

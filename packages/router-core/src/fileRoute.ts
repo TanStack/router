@@ -3,6 +3,7 @@ import type {
   AnyContext,
   AnyPathParams,
   AnyRoute,
+  DefaultLifecycleDehydrateFn,
   FileBaseRouteOptions,
   ResolveParams,
   Route,
@@ -33,7 +34,7 @@ export interface FileRoutesByPath {
   // }
 }
 
-export interface FileRouteOptions<
+export type FileRouteOptions<
   TRegister,
   TFilePath extends string,
   TParentRoute extends AnyRoute,
@@ -42,44 +43,48 @@ export interface FileRouteOptions<
   TFullPath extends RouteConstraints['TFullPath'],
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
->
-  extends
-    FileBaseRouteOptions<
-      TRegister,
-      TParentRoute,
-      TId,
-      TPath,
-      TSearchValidator,
-      TParams,
-      TLoaderDeps,
-      TLoaderFn,
-      AnyContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
-      AnyContext,
-      TSSR,
-      TServerMiddlewares,
-      THandlers
-    >,
-    UpdatableRouteOptions<
-      TParentRoute,
-      TId,
-      TFullPath,
-      TParams,
-      TSearchValidator,
-      TLoaderFn,
-      TLoaderDeps,
-      AnyContext,
-      TRouteContextFn,
-      TBeforeLoadFn
-    > {}
+  TContextDehydrateFn = DefaultLifecycleDehydrateFn<TContextFn>,
+  TBeforeLoadDehydrateFn = DefaultLifecycleDehydrateFn<TBeforeLoadFn>,
+  TLoaderDehydrateFn = DefaultLifecycleDehydrateFn<TLoaderFn>,
+> = FileBaseRouteOptions<
+  TRegister,
+  TParentRoute,
+  TId,
+  TPath,
+  TSearchValidator,
+  TParams,
+  TLoaderDeps,
+  TLoaderFn,
+  AnyContext,
+  TContextFn,
+  TBeforeLoadFn,
+  AnyContext,
+  TSSR,
+  TServerMiddlewares,
+  THandlers,
+  TContextDehydrateFn,
+  TBeforeLoadDehydrateFn,
+  TLoaderDehydrateFn
+> &
+  UpdatableRouteOptions<
+    NoInfer<TParentRoute>,
+    NoInfer<TId>,
+    NoInfer<TFullPath>,
+    NoInfer<TParams>,
+    NoInfer<TSearchValidator>,
+    NoInfer<TLoaderFn>,
+    NoInfer<TLoaderDeps>,
+    AnyContext,
+    NoInfer<TContextFn>,
+    NoInfer<TBeforeLoadFn>
+  >
 
 export type CreateFileRoute<
   TFilePath extends string,
@@ -91,13 +96,16 @@ export type CreateFileRoute<
   TRegister = Register,
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextDehydrateFn = DefaultLifecycleDehydrateFn<TContextFn>,
+  TBeforeLoadDehydrateFn = DefaultLifecycleDehydrateFn<TBeforeLoadFn>,
+  TLoaderDehydrateFn = DefaultLifecycleDehydrateFn<TLoaderFn>,
 >(
   options?: FileRouteOptions<
     TRegister,
@@ -108,13 +116,16 @@ export type CreateFileRoute<
     TFullPath,
     TSearchValidator,
     TParams,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
     TSSR,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    TContextDehydrateFn,
+    TBeforeLoadDehydrateFn,
+    TLoaderDehydrateFn
   >,
 ) => Route<
   TRegister,
@@ -126,7 +137,7 @@ export type CreateFileRoute<
   TSearchValidator,
   TParams,
   AnyContext,
-  TRouteContextFn,
+  TContextFn,
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,

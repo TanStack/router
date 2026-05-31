@@ -314,7 +314,7 @@ export type GlobalFetchRequestContext = Register extends {
   : AnyContext
 
 export type GlobalServerRequestContext<TRegister> = TRegister extends {
-  config: StartInstanceOptions<any, any, infer TRequestMiddlewares, any>
+  config: StartInstanceOptions<any, any, any, infer TRequestMiddlewares, any>
 }
   ? AssignAllMiddleware<TRequestMiddlewares, 'allServerContext'>
   : AnyContext
@@ -351,7 +351,7 @@ export type AssignAllServerFnContext<
 >
 
 type GlobalServerFnContext<TRegister> = TRegister extends {
-  config: StartInstanceOptions<any, any, any, infer TFunctionMiddlewares>
+  config: StartInstanceOptions<any, any, any, any, infer TFunctionMiddlewares>
 }
   ? AssignAllMiddleware<TFunctionMiddlewares, 'allServerContext'>
   : AnyContext

@@ -28,6 +28,12 @@ import type {
   CompileCodeSplitReferenceRouteOptions,
   ReferenceRouteCompilerPlugin,
 } from './plugins'
+import type {
+  DeleteNodeCallback,
+  DeleteNodeCallbackResult,
+  DeleteNodeReplacement,
+  DeletableNodes,
+} from '../config'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
 import type { SplitNodeMeta } from './types'
@@ -105,6 +111,217 @@ const SPLIT_NODES_CONFIG = new Map<SplitRouteIdentNodes, SplitNodeMeta>([
 ])
 
 const KNOWN_SPLIT_ROUTE_IDENTS = [...SPLIT_NODES_CONFIG.keys()] as const
+
+type ObjectPropertyPath = ReadonlyArray<string>
+type CompiledDeleteNodes = {
+  paths: Array<ObjectPropertyPath>
+  callbacks: Array<DeleteNodeCallback>
+}
+
+function getObjectMemberKeyName(
+  prop: t.ObjectExpression['properties'][number],
+): string | undefined {
+  if (!t.isObjectProperty(prop) && !t.isObjectMethod(prop)) {
+    return undefined
+  }
+
+  if (prop.computed) {
+    return undefined
+  }
+
+  if (t.isIdentifier(prop.key)) {
+    return prop.key.name
+  }
+
+  if (t.isStringLiteral(prop.key)) {
+    return prop.key.value
+  }
+
+  return undefined
+}
+
+function compileObjectExpressionDeleteNodes(
+  deleteNodes: ReadonlySet<DeletableNodes> | undefined,
+): CompiledDeleteNodes {
+  const compiledDeleteNodes: CompiledDeleteNodes = {
+    paths: [],
+    callbacks: [],
+  }
+
+  if (!deleteNodes?.size) {
+    return compiledDeleteNodes
+  }
+
+  deleteNodes.forEach((deleteNode) => {
+    if (typeof deleteNode === 'function') {
+      compiledDeleteNodes.callbacks.push(deleteNode)
+      return
+    }
+
+    const pathSegments = deleteNode.split('.').filter(Boolean)
+
+    if (pathSegments.length > 0) {
+      compiledDeleteNodes.paths.push(pathSegments)
+    }
+  })
+
+  return compiledDeleteNodes
+}
+
+function deleteObjectExpressionPropertyPath(
+  objectExpression: t.ObjectExpression,
+  pathSegments: ObjectPropertyPath,
+  segmentIndex = 0,
+): boolean {
+  const segment = pathSegments[segmentIndex]
+
+  if (!segment) {
+    return false
+  }
+
+  let modified = false
+  objectExpression.properties = objectExpression.properties.filter((prop) => {
+    const key = getObjectMemberKeyName(prop)
+
+    if (key !== segment) {
+      return true
+    }
+
+    if (segmentIndex === pathSegments.length - 1) {
+      modified = true
+      return false
+    }
+
+    if (t.isObjectProperty(prop) && t.isObjectExpression(prop.value)) {
+      modified =
+        deleteObjectExpressionPropertyPath(
+          prop.value,
+          pathSegments,
+          segmentIndex + 1,
+        ) || modified
+    }
+
+    return true
+  })
+
+  return modified
+}
+
+function deleteObjectExpressionPaths(
+  objectExpression: t.ObjectExpression,
+  paths: ReadonlyArray<ObjectPropertyPath>,
+): boolean {
+  let modified = false
+
+  paths.forEach((pathSegments) => {
+    modified =
+      deleteObjectExpressionPropertyPath(objectExpression, pathSegments) ||
+      modified
+  })
+
+  return modified
+}
+
+function getDeleteNodeCallbackReplacement(
+  result: DeleteNodeCallbackResult,
+): DeleteNodeReplacement | undefined {
+  if (!result || result === true) {
+    return undefined
+  }
+
+  if (
+    typeof result === 'object' &&
+    'type' in result &&
+    (result.type === 'ObjectProperty' || result.type === 'ObjectMethod')
+  ) {
+    return result
+  }
+
+  if (typeof result === 'object' && result.action === 'replace') {
+    return result.node
+  }
+
+  return undefined
+}
+
+function shouldDeleteFromCallbackResult(
+  result: DeleteNodeCallbackResult,
+): boolean {
+  return (
+    result === true ||
+    (typeof result === 'object' &&
+      result !== null &&
+      'action' in result &&
+      result.action === 'delete')
+  )
+}
+
+function applyObjectExpressionDeleteNodeCallbacks(
+  objectExpression: t.ObjectExpression,
+  callbacks: ReadonlyArray<DeleteNodeCallback>,
+  parentPath: ObjectPropertyPath = [],
+): boolean {
+  let modified = false
+  const nextProperties: t.ObjectExpression['properties'] = []
+
+  objectExpression.properties.forEach((prop) => {
+    const key = getObjectMemberKeyName(prop)
+
+    if (!key || (!t.isObjectProperty(prop) && !t.isObjectMethod(prop))) {
+      nextProperties.push(prop)
+      return
+    }
+
+    const path = [...parentPath, key]
+    let nextProp: t.ObjectProperty | t.ObjectMethod = prop
+    let shouldDelete = false
+
+    callbacks.forEach((callback) => {
+      if (shouldDelete) {
+        return
+      }
+
+      const result = callback({
+        key,
+        path,
+        dotPath: path.join('.'),
+        prop: nextProp,
+        parent: objectExpression,
+      })
+
+      if (shouldDeleteFromCallbackResult(result)) {
+        modified = true
+        shouldDelete = true
+        return
+      }
+
+      const replacement = getDeleteNodeCallbackReplacement(result)
+      if (replacement) {
+        modified = true
+        nextProp = replacement
+      }
+    })
+
+    if (shouldDelete) {
+      return
+    }
+
+    if (t.isObjectProperty(nextProp) && t.isObjectExpression(nextProp.value)) {
+      modified =
+        applyObjectExpressionDeleteNodeCallbacks(
+          nextProp.value,
+          callbacks,
+          path,
+        ) || modified
+    }
+
+    nextProperties.push(nextProp)
+  })
+
+  objectExpression.properties = nextProperties
+
+  return modified
+}
 
 function addSplitSearchParamToFilename(
   filename: string,
@@ -390,6 +607,7 @@ export function compileCodeSplitReferenceRoute(
       ),
     ),
   ]
+  const deleteNodes = compileObjectExpressionDeleteNodes(opts.deleteNodes)
 
   let createRouteFn: string
 
@@ -480,19 +698,19 @@ export function compileCodeSplitReferenceRoute(
                   }
                 })
 
-                if (opts.deleteNodes && opts.deleteNodes.size > 0) {
-                  routeOptions.properties = routeOptions.properties.filter(
-                    (prop) => {
-                      if (t.isObjectProperty(prop)) {
-                        const key = getObjectPropertyKeyName(prop)
-                        if (key && opts.deleteNodes!.has(key as any)) {
-                          modified = true
-                          return false
-                        }
-                      }
-                      return true
-                    },
-                  )
+                if (deleteNodes.paths.length > 0) {
+                  modified =
+                    deleteObjectExpressionPaths(
+                      routeOptions,
+                      deleteNodes.paths,
+                    ) || modified
+                }
+                if (deleteNodes.callbacks.length > 0) {
+                  modified =
+                    applyObjectExpressionDeleteNodeCallbacks(
+                      routeOptions,
+                      deleteNodes.callbacks,
+                    ) || modified
                 }
                 if (!splittableCreateRouteFns.includes(createRouteFn)) {
                   opts.compilerPlugins?.forEach((plugin) => {

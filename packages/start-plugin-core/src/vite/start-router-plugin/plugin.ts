@@ -11,6 +11,10 @@ import { prerenderRoutesPlugin } from '../../start-router-plugin/generator-plugi
 import { buildRouteTreeFileFooterFromConfig } from '../../start-router-plugin/route-tree-footer'
 import { pruneServerOnlySubtrees } from '../../start-router-plugin/pruneServerOnlySubtrees'
 import { SERVER_PROP } from '../../start-router-plugin/constants'
+import {
+  getRouteOptionDeleteNodesForClient,
+  getRouteOptionDeleteNodesForServer,
+} from '../../start-router-plugin/route-option-delete-nodes'
 import type { GetConfigFn } from '../../types'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
 import type {
@@ -163,7 +167,9 @@ export function tanStackStartRouter(
         ...routerConfig,
         codeSplittingOptions: {
           ...routerConfig.codeSplittingOptions,
-          deleteNodes: ['ssr', 'server', 'headers'],
+          deleteNodes: getRouteOptionDeleteNodesForClient(
+            routerConfig.codeSplittingOptions?.deleteNodes,
+          ),
           addHmr: true,
         },
         plugin: {
@@ -177,6 +183,9 @@ export function tanStackStartRouter(
         ...routerConfig,
         codeSplittingOptions: {
           ...routerConfig.codeSplittingOptions,
+          deleteNodes: getRouteOptionDeleteNodesForServer(
+            routerConfig.codeSplittingOptions?.deleteNodes,
+          ),
           addHmr: false,
         },
         plugin: {

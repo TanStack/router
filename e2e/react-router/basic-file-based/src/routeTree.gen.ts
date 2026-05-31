@@ -780,9 +780,9 @@ const NonNestedDeepBazBarFooQuxRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/fullpath-test': typeof FullpathTestRouteRouteWithChildren
+  '/fullpath-test': typeof FullpathTestLayoutRouteRouteWithChildren
   '/non-nested': typeof NonNestedRouteRouteWithChildren
-  '/pathless-layout': typeof PathlessLayoutRouteRouteWithChildren
+  '/pathless-layout': typeof PathlessLayoutLayoutRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
   '/anchor': typeof AnchorRoute
