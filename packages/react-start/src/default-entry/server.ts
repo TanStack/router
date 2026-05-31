@@ -2,7 +2,14 @@ import {
   createStartHandler,
   defaultStreamHandler,
 } from '@tanstack/react-start/server'
-import type { Register } from '@tanstack/react-router'
+// `Register` is read from `@tanstack/react-start` (the same module users augment
+// with `server.requestContext`) rather than `@tanstack/react-router`. Once a
+// `@tanstack/react-router` `Register` augmentation exists (e.g. the universal
+// `router` registration in `router.tsx`), react-router's `Register` becomes a
+// separately-merged interface that no longer sees the start augmentation. Reading
+// it from `@tanstack/react-start` keeps `handler.fetch`'s context type aligned with
+// the registered `server.requestContext` and with the server middleware chain.
+import type { Register } from '@tanstack/react-start'
 import type { RequestHandler } from '@tanstack/react-start/server'
 
 const fetch = createStartHandler(defaultStreamHandler)

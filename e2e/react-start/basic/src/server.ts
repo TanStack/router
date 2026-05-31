@@ -4,8 +4,18 @@ import handler from '@tanstack/react-start/server-entry'
 
 console.log("[server-entry]: using custom server entry in 'src/server.ts'")
 
+declare module '@tanstack/react-start' {
+  interface Register {
+    server: {
+      requestContext: {
+        globalFoo: string
+      }
+    }
+  }
+}
+
 export default {
   fetch(request: Request) {
-    return handler.fetch(request)
+    return handler.fetch(request, { context: { globalFoo: '123' } })
   },
 }
