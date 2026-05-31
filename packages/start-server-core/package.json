@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-server-core",
-  "version": "1.169.4",
+  "version": "1.169.8",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -57,6 +57,12 @@
       "import": {
         "types": "./dist/esm/createSsrRpc.d.ts",
         "default": "./dist/esm/createSsrRpc.js"
+      }
+    },
+    "./request-response": {
+      "import": {
+        "types": "./dist/esm/request-response.d.ts",
+        "default": "./dist/esm/request-response.js"
       }
     },
     "./package.json": "./package.json"

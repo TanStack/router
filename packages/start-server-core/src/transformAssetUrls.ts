@@ -1,5 +1,4 @@
 import {
-  getManifestScriptFormat,
   resolveManifestAssetLink,
   resolveManifestCssLink,
 } from '@tanstack/router-core'
@@ -9,8 +8,6 @@ import type {
   Awaitable,
   ManifestAssetLink,
   ManifestCssLink,
-  ManifestScript,
-  ScriptFormat,
   ServerManifest,
 } from '@tanstack/router-core'
 
@@ -322,30 +319,6 @@ export function resolveTransformAssetsConfig(
   }
 }
 
-export interface StartManifestWithClientEntry {
-  manifest: ServerManifest
-  clientEntry: string
-}
-
-/**
- * Builds the client entry `<script>` tag from a (possibly transformed) client
- * entry URL.
- */
-export function buildClientEntryScriptTag(
-  clientEntry: string,
-  scriptFormat: ScriptFormat = 'module',
-  crossOrigin?: AssetCrossOrigin,
-): ManifestScript {
-  return {
-    attrs: {
-      ...(scriptFormat === 'module' ? { type: 'module' } : {}),
-      async: true,
-      src: clientEntry,
-      ...(crossOrigin ? { crossOrigin } : {}),
-    },
-  }
-}
-
 type AssignableManifestLink = ManifestAssetLink | ManifestCssLink
 
 function assignManifestLink(
@@ -378,60 +351,15 @@ function assignManifestLink(
   return nextLink
 }
 
-function appendUniqueManifestAssetLink(
-  target: Array<ManifestAssetLink> | undefined,
-  link: ManifestAssetLink,
-) {
-  const href = typeof link === 'string' ? link : link.href
-
-  if (target) {
-    for (const item of target) {
-      if ((typeof item === 'string' ? item : item.href) === href) {
-        return target
-      }
-    }
-  }
-
-  return [...(target ?? []), link]
-}
-
-function addClientEntryToManifest(
-  manifest: ServerManifest,
-  clientEntry: string,
-) {
-  const rootRoute = manifest.routes.__root__ ?? {}
-  const rootScripts = rootRoute.scripts ?? []
-  const scripts = rootScripts.some(
-    (script) => script.attrs?.src === clientEntry,
-  )
-    ? rootScripts
-    : [
-        ...rootScripts,
-        buildClientEntryScriptTag(
-          clientEntry,
-          getManifestScriptFormat(manifest),
-        ),
-      ]
-
-  manifest.routes = {
-    ...manifest.routes,
-    __root__: {
-      ...rootRoute,
-      preloads: appendUniqueManifestAssetLink(rootRoute.preloads, clientEntry),
-      scripts,
-    },
-  }
-}
-
 export async function transformManifestAssets(
-  source: StartManifestWithClientEntry,
+  source: ServerManifest,
   transformFn: TransformAssetsFn,
   _opts?: {
     clone?: boolean
     inlineCss?: boolean
   },
 ): Promise<ServerManifest> {
-  const manifest = structuredClone(source.manifest)
+  const manifest = structuredClone(source)
   const inlineCssEnabled = _opts?.inlineCss !== false
   const scriptTransforms = new Map<
     string,
@@ -461,8 +389,6 @@ export async function transformManifestAssets(
       transformFn,
     )
   }
-
-  addClientEntryToManifest(manifest, source.clientEntry)
 
   for (const route of Object.values(manifest.routes)) {
     if (route.preloads?.length) {
@@ -524,28 +450,24 @@ export async function transformManifestAssets(
 }
 
 /**
- * Builds a final ServerManifest from a StartManifestWithClientEntry without any
- * URL transforms. Used when no transformAssets option is provided.
+ * Builds a final ServerManifest without URL transforms. Used when no
+ * transformAssets option is provided.
  *
  * Returns a new manifest object so the cached base manifest is never mutated.
  */
-export function buildManifestWithClientEntry(
-  source: StartManifestWithClientEntry,
+export function buildManifest(
+  source: ServerManifest,
   opts?: { inlineCss?: boolean },
 ): ServerManifest {
   const manifest: ServerManifest = {
-    ...(source.manifest.scriptFormat
-      ? { scriptFormat: source.manifest.scriptFormat }
-      : {}),
-    ...(opts?.inlineCss !== false && source.manifest.inlineCss
-      ? { inlineCss: structuredClone(source.manifest.inlineCss) }
+    ...(source.scriptFormat ? { scriptFormat: source.scriptFormat } : {}),
+    ...(opts?.inlineCss !== false && source.inlineCss
+      ? { inlineCss: structuredClone(source.inlineCss) }
       : {}),
     routes: {
-      ...source.manifest.routes,
+      ...source.routes,
     },
   }
-
-  addClientEntryToManifest(manifest, source.clientEntry)
 
   return manifest
 }

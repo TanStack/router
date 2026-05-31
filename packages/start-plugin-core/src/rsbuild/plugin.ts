@@ -11,6 +11,7 @@ import { escapeRegExp, normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
 import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
+  RSBUILD_CLIENT_ASSETS_DIR,
   RSBUILD_ENVIRONMENT_NAMES,
   RSBUILD_RSC_LAYERS,
   createRsbuildEnvironmentPlan,
@@ -299,7 +300,7 @@ export function tanStackStartRsbuild(
         ssrIsProvider,
         serializationAdapters: corePluginOpts.serializationAdapters,
         getDevClientEntryUrl: (publicBase: string) =>
-          joinURL(publicBase, 'static/js/index.js'),
+          joinURL(publicBase, RSBUILD_CLIENT_ASSETS_DIR, 'js/index.js'),
         rscEnabled,
         scriptFormat,
       })
@@ -507,9 +508,12 @@ export function tanStackStartRsbuild(
             // Add ServerPlugin with HMR callback
             config.plugins.push(
               new rscPlugins.ServerPlugin({
-                clientEntryName: 'index',
-                runtimeEntryName: 'index',
-                injectSsrModulesToEntries: ['index'],
+                cssLink: {
+                  precedence: false,
+                  props: {
+                    'data-rsc-css-href': '',
+                  },
+                },
                 onServerComponentChanges: () => {
                   // Send rsc:update to connected clients for HMR
                   devServerRef?.sockWrite('custom', {

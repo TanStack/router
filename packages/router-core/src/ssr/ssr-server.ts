@@ -16,7 +16,7 @@ import { makeSsrSerovalPlugin } from './serializer/transformer'
 import type { LRUCache } from '../lru-cache'
 import type { DehydratedMatch, DehydratedRouter } from './types'
 import type { AnySerializationAdapter } from './serializer/transformer'
-import type { AnyRouter } from '../router'
+import type { AnyRouter, ServerSsr } from '../router'
 import type { AnyRouteMatch } from '../Matches'
 import type {
   Manifest,
@@ -25,21 +25,6 @@ import type {
   RouterManagedTag,
   ServerManifest,
 } from '../manifest'
-
-declare module '../router' {
-  interface ServerSsr {
-    setRenderFinished: () => void
-    cleanup: () => void
-  }
-  interface RouterEvents {
-    onInjectedHtml: {
-      type: 'onInjectedHtml'
-    }
-    onSerializationFinished: {
-      type: 'onSerializationFinished'
-    }
-  }
-}
 
 const SCOPE_ID = 'tsr'
 
@@ -78,14 +63,15 @@ const INITIAL_SCRIPTS = [
 ]
 
 class ScriptBuffer {
-  private router: AnyRouter | undefined
+  private injectScript: ((script: string) => void) | undefined
   private _queue: Array<string>
   private _scriptBarrierLifted = false
   private _cleanedUp = false
-  private _pendingMicrotask = false
+  private _microtaskVersion = 0
+  private _pendingMicrotaskVersion = 0
 
-  constructor(router: AnyRouter) {
-    this.router = router
+  constructor(injectScript: (script: string) => void) {
+    this.injectScript = injectScript
     // Copy INITIAL_SCRIPTS to avoid mutating the shared array
     this._queue = INITIAL_SCRIPTS.slice()
   }
@@ -93,31 +79,39 @@ class ScriptBuffer {
   enqueue(script: string) {
     if (this._cleanedUp) return
     this._queue.push(script)
-    // If barrier is lifted, schedule injection (if not already scheduled)
-    if (this._scriptBarrierLifted && !this._pendingMicrotask) {
-      this._pendingMicrotask = true
-      queueMicrotask(() => {
-        this._pendingMicrotask = false
-        this.injectBufferedScripts()
-      })
+    if (this._scriptBarrierLifted) {
+      this.scheduleInjectBufferedScripts()
     }
   }
 
   liftBarrier() {
     if (this._scriptBarrierLifted || this._cleanedUp) return
     this._scriptBarrierLifted = true
-    if (this._queue.length > 0 && !this._pendingMicrotask) {
-      this._pendingMicrotask = true
-      queueMicrotask(() => {
-        this._pendingMicrotask = false
-        this.injectBufferedScripts()
-      })
+    if (this._queue.length > 0) {
+      this.scheduleInjectBufferedScripts()
     }
+  }
+
+  scheduleInjectBufferedScripts() {
+    if (this._pendingMicrotaskVersion !== 0) return
+    const pendingVersion = ++this._microtaskVersion
+    this._pendingMicrotaskVersion = pendingVersion
+    queueMicrotask(() => {
+      if (this._pendingMicrotaskVersion !== pendingVersion) return
+      this._pendingMicrotaskVersion = 0
+      this.injectBufferedScripts()
+    })
+  }
+
+  clearPendingMicrotask() {
+    if (this._pendingMicrotaskVersion === 0) return
+    this._pendingMicrotaskVersion = 0
+    this._microtaskVersion++
   }
 
   /**
    * Flushes any pending scripts synchronously.
-   * Call this before emitting onSerializationFinished to ensure all scripts are injected.
+   * Call this before signaling serialization finished to ensure all scripts are injected.
    *
    * IMPORTANT: Only injects if the barrier has been lifted. Before the barrier is lifted,
    * scripts should remain in the queue so takeBufferedScripts() can retrieve them
@@ -125,16 +119,17 @@ class ScriptBuffer {
   flush() {
     if (!this._scriptBarrierLifted) return
     if (this._cleanedUp) return
-    this._pendingMicrotask = false
-    const scriptsToInject = this.takeAll()
-    if (scriptsToInject && this.router?.serverSsr) {
-      this.router.serverSsr.injectScript(scriptsToInject)
-    }
+    this.clearPendingMicrotask()
+    this.injectBufferedScripts()
   }
 
   takeAll() {
-    const bufferedScripts = this._queue
-    this._queue = []
+    return this.takeScripts(this._queue.length)
+  }
+
+  takeScripts(count: number) {
+    if (count <= 0) return undefined
+    const bufferedScripts = this._queue.splice(0, count)
     if (bufferedScripts.length === 0) {
       return undefined
     }
@@ -146,20 +141,25 @@ class ScriptBuffer {
     return bufferedScripts.join(';') + ';document.currentScript.remove()'
   }
 
+  hasPending() {
+    return this._queue.length > 0
+  }
+
   injectBufferedScripts() {
     if (this._cleanedUp) return
     // Early return if queue is empty (avoids unnecessary takeAll() call)
     if (this._queue.length === 0) return
     const scriptsToInject = this.takeAll()
-    if (scriptsToInject && this.router?.serverSsr) {
-      this.router.serverSsr.injectScript(scriptsToInject)
+    if (scriptsToInject) {
+      this.injectScript?.(scriptsToInject)
     }
   }
 
   cleanup() {
     this._cleanedUp = true
+    this.clearPendingMicrotask()
     this._queue = []
-    this.router = undefined
+    this.injectScript = undefined
   }
 }
 
@@ -444,25 +444,48 @@ export function attachRouterServerSsrUtils({
   }
   let _dehydrated = false
   let _serializationFinished = false
+  let streamFastPathReserved = false
   const renderFinishedListeners: Array<() => void> = []
+  const injectedHtmlListeners: Array<() => void> = []
   const serializationFinishedListeners: Array<() => void> = []
-  const scriptBuffer = new ScriptBuffer(router)
+  const cleanupListeners: Array<() => void> = []
+  let cleanupStarted = false
   let injectedHtmlBuffer = ''
 
-  router.serverSsr = {
+  const callListeners = (listeners: Array<() => void>, errorPrefix: string) => {
+    const snapshot = listeners.slice()
+    for (const l of snapshot) {
+      try {
+        l()
+      } catch (err) {
+        console.error(`${errorPrefix}:`, err)
+      }
+    }
+  }
+
+  const removeListener = (
+    listeners: Array<() => void>,
+    listener: () => void,
+  ) => {
+    const index = listeners.indexOf(listener)
+    if (index >= 0) listeners.splice(index, 1)
+  }
+
+  const scriptBuffer = new ScriptBuffer((script) => {
+    serverSsr.injectScript(script)
+  })
+
+  const serverSsr: ServerSsr = {
     injectHtml: (html: string) => {
-      if (!html) return
+      if (!html || cleanupStarted) return
       // Buffer the HTML so it can be retrieved via takeBufferedHtml()
       injectedHtmlBuffer += html
-      // Emit event to notify subscribers that new HTML is available
-      router.emit({
-        type: 'onInjectedHtml',
-      })
+      callListeners(injectedHtmlListeners, 'SSR injected HTML listener error')
     },
     injectScript: (script: string) => {
-      if (!script) return
+      if (!script || cleanupStarted) return
       const html = `<script${router.options.ssr?.nonce ? ` nonce='${router.options.ssr.nonce}'` : ''}>${script}</script>`
-      router.serverSsr!.injectHtml(html)
+      serverSsr.injectHtml(html)
     },
     dehydrate: async (opts?: { requestAssets?: ManifestRouteAssets }) => {
       if (_dehydrated) {
@@ -537,17 +560,32 @@ export function attachRouterServerSsrUtils({
             .concat(defaultSerovalPlugins)
         : defaultSerovalPlugins
 
+      let serializationCompleteSignaled = false
       const signalSerializationComplete = () => {
+        if (serializationCompleteSignaled || cleanupStarted) return
+        serializationCompleteSignaled = true
         _serializationFinished = true
-        try {
-          serializationFinishedListeners.forEach((l) => l())
-          router.emit({ type: 'onSerializationFinished' })
-        } catch (err) {
-          console.error('Serialization listener error:', err)
-        } finally {
-          serializationFinishedListeners.length = 0
-          renderFinishedListeners.length = 0
+
+        const listeners = serializationFinishedListeners.slice()
+        serializationFinishedListeners.length = 0
+
+        for (const l of listeners) {
+          try {
+            l()
+          } catch (err) {
+            console.error('Serialization listener error:', err)
+          }
         }
+      }
+
+      const finishScriptSerialization = () => {
+        if (serializationCompleteSignaled || cleanupStarted) return
+        scriptBuffer.enqueue(GLOBAL_TSR + '.e()')
+        // Must synchronously notify injected HTML listeners before signaling
+        // completion; otherwise the held </body> tail could flush ahead of the
+        // end script.
+        scriptBuffer.flush()
+        signalSerializationComplete()
       }
 
       crossSerializeStream(dehydratedRouter, {
@@ -565,15 +603,11 @@ export function attachRouterServerSsrUtils({
           if (err && (err as any).stack) {
             console.error((err as any).stack)
           }
-          signalSerializationComplete()
+          finishScriptSerialization()
         },
         scopeId: SCOPE_ID,
         onDone: () => {
-          scriptBuffer.enqueue(GLOBAL_TSR + '.e()')
-          // Flush all pending scripts synchronously before signaling completion
-          // This ensures all scripts are injected before onSerializationFinished is emitted
-          scriptBuffer.flush()
-          signalSerializationComplete()
+          finishScriptSerialization()
         },
       })
     },
@@ -583,23 +617,65 @@ export function attachRouterServerSsrUtils({
     isSerializationFinished() {
       return _serializationFinished
     },
-    onRenderFinished: (listener) => renderFinishedListeners.push(listener),
-    onSerializationFinished: (listener) =>
-      serializationFinishedListeners.push(listener),
-    setRenderFinished: () => {
-      // Wrap in try-catch to ensure scriptBuffer.liftBarrier() is always called
-      try {
-        renderFinishedListeners.forEach((l) => l())
-      } catch (err) {
-        console.error('Error in render finished listener:', err)
-      } finally {
-        // Clear listeners after calling them to prevent memory leaks
-        renderFinishedListeners.length = 0
+    reserveStreamFastPath() {
+      if (
+        !cleanupStarted &&
+        _serializationFinished &&
+        !streamFastPathReserved &&
+        renderFinishedListeners.length === 0 &&
+        !injectedHtmlBuffer &&
+        !scriptBuffer.hasPending()
+      ) {
+        streamFastPathReserved = true
+        return true
       }
+      return false
+    },
+    onInjectedHtml: (listener) => {
+      if (cleanupStarted) return () => {}
+      injectedHtmlListeners.push(listener)
+      return () => removeListener(injectedHtmlListeners, listener)
+    },
+    onRenderFinished: (listener) => {
+      if (cleanupStarted || streamFastPathReserved) return
+      renderFinishedListeners.push(listener)
+    },
+    onSerializationFinished: (listener) => {
+      if (cleanupStarted) return () => {}
+      if (_serializationFinished && !cleanupStarted) {
+        try {
+          listener()
+        } catch (err) {
+          console.error('Serialization listener error:', err)
+        }
+        return () => {}
+      }
+      serializationFinishedListeners.push(listener)
+      return () => removeListener(serializationFinishedListeners, listener)
+    },
+    onCleanup: (listener) => {
+      if (cleanupStarted) return
+      cleanupListeners.push(listener)
+    },
+    setRenderFinished: () => {
+      if (cleanupStarted) return
       scriptBuffer.liftBarrier()
+      const listeners = renderFinishedListeners.slice()
+      renderFinishedListeners.length = 0
+      for (const l of listeners) {
+        try {
+          l()
+        } catch (err) {
+          console.error('Error in render finished listener:', err)
+        }
+      }
+      if (_serializationFinished) {
+        scriptBuffer.flush()
+      }
     },
     takeBufferedScripts() {
       const scripts = scriptBuffer.takeAll()
+      if (!scripts) return undefined
       const serverBufferedScript: RouterManagedTag = {
         tag: 'script',
         attrs: {
@@ -623,14 +699,36 @@ export function attachRouterServerSsrUtils({
       return buffered
     },
     cleanup() {
-      // Guard against multiple cleanup calls
-      if (!router.serverSsr) return
+      // Guard against multiple/reentrant cleanup calls. A listener could call
+      // cleanup() again indirectly; snapshot + clear before invoking so each
+      // listener runs exactly once and reentry is a no-op.
+      if (cleanupStarted) return
+      cleanupStarted = true
+      const listeners = cleanupListeners.slice()
+      cleanupListeners.length = 0
+      for (const l of listeners) {
+        try {
+          l()
+        } catch (err) {
+          console.error('Error in SSR cleanup listener:', err)
+        }
+      }
       renderFinishedListeners.length = 0
+      injectedHtmlListeners.length = 0
       serializationFinishedListeners.length = 0
       injectedHtmlBuffer = ''
       scriptBuffer.cleanup()
       router.serverSsr = undefined
     },
+  }
+
+  router.serverSsr = serverSsr
+  for (const listener of router.serverSsrLifecycle?.onServerSsrAttach ?? []) {
+    try {
+      listener(serverSsr)
+    } catch (err) {
+      console.error('SSR attach listener error:', err)
+    }
   }
 }
 

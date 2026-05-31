@@ -22,6 +22,11 @@
           "toolchain": "vite",
           "mode": "ssr",
           "shards": 6
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr",
+          "shards": 6
         }
       ]
     }
@@ -35,7 +40,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@rsbuild/core": "^2.0.1",
+    "@rsbuild/core": "^2.0.8",
     "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/eslint-plugin-start": "workspace:^",
     "@tanstack/router-e2e-utils": "workspace:^",

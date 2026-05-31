@@ -72,14 +72,27 @@ function getScriptFormatProperty(scriptFormat: ScriptFormat): string {
   return scriptFormat === 'iife' ? `  scriptFormat: 'iife',\n` : ''
 }
 
+function getEntryScriptAttrs(
+  entryUrl: string,
+  scriptFormat: ScriptFormat,
+): string {
+  return scriptFormat === 'module'
+    ? `{ type: 'module', async: true, src: '${entryUrl}' }`
+    : `{ async: true, src: '${entryUrl}' }`
+}
+
 function generateManifestModuleDev(
   devClientEntryUrl: string,
   scriptFormat: ScriptFormat,
 ): string {
   const scriptFormatProperty = getScriptFormatProperty(scriptFormat)
   return `const fallbackManifest = {
-${scriptFormatProperty}  routes: {},
-  clientEntry: '${devClientEntryUrl}',
+${scriptFormatProperty}  routes: {
+    __root__: {
+      preloads: ['${devClientEntryUrl}'],
+      scripts: [{ attrs: ${getEntryScriptAttrs(devClientEntryUrl, scriptFormat)} }],
+    },
+  },
 }
 export const tsrStartManifest = () => globalThis[${JSON.stringify(DEV_START_MANIFEST_GLOBAL)}] ?? fallbackManifest`
 }
@@ -217,7 +230,7 @@ export interface RegisterVirtualModulesOptions {
   /**
    * Get the URL at which the rsbuild dev server serves the client entry JS.
    * Called lazily inside modifyRspackConfig when getConfig() is available.
-   * Example return: '/static/js/index.js'
+   * Example return: '/assets/js/index.js'
    */
   getDevClientEntryUrl: (publicBase: string) => string
   /** Whether RSC virtual modules should be registered. */
@@ -420,7 +433,7 @@ export function registerVirtualModules(
         : `export function createFromReadableStream() { throw new Error('RSC browser decode is only available in the client environment') }
 export function createFromFetch() { throw new Error('RSC browser decode is only available in the client environment') }`
       content[rscPaths.rscSsrDecode] = isServerEnv
-        ? `export * from '@tanstack/react-start/rsbuild/ssr-decode'`
+        ? `export { setOnClientReference, createFromReadableStream } from '@tanstack/react-start/rsbuild/ssr-decode'`
         : `export function setOnClientReference() {}
 export function createFromReadableStream() { throw new Error('RSC SSR decode is only available in the server environment') }`
     }

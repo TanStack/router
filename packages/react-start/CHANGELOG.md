@@ -1,5 +1,55 @@
 # @tanstack/react-start
 
+## 1.168.18
+
+### Patch Changes
+
+- [#7509](https://github.com/TanStack/router/pull/7509) [`9cb7a00`](https://github.com/TanStack/router/commit/9cb7a003e6e5fa3706711870c7b10a5266356e3b) - feat(rsbuild): add RSC support
+
+- Updated dependencies [[`9cb7a00`](https://github.com/TanStack/router/commit/9cb7a003e6e5fa3706711870c7b10a5266356e3b)]:
+  - @tanstack/start-plugin-core@1.171.10
+  - @tanstack/start-server-core@1.169.8
+  - @tanstack/react-start-rsc@0.1.17
+  - @tanstack/react-start-server@1.167.13
+
+## 1.168.17
+
+### Patch Changes
+
+- [#7505](https://github.com/TanStack/router/pull/7505) [`2f53749`](https://github.com/TanStack/router/commit/2f5374945e2138559a51464f45a5152eae67e1dd) - Preserve primitive values thrown from beforeLoad error handling.
+
+- Updated dependencies [[`2f53749`](https://github.com/TanStack/router/commit/2f5374945e2138559a51464f45a5152eae67e1dd)]:
+  - @tanstack/react-router@1.170.10
+  - @tanstack/react-start-client@1.168.7
+  - @tanstack/react-start-rsc@0.1.16
+  - @tanstack/react-start-server@1.167.12
+  - @tanstack/start-client-core@1.170.6
+  - @tanstack/start-plugin-core@1.171.9
+  - @tanstack/start-server-core@1.169.7
+
+## 1.168.16
+
+### Patch Changes
+
+- Updated dependencies [[`d1997b6`](https://github.com/TanStack/router/commit/d1997b66d7c24c1d64772bb8bab5caf9c6d9cc48)]:
+  - @tanstack/start-server-core@1.169.6
+  - @tanstack/react-router@1.170.9
+  - @tanstack/react-start-rsc@0.1.15
+  - @tanstack/react-start-server@1.167.11
+  - @tanstack/start-plugin-core@1.171.8
+  - @tanstack/react-start-client@1.168.6
+  - @tanstack/start-client-core@1.170.5
+
+## 1.168.15
+
+### Patch Changes
+
+- Updated dependencies [[`9c09bca`](https://github.com/TanStack/router/commit/9c09bca59e9613e9a6fd9b7149b0737898e705d6)]:
+  - @tanstack/start-plugin-core@1.171.7
+  - @tanstack/start-server-core@1.169.5
+  - @tanstack/react-start-rsc@0.1.14
+  - @tanstack/react-start-server@1.167.10
+
 ## 1.168.14
 
 ### Patch Changes

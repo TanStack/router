@@ -1,5 +1,17 @@
 # @tanstack/router-core
 
+## 1.171.8
+
+### Patch Changes
+
+- [#7505](https://github.com/TanStack/router/pull/7505) [`2f53749`](https://github.com/TanStack/router/commit/2f5374945e2138559a51464f45a5152eae67e1dd) - Preserve primitive values thrown from beforeLoad error handling.
+
+## 1.171.7
+
+### Patch Changes
+
+- [#7497](https://github.com/TanStack/router/pull/7497) [`d1997b6`](https://github.com/TanStack/router/commit/d1997b66d7c24c1d64772bb8bab5caf9c6d9cc48) - fix streaming
+
 ## 1.171.6
 
 ### Patch Changes
