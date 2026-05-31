@@ -1,10 +1,10 @@
-import crypto from 'node:crypto'
 import * as t from '@babel/types'
 import {
   deadCodeElimination,
   extractModuleInfoFromAst,
   findReferencedIdentifiers,
   generateFromAst,
+  hash,
   parseAst,
 } from '@tanstack/router-utils'
 import babel from '@babel/core'
@@ -632,7 +632,7 @@ export class StartCompiler {
         })
       }
       if (!functionId) {
-        functionId = crypto.createHash('sha256').update(entryId).digest('hex')
+        functionId = hash('sha256', entryId, 'hex')
       }
       // Deduplicate in case the generated id conflicts with an existing id
       if (this.functionIds.has(functionId)) {
