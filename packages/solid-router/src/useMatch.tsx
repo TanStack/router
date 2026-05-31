@@ -76,42 +76,13 @@ export function useMatch<
 
   const match = () => {
     if (opts.from) {
-      return router.stores.getRouteMatchStore(opts.from).get()
+      return router.stores.matches
+        .get()
+        .find((match) => match.routeId === opts.from)
     }
 
     return nearestMatch?.match()
   }
-
-  Solid.createEffect(
-    () => {
-      const selectedMatch = match()
-      const hasPendingMatch = opts.from
-        ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
-        : (nearestMatch?.hasPending() ?? false)
-      const isTransitioning = router.stores.isTransitioning.get()
-
-      return { selectedMatch, hasPendingMatch, isTransitioning }
-    },
-    ({ selectedMatch, hasPendingMatch, isTransitioning }) => {
-    if (selectedMatch !== undefined) {
-      return
-    }
-
-    if (
-      !hasPendingMatch &&
-      !isTransitioning &&
-      (opts.shouldThrow ?? true)
-    ) {
-      if (process.env.NODE_ENV !== 'production') {
-        throw new Error(
-          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-        )
-      }
-
-      invariant()
-    }
-    },
-  )
 
   return Solid.createMemo((prev: TSelected | undefined) => {
     const selectedMatch = match()
@@ -126,6 +97,16 @@ export function useMatch<
         (hasPendingMatch || router.stores.isTransitioning.get())
       ) {
         return prev
+      }
+
+      if (!hasPendingMatch && (opts.shouldThrow ?? true)) {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error(
+            `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+          )
+        }
+
+        invariant()
       }
 
       return undefined

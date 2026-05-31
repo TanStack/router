@@ -5,7 +5,7 @@ import type {
   HydrationPrefetchStrategy,
   HydrationWhen,
 } from '@tanstack/start-client-core/hydration'
-import type * as Solid from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export type {
   HydrationInteractionEvent,
@@ -21,7 +21,7 @@ export type SolidHydrationStrategy<
   TWhen extends HydrationWhen = HydrationWhen,
   TCanPrefetch extends boolean = boolean,
 > = CoreHydrationStrategy<TWhen, TCanPrefetch> & {
-  _h: (props: HydrateProps) => Solid.JSX.Element
+  _h: (props: HydrateProps) => JSX.Element
 }
 
 export type HydrationStrategy<
@@ -35,7 +35,7 @@ export type HydrateWhen =
 
 type HydrateCommonOptions = {
   when: HydrateWhen
-  fallback?: Solid.JSX.Element
+  fallback?: JSX.Element
   onHydrated?: () => void
 }
 
@@ -54,7 +54,7 @@ export type HydrateOptions =
     })
 
 export type HydrateProps = HydrateOptions & {
-  children: Solid.JSX.Element
+  children: JSX.Element
 }
 
 export type InternalHydrateProps = HydrateProps & {

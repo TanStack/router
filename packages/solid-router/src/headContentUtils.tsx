@@ -215,9 +215,9 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   return Solid.createMemo((prev: Array<RouterManagedTag> | undefined) => {
     const next: Array<RouterManagedTag> = []
     appendUniqueUserTags(next, meta())
-    next.push(...preloadLinks())
     appendUniqueUserTags(next, links())
     next.push(...manifestCssTags())
+    next.push(...preloadLinks())
     appendUniqueUserTags(next, styles())
     appendUniqueUserTags(next, headScripts())
 

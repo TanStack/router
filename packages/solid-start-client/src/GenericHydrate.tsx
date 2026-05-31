@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { Dynamic } from 'solid-js/web'
+import { Dynamic } from '@solidjs/web'
 
 import { useHydrated } from '@tanstack/solid-router'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -25,7 +25,7 @@ import type {
 } from '@tanstack/start-client-core/hydration'
 import type { HydrationGateRecord } from '@tanstack/start-client-core/hydration/runtime'
 import type { InternalHydrateProps } from './Hydrate'
-import type { DynamicProps } from 'solid-js/web'
+import type { DynamicProps, JSX } from '@solidjs/web'
 
 type HydrationFallbackDynamicProps = DynamicProps<'div'>
 type HydrationMarkerDynamicProps = DynamicProps<'div'> & {
@@ -58,16 +58,19 @@ function HydratedBoundary(props: {
   id: string
   onHydrated?: () => void
   onStrategyHydrated?: (id: string) => void
-  children: Solid.JSX.Element
+  children: JSX.Element
 }) {
   let didHydrate = false
 
-  Solid.onMount(() => {
-    if (didHydrate) return
-    didHydrate = true
-    props.onHydrated?.()
-    props.onStrategyHydrated?.(props.id)
-  })
+  Solid.createEffect(
+    () => true,
+    () => {
+      if (didHydrate) return
+      didHydrate = true
+      props.onHydrated?.()
+      props.onStrategyHydrated?.(props.id)
+    },
+  )
 
   return props.children
 }
@@ -163,163 +166,179 @@ export function GenericHydrate(props: InternalHydrateProps) {
   }
   const resolveGate = gate.resolve
 
-  Solid.onMount(() => {
-    const currentHydrateStrategy = initialHydrateStrategy
-    const currentPrefetchStrategy = prefetchStrategy()
-    const currentHydrateType = currentHydrateStrategy._t!
-    gate.when = currentHydrateType
-    for (const element of document.querySelectorAll<HTMLDivElement>(
-      hydrateIdSelector,
-    )) {
-      if (element.getAttribute(hydrateIdAttribute) === id) {
-        markerElement = element
-        saveFallbackHtml(id, element)
-        break
+  Solid.createEffect(
+    () => {
+      const currentHydrateStrategy = initialHydrateStrategy
+      const currentPrefetchStrategy = prefetchStrategy()
+      const currentHydrateType = currentHydrateStrategy._t!
+
+      return {
+        currentHydrateStrategy,
+        currentPrefetchStrategy,
+        currentHydrateType,
       }
-    }
+    },
+    ({
+      currentHydrateStrategy,
+      currentPrefetchStrategy,
+      currentHydrateType,
+    }) => {
+      gate.when = currentHydrateType
+      for (const element of document.querySelectorAll<HTMLDivElement>(
+        hydrateIdSelector,
+      )) {
+        if (element.getAttribute(hydrateIdAttribute) === id) {
+          markerElement = element
+          saveFallbackHtml(id, element)
+          break
+        }
+      }
 
-    if (
-      currentHydrateType === 'never' &&
-      !shouldPreserveServerHTML &&
-      markerElement
-    ) {
-      markerElement.replaceChildren()
-    }
+      if (
+        currentHydrateType === 'never' &&
+        !shouldPreserveServerHTML &&
+        markerElement
+      ) {
+        markerElement.replaceChildren()
+      }
 
-    if (currentPrefetchStrategy && !controller.started) {
-      controller.started = true
-      const preload = () => props.p?.() ?? Promise.resolve()
+      if (currentPrefetchStrategy && !controller.started) {
+        controller.started = true
+        const preload = () => props.p?.() ?? Promise.resolve()
 
-      if (typeof currentPrefetchStrategy === 'function') {
-        const promise = Promise.resolve()
-          .then(() =>
-            currentPrefetchStrategy({
+        if (typeof currentPrefetchStrategy === 'function') {
+          const promise = Promise.resolve()
+            .then(() =>
+              currentPrefetchStrategy({
+                element: markerElement ?? null,
+                signal: controller.abortController.signal,
+                preload,
+                waitFor: (strategy) =>
+                  waitForHydrationPrefetchStrategy(strategy, {
+                    element: markerElement ?? null,
+                    signal: controller.abortController.signal,
+                    onHydrate,
+                  }),
+              }),
+            )
+            .then(() => undefined)
+
+          controller.promise = promise
+          promise.catch((error) => {
+            if (!controller.abortController.signal.aborted) {
+              setPrefetchError(() => error)
+            }
+          })
+        } else if (props.p) {
+          const currentStrategy = currentPrefetchStrategy
+          const prefetch = () => {
+            if (didPrefetch) return
+            didPrefetch = true
+            void preload()
+          }
+          const cleanupPrefetch = runHydrationStrategyCleanup(
+            currentStrategy._s?.({
               element: markerElement ?? null,
-              signal: controller.abortController.signal,
-              preload,
-              waitFor: (strategy) =>
-                waitForHydrationPrefetchStrategy(strategy, {
-                  element: markerElement ?? null,
-                  signal: controller.abortController.signal,
-                  onHydrate,
-                }),
+              prefetch,
             }),
           )
-          .then(() => undefined)
-
-        controller.promise = promise
-        promise.catch((error) => {
-          if (!controller.abortController.signal.aborted) {
-            setPrefetchError(() => error)
-          }
-        })
-      } else if (props.p) {
-        const currentStrategy = currentPrefetchStrategy
-        const prefetch = () => {
-          if (didPrefetch) return
-          didPrefetch = true
-          void preload()
+          if (cleanupPrefetch) Solid.onCleanup(cleanupPrefetch)
         }
-        const cleanupPrefetch = runHydrationStrategyCleanup(
-          currentStrategy._s?.({
-            element: markerElement ?? null,
-            prefetch,
-          }),
-        )
-        if (cleanupPrefetch) Solid.onCleanup(cleanupPrefetch)
       }
-    }
 
-    if (
-      currentHydrateType !== 'never' &&
-      (!shouldDeferInitialHydration ||
-        !shouldDeferHydration(currentHydrateStrategy))
-    ) {
-      gate.resolve()
-      setReady(true)
-    }
-
-    const cleanups: Array<() => void> = []
-    let removeResolveListener = () => {}
-    let disposed = false
-
-    const resolveBoundary = () => {
-      setReady(true)
-    }
-
-    const cleanup = () => {
-      if (disposed) return
-      disposed = true
-      if (gate.resolve === requestHydration) {
-        gate.resolve = resolveGate
+      if (
+        currentHydrateType !== 'never' &&
+        (!shouldDeferInitialHydration ||
+          !shouldDeferHydration(currentHydrateStrategy))
+      ) {
+        gate.resolve()
+        setReady(true)
       }
-      removeResolveListener()
-      cleanups.forEach((fn) => fn())
-    }
 
-    const addCleanup = (fn: void | (() => void)) => {
-      if (!fn) return
-      if (disposed || gate.resolved) {
-        fn()
+      const cleanups: Array<() => void> = []
+      let removeResolveListener = () => {}
+      let disposed = false
+
+      const resolveBoundary = () => {
+        setReady(true)
+      }
+
+      const cleanup = () => {
+        if (disposed) return
+        disposed = true
+        if (gate.resolve === requestHydration) {
+          gate.resolve = resolveGate
+        }
+        removeResolveListener()
+        cleanups.forEach((fn) => fn())
+      }
+
+      const addCleanup = (fn: void | (() => void)) => {
+        if (!fn) return
+        if (disposed || gate.resolved) {
+          fn()
+          return
+        }
+        cleanups.push(fn)
+      }
+
+      Solid.onCleanup(() => {
+        controller.abortController.abort()
+        controller.hydrationListeners.clear()
+        cleanup()
+        releaseGate(gate)
+      })
+
+      removeResolveListener = onGateResolve(gate, () => {
+        cleanup()
+        resolveBoundary()
+      })
+
+      if (
+        gate.resolved ||
+        !shouldDeferInitialHydration ||
+        currentHydrateType === 'never'
+      ) {
+        if (gate.resolved) resolveBoundary()
         return
       }
-      cleanups.push(fn)
-    }
 
-    Solid.onCleanup(() => {
-      controller.abortController.abort()
-      controller.hydrationListeners.clear()
-      cleanup()
-      releaseGate(gate)
-    })
-
-    removeResolveListener = onGateResolve(gate, () => {
-      cleanup()
-      resolveBoundary()
-    })
-
-    if (
-      gate.resolved ||
-      !shouldDeferInitialHydration ||
-      currentHydrateType === 'never'
-    ) {
-      if (gate.resolved) resolveBoundary()
-      return
-    }
-
-    gate.resolve = requestHydration
-    const context: HydrationRuntimeContext = {
-      element: markerElement ?? null,
-      gate,
-    }
-    addCleanup(
-      runHydrationStrategyCleanup(currentHydrateStrategy._s?.(context)),
-    )
-
-    if (currentHydrateStrategy._t !== 'interaction') {
+      gate.resolve = requestHydration
+      const context: HydrationRuntimeContext = {
+        element: markerElement ?? null,
+        gate,
+      }
       addCleanup(
-        runHydrationStrategyCleanup(
-          markerElement
-            ? listenForDelegatedHydrationIntent(markerElement, context)
-            : undefined,
-        ),
+        runHydrationStrategyCleanup(currentHydrateStrategy._s?.(context)),
       )
-    }
-  })
 
-  Solid.createRenderEffect(() => {
-    if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      (isServer ?? typeof window === 'undefined') ||
-      gate.resolved ||
-      initialHydrateStrategy._t === 'never' ||
-      shouldDeferHydration(initialHydrateStrategy)
-    ) {
-      return
-    }
+      if (currentHydrateStrategy._t !== 'interaction') {
+        addCleanup(
+          runHydrationStrategyCleanup(
+            markerElement
+              ? listenForDelegatedHydrationIntent(markerElement, context)
+              : undefined,
+          ),
+        )
+      }
+    },
+  )
 
-    gate.resolve()
-  })
+  Solid.createRenderEffect(
+    () =>
+      !(
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        (isServer ?? typeof window === 'undefined') ||
+        gate.resolved ||
+        initialHydrateStrategy._t === 'never' ||
+        shouldDeferHydration(initialHydrateStrategy)
+      ),
+    (shouldResolve) => {
+      if (shouldResolve) {
+        gate.resolve()
+      }
+    },
+  )
 
   const markerAttributes =
     markerHydrateType === dynamicType
@@ -356,7 +375,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
       {initialHydrateType === 'never' && !shouldPreserveServerHTML ? (
         (props.fallback ?? null)
       ) : (
-        <Solid.Suspense fallback={fallback()}>
+        <Solid.Loading fallback={fallback()}>
           <Solid.Show when={ready()} fallback={fallback()}>
             <HydratedBoundary
               id={id}
@@ -369,7 +388,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
               {props.children}
             </HydratedBoundary>
           </Solid.Show>
-        </Solid.Suspense>
+        </Solid.Loading>
       )}
     </Dynamic>
   )

@@ -451,9 +451,6 @@ export const MatchInner = (): any => {
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'redirected'}>
               {(_) => {
-                const matchId = currentMatch().id
-                const routerMatch = router.getMatch(matchId)
-
                 if (!isRedirect(currentMatch().error)) {
                   if (process.env.NODE_ENV !== 'production') {
                     throw new Error(
@@ -463,12 +460,7 @@ export const MatchInner = (): any => {
                   invariant()
                 }
 
-                const loaderResult = Solid.createMemo(async () => {
-                  await new Promise((r) => setTimeout(r, 0))
-                  return getLoadPromise(matchId, routerMatch)
-                })
-
-                return <>{loaderResult()}</>
+                return null
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'error'}>

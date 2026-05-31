@@ -9,6 +9,7 @@ import {
   useMatches,
 } from '../src'
 import type { AnyRouteMatch, RouteMatch } from '@tanstack/router-core'
+import type { JSX } from '@solidjs/web'
 import type * as Solid from 'solid-js'
 import type { MakeMatchRouteOptions } from '../src'
 
@@ -248,6 +249,6 @@ test('MatchRoute children are typed from resolved params under pathless layouts'
   >
 
   expectTypeOf<CommentsMatchRouteRenderFn>().toEqualTypeOf<
-    (params?: { id: string } | undefined) => Solid.JSX.Element
+    (params?: { id: string } | undefined) => JSX.Element
   >()
 })
