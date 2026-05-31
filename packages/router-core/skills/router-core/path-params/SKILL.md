@@ -1,10 +1,6 @@
 ---
-name: router-core/path-params
-description: >-
-  Dynamic path segments ($paramName), splat routes ($ / _splat),
-  optional params ({-$paramName}), prefix/suffix patterns ({$param}.ext),
-  useParams, params.parse/stringify, pathParamsAllowedCharacters,
-  i18n locale patterns.
+name: router-core-path-params
+description: "Define and consume dynamic URL segments, splat routes, and optional path parameters in TanStack Router. Use when adding dynamic route segments, creating catch-all splat routes, parsing or validating path params, or setting up i18n locale-based routing. Key APIs: $paramName, useParams, params.parse/stringify, _splat, pathParamsAllowedCharacters."
 type: sub-skill
 library: tanstack-router
 library_version: '1.166.2'

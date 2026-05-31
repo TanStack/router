@@ -1,10 +1,6 @@
 ---
-name: lifecycle/migrate-from-nextjs
-description: >-
-  Step-by-step migration from Next.js App Router to TanStack Start:
-  route definition conversion, API mapping, server function
-  conversion from Server Actions, middleware conversion, data
-  fetching pattern changes.
+name: lifecycle-migrate-from-nextjs
+description: "Migrate a Next.js App Router application to TanStack Start with a step-by-step checklist. Use when converting Next.js routes, replacing Server Actions with createServerFn, adapting middleware, switching from getServerSideProps or server components to TanStack Start data fetching patterns, or mapping Next.js APIs to Start equivalents."
 type: lifecycle
 library: tanstack-start
 library_version: '1.166.2'

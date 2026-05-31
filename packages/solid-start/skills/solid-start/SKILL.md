@@ -1,10 +1,6 @@
 ---
 name: solid-start
-description: >-
-  Solid bindings for TanStack Start: useServerFn hook, tanstackStart
-  Vite plugin, StartClient, StartServer, Solid-specific setup,
-  re-exports from @tanstack/start-client-core. Full project setup
-  with Solid.
+description: "Build full-stack Solid applications with TanStack Start including server functions, SSR, and isomorphic data loading. Use when setting up a TanStack Start project with Solid, configuring the Vite plugin, or using server functions in Solid components. Key APIs: useServerFn, tanstackStart, StartClient, StartServer."
 type: framework
 library: tanstack-start
 library_version: '1.166.2'

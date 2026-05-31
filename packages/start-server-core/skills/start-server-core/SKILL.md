@@ -1,10 +1,6 @@
 ---
 name: start-server-core
-description: >-
-  Server-side runtime for TanStack Start: createStartHandler,
-  request/response utilities (getRequest, setResponseHeader,
-  setCookie, getCookie, useSession), three-phase request handling,
-  AsyncLocalStorage context.
+description: "Handle server-side requests in TanStack Start including request handling, cookies, and sessions. Use when setting up createStartHandler, reading requests with getRequest, managing cookies with setCookie and getCookie, implementing sessions with useSession, setting response headers, or understanding the three-phase request lifecycle and AsyncLocalStorage context."
 type: core
 library: tanstack-start
 library_version: '1.166.2'

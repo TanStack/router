@@ -1,13 +1,6 @@
 ---
 name: react-router
-description: >-
-  React bindings for TanStack Router: RouterProvider, useRouter,
-  useRouterState, useMatch, useMatches, useLocation, useSearch,
-  useParams, useNavigate, useLoaderData, useLoaderDeps,
-  useRouteContext, useBlocker, useCanGoBack, Link, Navigate,
-  Outlet, CatchBoundary, ErrorComponent. React-specific patterns
-  for hooks, providers, SSR hydration, and createLink with
-  forwardRef.
+description: "Build type-safe React applications with TanStack Router hooks, components, and providers. Use when setting up RouterProvider, navigating with Link or useNavigate, reading search params with useSearch, accessing route params with useParams, loading data with useLoaderData, or handling errors with CatchBoundary. Key APIs: useRouter, useMatch, useLocation, useBlocker, Outlet, ErrorComponent."
 type: framework
 library: tanstack-router
 library_version: '1.166.2'

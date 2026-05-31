@@ -1,11 +1,6 @@
 ---
-name: start-core/execution-model
-description: >-
-  Isomorphic-by-default principle, environment boundary functions
-  (createServerFn, createServerOnlyFn, createClientOnlyFn,
-  createIsomorphicFn), ClientOnly component, useHydrated hook,
-  import protection, dead code elimination, environment variable
-  safety (VITE_ prefix, process.env).
+name: start-core-execution-model
+description: "Understand and control where code runs in TanStack Start's isomorphic execution model. Use when deciding between server and client boundaries, protecting secrets from client bundles, using environment variables safely, or wrapping browser-only code. Key APIs: createServerFn, createClientOnlyFn, createIsomorphicFn, ClientOnly, useHydrated."
 type: sub-skill
 library: tanstack-start
 library_version: '1.166.2'

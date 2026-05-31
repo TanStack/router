@@ -1,10 +1,6 @@
 ---
 name: start-core
-description: >-
-  Core overview for TanStack Start: tanstackStart() Vite plugin,
-  getRouter() factory, root route document shell (HeadContent,
-  Scripts, Outlet), client/server entry points, routeTree.gen.ts,
-  tsconfig configuration. Entry point for all Start skills.
+description: "Set up and configure a TanStack Start project from scratch. Use when configuring the tanstackStart Vite plugin, creating getRouter factory functions, building the root route document shell with HeadContent and Scripts, setting up client and server entry points, or troubleshooting routeTree.gen.ts and tsconfig. Entry point for all Start skills."
 type: core
 library: tanstack-start
 library_version: '1.166.2'

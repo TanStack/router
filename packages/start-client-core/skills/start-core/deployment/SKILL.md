@@ -1,10 +1,6 @@
 ---
-name: start-core/deployment
-description: >-
-  Deploy to Cloudflare Workers, Netlify, Vercel, Node.js/Docker,
-  Bun, Railway. Selective SSR (ssr option per route), SPA mode,
-  static prerendering, ISR with Cache-Control headers, SEO and
-  head management.
+name: start-core-deployment
+description: "Deploy TanStack Start apps to Cloudflare Workers, Netlify, Vercel, Node.js, Docker, Bun, or Railway. Use when configuring hosting, enabling selective SSR per route, setting up static prerendering or ISR, switching to SPA mode, or managing SEO and head tags. Key APIs: createStartHandler, ssr option, Cache-Control headers."
 type: sub-skill
 library: tanstack-start
 library_version: '1.166.2'

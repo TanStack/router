@@ -1,13 +1,6 @@
 ---
 name: solid-router
-description: >-
-  Solid bindings for TanStack Router: RouterProvider, useRouter,
-  useRouterState, useMatch, useMatches, useLocation, useSearch,
-  useParams, useNavigate, useLoaderData, useLoaderDeps,
-  useRouteContext, useBlocker, useCanGoBack, Link, Navigate,
-  Outlet, CatchBoundary, ErrorComponent. Solid-specific patterns
-  with Accessor<T> returns, createSignal/createMemo/createEffect,
-  Show/Switch/Match/Dynamic, and @solidjs/meta for head management.
+description: "Integrate TanStack Router with SolidJS using Solid-specific bindings, components, and reactive patterns. Use when setting up routing in a Solid app, working with Accessor-based hooks, handling navigation, or managing route context. Key APIs: RouterProvider, useSearch, useParams, useNavigate, useLoaderData, Link, Outlet, CatchBoundary."
 type: framework
 library: tanstack-router
 library_version: '1.166.2'

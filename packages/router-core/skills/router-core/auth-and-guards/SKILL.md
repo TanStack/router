@@ -1,11 +1,6 @@
 ---
-name: router-core/auth-and-guards
-description: >-
-  Route protection with beforeLoad, redirect()/throw redirect(),
-  isRedirect helper, authenticated layout routes (_authenticated),
-  non-redirect auth (inline login), RBAC with roles and permissions,
-  auth provider integration (Auth0, Clerk, Supabase), router context
-  for auth state.
+name: router-core-auth-and-guards
+description: "Protect routes and implement authentication guards in TanStack Router using beforeLoad redirects and layout routes. Use when adding login protection, setting up role-based access control, integrating auth providers like Auth0, Clerk, or Supabase, or redirecting unauthenticated users. Key APIs: beforeLoad, redirect(), isRedirect, _authenticated layout routes, router context."
 type: sub-skill
 library: tanstack-router
 library_version: '1.166.2'

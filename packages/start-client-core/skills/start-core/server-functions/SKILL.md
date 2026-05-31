@@ -1,11 +1,6 @@
 ---
-name: start-core/server-functions
-description: >-
-  createServerFn (GET/POST), inputValidator (Zod or function),
-  useServerFn hook, server context utilities (getRequest,
-  getRequestHeader, setResponseHeader, setResponseStatus), error
-  handling (throw errors, redirect, notFound), streaming, FormData
-  handling, file organization (.functions.ts, .server.ts).
+name: start-core-server-functions
+description: "Create type-safe server RPCs in TanStack Start that run exclusively on the server but are callable from anywhere. Use when fetching data from a database, calling external APIs with secrets, handling form submissions, validating input, or streaming responses. Key APIs: createServerFn, useServerFn, inputValidator, getRequest, redirect, notFound."
 type: sub-skill
 library: tanstack-start
 library_version: '1.166.2'
