@@ -121,10 +121,9 @@ export function useLinkProps<
     'from',
   ] as any)
 
-  const currentLocation = Solid.createMemo(
-    () => router.stores.location.get(),
-    { equals: (prev, next) => prev.href === next.href },
-  )
+  const currentLocation = Solid.createMemo(() => router.stores.location.get(), {
+    equals: (prev, next) => prev.href === next.href,
+  })
 
   const _options = () => options
 

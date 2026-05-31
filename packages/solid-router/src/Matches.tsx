@@ -173,7 +173,7 @@ export type MakeMatchRouteOptions<
   TMaskTo extends string = '',
 > = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-      children?:
+  children?:
     | ((
         params?: Expand<
           ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']

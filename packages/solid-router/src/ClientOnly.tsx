@@ -65,8 +65,8 @@ export function useHydrated(): Solid.Accessor<boolean> {
   Solid.createEffect(
     () => true,
     () => {
-    globalHydrated = true
-    setHydrated(true)
+      globalHydrated = true
+      setHydrated(true)
     },
   )
 
