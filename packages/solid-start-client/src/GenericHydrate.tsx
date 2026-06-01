@@ -327,8 +327,8 @@ export function GenericHydrate(props: InternalHydrateProps) {
   Solid.createRenderEffect(
     () =>
       !(
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         (
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           (isServer ?? typeof window === 'undefined') ||
           gate.resolved ||
           initialHydrateStrategy._t === 'never' ||
