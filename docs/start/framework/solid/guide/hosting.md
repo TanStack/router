@@ -27,12 +27,19 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 
 ### Cloudflare Workers ⭐ _Official Partner_
 
-<a href="https://www.cloudflare.com?utm_source=tanstack" alt="Cloudflare Logo">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/cloudflare-white.svg" width="280">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/cloudflare-black.svg" width="280">
-    <img alt="Cloudflare logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/cloudflare-black.svg" width="280">
-  </picture>
+<a href="https://www.cloudflare.com?utm_source=tanstack">
+  <img 
+    src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/cloudflare-black.svg"
+    class="block dark:hidden"
+    width="280"
+    alt="Cloudflare logo"
+  />
+  <img 
+    src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/cloudflare-white.svg"
+    class="hidden dark:block"
+    width="280"
+    alt="Cloudflare logo"
+  />
 </a>
 
 ### Cloudflare Workers
@@ -110,12 +117,19 @@ Deploy your application to Cloudflare Workers using their one-click deployment p
 
 ### Netlify ⭐ _Official Partner_
 
-<a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-dark.svg" width="280">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-light.svg" width="280">
-    <img alt="Netlify logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-light.svg" width="280">
-  </picture>
+<a href="https://www.netlify.com?utm_source=tanstack">
+  <img
+    class="block dark:hidden"
+    src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-light.svg"
+    width="280"
+    alt="Netlify Logo"
+  />
+  <img
+    class="hidden dark:block"
+    src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-dark.svg"
+    width="280"
+    alt="Netlify Logo"
+  />
 </a>
 
 Install and add the [`@netlify/vite-plugin-tanstack-start`](https://www.npmjs.com/package/@netlify/vite-plugin-tanstack-start) plugin, which configures your build for Netlify deployment and provides full Netlify production platform emulation in local dev:
@@ -182,12 +196,19 @@ tool](https://docs.netlify.com/start/quickstarts/deploy-from-ai-code-generation-
 
 ### Railway ⭐ _Official Partner_
 
-<a href="https://railway.com?utm_source=tanstack" alt="Railway Logo">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-dark.svg" width="280">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-light.svg" width="280">
-    <img alt="Railway logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-light.svg" width="280">
-  </picture>
+<a href="https://railway.com?utm_source=tanstack">
+  <img
+    class="block dark:hidden"
+    arc="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-light.svg"
+    width="280"
+    alt="Railway logo"
+  />
+  <img
+    class="hidden dark:block"
+    src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-dark.svg"
+    width="280"
+    alt="Railway logo"
+  />
 </a>
 
 Railway provides instant deployments with zero configuration. Follow the [`Nitro`](#nitro) deployment instructions, then deploy to Railway:
