@@ -22,8 +22,11 @@ The core concept is simple:
 
 The most common ISR pattern uses the `Cache-Control` header with `max-age` and `s-maxage` directives:
 
-```tsx
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
 
@@ -38,6 +41,28 @@ export default defineConfig({
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { pluginReact } from '@rsbuild/plugin-react'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  plugins: [
+    pluginReact(),
+    tanstackStart({
+      prerender: {
+        routes: ['/blog', '/blog/posts/*'],
+        crawlLinks: true,
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
 
 ```tsx
 // routes/blog/posts/$postId.tsx
@@ -386,8 +411,11 @@ const cacheMonitoringMiddleware = createMiddleware().server(
 
 Prerender at build time for instant first load, then use ISR for updates:
 
-```tsx
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
 
@@ -402,6 +430,28 @@ export default defineConfig({
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { pluginReact } from '@rsbuild/plugin-react'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  plugins: [
+    pluginReact(),
+    tanstackStart({
+      prerender: {
+        routes: ['/blog', '/blog/posts/*'],
+        crawlLinks: true,
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
 
 ## Debugging ISR
 

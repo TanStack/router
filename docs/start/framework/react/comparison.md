@@ -54,14 +54,14 @@ Feature/Capability Key:
 | Devtools                                                          | ✅                                               | 🛑                                            | 🟠 (3rd party)                             |
 | CLI Tooling                                                       | ✅                                               | ✅                                            | ✅                                         |
 | Dev Server Startup Speed                                          | ✅ (Fast)                                        | 🛑 (Slow)                                     | ✅ (Fast)                                  |
-| HMR Speed                                                         | ✅ (Fast, Vite)                                  | 🛑 (Slow, Webpack/Turbopack)                  | ✅ (Fast, Vite)                            |
+| HMR Speed                                                         | ✅ (Fast, Vite or Rsbuild)                       | 🛑 (Slow, Webpack/Turbopack)                  | ✅ (Fast, Vite)                            |
 | Dev Navigation Speed                                              | ✅                                               | 🟡                                            | ✅                                         |
 | Dev Resource Usage (CPU/RAM)                                      | ✅ (Lightweight)                                 | 🛑 (Heavy)                                    | ✅ (Lightweight)                           |
 | TypeScript Support                                                | ✅                                               | ✅                                            | ✅                                         |
 | Type-First Architecture                                           | ✅                                               | 🛑                                            | 🛑                                         |
 | --                                                                | --                                               | --                                            | --                                         |
 | **Deployment & Hosting**                                          | --                                               | --                                            | --                                         |
-| Deployment Flexibility                                            | ✅ (Any Vite-compatible host)                    | 🟡 (Optimized for Vercel, possible elsewhere) | ✅ (Multiple adapters)                     |
+| Deployment Flexibility                                            | ✅ (Vite and Rsbuild builds)                     | 🟡 (Optimized for Vercel, possible elsewhere) | ✅ (Multiple adapters)                     |
 | Edge Runtime Support                                              | ✅                                               | ✅                                            | ✅                                         |
 | Serverless Support                                                | ✅                                               | ✅                                            | ✅                                         |
 | Node.js Support                                                   | ✅                                               | ✅                                            | ✅                                         |
@@ -84,7 +84,7 @@ Feature/Capability Key:
 **Philosophy**: Maximum developer freedom with best-in-class type safety.
 
 - **Router-First**: Built on TanStack Router (see [full routing comparison][router-comparison])
-- **Deployment Agnostic**: Built on Vite, deploy anywhere without vendor lock-in
+- **Deployment Agnostic**: Built on Vite and Rsbuild integrations, deploy without vendor lock-in
 - **Composable Middleware**: Middleware system works at both the request level AND individual server function level (both client & server)
 - **Selective SSR**: Fine-grained control over SSR behavior per route (full SSR, data-only, or client-only)
 - **Developer Control**: Explicit, composable patterns over convention-based magic
@@ -115,7 +115,7 @@ Feature/Capability Key:
 ### Choose TanStack Start if you:
 
 - Want the absolute best type safety for routing (see [Router Comparison][router-comparison])
-- Need deployment flexibility without vendor lock-in (works with any Vite-compatible host)
+- Need deployment flexibility without vendor lock-in (works with Vite and Rsbuild builds)
 - Prefer composable, explicit patterns over convention
 - Want fine-grained control over SSR behavior (selective SSR per route)
 - Need composable middleware that works at both request and server function levels
@@ -247,7 +247,7 @@ const authMiddleware = createMiddleware({ type: 'function' })
 
 ### Deployment Flexibility
 
-**TanStack Start** leverages Vite's ecosystem:
+**TanStack Start** leverages modern build tool ecosystems:
 
 - Deploy to Cloudflare Workers, Netlify, Vercel, Railway, Fly.io, AWS, etc.
 - Use Nitro for universal deployment support
@@ -276,7 +276,7 @@ TanStack Start's RSC implementation takes a client-led composition approach: ser
 
 All three frameworks are capable of achieving excellent production performance and top Lighthouse scores. The differences come down to optimization strategies:
 
-- **TanStack Start**: Vite's optimized builds, SWR caching reduces server load, lightweight runtime
+- **TanStack Start**: Optimized bundler builds, SWR caching reduces server load, lightweight runtime
 - **Next.js**: Automatic code splitting, image optimization, and built-in performance features
 - **React Router**: Web standards-based caching and optimization
 
@@ -286,7 +286,7 @@ This is where the frameworks differ significantly:
 
 **TanStack Start & React Router:**
 
-- ⚡ **Instant dev server startup** - Vite starts in milliseconds
+- ⚡ **Instant dev server startup** - Vite and Rsbuild start quickly
 - ⚡ **Lightning-fast HMR** - Changes reflect instantly without page refresh
 - ⚡ **Fast dev navigation** - Full-speed routing during development
 - ⚡ **Lightweight resource usage** - Minimal CPU and RAM consumption

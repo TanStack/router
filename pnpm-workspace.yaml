@@ -25,6 +25,9 @@ packages:
 overrides:
   '@types/babel__traverse': '^7.28.0'
   vite-plugin-dts: 4.2.3
+  # Force the Solid v2 babel preset for the v2 vite plugin only (scoped, so it
+  # does not affect router-devtools-core, which uses vite-plugin-solid@2.x).
+  'vite-plugin-solid@3.0.0-next.5>babel-preset-solid': 2.0.0-beta.14
   react: $react
   react-dom: $react-dom
   '@types/react': $@types/react

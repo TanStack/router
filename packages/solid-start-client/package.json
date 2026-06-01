@@ -48,7 +48,6 @@
         "default": "./dist/esm/index.js"
       }
     },
-    "./package.json": "./package.json",
     "./hydration": {
       "import": {
         "types": "./dist/esm/hydration.d.ts",
@@ -60,7 +59,8 @@
         "types": "./dist/esm/Hydrate.d.ts",
         "default": "./dist/esm/Hydrate.js"
       }
-    }
+    },
+    "./package.json": "./package.json"
   },
   "sideEffects": false,
   "files": [

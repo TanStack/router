@@ -19,7 +19,6 @@
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
-    "@tanstack/zod-adapter": "workspace:^",
     "redaxios": "^0.5.1",
     "solid-js": "2.0.0-beta.14",
     "tailwindcss": "^4.2.2",

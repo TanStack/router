@@ -28,6 +28,10 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
+    "@rsbuild/core": "^2.0.8",
+    "@rsbuild/plugin-babel": "^1.1.2",
+    "@rsbuild/plugin-solid": "^2.0.0-beta.0",
+    "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/js-cookie": "^3.0.6",
@@ -36,19 +40,10 @@
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
-    "vite-plugin-solid": "^3.0.0-next.5",
-    "@rsbuild/core": "^2.0.8",
-    "@rsbuild/plugin-babel": "^1.1.2",
-    "@rsbuild/plugin-solid": "^2.0.0-beta.0",
-    "@tailwindcss/postcss": "^4.2.2",
-    "vite": "^8.0.14"
+    "vite": "^8.0.14",
+    "vite-plugin-solid": "^3.0.0-next.5"
   },
   "nx": {
-    "targets": {
-      "test:e2e": {
-        "parallelism": false
-      }
-    },
     "metadata": {
       "playwrightModes": [
         {

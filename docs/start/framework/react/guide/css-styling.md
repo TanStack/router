@@ -125,8 +125,11 @@ CSS inlining embeds Start manifest-managed route CSS directly into the server-re
 
 Enable it with `server.build.inlineCss` in the Start plugin options. Passing `true` is shorthand for `{ enabled: true, transformAssets: false }`.
 
-```ts
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
@@ -142,6 +145,27 @@ export default defineConfig({
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      server: {
+        build: {
+          inlineCss: true,
+        },
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
 
 This option only affects production builds. Development mode keeps using Start's normal development CSS handling.
 

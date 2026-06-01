@@ -44,6 +44,12 @@
         "default": "./dist/esm/client.js"
       }
     },
+    "./hydration": {
+      "import": {
+        "types": "./dist/esm/hydration.d.ts",
+        "default": "./dist/esm/hydration.js"
+      }
+    },
     "./client-rpc": {
       "import": {
         "types": "./dist/esm/client-rpc.d.ts",
@@ -72,6 +78,12 @@
       "import": {
         "types": "./dist/esm/plugin/vite.d.ts",
         "default": "./dist/esm/plugin/vite.js"
+      }
+    },
+    "./plugin/rsbuild": {
+      "import": {
+        "types": "./dist/esm/plugin/rsbuild.d.ts",
+        "default": "./dist/esm/plugin/rsbuild.js"
       }
     },
     "./server-entry": {
@@ -127,12 +139,12 @@
     "pathe": "^2.0.3"
   },
   "devDependencies": {
+		"@rsbuild/core": "^2.0.8",
     "@solidjs/web": "2.0.0-beta.14",
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",
     "solid-js": "2.0.0-beta.14",
-    "vite": "*",
-    "@rsbuild/core": "^2.0.8"
+    "vite": "*"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-0 <3.0.0",
