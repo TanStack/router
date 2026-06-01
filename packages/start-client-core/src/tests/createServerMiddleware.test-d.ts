@@ -2,7 +2,7 @@ import { expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import type { RequestServerNextFn } from '../createMiddleware'
 import type { ConstrainValidator, CustomFetch } from '../createServerFn'
-import type { Register } from '@tanstack/router-core'
+import type { Register, SerializationError } from '@tanstack/router-core'
 import type { ServerFnMeta } from '../constants'
 
 test('createServeMiddleware removes middleware after middleware,', () => {
@@ -573,7 +573,10 @@ test('createMiddleware sendContext cannot send a function', () => {
         .parameter(0)
         .exclude<undefined>()
         .toHaveProperty('sendContext')
-        .toEqualTypeOf<{ func: 'Function is not serializable' } | undefined>()
+        .toEqualTypeOf<
+          | { func: SerializationError<'Function may not be serializable'> }
+          | undefined
+        >()
 
       return next()
     })
@@ -582,7 +585,10 @@ test('createMiddleware sendContext cannot send a function', () => {
         .parameter(0)
         .exclude<undefined>()
         .toHaveProperty('sendContext')
-        .toEqualTypeOf<{ func: 'Function is not serializable' } | undefined>()
+        .toEqualTypeOf<
+          | { func: SerializationError<'Function may not be serializable'> }
+          | undefined
+        >()
 
       return next()
     })
@@ -669,6 +675,7 @@ test('createMiddleware with type request, no middleware or context', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
       serverFnMeta?: ServerFnMeta
     }>()
 
@@ -692,6 +699,7 @@ test('createMiddleware with type request, no middleware with context', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
       serverFnMeta?: ServerFnMeta
     }>()
 
@@ -716,6 +724,7 @@ test('createMiddleware with type request, middleware and context', () => {
         next: RequestServerNextFn<{}, undefined>
         pathname: string
         context: undefined
+        handlerType: 'serverFn' | 'router'
         serverFnMeta?: ServerFnMeta
       }>()
 
@@ -740,6 +749,7 @@ test('createMiddleware with type request, middleware and context', () => {
         next: RequestServerNextFn<{}, undefined>
         pathname: string
         context: { a: string }
+        handlerType: 'serverFn' | 'router'
         serverFnMeta?: ServerFnMeta
       }>()
 
@@ -763,6 +773,7 @@ test('createMiddleware with type request can return Response directly', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
       serverFnMeta?: ServerFnMeta
     }>()
 
@@ -783,6 +794,7 @@ test('createMiddleware with type request can return Promise<Response>', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
       serverFnMeta?: ServerFnMeta
     }>()
 
@@ -798,6 +810,7 @@ test('createMiddleware with type request can return sync Response', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
       serverFnMeta?: ServerFnMeta
     }>()
 

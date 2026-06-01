@@ -9,6 +9,12 @@ import { extractViolationsFromLog } from './violations.utils'
 import type { FullConfig } from '@playwright/test'
 import type { Violation } from './violations.utils'
 
+const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+const viteBundledDev = process.env.E2E_VITE_BUNDLED_DEV === 'true'
+const e2ePortKey =
+  process.env.E2E_PORT_KEY ??
+  `${packageJson.name}-${toolchain}${viteBundledDev ? '-bundled-dev' : ''}`
+
 async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now()
 
@@ -32,7 +38,13 @@ async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
 }
 
 function startDevServer(cwd: string, port: number): ReturnType<typeof spawn> {
-  return spawn('pnpm', ['exec', 'vite', 'dev', '--port', String(port)], {
+  const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+  const command =
+    toolchain === 'rsbuild'
+      ? ['exec', 'rsbuild', 'dev', '--port', String(port)]
+      : ['exec', 'vite', 'dev', '--port', String(port)]
+
+  return spawn('pnpm', command, {
     cwd,
     env: {
       ...process.env,
@@ -73,32 +85,96 @@ async function killChild(child: ReturnType<typeof spawn>): Promise<void> {
   })
 }
 
-const routeDefinitions = [
-  ['/', 'heading'],
+type ViolationExpectation = (violations: Array<Violation>) => boolean
+
+type RouteDefinition = readonly [
+  route: string,
+  testId: string,
+  expectedViolation?: ViolationExpectation,
+]
+
+function hasClientSecretServerFileViolation(
+  importerFragment: string,
+): ViolationExpectation {
+  return (violations) =>
+    violations.some(
+      (v) =>
+        v.envType === 'client' &&
+        v.type === 'file' &&
+        v.importer.includes(importerFragment) &&
+        (v.specifier.includes('secret.server') ||
+          v.resolved?.includes('secret.server')),
+    )
+}
+
+const routeDefinitions: Array<RouteDefinition> = [
+  ['/', 'heading', hasClientSecretServerFileViolation('edge-a')],
   ['/leaky-server-import', 'leaky-heading'],
   ['/client-only-violations', 'client-only-heading'],
   ['/client-only-jsx', 'client-only-jsx-heading'],
   ['/beforeload-leak', 'beforeload-leak-heading'],
-  ['/component-server-leak', 'component-leak-heading'],
+  [
+    '/component-server-leak',
+    'component-leak-heading',
+    hasClientSecretServerFileViolation('component-server-leak'),
+  ],
+  [
+    '/alias-path-leak',
+    'alias-path-leak-heading',
+    hasClientSecretServerFileViolation('alias-path-leak'),
+  ],
+  [
+    '/alias-path-namespace-leak',
+    'alias-path-namespace-leak-heading',
+    hasClientSecretServerFileViolation('alias-path-namespace-leak'),
+  ],
+  [
+    '/non-alias-namespace-leak',
+    'non-alias-namespace-leak-heading',
+    hasClientSecretServerFileViolation('non-alias-namespace-leak'),
+  ],
   ['/barrel-false-positive', 'barrel-heading'],
-  ['/alias-path-leak', 'alias-path-leak-heading'],
-  ['/alias-path-namespace-leak', 'alias-path-namespace-leak-heading'],
-  ['/non-alias-namespace-leak', 'non-alias-namespace-leak-heading'],
-] as const
+  ['/type-only-protected-import', 'type-only-protected-import-heading'],
+]
 
-const routes = routeDefinitions.map(([route]) => route)
+const outputPollMs = 250
+const outputIdleMs = viteBundledDev ? 750 : 350
+const outputTimeoutMs = viteBundledDev ? 10_000 : 3_000
 
-const routeReadyTestIds: Record<string, string> =
-  Object.fromEntries(routeDefinitions)
+async function waitForOutput(
+  getLogText: () => string,
+  expectedViolation?: ViolationExpectation,
+): Promise<void> {
+  const start = Date.now()
+  let lastLength = getLogText().length
+  let lastChange = Date.now()
+
+  while (Date.now() - start < outputTimeoutMs) {
+    const text = getLogText()
+    if (expectedViolation?.(extractViolationsFromLog(text))) {
+      return
+    }
+
+    if (text.length !== lastLength) {
+      lastLength = text.length
+      lastChange = Date.now()
+    } else if (!expectedViolation && Date.now() - lastChange >= outputIdleMs) {
+      return
+    }
+
+    await new Promise((r) => setTimeout(r, outputPollMs))
+  }
+}
 
 async function navigateAllRoutes(
   baseURL: string,
   browser: Awaited<ReturnType<typeof chromium.launch>>,
+  getLogText: () => string,
 ): Promise<void> {
   const context = await browser.newContext()
   const page = await context.newPage()
 
-  for (const route of routes) {
+  for (const [route, testId, expectedViolation] of routeDefinitions) {
     try {
       // Prefer 'networkidle' (ensures route chunks are actually fetched), but
       // fall back if it hangs in certain CI environments.
@@ -114,15 +190,13 @@ async function navigateAllRoutes(
         })
       }
 
-      const testId = routeReadyTestIds[route]
-      if (testId) {
-        await page.getByTestId(testId).waitFor({ timeout: 10_000 })
-      }
+      await page.getByTestId(testId).waitFor({ timeout: 10_000 })
     } catch {
       // ignore navigation errors — we only care about server logs
     } finally {
-      // Allow deferred transforms/logging to flush even when navigation fails.
-      await new Promise((r) => setTimeout(r, 750))
+      // Poll the captured logs so delayed bundled-dev warnings can flush
+      // without sleeping longer than necessary on every route.
+      await waitForOutput(getLogText, expectedViolation)
     }
   }
 
@@ -149,12 +223,12 @@ async function runDevPass(
 
     const browser = await chromium.launch()
     try {
-      await navigateAllRoutes(baseURL, browser)
+      await navigateAllRoutes(baseURL, browser, () => logChunks.join(''))
     } finally {
       await browser.close()
     }
 
-    await new Promise((r) => setTimeout(r, 750))
+    await waitForOutput(() => logChunks.join(''))
   } finally {
     await killChild(child)
   }
@@ -170,9 +244,10 @@ async function runDevPass(
  *      modules are pre-transformed so resolveId/transform paths differ.
  */
 async function captureDevViolations(cwd: string): Promise<void> {
-  const port = await getTestServerPort(`${packageJson.name}_dev`)
-
-  const coldViolations = await runDevPass(cwd, port)
+  const coldViolations = await runDevPass(
+    cwd,
+    await getTestServerPort(`${e2ePortKey}-violations-cold`),
+  )
 
   fs.writeFileSync(
     path.resolve(cwd, 'violations.dev.json'),
@@ -184,7 +259,10 @@ async function captureDevViolations(cwd: string): Promise<void> {
   )
 
   // Warm pass: the .vite cache from the cold run is still on disk.
-  const warmViolations = await runDevPass(cwd, port)
+  const warmViolations = await runDevPass(
+    cwd,
+    await getTestServerPort(`${e2ePortKey}-violations-warm`),
+  )
 
   fs.writeFileSync(
     path.resolve(cwd, 'violations.dev.warm.json'),

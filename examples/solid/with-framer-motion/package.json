@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000",
-    "build": "echo 'Skipped: waiting for dependency Solid 2.0 support' && exit 0",
+    "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "vite"
   },
@@ -17,11 +17,11 @@
     "solid-js": "2.0.0-beta.14",
     "solid-motionone": "^1.0.4",
     "tailwindcss": "^4.2.2",
-    "zod": "^3.24.2"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
+    "vite": "^8.0.14",
     "vite-plugin-solid": "^3.0.0-next.5"
   }
 }

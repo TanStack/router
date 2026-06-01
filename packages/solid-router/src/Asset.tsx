@@ -4,11 +4,11 @@ import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { JSX } from '@solidjs/web'
 
-export function Asset({
-  tag,
-  attrs,
-  children,
-}: RouterManagedTag): JSX.Element | null {
+const INLINE_CSS_HYDRATION_ATTR = 'data-tsr-inline-css'
+
+export function Asset(asset: RouterManagedTag): JSX.Element | null {
+  const { tag, attrs, children } = asset
+
   switch (tag) {
     case 'title':
       return <Title attrs={attrs} children={children} />
@@ -17,6 +17,14 @@ export function Asset({
     case 'link':
       return <HeadElement tag="link" attrs={attrs} />
     case 'style':
+      if (
+        asset.inlineCss &&
+        (process.env.TSS_INLINE_CSS_ENABLED === 'true' ||
+          (process.env.TSS_INLINE_CSS_ENABLED === undefined && isServer))
+      ) {
+        return <InlineCssStyle attrs={attrs}>{children}</InlineCssStyle>
+      }
+
       return <HeadElement tag="style" attrs={attrs} children={children} />
     case 'script':
       return <Script attrs={attrs} children={children} />
@@ -48,6 +56,36 @@ function useRelocateToHead(getEl: () => Node | undefined) {
       el.parentNode.removeChild(el)
     }
   })
+}
+
+function InlineCssStyle({
+  attrs,
+  children,
+}: {
+  attrs?: Record<string, any>
+  children?: RouterManagedTag['children']
+}) {
+  const isInlineCssPlaceholder = children === undefined
+  const html = isInlineCssPlaceholder
+    ? typeof document === 'undefined'
+      ? ''
+      : (document.querySelector<HTMLStyleElement>(
+          `style[${INLINE_CSS_HYDRATION_ATTR}]`,
+        )?.textContent ?? '')
+    : (children ?? '')
+
+  return (
+    <HeadElement
+      tag="style"
+      attrs={{ ...attrs, [INLINE_CSS_HYDRATION_ATTR]: '' }}
+      children={html}
+    />
+  )
+}
+
+interface ScriptAttrs {
+  [key: string]: string | boolean | undefined
+  src?: string
 }
 
 function HeadElement(props: {

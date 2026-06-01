@@ -17,11 +17,8 @@ import type {
   MakeRouteMatchUnion,
   MaskOptions,
   MatchRouteOptions,
-  NoInfer,
   RegisteredRouter,
-  ResolveRelativePath,
   ResolveRoute,
-  RouteByPath,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 import type { JSX } from '@solidjs/web'
@@ -75,17 +72,15 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = () => router.stores.firstMatchId.state
+  const matchId = () => router.stores.firstId.get()
   const routeId = () => (matchId() ? rootRouteId : undefined)
   const match = () =>
-    routeId()
-      ? router.stores.getMatchStoreByRouteId(rootRouteId).state
-      : undefined
+    routeId() ? router.stores.getRouteMatchStore(rootRouteId).get() : undefined
   const hasPendingMatch = () =>
     routeId()
-      ? Boolean(router.stores.pendingRouteIds.state[rootRouteId])
+      ? Boolean(router.stores.pendingRouteIds.get()[rootRouteId])
       : false
-  const resetKey = () => router.stores.loadedAt.state
+  const resetKey = () => router.stores.loadedAt.get()
   const nearestMatch = {
     matchId,
     routeId,
@@ -159,7 +154,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
     return Solid.createMemo(() => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-      router.stores.matchRouteReactivity.state
+      router.stores.matchRouteDeps.get()
       return router.matchRoute(rest as any, {
         pending,
         caseSensitive,
@@ -180,10 +175,9 @@ export type MakeMatchRouteOptions<
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | ((
-        params?: RouteByPath<
-          TRouter['routeTree'],
-          ResolveRelativePath<TFrom, NoInfer<TTo>>
-        >['types']['allParams'],
+        params?: Expand<
+          ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
+        >,
       ) => JSX.Element)
     | JSX.Element
 }
@@ -229,7 +223,7 @@ export function useMatches<
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
   return Solid.createMemo((prev: TSelected | undefined) => {
-    const matches = router.stores.activeMatchesSnapshot.state as Array<
+    const matches = router.stores.matches.get() as Array<
       MakeRouteMatchUnion<TRouter>
     >
     const res = opts?.select ? opts.select(matches) : matches

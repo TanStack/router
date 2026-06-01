@@ -552,7 +552,6 @@ function UsersComponent() {
   const usersQuery = useQuery(() =>
     usersQueryOptions(usersLayoutRoute.useLoaderDeps()()),
   )
-  const users = usersQuery.data
   const sortBy = Solid.createMemo(() => search().usersView?.sortBy ?? 'name')
   const filterBy = Solid.createMemo(() => search().usersView?.filterBy)
 
@@ -563,13 +562,12 @@ function UsersComponent() {
   })
 
   const sortedUsers = Solid.createMemo(() => {
-    if (!users) return []
+    const list = usersQuery.data
+    if (!list) return []
 
-    return !sortBy
-      ? users
-      : [...users].sort((a: any, b: any) => {
-          return a[sortBy()] > b[sortBy()] ? 1 : -1
-        })
+    return [...list].sort((a: any, b: any) => {
+      return a[sortBy()] > b[sortBy()] ? 1 : -1
+    })
   })
 
   const filteredUsers = Solid.createMemo(() => {
@@ -607,7 +605,7 @@ function UsersComponent() {
       },
       replace: true,
     })
-  }, [filterDraft])
+  })
 
   return (
     <div class="flex-1 flex">
@@ -805,11 +803,14 @@ function LoginComponent() {
   }
 
   // Ah, the subtle nuances of client side auth. 🙄
-  Solid.createRenderEffect(() => {
-    if (routeContext().status === 'loggedIn' && search().redirect) {
-      router.history.push(search().redirect!)
-    }
-  }, [routeContext().status, search().redirect])
+  Solid.createRenderEffect(
+    () => [routeContext().status, search().redirect] as const,
+    ([status, redirect]) => {
+      if (status === 'loggedIn' && redirect) {
+        router.history.push(redirect)
+      }
+    },
+  )
 
   return status === 'loggedIn' ? (
     <div>

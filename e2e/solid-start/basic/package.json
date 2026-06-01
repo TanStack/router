@@ -7,27 +7,24 @@
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "build:spa": "MODE=spa vite build && tsc --noEmit",
-    "build:prerender": "MODE=prerender vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "node server.js",
-    "test:e2e:startDummyServer": "node -e 'import(\"../basic-test-suite/src/setup/global.setup.ts\").then(m => m.default())' & node -e 'import(\"../basic-test-suite/src/setup/waitForDummyServer.ts\").then(m => m.default())'",
-    "test:e2e:stopDummyServer": "node -e 'import(\"../basic-test-suite/src/setup/global.teardown.ts\").then(m => m.default())'",
-    "test:e2e": "rm -rf dist; rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e:startDummyServer": "node -e 'import(\"./tests/setup/global.setup.ts\").then(m => m.default())' & node -e 'import(\"./tests/setup/waitForDummyServer.ts\").then(m => m.default())'",
+    "test:e2e:stopDummyServer": "node -e 'import(\"./tests/setup/global.teardown.ts\").then(m => m.default())'",
+    "test:e2e:local": "playwright test --project=chromium"
   },
   "dependencies": {
     "@solidjs/web": "2.0.0-beta.14",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
     "http-proxy-middleware": "^3.0.5",
     "js-cookie": "^3.0.5",
     "redaxios": "^0.5.1",
     "solid-js": "2.0.0-beta.14",
-    "tailwind-merge": "^2.6.0",
-    "vite": "^8.0.0",
-    "zod": "^3.24.2"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
@@ -38,15 +35,44 @@
     "combinate": "^1.1.11",
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
-    "tanstack-solid-start-e2e-basic-test-suite": "workspace:*",
     "typescript": "^6.0.2",
-    "vite-plugin-solid": "^3.0.0-next.5"
+    "vite-plugin-solid": "^3.0.0-next.5",
+    "@rsbuild/core": "^2.0.8",
+    "@rsbuild/plugin-babel": "^1.1.2",
+    "@rsbuild/plugin-solid": "^2.0.0-beta.0",
+    "@tailwindcss/postcss": "^4.2.2",
+    "vite": "^8.0.14"
   },
   "nx": {
     "targets": {
       "test:e2e": {
         "parallelism": false
       }
+    },
+    "metadata": {
+      "playwrightModes": [
+        {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "shards": 4
+        },
+        {
+          "toolchain": "vite",
+          "mode": "spa"
+        },
+        {
+          "toolchain": "vite",
+          "mode": "prerender"
+        },
+        {
+          "toolchain": "vite",
+          "mode": "preview"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr"
+        }
+      ]
     }
   }
 }

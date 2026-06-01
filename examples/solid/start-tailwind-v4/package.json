@@ -15,15 +15,15 @@
     "@tanstack/solid-router-devtools": "^2.0.0-beta.15",
     "@tanstack/solid-start": "^2.0.0-beta.20",
     "solid-js": "2.0.0-beta.14",
-    "tailwind-merge": "^2.6.0",
-    "zod": "^3.24.2"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.5.4",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
+    "vite": "^8.0.14",
     "vite-plugin-solid": "^3.0.0-next.5",
     "vite-tsconfig-paths": "^5.1.4"
   }

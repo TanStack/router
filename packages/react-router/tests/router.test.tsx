@@ -1525,6 +1525,88 @@ describe('invalidate', () => {
     ).toBeInTheDocument()
     expect(screen.queryByTestId('loader-route')).not.toBeInTheDocument()
   })
+
+  it('does not render the route component while async loader notFound is waiting for later matches to settle', async () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/parent/child/grandchild'],
+    })
+
+    const createControlledPromise = () => {
+      let resolve!: () => void
+      const promise = new Promise<void>((r) => {
+        resolve = r
+      })
+
+      return { promise, resolve }
+    }
+
+    const grandchildLoader = createControlledPromise()
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+      notFoundComponent: () => (
+        <div data-testid="root-not-found">Root Not Found</div>
+      ),
+    })
+
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      component: () => <Outlet />,
+      notFoundComponent: () => (
+        <div data-testid="parent-not-found">Parent Not Found</div>
+      ),
+    })
+
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: async () => {
+        await Promise.resolve()
+        throw notFound()
+      },
+      component: () => (
+        <div data-testid="child-component">
+          Child component should not render
+        </div>
+      ),
+    })
+
+    const grandchildRoute = createRoute({
+      getParentRoute: () => childRoute,
+      path: '/grandchild',
+      loader: () => grandchildLoader.promise,
+      component: () => <div data-testid="grandchild-component">Grandchild</div>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        parentRoute.addChildren([childRoute.addChildren([grandchildRoute])]),
+      ]),
+      history,
+      defaultPendingMs: 0,
+      defaultPendingComponent: () => (
+        <div data-testid="pending">Loading...</div>
+      ),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/parent/child/grandchild')
+      expect(router.state.matches[0]?.routeId).toBe(rootRoute.id)
+      expect(router.state.matches[1]?.routeId).toBe(parentRoute.id)
+      expect(router.state.matches[2]?.routeId).toBe(childRoute.id)
+    })
+
+    expect(screen.queryByTestId('child-component')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('parent-not-found')).not.toBeInTheDocument()
+
+    grandchildLoader.resolve()
+
+    expect(await screen.findByTestId('parent-not-found')).toBeInTheDocument()
+    expect(screen.queryByTestId('child-component')).not.toBeInTheDocument()
+  })
 })
 
 describe('search params in URL', () => {

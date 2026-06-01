@@ -8,9 +8,11 @@
     "moduleResolution": "Bundler",
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "target": "ES2022",
+    "types": ["node"],
     "allowJs": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {

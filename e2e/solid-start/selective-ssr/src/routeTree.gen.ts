@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as DataOnlyPendingComponentRouteImport } from './routes/data-only-pending-component'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 
@@ -18,6 +19,12 @@ const PostsRoute = PostsRouteImport.update({
   path: '/posts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DataOnlyPendingComponentRoute =
+  DataOnlyPendingComponentRouteImport.update({
+    id: '/data-only-pending-component',
+    path: '/data-only-pending-component',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,30 +38,39 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/data-only-pending-component': typeof DataOnlyPendingComponentRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/data-only-pending-component': typeof DataOnlyPendingComponentRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/data-only-pending-component': typeof DataOnlyPendingComponentRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/posts' | '/posts/$postId'
+  fullPaths: '/' | '/data-only-pending-component' | '/posts' | '/posts/$postId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/posts' | '/posts/$postId'
-  id: '__root__' | '/' | '/posts' | '/posts/$postId'
+  to: '/' | '/data-only-pending-component' | '/posts' | '/posts/$postId'
+  id:
+    | '__root__'
+    | '/'
+    | '/data-only-pending-component'
+    | '/posts'
+    | '/posts/$postId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DataOnlyPendingComponentRoute: typeof DataOnlyPendingComponentRoute
   PostsRoute: typeof PostsRouteWithChildren
 }
 
@@ -65,6 +81,13 @@ declare module '@tanstack/solid-router' {
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-only-pending-component': {
+      id: '/data-only-pending-component'
+      path: '/data-only-pending-component'
+      fullPath: '/data-only-pending-component'
+      preLoaderRoute: typeof DataOnlyPendingComponentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -96,6 +119,7 @@ const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DataOnlyPendingComponentRoute: DataOnlyPendingComponentRoute,
   PostsRoute: PostsRouteWithChildren,
 }
 export const routeTree = rootRouteImport

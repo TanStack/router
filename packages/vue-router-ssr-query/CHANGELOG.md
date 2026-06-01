@@ -1,5 +1,37 @@
 # @tanstack/vue-router-ssr-query
 
+## 1.167.1
+
+### Patch Changes
+
+- Updated dependencies [[`d1997b6`](https://github.com/TanStack/router/commit/d1997b66d7c24c1d64772bb8bab5caf9c6d9cc48)]:
+  - @tanstack/router-ssr-query-core@1.169.1
+
+## 1.167.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- Updated dependencies [[`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14)]:
+  - @tanstack/router-ssr-query-core@1.169.0
+
+## 1.166.12
+
+### Patch Changes
+
+- Updated dependencies [[`b12f57b`](https://github.com/TanStack/router/commit/b12f57bbb44e47d5452d46e9e67ea4d63cdb5b55)]:
+  - @tanstack/router-ssr-query-core@1.168.0
+
+## 1.166.11
+
+### Patch Changes
+
+- Updated dependencies [[`459057c`](https://github.com/TanStack/router/commit/459057cd2d90cff20d20e51d4964b0a8c950555e)]:
+  - @tanstack/router-ssr-query-core@1.167.1
+
 ## 1.166.10
 
 ### Patch Changes

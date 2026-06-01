@@ -91,16 +91,16 @@ describe('granular stores', () => {
     const activeMatches = router.state.matches
 
     // Active pool contains all active matches with correct routeIds
-    expect(router.stores.matchesId.state).toEqual(
+    expect(router.stores.matchesId.get()).toEqual(
       activeMatches.map((match) => match.id),
     )
     activeMatches.forEach((match) => {
-      const store = router.stores.activeMatchStoresById.get(match.id)
+      const store = router.stores.matchStores.get(match.id)
       expect(store).toBeDefined()
       expect(store!.routeId).toBe(match.routeId)
-      // getMatchStoreByRouteId resolves to the same state
-      expect(router.stores.getMatchStoreByRouteId(match.routeId).state).toBe(
-        store!.state,
+      // getRouteMatchStore resolves to the same state
+      expect(router.stores.getRouteMatchStore(match.routeId).get()).toBe(
+        store!.get(),
       )
     })
 
@@ -113,29 +113,29 @@ describe('granular stores', () => {
       id: `${match.id}__cached_${index}`,
     }))
 
-    router.stores.setPendingMatches(pendingMatches)
-    router.stores.setCachedMatches(cachedMatches)
+    router.stores.setPending(pendingMatches)
+    router.stores.setCached(cachedMatches)
 
-    expect(router.stores.matchesId.state).toEqual(
+    expect(router.stores.matchesId.get()).toEqual(
       activeMatches.map((match) => match.id),
     )
-    expect(router.stores.pendingMatchesId.state).toEqual(
+    expect(router.stores.pendingIds.get()).toEqual(
       pendingMatches.map((match) => match.id),
     )
-    expect(router.stores.cachedMatchesId.state).toEqual(
+    expect(router.stores.cachedIds.get()).toEqual(
       cachedMatches.map((match) => match.id),
     )
 
     // Pending pool has correct routeIds
     pendingMatches.forEach((match) => {
-      const pendingStore = router.stores.pendingMatchStoresById.get(match.id)
+      const pendingStore = router.stores.pendingMatchStores.get(match.id)
       expect(pendingStore).toBeDefined()
       expect(pendingStore!.routeId).toBe(match.routeId)
       // Pending match is NOT in the active pool
-      expect(router.stores.activeMatchStoresById.get(match.id)).toBeUndefined()
+      expect(router.stores.matchStores.get(match.id)).toBeUndefined()
       // Active pool still has a match for this routeId
       expect(
-        router.stores.getMatchStoreByRouteId(match.routeId).state,
+        router.stores.getRouteMatchStore(match.routeId).get(),
       ).toBeDefined()
     })
 
@@ -143,17 +143,17 @@ describe('granular stores', () => {
       ...match,
       id: `${match.id}__active_next_${index}`,
     }))
-    router.stores.setActiveMatches(nextActiveMatches)
+    router.stores.setMatches(nextActiveMatches)
 
-    expect(router.stores.matchesId.state).toEqual(
+    expect(router.stores.matchesId.get()).toEqual(
       nextActiveMatches.map((match) => match.id),
     )
     nextActiveMatches.forEach((match) => {
-      const store = router.stores.activeMatchStoresById.get(match.id)
+      const store = router.stores.matchStores.get(match.id)
       expect(store).toBeDefined()
       expect(store!.routeId).toBe(match.routeId)
-      expect(router.stores.getMatchStoreByRouteId(match.routeId).state).toBe(
-        store!.state,
+      expect(router.stores.getRouteMatchStore(match.routeId).get()).toBe(
+        store!.get(),
       )
     })
   })
@@ -172,8 +172,8 @@ describe('granular stores', () => {
       throw new Error('Expected root and leaf matches to exist')
     }
 
-    const rootStore = router.stores.activeMatchStoresById.get(rootMatch.id)
-    const leafStore = router.stores.activeMatchStoresById.get(leafMatch.id)
+    const rootStore = router.stores.matchStores.get(rootMatch.id)
+    const leafStore = router.stores.matchStores.get(leafMatch.id)
 
     expect(rootStore).toBeDefined()
     expect(leafStore).toBeDefined()
@@ -182,36 +182,32 @@ describe('granular stores', () => {
       throw new Error('Expected root and leaf match stores to exist')
     }
 
-    const rootBefore = rootStore.state
-    const leafBefore = leafStore.state
+    const rootBefore = rootStore.get()
+    const leafBefore = leafStore.get()
 
     router.updateMatch(leafMatch.id, (prev) => ({
       ...prev,
       status: 'pending',
     }))
 
-    expect(rootStore.state).toBe(rootBefore)
-    expect(leafStore.state).not.toBe(leafBefore)
-    expect(leafStore.state.status).toBe('pending')
+    expect(rootStore.get()).toBe(rootBefore)
+    expect(leafStore.get()).not.toBe(leafBefore)
+    expect(leafStore.get().status).toBe('pending')
   })
 
-  test('getMatchStoreByRouteId caches store instances and clears when route is inactive', async () => {
+  test('getRouteMatchStore caches store instances and clears when route is inactive', async () => {
     const router = createRouter()
     await router.navigate({ to: '/posts/123' })
 
-    const postsStore = router.stores.getMatchStoreByRouteId('/posts/$postId')
+    const postsStore = router.stores.getRouteMatchStore('/posts/$postId')
 
-    expect(router.stores.getMatchStoreByRouteId('/posts/$postId')).toBe(
-      postsStore,
-    )
-    expect(postsStore.state?.routeId).toBe('/posts/$postId')
+    expect(router.stores.getRouteMatchStore('/posts/$postId')).toBe(postsStore)
+    expect(postsStore.get()?.routeId).toBe('/posts/$postId')
 
     await router.navigate({ to: '/about' })
 
-    expect(router.stores.getMatchStoreByRouteId('/posts/$postId')).toBe(
-      postsStore,
-    )
-    expect(postsStore.state).toBeUndefined()
+    expect(router.stores.getRouteMatchStore('/posts/$postId')).toBe(postsStore)
+    expect(postsStore.get()).toBeUndefined()
   })
 
   test('no-op match pool reconciliation preserves ids and match state references', async () => {
@@ -219,21 +215,21 @@ describe('granular stores', () => {
     await router.navigate({ to: '/posts/123' })
 
     const activeMatches = router.state.matches
-    const activeIdsBefore = router.stores.matchesId.state
+    const activeIdsBefore = router.stores.matchesId.get()
     const activeStoresBefore = activeMatches.map((match) =>
-      router.stores.activeMatchStoresById.get(match.id),
+      router.stores.matchStores.get(match.id),
     )
-    const activeStatesBefore = activeStoresBefore.map((store) => store?.state)
+    const activeStatesBefore = activeStoresBefore.map((store) => store?.get())
 
-    router.stores.setActiveMatches(activeMatches)
+    router.stores.setMatches(activeMatches)
 
-    expect(router.stores.matchesId.state).toBe(activeIdsBefore)
-    expect(router.stores.activeMatchesSnapshot.state).toBe(activeMatches)
+    expect(router.stores.matchesId.get()).toBe(activeIdsBefore)
+    expect(router.stores.matches.get()).toBe(activeMatches)
     for (let i = 0; i < activeMatches.length; i++) {
       const match = activeMatches[i]!
-      const store = router.stores.activeMatchStoresById.get(match.id)
+      const store = router.stores.matchStores.get(match.id)
       expect(store).toBe(activeStoresBefore[i])
-      expect(store?.state).toBe(activeStatesBefore[i])
+      expect(store?.get()).toBe(activeStatesBefore[i])
     }
 
     const pendingMatches = activeMatches.map((match) => ({
@@ -242,22 +238,22 @@ describe('granular stores', () => {
       status: 'pending' as const,
     }))
 
-    router.stores.setPendingMatches(pendingMatches)
+    router.stores.setPending(pendingMatches)
 
-    const pendingIdsBefore = router.stores.pendingMatchesId.state
+    const pendingIdsBefore = router.stores.pendingIds.get()
     const pendingStoresBefore = pendingMatches.map((match) =>
-      router.stores.pendingMatchStoresById.get(match.id),
+      router.stores.pendingMatchStores.get(match.id),
     )
-    const pendingStatesBefore = pendingStoresBefore.map((store) => store?.state)
+    const pendingStatesBefore = pendingStoresBefore.map((store) => store?.get())
 
-    router.stores.setPendingMatches(pendingMatches)
+    router.stores.setPending(pendingMatches)
 
-    expect(router.stores.pendingMatchesId.state).toBe(pendingIdsBefore)
+    expect(router.stores.pendingIds.get()).toBe(pendingIdsBefore)
     for (let i = 0; i < pendingMatches.length; i++) {
       const match = pendingMatches[i]!
-      const store = router.stores.pendingMatchStoresById.get(match.id)
+      const store = router.stores.pendingMatchStores.get(match.id)
       expect(store).toBe(pendingStoresBefore[i])
-      expect(store?.state).toBe(pendingStatesBefore[i])
+      expect(store?.get()).toBe(pendingStatesBefore[i])
     }
   })
 
@@ -274,7 +270,7 @@ describe('granular stores', () => {
       throw new Error('Expected active leaf match to exist')
     }
 
-    const activeStore = router.stores.activeMatchStoresById.get(activeLeaf.id)
+    const activeStore = router.stores.matchStores.get(activeLeaf.id)
 
     expect(activeStore).toBeDefined()
 
@@ -282,17 +278,15 @@ describe('granular stores', () => {
       throw new Error('Expected active leaf store to exist')
     }
 
-    const activeBefore = activeStore.state
+    const activeBefore = activeStore.get()
 
     const reloadPromise = router.load()
     await Promise.resolve()
 
-    const pendingStore = router.stores.pendingMatchStoresById.get(activeLeaf.id)
+    const pendingStore = router.stores.pendingMatchStores.get(activeLeaf.id)
 
     expect(pendingStore).toBeDefined()
-    expect(router.stores.activeMatchStoresById.get(activeLeaf.id)).toBe(
-      activeStore,
-    )
+    expect(router.stores.matchStores.get(activeLeaf.id)).toBe(activeStore)
 
     if (!pendingStore) {
       throw new Error('Expected pending leaf store to exist')
@@ -304,10 +298,10 @@ describe('granular stores', () => {
       error: new Error('pending-only-update'),
     }))
 
-    expect(activeStore.state).toBe(activeBefore)
-    expect(activeStore.state.status).toBe('success')
-    expect(pendingStore.state.status).toBe('error')
-    expect(pendingStore.state.error).toEqual(new Error('pending-only-update'))
+    expect(activeStore.get()).toBe(activeBefore)
+    expect(activeStore.get().status).toBe('success')
+    expect(pendingStore.get().status).toBe('error')
+    expect(pendingStore.get().error).toEqual(new Error('pending-only-update'))
 
     resolveLoader()
     await reloadPromise
@@ -328,10 +322,10 @@ describe('granular stores', () => {
       status: 'success' as const,
     }
 
-    router.stores.setPendingMatches([pendingDuplicate])
-    router.stores.setCachedMatches([cachedDuplicate])
+    router.stores.setPending([pendingDuplicate])
+    router.stores.setCached([cachedDuplicate])
 
-    router.stores.setActiveMatches(
+    router.stores.setMatches(
       router.state.matches.map((match) =>
         match.id === duplicatedId
           ? {
@@ -343,20 +337,18 @@ describe('granular stores', () => {
       ),
     )
 
+    expect(router.stores.matchStores.get(duplicatedId)?.get().status).toBe(
+      'error',
+    )
     expect(
-      router.stores.activeMatchStoresById.get(duplicatedId)?.state.status,
-    ).toBe('error')
-    expect(
-      router.stores.getMatchStoreByRouteId(activeLeaf.routeId).state?.status,
+      router.stores.getRouteMatchStore(activeLeaf.routeId).get()?.status,
     ).toBe('error')
     // Pending pool has its own store for this id
     expect(
-      router.stores.pendingMatchStoresById.get(duplicatedId)?.state.status,
+      router.stores.pendingMatchStores.get(duplicatedId)?.get().status,
     ).toBe('pending')
-    expect(router.stores.pendingMatchesSnapshot.state[0]?.status).toBe(
-      'pending',
-    )
-    expect(router.stores.cachedMatchesSnapshot.state[0]?.status).toBe('success')
+    expect(router.stores.pendingMatches.get()[0]?.status).toBe('pending')
+    expect(router.stores.cachedMatches.get()[0]?.status).toBe('success')
     expect(router.getMatch(duplicatedId)?.status).toBe('success')
   })
 })

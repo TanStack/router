@@ -1,8 +1,10 @@
 import * as Vue from 'vue'
 import {
+  appendUniqueUserTags,
   escapeHtml,
   getAssetCrossOrigin,
-  resolveManifestAssetLink,
+  getScriptPreloadAttrs,
+  resolveManifestCssLink,
 } from '@tanstack/router-core'
 import { useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
@@ -13,10 +15,7 @@ import type {
 
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
-  const matches = useStore(
-    router.stores.activeMatchesSnapshot,
-    (value) => value,
-  )
+  const matches = useStore(router.stores.matches, (value) => value)
 
   const meta = Vue.computed<Array<RouterManagedTag>>(() => {
     const resultMeta: Array<RouterManagedTag> = []
@@ -96,25 +95,22 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const preloadMeta = Vue.computed<Array<RouterManagedTag>>(() => {
     const preloadMeta: Array<RouterManagedTag> = []
 
-    matches.value
-      .map((match) => router.looseRoutesById[match.routeId]!)
-      .forEach((route) =>
-        router.ssr?.manifest?.routes[route.id]?.preloads
-          ?.filter(Boolean)
-          .forEach((preload) => {
-            const preloadLink = resolveManifestAssetLink(preload)
-            preloadMeta.push({
-              tag: 'link',
-              attrs: {
-                rel: 'modulepreload',
-                href: preloadLink.href,
-                crossOrigin:
-                  getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
-                  preloadLink.crossOrigin,
-              },
-            })
-          }),
-      )
+    matches.value.forEach((match) => {
+      router.ssr?.manifest?.routes[match.routeId]?.preloads
+        ?.filter(Boolean)
+        .forEach((preload) => {
+          preloadMeta.push({
+            tag: 'link',
+            attrs: {
+              ...getScriptPreloadAttrs(
+                router.ssr?.manifest,
+                preload,
+                assetCrossOrigin,
+              ),
+            },
+          })
+        })
+    })
 
     return preloadMeta
   })
@@ -137,50 +133,45 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const manifestAssets = Vue.computed<Array<RouterManagedTag>>(() => {
     const manifest = router.ssr?.manifest
 
-    const assets = matches.value
-      .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
-      .filter(Boolean)
-      .flat(1)
-      .filter((asset) => asset.tag === 'link')
-      .map(
-        (asset) =>
-          ({
-            tag: 'link',
-            attrs: {
-              ...asset.attrs,
-              crossOrigin:
-                getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
-                asset.attrs?.crossOrigin,
-            },
-          }) satisfies RouterManagedTag,
-      )
+    const assets: Array<RouterManagedTag> = []
+
+    matches.value.forEach((match) => {
+      const routeManifest = manifest?.routes[match.routeId]
+
+      routeManifest?.css?.forEach((link) => {
+        const resolvedLink = resolveManifestCssLink(link)
+        assets.push({
+          tag: 'link',
+          attrs: {
+            rel: 'stylesheet',
+            ...resolvedLink,
+            crossOrigin:
+              getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+              resolvedLink.crossOrigin,
+          },
+        })
+      })
+    })
+
+    if (manifest?.inlineStyle) {
+      assets.push({
+        tag: 'style',
+        attrs: manifest.inlineStyle.attrs,
+        children: manifest.inlineStyle.children,
+        inlineCss: true,
+      })
+    }
 
     return assets
   })
 
-  return () =>
-    uniqBy(
-      [
-        ...manifestAssets.value,
-        ...meta.value,
-        ...preloadMeta.value,
-        ...links.value,
-        ...headScripts.value,
-      ] as Array<RouterManagedTag>,
-      (d) => {
-        return JSON.stringify(d)
-      },
-    )
-}
-
-export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
-  const seen = new Set<string>()
-  return arr.filter((item) => {
-    const key = fn(item)
-    if (seen.has(key)) {
-      return false
-    }
-    seen.add(key)
-    return true
-  })
+  return () => {
+    const tags: Array<RouterManagedTag> = []
+    tags.push(...manifestAssets.value)
+    appendUniqueUserTags(tags, meta.value)
+    tags.push(...preloadMeta.value)
+    appendUniqueUserTags(tags, links.value)
+    appendUniqueUserTags(tags, headScripts.value)
+    return tags
+  }
 }

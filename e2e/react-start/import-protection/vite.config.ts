@@ -1,30 +1,23 @@
 import path from 'node:path'
 import { defineConfig } from 'vite'
+import viteReact from '@vitejs/plugin-react'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { getStartModeConfig } from './start-mode-config'
 
-// Allow env var to override the import protection behavior.
-// Default: 'mock' (build completes, violations logged as warnings).
-// Set BEHAVIOR=error to test that the build fails on violations.
-const behavior = (process.env.BEHAVIOR ?? 'mock') as 'mock' | 'error'
+const outDir = process.env.E2E_DIST_DIR ?? 'dist'
+const startModeConfig = getStartModeConfig()
+const bundledDev = process.env.E2E_VITE_BUNDLED_DEV === 'true'
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
+  experimental: bundledDev ? { bundledDev: true } : undefined,
+  build: {
+    outDir,
+  },
   server: {
     port: 3000,
   },
-  plugins: [
-    tanstackStart({
-      importProtection: {
-        behavior,
-        log: 'always',
-        // Tests capture structured violations by overriding this hook.
-        // If unset, we avoid generating any violations*.json files.
-        onViolation: (info) => {
-          void info
-        },
-      },
-    }),
-  ],
+  plugins: [tanstackStart(startModeConfig), viteReact()],
   // react-tweet's package.json exports resolve to `index.client.js` which
   // matches the default **/*.client.* deny pattern.  Bundling it via
   // noExternal must NOT trigger a false-positive import-protection violation.

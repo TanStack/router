@@ -142,15 +142,14 @@ tanstackRouter({
 
 ### Output Options
 
-| Option                      | Type                   | Default     | Description                                  |
-| --------------------------- | ---------------------- | ----------- | -------------------------------------------- |
-| `quoteStyle`                | `'single' \| 'double'` | `'single'`  | Quote style in generated code                |
-| `semicolons`                | `boolean`              | `false`     | Use semicolons in generated code             |
-| `disableTypes`              | `boolean`              | `false`     | Disable TypeScript types                     |
-| `disableLogging`            | `boolean`              | `false`     | Suppress plugin logs                         |
-| `addExtensions`             | `boolean \| string`    | `false`     | Add file extensions to imports               |
-| `enableRouteTreeFormatting` | `boolean`              | `true`      | Format generated route tree                  |
-| `verboseFileRoutes`         | `boolean`              | `undefined` | When `false`, auto-imports `createFileRoute` |
+| Option                      | Type                   | Default    | Description                      |
+| --------------------------- | ---------------------- | ---------- | -------------------------------- |
+| `quoteStyle`                | `'single' \| 'double'` | `'single'` | Quote style in generated code    |
+| `semicolons`                | `boolean`              | `false`    | Use semicolons in generated code |
+| `disableTypes`              | `boolean`              | `false`    | Disable TypeScript types         |
+| `disableLogging`            | `boolean`              | `false`    | Suppress plugin logs             |
+| `addExtensions`             | `boolean \| string`    | `false`    | Add file extensions to imports   |
+| `enableRouteTreeFormatting` | `boolean`              | `true`     | Format generated route tree      |
 
 ### Virtual Route Config
 
@@ -165,12 +164,11 @@ tanstackRouter({
 
 ## How It Works
 
-The composed plugin assembles up to 4 sub-plugins:
+The composed plugin assembles up to 3 sub-plugins:
 
 1. **Route Generator** (always) — Watches route files and generates `routeTree.gen.ts`
 2. **Code Splitter** (when `autoCodeSplitting: true`) — Splits route files into lazy-loaded chunks using virtual modules
-3. **Auto-Import** (when `verboseFileRoutes: false`) — Auto-injects `createFileRoute` imports
-4. **HMR** (dev mode, when code splitter is off) — Hot-reloads route changes without full refresh
+3. **HMR** (dev mode, when code splitter is off) — Hot-reloads route changes without full refresh
 
 ## Individual Plugin Exports
 
@@ -181,7 +179,6 @@ import {
   tanstackRouter, // Composed (default)
   tanstackRouterGenerator, // Generator only
   tanStackRouterCodeSplitter, // Code splitter only
-  tanstackRouterAutoImport, // Auto-import only
 } from '@tanstack/router-plugin/vite'
 ```
 

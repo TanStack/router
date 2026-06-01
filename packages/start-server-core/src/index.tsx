@@ -9,12 +9,8 @@ export type {
   TransformAssetsObjectShorthand,
   TransformAssetsCrossOriginConfig,
   TransformAssetResult,
-  TransformAssetUrls,
-  TransformAssetUrlsFn,
-  TransformAssetUrlsContext,
-  TransformAssetUrlsOptions,
-  AssetUrlType,
   TransformAssetKind,
+  CreateTransformAssetsContext,
 } from './transformAssetUrls'
 
 export {
@@ -35,3 +31,13 @@ export { HEADERS } from './constants'
 export type { RequestHandler, RequestOptions } from './request-handler'
 
 export type { SessionConfig } from './session'
+
+export type {
+  EarlyHint,
+  EarlyHintsEvent,
+  EarlyHintsPhase,
+  OnEarlyHints,
+  ResponseLinkHeaderEntry,
+  ResponseLinkHeaderFilter,
+  ResponseLinkHeaderOptions,
+} from './early-hints'

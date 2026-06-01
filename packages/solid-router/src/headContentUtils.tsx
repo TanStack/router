@@ -1,8 +1,10 @@
 import * as Solid from 'solid-js'
 import {
+  appendUniqueUserTags,
   escapeHtml,
   getAssetCrossOrigin,
-  resolveManifestAssetLink,
+  getScriptPreloadAttrs,
+  resolveManifestCssLink,
 } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type {
@@ -17,14 +19,11 @@ import type {
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const getTagKey = (tag: RouterManagedTag) => JSON.stringify(tag)
-  const activeMatches = Solid.createMemo(
-    () => router.stores.activeMatchesSnapshot.state,
-  )
+  const activeMatches = Solid.createMemo(() => router.stores.matches.get())
   const routeMeta = Solid.createMemo(() =>
     activeMatches()
-      .map((match) => match.meta!)
-      .filter(Boolean),
+      .map((match) => match.meta)
+      .filter((meta) => meta !== undefined),
   )
 
   const meta: Solid.Accessor<Array<RouterManagedTag>> = Solid.createMemo(() => {
@@ -102,9 +101,8 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const links = Solid.createMemo(() => {
     const matches = activeMatches()
     const constructed = matches
-      .map((match) => match.links!)
-      .filter(Boolean)
-      .flat(1)
+      .flatMap((match) => match.links ?? [])
+      .filter((link) => link !== undefined)
       .map((link) => ({
         tag: 'link',
         attrs: {
@@ -113,138 +111,145 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
         },
       })) satisfies Array<RouterManagedTag>
 
+    return constructed
+  })
+
+  const manifestCssTags = Solid.createMemo(() => {
     const manifest = router.ssr?.manifest
+    const tags: Array<RouterManagedTag> = []
 
-    const assets = matches
-      .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
-      .filter(Boolean)
-      .flat(1)
-      .filter((asset) => asset.tag === 'link')
-      .map(
-        (asset) =>
-          ({
-            tag: 'link',
-            attrs: {
-              ...asset.attrs,
-              crossOrigin:
-                getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
-                asset.attrs?.crossOrigin,
-              nonce,
-            },
-          }) satisfies RouterManagedTag,
-      )
+    if (!manifest) {
+      return tags
+    }
 
-    return [...constructed, ...assets]
+    for (const match of activeMatches()) {
+      manifest.routes[match.routeId]?.css?.forEach((link) => {
+        const resolvedLink = resolveManifestCssLink(link)
+        tags.push({
+          tag: 'link',
+          attrs: {
+            rel: 'stylesheet',
+            ...resolvedLink,
+            crossOrigin:
+              getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+              resolvedLink.crossOrigin,
+            nonce,
+          },
+        })
+      })
+    }
+
+    if (manifest.inlineStyle) {
+      tags.push({
+        tag: 'style',
+        attrs: {
+          ...manifest.inlineStyle.attrs,
+          nonce,
+        },
+        children: manifest.inlineStyle.children,
+        inlineCss: true,
+      })
+    }
+
+    return tags
   })
 
   const preloadLinks = Solid.createMemo(() => {
     const matches = activeMatches()
     const preloadLinks: Array<RouterManagedTag> = []
 
-    matches
-      .map((match) => router.looseRoutesById[match.routeId]!)
-      .forEach((route) =>
-        router.ssr?.manifest?.routes[route.id]?.preloads
-          ?.filter(Boolean)
-          .forEach((preload) => {
-            const preloadLink = resolveManifestAssetLink(preload)
-            preloadLinks.push({
-              tag: 'link',
-              attrs: {
-                rel: 'modulepreload',
-                href: preloadLink.href,
-                crossOrigin:
-                  getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
-                  preloadLink.crossOrigin,
-                nonce,
-              },
-            })
-          }),
-      )
+    matches.forEach((match) =>
+      router.ssr?.manifest?.routes[match.routeId]?.preloads
+        ?.filter(Boolean)
+        .forEach((preload) => {
+          preloadLinks.push({
+            tag: 'link',
+            attrs: {
+              ...getScriptPreloadAttrs(
+                router.ssr?.manifest,
+                preload,
+                assetCrossOrigin,
+              ),
+              nonce,
+            },
+          })
+        }),
+    )
 
     return preloadLinks
   })
 
-  const styles = Solid.createMemo(() =>
-    (
-      activeMatches()
-        .map((match) => match.styles!)
-        .flat(1)
-        .filter(Boolean) as Array<RouterManagedTag>
-    ).map(({ children, ...style }) => ({
-      tag: 'style',
-      attrs: {
-        ...style,
-        nonce,
-      },
-      children,
-    })),
-  )
+  const styles = Solid.createMemo(() => {
+    return activeMatches()
+      .flatMap((match) => match.styles ?? [])
+      .filter((style) => style !== undefined)
+      .map(({ children, ...style }) => ({
+        tag: 'style',
+        attrs: {
+          ...style,
+          nonce,
+        },
+        children: children as string | undefined,
+      })) satisfies Array<RouterManagedTag>
+  })
 
-  const headScripts = Solid.createMemo(() =>
-    (
-      activeMatches()
-        .map((match) => match.headScripts!)
-        .flat(1)
-        .filter(Boolean) as Array<RouterManagedTag>
-    ).map(({ children, ...script }) => ({
-      tag: 'script',
-      attrs: {
-        ...script,
-        nonce,
-      },
-      children,
-    })),
-  )
+  const headScripts = Solid.createMemo(() => {
+    return activeMatches()
+      .flatMap((match) => match.headScripts ?? [])
+      .filter((script) => script !== undefined)
+      .map(({ children, ...script }) => ({
+        tag: 'script',
+        attrs: {
+          ...script,
+          nonce,
+        },
+        children: children as string | undefined,
+      })) satisfies Array<RouterManagedTag>
+  })
 
   // Cache tag objects by key across renders so that unchanged tags keep a
   // stable object identity. `<For>` keys by reference, so reusing the previous
   // object for an unchanged tag lets it reconcile the existing DOM node in
   // place instead of remounting it. Remounting head nodes on navigation
   // detaches/re-fetches stylesheets (e.g. the app stylesheet), causing a FOUC.
-  let tagsByKey = new Map<string, RouterManagedTag>()
-
   return Solid.createMemo((prev: Array<RouterManagedTag> | undefined) => {
-    const next = uniqBy(
-      [
-        ...meta(),
-        ...preloadLinks(),
-        ...links(),
-        ...styles(),
-        ...headScripts(),
-      ] as Array<RouterManagedTag>,
-      getTagKey,
-    )
+    const next: Array<RouterManagedTag> = []
+    appendUniqueUserTags(next, meta())
+    appendUniqueUserTags(next, links())
+    next.push(...manifestCssTags())
+    next.push(...preloadLinks())
+    appendUniqueUserTags(next, styles())
+    appendUniqueUserTags(next, headScripts())
 
-    const nextTagsByKey = new Map<string, RouterManagedTag>()
-    const stable = next.map((tag) => {
-      const key = getTagKey(tag)
-      const reused = tagsByKey.get(key) ?? tag
-      nextTagsByKey.set(key, reused)
-      return reused
-    })
-    tagsByKey = nextTagsByKey
-
-    if (
-      prev &&
-      prev.length === stable.length &&
-      prev.every((tag, index) => tag === stable[index])
-    ) {
-      return prev
+    if (prev === undefined) {
+      return next
     }
-
-    return stable
+    return replaceEqualTags(prev, next)
   })
 }
 
-export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
-  const seen = new Set<string>()
-  return arr.filter((item) => {
-    const key = fn(item)
-    if (seen.has(key)) {
-      return false
+function replaceEqualTags(
+  prev: Array<RouterManagedTag>,
+  next: Array<RouterManagedTag>,
+) {
+  const prevByKey = new Map<string, RouterManagedTag>()
+  for (const tag of prev) {
+    prevByKey.set(JSON.stringify(tag), tag)
+  }
+
+  let isEqual = prev.length === next.length
+  const result = next.map((tag, index) => {
+    const existing = prevByKey.get(JSON.stringify(tag))
+    if (existing) {
+      if (existing !== prev[index]) {
+        isEqual = false
+      }
+      return existing
     }
-    seen.add(key)
-    return true
+
+    isEqual = false
+    return tag
   })
+
+  return isEqual ? prev : result
 }

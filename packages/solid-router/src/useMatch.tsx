@@ -76,15 +76,9 @@ export function useMatch<
 
   const match = () => {
     if (opts.from) {
-      const ids = router.stores.matchesId.state
-      for (const id of ids) {
-        const matchStore = router.stores.activeMatchStoresById.get(id)
-        if (matchStore?.routeId === opts.from) {
-          return matchStore.state
-        }
-      }
-
-      return undefined
+      return router.stores.matches
+        .get()
+        .find((match) => match.routeId === opts.from)
     }
 
     return nearestMatch?.match()
@@ -95,18 +89,26 @@ export function useMatch<
 
     if (selectedMatch === undefined) {
       const hasPendingMatch = opts.from
-        ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
+        ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
         : (nearestMatch?.hasPending() ?? false)
-      const isTransitioning = router.stores.isTransitioning.state
 
-      if (!hasPendingMatch && !isTransitioning && (opts.shouldThrow ?? true)) {
+      if (
+        prev !== undefined &&
+        (hasPendingMatch || router.stores.isTransitioning.get())
+      ) {
+        return prev
+      }
+
+      if (!hasPendingMatch && (opts.shouldThrow ?? true)) {
         if (process.env.NODE_ENV !== 'production') {
           throw new Error(
             `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
           )
         }
+
         invariant()
       }
+
       return undefined
     }
 

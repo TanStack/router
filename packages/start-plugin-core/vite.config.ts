@@ -15,7 +15,14 @@ export default mergeConfig(
   config,
   tanstackViteConfig({
     tsconfigPath: './tsconfig.build.json',
-    entry: './src/index.ts',
+    entry: [
+      './src/index.ts',
+      './src/utils.ts',
+      './src/vite/index.ts',
+      './src/rsbuild/index.ts',
+      './src/rsbuild/types.ts',
+      './src/rsbuild/start-compiler-metadata-loader.ts',
+    ],
     srcDir: './src',
     outDir: './dist',
     cjs: false,

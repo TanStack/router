@@ -57,12 +57,15 @@ export function ClientOnly(props: ClientOnlyProps) {
  * ```
  * @returns True if the JS has been hydrated already, false otherwise.
  */
+let globalHydrated = false
+
 export function useHydrated(): Solid.Accessor<boolean> {
-  const [hydrated, setHydrated] = Solid.createSignal(false)
+  const [hydrated, setHydrated] = Solid.createSignal(globalHydrated)
 
   Solid.createEffect(
     () => true,
     () => {
+      globalHydrated = true
       setHydrated(true)
     },
   )

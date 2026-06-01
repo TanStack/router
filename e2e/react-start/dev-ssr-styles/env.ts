@@ -11,3 +11,4 @@ export const ssrStylesMode: SsrStylesMode = ssrStylesModeSchema.parse(
 )
 
 export const useNitro = process.env.VITE_USE_NITRO === 'true'
+export const viteBundledDev = process.env.E2E_VITE_BUNDLED_DEV === 'true'

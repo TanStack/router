@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/solid-router'
-import { Suspense } from '@solidjs/web'
+import { Loading } from '@solidjs/web'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import type { JSX } from '@solidjs/web'
 import appCss from '~/styles/app.css?url'
@@ -25,9 +25,9 @@ function RootDocument(props: { children: JSX.Element }) {
         <HeadContent />
       </head>
       <body>
-        <Suspense>
+        <Loading>
           <AppConvexProvider>{props.children}</AppConvexProvider>
-        </Suspense>
+        </Loading>
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
       </body>

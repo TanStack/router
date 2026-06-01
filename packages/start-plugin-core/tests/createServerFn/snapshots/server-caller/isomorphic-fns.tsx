@@ -3,9 +3,9 @@ import { createFileRoute } from '@tanstack/react-router';
 import { createIsomorphicFn, createServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
 const getEnv = createIsomorphicFn().server(() => 'server').client(() => 'client');
-const getServerEnv = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJnZXRTZXJ2ZXJFbnZfY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", () => import("/test/src/test.ts?tss-serverfn-split").then(m => m["getServerEnv_createServerFn_handler"])));
+const getServerEnv = createServerFn().handler(createSsrRpc("6049dd46bc00e0980e387f3e74924b40e92f37634a3fe74a1a1facda9e9207c2"));
 const getEcho = createIsomorphicFn().server((input: string) => 'server received ' + input).client(input => 'client received ' + input);
-const getServerEcho = createServerFn().inputValidator((input: string) => input).handler(createSsrRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJnZXRTZXJ2ZXJFY2hvX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ", () => import("/test/src/test.ts?tss-serverfn-split").then(m => m["getServerEcho_createServerFn_handler"])));
+const getServerEcho = createServerFn().inputValidator((input: string) => input).handler(createSsrRpc("ebb82e0293952b7b1dde3f664dec4c139471c046d06d4dc4ca172f4f45e386d1"));
 export const Route = createFileRoute('/isomorphic-fns')({
   component: RouteComponent,
   loader() {

@@ -61,6 +61,16 @@ export const pathnameMiddleware = createMiddleware().server(
   },
 )
 
+export const trustedUserMiddleware = createMiddleware().server(
+  async ({ next }) => {
+    return next({
+      context: {
+        trustedUser: 'server-user',
+      },
+    })
+  },
+)
+
 // Global function middleware that should be deduped across server functions
 export const globalFunctionMiddleware = createMiddleware({
   type: 'function',
@@ -91,5 +101,9 @@ export const startInstance = createStart(() => ({
   functionMiddleware: [globalFunctionMiddleware, globalFunctionMiddleware2],
   // Request middleware - includes loggingMiddleware (issue #5239 scenario)
   // AND the same loggingMiddleware is also attached to server functions
-  requestMiddleware: [loggingMiddleware, pathnameMiddleware],
+  requestMiddleware: [
+    trustedUserMiddleware,
+    loggingMiddleware,
+    pathnameMiddleware,
+  ],
 }))

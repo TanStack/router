@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
 import { flushSync } from 'react-dom'
@@ -5,6 +7,7 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
+  hasKeys,
   isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
@@ -64,6 +67,7 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
+    preloadIntentProximity: _preloadIntentProximity,
     hashScrollIntoView,
     replace,
     startTransition,
@@ -204,7 +208,7 @@ export function useLinkProps<
     const isActive = (() => {
       if (externalLink) return false
 
-      const currentLocation = router.stores.location.state
+      const currentLocation = router.stores.location.get()
 
       const exact = activeOptions?.exact ?? false
 
@@ -243,11 +247,11 @@ export function useLinkProps<
           const currentSearchEmpty =
             !currentLocation.search ||
             (typeof currentLocation.search === 'object' &&
-              Object.keys(currentLocation.search).length === 0)
+              !hasKeys(currentLocation.search))
           const nextSearchEmpty =
             !next.search ||
             (typeof next.search === 'object' &&
-              Object.keys(next.search).length === 0)
+              !hasKeys(next.search as Record<string, unknown>))
 
           if (!(currentSearchEmpty && nextSearchEmpty)) {
             const searchTest = deepEqual(currentLocation.search, next.search, {

@@ -7,10 +7,12 @@ export const renderRouterToString = ({
   router,
   responseHeaders,
   children,
+  manifest,
 }: {
   router: AnyRouter
   responseHeaders: Headers
   children: () => JSX.Element
+  manifest?: unknown
 }) => {
   try {
     const serializationAdapters =
@@ -24,6 +26,7 @@ export const renderRouterToString = ({
     let html = Solid.renderToString(children, {
       nonce: router.options.ssr?.nonce,
       plugins: serovalPlugins,
+      manifest: manifest ?? router.ssr?.manifest,
     } as any)
     router.serverSsr!.setRenderFinished()
 
@@ -32,7 +35,7 @@ export const renderRouterToString = ({
       html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
     }
     return new Response(`<!DOCTYPE html>${html}`, {
-      status: router.stores.statusCode.state,
+      status: router.stores.statusCode.get(),
       headers: responseHeaders,
     })
   } catch (error) {

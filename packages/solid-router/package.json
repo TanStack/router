@@ -109,12 +109,12 @@
     "@solidjs/web": "2.0.0-beta.14",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
-    "isbot": "^5.1.22"
+    "isbot": "^5.1.22",
+    "@solid-primitives/refs": "^1.0.8"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
     "@solidjs/web": "2.0.0-beta.14",
-    "@tanstack/intent": "^0.0.14",
     "@testing-library/jest-dom": "^6.6.3",
     "@types/node": ">=20",
     "combinate": "^1.1.11",
@@ -122,13 +122,10 @@
     "solid-js": "2.0.0-beta.14",
     "vite": "*",
     "vite-plugin-solid": "^3.0.0-next.5",
-    "zod": "^3.23.8"
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-0 <3.0.0",
     "solid-js": ">=2.0.0-0 <3.0.0"
-  },
-  "bin": {
-    "intent": "./bin/intent.js"
   }
 }

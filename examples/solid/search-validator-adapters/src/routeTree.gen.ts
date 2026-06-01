@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/solid-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersZodIndexRouteImport } from './routes/users/zod.index'
@@ -102,43 +100,6 @@ declare module '@tanstack/solid-router' {
       parentRoute: typeof rootRouteImport
     }
   }
-}
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/users/arktype.index' {
-  const createFileRoute: CreateFileRoute<
-    '/users/arktype/',
-    FileRoutesByPath['/users/arktype/']['parentRoute'],
-    FileRoutesByPath['/users/arktype/']['id'],
-    FileRoutesByPath['/users/arktype/']['path'],
-    FileRoutesByPath['/users/arktype/']['fullPath']
-  >
-}
-declare module './routes/users/valibot.index' {
-  const createFileRoute: CreateFileRoute<
-    '/users/valibot/',
-    FileRoutesByPath['/users/valibot/']['parentRoute'],
-    FileRoutesByPath['/users/valibot/']['id'],
-    FileRoutesByPath['/users/valibot/']['path'],
-    FileRoutesByPath['/users/valibot/']['fullPath']
-  >
-}
-declare module './routes/users/zod.index' {
-  const createFileRoute: CreateFileRoute<
-    '/users/zod/',
-    FileRoutesByPath['/users/zod/']['parentRoute'],
-    FileRoutesByPath['/users/zod/']['id'],
-    FileRoutesByPath['/users/zod/']['path'],
-    FileRoutesByPath['/users/zod/']['fullPath']
-  >
 }
 
 const rootRouteChildren: RootRouteChildren = {

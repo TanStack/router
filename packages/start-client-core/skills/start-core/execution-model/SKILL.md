@@ -14,6 +14,7 @@ requires:
 sources:
   - TanStack/router:docs/start/framework/react/guide/execution-model.md
   - TanStack/router:docs/start/framework/react/guide/environment-variables.md
+  - TanStack/router:docs/start/framework/react/guide/import-protection.md
 ---
 
 # Execution Model
@@ -21,19 +22,21 @@ sources:
 Understanding where code runs is fundamental to TanStack Start. This skill covers the isomorphic execution model and how to control environment boundaries.
 
 > **CRITICAL**: ALL code in TanStack Start is isomorphic by default — it runs in BOTH server and client bundles. Route loaders run on BOTH server (during SSR) AND client (during navigation). Server-only operations MUST use `createServerFn`.
-> **CRITICAL**: Module-level `process.env` access runs in both environments. Secret values leak into the client bundle. Access secrets ONLY inside `createServerFn` or `createServerOnlyFn`.
+> **CRITICAL**: Module-level `process.env` access is wrong on **two** axes — security (values leak into the client bundle) AND runtime correctness (on Cloudflare Workers and other edge runtimes, env is injected per-request, so module-level reads evaluate to `undefined` even on the server). Read env inside `.handler()` or another per-request function, never at module scope.
 > **CRITICAL**: `VITE_` prefixed environment variables are exposed to the client bundle. Server secrets must NOT have the `VITE_` prefix.
 
 ## Execution Control APIs
 
-| API                      | Use Case                  | Client Behavior           | Server Behavior       |
-| ------------------------ | ------------------------- | ------------------------- | --------------------- |
-| `createServerFn()`       | RPC calls, data mutations | Network request to server | Direct execution      |
-| `createServerOnlyFn(fn)` | Utility functions         | Throws error              | Direct execution      |
-| `createClientOnlyFn(fn)` | Browser utilities         | Direct execution          | Throws error          |
-| `createIsomorphicFn()`   | Different impl per env    | Uses `.client()` impl     | Uses `.server()` impl |
-| `<ClientOnly>`           | Browser-only components   | Renders children          | Renders fallback      |
-| `useHydrated()`          | Hydration-dependent logic | `true` after hydration    | `false`               |
+| API                                         | Use Case                    | Client Behavior           | Server Behavior       |
+| ------------------------------------------- | --------------------------- | ------------------------- | --------------------- |
+| `createServerFn()`                          | RPC calls, data mutations   | Network request to server | Direct execution      |
+| `createServerOnlyFn(fn)`                    | Utility functions           | Throws error              | Direct execution      |
+| `createClientOnlyFn(fn)`                    | Browser utilities           | Direct execution          | Throws error          |
+| `createIsomorphicFn()`                      | Different impl per env      | Uses `.client()` impl     | Uses `.server()` impl |
+| `<ClientOnly>`                              | Browser-only components     | Renders children          | Renders fallback      |
+| `useHydrated()`                             | Hydration-dependent logic   | `true` after hydration    | `false`               |
+| `import '@tanstack/<fw>-start/server-only'` | Mark whole file server-only | Import denied             | Allowed               |
+| `import '@tanstack/<fw>-start/client-only'` | Mark whole file client-only | Allowed                   | Import denied         |
 
 ## Server-Only Execution
 
@@ -124,6 +127,45 @@ const getDeviceInfo = createIsomorphicFn()
   .server(() => ({ type: 'server', platform: process.platform }))
   .client(() => ({ type: 'client', userAgent: navigator.userAgent }))
 ```
+
+## Import Protection: File Markers
+
+> Experimental.
+
+The `.server.*` and `.client.*` filename suffixes (e.g. `db.server.ts`) opt a file into Start's import protection — it can't be imported from the wrong environment. When you can't or don't want to rename the file, add a side-effect import at the top of the file to apply the same protection by marker:
+
+```ts
+// src/lib/secrets.ts (filename can't be *.server.ts)
+import '@tanstack/react-start/server-only'
+// (or @tanstack/solid-start/server-only, @tanstack/vue-start/server-only)
+
+export function getApiKey() {
+  return process.env.API_KEY
+}
+```
+
+```ts
+// src/lib/storage.ts
+import '@tanstack/react-start/client-only'
+// (or @tanstack/solid-start/client-only, @tanstack/vue-start/client-only)
+
+export function savePreferences(prefs: Record<string, string>) {
+  localStorage.setItem('prefs', JSON.stringify(prefs))
+}
+```
+
+Rules:
+
+- Both markers in the same file is an error.
+- Type-only imports are ignored (they erase to nothing at runtime).
+- Default behavior is `error` in production builds and `mock` in dev. The mock returns a recursive Proxy so dev keeps running while you fix the import graph.
+
+Pick the right tool:
+
+- File should never run on the wrong side **and** has no client API → `*.server.ts` filename or `import '@tanstack/<fw>-start/server-only'`.
+- One symbol needs to behave differently per environment → `createIsomorphicFn().client(...).server(...)`.
+- One function should error if called from the wrong side → `createServerOnlyFn` / `createClientOnlyFn`.
+- Component renders only after hydration → `<ClientOnly>` or `useHydrated()`.
 
 ## Environment Variables
 
@@ -229,21 +271,28 @@ export const Route = createFileRoute('/dashboard')({
 })
 ```
 
-### 2. CRITICAL: Exposing secrets via module-level process.env
+### 2. CRITICAL: Reading process.env at module scope
+
+Module-level `process.env` reads are wrong for **two** reasons, not one:
+
+1. **Security:** the value can be inlined into the client bundle, leaking secrets.
+2. **Runtime correctness (edge runtimes):** Cloudflare Workers and other edge SSR runtimes inject env at request time. Module-level code runs at module load, before the env exists, so the read evaluates to `undefined` even on the server. The bug only surfaces at deploy time.
 
 ```tsx
-// WRONG — runs in both environments, value in client bundle
+// WRONG — leaks to client AND is undefined on Workers
 const apiKey = process.env.SECRET_KEY
 export function fetchData() {
-  /* uses apiKey */
+  /* uses apiKey, which is undefined under Worker SSR */
 }
 
-// CORRECT — access inside server function only
+// CORRECT — read per-request, inside the handler
 const fetchData = createServerFn({ method: 'GET' }).handler(async () => {
   const apiKey = process.env.SECRET_KEY
   return fetch(url, { headers: { Authorization: apiKey } })
 })
 ```
+
+The same rule applies to middleware `.server()` callbacks, server-route handlers, and any function that runs per request — read env there, not at the top of the file.
 
 ### 3. CRITICAL: Using VITE\_ prefix for server secrets
 

@@ -1,3 +1,5 @@
+'use client'
+
 import { useStore } from '@tanstack/react-store'
 import { useRef } from 'react'
 import { replaceEqualDeep } from '@tanstack/router-core'
@@ -52,7 +54,7 @@ export function useLocation<
   const router = useRouter<TRouter>()
 
   if (isServer ?? router.isServer) {
-    const location = router.stores.location.state
+    const location = router.stores.location.get()
     return (
       opts?.select ? opts.select(location as any) : location
     ) as UseLocationResult<TRouter, TSelected>

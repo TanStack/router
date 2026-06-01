@@ -20,7 +20,7 @@
     "typescript": "^6.0.2",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.15",
     "tailwindcss": "^4.2.2",
-    "vite": "^8.0.0",
+    "vite": "^8.0.14",
     "vite-plugin-dts": "^4.5.4",
     "@tailwindcss/vite": "^4.2.2"
   },

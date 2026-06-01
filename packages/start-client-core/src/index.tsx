@@ -65,6 +65,10 @@ export type {
   FetcherBaseOptions,
   ServerFn,
   ServerFnCtx,
+  ServerFnOptions,
+  ServerFnStrict,
+  ServerFnStrictInput,
+  ServerFnStrictOutput,
   MiddlewareFn,
   ServerFnMiddlewareOptions,
   ServerFnMiddlewareResult,
@@ -80,6 +84,17 @@ export {
   flattenMiddlewares,
   executeMiddleware,
 } from './createServerFn'
+export {
+  createCsrfMiddleware,
+  csrfSymbol,
+  getCsrfRequestValidationResult,
+  isCsrfRequestAllowed,
+} from './createCsrfMiddleware'
+export type {
+  CsrfMatcher,
+  CsrfMiddlewareOptions,
+  CsrfSecFetchSite,
+} from './createCsrfMiddleware'
 
 export {
   TSS_FORMDATA_CONTEXT,
@@ -117,3 +132,4 @@ export { getRouterInstance } from './getRouterInstance'
 export { getDefaultSerovalPlugins } from './getDefaultSerovalPlugins'
 export { getGlobalStartContext } from './getGlobalStartContext'
 export { safeObjectMerge, createNullProtoObject } from './safeObjectMerge'
+export { trackPostProcessPromise } from './client-rpc/serverFnFetcher'

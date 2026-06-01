@@ -215,6 +215,13 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
 const hasOwn = Object.prototype.hasOwnProperty
 const isEnumerable = Object.prototype.propertyIsEnumerable
 
+export function hasKeys(obj: Record<string, unknown>) {
+  for (const key in obj) {
+    if (hasOwn.call(obj, key)) return true
+  }
+  return false
+}
+
 const createNull = () => Object.create(null)
 export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
   replaceEqualDeep(prev, next, createNull)

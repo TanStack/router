@@ -42,7 +42,7 @@
     },
     "test:e2e": {
       "cache": true,
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "test:e2e--*"],
       "inputs": ["default", "^production"]
     },
     "test:e2e:nitro": {
@@ -76,5 +76,12 @@
       "dependsOn": ["build"],
       "inputs": ["production"]
     }
-  }
+  },
+  "plugins": [
+    {
+      "name": "Playwright Sharding Plugin",
+      "plugin": "./scripts/nx/playwright-plugin.ts"
+    }
+  ],
+  "analytics": true
 }

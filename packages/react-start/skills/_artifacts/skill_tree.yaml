@@ -137,6 +137,25 @@ skills:
       - 'TanStack/router:packages/react-start/src'
       - 'TanStack/router:docs/start/framework/react/build-from-scratch.md'
 
+  - name: 'Server Components'
+    slug: 'react-start/server-components'
+    type: 'sub-skill'
+    domain: 'deployment-and-rendering'
+    path: 'skills/react-start/server-components/SKILL.md'
+    package: 'packages/react-start'
+    description: >-
+      Implement, review, debug, and refactor TanStack Start React
+      Server Components in React 19 apps.
+    requires:
+      - 'react-start'
+      - 'start-core/server-functions'
+      - 'start-core/execution-model'
+    sources:
+      - 'TanStack/router:docs/start/framework/react/guide/server-components.md'
+      - 'TanStack/router:docs/start/framework/react/guide/server-functions.md'
+      - 'TanStack/router:docs/start/framework/react/guide/execution-model.md'
+      - 'TanStack/router:docs/router/guide/data-loading.md'
+
   # ── Lifecycle Skills ────────────────────────────────────────────
   - name: 'Migrate from Next.js'
     slug: 'lifecycle/migrate-from-nextjs'

@@ -70,12 +70,38 @@ export type {
 export type { ParsedLocation } from './location'
 export type {
   Manifest,
+  ServerManifest,
+  ManifestRoute,
+  ManifestRouteAssets,
+  ServerManifestRoute,
+  ManifestCssLink,
+  ManifestInlineCss,
+  ServerManifestInlineCss,
+  InlineCssTemplate,
+  ManifestScript,
   RouterManagedTag,
+  RouterManagedTitleTag,
+  RouterManagedMetaTag,
+  RouterManagedInlineCssTag,
+  RouterManagedScriptTag,
+  RouterManagedLinkTag,
+  RouterManagedStyleTag,
   AssetCrossOrigin,
   AssetCrossOriginConfig,
   ManifestAssetLink,
+  ScriptFormat,
 } from './manifest'
-export { getAssetCrossOrigin, resolveManifestAssetLink } from './manifest'
+export {
+  DEV_STYLES_ATTR,
+  appendUniqueUserTags,
+  createInlineCssStyleAsset,
+  getAssetCrossOrigin,
+  getManifestScriptFormat,
+  getScriptPreloadAttrs,
+  getStylesheetHref,
+  resolveManifestAssetLink,
+  resolveManifestCssLink,
+} from './manifest'
 export { isMatch } from './Matches'
 export type {
   AnyMatchAndValue,
@@ -179,6 +205,7 @@ export type {
   RouteContextFn,
   ContextOptions,
   RouteContextOptions,
+  SsrContextOptions,
   BeforeLoadContextOptions,
   RootRouteOptions,
   RootRouteOptionsExtensions,
@@ -283,6 +310,7 @@ export type { OptionalStructuralSharing } from './structuralSharing'
 
 export {
   functionalUpdate,
+  hasKeys,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,
@@ -399,11 +427,8 @@ export {
   defaultGetScrollRestorationKey,
   getElementScrollRestorationEntry,
   storageKey,
-  scrollRestorationCache,
   setupScrollRestoration,
 } from './scroll-restoration'
-
-export { handleHashScroll } from './hash-scroll'
 
 export type {
   ScrollRestorationOptions,
@@ -435,7 +460,6 @@ export type {
   AnySerializationAdapter,
   SerializationAdapter,
   ValidateSerializableInput,
-  ValidateSerializableInputResult,
   SerializerExtensions,
   ValidateSerializable,
   RegisteredSerializableInput,
@@ -444,6 +468,7 @@ export type {
   Serializable,
   TSR_SERIALIZABLE,
   TsrSerializable,
+  SerializationError,
 } from './ssr/serializer/transformer'
 
 export {

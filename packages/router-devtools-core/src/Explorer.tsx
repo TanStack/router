@@ -3,7 +3,12 @@ import { clsx as cx } from 'clsx'
 import * as goober from 'goober'
 import { createMemo, createSignal, useContext } from 'solid-js'
 import { tokens } from './tokens'
-import { displayValue } from './utils'
+import {
+  displayValue,
+  getServerComponentSlotUsageSummary,
+  getServerComponentSlots,
+  getServerComponentType,
+} from './utils'
 import { ShadowDomTargetContext } from './context'
 import type { Accessor, JSX } from 'solid-js'
 
@@ -12,7 +17,7 @@ type ExpanderProps = {
   style?: JSX.CSSProperties
 }
 
-export const Expander = ({ expanded, style = {} }: ExpanderProps) => {
+export const Expander = ({ expanded, style: _style = {} }: ExpanderProps) => {
   const styles = useStyles()
   return (
     <span class={styles().expander}>
@@ -90,6 +95,12 @@ function isIterable(x: any): x is Iterable<unknown> {
   return Symbol.iterator in x
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object') return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
 export function Explorer({
   value,
   defaultExpanded,
@@ -116,7 +127,22 @@ export function Explorer({
       }
     }
 
-    if (Array.isArray(value())) {
+    if (
+      Array.isArray(value()) &&
+      (value() as Array<any>).length === 2 &&
+      (value() as Array<any>)[0] === 'React element' &&
+      isPlainObject((value() as Array<any>)[1])
+    ) {
+      // Special case: treat `["React element", { ...meta }]` as sibling entries
+      // to avoid the meta object being rendered as a deeper nested tree.
+      const v = value() as ['React element', Record<string, unknown>]
+      entries = [
+        makeProperty({ label: '0', value: v[0] }),
+        ...Object.entries(v[1]).map(([key, val]) =>
+          makeProperty({ label: key, value: val }),
+        ),
+      ]
+    } else if (Array.isArray(value())) {
       // any[]
       entries = (value() as Array<any>).map((d, i) =>
         makeProperty({
@@ -169,9 +195,72 @@ export function Explorer({
     />
   )
 
+  const serverComponentType = createMemo(() => getServerComponentType(value()))
+  const serverComponentSlots = createMemo(() =>
+    getServerComponentSlots(value()),
+  )
+  const serverComponentSlotUsageSummary = createMemo(() =>
+    getServerComponentSlotUsageSummary(value()),
+  )
+
+  const isCompositeWithSlots = createMemo(
+    () =>
+      serverComponentType() === 'compositeSource' &&
+      serverComponentSlots().length > 0,
+  )
+
   return (
     <div class={styles().entry}>
-      {subEntryPages().length ? (
+      {serverComponentType() !== null ? (
+        isCompositeWithSlots() ? (
+          <>
+            <button
+              class={styles().expandButton}
+              onClick={() => toggleExpanded()}
+            >
+              <Expander expanded={expanded() ?? false} />
+              <span>{rest.label}:</span>
+              <span class={styles().compositeComponent}>
+                {displayValue(value())}
+              </span>
+            </button>
+            {(expanded() ?? false) ? (
+              <div class={styles().rscMetaRow}>
+                <span class={styles().rscMetaLabel}>slots</span>
+                <div class={styles().subEntries}>
+                  {serverComponentSlots().map((name) => {
+                    const usage = serverComponentSlotUsageSummary()[name]
+                    if (!usage) return null
+                    return (
+                      <Explorer
+                        label={`${name}:`}
+                        value={() =>
+                          usage.invocations.map((args) =>
+                            args.length === 1 ? args[0] : args,
+                          )
+                        }
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <span>{rest.label}:</span>{' '}
+            <span
+              class={
+                serverComponentType() === 'compositeSource'
+                  ? styles().compositeComponent
+                  : styles().renderableComponent
+              }
+            >
+              {displayValue(value())}
+            </span>
+          </>
+        )
+      ) : subEntryPages().length ? (
         <>
           <button
             class={styles().expandButton}
@@ -250,7 +339,7 @@ export function Explorer({
 }
 
 const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
-  const { colors, font, size, alpha, shadow, border } = tokens
+  const { colors, font, size, border } = tokens
   const { fontFamily, lineHeight, size: fontSize } = font
   const css = shadowDOMTarget
     ? goober.css.bind({ target: shadowDOMTarget })
@@ -308,6 +397,67 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
     `,
     value: css`
       color: ${colors.purple[400]};
+    `,
+    compositeComponent: css`
+      display: inline-flex;
+      align-items: center;
+      padding: 1px ${size[1]};
+      border-radius: ${border.radius.full};
+      border: 1px solid ${colors.darkGray[500]};
+      background: ${colors.darkGray[700]};
+      color: ${colors.cyan[300]};
+      font-style: normal;
+      font-weight: ${font.weight.medium};
+    `,
+    renderableComponent: css`
+      display: inline-flex;
+      align-items: center;
+      padding: 1px ${size[1]};
+      border-radius: ${border.radius.full};
+      border: 1px solid ${colors.darkGray[500]};
+      background: ${colors.darkGray[700]};
+      color: ${colors.teal[300]};
+      font-style: normal;
+      font-weight: ${font.weight.medium};
+    `,
+    rscMetaRow: css`
+      display: flex;
+      gap: ${size[1]};
+      align-items: flex-start;
+      margin-left: calc(${size[3]} + ${size[1]});
+      margin-top: ${size[0.5]};
+      flex-wrap: wrap;
+    `,
+    rscMetaLabel: css`
+      color: ${colors.gray[500]};
+      font-size: ${fontSize['2xs']};
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding-top: 2px;
+    `,
+    rscChipRow: css`
+      display: flex;
+      gap: ${size[1]};
+      flex-wrap: wrap;
+    `,
+    rscChip: css`
+      display: inline-flex;
+      align-items: center;
+      gap: ${size[0.5]};
+      padding: 1px ${size[1]};
+      border-radius: ${border.radius.full};
+      border: 1px solid ${colors.darkGray[500]};
+      background: ${colors.darkGray[800]};
+      color: ${colors.gray[200]};
+      font-size: ${fontSize['2xs']};
+      line-height: ${lineHeight.xs};
+    `,
+    rscChipName: css`
+      color: ${colors.gray[100]};
+    `,
+    rscChipMeta: css`
+      color: ${colors.gray[400]};
+      font-size: ${fontSize['2xs']};
     `,
     subEntries: css`
       margin-left: ${size[2]};

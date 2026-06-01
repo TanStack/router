@@ -1,4 +1,5 @@
 import { test as base, expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 export interface TestFixtureOptions {
   /**
@@ -46,3 +47,25 @@ export const test = base.extend<TestFixtureOptions>({
     expect(errorMessages).toEqual([])
   },
 })
+
+export function collectBrowserErrors(page: Page): Array<string> {
+  const browserErrors: Array<string> = []
+
+  page.on('pageerror', (error) => {
+    browserErrors.push(error.message)
+  })
+
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') {
+      browserErrors.push(message.text())
+    }
+  })
+
+  page.on('requestfailed', (request) => {
+    browserErrors.push(
+      `${request.url()} ${request.failure()?.errorText ?? 'failed'}`,
+    )
+  })
+
+  return browserErrors
+}
