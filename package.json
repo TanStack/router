@@ -84,7 +84,7 @@
     "@nx/devkit": "22.6.5",
     "@swc-node/core": "^1.14.1",
     "@swc-node/register": "^1.11.1",
-    "@tanstack/solid-query": "^5.99.0",
+    "@tanstack/solid-query": "^6.0.0-beta.4",
     "@tanstack/vue-query": "^5.99.0"
   },
   "pnpm": {
