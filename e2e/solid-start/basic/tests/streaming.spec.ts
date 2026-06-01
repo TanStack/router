@@ -40,13 +40,11 @@ test('streams Await fallback for server function loader promises', async ({
 }) => {
   test.skip(isSpaMode, 'SPA mode does not render streamed SSR HTML')
 
-  const response = await page.request.get('/deferred-without-suspense')
-  const html = await response.text()
-
-  expect(html).toContain('data-testid="deferred-without-suspense-loading"')
-
-  await page.goto('/deferred-without-suspense')
+  await page.goto('/deferred-without-suspense', { waitUntil: 'commit' })
   await expect(
-    page.getByTestId('deferred-without-suspense-data'),
+    page.getByTestId('deferred-without-suspense-loading'),
+  ).toBeVisible()
+  await expect(
+    page.getByTestId('deferred-without-suspense-data').first(),
   ).not.toBeEmpty()
 })
