@@ -37,13 +37,14 @@ export function useRouterState<
 
   const select = opts.select
 
-  return Solid.createMemo((prev: TSelected | undefined) => {
-    const res = select(router.stores.__store.get())
-    if (prev === undefined) return res
-    return replaceEqualDeep(prev, res)
-  }, { transparent: true } as Solid.MemoOptions<TSelected> & {
-    ssrSource?: 'server' | 'hybrid'
-  }) as Accessor<
-    UseRouterStateResult<TRouter, TSelected>
-  >
+  return Solid.createMemo(
+    (prev: TSelected | undefined) => {
+      const res = select(router.stores.__store.get())
+      if (prev === undefined) return res
+      return replaceEqualDeep(prev, res)
+    },
+    { transparent: true } as Solid.MemoOptions<TSelected> & {
+      ssrSource?: 'server' | 'hybrid'
+    },
+  ) as Accessor<UseRouterStateResult<TRouter, TSelected>>
 }
