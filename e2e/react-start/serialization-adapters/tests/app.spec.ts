@@ -9,10 +9,9 @@ async function awaitPageLoaded(page: Page) {
   await expect(page.getByTestId('router-status')).toContainText('idle')
 }
 async function checkData(page: Page, id: string) {
-  const expectedData = await page
-    .getByTestId(`${id}-car-expected`)
-    .textContent()
-  expect(expectedData).not.toBeNull()
+  const expectedDataLocator = page.getByTestId(`${id}-car-expected`)
+  await expect(expectedDataLocator).not.toBeEmpty()
+  const expectedData = await expectedDataLocator.textContent()
   await expect(page.getByTestId(`${id}-car-actual`)).toContainText(
     expectedData!,
   )
