@@ -38,7 +38,7 @@ function InteractiveBox(props: { id: string; label: string }): JSX.Element {
   const [hydrated, setHydrated] = createSignal(false)
 
   createEffect(
-    () => {},
+    () => true,
     () => {
       setHydrated(true)
     },

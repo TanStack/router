@@ -7,7 +7,7 @@ function CrossFileNestedButton() {
   const [hydrated, setHydrated] = createSignal(false)
 
   createEffect(
-    () => {},
+    () => true,
     () => {
       setHydrated(true)
     },

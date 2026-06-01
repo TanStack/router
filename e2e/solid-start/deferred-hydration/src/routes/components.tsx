@@ -21,7 +21,7 @@ function InteractiveBox(props: { id: string; label: string }) {
   const [hydrated, setHydrated] = Solid.createSignal(false)
 
   Solid.createEffect(
-    () => {},
+    () => true,
     () => {
       setHydrated(true)
     },
