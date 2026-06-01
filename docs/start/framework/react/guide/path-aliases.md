@@ -20,7 +20,7 @@ By default, TanStack Start does not include path aliases. However, you can easil
 
 In this example, we've defined the path alias `~/*` that maps to the `./src/*` directory. This means that you can now import files from the `src` directory using the `~` prefix.
 
-After updating your `tsconfig.json` file, configure your bundler so it resolves the same path aliases.
+After updating your `tsconfig.json` file, configure your build tool so it resolves the same path aliases.
 
 <!-- ::start:tabs variant="bundler" -->
 

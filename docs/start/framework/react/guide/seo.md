@@ -21,7 +21,7 @@ TanStack Start gives you the building blocks for technical SEO:
 - **Server-Side Rendering (SSR)** - Ensures crawlers receive fully rendered HTML
 - **Static Prerendering** - Pre-generates pages for optimal performance and crawlability
 - **Document Head Management** - Full control over meta tags, titles, and structured data
-- **Performance** - Fast load times through code-splitting, streaming, and optimal bundling
+- **Performance** - Fast load times through code-splitting, streaming, and optimized builds
 
 ## Document Head Management
 

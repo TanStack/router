@@ -420,7 +420,7 @@ If two server functions end up with the same ID (including when using a custom g
 
 Customization:
 
-You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start bundler plugin.
+You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start build tool plugin.
 
 Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 

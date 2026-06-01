@@ -247,7 +247,7 @@ const authMiddleware = createMiddleware({ type: 'function' })
 
 ### Deployment Flexibility
 
-**TanStack Start** leverages modern bundler ecosystems:
+**TanStack Start** leverages modern build tool ecosystems:
 
 - Deploy to Cloudflare Workers, Netlify, Vercel, Railway, Fly.io, AWS, etc.
 - Use Nitro for universal deployment support
@@ -286,7 +286,7 @@ This is where the frameworks differ significantly:
 
 **TanStack Start & React Router:**
 
-- ⚡ **Instant dev server startup** - Vite starts in milliseconds
+- ⚡ **Instant dev server startup** - Vite and Rsbuild start quickly
 - ⚡ **Lightning-fast HMR** - Changes reflect instantly without page refresh
 - ⚡ **Fast dev navigation** - Full-speed routing during development
 - ⚡ **Lightweight resource usage** - Minimal CPU and RAM consumption

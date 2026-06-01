@@ -9,7 +9,7 @@ Learn how to securely configure and use environment variables in your TanStack S
 
 ## Quick Start
 
-TanStack Start automatically loads `.env` files and makes variables available in both server and client contexts with proper security boundaries. Server code can read unprefixed variables from `process.env`; client code can only read variables exposed by your bundler's public prefix.
+TanStack Start automatically loads `.env` files and makes variables available in both server and client contexts with proper security boundaries. Server code can read unprefixed variables from `process.env`; client code can only read variables exposed by your build tool's public prefix.
 
 <!-- ::start:tabs variant="bundler" -->
 
@@ -86,7 +86,7 @@ const authenticateUser = createServerFn()
 
 ### Client-Side Context (Components & Client Code)
 
-Client code can only access variables with your bundler's public prefix.
+Client code can only access variables with your build tool's public prefix.
 
 <!-- ::start:tabs variant="bundler" -->
 
@@ -483,7 +483,7 @@ for (const key of requiredClientEnv) {
 ## Production Checklist
 
 - [ ] All sensitive variables are server-only (no `VITE_` or `PUBLIC_` prefix)
-- [ ] Client variables use your bundler's public prefix (`VITE_` for Vite, `PUBLIC_` for Rsbuild)
+- [ ] Client variables use your build tool's public prefix (`VITE_` for Vite, `PUBLIC_` for Rsbuild)
 - [ ] `.env.local` is in `.gitignore`
 - [ ] Production environment variables are configured on hosting platform
 - [ ] Required environment variables are validated at startup
@@ -499,10 +499,10 @@ for (const key of requiredClientEnv) {
 
 **Solutions**:
 
-1. **Add correct prefix**: Use your bundler's public prefix (e.g. `VITE_MY_VARIABLE` for Vite or `PUBLIC_MY_VARIABLE` for Rsbuild)
+1. **Add correct prefix**: Use your build tool's public prefix (e.g. `VITE_MY_VARIABLE` for Vite or `PUBLIC_MY_VARIABLE` for Rsbuild)
 2. **Restart development server** after adding new variables
 3. **Check file location**: `.env` file must be in project root
-4. **Verify bundler configuration**: Ensure variables are properly injected
+4. **Verify build tool configuration**: Ensure variables are properly injected
 
 **Example**:
 
@@ -606,7 +606,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 ```
 
-With static replacement enabled (the default), the bundler sees `"production" === 'development'` and eliminates the entire block.
+With static replacement enabled (the default), the build tool sees `"production" === 'development'` and eliminates the entire block.
 
 ### Configuring Static Replacement
 
@@ -663,7 +663,7 @@ export default defineConfig({
 The replacement value is determined in this order:
 
 1. `process.env.NODE_ENV` at build time (if set)
-2. The bundler's `mode` (e.g., from `--mode staging`)
+2. The build tool's `mode` (e.g., from `--mode staging`)
 3. `"production"` (fallback)
 
 ### When to Disable Static Replacement

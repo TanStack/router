@@ -48,7 +48,7 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 
 ## Install Dependencies
 
-TanStack Start is powered by [TanStack Router](https://tanstack.com/router) and supports [Vite](https://vite.dev/) or [Rsbuild](https://rsbuild.dev/) as the bundler.
+TanStack Start is powered by [TanStack Router](https://tanstack.com/router) and supports [Vite](https://vite.dev/) or [Rsbuild](https://rsbuild.dev/) as the build tool.
 
 To install Start and Router, run:
 
@@ -62,7 +62,7 @@ You'll also need SolidJS:
 npm i solid-js
 ```
 
-Install the bundler and Solid integration you want to use:
+Install the build tool and Solid integration you want to use:
 
 <!-- ::start:tabs variant="bundler" -->
 
@@ -88,7 +88,7 @@ npm i -D typescript @types/node
 
 ## Update Configuration Files
 
-We'll then update our `package.json` to use your bundler's CLI and set `"type": "module"`:
+We'll then update our `package.json` to use your build tool's CLI and set `"type": "module"`:
 
 <!-- ::start:tabs variant="bundler" -->
 
@@ -120,7 +120,7 @@ We'll then update our `package.json` to use your bundler's CLI and set `"type": 
 
 <!-- ::end:tabs -->
 
-Then configure TanStack Start's bundler plugin:
+Then configure TanStack Start's build tool plugin:
 
 <!-- ::start:tabs variant="bundler" -->
 

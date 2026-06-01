@@ -12,7 +12,7 @@ Server Components let you render React components on the server and stream them 
 
 **Server Components are not enabled by default.** Complete these three steps first:
 
-### 1. Install Bundler-Specific RSC Dependencies
+### 1. Install Build Tool-Specific RSC Dependencies
 
 <!-- ::start:tabs variant="bundler" -->
 
@@ -38,9 +38,9 @@ npm install -D @rsbuild/core @rsbuild/plugin-react
 
 <!-- ::end:tabs -->
 
-### 2. Configure Your Bundler
+### 2. Configure Your Build Tool
 
-Update your bundler config to enable RSC in the TanStack Start plugin:
+Update your build tool config to enable RSC in the TanStack Start plugin:
 
 <!-- ::start:tabs variant="bundler" -->
 

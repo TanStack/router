@@ -13,7 +13,7 @@ The latest version of Tailwind CSS is 4. And it has some configuration changes t
 
 ### Install Tailwind CSS
 
-Install Tailwind CSS and the integration for your bundler.
+Install Tailwind CSS and the integration for your build tool.
 
 <!-- ::start:tabs variant="bundler" -->
 
@@ -33,7 +33,7 @@ npm install tailwindcss @tailwindcss/postcss postcss
 
 ### Configure Tailwind CSS
 
-Add Tailwind CSS to your bundler configuration.
+Add Tailwind CSS to your build tool configuration.
 
 <!-- ::start:tabs variant="bundler" -->
 

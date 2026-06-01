@@ -281,7 +281,7 @@ function DocumentationPage() {
 
       <section>
         <h2>Configuration</h2>
-        <p>Configure your app in your bundler config...</p>
+        <p>Configure your app in your build tool config...</p>
       </section>
     </article>
   )
