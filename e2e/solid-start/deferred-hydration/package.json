@@ -26,7 +26,7 @@
   "devDependencies": {
     "@rsbuild/core": "^2.0.1",
     "@rsbuild/plugin-babel": "^1.1.2",
-    "@rsbuild/plugin-solid": "^1.1.1",
+    "@rsbuild/plugin-solid": "^2.0.0-beta.0",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "srvx": "^0.11.9",

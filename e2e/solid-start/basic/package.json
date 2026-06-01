@@ -42,7 +42,7 @@
     "vite-plugin-solid": "^3.0.0-next.5",
     "@rsbuild/core": "^2.0.8",
     "@rsbuild/plugin-babel": "^1.1.2",
-    "@rsbuild/plugin-solid": "^1.1.1",
+    "@rsbuild/plugin-solid": "^2.0.0-beta.0",
     "@tailwindcss/postcss": "^4.2.2",
     "vite": "^8.0.14"
   },

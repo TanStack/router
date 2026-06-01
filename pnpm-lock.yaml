@@ -3990,8 +3990,8 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2(@rsbuild/core@2.0.8)
       '@rsbuild/plugin-solid':
-        specifier: ^1.1.1
-        version: 1.1.1(@babel/core@7.29.0)(@rsbuild/core@2.0.8)(solid-js@2.0.0-beta.14)
+        specifier: ^2.0.0-beta.0
+        version: 2.0.0-beta.0(@babel/core@7.29.0)(@rsbuild/core@2.0.8)(@solidjs/web@2.0.0-beta.14(solid-js@2.0.0-beta.14))(solid-js@2.0.0-beta.14)
       '@tailwindcss/postcss':
         specifier: ^4.2.2
         version: 4.2.2
@@ -4039,8 +4039,8 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2(@rsbuild/core@2.0.8)
       '@rsbuild/plugin-solid':
-        specifier: ^1.1.1
-        version: 1.1.1(@babel/core@7.29.0)(@rsbuild/core@2.0.8)(solid-js@2.0.0-beta.14)
+        specifier: ^2.0.0-beta.0
+        version: 2.0.0-beta.0(@babel/core@7.29.0)(@rsbuild/core@2.0.8)(@solidjs/web@2.0.0-beta.14(solid-js@2.0.0-beta.14))(solid-js@2.0.0-beta.14)
       '@tailwindcss/postcss':
         specifier: ^4.2.2
         version: 4.2.2
@@ -4247,8 +4247,8 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2(@rsbuild/core@2.0.8)
       '@rsbuild/plugin-solid':
-        specifier: ^1.1.1
-        version: 1.1.1(@babel/core@7.29.0)(@rsbuild/core@2.0.8)(solid-js@2.0.0-beta.14)
+        specifier: ^2.0.0-beta.0
+        version: 2.0.0-beta.0(@babel/core@7.29.0)(@rsbuild/core@2.0.8)(@solidjs/web@2.0.0-beta.14(solid-js@2.0.0-beta.14))(solid-js@2.0.0-beta.14)
       '@tailwindcss/postcss':
         specifier: ^4.2.2
         version: 4.2.2
@@ -4669,8 +4669,8 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2(@rsbuild/core@2.0.1)
       '@rsbuild/plugin-solid':
-        specifier: ^1.1.1
-        version: 1.1.1(@babel/core@7.29.0)(@rsbuild/core@2.0.1)(solid-js@2.0.0-beta.14)
+        specifier: ^2.0.0-beta.0
+        version: 2.0.0-beta.0(@babel/core@7.29.0)(@rsbuild/core@2.0.1)(@solidjs/web@2.0.0-beta.14(solid-js@2.0.0-beta.14))(solid-js@2.0.0-beta.14)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -11319,8 +11319,8 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2(@rsbuild/core@2.0.8)
       '@rsbuild/plugin-solid':
-        specifier: ^1.1.1
-        version: 1.1.1(@babel/core@7.29.0)(@rsbuild/core@2.0.8)(solid-js@2.0.0-beta.14)
+        specifier: ^2.0.0-beta.0
+        version: 2.0.0-beta.0(@babel/core@7.29.0)(@rsbuild/core@2.0.8)(@solidjs/web@2.0.0-beta.14(solid-js@2.0.0-beta.14))(solid-js@2.0.0-beta.14)
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
@@ -18597,10 +18597,12 @@ packages:
       '@rsbuild/core':
         optional: true
 
-  '@rsbuild/plugin-solid@1.1.1':
-    resolution: {integrity: sha512-IMlxjAVDrgPPx7KHQXyiJiQn5x11jibC7WIVIkZg7uxkcgBuHyE6InmVNc+C6M3Y1djXYL7GG2M7CH4Jdg+RUw==}
+  '@rsbuild/plugin-solid@2.0.0-beta.0':
+    resolution: {integrity: sha512-J3GiIVNJQc/sjeIs9N0ZAEjXJJ1QgOeACRlDjDTSVMBseyIJH4LjNQRgYZAoah61o6/kiRtAh5sHfdRcOAVb9g==}
     peerDependencies:
       '@rsbuild/core': ^1.0.0 || ^2.0.0-0
+      '@solidjs/web': '>=2.0.0-beta.0 <2.0.0-experimental.0'
+      solid-js: '>=2.0.0-beta.0 <2.0.0-experimental.0'
     peerDependenciesMeta:
       '@rsbuild/core':
         optional: true
@@ -25460,11 +25462,6 @@ packages:
     peerDependencies:
       solid-js: ^1.3
 
-  solid-refresh@0.7.8:
-    resolution: {integrity: sha512-iG442T3HXJp5jEebCy8okETrWnmX7CnxNOKrJQVeufh6WXSn+xtLXaptUXXMHTWcRqTJOJwQ8UwzxrRtVFSIzA==}
-    peerDependencies:
-      solid-js: ^1.3
-
   solid-refresh@0.8.0-next.7:
     resolution: {integrity: sha512-fqkPRAeiE0tqfo2ZljeQBIXwfYssU2w1FmaWFrXmnV33B/CfGfez7BjtOF0Y1/orUNRXI/DZcJlJThHllcCMsA==}
     peerDependencies:
@@ -31950,28 +31947,30 @@ snapshots:
     transitivePeerDependencies:
       - '@rspack/core'
 
-  '@rsbuild/plugin-solid@1.1.1(@babel/core@7.29.0)(@rsbuild/core@2.0.1)(solid-js@2.0.0-beta.14)':
+  '@rsbuild/plugin-solid@2.0.0-beta.0(@babel/core@7.29.0)(@rsbuild/core@2.0.1)(@solidjs/web@2.0.0-beta.14(solid-js@2.0.0-beta.14))(solid-js@2.0.0-beta.14)':
     dependencies:
       '@rsbuild/plugin-babel': 1.1.2(@rsbuild/core@2.0.1)
-      babel-preset-solid: 1.9.10(@babel/core@7.29.0)(solid-js@2.0.0-beta.14)
-      solid-refresh: 0.7.8(solid-js@2.0.0-beta.14)
+      '@solidjs/web': 2.0.0-beta.14(solid-js@2.0.0-beta.14)
+      babel-preset-solid: 2.0.0-beta.14(@babel/core@7.29.0)(solid-js@2.0.0-beta.14)
+      solid-js: 2.0.0-beta.14
+      solid-refresh: 0.8.0-next.7(solid-js@2.0.0-beta.14)
     optionalDependencies:
       '@rsbuild/core': 2.0.1
     transitivePeerDependencies:
       - '@babel/core'
-      - solid-js
       - supports-color
 
-  '@rsbuild/plugin-solid@1.1.1(@babel/core@7.29.0)(@rsbuild/core@2.0.8)(solid-js@2.0.0-beta.14)':
+  '@rsbuild/plugin-solid@2.0.0-beta.0(@babel/core@7.29.0)(@rsbuild/core@2.0.8)(@solidjs/web@2.0.0-beta.14(solid-js@2.0.0-beta.14))(solid-js@2.0.0-beta.14)':
     dependencies:
       '@rsbuild/plugin-babel': 1.1.2(@rsbuild/core@2.0.8)
-      babel-preset-solid: 1.9.10(@babel/core@7.29.0)(solid-js@2.0.0-beta.14)
-      solid-refresh: 0.7.8(solid-js@2.0.0-beta.14)
+      '@solidjs/web': 2.0.0-beta.14(solid-js@2.0.0-beta.14)
+      babel-preset-solid: 2.0.0-beta.14(@babel/core@7.29.0)(solid-js@2.0.0-beta.14)
+      solid-js: 2.0.0-beta.14
+      solid-refresh: 0.8.0-next.7(solid-js@2.0.0-beta.14)
     optionalDependencies:
       '@rsbuild/core': 2.0.8
     transitivePeerDependencies:
       - '@babel/core'
-      - solid-js
       - supports-color
 
   '@rsbuild/plugin-vue-jsx@1.1.1(@babel/core@7.29.0)(@rsbuild/core@2.0.8)':
@@ -34852,15 +34851,6 @@ snapshots:
       html-entities: 2.3.3
       parse5: 7.3.0
 
-  babel-plugin-jsx-dom-expressions@0.40.3(@babel/core@7.29.0):
-    dependencies:
-      '@babel/core': 7.29.0
-      '@babel/helper-module-imports': 7.18.6
-      '@babel/plugin-syntax-jsx': 7.27.1(@babel/core@7.29.0)
-      '@babel/types': 7.29.0
-      html-entities: 2.3.3
-      parse5: 7.3.0
-
   babel-plugin-jsx-dom-expressions@0.50.0-next.13(@babel/core@7.28.5):
     dependencies:
       '@babel/core': 7.28.5
@@ -34905,13 +34895,6 @@ snapshots:
     dependencies:
       '@babel/core': 7.28.5
       babel-plugin-jsx-dom-expressions: 0.40.3(@babel/core@7.28.5)
-    optionalDependencies:
-      solid-js: 2.0.0-beta.14
-
-  babel-preset-solid@1.9.10(@babel/core@7.29.0)(solid-js@2.0.0-beta.14):
-    dependencies:
-      '@babel/core': 7.29.0
-      babel-plugin-jsx-dom-expressions: 0.40.3(@babel/core@7.29.0)
     optionalDependencies:
       solid-js: 2.0.0-beta.14
 
@@ -40353,12 +40336,6 @@ snapshots:
       solid-js: 2.0.0-beta.14
     transitivePeerDependencies:
       - supports-color
-
-  solid-refresh@0.7.8(solid-js@2.0.0-beta.14):
-    dependencies:
-      '@babel/generator': 7.29.1
-      '@babel/types': 7.29.0
-      solid-js: 2.0.0-beta.14
 
   solid-refresh@0.8.0-next.7(solid-js@2.0.0-beta.14):
     dependencies:
