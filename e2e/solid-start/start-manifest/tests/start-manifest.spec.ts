@@ -363,7 +363,7 @@ test('shared widget CSS stays applied when navigating from static to lazy route'
     ),
   ).toBe(SHARED_WIDGET_BORDER)
 
-  await expect(page.getByTestId('lazy-css-static-hydrated')).toBeVisible()
+  await expect(page.getByTestId('hydration-marker')).toBeVisible()
 
   await page.getByTestId('nav-/lazy-css-lazy').click()
   await page.waitForURL('**/lazy-css-lazy')
@@ -433,7 +433,7 @@ test('shared widget CSS persists after navigating away from lazy and back', asyn
   baseURL,
 }) => {
   await page.goto(buildUrl(baseURL!, '/lazy-css-static'))
-  await expect(page.getByTestId('lazy-css-static-hydrated')).toBeVisible()
+  await expect(page.getByTestId('hydration-marker')).toBeVisible()
 
   await page.getByTestId('nav-/lazy-css-lazy').click()
   await page.waitForURL('**/lazy-css-lazy')

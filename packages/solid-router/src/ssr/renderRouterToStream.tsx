@@ -38,11 +38,13 @@ export const renderRouterToStream = async ({
   router,
   responseHeaders,
   children,
+  manifest,
 }: {
   request: Request
   router: AnyRouter
   responseHeaders: Headers
   children: () => JSX.Element
+  manifest?: unknown
 }) => {
   const { writable, readable } = new TransformStream()
 
@@ -57,6 +59,7 @@ export const renderRouterToStream = async ({
   const stream = Solid.renderToStream(() => children, {
     nonce: router.options.ssr?.nonce,
     plugins: serovalPlugins,
+    manifest: manifest ?? router.ssr?.manifest,
   } as any)
 
   // Solid's `pipeTo(w)` takes a single arg (no signal overload) and locks

@@ -7,10 +7,12 @@ export const renderRouterToString = ({
   router,
   responseHeaders,
   children,
+  manifest,
 }: {
   router: AnyRouter
   responseHeaders: Headers
   children: () => JSX.Element
+  manifest?: unknown
 }) => {
   try {
     const serializationAdapters =
@@ -24,6 +26,7 @@ export const renderRouterToString = ({
     let html = Solid.renderToString(children, {
       nonce: router.options.ssr?.nonce,
       plugins: serovalPlugins,
+      manifest: manifest ?? router.ssr?.manifest,
     } as any)
     router.serverSsr!.setRenderFinished()
 
