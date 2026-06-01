@@ -12,7 +12,11 @@ Server Components let you render React components on the server and stream them 
 
 **Server Components are not enabled by default.** Complete these three steps first:
 
-### 1. Install the Vite RSC Plugin
+### 1. Install Bundler-Specific RSC Dependencies
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
 
 ```bash
 npm install -D @vitejs/plugin-rsc
@@ -24,11 +28,25 @@ yarn add -D @vitejs/plugin-rsc
 bun add -D @vitejs/plugin-rsc
 ```
 
-### 2. Configure Vite
+# Rsbuild
 
-Update your `vite.config.ts` to enable RSC in the TanStack Start plugin and add the Vite RSC plugin:
+Rsbuild does not need a separate RSC plugin. Make sure your Rsbuild React dependencies are installed:
 
-```tsx
+```bash
+npm install -D @rsbuild/core @rsbuild/plugin-react
+```
+
+<!-- ::end:tabs -->
+
+### 2. Configure Your Bundler
+
+Update your bundler config to enable RSC in the TanStack Start plugin:
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
@@ -47,7 +65,28 @@ export default defineConfig({
 })
 ```
 
-**Requirements:** React 19+, Vite 7+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { pluginReact } from '@rsbuild/plugin-react'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  plugins: [
+    pluginReact({ splitChunks: false }),
+    tanstackStart({
+      rsc: {
+        enabled: true,
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
+
+**Requirements:** React 19+, Vite 7+ or Rsbuild 2+
 
 ## Quick Start
 
