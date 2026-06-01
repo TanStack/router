@@ -239,6 +239,57 @@ test('MatchRoute updates for navigation and reactive params changes', async () =
   })
 })
 
+test('Outlet disposes index content when passed through wrapper children', async () => {
+  function RootDocument(props: { children: any }) {
+    return (
+      <div>
+        <Link to="/posts">Posts</Link>
+        {props.children}
+      </div>
+    )
+  }
+
+  const rootRoute = createRootRoute({
+    component: () => (
+      <RootDocument>
+        <Outlet />
+      </RootDocument>
+    ),
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <h1>Home</h1>,
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'posts',
+    component: () => <h1>Posts</h1>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  render(() => <RouterProvider router={router} />)
+
+  expect(
+    await screen.findByRole('heading', { name: 'Home' }),
+  ).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('link', { name: 'Posts' }))
+
+  await waitFor(() => {
+    expect(screen.getByRole('heading', { name: 'Posts' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Home' }),
+    ).not.toBeInTheDocument()
+  })
+})
+
 describe('matching on different param types', () => {
   const testCases = [
     {
