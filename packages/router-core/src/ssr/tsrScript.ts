@@ -9,8 +9,17 @@ self.$_TSR = {
   },
   c() {
     if (this.hydrated && this.streamEnded) {
-      delete self.$_TSR
-      delete self.$R['tsr']
+      const cleanup = () => {
+        if (self.$_TSR?.hydrated && self.$_TSR?.streamEnded) {
+          delete self.$_TSR
+          delete self.$R['tsr']
+        }
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', cleanup, { once: true })
+      } else {
+        cleanup()
+      }
     }
   },
   p(script) {
