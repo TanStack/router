@@ -117,7 +117,28 @@ export function GenericHydrate(props: InternalHydrateProps) {
     started: false,
   }
   let didPrefetch = false
+  let didClearPreservedServerHTML = false
   let markerElement: HTMLDivElement | undefined
+  let preservedServerChildNodes: Array<ChildNode> | undefined
+  let cleanupHydrationRuntime = () => {}
+  let didReleaseGate = false
+
+  const clearPreservedServerHTML = () => {
+    if (
+      !shouldPreserveServerHTML ||
+      !shouldDeferInitialHydration ||
+      !markerElement ||
+      !preservedServerChildNodes ||
+      didClearPreservedServerHTML
+    ) {
+      return
+    }
+
+    didClearPreservedServerHTML = true
+    for (const child of preservedServerChildNodes) {
+      child.remove()
+    }
+  }
 
   if (
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -166,6 +187,16 @@ export function GenericHydrate(props: InternalHydrateProps) {
   }
   const resolveGate = gate.resolve
 
+  Solid.onCleanup(() => {
+    controller.abortController.abort()
+    controller.hydrationListeners.clear()
+    cleanupHydrationRuntime()
+    if (!didReleaseGate) {
+      didReleaseGate = true
+      releaseGate(gate)
+    }
+  })
+
   Solid.createEffect(
     () => {
       const currentHydrateStrategy = initialHydrateStrategy
@@ -189,6 +220,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
       )) {
         if (element.getAttribute(hydrateIdAttribute) === id) {
           markerElement = element
+          preservedServerChildNodes ??= Array.from(element.childNodes)
           saveFallbackHtml(id, element)
           break
         }
@@ -272,6 +304,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
         removeResolveListener()
         cleanups.forEach((fn) => fn())
       }
+      cleanupHydrationRuntime = cleanup
 
       const addCleanup = (fn: void | (() => void)) => {
         if (!fn) return
@@ -282,12 +315,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
         cleanups.push(fn)
       }
 
-      Solid.onCleanup(() => {
-        controller.abortController.abort()
-        controller.hydrationListeners.clear()
-        cleanup()
-        releaseGate(gate)
-      })
+      Solid.onCleanup(cleanup)
 
       removeResolveListener = onGateResolve(gate, () => {
         cleanup()
@@ -366,6 +394,23 @@ export function GenericHydrate(props: InternalHydrateProps) {
 
     return <Dynamic {...fallbackProps} />
   }
+  const hydratedChildren = () => {
+    const children = (
+      <HydratedBoundary
+        id={id}
+        onHydrated={props.onHydrated}
+        onStrategyHydrated={(id) => {
+          clearPreservedServerHTML()
+          markerElement?.removeAttribute(hydrateWhenAttribute)
+          initialHydrateStrategy._o?.(id)
+        }}
+      >
+        {props.children}
+      </HydratedBoundary>
+    )
+
+    return children
+  }
 
   return (
     <Dynamic {...markerProps}>
@@ -379,16 +424,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
       ) : (
         <Solid.Loading fallback={fallback()}>
           <Solid.Show when={ready()} fallback={fallback()}>
-            <HydratedBoundary
-              id={id}
-              onHydrated={props.onHydrated}
-              onStrategyHydrated={(id) => {
-                markerElement?.removeAttribute(hydrateWhenAttribute)
-                initialHydrateStrategy._o?.(id)
-              }}
-            >
-              {props.children}
-            </HydratedBoundary>
+            {hydratedChildren()}
           </Solid.Show>
         </Solid.Loading>
       )}
