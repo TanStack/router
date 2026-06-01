@@ -4,15 +4,15 @@ export const [auth, setAuth] = createStore<Auth>({
   status: 'loggedOut',
   username: undefined,
   login: (username: string) => {
-    setAuth({
-      status: 'loggedIn',
-      username,
+    setAuth((state) => {
+      state.status = 'loggedIn'
+      state.username = username
     })
   },
   logout: () => {
-    setAuth({
-      status: 'loggedOut',
-      username: undefined,
+    setAuth((state) => {
+      state.status = 'loggedOut'
+      state.username = undefined
     })
   },
 })
