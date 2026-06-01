@@ -1,4 +1,5 @@
 import * as Solid from 'solid-js'
+import { NoHydration } from '@solidjs/web'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -75,10 +76,10 @@ function renderScripts(
   }
 
   return (
-    <>
+    <NoHydration>
       {allScripts.map((asset) => (
         <Asset {...asset} />
       ))}
-    </>
+    </NoHydration>
   )
 }
