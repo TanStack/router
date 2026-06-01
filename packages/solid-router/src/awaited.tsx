@@ -28,23 +28,8 @@ function InnerAwait<T>(props: {
   promise: Promise<T>
   children: (res: T) => SolidNode
 }) {
-  // Solid components run once, so the React-style `throw promise` + re-read in
-  // `useAwaited` never re-renders when the deferred promise resolves. Instead
-  // drive an async memo: reading `data()` suspends through the enclosing
-  // `<Loading>` until the promise settles, then re-renders reactively with the
-  // resolved value (or rethrows the error to the nearest error boundary).
-  const data = Solid.createMemo(async () => {
-    const deferred = defer(props.promise)
-    const state = deferred[TSR_DEFERRED_PROMISE]
-    if (state.status === 'success') {
-      return state.data
-    }
-    if (state.status === 'error') {
-      throw state.error
-    }
-    return (await deferred) as T
-  })
-  return <>{props.children(data() as T)}</>
+  const [data] = useAwaited({ promise: props.promise })
+  return props.children(data) as any
 }
 
 export function Await<T>(
