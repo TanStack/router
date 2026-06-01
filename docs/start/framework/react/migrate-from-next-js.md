@@ -52,7 +52,7 @@ rm postcss.config.* next.config.*
 
 ### 2. Install Required Dependencies
 
-TanStack Start leverages TanStack Router and supports [Vite](https://vite.dev) or [Rsbuild](https://rsbuild.dev/) as the bundler. The Vite setup below includes [Nitro](https://nitro.build/) as a deployment plugin.
+TanStack Start leverages TanStack Router and supports [Vite](https://vite.dev) or [Rsbuild](https://rsbuild.dev/) as the build tool. The Vite setup below includes [Nitro](https://nitro.build/) as a deployment plugin.
 
 <!-- ::start:tabs variant="bundler" -->
 
@@ -70,7 +70,7 @@ npm i @tanstack/react-router @tanstack/react-start @rsbuild/core @rsbuild/plugin
 
 <!-- ::end:tabs -->
 
-For Tailwind CSS, install the bundler integration you want to use:
+For Tailwind CSS, install the build tool integration you want to use:
 
 <!-- ::start:tabs variant="bundler" -->
 
