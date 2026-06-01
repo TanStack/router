@@ -420,7 +420,7 @@ If two server functions end up with the same ID (including when using a custom g
 
 Customization:
 
-You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start Vite plugin.
+You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start bundler plugin.
 
 Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
@@ -428,10 +428,12 @@ Please note that this customization is **experimental** and subject to change.
 
 Example:
 
-```ts
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
 export default defineConfig({
@@ -439,21 +441,40 @@ export default defineConfig({
     tanstackStart({
       serverFns: {
         generateFunctionId: ({ filename, functionName }) => {
-          // Return a custom ID string
           return crypto
             .createHash('sha1')
             .update(`${filename}--${functionName}`)
             .digest('hex')
-
-          // If you return undefined, the default is used
-          // return undefined
         },
       },
     }),
-    react(),
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      serverFns: {
+        generateFunctionId: ({ filename, functionName }) => {
+          return crypto
+            .createHash('sha1')
+            .update(`${filename}--${functionName}`)
+            .digest('hex')
+        },
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
 
 ---
 

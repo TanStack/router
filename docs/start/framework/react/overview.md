@@ -8,14 +8,14 @@ title: TanStack Start Overview
 > **This does not mean it is bug-free or without issues, which is why we invite you to try it out and provide feedback!**
 > The road to v1 will likely be a quick one, so don't wait too long to try it out!
 
-TanStack Start is a full-stack React framework powered by TanStack Router. It provides a full-document SSR, streaming, server functions, bundling, and more. Thanks to [Vite](https://vite.dev/), it's ready to develop and deploy to any hosting provider or runtime you want!
+TanStack Start is a full-stack React framework powered by TanStack Router. It provides a full-document SSR, streaming, server functions, bundling, and more. With [Vite](https://vite.dev/) and [Rsbuild](https://rsbuild.dev/) support, it's ready to develop and deploy to the hosting provider or runtime you want.
 
 ## Dependencies
 
 TanStack Start is built on two key technologies:
 
 - **[TanStack Router](https://tanstack.com/router)**: A type-safe router for building web applications with advanced features like nested routing, search params, and data loading
-- **[Vite](https://vite.dev/)**: A modern build tool that provides fast development with hot module replacement and optimized production builds
+- **[Vite](https://vite.dev/) or [Rsbuild](https://rsbuild.dev/)**: Modern bundlers that provide fast development with hot module replacement and optimized production builds
 
 ## Should I use TanStack Start or just TanStack Router?
 
@@ -27,7 +27,7 @@ TanStack Start is built on two key technologies:
 - **Server Functions** - Type-safe RPCs between client and server
 - **Middleware & Context** - Powerful request/response handling and data injection
 - **Full-Stack Bundling** - Optimized builds for both client and server code
-- **Universal Deployment** - Deploy to any Vite-compatible hosting provider
+- **Universal Deployment** - Deploy to hosting providers and runtimes with Vite or Rsbuild builds
 - **End-to-End Type Safety** - Full TypeScript support across the entire stack
 
 That said, if you **know with certainty** that you will not need any of the above features, then you may want to consider using TanStack Router alone, which is still a powerful and type-safe SPA routing upgrade over other routers and frameworks.
