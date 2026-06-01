@@ -1,5 +1,4 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/solid-router'
-import { HydrationScript } from '@solidjs/web'
 import { AppShell } from '~/components/AppShell'
 
 export const Route = createRootRoute({
@@ -17,7 +16,6 @@ function RootComponent() {
   return (
     <html lang="en">
       <head>
-        <HydrationScript />
         <HeadContent />
       </head>
       <body>
