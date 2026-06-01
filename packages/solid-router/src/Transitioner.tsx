@@ -1,6 +1,5 @@
 import * as Solid from 'solid-js'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
-import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type { ParsedLocation } from '@tanstack/router-core'
 
@@ -27,10 +26,6 @@ export function Transitioner() {
   const router = useRouter()
   let mountLoadForRouter = { router, mounted: false }
   const isLoading = Solid.createMemo(() => router.stores.isLoading.get())
-
-  if (isServer ?? router.isServer) {
-    return null
-  }
 
   const [isSolidTransitioning] = [() => false]
 
