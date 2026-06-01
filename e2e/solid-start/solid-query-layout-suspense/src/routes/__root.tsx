@@ -6,7 +6,7 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/solid-router'
 import { Suspense } from 'solid-js'
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 
 export const Route = createRootRouteWithContext()({
   head: () => ({ meta: [{ charset: 'utf-8' }] }),
