@@ -118,8 +118,6 @@ export const renderRouterToStream = async ({
     )
   }
 
-  // Solid's renderToStream emits the root <html> without a doctype; prepend
-  // one (matching renderRouterToString) so the page isn't parsed in Quirks Mode.
   const doctype = new TextEncoder().encode('<!DOCTYPE html>')
   let doctypeWritten = false
 
