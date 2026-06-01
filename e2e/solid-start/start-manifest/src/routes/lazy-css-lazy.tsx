@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { Suspense, lazy } from 'solid-js'
+import { Loading, lazy } from 'solid-js'
 
 const LazySharedWidget = lazy(() => import('~/components/SharedWidgetLazy'))
 
@@ -16,11 +16,11 @@ function LazyCssLazyRoute() {
         only exists behind a dynamic import boundary.
       </p>
 
-      <Suspense
+      <Loading
         fallback={<div data-testid="shared-widget-loading">Loading...</div>}
       >
         <LazySharedWidget />
-      </Suspense>
+      </Loading>
     </section>
   )
 }

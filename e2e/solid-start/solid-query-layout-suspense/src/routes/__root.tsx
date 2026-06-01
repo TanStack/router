@@ -5,7 +5,7 @@ import {
   Scripts,
   createRootRouteWithContext,
 } from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Loading } from 'solid-js'
 import { HydrationScript } from '@solidjs/web'
 
 export const Route = createRootRouteWithContext()({
@@ -24,9 +24,9 @@ function RootDocument() {
         <nav>
           <Link to="/">Home</Link> <Link to="/layout/page2">👉 To page2</Link>
         </nav>
-        <Suspense>
+        <Loading>
           <Outlet />
-        </Suspense>
+        </Loading>
         <Scripts />
       </body>
     </html>

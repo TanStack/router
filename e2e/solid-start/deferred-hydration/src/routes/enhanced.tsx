@@ -1,4 +1,5 @@
-import { Show, createSignal, onMount, type JSX } from 'solid-js'
+import { Show, createEffect, createSignal } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { createFileRoute } from '@tanstack/solid-router'
 import { Hydrate } from '@tanstack/solid-start'
 import { interaction, media } from '@tanstack/solid-start/hydration'
@@ -36,9 +37,12 @@ function InteractiveBox(props: { id: string; label: string }): JSX.Element {
   const [count, setCount] = createSignal(0)
   const [hydrated, setHydrated] = createSignal(false)
 
-  onMount(() => {
-    setHydrated(true)
-  })
+  createEffect(
+    () => {},
+    () => {
+      setHydrated(true)
+    },
+  )
 
   return (
     <button

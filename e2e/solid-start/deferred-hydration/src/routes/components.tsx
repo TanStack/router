@@ -20,9 +20,12 @@ function InteractiveBox(props: { id: string; label: string }) {
   const [count, setCount] = Solid.createSignal(0)
   const [hydrated, setHydrated] = Solid.createSignal(false)
 
-  Solid.onMount(() => {
-    setHydrated(true)
-  })
+  Solid.createEffect(
+    () => {},
+    () => {
+      setHydrated(true)
+    },
+  )
 
   return (
     <button
@@ -37,10 +40,8 @@ function InteractiveBox(props: { id: string; label: string }) {
 
 function DelayedFallbackBox() {
   if (typeof window !== 'undefined') {
-    const [ready] = Solid.createResource(async () => {
-      await new Promise((resolve) => window.setTimeout(resolve, 1000))
-      return true
-    })
+    const [ready, setReady] = Solid.createSignal(false)
+    window.setTimeout(() => setReady(true), 1000)
 
     return (
       <Solid.Show when={ready()}>

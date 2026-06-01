@@ -1,4 +1,4 @@
-import { createSignal, onMount } from 'solid-js'
+import { createEffect, createSignal } from 'solid-js'
 import { Hydrate } from '@tanstack/solid-start'
 import { interaction, media } from '@tanstack/solid-start/hydration'
 
@@ -6,9 +6,12 @@ function CrossFileNestedButton() {
   const [count, setCount] = createSignal(0)
   const [hydrated, setHydrated] = createSignal(false)
 
-  onMount(() => {
-    setHydrated(true)
-  })
+  createEffect(
+    () => {},
+    () => {
+      setHydrated(true)
+    },
+  )
 
   return (
     <button
