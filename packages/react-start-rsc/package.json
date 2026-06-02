@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start-rsc",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "React Server Components support for TanStack Start",
   "author": "Tanner Linsley",
   "license": "MIT",
