@@ -41,7 +41,9 @@
     "@tanstack/vue-start": "1.166.8",
     "@tanstack/vue-start-client": "1.166.7",
     "@tanstack/vue-start-server": "1.166.7",
-    "@tanstack/zod-adapter": "1.166.7"
+    "@tanstack/zod-adapter": "1.166.7",
+    "@tanstack/eslint-plugin-start": "0.1.0",
+    "@tanstack/react-start-rsc": "0.1.17"
   },
   "changesets": [
     "brave-pans-create",
@@ -66,8 +68,10 @@
     "social-rules-fold",
     "solid-kings-help",
     "three-carrots-return",
+    "tiny-beds-tan",
     "tired-pants-eat",
     "violet-turkeys-cross",
-    "wicked-olives-poke"
+    "wicked-olives-poke",
+    "witty-tires-flow"
   ]
 }

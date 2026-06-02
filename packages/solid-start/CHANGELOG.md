@@ -1,5 +1,19 @@
 # @tanstack/solid-start
 
+## 2.0.0-beta.21
+
+### Patch Changes
+
+- [`440a0c9`](https://github.com/TanStack/router/commit/440a0c92708c977d146e694fe828707dc7e61c3f) - sync main
+
+- Updated dependencies [[`440a0c9`](https://github.com/TanStack/router/commit/440a0c92708c977d146e694fe828707dc7e61c3f)]:
+  - @tanstack/solid-start-client@2.0.0-beta.20
+  - @tanstack/solid-start-server@2.0.0-beta.20
+  - @tanstack/solid-router@2.0.0-beta.20
+  - @tanstack/start-client-core@1.170.7-beta.0
+  - @tanstack/start-plugin-core@1.171.11-beta.0
+  - @tanstack/start-server-core@1.169.9-beta.0
+
 ## 2.0.0-beta.20
 
 ### Patch Changes
