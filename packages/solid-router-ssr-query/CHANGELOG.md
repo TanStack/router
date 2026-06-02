@@ -1,14 +1,5 @@
 # @tanstack/solid-router-ssr-query
 
-## 2.0.0-beta.21
-
-### Patch Changes
-
-- [`440a0c9`](https://github.com/TanStack/router/commit/440a0c92708c977d146e694fe828707dc7e61c3f) - sync main
-
-- Updated dependencies []:
-  - @tanstack/router-ssr-query-core@1.169.2-beta.0
-
 ## 2.0.0-beta.20
 
 ### Patch Changes

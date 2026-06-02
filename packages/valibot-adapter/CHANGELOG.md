@@ -1,12 +1,5 @@
 # @tanstack/valibot-adapter
 
-## 1.167.1-beta.0
-
-### Patch Changes
-
-- Updated dependencies []:
-  - @tanstack/react-router@1.170.11-beta.0
-
 ## 1.167.0
 
 ### Minor Changes

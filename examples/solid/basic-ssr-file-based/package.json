@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@solidjs/web": "2.0.0-beta.14",
-    "@tanstack/router-plugin": "^1.168.14-beta.0",
-    "@tanstack/solid-router": "^2.0.0-beta.20",
+    "@tanstack/router-plugin": "^1.168.13",
+    "@tanstack/solid-router": "^2.0.0-beta.19",
     "compression": "^1.8.0",
     "express": "^5.2.1",
     "get-port": "^7.1.0",
@@ -21,7 +21,7 @@
     "solid-js": "2.0.0-beta.14"
   },
   "devDependencies": {
-    "@tanstack/solid-router-devtools": "^2.0.0-beta.16",
+    "@tanstack/solid-router-devtools": "^2.0.0-beta.15",
     "@types/express": "^5.0.6",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",

@@ -1,13 +1,5 @@
 # @tanstack/vue-router-ssr-query
 
-## 1.167.2-beta.0
-
-### Patch Changes
-
-- Updated dependencies []:
-  - @tanstack/router-ssr-query-core@1.169.2-beta.0
-  - @tanstack/vue-router@1.170.11-beta.0
-
 ## 1.167.1
 
 ### Patch Changes

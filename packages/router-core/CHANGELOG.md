@@ -1,11 +1,5 @@
 # @tanstack/router-core
 
-## 1.171.9-beta.0
-
-### Patch Changes
-
-- [#7524](https://github.com/TanStack/router/pull/7524) [`b4cd5af`](https://github.com/TanStack/router/commit/b4cd5af8d0f9d4aaa2d29095e6a261b9181bc778) - defer `$_TSR` teardown until DOMContentLoaded
-
 ## 1.171.8
 
 ### Patch Changes

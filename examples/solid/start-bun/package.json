@@ -15,12 +15,12 @@
   "dependencies": {
     "@solidjs/web": "2.0.0-beta.14",
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/router-plugin": "^1.168.14-beta.0",
+    "@tanstack/router-plugin": "^1.168.13",
     "@tanstack/solid-devtools": "^0.7.0",
-    "@tanstack/solid-router": "^2.0.0-beta.20",
-    "@tanstack/solid-router-devtools": "^2.0.0-beta.16",
-    "@tanstack/solid-router-ssr-query": "^2.0.0-beta.21",
-    "@tanstack/solid-start": "^2.0.0-beta.21",
+    "@tanstack/solid-router": "^2.0.0-beta.19",
+    "@tanstack/solid-router-devtools": "^2.0.0-beta.15",
+    "@tanstack/solid-router-ssr-query": "^2.0.0-beta.20",
+    "@tanstack/solid-start": "^2.0.0-beta.20",
     "solid-js": "2.0.0-beta.14",
     "tailwindcss": "^4.2.2"
   },
