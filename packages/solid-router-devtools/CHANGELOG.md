@@ -1,5 +1,14 @@
 # @tanstack/solid-router-devtools
 
+## 2.0.0-beta.16
+
+### Patch Changes
+
+- [#7528](https://github.com/TanStack/router/pull/7528) [`440a0c9`](https://github.com/TanStack/router/commit/440a0c92708c977d146e694fe828707dc7e61c3f) - sync main
+
+- Updated dependencies [[`440a0c9`](https://github.com/TanStack/router/commit/440a0c92708c977d146e694fe828707dc7e61c3f)]:
+  - @tanstack/solid-router@2.0.0-beta.20
+
 ## 2.0.0-beta.15
 
 ### Patch Changes
