@@ -352,16 +352,15 @@ export function GenericHydrate(props: InternalHydrateProps) {
     },
   )
 
+  // prettier-ignore
   Solid.createRenderEffect(
     () =>
       !(
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        (
-          (isServer ?? typeof window === 'undefined') ||
-          gate.resolved ||
-          initialHydrateStrategy._t === 'never' ||
-          shouldDeferHydration(initialHydrateStrategy)
-        )
+        (isServer ?? typeof window === 'undefined') ||
+        gate.resolved ||
+        initialHydrateStrategy._t === 'never' ||
+        shouldDeferHydration(initialHydrateStrategy)
       ),
     (shouldResolve) => {
       if (shouldResolve) {
