@@ -1,5 +1,14 @@
 # @tanstack/solid-router-devtools
 
+## 2.0.0-beta.17
+
+### Patch Changes
+
+- [#7532](https://github.com/TanStack/router/pull/7532) [`ff136aa`](https://github.com/TanStack/router/commit/ff136aaea6f03446fb5aedc17319974106b72165) - fix: use TSR_DEFERRED_PROMISE
+
+- Updated dependencies [[`ff136aa`](https://github.com/TanStack/router/commit/ff136aaea6f03446fb5aedc17319974106b72165)]:
+  - @tanstack/solid-router@2.0.0-beta.21
+
 ## 2.0.0-beta.16
 
 ### Patch Changes
