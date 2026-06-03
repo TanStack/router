@@ -36,6 +36,8 @@ Authentication involves many considerations including password security, session
 
 TanStack Start provides the tools for both through server functions, sessions, and route protection.
 
+> Protect the data/API boundary first. Any server function, server route, or other API endpoint that returns or mutates private data must authorize the request itself. `beforeLoad` is useful for route UX: it keeps users out of screens they cannot use and avoids triggering work that would fail anyway. It is not the security boundary for the data. See [Authentication Server Primitives](./authentication-server-primitives.md) for the server-side pattern.
+
 ## Essential Building Blocks
 
 ### 1. Server Functions for Authentication

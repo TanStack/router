@@ -72,11 +72,11 @@ title: Authentication
 - Good for mixed public/private content on same route
 - Requires careful handling to prevent layout shifts
 
-**Server Function Guards**
+**Data/API Protection (Security Boundary)**
 
-- Server-side validation before executing sensitive operations
-- Works alongside route-level protection
-- Essential for API security regardless of client-side protection
+- Authorize every server function, server route, or API endpoint that reads or writes private data
+- Reject unauthorized requests even if no protected route was loaded first
+- Treat route guards as UX and navigation control, not as the data boundary
 
 ### State Management Patterns
 
@@ -207,14 +207,17 @@ Build your own authentication system using TanStack Start's server functions and
 - Specific business logic needs
 - Full ownership of authentication data
 
-### Security Considerations
+### Production Auth Checklist
 
-- Use HTTPS in production
-- Use HTTP-only cookies when possible
-- Validate all inputs on the server
-- Keep secrets in server-only functions
-- Implement rate limiting for auth endpoints
-- Use CSRF protection for form submissions
+- Use HTTPS in production and set a strong session secret.
+- Store sessions in `HttpOnly`, `Secure`, `SameSite` cookies. Do not store session tokens in `localStorage` or `sessionStorage`.
+- Enforce auth in every server function, server route, or API endpoint that reads or writes private user, tenant, or account data. Use `beforeLoad` for page UX, not as the data boundary.
+- Use `.inputValidator()` on every server function that accepts input.
+- Hash passwords with bcrypt, scrypt, or Argon2. For missing users, verify against a dummy hash and return the same login/reset message.
+- Rate limit login, registration, and password-reset endpoints.
+- Use CSRF or same-origin protections for non-GET server functions and server routes.
+- Log authentication events and monitor failures.
+- Test direct unauthenticated calls to protected server functions; they should reject before returning data.
 
 ## Next Steps
 

@@ -397,7 +397,7 @@ Use server functions without JavaScript by leveraging the `.url` property with H
 
 Compose server functions with middleware for authentication, logging, and shared logic. See the [Middleware guide](./middleware.md).
 
-> **Auth must be enforced on the server function, not the route.** A `createServerFn` is an RPC endpoint reachable by direct POST regardless of which route renders the calling UI — a route `beforeLoad` redirect protects the page experience, but it does not stop a request from hitting the RPC directly. Apply `authMiddleware` (or an equivalent in-handler check) to every server function that needs auth. See [Authentication Server Primitives](./authentication-server-primitives.md).
+> **Protect data in the endpoint that serves it.** Server functions are API endpoints reachable independently of whichever route renders the calling UI. Apply `authMiddleware` or an equivalent in-handler check to every server function that reads or writes private data. `beforeLoad` is useful route UX, but it is not the data boundary. See [Authentication Server Primitives](./authentication-server-primitives.md).
 
 ### Static Server Functions
 
