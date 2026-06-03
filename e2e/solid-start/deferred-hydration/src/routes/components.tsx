@@ -40,14 +40,12 @@ function InteractiveBox(props: { id: string; label: string }) {
 
 function DelayedFallbackBox() {
   if (typeof window !== 'undefined') {
-    const [ready, setReady] = Solid.createSignal(false)
-    window.setTimeout(() => setReady(true), 1000)
+    const child = Solid.createMemo(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 1000))
+      return 'fallback child'
+    })
 
-    return (
-      <Solid.Show when={ready()}>
-        <div data-testid="component-fallback-child">fallback child</div>
-      </Solid.Show>
-    )
+    return <div data-testid="component-fallback-child">{child()}</div>
   }
 
   return <div data-testid="component-fallback-child">fallback child</div>

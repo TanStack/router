@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 
-import { defer } from '@tanstack/router-core'
+import { TSR_DEFERRED_PROMISE, defer } from '@tanstack/router-core'
 import type { DeferredPromise } from '@tanstack/router-core'
 import type { SolidNode } from './route'
 
@@ -18,10 +18,16 @@ export function useAwaited<T>({
 }
 
 function InnerAwait<T>(props: {
-  data: Solid.Accessor<T>
+  deferred: DeferredPromise<T>
+  ready: Solid.Accessor<unknown>
   children: (res: T) => SolidNode
 }) {
-  return props.children(props.data()) as any
+  props.ready()
+  const state = props.deferred[TSR_DEFERRED_PROMISE]
+  if (state.status === 'error') {
+    throw state.error
+  }
+  return props.children(state.data as T) as any
 }
 
 export function Await<T>(
@@ -30,11 +36,17 @@ export function Await<T>(
     children: (result: T) => SolidNode
   },
 ) {
-  const data = Solid.createMemo(async () => await defer(props.promise))
+  const deferred = defer(props.promise)
+  const ready = Solid.createMemo(async () => {
+    await deferred
+    return true
+  })
 
   return (
     <Solid.Loading fallback={props.fallback as any}>
-      <InnerAwait data={data}>{props.children}</InnerAwait>
+      <InnerAwait deferred={deferred} ready={ready}>
+        {props.children}
+      </InnerAwait>
     </Solid.Loading>
   )
 }
