@@ -22,8 +22,6 @@ function InnerAwait<T>(props: {
   ready: Solid.Accessor<unknown>
   children: (res: T) => SolidNode
 }) {
-  // Suspend on `ready` to drive the stream, then read the value from the
-  // deferred state so Solid never re-serializes loader data via `$_TSR.t.get`.
   props.ready()
   const state = props.deferred[TSR_DEFERRED_PROMISE]
   if (state.status === 'error') {
