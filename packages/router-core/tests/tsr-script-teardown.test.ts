@@ -7,7 +7,7 @@ type TsrBootstrap = {
   c: () => void
 }
 
-// Evaluate the real (minified) client bootstrap; it assigns `self.$_TSR`.
+// Assign `self.$_TSR`.
 function installBootstrap(): TsrBootstrap {
   new Function(minifiedTsrBootStrapScript)()
   return (window as any).$_TSR
