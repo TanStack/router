@@ -822,7 +822,7 @@ Static middlewares are created once and reused across routes. A middleware facto
 
 This middleware validates the session and injects it into `context` for downstream middlewares.
 
-> **Attach `authMiddleware` to every `createServerFn` that needs auth.** A route `beforeLoad` redirect protects the page experience but does NOT protect the RPC — server functions are reachable via direct POST regardless of which route renders them. Pair routing-side guards with handler-level enforcement here. See [Authentication Server Primitives](./authentication-server-primitives.md).
+> **Attach `authMiddleware` to every `createServerFn` that needs auth.** Server functions are API endpoints, so protect the endpoint that reads or mutates private data. A route `beforeLoad` guard improves route UX, but it is not the data boundary. See [Authentication Server Primitives](./authentication-server-primitives.md).
 
 ```tsx
 // middleware.ts

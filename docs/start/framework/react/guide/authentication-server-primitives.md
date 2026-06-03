@@ -7,14 +7,14 @@ This guide covers the **server-side primitives** for building authentication in 
 
 If you can use a managed solution like [Clerk](https://go.clerk.com/wOwHtuJ) or [WorkOS](https://workos.com/), prefer that — they handle most of what this guide describes. Read on if you're rolling your own.
 
-## The Two Halves of Auth
+## Protect Data First
 
-Authentication has a routing half and a server half. They both need to be implemented; either one alone is incomplete.
+Authentication has a data/API boundary and a route/UI layer. The data boundary is the security boundary: every server function, server route, or API endpoint that reads or writes private data must authorize the request before returning data or mutating state.
 
-- **Routing half** (`router-core/auth-and-guards`): redirect unauthenticated users away from protected pages, gate UI on roles/permissions, surface a login form.
-- **Server half** (this guide): issue and verify session cookies, exchange OAuth codes, hash and verify passwords, rate-limit credential endpoints, defeat user enumeration.
+- **Data/API boundary** (this guide): issue and verify session cookies, exchange OAuth codes, hash and verify passwords, rate-limit credential endpoints, defeat user enumeration, and authorize private data access.
+- **Route/UI layer** (`router-core/auth-and-guards`): redirect unauthenticated users away from screens they cannot use, gate UI on roles/permissions, surface a login form, and avoid triggering requests that would fail anyway.
 
-> **A route guard does NOT protect a `createServerFn` on that route.** Server functions are RPC endpoints — they're reachable via direct POST regardless of which route renders them. Auth must be enforced on the handler (or via middleware), not on the calling route.
+> **A route guard is not a data authorization boundary.** Server functions and server routes are API endpoints; they are reachable independently of the route that calls them. Auth must be enforced in the handler or middleware for the endpoint that touches private data. `beforeLoad` is for route UX.
 
 ## Session Cookies
 
