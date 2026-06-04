@@ -1,4 +1,4 @@
-import { deepEqual } from './utils'
+import { createNull, deepEqual } from './utils'
 import type { NoInfer, PickOptional } from './utils'
 import type { SearchMiddleware } from './route'
 import type { IsRequiredParams } from './link'
@@ -17,19 +17,56 @@ export function retainSearchParams<TSearchSchema extends object>(
   keys: Array<keyof TSearchSchema> | true,
 ): SearchMiddleware<TSearchSchema> {
   return ({ search, next }) => {
-    const result = next(search)
+    const [resultSearch, validations] = (next as any)(search, true) as [
+      TSearchSchema,
+      Array<Record<PropertyKey, unknown>>,
+    ]
+    const defaultKeys = validations.length
+      ? getValidationDefaultKeys(search, resultSearch, validations)
+      : undefined
+
     if (keys === true) {
-      return { ...search, ...result }
+      const copy = { ...search, ...resultSearch }
+      if (defaultKeys) {
+        for (const key in defaultKeys) {
+          copy[key as keyof TSearchSchema] = search[key as keyof TSearchSchema]
+        }
+      }
+      return copy
     }
-    const copy = { ...result }
+
+    const copy = { ...resultSearch }
     // add missing keys from search to copy
-    keys.forEach((key) => {
-      if (!(key in copy)) {
+    for (const key of keys) {
+      if (!(key in copy) || (defaultKeys ? key in defaultKeys : false)) {
         copy[key] = search[key]
       }
-    })
+    }
     return copy
   }
+}
+
+function getValidationDefaultKeys(
+  search: any,
+  resultSearch: any,
+  validations: Array<Record<PropertyKey, unknown>>,
+) {
+  let defaultKeys: Record<PropertyKey, true> | undefined
+  for (let i = 0; i < validations.length; i += 2) {
+    const baseSearch = validations[i]!
+    const validatedSearch = validations[i + 1]!
+    for (const key in validatedSearch) {
+      if (
+        key in search &&
+        !(key in baseSearch) &&
+        resultSearch[key] === validatedSearch[key]
+      ) {
+        const target = defaultKeys || (defaultKeys = createNull())
+        target[key] = true
+      }
+    }
+  }
+  return defaultKeys
 }
 
 /**

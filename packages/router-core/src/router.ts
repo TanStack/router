@@ -3120,115 +3120,108 @@ function applySearchMiddleware({
 }
 
 function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
-  const context = {
-    dest: null as unknown as BuildNextOptions,
-    _includeValidateSearch: false,
-    middlewares: [] as Array<SearchMiddleware<any>>,
-  }
+  let dest: BuildNextOptions
+  let includeValidateSearch: boolean | undefined
+  const middlewares = [] as Array<SearchMiddleware<any>>
+  // Flat pairs: [searchBeforeValidation, validatedSearch, ...]
+  type ValidatedSearches = Array<Record<PropertyKey, unknown>>
 
   for (const route of destRoutes) {
-    if ('search' in route.options) {
-      if (route.options.search?.middlewares) {
-        context.middlewares.push(...route.options.search.middlewares)
+    const routeOptions = route.options
+    if ('search' in routeOptions) {
+      if (routeOptions.search?.middlewares) {
+        middlewares.push(...routeOptions.search.middlewares)
       }
     }
     // TODO remove preSearchFilters and postSearchFilters in v2
-    else if (
-      route.options.preSearchFilters ||
-      route.options.postSearchFilters
-    ) {
+    else if (routeOptions.preSearchFilters || routeOptions.postSearchFilters) {
       const legacyMiddleware: SearchMiddleware<any> = ({ search, next }) => {
-        let nextSearch = search
-
-        if (
-          'preSearchFilters' in route.options &&
-          route.options.preSearchFilters
-        ) {
-          nextSearch = route.options.preSearchFilters.reduce(
-            (prev, next) => next(prev),
-            search,
-          )
-        }
+        const nextSearch = routeOptions.preSearchFilters
+          ? routeOptions.preSearchFilters.reduce(
+              (prev, next) => next(prev),
+              search,
+            )
+          : search
 
         const result = next(nextSearch)
 
-        if (
-          'postSearchFilters' in route.options &&
-          route.options.postSearchFilters
-        ) {
-          return route.options.postSearchFilters.reduce(
-            (prev, next) => next(prev),
-            result,
-          )
-        }
+        return routeOptions.postSearchFilters
+          ? routeOptions.postSearchFilters.reduce(
+              (prev, next) => next(prev),
+              result,
+            )
+          : result
+      }
+      middlewares.push(legacyMiddleware)
+    }
 
+    const routeValidateSearch = routeOptions.validateSearch
+    if (routeValidateSearch) {
+      const validate: SearchMiddleware<any> = (
+        { search, next },
+        validations?: ValidatedSearches,
+      ) => {
+        const result = next(search)
+        if (includeValidateSearch) {
+          try {
+            const validated = validateSearch(routeValidateSearch, result) as any
+
+            if (validations && validated) {
+              validations.push(result, validated)
+            }
+            return { ...result, ...validated }
+          } catch {
+            // ignore errors here because they are already handled in matchRoutes
+          }
+        }
         return result
       }
-      context.middlewares.push(legacyMiddleware)
-    }
 
-    if (route.options.validateSearch) {
-      const validate: SearchMiddleware<any> = ({ search, next }) => {
-        const result = next(search)
-        if (!context._includeValidateSearch) return result
-        try {
-          const validatedSearch = {
-            ...result,
-            ...(validateSearch(route.options.validateSearch, result) ??
-              undefined),
-          }
-          return validatedSearch
-        } catch {
-          // ignore errors here because they are already handled in matchRoutes
-          return result
-        }
-      }
-
-      context.middlewares.push(validate)
+      middlewares.push(validate)
     }
   }
-
-  // the chain ends here since `next` is not called
-  const final: SearchMiddleware<any> = ({ search }) => {
-    const dest = context.dest
-    if (!dest.search) {
-      return {}
-    }
-    if (dest.search === true) {
-      return search
-    }
-    return functionalUpdate(dest.search, search)
-  }
-
-  context.middlewares.push(final)
 
   const applyNext = (
     index: number,
     currentSearch: any,
-    middlewares: Array<SearchMiddleware<any>>,
+    validations?: ValidatedSearches,
   ): any => {
     // no more middlewares left, return the current search
     if (index >= middlewares.length) {
-      return currentSearch
+      if (!dest.search) {
+        return {}
+      }
+      if (dest.search === true) {
+        return currentSearch
+      }
+      return functionalUpdate(dest.search, currentSearch)
     }
 
-    const middleware = middlewares[index]!
-
-    const next = (newSearch: any): any => {
-      return applyNext(index + 1, newSearch, middlewares)
+    const next = (newSearch: any, collectValidations?: true): any => {
+      if (collectValidations) {
+        const nextValidations: ValidatedSearches = []
+        return [
+          applyNext(index + 1, newSearch, nextValidations),
+          nextValidations,
+        ]
+      }
+      return applyNext(index + 1, newSearch, validations)
     }
 
-    return middleware({ search: currentSearch, next })
+    return (middlewares[index]! as any)(
+      { search: currentSearch, next },
+      validations,
+    )
   }
 
   return function middleware(
     search: any,
-    dest: BuildNextOptions,
+    nextDest: BuildNextOptions,
     _includeValidateSearch: boolean,
   ) {
-    context.dest = dest
-    context._includeValidateSearch = _includeValidateSearch
-    return applyNext(0, search, context.middlewares)
+    dest = nextDest
+    includeValidateSearch = _includeValidateSearch
+    return applyNext(0, search)
   }
 }
 
