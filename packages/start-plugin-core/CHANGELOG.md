@@ -1,5 +1,11 @@
 # @tanstack/start-plugin-core
 
+## 1.171.12
+
+### Patch Changes
+
+- [#7540](https://github.com/TanStack/router/pull/7540) [`8091918`](https://github.com/TanStack/router/commit/80919186cbdd0deb948b46fe328881a14a08f414) - Fix Rsbuild RSC builds so client directives in packages under `node_modules` are compiled and detected correctly.
+
 ## 1.171.11
 
 ### Patch Changes
