@@ -41,27 +41,21 @@ export const createMiddleware: CreateMiddlewareFn<{}> = (options, __opts) => {
     options: resolvedOptions,
     middleware: (middleware: any) => {
       return createMiddleware(
-        {} as any,
+        {},
         Object.assign(resolvedOptions, { middleware }),
-      ) as any
+      )
     },
     inputValidator: (inputValidator: any) => {
       return createMiddleware(
-        {} as any,
+        {},
         Object.assign(resolvedOptions, { inputValidator }),
-      ) as any
+      )
     },
     client: (client: any) => {
-      return createMiddleware(
-        {} as any,
-        Object.assign(resolvedOptions, { client }),
-      ) as any
+      return createMiddleware({}, Object.assign(resolvedOptions, { client }))
     },
     server: (server: any) => {
-      return createMiddleware(
-        {} as any,
-        Object.assign(resolvedOptions, { server }),
-      ) as any
+      return createMiddleware({}, Object.assign(resolvedOptions, { server }))
     },
   } as any
 }

@@ -25,12 +25,9 @@ import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   AssignAllServerFnContext,
-  FunctionMiddlewareServerFnResult,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
 } from './createMiddleware'
-
-type TODO = any
 
 export type ServerFnStrict = boolean | { input?: boolean; output?: boolean }
 
@@ -109,7 +106,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
         ...resolvedOptions,
         middleware: newMiddleware,
       }
-      const res = createServerFn(undefined, newOptions) as any
+      const res = createServerFn(undefined, newOptions)
       res[TSS_SERVER_FUNCTION_FACTORY] = true
       return res
     },
@@ -150,7 +147,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           const result = await executeMiddleware(resolvedMiddleware, 'client', {
             ...extractedFn,
             ...newOptions,
-            data: opts?.data as any,
+            data: opts?.data,
             headers: opts?.headers,
             signal: opts?.signal,
             fetch: opts?.fetch,
@@ -214,7 +211,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       ...resolvedOptions,
       ...options,
     }
-    return createServerFn(undefined, newOptions) as any
+    return createServerFn(undefined, newOptions)
   }
   return Object.assign(fun, res) as any
 }
@@ -914,7 +911,7 @@ function serverFnBaseToMiddleware(
           // switch the sendContext over to context
           context: sendContext,
           fetch,
-        } as any
+        }
 
         // Execute the extracted function
         // but not before serializing the context
@@ -924,18 +921,12 @@ function serverFnBaseToMiddleware(
       },
       server: async ({ next, ...ctx }) => {
         // Execute the server function
-        const result = await options.serverFn?.(ctx as TODO)
+        const result = await options.serverFn?.(ctx)
 
         return next({
           ...ctx,
           result,
-        } as any) as unknown as FunctionMiddlewareServerFnResult<
-          any,
-          any,
-          any,
-          any,
-          any
-        >
+        } as any)
       },
     },
   }
