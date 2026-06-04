@@ -222,7 +222,7 @@ export function hasKeys(obj: Record<string, unknown>) {
   return false
 }
 
-const createNull = () => Object.create(null)
+export const createNull = () => Object.create(null)
 export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
   replaceEqualDeep(prev, next, createNull)
 
