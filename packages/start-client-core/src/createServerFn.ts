@@ -1,6 +1,6 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
-import { isRedirect, parseRedirect } from '@tanstack/router-core'
+import { isNotFound, isRedirect, parseRedirect } from '@tanstack/router-core'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
@@ -10,6 +10,14 @@ import type {
   ServerFnMeta,
   TSS_SERVER_FUNCTION,
 } from './constants'
+import type {
+  AnyFunctionMiddleware,
+  AnyRequestMiddleware,
+  AssignAllServerFnContext,
+  FunctionMiddlewareServerFnResult,
+  IntersectAllValidatorInputs,
+  IntersectAllValidatorOutputs,
+} from './createMiddleware'
 import type {
   AnyValidator,
   Constrain,
@@ -21,14 +29,6 @@ import type {
   ValidateSerializableInput,
   Validator,
 } from '@tanstack/router-core'
-import type {
-  AnyFunctionMiddleware,
-  AnyRequestMiddleware,
-  AssignAllServerFnContext,
-  FunctionMiddlewareServerFnResult,
-  IntersectAllValidatorInputs,
-  IntersectAllValidatorOutputs,
-} from './createMiddleware'
 
 type TODO = any
 
@@ -162,8 +162,15 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             throw redirect
           }
 
-          if (result.error) throw result.error
-          return result.result
+          if (
+            result.error instanceof Error ||
+            isRedirect(result.error) ||
+            isNotFound(result.error)
+          )
+            throw result.error
+          // Non-Error values in result.error are application-level error payloads;
+          // return them as the resolved value when no explicit result is present.
+          return result.result !== undefined ? result.result : result.error
         },
         {
           // This copies over the URL, function ID
@@ -302,10 +309,16 @@ export async function executeMiddleware(
 
           const result = await callNextMiddleware(nextCtx)
 
-          if (result.error) {
+          if (
+            result.error instanceof Error ||
+            isRedirect(result.error) ||
+            isNotFound(result.error)
+          ) {
             throw result.error
           }
 
+          // Non-Error values in result.error are application-level error payloads;
+          // preserve them for downstream handlers.
           return result
         }
 

@@ -47,6 +47,7 @@ import { Route as MiddlewareMiddlewareFactoryRouteImport } from './routes/middle
 import { Route as MiddlewareFunctionMetadataRouteImport } from './routes/middleware/function-metadata'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
 import { Route as MiddlewareCatchHandlerErrorRouteImport } from './routes/middleware/catch-handler-error'
+import { Route as MiddlewareNonErrorPayloadRouteImport } from './routes/middleware/non-error-payload'
 import { Route as MethodNotAllowedMethodRouteImport } from './routes/method-not-allowed/$method'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 import { Route as AbortSignalMethodRouteImport } from './routes/abort-signal/$method'
@@ -251,6 +252,12 @@ const MiddlewareCatchHandlerErrorRoute =
     path: '/middleware/catch-handler-error',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MiddlewareNonErrorPayloadRoute =
+  MiddlewareNonErrorPayloadRouteImport.update({
+    id: '/middleware/non-error-payload',
+    path: '/middleware/non-error-payload',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MethodNotAllowedMethodRoute = MethodNotAllowedMethodRouteImport.update({
   id: '/method-not-allowed/$method',
   path: '/method-not-allowed/$method',
@@ -307,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/cookies/set': typeof CookiesSetRoute
   '/method-not-allowed/$method': typeof MethodNotAllowedMethodRoute
   '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
+  '/middleware/non-error-payload': typeof MiddlewareNonErrorPayloadRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
   '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
@@ -353,6 +361,7 @@ export interface FileRoutesByTo {
   '/cookies/set': typeof CookiesSetRoute
   '/method-not-allowed/$method': typeof MethodNotAllowedMethodRoute
   '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
+  '/middleware/non-error-payload': typeof MiddlewareNonErrorPayloadRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
   '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
@@ -400,6 +409,7 @@ export interface FileRoutesById {
   '/cookies/set': typeof CookiesSetRoute
   '/method-not-allowed/$method': typeof MethodNotAllowedMethodRoute
   '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
+  '/middleware/non-error-payload': typeof MiddlewareNonErrorPayloadRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
   '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
@@ -448,6 +458,7 @@ export interface FileRouteTypes {
     | '/cookies/set'
     | '/method-not-allowed/$method'
     | '/middleware/catch-handler-error'
+    | '/middleware/non-error-payload'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
     | '/middleware/middleware-factory'
@@ -494,6 +505,7 @@ export interface FileRouteTypes {
     | '/cookies/set'
     | '/method-not-allowed/$method'
     | '/middleware/catch-handler-error'
+    | '/middleware/non-error-payload'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
     | '/middleware/middleware-factory'
@@ -540,6 +552,7 @@ export interface FileRouteTypes {
     | '/cookies/set'
     | '/method-not-allowed/$method'
     | '/middleware/catch-handler-error'
+    | '/middleware/non-error-payload'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
     | '/middleware/middleware-factory'
@@ -587,6 +600,7 @@ export interface RootRouteChildren {
   CookiesSetRoute: typeof CookiesSetRoute
   MethodNotAllowedMethodRoute: typeof MethodNotAllowedMethodRoute
   MiddlewareCatchHandlerErrorRoute: typeof MiddlewareCatchHandlerErrorRoute
+  MiddlewareNonErrorPayloadRoute: typeof MiddlewareNonErrorPayloadRoute
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
   MiddlewareFunctionMetadataRoute: typeof MiddlewareFunctionMetadataRoute
   MiddlewareMiddlewareFactoryRoute: typeof MiddlewareMiddlewareFactoryRoute
@@ -880,6 +894,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MiddlewareCatchHandlerErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/non-error-payload': {
+      id: '/middleware/non-error-payload'
+      path: '/middleware/non-error-payload'
+      fullPath: '/middleware/non-error-payload'
+      preLoaderRoute: typeof MiddlewareNonErrorPayloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/method-not-allowed/$method': {
       id: '/method-not-allowed/$method'
       path: '/method-not-allowed/$method'
@@ -947,6 +968,7 @@ const rootRouteChildren: RootRouteChildren = {
   CookiesSetRoute: CookiesSetRoute,
   MethodNotAllowedMethodRoute: MethodNotAllowedMethodRoute,
   MiddlewareCatchHandlerErrorRoute: MiddlewareCatchHandlerErrorRoute,
+  MiddlewareNonErrorPayloadRoute: MiddlewareNonErrorPayloadRoute,
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
   MiddlewareFunctionMetadataRoute: MiddlewareFunctionMetadataRoute,
   MiddlewareMiddlewareFactoryRoute: MiddlewareMiddlewareFactoryRoute,

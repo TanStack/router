@@ -1078,6 +1078,27 @@ test('middleware can catch errors thrown by server function handlers', async ({
   )
 })
 
+test('middleware can surface non-Error structured payloads to the caller', async ({
+  page,
+}) => {
+  await page.goto('/middleware/non-error-payload')
+
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('non-error-payload-title')).toBeVisible()
+
+  await page.getByTestId('trigger-non-error-btn').click()
+
+  await expect(page.getByTestId('payload-result')).toBeVisible()
+
+  const text = await page.getByTestId('payload-result').textContent()
+  const payload = JSON.parse(text!)
+  expect(payload).toEqual({
+    code: 'HANDLED',
+    message: 'Middleware returned structured payload',
+  })
+})
+
 test('server function with custom fetch implementation passed directly', async ({
   page,
 }) => {
