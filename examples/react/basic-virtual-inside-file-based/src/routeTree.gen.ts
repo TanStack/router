@@ -12,13 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PostsDetailsRouteImport } from './routes/posts/details'
+import { Route as postsDetailsRouteImport } from './routes/posts/details'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
-import { Route as PostsHomeRouteImport } from './routes/posts/home'
-import { Route as PostsLetsGoIndexRouteImport } from './routes/posts/lets-go/index'
+import { Route as postsHomeRouteImport } from './routes/posts/home'
+import { Route as postsLetsGoIndexRouteImport } from './routes/posts/lets-go/index'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
-import { Route as PostsLetsGoDeeperHomeRouteImport } from './routes/posts/lets-go/deeper/home'
+import { Route as postsLetsGoDeeperHomeRouteImport } from './routes/posts/lets-go/deeper/home'
 
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
@@ -34,7 +34,7 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PostsDetailsRoute = PostsDetailsRouteImport.update({
+const postsDetailsRoute = postsDetailsRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
@@ -43,12 +43,12 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
-const PostsHomeRoute = PostsHomeRouteImport.update({
+const postsHomeRoute = postsHomeRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
-const PostsLetsGoIndexRoute = PostsLetsGoIndexRouteImport.update({
+const postsLetsGoIndexRoute = postsLetsGoIndexRouteImport.update({
   id: '/inception/',
   path: '/inception/',
   getParentRoute: () => PostsRoute,
@@ -63,7 +63,7 @@ const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
-const PostsLetsGoDeeperHomeRoute = PostsLetsGoDeeperHomeRouteImport.update({
+const postsLetsGoDeeperHomeRoute = postsLetsGoDeeperHomeRouteImport.update({
   id: '/inception/deeper/',
   path: '/inception/deeper/',
   getParentRoute: () => PostsRoute,
@@ -72,34 +72,34 @@ const PostsLetsGoDeeperHomeRoute = PostsLetsGoDeeperHomeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/posts': typeof PostsRouteWithChildren
-  '/posts/': typeof PostsHomeRoute
-  '/posts/$postId': typeof PostsDetailsRoute
+  '/posts/': typeof postsHomeRoute
+  '/posts/$postId': typeof postsDetailsRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
-  '/posts/inception/': typeof PostsLetsGoIndexRoute
-  '/posts/inception/deeper/': typeof PostsLetsGoDeeperHomeRoute
+  '/posts/inception/': typeof postsLetsGoIndexRoute
+  '/posts/inception/deeper/': typeof postsLetsGoDeeperHomeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/posts': typeof PostsHomeRoute
-  '/posts/$postId': typeof PostsDetailsRoute
+  '/posts': typeof postsHomeRoute
+  '/posts/$postId': typeof postsDetailsRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
-  '/posts/inception': typeof PostsLetsGoIndexRoute
-  '/posts/inception/deeper': typeof PostsLetsGoDeeperHomeRoute
+  '/posts/inception': typeof postsLetsGoIndexRoute
+  '/posts/inception/deeper': typeof postsLetsGoDeeperHomeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/posts': typeof PostsRouteWithChildren
-  '/posts/': typeof PostsHomeRoute
+  '/posts/': typeof postsHomeRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
-  '/posts/$postId': typeof PostsDetailsRoute
+  '/posts/$postId': typeof postsDetailsRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
-  '/posts/inception/': typeof PostsLetsGoIndexRoute
-  '/posts/inception/deeper/': typeof PostsLetsGoDeeperHomeRoute
+  '/posts/inception/': typeof postsLetsGoIndexRoute
+  '/posts/inception/deeper/': typeof postsLetsGoDeeperHomeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -168,7 +168,7 @@ declare module '@tanstack/react-router' {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsDetailsRouteImport
+      preLoaderRoute: typeof postsDetailsRouteImport
       parentRoute: typeof PostsRoute
     }
     '/_layout/_layout-2': {
@@ -182,14 +182,14 @@ declare module '@tanstack/react-router' {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
-      preLoaderRoute: typeof PostsHomeRouteImport
+      preLoaderRoute: typeof postsHomeRouteImport
       parentRoute: typeof PostsRoute
     }
     '/posts/inception/': {
       id: '/posts/inception/'
       path: '/inception'
       fullPath: '/posts/inception/'
-      preLoaderRoute: typeof PostsLetsGoIndexRouteImport
+      preLoaderRoute: typeof postsLetsGoIndexRouteImport
       parentRoute: typeof PostsRoute
     }
     '/_layout/_layout-2/layout-b': {
@@ -210,7 +210,7 @@ declare module '@tanstack/react-router' {
       id: '/posts/inception/deeper/'
       path: '/inception/deeper'
       fullPath: '/posts/inception/deeper/'
-      preLoaderRoute: typeof PostsLetsGoDeeperHomeRouteImport
+      preLoaderRoute: typeof postsLetsGoDeeperHomeRouteImport
       parentRoute: typeof PostsRoute
     }
   }
@@ -242,17 +242,17 @@ const LayoutRouteWithChildren =
   LayoutRoute._addFileChildren(LayoutRouteChildren)
 
 interface PostsRouteChildren {
-  PostsHomeRoute: typeof PostsHomeRoute
-  PostsDetailsRoute: typeof PostsDetailsRoute
-  PostsLetsGoIndexRoute: typeof PostsLetsGoIndexRoute
-  PostsLetsGoDeeperHomeRoute: typeof PostsLetsGoDeeperHomeRoute
+  postsHomeRoute: typeof postsHomeRoute
+  postsDetailsRoute: typeof postsDetailsRoute
+  postsLetsGoIndexRoute: typeof postsLetsGoIndexRoute
+  postsLetsGoDeeperHomeRoute: typeof postsLetsGoDeeperHomeRoute
 }
 
 const PostsRouteChildren: PostsRouteChildren = {
-  PostsHomeRoute: PostsHomeRoute,
-  PostsDetailsRoute: PostsDetailsRoute,
-  PostsLetsGoIndexRoute: PostsLetsGoIndexRoute,
-  PostsLetsGoDeeperHomeRoute: PostsLetsGoDeeperHomeRoute,
+  postsHomeRoute: postsHomeRoute,
+  postsDetailsRoute: postsDetailsRoute,
+  postsLetsGoIndexRoute: postsLetsGoIndexRoute,
+  postsLetsGoDeeperHomeRoute: postsLetsGoDeeperHomeRoute,
 }
 
 const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)

@@ -7,6 +7,11 @@ import {
 } from '../manifest'
 import { decodePath } from '../utils'
 import { createLRUCache } from '../lru-cache'
+import {
+  builtinDefaultDehydrate,
+  getDehydrateFn,
+  shouldDehydrate,
+} from '../lifecycle'
 import { rootRouteId } from '../root'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
@@ -32,25 +37,79 @@ const TSR_PREFIX = GLOBAL_TSR + '.router='
 const P_PREFIX = GLOBAL_TSR + '.p(()=>'
 const P_SUFFIX = ')'
 
-export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
+export function dehydrateMatch(
+  match: AnyRouteMatch,
+  router: AnyRouter,
+): DehydratedMatch {
+  const route = router.looseRoutesById[match.routeId]!
+  const defaults = router.options.defaultDehydrate
+
   const dehydratedMatch: DehydratedMatch = {
     i: dehydrateSsrMatchId(match.id),
     u: match.updatedAt,
     s: match.status,
   }
 
-  const properties = [
-    ['__beforeLoadContext', 'b'],
-    ['loaderData', 'l'],
-    ['error', 'e'],
-    ['ssr', 'ssr'],
-  ] as const
-
-  for (const [key, shorthand] of properties) {
-    if (match[key] !== undefined) {
-      dehydratedMatch[shorthand] = match[key]
-    }
+  // Conditionally include beforeLoad context
+  if (
+    match.__beforeLoadContext !== undefined &&
+    route.options.beforeLoad &&
+    shouldDehydrate(
+      route.options.beforeLoad,
+      defaults?.beforeLoad,
+      builtinDefaultDehydrate.beforeLoad,
+    )
+  ) {
+    const dehydrateFn = getDehydrateFn(route.options.beforeLoad)
+    dehydratedMatch.b = dehydrateFn
+      ? (dehydrateFn({
+          data: match.__beforeLoadContext,
+        }) as typeof match.__beforeLoadContext)
+      : match.__beforeLoadContext
   }
+
+  // Conditionally include loader data
+  if (
+    match.loaderData !== undefined &&
+    route.options.loader &&
+    shouldDehydrate(
+      route.options.loader,
+      defaults?.loader,
+      builtinDefaultDehydrate.loader,
+    )
+  ) {
+    const dehydrateFn = getDehydrateFn(route.options.loader)
+    dehydratedMatch.l = dehydrateFn
+      ? (dehydrateFn({ data: match.loaderData }) as typeof match.loaderData)
+      : match.loaderData
+  }
+
+  // Conditionally include route context
+  if (
+    match.__routeContext !== undefined &&
+    route.options.context &&
+    shouldDehydrate(
+      route.options.context,
+      defaults?.context,
+      builtinDefaultDehydrate.context,
+    )
+  ) {
+    const dehydrateFn = getDehydrateFn(route.options.context)
+    dehydratedMatch.m = dehydrateFn
+      ? (dehydrateFn({
+          data: match.__routeContext,
+        }) as typeof match.__routeContext)
+      : match.__routeContext
+  }
+
+  // Always include error and ssr if present
+  if (match.error !== undefined) {
+    dehydratedMatch.e = match.error
+  }
+  if (match.ssr !== undefined) {
+    dehydratedMatch.ssr = match.ssr
+  }
+
   if (match.globalNotFound) {
     dehydratedMatch.g = true
   }
@@ -500,7 +559,7 @@ export function attachRouterServerSsrUtils({
         // In SPA mode we only want to dehydrate the root match
         matchesToDehydrate = matchesToDehydrate.slice(0, 1)
       }
-      const matches = matchesToDehydrate.map(dehydrateMatch)
+      const matches = matchesToDehydrate.map((m) => dehydrateMatch(m, router))
 
       let manifestToDehydrate: Manifest | undefined = undefined
       // Only currently matched routes are dehydrated. Other route assets are

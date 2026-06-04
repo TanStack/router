@@ -137,6 +137,16 @@ export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
 
+export {
+  builtinDefaultDehydrate,
+  resolveHandler,
+  shouldDehydrate,
+  getDehydrateFn,
+  getHydrateFn,
+  getRevalidateFn,
+} from './lifecycle'
+export type { LifecycleOption, DefaultDehydrateConfig } from './lifecycle'
+
 export { BaseRoute, BaseRouteApi, BaseRootRoute } from './route'
 export type {
   AnyPathParams,
@@ -168,7 +178,6 @@ export type {
   StringifyParamsFn,
   ParamsOptions,
   UpdatableStaticRouteOption,
-  ContextReturnType,
   ContextAsyncReturnType,
   ResolveRouteContext,
   ResolveLoaderData,
@@ -202,11 +211,18 @@ export type {
   RouteLoaderFn,
   RouteLoaderEntry,
   LoaderFnContext,
-  RouteContextFn,
+  ContextFn,
+  ContextLifecycleOption,
+  BeforeLoadLifecycleOption,
+  LoaderLifecycleOption,
+  DefaultLifecycleDehydrateFn,
   ContextOptions,
   RouteContextOptions,
+  ContextFnOptions,
+  ContextObjectWithDehydrateInput,
   SsrContextOptions,
   BeforeLoadContextOptions,
+  LifecycleObjectWithDehydrateInput,
   RootRouteOptions,
   RootRouteOptionsExtensions,
   UpdatableRouteOptionsExtensions,

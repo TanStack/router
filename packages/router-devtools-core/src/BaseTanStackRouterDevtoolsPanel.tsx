@@ -127,11 +127,11 @@ function RouteComp({
         {},
         {},
         AnyContext,
-        AnyContext,
         {},
         undefined,
         any,
         FileRouteTypes,
+        unknown,
         unknown,
         undefined
       >,

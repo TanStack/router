@@ -6,7 +6,6 @@ import type {
   RegisteredSsr,
   SSROption,
 } from '../../router'
-import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
 import type { RawStream } from './RawStream'
 
@@ -273,7 +272,7 @@ export type ValidateSerializableLifecycleResult<
   TFn,
 > =
   false extends RegisteredSsr<TRegister>
-    ? any
+    ? unknown
     : ValidateSerializableLifecycleResultSSR<
           TRegister,
           TParentRoute,
@@ -290,10 +289,10 @@ export type ValidateSerializableLifecycleResultSSR<
   TFn,
 > =
   ResolveAllSSR<TParentRoute, TSSR> extends false
-    ? any
+    ? unknown
     : RegisteredSSROption<TRegister> extends false
-      ? any
-      : ValidateSerializableInput<TRegister, LooseReturnType<TFn>>
+      ? unknown
+      : ValidateSerializableInput<TRegister, TFn>
 
 export type RegisteredReadableStream =
   unknown extends SerializerExtensions['ReadableStream']

@@ -1,12 +1,18 @@
 import { invariant } from '../invariant'
 import { isNotFound } from '../not-found'
 import { createControlledPromise } from '../utils'
+import {
+  builtinDefaultDehydrate,
+  getHydrateFn,
+  resolveHandler,
+  shouldDehydrate,
+} from '../lifecycle'
 import { hydrateSsrMatchId } from './ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
 import type { DehydratedMatch, TsrSsrGlobal } from './types'
 import type { AnyRouteMatch } from '../Matches'
 import type { AnyRouter } from '../router'
-import type { RouteContextOptions } from '../route'
+import type { BeforeLoadContextOptions, ContextFnOptions } from '../route'
 import type { AnySerializationAdapter } from './serializer/transformer'
 
 declare global {
@@ -21,8 +27,6 @@ function hydrateMatch(
   deyhydratedMatch: DehydratedMatch,
 ): void {
   match.id = deyhydratedMatch.i
-  match.__beforeLoadContext = deyhydratedMatch.b
-  match.loaderData = deyhydratedMatch.l
   match.status = deyhydratedMatch.s
   match.ssr = deyhydratedMatch.ssr
   match.updatedAt = deyhydratedMatch.u
@@ -156,6 +160,30 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     hydrateMatch(match, dehydratedMatch)
     setRouteSsr(match)
 
+    const route = router.looseRoutesById[match.routeId]!
+    if (dehydratedMatch.m !== undefined) {
+      const hydrateFn = getHydrateFn(route.options.context)
+      match.__routeContext = hydrateFn
+        ? (hydrateFn({
+            data: dehydratedMatch.m,
+          }) as typeof match.__routeContext)
+        : dehydratedMatch.m
+    }
+    if (dehydratedMatch.b !== undefined) {
+      const hydrateFn = getHydrateFn(route.options.beforeLoad)
+      match.__beforeLoadContext = hydrateFn
+        ? (hydrateFn({
+            data: dehydratedMatch.b,
+          }) as typeof match.__beforeLoadContext)
+        : dehydratedMatch.b
+    }
+    if (dehydratedMatch.l !== undefined) {
+      const hydrateFn = getHydrateFn(route.options.loader)
+      match.loaderData = hydrateFn
+        ? hydrateFn({ data: dehydratedMatch.l })
+        : dehydratedMatch.l
+    }
+
     match._nonReactive.dehydrated = match.ssr !== false
 
     if (match.ssr === 'data-only' || match.ssr === false) {
@@ -170,48 +198,165 @@ export async function hydrate(router: AnyRouter): Promise<any> {
 
   // now that all necessary data is hydrated:
   // 1) fully reconstruct the route context
-  // 2) execute `head()` and `scripts()` for each match
+  // 2) re-run non-dehydrated lifecycle methods
+  // 3) execute `head()` and `scripts()` for each match
+  const defaults = router.options.defaultDehydrate
+  const additionalContext = router.options.additionalContext
   const activeMatches = router.stores.matches.get()
   const location = router.stores.location.get()
+  const navigate = (opts: any) =>
+    router.navigate({ ...opts, _fromLocation: location })
+  const loaderTasks: Array<() => Promise<void>> = []
+
+  for (const match of activeMatches) {
+    try {
+      const route = router.looseRoutesById[match.routeId]!
+
+      const parentMatch = activeMatches[match.index - 1]
+      const parentContext = parentMatch?.context ?? router.options.context
+
+      if (
+        route.options.context &&
+        !shouldDehydrate(
+          route.options.context,
+          defaults?.context,
+          builtinDefaultDehydrate.context,
+        )
+      ) {
+        const contextFnContext: ContextFnOptions<any, any, any, any, any> = {
+          deps: match.loaderDeps,
+          params: match.params,
+          context: parentContext ?? {},
+          location,
+          navigate,
+          buildLocation: router.buildLocation,
+          cause: match.cause,
+          abortController: match.abortController,
+          preload: false,
+          matches,
+          routeId: route.id,
+          ...additionalContext,
+        }
+        match.__routeContext = ((await resolveHandler(route.options.context)!(
+          contextFnContext,
+        )) ?? undefined) as typeof match.__routeContext
+      }
+      match._nonReactive.needsContext = false
+
+      const contextForBeforeLoad = {
+        ...parentContext,
+        ...match.__routeContext,
+      }
+
+      if (
+        route.options.beforeLoad &&
+        !shouldDehydrate(
+          route.options.beforeLoad,
+          defaults?.beforeLoad,
+          builtinDefaultDehydrate.beforeLoad,
+        )
+      ) {
+        const beforeLoadFnContext: BeforeLoadContextOptions<
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any,
+          any
+        > = {
+          search: match.search,
+          params: match.params,
+          context: contextForBeforeLoad,
+          location,
+          navigate,
+          buildLocation: router.buildLocation,
+          cause: match.cause,
+          abortController: match.abortController,
+          preload: false,
+          matches,
+          routeId: route.id,
+          ...additionalContext,
+        }
+        match.__beforeLoadContext = ((await resolveHandler(
+          route.options.beforeLoad,
+        )!(beforeLoadFnContext)) ??
+          undefined) as typeof match.__beforeLoadContext
+      }
+
+      match.context = {
+        ...parentContext,
+        ...match.__routeContext,
+        ...match.__beforeLoadContext,
+      }
+
+      if (
+        route.options.loader &&
+        !shouldDehydrate(
+          route.options.loader,
+          defaults?.loader,
+          builtinDefaultDehydrate.loader,
+        )
+      ) {
+        const capturedMatch = match
+        const capturedRoute = route
+        const contextForLoader = capturedMatch.context
+        loaderTasks.push(async () => {
+          try {
+            const loaderFnContext = {
+              params: capturedMatch.params,
+              deps: capturedMatch.loaderDeps,
+              context: contextForLoader,
+              location,
+              navigate,
+              buildLocation: router.buildLocation,
+              cause: capturedMatch.cause,
+              abortController: capturedMatch.abortController,
+              preload: false,
+              parentMatchPromise: Promise.resolve() as any,
+              route: capturedRoute,
+              ...additionalContext,
+            }
+            const loaderData = await resolveHandler(
+              capturedRoute.options.loader,
+            )!(loaderFnContext)
+            if (loaderData !== undefined) {
+              capturedMatch.loaderData = loaderData
+            }
+          } catch (err) {
+            capturedMatch.error = err as any
+            console.error(
+              `Error during hydration loader re-execution for route ${capturedMatch.routeId}:`,
+              err,
+            )
+          }
+        })
+      }
+    } catch (err) {
+      if (isNotFound(err)) {
+        match.error = { isNotFound: true }
+        console.error(
+          `NotFound error during hydration for routeId: ${match.routeId}`,
+          err,
+        )
+      } else {
+        match.error = err as any
+        console.error(`Error during hydration for route ${match.routeId}:`, err)
+        throw err
+      }
+    }
+  }
+
+  if (loaderTasks.length > 0) {
+    await Promise.all(loaderTasks.map((task) => task()))
+  }
+
   await Promise.all(
     activeMatches.map(async (match) => {
       try {
         const route = router.looseRoutesById[match.routeId]!
-
-        const parentMatch = activeMatches[match.index - 1]
-        const parentContext = parentMatch?.context ?? router.options.context
-
-        // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
-        // so run it again and merge route context
-        if (route.options.context) {
-          const contextFnContext: RouteContextOptions<any, any, any, any, any> =
-            {
-              deps: match.loaderDeps,
-              params: match.params,
-              context: parentContext ?? {},
-              location,
-              navigate: (opts: any) =>
-                router.navigate({
-                  ...opts,
-                  _fromLocation: location,
-                }),
-              buildLocation: router.buildLocation,
-              cause: match.cause,
-              abortController: match.abortController,
-              preload: false,
-              matches,
-              routeId: route.id,
-            }
-          match.__routeContext =
-            route.options.context(contextFnContext) ?? undefined
-        }
-
-        match.context = {
-          ...parentContext,
-          ...match.__routeContext,
-          ...match.__beforeLoadContext,
-        }
-
         const assetContext = {
           ssr: router.options.ssr,
           matches: activeMatches,
@@ -220,7 +365,6 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           loaderData: match.loaderData,
         }
         const headFnContent = await route.options.head?.(assetContext)
-
         const scripts = await route.options.scripts?.(assetContext)
 
         match.meta = headFnContent?.meta

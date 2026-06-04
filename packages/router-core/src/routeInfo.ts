@@ -44,9 +44,15 @@ export type RoutesById<TRouteTree extends AnyRoute> =
     ? CodeRoutesById<TRouteTree>
     : InferFileRouteTypes<TRouteTree>['fileRoutesById']
 
-export type RouteById<TRouteTree extends AnyRoute, TId> = Extract<
-  RoutesById<TRouteTree>[TId & keyof RoutesById<TRouteTree>],
-  AnyRoute
+type RouteFromMap<TMap, TKey> = TMap[TKey & keyof TMap] extends infer TRoute
+  ? TRoute extends { types: any }
+    ? TRoute
+    : never
+  : never
+
+export type RouteById<TRouteTree extends AnyRoute, TId> = RouteFromMap<
+  RoutesById<TRouteTree>,
+  TId
 >
 
 export type CodeRouteIds<TRouteTree extends AnyRoute> =
@@ -96,9 +102,9 @@ export type RoutesByPath<TRouteTree extends AnyRoute> =
     ? CodeRoutesByPath<TRouteTree>
     : InferFileRouteTypes<TRouteTree>['fileRoutesByFullPath']
 
-export type RouteByPath<TRouteTree extends AnyRoute, TPath> = Extract<
-  RoutesByPath<TRouteTree>[TPath & keyof RoutesByPath<TRouteTree>],
-  AnyRoute
+export type RouteByPath<TRouteTree extends AnyRoute, TPath> = RouteFromMap<
+  RoutesByPath<TRouteTree>,
+  TPath
 >
 
 export type CodeRoutePaths<TRouteTree extends AnyRoute> =
@@ -185,9 +191,9 @@ export type RoutesByToPath<TRouter extends AnyRouter> =
     ? CodeRoutesByToPath<TRouter>
     : InferFileRouteTypes<TRouter['routeTree']>['fileRoutesByTo']
 
-export type CodeRouteByToPath<TRouter extends AnyRouter, TTo> = Extract<
-  RoutesByToPath<TRouter>[TTo & keyof RoutesByToPath<TRouter>],
-  AnyRoute
+export type CodeRouteByToPath<TRouter extends AnyRouter, TTo> = RouteFromMap<
+  RoutesByToPath<TRouter>,
+  TTo
 >
 
 export type FileRouteByToPath<TRouter extends AnyRouter, TTo> =

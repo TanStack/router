@@ -1,24 +1,32 @@
 import { expectTypeOf, test } from 'vitest'
 import { createFileRoute, createRootRoute } from '../src'
-import type { Route } from '@tanstack/router-core'
+import type {
+  AnyContext,
+  AnyRoute,
+  DefaultLifecycleDehydrateFn,
+  Route,
+} from '@tanstack/router-core'
 
 declare module '@tanstack/router-core' {
   interface FilebaseRouteOptionsInterface<
     TRegister,
-    TParentRoute,
-    TId,
-    TPath,
-    TSearchValidator,
-    TParams,
-    TLoaderDeps,
-    TLoaderFn,
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TRemountDepsFn,
-    TSSR,
-    TServerMiddlewares,
-    THandlers,
+    TParentRoute extends AnyRoute = AnyRoute,
+    TId extends string = string,
+    TPath extends string = string,
+    TSearchValidator = undefined,
+    TParams = {},
+    TLoaderDeps extends Record<string, any> = {},
+    TLoaderFn = undefined,
+    TRouterContext = {},
+    TContextFn = AnyContext,
+    TBeforeLoadFn = AnyContext,
+    TRemountDepsFn = AnyContext,
+    TSSR = unknown,
+    TServerMiddlewares = unknown,
+    THandlers = undefined,
+    TContextDehydrateFn = DefaultLifecycleDehydrateFn<TContextFn>,
+    TBeforeLoadDehydrateFn = DefaultLifecycleDehydrateFn<TBeforeLoadFn>,
+    TLoaderDehydrateFn = DefaultLifecycleDehydrateFn<TLoaderFn>,
   > {
     server?: {
       middleware?: TServerMiddlewares
@@ -26,24 +34,24 @@ declare module '@tanstack/router-core' {
   }
 
   interface RouteTypes<
-    TRegister,
-    TParentRoute,
-    TPath,
-    TFullPath,
-    TCustomId,
-    TId,
-    TSearchValidator,
-    TParams,
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren,
-    TFileRouteTypes,
-    TSSR,
-    TServerMiddlewares,
-    THandlers,
+    in out TRegister,
+    in out TParentRoute extends AnyRoute,
+    in out TPath extends string,
+    in out TFullPath extends string,
+    in out TCustomId extends string,
+    in out TId extends string,
+    in out TSearchValidator,
+    in out TParams,
+    in out TRouterContext,
+    in out TContextFn,
+    in out TBeforeLoadFn,
+    in out TLoaderDeps,
+    in out TLoaderFn,
+    in out TChildren,
+    in out TFileRouteTypes,
+    in out TSSR,
+    in out TServerMiddlewares,
+    in out THandlers,
   > {
     middleware: TServerMiddlewares
   }
