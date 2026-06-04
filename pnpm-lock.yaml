@@ -202,6 +202,9 @@ importers:
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../../packages/vue-router
+      '@tanstack/vue-start':
+        specifier: workspace:*
+        version: link:../../packages/vue-start
       react:
         specifier: ^19.2.3
         version: 19.2.3
