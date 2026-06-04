@@ -1,18 +1,15 @@
-import * as React from 'react'
 import {
   ErrorComponent,
   Link,
-  rootRouteId,
-  useMatch,
+  useLocation,
   useRouter,
 } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
   const router = useRouter()
-  const isRoot = useMatch({
-    strict: false,
-    select: (state) => state.id === rootRouteId,
+  const isRoot = useLocation({
+    select: (location) => location.pathname === '/',
   })
 
   console.error(error)
