@@ -1,5 +1,12 @@
 # @tanstack/solid-start
 
+## 1.168.20
+
+### Patch Changes
+
+- Updated dependencies [[`8091918`](https://github.com/TanStack/router/commit/80919186cbdd0deb948b46fe328881a14a08f414)]:
+  - @tanstack/start-plugin-core@1.171.12
+
 ## 1.168.19
 
 ### Patch Changes
