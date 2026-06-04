@@ -243,7 +243,7 @@ const authMiddleware = createMiddleware().server(async ({ next, request }) => {
 })
 ```
 
-> **Attach `authMiddleware` to every `createServerFn` that needs auth.** Server functions are RPC endpoints — a route `beforeLoad` does NOT protect the RPC, only the route's UI. Pair every protected route with handler-level enforcement here. See [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) and [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md).
+> **Attach `authMiddleware` to every `createServerFn` that needs auth.** Server functions are API endpoints; a route `beforeLoad` does not protect their data, only the route's UI. Protect the endpoint that reads or mutates private data. See [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) and [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md).
 
 ```tsx
 type Permissions = Record<string, string[]>
@@ -395,4 +395,4 @@ createMiddleware({ type: 'function' })
 - [start-core/server-functions](../server-functions/SKILL.md) — what middleware wraps
 - [start-core/server-routes](../server-routes/SKILL.md) — middleware on API endpoints
 - [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md) — building the `authMiddleware` factory itself: session cookie reads, OAuth state, CSRF
-- [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) — routing-side guards (route `beforeLoad` does NOT protect server functions; pair guards with `authMiddleware` on every protected RPC)
+- [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) — routing-side UX guards; data auth belongs in the server function, server route, or API endpoint handler/middleware
