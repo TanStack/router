@@ -13,13 +13,6 @@ function installBootstrap(): TsrBootstrap {
   return (window as any).$_TSR
 }
 
-function setReadyState(value: DocumentReadyState) {
-  Object.defineProperty(document, 'readyState', {
-    configurable: true,
-    get: () => value,
-  })
-}
-
 describe('$_TSR client teardown', () => {
   beforeEach(() => {
     ;(window as any).$R = { tsr: [] }
@@ -29,11 +22,9 @@ describe('$_TSR client teardown', () => {
   afterEach(() => {
     delete (window as any).$_TSR
     delete (window as any).$R
-    setReadyState('complete')
   })
 
   test('does not tear down until both hydrated and streamEnded', () => {
-    setReadyState('complete')
     const tsr = installBootstrap()
 
     tsr.h()
@@ -43,8 +34,7 @@ describe('$_TSR client teardown', () => {
     expect((window as any).$_TSR).toBeUndefined()
   })
 
-  test('tears down immediately when the document is already parsed', () => {
-    setReadyState('complete')
+  test('removes both $_TSR and $R[tsr] on teardown', () => {
     const tsr = installBootstrap()
 
     tsr.h()
