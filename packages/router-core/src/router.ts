@@ -3127,68 +3127,54 @@ function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
   type ValidatedSearches = Array<Record<PropertyKey, unknown>>
 
   for (const route of destRoutes) {
-    if ('search' in route.options) {
-      const routeMiddlewares = route.options.search?.middlewares
-      if (routeMiddlewares) {
-        middlewares.push(...routeMiddlewares)
+    const routeOptions = route.options
+    if ('search' in routeOptions) {
+      if (routeOptions.search?.middlewares) {
+        middlewares.push(...routeOptions.search.middlewares)
       }
     }
     // TODO remove preSearchFilters and postSearchFilters in v2
-    else if (
-      route.options.preSearchFilters ||
-      route.options.postSearchFilters
-    ) {
+    else if (routeOptions.preSearchFilters || routeOptions.postSearchFilters) {
       const legacyMiddleware: SearchMiddleware<any> = ({ search, next }) => {
-        let nextSearch = search
-
-        if (
-          'preSearchFilters' in route.options &&
-          route.options.preSearchFilters
-        ) {
-          nextSearch = route.options.preSearchFilters.reduce(
-            (prev, next) => next(prev),
-            search,
-          )
-        }
+        const nextSearch = routeOptions.preSearchFilters
+          ? routeOptions.preSearchFilters.reduce(
+              (prev, next) => next(prev),
+              search,
+            )
+          : search
 
         const result = next(nextSearch)
 
-        if (
-          'postSearchFilters' in route.options &&
-          route.options.postSearchFilters
-        ) {
-          return route.options.postSearchFilters.reduce(
-            (prev, next) => next(prev),
-            result,
-          )
-        }
-
-        return result
+        return routeOptions.postSearchFilters
+          ? routeOptions.postSearchFilters.reduce(
+              (prev, next) => next(prev),
+              result,
+            )
+          : result
       }
       middlewares.push(legacyMiddleware)
     }
 
-    if (route.options.validateSearch) {
+    const routeValidateSearch = routeOptions.validateSearch
+    if (routeValidateSearch) {
       const validate: SearchMiddleware<any> = (
         { search, next },
         validations?: ValidatedSearches,
       ) => {
         const result = next(search)
-        if (!includeValidateSearch) return result
-        try {
-          const validated = validateSearch(
-            route.options.validateSearch,
-            result,
-          ) as any
+        if (includeValidateSearch) {
+          try {
+            const validated = validateSearch(routeValidateSearch, result) as any
 
-          if (validations && validated) {
-            validations.push(result, validated)
+            if (validations && validated) {
+              validations.push(result, validated)
+            }
+            return { ...result, ...validated }
+          } catch {
+            // ignore errors here because they are already handled in matchRoutes
           }
-          return { ...result, ...validated }
-        } catch {
-          // ignore errors here because they are already handled in matchRoutes
-          return result
         }
+        return result
       }
 
       middlewares.push(validate)
@@ -3211,22 +3197,21 @@ function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
       return functionalUpdate(dest.search, currentSearch)
     }
 
-    const middleware = middlewares[index]!
-
     const next = (newSearch: any, collectValidations?: true): any => {
       if (collectValidations) {
         const nextValidations: ValidatedSearches = []
-        const nextSearch = applyNext(index + 1, newSearch, nextValidations)
-        return [nextSearch, nextValidations]
+        return [
+          applyNext(index + 1, newSearch, nextValidations),
+          nextValidations,
+        ]
       }
       return applyNext(index + 1, newSearch, validations)
     }
 
-    const result = (middleware as any)(
+    return (middlewares[index]! as any)(
       { search: currentSearch, next },
       validations,
     )
-    return result
   }
 
   return function middleware(
