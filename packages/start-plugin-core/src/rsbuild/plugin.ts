@@ -185,6 +185,17 @@ export function tanStackStartRsbuild(
 
         return mergeRsbuildConfig(rsbuildConfig, {
           source: {
+            ...(rscEnabled
+              ? {
+                  include: [
+                    // RSC directive detection needs swc-loader to see package code too.
+                    // Rsbuild recommends excluding core-js when compiling node_modules.
+                    {
+                      not: /[\\/]core-js[\\/]/,
+                    },
+                  ],
+                }
+              : {}),
             define: {
               'process.env.TSS_SERVER_FN_BASE': JSON.stringify(serverFnBase),
               'import.meta.env.TSS_SERVER_FN_BASE':
