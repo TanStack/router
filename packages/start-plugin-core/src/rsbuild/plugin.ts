@@ -185,6 +185,21 @@ export function tanStackStartRsbuild(
 
         return mergeRsbuildConfig(rsbuildConfig, {
           source: {
+            ...(rscEnabled
+              ? {
+                  include: [
+                    // RSC needs SWC to inspect package code in node_modules so directives such as "use client" can be discovered.
+                    // This follows Rsbuild's documented broad include form for compiling node_modules, with core-js excluded:
+                    // https://rsbuild.rs/config/source/include#compile-node_modules
+                    //
+                    // TODO: Once the Rspack rule matching needed here is ready, narrow this to React-aware packages, for example via
+                    // descriptionData: { "peerDependencies.react": /./ }, so unrelated dependencies are not sent through swc-loader.
+                    {
+                      not: /[\\/]core-js[\\/]/,
+                    },
+                  ],
+                }
+              : {}),
             define: {
               'process.env.TSS_SERVER_FN_BASE': JSON.stringify(serverFnBase),
               'import.meta.env.TSS_SERVER_FN_BASE':
