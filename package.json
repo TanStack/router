@@ -86,7 +86,6 @@
     "typescript57": "npm:typescript@5.7",
     "typescript58": "npm:typescript@5.8",
     "typescript59": "npm:typescript@5.9",
-    "vibe-rules": "^0.2.57",
     "vite": "^8.0.14",
     "vitest": "^4.1.4"
   }
