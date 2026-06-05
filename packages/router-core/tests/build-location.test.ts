@@ -353,6 +353,39 @@ describe('buildLocation - search params', () => {
     expect(location.search).toEqual({ param1: 10 })
   })
 
+  test('nested retainSearchParams should preserve stripped param metadata', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      search: {
+        middlewares: [
+          retainSearchParams(['param1']),
+          retainSearchParams(['param2']),
+          stripSearchParams<Record<string, unknown>>(['param1']),
+        ],
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/?param1=stripped&param2=retained'],
+      }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/',
+      search: { param3: 'next' },
+    } as any)
+
+    expect(location.search).toEqual({ param2: 'retained', param3: 'next' })
+  })
+
   test('retainSearchParams should preserve non-default params when defaults are stripped', async () => {
     const rootRoute = new BaseRootRoute({
       validateSearch: (search: Record<string, unknown>) => ({

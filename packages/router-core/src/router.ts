@@ -3199,7 +3199,7 @@ function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
 
     const next = (newSearch: any, collectMeta?: true): any => {
       if (collectMeta) {
-        const nextMeta = {} as SearchMiddlewareMeta
+        const nextMeta = meta || ({} as SearchMiddlewareMeta)
         return {
           search: applyNext(index + 1, newSearch, nextMeta),
           meta: nextMeta,
