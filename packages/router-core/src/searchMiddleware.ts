@@ -96,9 +96,7 @@ export function stripSearchParams<
     ? TValues | true
     : TValues,
 >(input: NoInfer<TInput>): SearchMiddleware<TSearchSchema> {
-  return ((
-    { search, next, meta }: SearchMiddlewareContext<TSearchSchema>,
-  ) => {
+  return (({ search, next, meta }: SearchMiddlewareContext<TSearchSchema>) => {
     if (input === true) {
       Object.keys(search as object).forEach((key) => {
         if (meta) {

@@ -340,7 +340,9 @@ describe('buildLocation - search params', () => {
 
     const router = createTestRouter({
       routeTree,
-      history: createMemoryHistory({ initialEntries: ['/?param2=not-default'] }),
+      history: createMemoryHistory({
+        initialEntries: ['/?param2=not-default'],
+      }),
     })
 
     await router.load()
