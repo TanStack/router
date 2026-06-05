@@ -1,5 +1,15 @@
 import * as t from '@babel/types'
 
+type CompilerNodePath<TNode extends t.Node = t.Node> = {
+  node: TNode
+  parentPath: CompilerNodePath | null
+  isVariableDeclarator(): boolean
+}
+
+type ReplacePathNode<TPath, TNode extends t.Node> = Omit<TPath, 'node'> & {
+  node: TNode
+}
+
 type IdentifierScopeFrame = {
   kind: 'program' | 'function' | 'block'
   bindings: Set<string>
@@ -21,6 +31,55 @@ export interface ExtractedModuleInfo {
   bindings: Map<string, ModuleInfoBinding>
   exports: Map<string, string>
   reExportAllSources: Array<string>
+}
+
+function getTransparentWrapperExpression(node: t.Node): t.Expression | null {
+  if (
+    t.isTSAsExpression(node) ||
+    t.isTSSatisfiesExpression(node) ||
+    t.isTSTypeAssertion(node) ||
+    t.isTSNonNullExpression(node) ||
+    t.isParenthesizedExpression(node)
+  ) {
+    return node.expression
+  }
+
+  return null
+}
+
+export function unwrapExpression(expr: t.Expression): t.Expression {
+  let inner = getTransparentWrapperExpression(expr)
+  while (inner) {
+    expr = inner
+    inner = getTransparentWrapperExpression(expr)
+  }
+
+  return expr
+}
+
+export function getVariableDeclaratorForExpressionPath<
+  TPath extends CompilerNodePath<t.Expression>,
+>(path: TPath): ReplacePathNode<TPath, t.VariableDeclarator> | null {
+  let currentPath: CompilerNodePath = path
+  let parentPath = currentPath.parentPath
+
+  while (
+    parentPath &&
+    getTransparentWrapperExpression(parentPath.node) === currentPath.node
+  ) {
+    currentPath = parentPath
+    parentPath = parentPath.parentPath
+  }
+
+  if (
+    parentPath?.isVariableDeclarator() &&
+    t.isVariableDeclarator(parentPath.node) &&
+    parentPath.node.init === currentPath.node
+  ) {
+    return parentPath as ReplacePathNode<TPath, t.VariableDeclarator>
+  }
+
+  return null
 }
 
 function getModuleExportName(node: t.Identifier | t.StringLiteral) {
