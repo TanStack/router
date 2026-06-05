@@ -45,9 +45,7 @@ export function retainSearchParams<TSearchSchema extends object>(
 export function stripSearchParams<
   TSearchSchema,
   TOptionalProps = PickOptional<NoInfer<TSearchSchema>>,
-  const TValues =
-    | Partial<NoInfer<TOptionalProps>>
-    | Array<keyof TOptionalProps>,
+  const TValues = Partial<NoInfer<TSearchSchema>> | Array<keyof TOptionalProps>,
   const TInput = IsRequiredParams<TSearchSchema> extends never
     ? TValues | true
     : TValues,
