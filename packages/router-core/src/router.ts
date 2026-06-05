@@ -79,6 +79,7 @@ import type {
   RouteLike,
   RouteMask,
   SearchMiddleware,
+  SearchMiddlewareMeta,
 } from './route'
 import type {
   FullSearchSchema,
@@ -3123,8 +3124,6 @@ function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
   let dest: BuildNextOptions
   let includeValidateSearch: boolean | undefined
   const middlewares = [] as Array<SearchMiddleware<any>>
-  // Flat pairs: [searchBeforeValidation, validatedSearch, ...]
-  type ValidatedSearches = Array<Record<PropertyKey, unknown>>
 
   for (const route of destRoutes) {
     const routeOptions = route.options
@@ -3157,17 +3156,18 @@ function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
 
     const routeValidateSearch = routeOptions.validateSearch
     if (routeValidateSearch) {
-      const validate: SearchMiddleware<any> = (
-        { search, next },
-        validations?: ValidatedSearches,
-      ) => {
+      const validate: SearchMiddleware<any> = ({ search, next, meta }) => {
         const result = next(search)
         if (includeValidateSearch) {
           try {
             const validated = validateSearch(routeValidateSearch, result) as any
 
-            if (validations && validated) {
-              validations.push(result, validated)
+            if (meta && validated) {
+              for (const key in validated) {
+                if (!(key in result)) {
+                  ;(meta.defaulted ||= new Map()).set(key, validated[key])
+                }
+              }
             }
             return { ...result, ...validated }
           } catch {
@@ -3184,7 +3184,7 @@ function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
   const applyNext = (
     index: number,
     currentSearch: any,
-    validations?: ValidatedSearches,
+    meta?: SearchMiddlewareMeta,
   ): any => {
     // no more middlewares left, return the current search
     if (index >= middlewares.length) {
@@ -3197,21 +3197,18 @@ function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
       return functionalUpdate(dest.search, currentSearch)
     }
 
-    const next = (newSearch: any, collectValidations?: true): any => {
-      if (collectValidations) {
-        const nextValidations: ValidatedSearches = []
-        return [
-          applyNext(index + 1, newSearch, nextValidations),
-          nextValidations,
-        ]
+    const next = (newSearch: any, collectMeta?: true): any => {
+      if (collectMeta) {
+        const nextMeta = meta || ({} as SearchMiddlewareMeta)
+        return {
+          search: applyNext(index + 1, newSearch, nextMeta),
+          meta: nextMeta,
+        }
       }
-      return applyNext(index + 1, newSearch, validations)
+      return applyNext(index + 1, newSearch, meta)
     }
 
-    return (middlewares[index]! as any)(
-      { search: currentSearch, next },
-      validations,
-    )
+    return (middlewares[index]! as any)({ search: currentSearch, next, meta })
   }
 
   return function middleware(

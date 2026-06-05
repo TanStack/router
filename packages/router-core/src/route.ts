@@ -74,9 +74,16 @@ export type RoutePathOptionsIntersection<TCustomId, TPath> = {
 
 export type SearchFilter<TInput, TResult = TInput> = (prev: TInput) => TResult
 
+export type SearchMiddlewareMeta = {
+  removed?: Map<string, unknown>
+  removedAny?: Set<string>
+  defaulted?: Map<string, unknown>
+}
+
 export type SearchMiddlewareContext<TSearchSchema> = {
   search: TSearchSchema
   next: (newSearch: TSearchSchema) => TSearchSchema
+  meta?: SearchMiddlewareMeta
 }
 
 export type SearchMiddleware<TSearchSchema> = (

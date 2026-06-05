@@ -1,7 +1,16 @@
-import { createNull, deepEqual } from './utils'
+import { deepEqual } from './utils'
 import type { NoInfer, PickOptional } from './utils'
-import type { SearchMiddleware } from './route'
+import type {
+  SearchMiddleware,
+  SearchMiddlewareContext,
+  SearchMiddlewareMeta,
+} from './route'
 import type { IsRequiredParams } from './link'
+
+type SearchMiddlewareNextWithMeta<TSearchSchema> = (
+  newSearch: TSearchSchema,
+  collectMeta: true,
+) => { search: TSearchSchema; meta: SearchMiddlewareMeta }
 
 /**
  * Retain specified search params across navigations.
@@ -17,18 +26,30 @@ export function retainSearchParams<TSearchSchema extends object>(
   keys: Array<keyof TSearchSchema> | true,
 ): SearchMiddleware<TSearchSchema> {
   return ({ search, next }) => {
-    const [resultSearch, validations] = (next as any)(search, true) as [
-      TSearchSchema,
-      Array<Record<PropertyKey, unknown>>,
-    ]
-    const defaultKeys = validations.length
-      ? getValidationDefaultKeys(search, resultSearch, validations)
-      : undefined
+    const { search: resultSearch, meta } = (
+      next as unknown as SearchMiddlewareNextWithMeta<TSearchSchema>
+    )(search, true)
 
     if (keys === true) {
       const copy = { ...search, ...resultSearch }
-      if (defaultKeys) {
-        for (const key in defaultKeys) {
+      const removed = meta.removed
+      for (const key of removed?.keys() || []) {
+        if (deepEqual(search[key as keyof TSearchSchema], removed!.get(key))) {
+          delete copy[key as keyof TSearchSchema]
+        }
+      }
+      for (const key of meta.removedAny || []) {
+        delete copy[key as keyof TSearchSchema]
+      }
+      for (const key of meta.defaulted?.keys() || []) {
+        if (
+          key in search &&
+          !meta.removedAny?.has(key) &&
+          !(
+            meta.removed?.has(key) &&
+            deepEqual(search[key as keyof TSearchSchema], meta.removed.get(key))
+          )
+        ) {
           copy[key as keyof TSearchSchema] = search[key as keyof TSearchSchema]
         }
       }
@@ -38,35 +59,23 @@ export function retainSearchParams<TSearchSchema extends object>(
     const copy = { ...resultSearch }
     // add missing keys from search to copy
     for (const key of keys) {
-      if (!(key in copy) || (defaultKeys ? key in defaultKeys : false)) {
+      const stringKey = key as string
+      const removed =
+        meta.removedAny?.has(stringKey) ||
+        (meta.removed?.has(stringKey) &&
+          deepEqual(search[key], meta.removed.get(stringKey)))
+      if (
+        !removed &&
+        (!(key in copy) ||
+          (key in search &&
+            meta.defaulted?.has(stringKey) &&
+            deepEqual(copy[key], meta.defaulted.get(stringKey))))
+      ) {
         copy[key] = search[key]
       }
     }
     return copy
   }
-}
-
-function getValidationDefaultKeys(
-  search: any,
-  resultSearch: any,
-  validations: Array<Record<PropertyKey, unknown>>,
-) {
-  let defaultKeys: Record<PropertyKey, true> | undefined
-  for (let i = 0; i < validations.length; i += 2) {
-    const baseSearch = validations[i]!
-    const validatedSearch = validations[i + 1]!
-    for (const key in validatedSearch) {
-      if (
-        key in search &&
-        !(key in baseSearch) &&
-        resultSearch[key] === validatedSearch[key]
-      ) {
-        const target = defaultKeys || (defaultKeys = createNull())
-        target[key] = true
-      }
-    }
-  }
-  return defaultKeys
 }
 
 /**
@@ -87,24 +96,36 @@ export function stripSearchParams<
     ? TValues | true
     : TValues,
 >(input: NoInfer<TInput>): SearchMiddleware<TSearchSchema> {
-  return ({ search, next }) => {
+  return (({ search, next, meta }: SearchMiddlewareContext<TSearchSchema>) => {
     if (input === true) {
+      Object.keys(search as object).forEach((key) => {
+        if (meta) {
+          ;(meta.removedAny ||= new Set()).add(key)
+        }
+      })
       return {}
     }
-    const result = { ...next(search) } as Record<string, unknown>
+    const nextResult = next(search)
+    const result = { ...nextResult } as Record<string, unknown>
     if (Array.isArray(input)) {
       input.forEach((key) => {
-        delete result[key]
+        delete result[key as string]
+        if (meta) {
+          ;(meta.removedAny ||= new Set()).add(key as string)
+        }
       })
     } else {
       Object.entries(input as Record<string, unknown>).forEach(
         ([key, value]) => {
           if (deepEqual(result[key], value)) {
             delete result[key]
+            if (meta) {
+              ;(meta.removed ||= new Map()).set(key, value)
+            }
           }
         },
       )
     }
     return result as any
-  }
+  }) as SearchMiddleware<TSearchSchema>
 }
