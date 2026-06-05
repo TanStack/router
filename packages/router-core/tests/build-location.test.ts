@@ -509,6 +509,56 @@ describe('buildLocation - search params', () => {
     })
   })
 
+  test('retainSearchParams(true) should preserve nested search when navigating to the same route', async () => {
+    const rootRoute = new BaseRootRoute({
+      validateSearch: (search: Record<string, unknown>) => ({
+        filter: Array.isArray(search.filter) ? search.filter : ['default'],
+        filterOrder:
+          typeof search.filterOrder === 'object' && search.filterOrder
+            ? search.filterOrder
+            : {},
+        anotherFilterOrder: Array.isArray(search.anotherFilterOrder)
+          ? search.anotherFilterOrder
+          : [],
+      }),
+      search: {
+        middlewares: [retainSearchParams(true)],
+      },
+    })
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+
+    await router.navigate({
+      to: '/',
+      search: { filterOrder: { filter1: [1], filter2: [0] } },
+    } as any)
+
+    expect(router.latestLocation.search).toEqual({
+      filter: ['default'],
+      filterOrder: { filter1: [1], filter2: [0] },
+      anotherFilterOrder: [],
+    })
+
+    await router.navigate({ to: '/' })
+
+    expect(router.latestLocation.search).toEqual({
+      filter: ['default'],
+      filterOrder: { filter1: [1], filter2: [0] },
+      anotherFilterOrder: [],
+    })
+  })
+
   test('retainSearchParams should preserve root search during navigation', async () => {
     const rootRoute = new BaseRootRoute({
       validateSearch: (search: Record<string, unknown>) => ({
