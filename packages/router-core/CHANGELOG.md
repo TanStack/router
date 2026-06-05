@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.11
+
+### Patch Changes
+
+- [#7555](https://github.com/TanStack/router/pull/7555) [`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01) - Fix search middleware composition so `retainSearchParams` does not restore search params that a downstream `stripSearchParams` removed.
+
 ## 1.171.10
 
 ### Patch Changes
