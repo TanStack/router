@@ -1,6 +1,7 @@
 import * as t from '@babel/types'
 import babel from '@babel/core'
 import { hasKeys } from '@tanstack/router-core'
+import { getVariableDeclaratorForExpressionPath } from '@tanstack/router-utils'
 import path from 'pathe'
 import { cleanId, codeFrameError, stripMethodCall } from './utils'
 import type { CompilationContext, RewriteCandidate, ServerFn } from './types'
@@ -222,13 +223,17 @@ export function handleCreateServerFn(
     const { path: candidatePath, methodChain } = candidate
     const { inputValidator, handler } = methodChain
 
+    const candidateVariableDeclarator = getVariableDeclaratorForExpressionPath(
+      candidatePath as babel.NodePath<t.Expression>,
+    )
+
     // Check if the call is assigned to a variable
-    if (!candidatePath.parentPath.isVariableDeclarator()) {
+    if (!candidateVariableDeclarator) {
       throw new Error('createServerFn must be assigned to a variable!')
     }
 
     // Get the identifier name of the variable
-    const variableDeclarator = candidatePath.parentPath.node
+    const variableDeclarator = candidateVariableDeclarator.node
     if (!t.isIdentifier(variableDeclarator.id)) {
       throw codeFrameError(
         context.code,
@@ -361,7 +366,7 @@ export function handleCreateServerFn(
       ])
 
       // Find the variable declaration statement containing our createServerFn
-      const variableDeclaration = candidatePath.parentPath.parentPath
+      const variableDeclaration = candidateVariableDeclarator.parentPath
       if (!variableDeclaration.isVariableDeclaration()) {
         throw new Error(
           'Expected createServerFn to be in a VariableDeclaration',
@@ -397,15 +402,6 @@ export function handleCreateServerFn(
       // const myFn = createServerFn().handler(createClientRpc("id"))
       // or
       // const myFn = createServerFn().handler(createSsrRpc("id"))
-
-      // If the handler function is an identifier, we need to remove the bound function
-      // from the file since it won't be needed
-      if (t.isIdentifier(handlerFn)) {
-        const binding = handlerFnPath.scope.getBinding(handlerFn.name)
-        if (binding) {
-          binding.path.remove()
-        }
-      }
 
       // Generate the RPC stub using pre-compiled templates
       // Note: Caller files only pass functionId, not the full serverFnMeta

@@ -5,7 +5,9 @@ import {
   extractModuleInfoFromAst,
   findReferencedIdentifiers,
   generateFromAst,
+  getVariableDeclaratorForExpressionPath,
   parseAst,
+  unwrapExpression,
 } from '@tanstack/router-utils'
 import babel from '@babel/core'
 import { handleCreateServerFn } from './handleCreateServerFn'
@@ -374,6 +376,17 @@ function isTopLevelDirectCallCandidateNode(node: t.CallExpression): boolean {
   return isSimpleDirectCallExpression(node)
 }
 
+function getPotentialCandidateCallExpression(
+  node: t.Expression | null | undefined,
+): t.CallExpression | null {
+  if (!node) {
+    return null
+  }
+
+  const unwrapped = unwrapExpression(node)
+  return t.isCallExpression(unwrapped) ? unwrapped : null
+}
+
 /**
  * Checks if a CallExpression path is a top-level direct-call candidate.
  * Top-level means the call is the init of a VariableDeclarator at program level.
@@ -392,15 +405,24 @@ function isTopLevelDirectCallCandidate(
   }
 
   // Must be top-level: VariableDeclarator -> VariableDeclaration -> Program
-  const parent = path.parent
-  if (!t.isVariableDeclarator(parent) || parent.init !== node) {
+  // or VariableDeclarator -> VariableDeclaration -> ExportNamedDeclaration -> Program.
+  const variableDeclarator = getVariableDeclaratorForExpressionPath(
+    path as babel.NodePath<t.Expression>,
+  )
+  if (!variableDeclarator) {
     return false
   }
-  const grandParent = path.parentPath.parent
-  if (!t.isVariableDeclaration(grandParent)) {
+
+  const variableDeclaration = variableDeclarator.parentPath
+  if (!variableDeclaration.isVariableDeclaration()) {
     return false
   }
-  return t.isProgram(path.parentPath.parentPath?.parent)
+
+  const parent = variableDeclaration.parentPath
+  return (
+    parent.isProgram() ||
+    (parent.isExportNamedDeclaration() && parent.parentPath.isProgram())
+  )
 }
 
 function isDirectCallCandidateForKind(
@@ -1039,11 +1061,11 @@ export class StartCompiler {
 
           if (declarations) {
             for (const decl of declarations) {
-              if (decl.init && t.isCallExpression(decl.init)) {
+              const init = getPotentialCandidateCallExpression(decl.init)
+              if (init) {
                 if (
-                  isMethodChainCandidate(decl.init, fileKinds) ||
-                  (checkDirectCalls &&
-                    isTopLevelDirectCallCandidateNode(decl.init))
+                  isMethodChainCandidate(init, fileKinds) ||
+                  (checkDirectCalls && isTopLevelDirectCallCandidateNode(init))
                 ) {
                   candidateIndices.push(i)
                   break // Only need to mark this statement once
@@ -1774,7 +1796,7 @@ export class StartCompiler {
       getLookupSetup(resolvedKind, this.externalLookupSetup)?.type ===
         'directCall' &&
       binding.init &&
-      t.isCallExpression(binding.init)
+      t.isCallExpression(unwrapExpression(binding.init))
     ) {
       binding.resolvedKind = 'None'
       return 'None'
@@ -1792,14 +1814,7 @@ export class StartCompiler {
       return 'None'
     }
 
-    // Unwrap common TypeScript/parenthesized wrappers first for efficiency
-    while (
-      t.isTSAsExpression(expr) ||
-      t.isTSNonNullExpression(expr) ||
-      t.isParenthesizedExpression(expr)
-    ) {
-      expr = expr.expression
-    }
+    expr = unwrapExpression(expr)
 
     let result: Kind = 'None'
 

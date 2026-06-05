@@ -158,6 +158,91 @@ describe('createServerFn compiles correctly', async () => {
     `)
   })
 
+  test('should remove imports used only as caller handler identifiers', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+      import { getUsers } from './server'
+
+      export const getUsersFn = createServerFn().handler(getUsers)
+    `
+
+    const compiledResult = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    expect(compiledResult!.code).toMatchInlineSnapshot(`
+      "import { createClientRpc } from '@tanstack/react-start/client-rpc';
+      import { createServerFn } from '@tanstack/react-start';
+      export const getUsersFn = createServerFn().handler(createClientRpc(\"a78c63d4bb3c0b10a8b70902c73611fbf0b9229e0807b065c03c939f9c0ce100\"));"
+    `)
+  })
+
+  test('should not remove handler identifier bindings that are still referenced', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+      import { getUsers } from './server'
+
+      export const getUsersFn = createServerFn().handler(getUsers)
+      console.log(getUsers)
+    `
+
+    const compiledResult = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    expect(compiledResult!.code).toMatchInlineSnapshot(`
+      "import { createClientRpc } from '@tanstack/react-start/client-rpc';
+      import { createServerFn } from '@tanstack/react-start';
+      import { getUsers } from './server';
+      export const getUsersFn = createServerFn().handler(createClientRpc(\"a78c63d4bb3c0b10a8b70902c73611fbf0b9229e0807b065c03c939f9c0ce100\"));
+      console.log(getUsers);"
+    `)
+  })
+
+  test('should compile server functions wrapped in TypeScript as expressions', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      export const getUsersFn = createServerFn().handler(() => 'server') as any
+    `
+
+    const compiledResult = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    expect(compiledResult).not.toBeNull()
+    expect(compiledResult!.code).toContain('createClientRpc')
+    expect(compiledResult!.code).not.toContain('server')
+  })
+
+  test('should compile server functions wrapped in TypeScript satisfies expressions', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      export const getUsersFn = createServerFn().handler(() => 'server') satisfies unknown
+    `
+
+    const compiledResult = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    expect(compiledResult).not.toBeNull()
+    expect(compiledResult!.code).toContain('createClientRpc')
+    expect(compiledResult!.code).not.toContain('server')
+  })
+
   test('should use dce by default', async () => {
     const code = `
       import { createServerFn } from '@tanstack/react-start'
