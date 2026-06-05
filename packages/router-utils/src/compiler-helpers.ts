@@ -3,7 +3,7 @@ import * as t from '@babel/types'
 type CompilerNodePath<TNode extends t.Node = t.Node> = {
   node: TNode
   parentPath: CompilerNodePath | null
-  isVariableDeclarator(): boolean
+  isVariableDeclarator: () => boolean
 }
 
 type ReplacePathNode<TPath, TNode extends t.Node> = Omit<TPath, 'node'> & {

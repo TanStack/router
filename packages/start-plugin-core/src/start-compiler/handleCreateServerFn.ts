@@ -367,7 +367,7 @@ export function handleCreateServerFn(
 
       // Find the variable declaration statement containing our createServerFn
       const variableDeclaration = candidateVariableDeclarator.parentPath
-      if (!variableDeclaration?.isVariableDeclaration()) {
+      if (!variableDeclaration.isVariableDeclaration()) {
         throw new Error(
           'Expected createServerFn to be in a VariableDeclaration',
         )
