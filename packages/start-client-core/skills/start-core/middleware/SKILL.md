@@ -29,7 +29,7 @@ Middleware customizes the behavior of server functions and server routes. It is 
 | ----------------- | -------------------------------------------- | ---------------------------------------- |
 | Scope             | All server requests (SSR, routes, functions) | Server functions only                    |
 | Methods           | `.server()`                                  | `.client()`, `.server()`                 |
-| Input validation  | No                                           | Yes (`.validator()`)                |
+| Input validation  | No                                           | Yes (`.validator()`)                     |
 | Client-side logic | No                                           | Yes                                      |
 | Created with      | `createMiddleware()`                         | `createMiddleware({ type: 'function' })` |
 

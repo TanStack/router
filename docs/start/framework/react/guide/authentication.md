@@ -221,9 +221,7 @@ import { createServerFn } from '@tanstack/react-start'
 
 // User registration
 export const registerFn = createServerFn({ method: 'POST' })
-  .validator(
-    (data: { email: string; password: string; name: string }) => data,
-  )
+  .validator((data: { email: string; password: string; name: string }) => data)
   .handler(async ({ data }) => {
     // Check if user exists
     const existingUser = await getUserByEmail(data.email)

@@ -506,12 +506,7 @@ export type ServerFnBaseOptions<
     TMiddlewares,
     ReadonlyArray<AnyFunctionMiddleware | AnyRequestMiddleware>
   >
-  validator?: ConstrainValidator<
-    TRegister,
-    TMethod,
-    TInputValidator,
-    TStrict
-  >
+  validator?: ConstrainValidator<TRegister, TMethod, TInputValidator, TStrict>
   // TODO remove upon stable
   /** @deprecated Use `validator` instead. */
   inputValidator?: ConstrainValidator<
@@ -657,12 +652,7 @@ export type ValidatorFn<
   TMiddlewares,
   TStrict extends ServerFnStrict,
 > = <TInputValidator>(
-  validator: ConstrainValidator<
-    TRegister,
-    TMethod,
-    TInputValidator,
-    TStrict
-  >,
+  validator: ConstrainValidator<TRegister, TMethod, TInputValidator, TStrict>,
 ) => ServerFnAfterValidator<
   TRegister,
   TMethod,

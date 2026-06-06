@@ -20,9 +20,7 @@ import {
 // ============================================================================
 
 const getDrawingToolsServerComponent = createServerFn({ method: 'GET' })
-  .validator(
-    (data: { savedDrawingName?: string; lastColor?: string }) => data,
-  )
+  .validator((data: { savedDrawingName?: string; lastColor?: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 
