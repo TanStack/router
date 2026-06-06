@@ -37,6 +37,9 @@ import type {
 type RsbuildTransformContext = Parameters<
   Parameters<RsbuildPluginAPI['transform']>[1]
 >[0]
+type WarnableRsbuildTransformContext = RsbuildTransformContext & {
+  emitWarning?: (warning: Error) => void
+}
 type RsbuildInputFileSystem = NonNullable<Rspack.Compiler['inputFileSystem']>
 type ServerFnMetadataById = Map<string, ServerFnBuildInfo>
 type StartCompilerEnvironment = {
@@ -100,6 +103,13 @@ function setServerFnBuildInfoLoaderContext(
       module.buildInfo[SERVER_FN_BUILD_INFO_FIELD] = EMPTY_SERVER_FN_BUILD_INFO
     }
   }
+}
+
+function warnTransformContext(
+  ctx: WarnableRsbuildTransformContext,
+  message: string,
+): void {
+  ctx.emitWarning?.(new Error(message))
 }
 
 export interface StartCompilerHostOptions {
@@ -366,6 +376,7 @@ export function registerStartCompilerTransforms(
                 id,
                 code: nextCode,
                 detectedKinds,
+                warn: (message) => warnTransformContext(ctx, message),
               })
             } finally {
               activeServerFnMetadata = undefined

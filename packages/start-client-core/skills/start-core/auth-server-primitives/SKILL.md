@@ -31,7 +31,7 @@ This skill covers the **server half** of authentication: session storage, cookie
 ## Production Checklist
 
 - Enforce auth in every server function, server route, or API endpoint that reads or writes private user, tenant, or account data. Use route `beforeLoad` for page UX, not as the data boundary.
-- Use `.inputValidator()` on every server function that accepts input.
+- Use `.validator()` on every server function that accepts input.
 - Store sessions in `HttpOnly`, `Secure`, `SameSite` cookies. Do not store session tokens in `localStorage` or `sessionStorage`.
 - Hash passwords with bcrypt, scrypt, or Argon2. For missing users, verify against a dummy hash and return the same login/reset message.
 - Rate limit login, registration, and password-reset endpoints.
@@ -139,7 +139,7 @@ import { z } from 'zod'
 import { setSessionCookie } from './session'
 
 export const login = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ email: z.string().email(), password: z.string() }))
+  .validator(z.object({ email: z.string().email(), password: z.string() }))
   .handler(async ({ data }) => {
     const user = await db.users.findByEmail(data.email)
     // Always run verifyPasswordHash — even when the user doesn't exist —
@@ -237,7 +237,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 
 export const requestPasswordReset = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ email: z.string().email() }))
+  .validator(z.object({ email: z.string().email() }))
   .handler(async ({ data }) => {
     const user = await db.users.findByEmail(data.email)
     if (user) {
@@ -369,7 +369,7 @@ A parsed UUID is _some_ workspace, not an _authorized_ workspace.
 // WRONG — UUID is well-formed but the user may not be a member
 const getWorkspaceData = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ workspaceId: z.string().uuid() }))
+  .validator(z.object({ workspaceId: z.string().uuid() }))
   .handler(async ({ context, data }) => {
     return db.workspaces.findById(data.workspaceId) // missing membership check!
   })
@@ -377,7 +377,7 @@ const getWorkspaceData = createServerFn({ method: 'GET' })
 // CORRECT — verify the session principal has access to that workspace
 const getWorkspaceData = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ workspaceId: z.string().uuid() }))
+  .validator(z.object({ workspaceId: z.string().uuid() }))
   .handler(async ({ context, data }) => {
     const member = await db.memberships.find({
       userId: context.session.userId,

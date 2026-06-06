@@ -560,6 +560,7 @@ export class StartCompiler {
       compilerTransforms?: Array<StartCompilerImportTransform> | undefined
       compilerPlugins?: Array<StartCompilerPlugin> | undefined
       serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
+      warn?: (message: string) => void
       /**
        * Returns the currently known server functions from previous builds.
        * Used by server callers to look up canonical extracted filenames.
@@ -979,12 +980,14 @@ export class StartCompiler {
     id,
     parserFilename,
     detectedKinds,
+    warn,
   }: {
     code: string
     id: string
     parserFilename?: string
     /** Pre-detected kinds present in this file. If not provided, all valid kinds are checked. */
     detectedKinds?: Set<LookupKind>
+    warn?: (message: string) => void
   }) {
     if (!this.initialized) {
       await this.init()
@@ -999,6 +1002,7 @@ export class StartCompiler {
     // Always parse and extract module info upfront.
     // This ensures the module is cached for import resolution even if no candidates are found.
     const ast = this.ingestModule({ code, id, parserFilename }).ast
+    const warnFn = warn ?? this.options.warn
     let astHasChanges = false
 
     builtInTransforms: {
@@ -1292,6 +1296,8 @@ export class StartCompiler {
         // Collect method chain paths by walking DOWN from root through the chain
         const methodChain: MethodChainPaths = {
           middleware: null,
+          validator: null,
+          // TODO remove upon stable
           inputValidator: null,
           handler: null,
           server: null,
@@ -1359,6 +1365,7 @@ export class StartCompiler {
           babel.template.expression(expressionCode, {
             placeholderPattern: false,
           })() as t.Expression,
+        warn: warnFn,
 
         generateFunctionId: (opts) => this.generateFunctionId(opts),
         getKnownServerFns: this.options.getKnownServerFns,
@@ -1413,6 +1420,7 @@ export class StartCompiler {
           code,
           id,
           transforms: astTransformPlugins,
+          warn: warnFn,
         }) || astHasChanges
     }
 
@@ -1459,11 +1467,13 @@ export class StartCompiler {
     code,
     id,
     transforms,
+    warn,
   }: {
     ast: ParsedAst
     code: string
     id: string
     transforms: Array<StartCompilerAstPlugin>
+    warn?: (message: string) => void
   }): boolean {
     let modified = false
 
@@ -1483,6 +1493,7 @@ export class StartCompiler {
           babel.template.expression(expressionCode, {
             placeholderPattern: false,
           })() as t.Expression,
+        warn,
       }
 
       modified = plugin.transformAst(context) || modified

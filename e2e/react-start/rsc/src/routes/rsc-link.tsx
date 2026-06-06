@@ -14,7 +14,7 @@ import { formatTime, pageStyles } from '~/utils/styles'
 // ============================================================================
 
 const getLinkServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { targetRoute: string; linkText: string }) => data)
+  .validator((data: { targetRoute: string; linkText: string }) => data)
   .handler(async ({ data }) => {
     const { Link } = await import('@tanstack/react-router')
     const serverTimestamp = Date.now()

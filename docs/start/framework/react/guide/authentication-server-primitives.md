@@ -119,7 +119,7 @@ import { z } from 'zod'
 import { setSessionCookie } from './session'
 
 export const login = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ email: z.string().email(), password: z.string() }))
+  .validator(z.object({ email: z.string().email(), password: z.string() }))
   .handler(async ({ data }) => {
     const user = await db.users.findByEmail(data.email)
     // Always run verifyPasswordHash — even when the user doesn't exist —
@@ -228,7 +228,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 
 export const requestPasswordReset = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ email: z.string().email() }))
+  .validator(z.object({ email: z.string().email() }))
   .handler(async ({ data }) => {
     const user = await db.users.findByEmail(data.email)
     if (user) {

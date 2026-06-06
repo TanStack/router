@@ -220,7 +220,7 @@ TanStack Start:
 import { createServerFn } from '@tanstack/react-start'
 
 export const createPost = createServerFn({ method: 'POST' })
-  .inputValidator((data) => {
+  .validator((data) => {
     if (!(data instanceof FormData)) throw new Error('Expected FormData')
     return { title: data.get('title')?.toString() || '' }
   })

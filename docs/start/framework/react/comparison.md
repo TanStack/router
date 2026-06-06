@@ -188,7 +188,7 @@ function Post() {
 
 ```tsx
 export const getTodos = createServerFn({ method: 'GET' })
-  .inputValidator(zodValidator(z.object({ userId: z.string() })))
+  .validator(zodValidator(z.object({ userId: z.string() })))
   .middleware([authMiddleware])
   .handler(async ({ data, context }) => {
     // Fully typed data and context

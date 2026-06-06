@@ -30,7 +30,7 @@ async function simulateDelay(ms: number): Promise<void> {
 }
 
 const getAsyncRscBundle = createServerFn({ method: 'GET' })
-  .inputValidator((data: { scenario: string }) => data)
+  .validator((data: { scenario: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
     const bundleId = Math.random().toString(36).slice(2, 8)

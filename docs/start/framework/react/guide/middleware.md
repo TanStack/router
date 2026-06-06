@@ -34,7 +34,7 @@ There are two types of middleware: **request middleware** and **server function 
 | ----------------- | -------------------------------- | -------------------------- |
 | Scope             | All server requests              | Server functions only      |
 | Methods           | `.server()`                      | `.client()`, `.server()`   |
-| Input Validation  | No                               | Yes (`.inputValidator()`)  |
+| Input Validation  | No                               | Yes (`.validator()`)       |
 | Client-side Logic | No                               | Yes                        |
 | Dependencies      | Can depend on request middleware | Can depend on both types   |
 
@@ -210,7 +210,7 @@ const loggingMiddleware = createMiddleware({ type: 'function' })
 Server function middleware has the following methods:
 
 - `middleware`: Add a middleware to the chain.
-- `inputValidator`: Modify the data object before it is passed to this middleware and any nested middleware and eventually the server function.
+- `validator`: Modify the data object before it is passed to this middleware and any nested middleware and eventually the server function.
 - `client`: Define client-side logic that the middleware will execute on the client before (and after) the server function calls into the server to execute the function.
 - `server`: Define server-side logic that the middleware will execute on the server before (and after) the server function is executed.
 
@@ -232,9 +232,9 @@ const loggingMiddleware = createMiddleware({ type: 'function' }).client(
 )
 ```
 
-### The `.inputValidator` method
+### The `.validator` method
 
-The `inputValidator` method is used to modify the data object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the data object and returns a validated (and optionally modified) data object. It's common to use a validation library like `zod` to do this.
+The `validator` method is used to modify the data object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the data object and returns a validated (and optionally modified) data object. It's common to use a validation library like `zod` to do this.
 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
@@ -246,7 +246,7 @@ const mySchema = z.object({
 })
 
 const workspaceMiddleware = createMiddleware({ type: 'function' })
-  .inputValidator(zodValidator(mySchema))
+  .validator(zodValidator(mySchema))
   .server(({ next, data }) => {
     console.log('Workspace ID:', data.workspaceId)
     return next()
