@@ -27,8 +27,7 @@ const routeFilePaths = {
   componentHmrNamedNosplit: 'routes/component-hmr-named-nosplit.tsx',
   componentHmrInlineErrorSplit: 'routes/component-hmr-inline-error-split.tsx',
   componentHmrNamedErrorSplit: 'routes/component-hmr-named-error-split.tsx',
-  aliasedRouteImportParentPanel:
-    'components/AliasedRouteImportParentPanel.tsx',
+  aliasedRouteImportParentPanel: 'components/AliasedRouteImportParentPanel.tsx',
   aliasedRouteImportChildPanel: 'components/AliasedRouteImportChildPanel.tsx',
   serverFnHmr: 'routes/server-fn-hmr.tsx',
   serverFnHmrFactory: 'hmr/server-fn-hmr-factory.ts',
