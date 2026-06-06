@@ -1,5 +1,12 @@
 # @tanstack/solid-start-server
 
+## 1.167.19
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-server-core@1.169.14
+
 ## 1.167.18
 
 ### Patch Changes

@@ -1,5 +1,18 @@
 # @tanstack/vue-start
 
+## 1.168.24
+
+### Patch Changes
+
+- [#7566](https://github.com/TanStack/router/pull/7566) [`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825) - Add `validator()` as the canonical server function and middleware validator method. Deprecate `inputValidator()` and emit compiler warnings for remaining uses.
+
+- Updated dependencies [[`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825)]:
+  - @tanstack/start-client-core@1.170.12
+  - @tanstack/start-plugin-core@1.171.17
+  - @tanstack/start-server-core@1.169.14
+  - @tanstack/vue-start-client@1.167.17
+  - @tanstack/vue-start-server@1.167.19
+
 ## 1.168.23
 
 ### Patch Changes
