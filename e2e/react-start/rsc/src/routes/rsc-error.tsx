@@ -15,7 +15,7 @@ import { pageStyles, clientStyles, formatTime } from '~/utils/styles'
 // ============================================================================
 
 const getErrorProneServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator(
+  .validator(
     (data: { shouldError: boolean; errorMessage?: string }) => data,
   )
   .handler(async ({ data }) => {

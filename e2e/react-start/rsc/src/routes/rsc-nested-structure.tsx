@@ -19,7 +19,7 @@ import {
 // ============================================================================
 
 const getNestedServerComponents = createServerFn({ method: 'GET' })
-  .inputValidator((data: { title: string }) => data)
+  .validator((data: { title: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 

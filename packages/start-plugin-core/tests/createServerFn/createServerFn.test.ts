@@ -26,6 +26,7 @@ async function compile(opts: {
   parserFilename?: string
   isProviderFile: boolean
   mode: 'dev' | 'build'
+  warn?: (message: string) => void
 }) {
   // Use an absolute path inside the test root to ensure consistent filename output
   let id = '/test/src/test.ts'
@@ -48,6 +49,7 @@ async function compile(opts: {
         kind: 'Root',
       },
     ],
+    warn: opts.warn,
     getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
@@ -93,6 +95,51 @@ describe('createServerFn compiles correctly', async () => {
         `./snapshots/${folder}/${filename}`,
       )
     })
+  })
+
+  test('should compile validator method', async () => {
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const myServerFn = createServerFn()
+          .validator((input: string) => input)
+          .handler(({ input }) => input)`
+
+    const compiledResultClient = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    expect(compiledResultClient!.code).toMatchInlineSnapshot(`
+      "import { createClientRpc } from '@tanstack/react-start/client-rpc';
+      import { createServerFn } from '@tanstack/react-start';
+      const myServerFn = createServerFn().handler(createClientRpc(\"2c205add8e6755de551521133ddff3d48859b1631add5f1bbe5c48a5664f319b\"));"
+    `)
+  })
+
+  // TODO remove upon stable
+  test('should warn for deprecated inputValidator method', async () => {
+    const warn = vi.fn()
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const myServerFn = createServerFn()
+          .inputValidator((input: string) => input)
+          .handler(({ input }) => input)`
+
+    await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+      warn,
+    })
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.',
+      ),
+    )
   })
 
   test('should work with identifiers of functions', async () => {

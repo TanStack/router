@@ -20,7 +20,7 @@ sources:
 
 Middleware customizes the behavior of server functions and server routes. It is composable — middleware can depend on other middleware to form a chain.
 
-> **CRITICAL**: TypeScript enforces method order: `middleware()` → `inputValidator()` → `client()` → `server()`. Wrong order causes type errors.
+> **CRITICAL**: TypeScript enforces method order: `middleware()` → `validator()` → `client()` → `server()`. Wrong order causes type errors.
 > **CRITICAL**: Validating the _shape_ of `sendContext` (e.g. `z.string().uuid().parse(...)`) is NOT authorization. A parsed identifier is a well-formed identifier, not an authorized one. Always re-check access against the session principal before using a client-sent ID as a query key, filter, or path parameter.
 
 ## Two Types of Middleware
@@ -29,7 +29,7 @@ Middleware customizes the behavior of server functions and server routes. It is 
 | ----------------- | -------------------------------------------- | ---------------------------------------- |
 | Scope             | All server requests (SSR, routes, functions) | Server functions only                    |
 | Methods           | `.server()`                                  | `.client()`, `.server()`                 |
-| Input validation  | No                                           | Yes (`.inputValidator()`)                |
+| Input validation  | No                                           | Yes (`.validator()`)                |
 | Client-side logic | No                                           | Yes                                      |
 | Created with      | `createMiddleware()`                         | `createMiddleware({ type: 'function' })` |
 
@@ -160,7 +160,7 @@ import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 
 const workspaceMiddleware = createMiddleware({ type: 'function' })
-  .inputValidator(zodValidator(z.object({ workspaceId: z.string() })))
+  .validator(zodValidator(z.object({ workspaceId: z.string() })))
   .server(async ({ next, data }) => {
     console.log('Workspace:', data.workspaceId)
     return next()
@@ -382,10 +382,10 @@ createMiddleware({ type: 'function' })
   .server(() => { ... })
   .client(() => { ... })
 
-// CORRECT — middleware → inputValidator → client → server
+// CORRECT — middleware → validator → client → server
 createMiddleware({ type: 'function' })
   .middleware([dep])
-  .inputValidator(schema)
+  .validator(schema)
   .client(({ next }) => next())
   .server(({ next }) => next())
 ```

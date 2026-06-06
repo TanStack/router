@@ -175,7 +175,7 @@ import { createServerFn, useServerFn } from '@tanstack/vue-start'
 import { ref } from 'vue'
 
 const updatePost = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string; title: string }) => data)
+  .validator((data: { id: string; title: string }) => data)
   .handler(async ({ data }) => {
     await db.posts.update(data.id, { title: data.title })
     return { success: true }
