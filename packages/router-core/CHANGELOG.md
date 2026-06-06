@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.13
+
+### Patch Changes
+
+- [#7562](https://github.com/TanStack/router/pull/7562) [`776d8ef`](https://github.com/TanStack/router/commit/776d8ef283e5bd9ffe97d43bc3a7f58064cd7e03) - Prevent scroll restoration listeners from being installed when scroll restoration is disabled.
+
 ## 1.171.12
 
 ### Patch Changes
