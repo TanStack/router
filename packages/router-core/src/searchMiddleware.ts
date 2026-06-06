@@ -52,7 +52,10 @@ export function retainSearchParams<TSearchSchema extends object>(
           !(
             meta.removed?.has(key) &&
             ((explicit && hasOwn.call(explicit, key)) ||
-              deepEqual(search[key as keyof TSearchSchema], meta.removed.get(key)))
+              deepEqual(
+                search[key as keyof TSearchSchema],
+                meta.removed.get(key),
+              ))
           )
         ) {
           copy[key as keyof TSearchSchema] = search[key as keyof TSearchSchema]
