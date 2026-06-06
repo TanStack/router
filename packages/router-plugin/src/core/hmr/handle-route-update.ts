@@ -7,6 +7,7 @@ import type {
 
 type AnyRouteWithPrivateProps = AnyRoute & {
   options: Record<string, unknown>
+  parentRoute: AnyRoute
   _componentsPromise?: Promise<void>
   _lazyPromise?: Promise<void>
   update: (options: Record<string, unknown>) => unknown
@@ -109,6 +110,7 @@ function handleRouteUpdate(
   oldRoute._lazyPromise = undefined
 
   router.setRoutes(router.buildRouteTree())
+  syncHotRouteExport(oldRoute)
   router.resolvePathCache.clear()
 
   const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
@@ -157,6 +159,18 @@ function handleRouteUpdate(
     }
 
     router.invalidate({ filter, sync: true })
+  }
+
+  function syncHotRouteExport(liveRoute: AnyRouteWithPrivateProps) {
+    // routeTree.gen.ts mutates the original module export with generated
+    // routing state. Mirror that state onto the fresh HMR export too, so
+    // aliased route imports keep working after the module is hot-reloaded.
+    newRoute.options = liveRoute.options
+    newRoute.parentRoute = liveRoute.parentRoute
+    newRoute._path = liveRoute._path
+    newRoute._id = liveRoute._id
+    newRoute._fullPath = liveRoute._fullPath
+    newRoute._to = liveRoute._to
   }
 
   function getStoreMatch(matchId: string) {
