@@ -1,5 +1,14 @@
 # @tanstack/start-plugin-core
 
+## 1.171.17
+
+### Patch Changes
+
+- [#7566](https://github.com/TanStack/router/pull/7566) [`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825) - Add `validator()` as the canonical server function and middleware validator method. Deprecate `inputValidator()` and emit compiler warnings for remaining uses.
+
+- Updated dependencies []:
+  - @tanstack/start-server-core@1.169.14
+
 ## 1.171.16
 
 ### Patch Changes
