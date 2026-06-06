@@ -3194,7 +3194,11 @@ function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
       if (dest.search === true) {
         return currentSearch
       }
-      return functionalUpdate(dest.search, currentSearch)
+      const result = functionalUpdate(dest.search, currentSearch)
+      if (meta) {
+        meta.explicit = result
+      }
+      return result
     }
 
     const next = (newSearch: any, collectMeta?: true): any => {

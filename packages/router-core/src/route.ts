@@ -78,6 +78,7 @@ export type SearchMiddlewareMeta = {
   removed?: Map<string, unknown>
   removedAny?: Set<string>
   defaulted?: Map<string, unknown>
+  explicit?: unknown
 }
 
 export type SearchMiddlewareContext<TSearchSchema> = {

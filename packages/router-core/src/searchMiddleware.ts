@@ -1,4 +1,4 @@
-import { deepEqual } from './utils'
+import { deepEqual, hasOwn } from './utils'
 import type { NoInfer, PickOptional } from './utils'
 import type {
   SearchMiddleware,
@@ -33,8 +33,12 @@ export function retainSearchParams<TSearchSchema extends object>(
     if (keys === true) {
       const copy = { ...search, ...resultSearch }
       const removed = meta.removed
+      const explicit = meta.explicit
       for (const key of removed?.keys() || []) {
-        if (deepEqual(search[key as keyof TSearchSchema], removed!.get(key))) {
+        if (
+          (explicit && hasOwn.call(explicit, key)) ||
+          deepEqual(search[key as keyof TSearchSchema], removed!.get(key))
+        ) {
           delete copy[key as keyof TSearchSchema]
         }
       }
@@ -47,7 +51,11 @@ export function retainSearchParams<TSearchSchema extends object>(
           !meta.removedAny?.has(key) &&
           !(
             meta.removed?.has(key) &&
-            deepEqual(search[key as keyof TSearchSchema], meta.removed.get(key))
+            ((explicit && hasOwn.call(explicit, key)) ||
+              deepEqual(
+                search[key as keyof TSearchSchema],
+                meta.removed.get(key),
+              ))
           )
         ) {
           copy[key as keyof TSearchSchema] = search[key as keyof TSearchSchema]
@@ -57,13 +65,15 @@ export function retainSearchParams<TSearchSchema extends object>(
     }
 
     const copy = { ...resultSearch }
+    const explicit = meta.explicit
     // add missing keys from search to copy
     for (const key of keys) {
       const stringKey = key as string
       const removed =
         meta.removedAny?.has(stringKey) ||
         (meta.removed?.has(stringKey) &&
-          deepEqual(search[key], meta.removed.get(stringKey)))
+          ((explicit && hasOwn.call(explicit, stringKey)) ||
+            deepEqual(search[key], meta.removed.get(stringKey))))
       if (
         !removed &&
         (!(key in copy) ||
