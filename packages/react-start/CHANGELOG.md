@@ -1,5 +1,18 @@
 # @tanstack/react-start
 
+## 1.168.23
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-router@1.170.14
+  - @tanstack/react-start-client@1.168.11
+  - @tanstack/react-start-rsc@0.1.22
+  - @tanstack/react-start-server@1.167.17
+  - @tanstack/start-client-core@1.170.10
+  - @tanstack/start-plugin-core@1.171.15
+  - @tanstack/start-server-core@1.169.12
+
 ## 1.168.22
 
 ### Patch Changes

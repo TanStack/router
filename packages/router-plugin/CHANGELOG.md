@@ -1,5 +1,16 @@
 # @tanstack/router-plugin
 
+## 1.168.17
+
+### Patch Changes
+
+- [#7560](https://github.com/TanStack/router/pull/7560) [`837897f`](https://github.com/TanStack/router/commit/837897f0733b836dd63880546eec4c20cf06be59) - Fix route HMR so aliased route imports keep generated route properties after hot reloads.
+
+- Updated dependencies [[`df1076c`](https://github.com/TanStack/router/commit/df1076c03ae5a51ab384bebd4d6afda20fb6f107)]:
+  - @tanstack/router-core@1.171.12
+  - @tanstack/react-router@1.170.14
+  - @tanstack/router-generator@1.167.16
+
 ## 1.168.16
 
 ### Patch Changes

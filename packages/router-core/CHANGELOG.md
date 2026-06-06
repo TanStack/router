@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.12
+
+### Patch Changes
+
+- [#7559](https://github.com/TanStack/router/pull/7559) [`df1076c`](https://github.com/TanStack/router/commit/df1076c03ae5a51ab384bebd4d6afda20fb6f107) - Fix retained search params overriding explicit default-valued navigations when used with `stripSearchParams`.
+
 ## 1.171.11
 
 ### Patch Changes
