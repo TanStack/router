@@ -323,6 +323,81 @@ describe('buildLocation - search params', () => {
     expect(location.search).toEqual({ param1: 10 })
   })
 
+  test('retainSearchParams should allow explicit default params to reset current params when stripSearchParams removes them', async () => {
+    const defaults = {
+      param1: 1,
+      param2: 2,
+    }
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      validateSearch: (search: Record<string, unknown>) => ({
+        param1: search.param1 === undefined ? defaults.param1 : search.param1,
+        param2: search.param2 === undefined ? defaults.param2 : search.param2,
+      }),
+      search: {
+        middlewares: [
+          retainSearchParams(['param1', 'param2']),
+          stripSearchParams(defaults),
+        ],
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/?param1=10'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/',
+      search: defaults,
+      _includeValidateSearch: true,
+    } as any)
+
+    expect(location.search).toEqual({})
+  })
+
+  test('retainSearchParams(true) should allow explicit default params to reset current params when stripSearchParams removes them', async () => {
+    const defaults = {
+      param1: 1,
+      param2: 2,
+    }
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      validateSearch: (search: Record<string, unknown>) => ({
+        param1: search.param1 === undefined ? defaults.param1 : search.param1,
+        param2: search.param2 === undefined ? defaults.param2 : search.param2,
+      }),
+      search: {
+        middlewares: [retainSearchParams(true), stripSearchParams(defaults)],
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/?param1=10'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/',
+      search: defaults,
+      _includeValidateSearch: true,
+    } as any)
+
+    expect(location.search).toEqual({})
+  })
+
   test('retainSearchParams should not restore params explicitly removed by stripSearchParams', async () => {
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({

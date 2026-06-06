@@ -212,7 +212,7 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   return updater
 }
 
-const hasOwn = Object.prototype.hasOwnProperty
+export const hasOwn = Object.prototype.hasOwnProperty
 const isEnumerable = Object.prototype.propertyIsEnumerable
 
 export function hasKeys(obj: Record<string, unknown>) {
