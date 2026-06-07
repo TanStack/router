@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:react": "vite build --config ./react/vite.config.ts",
-    "build:solid": "vite build --config ./solid/vite.config.ts",
-    "build:vue": "vite build --config ./vue/vite.config.ts",
+    "build:react": "NODE_ENV=production vite build --config ./react/vite.config.ts",
+    "build:solid": "NODE_ENV=production vite build --config ./solid/vite.config.ts",
+    "build:vue": "NODE_ENV=production vite build --config ./vue/vite.config.ts",
     "test:flame:react": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" ./react/speed.flame.ts",
     "test:flame:solid": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" ./solid/speed.flame.ts",
     "test:flame:vue": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" ./vue/speed.flame.ts",
@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@platformatic/flame": "^1.6.0",
-    "@codspeed/vitest-plugin": "^5.0.1",
+    "@codspeed/vitest-plugin": "^5.5.0",
     "@testing-library/react": "^16.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitejs/plugin-vue": "^6.0.5",
