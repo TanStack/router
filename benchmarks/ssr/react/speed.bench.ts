@@ -5,7 +5,9 @@ import type { StartRequestHandler } from '../bench-utils'
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 const benchmarkSeed = 0xdecafbad
 
-const { default: handler } = (await import(/* @vite-ignore */ appModuleUrl)) as {
+const { default: handler } = (await import(
+  /* @vite-ignore */ appModuleUrl
+)) as {
   default: StartRequestHandler
 }
 
