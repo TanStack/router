@@ -28,7 +28,7 @@
     "vue": "^3.5.16"
   },
   "devDependencies": {
-    "@codspeed/vitest-plugin": "^5.0.1",
+    "@codspeed/vitest-plugin": "^5.5.0",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "typescript": "^6.0.2",
