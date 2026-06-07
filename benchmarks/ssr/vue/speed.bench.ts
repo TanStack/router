@@ -1,44 +1,42 @@
-import { afterAll, beforeAll, bench, describe } from 'vitest'
+import { bench, describe } from 'vitest'
 import { runSsrRequestLoop } from '../bench-utils'
 import type { StartRequestHandler } from '../bench-utils'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 const benchmarkSeed = 0xdeadbeef
 
-const uninitializedHandler: StartRequestHandler = {
-  fetch: () => Promise.reject(new Error('Benchmark not initialized')),
-}
+let handler: StartRequestHandler | undefined
+let handlerPromise: Promise<StartRequestHandler> | undefined
 
-let handler = uninitializedHandler
-
-async function setup() {
-  const module = (await import(/* @vite-ignore */ appModuleUrl)) as {
-    default: StartRequestHandler
+async function loadHandler() {
+  if (!handlerPromise) {
+    handlerPromise = import(/* @vite-ignore */ appModuleUrl).then((module) => {
+      return (module as { default: StartRequestHandler }).default
+    })
   }
 
-  handler = module.default
+  handler = await handlerPromise
+  return handler
+}
+
+async function setup() {
+  await loadHandler()
 }
 
 function teardown() {
-  handler = uninitializedHandler
+  handler = undefined
+}
+
+async function runBenchmark() {
+  // CodSpeed calls the benchmark body directly and bypasses tinybench setup.
+  const currentHandler = handler ?? (await loadHandler())
+  await runSsrRequestLoop(currentHandler, { seed: benchmarkSeed })
 }
 
 describe('ssr', () => {
-  /**
-   * Running `vitest bench` ignores "suite hooks" like `beforeAll` and `afterAll`,
-   * so we use tinybench's `setup` and `teardown` options to run our setup and teardown logic.
-   *
-   * But CodSpeed calls the benchmarked function directly, bypassing `setup` and `teardown`,
-   * but it does support `beforeAll` and `afterAll`.
-   *
-   * So it looks like we're setting up in duplicate, but in reality, it's only running once per environment, as intended.
-   */
-  beforeAll(setup)
-  afterAll(teardown)
-
   bench(
     'ssr request loop (vue)',
-    () => runSsrRequestLoop(handler, { seed: benchmarkSeed }),
+    runBenchmark,
     {
       warmupIterations: 100,
       time: 10_000,
