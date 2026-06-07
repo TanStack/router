@@ -136,7 +136,13 @@ function Script({
       const normSrc = (() => {
         try {
           const base = document.baseURI || window.location.href
-          return new URL(attrs.src, base).href
+          // If the src is explicitly relative and base is present, construct it carefully
+          // Without returning absolute URLs that break iframe/embedded deployments
+          const url = new URL(attrs.src, base)
+          if (attrs.src.startsWith('./') && !base.startsWith('http')) {
+            return attrs.src
+          }
+          return url.href
         } catch {
           return attrs.src
         }
