@@ -234,10 +234,6 @@ export function useMatches<
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
   const router = useRouter<TRouter>()
-  const previousResult =
-    React.useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(
-      undefined,
-    )
 
   if (isServer ?? router.isServer) {
     const matches = router.stores.matches.get() as Array<
@@ -248,6 +244,12 @@ export function useMatches<
       TSelected
     >
   }
+
+  const previousResult =
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    React.useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(
+      undefined,
+    )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   return useStore(router.stores.matches, (matches) => {
