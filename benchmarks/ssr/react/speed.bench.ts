@@ -2,7 +2,7 @@ import { afterAll, beforeAll, bench, describe } from 'vitest'
 import { runSsrRequestLoop } from '../bench-utils'
 import type { StartRequestHandler } from '../bench-utils'
 
-const appModulePath = './dist/server/server.js'
+const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 const benchmarkSeed = 0xdecafbad
 
 const uninitializedHandler: StartRequestHandler = {
@@ -12,7 +12,7 @@ const uninitializedHandler: StartRequestHandler = {
 let handler = uninitializedHandler
 
 async function setup() {
-  const module = (await import(appModulePath)) as {
+  const module = (await import(/* @vite-ignore */ appModuleUrl)) as {
     default: StartRequestHandler
   }
 
