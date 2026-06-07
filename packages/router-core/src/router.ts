@@ -2294,7 +2294,7 @@ export class RouterCore<
 
     // Clear pending location after commit starts
     // We do this on next microtask to allow synchronous navigate calls to chain
-    Promise.resolve().then(() => {
+    queueMicrotask(() => {
       if (this.pendingBuiltLocation === location) {
         this.pendingBuiltLocation = undefined
       }
@@ -2354,7 +2354,7 @@ export class RouterCore<
             `Blocked navigation to dangerous protocol: ${reloadHref}`,
           )
         }
-        return Promise.resolve()
+        return
       }
 
       // Check blockers for external URLs unless ignoreBlocker is true
@@ -2370,7 +2370,7 @@ export class RouterCore<
               action: 'PUSH',
             })
             if (shouldBlock) {
-              return Promise.resolve()
+              return
             }
           }
         }
@@ -2381,7 +2381,7 @@ export class RouterCore<
       } else {
         window.location.href = reloadHref
       }
-      return Promise.resolve()
+      return
     }
 
     return this.buildAndCommitLocation({
