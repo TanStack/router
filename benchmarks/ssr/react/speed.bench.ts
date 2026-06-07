@@ -34,15 +34,11 @@ async function runBenchmark() {
 }
 
 describe('ssr', () => {
-  bench(
-    'ssr request loop (react)',
-    runBenchmark,
-    {
-      warmupIterations: 100,
-      time: 10_000,
-      setup,
-      teardown,
-      throws: true,
-    },
-  )
+  bench('ssr request loop (react)', runBenchmark, {
+    warmupIterations: 100,
+    time: 10_000,
+    setup,
+    teardown,
+    throws: true,
+  })
 })
