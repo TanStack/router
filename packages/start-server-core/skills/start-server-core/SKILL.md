@@ -102,6 +102,8 @@ const serverFn = createServerFn({ method: 'POST' }).handler(async () => {
 })
 ```
 
+`getResponseHeader` and `getResponseHeaders` are read helpers. Treat the `Headers` returned by `getResponseHeaders()` as a snapshot; mutating it does not change the outgoing response. Use the setter/removal helpers for writes.
+
 ## Cookie Management
 
 ```ts
@@ -189,29 +191,6 @@ session.data // Session data (typed)
 await session.update({ userId: '123' }) // Persist session data
 await session.clear() // Clear session data
 ```
-
-## Query Validation
-
-Validate query string parameters using a Standard Schema:
-
-```ts
-// Use @tanstack/<framework>-start for your framework (react, solid, vue)
-import { getValidatedQuery } from '@tanstack/react-start/server'
-import { z } from 'zod'
-
-const serverFn = createServerFn({ method: 'GET' }).handler(async () => {
-  const query = await getValidatedQuery(
-    z.object({
-      page: z.coerce.number().default(1),
-      limit: z.coerce.number().default(20),
-    }),
-  )
-
-  return { page: query.page }
-})
-```
-
-> Note: `getValidatedQuery` accepts a Standard Schema validator, not a callback function.
 
 ## How Request Handling Works
 

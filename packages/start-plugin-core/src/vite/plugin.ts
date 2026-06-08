@@ -124,10 +124,9 @@ export function tanStackStartVite(
           routerBasepath,
           serverFnBase: startConfig.serverFns.base,
         })
-        const resolvedEntryPlan = configContext.resolveEntries()
 
         const entryAliases = createViteResolvedEntryAliases({
-          entryPaths: resolvedEntryPlan.entryPaths,
+          entryPaths: configContext.resolveEntries().entryPaths,
         })
 
         const startPackageName =
