@@ -1,0 +1,124 @@
+{
+  "name": "@benchmarks/memory",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:react:client:repeated-navigation": "NODE_ENV=production vite build --config ./scenarios/react/client/repeated-navigation/vite.config.ts",
+    "build:react:ssr:repeated-requests": "NODE_ENV=production vite build --config ./scenarios/react/ssr/repeated-requests/vite.config.ts",
+    "test:memory": "node ./tools/summary.ts",
+    "test:memory:react": "node ./tools/summary.ts --scope react",
+    "test:memory:react:client": "node ./tools/summary.ts --scope react.client",
+    "test:memory:react:ssr": "node ./tools/summary.ts --scope react.ssr",
+    "test:memory:react:client:repeated-navigation": "NODE_ENV=production playwright test --config ./scenarios/react/client/repeated-navigation/playwright.config.ts",
+    "test:memory:react:ssr:repeated-requests": "NODE_ENV=production node --expose-gc ./scenarios/react/ssr/repeated-requests/bench.ts",
+    "report": "node ./tools/report.ts",
+    "test:types": "pnpm run test:types:tools && pnpm run test:types:react:client:repeated-navigation && pnpm run test:types:react:ssr:repeated-requests",
+    "test:types:tools": "tsc -p ./tools/tsconfig.json --noEmit",
+    "test:types:react:client:repeated-navigation": "tsc -p ./scenarios/react/client/repeated-navigation/tsconfig.json --noEmit",
+    "test:types:react:ssr:repeated-requests": "tsc -p ./scenarios/react/ssr/repeated-requests/tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-start": "workspace:*",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "25.0.9",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.14"
+  },
+  "nx": {
+    "targets": {
+      "build:react:client:repeated-navigation": {
+        "cache": false,
+        "dependsOn": [
+          {
+            "projects": [
+              "@tanstack/react-router"
+            ],
+            "target": "build"
+          }
+        ],
+        "outputs": [
+          "{projectRoot}/scenarios/react/client/repeated-navigation/dist"
+        ]
+      },
+      "build:react:ssr:repeated-requests": {
+        "cache": false,
+        "dependsOn": [
+          {
+            "projects": [
+              "@tanstack/react-start"
+            ],
+            "target": "build"
+          }
+        ],
+        "outputs": [
+          "{projectRoot}/scenarios/react/ssr/repeated-requests/dist"
+        ]
+      },
+      "test:memory": {
+        "cache": false,
+        "dependsOn": [
+          "test:memory:react:client:repeated-navigation",
+          "test:memory:react:ssr:repeated-requests"
+        ]
+      },
+      "test:memory:react": {
+        "cache": false,
+        "dependsOn": [
+          "test:memory:react:client:repeated-navigation",
+          "test:memory:react:ssr:repeated-requests"
+        ]
+      },
+      "test:memory:react:client": {
+        "cache": false,
+        "dependsOn": [
+          "test:memory:react:client:repeated-navigation"
+        ]
+      },
+      "test:memory:react:ssr": {
+        "cache": false,
+        "dependsOn": [
+          "test:memory:react:ssr:repeated-requests"
+        ]
+      },
+      "test:memory:react:client:repeated-navigation": {
+        "cache": false,
+        "dependsOn": [
+          "build:react:client:repeated-navigation"
+        ],
+        "outputs": [
+          "{projectRoot}/results/scenarios/react.client.repeated-navigation.json"
+        ]
+      },
+      "test:memory:react:ssr:repeated-requests": {
+        "cache": false,
+        "dependsOn": [
+          "build:react:ssr:repeated-requests"
+        ],
+        "outputs": [
+          "{projectRoot}/results/scenarios/react.ssr.repeated-requests.json"
+        ]
+      },
+      "report": {
+        "cache": false,
+        "outputs": [
+          "{projectRoot}/results/current.json",
+          "{projectRoot}/results/benchmark-action.json"
+        ]
+      },
+      "test:types": {
+        "cache": false,
+        "dependsOn": [
+          "^build"
+        ]
+      }
+    }
+  }
+}

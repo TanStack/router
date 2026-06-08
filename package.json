@@ -28,6 +28,8 @@
     "benchmark:bundle-size:history": "node scripts/benchmarks/bundle-size/history.mjs",
     "benchmark:bundle-size:analyze": "node scripts/benchmarks/bundle-size/analyze.mjs",
     "benchmark:client-nav": "pnpm nx run @benchmarks/client-nav:test:perf",
+    "benchmark:memory": "pnpm nx run @benchmarks/memory:test:memory",
+    "benchmark:memory:react": "pnpm nx run @benchmarks/memory:test:memory:react",
     "benchmark:ssr": "pnpm nx run @benchmarks/ssr:test:perf",
     "build": "nx affected --target=build --exclude=e2e/** --exclude=examples/**",
     "build:all": "nx run-many --target=build --exclude=examples/** --exclude=e2e/**",
