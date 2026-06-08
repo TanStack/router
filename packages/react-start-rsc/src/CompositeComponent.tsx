@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import ReactDOM from 'react-dom'
 
 import { SlotProvider } from './SlotContext'
+import { preinitCssHrefs } from './preinitCssHrefs'
 import {
   RSC_PROXY_GET_TREE,
   RSC_PROXY_PATH,
@@ -76,9 +77,7 @@ function CompositeRenderComponent({
   cssHrefs?: ReadonlySet<string>
   jsPreloads?: ReadonlySet<string>
 }): React.ReactNode {
-  for (const href of cssHrefs ?? []) {
-    ReactDOM.preinit(href, { as: 'style', precedence: 'high' })
-  }
+  preinitCssHrefs(cssHrefs)
 
   if (jsPreloads) {
     for (const href of jsPreloads) {

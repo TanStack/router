@@ -3,6 +3,7 @@
 import { Suspense } from 'react'
 import ReactDOM from 'react-dom'
 
+import { preinitCssHrefs } from './preinitCssHrefs'
 import {
   RSC_PROXY_GET_TREE,
   RSC_PROXY_PATH,
@@ -56,9 +57,7 @@ export function RscNodeRenderer({ data }: { data: any }): React.ReactNode {
     )
   }
 
-  for (const href of cssHrefs ?? []) {
-    ReactDOM.preinit(href, { as: 'style', precedence: 'high' })
-  }
+  preinitCssHrefs(cssHrefs)
 
   if (jsPreloads) {
     for (const href of jsPreloads) {
