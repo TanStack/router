@@ -29,6 +29,10 @@ Tune local run sizes with environment variables:
 MEMORY_BENCH_ITERATIONS=10000 MEMORY_BENCH_WARMUP_ITERATIONS=1000 pnpm nx run @benchmarks/memory:test:memory:react:ssr:repeated-requests
 ```
 
+The SSR benchmark also waits for pending macrotasks before retained-heap GC
+sampling. Tune this with `MEMORY_BENCH_SETTLE_TICKS` when investigating runtime
+scheduler behavior.
+
 ## Report
 
 After leaf targets have run, merge isolated scenario artifacts into benchmark-action compatible outputs:

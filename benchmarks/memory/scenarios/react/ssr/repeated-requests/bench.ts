@@ -77,6 +77,12 @@ function forceGc() {
   }
 }
 
+async function settlePendingWork(ticks: number) {
+  for (let index = 0; index < ticks; index++) {
+    await new Promise<void>((resolve) => setImmediate(resolve))
+  }
+}
+
 function readNodeMemory() {
   const memory = process.memoryUsage()
 
@@ -96,12 +102,14 @@ const warmupIterations = readPositiveIntegerEnv(
   100,
 )
 const batchSize = readPositiveIntegerEnv('MEMORY_BENCH_BATCH_SIZE', 50)
+const settleTicks = readPositiveIntegerEnv('MEMORY_BENCH_SETTLE_TICKS', 5)
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 const { default: handler } = (await import(appModuleUrl)) as {
   default: StartRequestHandler
 }
 
 await runRequests(handler, warmupIterations, 0)
+await settlePendingWork(settleTicks)
 forceGc()
 
 const baseline = readNodeMemory()
@@ -124,6 +132,7 @@ for (let completed = 0; completed < iterations; completed += batchSize) {
     beforeGc.arrayBuffersBytes,
   )
 
+  await settlePendingWork(settleTicks)
   forceGc()
   const afterGc = readNodeMemory()
   const iteration = completed + nextBatchSize
@@ -157,6 +166,7 @@ const result = createScenarioResult({
     iterations,
     warmupIterations,
     batchSize,
+    settleTicks,
   },
   metrics: {
     baselineRssBytes: baseline.rssBytes,
