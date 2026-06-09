@@ -1,7 +1,7 @@
 ---
 name: start-core/server-functions
 description: >-
-  createServerFn (GET/POST), inputValidator (Zod or function),
+  createServerFn (GET/POST), validator (Zod or function),
   useServerFn hook, server context utilities (getRequest,
   getRequestHeader, setResponseHeader, setResponseStatus), error
   handling (throw errors, redirect, notFound), streaming, FormData
@@ -19,7 +19,7 @@ sources:
 
 Server functions are type-safe RPCs created with `createServerFn`. They run exclusively on the server but can be called from anywhere — loaders, components, hooks, event handlers, or other server functions.
 
-> **CRITICAL**: Server functions are RPC endpoints. They are reachable by direct POST regardless of which route renders the calling UI. **Auth must be enforced inside the handler (or via middleware) — a route `beforeLoad` does NOT protect the RPC.** See [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md) for the session/middleware pattern.
+> **CRITICAL**: Server functions are API endpoints. They are reachable independently of whichever route renders the calling UI. **Auth must be enforced inside the handler (or via middleware) for any server function that touches private data.** Route `beforeLoad` is UX, not the data boundary. See [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md) for the session/middleware pattern.
 > **CRITICAL**: Loaders are ISOMORPHIC — they run on BOTH client and server. Database queries, file system access, and secret API keys MUST go inside `createServerFn`, NOT in loaders directly.
 > **CRITICAL**: Do not use `"use server"` directives, `getServerSideProps`, or any Next.js/Remix server patterns. TanStack Start uses `createServerFn` exclusively.
 
@@ -75,7 +75,7 @@ Use the `useServerFn` hook to call server functions from event handlers:
 import { useServerFn } from '@tanstack/react-start'
 
 const deletePost = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     await db.delete('posts').where({ id: data.id })
     return { success: true }
@@ -98,7 +98,7 @@ function DeleteButton({ postId }: { postId: string }) {
 
 ```tsx
 const greetUser = createServerFn({ method: 'GET' })
-  .inputValidator((data: { name: string }) => data)
+  .validator((data: { name: string }) => data)
   .handler(async ({ data }) => {
     return `Hello, ${data.name}!`
   })
@@ -112,7 +112,7 @@ await greetUser({ data: { name: 'John' } })
 import { z } from 'zod'
 
 const createUser = createServerFn({ method: 'POST' })
-  .inputValidator(
+  .validator(
     z.object({
       name: z.string().min(1),
       age: z.number().min(0),
@@ -127,7 +127,7 @@ const createUser = createServerFn({ method: 'POST' })
 
 ```tsx
 const submitForm = createServerFn({ method: 'POST' })
-  .inputValidator((data) => {
+  .validator((data) => {
     if (!(data instanceof FormData)) {
       throw new Error('Expected FormData')
     }
@@ -177,7 +177,7 @@ const requireAuth = createServerFn().handler(async () => {
 import { notFound } from '@tanstack/react-router'
 
 const getPost = createServerFn()
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const post = await db.findPost(data.id)
     if (!post) {
@@ -258,7 +258,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { findUserById } from './users.server'
 
 export const getUser = createServerFn({ method: 'GET' })
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     return findUserById(data.id)
   })
@@ -270,7 +270,7 @@ Static imports of server functions are safe — the build replaces implementatio
 
 ### 1. CRITICAL: Relying on a route guard to protect a server function
 
-A `beforeLoad` redirect protects the **route's UI**, not the **RPC**. `createServerFn` exposes a callable endpoint that an attacker can hit directly — no need to load the route at all. Auth on the route is necessary but not sufficient.
+A `beforeLoad` redirect protects the **route's UI**, not the **data endpoint**. `createServerFn` exposes a callable endpoint that an attacker can hit directly — no need to load the route at all. Auth on the endpoint is the security boundary; auth on the route is UX.
 
 ```tsx
 // WRONG — the route guard doesn't reach the handler
@@ -430,4 +430,4 @@ If in doubt: wrap with `useServerFn`. It's a no-op for plain-data functions and 
 - [start-core/execution-model](../execution-model/SKILL.md) — understanding where code runs
 - [start-core/middleware](../middleware/SKILL.md) — composing server functions with middleware
 - [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md) — sessions, cookies, OAuth, CSRF, rate limiting (the server-side half of auth; `getCurrentUser`/`useSession`-style helpers belong here, not at module scope)
-- [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) — the routing side: route guards do NOT protect server functions, so always re-check auth in the handler or via middleware
+- [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) — routing-side UX guards; data auth belongs in the server function, server route, or API endpoint handler/middleware

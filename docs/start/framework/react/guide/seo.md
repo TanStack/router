@@ -21,7 +21,7 @@ TanStack Start gives you the building blocks for technical SEO:
 - **Server-Side Rendering (SSR)** - Ensures crawlers receive fully rendered HTML
 - **Static Prerendering** - Pre-generates pages for optimal performance and crawlability
 - **Document Head Management** - Full control over meta tags, titles, and structured data
-- **Performance** - Fast load times through code-splitting, streaming, and optimal bundling
+- **Performance** - Fast load times through code-splitting, streaming, and optimized builds
 
 ## Document Head Management
 
@@ -179,8 +179,12 @@ See the [Selective SSR guide](./selective-ssr) for more details.
 
 For content that doesn't change frequently, static prerendering generates HTML at build time for optimal performance:
 
-```ts
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
+import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
 export default defineConfig({
@@ -195,6 +199,26 @@ export default defineConfig({
 })
 ```
 
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      prerender: {
+        enabled: true,
+        crawlLinks: true,
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
+
 Prerendered pages load faster and are easily crawlable. See the [Static Prerendering guide](./static-prerendering) for configuration options.
 
 ## Sitemaps
@@ -203,8 +227,12 @@ Prerendered pages load faster and are easily crawlable. See the [Static Prerende
 
 TanStack Start can automatically generate a sitemap when you enable prerendering with link crawling:
 
-```ts
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
+import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
 export default defineConfig({
@@ -222,6 +250,30 @@ export default defineConfig({
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      prerender: {
+        enabled: true,
+        crawlLinks: true, // Discovers all linkable pages
+      },
+      sitemap: {
+        enabled: true,
+        host: 'https://myapp.com',
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
 
 The sitemap is generated at build time by crawling all discoverable pages from your routes. This is the recommended approach for static or mostly-static sites.
 

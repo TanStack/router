@@ -70,17 +70,37 @@ export type {
 export type { ParsedLocation } from './location'
 export type {
   Manifest,
+  ServerManifest,
+  ManifestRoute,
+  ManifestRouteAssets,
+  ServerManifestRoute,
+  ManifestCssLink,
+  ManifestInlineCss,
+  ServerManifestInlineCss,
+  InlineCssTemplate,
+  ManifestScript,
   RouterManagedTag,
+  RouterManagedTitleTag,
+  RouterManagedMetaTag,
+  RouterManagedInlineCssTag,
+  RouterManagedScriptTag,
+  RouterManagedLinkTag,
+  RouterManagedStyleTag,
   AssetCrossOrigin,
   AssetCrossOriginConfig,
   ManifestAssetLink,
+  ScriptFormat,
 } from './manifest'
 export {
+  DEV_STYLES_ATTR,
+  appendUniqueUserTags,
   createInlineCssStyleAsset,
   getAssetCrossOrigin,
+  getManifestScriptFormat,
+  getScriptPreloadAttrs,
   getStylesheetHref,
-  isInlinableStylesheet,
   resolveManifestAssetLink,
+  resolveManifestCssLink,
 } from './manifest'
 export { isMatch } from './Matches'
 export type {
@@ -407,11 +427,8 @@ export {
   defaultGetScrollRestorationKey,
   getElementScrollRestorationEntry,
   storageKey,
-  scrollRestorationCache,
   setupScrollRestoration,
 } from './scroll-restoration'
-
-export { handleHashScroll } from './hash-scroll'
 
 export type {
   ScrollRestorationOptions,

@@ -11,8 +11,8 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.170.5",
-    "@tanstack/router-plugin": "^1.168.7",
+    "@tanstack/react-router": "^1.170.15",
+    "@tanstack/router-plugin": "^1.168.18",
     "compression": "^1.8.0",
     "express": "^5.2.1",
     "get-port": "^7.1.0",
@@ -27,6 +27,6 @@
     "@types/react-dom": "^19.0.1",
     "@vitejs/plugin-react": "^6.0.1",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0"
+    "vite": "^8.0.14"
   }
 }

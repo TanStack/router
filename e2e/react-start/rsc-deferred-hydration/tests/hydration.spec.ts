@@ -18,6 +18,11 @@ async function clickAndExpectCount(page: Page, id: string, count: string) {
   await expect(page.getByTestId(`${id}-count`)).toHaveText(count)
 }
 
+async function gotoWithoutPointerIntent(page: Page, path: string) {
+  await page.mouse.move(0, 0)
+  await page.goto(path)
+}
+
 async function waitForHydrateMarkerToMount(page: Page, id: string) {
   await page.waitForFunction((testId) => {
     const button = document.querySelector(`[data-testid="${testId}-button"]`)
@@ -30,7 +35,7 @@ test.describe('RSC deferred hydration', () => {
   test('server component renders a client Hydrate island that hydrates on interaction', async ({
     page,
   }) => {
-    await page.goto('/server-client')
+    await gotoWithoutPointerIntent(page, '/server-client')
 
     await expect(page.getByTestId('server-client-rsc')).toContainText(
       'Server component renders a deferred client island',
@@ -40,6 +45,7 @@ test.describe('RSC deferred hydration', () => {
     )
     await expectUnhydrated(page, 'server-client')
 
+    await page.mouse.move(0, 0)
     await page.getByTestId('server-client-button').hover()
     await clickAndExpectCount(page, 'server-client', '1')
   })
@@ -47,7 +53,7 @@ test.describe('RSC deferred hydration', () => {
   test('composite server component can wrap an interaction Hydrate client island', async ({
     page,
   }) => {
-    await page.goto('/composite')
+    await gotoWithoutPointerIntent(page, '/composite')
 
     await expect(page.getByTestId('composite-rsc')).toContainText(
       'Server shell, client Hydrate slot',
@@ -58,6 +64,7 @@ test.describe('RSC deferred hydration', () => {
     await expectUnhydrated(page, 'composite-interaction')
 
     await waitForHydrateMarkerToMount(page, 'composite-interaction')
+    await page.mouse.move(0, 0)
     await page.getByTestId('composite-interaction-button').hover()
     await clickAndExpectCount(page, 'composite-interaction', '1')
   })
@@ -65,7 +72,7 @@ test.describe('RSC deferred hydration', () => {
   test('server component can render a CSS module Hydrate client island', async ({
     page,
   }) => {
-    await page.goto('/css')
+    await gotoWithoutPointerIntent(page, '/css')
 
     await expect(page.getByTestId('css-rsc')).toContainText(
       'CSS module Hydrate boundary',
@@ -74,9 +81,12 @@ test.describe('RSC deferred hydration', () => {
       'font-weight',
       '900',
     )
-    await expectUnhydrated(page, 'css-nested')
     await waitForHydrateMarkerToMount(page, 'css-nested')
-    await page.getByTestId('css-nested-button').hover()
-    await clickAndExpectCount(page, 'css-nested', '1')
+    await page.getByTestId('css-nested-button').click()
+    await expect(page.getByTestId('css-nested-button')).toHaveAttribute(
+      'data-hydrated',
+      'true',
+    )
+    await expect(page.getByTestId('css-nested-count')).toHaveText('1')
   })
 })

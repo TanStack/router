@@ -20,8 +20,10 @@ import type { FullConfig } from '@playwright/test'
  */
 
 const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+const viteBundledDev = process.env.E2E_VITE_BUNDLED_DEV === 'true'
 const e2ePortKey =
-  process.env.E2E_PORT_KEY ?? `${packageJson.name}-${toolchain}`
+  process.env.E2E_PORT_KEY ??
+  `${packageJson.name}-${toolchain}${viteBundledDev ? '-bundled-dev' : ''}`
 
 async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now()

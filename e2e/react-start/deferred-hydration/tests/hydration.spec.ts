@@ -277,7 +277,9 @@ async function documentModulePreloadHrefs(page: Page) {
 
 function isHydrateBoundaryResource(url: string) {
   return (
-    url.includes('/assets/components-') || url.includes('/static/js/async/')
+    url.includes('/assets/components-') ||
+    url.includes('/assets/js/async/') ||
+    url.includes('/static/js/async/')
   )
 }
 

@@ -24,9 +24,20 @@ sources:
 
 This skill covers the **server half** of authentication: session storage, cookie issuance, OAuth flow, password-reset hardening, CSRF, rate limiting. For the **routing half** (`_authenticated` layout, `beforeLoad` redirects, RBAC checks), see [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md).
 
-> **CRITICAL**: A route guard does NOT protect a `createServerFn` on that route. Server functions are RPC endpoints reachable by direct POST regardless of which route renders them. Auth must be enforced **inside the handler** (or via middleware), not on the calling route.
+> **CRITICAL**: Protect the data/API boundary first. Server functions, server routes, and other API endpoints that touch private data must enforce auth **inside the handler** or middleware. Route guards are route UX, not the data security boundary.
 > **CRITICAL**: Validating the _shape_ of a client-supplied identifier (`z.string().uuid().parse(...)`) is not authorization. A parsed UUID is still _some_ tenant — re-check membership against the session principal before using it.
 > **CRITICAL**: Read session/cookies inside `.handler()` or middleware `.server()`, not at module scope. Module-level reads run before requests exist (and are also undefined on Cloudflare Workers).
+
+## Production Checklist
+
+- Enforce auth in every server function, server route, or API endpoint that reads or writes private user, tenant, or account data. Use route `beforeLoad` for page UX, not as the data boundary.
+- Use `.validator()` on every server function that accepts input.
+- Store sessions in `HttpOnly`, `Secure`, `SameSite` cookies. Do not store session tokens in `localStorage` or `sessionStorage`.
+- Hash passwords with bcrypt, scrypt, or Argon2. For missing users, verify against a dummy hash and return the same login/reset message.
+- Rate limit login, registration, and password-reset endpoints.
+- Use CSRF or same-origin protections for non-GET server functions and server routes.
+- Log authentication events and monitor failures.
+- Test direct unauthenticated calls to protected server functions; they should reject before returning data.
 
 ## Session Cookies
 
@@ -117,7 +128,7 @@ export const getMyOrders = createServerFn({ method: 'GET' })
   })
 ```
 
-> **Route guards do not cover this.** A `createFileRoute('/_authenticated/orders')` with a `beforeLoad` redirect does NOT protect `getMyOrders` — the RPC is reachable via direct POST whether or not the user ever hits the route. Apply `authMiddleware` (or re-check inside `.handler()`) on every server function that needs auth.
+> **Route guards do not cover this.** A `createFileRoute('/_authenticated/orders')` with a `beforeLoad` redirect does NOT protect `getMyOrders` — the RPC is reachable directly whether or not the user ever hits the route. Apply `authMiddleware` (or re-check inside `.handler()`) on every server function that needs auth.
 
 ## Issuing a Session on Login
 
@@ -128,7 +139,7 @@ import { z } from 'zod'
 import { setSessionCookie } from './session'
 
 export const login = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ email: z.string().email(), password: z.string() }))
+  .validator(z.object({ email: z.string().email(), password: z.string() }))
   .handler(async ({ data }) => {
     const user = await db.users.findByEmail(data.email)
     // Always run verifyPasswordHash — even when the user doesn't exist —
@@ -226,7 +237,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 
 export const requestPasswordReset = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ email: z.string().email() }))
+  .validator(z.object({ email: z.string().email() }))
   .handler(async ({ data }) => {
     const user = await db.users.findByEmail(data.email)
     if (user) {
@@ -358,7 +369,7 @@ A parsed UUID is _some_ workspace, not an _authorized_ workspace.
 // WRONG — UUID is well-formed but the user may not be a member
 const getWorkspaceData = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ workspaceId: z.string().uuid() }))
+  .validator(z.object({ workspaceId: z.string().uuid() }))
   .handler(async ({ context, data }) => {
     return db.workspaces.findById(data.workspaceId) // missing membership check!
   })
@@ -366,7 +377,7 @@ const getWorkspaceData = createServerFn({ method: 'GET' })
 // CORRECT — verify the session principal has access to that workspace
 const getWorkspaceData = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ workspaceId: z.string().uuid() }))
+  .validator(z.object({ workspaceId: z.string().uuid() }))
   .handler(async ({ context, data }) => {
     const member = await db.memberships.find({
       userId: context.session.userId,

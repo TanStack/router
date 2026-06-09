@@ -9,18 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Char91__rootIndexChar93IndexRouteImport } from './routes/[__root-index]/index'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as FooRouteImport } from './routes/[_]foo'
 import { Route as Char91__literalChar93RouteImport } from './routes/[__literal]'
 import { Route as _layoutRouteImport } from './routes/__layout'
+import { Route as RootIndexIndexRouteImport } from './routes/[_]root-index/index'
 import { Route as LayoutNestedRouteImport } from './routes/_layout/_nested'
 import { Route as LayoutBarRouteImport } from './routes/_layout/[_]bar'
 import { Route as Layout_nested2RouteImport } from './routes/_layout/__nested2'
 import { Route as LayoutChar91__doubleChar93RouteImport } from './routes/_layout/[__double]'
 import { Route as _layoutQuxRouteImport } from './routes/__layout/[_]qux'
+import { Route as LayoutNestedTrailingIndexRouteImport } from './routes/_layout/nested-trailing[_]/index'
+import { Route as LayoutNestedIndexIndexRouteImport } from './routes/_layout/[_]nested-index/index'
+import { Route as LayoutChar91__doubleIndexChar93IndexRouteImport } from './routes/_layout/[__double-index]/index'
 import { Route as LayoutNestedBazRouteImport } from './routes/_layout/_nested/[_]baz'
+import { Route as LayoutNestedIndexIdRouteImport } from './routes/_layout/[_]nested-index/$id'
 import { Route as Layout_nested2DeepRouteImport } from './routes/_layout/__nested2/[_]deep'
+import { Route as LayoutChar91__doubleIndexChar93IdRouteImport } from './routes/_layout/[__double-index]/$id'
+import { Route as LayoutNestedDeepIndexIndexRouteImport } from './routes/_layout/_nested/[_]deep-index/index'
 
+const Char91__rootIndexChar93IndexRoute =
+  Char91__rootIndexChar93IndexRouteImport.update({
+    id: '/__root-index/',
+    path: '/__root-index/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRouteImport,
@@ -37,6 +51,11 @@ const Char91__literalChar93Route = Char91__literalChar93RouteImport.update({
 } as any)
 const _layoutRoute = _layoutRouteImport.update({
   id: '/__layout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RootIndexIndexRoute = RootIndexIndexRouteImport.update({
+  id: '/_root-index/',
+  path: '/_root-index/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutNestedRoute = LayoutNestedRouteImport.update({
@@ -63,16 +82,50 @@ const _layoutQuxRoute = _layoutQuxRouteImport.update({
   path: '/_qux',
   getParentRoute: () => _layoutRoute,
 } as any)
+const LayoutNestedTrailingIndexRoute =
+  LayoutNestedTrailingIndexRouteImport.update({
+    id: '/nested-trailing_/',
+    path: '/nested-trailing_/',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutNestedIndexIndexRoute = LayoutNestedIndexIndexRouteImport.update({
+  id: '/_nested-index/',
+  path: '/_nested-index/',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutChar91__doubleIndexChar93IndexRoute =
+  LayoutChar91__doubleIndexChar93IndexRouteImport.update({
+    id: '/__double-index/',
+    path: '/__double-index/',
+    getParentRoute: () => LayoutRoute,
+  } as any)
 const LayoutNestedBazRoute = LayoutNestedBazRouteImport.update({
   id: '/_baz',
   path: '/_baz',
   getParentRoute: () => LayoutNestedRoute,
+} as any)
+const LayoutNestedIndexIdRoute = LayoutNestedIndexIdRouteImport.update({
+  id: '/_nested-index/$id',
+  path: '/_nested-index/$id',
+  getParentRoute: () => LayoutRoute,
 } as any)
 const Layout_nested2DeepRoute = Layout_nested2DeepRouteImport.update({
   id: '/_deep',
   path: '/_deep',
   getParentRoute: () => Layout_nested2Route,
 } as any)
+const LayoutChar91__doubleIndexChar93IdRoute =
+  LayoutChar91__doubleIndexChar93IdRouteImport.update({
+    id: '/__double-index/$id',
+    path: '/__double-index/$id',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutNestedDeepIndexIndexRoute =
+  LayoutNestedDeepIndexIndexRouteImport.update({
+    id: '/_deep-index/',
+    path: '/_deep-index/',
+    getParentRoute: () => LayoutNestedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutNestedRouteWithChildren
@@ -81,8 +134,16 @@ export interface FileRoutesByFullPath {
   '/_qux': typeof _layoutQuxRoute
   '/__double': typeof LayoutChar91__doubleChar93Route
   '/_bar': typeof LayoutBarRoute
+  '/__root-index/': typeof Char91__rootIndexChar93IndexRoute
+  '/_root-index/': typeof RootIndexIndexRoute
+  '/__double-index/$id': typeof LayoutChar91__doubleIndexChar93IdRoute
   '/_deep': typeof Layout_nested2DeepRoute
+  '/_nested-index/$id': typeof LayoutNestedIndexIdRoute
   '/_baz': typeof LayoutNestedBazRoute
+  '/__double-index/': typeof LayoutChar91__doubleIndexChar93IndexRoute
+  '/_nested-index/': typeof LayoutNestedIndexIndexRoute
+  '/nested-trailing_/': typeof LayoutNestedTrailingIndexRoute
+  '/_deep-index/': typeof LayoutNestedDeepIndexIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof LayoutNestedRouteWithChildren
@@ -91,8 +152,16 @@ export interface FileRoutesByTo {
   '/_qux': typeof _layoutQuxRoute
   '/__double': typeof LayoutChar91__doubleChar93Route
   '/_bar': typeof LayoutBarRoute
+  '/__root-index': typeof Char91__rootIndexChar93IndexRoute
+  '/_root-index': typeof RootIndexIndexRoute
+  '/__double-index/$id': typeof LayoutChar91__doubleIndexChar93IdRoute
   '/_deep': typeof Layout_nested2DeepRoute
+  '/_nested-index/$id': typeof LayoutNestedIndexIdRoute
   '/_baz': typeof LayoutNestedBazRoute
+  '/__double-index': typeof LayoutChar91__doubleIndexChar93IndexRoute
+  '/_nested-index': typeof LayoutNestedIndexIndexRoute
+  '/nested-trailing_': typeof LayoutNestedTrailingIndexRoute
+  '/_deep-index': typeof LayoutNestedDeepIndexIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -105,8 +174,16 @@ export interface FileRoutesById {
   '/_layout/__nested2': typeof Layout_nested2RouteWithChildren
   '/_layout/_bar': typeof LayoutBarRoute
   '/_layout/_nested': typeof LayoutNestedRouteWithChildren
+  '/__root-index/': typeof Char91__rootIndexChar93IndexRoute
+  '/_root-index/': typeof RootIndexIndexRoute
+  '/_layout/__double-index/$id': typeof LayoutChar91__doubleIndexChar93IdRoute
   '/_layout/__nested2/_deep': typeof Layout_nested2DeepRoute
+  '/_layout/_nested-index/$id': typeof LayoutNestedIndexIdRoute
   '/_layout/_nested/_baz': typeof LayoutNestedBazRoute
+  '/_layout/__double-index/': typeof LayoutChar91__doubleIndexChar93IndexRoute
+  '/_layout/_nested-index/': typeof LayoutNestedIndexIndexRoute
+  '/_layout/nested-trailing_/': typeof LayoutNestedTrailingIndexRoute
+  '/_layout/_nested/_deep-index/': typeof LayoutNestedDeepIndexIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,8 +194,16 @@ export interface FileRouteTypes {
     | '/_qux'
     | '/__double'
     | '/_bar'
+    | '/__root-index/'
+    | '/_root-index/'
+    | '/__double-index/$id'
     | '/_deep'
+    | '/_nested-index/$id'
     | '/_baz'
+    | '/__double-index/'
+    | '/_nested-index/'
+    | '/nested-trailing_/'
+    | '/_deep-index/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -127,8 +212,16 @@ export interface FileRouteTypes {
     | '/_qux'
     | '/__double'
     | '/_bar'
+    | '/__root-index'
+    | '/_root-index'
+    | '/__double-index/$id'
     | '/_deep'
+    | '/_nested-index/$id'
     | '/_baz'
+    | '/__double-index'
+    | '/_nested-index'
+    | '/nested-trailing_'
+    | '/_deep-index'
   id:
     | '__root__'
     | '/__layout'
@@ -140,8 +233,16 @@ export interface FileRouteTypes {
     | '/_layout/__nested2'
     | '/_layout/_bar'
     | '/_layout/_nested'
+    | '/__root-index/'
+    | '/_root-index/'
+    | '/_layout/__double-index/$id'
     | '/_layout/__nested2/_deep'
+    | '/_layout/_nested-index/$id'
     | '/_layout/_nested/_baz'
+    | '/_layout/__double-index/'
+    | '/_layout/_nested-index/'
+    | '/_layout/nested-trailing_/'
+    | '/_layout/_nested/_deep-index/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -149,10 +250,19 @@ export interface RootRouteChildren {
   Char91__literalChar93Route: typeof Char91__literalChar93Route
   FooRoute: typeof FooRoute
   LayoutRoute: typeof LayoutRouteWithChildren
+  Char91__rootIndexChar93IndexRoute: typeof Char91__rootIndexChar93IndexRoute
+  RootIndexIndexRoute: typeof RootIndexIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/__root-index/': {
+      id: '/__root-index/'
+      path: '/__root-index'
+      fullPath: '/__root-index/'
+      preLoaderRoute: typeof Char91__rootIndexChar93IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_layout': {
       id: '/_layout'
       path: ''
@@ -179,6 +289,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof _layoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_root-index/': {
+      id: '/_root-index/'
+      path: '/_root-index'
+      fullPath: '/_root-index/'
+      preLoaderRoute: typeof RootIndexIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/_nested': {
@@ -216,6 +333,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof _layoutQuxRouteImport
       parentRoute: typeof _layoutRoute
     }
+    '/_layout/nested-trailing_/': {
+      id: '/_layout/nested-trailing_/'
+      path: '/nested-trailing_'
+      fullPath: '/nested-trailing_/'
+      preLoaderRoute: typeof LayoutNestedTrailingIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/_nested-index/': {
+      id: '/_layout/_nested-index/'
+      path: '/_nested-index'
+      fullPath: '/_nested-index/'
+      preLoaderRoute: typeof LayoutNestedIndexIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/__double-index/': {
+      id: '/_layout/__double-index/'
+      path: '/__double-index'
+      fullPath: '/__double-index/'
+      preLoaderRoute: typeof LayoutChar91__doubleIndexChar93IndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/_nested/_baz': {
       id: '/_layout/_nested/_baz'
       path: '/_baz'
@@ -223,12 +361,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutNestedBazRouteImport
       parentRoute: typeof LayoutNestedRoute
     }
+    '/_layout/_nested-index/$id': {
+      id: '/_layout/_nested-index/$id'
+      path: '/_nested-index/$id'
+      fullPath: '/_nested-index/$id'
+      preLoaderRoute: typeof LayoutNestedIndexIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/__nested2/_deep': {
       id: '/_layout/__nested2/_deep'
       path: '/_deep'
       fullPath: '/_deep'
       preLoaderRoute: typeof Layout_nested2DeepRouteImport
       parentRoute: typeof Layout_nested2Route
+    }
+    '/_layout/__double-index/$id': {
+      id: '/_layout/__double-index/$id'
+      path: '/__double-index/$id'
+      fullPath: '/__double-index/$id'
+      preLoaderRoute: typeof LayoutChar91__doubleIndexChar93IdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/_nested/_deep-index/': {
+      id: '/_layout/_nested/_deep-index/'
+      path: '/_deep-index'
+      fullPath: '/_deep-index/'
+      preLoaderRoute: typeof LayoutNestedDeepIndexIndexRouteImport
+      parentRoute: typeof LayoutNestedRoute
     }
   }
 }
@@ -258,10 +417,12 @@ const Layout_nested2RouteWithChildren = Layout_nested2Route._addFileChildren(
 
 interface LayoutNestedRouteChildren {
   LayoutNestedBazRoute: typeof LayoutNestedBazRoute
+  LayoutNestedDeepIndexIndexRoute: typeof LayoutNestedDeepIndexIndexRoute
 }
 
 const LayoutNestedRouteChildren: LayoutNestedRouteChildren = {
   LayoutNestedBazRoute: LayoutNestedBazRoute,
+  LayoutNestedDeepIndexIndexRoute: LayoutNestedDeepIndexIndexRoute,
 }
 
 const LayoutNestedRouteWithChildren = LayoutNestedRoute._addFileChildren(
@@ -273,6 +434,11 @@ interface LayoutRouteChildren {
   Layout_nested2Route: typeof Layout_nested2RouteWithChildren
   LayoutBarRoute: typeof LayoutBarRoute
   LayoutNestedRoute: typeof LayoutNestedRouteWithChildren
+  LayoutChar91__doubleIndexChar93IdRoute: typeof LayoutChar91__doubleIndexChar93IdRoute
+  LayoutNestedIndexIdRoute: typeof LayoutNestedIndexIdRoute
+  LayoutChar91__doubleIndexChar93IndexRoute: typeof LayoutChar91__doubleIndexChar93IndexRoute
+  LayoutNestedIndexIndexRoute: typeof LayoutNestedIndexIndexRoute
+  LayoutNestedTrailingIndexRoute: typeof LayoutNestedTrailingIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
@@ -280,6 +446,13 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   Layout_nested2Route: Layout_nested2RouteWithChildren,
   LayoutBarRoute: LayoutBarRoute,
   LayoutNestedRoute: LayoutNestedRouteWithChildren,
+  LayoutChar91__doubleIndexChar93IdRoute:
+    LayoutChar91__doubleIndexChar93IdRoute,
+  LayoutNestedIndexIdRoute: LayoutNestedIndexIdRoute,
+  LayoutChar91__doubleIndexChar93IndexRoute:
+    LayoutChar91__doubleIndexChar93IndexRoute,
+  LayoutNestedIndexIndexRoute: LayoutNestedIndexIndexRoute,
+  LayoutNestedTrailingIndexRoute: LayoutNestedTrailingIndexRoute,
 }
 
 const LayoutRouteWithChildren =
@@ -290,6 +463,8 @@ const rootRouteChildren: RootRouteChildren = {
   Char91__literalChar93Route: Char91__literalChar93Route,
   FooRoute: FooRoute,
   LayoutRoute: LayoutRouteWithChildren,
+  Char91__rootIndexChar93IndexRoute: Char91__rootIndexChar93IndexRoute,
+  RootIndexIndexRoute: RootIndexIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

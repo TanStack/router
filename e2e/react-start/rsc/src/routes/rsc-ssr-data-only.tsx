@@ -20,7 +20,7 @@ import {
 // ============================================================================
 
 const getAnalyticsServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { reportPeriod: string }) => data)
+  .validator((data: { reportPeriod: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 

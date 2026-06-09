@@ -14,10 +14,34 @@ interface ScriptAttrs {
   suppressHydrationWarning?: boolean
 }
 
+const noopScriptHandler = () => {}
+
+function setScriptAttrs(
+  script: HTMLScriptElement,
+  attrs: ScriptAttrs | undefined,
+) {
+  if (!attrs) {
+    return
+  }
+
+  for (const [key, value] of Object.entries(attrs)) {
+    if (
+      key !== 'suppressHydrationWarning' &&
+      value !== undefined &&
+      value !== false
+    ) {
+      script.setAttribute(key, typeof value === 'boolean' ? '' : String(value))
+    }
+  }
+}
+
 export function Asset(
-  asset: RouterManagedTag & { nonce?: string },
+  asset: RouterManagedTag & {
+    nonce?: string
+    preventScriptHoist?: boolean
+  },
 ): React.ReactElement | null {
-  const { attrs, children, nonce } = asset
+  const { attrs, children, nonce, preventScriptHoist } = asset
 
   switch (asset.tag) {
     case 'title':
@@ -61,7 +85,11 @@ export function Asset(
         />
       )
     case 'script':
-      return <Script attrs={attrs}>{children}</Script>
+      return (
+        <Script attrs={attrs} preventScriptHoist={preventScriptHoist}>
+          {children}
+        </Script>
+      )
     default:
       return null
   }
@@ -106,9 +134,11 @@ function InlineCssStyle({
 function Script({
   attrs,
   children,
+  preventScriptHoist,
 }: {
   attrs?: ScriptAttrs
   children?: string
+  preventScriptHoist?: boolean
 }) {
   const router = useRouter()
   const hydrated = useHydrated()
@@ -141,36 +171,19 @@ function Script({
           return attrs.src
         }
       })()
-      const existingScript = Array.from(
-        document.querySelectorAll('script[src]'),
-      ).find((el) => (el as HTMLScriptElement).src === normSrc)
-
-      if (existingScript) {
-        return
+      for (const el of document.querySelectorAll('script[src]')) {
+        if ((el as HTMLScriptElement).src === normSrc) {
+          return
+        }
       }
 
       const script = document.createElement('script')
 
-      for (const [key, value] of Object.entries(attrs)) {
-        if (
-          key !== 'suppressHydrationWarning' &&
-          value !== undefined &&
-          value !== false
-        ) {
-          script.setAttribute(
-            key,
-            typeof value === 'boolean' ? '' : String(value),
-          )
-        }
-      }
+      setScriptAttrs(script, attrs)
 
       document.head.appendChild(script)
 
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      }
+      return () => script.remove()
     }
 
     if (typeof children === 'string') {
@@ -178,48 +191,29 @@ function Script({
         typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
       const nonceAttr =
         typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
-      const existingScript = Array.from(
-        document.querySelectorAll('script:not([src])'),
-      ).find((el) => {
-        if (!(el instanceof HTMLScriptElement)) return false
+      for (const el of document.querySelectorAll('script:not([src])')) {
+        if (!(el instanceof HTMLScriptElement)) {
+          continue
+        }
+
         const sType = el.getAttribute('type') ?? 'text/javascript'
         const sNonce = el.getAttribute('nonce') ?? undefined
-        return (
+        if (
           el.textContent === children &&
           sType === typeAttr &&
           sNonce === nonceAttr
-        )
-      })
-
-      if (existingScript) {
-        return
+        ) {
+          return
+        }
       }
 
       const script = document.createElement('script')
       script.textContent = children
-
-      if (attrs) {
-        for (const [key, value] of Object.entries(attrs)) {
-          if (
-            key !== 'suppressHydrationWarning' &&
-            value !== undefined &&
-            value !== false
-          ) {
-            script.setAttribute(
-              key,
-              typeof value === 'boolean' ? '' : String(value),
-            )
-          }
-        }
-      }
+      setScriptAttrs(script, attrs)
 
       document.head.appendChild(script)
 
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      }
+      return () => script.remove()
     }
 
     return undefined
@@ -228,7 +222,20 @@ function Script({
   // --- Server rendering ---
   if (isServer ?? router.isServer) {
     if (attrs?.src) {
-      return <script {...attrs} suppressHydrationWarning />
+      if (!preventScriptHoist) {
+        return <script {...attrs} suppressHydrationWarning />
+      }
+
+      return (
+        <script
+          {...attrs}
+          // React hoists async src scripts into <head> during SSR unless they
+          // have an event handler. Start's client entry must stay after router
+          // dehydration.
+          onLoad={noopScriptHandler}
+          suppressHydrationWarning
+        />
+      )
     }
 
     if (typeof children === 'string') {

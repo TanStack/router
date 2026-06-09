@@ -29,7 +29,7 @@
     "tailwindcss": "^4.2.2",
     "tsx": "^4.20.3",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
+    "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11"
   }
 }

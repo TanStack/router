@@ -11,19 +11,19 @@
   },
   "dependencies": {
     "@auth/core": "^0.41.1",
-    "@tanstack/solid-router": "^1.170.5",
+    "@tanstack/solid-router": "^1.170.15",
     "@tanstack/solid-router-devtools": "^1.167.0",
-    "@tanstack/solid-start": "^1.168.7",
-    "start-authjs": "^1.0.0",
+    "@tanstack/solid-start": "^1.168.25",
     "solid-js": "^1.9.10",
-    "tailwind-merge": "^2.6.0"
+    "start-authjs": "^1.0.0",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.5.4",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
+    "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11"
   }
 }

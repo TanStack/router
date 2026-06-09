@@ -20,6 +20,12 @@ const config = defineConfig({
     watch: false,
     environment: 'jsdom',
     typecheck: { enabled: true },
+    // Perf tests are gated by env var and excluded from default runs.
+    // To run: RUN_BACKPRESSURE_PERF=1 pnpm vitest run transformStreamBackpressure
+    exclude:
+      process.env.RUN_BACKPRESSURE_PERF === '1'
+        ? ['**/node_modules/**']
+        : ['**/*.perf.test.ts', '**/node_modules/**'],
     alias: {
       // For tests only, resolve to development.ts which returns undefined
       // so that router.isServer fallback is used

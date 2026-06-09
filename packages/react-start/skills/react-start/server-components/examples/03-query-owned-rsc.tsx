@@ -27,7 +27,7 @@ declare const db: {
 }
 
 const getPostRsc = createServerFn({ method: 'GET' })
-  .inputValidator(z.object({ postId: z.string() }))
+  .validator(z.object({ postId: z.string() }))
   .handler(async ({ data }) => {
     const post = await db.posts.findById(data.postId)
 
@@ -45,7 +45,7 @@ const getPostRsc = createServerFn({ method: 'GET' })
   })
 
 const updatePost = createServerFn({ method: 'POST' })
-  .inputValidator(
+  .validator(
     z.object({
       postId: z.string(),
       title: z.string().optional(),

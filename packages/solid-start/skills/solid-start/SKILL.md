@@ -176,7 +176,7 @@ import { createServerFn, useServerFn } from '@tanstack/solid-start'
 import { createSignal } from 'solid-js'
 
 const updatePost = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string; title: string }) => data)
+  .validator((data: { id: string; title: string }) => data)
   .handler(async ({ data }) => {
     await db.posts.update(data.id, { title: data.title })
     return { success: true }

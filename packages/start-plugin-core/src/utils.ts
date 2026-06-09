@@ -13,6 +13,14 @@ export function resolveViteId(id: string) {
   return `\0${id}`
 }
 
+export function createIdFilter(ids: Array<string>): RegExp {
+  return new RegExp(`^(?:${ids.map(escapeRegExp).join('|')})$`)
+}
+
+export function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export function createLogger(prefix: string) {
   const label = `[${prefix}]`
   return {

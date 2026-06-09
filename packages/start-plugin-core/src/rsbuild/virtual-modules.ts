@@ -2,6 +2,7 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
 import { generateServerFnResolverModule } from '../start-compiler/server-fn-resolver-module'
 import { buildStartManifest } from '../start-manifest-plugin/manifestBuilder'
+import { escapeRegExp } from '../utils'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type {
   RsbuildPluginAPI,
@@ -14,6 +15,7 @@ import type {
 } from '../types'
 import type { InlineCssOptions } from '../start-manifest-plugin/manifestBuilder'
 import type { ServerFn } from '../start-compiler/types'
+import type { ScriptFormat } from '@tanstack/router-core'
 
 type RspackNamespace = typeof rspackNamespaceType
 type RspackVirtualModulesPlugin = InstanceType<
@@ -66,10 +68,31 @@ export interface VirtualModuleState {
 // Manifest module codegen
 // ---------------------------------------------------------------------------
 
-function generateManifestModuleDev(devClientEntryUrl: string): string {
+function getScriptFormatProperty(scriptFormat: ScriptFormat): string {
+  return scriptFormat === 'iife' ? `  scriptFormat: 'iife',\n` : ''
+}
+
+function getEntryScriptAttrs(
+  entryUrl: string,
+  scriptFormat: ScriptFormat,
+): string {
+  return scriptFormat === 'module'
+    ? `{ type: 'module', async: true, src: '${entryUrl}' }`
+    : `{ async: true, src: '${entryUrl}' }`
+}
+
+function generateManifestModuleDev(
+  devClientEntryUrl: string,
+  scriptFormat: ScriptFormat,
+): string {
+  const scriptFormatProperty = getScriptFormatProperty(scriptFormat)
   return `const fallbackManifest = {
-  routes: {},
-  clientEntry: '${devClientEntryUrl}',
+${scriptFormatProperty}  routes: {
+    __root__: {
+      preloads: ['${devClientEntryUrl}'],
+      scripts: [{ attrs: ${getEntryScriptAttrs(devClientEntryUrl, scriptFormat)} }],
+    },
+  },
 }
 export const tsrStartManifest = () => globalThis[${JSON.stringify(DEV_START_MANIFEST_GLOBAL)}] ?? fallbackManifest`
 }
@@ -78,6 +101,7 @@ function buildStartManifestData(
   clientBuild: NormalizedClientBuild,
   publicBase: string,
   inlineCss: InlineCssOptions,
+  scriptFormat: ScriptFormat,
 ) {
   const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
   return buildStartManifest({
@@ -85,6 +109,7 @@ function buildStartManifestData(
     routeTreeRoutes,
     basePath: publicBase,
     inlineCss,
+    scriptFormat,
   })
 }
 
@@ -92,9 +117,10 @@ function serializeStartManifestData(
   clientBuild: NormalizedClientBuild,
   publicBase: string,
   inlineCss: InlineCssOptions,
+  scriptFormat: ScriptFormat,
 ): string {
   return JSON.stringify(
-    buildStartManifestData(clientBuild, publicBase, inlineCss),
+    buildStartManifestData(clientBuild, publicBase, inlineCss, scriptFormat),
   )
 }
 
@@ -103,26 +129,15 @@ function generateManifestModuleBuild(
   publicBase: string,
   _devClientEntryUrl: string,
   inlineCss: InlineCssOptions,
+  scriptFormat: ScriptFormat,
 ): string {
   if (!clientBuild) {
     return `const tsrStartManifestData = ${JSON.stringify(START_MANIFEST_PLACEHOLDER)}
 export const tsrStartManifest = () => tsrStartManifestData`
   }
 
-  return `export const tsrStartManifest = () => (${serializeStartManifestData(clientBuild, publicBase, inlineCss)})`
+  return `export const tsrStartManifest = () => (${serializeStartManifestData(clientBuild, publicBase, inlineCss, scriptFormat)})`
 }
-
-// ---------------------------------------------------------------------------
-// Injected head scripts codegen
-// ---------------------------------------------------------------------------
-
-function generateInjectedHeadScripts(scripts?: string): string {
-  return `export const injectedHeadScripts = ${scripts ? JSON.stringify(scripts) : 'undefined'}`
-}
-
-// ---------------------------------------------------------------------------
-// RSC virtual module codegen
-// ---------------------------------------------------------------------------
 
 /**
  * Generate virtual:tanstack-rsc-runtime content.
@@ -215,11 +230,12 @@ export interface RegisterVirtualModulesOptions {
   /**
    * Get the URL at which the rsbuild dev server serves the client entry JS.
    * Called lazily inside modifyRspackConfig when getConfig() is available.
-   * Example return: '/static/js/index.js'
+   * Example return: '/assets/js/index.js'
    */
   getDevClientEntryUrl: (publicBase: string) => string
   /** Whether RSC virtual modules should be registered. */
   rscEnabled?: boolean | undefined
+  scriptFormat: ScriptFormat
 }
 
 /**
@@ -238,7 +254,6 @@ export function registerVirtualModules(
   // Virtual module paths keyed by module ID
   const paths = {
     manifest: virtualPath(root, VIRTUAL_MODULES.startManifest),
-    injectedHeadScripts: virtualPath(root, VIRTUAL_MODULES.injectedHeadScripts),
     serverFnResolver: virtualPath(root, VIRTUAL_MODULES.serverFnResolver),
     pluginAdapters: virtualPath(root, VIRTUAL_MODULES.pluginAdapters),
   }
@@ -264,6 +279,7 @@ export function registerVirtualModules(
   const hasSeparateProviderEnvironment =
     !opts.rscEnabled &&
     opts.providerEnvName !== RSBUILD_ENVIRONMENT_NAMES.server
+  const hasSerializationAdapters = Boolean(opts.serializationAdapters?.length)
 
   function isProviderEnvironment(environmentName: string): boolean {
     return environmentName === opts.providerEnvName
@@ -363,19 +379,17 @@ export function registerVirtualModules(
         resolvedStartConfig.basePaths.publicBase,
       )
       content[paths.manifest] = isDev
-        ? generateManifestModuleDev(devClientEntryUrl)
+        ? generateManifestModuleDev(devClientEntryUrl, opts.scriptFormat)
         : generateManifestModuleBuild(
             clientBuild,
             resolvedStartConfig.basePaths.publicBase,
             devClientEntryUrl,
             startConfig.server.build.inlineCss,
+            opts.scriptFormat,
           )
     } else {
       content[paths.manifest] = 'export default {}'
     }
-
-    // Injected head scripts — only server
-    content[paths.injectedHeadScripts] = generateInjectedHeadScripts()
 
     // Server fn resolver — SSR and provider environments
     if (needsServerFnResolver(environmentName)) {
@@ -385,14 +399,16 @@ export function registerVirtualModules(
       content[paths.serverFnResolver] = 'export {}'
     }
 
-    // Plugin adapters — both environments get environment-specific content
-    content[paths.pluginAdapters] = generateSerializationAdaptersModule({
-      adapters: opts.serializationAdapters,
-      runtime:
-        environmentName === RSBUILD_ENVIRONMENT_NAMES.client
-          ? 'client'
-          : 'server',
-    })
+    if (hasSerializationAdapters) {
+      // Plugin adapters — both environments get environment-specific content
+      content[paths.pluginAdapters] = generateSerializationAdaptersModule({
+        adapters: opts.serializationAdapters,
+        runtime:
+          environmentName === RSBUILD_ENVIRONMENT_NAMES.client
+            ? 'client'
+            : 'server',
+      })
+    }
 
     // --- RSC virtual modules ---
     if (rscPaths) {
@@ -417,7 +433,7 @@ export function registerVirtualModules(
         : `export function createFromReadableStream() { throw new Error('RSC browser decode is only available in the client environment') }
 export function createFromFetch() { throw new Error('RSC browser decode is only available in the client environment') }`
       content[rscPaths.rscSsrDecode] = isServerEnv
-        ? `export * from '@tanstack/react-start/rsbuild/ssr-decode'`
+        ? `export { setOnClientReference, createFromReadableStream } from '@tanstack/react-start/rsbuild/ssr-decode'`
         : `export function setOnClientReference() {}
 export function createFromReadableStream() { throw new Error('RSC SSR decode is only available in the server environment') }`
     }
@@ -430,9 +446,11 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
   // rspack validates request schemes before normal alias resolution.
   const aliasMap: Record<string, string> = {
     [VIRTUAL_MODULES.startManifest]: paths.manifest,
-    [VIRTUAL_MODULES.injectedHeadScripts]: paths.injectedHeadScripts,
     [VIRTUAL_MODULES.serverFnResolver]: paths.serverFnResolver,
-    [VIRTUAL_MODULES.pluginAdapters]: paths.pluginAdapters,
+  }
+
+  if (hasSerializationAdapters) {
+    aliasMap[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters
   }
 
   // Add RSC virtual module aliases
@@ -472,15 +490,18 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
 
     // Rewrite scheme-like IDs to the VirtualModulesPlugin-backed file paths.
     for (const [moduleId, virtualFilePath] of Object.entries(aliasMap)) {
-      const escaped = moduleId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       const NMR = utils.rspack.NormalModuleReplacementPlugin
-      config.plugins.push(new NMR(new RegExp(`^${escaped}$`), virtualFilePath))
+      config.plugins.push(
+        new NMR(new RegExp(`^${escapeRegExp(moduleId)}$`), virtualFilePath),
+      )
     }
 
     const resolve = config.resolve
     const resolveAlias = (resolve.alias ??= {}) as Record<string, string>
     resolveAlias[VIRTUAL_MODULES.serverFnResolver] = paths.serverFnResolver
-    resolveAlias[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters
+    if (hasSerializationAdapters) {
+      resolveAlias[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters
+    }
 
     // Add RSC-specific resolve aliases
     if (rscPaths) {
@@ -514,6 +535,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
         !isDev
           ? startConfig.server.build.inlineCss
           : { enabled: false, transformAssets: false },
+        opts.scriptFormat,
       )
     },
 
@@ -527,6 +549,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
         !isDev
           ? startConfig.server.build.inlineCss
           : { enabled: false, transformAssets: false },
+        opts.scriptFormat,
       )
     },
 
@@ -543,23 +566,26 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
           clientBuild,
           resolvedStartConfig.basePaths.publicBase,
           { enabled: false, transformAssets: false },
+          opts.scriptFormat,
         )
       }
     },
 
     updateServerFnResolver() {
-      for (const environmentName of new Set([
-        RSBUILD_ENVIRONMENT_NAMES.server,
-        ...(hasSeparateProviderEnvironment ? [opts.providerEnvName] : []),
-      ])) {
+      const updateEnvironment = (environmentName: string) => {
         if (!needsServerFnResolver(environmentName)) {
-          continue
+          return
         }
 
         writeResolverContent(
           environmentName,
           generateResolverContent(environmentName),
         )
+      }
+
+      updateEnvironment(RSBUILD_ENVIRONMENT_NAMES.server)
+      if (hasSeparateProviderEnvironment) {
+        updateEnvironment(opts.providerEnvName)
       }
     },
 

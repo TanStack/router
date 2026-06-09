@@ -46,7 +46,7 @@ Treat TanStack Start RSCs as fetchable React Flight payloads, not as a framework
 - Query-cached RSC values require `structuralSharing: false`.
 - Slot payloads are opaque on the server. Do not inspect, map, or clone `props.children`.
 - Render-prop and component-slot arguments must stay Flight-serializable.
-- Current server function validation API is `.inputValidator(...)`. Older snippets may still show `.validator(...)`; normalize them.
+- Current server function validation API is `.validator(...)`. Older snippets may still show `.validator(...)`; normalize them.
 - TanStack custom serialization does not apply inside RSCs yet. Stay inside native Flight-supported values.
 
 ## Decide three things immediately
@@ -97,7 +97,7 @@ Treat TanStack Start RSCs as fetchable React Flight payloads, not as a framework
 - Are query options using `structuralSharing: false` for any RSC value?
 - Are mutations explicit `createServerFn({ method: 'POST' })` calls instead of hidden server actions?
 - Are server-only imports kept inside server functions or server-only boundaries?
-- Are examples using current names (`renderServerComponent`, `.inputValidator`) instead of stale ones?
+- Are examples using current names (`renderServerComponent`, `.validator`) instead of stale ones?
 
 ## Debug fast
 

@@ -13,6 +13,11 @@ import type {
   ServerComponentStream,
 } from './ServerComponentTypes'
 
+type StreamDecodeOptions = {
+  cssHrefs?: Iterable<string>
+  jsPreloads?: Iterable<string>
+}
+
 /**
  * Creates a renderable RSC proxy from a raw Flight stream.
  * Client-side only - used by the client serialization adapter for `renderServerComponent`.
@@ -24,12 +29,17 @@ import type {
  */
 export function createRenderableFromStream(
   stream: ReadableStream<Uint8Array>,
+  options?: StreamDecodeOptions,
 ): any {
-  const { getTree, streamWrapper, cssHrefs } = setupStreamDecode(stream)
+  const { getTree, streamWrapper, cssHrefs, jsPreloads } = setupStreamDecode(
+    stream,
+    options,
+  )
 
   return createRscProxy(getTree, {
     stream: streamWrapper,
     cssHrefs,
+    jsPreloads,
     renderable: true,
   })
 }
@@ -47,13 +57,17 @@ export function createCompositeFromStream(
   stream: ReadableStream<Uint8Array>,
   options?: {
     slotUsagesStream?: ReadableStream<RscSlotUsageEvent>
-  },
+  } & StreamDecodeOptions,
 ): AnyCompositeComponent {
-  const { getTree, streamWrapper, cssHrefs } = setupStreamDecode(stream)
+  const { getTree, streamWrapper, cssHrefs, jsPreloads } = setupStreamDecode(
+    stream,
+    options,
+  )
 
   return createRscProxy(getTree, {
     stream: streamWrapper,
     cssHrefs,
+    jsPreloads,
     renderable: false,
     slotUsagesStream: options?.slotUsagesStream,
   })
@@ -62,33 +76,51 @@ export function createCompositeFromStream(
 /**
  * Shared stream decode setup for both renderable and composite.
  */
-function setupStreamDecode(stream: ReadableStream<Uint8Array>): {
+function setupStreamDecode(
+  stream: ReadableStream<Uint8Array>,
+  options?: StreamDecodeOptions,
+): {
   getTree: () => unknown
   streamWrapper: ServerComponentStream
-  cssHrefs: Set<string> | undefined
+  cssHrefs: Set<string>
+  jsPreloads: Set<string> | undefined
 } {
-  // Start decoding eagerly during deserialization
-  const decodeThenable = browserDecode(stream)
-  const cssHrefs = new Set<string>()
+  const cssHrefs = new Set(options?.cssHrefs ?? [])
+  const jsPreloads = options?.jsPreloads
+    ? new Set(options.jsPreloads)
+    : undefined
+  const shouldDeferDecode = cssHrefs.size > 0 || !!jsPreloads?.size
 
   // Synchronous cache for the decoded tree.
   let cachedTree: unknown = undefined
   let cacheReady = false
+  let transformedTreePromise: Promise<unknown> | undefined
 
-  // Promise for the tree with lazy elements awaited.
-  const transformedTreePromise = Promise.resolve(decodeThenable).then(
-    async (result) => {
-      await awaitLazyElements(result, (href) => {
-        cssHrefs.add(href)
-      })
-      cachedTree = unwrapRscCssEnvelope(result)
-      cacheReady = true
-      return cachedTree
-    },
-  )
+  const startDecode = () => {
+    if (!transformedTreePromise) {
+      // Promise for the tree with lazy elements awaited.
+      transformedTreePromise = Promise.resolve(browserDecode(stream)).then(
+        async (result) => {
+          await awaitLazyElements(result, (href) => {
+            cssHrefs.add(href)
+          })
+          cachedTree = unwrapRscCssEnvelope(result)
+          cacheReady = true
+          return cachedTree
+        },
+      )
 
-  // Track the lazy element loading - prevents flash
-  trackPostProcessPromise(transformedTreePromise)
+      // Track the lazy element loading - prevents flash for RPC/RSC fetches.
+      trackPostProcessPromise(transformedTreePromise)
+    }
+
+    return transformedTreePromise
+  }
+
+  if (!shouldDeferDecode) {
+    // Start decoding eagerly during deserialization for non-SSR streams.
+    startDecode()
+  }
 
   const streamWrapper: ServerComponentStream = {
     createReplayStream: () => stream,
@@ -97,10 +129,10 @@ function setupStreamDecode(stream: ReadableStream<Uint8Array>): {
   const getTree = () => {
     if (cacheReady) return cachedTree
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    return use(transformedTreePromise)
+    return use(startDecode())
   }
 
-  return { getTree, streamWrapper, cssHrefs }
+  return { getTree, streamWrapper, cssHrefs, jsPreloads }
 }
 // Legacy export for backwards compatibility during migration
 export const createServerComponentFromStream = createCompositeFromStream
