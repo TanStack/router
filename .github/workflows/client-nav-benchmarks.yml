@@ -47,8 +47,7 @@ jobs:
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
 
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
-        continue-on-error: true
-        uses: CodSpeedHQ/action@3194d9a39c4d46684cb44bf7207fc56626aad8fd # v4
+        uses: CodSpeedHQ/action@9d332c4d90b43981c3e55ae8e38e68709996240f # v4.17.0
         with:
           mode: simulation
           run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}

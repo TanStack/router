@@ -1,7 +1,11 @@
 import { normalizePath } from 'vite'
 import { join } from 'pathe'
 import { escapePath } from 'tinyglobby'
-import { ENTRY_POINTS, START_ENVIRONMENT_NAMES } from '../constants'
+import {
+  DEV_CLIENT_ENTRY,
+  ENTRY_POINTS,
+  START_ENVIRONMENT_NAMES,
+} from '../constants'
 import { getBundlerOptions } from '../utils'
 import type { CompileStartFrameworkOptions } from '../types'
 import type { ResolvedStartEntryPlan } from '../planning'
@@ -39,6 +43,7 @@ export function createViteResolvedEntryAliases(opts: {
 
 export function createViteConfigPlan(opts: {
   viteConfig: vite.UserConfig
+  command: 'serve' | 'build'
   framework: CompileStartFrameworkOptions
   entryAliases: ViteResolvedEntryAliases
   clientOutputDirectory: string
@@ -52,9 +57,12 @@ export function createViteConfigPlan(opts: {
       [START_ENVIRONMENT_NAMES.client]: {
         consumer: 'client',
         build: (() => {
+          const input =
+            opts.command === 'serve' ? DEV_CLIENT_ENTRY : ENTRY_POINTS.client
+
           const bundlerOptions = {
             input: {
-              index: ENTRY_POINTS.client,
+              index: input,
             },
           }
           return {

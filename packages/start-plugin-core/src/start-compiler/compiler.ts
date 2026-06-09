@@ -5,7 +5,9 @@ import {
   extractModuleInfoFromAst,
   findReferencedIdentifiers,
   generateFromAst,
+  getVariableDeclaratorForExpressionPath,
   parseAst,
+  unwrapExpression,
 } from '@tanstack/router-utils'
 import babel from '@babel/core'
 import { handleCreateServerFn } from './handleCreateServerFn'
@@ -374,6 +376,17 @@ function isTopLevelDirectCallCandidateNode(node: t.CallExpression): boolean {
   return isSimpleDirectCallExpression(node)
 }
 
+function getPotentialCandidateCallExpression(
+  node: t.Expression | null | undefined,
+): t.CallExpression | null {
+  if (!node) {
+    return null
+  }
+
+  const unwrapped = unwrapExpression(node)
+  return t.isCallExpression(unwrapped) ? unwrapped : null
+}
+
 /**
  * Checks if a CallExpression path is a top-level direct-call candidate.
  * Top-level means the call is the init of a VariableDeclarator at program level.
@@ -392,15 +405,24 @@ function isTopLevelDirectCallCandidate(
   }
 
   // Must be top-level: VariableDeclarator -> VariableDeclaration -> Program
-  const parent = path.parent
-  if (!t.isVariableDeclarator(parent) || parent.init !== node) {
+  // or VariableDeclarator -> VariableDeclaration -> ExportNamedDeclaration -> Program.
+  const variableDeclarator = getVariableDeclaratorForExpressionPath(
+    path as babel.NodePath<t.Expression>,
+  )
+  if (!variableDeclarator) {
     return false
   }
-  const grandParent = path.parentPath.parent
-  if (!t.isVariableDeclaration(grandParent)) {
+
+  const variableDeclaration = variableDeclarator.parentPath
+  if (!variableDeclaration.isVariableDeclaration()) {
     return false
   }
-  return t.isProgram(path.parentPath.parentPath?.parent)
+
+  const parent = variableDeclaration.parentPath
+  return (
+    parent.isProgram() ||
+    (parent.isExportNamedDeclaration() && parent.parentPath.isProgram())
+  )
 }
 
 function isDirectCallCandidateForKind(
@@ -538,6 +560,7 @@ export class StartCompiler {
       compilerTransforms?: Array<StartCompilerImportTransform> | undefined
       compilerPlugins?: Array<StartCompilerPlugin> | undefined
       serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
+      warn?: (message: string) => void
       /**
        * Returns the currently known server functions from previous builds.
        * Used by server callers to look up canonical extracted filenames.
@@ -957,12 +980,14 @@ export class StartCompiler {
     id,
     parserFilename,
     detectedKinds,
+    warn,
   }: {
     code: string
     id: string
     parserFilename?: string
     /** Pre-detected kinds present in this file. If not provided, all valid kinds are checked. */
     detectedKinds?: Set<LookupKind>
+    warn?: (message: string) => void
   }) {
     if (!this.initialized) {
       await this.init()
@@ -977,6 +1002,7 @@ export class StartCompiler {
     // Always parse and extract module info upfront.
     // This ensures the module is cached for import resolution even if no candidates are found.
     const ast = this.ingestModule({ code, id, parserFilename }).ast
+    const warnFn = warn ?? this.options.warn
     let astHasChanges = false
 
     builtInTransforms: {
@@ -1039,11 +1065,11 @@ export class StartCompiler {
 
           if (declarations) {
             for (const decl of declarations) {
-              if (decl.init && t.isCallExpression(decl.init)) {
+              const init = getPotentialCandidateCallExpression(decl.init)
+              if (init) {
                 if (
-                  isMethodChainCandidate(decl.init, fileKinds) ||
-                  (checkDirectCalls &&
-                    isTopLevelDirectCallCandidateNode(decl.init))
+                  isMethodChainCandidate(init, fileKinds) ||
+                  (checkDirectCalls && isTopLevelDirectCallCandidateNode(init))
                 ) {
                   candidateIndices.push(i)
                   break // Only need to mark this statement once
@@ -1270,6 +1296,8 @@ export class StartCompiler {
         // Collect method chain paths by walking DOWN from root through the chain
         const methodChain: MethodChainPaths = {
           middleware: null,
+          validator: null,
+          // TODO remove upon stable
           inputValidator: null,
           handler: null,
           server: null,
@@ -1337,6 +1365,7 @@ export class StartCompiler {
           babel.template.expression(expressionCode, {
             placeholderPattern: false,
           })() as t.Expression,
+        warn: warnFn,
 
         generateFunctionId: (opts) => this.generateFunctionId(opts),
         getKnownServerFns: this.options.getKnownServerFns,
@@ -1391,6 +1420,7 @@ export class StartCompiler {
           code,
           id,
           transforms: astTransformPlugins,
+          warn: warnFn,
         }) || astHasChanges
     }
 
@@ -1437,11 +1467,13 @@ export class StartCompiler {
     code,
     id,
     transforms,
+    warn,
   }: {
     ast: ParsedAst
     code: string
     id: string
     transforms: Array<StartCompilerAstPlugin>
+    warn?: (message: string) => void
   }): boolean {
     let modified = false
 
@@ -1461,6 +1493,7 @@ export class StartCompiler {
           babel.template.expression(expressionCode, {
             placeholderPattern: false,
           })() as t.Expression,
+        warn,
       }
 
       modified = plugin.transformAst(context) || modified
@@ -1774,7 +1807,7 @@ export class StartCompiler {
       getLookupSetup(resolvedKind, this.externalLookupSetup)?.type ===
         'directCall' &&
       binding.init &&
-      t.isCallExpression(binding.init)
+      t.isCallExpression(unwrapExpression(binding.init))
     ) {
       binding.resolvedKind = 'None'
       return 'None'
@@ -1792,14 +1825,7 @@ export class StartCompiler {
       return 'None'
     }
 
-    // Unwrap common TypeScript/parenthesized wrappers first for efficiency
-    while (
-      t.isTSAsExpression(expr) ||
-      t.isTSNonNullExpression(expr) ||
-      t.isParenthesizedExpression(expr)
-    ) {
-      expr = expr.expression
-    }
+    expr = unwrapExpression(expr)
 
     let result: Kind = 'None'
 

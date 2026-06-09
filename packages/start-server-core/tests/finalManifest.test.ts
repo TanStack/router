@@ -3,21 +3,29 @@ import {
   createCachedBaseManifestLoader,
   createFinalManifestResolver,
 } from '../src/finalManifest'
-import type { StartManifestWithClientEntry } from '../src/finalManifest'
+import type { ServerManifest } from '@tanstack/router-core'
 import type { TransformAssetsFn } from '../src/transformAssetUrls'
 
-const baseManifest: StartManifestWithClientEntry = {
-  manifest: {
-    inlineCss: {
-      styles: {
-        '/assets/app.css': '.app{color:red}',
-      },
-    },
-    routes: {
-      __root__: {},
+const baseManifest: ServerManifest = {
+  inlineCss: {
+    styles: {
+      '/assets/app.css': '.app{color:red}',
     },
   },
-  clientEntry: '/assets/entry.js',
+  routes: {
+    __root__: {
+      preloads: ['/assets/entry.js'],
+      scripts: [
+        {
+          attrs: {
+            type: 'module',
+            async: true,
+            src: '/assets/entry.js',
+          },
+        },
+      ],
+    },
+  },
 }
 
 describe('final manifest resolver', () => {
@@ -35,7 +43,7 @@ describe('final manifest resolver', () => {
 
   it('evicts rejected cached base manifest promises so requests can retry', async () => {
     const loadBaseManifest = vi
-      .fn<() => Promise<StartManifestWithClientEntry>>()
+      .fn<() => Promise<ServerManifest>>()
       .mockRejectedValueOnce(new Error('transient'))
       .mockResolvedValueOnce(baseManifest)
     const getBaseManifest = createCachedBaseManifestLoader(loadBaseManifest)
@@ -79,7 +87,7 @@ describe('final manifest resolver', () => {
 
   it('evicts rejected cached final manifest promises so requests can retry', async () => {
     const getBaseManifest = vi
-      .fn<() => Promise<StartManifestWithClientEntry>>()
+      .fn<() => Promise<ServerManifest>>()
       .mockRejectedValueOnce(new Error('transient'))
       .mockResolvedValueOnce(baseManifest)
     const resolver = createFinalManifestResolver({ cacheCreateTransform: true })
@@ -99,7 +107,7 @@ describe('final manifest resolver', () => {
         requestInlineCss: true,
         getBaseManifest,
       }),
-    ).resolves.toMatchObject({ inlineCss: baseManifest.manifest.inlineCss })
+    ).resolves.toMatchObject({ inlineCss: baseManifest.inlineCss })
     expect(getBaseManifest).toHaveBeenCalledTimes(2)
   })
 
@@ -157,9 +165,12 @@ describe('final manifest resolver', () => {
     })
 
     expect(manifest.inlineCss).toBeDefined()
-    expect(manifest.routes.__root__?.assets?.[0]).toMatchObject({
-      tag: 'script',
-      children: 'import("https://cdn.example.com/assets/entry.js")',
+    expect(manifest.routes.__root__?.scripts?.at(-1)).toMatchObject({
+      attrs: {
+        type: 'module',
+        async: true,
+        src: 'https://cdn.example.com/assets/entry.js',
+      },
     })
   })
 })

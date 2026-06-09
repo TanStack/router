@@ -1,9 +1,6 @@
 import { isRunnableDevEnvironment } from 'vite'
-import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../../constants'
-import { createVirtualModule } from '../createVirtualModule'
-import { extractHtmlScripts } from './extract-html-scripts'
 import {
   CSS_MODULES_REGEX,
   collectDevStyles,
@@ -22,8 +19,6 @@ export function devServerPlugin({
   installDevServerMiddleware: boolean | undefined
 }): PluginOption {
   let isTest = false
-
-  let injectedHeadScripts: string | undefined
 
   // Cache CSS modules content during transform hook.
   // For CSS modules, the transform hook receives the raw CSS content before
@@ -45,21 +40,10 @@ export function devServerPlugin({
           cssModulesCache[normalizeCssModuleCacheKey(id)] = code
         },
       },
-      async configureServer(viteDevServer) {
+      configureServer(viteDevServer) {
         if (isTest) {
           return
         }
-
-        // Extract the scripts that Vite plugins would inject into the initial HTML
-        const templateHtml = `<html><head></head><body></body></html>`
-        const transformedHtml = await viteDevServer.transformIndexHtml(
-          '/',
-          templateHtml,
-        )
-        const scripts = extractHtmlScripts(transformedHtml)
-        injectedHeadScripts = scripts
-          .flatMap((script) => script.content ?? [])
-          .join(';')
 
         // CSS middleware registered in PRE-PHASE (before Vite's internal middlewares)
         // This ensures it handles /@tanstack-start/styles.css before any catch-all middleware
@@ -123,6 +107,12 @@ export function devServerPlugin({
           })
         }
 
+        if (viteDevServer.config.experimental.bundledDev) {
+          // Vite's bundled dev client watches sources separately, but Start still
+          // needs the SSR environment's module graph to see route/server edits.
+          viteDevServer.watcher.add(viteDevServer.config.root)
+        }
+
         return () => {
           const serverEnv = viteDevServer.environments[
             VITE_ENVIRONMENT_NAMES.server
@@ -133,6 +123,15 @@ export function devServerPlugin({
               `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
             )
           }
+          const clientEnv = viteDevServer.environments[
+            VITE_ENVIRONMENT_NAMES.client
+          ] as
+            | {
+                devEngine?: {
+                  ensureLatestBuildOutput?: () => Promise<void>
+                }
+              }
+            | undefined
 
           const installMiddleware = installDevServerMiddleware
           if (installMiddleware === false) {
@@ -159,7 +158,6 @@ export function devServerPlugin({
               'cannot install vite dev server middleware for TanStack Start since the SSR environment is not a RunnableDevEnvironment',
             )
           }
-
           viteDevServer.middlewares.use(async (req, res) => {
             // fix the request URL to match the original URL
             // otherwise, the request URL will '/index.html'
@@ -169,6 +167,8 @@ export function devServerPlugin({
             const webReq = new NodeRequest({ req, res })
 
             try {
+              const serverRunner = serverEnv.runner
+
               // Import and resolve the request by running the server request entry point
               // this request entry point must implement the `fetch` API as follows:
               /**
@@ -176,9 +176,13 @@ export function devServerPlugin({
                *  fetch(req: Request): Promise<Response>
                * }
                */
-              const serverEntry = await serverEnv.runner.import(
-                ENTRY_POINTS.server,
-              )
+              if (viteDevServer.config.experimental.bundledDev) {
+                await clientEnv?.devEngine?.ensureLatestBuildOutput?.()
+                serverEnv.moduleGraph.invalidateAll()
+                serverRunner.clearCache()
+              }
+
+              const serverEntry = await serverRunner.import(ENTRY_POINTS.server)
               const webRes = await serverEntry['default'].fetch(webReq)
 
               return sendNodeResponse(res, webRes)
@@ -248,17 +252,6 @@ export function devServerPlugin({
         }
       },
     },
-    createVirtualModule({
-      name: 'tanstack-start-core:dev-server:injected-head-scripts',
-      sharedDuringBuild: true,
-      applyToEnvironment: (env) => env.config.consumer === 'server',
-      moduleId: VIRTUAL_MODULES.injectedHeadScripts,
-      load() {
-        const mod = `
-        export const injectedHeadScripts = ${JSON.stringify(injectedHeadScripts) || 'undefined'}`
-        return mod
-      },
-    }),
   ]
 }
 

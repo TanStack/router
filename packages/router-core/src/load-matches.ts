@@ -207,7 +207,6 @@ const handleSerialError = (
   inner: InnerLoadContext,
   index: number,
   err: any,
-  routerCode: string,
 ): void => {
   const { id: matchId, routeId } = inner.matches[index]!
   const route = inner.router.looseRoutesById[routeId]!
@@ -219,7 +218,6 @@ const handleSerialError = (
     throw err
   }
 
-  err.routerCode = routerCode
   inner.firstBadMatchIndex ??= index
   handleRedirectAndNotFound(inner, inner.router.getMatch(matchId), err)
 
@@ -405,11 +403,11 @@ const executeBeforeLoad = (
   const { paramsError, searchError } = match
 
   if (paramsError) {
-    handleSerialError(inner, index, paramsError, 'PARSE_PARAMS')
+    handleSerialError(inner, index, paramsError)
   }
 
   if (searchError) {
-    handleSerialError(inner, index, searchError, 'VALIDATE_SEARCH')
+    handleSerialError(inner, index, searchError)
   }
 
   setupPendingTimeout(inner, matchId, route, match)
@@ -499,7 +497,7 @@ const executeBeforeLoad = (
     }
     if (isRedirect(beforeLoadContext) || isNotFound(beforeLoadContext)) {
       pending()
-      handleSerialError(inner, index, beforeLoadContext, 'BEFORE_LOAD')
+      handleSerialError(inner, index, beforeLoadContext)
     }
 
     inner.router.batch(() => {
@@ -519,13 +517,13 @@ const executeBeforeLoad = (
       pending()
       return beforeLoadContext
         .catch((err) => {
-          handleSerialError(inner, index, err, 'BEFORE_LOAD')
+          handleSerialError(inner, index, err)
         })
         .then(updateContext)
     }
   } catch (err) {
     pending()
-    handleSerialError(inner, index, err, 'BEFORE_LOAD')
+    handleSerialError(inner, index, err)
   }
 
   updateContext(beforeLoadContext)

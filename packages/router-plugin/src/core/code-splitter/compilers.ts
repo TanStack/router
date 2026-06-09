@@ -1034,7 +1034,7 @@ export function compileCodeSplitVirtualRoute(
                 t.variableDeclaration('const', [
                   t.variableDeclarator(
                     t.identifier(splitMeta.localExporterIdent),
-                    splitNode as any,
+                    splitNode,
                   ),
                 ]),
               )

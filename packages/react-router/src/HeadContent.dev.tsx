@@ -1,13 +1,12 @@
 'use client'
 
 import * as React from 'react'
+import { DEV_STYLES_ATTR } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useHydrated } from './ClientOnly'
 import { useTags } from './headContentUtils'
 import type { HeadContentProps } from './HeadContent'
-
-const DEV_STYLES_ATTR = 'data-tanstack-router-dev-styles'
 
 /**
  * Render route-managed head tags (title, meta, links, styles, head scripts).
@@ -36,7 +35,9 @@ export function HeadContent(props: HeadContentProps) {
 
   // Filter out dev styles after hydration
   const filteredTags = hydrated
-    ? tags.filter((tag) => !tag.attrs?.[DEV_STYLES_ATTR])
+    ? tags.filter(
+        (tag) => tag.tag !== 'link' || tag.attrs?.[DEV_STYLES_ATTR] !== true,
+      )
     : tags
 
   return (

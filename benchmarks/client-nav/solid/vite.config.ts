@@ -3,6 +3,9 @@ import solid from 'vite-plugin-solid'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 
 export default defineConfig({
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production'),
+  },
   plugins: [
     !!(process.env.VITEST && process.env.WITH_INSTRUMENTATION) &&
       codspeedPlugin(),

@@ -166,6 +166,10 @@
               "to": "framework/react/guide/authentication-overview"
             },
             {
+              "label": "Authentication Server Primitives",
+              "to": "framework/react/guide/authentication-server-primitives"
+            },
+            {
               "label": "Authentication",
               "to": "framework/react/guide/authentication"
             },
@@ -289,6 +293,10 @@
             {
               "label": "Authentication Overview",
               "to": "framework/solid/guide/authentication-overview"
+            },
+            {
+              "label": "Authentication Server Primitives",
+              "to": "framework/solid/guide/authentication-server-primitives"
             },
             {
               "label": "Authentication",

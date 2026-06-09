@@ -23,8 +23,8 @@ import { devServerPlugin } from './dev-server-plugin/plugin'
 import { previewServerPlugin } from './preview-server-plugin/plugin'
 import {
   createDevBaseRewritePlugin,
+  createDevClientEntryPlugin,
   createPostBuildPlugin,
-  createVirtualClientEntryPlugin,
 } from './plugins'
 import { parseStartConfig } from './schema'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
@@ -160,6 +160,7 @@ export function tanStackStartVite(
 
         const viteConfigPlan = createViteConfigPlan({
           viteConfig,
+          command,
           framework: corePluginOpts.framework,
           entryAliases,
           clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
@@ -232,7 +233,8 @@ export function tanStackStartVite(
     }),
     tanStackStartRouter(normalizedStartPluginOpts, getConfig, corePluginOpts),
     loadEnvPlugin(),
-    createVirtualClientEntryPlugin({
+    createDevClientEntryPlugin({
+      framework: corePluginOpts.framework,
       getClientEntry: () => configContext.resolveEntries().entryPaths.client,
     }),
     startManifestPlugin({
@@ -256,9 +258,13 @@ export function tanStackStartVite(
         normalizedStartPluginOpts.vite?.installDevServerMiddleware,
     }),
     previewServerPlugin(),
-    serializationAdaptersPlugin({
-      adapters: corePluginOpts.serializationAdapters,
-    }),
+    ...(corePluginOpts.serializationAdapters?.length
+      ? [
+          serializationAdaptersPlugin({
+            adapters: corePluginOpts.serializationAdapters,
+          }),
+        ]
+      : []),
   ]
 }
 

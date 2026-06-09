@@ -1,9 +1,5 @@
 import * as Solid from 'solid-js'
-import {
-  getLocationChangeInfo,
-  handleHashScroll,
-  trimPathRight,
-} from '@tanstack/router-core'
+import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
@@ -133,10 +129,6 @@ export function Transitioner() {
         router.stores.status.set('idle')
         router.stores.resolvedLocation.set(router.stores.location.get())
       })
-
-      if (changeInfo.hrefChanged) {
-        handleHashScroll(router)
-      }
     }
 
     return currentIsAnyPending

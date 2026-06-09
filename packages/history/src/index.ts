@@ -340,7 +340,7 @@ export function createBrowserHistory(opts?: {
 
   // We need to track the current scheduled update to prevent
   // multiple updates from being scheduled at the same time.
-  let scheduled: Promise<void> | undefined
+  let scheduled: undefined | boolean
 
   // This function flushes the next update to the browser history
   const flush = () => {
@@ -363,7 +363,7 @@ export function createBrowserHistory(opts?: {
 
     // Reset the nextIsPush flag and clear the scheduled update
     next = undefined
-    scheduled = undefined
+    scheduled = false
     rollbackLocation = undefined
   }
 
@@ -391,7 +391,8 @@ export function createBrowserHistory(opts?: {
 
     if (!scheduled) {
       // Schedule an update to the browser history
-      scheduled = Promise.resolve().then(() => flush())
+      scheduled = true
+      queueMicrotask(() => flush())
     }
   }
 

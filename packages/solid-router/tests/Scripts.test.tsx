@@ -21,20 +21,16 @@ import {
 import { Scripts } from '../src/Scripts'
 import type { Manifest } from '@tanstack/router-core'
 
-const createTestManifest = (routeId: string) =>
+const createTestManifest = (
+  routeId: string,
+  options?: { scriptFormat?: Manifest['scriptFormat'] },
+) =>
   ({
+    ...(options?.scriptFormat ? { scriptFormat: options.scriptFormat } : {}),
     routes: {
       [routeId]: {
         preloads: ['/main.js'],
-        assets: [
-          {
-            tag: 'link',
-            attrs: {
-              rel: 'stylesheet',
-              href: '/main.css',
-            },
-          },
-        ],
+        css: ['/main.css'],
       },
     },
   }) satisfies Manifest
@@ -259,23 +255,13 @@ describe('ssr scripts', () => {
         routes: {
           [rootRoute.id]: {
             preloads: ['/root.js'],
-            assets: [
-              {
-                tag: 'link',
-                attrs: {
-                  rel: 'stylesheet',
-                  href: '/main.css',
-                },
-              },
-            ],
+            css: ['/main.css'],
           },
           [aRoute.id]: {
             preloads: ['/a.js'],
-            assets: [],
           },
           [bRoute.id]: {
             preloads: ['/b.js', '/b-child.js'],
-            assets: [],
           },
         },
       },
@@ -314,7 +300,7 @@ describe('ssr scripts', () => {
     ).toHaveLength(1)
   })
 
-  test('applies assetCrossOrigin to manifest assets and preloads', async () => {
+  test('applies assetCrossOrigin to manifest stylesheets and preloads', async () => {
     const history = createTestBrowserHistory()
 
     const rootRoute = createRootRoute({
@@ -323,7 +309,7 @@ describe('ssr scripts', () => {
           <>
             <HeadContent
               assetCrossOrigin={{
-                modulepreload: 'anonymous',
+                script: 'anonymous',
                 stylesheet: 'use-credentials',
               }}
             />
@@ -369,6 +355,100 @@ describe('ssr scripts', () => {
         .querySelector('link[rel="modulepreload"]')
         ?.getAttribute('crossorigin'),
     ).toBe('anonymous')
+  })
+
+  test('renders runtime manifest inlineStyle', async () => {
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <HeadContent />
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: {
+        inlineStyle: {
+          attrs: { id: 'runtime-inline-style' },
+          children: '.runtime{color:red}',
+        },
+        routes: {
+          [rootRoute.id]: {},
+        },
+      },
+    }
+
+    await router.load()
+
+    render(() => <RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('style#runtime-inline-style'),
+      ).toBeTruthy()
+    })
+
+    expect(
+      document.head.querySelector('style#runtime-inline-style')?.textContent,
+    ).toBe('.runtime{color:red}')
+  })
+
+  test('renders preload as script links for iife manifest preloads', async () => {
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <HeadContent />
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id, { scriptFormat: 'iife' }),
+    }
+
+    await router.load()
+
+    render(() => <RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('link[rel="preload"][as="script"]'),
+      ).toBeTruthy()
+    })
+
+    expect(document.head.querySelector('link[rel="modulepreload"]')).toBeFalsy()
   })
 })
 

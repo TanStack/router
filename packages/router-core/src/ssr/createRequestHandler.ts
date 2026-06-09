@@ -5,10 +5,11 @@ import {
   getNormalizedURL,
   getOrigin,
 } from './ssr-server'
+import { normalizeSsrResponse } from './handlerCallback'
 import type { HandlerCallback } from './handlerCallback'
 import type { AnyHeaders } from './headers'
 import type { AnyRouter } from '../router'
-import type { Manifest } from '../manifest'
+import type { ServerManifest } from '../manifest'
 
 export type RequestHandler<TRouter extends AnyRouter> = (
   cb: HandlerCallback<TRouter>,
@@ -21,12 +22,11 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }: {
   createRouter: () => TRouter
   request: Request
-  getRouterManifest?: () => Manifest | Promise<Manifest>
+  getRouterManifest?: () => ServerManifest | Promise<ServerManifest>
 }): RequestHandler<TRouter> {
   return async (cb) => {
     const router = createRouter()
-    // Track whether the callback will handle cleanup
-    let cbWillCleanup = false
+    let responseOwnsCleanup = false
 
     try {
       attachRouterServerSsrUtils({
@@ -58,19 +58,19 @@ export function createRequestHandler<TRouter extends AnyRouter>({
         router,
       })
 
-      // Mark that the callback will handle cleanup
-      cbWillCleanup = true
-      return cb({
+      const response = await cb({
         request,
         router,
         responseHeaders,
       })
+      const ssrResponse = normalizeSsrResponse(response)
+      responseOwnsCleanup = ssrResponse.serverSsrCleanup === 'stream'
+      return ssrResponse.response
     } finally {
-      if (!cbWillCleanup) {
+      if (!responseOwnsCleanup) {
         // Clean up router SSR state if the callback won't handle it
         // (e.g., if an error occurred before the callback was invoked).
-        // When the callback runs, it handles cleanup (either via transformStreamWithRouter
-        // for streaming, or directly in renderRouterToString for non-streaming).
+        // Transformed streaming response bodies clean up when consumed/cancelled.
         router.serverSsr?.cleanup()
       }
     }
@@ -78,9 +78,10 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }
 
 function getRequestHeaders(opts: { router: AnyRouter }): Headers {
-  const matchHeaders = opts.router.stores.matches
-    .get()
-    .map<AnyHeaders>((match) => match.headers)
+  const matchHeaders: Array<AnyHeaders> = []
+  for (const match of opts.router.stores.matches.get()) {
+    matchHeaders.push(match.headers)
+  }
 
   // Handle Redirects
   const redirect = opts.router.stores.redirect.get()

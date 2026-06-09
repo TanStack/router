@@ -227,7 +227,7 @@ export function useLinkProps<
     // Rebuild when inherited search/hash or the current route context changes.
 
     const opts = { _fromLocation: currentLocation.value, ...options }
-    return router.buildLocation(opts as any)
+    return router.buildLocation(opts)
   })
 
   const preload = Vue.computed(() => {
@@ -394,38 +394,32 @@ export function useLinkProps<
 
   // Create static event handlers that don't change between renders
   const staticEventHandlers = {
-    onClick: composeEventHandlers<PointerEvent>([
-      options.onClick,
-      handleClick,
-    ]) as any,
-    onBlur: composeEventHandlers<FocusEvent>([
-      options.onBlur,
-      handleLeave,
-    ]) as any,
+    onClick: composeEventHandlers<PointerEvent>([options.onClick, handleClick]),
+    onBlur: composeEventHandlers<FocusEvent>([options.onBlur, handleLeave]),
     onFocus: composeEventHandlers<FocusEvent>([
       options.onFocus,
       enqueueIntentPreload,
-    ]) as any,
+    ]),
     onMouseenter: composeEventHandlers<MouseEvent>([
       eventHandlers.onMouseenter,
       enqueueIntentPreload,
-    ]) as any,
+    ]),
     onMouseover: composeEventHandlers<MouseEvent>([
       eventHandlers.onMouseover,
       enqueueIntentPreload,
-    ]) as any,
+    ]),
     onMouseleave: composeEventHandlers<MouseEvent>([
       eventHandlers.onMouseleave,
       handleLeave,
-    ]) as any,
+    ]),
     onMouseout: composeEventHandlers<MouseEvent>([
       eventHandlers.onMouseout,
       handleLeave,
-    ]) as any,
+    ]),
     onTouchstart: composeEventHandlers<TouchEvent>([
       eventHandlers.onTouchstart,
       handleTouchStart,
-    ]) as any,
+    ]),
   }
 
   // Compute all props synchronously to avoid hydration mismatches
@@ -859,7 +853,7 @@ export function createLink<const TComp>(
     name: 'CreatedLink',
     inheritAttrs: false,
     setup(_, { attrs, slots }) {
-      return () => Vue.h(LinkImpl as any, { ...attrs, _asChild: Comp }, slots)
+      return () => Vue.h(LinkImpl, { ...attrs, _asChild: Comp }, slots)
     },
   }) as any
 }
@@ -896,7 +890,7 @@ const LinkImpl = Vue.defineComponent({
   setup(props, { attrs, slots }) {
     // Call useLinkProps ONCE during setup with combined props and attrs
     const allProps = { ...props, ...attrs }
-    const linkPropsSource = useLinkProps(allProps as any) as
+    const linkPropsSource = useLinkProps(allProps) as
       | LinkHTMLAttributes
       | Vue.ComputedRef<LinkHTMLAttributes>
 

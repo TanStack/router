@@ -64,7 +64,7 @@ async function loadBuiltStartManifest() {
   const manifestModule = await import(moduleUrl)
 
   return manifestModule.tsrStartManifest() as {
-    routes: Record<string, { assets?: Array<unknown> }>
+    routes: Record<string, { css?: Array<string | { href: string }> }>
   }
 }
 
@@ -119,15 +119,21 @@ async function expectDirectEntry({
   await expect
     .poll(async () => {
       const hrefs = await getHeadStylesheetHrefs(page)
-      return hasMatchingStylesheetHref(hrefs, expectedStylesheetPattern)
+      return countMatchingStylesheetHrefs(hrefs, expectedStylesheetPattern)
     })
-    .toBe(true)
+    .toBe(1)
   await expect
     .poll(async () => {
       const hrefs = await getHeadStylesheetHrefs(page)
       return countMatchingStylesheetHrefs(hrefs, unexpectedStylesheetPattern)
     })
     .toBe(0)
+  await expect
+    .poll(async () => {
+      const hrefs = await getHeadStylesheetHrefs(page)
+      return hrefs.length
+    })
+    .toBe(2)
 
   await expect
     .poll(() => getColor('root-shell-marker', page))
@@ -301,6 +307,12 @@ test('home route only renders the root stylesheet and no route-specific CSS', as
       return countMatchingStylesheetHrefs(hrefs, 'r2-')
     })
     .toBe(0)
+  await expect
+    .poll(async () => {
+      const hrefs = await getHeadStylesheetHrefs(page)
+      return hrefs.length
+    })
+    .toBe(1)
 
   await expect
     .poll(() => getColor('root-shell-marker', page))
@@ -316,9 +328,9 @@ test('built start manifest preserves shared layout asset identity across sibling
 
   const manifest = await loadBuiltStartManifest()
 
-  const sharedAAsset = manifest.routes['/shared-a']?.assets?.[0]
-  const sharedBAsset = manifest.routes['/shared-b']?.assets?.[0]
-  const sharedCAsset = manifest.routes['/shared-c']?.assets?.[0]
+  const sharedAAsset = manifest.routes['/shared-a']?.css?.[0]
+  const sharedBAsset = manifest.routes['/shared-b']?.css?.[0]
+  const sharedCAsset = manifest.routes['/shared-c']?.css?.[0]
 
   expect(sharedAAsset).toBeTruthy()
   expect(sharedAAsset).toBe(sharedBAsset)

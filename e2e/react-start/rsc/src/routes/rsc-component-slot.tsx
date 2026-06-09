@@ -18,7 +18,7 @@ import {
 // ============================================================================
 
 const getProductCardServer = createServerFn({ method: 'GET' })
-  .inputValidator((data: { productId: string }) => data)
+  .validator((data: { productId: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 
