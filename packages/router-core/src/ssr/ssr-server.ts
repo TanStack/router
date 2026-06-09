@@ -637,7 +637,10 @@ export function attachRouterServerSsrUtils({
       return () => removeListener(injectedHtmlListeners, listener)
     },
     onRenderFinished: (listener) => {
-      if (cleanupStarted || streamFastPathReserved) return
+      if (cleanupStarted) return
+      // Register even when the fast path is reserved: it still calls
+      // setRenderFinished() at the end of the app stream. Dropping listeners
+      // here left router-ssr-query's query stream open, hanging SSR (#7529).
       renderFinishedListeners.push(listener)
     },
     onSerializationFinished: (listener) => {

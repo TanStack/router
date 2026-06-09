@@ -190,6 +190,36 @@ describe('serverSsr.cleanup', () => {
     router.serverSsr?.cleanup()
   })
 
+  test('onRenderFinished listener registered after fast path reserve still fires', async () => {
+    // Regression test for #7529: when the fast path is reserved before an
+    // integration (e.g. router-ssr-query) registers its onRenderFinished
+    // listener, the listener must not be dropped - otherwise the query stream
+    // is never closed and the response hangs until the serialization timeout.
+    // The fast path still calls setRenderFinished() at the end of the app
+    // stream, so the listener fires at that point.
+    const router = buildRouter()
+    attachRouterServerSsrUtils({ router, manifest: undefined })
+
+    await router.load()
+    await router.serverSsr!.dehydrate()
+    router.serverSsr!.takeBufferedScripts()
+
+    expect(router.serverSsr!.reserveStreamFastPath()).toBe(true)
+
+    let renderFinishedCalls = 0
+    router.serverSsr!.onRenderFinished(() => {
+      renderFinishedCalls++
+    })
+    // Not invoked at registration time - the fast path defers to the app
+    // stream end, mirrored here by an explicit setRenderFinished().
+    expect(renderFinishedCalls).toBe(0)
+
+    router.serverSsr!.setRenderFinished()
+    expect(renderFinishedCalls).toBe(1)
+
+    router.serverSsr?.cleanup()
+  })
+
   test('stream fast path rejects while SSR work is pending', async () => {
     const value = deferred<string>()
     const router = buildRouter({ value: value.promise })
