@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RscNodeModuleClientRouteImport } from './routes/rsc-node-module-client'
+import { Route as RscCssUrlRouteImport } from './routes/rsc-css-url'
 import { Route as IndexRouteImport } from './routes/index'
 
 const RscNodeModuleClientRoute = RscNodeModuleClientRouteImport.update({
   id: '/rsc-node-module-client',
   path: '/rsc-node-module-client',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscCssUrlRoute = RscCssUrlRouteImport.update({
+  id: '/rsc-css-url',
+  path: '/rsc-css-url',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -25,27 +31,31 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/rsc-css-url': typeof RscCssUrlRoute
   '/rsc-node-module-client': typeof RscNodeModuleClientRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/rsc-css-url': typeof RscCssUrlRoute
   '/rsc-node-module-client': typeof RscNodeModuleClientRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/rsc-css-url': typeof RscCssUrlRoute
   '/rsc-node-module-client': typeof RscNodeModuleClientRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/rsc-node-module-client'
+  fullPaths: '/' | '/rsc-css-url' | '/rsc-node-module-client'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/rsc-node-module-client'
-  id: '__root__' | '/' | '/rsc-node-module-client'
+  to: '/' | '/rsc-css-url' | '/rsc-node-module-client'
+  id: '__root__' | '/' | '/rsc-css-url' | '/rsc-node-module-client'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  RscCssUrlRoute: typeof RscCssUrlRoute
   RscNodeModuleClientRoute: typeof RscNodeModuleClientRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/rsc-node-module-client'
       fullPath: '/rsc-node-module-client'
       preLoaderRoute: typeof RscNodeModuleClientRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-css-url': {
+      id: '/rsc-css-url'
+      path: '/rsc-css-url'
+      fullPath: '/rsc-css-url'
+      preLoaderRoute: typeof RscCssUrlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  RscCssUrlRoute: RscCssUrlRoute,
   RscNodeModuleClientRoute: RscNodeModuleClientRoute,
 }
 export const routeTree = rootRouteImport
