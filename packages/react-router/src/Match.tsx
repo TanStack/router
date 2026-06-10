@@ -20,7 +20,24 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
 import { useLayoutEffect } from './utils'
-import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  AnyRouteMatch,
+  RootRouteOptions,
+} from '@tanstack/router-core'
+
+type OutletMatchSelection = [
+  routeId: string | undefined,
+  parentGlobalNotFound: boolean,
+]
+
+const matchViewFieldsEqual = (a: AnyRouteMatch, b: AnyRouteMatch) =>
+  a.routeId === b.routeId && a._displayPending === b._displayPending
+
+const outletMatchSelectionEqual = (
+  a: OutletMatchSelection,
+  b: OutletMatchSelection,
+) => a[0] === b[0] && a[1] === b[1]
 
 export const Match = React.memo(function MatchImpl({
   matchId,
@@ -77,7 +94,7 @@ export const Match = React.memo(function MatchImpl({
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useStore(matchStore, (value) => value)
+  const match = useStore(matchStore, (value) => value, matchViewFieldsEqual)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const matchState = React.useMemo(() => {
     const routeId = match.routeId as string
@@ -208,7 +225,7 @@ function MatchView({
       </matchContext.Provider>
       {matchState.parentRouteId === rootRouteId ? (
         <>
-          <OnRendered resetKey={resetKey} />
+          <OnRendered />
           {router.options.scrollRestoration && (isServer ?? router.isServer) ? (
             <ScrollRestoration />
           ) : null}
@@ -222,7 +239,7 @@ function MatchView({
 // the route subtree has committed below the root layout. Keeping it here lets
 // us fire onRendered even after a hydration mismatch above the root layout
 // (like bad head/link tags, which is common).
-function OnRendered({ resetKey }: { resetKey: number }) {
+function OnRendered() {
   const router = useRouter()
 
   if (isServer ?? router.isServer) {
@@ -231,6 +248,11 @@ function OnRendered({ resetKey }: { resetKey: number }) {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const prevHrefRef = React.useRef<string | undefined>(undefined)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const renderedLocationKey = useStore(
+    router.stores.resolvedLocation,
+    (resolvedLocation) => resolvedLocation?.state.__TSR_key,
+  )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useLayoutEffect(() => {
@@ -249,7 +271,7 @@ function OnRendered({ resetKey }: { resetKey: number }) {
       })
       prevHrefRef.current = currentHref
     }
-  }, [router.latestLocation.state.__TSR_key, resetKey, router])
+  }, [renderedLocationKey, router])
 
   return null
 }
@@ -521,10 +543,14 @@ export const Outlet = React.memo(function OutletImpl() {
       : undefined
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    ;[routeId, parentGlobalNotFound] = useStore(parentMatchStore, (match) => [
-      match?.routeId as string | undefined,
-      match?.globalNotFound ?? false,
-    ])
+    ;[routeId, parentGlobalNotFound] = useStore(
+      parentMatchStore,
+      (match): OutletMatchSelection => [
+        match?.routeId as string | undefined,
+        match?.globalNotFound ?? false,
+      ],
+      outletMatchSelectionEqual,
+    )
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     childMatchId = useStore(router.stores.matchesId, (ids) => {
