@@ -1019,4 +1019,46 @@ describe('encodePathLikeUrl', () => {
       '/path/%F0%9F%98%80/file',
     )
   })
+
+  // https://github.com/TanStack/router/issues/7587 — URL-unsafe ASCII characters
+  // were being preserved by encodePathLikeUrl, but decodePath decoded their
+  // percent-encoded forms (e.g. %3C -> <). The encode/decode pair therefore
+  // failed to round-trip, which the SSR redirect comparator in the router used
+  // as a signal that the URL had changed — driving an infinite redirect loop
+  // on requests like `/<test`. Per the WHATWG URL "path percent-encode set"
+  // these characters must always be percent-encoded.
+  describe('URL-unsafe ASCII chars (WHATWG path percent-encode set)', () => {
+    it('encodes < > " ` { } in path segments', () => {
+      expect(encodePathLikeUrl('/<test')).toBe('/%3Ctest')
+      expect(encodePathLikeUrl('/test>')).toBe('/test%3E')
+      expect(encodePathLikeUrl('/foo"bar')).toBe('/foo%22bar')
+      expect(encodePathLikeUrl('/back`tick')).toBe('/back%60tick')
+      expect(encodePathLikeUrl('/curly{open}close')).toBe(
+        '/curly%7Bopen%7Dclose',
+      )
+    })
+
+    it('round-trips with decodePath for unsafe ASCII chars', () => {
+      // The whole point of the fix: encode and decode are inverses.
+      const cases = ['/%3Ctest', '/path/%3C%3Estuff', '/%22quoted%22']
+      for (const raw of cases) {
+        expect(encodePathLikeUrl(decodePath(raw).path)).toBe(raw)
+      }
+    })
+
+    it('does not double-encode already-percent-encoded sequences', () => {
+      // encodeURIComponent of a `%` would yield `%25`, but the input string
+      // does not actually contain a `%` character we want to encode — the
+      // sequence `%3C` is three ASCII letters that pass through unchanged.
+      expect(encodePathLikeUrl('/%3Ctest')).toBe('/%3Ctest')
+      expect(encodePathLikeUrl('/already%20encoded')).toBe('/already%20encoded')
+    })
+
+    it('preserves URL component separators (?, #, /) so search and hash survive', () => {
+      expect(encodePathLikeUrl('/path?query=1')).toBe('/path?query=1')
+      expect(encodePathLikeUrl('/path#anchor')).toBe('/path#anchor')
+      expect(encodePathLikeUrl('/a/b/c')).toBe('/a/b/c')
+      expect(encodePathLikeUrl('/path/<x>?q=1#h')).toBe('/path/%3Cx%3E?q=1#h')
+    })
+  })
 })
