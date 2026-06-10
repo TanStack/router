@@ -184,7 +184,7 @@ export function useMatch<
   )
 
   if (matchSelection !== dummyStore) {
-    return matchSelection as any
+    return matchSelection
   }
 
   if (opts.shouldThrow ?? true) {
