@@ -23,7 +23,6 @@ import { useLayoutEffect } from './utils'
 import type {
   AnyRoute,
   AnyRouteMatch,
-  ParsedLocation,
   RootRouteOptions,
 } from '@tanstack/router-core'
 
@@ -248,15 +247,7 @@ function OnRendered() {
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  // @ts-expect-error -- init to `undefined` but don't write `undefined` to shave bytes
-  // Track the resolvedLocation as of the last render so that onRendered can
-  // report the correct fromLocation. By the time this effect fires,
-  // resolvedLocation has already been updated to the new location by
-  // Transitioner, so we cannot use router.stores.resolvedLocation.get()
-  // directly as the fromLocation.
-  const prevResolvedLocationRef = React.useRef<
-    ParsedLocation<any> | undefined
-  >()
+  const prevHrefRef = React.useRef<string | undefined>(undefined)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const renderedLocationKey = useStore(
     router.stores.resolvedLocation,
@@ -265,23 +256,21 @@ function OnRendered() {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useLayoutEffect(() => {
-    const currentResolvedLocation = router.stores.resolvedLocation.get()
-    const previousResolvedLocation = prevResolvedLocationRef.current
+    const currentHref = router.latestLocation.href
 
     if (
-      currentResolvedLocation &&
-      (!previousResolvedLocation ||
-        previousResolvedLocation.href !== currentResolvedLocation.href)
+      prevHrefRef.current === undefined ||
+      prevHrefRef.current !== currentHref
     ) {
       router.emit({
         type: 'onRendered',
         ...getLocationChangeInfo(
           router.stores.location.get(),
-          previousResolvedLocation ?? currentResolvedLocation,
+          router.stores.resolvedLocation.get(),
         ),
       })
+      prevHrefRef.current = currentHref
     }
-    prevResolvedLocationRef.current = currentResolvedLocation
   }, [renderedLocationKey, router])
 
   return null
