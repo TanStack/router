@@ -355,6 +355,9 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
         version: 5.1.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@6.0.2))
+      seroval:
+        specifier: ^1.5.4
+        version: 1.5.4
       typescript:
         specifier: ^6.0.2
         version: 6.0.2

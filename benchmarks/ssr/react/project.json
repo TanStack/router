@@ -1,0 +1,26 @@
+{
+  "name": "@benchmarks/ssr-react",
+  "projectType": "application",
+  "targets": {
+    "build:ssr": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["@tanstack/react-start"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts"
+      }
+    },
+    "test:types:ssr": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsc -p {projectRoot}/tsconfig.json --noEmit"
+      }
+    }
+  }
+}
