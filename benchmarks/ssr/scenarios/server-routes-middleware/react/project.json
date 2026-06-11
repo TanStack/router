@@ -18,6 +18,12 @@
     "test:types:ssr": {
       "executor": "nx:run-commands",
       "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["@tanstack/react-start"],
+          "target": "build"
+        }
+      ],
       "options": {
         "command": "tsc -p {projectRoot}/tsconfig.json --noEmit"
       }
