@@ -832,6 +832,7 @@ const loadRouteMatch = async (
       shouldReloadInBackground
     ) {
       loaderIsRunningAsync = true
+      syncMatchContext(inner, matchId, index)
       ;(async () => {
         try {
           await runLoader(inner, matchPromises, matchId, index, route)
