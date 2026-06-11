@@ -38,8 +38,14 @@ export interface FloatingDevtoolsOptions {
   /**
    * The position of the TanStack Router logo to open and close the devtools panel.
    * Defaults to 'bottom-left'.
+   * Note: This is ignored when draggable is true and user has moved the button.
    */
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  /**
+   * Allow the toggle button to be draggable to any position.
+   * Defaults to false.
+   */
+  draggable?: boolean
   /**
    * Use this to render the devtools inside a different type of container element for a11y purposes.
    * Any string which corresponds to a valid intrinsic JSX element is allowed.
@@ -63,6 +69,7 @@ export function FloatingTanStackRouterDevtools({
   closeButtonProps = {},
   toggleButtonProps = {},
   position = 'bottom-left',
+  draggable = false,
   containerElement: Container = 'footer',
   router,
   routerState,
@@ -72,6 +79,7 @@ export function FloatingTanStackRouterDevtools({
 
   // eslint-disable-next-line prefer-const
   let panelRef: HTMLDivElement | undefined = undefined
+  let toggleButtonRef: HTMLButtonElement | undefined
 
   const [isOpen, setIsOpen] = useLocalStorage(
     'tanstackRouterDevtoolsOpen',
@@ -83,8 +91,15 @@ export function FloatingTanStackRouterDevtools({
     null,
   )
 
+  const [buttonPosition, setButtonPosition] = useLocalStorage<{
+    x: number
+    y: number
+  } | null>('tanstackRouterDevtoolsButtonPosition', null)
+
   const [isResolvedOpen, setIsResolvedOpen] = createSignal(false)
   const [isResizing, setIsResizing] = createSignal(false)
+  const [isDraggingButton, setIsDraggingButton] = createSignal(false)
+  const [hasDragged, setHasDragged] = createSignal(false)
   const isMounted = useIsMounted()
   const styles = useStyles()
 
@@ -118,6 +133,54 @@ export function FloatingTanStackRouterDevtools({
       setIsResizing(false)
       document.removeEventListener('mousemove', run)
       document.removeEventListener('mouseUp', unsub)
+    }
+
+    document.addEventListener('mousemove', run)
+    document.addEventListener('mouseup', unsub)
+  }
+
+  const handleButtonDragStart = (startEvent: MouseEvent) => {
+    if (!draggable) return
+    if (startEvent.button !== 0) return // Only allow left click
+
+    startEvent.preventDefault()
+    setIsDraggingButton(true)
+    setHasDragged(false)
+
+    if (!toggleButtonRef) return
+    const buttonRect = toggleButtonRef.getBoundingClientRect()
+
+    const dragInfo = {
+      startX: startEvent.clientX,
+      startY: startEvent.clientY,
+      buttonX: buttonRect.left,
+      buttonY: buttonRect.top,
+    }
+
+    const run = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - dragInfo.startX
+      const deltaY = moveEvent.clientY - dragInfo.startY
+
+      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+        setHasDragged(true)
+      }
+
+      const newX = dragInfo.buttonX + deltaX
+      const newY = dragInfo.buttonY + deltaY
+
+      const maxX = window.innerWidth - (buttonRect.width || 0)
+      const maxY = window.innerHeight - (buttonRect.height || 0)
+
+      const boundedX = Math.max(0, Math.min(newX, maxX))
+      const boundedY = Math.max(0, Math.min(newY, maxY))
+
+      setButtonPosition({ x: boundedX, y: boundedY })
+    }
+
+    const unsub = () => {
+      setIsDraggingButton(false)
+      document.removeEventListener('mousemove', run)
+      document.removeEventListener('mouseup', unsub)
     }
 
     document.addEventListener('mousemove', run)
@@ -196,8 +259,13 @@ export function FloatingTanStackRouterDevtools({
   const {
     onClick: onToggleClick,
     class: toggleButtonClassName,
+    style: toggleButtonStyle = {},
     ...otherToggleButtonProps
-  } = toggleButtonProps
+  } = toggleButtonProps as {
+    onClick?: (e: MouseEvent) => void
+    class?: string
+    style?: Record<string, any>
+  }
 
   // Do not render on the server
   if (!isMounted()) return null
@@ -227,10 +295,31 @@ export function FloatingTanStackRouterDevtools({
   const buttonStyle = createMemo(() => {
     return cx(
       styles().mainCloseBtn,
-      styles().mainCloseBtnPosition(position),
+      !draggable || !buttonPosition()
+        ? styles().mainCloseBtnPosition(position)
+        : '',
       styles().mainCloseBtnAnimation(!!isOpen()),
+      isDraggingButton() ? styles().mainCloseBtnDragging : '',
       toggleButtonClassName,
     )
+  })
+
+  const buttonInlineStyle = createMemo(() => {
+    const pos = buttonPosition()
+    if (draggable && pos) {
+      return {
+        left: `${pos.x}px`,
+        top: `${pos.y}px`,
+        right: 'auto',
+        bottom: 'auto',
+        cursor: isDraggingButton() ? 'grabbing' : 'grab',
+        ...toggleButtonStyle,
+      }
+    }
+    return {
+      cursor: draggable ? 'grab' : 'pointer',
+      ...toggleButtonStyle,
+    }
   })
 
   return (
@@ -263,14 +352,29 @@ export function FloatingTanStackRouterDevtools({
       </DevtoolsOnCloseContext.Provider>
 
       <button
+        ref={toggleButtonRef}
         type="button"
         {...otherToggleButtonProps}
         aria-label="Open TanStack Router Devtools"
+        onMouseDown={(e) => {
+          if (draggable) {
+            handleButtonDragStart(e)
+          }
+        }}
         onClick={(e) => {
-          setIsOpen(true)
-          onToggleClick && onToggleClick(e)
+          if (hasDragged()) {
+            e.preventDefault()
+            e.stopPropagation()
+            return
+          }
+
+          if (!isDraggingButton()) {
+            setIsOpen(true)
+            onToggleClick && onToggleClick(e)
+          }
         }}
         class={buttonStyle()}
+        style={buttonInlineStyle()}
       >
         <div class={styles().mainCloseBtnIconContainer}>
           <div class={styles().mainCloseBtnIconOuter}>
