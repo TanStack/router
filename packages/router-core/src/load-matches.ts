@@ -584,9 +584,9 @@ const executeHead = (
   }
 
   return Promise.all([
-    route.options.head?.(assetContext),
-    route.options.scripts?.(assetContext),
-    route.options.headers?.(assetContext),
+    route.options.head?.(assetContext as any),
+    route.options.scripts?.(assetContext as any),
+    route.options.headers?.(assetContext as any),
   ]).then(([headFnContent, scripts, headers]) => {
     const meta = headFnContent?.meta
     const links = headFnContent?.links
