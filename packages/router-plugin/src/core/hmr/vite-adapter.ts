@@ -28,13 +28,30 @@ export function createViteHmrStatement(
 if (import.meta.hot) {
   const hot = import.meta.hot
   const hotData = hot.data ??= {}
+  const handleRouteUpdate = ${handleRouteUpdateCode}
+  const initialRouteId = ${routeIdFallback} ?? hotData['tsr-route-id']
+  if (initialRouteId) {
+    hotData['tsr-route-id'] = initialRouteId
+  }
+  const existingRoute =
+    typeof window !== 'undefined' && initialRouteId
+      ? window.__TSR_ROUTER__?.routesById?.[initialRouteId]
+      : undefined
+  if (initialRouteId && existingRoute && existingRoute !== Route) {
+    handleRouteUpdate(initialRouteId, Route)
+    hotData['tsr-route-update-handled'] = Route
+  }
   hot.accept((newModule) => {
     if (Route && newModule && newModule.Route) {
       const routeId = hotData['tsr-route-id'] ?? ${routeIdFallback}
       if (routeId) {
         hotData['tsr-route-id'] = routeId
       }
-      (${handleRouteUpdateCode})(routeId, newModule.Route)
+      if (hotData['tsr-route-update-handled'] === newModule.Route) {
+        delete hotData['tsr-route-update-handled']
+        return
+      }
+      handleRouteUpdate(routeId, newModule.Route)
     }
     })
 }

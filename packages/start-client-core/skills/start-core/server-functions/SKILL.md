@@ -1,7 +1,7 @@
 ---
 name: start-core/server-functions
 description: >-
-  createServerFn (GET/POST), inputValidator (Zod or function),
+  createServerFn (GET/POST), validator (Zod or function),
   useServerFn hook, server context utilities (getRequest,
   getRequestHeader, setResponseHeader, setResponseStatus), error
   handling (throw errors, redirect, notFound), streaming, FormData
@@ -75,7 +75,7 @@ Use the `useServerFn` hook to call server functions from event handlers:
 import { useServerFn } from '@tanstack/react-start'
 
 const deletePost = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     await db.delete('posts').where({ id: data.id })
     return { success: true }
@@ -98,7 +98,7 @@ function DeleteButton({ postId }: { postId: string }) {
 
 ```tsx
 const greetUser = createServerFn({ method: 'GET' })
-  .inputValidator((data: { name: string }) => data)
+  .validator((data: { name: string }) => data)
   .handler(async ({ data }) => {
     return `Hello, ${data.name}!`
   })
@@ -112,7 +112,7 @@ await greetUser({ data: { name: 'John' } })
 import { z } from 'zod'
 
 const createUser = createServerFn({ method: 'POST' })
-  .inputValidator(
+  .validator(
     z.object({
       name: z.string().min(1),
       age: z.number().min(0),
@@ -127,7 +127,7 @@ const createUser = createServerFn({ method: 'POST' })
 
 ```tsx
 const submitForm = createServerFn({ method: 'POST' })
-  .inputValidator((data) => {
+  .validator((data) => {
     if (!(data instanceof FormData)) {
       throw new Error('Expected FormData')
     }
@@ -177,7 +177,7 @@ const requireAuth = createServerFn().handler(async () => {
 import { notFound } from '@tanstack/react-router'
 
 const getPost = createServerFn()
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const post = await db.findPost(data.id)
     if (!post) {
@@ -258,7 +258,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { findUserById } from './users.server'
 
 export const getUser = createServerFn({ method: 'GET' })
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     return findUserById(data.id)
   })

@@ -1,5 +1,72 @@
 # @tanstack/react-start
 
+## 1.168.25
+
+### Patch Changes
+
+- [#7566](https://github.com/TanStack/router/pull/7566) [`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825) - Add `validator()` as the canonical server function and middleware validator method. Deprecate `inputValidator()` and emit compiler warnings for remaining uses.
+
+- Updated dependencies [[`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825)]:
+  - @tanstack/start-client-core@1.170.12
+  - @tanstack/start-plugin-core@1.171.17
+  - @tanstack/react-start-client@1.168.13
+  - @tanstack/react-start-rsc@0.1.24
+  - @tanstack/start-server-core@1.169.14
+  - @tanstack/react-start-server@1.167.19
+
+## 1.168.24
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-router@1.170.15
+  - @tanstack/react-start-client@1.168.12
+  - @tanstack/react-start-rsc@0.1.23
+  - @tanstack/react-start-server@1.167.18
+  - @tanstack/start-client-core@1.170.11
+  - @tanstack/start-plugin-core@1.171.16
+  - @tanstack/start-server-core@1.169.13
+
+## 1.168.23
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/react-router@1.170.14
+  - @tanstack/react-start-client@1.168.11
+  - @tanstack/react-start-rsc@0.1.22
+  - @tanstack/react-start-server@1.167.17
+  - @tanstack/start-client-core@1.170.10
+  - @tanstack/start-plugin-core@1.171.15
+  - @tanstack/start-server-core@1.169.12
+
+## 1.168.22
+
+### Patch Changes
+
+- Updated dependencies [[`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01)]:
+  - @tanstack/react-router@1.170.13
+  - @tanstack/react-start-client@1.168.10
+  - @tanstack/react-start-rsc@0.1.21
+  - @tanstack/react-start-server@1.167.16
+  - @tanstack/start-client-core@1.170.9
+  - @tanstack/start-plugin-core@1.171.14
+  - @tanstack/start-server-core@1.169.11
+
+## 1.168.21
+
+### Patch Changes
+
+- Updated dependencies [[`301f6ba`](https://github.com/TanStack/router/commit/301f6ba4599386edd6fb3b8423938c48eedb501f)]:
+  - @tanstack/start-plugin-core@1.171.13
+  - @tanstack/router-utils@1.162.2
+  - @tanstack/react-start-rsc@0.1.20
+  - @tanstack/react-router@1.170.12
+  - @tanstack/react-start-client@1.168.9
+  - @tanstack/react-start-server@1.167.15
+  - @tanstack/start-client-core@1.170.8
+  - @tanstack/start-server-core@1.169.10
+
 ## 1.168.20
 
 ### Patch Changes

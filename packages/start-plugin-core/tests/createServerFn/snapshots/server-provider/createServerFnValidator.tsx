@@ -8,7 +8,7 @@ const withUseServer_createServerFn_handler = createServerRpc({
 }, opts => withUseServer.__executeServer(opts));
 const withUseServer = createServerFn({
   method: 'GET'
-}).inputValidator(z.number()).handler(withUseServer_createServerFn_handler, ({
+}).validator(z.number()).handler(withUseServer_createServerFn_handler, ({
   input
 }) => input + 1);
 export { withUseServer_createServerFn_handler };

@@ -122,7 +122,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { findUserById } from './users.server'
 
 export const getUser = createServerFn({ method: 'GET' })
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     return findUserById(data.id)
   })
@@ -164,7 +164,7 @@ Server functions accept a single `data` parameter. Since they cross the network 
 import { createServerFn } from '@tanstack/react-start'
 
 export const greetUser = createServerFn({ method: 'GET' })
-  .inputValidator((data: { name: string }) => data)
+  .validator((data: { name: string }) => data)
   .handler(async ({ data }) => {
     return `Hello, ${data.name}!`
   })
@@ -186,7 +186,7 @@ const UserSchema = z.object({
 })
 
 export const createUser = createServerFn({ method: 'POST' })
-  .inputValidator(UserSchema)
+  .validator(UserSchema)
   .handler(async ({ data }) => {
     // data is fully typed and validated
     return `Created user: ${data.name}, age ${data.age}`
@@ -199,7 +199,7 @@ Handle form submissions with FormData:
 
 ```tsx
 export const submitForm = createServerFn({ method: 'POST' })
-  .inputValidator((data) => {
+  .validator((data) => {
     if (!(data instanceof FormData)) {
       throw new Error('Expected FormData')
     }
@@ -219,7 +219,7 @@ export const submitForm = createServerFn({ method: 'POST' })
 
 Server function inputs and outputs cross the network boundary, so TypeScript checks that they are serializable:
 
-- Input validator input types must be serializable. `FormData` is also allowed for `POST` server functions.
+- Validator input types must be serializable. `FormData` is also allowed for `POST` server functions.
 - Handler return types must be serializable. `Response` objects are allowed.
 
 This default behavior is called `strict` mode. If you intentionally need to opt out of these type-level serialization checks, pass the `strict` option to `createServerFn`:
@@ -227,7 +227,7 @@ This default behavior is called `strict` mode. If you intentionally need to opt 
 ```tsx
 // Disable input and output serialization type checks
 export const looseServerFn = createServerFn({ strict: false })
-  .inputValidator((data: { value: unknown }) => data)
+  .validator((data: { value: unknown }) => data)
   .handler(async ({ data }) => {
     return data.value
   })
@@ -236,7 +236,7 @@ export const looseServerFn = createServerFn({ strict: false })
 export const looseInputServerFn = createServerFn({
   strict: { input: false },
 })
-  .inputValidator((data: { value: unknown }) => data)
+  .validator((data: { value: unknown }) => data)
   .handler(async () => {
     return { ok: true }
   })
@@ -304,7 +304,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { notFound } from '@tanstack/react-router'
 
 export const getPost = createServerFn()
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const post = await db.findPost(data.id)
 

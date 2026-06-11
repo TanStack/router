@@ -50,7 +50,7 @@ function CounterCard({ count }: { count: number }) {
 
 // Server function that returns Flight payload as a string for caching
 export const getCounterRscPayload = createServerFn()
-  .inputValidator((data: { count: number }) => data)
+  .validator((data: { count: number }) => data)
   .handler(async ({ data }) => {
     console.log(`[Server] Creating Flight payload for count: ${data.count}`)
 

@@ -74,6 +74,24 @@ describe('useMatch', () => {
         expect(postsTitle).toBeInTheDocument()
       },
     )
+
+    test('returns undefined from select when match is found', async () => {
+      const select = vi.fn(() => undefined)
+
+      function RootComponent() {
+        const match = useMatch({ from: '/posts', select })
+        expect(match).toBeUndefined()
+        return <Outlet />
+      }
+
+      setup({
+        RootComponent,
+        history: createMemoryHistory({ initialEntries: ['/posts'] }),
+      })
+      const postsTitle = await screen.findByText('PostsTitle')
+      expect(postsTitle).toBeInTheDocument()
+      expect(select).toHaveBeenCalled()
+    })
   })
 
   describe('when match is not found', () => {

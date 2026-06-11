@@ -3,13 +3,26 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node ../../scripts/benchmarks/bundle-size/measure.mjs"
+    "build": "node ../../scripts/benchmarks/bundle-size/measure.mjs --skip-package-builds"
   },
   "nx": {
     "targets": {
       "build": {
         "cache": false,
-        "dependsOn": []
+        "dependsOn": [
+          {
+            "projects": [
+              "@tanstack/react-router",
+              "@tanstack/react-start",
+              "@tanstack/router-plugin",
+              "@tanstack/solid-router",
+              "@tanstack/solid-start",
+              "@tanstack/vue-router",
+              "@tanstack/vue-start"
+            ],
+            "target": "build"
+          }
+        ]
       }
     }
   },

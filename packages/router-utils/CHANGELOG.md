@@ -1,5 +1,11 @@
 # @tanstack/router-utils
 
+## 1.162.2
+
+### Patch Changes
+
+- [#7552](https://github.com/TanStack/router/pull/7552) [`301f6ba`](https://github.com/TanStack/router/commit/301f6ba4599386edd6fb3b8423938c48eedb501f) - Fix Start compiler handling for TS-wrapped server/env-only function calls and safely remove unused imported server function handlers from client output.
+
 ## 1.162.1
 
 ### Patch Changes

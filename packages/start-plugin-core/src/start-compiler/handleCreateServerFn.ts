@@ -1,9 +1,15 @@
 import * as t from '@babel/types'
 import babel from '@babel/core'
 import { hasKeys } from '@tanstack/router-core'
+import { getVariableDeclaratorForExpressionPath } from '@tanstack/router-utils'
 import path from 'pathe'
 import { cleanId, codeFrameError, stripMethodCall } from './utils'
-import type { CompilationContext, RewriteCandidate, ServerFn } from './types'
+import type {
+  CompilationContext,
+  MethodCallInfo,
+  RewriteCandidate,
+  ServerFn,
+} from './types'
 import type { CompileStartFrameworkOptions } from '../types'
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
@@ -40,6 +46,21 @@ const clientRpcTemplate = babel.template.expression(
 const ssrRpcManifestTemplate = babel.template.expression(
   `createSsrRpc(%%functionId%%)`,
 )
+
+// TODO remove upon stable
+function warnInputValidatorDeprecation(
+  context: CompilationContext,
+  inputValidator: MethodCallInfo,
+): void {
+  const loc = inputValidator.callPath.node.loc?.start
+  const location = loc
+    ? `${context.id}:${loc.line}:${loc.column + 1} `
+    : `${context.id} `
+
+  context.warn?.(
+    `${location}createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.`,
+  )
+}
 
 // ============================================================================
 // Runtime code cache (cached per framework to avoid repeated AST generation)
@@ -220,15 +241,19 @@ export function handleCreateServerFn(
 
   for (const candidate of candidates) {
     const { path: candidatePath, methodChain } = candidate
-    const { inputValidator, handler } = methodChain
+    const { validator, inputValidator, handler } = methodChain
+
+    const candidateVariableDeclarator = getVariableDeclaratorForExpressionPath(
+      candidatePath as babel.NodePath<t.Expression>,
+    )
 
     // Check if the call is assigned to a variable
-    if (!candidatePath.parentPath.isVariableDeclarator()) {
+    if (!candidateVariableDeclarator) {
       throw new Error('createServerFn must be assigned to a variable!')
     }
 
     // Get the identifier name of the variable
-    const variableDeclarator = candidatePath.parentPath.node
+    const variableDeclarator = candidateVariableDeclarator.node
     if (!t.isIdentifier(variableDeclarator.id)) {
       throw codeFrameError(
         context.code,
@@ -269,19 +294,32 @@ export function handleCreateServerFn(
     const canonicalExtractedFilename =
       knownFn?.extractedFilename ?? extractedFilename
 
-    // Handle input validator - remove on client
+    // TODO remove upon stable
     if (inputValidator) {
-      const innerInputExpression = inputValidator.callPath.node.arguments[0]
+      warnInputValidatorDeprecation(context, inputValidator)
+    }
+
+    // Handle validators - remove on client
+    for (const [methodName, methodCall] of [
+      ['validator', validator],
+      // TODO remove upon stable
+      ['inputValidator', inputValidator],
+    ] as const) {
+      if (!methodCall) {
+        continue
+      }
+
+      const innerInputExpression = methodCall.callPath.node.arguments[0]
 
       if (!innerInputExpression) {
         throw new Error(
-          'createServerFn().inputValidator() must be called with a validator!',
+          `createServerFn().${methodName}() must be called with a validator!`,
         )
       }
 
       // If we're on the client, remove the validator call expression
       if (context.env === 'client') {
-        stripMethodCall(inputValidator.callPath)
+        stripMethodCall(methodCall.callPath)
       }
     }
 
@@ -361,7 +399,7 @@ export function handleCreateServerFn(
       ])
 
       // Find the variable declaration statement containing our createServerFn
-      const variableDeclaration = candidatePath.parentPath.parentPath
+      const variableDeclaration = candidateVariableDeclarator.parentPath
       if (!variableDeclaration.isVariableDeclaration()) {
         throw new Error(
           'Expected createServerFn to be in a VariableDeclaration',
@@ -397,15 +435,6 @@ export function handleCreateServerFn(
       // const myFn = createServerFn().handler(createClientRpc("id"))
       // or
       // const myFn = createServerFn().handler(createSsrRpc("id"))
-
-      // If the handler function is an identifier, we need to remove the bound function
-      // from the file since it won't be needed
-      if (t.isIdentifier(handlerFn)) {
-        const binding = handlerFnPath.scope.getBinding(handlerFn.name)
-        if (binding) {
-          binding.path.remove()
-        }
-      }
 
       // Generate the RPC stub using pre-compiled templates
       // Note: Caller files only pass functionId, not the full serverFnMeta

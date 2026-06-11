@@ -212,7 +212,7 @@ Build your own authentication system using TanStack Start's server functions and
 - Use HTTPS in production and set a strong session secret.
 - Store sessions in `HttpOnly`, `Secure`, `SameSite` cookies. Do not store session tokens in `localStorage` or `sessionStorage`.
 - Enforce auth in every server function, server route, or API endpoint that reads or writes private user, tenant, or account data. Use `beforeLoad` for page UX, not as the data boundary.
-- Use `.inputValidator()` on every server function that accepts input.
+- Use `.validator()` on every server function that accepts input.
 - Hash passwords with bcrypt, scrypt, or Argon2. For missing users, verify against a dummy hash and return the same login/reset message.
 - Rate limit login, registration, and password-reset endpoints.
 - Use CSRF or same-origin protections for non-GET server functions and server routes.

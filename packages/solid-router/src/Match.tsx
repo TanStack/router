@@ -354,7 +354,7 @@ export const MatchInner = (): any => {
                 }
 
                 const [loaderResult] = Solid.createResource(async () => {
-                  await new Promise((r) => setTimeout(r, 0))
+                  await Promise.resolve()
                   return router.getMatch(currentMatch().id)?._nonReactive
                     .loadPromise
                 })
@@ -411,7 +411,7 @@ export const MatchInner = (): any => {
                 }
 
                 const [loaderResult] = Solid.createResource(async () => {
-                  await new Promise((r) => setTimeout(r, 0))
+                  await Promise.resolve()
                   return getLoadPromise(matchId, routerMatch)
                 })
 
