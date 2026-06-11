@@ -9,11 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SsrFalsePendingComponentRouteImport } from './routes/ssr-false-pending-component'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as DataOnlyPendingComponentRouteImport } from './routes/data-only-pending-component'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 
+const SsrFalsePendingComponentRoute =
+  SsrFalsePendingComponentRouteImport.update({
+    id: '/ssr-false-pending-component',
+    path: '/ssr-false-pending-component',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
@@ -40,12 +47,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/data-only-pending-component': typeof DataOnlyPendingComponentRoute
   '/posts': typeof PostsRouteWithChildren
+  '/ssr-false-pending-component': typeof SsrFalsePendingComponentRoute
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/data-only-pending-component': typeof DataOnlyPendingComponentRoute
   '/posts': typeof PostsRouteWithChildren
+  '/ssr-false-pending-component': typeof SsrFalsePendingComponentRoute
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesById {
@@ -53,18 +62,30 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/data-only-pending-component': typeof DataOnlyPendingComponentRoute
   '/posts': typeof PostsRouteWithChildren
+  '/ssr-false-pending-component': typeof SsrFalsePendingComponentRoute
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/data-only-pending-component' | '/posts' | '/posts/$postId'
+  fullPaths:
+    | '/'
+    | '/data-only-pending-component'
+    | '/posts'
+    | '/ssr-false-pending-component'
+    | '/posts/$postId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/data-only-pending-component' | '/posts' | '/posts/$postId'
+  to:
+    | '/'
+    | '/data-only-pending-component'
+    | '/posts'
+    | '/ssr-false-pending-component'
+    | '/posts/$postId'
   id:
     | '__root__'
     | '/'
     | '/data-only-pending-component'
     | '/posts'
+    | '/ssr-false-pending-component'
     | '/posts/$postId'
   fileRoutesById: FileRoutesById
 }
@@ -72,10 +93,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DataOnlyPendingComponentRoute: typeof DataOnlyPendingComponentRoute
   PostsRoute: typeof PostsRouteWithChildren
+  SsrFalsePendingComponentRoute: typeof SsrFalsePendingComponentRoute
 }
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
+    '/ssr-false-pending-component': {
+      id: '/ssr-false-pending-component'
+      path: '/ssr-false-pending-component'
+      fullPath: '/ssr-false-pending-component'
+      preLoaderRoute: typeof SsrFalsePendingComponentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
@@ -121,6 +150,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DataOnlyPendingComponentRoute: DataOnlyPendingComponentRoute,
   PostsRoute: PostsRouteWithChildren,
+  SsrFalsePendingComponentRoute: SsrFalsePendingComponentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
