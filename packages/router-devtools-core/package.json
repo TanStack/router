@@ -34,7 +34,7 @@
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js",
     "test:types:ts60": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build"
+    "build": "vite build && BUILD_SSR=true vite build"
   },
   "type": "module",
   "types": "./dist/esm/index.d.ts",
@@ -44,6 +44,9 @@
     ".": {
       "import": {
         "types": "./dist/esm/index.d.ts",
+        "worker": "./dist/esm/index.js",
+        "browser": "./dist/esm/index.js",
+        "node": "./dist/esm/index.server.js",
         "default": "./dist/esm/index.js"
       },
       "require": {
