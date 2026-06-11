@@ -418,6 +418,10 @@ const executeBeforeLoad = (
   const pending = () => {
     if (isPending) return
     isPending = true
+    if (isServer ?? inner.router.isServer) {
+      match.abortController = abortController
+      return
+    }
     inner.updateMatch(matchId, (prev) => ({
       ...prev,
       isFetching: 'beforeLoad',
@@ -432,6 +436,9 @@ const executeBeforeLoad = (
   const resolve = () => {
     match._nonReactive.beforeLoadPromise?.resolve()
     match._nonReactive.beforeLoadPromise = undefined
+    if (isServer ?? inner.router.isServer) {
+      return
+    }
     inner.updateMatch(matchId, (prev) => ({
       ...prev,
       isFetching: false,
@@ -680,10 +687,12 @@ const runLoader = async (
       )
 
       if (willLoadSomething) {
-        inner.updateMatch(matchId, (prev) => ({
-          ...prev,
-          isFetching: 'loader',
-        }))
+        if (!(isServer ?? inner.router.isServer)) {
+          inner.updateMatch(matchId, (prev) => ({
+            ...prev,
+            isFetching: 'loader',
+          }))
+        }
       }
 
       if (loader) {
