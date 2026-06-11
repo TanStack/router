@@ -1739,19 +1739,6 @@ export class RouterCore<
     //   _includeValidateSearch: true,
     // })
 
-    // Accumulate search validation through route chain
-    const accumulatedSearch = { ...location.search }
-    for (const route of matchedRoutes) {
-      try {
-        Object.assign(
-          accumulatedSearch,
-          validateSearch(route.options.validateSearch, accumulatedSearch),
-        )
-      } catch {
-        // Ignore errors, we're not actually routing
-      }
-    }
-
     // Determine params: reuse from state if possible, otherwise parse
     const lastStateMatchId = last(this.stores.matchesId.get())
     const lastStateMatch =
@@ -1783,7 +1770,7 @@ export class RouterCore<
     return {
       matchedRoutes,
       fullPath: lastRoute.fullPath,
-      search: accumulatedSearch,
+      search: location.search,
       params,
     }
   }
