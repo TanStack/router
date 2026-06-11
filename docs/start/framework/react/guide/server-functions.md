@@ -383,7 +383,7 @@ Available utilities:
 
 ### Streaming
 
-Stream typed data from server functions to the client. See the [Streaming Data from Server Functions guide](./streaming-data-from-server-functions).
+Stream typed data from server functions to the client. See the [Streaming Data from Server Functions guide](./streaming-data-from-server-functions.md).
 
 ### Raw Responses
 
@@ -401,7 +401,7 @@ Compose server functions with middleware for authentication, logging, and shared
 
 ### Static Server Functions
 
-Cache server function results at build time for static generation. See [Static Server Functions](./static-server-functions).
+Cache server function results at build time for static generation. See [Static Server Functions](./static-server-functions.md).
 
 ### Server Components
 
