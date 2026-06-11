@@ -16,7 +16,8 @@
   },
   "keywords": [
     "history",
-    "typescript"
+    "typescript",
+    "tanstack-intent"
   ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",

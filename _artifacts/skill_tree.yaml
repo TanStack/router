@@ -1,15 +1,16 @@
 # skills/_artifacts/skill_tree.yaml
 library:
   name: '@tanstack/router'
-  version: '1.166.2'
+  version: '1.168.15'
   repository: 'https://github.com/TanStack/router'
   description: >-
-    Type-safe router for React and Solid with built-in SWR caching,
-    JSON-first search params, and end-to-end type inference.
+    Type-safe router for React, Solid, and Vue with built-in SWR caching,
+    JSON-first search params, and end-to-end type inference. Includes
+    TanStack Start full-stack framework skills.
 generated_from:
   domain_map: '_artifacts/domain_map.yaml'
   skill_spec: '_artifacts/skill_spec.md'
-generated_at: '2026-03-07'
+generated_at: '2026-04-11'
 
 skills:
   # ── Router Core Skills ───────────────────────────────────────────
@@ -168,12 +169,28 @@ skills:
     description: >-
       notFound() function, notFoundComponent, defaultNotFoundComponent,
       notFoundMode (fuzzy/root), errorComponent, onError/onCatch,
-      CatchBoundary, NotFoundRoute (deprecated), route masking (mask
-      option, createRouteMask, unmaskOnReload).
+      CatchBoundary, NotFoundRoute (deprecated).
     requires:
       - 'router-core'
     sources:
       - 'TanStack/router:docs/router/guide/not-found-errors.md'
+
+  - name: 'Route Masking'
+    slug: 'router-core/route-masking'
+    type: 'sub-skill'
+    domain: 'rendering-and-layout'
+    path: 'skills/router-core/route-masking/SKILL.md'
+    package: 'packages/router-core'
+    description: >-
+      Route masking: showing a different URL in the browser bar than
+      the actual route being rendered. mask option on Link/navigate,
+      createRouteMask for declarative masking, unmaskOnReload,
+      type-safe mask options, location.state-based storage, automatic
+      unmasking on URL sharing.
+    requires:
+      - 'router-core'
+      - 'router-core/navigation'
+    sources:
       - 'TanStack/router:docs/router/guide/route-masking.md'
 
   - name: 'Type Safety'
@@ -259,6 +276,44 @@ skills:
       - 'TanStack/router:docs/router/guide/external-data-loading.md'
       - 'TanStack/router:docs/router/integrations/query.md'
 
+  - name: 'External Data Loading — Solid (TanStack Query)'
+    slug: 'compositions/router-query-solid'
+    type: 'composition'
+    domain: 'loading-data'
+    path: 'skills/compositions/router-query/SKILL.md'
+    package: 'packages/solid-router'
+    description: >-
+      Integrating TanStack Solid Router with TanStack Query: queryClient
+      in router context, ensureQueryData/prefetchQuery in loaders,
+      createQuery in components, defaultPreloadStaleTime: 0,
+      per-request QueryClient isolation for SSR.
+    requires:
+      - 'router-core'
+      - 'router-core/data-loading'
+      - 'solid-router'
+    sources:
+      - 'TanStack/router:docs/router/guide/external-data-loading.md'
+      - 'TanStack/router:docs/router/integrations/query.md'
+
+  - name: 'External Data Loading — Vue (TanStack Query)'
+    slug: 'compositions/router-query-vue'
+    type: 'composition'
+    domain: 'loading-data'
+    path: 'skills/compositions/router-query/SKILL.md'
+    package: 'packages/vue-router'
+    description: >-
+      Integrating TanStack Vue Router with TanStack Query: queryClient
+      in router context, ensureQueryData/prefetchQuery in loaders,
+      useQuery in components, defaultPreloadStaleTime: 0,
+      per-request QueryClient isolation for SSR.
+    requires:
+      - 'router-core'
+      - 'router-core/data-loading'
+      - 'vue-router'
+    sources:
+      - 'TanStack/router:docs/router/guide/external-data-loading.md'
+      - 'TanStack/router:docs/router/integrations/query.md'
+
   # ── Lifecycle Skills ─────────────────────────────────────────────
   - name: 'Migrate from React Router'
     slug: 'lifecycle/migrate-from-react-router'
@@ -277,3 +332,263 @@ skills:
     sources:
       - 'TanStack/router:docs/router/how-to/migrate-from-react-router.md'
       - 'TanStack/router:docs/router/installation/migrate-from-react-router.md'
+
+  # ── Solid Router Skills ─────────────────────────────────────────
+  - name: 'Solid Router'
+    slug: 'solid-router'
+    type: 'framework'
+    domain: 'defining-routes'
+    path: 'skills/solid-router/SKILL.md'
+    package: 'packages/solid-router'
+    description: >-
+      Solid bindings for TanStack Router: RouterProvider, useRouter,
+      useRouterState, useMatch, useMatches, useLocation, useSearch,
+      useParams, useNavigate, useLoaderData, useLoaderDeps,
+      useRouteContext, useBlocker, useCanGoBack, Link, Navigate,
+      Outlet, CatchBoundary, ErrorComponent. Solid-specific patterns
+      with Accessor<T> returns, createSignal/createMemo/createEffect,
+      Show/Switch/Match/Dynamic, and @solidjs/meta for head management.
+    requires:
+      - 'router-core'
+    sources:
+      - 'TanStack/router:packages/solid-router/src'
+
+  # ── Vue Router Skills ───────────────────────────────────────────
+  - name: 'Vue Router'
+    slug: 'vue-router'
+    type: 'framework'
+    domain: 'defining-routes'
+    path: 'skills/vue-router/SKILL.md'
+    package: 'packages/vue-router'
+    description: >-
+      Vue bindings for TanStack Router: RouterProvider, useRouter,
+      useRouterState, useMatch, useMatches, useLocation, useSearch,
+      useParams, useNavigate, useLoaderData, useLoaderDeps,
+      useRouteContext, useBlocker, useCanGoBack, Link, Navigate,
+      Outlet, CatchBoundary, ErrorComponent, Html, Body.
+      Vue-specific patterns with Ref<T> returns, defineComponent,
+      h() render functions, provide/inject, and computed refs.
+    requires:
+      - 'router-core'
+    sources:
+      - 'TanStack/router:packages/vue-router/src'
+
+  # ── Router Plugin & Virtual File Routes ─────────────────────────
+  - name: 'Router Plugin'
+    slug: 'router-plugin'
+    type: 'core'
+    domain: 'defining-routes'
+    path: 'skills/router-plugin/SKILL.md'
+    package: 'packages/router-plugin'
+    description: >-
+      TanStack Router bundler plugin for route generation and automatic
+      code splitting. Supports Vite, Webpack, Rspack, and esbuild.
+      Configures autoCodeSplitting, routesDirectory, target framework,
+      and code split groupings.
+    sources:
+      - 'TanStack/router:packages/router-plugin/src'
+      - 'TanStack/router:docs/router/routing/file-based-routing.md'
+      - 'TanStack/router:docs/router/guide/code-splitting.md'
+
+  - name: 'Virtual File Routes'
+    slug: 'virtual-file-routes'
+    type: 'core'
+    domain: 'defining-routes'
+    path: 'skills/virtual-file-routes/SKILL.md'
+    package: 'packages/virtual-file-routes'
+    description: >-
+      Programmatic route tree building as an alternative to filesystem
+      conventions: rootRoute, index, route, layout, physical,
+      defineVirtualSubtreeConfig. Use with TanStack Router plugin's
+      virtualRouteConfig option.
+    sources:
+      - 'TanStack/router:packages/virtual-file-routes/src'
+      - 'TanStack/router:docs/router/routing/virtual-file-routes.md'
+
+  # ── Start Core Skills ───────────────────────────────────────────
+  - name: 'Start Core'
+    slug: 'start-core'
+    type: 'core'
+    domain: 'defining-routes'
+    path: 'skills/start-core/SKILL.md'
+    package: 'packages/start-client-core'
+    description: >-
+      Core overview for TanStack Start: tanstackStart() Vite plugin,
+      getRouter() factory, root route document shell (HeadContent,
+      Scripts, Outlet), client/server entry points, routeTree.gen.ts,
+      tsconfig configuration. Entry point for all Start skills.
+    sources:
+      - 'TanStack/router:docs/start/framework/react/build-from-scratch.md'
+      - 'TanStack/router:docs/start/framework/react/quick-start.md'
+      - 'TanStack/router:docs/start/framework/react/guide/routing.md'
+
+  - name: 'Server Functions'
+    slug: 'start-core/server-functions'
+    type: 'sub-skill'
+    domain: 'loading-data'
+    path: 'skills/start-core/server-functions/SKILL.md'
+    package: 'packages/start-client-core'
+    description: >-
+      createServerFn (GET/POST), inputValidator (Zod or function),
+      useServerFn hook, server context utilities (getRequest,
+      getRequestHeader, setResponseHeader, setResponseStatus), error
+      handling (throw errors, redirect, notFound), streaming, FormData
+      handling, file organization (.functions.ts, .server.ts).
+    requires:
+      - 'start-core'
+    sources:
+      - 'TanStack/router:docs/start/framework/react/guide/server-functions.md'
+
+  - name: 'Start Middleware'
+    slug: 'start-core/middleware'
+    type: 'sub-skill'
+    domain: 'protecting-routes'
+    path: 'skills/start-core/middleware/SKILL.md'
+    package: 'packages/start-client-core'
+    description: >-
+      createMiddleware, request middleware (.server only), server function
+      middleware (.client + .server), context passing via next({ context }),
+      sendContext for client-server transfer, global middleware via
+      createStart in src/start.ts, middleware factories, method order
+      enforcement, fetch override precedence.
+    requires:
+      - 'start-core'
+      - 'start-core/server-functions'
+    sources:
+      - 'TanStack/router:docs/start/framework/react/guide/middleware.md'
+
+  - name: 'Execution Model'
+    slug: 'start-core/execution-model'
+    type: 'sub-skill'
+    domain: 'server-side-rendering'
+    path: 'skills/start-core/execution-model/SKILL.md'
+    package: 'packages/start-client-core'
+    description: >-
+      Isomorphic-by-default principle, environment boundary functions
+      (createServerFn, createServerOnlyFn, createClientOnlyFn,
+      createIsomorphicFn), ClientOnly component, useHydrated hook,
+      import protection, dead code elimination, environment variable
+      safety (VITE_ prefix, process.env).
+    requires:
+      - 'start-core'
+    sources:
+      - 'TanStack/router:docs/start/framework/react/guide/execution-model.md'
+
+  - name: 'Server Routes'
+    slug: 'start-core/server-routes'
+    type: 'sub-skill'
+    domain: 'defining-routes'
+    path: 'skills/start-core/server-routes/SKILL.md'
+    package: 'packages/start-client-core'
+    description: >-
+      Server-side API endpoints using the server property on
+      createFileRoute, HTTP method handlers (GET, POST, PUT, DELETE),
+      createHandlers for per-handler middleware, handler context
+      (request, params, context), request body parsing, response
+      helpers, file naming for API routes.
+    requires:
+      - 'start-core'
+    sources:
+      - 'TanStack/router:docs/start/framework/react/guide/server-routes.md'
+
+  - name: 'Deployment'
+    slug: 'start-core/deployment'
+    type: 'sub-skill'
+    domain: 'server-side-rendering'
+    path: 'skills/start-core/deployment/SKILL.md'
+    package: 'packages/start-client-core'
+    description: >-
+      Deploy to Cloudflare Workers, Netlify, Vercel, Node.js/Docker,
+      Bun, Railway. Selective SSR (ssr option per route), SPA mode,
+      static prerendering, ISR with Cache-Control headers, SEO and
+      head management.
+    requires:
+      - 'start-core'
+    sources:
+      - 'TanStack/router:docs/start/framework/react/guide/hosting.md'
+      - 'TanStack/router:docs/start/framework/react/guide/selective-ssr.md'
+
+  # ── Start Server Core Skills ────────────────────────────────────
+  - name: 'Start Server Core'
+    slug: 'start-server-core'
+    type: 'core'
+    domain: 'server-side-rendering'
+    path: 'skills/start-server-core/SKILL.md'
+    package: 'packages/start-server-core'
+    description: >-
+      Server-side runtime for TanStack Start: createStartHandler,
+      request/response utilities (getRequest, setResponseHeader,
+      setCookie, getCookie, useSession), three-phase request handling,
+      AsyncLocalStorage context.
+    sources:
+      - 'TanStack/router:packages/start-server-core/src'
+      - 'TanStack/router:docs/start/framework/react/guide/server-entry-point.md'
+
+  # ── Framework Start Skills ──────────────────────────────────────
+  - name: 'React Start'
+    slug: 'react-start'
+    type: 'framework'
+    domain: 'defining-routes'
+    path: 'skills/react-start/SKILL.md'
+    package: 'packages/react-start'
+    description: >-
+      React bindings for TanStack Start: createStart, StartClient,
+      StartServer, React-specific imports, re-exports from
+      @tanstack/react-router, full project setup with React, useServerFn
+      hook.
+    requires:
+      - 'start-core'
+    sources:
+      - 'TanStack/router:packages/react-start/src'
+      - 'TanStack/router:docs/start/framework/react/build-from-scratch.md'
+
+  - name: 'Migrate from Next.js'
+    slug: 'lifecycle/migrate-from-nextjs'
+    type: 'lifecycle'
+    domain: 'defining-routes'
+    path: 'skills/lifecycle/migrate-from-nextjs/SKILL.md'
+    package: 'packages/react-start'
+    description: >-
+      Step-by-step migration from Next.js App Router to TanStack Start:
+      route definition conversion, API mapping, server function
+      conversion from Server Actions, middleware conversion, data
+      fetching pattern changes.
+    requires:
+      - 'start-core'
+      - 'react-start'
+    sources:
+      - 'TanStack/router:docs/start/framework/react/guide/server-functions.md'
+      - 'TanStack/router:docs/start/framework/react/guide/middleware.md'
+      - 'TanStack/router:docs/start/framework/react/guide/execution-model.md'
+
+  - name: 'Solid Start'
+    slug: 'solid-start'
+    type: 'framework'
+    domain: 'defining-routes'
+    path: 'skills/solid-start/SKILL.md'
+    package: 'packages/solid-start'
+    description: >-
+      Solid bindings for TanStack Start: useServerFn hook, tanstackStart
+      Vite plugin, StartClient, StartServer, Solid-specific setup,
+      re-exports from @tanstack/start-client-core. Full project setup
+      with Solid.
+    requires:
+      - 'start-core'
+    sources:
+      - 'TanStack/router:packages/solid-start/src'
+
+  - name: 'Vue Start'
+    slug: 'vue-start'
+    type: 'framework'
+    domain: 'defining-routes'
+    path: 'skills/vue-start/SKILL.md'
+    package: 'packages/vue-start'
+    description: >-
+      Vue bindings for TanStack Start: useServerFn hook, tanstackStart
+      Vite plugin, StartClient, StartServer, Vue-specific setup,
+      re-exports from @tanstack/start-client-core. Full project setup
+      with Vue.
+    requires:
+      - 'start-core'
+    sources:
+      - 'TanStack/router:packages/vue-start/src'
