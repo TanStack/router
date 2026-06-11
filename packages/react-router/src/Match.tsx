@@ -247,13 +247,13 @@ function OnRendered() {
     return null
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  // @ts-expect-error -- init to `undefined` but don't write `undefined` to shave bytes
   // Track the resolvedLocation as of the last render so that onRendered can
   // report the correct fromLocation. By the time this effect fires,
   // resolvedLocation has already been updated to the new location by
   // Transitioner, so we cannot use router.stores.resolvedLocation.get()
   // directly as the fromLocation.
+  // @ts-expect-error -- init to `undefined` but don't write `undefined` to shave bytes
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const prevResolvedLocationRef = React.useRef<
     ParsedLocation<any> | undefined
   >()
