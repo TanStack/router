@@ -10,6 +10,9 @@
     "directory": "packages/eslint-plugin-router"
   },
   "homepage": "https://tanstack.com/router",
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
+  },
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/tannerlinsley"
