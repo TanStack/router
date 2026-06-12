@@ -453,6 +453,7 @@ export interface RouterOptions<
    * If `true`, scroll restoration will be enabled
    *
    * @default false
+   * @link [Guide](https://tanstack.com/router/v1/docs/guide/scroll-restoration#scroll-restoration)
    */
   scrollRestoration?:
     | boolean
@@ -462,18 +463,21 @@ export interface RouterOptions<
    * A function that will be called to get the key for the scroll restoration cache.
    *
    * @default (location) => location.href
+   * @link [Guide](https://tanstack.com/router/v1/docs/guide/scroll-restoration#custom-cache-keys)
    */
   getScrollRestorationKey?: (location: ParsedLocation) => string
   /**
    * The default behavior for scroll restoration.
    *
    * @default 'auto'
+   * @link [Guide](https://tanstack.com/router/v1/docs/guide/scroll-restoration#scroll-behavior)
    */
   scrollRestorationBehavior?: ScrollBehavior
   /**
    * An array of selectors that will be used to scroll to the top of the page in addition to `window`
    *
    * @default ['window']
+   * @link [Guide](https://tanstack.com/router/v1/docs/guide/scroll-restoration#hashtop-of-page-scrolling)
    */
   scrollToTopSelectors?: Array<string | (() => Element | null | undefined)>
 
