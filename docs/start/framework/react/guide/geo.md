@@ -1,31 +1,33 @@
 ---
-id: llmo
-title: LLM Optimization (LLMO)
+id: geo
+title: Generative Engine Optimization (GEO)
+redirect_from:
+  - /framework/react/guide/llmo
 ---
 
 > [!NOTE]
 > Looking for traditional search engine optimization? See the [SEO guide](./seo).
 
-## What is LLMO?
+## What is GEO?
 
-**LLM Optimization (LLMO)**, also known as **AI Optimization (AIO)** or **Generative Engine Optimization (GEO)**, is the practice of structuring your content and data so that AI systems—like ChatGPT, Claude, Perplexity, and other LLM-powered tools—can accurately understand, cite, and recommend your content.
+**Generative Engine Optimization (GEO)** is the practice of structuring your content and data so that AI systems—like ChatGPT, Claude, Perplexity, and other LLM-powered tools—can accurately understand, cite, and recommend your content.
 
-While traditional SEO focuses on ranking in search engine results pages, LLMO focuses on being accurately represented in AI-generated responses. As more users get information through AI assistants rather than traditional search, this is becoming increasingly important.
+While traditional SEO focuses on ranking in search engine results pages, GEO focuses on being accurately represented in AI-generated responses. As more users get information through AI assistants rather than traditional search, this is becoming increasingly important.
 
-## How LLMO Differs from SEO
+## How GEO Differs from SEO
 
-| Aspect             | SEO                         | LLMO                                 |
+| Aspect             | SEO                         | GEO                                  |
 | ------------------ | --------------------------- | ------------------------------------ |
 | **Goal**           | Rank in search results      | Be cited/recommended by AI           |
 | **Audience**       | Search engine crawlers      | LLM training & retrieval systems     |
 | **Key signals**    | Links, keywords, page speed | Structured data, clarity, authority  |
 | **Content format** | Optimized for snippets      | Optimized for extraction & synthesis |
 
-The good news: many LLMO best practices overlap with SEO. Clear structure, authoritative content, and good metadata help both.
+The good news: many GEO best practices overlap with SEO. Clear structure, authoritative content, and good metadata help both.
 
 ## What TanStack Start Provides
 
-TanStack Start's features that support LLMO:
+TanStack Start's features that support GEO:
 
 - **Server-Side Rendering** - Ensures AI crawlers see fully rendered content
 - **Structured Data** - JSON-LD support for machine-readable content
@@ -34,7 +36,7 @@ TanStack Start's features that support LLMO:
 
 ## Structured Data for AI
 
-Structured data using schema.org vocabulary helps AI systems understand your content's meaning and context. This is perhaps the most important LLMO technique.
+Structured data using schema.org vocabulary helps AI systems understand your content's meaning and context. This is perhaps the most important GEO technique.
 
 ### Article Schema
 
@@ -169,7 +171,7 @@ export const Route = createRootRoute({
 
 ### FAQ Schema
 
-FAQ schema is particularly effective for LLMO—AI systems often extract Q&A pairs:
+FAQ schema is particularly effective for GEO—AI systems often extract Q&A pairs:
 
 ```tsx
 export const Route = createFileRoute('/faq')({
@@ -240,7 +242,7 @@ export const Route = createFileRoute('/api/products')({
 
 ## Content Best Practices
 
-Beyond technical implementation, content structure matters for LLMO:
+Beyond technical implementation, content structure matters for GEO:
 
 ### Clear, Factual Statements
 
@@ -355,7 +357,7 @@ export const Route = createFileRoute('/llms.txt')({
 
 ## Monitoring AI Citations
 
-Unlike traditional SEO with established analytics, LLMO monitoring is still evolving. Consider:
+Unlike traditional SEO with established analytics, GEO monitoring is still evolving. Consider:
 
 - **Test with AI assistants** - Ask ChatGPT, Claude, and Perplexity about your product/content
 - **Monitor brand mentions** - Track how AI systems describe your offerings
