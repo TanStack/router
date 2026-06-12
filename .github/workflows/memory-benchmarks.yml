@@ -1,0 +1,68 @@
+name: Memory Benchmarks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/**'
+      - 'benchmarks/**'
+      - '.github/workflows/memory-benchmarks.yml'
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'benchmarks/**'
+      - '.github/workflows/memory-benchmarks.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  NX_NO_CLOUD: true
+  MEMORY_BENCH_ITERATIONS: 2000
+  MEMORY_BENCH_WARMUP_ITERATIONS: 200
+  MEMORY_BENCH_BATCH_SIZE: 100
+
+jobs:
+  benchmarks:
+    name: Run Memory Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Tools
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+
+      - name: Install Chromium
+        run: pnpm exec playwright install chromium
+
+      - name: Run React Memory Benchmarks
+        run: CI=1 NX_DAEMON=false pnpm nx run @benchmarks/memory:test:memory:react --outputStyle=stream --skipRemoteCache --parallel=2
+
+      - name: Build Benchmark Report
+        run: CI=1 NX_DAEMON=false pnpm nx run @benchmarks/memory:report --outputStyle=stream --skipRemoteCache
+
+      - name: Publish Benchmark Dashboard
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository_owner == 'TanStack'
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
+        with:
+          tool: customSmallerIsBetter
+          name: Memory Usage (retained heap)
+          output-file-path: benchmarks/memory/results/benchmark-action.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: benchmarks/memory
+          max-items-in-chart: 200
+          summary-always: true
+          comment-on-alert: false
+          fail-on-alert: false

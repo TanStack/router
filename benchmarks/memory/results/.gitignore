@@ -1,0 +1,5 @@
+*
+!.gitignore
+!scenarios/
+scenarios/*
+!scenarios/.gitkeep
