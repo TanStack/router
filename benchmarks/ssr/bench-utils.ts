@@ -12,6 +12,7 @@ export interface RunRequestLoopOptions {
   iterations?: number
   buildRequest: (random: () => number, index: number) => Request
   validateResponse?: (response: Response, request: Request) => void
+  validateBody?: (body: string, response: Response, request: Request) => void
 }
 
 const requestInit = {
@@ -82,6 +83,7 @@ export async function runRequestLoop(
     iterations = 10,
     buildRequest,
     validateResponse,
+    validateBody,
   }: RunRequestLoopOptions,
 ) {
   const random = createDeterministicRandom(seed)
@@ -108,7 +110,11 @@ export async function runRequestLoop(
       throw error
     }
 
-    pendingBodyReads.push(response.text().then(() => undefined))
+    pendingBodyReads.push(
+      response.text().then((body) => {
+        validateBody?.(body, response, request)
+      }),
+    )
   }
 
   await Promise.all(pendingBodyReads)

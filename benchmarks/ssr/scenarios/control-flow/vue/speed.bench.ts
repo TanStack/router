@@ -2,8 +2,11 @@ import { bench, describe } from 'vitest'
 import {
   assertControlFlowSanity,
   controlFlowBenchOptions,
+  runErrorLoop,
   runNotFoundLoop,
   runRedirectLoop,
+  runRouteHeadersLoop,
+  runUnmatchedLoop,
 } from '../shared'
 import type { StartRequestHandler } from '../shared'
 
@@ -27,6 +30,24 @@ describe('ssr', () => {
   bench(
     'ssr not-found (vue)',
     () => runNotFoundLoop(handler),
+    controlFlowBenchOptions,
+  )
+
+  bench(
+    'ssr control-flow error 500 (vue)',
+    () => runErrorLoop(handler),
+    controlFlowBenchOptions,
+  )
+
+  bench(
+    'ssr control-flow unmatched 404 (vue)',
+    () => runUnmatchedLoop(handler),
+    controlFlowBenchOptions,
+  )
+
+  bench(
+    'ssr control-flow route headers (vue)',
+    () => runRouteHeadersLoop(handler),
     controlFlowBenchOptions,
   )
 })

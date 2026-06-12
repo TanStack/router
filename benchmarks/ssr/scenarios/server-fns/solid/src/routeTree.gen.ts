@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SsrCallIdRouteImport } from './routes/ssr-call.$id'
 import { Route as ApiFnUrlsRouteImport } from './routes/api.fn-urls'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SsrCallIdRoute = SsrCallIdRouteImport.update({
+  id: '/ssr-call/$id',
+  path: '/ssr-call/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiFnUrlsRoute = ApiFnUrlsRouteImport.update({
@@ -26,27 +32,31 @@ const ApiFnUrlsRoute = ApiFnUrlsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/fn-urls': typeof ApiFnUrlsRoute
+  '/ssr-call/$id': typeof SsrCallIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/fn-urls': typeof ApiFnUrlsRoute
+  '/ssr-call/$id': typeof SsrCallIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/fn-urls': typeof ApiFnUrlsRoute
+  '/ssr-call/$id': typeof SsrCallIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/fn-urls'
+  fullPaths: '/' | '/api/fn-urls' | '/ssr-call/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/fn-urls'
-  id: '__root__' | '/' | '/api/fn-urls'
+  to: '/' | '/api/fn-urls' | '/ssr-call/$id'
+  id: '__root__' | '/' | '/api/fn-urls' | '/ssr-call/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiFnUrlsRoute: typeof ApiFnUrlsRoute
+  SsrCallIdRoute: typeof SsrCallIdRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -56,6 +66,13 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ssr-call/$id': {
+      id: '/ssr-call/$id'
+      path: '/ssr-call/$id'
+      fullPath: '/ssr-call/$id'
+      preLoaderRoute: typeof SsrCallIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/fn-urls': {
@@ -71,6 +88,7 @@ declare module '@tanstack/solid-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiFnUrlsRoute: ApiFnUrlsRoute,
+  SsrCallIdRoute: SsrCallIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

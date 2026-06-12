@@ -1,8 +1,12 @@
 import { bench, describe } from 'vitest'
 import {
   assertServerFnScenario,
+  runServerFnDocumentSsrRequestLoop,
   runServerFnGetRequestLoop,
+  runServerFnNotFoundRequestLoop,
   runServerFnPostRequestLoop,
+  runServerFnRedirectRequestLoop,
+  runServerFnSendContextRequestLoop,
   serverFnBenchOptions,
   setupServerFnBench,
 } from '../bench'
@@ -28,6 +32,30 @@ describe('ssr', () => {
   bench(
     'ssr server-fn POST (react)',
     () => runServerFnPostRequestLoop(handler, context),
+    serverFnBenchOptions,
+  )
+
+  bench(
+    'ssr server-fn redirect (react)',
+    () => runServerFnRedirectRequestLoop(handler, context),
+    serverFnBenchOptions,
+  )
+
+  bench(
+    'ssr server-fn not-found (react)',
+    () => runServerFnNotFoundRequestLoop(handler, context),
+    serverFnBenchOptions,
+  )
+
+  bench(
+    'ssr server-fn send-context (react)',
+    () => runServerFnSendContextRequestLoop(handler, context),
+    serverFnBenchOptions,
+  )
+
+  bench(
+    'ssr server-fn during document ssr (react)',
+    () => runServerFnDocumentSsrRequestLoop(handler),
     serverFnBenchOptions,
   )
 })

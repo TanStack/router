@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TargetIdRouteImport } from './routes/target.$id'
 import { Route as MissingIdRouteImport } from './routes/missing.$id'
+import { Route as HeadersIdRouteImport } from './routes/headers.$id'
 import { Route as FromIdRouteImport } from './routes/from.$id'
+import { Route as BoomIdRouteImport } from './routes/boom.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -29,42 +31,79 @@ const MissingIdRoute = MissingIdRouteImport.update({
   path: '/missing/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HeadersIdRoute = HeadersIdRouteImport.update({
+  id: '/headers/$id',
+  path: '/headers/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FromIdRoute = FromIdRouteImport.update({
   id: '/from/$id',
   path: '/from/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BoomIdRoute = BoomIdRouteImport.update({
+  id: '/boom/$id',
+  path: '/boom/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/boom/$id': typeof BoomIdRoute
   '/from/$id': typeof FromIdRoute
+  '/headers/$id': typeof HeadersIdRoute
   '/missing/$id': typeof MissingIdRoute
   '/target/$id': typeof TargetIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/boom/$id': typeof BoomIdRoute
   '/from/$id': typeof FromIdRoute
+  '/headers/$id': typeof HeadersIdRoute
   '/missing/$id': typeof MissingIdRoute
   '/target/$id': typeof TargetIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/boom/$id': typeof BoomIdRoute
   '/from/$id': typeof FromIdRoute
+  '/headers/$id': typeof HeadersIdRoute
   '/missing/$id': typeof MissingIdRoute
   '/target/$id': typeof TargetIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/from/$id' | '/missing/$id' | '/target/$id'
+  fullPaths:
+    | '/'
+    | '/boom/$id'
+    | '/from/$id'
+    | '/headers/$id'
+    | '/missing/$id'
+    | '/target/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/from/$id' | '/missing/$id' | '/target/$id'
-  id: '__root__' | '/' | '/from/$id' | '/missing/$id' | '/target/$id'
+  to:
+    | '/'
+    | '/boom/$id'
+    | '/from/$id'
+    | '/headers/$id'
+    | '/missing/$id'
+    | '/target/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/boom/$id'
+    | '/from/$id'
+    | '/headers/$id'
+    | '/missing/$id'
+    | '/target/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BoomIdRoute: typeof BoomIdRoute
   FromIdRoute: typeof FromIdRoute
+  HeadersIdRoute: typeof HeadersIdRoute
   MissingIdRoute: typeof MissingIdRoute
   TargetIdRoute: typeof TargetIdRoute
 }
@@ -92,6 +131,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof MissingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/headers/$id': {
+      id: '/headers/$id'
+      path: '/headers/$id'
+      fullPath: '/headers/$id'
+      preLoaderRoute: typeof HeadersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/from/$id': {
       id: '/from/$id'
       path: '/from/$id'
@@ -99,12 +145,21 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof FromIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/boom/$id': {
+      id: '/boom/$id'
+      path: '/boom/$id'
+      fullPath: '/boom/$id'
+      preLoaderRoute: typeof BoomIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BoomIdRoute: BoomIdRoute,
   FromIdRoute: FromIdRoute,
+  HeadersIdRoute: HeadersIdRoute,
   MissingIdRoute: MissingIdRoute,
   TargetIdRoute: TargetIdRoute,
 }
