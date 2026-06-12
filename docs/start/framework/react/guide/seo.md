@@ -4,7 +4,7 @@ title: SEO
 ---
 
 > [!NOTE]
-> Looking to optimize for AI assistants and LLMs? See the [LLM Optimization (LLMO) guide](./llmo).
+> Looking to optimize for AI assistants and LLMs? See the [Generative Engine Optimization (GEO) guide](./geo).
 
 ## What is SEO, really?
 
