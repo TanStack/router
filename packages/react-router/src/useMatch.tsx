@@ -179,21 +179,23 @@ export function useMatch<
     useStructuralSharing(opts, router)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  return useStore(matchStore ?? dummyStore, (match) => {
-    if (!match) {
-      if (opts.shouldThrow ?? true) {
-        if (process.env.NODE_ENV !== 'production') {
-          throw new Error(
-            `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-          )
-        }
+  const matchSelection = useStore(matchStore ?? dummyStore, (match) =>
+    match ? selector(match as any) : dummyStore,
+  )
 
-        invariant()
-      }
+  if (matchSelection !== dummyStore) {
+    return matchSelection
+  }
 
-      return undefined
+  if (opts.shouldThrow ?? true) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+      )
     }
 
-    return selector(match as any)
-  }) as any
+    invariant()
+  }
+
+  return undefined as any
 }
