@@ -573,6 +573,14 @@ export interface BuildNextOptions {
   _fromLocation?: ParsedLocation
   unsafeRelative?: 'path'
   _isNavigate?: boolean
+  /**
+   * @internal
+   * Marks `to` as a concrete pathname (e.g. the current location being
+   * rebuilt on load) instead of a route template. Concrete pathnames are
+   * route-matched on a miss and never interpolated, so segments that merely
+   * look like params (`/$foo`) are left untouched.
+   */
+  _concreteTo?: boolean
 }
 
 type NavigationEventInfo = {
@@ -1906,7 +1914,7 @@ export class RouterCore<
       let destRoutes: ReadonlyArray<AnyRoute>
       if (destRoute) {
         destRoutes = this.getRouteBranch(destRoute)
-      } else if (nextTo.includes('$')) {
+      } else if (!dest._concreteTo && nextTo.includes('$')) {
         // Route templates must match routesByPath exactly. A miss here is a
         // typed destination mismatch, not a concrete URL to route-match.
         destRoutes = []
@@ -1943,17 +1951,21 @@ export class RouterCore<
         }
       }
 
-      const nextPathname = opts.leaveParams
-        ? // Keep path params uninterpolated for matchRoute/template matching.
-          nextTo
-        : decodePath(
-            interpolatePath({
-              path: nextTo,
-              params: nextParams,
-              decoder: this.pathParamsDecoder,
-              server: this.isServer,
-            }).interpolatedPath,
-          ).path
+      const nextPathname =
+        opts.leaveParams || dest._concreteTo
+          ? // Keep path params uninterpolated for matchRoute/template matching.
+            // Concrete pathnames have nothing to interpolate either, and
+            // treating them as templates would mangle segments that look
+            // like params.
+            nextTo
+          : decodePath(
+              interpolatePath({
+                path: nextTo,
+                params: nextParams,
+                decoder: this.pathParamsDecoder,
+                server: this.isServer,
+              }).interpolatedPath,
+            ).path
 
       if (
         process.env.NODE_ENV !== 'production' &&
@@ -2408,6 +2420,7 @@ export class RouterCore<
         hash: true,
         state: true,
         _includeValidateSearch: true,
+        _concreteTo: true,
       })
 
       // Check if location changed - origin check is unnecessary since buildLocation
