@@ -36,6 +36,8 @@ jobs:
         benchmark:
           - client-nav
           - ssr
+          - memory-server
+          - memory-client
         include:
           - benchmark: client-nav
             mode: simulation
