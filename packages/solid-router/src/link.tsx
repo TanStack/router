@@ -73,44 +73,42 @@ export function useLinkProps<
 
   let hasRenderFetched = false
 
-  const [local, rest] = splitProps(
-    Solid.merge(
-      {
-        activeProps: STATIC_ACTIVE_PROPS_GET,
-        inactiveProps: STATIC_INACTIVE_PROPS_GET,
-      },
-      options,
-    ),
-    [
-      'activeProps',
-      'inactiveProps',
-      'activeOptions',
-      'to',
-      'preload',
-      'preloadDelay',
-      'preloadIntentProximity',
-      'hashScrollIntoView',
-      'replace',
-      'startTransition',
-      'resetScroll',
-      'viewTransition',
-      'target',
-      'disabled',
-      'style',
-      'class',
-      'onClick',
-      'onBlur',
-      'onFocus',
-      'onMouseEnter',
-      'onMouseLeave',
-      'onMouseOver',
-      'onMouseOut',
-      'onTouchStart',
-      'ignoreBlocker',
-    ],
-  )
+  // Defaults are resolved through accessors at the use sites instead of
+  // merging them into the props. Every merge/omit proxy layered here gets
+  // re-enumerated by spread() on each navigation, and V8 dispatches proxy
+  // traps in native runtime code — keeping this path proxy-free is what
+  // keeps Link updates cheap.
+  const local = options
+  const activeProps = () => local.activeProps ?? STATIC_ACTIVE_PROPS_GET
+  const inactiveProps = () => local.inactiveProps ?? STATIC_INACTIVE_PROPS_GET
 
-  const [_, propsSafeToSpread] = splitProps(rest, [
+  const propsSafeToSpread = Solid.omit(
+    options as Record<string, any>,
+    'activeProps',
+    'inactiveProps',
+    'activeOptions',
+    'to',
+    'preload',
+    'preloadDelay',
+    'preloadIntentProximity',
+    'hashScrollIntoView',
+    'replace',
+    'startTransition',
+    'resetScroll',
+    'viewTransition',
+    'target',
+    'disabled',
+    'style',
+    'class',
+    'onClick',
+    'onBlur',
+    'onFocus',
+    'onMouseEnter',
+    'onMouseLeave',
+    'onMouseOver',
+    'onMouseOut',
+    'onTouchStart',
+    'ignoreBlocker',
     'params',
     'search',
     'hash',
@@ -119,7 +117,7 @@ export function useLinkProps<
     'reloadDocument',
     'unsafeRelative',
     'from',
-  ] as any)
+  )
 
   const currentLocation = Solid.createMemo(() => router.stores.location.get(), {
     equals: (prev, next) => prev.href === next.href,
@@ -135,7 +133,15 @@ export function useLinkProps<
       // untrack because router-core will also access stores, which are signals in solid
       return Solid.untrack(() => router.buildLocation(options))
     },
-    { lazy: true },
+    {
+      lazy: true,
+      // Navigations usually leave most links' built locations unchanged;
+      // comparing hrefs lets downstream memos (href, isActive) skip work.
+      equals: (prev, next) =>
+        prev.href === next.href &&
+        prev.external === next.external &&
+        prev.maskedLocation?.href === next.maskedLocation?.href,
+    },
   )
 
   const hrefOption = Solid.createMemo(
@@ -409,8 +415,8 @@ export function useLinkProps<
 
   const simpleStyling = Solid.createMemo(
     () =>
-      local.activeProps === STATIC_ACTIVE_PROPS_GET &&
-      local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
+      activeProps() === STATIC_ACTIVE_PROPS_GET &&
+      inactiveProps() === STATIC_INACTIVE_PROPS_GET &&
       local.class === undefined &&
       local.style === undefined,
     { lazy: true },
@@ -444,84 +450,115 @@ export function useLinkProps<
     style?: JSX.CSSProperties
   }
 
-  const resolvedProps = Solid.createMemo(
+  const resolvedStateProps = Solid.createMemo(
+    (): ResolvedLinkStateProps =>
+      (isActive()
+        ? functionalUpdate(activeProps() as any, {})
+        : functionalUpdate(inactiveProps(), {})) ?? EMPTY_OBJECT,
+    { lazy: true },
+  )
+
+  const resolvedClass = Solid.createMemo(
     () => {
-      const active = isActive()
-
-      const base = {
-        href: hrefOption()?.href,
-        ref: mergeRefs(setRef, _options().ref as any),
-        onClick,
-        onBlur,
-        onFocus,
-        onMouseEnter,
-        onMouseOver,
-        onMouseLeave,
-        onMouseOut,
-        onTouchStart,
-        disabled: !!local.disabled,
-        target: local.target,
-        ...(local.disabled && STATIC_DISABLED_PROPS),
-        ...(isTransitioning() && STATIC_TRANSITIONING_ATTRIBUTES),
-      }
-
-      if (simpleStyling()) {
-        return {
-          ...base,
-          ...(active && STATIC_DEFAULT_ACTIVE_ATTRIBUTES),
-        }
-      }
-
-      const activeProps: ResolvedLinkStateProps = active
-        ? (functionalUpdate(local.activeProps as any, {}) ?? EMPTY_OBJECT)
-        : EMPTY_OBJECT
-      const inactiveProps: ResolvedLinkStateProps = active
-        ? EMPTY_OBJECT
-        : functionalUpdate(local.inactiveProps, {})
-      const style = {
-        ...local.style,
-        ...activeProps.style,
-        ...inactiveProps.style,
-      }
-      const className = [local.class, activeProps.class, inactiveProps.class]
-        .filter(Boolean)
-        .join(' ')
-
-      return {
-        ...activeProps,
-        ...inactiveProps,
-        ...base,
-        ...(hasKeys(style) ? { style } : undefined),
-        ...(className ? { class: className } : undefined),
-        ...(active && STATIC_ACTIVE_ATTRIBUTES),
-      } as ResolvedLinkStateProps
+      if (simpleStyling()) return isActive() ? 'active' : undefined
+      return (
+        [local.class, resolvedStateProps().class].filter(Boolean).join(' ') ||
+        undefined
+      )
     },
     { lazy: true },
   )
 
-  return Solid.merge(propsSafeToSpread, resolvedProps) as any
+  const resolvedStyle = Solid.createMemo(
+    () => {
+      if (simpleStyling()) return local.style
+      const style = { ...local.style, ...resolvedStateProps().style }
+      return hasKeys(style) ? style : undefined
+    },
+    { lazy: true },
+  )
+
+  // The returned object must be a plain object with a stable key set so the
+  // consuming spread() never enumerates through proxy traps. Reactivity lives
+  // in the property getters; values that no longer apply resolve to undefined,
+  // which spread()/assign() treats as attribute removal. Keys returned by
+  // activeProps/inactiveProps are discovered once at setup.
+  const extraStateKeys = new Set<string>()
+  Solid.untrack(() => {
+    for (const stateProps of [
+      functionalUpdate(activeProps() as any, {}),
+      functionalUpdate(inactiveProps(), {}),
+    ]) {
+      if (stateProps) {
+        for (const key of Object.keys(stateProps)) {
+          if (key !== 'class' && key !== 'style') extraStateKeys.add(key)
+        }
+      }
+    }
+  })
+
+  const composedRef = mergeRefs(setRef, (el: Element) => {
+    const r = _options().ref as any
+    if (typeof r === 'function') r(el)
+  })
+
+  const linkProps: Record<string, any> = {}
+  for (const key of Object.keys(propsSafeToSpread)) {
+    Object.defineProperty(
+      linkProps,
+      key,
+      Object.getOwnPropertyDescriptor(propsSafeToSpread, key)!,
+    )
+  }
+  for (const key of extraStateKeys) {
+    Object.defineProperty(linkProps, key, {
+      get: () => (resolvedStateProps() as Record<string, any>)[key],
+      enumerable: true,
+      configurable: true,
+    })
+  }
+
+  const defineGetters = (getters: Record<string, () => any>) => {
+    for (const key of Object.keys(getters)) {
+      Object.defineProperty(linkProps, key, {
+        get: getters[key],
+        enumerable: true,
+        configurable: true,
+      })
+    }
+  }
+
+  linkProps.ref = composedRef
+  linkProps.onClick = onClick
+  linkProps.onBlur = onBlur
+  linkProps.onFocus = onFocus
+  linkProps.onMouseEnter = onMouseEnter
+  linkProps.onMouseOver = onMouseOver
+  linkProps.onMouseLeave = onMouseLeave
+  linkProps.onMouseOut = onMouseOut
+  linkProps.onTouchStart = onTouchStart
+
+  defineGetters({
+    href: () => hrefOption()?.href,
+    disabled: () => !!local.disabled,
+    target: () => local.target,
+    role: () => (local.disabled ? 'link' : undefined),
+    'aria-disabled': () => (local.disabled ? 'true' : undefined),
+    'data-status': () => (isActive() ? 'active' : undefined),
+    'aria-current': () => (isActive() ? 'page' : undefined),
+    'data-transitioning': () =>
+      isTransitioning() ? 'transitioning' : undefined,
+    class: resolvedClass,
+    style: resolvedStyle,
+  })
+
+  return linkProps as any
 }
 
 const STATIC_ACTIVE_PROPS = { class: 'active' }
 const STATIC_ACTIVE_PROPS_GET = () => STATIC_ACTIVE_PROPS
 const EMPTY_OBJECT = {}
 const STATIC_INACTIVE_PROPS_GET = () => EMPTY_OBJECT
-const STATIC_DEFAULT_ACTIVE_ATTRIBUTES = {
-  class: 'active',
-  'data-status': 'active',
-  'aria-current': 'page',
-}
-const STATIC_DISABLED_PROPS = {
-  role: 'link',
-  'aria-disabled': 'true',
-}
-const STATIC_ACTIVE_ATTRIBUTES = {
-  'data-status': 'active',
-  'aria-current': 'page',
-}
-const STATIC_TRANSITIONING_ATTRIBUTES = {
-  'data-transitioning': 'transitioning',
-}
 
 /** Call a JSX.EventHandlerUnion with the event. */
 function callHandler<T, TEvent extends Event>(
