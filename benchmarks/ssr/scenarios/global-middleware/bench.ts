@@ -54,6 +54,7 @@ const postHeaders = {
   accept: acceptHeader,
   'content-type': 'application/json',
 } satisfies HeadersInit
+const documentLoopIterations = 20
 const apiLoopIterations = 100
 
 export const globalMiddlewareBenchOptions = {
@@ -261,6 +262,7 @@ export async function assertGlobalMiddlewareScenario(
 export function runGlobalMiddlewareDocumentLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
+    iterations: documentLoopIterations,
     buildRequest: buildDocumentRequest,
   })
 }

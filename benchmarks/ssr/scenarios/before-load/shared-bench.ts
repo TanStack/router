@@ -5,6 +5,7 @@ import type { StartRequestHandler } from '../../bench-utils'
 export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
+const beforeLoadLoopIterations = 20
 
 const requestInit = {
   method: 'GET',
@@ -56,6 +57,7 @@ export const beforeLoadBenchOptions = {
 export function runBeforeLoadLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
+    iterations: beforeLoadLoopIterations,
     buildRequest: buildBeforeLoadRequest,
   })
 }

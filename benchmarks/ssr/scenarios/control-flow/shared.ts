@@ -8,7 +8,7 @@ const benchmarkSeed = 0xdecafbad
 const redirectLoopIterations = 100
 const notFoundLoopIterations = 20
 const errorLoopIterations = 20
-const unmatchedLoopIterations = 20
+const unmatchedLoopIterations = 40
 const routeHeadersLoopIterations = 20
 
 // Pinned to the current built handler responses for these control-flow routes.

@@ -5,6 +5,7 @@ import type { StartRequestHandler } from '../../bench-utils'
 export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
+const plainSerializationLoopIterations = 20
 
 const requestInit = {
   method: 'GET',
@@ -95,6 +96,7 @@ export function runRichSerializationLoop(handler: StartRequestHandler) {
 export function runPlainSerializationLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
+    iterations: plainSerializationLoopIterations,
     buildRequest: (random, index) =>
       buildSerializationRequest('plain', random, index),
   })
