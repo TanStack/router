@@ -799,6 +799,15 @@ export interface ServerSsr {
   isSerializationFinished: () => boolean
   /** Framework-only: atomically reserves the pass-through stream path if safe. */
   reserveStreamFastPath: () => boolean
+  /**
+   * Framework-only: called by the stream transform to take ownership of
+   * cleanup. Once claimed, `createRequestHandler` must not run its
+   * fallback cleanup — the transformed stream cleans up when it is
+   * consumed, cancelled, or its lifetime expires.
+   */
+  claimCleanup: () => void
+  /** Framework-only. */
+  isCleanupClaimed: () => boolean
   /** Framework-only. */
   onInjectedHtml: (listener: () => void) => () => void
   /** Framework-only. */

@@ -445,6 +445,7 @@ export function attachRouterServerSsrUtils({
   let _dehydrated = false
   let _serializationFinished = false
   let streamFastPathReserved = false
+  let cleanupClaimed = false
   const renderFinishedListeners: Array<() => void> = []
   const injectedHtmlListeners: Array<() => void> = []
   const serializationFinishedListeners: Array<() => void> = []
@@ -616,6 +617,12 @@ export function attachRouterServerSsrUtils({
     },
     isSerializationFinished() {
       return _serializationFinished
+    },
+    claimCleanup() {
+      cleanupClaimed = true
+    },
+    isCleanupClaimed() {
+      return cleanupClaimed
     },
     reserveStreamFastPath() {
       if (

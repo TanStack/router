@@ -205,6 +205,14 @@ export function transformStreamWithRouter(
   if (!serverSsr) {
     throw new Error('Invariant failed: router.serverSsr is required')
   }
+  // The transformed stream owns cleanup from here on: it cleans up when
+  // consumed, cancelled, errored, or when its lifetime expires. Claiming
+  // stops createRequestHandler's fallback cleanup from tearing down SSR
+  // state while the response body is still streaming (#7529) — that wiped
+  // the render-finished + serialization-finished listeners mid-flight, so
+  // integrations like router-ssr-query never closed their query stream and
+  // the response hung until the serialization timeout.
+  serverSsr.claimCleanup()
   if (serverSsr.reserveStreamFastPath()) {
     return makeFastPathStream(appStream, opts, serverSsr)
   }
