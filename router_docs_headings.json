@@ -1,0 +1,8210 @@
+[
+  {
+    "path": "api/file-based-routing.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Configuration options"
+      },
+      {
+        "line": 34,
+        "level": 3,
+        "text": "`routesDirectory` (required)"
+      },
+      {
+        "line": 44,
+        "level": 3,
+        "text": "`generatedRouteTree` (required)"
+      },
+      {
+        "line": 56,
+        "level": 3,
+        "text": "`virtualRouteConfig`"
+      },
+      {
+        "line": 62,
+        "level": 3,
+        "text": "`routeFilePrefix`"
+      },
+      {
+        "line": 68,
+        "level": 3,
+        "text": "`routeFileIgnorePrefix`"
+      },
+      {
+        "line": 85,
+        "level": 3,
+        "text": "`routeFileIgnorePattern`"
+      },
+      {
+        "line": 91,
+        "level": 3,
+        "text": "`routeToken`"
+      },
+      {
+        "line": 105,
+        "level": 3,
+        "text": "`indexToken`"
+      },
+      {
+        "line": 118,
+        "level": 3,
+        "text": "`quoteStyle`"
+      },
+      {
+        "line": 127,
+        "level": 3,
+        "text": "`semicolons`"
+      },
+      {
+        "line": 136,
+        "level": 3,
+        "text": "`autoCodeSplitting`"
+      },
+      {
+        "line": 147,
+        "level": 3,
+        "text": "`disableTypes`"
+      },
+      {
+        "line": 155,
+        "level": 3,
+        "text": "`addExtensions`"
+      },
+      {
+        "line": 161,
+        "level": 3,
+        "text": "`disableLogging`"
+      },
+      {
+        "line": 167,
+        "level": 3,
+        "text": "`routeTreeFileHeader`"
+      },
+      {
+        "line": 181,
+        "level": 3,
+        "text": "`routeTreeFileFooter`"
+      },
+      {
+        "line": 191,
+        "level": 3,
+        "text": "`enableRouteTreeFormatting`"
+      },
+      {
+        "line": 197,
+        "level": 3,
+        "text": "`tmpDir`"
+      }
+    ]
+  },
+  {
+    "path": "framework/solid/decisions-on-dx.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/devtools.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/faq.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/installation.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/overview.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/quick-start.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Using File-Based Route Generation"
+      },
+      {
+        "line": 11,
+        "level": 3,
+        "text": "Scaffolding Your First TanStack Router Project"
+      },
+      {
+        "line": 19,
+        "level": 3,
+        "text": "Manual Setup"
+      },
+      {
+        "line": 23,
+        "level": 4,
+        "text": "Install TanStack Router, Vite Plugin, and the Router Devtools"
+      },
+      {
+        "line": 28,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 31,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 34,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 37,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 41,
+        "level": 4,
+        "text": "Configure the Vite Plugin"
+      },
+      {
+        "line": 72,
+        "level": 4,
+        "text": "`src/routes/__root.tsx`"
+      },
+      {
+        "line": 97,
+        "level": 4,
+        "text": "`src/routes/index.tsx`"
+      },
+      {
+        "line": 115,
+        "level": 4,
+        "text": "`src/routes/about.tsx`"
+      },
+      {
+        "line": 129,
+        "level": 4,
+        "text": "`src/main.tsx`"
+      },
+      {
+        "line": 161,
+        "level": 2,
+        "text": "Using Code-Based Route Configuration"
+      }
+    ]
+  },
+  {
+    "path": "framework/solid/routing/code-based-routing.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/routing/file-based-routing.md",
+    "headings": [
+      {
+        "line": 13,
+        "level": 3,
+        "text": "Configuration with Vite"
+      }
+    ]
+  },
+  {
+    "path": "framework/solid/routing/file-naming-conventions.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/routing/installation-with-router-cli.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/routing/installation-with-vite.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/routing/route-matching.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/routing/route-trees.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/routing/routing-concepts.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/routing/virtual-file-routes.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/authenticated-routes.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/automatic-code-splitting.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/code-splitting.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/creating-a-router.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/custom-link.md",
+    "headings": [
+      {
+        "line": 36,
+        "level": 2,
+        "text": "`createLink` with third party libraries"
+      },
+      {
+        "line": 40,
+        "level": 3,
+        "text": "Some Library example"
+      }
+    ]
+  },
+  {
+    "path": "framework/solid/guide/custom-search-param-serialization.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/data-loading.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/data-mutations.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/deferred-data-loading.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/document-head-management.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/external-data-loading.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/history-types.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/link-options.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/navigation-blocking.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/navigation.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/not-found-errors.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/outlets.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/path-params.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/preloading.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/route-masking.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/router-context.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/scroll-restoration.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/search-params.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/ssr.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/static-route-data.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/type-safety.md",
+    "headings": []
+  },
+  {
+    "path": "framework/solid/guide/type-utilities.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/comparison.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/decisions-on-dx.md",
+    "headings": [
+      {
+        "line": 17,
+        "level": 2,
+        "text": "TanStack Router's origin story"
+      },
+      {
+        "line": 23,
+        "level": 2,
+        "text": "How does TanStack Router achieve this?"
+      },
+      {
+        "line": 37,
+        "level": 2,
+        "text": "1. Why is the Router's configuration done this way?"
+      },
+      {
+        "line": 98,
+        "level": 2,
+        "text": "2. Declaring the Router instance for type inference"
+      },
+      {
+        "line": 154,
+        "level": 2,
+        "text": "3. Why is file-based routing the preferred way to define routes?"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/devtools.md",
+    "headings": [
+      {
+        "line": 11,
+        "level": 2,
+        "text": "Installation"
+      },
+      {
+        "line": 37,
+        "level": 2,
+        "text": "Import the Devtools"
+      },
+      {
+        "line": 43,
+        "level": 2,
+        "text": "Using Devtools in production"
+      },
+      {
+        "line": 51,
+        "level": 2,
+        "text": "Using inside of the `RouterProvider`"
+      },
+      {
+        "line": 78,
+        "level": 2,
+        "text": "Manually passing the Router Instance"
+      },
+      {
+        "line": 93,
+        "level": 2,
+        "text": "Floating Mode"
+      },
+      {
+        "line": 112,
+        "level": 3,
+        "text": "Devtools Options"
+      },
+      {
+        "line": 135,
+        "level": 2,
+        "text": "Fixed Mode"
+      },
+      {
+        "line": 154,
+        "level": 2,
+        "text": "Embedded Mode"
+      },
+      {
+        "line": 175,
+        "level": 3,
+        "text": "DevtoolsPanel Options"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/faq.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Should I commit my `routeTree.gen.ts` file into git?"
+      },
+      {
+        "line": 13,
+        "level": 2,
+        "text": "Can I conditionally render the Root Route component?"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/installation.md",
+    "headings": [
+      {
+        "line": 11,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 13,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 15,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 17,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 23,
+        "level": 3,
+        "text": "Requirements"
+      },
+      {
+        "line": 39,
+        "level": 3,
+        "text": "LLM Assistance Support"
+      },
+      {
+        "line": 55,
+        "level": 3,
+        "text": "Usage with yarn workspaces"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/migrate-from-react-location.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Differences between React Location and TanStack Router"
+      },
+      {
+        "line": 16,
+        "level": 2,
+        "text": "Migration guide"
+      },
+      {
+        "line": 23,
+        "level": 3,
+        "text": "Step 1: Swap over to TanStack Router's dependencies"
+      },
+      {
+        "line": 37,
+        "level": 3,
+        "text": "Step 2: Use the file-based routing watcher"
+      },
+      {
+        "line": 62,
+        "level": 3,
+        "text": "Step 3: Add the file-based configuration file to your project"
+      },
+      {
+        "line": 75,
+        "level": 3,
+        "text": "Step 4: Create the routes directory"
+      },
+      {
+        "line": 83,
+        "level": 3,
+        "text": "Step 5: Create the root route file"
+      },
+      {
+        "line": 109,
+        "level": 3,
+        "text": "Step 6: Create the index route file"
+      },
+      {
+        "line": 122,
+        "level": 3,
+        "text": "Step 7: Create the posts route file"
+      },
+      {
+        "line": 161,
+        "level": 3,
+        "text": "Step 8: Create the posts index route file"
+      },
+      {
+        "line": 174,
+        "level": 3,
+        "text": "Step 9: Create the posts id route file"
+      },
+      {
+        "line": 198,
+        "level": 3,
+        "text": "Step 10: Generate the route tree"
+      },
+      {
+        "line": 208,
+        "level": 3,
+        "text": "Step 11: Update the main entry file to render the Router"
+      },
+      {
+        "line": 246,
+        "level": 3,
+        "text": "Finished!"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/migrate-from-react-router.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/overview.md",
+    "headings": [
+      {
+        "line": 24,
+        "level": 2,
+        "text": "\"A Fork in the Route\""
+      },
+      {
+        "line": 49,
+        "level": 2,
+        "text": "Why TanStack Router?"
+      },
+      {
+        "line": 78,
+        "level": 2,
+        "text": "100% Inferred TypeScript Support"
+      },
+      {
+        "line": 91,
+        "level": 2,
+        "text": "1st Class Search Parameters"
+      },
+      {
+        "line": 113,
+        "level": 2,
+        "text": "Built-In Caching and Friendly Data Loading"
+      },
+      {
+        "line": 123,
+        "level": 3,
+        "text": "Built-in Cache"
+      },
+      {
+        "line": 127,
+        "level": 3,
+        "text": "Flexible & Powerful Data Lifecycle APIs"
+      },
+      {
+        "line": 131,
+        "level": 2,
+        "text": "Inherited Route Context"
+      },
+      {
+        "line": 143,
+        "level": 2,
+        "text": "File-based and/or Code-Based Routing"
+      },
+      {
+        "line": 149,
+        "level": 2,
+        "text": "Acknowledgements"
+      },
+      {
+        "line": 160,
+        "level": 2,
+        "text": "Let's go!"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/quick-start.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Using File-Based Route Generation"
+      },
+      {
+        "line": 11,
+        "level": 3,
+        "text": "Scaffolding Your First TanStack Router Project"
+      },
+      {
+        "line": 19,
+        "level": 3,
+        "text": "Manual Setup"
+      },
+      {
+        "line": 23,
+        "level": 4,
+        "text": "Install TanStack Router, Vite Plugin, and the Router Devtools"
+      },
+      {
+        "line": 28,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 31,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 34,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 37,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 41,
+        "level": 4,
+        "text": "Configure the Vite Plugin"
+      },
+      {
+        "line": 73,
+        "level": 4,
+        "text": "`src/routes/__root.tsx`"
+      },
+      {
+        "line": 98,
+        "level": 4,
+        "text": "`src/routes/index.tsx`"
+      },
+      {
+        "line": 116,
+        "level": 4,
+        "text": "`src/routes/about.tsx`"
+      },
+      {
+        "line": 130,
+        "level": 4,
+        "text": "`src/main.tsx`"
+      },
+      {
+        "line": 168,
+        "level": 2,
+        "text": "Using Code-Based Route Configuration"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/routing/code-based-routing.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "⚠️ Before You Start"
+      },
+      {
+        "line": 13,
+        "level": 2,
+        "text": "Route Trees"
+      },
+      {
+        "line": 114,
+        "level": 2,
+        "text": "Anatomy of a Route"
+      },
+      {
+        "line": 147,
+        "level": 2,
+        "text": "Manually building the route tree"
+      },
+      {
+        "line": 178,
+        "level": 2,
+        "text": "Routing Concepts for Code-Based Routing"
+      },
+      {
+        "line": 195,
+        "level": 2,
+        "text": "The Root Route"
+      },
+      {
+        "line": 219,
+        "level": 2,
+        "text": "Basic Routes"
+      },
+      {
+        "line": 232,
+        "level": 2,
+        "text": "Index Routes"
+      },
+      {
+        "line": 251,
+        "level": 2,
+        "text": "Dynamic Route Segments"
+      },
+      {
+        "line": 274,
+        "level": 2,
+        "text": "Splat / Catch-All Routes"
+      },
+      {
+        "line": 298,
+        "level": 2,
+        "text": "Layout Routes"
+      },
+      {
+        "line": 349,
+        "level": 2,
+        "text": "Pathless Layout Routes"
+      },
+      {
+        "line": 400,
+        "level": 2,
+        "text": "Non-Nested Routes"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/routing/file-based-routing.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "What is File-Based Routing?"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "`/`s or `.`s?"
+      },
+      {
+        "line": 22,
+        "level": 2,
+        "text": "Directory Routes"
+      },
+      {
+        "line": 54,
+        "level": 2,
+        "text": "Flat Routes"
+      },
+      {
+        "line": 81,
+        "level": 2,
+        "text": "Mixed Flat and Directory Routes"
+      },
+      {
+        "line": 108,
+        "level": 2,
+        "text": "Getting started with File-Based Routing"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/routing/file-naming-conventions.md",
+    "headings": [
+      {
+        "line": 22,
+        "level": 2,
+        "text": "Dynamic Path Params"
+      },
+      {
+        "line": 33,
+        "level": 2,
+        "text": "Pathless Routes"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/routing/installation-with-esbuild.md",
+    "headings": [
+      {
+        "line": 36,
+        "level": 2,
+        "text": "Ignoring the generated route tree file"
+      },
+      {
+        "line": 67,
+        "level": 2,
+        "text": "Configuration"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/routing/installation-with-router-cli.md",
+    "headings": [
+      {
+        "line": 34,
+        "level": 2,
+        "text": "Using the `generate` command"
+      },
+      {
+        "line": 42,
+        "level": 2,
+        "text": "Using the `watch` command"
+      },
+      {
+        "line": 54,
+        "level": 2,
+        "text": "Ignoring the generated route tree file"
+      },
+      {
+        "line": 85,
+        "level": 2,
+        "text": "Configuration"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/routing/installation-with-rspack.md",
+    "headings": [
+      {
+        "line": 42,
+        "level": 2,
+        "text": "Ignoring the generated route tree file"
+      },
+      {
+        "line": 73,
+        "level": 2,
+        "text": "Configuration"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/routing/installation-with-vite.md",
+    "headings": [
+      {
+        "line": 44,
+        "level": 2,
+        "text": "Ignoring the generated route tree file"
+      },
+      {
+        "line": 75,
+        "level": 2,
+        "text": "Configuration"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/routing/installation-with-webpack.md",
+    "headings": [
+      {
+        "line": 35,
+        "level": 2,
+        "text": "Ignoring the generated route tree file"
+      },
+      {
+        "line": 66,
+        "level": 2,
+        "text": "Configuration"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/routing/route-matching.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/routing/route-trees.md",
+    "headings": [
+      {
+        "line": 14,
+        "level": 2,
+        "text": "Route Trees"
+      },
+      {
+        "line": 57,
+        "level": 2,
+        "text": "Route Tree Configuration"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/routing/routing-concepts.md",
+    "headings": [
+      {
+        "line": 9,
+        "level": 2,
+        "text": "Anatomy of a Route"
+      },
+      {
+        "line": 29,
+        "level": 2,
+        "text": "The Root Route"
+      },
+      {
+        "line": 64,
+        "level": 2,
+        "text": "Basic Routes"
+      },
+      {
+        "line": 85,
+        "level": 2,
+        "text": "Index Routes"
+      },
+      {
+        "line": 107,
+        "level": 2,
+        "text": "Dynamic Route Segments"
+      },
+      {
+        "line": 132,
+        "level": 2,
+        "text": "Splat / Catch-All Routes"
+      },
+      {
+        "line": 148,
+        "level": 2,
+        "text": "Optional Path Parameters"
+      },
+      {
+        "line": 182,
+        "level": 2,
+        "text": "Layout Routes"
+      },
+      {
+        "line": 254,
+        "level": 2,
+        "text": "Pathless Layout Routes"
+      },
+      {
+        "line": 331,
+        "level": 2,
+        "text": "Non-Nested Routes"
+      },
+      {
+        "line": 355,
+        "level": 2,
+        "text": "Excluding Files and Folders from Routes"
+      },
+      {
+        "line": 399,
+        "level": 2,
+        "text": "Pathless Route Group Directories"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/routing/virtual-file-routes.md",
+    "headings": [
+      {
+        "line": 41,
+        "level": 2,
+        "text": "Configuration"
+      },
+      {
+        "line": 48,
+        "level": 2,
+        "text": "Configuration via the TanStackRouter Plugin"
+      },
+      {
+        "line": 87,
+        "level": 2,
+        "text": "Creating Virtual File Routes"
+      },
+      {
+        "line": 97,
+        "level": 2,
+        "text": "Virtual Root Route"
+      },
+      {
+        "line": 110,
+        "level": 2,
+        "text": "Virtual Route"
+      },
+      {
+        "line": 139,
+        "level": 2,
+        "text": "Virtual Index Route"
+      },
+      {
+        "line": 149,
+        "level": 2,
+        "text": "Virtual Pathless Route"
+      },
+      {
+        "line": 177,
+        "level": 2,
+        "text": "Physical Virtual Routes"
+      },
+      {
+        "line": 227,
+        "level": 2,
+        "text": "Virtual Routes inside of TanStack Router File Based routing"
+      },
+      {
+        "line": 272,
+        "level": 2,
+        "text": "Inception"
+      },
+      {
+        "line": 293,
+        "level": 2,
+        "text": "Configuration via the TanStack Router CLI"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/api/router/ActiveLinkOptionsType.md",
+    "headings": [
+      {
+        "line": 19,
+        "level": 2,
+        "text": "ActiveLinkOptions properties"
+      },
+      {
+        "line": 23,
+        "level": 3,
+        "text": "`activeProps`"
+      },
+      {
+        "line": 29,
+        "level": 3,
+        "text": "`inactiveProps`"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/AsyncRouteComponentType.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/api/router/FileRouteClass.md",
+    "headings": [
+      {
+        "line": 12,
+        "level": 2,
+        "text": "`FileRoute` constructor"
+      },
+      {
+        "line": 16,
+        "level": 3,
+        "text": "Constructor options"
+      },
+      {
+        "line": 22,
+        "level": 3,
+        "text": "Constructor returns"
+      },
+      {
+        "line": 26,
+        "level": 2,
+        "text": "`FileRoute` methods"
+      },
+      {
+        "line": 30,
+        "level": 3,
+        "text": "`.createRoute` method"
+      },
+      {
+        "line": 34,
+        "level": 4,
+        "text": ".createRoute options"
+      },
+      {
+        "line": 41,
+        "level": 4,
+        "text": ".createRoute returns"
+      },
+      {
+        "line": 47,
+        "level": 3,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/LinkOptionsType.md",
+    "headings": [
+      {
+        "line": 18,
+        "level": 2,
+        "text": "LinkOptions properties"
+      },
+      {
+        "line": 22,
+        "level": 3,
+        "text": "`target`"
+      },
+      {
+        "line": 28,
+        "level": 3,
+        "text": "`activeOptions`"
+      },
+      {
+        "line": 34,
+        "level": 3,
+        "text": "`preload`"
+      },
+      {
+        "line": 41,
+        "level": 3,
+        "text": "`preloadDelay`"
+      },
+      {
+        "line": 47,
+        "level": 3,
+        "text": "`disabled`"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/LinkPropsType.md",
+    "headings": [
+      {
+        "line": 17,
+        "level": 2,
+        "text": "LinkProps properties"
+      },
+      {
+        "line": 22,
+        "level": 4,
+        "text": "`children`"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/MatchRouteOptionsType.md",
+    "headings": [
+      {
+        "line": 17,
+        "level": 2,
+        "text": "MatchRouteOptions properties"
+      },
+      {
+        "line": 21,
+        "level": 3,
+        "text": "`pending` property"
+      },
+      {
+        "line": 27,
+        "level": 3,
+        "text": "`caseSensitive` property"
+      },
+      {
+        "line": 33,
+        "level": 3,
+        "text": "`includeSearch` property"
+      },
+      {
+        "line": 39,
+        "level": 3,
+        "text": "`fuzzy` property"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/NavigateOptionsType.md",
+    "headings": [
+      {
+        "line": 20,
+        "level": 2,
+        "text": "NavigateOptions properties"
+      },
+      {
+        "line": 24,
+        "level": 3,
+        "text": "`replace`"
+      },
+      {
+        "line": 31,
+        "level": 3,
+        "text": "`resetScroll`"
+      },
+      {
+        "line": 38,
+        "level": 3,
+        "text": "`hashScrollIntoView`"
+      },
+      {
+        "line": 47,
+        "level": 3,
+        "text": "`viewTransition`"
+      },
+      {
+        "line": 58,
+        "level": 3,
+        "text": "`ignoreBlocker`"
+      },
+      {
+        "line": 65,
+        "level": 3,
+        "text": "`reloadDocument`"
+      },
+      {
+        "line": 72,
+        "level": 3,
+        "text": "`href`"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/NotFoundErrorType.md",
+    "headings": [
+      {
+        "line": 18,
+        "level": 2,
+        "text": "NotFoundError properties"
+      },
+      {
+        "line": 22,
+        "level": 3,
+        "text": "`global` property (⚠️ deprecated, use `routeId: rootRouteId` instead)"
+      },
+      {
+        "line": 28,
+        "level": 3,
+        "text": "`data` property"
+      },
+      {
+        "line": 34,
+        "level": 3,
+        "text": "`throw` property"
+      },
+      {
+        "line": 40,
+        "level": 3,
+        "text": "`route` property"
+      },
+      {
+        "line": 46,
+        "level": 3,
+        "text": "`headers` property"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/NotFoundRouteClass.md",
+    "headings": [
+      {
+        "line": 13,
+        "level": 2,
+        "text": "Constructor options"
+      },
+      {
+        "line": 35,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/ParsedHistoryStateType.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/api/router/ParsedLocationType.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/api/router/RedirectType.md",
+    "headings": [
+      {
+        "line": 18,
+        "level": 2,
+        "text": "Redirect properties"
+      },
+      {
+        "line": 22,
+        "level": 3,
+        "text": "`statusCode` property"
+      },
+      {
+        "line": 28,
+        "level": 3,
+        "text": "`throw` property"
+      },
+      {
+        "line": 34,
+        "level": 3,
+        "text": "`headers` property"
+      },
+      {
+        "line": 40,
+        "level": 3,
+        "text": "Navigation Properties"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RegisterType.md",
+    "headings": [
+      {
+        "line": 16,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RootRouteClass.md",
+    "headings": [
+      {
+        "line": 12,
+        "level": 2,
+        "text": "`RootRoute` constructor"
+      },
+      {
+        "line": 16,
+        "level": 3,
+        "text": "Constructor options"
+      },
+      {
+        "line": 37,
+        "level": 2,
+        "text": "Constructor returns"
+      },
+      {
+        "line": 41,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RouteApiClass.md",
+    "headings": [
+      {
+        "line": 12,
+        "level": 2,
+        "text": "Constructor options"
+      },
+      {
+        "line": 16,
+        "level": 3,
+        "text": "`opts.routeId` option"
+      },
+      {
+        "line": 22,
+        "level": 2,
+        "text": "Constructor returns"
+      },
+      {
+        "line": 26,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RouteApiType.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "`RouteApi` properties and methods"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`useMatch` method"
+      },
+      {
+        "line": 35,
+        "level": 3,
+        "text": "`useRouteContext` method"
+      },
+      {
+        "line": 53,
+        "level": 3,
+        "text": "`useSearch` method"
+      },
+      {
+        "line": 76,
+        "level": 3,
+        "text": "`useParams` method"
+      },
+      {
+        "line": 99,
+        "level": 3,
+        "text": "`useLoaderData` method"
+      },
+      {
+        "line": 122,
+        "level": 3,
+        "text": "`useLoaderDeps` method"
+      },
+      {
+        "line": 145,
+        "level": 3,
+        "text": "`useNavigate` method"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RouteClass.md",
+    "headings": [
+      {
+        "line": 12,
+        "level": 2,
+        "text": "`Route` constructor"
+      },
+      {
+        "line": 16,
+        "level": 3,
+        "text": "Constructor options"
+      },
+      {
+        "line": 22,
+        "level": 3,
+        "text": "Constructor returns"
+      },
+      {
+        "line": 26,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RouteMaskType.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "RouteMask properties"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`...ToOptions`"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "`options.routeTree`"
+      },
+      {
+        "line": 24,
+        "level": 3,
+        "text": "`options.unmaskOnReload`"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RouteMatchType.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/api/router/RouteOptionsType.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "RouteOptions properties"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`getParentRoute` method"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "`path` property"
+      },
+      {
+        "line": 24,
+        "level": 3,
+        "text": "`id` property"
+      },
+      {
+        "line": 30,
+        "level": 3,
+        "text": "`component` property"
+      },
+      {
+        "line": 36,
+        "level": 3,
+        "text": "`errorComponent` property"
+      },
+      {
+        "line": 42,
+        "level": 3,
+        "text": "`pendingComponent` property"
+      },
+      {
+        "line": 48,
+        "level": 3,
+        "text": "`notFoundComponent` property"
+      },
+      {
+        "line": 54,
+        "level": 3,
+        "text": "`validateSearch` method"
+      },
+      {
+        "line": 61,
+        "level": 3,
+        "text": "`search.middlewares` property"
+      },
+      {
+        "line": 68,
+        "level": 3,
+        "text": "`parseParams` method (⚠️ deprecated, use `params.parse` instead)"
+      },
+      {
+        "line": 74,
+        "level": 3,
+        "text": "`stringifyParams` method (⚠️ deprecated, use `params.stringify` instead)"
+      },
+      {
+        "line": 80,
+        "level": 3,
+        "text": "`params.parse` method"
+      },
+      {
+        "line": 86,
+        "level": 3,
+        "text": "`params.stringify` method"
+      },
+      {
+        "line": 91,
+        "level": 3,
+        "text": "`beforeLoad` method"
+      },
+      {
+        "line": 120,
+        "level": 3,
+        "text": "`loader` method"
+      },
+      {
+        "line": 150,
+        "level": 3,
+        "text": "`loaderDeps` method"
+      },
+      {
+        "line": 163,
+        "level": 3,
+        "text": "`staleTime` property"
+      },
+      {
+        "line": 170,
+        "level": 3,
+        "text": "`preloadStaleTime` property"
+      },
+      {
+        "line": 177,
+        "level": 3,
+        "text": "`gcTime` property"
+      },
+      {
+        "line": 184,
+        "level": 3,
+        "text": "`shouldReload` property"
+      },
+      {
+        "line": 192,
+        "level": 3,
+        "text": "`caseSensitive` property"
+      },
+      {
+        "line": 198,
+        "level": 3,
+        "text": "`wrapInSuspense` property"
+      },
+      {
+        "line": 204,
+        "level": 3,
+        "text": "`pendingMs` property"
+      },
+      {
+        "line": 211,
+        "level": 3,
+        "text": "`pendingMinMs` property"
+      },
+      {
+        "line": 218,
+        "level": 3,
+        "text": "`preloadMaxAge` property"
+      },
+      {
+        "line": 225,
+        "level": 3,
+        "text": "`preSearchFilters` property (⚠️ deprecated, use `search.middlewares` instead)"
+      },
+      {
+        "line": 233,
+        "level": 3,
+        "text": "`postSearchFilters` property (⚠️ deprecated, use `search.middlewares` instead)"
+      },
+      {
+        "line": 241,
+        "level": 3,
+        "text": "`onError` property"
+      },
+      {
+        "line": 248,
+        "level": 3,
+        "text": "`onEnter` property"
+      },
+      {
+        "line": 254,
+        "level": 3,
+        "text": "`onStay` property"
+      },
+      {
+        "line": 260,
+        "level": 3,
+        "text": "`onLeave` property"
+      },
+      {
+        "line": 266,
+        "level": 3,
+        "text": "`onCatch` property"
+      },
+      {
+        "line": 272,
+        "level": 3,
+        "text": "`remountDeps` method"
+      },
+      {
+        "line": 304,
+        "level": 3,
+        "text": "`headers` method"
+      },
+      {
+        "line": 320,
+        "level": 3,
+        "text": "`head` method"
+      },
+      {
+        "line": 348,
+        "level": 3,
+        "text": "`scripts` method"
+      },
+      {
+        "line": 364,
+        "level": 3,
+        "text": "`codeSplitGroupings` property"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RouteType.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "`Route` properties and methods"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`.addChildren` method"
+      },
+      {
+        "line": 17,
+        "level": 3,
+        "text": "`.update` method"
+      },
+      {
+        "line": 24,
+        "level": 3,
+        "text": "`.lazy` method"
+      },
+      {
+        "line": 29,
+        "level": 3,
+        "text": "...`RouteApi` methods"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RouterClass.md",
+    "headings": [
+      {
+        "line": 12,
+        "level": 2,
+        "text": "`Router` constructor"
+      },
+      {
+        "line": 16,
+        "level": 3,
+        "text": "Constructor options"
+      },
+      {
+        "line": 22,
+        "level": 3,
+        "text": "Constructor returns"
+      },
+      {
+        "line": 26,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RouterEventsType.md",
+    "headings": [
+      {
+        "line": 57,
+        "level": 2,
+        "text": "RouterEvents properties"
+      },
+      {
+        "line": 61,
+        "level": 3,
+        "text": "`type` property"
+      },
+      {
+        "line": 67,
+        "level": 3,
+        "text": "`fromLocation` property"
+      },
+      {
+        "line": 72,
+        "level": 3,
+        "text": "`toLocation` property"
+      },
+      {
+        "line": 77,
+        "level": 3,
+        "text": "`pathChanged` property"
+      },
+      {
+        "line": 82,
+        "level": 3,
+        "text": "`hrefChanged` property"
+      },
+      {
+        "line": 87,
+        "level": 2,
+        "text": "Example"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RouterOptionsType.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "RouterOptions properties"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`routeTree` property"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "`history` property"
+      },
+      {
+        "line": 24,
+        "level": 3,
+        "text": "`stringifySearch` method"
+      },
+      {
+        "line": 31,
+        "level": 3,
+        "text": "`parseSearch` method"
+      },
+      {
+        "line": 38,
+        "level": 3,
+        "text": "`search.strict` property"
+      },
+      {
+        "line": 47,
+        "level": 3,
+        "text": "`defaultPreload` property"
+      },
+      {
+        "line": 57,
+        "level": 3,
+        "text": "`defaultPreloadDelay` property"
+      },
+      {
+        "line": 64,
+        "level": 3,
+        "text": "`defaultComponent` property"
+      },
+      {
+        "line": 71,
+        "level": 3,
+        "text": "`defaultErrorComponent` property"
+      },
+      {
+        "line": 78,
+        "level": 3,
+        "text": "`defaultNotFoundComponent` property"
+      },
+      {
+        "line": 85,
+        "level": 3,
+        "text": "`defaultPendingComponent` property"
+      },
+      {
+        "line": 91,
+        "level": 3,
+        "text": "`defaultPendingMs` property"
+      },
+      {
+        "line": 98,
+        "level": 3,
+        "text": "`defaultPendingMinMs` property"
+      },
+      {
+        "line": 105,
+        "level": 3,
+        "text": "`defaultStaleTime` property"
+      },
+      {
+        "line": 112,
+        "level": 3,
+        "text": "`defaultPreloadStaleTime` property"
+      },
+      {
+        "line": 119,
+        "level": 3,
+        "text": "`defaultPreloadGcTime` property"
+      },
+      {
+        "line": 126,
+        "level": 3,
+        "text": "`defaultGcTime` property"
+      },
+      {
+        "line": 133,
+        "level": 3,
+        "text": "`defaultOnCatch` property"
+      },
+      {
+        "line": 139,
+        "level": 3,
+        "text": "`disableGlobalCatchBoundary` property"
+      },
+      {
+        "line": 147,
+        "level": 3,
+        "text": "`defaultViewTransition` property"
+      },
+      {
+        "line": 159,
+        "level": 3,
+        "text": "`defaultHashScrollIntoView` property"
+      },
+      {
+        "line": 168,
+        "level": 3,
+        "text": "`caseSensitive` property"
+      },
+      {
+        "line": 175,
+        "level": 3,
+        "text": "`basepath` property"
+      },
+      {
+        "line": 182,
+        "level": 3,
+        "text": "`context` property"
+      },
+      {
+        "line": 188,
+        "level": 3,
+        "text": "`dehydrate` method"
+      },
+      {
+        "line": 194,
+        "level": 3,
+        "text": "`hydrate` method"
+      },
+      {
+        "line": 200,
+        "level": 3,
+        "text": "`routeMasks` property"
+      },
+      {
+        "line": 206,
+        "level": 3,
+        "text": "`unmaskOnReload` property"
+      },
+      {
+        "line": 213,
+        "level": 3,
+        "text": "`Wrap` property"
+      },
+      {
+        "line": 232,
+        "level": 3,
+        "text": "`InnerWrap` property"
+      },
+      {
+        "line": 257,
+        "level": 3,
+        "text": "`notFoundMode` property"
+      },
+      {
+        "line": 264,
+        "level": 3,
+        "text": "`notFoundRoute` property"
+      },
+      {
+        "line": 271,
+        "level": 3,
+        "text": "`trailingSlash` property"
+      },
+      {
+        "line": 278,
+        "level": 3,
+        "text": "`pathParamsAllowedCharacters` property"
+      },
+      {
+        "line": 284,
+        "level": 3,
+        "text": "`defaultStructuralSharing` property"
+      },
+      {
+        "line": 292,
+        "level": 3,
+        "text": "`defaultRemountDeps` property"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RouterStateType.md",
+    "headings": [
+      {
+        "line": 20,
+        "level": 2,
+        "text": "RouterState properties"
+      },
+      {
+        "line": 24,
+        "level": 3,
+        "text": "`status` property"
+      },
+      {
+        "line": 29,
+        "level": 3,
+        "text": "`isLoading` property"
+      },
+      {
+        "line": 34,
+        "level": 3,
+        "text": "`isTransitioning` property"
+      },
+      {
+        "line": 39,
+        "level": 3,
+        "text": "`matches` property"
+      },
+      {
+        "line": 44,
+        "level": 3,
+        "text": "`pendingMatches` property"
+      },
+      {
+        "line": 49,
+        "level": 3,
+        "text": "`location` property"
+      },
+      {
+        "line": 54,
+        "level": 3,
+        "text": "`resolvedLocation` property"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/RouterType.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "`Router` properties and methods"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`.update` method"
+      },
+      {
+        "line": 17,
+        "level": 3,
+        "text": "`state` property"
+      },
+      {
+        "line": 24,
+        "level": 3,
+        "text": "`.subscribe` method"
+      },
+      {
+        "line": 31,
+        "level": 3,
+        "text": "`.matchRoutes` method"
+      },
+      {
+        "line": 37,
+        "level": 3,
+        "text": "`.cancelMatch` method"
+      },
+      {
+        "line": 42,
+        "level": 3,
+        "text": "`.cancelMatches` method"
+      },
+      {
+        "line": 47,
+        "level": 3,
+        "text": "`.buildLocation` method"
+      },
+      {
+        "line": 86,
+        "level": 3,
+        "text": "`.commitLocation` method"
+      },
+      {
+        "line": 129,
+        "level": 3,
+        "text": "`.navigate` method"
+      },
+      {
+        "line": 138,
+        "level": 3,
+        "text": "`.invalidate` method"
+      },
+      {
+        "line": 150,
+        "level": 3,
+        "text": "`.clearCache` method"
+      },
+      {
+        "line": 158,
+        "level": 3,
+        "text": "`.load` method"
+      },
+      {
+        "line": 168,
+        "level": 3,
+        "text": "`.preloadRoute` method"
+      },
+      {
+        "line": 183,
+        "level": 3,
+        "text": "`.loadRouteChunk` method"
+      },
+      {
+        "line": 189,
+        "level": 3,
+        "text": "`.matchRoute` method"
+      },
+      {
+        "line": 207,
+        "level": 3,
+        "text": "`.dehydrate` method"
+      },
+      {
+        "line": 215,
+        "level": 3,
+        "text": "`.hydrate` method"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/ToMaskOptionsType.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/api/router/ToOptionsType.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/api/router/UseMatchRouteOptionsType.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/api/router/ViewTransitionOptionsType.md",
+    "headings": [
+      {
+        "line": 15,
+        "level": 2,
+        "text": "ViewTransitionOptions properties"
+      },
+      {
+        "line": 19,
+        "level": 3,
+        "text": "`types` property"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/awaitComponent.md",
+    "headings": [
+      {
+        "line": 10,
+        "level": 2,
+        "text": "Await props"
+      },
+      {
+        "line": 14,
+        "level": 3,
+        "text": "`props.promise` prop"
+      },
+      {
+        "line": 20,
+        "level": 3,
+        "text": "`props.children` prop"
+      },
+      {
+        "line": 26,
+        "level": 2,
+        "text": "Await returns"
+      },
+      {
+        "line": 32,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/catchBoundaryComponent.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "CatchBoundary props"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`props.getResetKey` prop"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "`props.children` prop"
+      },
+      {
+        "line": 24,
+        "level": 3,
+        "text": "`props.errorComponent` prop"
+      },
+      {
+        "line": 30,
+        "level": 3,
+        "text": "`props.onCatch` prop"
+      },
+      {
+        "line": 36,
+        "level": 2,
+        "text": "CatchBoundary returns"
+      },
+      {
+        "line": 41,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/catchNotFoundComponent.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "CatchNotFound props"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`props.children` prop"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "`props.fallback` prop"
+      },
+      {
+        "line": 24,
+        "level": 3,
+        "text": "`props.onCatch` prop"
+      },
+      {
+        "line": 30,
+        "level": 2,
+        "text": "CatchNotFound returns"
+      },
+      {
+        "line": 35,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/clientOnlyComponent.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "Props"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`props.fallback` prop"
+      },
+      {
+        "line": 16,
+        "level": 3,
+        "text": "`props.children` prop"
+      },
+      {
+        "line": 20,
+        "level": 2,
+        "text": "Returns"
+      },
+      {
+        "line": 25,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/createFileRouteFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "createFileRoute options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`path` option"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "createFileRoute returns"
+      },
+      {
+        "line": 24,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/createLazyFileRouteFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "createLazyFileRoute options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`path`"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "createLazyFileRoute returns"
+      },
+      {
+        "line": 35,
+        "level": 3,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/createLazyRouteFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "createLazyRoute options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`id`"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "createLazyRoute returns"
+      },
+      {
+        "line": 35,
+        "level": 3,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/createRootRouteFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "createRootRoute options"
+      },
+      {
+        "line": 29,
+        "level": 2,
+        "text": "createRootRoute returns"
+      },
+      {
+        "line": 33,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/createRootRouteWithContextFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "createRootRouteWithContext generics"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`TRouterContext` generic"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "createRootRouteWithContext returns"
+      },
+      {
+        "line": 23,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/createRouteFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "createRoute options"
+      },
+      {
+        "line": 14,
+        "level": 2,
+        "text": "createRoute returns"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/createRouteMaskFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "createRouteMask options"
+      },
+      {
+        "line": 14,
+        "level": 2,
+        "text": "createRouteMask returns"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/createRouterFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "createRouter options"
+      },
+      {
+        "line": 14,
+        "level": 2,
+        "text": "createRouter returns"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/defaultGlobalNotFoundComponent.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "DefaultGlobalNotFound returns"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/deferFunction.md",
+    "headings": [
+      {
+        "line": 13,
+        "level": 2,
+        "text": "defer options"
+      },
+      {
+        "line": 19,
+        "level": 2,
+        "text": "defer returns"
+      },
+      {
+        "line": 23,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/errorComponentComponent.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "ErrorComponent props"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`props.error` prop"
+      },
+      {
+        "line": 17,
+        "level": 3,
+        "text": "`props.info` prop"
+      },
+      {
+        "line": 23,
+        "level": 3,
+        "text": "`props.reset` prop"
+      },
+      {
+        "line": 28,
+        "level": 2,
+        "text": "ErrorComponent returns"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/getRouteApiFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "getRouteApi options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`routeId` option"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "getRouteApi returns"
+      },
+      {
+        "line": 22,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/historyStateInterface.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/api/router/isNotFoundFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "isNotFound options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`input` option"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "isNotFound returns"
+      },
+      {
+        "line": 24,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/isRedirectFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "isRedirect options"
+      },
+      {
+        "line": 12,
+        "level": 4,
+        "text": "`input`"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "isRedirect returns"
+      },
+      {
+        "line": 24,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/lazyRouteComponentFunction.md",
+    "headings": [
+      {
+        "line": 11,
+        "level": 2,
+        "text": "lazyRouteComponent options"
+      },
+      {
+        "line": 15,
+        "level": 3,
+        "text": "`importer` option"
+      },
+      {
+        "line": 21,
+        "level": 3,
+        "text": "`exportName` option"
+      },
+      {
+        "line": 27,
+        "level": 2,
+        "text": "lazyRouteComponent returns"
+      },
+      {
+        "line": 31,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/linkComponent.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "Link props"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`...props`"
+      },
+      {
+        "line": 17,
+        "level": 2,
+        "text": "Link returns"
+      },
+      {
+        "line": 21,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/linkOptions.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "linkOptions props"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`...props`"
+      },
+      {
+        "line": 17,
+        "level": 2,
+        "text": "`linkOptions` returns"
+      },
+      {
+        "line": 21,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/matchRouteComponent.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "MatchRoute props"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`...props` prop"
+      },
+      {
+        "line": 16,
+        "level": 3,
+        "text": "`children` prop"
+      },
+      {
+        "line": 24,
+        "level": 2,
+        "text": "MatchRoute returns"
+      },
+      {
+        "line": 28,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/navigateComponent.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "Navigate props"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`...options`"
+      },
+      {
+        "line": 16,
+        "level": 2,
+        "text": "Navigate returns"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/notFoundFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "notFound options"
+      },
+      {
+        "line": 15,
+        "level": 2,
+        "text": "notFound returns"
+      },
+      {
+        "line": 20,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/outletComponent.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "Outlet props"
+      },
+      {
+        "line": 12,
+        "level": 2,
+        "text": "Outlet returns"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/redirectFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "redirect options"
+      },
+      {
+        "line": 15,
+        "level": 2,
+        "text": "redirect returns"
+      },
+      {
+        "line": 20,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/retainSearchParamsFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "retainSearchParams props"
+      },
+      {
+        "line": 13,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/rootRouteWithContextFunction.md",
+    "headings": [
+      {
+        "line": 12,
+        "level": 2,
+        "text": "rootRouteWithContext generics"
+      },
+      {
+        "line": 16,
+        "level": 3,
+        "text": "`TRouterContext` generic"
+      },
+      {
+        "line": 22,
+        "level": 2,
+        "text": "rootRouteWithContext returns"
+      },
+      {
+        "line": 27,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/stripSearchParamsFunction.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "stripSearchParams props"
+      },
+      {
+        "line": 16,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useAwaitedHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useAwaited options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`options.promise` option"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "useAwaited returns"
+      },
+      {
+        "line": 24,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useBlockerHook.md",
+    "headings": [
+      {
+        "line": 10,
+        "level": 2,
+        "text": "useBlocker options"
+      },
+      {
+        "line": 14,
+        "level": 3,
+        "text": "`options.shouldBlockFn` option"
+      },
+      {
+        "line": 38,
+        "level": 3,
+        "text": "`options.disabled` option"
+      },
+      {
+        "line": 44,
+        "level": 3,
+        "text": "`options.enableBeforeUnload` option"
+      },
+      {
+        "line": 50,
+        "level": 3,
+        "text": "`options.withResolver` option"
+      },
+      {
+        "line": 56,
+        "level": 3,
+        "text": "`options.blockerFn` option (⚠️ deprecated)"
+      },
+      {
+        "line": 62,
+        "level": 3,
+        "text": "`options.condition` option (⚠️ deprecated)"
+      },
+      {
+        "line": 68,
+        "level": 2,
+        "text": "useBlocker returns"
+      },
+      {
+        "line": 83,
+        "level": 2,
+        "text": "Examples"
+      },
+      {
+        "line": 87,
+        "level": 3,
+        "text": "Basic usage"
+      },
+      {
+        "line": 103,
+        "level": 3,
+        "text": "Custom UI"
+      },
+      {
+        "line": 133,
+        "level": 3,
+        "text": "Conditional blocking"
+      },
+      {
+        "line": 163,
+        "level": 3,
+        "text": "Without resolver"
+      },
+      {
+        "line": 186,
+        "level": 3,
+        "text": "Type narrowing"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useCanGoBack.md",
+    "headings": [
+      {
+        "line": 10,
+        "level": 2,
+        "text": "useCanGoBack returns"
+      },
+      {
+        "line": 15,
+        "level": 2,
+        "text": "Limitations"
+      },
+      {
+        "line": 19,
+        "level": 2,
+        "text": "Examples"
+      },
+      {
+        "line": 21,
+        "level": 3,
+        "text": "Showing a back button"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useChildMatchesHook.md",
+    "headings": [
+      {
+        "line": 11,
+        "level": 2,
+        "text": "useChildMatches options"
+      },
+      {
+        "line": 15,
+        "level": 3,
+        "text": "`opts.select` option"
+      },
+      {
+        "line": 21,
+        "level": 3,
+        "text": "`opts.structuralSharing` option"
+      },
+      {
+        "line": 28,
+        "level": 2,
+        "text": "useChildMatches returns"
+      },
+      {
+        "line": 33,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useLinkPropsHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useLinkProps options"
+      },
+      {
+        "line": 19,
+        "level": 2,
+        "text": "useLinkProps returns"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useLoaderDataHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useLoaderData options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`opts.from` option"
+      },
+      {
+        "line": 20,
+        "level": 3,
+        "text": "`opts.strict` option"
+      },
+      {
+        "line": 26,
+        "level": 3,
+        "text": "`opts.select` option"
+      },
+      {
+        "line": 32,
+        "level": 3,
+        "text": "`opts.structuralSharing` option"
+      },
+      {
+        "line": 39,
+        "level": 2,
+        "text": "useLoaderData returns"
+      },
+      {
+        "line": 44,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useLoaderDepsHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useLoaderDepsHook options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`opts.from` option"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "`opts.select` option"
+      },
+      {
+        "line": 24,
+        "level": 3,
+        "text": "`opts.structuralSharing` option"
+      },
+      {
+        "line": 31,
+        "level": 2,
+        "text": "useLoaderDeps returns"
+      },
+      {
+        "line": 35,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useLocationHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useLocation options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`opts.select` option"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "useLocation returns"
+      },
+      {
+        "line": 22,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useMatchHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useMatch options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`opts.from` option"
+      },
+      {
+        "line": 20,
+        "level": 3,
+        "text": "`opts.strict` option"
+      },
+      {
+        "line": 27,
+        "level": 3,
+        "text": "`opts.select` option"
+      },
+      {
+        "line": 33,
+        "level": 3,
+        "text": "`opts.structuralSharing` option"
+      },
+      {
+        "line": 40,
+        "level": 3,
+        "text": "`opts.shouldThrow` option"
+      },
+      {
+        "line": 47,
+        "level": 2,
+        "text": "useMatch returns"
+      },
+      {
+        "line": 52,
+        "level": 2,
+        "text": "Examples"
+      },
+      {
+        "line": 54,
+        "level": 3,
+        "text": "Accessing a route match"
+      },
+      {
+        "line": 66,
+        "level": 3,
+        "text": "Accessing the root route's match"
+      },
+      {
+        "line": 81,
+        "level": 3,
+        "text": "Checking if a specific route is currently rendered"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useMatchRouteHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useMatchRoute returns"
+      },
+      {
+        "line": 12,
+        "level": 2,
+        "text": "matchRoute function"
+      },
+      {
+        "line": 16,
+        "level": 3,
+        "text": "matchRoute function options"
+      },
+      {
+        "line": 22,
+        "level": 3,
+        "text": "matchRoute function returns"
+      },
+      {
+        "line": 26,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useMatchesHook.md",
+    "headings": [
+      {
+        "line": 11,
+        "level": 2,
+        "text": "useMatches options"
+      },
+      {
+        "line": 15,
+        "level": 3,
+        "text": "`opts.select` option"
+      },
+      {
+        "line": 21,
+        "level": 3,
+        "text": "`opts.structuralSharing` option"
+      },
+      {
+        "line": 28,
+        "level": 2,
+        "text": "useMatches returns"
+      },
+      {
+        "line": 33,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useNavigateHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useNavigate options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`opts.from` option"
+      },
+      {
+        "line": 18,
+        "level": 2,
+        "text": "useNavigate returns"
+      },
+      {
+        "line": 22,
+        "level": 2,
+        "text": "navigate function"
+      },
+      {
+        "line": 26,
+        "level": 3,
+        "text": "navigate function options"
+      },
+      {
+        "line": 32,
+        "level": 3,
+        "text": "navigate function returns"
+      },
+      {
+        "line": 36,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useParamsHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useParams options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`opts.strict` option"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "`opts.shouldThrow` option"
+      },
+      {
+        "line": 25,
+        "level": 3,
+        "text": "`opts.select` option"
+      },
+      {
+        "line": 31,
+        "level": 3,
+        "text": "`opts.structuralSharing` option"
+      },
+      {
+        "line": 38,
+        "level": 2,
+        "text": "useParams returns"
+      },
+      {
+        "line": 42,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useParentMatchesHook.md",
+    "headings": [
+      {
+        "line": 11,
+        "level": 2,
+        "text": "useParentMatches options"
+      },
+      {
+        "line": 15,
+        "level": 3,
+        "text": "`opts.select` option"
+      },
+      {
+        "line": 21,
+        "level": 3,
+        "text": "`opts.structuralSharing` option"
+      },
+      {
+        "line": 28,
+        "level": 2,
+        "text": "useParentMatches returns"
+      },
+      {
+        "line": 33,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useRouteContextHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useRouteContext options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`opts.from` option"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "`opts.select` option"
+      },
+      {
+        "line": 24,
+        "level": 2,
+        "text": "useRouteContext returns"
+      },
+      {
+        "line": 28,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useRouterHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useRouter returns"
+      },
+      {
+        "line": 14,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useRouterStateHook.md",
+    "headings": [
+      {
+        "line": 11,
+        "level": 2,
+        "text": "useRouterState options"
+      },
+      {
+        "line": 15,
+        "level": 3,
+        "text": "`opts.select` option"
+      },
+      {
+        "line": 21,
+        "level": 3,
+        "text": "`opts.structuralSharing` option"
+      },
+      {
+        "line": 28,
+        "level": 2,
+        "text": "useRouterState returns"
+      },
+      {
+        "line": 32,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/api/router/useSearchHook.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "useSearch options"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "`opts.from` option"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "`opts.shouldThrow` option"
+      },
+      {
+        "line": 25,
+        "level": 3,
+        "text": "`opts.select` option"
+      },
+      {
+        "line": 31,
+        "level": 3,
+        "text": "`opts.structuralSharing` option"
+      },
+      {
+        "line": 38,
+        "level": 3,
+        "text": "`opts.strict` option"
+      },
+      {
+        "line": 44,
+        "level": 2,
+        "text": "useSearch returns"
+      },
+      {
+        "line": 49,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/authenticated-routes.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "The `route.beforeLoad` Option"
+      },
+      {
+        "line": 28,
+        "level": 2,
+        "text": "Redirecting"
+      },
+      {
+        "line": 60,
+        "level": 2,
+        "text": "Non-Redirected Authentication"
+      },
+      {
+        "line": 79,
+        "level": 2,
+        "text": "Authentication using React context/hooks"
+      },
+      {
+        "line": 170,
+        "level": 2,
+        "text": "Related How-To Guides"
+      },
+      {
+        "line": 178,
+        "level": 2,
+        "text": "Examples"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/automatic-code-splitting.md",
+    "headings": [
+      {
+        "line": 25,
+        "level": 2,
+        "text": "How does it work?"
+      },
+      {
+        "line": 36,
+        "level": 3,
+        "text": "The transformation process"
+      },
+      {
+        "line": 47,
+        "level": 3,
+        "text": "What gets code split?"
+      },
+      {
+        "line": 77,
+        "level": 2,
+        "text": "Granular control"
+      },
+      {
+        "line": 81,
+        "level": 3,
+        "text": "Global code splitting behavior (`defaultBehavior`)"
+      },
+      {
+        "line": 111,
+        "level": 3,
+        "text": "Advanced programmatic control (`splitBehavior`)"
+      },
+      {
+        "line": 138,
+        "level": 3,
+        "text": "Per-route overrides (`codeSplitGroupings`)"
+      },
+      {
+        "line": 161,
+        "level": 3,
+        "text": "Configuration order matters"
+      },
+      {
+        "line": 171,
+        "level": 3,
+        "text": "Splitting the Data Loader"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/code-splitting.md",
+    "headings": [
+      {
+        "line": 11,
+        "level": 2,
+        "text": "How does TanStack Router split code?"
+      },
+      {
+        "line": 40,
+        "level": 2,
+        "text": "Encapsulating a route's files into a directory"
+      },
+      {
+        "line": 57,
+        "level": 2,
+        "text": "Approaches to code splitting"
+      },
+      {
+        "line": 67,
+        "level": 2,
+        "text": "Using automatic code-splitting✨"
+      },
+      {
+        "line": 100,
+        "level": 2,
+        "text": "Using the `.lazy.tsx` suffix"
+      },
+      {
+        "line": 116,
+        "level": 3,
+        "text": "Example code splitting with `.lazy.tsx`"
+      },
+      {
+        "line": 167,
+        "level": 2,
+        "text": "Using Virtual Routes"
+      },
+      {
+        "line": 212,
+        "level": 2,
+        "text": "Code-Based Splitting"
+      },
+      {
+        "line": 239,
+        "level": 2,
+        "text": "Data Loader Splitting"
+      },
+      {
+        "line": 264,
+        "level": 2,
+        "text": "Manually accessing Route APIs in other files with the `getRouteApi` helper"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/creating-a-router.md",
+    "headings": [
+      {
+        "line": 5,
+        "level": 2,
+        "text": "The `Router` Class"
+      },
+      {
+        "line": 17,
+        "level": 2,
+        "text": "Route Tree"
+      },
+      {
+        "line": 23,
+        "level": 3,
+        "text": "Filesystem Route Tree"
+      },
+      {
+        "line": 31,
+        "level": 3,
+        "text": "Code-Based Route Tree"
+      },
+      {
+        "line": 41,
+        "level": 2,
+        "text": "Router Type Safety"
+      },
+      {
+        "line": 59,
+        "level": 2,
+        "text": "404 Not Found Route"
+      },
+      {
+        "line": 74,
+        "level": 2,
+        "text": "Other Options"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/custom-link.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "`createLink` for cross-cutting concerns"
+      },
+      {
+        "line": 11,
+        "level": 3,
+        "text": "Basic example"
+      },
+      {
+        "line": 50,
+        "level": 2,
+        "text": "`createLink` with third party libraries"
+      },
+      {
+        "line": 54,
+        "level": 3,
+        "text": "React Aria Components example"
+      },
+      {
+        "line": 90,
+        "level": 3,
+        "text": "Chakra UI example"
+      },
+      {
+        "line": 126,
+        "level": 3,
+        "text": "MUI example"
+      },
+      {
+        "line": 130,
+        "level": 4,
+        "text": "`Link`"
+      },
+      {
+        "line": 167,
+        "level": 4,
+        "text": "`Button`"
+      },
+      {
+        "line": 196,
+        "level": 4,
+        "text": "Usage with `styled`"
+      },
+      {
+        "line": 211,
+        "level": 3,
+        "text": "Mantine example"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/custom-search-param-serialization.md",
+    "headings": [
+      {
+        "line": 50,
+        "level": 2,
+        "text": "Using Base64"
+      },
+      {
+        "line": 98,
+        "level": 2,
+        "text": "Using the query-string library"
+      },
+      {
+        "line": 127,
+        "level": 2,
+        "text": "Using the JSURL2 library"
+      },
+      {
+        "line": 152,
+        "level": 2,
+        "text": "Using the Zipson library"
+      },
+      {
+        "line": 200,
+        "level": 3,
+        "text": "Safe Binary Encoding/Decoding"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/data-loading.md",
+    "headings": [
+      {
+        "line": 12,
+        "level": 2,
+        "text": "The route loading lifecycle"
+      },
+      {
+        "line": 31,
+        "level": 2,
+        "text": "To Router Cache or not to Router Cache?"
+      },
+      {
+        "line": 54,
+        "level": 2,
+        "text": "Using the Router Cache"
+      },
+      {
+        "line": 58,
+        "level": 2,
+        "text": "Route `loader`s"
+      },
+      {
+        "line": 69,
+        "level": 2,
+        "text": "`loader` Parameters"
+      },
+      {
+        "line": 90,
+        "level": 2,
+        "text": "Consuming data from `loader`s"
+      },
+      {
+        "line": 109,
+        "level": 2,
+        "text": "Dependency-based Stale-While-Revalidate Caching"
+      },
+      {
+        "line": 120,
+        "level": 3,
+        "text": "Key options"
+      },
+      {
+        "line": 138,
+        "level": 3,
+        "text": "⚠️ Some Important Defaults"
+      },
+      {
+        "line": 145,
+        "level": 3,
+        "text": "Using `loaderDeps` to access search params"
+      },
+      {
+        "line": 163,
+        "level": 3,
+        "text": "Using `staleTime` to control how long data is considered fresh"
+      },
+      {
+        "line": 180,
+        "level": 2,
+        "text": "Turning off stale-while-revalidate caching"
+      },
+      {
+        "line": 201,
+        "level": 2,
+        "text": "Using `shouldReload` and `gcTime` to opt-out of caching"
+      },
+      {
+        "line": 217,
+        "level": 3,
+        "text": "Opting out of caching while still preloading"
+      },
+      {
+        "line": 223,
+        "level": 2,
+        "text": "Passing all loader events to an external cache"
+      },
+      {
+        "line": 236,
+        "level": 2,
+        "text": "Using Router Context"
+      },
+      {
+        "line": 299,
+        "level": 2,
+        "text": "Using Path Params"
+      },
+      {
+        "line": 310,
+        "level": 2,
+        "text": "Using Route Context"
+      },
+      {
+        "line": 331,
+        "level": 2,
+        "text": "Using Search Params in Loaders"
+      },
+      {
+        "line": 355,
+        "level": 3,
+        "text": "Accessing Search Params via `routeOptions.loaderDeps`"
+      },
+      {
+        "line": 374,
+        "level": 2,
+        "text": "Using the Abort Signal"
+      },
+      {
+        "line": 389,
+        "level": 2,
+        "text": "Using the `preload` flag"
+      },
+      {
+        "line": 403,
+        "level": 2,
+        "text": "Handling Slow Loaders"
+      },
+      {
+        "line": 410,
+        "level": 2,
+        "text": "Showing a pending component"
+      },
+      {
+        "line": 419,
+        "level": 2,
+        "text": "Avoiding Pending Component Flash"
+      },
+      {
+        "line": 426,
+        "level": 2,
+        "text": "Handling Errors"
+      },
+      {
+        "line": 430,
+        "level": 3,
+        "text": "Handling Errors with `routeOptions.onError`"
+      },
+      {
+        "line": 445,
+        "level": 3,
+        "text": "Handling Errors with `routeOptions.onCatch`"
+      },
+      {
+        "line": 459,
+        "level": 3,
+        "text": "Handling Errors with `routeOptions.errorComponent`"
+      },
+      {
+        "line": 527,
+        "level": 3,
+        "text": "Using the default `ErrorComponent`"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/data-mutations.md",
+    "headings": [
+      {
+        "line": 36,
+        "level": 2,
+        "text": "Invalidating TanStack Router after a mutation"
+      },
+      {
+        "line": 72,
+        "level": 2,
+        "text": "Long-term mutation State"
+      },
+      {
+        "line": 85,
+        "level": 2,
+        "text": "Using mutation keys"
+      },
+      {
+        "line": 124,
+        "level": 2,
+        "text": "Using the `router.subscribe` method"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/deferred-data-loading.md",
+    "headings": [
+      {
+        "line": 12,
+        "level": 2,
+        "text": "Deferred Data Loading with `Await`"
+      },
+      {
+        "line": 78,
+        "level": 2,
+        "text": "Deferred Data Loading with External libraries"
+      },
+      {
+        "line": 132,
+        "level": 2,
+        "text": "Caching and Invalidation"
+      },
+      {
+        "line": 138,
+        "level": 2,
+        "text": "SSR & Streaming Deferred Data"
+      },
+      {
+        "line": 144,
+        "level": 2,
+        "text": "SSR Streaming Lifecycle"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/document-head-management.md",
+    "headings": [
+      {
+        "line": 20,
+        "level": 2,
+        "text": "Managing the Document Head"
+      },
+      {
+        "line": 58,
+        "level": 3,
+        "text": "Deduping"
+      },
+      {
+        "line": 65,
+        "level": 3,
+        "text": "`<HeadContent />`"
+      },
+      {
+        "line": 71,
+        "level": 3,
+        "text": "Start/Full-Stack Applications"
+      },
+      {
+        "line": 90,
+        "level": 3,
+        "text": "Single-Page Applications"
+      },
+      {
+        "line": 107,
+        "level": 2,
+        "text": "Managing Body Scripts"
+      },
+      {
+        "line": 126,
+        "level": 3,
+        "text": "`<Scripts />`"
+      },
+      {
+        "line": 130,
+        "level": 3,
+        "text": "Example"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/external-data-loading.md",
+    "headings": [
+      {
+        "line": 9,
+        "level": 2,
+        "text": "To **Store** or to **Coordinate**?"
+      },
+      {
+        "line": 15,
+        "level": 2,
+        "text": "What data fetching libraries are supported?"
+      },
+      {
+        "line": 35,
+        "level": 2,
+        "text": "Using Loaders to ensure data is loaded"
+      },
+      {
+        "line": 72,
+        "level": 2,
+        "text": "A more realistic example using TanStack Query"
+      },
+      {
+        "line": 103,
+        "level": 3,
+        "text": "Error handling with TanStack Query"
+      },
+      {
+        "line": 136,
+        "level": 2,
+        "text": "SSR Dehydration/Hydration"
+      },
+      {
+        "line": 140,
+        "level": 2,
+        "text": "Critical Dehydration/Hydration"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/history-types.md",
+    "headings": [
+      {
+        "line": 25,
+        "level": 2,
+        "text": "Browser Routing"
+      },
+      {
+        "line": 29,
+        "level": 2,
+        "text": "Hash Routing"
+      },
+      {
+        "line": 41,
+        "level": 2,
+        "text": "Memory Routing"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/link-options.md",
+    "headings": [
+      {
+        "line": 20,
+        "level": 3,
+        "text": "Using `linkOptions` function to create re-usable options"
+      },
+      {
+        "line": 67,
+        "level": 3,
+        "text": "An array of `linkOptions`"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/navigation-blocking.md",
+    "headings": [
+      {
+        "line": 16,
+        "level": 2,
+        "text": "How does navigation blocking work?"
+      },
+      {
+        "line": 25,
+        "level": 2,
+        "text": "How do I use navigation blocking?"
+      },
+      {
+        "line": 32,
+        "level": 2,
+        "text": "Hook/logical-based blocking"
+      },
+      {
+        "line": 103,
+        "level": 2,
+        "text": "Component-based blocking"
+      },
+      {
+        "line": 143,
+        "level": 2,
+        "text": "How can I show a custom UI?"
+      },
+      {
+        "line": 151,
+        "level": 3,
+        "text": "Hook/logical-based custom UI with resolver"
+      },
+      {
+        "line": 184,
+        "level": 3,
+        "text": "Hook/logical-based custom UI without resolver"
+      },
+      {
+        "line": 229,
+        "level": 3,
+        "text": "Component-based custom UI"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/navigation.md",
+    "headings": [
+      {
+        "line": 5,
+        "level": 2,
+        "text": "Everything is Relative"
+      },
+      {
+        "line": 16,
+        "level": 2,
+        "text": "Shared Navigation API"
+      },
+      {
+        "line": 20,
+        "level": 3,
+        "text": "`ToOptions` Interface"
+      },
+      {
+        "line": 61,
+        "level": 3,
+        "text": "`NavigateOptions` Interface"
+      },
+      {
+        "line": 88,
+        "level": 3,
+        "text": "`LinkOptions` Interface"
+      },
+      {
+        "line": 116,
+        "level": 2,
+        "text": "Navigation API"
+      },
+      {
+        "line": 131,
+        "level": 2,
+        "text": "`<Link>` Component"
+      },
+      {
+        "line": 153,
+        "level": 3,
+        "text": "Absolute Links"
+      },
+      {
+        "line": 163,
+        "level": 3,
+        "text": "Dynamic Links"
+      },
+      {
+        "line": 182,
+        "level": 3,
+        "text": "Relative Links"
+      },
+      {
+        "line": 202,
+        "level": 3,
+        "text": "Special relative paths: `\".\"` and `\"..\"`"
+      },
+      {
+        "line": 233,
+        "level": 3,
+        "text": "Search Param Links"
+      },
+      {
+        "line": 266,
+        "level": 3,
+        "text": "Search Param Type Safety"
+      },
+      {
+        "line": 270,
+        "level": 3,
+        "text": "Hash Links"
+      },
+      {
+        "line": 288,
+        "level": 3,
+        "text": "Navigating with Optional Parameters"
+      },
+      {
+        "line": 292,
+        "level": 4,
+        "text": "Parameter Inheritance vs Removal"
+      },
+      {
+        "line": 316,
+        "level": 4,
+        "text": "Basic Optional Parameter Navigation"
+      },
+      {
+        "line": 344,
+        "level": 4,
+        "text": "Function-Style Parameter Updates"
+      },
+      {
+        "line": 377,
+        "level": 4,
+        "text": "Multiple Optional Parameters"
+      },
+      {
+        "line": 407,
+        "level": 4,
+        "text": "Mixed Required and Optional Parameters"
+      },
+      {
+        "line": 437,
+        "level": 4,
+        "text": "Advanced Optional Parameter Patterns"
+      },
+      {
+        "line": 489,
+        "level": 4,
+        "text": "Navigation with Search Params and Optional Parameters"
+      },
+      {
+        "line": 513,
+        "level": 4,
+        "text": "Imperative Navigation with Optional Parameters"
+      },
+      {
+        "line": 544,
+        "level": 3,
+        "text": "Active & Inactive Props"
+      },
+      {
+        "line": 568,
+        "level": 3,
+        "text": "The `data-status` attribute"
+      },
+      {
+        "line": 572,
+        "level": 3,
+        "text": "Active Options"
+      },
+      {
+        "line": 635,
+        "level": 3,
+        "text": "Passing `isActive` to children"
+      },
+      {
+        "line": 654,
+        "level": 3,
+        "text": "Link Preloading"
+      },
+      {
+        "line": 670,
+        "level": 3,
+        "text": "Link Preloading Delay"
+      },
+      {
+        "line": 682,
+        "level": 2,
+        "text": "`useNavigate`"
+      },
+      {
+        "line": 711,
+        "level": 3,
+        "text": "`navigate` Options"
+      },
+      {
+        "line": 715,
+        "level": 2,
+        "text": "`Navigate` Component"
+      },
+      {
+        "line": 727,
+        "level": 2,
+        "text": "`router.navigate`"
+      },
+      {
+        "line": 731,
+        "level": 2,
+        "text": "`useMatchRoute` and `<MatchRoute>`"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/not-found-errors.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Overview"
+      },
+      {
+        "line": 26,
+        "level": 2,
+        "text": "The `notFoundMode` option"
+      },
+      {
+        "line": 35,
+        "level": 3,
+        "text": "`notFoundMode: 'fuzzy'`"
+      },
+      {
+        "line": 60,
+        "level": 3,
+        "text": "`notFoundMode: 'root'`"
+      },
+      {
+        "line": 77,
+        "level": 2,
+        "text": "Configuring a route's `notFoundComponent`"
+      },
+      {
+        "line": 122,
+        "level": 2,
+        "text": "Default Router-Wide Not Found Handling"
+      },
+      {
+        "line": 143,
+        "level": 2,
+        "text": "Throwing your own `notFound` errors"
+      },
+      {
+        "line": 169,
+        "level": 2,
+        "text": "Specifying Which Routes Handle Not Found Errors"
+      },
+      {
+        "line": 204,
+        "level": 3,
+        "text": "Manually targeting the root route"
+      },
+      {
+        "line": 220,
+        "level": 3,
+        "text": "Throwing Not Found Errors in Components"
+      },
+      {
+        "line": 226,
+        "level": 3,
+        "text": "Data Loading Inside `notFoundComponent`"
+      },
+      {
+        "line": 257,
+        "level": 2,
+        "text": "Usage With SSR"
+      },
+      {
+        "line": 261,
+        "level": 2,
+        "text": "Migrating from `NotFoundRoute`"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/outlets.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "The `Outlet` Component"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/parallel-routes.md",
+    "headings": []
+  },
+  {
+    "path": "framework/react/guide/path-params.md",
+    "headings": [
+      {
+        "line": 30,
+        "level": 2,
+        "text": "Path Params can be used by child routes"
+      },
+      {
+        "line": 34,
+        "level": 2,
+        "text": "Path Params in Loaders"
+      },
+      {
+        "line": 56,
+        "level": 2,
+        "text": "Path Params in Components"
+      },
+      {
+        "line": 73,
+        "level": 2,
+        "text": "Path Params outside of Routes"
+      },
+      {
+        "line": 84,
+        "level": 2,
+        "text": "Navigating with Path Params"
+      },
+      {
+        "line": 114,
+        "level": 2,
+        "text": "Prefixes and Suffixes for Path Params"
+      },
+      {
+        "line": 120,
+        "level": 3,
+        "text": "Defining Prefixes"
+      },
+      {
+        "line": 153,
+        "level": 3,
+        "text": "Defining Suffixes"
+      },
+      {
+        "line": 185,
+        "level": 3,
+        "text": "Combining Prefixes and Suffixes"
+      },
+      {
+        "line": 204,
+        "level": 2,
+        "text": "Optional Path Parameters"
+      },
+      {
+        "line": 208,
+        "level": 3,
+        "text": "Defining Optional Parameters"
+      },
+      {
+        "line": 232,
+        "level": 3,
+        "text": "How Optional Parameters Work"
+      },
+      {
+        "line": 242,
+        "level": 3,
+        "text": "Accessing Optional Parameters"
+      },
+      {
+        "line": 254,
+        "level": 3,
+        "text": "Optional Parameters in Loaders"
+      },
+      {
+        "line": 267,
+        "level": 3,
+        "text": "Optional Parameters in beforeLoad"
+      },
+      {
+        "line": 282,
+        "level": 3,
+        "text": "Advanced Optional Parameter Patterns"
+      },
+      {
+        "line": 284,
+        "level": 4,
+        "text": "With Prefix and Suffix"
+      },
+      {
+        "line": 301,
+        "level": 4,
+        "text": "All Optional Parameters"
+      },
+      {
+        "line": 332,
+        "level": 4,
+        "text": "Optional Parameters with Wildcards"
+      },
+      {
+        "line": 356,
+        "level": 3,
+        "text": "Navigating with Optional Parameters"
+      },
+      {
+        "line": 386,
+        "level": 3,
+        "text": "Type Safety with Optional Parameters"
+      },
+      {
+        "line": 417,
+        "level": 2,
+        "text": "Internationalization (i18n) with Optional Path Parameters"
+      },
+      {
+        "line": 421,
+        "level": 3,
+        "text": "Prefix-based i18n"
+      },
+      {
+        "line": 463,
+        "level": 3,
+        "text": "Complex i18n Patterns"
+      },
+      {
+        "line": 514,
+        "level": 3,
+        "text": "Language Navigation"
+      },
+      {
+        "line": 597,
+        "level": 3,
+        "text": "Advanced i18n with Optional Parameters"
+      },
+      {
+        "line": 634,
+        "level": 3,
+        "text": "SEO and Canonical URLs"
+      },
+      {
+        "line": 685,
+        "level": 3,
+        "text": "Type Safety for i18n"
+      },
+      {
+        "line": 741,
+        "level": 2,
+        "text": "Allowed Characters"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/preloading.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Supported Preloading Strategies"
+      },
+      {
+        "line": 19,
+        "level": 2,
+        "text": "How long does preloaded data stay in memory?"
+      },
+      {
+        "line": 41,
+        "level": 2,
+        "text": "Preload Delay"
+      },
+      {
+        "line": 56,
+        "level": 2,
+        "text": "Built-in Preloading & `preloadStaleTime`"
+      },
+      {
+        "line": 82,
+        "level": 2,
+        "text": "Preloading with External Libraries"
+      },
+      {
+        "line": 101,
+        "level": 2,
+        "text": "Preloading Manually"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/render-optimizations.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "structural sharing"
+      },
+      {
+        "line": 19,
+        "level": 2,
+        "text": "fine-grained selectors"
+      },
+      {
+        "line": 28,
+        "level": 3,
+        "text": "structural sharing with fine-grained selectors"
+      },
+      {
+        "line": 49,
+        "level": 4,
+        "text": "Enable it by default in the router options:"
+      },
+      {
+        "line": 58,
+        "level": 4,
+        "text": "Enable it per hook usage as shown here:"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/route-masking.md",
+    "headings": [
+      {
+        "line": 14,
+        "level": 2,
+        "text": "How does route masking work?"
+      },
+      {
+        "line": 43,
+        "level": 2,
+        "text": "How do I use route masking?"
+      },
+      {
+        "line": 54,
+        "level": 3,
+        "text": "Imperative route masking"
+      },
+      {
+        "line": 92,
+        "level": 3,
+        "text": "Declarative route masking"
+      },
+      {
+        "line": 124,
+        "level": 2,
+        "text": "Unmasking when sharing the URL"
+      },
+      {
+        "line": 128,
+        "level": 2,
+        "text": "Local Unmasking Defaults"
+      },
+      {
+        "line": 132,
+        "level": 2,
+        "text": "Unmasking on page reload"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/router-context.md",
+    "headings": [
+      {
+        "line": 16,
+        "level": 2,
+        "text": "Typed Router Context"
+      },
+      {
+        "line": 45,
+        "level": 2,
+        "text": "Passing the initial Router Context"
+      },
+      {
+        "line": 67,
+        "level": 3,
+        "text": "Invalidating the Router Context"
+      },
+      {
+        "line": 89,
+        "level": 2,
+        "text": "Using the Router Context"
+      },
+      {
+        "line": 131,
+        "level": 3,
+        "text": "How about an external data fetching library?"
+      },
+      {
+        "line": 172,
+        "level": 2,
+        "text": "How about using React Context/Hooks?"
+      },
+      {
+        "line": 247,
+        "level": 2,
+        "text": "Modifying the Router Context"
+      },
+      {
+        "line": 299,
+        "level": 2,
+        "text": "Processing Accumulated Route Context"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/scroll-restoration.md",
+    "headings": [
+      {
+        "line": 6,
+        "level": 2,
+        "text": "Hash/Top-of-Page Scrolling"
+      },
+      {
+        "line": 10,
+        "level": 2,
+        "text": "Scroll-to-top & Nested Scrollable Areas"
+      },
+      {
+        "line": 35,
+        "level": 2,
+        "text": "Scroll Restoration"
+      },
+      {
+        "line": 68,
+        "level": 2,
+        "text": "Custom Cache Keys"
+      },
+      {
+        "line": 78,
+        "level": 2,
+        "text": "Examples"
+      },
+      {
+        "line": 105,
+        "level": 2,
+        "text": "Preventing Scroll Restoration"
+      },
+      {
+        "line": 115,
+        "level": 2,
+        "text": "Manual Scroll Restoration"
+      },
+      {
+        "line": 193,
+        "level": 2,
+        "text": "Scroll Behavior"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/search-params.md",
+    "headings": [
+      {
+        "line": 9,
+        "level": 2,
+        "text": "Why not just use `URLSearchParams`?"
+      },
+      {
+        "line": 27,
+        "level": 2,
+        "text": "Search Params, the \"OG\" State Manager"
+      },
+      {
+        "line": 40,
+        "level": 2,
+        "text": "JSON-first Search Params"
+      },
+      {
+        "line": 85,
+        "level": 2,
+        "text": "Validating and Typing Search Params"
+      },
+      {
+        "line": 89,
+        "level": 3,
+        "text": "Enter Validation + TypeScript!"
+      },
+      {
+        "line": 118,
+        "level": 3,
+        "text": "Validating Search Params"
+      },
+      {
+        "line": 177,
+        "level": 4,
+        "text": "Adapters"
+      },
+      {
+        "line": 204,
+        "level": 3,
+        "text": "Zod"
+      },
+      {
+        "line": 274,
+        "level": 3,
+        "text": "Valibot"
+      },
+      {
+        "line": 299,
+        "level": 3,
+        "text": "Arktype"
+      },
+      {
+        "line": 321,
+        "level": 3,
+        "text": "Effect/Schema"
+      },
+      {
+        "line": 360,
+        "level": 2,
+        "text": "Reading Search Params"
+      },
+      {
+        "line": 364,
+        "level": 3,
+        "text": "Using Search Params in Loaders"
+      },
+      {
+        "line": 368,
+        "level": 3,
+        "text": "Search Params are inherited from Parent Routes"
+      },
+      {
+        "line": 399,
+        "level": 3,
+        "text": "Search Params in Components"
+      },
+      {
+        "line": 420,
+        "level": 3,
+        "text": "Search Params outside of Route Components"
+      },
+      {
+        "line": 466,
+        "level": 2,
+        "text": "Writing Search Params"
+      },
+      {
+        "line": 470,
+        "level": 3,
+        "text": "`<Link search />`"
+      },
+      {
+        "line": 530,
+        "level": 3,
+        "text": "`useNavigate(), navigate({ search })`"
+      },
+      {
+        "line": 559,
+        "level": 3,
+        "text": "`router.navigate({ search })`"
+      },
+      {
+        "line": 563,
+        "level": 3,
+        "text": "`<Navigate search />`"
+      },
+      {
+        "line": 567,
+        "level": 2,
+        "text": "Transforming search with search middlewares"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/ssr.md",
+    "headings": [
+      {
+        "line": 21,
+        "level": 2,
+        "text": "Non-Streaming SSR"
+      },
+      {
+        "line": 39,
+        "level": 3,
+        "text": "Automatic Server History"
+      },
+      {
+        "line": 43,
+        "level": 3,
+        "text": "Automatic Loader Dehydration/Hydration"
+      },
+      {
+        "line": 51,
+        "level": 3,
+        "text": "Router Creation"
+      },
+      {
+        "line": 71,
+        "level": 3,
+        "text": "Rendering the Application on the Server"
+      },
+      {
+        "line": 121,
+        "level": 2,
+        "text": "Rendering the Application on the Client"
+      },
+      {
+        "line": 145,
+        "level": 2,
+        "text": "Streaming SSR"
+      },
+      {
+        "line": 196,
+        "level": 2,
+        "text": "Streaming Dehydration/Hydration"
+      },
+      {
+        "line": 200,
+        "level": 2,
+        "text": "Data Serialization"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/static-route-data.md",
+    "headings": [
+      {
+        "line": 9,
+        "level": 2,
+        "text": "Example"
+      },
+      {
+        "line": 45,
+        "level": 2,
+        "text": "Enforcing Static Data"
+      },
+      {
+        "line": 69,
+        "level": 2,
+        "text": "Optional Static Data"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/type-safety.md",
+    "headings": [
+      {
+        "line": 9,
+        "level": 2,
+        "text": "Route Definitions"
+      },
+      {
+        "line": 11,
+        "level": 3,
+        "text": "File-based Routing"
+      },
+      {
+        "line": 15,
+        "level": 3,
+        "text": "Code-based Routing"
+      },
+      {
+        "line": 27,
+        "level": 2,
+        "text": "Exported Hooks, Components, and Utilities"
+      },
+      {
+        "line": 45,
+        "level": 2,
+        "text": "Fixing the Component Context Problem"
+      },
+      {
+        "line": 70,
+        "level": 3,
+        "text": "What if I don't know the route? What if it's a shared component?"
+      },
+      {
+        "line": 74,
+        "level": 3,
+        "text": "What if I pass the wrong `from` path?"
+      },
+      {
+        "line": 78,
+        "level": 3,
+        "text": "What if I don't know the route, or it's a shared component, and I can't pass `from`?"
+      },
+      {
+        "line": 90,
+        "level": 2,
+        "text": "Router Context"
+      },
+      {
+        "line": 114,
+        "level": 2,
+        "text": "Performance Recommendations"
+      },
+      {
+        "line": 118,
+        "level": 3,
+        "text": "Only infer types you need"
+      },
+      {
+        "line": 157,
+        "level": 3,
+        "text": "Narrow to relevant routes as much as you possibly can"
+      },
+      {
+        "line": 191,
+        "level": 3,
+        "text": "Consider using the object syntax of `addChildren`"
+      },
+      {
+        "line": 206,
+        "level": 3,
+        "text": "Avoid internal types without narrowing"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/guide/type-utilities.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "Type checking Link options with `ValidateLinkOptions`"
+      },
+      {
+        "line": 45,
+        "level": 2,
+        "text": "Type checking an array of Link options with `ValidateLinkOptionsArray`"
+      },
+      {
+        "line": 124,
+        "level": 2,
+        "text": "Type checking redirect options with `ValidateRedirectOptions`"
+      },
+      {
+        "line": 156,
+        "level": 2,
+        "text": "Type checking navigate options with `ValidateNavigateOptions`"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/README.md",
+    "headings": [
+      {
+        "line": 1,
+        "level": 1,
+        "text": "How-To Guides"
+      },
+      {
+        "line": 10,
+        "level": 2,
+        "text": "Available Guides"
+      },
+      {
+        "line": 18,
+        "level": 3,
+        "text": "Authentication"
+      },
+      {
+        "line": 24,
+        "level": 3,
+        "text": "Testing & Debugging"
+      },
+      {
+        "line": 30,
+        "level": 3,
+        "text": "UI Library Integration"
+      },
+      {
+        "line": 37,
+        "level": 3,
+        "text": "Search Parameters & URL State (Progressive Series)"
+      },
+      {
+        "line": 63,
+        "level": 2,
+        "text": "Using These Guides"
+      },
+      {
+        "line": 73,
+        "level": 2,
+        "text": "Contributing"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/arrays-objects-dates-search-params.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 35,
+        "level": 2,
+        "text": "Working with Arrays"
+      },
+      {
+        "line": 39,
+        "level": 3,
+        "text": "Basic Array Validation"
+      },
+      {
+        "line": 74,
+        "level": 3,
+        "text": "Navigating with Arrays"
+      },
+      {
+        "line": 119,
+        "level": 3,
+        "text": "Advanced Array Patterns"
+      },
+      {
+        "line": 153,
+        "level": 2,
+        "text": "Working with Objects"
+      },
+      {
+        "line": 157,
+        "level": 3,
+        "text": "Basic Object Validation"
+      },
+      {
+        "line": 207,
+        "level": 3,
+        "text": "Navigating with Objects"
+      },
+      {
+        "line": 293,
+        "level": 2,
+        "text": "Working with Dates"
+      },
+      {
+        "line": 297,
+        "level": 3,
+        "text": "Date Validation and Serialization"
+      },
+      {
+        "line": 348,
+        "level": 3,
+        "text": "Date Navigation Patterns"
+      },
+      {
+        "line": 413,
+        "level": 2,
+        "text": "Nested Data Structures"
+      },
+      {
+        "line": 417,
+        "level": 3,
+        "text": "Complex Nested Schema"
+      },
+      {
+        "line": 485,
+        "level": 3,
+        "text": "Managing Complex State Updates"
+      },
+      {
+        "line": 565,
+        "level": 2,
+        "text": "Performance Optimization"
+      },
+      {
+        "line": 567,
+        "level": 3,
+        "text": "Selective Updates with Selectors"
+      },
+      {
+        "line": 596,
+        "level": 3,
+        "text": "Memoization for Complex Transforms"
+      },
+      {
+        "line": 624,
+        "level": 2,
+        "text": "Production Checklist"
+      },
+      {
+        "line": 635,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 637,
+        "level": 3,
+        "text": "Problem: Array Parameters Not Updating"
+      },
+      {
+        "line": 659,
+        "level": 3,
+        "text": "Problem: Dates Not Serializing Correctly"
+      },
+      {
+        "line": 679,
+        "level": 3,
+        "text": "Problem: Deep Object Updates Not Working"
+      },
+      {
+        "line": 704,
+        "level": 3,
+        "text": "Problem: URL Too Long Error"
+      },
+      {
+        "line": 728,
+        "level": 3,
+        "text": "Problem: Performance Issues with Large Objects"
+      },
+      {
+        "line": 750,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 757,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/debug-router-issues.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 2,
+        "text": "Essential Debugging Tools"
+      },
+      {
+        "line": 15,
+        "level": 3,
+        "text": "1. TanStack Router DevTools"
+      },
+      {
+        "line": 46,
+        "level": 3,
+        "text": "2. Debug Mode Configuration"
+      },
+      {
+        "line": 62,
+        "level": 3,
+        "text": "3. Browser DevTools Setup"
+      },
+      {
+        "line": 80,
+        "level": 2,
+        "text": "Route Matching Issues"
+      },
+      {
+        "line": 82,
+        "level": 3,
+        "text": "Problem: Route Not Found (404)"
+      },
+      {
+        "line": 126,
+        "level": 3,
+        "text": "Problem: Route Parameters Not Working"
+      },
+      {
+        "line": 183,
+        "level": 2,
+        "text": "Navigation Issues"
+      },
+      {
+        "line": 185,
+        "level": 3,
+        "text": "Problem: Navigation Not Working"
+      },
+      {
+        "line": 238,
+        "level": 3,
+        "text": "Problem: Navigation Redirects Unexpectedly"
+      },
+      {
+        "line": 283,
+        "level": 2,
+        "text": "Data Loading Problems"
+      },
+      {
+        "line": 285,
+        "level": 3,
+        "text": "Problem: Route Data Not Loading"
+      },
+      {
+        "line": 355,
+        "level": 2,
+        "text": "Search Parameters Issues"
+      },
+      {
+        "line": 357,
+        "level": 3,
+        "text": "Problem: Search Params Not Updating"
+      },
+      {
+        "line": 421,
+        "level": 2,
+        "text": "Performance Issues"
+      },
+      {
+        "line": 423,
+        "level": 3,
+        "text": "Problem: Excessive Re-renders"
+      },
+      {
+        "line": 490,
+        "level": 3,
+        "text": "Problem: Memory Leaks"
+      },
+      {
+        "line": 537,
+        "level": 2,
+        "text": "TypeScript Issues"
+      },
+      {
+        "line": 539,
+        "level": 3,
+        "text": "Problem: Type Errors with Router"
+      },
+      {
+        "line": 563,
+        "level": 1,
+        "text": "Check if route types are being generated"
+      },
+      {
+        "line": 566,
+        "level": 1,
+        "text": "Regenerate route types if needed"
+      },
+      {
+        "line": 587,
+        "level": 2,
+        "text": "Systematic Debugging Process"
+      },
+      {
+        "line": 589,
+        "level": 3,
+        "text": "1. Information Gathering"
+      },
+      {
+        "line": 615,
+        "level": 3,
+        "text": "2. Isolation Testing"
+      },
+      {
+        "line": 637,
+        "level": 3,
+        "text": "3. Step-by-Step Debugging"
+      },
+      {
+        "line": 647,
+        "level": 2,
+        "text": "Browser Debugging Tips"
+      },
+      {
+        "line": 649,
+        "level": 3,
+        "text": "Console Commands"
+      },
+      {
+        "line": 670,
+        "level": 3,
+        "text": "Network Tab"
+      },
+      {
+        "line": 678,
+        "level": 3,
+        "text": "React DevTools"
+      },
+      {
+        "line": 686,
+        "level": 2,
+        "text": "Common Error Messages"
+      },
+      {
+        "line": 688,
+        "level": 3,
+        "text": "\"Route not found\""
+      },
+      {
+        "line": 694,
+        "level": 3,
+        "text": "\"Cannot read property 'useParams' of undefined\""
+      },
+      {
+        "line": 700,
+        "level": 3,
+        "text": "\"Invalid search params\""
+      },
+      {
+        "line": 706,
+        "level": 3,
+        "text": "\"Navigation was interrupted\""
+      },
+      {
+        "line": 714,
+        "level": 2,
+        "text": "Performance Monitoring"
+      },
+      {
+        "line": 716,
+        "level": 3,
+        "text": "Enable Performance Tracking"
+      },
+      {
+        "line": 734,
+        "level": 3,
+        "text": "Monitor Route Loading Times"
+      },
+      {
+        "line": 752,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 764,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/deploy-to-production.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 2,
+        "text": "Netlify Deployment"
+      },
+      {
+        "line": 15,
+        "level": 3,
+        "text": "1. Create `_redirects` File"
+      },
+      {
+        "line": 23,
+        "level": 3,
+        "text": "2. Alternative: `netlify.toml`"
+      },
+      {
+        "line": 38,
+        "level": 3,
+        "text": "3. For TanStack Start (SSR)"
+      },
+      {
+        "line": 61,
+        "level": 2,
+        "text": "Cloudflare Pages"
+      },
+      {
+        "line": 63,
+        "level": 3,
+        "text": "1. Create `_redirects` File"
+      },
+      {
+        "line": 71,
+        "level": 3,
+        "text": "2. Alternative: `_routes.json`"
+      },
+      {
+        "line": 83,
+        "level": 3,
+        "text": "3. For TanStack Start (SSR)"
+      },
+      {
+        "line": 94,
+        "level": 3,
+        "text": "4. Deploy via Git"
+      },
+      {
+        "line": 102,
+        "level": 3,
+        "text": "5. Deploy via Wrangler CLI"
+      },
+      {
+        "line": 105,
+        "level": 1,
+        "text": "Install Wrangler"
+      },
+      {
+        "line": 108,
+        "level": 1,
+        "text": "Deploy"
+      },
+      {
+        "line": 114,
+        "level": 2,
+        "text": "Vercel Deployment"
+      },
+      {
+        "line": 116,
+        "level": 3,
+        "text": "1. Create `vercel.json`"
+      },
+      {
+        "line": 131,
+        "level": 3,
+        "text": "2. For TanStack Start (SSR) Applications"
+      },
+      {
+        "line": 151,
+        "level": 3,
+        "text": "3. Build Configuration"
+      },
+      {
+        "line": 164,
+        "level": 3,
+        "text": "4. Deploy"
+      },
+      {
+        "line": 167,
+        "level": 1,
+        "text": "Install Vercel CLI"
+      },
+      {
+        "line": 170,
+        "level": 1,
+        "text": "Deploy"
+      },
+      {
+        "line": 176,
+        "level": 2,
+        "text": "GitHub Pages"
+      },
+      {
+        "line": 178,
+        "level": 3,
+        "text": "1. Create `404.html`"
+      },
+      {
+        "line": 183,
+        "level": 1,
+        "text": "After building"
+      },
+      {
+        "line": 187,
+        "level": 3,
+        "text": "2. Update `vite.config.js`"
+      },
+      {
+        "line": 209,
+        "level": 3,
+        "text": "3. GitHub Actions Workflow"
+      },
+      {
+        "line": 250,
+        "level": 2,
+        "text": "Firebase Hosting"
+      },
+      {
+        "line": 252,
+        "level": 3,
+        "text": "1. Create `firebase.json`"
+      },
+      {
+        "line": 269,
+        "level": 3,
+        "text": "2. Deploy"
+      },
+      {
+        "line": 272,
+        "level": 1,
+        "text": "Install Firebase CLI"
+      },
+      {
+        "line": 275,
+        "level": 1,
+        "text": "Login and initialize"
+      },
+      {
+        "line": 279,
+        "level": 1,
+        "text": "Build and deploy"
+      },
+      {
+        "line": 286,
+        "level": 2,
+        "text": "Apache Server"
+      },
+      {
+        "line": 303,
+        "level": 2,
+        "text": "Nginx"
+      },
+      {
+        "line": 328,
+        "level": 2,
+        "text": "Docker Deployment"
+      },
+      {
+        "line": 330,
+        "level": 3,
+        "text": "1. Create `Dockerfile`"
+      },
+      {
+        "line": 333,
+        "level": 1,
+        "text": "Build stage"
+      },
+      {
+        "line": 341,
+        "level": 1,
+        "text": "Production stage"
+      },
+      {
+        "line": 349,
+        "level": 3,
+        "text": "2. Create `nginx.conf`"
+      },
+      {
+        "line": 364,
+        "level": 3,
+        "text": "3. Build and Run"
+      },
+      {
+        "line": 373,
+        "level": 2,
+        "text": "Production Checklist"
+      },
+      {
+        "line": 385,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 387,
+        "level": 3,
+        "text": "404 Errors on Page Refresh"
+      },
+      {
+        "line": 395,
+        "level": 3,
+        "text": "App Works Locally But Breaks When Deployed"
+      },
+      {
+        "line": 421,
+        "level": 3,
+        "text": "Assets Not Loading (CSS/JS 404s)"
+      },
+      {
+        "line": 433,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 446,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/install.md",
+    "headings": [
+      {
+        "line": 5,
+        "level": 2,
+        "text": "Prerequisites"
+      },
+      {
+        "line": 11,
+        "level": 2,
+        "text": "Installation Steps"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/integrate-chakra-ui.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 3,
+        "text": "What You'll Accomplish"
+      },
+      {
+        "line": 23,
+        "level": 2,
+        "text": "Installation and Setup"
+      },
+      {
+        "line": 25,
+        "level": 3,
+        "text": "Step 1: Install Chakra UI Dependencies"
+      },
+      {
+        "line": 31,
+        "level": 3,
+        "text": "Step 2: Set Up Chakra Provider"
+      },
+      {
+        "line": 89,
+        "level": 3,
+        "text": "Step 3: Update Root Route"
+      },
+      {
+        "line": 109,
+        "level": 2,
+        "text": "Creating Router-Compatible Components"
+      },
+      {
+        "line": 111,
+        "level": 3,
+        "text": "Step 1: Create Router-Compatible Chakra Components"
+      },
+      {
+        "line": 141,
+        "level": 3,
+        "text": "Step 2: Create Navigation Components"
+      },
+      {
+        "line": 296,
+        "level": 3,
+        "text": "Step 3: Create Breadcrumb Navigation"
+      },
+      {
+        "line": 367,
+        "level": 2,
+        "text": "Responsive Design Patterns"
+      },
+      {
+        "line": 369,
+        "level": 3,
+        "text": "Step 1: Create Responsive Layout Component"
+      },
+      {
+        "line": 423,
+        "level": 3,
+        "text": "Step 2: Create Responsive Card Grid"
+      },
+      {
+        "line": 462,
+        "level": 2,
+        "text": "Complete Usage Examples"
+      },
+      {
+        "line": 464,
+        "level": 3,
+        "text": "Step 1: Posts List Page"
+      },
+      {
+        "line": 590,
+        "level": 3,
+        "text": "Step 2: Post Detail Page"
+      },
+      {
+        "line": 694,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 696,
+        "level": 3,
+        "text": "Theme Provider Issues"
+      },
+      {
+        "line": 722,
+        "level": 3,
+        "text": "TypeScript Errors with Router Integration"
+      },
+      {
+        "line": 741,
+        "level": 3,
+        "text": "Color Mode Persistence"
+      },
+      {
+        "line": 760,
+        "level": 3,
+        "text": "Responsive Design Issues"
+      },
+      {
+        "line": 784,
+        "level": 2,
+        "text": "Production Checklist"
+      },
+      {
+        "line": 788,
+        "level": 3,
+        "text": "Functionality"
+      },
+      {
+        "line": 795,
+        "level": 3,
+        "text": "Accessibility"
+      },
+      {
+        "line": 802,
+        "level": 3,
+        "text": "Performance"
+      },
+      {
+        "line": 809,
+        "level": 3,
+        "text": "Responsiveness"
+      },
+      {
+        "line": 818,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/integrate-framer-motion.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 3,
+        "text": "What You'll Accomplish"
+      },
+      {
+        "line": 23,
+        "level": 2,
+        "text": "Installation and Setup"
+      },
+      {
+        "line": 25,
+        "level": 3,
+        "text": "Step 1: Install Framer Motion"
+      },
+      {
+        "line": 31,
+        "level": 3,
+        "text": "Step 2: Verify Version Compatibility"
+      },
+      {
+        "line": 47,
+        "level": 2,
+        "text": "Route Transition Animations"
+      },
+      {
+        "line": 49,
+        "level": 3,
+        "text": "Step 1: Create Animated Route Wrapper"
+      },
+      {
+        "line": 110,
+        "level": 3,
+        "text": "Step 2: Set Up Route Animation Container"
+      },
+      {
+        "line": 135,
+        "level": 3,
+        "text": "Step 3: Update Root Route for Animations"
+      },
+      {
+        "line": 155,
+        "level": 3,
+        "text": "Step 4: Use Animations in Routes"
+      },
+      {
+        "line": 208,
+        "level": 2,
+        "text": "Animated Navigation Components"
+      },
+      {
+        "line": 210,
+        "level": 3,
+        "text": "Step 1: Create Animated Tab Navigation"
+      },
+      {
+        "line": 265,
+        "level": 3,
+        "text": "Step 2: Create Sliding Mobile Menu"
+      },
+      {
+        "line": 368,
+        "level": 3,
+        "text": "Step 3: Create Floating Action Button with Animations"
+      },
+      {
+        "line": 415,
+        "level": 2,
+        "text": "Advanced Animation Patterns"
+      },
+      {
+        "line": 417,
+        "level": 3,
+        "text": "Step 1: Shared Element Transitions"
+      },
+      {
+        "line": 477,
+        "level": 3,
+        "text": "Step 2: Route-Based Animation Variants"
+      },
+      {
+        "line": 540,
+        "level": 3,
+        "text": "Step 3: Loading Animations"
+      },
+      {
+        "line": 584,
+        "level": 2,
+        "text": "Complete Example"
+      },
+      {
+        "line": 586,
+        "level": 3,
+        "text": "App with Full Animation Integration"
+      },
+      {
+        "line": 663,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 665,
+        "level": 3,
+        "text": "Animations Not Triggering"
+      },
+      {
+        "line": 691,
+        "level": 3,
+        "text": "Performance Issues"
+      },
+      {
+        "line": 718,
+        "level": 3,
+        "text": "Layout Shift Issues"
+      },
+      {
+        "line": 739,
+        "level": 2,
+        "text": "Production Checklist"
+      },
+      {
+        "line": 743,
+        "level": 3,
+        "text": "Performance"
+      },
+      {
+        "line": 750,
+        "level": 3,
+        "text": "User Experience"
+      },
+      {
+        "line": 757,
+        "level": 3,
+        "text": "Accessibility"
+      },
+      {
+        "line": 764,
+        "level": 3,
+        "text": "Technical"
+      },
+      {
+        "line": 773,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/integrate-material-ui.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 3,
+        "text": "What You'll Accomplish"
+      },
+      {
+        "line": 23,
+        "level": 2,
+        "text": "Installation and Setup"
+      },
+      {
+        "line": 25,
+        "level": 3,
+        "text": "Step 1: Install Material-UI Dependencies"
+      },
+      {
+        "line": 37,
+        "level": 3,
+        "text": "Step 2: Set Up Theme Provider"
+      },
+      {
+        "line": 96,
+        "level": 3,
+        "text": "Step 3: Update Root Route"
+      },
+      {
+        "line": 118,
+        "level": 2,
+        "text": "Creating Router-Compatible MUI Components"
+      },
+      {
+        "line": 120,
+        "level": 3,
+        "text": "Step 1: Create Typed MUI Link Component"
+      },
+      {
+        "line": 138,
+        "level": 3,
+        "text": "Step 2: Create Typed MUI Button Component"
+      },
+      {
+        "line": 154,
+        "level": 3,
+        "text": "Step 3: Create Advanced Navigation Components"
+      },
+      {
+        "line": 172,
+        "level": 2,
+        "text": "Implementing Navigation with Active States"
+      },
+      {
+        "line": 174,
+        "level": 3,
+        "text": "Step 1: Create Navigation Tabs with Active States"
+      },
+      {
+        "line": 222,
+        "level": 3,
+        "text": "Step 2: Create Navigation Drawer"
+      },
+      {
+        "line": 303,
+        "level": 3,
+        "text": "Step 3: Create App Bar with Navigation"
+      },
+      {
+        "line": 424,
+        "level": 2,
+        "text": "Usage Examples"
+      },
+      {
+        "line": 426,
+        "level": 3,
+        "text": "Complete Page Example"
+      },
+      {
+        "line": 511,
+        "level": 3,
+        "text": "Layout with Navigation"
+      },
+      {
+        "line": 556,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 558,
+        "level": 3,
+        "text": "TypeScript Errors with Component Props"
+      },
+      {
+        "line": 576,
+        "level": 3,
+        "text": "Styling Conflicts"
+      },
+      {
+        "line": 612,
+        "level": 3,
+        "text": "Theme Not Applied Correctly"
+      },
+      {
+        "line": 638,
+        "level": 3,
+        "text": "Performance Issues with Large Apps"
+      },
+      {
+        "line": 678,
+        "level": 2,
+        "text": "Production Checklist"
+      },
+      {
+        "line": 682,
+        "level": 3,
+        "text": "Functionality"
+      },
+      {
+        "line": 689,
+        "level": 3,
+        "text": "Performance"
+      },
+      {
+        "line": 696,
+        "level": 3,
+        "text": "Styling"
+      },
+      {
+        "line": 703,
+        "level": 3,
+        "text": "Accessibility"
+      },
+      {
+        "line": 712,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/integrate-shadcn-ui.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 3,
+        "text": "What You'll Accomplish"
+      },
+      {
+        "line": 23,
+        "level": 2,
+        "text": "Installation and Setup"
+      },
+      {
+        "line": 25,
+        "level": 3,
+        "text": "Step 1: Install Shadcn/ui"
+      },
+      {
+        "line": 39,
+        "level": 3,
+        "text": "Step 2: Configure components.json"
+      },
+      {
+        "line": 62,
+        "level": 3,
+        "text": "Step 3: Add Essential Components"
+      },
+      {
+        "line": 75,
+        "level": 2,
+        "text": "Fixing Animation Issues"
+      },
+      {
+        "line": 77,
+        "level": 3,
+        "text": "Step 1: Set Up Proper DOM Structure"
+      },
+      {
+        "line": 103,
+        "level": 3,
+        "text": "Step 2: Create Router-Compatible Sheet Component"
+      },
+      {
+        "line": 156,
+        "level": 3,
+        "text": "Step 3: Create Router-Compatible Dialog Component"
+      },
+      {
+        "line": 209,
+        "level": 2,
+        "text": "Creating Navigation Components"
+      },
+      {
+        "line": 211,
+        "level": 3,
+        "text": "Step 1: Router-Compatible Navigation Menu"
+      },
+      {
+        "line": 265,
+        "level": 3,
+        "text": "Step 2: Create Router-Compatible Button Links"
+      },
+      {
+        "line": 281,
+        "level": 3,
+        "text": "Step 3: Usage Example"
+      },
+      {
+        "line": 336,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 338,
+        "level": 3,
+        "text": "Animation Components Not Working"
+      },
+      {
+        "line": 369,
+        "level": 3,
+        "text": "TypeScript Errors with Router Integration"
+      },
+      {
+        "line": 383,
+        "level": 3,
+        "text": "Styling Conflicts"
+      },
+      {
+        "line": 410,
+        "level": 3,
+        "text": "Dark Mode Integration"
+      },
+      {
+        "line": 486,
+        "level": 2,
+        "text": "Production Checklist"
+      },
+      {
+        "line": 490,
+        "level": 3,
+        "text": "Styling"
+      },
+      {
+        "line": 498,
+        "level": 3,
+        "text": "Functionality"
+      },
+      {
+        "line": 505,
+        "level": 3,
+        "text": "Performance"
+      },
+      {
+        "line": 513,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/migrate-from-react-router.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 3,
+        "text": "What You'll Accomplish"
+      },
+      {
+        "line": 25,
+        "level": 2,
+        "text": "Complete Migration Process"
+      },
+      {
+        "line": 27,
+        "level": 3,
+        "text": "Step 1: Prepare for Migration"
+      },
+      {
+        "line": 41,
+        "level": 1,
+        "text": "Install TanStack Router"
+      },
+      {
+        "line": 44,
+        "level": 1,
+        "text": "Install development dependencies"
+      },
+      {
+        "line": 67,
+        "level": 3,
+        "text": "Step 2: Create TanStack Router Configuration"
+      },
+      {
+        "line": 87,
+        "level": 3,
+        "text": "Step 3: Convert Your React Router v7 Structure"
+      },
+      {
+        "line": 258,
+        "level": 3,
+        "text": "Step 4: Handle React Router v7 Framework Features"
+      },
+      {
+        "line": 344,
+        "level": 3,
+        "text": "Step 5: Update Navigation Components"
+      },
+      {
+        "line": 396,
+        "level": 3,
+        "text": "Step 6: Handle React Router v7 Specific Features"
+      },
+      {
+        "line": 450,
+        "level": 3,
+        "text": "Step 7: Update Your Main Router Setup"
+      },
+      {
+        "line": 483,
+        "level": 3,
+        "text": "Step 8: Handle Search Parameters"
+      },
+      {
+        "line": 528,
+        "level": 3,
+        "text": "Step 9: Remove React Router Dependencies"
+      },
+      {
+        "line": 543,
+        "level": 1,
+        "text": "Find remaining React Router imports"
+      },
+      {
+        "line": 549,
+        "level": 3,
+        "text": "Step 10: Add Advanced Type Safety"
+      },
+      {
+        "line": 586,
+        "level": 2,
+        "text": "Production Checklist"
+      },
+      {
+        "line": 590,
+        "level": 3,
+        "text": "Router Configuration"
+      },
+      {
+        "line": 597,
+        "level": 3,
+        "text": "Route Migration"
+      },
+      {
+        "line": 605,
+        "level": 3,
+        "text": "Feature Migration"
+      },
+      {
+        "line": 613,
+        "level": 3,
+        "text": "Navigation Updates"
+      },
+      {
+        "line": 620,
+        "level": 3,
+        "text": "Code Cleanup"
+      },
+      {
+        "line": 628,
+        "level": 3,
+        "text": "Testing"
+      },
+      {
+        "line": 640,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 642,
+        "level": 3,
+        "text": "Error: \"Cannot use useNavigate outside of context\""
+      },
+      {
+        "line": 655,
+        "level": 3,
+        "text": "TypeScript Errors: Route Parameters"
+      },
+      {
+        "line": 672,
+        "level": 3,
+        "text": "React Router v7 Framework Features Not Working"
+      },
+      {
+        "line": 683,
+        "level": 3,
+        "text": "Routes Not Matching"
+      },
+      {
+        "line": 696,
+        "level": 3,
+        "text": "React Router v7 Simplified APIs Not Translating"
+      },
+      {
+        "line": 708,
+        "level": 2,
+        "text": "React Router v7 vs TanStack Router Feature Comparison"
+      },
+      {
+        "line": 723,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 727,
+        "level": 3,
+        "text": "Advanced Features to Explore"
+      },
+      {
+        "line": 737,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/navigate-with-search-params.md",
+    "headings": [
+      {
+        "line": 9,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 29,
+        "level": 2,
+        "text": "Navigation Methods"
+      },
+      {
+        "line": 31,
+        "level": 3,
+        "text": "Using Link Components"
+      },
+      {
+        "line": 33,
+        "level": 4,
+        "text": "Basic Search Parameter Updates"
+      },
+      {
+        "line": 55,
+        "level": 4,
+        "text": "Functional Search Parameter Updates"
+      },
+      {
+        "line": 94,
+        "level": 4,
+        "text": "Preserving All Search Parameters"
+      },
+      {
+        "line": 118,
+        "level": 4,
+        "text": "Navigation with Route Changes"
+      },
+      {
+        "line": 159,
+        "level": 3,
+        "text": "Programmatic Navigation"
+      },
+      {
+        "line": 161,
+        "level": 4,
+        "text": "Using useNavigate Hook"
+      },
+      {
+        "line": 211,
+        "level": 4,
+        "text": "Navigation with Router Instance"
+      },
+      {
+        "line": 273,
+        "level": 2,
+        "text": "Advanced Navigation Patterns"
+      },
+      {
+        "line": 275,
+        "level": 3,
+        "text": "Conditional Navigation"
+      },
+      {
+        "line": 300,
+        "level": 2,
+        "text": "Common Patterns"
+      },
+      {
+        "line": 302,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 304,
+        "level": 3,
+        "text": "Search Parameters Not Updating"
+      },
+      {
+        "line": 318,
+        "level": 3,
+        "text": "Losing Existing Search Parameters"
+      },
+      {
+        "line": 332,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 343,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/setup-auth-providers.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 2,
+        "text": "Auth0 Integration"
+      },
+      {
+        "line": 15,
+        "level": 3,
+        "text": "1. Install Auth0"
+      },
+      {
+        "line": 21,
+        "level": 3,
+        "text": "2. Set Up Environment Variables"
+      },
+      {
+        "line": 30,
+        "level": 3,
+        "text": "3. Create Auth0 Wrapper"
+      },
+      {
+        "line": 91,
+        "level": 3,
+        "text": "4. Update App Configuration"
+      },
+      {
+        "line": 125,
+        "level": 3,
+        "text": "5. Create Protected Routes"
+      },
+      {
+        "line": 146,
+        "level": 2,
+        "text": "Clerk Integration"
+      },
+      {
+        "line": 148,
+        "level": 3,
+        "text": "1. Install Clerk"
+      },
+      {
+        "line": 154,
+        "level": 3,
+        "text": "2. Set Up Environment Variables"
+      },
+      {
+        "line": 162,
+        "level": 3,
+        "text": "3. Create Clerk Wrapper"
+      },
+      {
+        "line": 204,
+        "level": 3,
+        "text": "4. Create Clerk Auth Routes"
+      },
+      {
+        "line": 236,
+        "level": 3,
+        "text": "5. Update App Configuration"
+      },
+      {
+        "line": 270,
+        "level": 3,
+        "text": "6. Create Protected Routes"
+      },
+      {
+        "line": 294,
+        "level": 2,
+        "text": "Supabase Integration"
+      },
+      {
+        "line": 296,
+        "level": 3,
+        "text": "1. Install Supabase"
+      },
+      {
+        "line": 302,
+        "level": 3,
+        "text": "2. Set Up Environment Variables"
+      },
+      {
+        "line": 311,
+        "level": 3,
+        "text": "3. Create Supabase Client"
+      },
+      {
+        "line": 402,
+        "level": 3,
+        "text": "4. Create Login Component"
+      },
+      {
+        "line": 501,
+        "level": 3,
+        "text": "5. Update App Configuration"
+      },
+      {
+        "line": 537,
+        "level": 2,
+        "text": "Provider Comparison"
+      },
+      {
+        "line": 549,
+        "level": 3,
+        "text": "When to Choose Each:"
+      },
+      {
+        "line": 557,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 559,
+        "level": 3,
+        "text": "Provider Context Not Available"
+      },
+      {
+        "line": 579,
+        "level": 3,
+        "text": "Infinite Loading States"
+      },
+      {
+        "line": 597,
+        "level": 3,
+        "text": "Redirect Loops with Auth0"
+      },
+      {
+        "line": 618,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 630,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/setup-authentication.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 2,
+        "text": "Create Authentication Context"
+      },
+      {
+        "line": 120,
+        "level": 2,
+        "text": "Configure Router Context"
+      },
+      {
+        "line": 122,
+        "level": 3,
+        "text": "1. Set Up Router Context"
+      },
+      {
+        "line": 151,
+        "level": 3,
+        "text": "2. Configure Router"
+      },
+      {
+        "line": 174,
+        "level": 3,
+        "text": "3. Connect App with Authentication"
+      },
+      {
+        "line": 201,
+        "level": 2,
+        "text": "Create Protected Routes"
+      },
+      {
+        "line": 203,
+        "level": 3,
+        "text": "1. Create Authentication Layout Route"
+      },
+      {
+        "line": 226,
+        "level": 3,
+        "text": "2. Create Login Route"
+      },
+      {
+        "line": 327,
+        "level": 3,
+        "text": "3. Create Protected Dashboard"
+      },
+      {
+        "line": 368,
+        "level": 2,
+        "text": "Add Authentication Persistence"
+      },
+      {
+        "line": 421,
+        "level": 2,
+        "text": "Production Checklist"
+      },
+      {
+        "line": 436,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 438,
+        "level": 3,
+        "text": "Authentication Context Not Available"
+      },
+      {
+        "line": 444,
+        "level": 3,
+        "text": "User Logged Out on Page Refresh"
+      },
+      {
+        "line": 450,
+        "level": 3,
+        "text": "Protected Route Flashing Before Redirect"
+      },
+      {
+        "line": 469,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 481,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/setup-basic-search-params.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 41,
+        "level": 2,
+        "text": "Why Use Schema Validation for Search Parameters?"
+      },
+      {
+        "line": 51,
+        "level": 2,
+        "text": "Validation Library Setup"
+      },
+      {
+        "line": 76,
+        "level": 2,
+        "text": "Step-by-Step Setup with Zod"
+      },
+      {
+        "line": 80,
+        "level": 3,
+        "text": "Step 1: Install Dependencies"
+      },
+      {
+        "line": 86,
+        "level": 3,
+        "text": "Step 2: Define Your Search Schema"
+      },
+      {
+        "line": 116,
+        "level": 3,
+        "text": "Step 3: Add Schema Validation to Route"
+      },
+      {
+        "line": 129,
+        "level": 3,
+        "text": "Step 4: Read Search Parameters in Components"
+      },
+      {
+        "line": 163,
+        "level": 2,
+        "text": "Common Search Parameter Patterns"
+      },
+      {
+        "line": 165,
+        "level": 3,
+        "text": "Pagination with Constraints"
+      },
+      {
+        "line": 195,
+        "level": 3,
+        "text": "Enum Validation with Defaults"
+      },
+      {
+        "line": 213,
+        "level": 3,
+        "text": "Complex Data Types"
+      },
+      {
+        "line": 242,
+        "level": 3,
+        "text": "Date and Advanced Types"
+      },
+      {
+        "line": 253,
+        "level": 2,
+        "text": "Reading Search Parameters Outside Components"
+      },
+      {
+        "line": 255,
+        "level": 3,
+        "text": "Using getRouteApi"
+      },
+      {
+        "line": 281,
+        "level": 3,
+        "text": "Using useSearch with from"
+      },
+      {
+        "line": 293,
+        "level": 2,
+        "text": "Manual Validation (Understanding the Primitives)"
+      },
+      {
+        "line": 319,
+        "level": 2,
+        "text": "Production Checklist"
+      },
+      {
+        "line": 329,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 331,
+        "level": 3,
+        "text": "Problem: Search Parameters Cause TypeScript Errors"
+      },
+      {
+        "line": 355,
+        "level": 3,
+        "text": "Problem: Invalid URL Parameters Break the App"
+      },
+      {
+        "line": 373,
+        "level": 3,
+        "text": "Problem: Optional Parameters Are Required by TypeScript"
+      },
+      {
+        "line": 389,
+        "level": 3,
+        "text": "Problem: Complex Objects Not Validating"
+      },
+      {
+        "line": 413,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 421,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/setup-rbac.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 2,
+        "text": "Extend Authentication Context"
+      },
+      {
+        "line": 15,
+        "level": 3,
+        "text": "1. Add Roles to User Type"
+      },
+      {
+        "line": 116,
+        "level": 3,
+        "text": "2. Update Router Context Types"
+      },
+      {
+        "line": 155,
+        "level": 2,
+        "text": "Create Role-Protected Routes"
+      },
+      {
+        "line": 157,
+        "level": 3,
+        "text": "1. Admin-Only Routes"
+      },
+      {
+        "line": 190,
+        "level": 3,
+        "text": "2. Multiple Role Access"
+      },
+      {
+        "line": 227,
+        "level": 3,
+        "text": "3. Permission-Based Routes"
+      },
+      {
+        "line": 253,
+        "level": 2,
+        "text": "Create Specific Protected Pages"
+      },
+      {
+        "line": 255,
+        "level": 3,
+        "text": "1. Admin Dashboard"
+      },
+      {
+        "line": 310,
+        "level": 3,
+        "text": "2. User Management Page"
+      },
+      {
+        "line": 396,
+        "level": 2,
+        "text": "Create Unauthorized Page"
+      },
+      {
+        "line": 483,
+        "level": 2,
+        "text": "Component-Level Permission Checks"
+      },
+      {
+        "line": 485,
+        "level": 3,
+        "text": "1. Conditional Rendering Hook"
+      },
+      {
+        "line": 506,
+        "level": 3,
+        "text": "2. Permission Guard Component"
+      },
+      {
+        "line": 547,
+        "level": 3,
+        "text": "3. Using Permission Guards"
+      },
+      {
+        "line": 588,
+        "level": 2,
+        "text": "Advanced Permission Patterns"
+      },
+      {
+        "line": 590,
+        "level": 3,
+        "text": "1. Resource-Based Permissions"
+      },
+      {
+        "line": 621,
+        "level": 3,
+        "text": "2. Time-Based Permissions"
+      },
+      {
+        "line": 647,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 649,
+        "level": 3,
+        "text": "Role/Permission Data Not Loading"
+      },
+      {
+        "line": 673,
+        "level": 3,
+        "text": "Permission Checks Too Restrictive"
+      },
+      {
+        "line": 694,
+        "level": 3,
+        "text": "Performance Issues with Many Permission Checks"
+      },
+      {
+        "line": 722,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 734,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/setup-ssr.md",
+    "headings": [
+      {
+        "line": 9,
+        "level": 2,
+        "text": "Quick Start with TanStack Start"
+      },
+      {
+        "line": 17,
+        "level": 2,
+        "text": "Manual SSR Setup"
+      },
+      {
+        "line": 19,
+        "level": 3,
+        "text": "1. Install Dependencies"
+      },
+      {
+        "line": 26,
+        "level": 3,
+        "text": "2. Create Shared Router Configuration"
+      },
+      {
+        "line": 50,
+        "level": 3,
+        "text": "3. Set Up Server Entry Point"
+      },
+      {
+        "line": 125,
+        "level": 3,
+        "text": "4. Set Up Client Entry Point"
+      },
+      {
+        "line": 138,
+        "level": 3,
+        "text": "5. Configure Vite for SSR"
+      },
+      {
+        "line": 191,
+        "level": 3,
+        "text": "6. Update Root Route for HTML Structure"
+      },
+      {
+        "line": 270,
+        "level": 3,
+        "text": "7. Create Express Server"
+      },
+      {
+        "line": 368,
+        "level": 3,
+        "text": "8. Update Package Scripts"
+      },
+      {
+        "line": 382,
+        "level": 2,
+        "text": "Streaming SSR"
+      },
+      {
+        "line": 401,
+        "level": 3,
+        "text": "Streaming Vite Configuration"
+      },
+      {
+        "line": 424,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 428,
+        "level": 3,
+        "text": "React Import Errors"
+      },
+      {
+        "line": 444,
+        "level": 3,
+        "text": "Hydration Mismatches"
+      },
+      {
+        "line": 464,
+        "level": 3,
+        "text": "Bun Runtime Issues"
+      },
+      {
+        "line": 478,
+        "level": 3,
+        "text": "Module Resolution Errors"
+      },
+      {
+        "line": 500,
+        "level": 3,
+        "text": "Streaming Configuration Issues"
+      },
+      {
+        "line": 518,
+        "level": 3,
+        "text": "Build Output Issues"
+      },
+      {
+        "line": 538,
+        "level": 2,
+        "text": "Related Resources"
+      },
+      {
+        "line": 544,
+        "level": 2,
+        "text": "Common Next Steps"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/setup-testing.md",
+    "headings": [
+      {
+        "line": 1,
+        "level": 1,
+        "text": "How to Set Up Testing with Code-Based Routing"
+      },
+      {
+        "line": 5,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 2,
+        "text": "Configure Test Framework"
+      },
+      {
+        "line": 15,
+        "level": 3,
+        "text": "1. Install Dependencies"
+      },
+      {
+        "line": 29,
+        "level": 3,
+        "text": "2. Configure Vitest"
+      },
+      {
+        "line": 48,
+        "level": 3,
+        "text": "3. Create Test Setup"
+      },
+      {
+        "line": 61,
+        "level": 2,
+        "text": "Code-Based Router Testing Patterns"
+      },
+      {
+        "line": 65,
+        "level": 3,
+        "text": "1. TanStack Router Internal Pattern (Recommended)"
+      },
+      {
+        "line": 115,
+        "level": 3,
+        "text": "2. Alternative: Router Test Utilities (For Simpler Cases)"
+      },
+      {
+        "line": 197,
+        "level": 3,
+        "text": "2. Mock Route Factory"
+      },
+      {
+        "line": 234,
+        "level": 2,
+        "text": "Test Code-Based Route Components"
+      },
+      {
+        "line": 236,
+        "level": 3,
+        "text": "1. Basic Component Testing"
+      },
+      {
+        "line": 287,
+        "level": 3,
+        "text": "2. Testing Route Parameters"
+      },
+      {
+        "line": 348,
+        "level": 2,
+        "text": "Test Navigation"
+      },
+      {
+        "line": 350,
+        "level": 3,
+        "text": "1. Testing Link Components"
+      },
+      {
+        "line": 457,
+        "level": 3,
+        "text": "2. Testing Route Guards"
+      },
+      {
+        "line": 533,
+        "level": 2,
+        "text": "Test Data Loading"
+      },
+      {
+        "line": 535,
+        "level": 3,
+        "text": "1. Testing Loaders"
+      },
+      {
+        "line": 614,
+        "level": 3,
+        "text": "2. Testing with React Query"
+      },
+      {
+        "line": 684,
+        "level": 2,
+        "text": "Test with Context"
+      },
+      {
+        "line": 686,
+        "level": 3,
+        "text": "1. Testing Router Context"
+      },
+      {
+        "line": 749,
+        "level": 2,
+        "text": "E2E Testing with Playwright"
+      },
+      {
+        "line": 751,
+        "level": 3,
+        "text": "1. Playwright Configuration"
+      },
+      {
+        "line": 783,
+        "level": 3,
+        "text": "2. E2E Test Example"
+      },
+      {
+        "line": 844,
+        "level": 2,
+        "text": "Code-Based Routing Testing Best Practices"
+      },
+      {
+        "line": 846,
+        "level": 3,
+        "text": "1. Test Organization"
+      },
+      {
+        "line": 866,
+        "level": 3,
+        "text": "2. Common Patterns"
+      },
+      {
+        "line": 911,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 913,
+        "level": 3,
+        "text": "Test Environment Issues"
+      },
+      {
+        "line": 928,
+        "level": 3,
+        "text": "Router Context Missing"
+      },
+      {
+        "line": 942,
+        "level": 3,
+        "text": "Async Data Loading"
+      },
+      {
+        "line": 956,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 969,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/share-search-params-across-routes.md",
+    "headings": [
+      {
+        "line": 5,
+        "level": 1,
+        "text": "How to Share Search Parameters Across Routes"
+      },
+      {
+        "line": 9,
+        "level": 2,
+        "text": "How Parameter Inheritance Works"
+      },
+      {
+        "line": 17,
+        "level": 2,
+        "text": "Global Parameters via Root Route"
+      },
+      {
+        "line": 80,
+        "level": 2,
+        "text": "Section-Specific Parameters via Layout Routes"
+      },
+      {
+        "line": 141,
+        "level": 2,
+        "text": "Common Use Cases"
+      },
+      {
+        "line": 161,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 163,
+        "level": 3,
+        "text": "Problem: Parameters Not Inheriting"
+      },
+      {
+        "line": 189,
+        "level": 3,
+        "text": "Problem: Navigation Loses Shared Parameters"
+      },
+      {
+        "line": 211,
+        "level": 3,
+        "text": "Problem: Type Errors with Inherited Parameters"
+      },
+      {
+        "line": 223,
+        "level": 2,
+        "text": "Production Checklist"
+      },
+      {
+        "line": 232,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 241,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/test-file-based-routing.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 13,
+        "level": 2,
+        "text": "Understanding File-Based Routing Testing"
+      },
+      {
+        "line": 24,
+        "level": 2,
+        "text": "Setting Up File-Based Route Testing"
+      },
+      {
+        "line": 26,
+        "level": 3,
+        "text": "1. Install Test Dependencies"
+      },
+      {
+        "line": 34,
+        "level": 3,
+        "text": "2. Configure Test Environment"
+      },
+      {
+        "line": 64,
+        "level": 3,
+        "text": "3. Create Route Testing Utilities"
+      },
+      {
+        "line": 143,
+        "level": 2,
+        "text": "Testing File-Based Route Structure"
+      },
+      {
+        "line": 145,
+        "level": 3,
+        "text": "1. Test Route Tree Generation"
+      },
+      {
+        "line": 195,
+        "level": 3,
+        "text": "2. Test File Route Conventions"
+      },
+      {
+        "line": 246,
+        "level": 2,
+        "text": "Testing File-Based Route Components"
+      },
+      {
+        "line": 248,
+        "level": 3,
+        "text": "1. Test Individual Route Files"
+      },
+      {
+        "line": 286,
+        "level": 3,
+        "text": "2. Test Route-Specific Hooks"
+      },
+      {
+        "line": 332,
+        "level": 2,
+        "text": "Testing Route Navigation with File-Based Routes"
+      },
+      {
+        "line": 334,
+        "level": 3,
+        "text": "1. Test Link Navigation"
+      },
+      {
+        "line": 391,
+        "level": 3,
+        "text": "2. Test Programmatic Navigation"
+      },
+      {
+        "line": 433,
+        "level": 2,
+        "text": "Testing File-Based Route Guards and Loaders"
+      },
+      {
+        "line": 435,
+        "level": 3,
+        "text": "1. Test Route Guards"
+      },
+      {
+        "line": 472,
+        "level": 3,
+        "text": "2. Test Route Loaders"
+      },
+      {
+        "line": 524,
+        "level": 2,
+        "text": "Testing File Route Validation"
+      },
+      {
+        "line": 526,
+        "level": 3,
+        "text": "1. Test Search Parameter Validation"
+      },
+      {
+        "line": 567,
+        "level": 2,
+        "text": "Testing File Route Error Boundaries"
+      },
+      {
+        "line": 569,
+        "level": 3,
+        "text": "1. Test Route-Level Error Handling"
+      },
+      {
+        "line": 619,
+        "level": 2,
+        "text": "Testing with Generated Route Types"
+      },
+      {
+        "line": 621,
+        "level": 3,
+        "text": "1. Test Type Safety"
+      },
+      {
+        "line": 665,
+        "level": 2,
+        "text": "Testing Route Tree Changes"
+      },
+      {
+        "line": 667,
+        "level": 3,
+        "text": "1. Test Route Generation During Development"
+      },
+      {
+        "line": 705,
+        "level": 2,
+        "text": "E2E Testing for File-Based Routes"
+      },
+      {
+        "line": 707,
+        "level": 3,
+        "text": "1. Playwright Configuration for File-Based Routes"
+      },
+      {
+        "line": 755,
+        "level": 2,
+        "text": "Common File-Based Routing Testing Patterns"
+      },
+      {
+        "line": 757,
+        "level": 3,
+        "text": "1. Mock Route Files for Testing"
+      },
+      {
+        "line": 790,
+        "level": 3,
+        "text": "2. Test Route Discovery"
+      },
+      {
+        "line": 825,
+        "level": 2,
+        "text": "Best Practices for File-Based Route Testing"
+      },
+      {
+        "line": 827,
+        "level": 3,
+        "text": "1. Test Organization"
+      },
+      {
+        "line": 849,
+        "level": 3,
+        "text": "2. Common Test Patterns"
+      },
+      {
+        "line": 885,
+        "level": 2,
+        "text": "Troubleshooting File-Based Route Testing"
+      },
+      {
+        "line": 887,
+        "level": 3,
+        "text": "Common Issues"
+      },
+      {
+        "line": 939,
+        "level": 2,
+        "text": "Next Steps"
+      },
+      {
+        "line": 947,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/use-environment-variables.md",
+    "headings": [
+      {
+        "line": 7,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 12,
+        "level": 1,
+        "text": ".env"
+      },
+      {
+        "line": 31,
+        "level": 2,
+        "text": "Environment Variable Access Patterns"
+      },
+      {
+        "line": 33,
+        "level": 3,
+        "text": "Vite-Based Projects (Most Common)"
+      },
+      {
+        "line": 66,
+        "level": 3,
+        "text": "Webpack-Based Projects"
+      },
+      {
+        "line": 97,
+        "level": 3,
+        "text": "Rspack-Based Projects"
+      },
+      {
+        "line": 102,
+        "level": 1,
+        "text": ".env"
+      },
+      {
+        "line": 121,
+        "level": 3,
+        "text": "ESBuild Projects"
+      },
+      {
+        "line": 138,
+        "level": 2,
+        "text": "Common Patterns"
+      },
+      {
+        "line": 140,
+        "level": 3,
+        "text": "API Configuration in Route Loaders"
+      },
+      {
+        "line": 172,
+        "level": 3,
+        "text": "Environment-Based Route Configuration"
+      },
+      {
+        "line": 190,
+        "level": 3,
+        "text": "Feature Flags in Routes"
+      },
+      {
+        "line": 215,
+        "level": 3,
+        "text": "Authentication Configuration"
+      },
+      {
+        "line": 243,
+        "level": 3,
+        "text": "Search Params with Environment Config"
+      },
+      {
+        "line": 271,
+        "level": 2,
+        "text": "Environment File Setup"
+      },
+      {
+        "line": 273,
+        "level": 3,
+        "text": "File Hierarchy (Vite)"
+      },
+      {
+        "line": 284,
+        "level": 3,
+        "text": "Example Configuration"
+      },
+      {
+        "line": 289,
+        "level": 1,
+        "text": "API Configuration"
+      },
+      {
+        "line": 293,
+        "level": 1,
+        "text": "Feature Flags"
+      },
+      {
+        "line": 297,
+        "level": 1,
+        "text": "Auth Configuration (public keys only)"
+      },
+      {
+        "line": 301,
+        "level": 1,
+        "text": "Build Configuration"
+      },
+      {
+        "line": 309,
+        "level": 1,
+        "text": "Development overrides"
+      },
+      {
+        "line": 318,
+        "level": 1,
+        "text": "Production-specific"
+      },
+      {
+        "line": 324,
+        "level": 2,
+        "text": "Type Safety"
+      },
+      {
+        "line": 326,
+        "level": 3,
+        "text": "Vite TypeScript Declarations"
+      },
+      {
+        "line": 358,
+        "level": 3,
+        "text": "Runtime Validation"
+      },
+      {
+        "line": 407,
+        "level": 3,
+        "text": "Usage with Type Safety"
+      },
+      {
+        "line": 431,
+        "level": 2,
+        "text": "Bundler-Specific Configuration"
+      },
+      {
+        "line": 433,
+        "level": 3,
+        "text": "Vite Configuration"
+      },
+      {
+        "line": 456,
+        "level": 3,
+        "text": "Webpack Configuration"
+      },
+      {
+        "line": 477,
+        "level": 3,
+        "text": "Rspack Configuration"
+      },
+      {
+        "line": 500,
+        "level": 2,
+        "text": "Production Checklist"
+      },
+      {
+        "line": 511,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 513,
+        "level": 3,
+        "text": "Environment Variable is Undefined"
+      },
+      {
+        "line": 539,
+        "level": 1,
+        "text": "❌ Won't work (no prefix)"
+      },
+      {
+        "line": 542,
+        "level": 1,
+        "text": "✅ Works with Vite"
+      },
+      {
+        "line": 545,
+        "level": 1,
+        "text": "✅ Works with Rspack"
+      },
+      {
+        "line": 548,
+        "level": 1,
+        "text": "❌ Won't bundle the variable (assuming it is not set in the environment of the build)"
+      },
+      {
+        "line": 551,
+        "level": 1,
+        "text": "✅ Works with Vite and will bundle the variable for production"
+      },
+      {
+        "line": 554,
+        "level": 1,
+        "text": "✅ Works with Rspack and will bundle the variable for production"
+      },
+      {
+        "line": 558,
+        "level": 3,
+        "text": "Runtime Client Environment Variables at Runtime in Production"
+      },
+      {
+        "line": 592,
+        "level": 3,
+        "text": "Variable Not Updating"
+      },
+      {
+        "line": 603,
+        "level": 3,
+        "text": "TypeScript Errors"
+      },
+      {
+        "line": 615,
+        "level": 3,
+        "text": "Build Errors"
+      },
+      {
+        "line": 626,
+        "level": 3,
+        "text": "Security Issues"
+      },
+      {
+        "line": 637,
+        "level": 3,
+        "text": "Runtime vs Build-time Confusion"
+      },
+      {
+        "line": 647,
+        "level": 3,
+        "text": "Environment Variables are Always Strings"
+      },
+      {
+        "line": 679,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 685,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/validate-search-params.md",
+    "headings": [
+      {
+        "line": 9,
+        "level": 2,
+        "text": "Quick Start"
+      },
+      {
+        "line": 77,
+        "level": 2,
+        "text": "Validation Library Options"
+      },
+      {
+        "line": 81,
+        "level": 3,
+        "text": "Zod (Recommended)"
+      },
+      {
+        "line": 102,
+        "level": 3,
+        "text": "Valibot"
+      },
+      {
+        "line": 123,
+        "level": 3,
+        "text": "ArkType"
+      },
+      {
+        "line": 143,
+        "level": 3,
+        "text": "Custom Validation Function"
+      },
+      {
+        "line": 187,
+        "level": 2,
+        "text": "Common Validation Patterns"
+      },
+      {
+        "line": 189,
+        "level": 3,
+        "text": "Required vs Optional Parameters"
+      },
+      {
+        "line": 208,
+        "level": 3,
+        "text": "Complex Data Types"
+      },
+      {
+        "line": 240,
+        "level": 3,
+        "text": "Input Transformation"
+      },
+      {
+        "line": 264,
+        "level": 2,
+        "text": "Error Handling Strategies"
+      },
+      {
+        "line": 266,
+        "level": 3,
+        "text": "Basic Error Handling"
+      },
+      {
+        "line": 312,
+        "level": 3,
+        "text": "Custom Error Messages"
+      },
+      {
+        "line": 339,
+        "level": 3,
+        "text": "Validation Error Recovery"
+      },
+      {
+        "line": 368,
+        "level": 2,
+        "text": "Advanced Validation Techniques"
+      },
+      {
+        "line": 370,
+        "level": 3,
+        "text": "Conditional Validation"
+      },
+      {
+        "line": 397,
+        "level": 3,
+        "text": "Schema Composition"
+      },
+      {
+        "line": 426,
+        "level": 3,
+        "text": "Performance Optimization"
+      },
+      {
+        "line": 458,
+        "level": 2,
+        "text": "Testing Search Parameter Validation"
+      },
+      {
+        "line": 505,
+        "level": 2,
+        "text": "Common Problems"
+      },
+      {
+        "line": 507,
+        "level": 3,
+        "text": "Problem: Validation errors break the entire route"
+      },
+      {
+        "line": 538,
+        "level": 3,
+        "text": "Problem: TypeScript errors with optional search parameters"
+      },
+      {
+        "line": 563,
+        "level": 3,
+        "text": "Problem: Search parameter arrays not parsing correctly"
+      },
+      {
+        "line": 592,
+        "level": 3,
+        "text": "Problem: Schema validation is too slow"
+      },
+      {
+        "line": 626,
+        "level": 2,
+        "text": "Common Next Steps"
+      },
+      {
+        "line": 637,
+        "level": 2,
+        "text": "Related Resources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/drafts/README.md",
+    "headings": [
+      {
+        "line": 1,
+        "level": 1,
+        "text": "How-To Guide Drafts"
+      },
+      {
+        "line": 10,
+        "level": 2,
+        "text": "File Naming Convention"
+      },
+      {
+        "line": 15,
+        "level": 2,
+        "text": "Current Drafts"
+      },
+      {
+        "line": 17,
+        "level": 3,
+        "text": "⏳ Ready for Implementation (Substantial Content Available)"
+      },
+      {
+        "line": 39,
+        "level": 2,
+        "text": "Implementation Workflow"
+      },
+      {
+        "line": 50,
+        "level": 2,
+        "text": "Benefits of This System"
+      },
+      {
+        "line": 58,
+        "level": 2,
+        "text": "Content Sources"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/drafts/build-search-filtering-systems.draft.md",
+    "headings": [
+      {
+        "line": 1,
+        "level": 1,
+        "text": "DRAFT: Build Search-Based Filtering Systems"
+      },
+      {
+        "line": 10,
+        "level": 2,
+        "text": "Content Staged from navigate-with-search-params.md"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "Search Result Navigation"
+      },
+      {
+        "line": 62,
+        "level": 3,
+        "text": "Filter Navigation"
+      },
+      {
+        "line": 128,
+        "level": 3,
+        "text": "Programmatic Search Controls"
+      },
+      {
+        "line": 169,
+        "level": 2,
+        "text": "Implementation Notes"
+      },
+      {
+        "line": 171,
+        "level": 3,
+        "text": "Additional Content Needed:"
+      },
+      {
+        "line": 182,
+        "level": 3,
+        "text": "Cross-References to Add:"
+      },
+      {
+        "line": 189,
+        "level": 3,
+        "text": "README Update Required:"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/drafts/optimize-search-param-performance.draft.md",
+    "headings": [
+      {
+        "line": 1,
+        "level": 1,
+        "text": "DRAFT: Optimize Search Parameter Performance"
+      },
+      {
+        "line": 10,
+        "level": 2,
+        "text": "Content Staged from navigate-with-search-params.md"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "Performance Issues with Functional Updates"
+      },
+      {
+        "line": 35,
+        "level": 3,
+        "text": "Navigation During Render"
+      },
+      {
+        "line": 67,
+        "level": 2,
+        "text": "Implementation Notes"
+      },
+      {
+        "line": 69,
+        "level": 3,
+        "text": "Additional Content Needed:"
+      },
+      {
+        "line": 80,
+        "level": 3,
+        "text": "Cross-References to Add:"
+      },
+      {
+        "line": 87,
+        "level": 3,
+        "text": "README Update Required:"
+      }
+    ]
+  },
+  {
+    "path": "framework/react/how-to/drafts/search-params-in-forms.draft.md",
+    "headings": [
+      {
+        "line": 1,
+        "level": 1,
+        "text": "DRAFT: Handle Search Parameters in Forms"
+      },
+      {
+        "line": 10,
+        "level": 2,
+        "text": "Content Staged from navigate-with-search-params.md"
+      },
+      {
+        "line": 12,
+        "level": 3,
+        "text": "Navigation with State Synchronization"
+      },
+      {
+        "line": 113,
+        "level": 3,
+        "text": "Form with Search Parameter Validation"
+      },
+      {
+        "line": 134,
+        "level": 2,
+        "text": "Implementation Notes"
+      },
+      {
+        "line": 136,
+        "level": 3,
+        "text": "Additional Content Needed:"
+      },
+      {
+        "line": 147,
+        "level": 3,
+        "text": "Cross-References to Add:"
+      },
+      {
+        "line": 154,
+        "level": 3,
+        "text": "README Update Required:"
+      }
+    ]
+  },
+  {
+    "path": "integrations/query.md",
+    "headings": [
+      {
+        "line": 9,
+        "level": 2,
+        "text": "What you get"
+      },
+      {
+        "line": 16,
+        "level": 2,
+        "text": "Installation"
+      },
+      {
+        "line": 22,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 24,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 26,
+        "level": 1,
+        "text": "or"
+      },
+      {
+        "line": 30,
+        "level": 2,
+        "text": "Setup"
+      },
+      {
+        "line": 65,
+        "level": 2,
+        "text": "SSR behavior and streaming"
+      },
+      {
+        "line": 71,
+        "level": 2,
+        "text": "Use in routes"
+      },
+      {
+        "line": 73,
+        "level": 3,
+        "text": "Using useSuspenseQuery vs useQuery"
+      },
+      {
+        "line": 86,
+        "level": 3,
+        "text": "Preload with a loader and read with a hook"
+      },
+      {
+        "line": 113,
+        "level": 3,
+        "text": "Prefetching and streaming"
+      },
+      {
+        "line": 135,
+        "level": 2,
+        "text": "Redirect handling"
+      },
+      {
+        "line": 142,
+        "level": 2,
+        "text": "Works with TanStack Start"
+      }
+    ]
+  },
+  {
+    "path": "eslint/create-route-property-order.md",
+    "headings": [
+      {
+        "line": 24,
+        "level": 2,
+        "text": "Rule Details"
+      },
+      {
+        "line": 54,
+        "level": 2,
+        "text": "Attributes"
+      }
+    ]
+  },
+  {
+    "path": "eslint/eslint-plugin-router.md",
+    "headings": [
+      {
+        "line": 8,
+        "level": 2,
+        "text": "Installation"
+      },
+      {
+        "line": 34,
+        "level": 2,
+        "text": "Flat Config (`eslint.config.js`)"
+      },
+      {
+        "line": 39,
+        "level": 3,
+        "text": "Recommended Flat Config setup"
+      },
+      {
+        "line": 53,
+        "level": 3,
+        "text": "Custom Flat Config setup"
+      },
+      {
+        "line": 74,
+        "level": 2,
+        "text": "Legacy Config (`.eslintrc`)"
+      },
+      {
+        "line": 78,
+        "level": 3,
+        "text": "Recommended Legacy Config setup"
+      },
+      {
+        "line": 88,
+        "level": 3,
+        "text": "Custom Legacy Config setup"
+      },
+      {
+        "line": 101,
+        "level": 2,
+        "text": "Rules"
+      },
+      {
+        "line": 107,
+        "level": 2,
+        "text": "Conflicts with other ESLint plugins"
+      },
+      {
+        "line": 111,
+        "level": 3,
+        "text": "`typescript-eslint`"
+      }
+    ]
+  }
+]
