@@ -65,6 +65,10 @@
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
     },
+    "test:types:ssr": {
+      "cache": true,
+      "inputs": ["default", "^production"]
+    },
     "build": {
       "cache": true,
       "dependsOn": ["^build"],

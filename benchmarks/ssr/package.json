@@ -134,7 +134,6 @@
       },
       "test:types": {
         "executor": "nx:noop",
-        "cache": false,
         "dependsOn": [
           {
             "projects": [

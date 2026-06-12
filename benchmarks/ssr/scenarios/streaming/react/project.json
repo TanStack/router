@@ -17,7 +17,6 @@
     },
     "test:types:ssr": {
       "executor": "nx:run-commands",
-      "cache": false,
       "dependsOn": [
         {
           "projects": ["@tanstack/react-start"],
