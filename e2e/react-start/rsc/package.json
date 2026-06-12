@@ -13,7 +13,8 @@
     "build:vite": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "node server.js",
-    "test:e2e-full": "pnpm build && sh -c 'rm -f \"port-${E2E_PORT_KEY:-$npm_package_name}.txt\" \"port-${E2E_PORT_KEY:-$npm_package_name}-external.txt\"' && playwright test --project=chromium"
+    "test:e2e-full": "pnpm build && sh -c 'rm -f \"port-${E2E_PORT_KEY:-$npm_package_name}.txt\" \"port-${E2E_PORT_KEY:-$npm_package_name}-external.txt\"' && playwright test --project=chromium",
+    "test:e2e:hmr": "playwright test --config playwright.hmr.config.ts --project=chromium"
   },
   "nx": {
     "metadata": {
