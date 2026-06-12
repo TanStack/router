@@ -1,6 +1,6 @@
+import { resolveNativeRouteOptions } from './resolveNativeRouteOptions'
 import type { AnyRouter, NavigateOptions } from '@tanstack/router-core'
 import type { NativeRouteOptionsInput } from './route'
-import { resolveNativeRouteOptions } from './resolveNativeRouteOptions'
 
 function mergeNativeOptions(
   previous: Record<string, unknown> | undefined,

@@ -1,4 +1,3 @@
-import * as React from 'react'
 import {
   BaseRootRoute,
   BaseRoute,
@@ -12,29 +11,27 @@ import { useSearch } from './useSearch'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
 import { useRouter } from './useRouter'
+import type * as React from 'react'
 import type {
   AnyContext,
   AnyRoute,
   AnyRouter,
   ConstrainLiteral,
-  ErrorComponentProps as CoreErrorComponentProps,
+  NotFoundError,
   NotFoundRouteProps,
   RegisteredRouter,
   ResolveFullPath,
   ResolveId,
   ResolveParams,
-  RootRoute as RootRouteCore,
   RootRouteId,
   RootRouteOptions,
   RouteConstraints,
-  Route as RouteCore,
   RouteIds,
   RouteMask,
   RouteOptions,
   RouteTypesById,
   ToMaskOptions,
   UseNavigateResult,
-  NotFoundError,
 } from '@tanstack/router-core'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
@@ -321,6 +318,7 @@ export class RouteApi<
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
@@ -329,6 +327,7 @@ export class RouteApi<
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
@@ -436,6 +435,7 @@ export class Route<
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
@@ -444,6 +444,7 @@ export class Route<
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
@@ -519,6 +520,7 @@ export class RootRoute<
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
@@ -527,6 +529,7 @@ export class RootRoute<
   }
 
   useParams: UseParamsRoute<RootRouteId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,

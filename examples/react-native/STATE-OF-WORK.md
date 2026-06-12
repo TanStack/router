@@ -6,9 +6,10 @@ merged and shipped.
 ## Branch: `taren/rn-unified` (off `origin/main`)
 
 Single source of truth. All the RN router + Phase 1 (Metro file routing)
-+ Phase 2 (Start RPC transform) work is here, sitting on a fresh main base.
-Both `taren/mystifying-nash-aa11f2` and `taren/start-metro` are now
-superseded and can be deleted.
+
+- Phase 2 (Start RPC transform) work is here, sitting on a fresh main base.
+  Both `taren/mystifying-nash-aa11f2` and `taren/start-metro` are now
+  superseded and can be deleted.
 
 ## Status
 
@@ -19,40 +20,41 @@ superseded and can be deleted.
   with worker-safe env-var option passing (commit `ccf607e4bc`)
 - ✅ 3-example matrix: bare (RN+Router+Start), expo-go (Router only),
   expo-dev-client (RN+Router+Start)
-- ✅ Shared `_start-server` (Vite+Start backend) ready to consume RPCs
+- ✅ Shared `_start-server` (Vite+Start backend) consumes RN RPCs
 - ✅ Maestro flow skeletons
 - ✅ Docs + sidebar registration
 - ✅ Defensive gesture-handler TurboModule probe
-- ✅ Unit tests (router-plugin/metro: 4 new, react-native-router: 6 pre-existing)
+- ✅ `@tanstack/react-native-router` eslint, types, unit, and build checks
+- ✅ Unit tests (router-plugin/metro: 4 new, react-native-router: 8 total)
 
-## End-to-end Start RPC verified at the bundle level
+## End-to-end Start RPC verification
 
-Running `npx react-native start` (bare) and `expo start` (expo-dev-client)
-each produce iOS bundles containing:
+Running Metro for the bare client produces an iOS bundle containing:
 
 - `createClientRpc` references for each `createServerFn` call site
 - Deterministic SHA-256 function ids: `c299b00d...` (listPosts) and
   `d4f35c53...` (getPost)
+- `http://localhost:3050/_serverFn/` as the normalized RPC base when
+  `TSR_SERVER_FN_BASE=http://localhost:3050`
 
-Identical IDs across both clients prove the deterministic hashing —
-a single deployed Start server can serve both bundlers without any
-per-client manifest exchange.
+The built `_start-server` registers the same IDs and the matching
+`createServerFn(...).handler(createClientRpc(id))` calls return real data:
 
-What's NOT verified yet: actually running the iOS app and confirming
-RPC roundtrips against `_start-server`. The bundle-level proof is
-mechanical (the transformer is wiring through correctly). The runtime
-test would be: `cd _start-server && npm run dev` (port 3050), launch
-either RN client in the sim, navigate to /posts, expect data from the
-local server.
+- `listPosts` returns 4 posts
+- `getPost({ data: '1' })` returns "TanStack Router on React Native"
+
+What's NOT verified in this local environment: rendering the result in a
+native simulator UI. This machine has no Xcode `simctl`, no Xcode.app,
+and no Android emulator/device attached.
 
 ## Example matrix
 
-| Example | Bundler | Native | Router | Start |
-|---|---|---|---|---|
-| `bare` | Metro vanilla | iOS + Android (committed) | ✓ | ✓ |
-| `expo-go` | Metro (Expo) | Expo Go | ✓ | n/a |
-| `expo-dev-client` | Metro (Expo) | Expo prebuild | ✓ | ✓ |
-| `_start-server` | Vite (Start) | n/a | n/a | ✓ |
+| Example           | Bundler       | Native                    | Router | Start |
+| ----------------- | ------------- | ------------------------- | ------ | ----- |
+| `bare`            | Metro vanilla | iOS + Android (committed) | ✓      | ✓     |
+| `expo-go`         | Metro (Expo)  | Expo Go                   | ✓      | n/a   |
+| `expo-dev-client` | Metro (Expo)  | Expo prebuild             | ✓      | ✓     |
+| `_start-server`   | Vite (Start)  | n/a                       | n/a    | ✓     |
 
 ## Known things the rebase exposed
 
@@ -77,12 +79,8 @@ local server.
 
 ## What's left before merge
 
-- Run the actual RPC roundtrip in the simulator (mechanical; needs
-  `_start-server` brought up + Maestro flow update to assert real data
-  is rendered).
-- Address pre-existing eslint warnings on `react-native-router` (37
-  errors, 6 warnings — all stylistic, none functional). These existed
-  on `feat/react-native` and didn't get cleaned up before the merge.
+- Run the same RPC route in a native simulator UI and wire the Maestro
+  flow to assert rendered server data.
 - Decide on the `expo-go` story for actually working in Expo Go —
   currently bundles cleanly but real-app testing hit native module
   version drift. Defensive probes help, but the example is more useful

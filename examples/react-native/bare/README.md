@@ -88,13 +88,12 @@ route generator synchronously (so the route tree exists before Metro
 reads files), and starts a chokidar watcher in dev that regenerates the
 tree on route file changes — Metro then triggers a fast refresh.
 
-## Start integration (planned)
+## Start integration
 
-This example will gain TanStack Start `createServerFn` calls once the
-Phase 2 compiler ([`@tanstack/react-start/plugin/metro`](../../../packages/react-start/src/plugin/metro.ts)
-on the `taren/start-metro` branch) is brought into this branch.
-
-When that lands, [`metro.config.js`](./metro.config.js) will gain:
+This example uses TanStack Start `createServerFn` calls through the Metro
+compiler in
+[`@tanstack/react-start/plugin/metro`](../../../packages/react-start/src/plugin/metro.ts).
+[`metro.config.js`](./metro.config.js) wires it up:
 
 ```js
 const { withTanStackStart } = require('@tanstack/react-start/plugin/metro')
@@ -106,10 +105,10 @@ module.exports = withTanStackRouter(
 )
 ```
 
-And routes will start calling `createServerFn`-compiled functions:
+Routes call `createServerFn`-compiled functions:
 
 ```tsx
-import { listPosts } from '../server-fns/posts'  // local file with createServerFn calls
+import { listPosts } from '../server-fns/posts'
 
 export const Route = createFileRoute('/posts')({
   loader: () => listPosts(),

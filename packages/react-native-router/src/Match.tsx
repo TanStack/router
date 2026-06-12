@@ -197,8 +197,6 @@ export const Outlet = React.memo(function OutletImpl() {
     select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
   })
 
-  const route = router.routesById[routeId]!
-
   const parentGlobalNotFound = useRouterState({
     select: (s) => {
       const matches = s.matches

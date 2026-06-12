@@ -107,13 +107,12 @@ The depth lab demonstrates:
 - Native stack debugger panel showing observed entries with inferred
   `active` / `paused` / `detached` state.
 
-## Start integration (planned)
+## Start integration
 
-This example will gain TanStack Start `createServerFn` calls once the
-Phase 2 compiler ([`@tanstack/react-start/plugin/metro`](../../../packages/react-start/src/plugin/metro.ts)
-on the `taren/start-metro` branch) is brought into this branch.
-
-When that lands, [`metro.config.js`](./metro.config.js) will gain:
+This example uses TanStack Start `createServerFn` calls through the Metro
+compiler in
+[`@tanstack/react-start/plugin/metro`](../../../packages/react-start/src/plugin/metro.ts).
+[`metro.config.js`](./metro.config.js) wires it up:
 
 ```js
 const { withTanStackStart } = require('@tanstack/react-start/plugin/metro')

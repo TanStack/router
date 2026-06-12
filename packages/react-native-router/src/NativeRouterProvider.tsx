@@ -1,14 +1,11 @@
 import * as React from 'react'
-import { View, BackHandler, Platform, Linking } from 'react-native'
-import { getRouterContext } from './routerContext'
+import { BackHandler, Linking, Platform, View } from 'react-native'
 import { Matches, NativeScreenMatches } from './Matches'
-import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
+import { parseExternalUrl } from './linking'
 import { resolveNativeNavigateOptions } from './nativeNavigation'
-import {
-  parseExternalUrl,
-  type NativeLinkingMode,
-  type NativeLinkingOptions,
-} from './linking'
+import { getRouterContext } from './routerContext'
+import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
+import type { NativeLinkingMode, NativeLinkingOptions } from './linking'
 
 // Lazily load GestureHandlerRootView to avoid accessing native modules at module load time
 let _GestureHandlerRootView: any = null
@@ -24,14 +21,13 @@ function getGestureHandlerRootView() {
       // version of gesture-handler is installed but the native binary
       // doesn't expose a matching module (e.g., Expo Go bundled with a
       // different gesture-handler build than the one resolved in JS).
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const RN = require('react-native') as {
         TurboModuleRegistry?: { get?: (name: string) => unknown }
       }
       if (!RN.TurboModuleRegistry?.get?.('RNGestureHandlerModule')) {
         return null
       }
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
+
       const gestureHandler = require('react-native-gesture-handler')
       _GestureHandlerRootView = gestureHandler.GestureHandlerRootView
     } catch {

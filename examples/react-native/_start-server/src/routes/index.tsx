@@ -1,7 +1,10 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createRoute } from '@tanstack/react-router'
+import { Route as rootRoute } from './__root'
 
-export const Route = createFileRoute('/')({
+export const Route = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
   component: HomePage,
 })
 
@@ -10,10 +13,9 @@ function HomePage() {
     <div>
       <h1>TanStack Router RN — Start Server</h1>
       <p>
-        This Vite Start backend hosts the server functions consumed by the
-        React Native examples (<code>bare</code> and{' '}
-        <code>expo-dev-client</code>). Each function appears at{' '}
-        <code>/_serverFn/&lt;sha256-id&gt;</code>.
+        This Vite Start backend hosts the server functions consumed by the React
+        Native examples (<code>bare</code> and <code>expo-dev-client</code>).
+        Each function appears at <code>/_serverFn/&lt;sha256-id&gt;</code>.
       </p>
 
       <h2>Endpoints</h2>
@@ -23,8 +25,7 @@ function HomePage() {
           list
         </li>
         <li>
-          <code>GET /_serverFn/&lt;getPost-id&gt;</code> — returns a post by
-          id
+          <code>GET /_serverFn/&lt;getPost-id&gt;</code> — returns a post by id
         </li>
       </ul>
 
@@ -35,7 +36,7 @@ function HomePage() {
       </p>
 
       <h2>Run locally</h2>
-      <pre>npm run dev   # starts on http://localhost:3050</pre>
+      <pre>pnpm run dev # starts on http://localhost:3050</pre>
 
       <p>
         Then point your RN client's <code>serverFnBase</code> at{' '}

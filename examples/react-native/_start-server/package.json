@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "vite dev --port 3050",
     "build": "vite build",
-    "start": "node .output/server/index.mjs",
-    "routes:generate": "npx @tanstack/router-cli generate"
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",
@@ -16,7 +15,6 @@
     "react-dom": "19.1.0"
   },
   "devDependencies": {
-    "@tanstack/router-cli": "workspace:*",
     "@types/react": "~19.1.0",
     "@types/react-dom": "~19.1.0",
     "@vitejs/plugin-react": "^4.3.4",

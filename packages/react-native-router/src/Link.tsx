@@ -16,11 +16,11 @@ import type {
   RoutePaths,
 } from '@tanstack/router-core'
 import type {
+  GestureResponderEvent,
   PressableProps,
   StyleProp,
-  ViewStyle,
   TextStyle,
-  GestureResponderEvent,
+  ViewStyle,
 } from 'react-native'
 
 export interface ActiveLinkOptions {
@@ -99,7 +99,7 @@ export function useNativeLinkProps<
     activeProps,
     inactiveProps,
     activeOptions,
-    to,
+    to: _to,
     disabled,
     onPress: userOnPress,
     replace,

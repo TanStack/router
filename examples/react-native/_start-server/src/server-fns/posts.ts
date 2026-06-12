@@ -1,13 +1,9 @@
 // Server functions exposed by this Start backend. The React Native client
-// examples (bare, expo-dev-client) compile their `createServerFn` call sites
-// into RPC stubs that fetch these endpoints.
-//
-// Function IDs are deterministic (sha256 of `${relativeFilename}--${functionName}`),
-// so the same source on the RN side resolves to the same id and hits these
-// handlers without any manifest exchange.
+// examples compile matching `src/server-fns/posts.ts` files into RPC stubs
+// with the same production function IDs.
 
 import { createServerFn } from '@tanstack/react-start'
-import { getPostData, listPostsData } from './utils/posts'
+import { getPostData, listPostsData } from '../utils/posts'
 
 export const listPosts = createServerFn({ method: 'GET' }).handler(async () => {
   return listPostsData()

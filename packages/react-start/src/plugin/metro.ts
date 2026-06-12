@@ -64,6 +64,20 @@ interface MetroLikeConfig {
   [key: string]: unknown
 }
 
+function normalizeServerFnBase(serverFnBase: string | undefined) {
+  if (!serverFnBase) return undefined
+
+  const withTrailingSlash = serverFnBase.endsWith('/')
+    ? serverFnBase
+    : `${serverFnBase}/`
+
+  if (withTrailingSlash.endsWith('/_serverFn/')) {
+    return withTrailingSlash
+  }
+
+  return `${withTrailingSlash}_serverFn/`
+}
+
 /**
  * Wrap a Metro config so TanStack Start `createServerFn` / `createIsomorphicFn`
  * / `createMiddleware` / `createServerOnlyFn` / `createClientOnlyFn` calls in
@@ -95,9 +109,8 @@ export async function withTanStackStart<T extends MetroLikeConfig>(
   const root = options.root ?? process.cwd()
 
   const require = createRequire(import.meta.url)
-  const transformerPath = require.resolve(
-    '@tanstack/start-plugin-core/metro/transformer',
-  )
+  const transformerPath =
+    require.resolve('@tanstack/start-plugin-core/metro/transformer')
   const transformer = require(transformerPath) as {
     setup: (opts: {
       root: string
@@ -108,14 +121,13 @@ export async function withTanStackStart<T extends MetroLikeConfig>(
   }
 
   const originalTransformerPath =
-    options.originalTransformerPath ??
-    config.transformer?.babelTransformerPath
+    options.originalTransformerPath ?? config.transformer?.babelTransformerPath
 
   transformer.setup({
     root,
     framework: 'react',
     originalTransformerPath,
-    serverFnBase: options.serverFnBase,
+    serverFnBase: normalizeServerFnBase(options.serverFnBase),
   })
 
   return {

@@ -8,6 +8,7 @@ import { matchContext } from './matchContext'
 import { routerStateContext } from './routerStateContext'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { Transitioner } from './Transitioner'
+import { resolveNativeRouteOptions } from './resolveNativeRouteOptions'
 import type { AnyRoute, RouterState } from '@tanstack/router-core'
 import type {
   NativeHeaderContext,
@@ -18,7 +19,6 @@ import type {
   NativeStackState,
 } from './route'
 import type { NativeRouterOptions } from './router'
-import { resolveNativeRouteOptions } from './resolveNativeRouteOptions'
 
 // Lazily load react-native-screens to avoid accessing native modules at module load time
 let _Screen: any = null
@@ -256,10 +256,10 @@ function resolveNativeForMatchedIndex(
 
     const resolved = resolveNativeRouteOptions(nativeInput, {
       pathname,
-      params: (match as any).params ?? {},
-      search: (match as any).search,
-      loaderData: (match as any).loaderData,
-      context: (match as any).context,
+      params: match.params ?? {},
+      search: match.search,
+      loaderData: match.loaderData,
+      context: match.context,
       canGoBack: historyIndex > 0,
     })
 
@@ -328,7 +328,6 @@ export function useNativeStackDebugSnapshot(): Array<NativeStackDebugEntry> {
 }
 
 const DEFAULT_PAUSED_DEPTH = 3
-const DEFAULT_DETACHED_DEPTH = 4
 
 function toNonNegativeInt(value: unknown): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -487,8 +486,7 @@ export function NativeScreenMatches() {
     router.stores.pendingMatches,
     (m) => m,
   ) as Array<any>
-  const usePendingMatches =
-    isPendingNavigation && (pendingMatches?.length ?? 0) > 1
+  const usePendingMatches = isPendingNavigation && pendingMatches.length > 1
 
   // Get current pathname and animation options from deepest screen match
   const currentScreen = useRouterState({
@@ -521,10 +519,10 @@ export function NativeScreenMatches() {
           routeId: match.routeId,
           locationKey,
           historyIndex,
-          params: (match as any).params ?? {},
-          search: (match as any).search,
-          loaderData: (match as any).loaderData,
-          context: (match as any).context,
+          params: match.params ?? {},
+          search: match.search,
+          loaderData: match.loaderData,
+          context: match.context,
           state: cloneRouterState(renderState),
           revision: s.loadedAt,
           native,
@@ -700,7 +698,8 @@ export function NativeScreenMatches() {
 
           const headerLeftNode = native?.headerLeft?.(headerRenderContext)
           const headerRightNode = native?.headerRight?.(headerRenderContext)
-          const hasCustomHeader = typeof native?.header === 'function'
+          const customHeader = native?.header
+          const hasCustomHeader = typeof customHeader === 'function'
 
           const showBackButton = resolveVisibilityOption(
             native?.headerBackVisible,
@@ -723,7 +722,7 @@ export function NativeScreenMatches() {
               : undefined
 
           const customHeaderNode = hasCustomHeader
-            ? native?.header?.(headerContext)
+            ? customHeader(headerContext)
             : undefined
 
           const shouldHideNativeHeader = hasCustomHeader ? true : !headerShown

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { View, Text, Pressable } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import type { ErrorInfo } from 'react'
 import type { ErrorRouteComponent } from './route'
 
@@ -94,13 +94,27 @@ function getStyles() {
 }
 
 const styles = {
-  get container() { return getStyles().container },
-  get header() { return getStyles().header },
-  get title() { return getStyles().title },
-  get button() { return getStyles().button },
-  get buttonText() { return getStyles().buttonText },
-  get errorBox() { return getStyles().errorBox },
-  get message() { return getStyles().message },
+  get container() {
+    return getStyles().container
+  },
+  get header() {
+    return getStyles().header
+  },
+  get title() {
+    return getStyles().title
+  },
+  get button() {
+    return getStyles().button
+  },
+  get buttonText() {
+    return getStyles().buttonText
+  },
+  get errorBox() {
+    return getStyles().errorBox
+  },
+  get message() {
+    return getStyles().message
+  },
 }
 
 export function CatchBoundary(props: {

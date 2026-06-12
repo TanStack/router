@@ -1,5 +1,5 @@
 import { createHistory, parseHref } from '@tanstack/history'
-import type { RouterHistory, ParsedHistoryState } from '@tanstack/history'
+import type { ParsedHistoryState, RouterHistory } from '@tanstack/history'
 
 export interface NativeHistoryOptions {
   initialEntries?: Array<string>
@@ -10,6 +10,26 @@ export interface NativeHistoryStackEntry {
   index: number
   path: string
   state: ParsedHistoryState | undefined
+}
+
+export interface NativeRouterHistory extends RouterHistory {
+  /**
+   * Called by native gesture handlers when the user swipes back.
+   * This keeps router state in sync with native navigation.
+   */
+  handleNativeBack: () => void
+  /**
+   * Set a callback for native back handling.
+   */
+  setOnNativeBack: (cb: (() => void) | undefined) => void
+  /**
+   * Get current stack depth for debugging.
+   */
+  getStackDepth: () => number
+  /**
+   * Get a snapshot of the full history stack for debugging.
+   */
+  getStackSnapshot: () => Array<NativeHistoryStackEntry>
 }
 
 const stateIndexKey = '__TSR_index'
@@ -46,11 +66,12 @@ export function createNativeHistory(
   opts: NativeHistoryOptions = {
     initialEntries: ['/'],
   },
-): RouterHistory {
+): NativeRouterHistory {
   const entries = opts.initialEntries ?? ['/']
-  let index = opts.initialIndex
-    ? Math.min(Math.max(opts.initialIndex, 0), entries.length - 1)
-    : entries.length - 1
+  let index =
+    opts.initialIndex !== undefined
+      ? Math.min(Math.max(opts.initialIndex, 0), entries.length - 1)
+      : entries.length - 1
   const states = entries.map((_entry, i) => assignKeyAndIndex(i, undefined))
 
   const getLocation = () => parseHref(entries[index]!, states[index])
@@ -88,30 +109,12 @@ export function createNativeHistory(
   })
 
   // Extend with native-specific functionality
-  const nativeHistory = history as RouterHistory & {
-    /**
-     * Called by native gesture handler when user swipes back.
-     * This allows the router to stay in sync with native navigation.
-     */
-    handleNativeBack: () => void
-    /**
-     * Set callback for when the router triggers a back navigation.
-     * Used to sync with native screen stack.
-     */
-    setOnNativeBack: (cb: (() => void) | undefined) => void
-    /**
-     * Get current stack depth for debugging
-     */
-    getStackDepth: () => number
-    /**
-     * Get a snapshot of the full history stack for debugging
-     */
-    getStackSnapshot: () => Array<NativeHistoryStackEntry>
-  }
+  const nativeHistory = history as NativeRouterHistory
 
   nativeHistory.handleNativeBack = () => {
     if (index > 0) {
       history.back()
+      onNativeBack?.()
     }
   }
 
@@ -130,5 +133,3 @@ export function createNativeHistory(
 
   return nativeHistory
 }
-
-export type NativeRouterHistory = ReturnType<typeof createNativeHistory>

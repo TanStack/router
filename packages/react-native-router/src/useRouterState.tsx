@@ -2,6 +2,7 @@ import { useStore } from '@tanstack/react-store'
 import { useContext, useRef } from 'react'
 import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
+import { routerStateContext } from './routerStateContext'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -11,7 +12,6 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import { routerStateContext } from './routerStateContext'
 
 export type UseRouterStateOptions<
   TRouter extends AnyRouter,

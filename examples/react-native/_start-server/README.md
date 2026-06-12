@@ -7,7 +7,8 @@ The `_` prefix marks it as infrastructure, not an example app itself.
 
 ## What it provides
 
-Two server functions in [`src/server-fns.ts`](./src/server-fns.ts):
+Two server functions in
+[`src/server-fns/posts.ts`](./src/server-fns/posts.ts):
 
 - `listPosts` — returns the post list
 - `getPost` — returns one post by id (with input validation)
@@ -20,8 +21,10 @@ source if you adapt this for your own backend.
 
 ```bash
 cd examples/react-native/_start-server
-npm install
-npm run dev   # http://localhost:3050
+pnpm install
+pnpm run dev     # Vite dev server on http://localhost:3050
+pnpm run build
+pnpm run start   # built server on http://localhost:3050
 ```
 
 You can browse the home page at `http://localhost:3050` to see what's
@@ -32,7 +35,9 @@ exposed. Server functions live at `/_serverFn/<sha256-id>`.
 The React Native examples (`bare`, `expo-dev-client`) compile every
 `createServerFn(...).handler(...)` call site into a typed RPC stub via
 `@tanstack/react-start/plugin/metro`. The compiled client code fetches
-`<serverFnBase>/_serverFn/<id>`.
+`<serverFnBase>/_serverFn/<id>`. The Metro plugin accepts a deployed
+server origin, so `serverFnBase: 'http://localhost:3050'` is normalized
+to `http://localhost:3050/_serverFn/` in the bundle.
 
 Function ids are deterministic: `sha256(${relativeFilename}--${functionName})`.
 The RN client and this server compute the same id from the same source,
@@ -49,8 +54,6 @@ your Mac's LAN IP (e.g. `http://192.168.1.180:3050`).
 
 ## Status
 
-Phase 2 (the RN-side compiler that produces the RPC stubs) currently lives
-on a separate branch (`taren/start-metro`) until it can be merged with
-the RN router work on `feat/react-native`. This server is ready and
-correct in isolation — once the RN-side plugin lands here, the bare and
-expo-dev-client examples will start consuming it.
+The RN-side Metro compiler and this backend are wired together on this
+branch. The backend must expose matching `src/server-fns/posts.ts`
+handlers so production server function IDs match the RN client source.
