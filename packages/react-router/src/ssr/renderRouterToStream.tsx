@@ -46,11 +46,21 @@ export const renderRouterToStream = async ({
   responseHeaders: Headers
   children: ReactNode
 }) => {
+  // A client disconnecting mid-stream is normal operation, not a render
+  // failure; don't let React's onError log it as one.
+  const isAbortError = (error: unknown) =>
+    (request.signal.aborted && error === request.signal.reason) ||
+    (error instanceof Error && error.name === 'AbortError')
+
   if (typeof ReactDOMServer.renderToReadableStream === 'function') {
     const stream = await ReactDOMServer.renderToReadableStream(children, {
       signal: request.signal,
       nonce: router.options.ssr?.nonce,
       progressiveChunkSize: Number.POSITIVE_INFINITY,
+      onError: (error, info) => {
+        if (isAbortError(error)) return
+        console.error('Error in renderToReadableStream:', error, info)
+      },
     })
 
     if (isbot(request.headers.get('User-Agent'))) {
@@ -151,7 +161,9 @@ export const renderRouterToStream = async ({
               },
             }),
         onError: (error, info) => {
-          console.error('Error in renderToPipeableStream:', error, info)
+          if (!isAbortError(error)) {
+            console.error('Error in renderToPipeableStream:', error, info)
+          }
           abortPipeable(error, { defaultError: true })
         },
       })

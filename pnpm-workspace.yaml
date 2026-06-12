@@ -7,6 +7,7 @@ trustPolicy: 'no-downgrade'
 packages:
   - 'packages/*'
   - 'benchmarks/*'
+  - 'benchmarks/memory/*'
   - 'examples/react/*'
   - 'examples/solid/*'
   - 'examples/vue/*'

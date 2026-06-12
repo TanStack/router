@@ -1,0 +1,68 @@
+{
+  "name": "@benchmarks/memory-client",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/router-core": "workspace:^",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@codspeed/vitest-plugin": "^5.5.0",
+    "@testing-library/react": "^16.2.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "@types/jsdom": "28.0.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.14",
+    "vitest": "^4.1.4"
+  },
+  "nx": {
+    "targets": {
+      "build:react": {
+        "executor": "nx:noop",
+        "cache": false,
+        "dependsOn": [
+          {
+            "projects": [
+              "@benchmarks/memory-client-navigation-churn-react",
+              "@benchmarks/memory-client-unique-location-churn-react",
+              "@benchmarks/memory-client-preload-churn-react",
+              "@benchmarks/memory-client-loader-data-retention-react",
+              "@benchmarks/memory-client-mount-unmount-react",
+              "@benchmarks/memory-client-interrupted-navigations-react"
+            ],
+            "target": "build:client"
+          }
+        ]
+      },
+      "test:perf:react": {
+        "executor": "nx:run-commands",
+        "cache": false,
+        "dependsOn": [
+          "build:react"
+        ],
+        "options": {
+          "command": "NODE_ENV=production vitest bench --config ./vitest.react.config.ts",
+          "cwd": "benchmarks/memory/client"
+        }
+      },
+      "test:types": {
+        "executor": "nx:noop",
+        "dependsOn": [
+          {
+            "projects": [
+              "@benchmarks/memory-client-navigation-churn-react",
+              "@benchmarks/memory-client-unique-location-churn-react",
+              "@benchmarks/memory-client-preload-churn-react",
+              "@benchmarks/memory-client-loader-data-retention-react",
+              "@benchmarks/memory-client-mount-unmount-react",
+              "@benchmarks/memory-client-interrupted-navigations-react"
+            ],
+            "target": "test:types:client"
+          }
+        ]
+      }
+    }
+  }
+}

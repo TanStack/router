@@ -1,0 +1,14 @@
+{
+  "extends": "../../../../../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "types": ["node", "vite/client", "vitest/globals"]
+  },
+  "include": [
+    "memory.bench.ts",
+    "vite.config.ts",
+    "../../../bench-utils.ts",
+    "./src/**/*"
+  ]
+}
