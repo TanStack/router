@@ -25,24 +25,41 @@ function buildStreamingRequest(random: () => number) {
   )
 }
 
+function getMarkerIndexes(body: string, marker: string) {
+  const indexes: Array<number> = []
+  let index = body.indexOf(marker)
+
+  while (index !== -1) {
+    indexes.push(index)
+    index = body.indexOf(marker, index + marker.length)
+  }
+
+  return indexes
+}
+
 export async function assertStreamingSanity(handler: StartRequestHandler) {
   const id = 'sanity-stream'
   const response = await handler.fetch(
     new Request(`http://localhost/stream/${id}`, requestInit),
   )
   const body = await response.text()
-  const fallbackIndex = body.indexOf('loading-small')
+  const loadingSmallIndexes = getMarkerIndexes(body, 'loading-small')
+  const loadingBigIndexes = getMarkerIndexes(body, 'loading-big')
   const tsrIndex = body.indexOf('$_TSR')
 
   expect(response.status).toBe(200)
-  expect(body).toContain('loading-small')
-  expect(body).toContain('loading-big')
+  expect(loadingSmallIndexes).toHaveLength(1)
+  expect(loadingBigIndexes).toHaveLength(1)
   expect(body).toContain(`slow-small-${id}`)
   expect(body).toContain(`slow-big-${id}`)
   expect(body).toContain(`${id}:0:`)
   expect(body).toContain(`${id}:${streamChunkCount - 1}:`)
-  expect(fallbackIndex).toBeGreaterThanOrEqual(0)
-  expect(tsrIndex).toBeGreaterThan(fallbackIndex)
+
+  const loadingSmallIndex = loadingSmallIndexes[0]!
+  const loadingBigIndex = loadingBigIndexes[0]!
+
+  expect(loadingBigIndex).toBeGreaterThan(loadingSmallIndex)
+  expect(tsrIndex).toBeGreaterThan(loadingBigIndex)
 }
 
 export const benchOptions = {

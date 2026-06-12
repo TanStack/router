@@ -19,7 +19,7 @@ const StreamComponent = defineComponent({
                 children={(d: SmallPayload) => <p>{d.label}</p>}
               />
             ),
-            fallback: () => <p>loading-small</p>,
+            fallback: () => null,
           }}
         </Suspense>
         <p>loading-big</p>
@@ -38,7 +38,7 @@ const StreamComponent = defineComponent({
                 )}
               />
             ),
-            fallback: () => <p>loading-big</p>,
+            fallback: () => null,
           }}
         </Suspense>
       </>
