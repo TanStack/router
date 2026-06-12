@@ -75,6 +75,7 @@ export async function assertAssetsScenario(handler: StartRequestHandler) {
   expect(linkedResponse.status).toBe(200)
   expect(linkedBody).toContain('SSR Assets sanity-x sanity-y')
   expect(linkedBody).toContain('rel="stylesheet"')
+  expect(linkedBody).not.toContain('<style')
   expect(linkedBody).toContain(`${cdnOrigin}/assets/`)
   expect(linkedLinkHeader).toContain(`${cdnOrigin}/assets/`)
   expect(linkedLinkHeader).toContain('as=style')

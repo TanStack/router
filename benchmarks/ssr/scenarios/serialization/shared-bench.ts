@@ -74,6 +74,7 @@ export async function assertSerializationScenario(
 
   assertIncludes(plainBody, 'plain-sanity', 'plain')
   assertExcludes(plainBody, benchPointAdapterKey, 'plain')
+  assertExcludes(plainBody, richDateIso, 'plain')
   assertExcludes(plainBody, 'new Date', 'plain')
   assertExcludes(plainBody, 'new Map', 'plain')
   assertExcludes(plainBody, 'new Error', 'plain')

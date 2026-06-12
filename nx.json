@@ -67,6 +67,7 @@
     },
     "test:types:ssr": {
       "cache": true,
+      "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
     },
     "build": {
