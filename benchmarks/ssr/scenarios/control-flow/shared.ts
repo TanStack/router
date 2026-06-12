@@ -6,6 +6,7 @@ export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
 const redirectLoopIterations = 100
+const notFoundLoopIterations = 20
 
 // Pinned to the current built handler responses for these control-flow routes.
 const REDIRECT_STATUS = 307
@@ -62,6 +63,7 @@ export function runRedirectLoop(handler: StartRequestHandler) {
 export function runNotFoundLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
+    iterations: notFoundLoopIterations,
     buildRequest: buildNotFoundRequest,
     validateResponse: validateNotFoundResponse,
   })
