@@ -51,3 +51,34 @@ jobs:
         with:
           mode: simulation
           run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
+
+  # TODO: once we have solid and vue memory benchmarks, we can merge the 2 jobs into one, and 
+  # simply add `memory-server` and `memory-client` to the `benchmark` matrix above. For now, we only run memory benchmarks for react.
+  # PS: that unification is only possible if we can link "benchmark name" with "mode: simulation|memory"
+  memory-benchmarks:
+    name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
+    strategy:
+      fail-fast: false
+      matrix:
+        benchmark:
+          - memory-server
+          - memory-client
+        framework:
+          - react
+          # - solid
+          # - vue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Tools
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+
+      - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
+        uses: CodSpeedHQ/action@9d332c4d90b43981c3e55ae8e38e68709996240f # v4.17.0
+        with:
+          mode: memory
+          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
