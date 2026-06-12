@@ -25,14 +25,12 @@ import { Route as SearchParamsRouteRouteImport } from './routes/search-params/ro
 import { Route as PathlessLayoutRouteRouteImport } from './routes/pathless-layout/route'
 import { Route as NonNestedRouteRouteImport } from './routes/non-nested/route'
 import { Route as FullpathTestRouteRouteImport } from './routes/fullpath-test/route'
-import { Route as ContextPropagationRouteRouteImport } from './routes/context-propagation/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RelativeIndexRouteImport } from './routes/relative/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as ParamsPsIndexRouteImport } from './routes/params-ps/index'
-import { Route as ContextPropagationIndexRouteImport } from './routes/context-propagation/index'
 import { Route as StructuralSharingEnabledRouteImport } from './routes/structural-sharing.$enabled'
 import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
@@ -212,11 +210,6 @@ const FullpathTestRouteRoute = FullpathTestRouteRouteImport.update({
   path: '/fullpath-test',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ContextPropagationRouteRoute = ContextPropagationRouteRouteImport.update({
-  id: '/context-propagation',
-  path: '/context-propagation',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -246,11 +239,6 @@ const ParamsPsIndexRoute = ParamsPsIndexRouteImport.update({
   id: '/params-ps/',
   path: '/params-ps/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const ContextPropagationIndexRoute = ContextPropagationIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ContextPropagationRouteRoute,
 } as any)
 const StructuralSharingEnabledRoute =
   StructuralSharingEnabledRouteImport.update({
@@ -792,7 +780,6 @@ const NonNestedDeepBazBarFooQuxRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/context-propagation': typeof ContextPropagationRouteRouteWithChildren
   '/fullpath-test': typeof FullpathTestRouteRouteWithChildren
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/pathless-layout': typeof PathlessLayoutRouteRouteWithChildren
@@ -824,7 +811,6 @@ export interface FileRoutesByFullPath {
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
-  '/context-propagation/': typeof ContextPropagationIndexRoute
   '/params-ps/': typeof ParamsPsIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect/': typeof RedirectIndexRoute
@@ -939,7 +925,6 @@ export interface FileRoutesByTo {
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
-  '/context-propagation': typeof ContextPropagationIndexRoute
   '/params-ps': typeof ParamsPsIndexRoute
   '/posts': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
@@ -1018,7 +1003,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/context-propagation': typeof ContextPropagationRouteRouteWithChildren
   '/fullpath-test': typeof FullpathTestRouteRouteWithChildren
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/pathless-layout': typeof PathlessLayoutRouteRouteWithChildren
@@ -1055,7 +1039,6 @@ export interface FileRoutesById {
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
-  '/context-propagation/': typeof ContextPropagationIndexRoute
   '/params-ps/': typeof ParamsPsIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect/': typeof RedirectIndexRoute
@@ -1144,7 +1127,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/context-propagation'
     | '/fullpath-test'
     | '/non-nested'
     | '/pathless-layout'
@@ -1176,7 +1158,6 @@ export interface FileRouteTypes {
     | '/redirect/$target'
     | '/search-params/default'
     | '/structural-sharing/$enabled'
-    | '/context-propagation/'
     | '/params-ps/'
     | '/posts/'
     | '/redirect/'
@@ -1291,7 +1272,6 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/search-params/default'
     | '/structural-sharing/$enabled'
-    | '/context-propagation'
     | '/params-ps'
     | '/posts'
     | '/redirect'
@@ -1369,7 +1349,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/context-propagation'
     | '/fullpath-test'
     | '/non-nested'
     | '/pathless-layout'
@@ -1406,7 +1385,6 @@ export interface FileRouteTypes {
     | '/redirect/$target'
     | '/search-params/default'
     | '/structural-sharing/$enabled'
-    | '/context-propagation/'
     | '/params-ps/'
     | '/posts/'
     | '/redirect/'
@@ -1494,7 +1472,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ContextPropagationRouteRoute: typeof ContextPropagationRouteRouteWithChildren
   FullpathTestRouteRoute: typeof FullpathTestRouteRouteWithChildren
   NonNestedRouteRoute: typeof NonNestedRouteRouteWithChildren
   PathlessLayoutRouteRoute: typeof PathlessLayoutRouteRouteWithChildren
@@ -1656,13 +1633,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FullpathTestRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/context-propagation': {
-      id: '/context-propagation'
-      path: '/context-propagation'
-      fullPath: '/context-propagation'
-      preLoaderRoute: typeof ContextPropagationRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -1704,13 +1674,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/params-ps/'
       preLoaderRoute: typeof ParamsPsIndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/context-propagation/': {
-      id: '/context-propagation/'
-      path: '/'
-      fullPath: '/context-propagation/'
-      preLoaderRoute: typeof ContextPropagationIndexRouteImport
-      parentRoute: typeof ContextPropagationRouteRoute
     }
     '/structural-sharing/$enabled': {
       id: '/structural-sharing/$enabled'
@@ -2401,20 +2364,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface ContextPropagationRouteRouteChildren {
-  ContextPropagationIndexRoute: typeof ContextPropagationIndexRoute
-}
-
-const ContextPropagationRouteRouteChildren: ContextPropagationRouteRouteChildren =
-  {
-    ContextPropagationIndexRoute: ContextPropagationIndexRoute,
-  }
-
-const ContextPropagationRouteRouteWithChildren =
-  ContextPropagationRouteRoute._addFileChildren(
-    ContextPropagationRouteRouteChildren,
-  )
-
 interface FullpathTestLayoutRouteRouteChildren {
   FullpathTestLayoutIdRoute: typeof FullpathTestLayoutIdRoute
   FullpathTestLayoutIndexRoute: typeof FullpathTestLayoutIndexRoute
@@ -2920,7 +2869,6 @@ const ParamsPsNamedFooRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ContextPropagationRouteRoute: ContextPropagationRouteRouteWithChildren,
   FullpathTestRouteRoute: FullpathTestRouteRouteWithChildren,
   NonNestedRouteRoute: NonNestedRouteRouteWithChildren,
   PathlessLayoutRouteRoute: PathlessLayoutRouteRouteWithChildren,
