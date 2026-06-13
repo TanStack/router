@@ -71,4 +71,7 @@ jobs:
         uses: CodSpeedHQ/action@9d332c4d90b43981c3e55ae8e38e68709996240f # v4.17.0
         with:
           mode: ${{ matrix.mode }}
-          run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
+          run: >-
+            WITH_INSTRUMENTATION=1
+            pnpm nx run
+            @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
