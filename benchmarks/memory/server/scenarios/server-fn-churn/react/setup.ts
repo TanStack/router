@@ -215,13 +215,12 @@ export async function setup() {
 
         if (index % 2 === 0) {
           const fixture = getFixtures[fixtureIndex]!
-
           return buildGetRequest(urls.get, fixture)
+        } else {
+          const fixture = postFixtures[fixtureIndex]!
+          return buildPostRequest(urls.post, fixture)
         }
 
-        const fixture = postFixtures[fixtureIndex]!
-
-        return buildPostRequest(urls.post, fixture)
       },
       validateResponse: validateServerFnResponse,
     })
