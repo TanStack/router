@@ -54,8 +54,9 @@ const postHeaders = {
   accept: acceptHeader,
   'content-type': 'application/json',
 } satisfies HeadersInit
-const documentLoopIterations = 20
-const apiLoopIterations = 100
+const documentLoopIterations = 50
+const serverFnLoopIterations = 125
+const serverRouteLoopIterations = 250
 
 export const globalMiddlewareBenchOptions = {
   warmupIterations: 100,
@@ -273,7 +274,7 @@ export function runGlobalMiddlewareServerFnLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: apiLoopIterations,
+    iterations: serverFnLoopIterations,
     buildRequest: (_random, index) =>
       buildPostRequest(context.urls, context.bodies, index),
   })
@@ -284,7 +285,7 @@ export function runGlobalMiddlewareServerRouteLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: apiLoopIterations,
+    iterations: serverRouteLoopIterations,
     buildRequest: buildServerRouteRequest,
   })
 }

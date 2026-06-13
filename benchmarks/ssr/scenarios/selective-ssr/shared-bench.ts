@@ -5,6 +5,7 @@ import type { StartRequestHandler } from '../../bench-utils'
 export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
+const selectiveLoopIterations = 20
 
 const requestInit = {
   method: 'GET',
@@ -87,6 +88,7 @@ export const benchOptions = {
 export function runSelectiveLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
+    iterations: selectiveLoopIterations,
     buildRequest: buildSelectiveRequest,
   })
 }

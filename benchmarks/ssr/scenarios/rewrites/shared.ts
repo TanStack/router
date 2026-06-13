@@ -6,6 +6,8 @@ export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
 const origin = 'http://localhost'
+const localizedLoopIterations = 25
+const passthroughLoopIterations = 25
 
 const requestInit = {
   method: 'GET',
@@ -37,6 +39,7 @@ function buildPassthroughRequest(random: () => number) {
 export function runRewriteLocalizedLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
+    iterations: localizedLoopIterations,
     buildRequest: buildLocalizedRequest,
   })
 }
@@ -44,6 +47,7 @@ export function runRewriteLocalizedLoop(handler: StartRequestHandler) {
 export function runRewritePassthroughLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
+    iterations: passthroughLoopIterations,
     buildRequest: buildPassthroughRequest,
   })
 }
