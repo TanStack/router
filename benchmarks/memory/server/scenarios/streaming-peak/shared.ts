@@ -122,7 +122,7 @@ async function assertStreamingPeakSanity(handler: StartRequestHandler) {
   assertFallbacksPrecedeDeferredContent(chunked.body)
 }
 
-export function createSetup(
+export function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
 ) {
@@ -136,7 +136,7 @@ export function createSetup(
 
   return {
     sanity: () => assertStreamingPeakSanity(handler),
-    benches: [
+    workloads: [
       {
         name: `mem streaming-peak chunked (${framework})`,
         run,

@@ -1,5 +1,6 @@
+import type { ClientMemoryWorkload } from '#memory-client/benchmark'
 import type * as App from './src/app'
-import { createSetup } from '../shared'
+import { createWorkload } from '../shared.ts'
 
 const appModulePath = './dist/app.js'
 const {
@@ -9,12 +10,10 @@ const {
   slowLoaderRegistry,
 } = (await import(/* @vite-ignore */ appModulePath)) as typeof App
 
-export function setup() {
-  return createSetup(
-    'vue',
-    mountTestApp,
-    resolveAllSlowLoaders,
-    resolveSlowLoader,
-    slowLoaderRegistry,
-  )
-}
+export const workload: ClientMemoryWorkload = createWorkload(
+  'vue',
+  mountTestApp,
+  resolveAllSlowLoaders,
+  resolveSlowLoader,
+  slowLoaderRegistry,
+)

@@ -6,9 +6,9 @@
     "clean:profiles": "rm -rf scenarios/*/*/.profiles"
   },
   "imports": {
+    "#memory-server/benchmark": "./benchmark.ts",
     "#memory-server/bench-utils": "./bench-utils.ts",
-    "#memory-server/flame-runner": "./flame-runner.ts",
-    "#memory-server/runner": "./runner.ts"
+    "#memory-server/flame-runner": "./flame-runner.ts"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",

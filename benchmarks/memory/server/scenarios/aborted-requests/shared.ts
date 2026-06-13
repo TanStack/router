@@ -290,7 +290,7 @@ async function runAbortedRequestLoop(
   }
 }
 
-export function createSetup(
+export function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
 ) {
@@ -299,7 +299,7 @@ export function createSetup(
 
   return {
     sanity: () => assertAbortedRequestsSanity(handler, mode),
-    benches: [
+    workloads: [
       {
         name: `mem aborted-requests (${framework})`,
         run,

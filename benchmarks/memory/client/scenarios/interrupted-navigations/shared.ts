@@ -144,7 +144,7 @@ function reasonHasCancellationShape(reason: unknown) {
   )
 }
 
-export function createSetup(
+export function createWorkload(
   framework: Framework,
   mountTestApp: MountTestApp,
   resolveAllSlowLoaders: ResolveAllSlowLoaders,

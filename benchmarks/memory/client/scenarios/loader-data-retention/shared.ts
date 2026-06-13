@@ -61,7 +61,7 @@ function createPageIds() {
   )
 }
 
-export function createSetup(
+export function createWorkload(
   framework: Framework,
   mountTestApp: MountTestApp,
   loaderPayloadRecordCount: number,

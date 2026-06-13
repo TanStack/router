@@ -77,7 +77,7 @@ async function drainMicrotasks() {
   await Promise.resolve()
 }
 
-export function createSetup(
+export function createWorkload(
   framework: Framework,
   mountTestApp: MountTestApp,
   getTrackedItemLoaderCount: GetTrackedItemLoaderCount,

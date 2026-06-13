@@ -57,7 +57,7 @@ async function assertRequestChurnSanity(handler: StartRequestHandler) {
   }
 }
 
-export function createSetup(
+export function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
 ) {
@@ -79,7 +79,7 @@ export function createSetup(
 
   return {
     sanity: () => assertRequestChurnSanity(handler),
-    benches: [
+    workloads: [
       {
         name: `mem request-churn (${framework})`,
         run,

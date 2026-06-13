@@ -1,9 +1,9 @@
-export interface ServerMemoryBench {
+export interface ServerMemoryWorkload {
   name: string
   run: () => Promise<void> | void
 }
 
-export interface ServerMemoryBenchmark {
+export interface ServerMemoryWorkloadGroup {
   sanity: () => Promise<void> | void
-  benches: Array<ServerMemoryBench>
+  workloads: Array<ServerMemoryWorkload>
 }

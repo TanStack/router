@@ -1,14 +1,14 @@
-import { createSetup } from '../shared'
-import type { StartRequestHandler } from '../shared'
+import type { ServerMemoryWorkloadGroup } from '#memory-server/benchmark'
+import { createWorkloadGroup } from '../shared.ts'
+import type { StartRequestHandler } from '../shared.ts'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 
-export async function setup() {
-  const { default: handler } = (await import(
-    /* @vite-ignore */ appModuleUrl
-  )) as {
-    default: StartRequestHandler
-  }
-
-  return createSetup('vue', handler)
+const { default: handler } = (await import(
+  /* @vite-ignore */ appModuleUrl
+)) as {
+  default: StartRequestHandler
 }
+
+export const workloadGroup: ServerMemoryWorkloadGroup =
+  await createWorkloadGroup('vue', handler)

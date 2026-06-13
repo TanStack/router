@@ -52,7 +52,10 @@ function warnDevMode(framework: Framework) {
   }
 }
 
-export function createSetup(framework: Framework, mountTestApp: MountTestApp) {
+export function createWorkload(
+  framework: Framework,
+  mountTestApp: MountTestApp,
+) {
   warnDevMode(framework)
 
   let container: HTMLDivElement | undefined = undefined

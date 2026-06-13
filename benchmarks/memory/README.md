@@ -27,8 +27,9 @@ benchmarks/memory/<server|client>/
 
 One app per scenario; apps and bench names are stable once landed (CodSpeed
 continuity). Never grow an existing scenario for a new case — add a scenario.
-`setup.ts` owns the scenario workload, sanity checks, and any deterministic id
-generation; `memory.bench.ts` and `memory.flame.ts` are thin runners only.
+`setup.ts` imports the built app and exports the concrete workload;
+`memory.bench.ts` registers `bench(...)` directly, and `memory.flame.ts` runs the
+same workload through the Flame profiler.
 
 ## How the memory instrument executes a bench
 

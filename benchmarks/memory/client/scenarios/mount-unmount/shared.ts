@@ -39,7 +39,10 @@ function assertEmptyBody() {
   }
 }
 
-export function createSetup(framework: Framework, mountTestApp: MountTestApp) {
+export function createWorkload(
+  framework: Framework,
+  mountTestApp: MountTestApp,
+) {
   warnDevMode(framework)
 
   async function cycle() {

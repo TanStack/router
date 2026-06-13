@@ -1,14 +1,12 @@
 import { profileFlameWorkload } from '../flame-control.ts'
-import type { ServerMemoryBenchmark } from './benchmark.ts'
+import type { ServerMemoryWorkloadGroup } from './benchmark.ts'
 
 export async function runServerFlameBenchmark(
-  setup: () => Promise<ServerMemoryBenchmark>,
+  workloadGroup: ServerMemoryWorkloadGroup,
 ) {
-  const test = await setup()
+  await workloadGroup.sanity()
 
-  await test.sanity()
-
-  for (const bench of test.benches) {
-    await profileFlameWorkload(bench.run, bench.name)
+  for (const workload of workloadGroup.workloads) {
+    await profileFlameWorkload(workload.run, workload.name)
   }
 }

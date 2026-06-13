@@ -1,4 +1,4 @@
 import { runClientFlameBenchmark } from '#memory-client/flame-runner'
-import { setup } from './setup.ts'
+import { workload } from './setup.ts'
 
-await runClientFlameBenchmark(setup)
+await runClientFlameBenchmark(workload)

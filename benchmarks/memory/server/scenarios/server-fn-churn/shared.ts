@@ -201,7 +201,7 @@ async function assertServerFnChurnSanity(
   validateEchoedBody(postBody, postRequest, postFixture.id)
 }
 
-export async function createSetup(
+export async function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
 ) {
@@ -226,7 +226,7 @@ export async function createSetup(
 
   return {
     sanity: () => assertServerFnChurnSanity(handler, urls),
-    benches: [
+    workloads: [
       {
         name: `mem server-fn-churn (${framework})`,
         run,

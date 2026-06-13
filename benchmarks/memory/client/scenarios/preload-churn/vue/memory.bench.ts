@@ -1,9 +1,21 @@
-import { describe } from 'vitest'
-import { registerClientMemoryBench } from '#memory-client/runner'
-import { setup } from './setup'
+import { afterAll, beforeAll, bench, describe } from 'vitest'
+import { memoryBenchOptions } from '#memory-client/bench-utils'
+import { workload } from './setup'
 
-await setup().sanity()
+await workload.sanity()
 
 describe('memory', () => {
-  registerClientMemoryBench(setup())
+  if (workload.before && workload.after) {
+    beforeAll(workload.before)
+    afterAll(workload.after)
+
+    bench(workload.name, workload.run, {
+      ...memoryBenchOptions,
+      setup: workload.before,
+      teardown: workload.after,
+    })
+    return
+  }
+
+  bench(workload.name, workload.run, memoryBenchOptions)
 })

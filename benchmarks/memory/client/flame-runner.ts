@@ -1,18 +1,14 @@
 import { profileFlameWorkload } from '../flame-control.ts'
 import { window } from './jsdom.ts'
-import type { ClientMemoryBenchmark } from './benchmark.ts'
+import type { ClientMemoryWorkload } from './benchmark.ts'
 
-export async function runClientFlameBenchmark(
-  setup: () => ClientMemoryBenchmark,
-) {
-  const test = setup()
-
+export async function runClientFlameBenchmark(workload: ClientMemoryWorkload) {
   try {
-    await test.sanity()
-    await test.before?.()
-    await profileFlameWorkload(test.run)
+    await workload.sanity()
+    await workload.before?.()
+    await profileFlameWorkload(workload.run, workload.name)
   } finally {
-    await test.after?.()
+    await workload.after?.()
     window.close()
   }
 }

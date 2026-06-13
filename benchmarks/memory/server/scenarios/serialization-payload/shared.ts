@@ -82,7 +82,7 @@ async function assertSerializationPayloadSanity(handler: StartRequestHandler) {
   validatePayloadBody(body, response, request)
 }
 
-export function createSetup(
+export function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
 ) {
@@ -96,7 +96,7 @@ export function createSetup(
 
   return {
     sanity: () => assertSerializationPayloadSanity(handler),
-    benches: [
+    workloads: [
       {
         name: `mem serialization-payload (${framework})`,
         run,

@@ -1,4 +1,4 @@
-export interface ClientMemoryBenchmark {
+export interface ClientMemoryWorkload {
   name: string
   before?: () => Promise<void> | void
   run: () => Promise<void> | void

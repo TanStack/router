@@ -151,7 +151,7 @@ async function assertErrorPathsSanity(handler: StartRequestHandler) {
   )
 }
 
-export function createSetup(
+export function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
 ) {
@@ -189,7 +189,7 @@ export function createSetup(
 
   return {
     sanity: () => assertErrorPathsSanity(handler),
-    benches: [
+    workloads: [
       {
         name: `mem error-paths redirect (${framework})`,
         run: runRedirect,

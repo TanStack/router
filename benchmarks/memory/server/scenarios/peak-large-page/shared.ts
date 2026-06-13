@@ -51,7 +51,7 @@ async function assertPeakLargePageSanity(handler: StartRequestHandler) {
   validatePeakLargePageBody(body)
 }
 
-export function createSetup(
+export function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
 ) {
@@ -65,7 +65,7 @@ export function createSetup(
 
   return {
     sanity: () => assertPeakLargePageSanity(handler),
-    benches: [
+    workloads: [
       {
         name: `mem peak-large-page (${framework})`,
         run,
