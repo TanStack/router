@@ -8,7 +8,7 @@ const benchmarkSeed = 0xdecafbad
 const origin = 'http://localhost'
 const cdnOrigin = 'https://cdn.example.com'
 const inlineCssLoopIterations = 25
-const linkedCssLoopIterations = 25
+const linkedCssLoopIterations = 30
 
 const inlineRequestInit = {
   method: 'GET',

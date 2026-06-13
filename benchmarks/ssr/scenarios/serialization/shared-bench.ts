@@ -5,7 +5,7 @@ import type { StartRequestHandler } from '../../bench-utils'
 export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
-const richSerializationLoopIterations = 25
+const richSerializationLoopIterations = 30
 const plainSerializationLoopIterations = 30
 
 const requestInit = {
