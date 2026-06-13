@@ -1,6 +1,7 @@
 {
   "name": "@tanstack/solid-router",
-  "version": "2.0.0-beta.21",  "description": "Modern and scalable routing for Solid applications",
+  "version": "2.0.0-beta.21",
+  "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
@@ -103,7 +104,8 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@solid-devtools/logger": "^0.9.4",    "@solidjs/meta": "^0.29.4",
+    "@solid-devtools/logger": "^0.9.4",
+    "@solidjs/meta": "^0.29.4",
     "@solidjs/web": "2.0.0-beta.14",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
@@ -116,7 +118,8 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@types/node": ">=20",
     "combinate": "^1.1.11",
-    "eslint-plugin-solid": "^0.14.5",    "vite": "*",
+    "eslint-plugin-solid": "^0.14.5",
+    "vite": "*",
     "vite-plugin-solid": "^3.0.0-next.5",
     "zod": "^4.4.3"
   },

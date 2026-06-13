@@ -31,7 +31,8 @@
   },
   "devDependencies": {
     "@codspeed/vitest-plugin": "^5.5.0",
-    "@platformatic/flame": "^1.6.0",    "@testing-library/react": "^16.2.0",
+    "@platformatic/flame": "^1.6.0",
+    "@testing-library/react": "^16.2.0",
     "@types/jsdom": "28.0.0",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitejs/plugin-vue": "^6.0.5",
