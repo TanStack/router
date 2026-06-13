@@ -14,7 +14,7 @@ import { pageStyles, formatTime } from '~/utils/styles'
 // ============================================================================
 
 const getExternalDataServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { endpoint: string }) => data)
+  .validator((data: { endpoint: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
     const fetchStart = Date.now()

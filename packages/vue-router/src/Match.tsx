@@ -166,7 +166,7 @@ export const Match = Vue.defineComponent({
         if (routeNotFoundComponent.value) {
           content = Vue.h(CatchNotFound, {
             fallback: (error: any) => {
-              error.routeId ??= matchData.value?.routeId as any
+              error.routeId ??= matchData.value?.routeId
 
               // If the current not found handler doesn't exist or it has a
               // route ID which doesn't match the current route, rethrow the error
@@ -191,7 +191,7 @@ export const Match = Vue.defineComponent({
             onCatch: (error: Error) => {
               // Forward not found errors (we don't want to show the error component for these)
               if (isNotFound(error)) {
-                error.routeId ??= matchData.value?.routeId as any
+                error.routeId ??= matchData.value?.routeId
                 throw error
               }
               if (process.env.NODE_ENV !== 'production') {

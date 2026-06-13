@@ -7,7 +7,7 @@ import { useAppSession } from '~/utils/session'
 export const loginFn = createServerFn({
   method: 'POST',
 })
-  .inputValidator((payload: { email: string; password: string }) => payload)
+  .validator((payload: { email: string; password: string }) => payload)
   .handler(async ({ data }) => {
     // Find the user
     const user = await prismaClient.user.findUnique({
