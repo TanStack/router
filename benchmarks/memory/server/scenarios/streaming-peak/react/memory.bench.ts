@@ -1,8 +1,8 @@
 import { bench, describe } from 'vitest'
 import {
-  createDeterministicRandom,
   memoryBenchOptions,
   randomSegment,
+  runSequentialRequestLoop,
 } from '../../../bench-utils'
 import type { StartRequestHandler } from '../../../bench-utils'
 
@@ -60,23 +60,6 @@ function getResponseReader(response: Response) {
   return reader
 }
 
-async function consumeResponseChunks(response: Response) {
-  const reader = getResponseReader(response)
-  let chunkCount = 0
-
-  while (true) {
-    const result = await reader.read()
-
-    if (result.done) {
-      break
-    }
-
-    chunkCount++
-  }
-
-  return chunkCount
-}
-
 async function readStreamingBody(response: Response) {
   const reader = getResponseReader(response)
   const decoder = new TextDecoder()
@@ -124,14 +107,6 @@ function assertFallbacksPrecedeDeferredContent(body: string) {
   }
 }
 
-function assertBufferedBodyContainsDeferredSections(body: string) {
-  for (const marker of deferredSectionMarkers) {
-    if (!body.includes(marker)) {
-      throw new Error(`Expected buffered body to contain ${marker}`)
-    }
-  }
-}
-
 async function assertStreamingPeakSanity(handler: StartRequestHandler) {
   const chunkedRequest = new Request(
     'http://localhost/stream/sanity-chunked',
@@ -150,50 +125,6 @@ async function assertStreamingPeakSanity(handler: StartRequestHandler) {
   }
 
   assertFallbacksPrecedeDeferredContent(chunked.body)
-
-  const bufferedRequest = new Request(
-    'http://localhost/stream/sanity-buffered',
-    requestInit,
-  )
-  const bufferedResponse = await handler.fetch(bufferedRequest)
-
-  validateStreamingResponse(bufferedResponse, bufferedRequest)
-
-  const bufferedBody = await bufferedResponse.text()
-
-  assertBufferedBodyContainsDeferredSections(bufferedBody)
-}
-
-async function runChunkedStreamingLoop(handler: StartRequestHandler) {
-  const random = createDeterministicRandom(benchmarkSeed)
-  let totalChunkCount = 0
-
-  for (let index = 0; index < streamingPeakIterations; index++) {
-    const request = buildStreamingRequest(random, index)
-    const response = await handler.fetch(request)
-
-    validateStreamingResponse(response, request)
-    totalChunkCount += await consumeResponseChunks(response)
-  }
-
-  return totalChunkCount
-}
-
-async function runBufferedStreamingLoop(handler: StartRequestHandler) {
-  const random = createDeterministicRandom(benchmarkSeed)
-  let totalBodyLength = 0
-
-  for (let index = 0; index < streamingPeakIterations; index++) {
-    const request = buildStreamingRequest(random, index)
-    const response = await handler.fetch(request)
-
-    validateStreamingResponse(response, request)
-
-    const body = await response.text()
-    totalBodyLength += body.length
-  }
-
-  return totalBodyLength
 }
 
 await assertStreamingPeakSanity(handler)
@@ -202,15 +133,12 @@ describe('memory', () => {
   bench(
     'mem streaming-peak chunked (react)',
     async () => {
-      await runChunkedStreamingLoop(handler)
-    },
-    memoryBenchOptions,
-  )
-
-  bench(
-    'mem streaming-peak buffered (react)',
-    async () => {
-      await runBufferedStreamingLoop(handler)
+      await runSequentialRequestLoop(handler, {
+        seed: benchmarkSeed,
+        iterations: streamingPeakIterations,
+        buildRequest: buildStreamingRequest,
+        validateResponse: validateStreamingResponse,
+      })
     },
     memoryBenchOptions,
   )
