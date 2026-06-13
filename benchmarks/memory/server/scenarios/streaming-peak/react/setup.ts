@@ -6,7 +6,7 @@ import type { StartRequestHandler } from '#memory-server/bench-utils'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 const benchmarkSeed = 0xdecafbad
-const streamingPeakIterations = 3
+const streamingPeakIterations = 20
 const fallbackMarkers = [
   'streaming-peak-fallback-0',
   'streaming-peak-fallback-1',

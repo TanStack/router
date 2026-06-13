@@ -6,7 +6,7 @@ import type { StartRequestHandler } from '#memory-server/bench-utils'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 const benchmarkSeed = 0x51eaa11
-const serializationPayloadIterations = 5
+const serializationPayloadIterations = 20
 const payloadPageMarker = 'data-bench="serialization-payload"'
 const dehydrationMarker = '$_TSR'
 
