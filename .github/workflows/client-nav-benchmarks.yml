@@ -47,16 +47,6 @@ jobs:
             mode: memory
           - benchmark: memory-client
             mode: memory
-        # TODO: temp exclude memory benchmarks for solid and vue until we have them working
-        exclude:
-          - benchmark: memory-server
-            framework: solid
-          - benchmark: memory-server
-            framework: vue
-          - benchmark: memory-client
-            framework: solid
-          - benchmark: memory-client
-            framework: vue
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

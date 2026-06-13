@@ -4,24 +4,25 @@ Dedicated memory benchmarks for TanStack Router / Start, measured with the
 CodSpeed **memory instrument** (`mode: memory` in
 `.github/workflows/client-nav-benchmarks.yml`). Two separate benchmarks:
 
-- `server/` (`@benchmarks/memory-server`) — React Start apps, requests against
+- `server/` (`@benchmarks/memory-server`) — React/Solid/Vue Start apps, requests against
   the built server handler (`handler.fetch`), Node environment.
-- `client/` (`@benchmarks/memory-client`) — router-only React apps in jsdom.
+- `client/` (`@benchmarks/memory-client`) — router-only React/Solid/Vue apps in jsdom.
 
 These deliberately do **not** reuse the CPU scenarios in `benchmarks/ssr` and
 `benchmarks/client-nav`: memory benches need their own iteration counts,
 payload sizes, and route shapes, and tuning those must never shift the CPU
-baselines. React-first; each scenario keeps a `react/` level so solid/vue can
-be added later without renames.
+baselines. Each scenario keeps a framework level (`react/`, `solid/`, `vue/`)
+so framework ports can be added without renames.
 
 ## Layout
 
 ```text
 benchmarks/memory/<server|client>/
-  package.json                  Nx targets: build:react, test:perf:react, test:flame:react, test:types
+  package.json                  Nx targets: build:<framework>, test:perf:<framework>, test:flame:<framework>, test:types
   bench-utils.ts                memoryBenchOptions, seeded LCG (+ sequential request loop on the server side)
-  vitest.react.config.ts        aggregates scenarios/*/react/vite.config.ts
-  scenarios/<scenario>/react/   one isolated app per scenario + setup.ts + memory.bench.ts + memory.flame.ts
+  vitest.<framework>.config.ts  aggregates scenarios/*/<framework>/vite.config.ts
+  scenarios/<scenario>/<framework>/
+                                one isolated app per scenario + setup.ts + memory.bench.ts + memory.flame.ts
 ```
 
 One app per scenario; apps and bench names are stable once landed (CodSpeed
@@ -91,9 +92,8 @@ generation; `memory.bench.ts` and `memory.flame.ts` are thin runners only.
   is fine — never overlap distinct work items.
 - Randomness only via the seeded LCG in `bench-utils.ts`; no `Math.random`,
   `Date.now`, or timers — with one documented exception: `streaming-peak`'s
-  deferred sections use small `setTimeout` delays, because React schedules
-  stream flushes via `setImmediate` and any non-timer deferral wins that race,
-  suppressing the Suspense fallbacks the scenario exists to stream.
+  deferred sections use small `setTimeout` delays so deferred stream chunks are
+  observable across framework renderers.
 - Sanity assertions run once at module load and throw on wrong
   status/markers, so a bench can never silently measure the wrong thing.
 - Server requests follow `benchmarks/ssr` conventions: document GETs send
@@ -101,7 +101,7 @@ generation; `memory.bench.ts` and `memory.flame.ts` are thin runners only.
   with bodies precomputed at module level.
 - Client apps export `mountTestApp` from `app.tsx`; benches import the built
   `dist/app.js`; navigations use `replace: true`; unmount does full teardown
-  (React root, `__TSR_ROUTER__`, `history.destroy()`); large loader payloads
+  (framework root, `__TSR_ROUTER__`, `history.destroy()`); large loader payloads
   are never rendered into the DOM.
 - `NODE_ENV=production` everywhere (the Nx targets set it).
 
@@ -112,7 +112,11 @@ scenarios:
 
 ```bash
 pnpm nx run @benchmarks/memory-server:test:perf:react --outputStyle=stream --skipRemoteCache
+pnpm nx run @benchmarks/memory-server:test:perf:solid --outputStyle=stream --skipRemoteCache
+pnpm nx run @benchmarks/memory-server:test:perf:vue --outputStyle=stream --skipRemoteCache
 pnpm nx run @benchmarks/memory-client:test:perf:react --outputStyle=stream --skipRemoteCache
+pnpm nx run @benchmarks/memory-client:test:perf:solid --outputStyle=stream --skipRemoteCache
+pnpm nx run @benchmarks/memory-client:test:perf:vue --outputStyle=stream --skipRemoteCache
 pnpm nx run @benchmarks/memory-server:test:types --outputStyle=stream --skipRemoteCache
 pnpm nx run @benchmarks/memory-client:test:types --outputStyle=stream --skipRemoteCache
 ```
@@ -130,6 +134,10 @@ inside `test:perf:react`.
 ```bash
 pnpm benchmark:memory:server:flame
 pnpm benchmark:memory:client:flame
+pnpm benchmark:memory:server:flame:solid
+pnpm benchmark:memory:client:flame:solid
+pnpm benchmark:memory:server:flame:vue
+pnpm benchmark:memory:client:flame:vue
 ```
 
 To profile one scenario, run its `test:flame` target directly:
@@ -169,5 +177,9 @@ CodSpeed dashboard** — local runs do not affect PR baselines):
 
 ```bash
 WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-server:test:perf:react
+WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-server:test:perf:solid
+WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-server:test:perf:vue
 WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-client:test:perf:react
+WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-client:test:perf:solid
+WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-client:test:perf:vue
 ```

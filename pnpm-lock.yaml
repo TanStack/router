@@ -321,12 +321,24 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../../../packages/router-core
+      '@tanstack/solid-router':
+        specifier: workspace:*
+        version: link:../../../packages/solid-router
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      solid-js:
+        specifier: 1.9.12
+        version: 1.9.12
+      vue:
+        specifier: ^3.5.16
+        version: 3.5.25(typescript@6.0.2)
     devDependencies:
       '@codspeed/vitest-plugin':
         specifier: ^5.5.0
@@ -346,6 +358,12 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.5
+        version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@6.0.2))
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^5.1.5
+        version: 5.1.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@6.0.2))
       jsdom:
         specifier: 29.1.1
         version: 29.1.1(@noble/hashes@2.0.1)
@@ -355,6 +373,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vite-plugin-solid:
+        specifier: ^2.11.11
+        version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.4
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(typescript@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -367,12 +388,30 @@ importers:
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
+      '@tanstack/solid-router':
+        specifier: workspace:*
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-start':
+        specifier: workspace:*
+        version: link:../../../packages/solid-start
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router
+      '@tanstack/vue-start':
+        specifier: workspace:*
+        version: link:../../../packages/vue-start
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      solid-js:
+        specifier: 1.9.12
+        version: 1.9.12
+      vue:
+        specifier: ^3.5.16
+        version: 3.5.25(typescript@6.0.2)
     devDependencies:
       '@codspeed/vitest-plugin':
         specifier: ^5.5.0
@@ -386,12 +425,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^5.1.5
+        version: 5.1.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@6.0.2))
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vite-plugin-solid:
+        specifier: ^2.11.11
+        version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
         specifier: ^4.1.4
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(typescript@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -2107,7 +2152,7 @@ importers:
         version: 2.0.1
       '@rsbuild/plugin-react':
         specifier: ^2.0.0
-        version: 2.0.0(@rsbuild/core@2.0.1)(@rspack/core@2.0.5(@swc/helpers@0.5.23))
+        version: 2.0.0(@rsbuild/core@2.0.1)(@rspack/core@2.0.5(@swc/helpers@0.5.21))
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -31701,9 +31746,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@rsbuild/plugin-react@2.0.0(@rsbuild/core@2.0.1)(@rspack/core@2.0.5(@swc/helpers@0.5.23))':
+  '@rsbuild/plugin-react@2.0.0(@rsbuild/core@2.0.1)(@rspack/core@2.0.5(@swc/helpers@0.5.21))':
     dependencies:
-      '@rspack/plugin-react-refresh': 2.0.0(@rspack/core@2.0.5(@swc/helpers@0.5.23))(react-refresh@0.18.0)
+      '@rspack/plugin-react-refresh': 2.0.0(@rspack/core@2.0.5(@swc/helpers@0.5.21))(react-refresh@0.18.0)
       react-refresh: 0.18.0
     optionalDependencies:
       '@rsbuild/core': 2.0.1
@@ -31894,6 +31939,13 @@ snapshots:
     optionalDependencies:
       '@swc/helpers': 0.5.23
 
+  '@rspack/core@2.0.5(@swc/helpers@0.5.21)':
+    dependencies:
+      '@rspack/binding': 2.0.5
+    optionalDependencies:
+      '@swc/helpers': 0.5.21
+    optional: true
+
   '@rspack/core@2.0.5(@swc/helpers@0.5.23)':
     dependencies:
       '@rspack/binding': 2.0.5
@@ -31901,6 +31953,12 @@ snapshots:
       '@swc/helpers': 0.5.23
 
   '@rspack/lite-tapable@1.1.0': {}
+
+  '@rspack/plugin-react-refresh@2.0.0(@rspack/core@2.0.5(@swc/helpers@0.5.21))(react-refresh@0.18.0)':
+    dependencies:
+      react-refresh: 0.18.0
+    optionalDependencies:
+      '@rspack/core': 2.0.5(@swc/helpers@0.5.21)
 
   '@rspack/plugin-react-refresh@2.0.0(@rspack/core@2.0.5(@swc/helpers@0.5.23))(react-refresh@0.18.0)':
     dependencies:
@@ -33781,7 +33839,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.1.0
-      vitest: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(typescript@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      vitest: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(typescript@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   '@vitest/utils@4.1.4':
     dependencies:
