@@ -30,9 +30,7 @@ export function createBenchContainer() {
   return container
 }
 
-export function removeBenchContainer(
-  container: HTMLDivElement | undefined,
-) {
+export function removeBenchContainer(container: HTMLDivElement | undefined) {
   container?.remove()
 }
 
