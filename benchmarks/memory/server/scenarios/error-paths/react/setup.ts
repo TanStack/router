@@ -37,37 +37,25 @@ const requestInit = {
 function buildRedirectRequest(random: () => number) {
   const id = `${(redirectCounter++).toString(36)}-${randomSegment(random)}`
 
-  return new Request(
-    `http://localhost/from/${id}`,
-    requestInit,
-  )
+  return new Request(`http://localhost/from/${id}`, requestInit)
 }
 
 function buildNotFoundRequest(random: () => number) {
   const id = `${(notFoundCounter++).toString(36)}-${randomSegment(random)}`
 
-  return new Request(
-    `http://localhost/missing/${id}`,
-    requestInit,
-  )
+  return new Request(`http://localhost/missing/${id}`, requestInit)
 }
 
 function buildErrorRequest(random: () => number) {
   const id = `${(errorCounter++).toString(36)}-${randomSegment(random)}`
 
-  return new Request(
-    `http://localhost/boom/${id}`,
-    requestInit,
-  )
+  return new Request(`http://localhost/boom/${id}`, requestInit)
 }
 
 function buildUnmatchedRequest(random: () => number) {
   const id = `${(unmatchedCounter++).toString(36)}-${randomSegment(random)}`
 
-  return new Request(
-    `http://localhost/nope/${id}`,
-    requestInit,
-  )
+  return new Request(`http://localhost/nope/${id}`, requestInit)
 }
 
 function getRequestId(request: Request) {

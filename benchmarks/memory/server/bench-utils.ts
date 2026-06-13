@@ -12,11 +12,12 @@ type RunSequentialRequestLoopRandomOptions =
       seed?: never
     }
 
-export type RunSequentialRequestLoopOptions = RunSequentialRequestLoopRandomOptions & {
-  iterations?: number
-  buildRequest: (random: () => number, index: number) => Request
-  validateResponse?: (response: Response, request: Request) => void
-}
+export type RunSequentialRequestLoopOptions =
+  RunSequentialRequestLoopRandomOptions & {
+    iterations?: number
+    buildRequest: (random: () => number, index: number) => Request
+    validateResponse?: (response: Response, request: Request) => void
+  }
 
 export const memoryBenchOptions = {
   iterations: 1,

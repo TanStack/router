@@ -112,10 +112,7 @@ export async function profileFlameWorkload(
     undefined,
     sourceMapper,
   )
-  const profilePath = path.join(
-    profileDir,
-    formatProfileFileName(profileName),
-  )
+  const profilePath = path.join(profileDir, formatProfileFileName(profileName))
 
   fs.writeFileSync(profilePath, heapProfile.encode())
   console.log(`Heap profile written to: ${profilePath}`)
