@@ -154,7 +154,6 @@ export async function setup() {
 
   return {
     sanity: () => assertAbortedRequestsSanity(handler),
-    run,
     benches: [
       {
         name: 'mem aborted-requests (react)',

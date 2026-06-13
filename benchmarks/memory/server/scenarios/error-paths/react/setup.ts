@@ -202,12 +202,6 @@ export async function setup() {
 
   return {
     sanity: () => assertErrorPathsSanity(handler),
-    async run() {
-      await runRedirect()
-      await runNotFound()
-      await runError()
-      await runUnmatched()
-    },
     benches: [
       {
         name: 'mem error-paths redirect (react)',

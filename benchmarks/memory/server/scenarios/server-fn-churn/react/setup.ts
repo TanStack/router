@@ -228,7 +228,6 @@ export async function setup() {
 
   return {
     sanity: () => assertServerFnChurnSanity(handler, urls),
-    run,
     benches: [
       {
         name: 'mem server-fn-churn (react)',

@@ -59,8 +59,20 @@ function formatTimestamp() {
   return new Date().toISOString().replace(/[:.]/g, '-')
 }
 
+function formatProfileFileName(profileName?: string) {
+  const profileNameSlug = profileName
+    ?.trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  const profileNamePart = profileNameSlug ? `${profileNameSlug}-` : ''
+
+  return `heap-profile-${profileNamePart}${formatTimestamp()}.pb`
+}
+
 export async function profileFlameWorkload(
   workload: () => Promise<void> | void,
+  profileName?: string,
 ) {
   if (!flameEnabled) {
     await workload()
@@ -102,7 +114,7 @@ export async function profileFlameWorkload(
   )
   const profilePath = path.join(
     profileDir,
-    `heap-profile-${formatTimestamp()}.pb`,
+    formatProfileFileName(profileName),
   )
 
   fs.writeFileSync(profilePath, heapProfile.encode())

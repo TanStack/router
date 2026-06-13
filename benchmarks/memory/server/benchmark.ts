@@ -5,6 +5,5 @@ export interface ServerMemoryBench {
 
 export interface ServerMemoryBenchmark {
   sanity: () => Promise<void> | void
-  run: () => Promise<void> | void
   benches: Array<ServerMemoryBench>
 }

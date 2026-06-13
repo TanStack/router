@@ -136,7 +136,6 @@ export async function setup() {
 
   return {
     sanity: () => assertStreamingPeakSanity(handler),
-    run,
     benches: [
       {
         name: 'mem streaming-peak chunked (react)',

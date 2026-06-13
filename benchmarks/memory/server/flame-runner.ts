@@ -7,5 +7,8 @@ export async function runServerFlameBenchmark(
   const test = await setup()
 
   await test.sanity()
-  await profileFlameWorkload(test.run)
+
+  for (const bench of test.benches) {
+    await profileFlameWorkload(bench.run, bench.name)
+  }
 }

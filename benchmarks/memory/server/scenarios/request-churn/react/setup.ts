@@ -78,7 +78,6 @@ export async function setup() {
 
   return {
     sanity: () => assertRequestChurnSanity(handler),
-    run,
     benches: [
       {
         name: 'mem request-churn (react)',

@@ -65,7 +65,6 @@ export async function setup() {
 
   return {
     sanity: () => assertPeakLargePageSanity(handler),
-    run,
     benches: [
       {
         name: 'mem peak-large-page (react)',

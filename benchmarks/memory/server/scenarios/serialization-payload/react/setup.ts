@@ -96,7 +96,6 @@ export async function setup() {
 
   return {
     sanity: () => assertSerializationPayloadSanity(handler),
-    run,
     benches: [
       {
         name: 'mem serialization-payload (react)',
