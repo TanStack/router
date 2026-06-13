@@ -67,6 +67,13 @@ jobs:
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
 
+      # Run the build outside of the CodSpeed action to avoid being slowed by intrumentation overhead.
+      # (and then run the task itself with --excludeTaskDependencies)
+      - name: Prepare ${{ matrix.benchmark }}:${{ matrix.framework }} benchmark
+        run: >-
+          pnpm nx run
+          @benchmarks/${{ matrix.benchmark }}:build:${{ matrix.framework }}
+
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
         uses: CodSpeedHQ/action@9d332c4d90b43981c3e55ae8e38e68709996240f # v4.17.0
         with:
@@ -75,3 +82,4 @@ jobs:
             WITH_INSTRUMENTATION=1
             pnpm nx run
             @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
+            --excludeTaskDependencies
