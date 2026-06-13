@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
@@ -35,22 +36,28 @@ const profileDir = path.join(
 fs.mkdirSync(profileDir, { recursive: true })
 
 const entrypointRequire = createRequire(entrypointPath)
-const { generateFlamegraph, generateMarkdown, startProfiling } =
-  entrypointRequire('@platformatic/flame')
+const { generateFlamegraph, generateMarkdown } = entrypointRequire(
+  '@platformatic/flame',
+)
 
 process.env.NODE_ENV = 'production'
-process.env.TSR_MEMORY_FLAME = '1'
 
 console.log(`Flame profile directory: ${profileDir}`)
 
-const { pid, process: childProcess } = startProfiling(entrypointPath, [], {
-  autoStart: false,
+const childProcess = spawn(process.execPath, [entrypointPath], {
   cwd: profileDir,
-  mdFormat: 'detailed',
-  sourcemapDirs: [sourcemapDirPath],
+  env: {
+    ...process.env,
+    NODE_ENV: 'production',
+    TSR_MEMORY_FLAME: '1',
+    TSR_MEMORY_PROFILE_DIR: profileDir,
+    TSR_MEMORY_REQUIRE_FROM: entrypointPath,
+    TSR_MEMORY_SOURCEMAP_DIRS: sourcemapDirPath,
+  },
+  stdio: 'inherit',
 })
 
-console.log(`Flame profiling process: ${pid}`)
+console.log(`Flame profiling process: ${childProcess.pid}`)
 
 const childCode = await new Promise((resolve) => {
   childProcess.on('error', (error) => {

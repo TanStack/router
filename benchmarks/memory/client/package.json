@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@codspeed/vitest-plugin": "^5.5.0",
+    "@datadog/pprof": "^5.13.2",
     "@platformatic/flame": "^1.6.0",
     "@testing-library/react": "^16.2.0",
     "@vitejs/plugin-react": "^6.0.1",

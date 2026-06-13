@@ -8,7 +8,7 @@ export async function runClientFlameBenchmark(
   const test = setup()
 
   try {
-    await setup().sanity()
+    await test.sanity()
     await test.before?.()
     await profileFlameWorkload(test.run)
   } finally {

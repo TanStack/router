@@ -118,7 +118,8 @@ pnpm nx run @benchmarks/memory-client:test:types --outputStyle=stream --skipRemo
 ```
 
 Local attribution profiling, without CodSpeed CLI/login/sudo/upload, uses
-`@platformatic/flame` heap profiles. These targets rebuild the scenarios with
+`@datadog/pprof` heap sampling and `@platformatic/flame` only to render the
+captured pprof files as HTML/Markdown. These targets rebuild the scenarios with
 `--sourcemap true` so the generated profile reports can point back to source;
 the normal CodSpeed benchmark builds are unchanged. Local aggregate scripts run
 with `--parallel=1`, and scenario `test:flame` targets opt out of Nx parallelism
@@ -144,10 +145,11 @@ directory, including `heap-profile-*.html` and `heap-profile-*.md`. The
 but manually start profiling after sanity/setup work and stop it after the
 measured workload. Treat these profiles as diagnostic heap-sampling attribution;
 they are not CodSpeed memory metrics such as peak memory, allocated bytes, or
-allocation counts. Reports can include `@platformatic/flame` and pprof shutdown
-frames. Flame runs do not force GC before profiling; doing so would perturb the
-workload and still would not make heap sampling equivalent to CodSpeed memory
-metrics.
+allocation counts. The heap sampler is stopped before profile conversion and
+Flame report generation, so Flame/pprof report-generation work should not appear
+as part of the captured workload. Flame runs do not force GC before profiling;
+doing so would perturb the workload and still would not make heap sampling
+equivalent to CodSpeed memory metrics.
 
 Clean local Flame profile output with:
 
