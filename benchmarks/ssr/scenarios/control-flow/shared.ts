@@ -6,10 +6,10 @@ export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
 const redirectLoopIterations = 100
-const notFoundLoopIterations = 20
-const errorLoopIterations = 20
-const unmatchedLoopIterations = 40
-const routeHeadersLoopIterations = 20
+const notFoundLoopIterations = 45
+const errorLoopIterations = 45
+const unmatchedLoopIterations = 60
+const routeHeadersLoopIterations = 50
 
 // Pinned to the current built handler responses for these control-flow routes.
 const OK_STATUS = 200

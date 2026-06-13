@@ -4,7 +4,7 @@ import type { StartRequestHandler } from '../../bench-utils'
 export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
-const loopIterations = 100
+const loopIterations = 200
 
 const apiRequestInit = {
   method: 'GET',
