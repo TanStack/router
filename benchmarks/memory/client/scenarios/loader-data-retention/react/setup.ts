@@ -1,14 +1,29 @@
 import type * as App from './src/app'
+import {
+  createDeterministicRandom,
+  randomSegment,
+} from '#memory-client/bench-utils'
 
 const appModulePath = './dist/app.js'
 const { loaderPayloadRecordCount, mountTestApp } = (await import(
   /* @vite-ignore */ appModulePath
 )) as typeof App
+const loaderDataRetentionNavigationCount = 20
+const pageIds = createPageIds()
 
 const uninitialized = () =>
   Promise.reject(
     new Error('loader-data-retention benchmark is not initialized'),
   )
+
+function createPageIds() {
+  const random = createDeterministicRandom(11)
+
+  return Array.from(
+    { length: loaderDataRetentionNavigationCount },
+    (_, index) => `${index}-${randomSegment(random)}`,
+  )
+}
 
 export function setup() {
   if (process.env.NODE_ENV !== 'production') {
@@ -129,8 +144,14 @@ export function setup() {
   }
 
   return {
+    name: 'mem loader-data-retention (react)',
     before,
     navigate: (id: string) => navigateTo(id),
+    async run() {
+      for (const id of pageIds) {
+        await navigateTo(id)
+      }
+    },
     async sanity() {
       await before()
 

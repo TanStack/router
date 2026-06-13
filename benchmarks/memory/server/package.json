@@ -2,6 +2,14 @@
   "name": "@benchmarks/memory-server",
   "private": true,
   "type": "module",
+  "scripts": {
+    "clean:profiles": "rm -rf scenarios/*/*/.profiles"
+  },
+  "imports": {
+    "#memory-server/bench-utils": "./bench-utils.ts",
+    "#memory-server/flame-runner": "./flame-runner.ts",
+    "#memory-server/runner": "./runner.ts"
+  },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-start": "workspace:^",
@@ -10,6 +18,7 @@
   },
   "devDependencies": {
     "@codspeed/vitest-plugin": "^5.5.0",
+    "@platformatic/flame": "^1.6.0",
     "@vitejs/plugin-react": "^6.0.1",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
@@ -35,8 +44,45 @@
           }
         ]
       },
+      "build:react:flame": {
+        "executor": "nx:noop",
+        "cache": false,
+        "dependsOn": [
+          {
+            "projects": [
+              "@benchmarks/memory-server-request-churn-react",
+              "@benchmarks/memory-server-server-fn-churn-react",
+              "@benchmarks/memory-server-error-paths-react",
+              "@benchmarks/memory-server-aborted-requests-react",
+              "@benchmarks/memory-server-peak-large-page-react",
+              "@benchmarks/memory-server-streaming-peak-react",
+              "@benchmarks/memory-server-serialization-payload-react"
+            ],
+            "target": "build:ssr:flame"
+          }
+        ]
+      },
+      "test:flame:react": {
+        "executor": "nx:noop",
+        "cache": false,
+        "dependsOn": [
+          {
+            "projects": [
+              "@benchmarks/memory-server-request-churn-react",
+              "@benchmarks/memory-server-server-fn-churn-react",
+              "@benchmarks/memory-server-error-paths-react",
+              "@benchmarks/memory-server-aborted-requests-react",
+              "@benchmarks/memory-server-peak-large-page-react",
+              "@benchmarks/memory-server-streaming-peak-react",
+              "@benchmarks/memory-server-serialization-payload-react"
+            ],
+            "target": "test:flame"
+          }
+        ]
+      },
       "test:perf:react": {
         "executor": "nx:run-commands",
+        "parallelism": false,
         "cache": false,
         "dependsOn": [
           "build:react"

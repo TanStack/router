@@ -1,12 +1,15 @@
 {
   "extends": "../../../../../../tsconfig.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "types": ["node", "vite/client", "vitest/globals"]
   },
   "include": [
     "memory.bench.ts",
+    "memory.flame.ts",
+    "setup.ts",
     "vite.config.ts",
     "../../../bench-utils.ts",
     "./src/**/*"

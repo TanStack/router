@@ -2,6 +2,23 @@
   "name": "@benchmarks/memory-client",
   "private": true,
   "type": "module",
+  "scripts": {
+    "clean:profiles": "rm -rf scenarios/*/*/.profiles"
+  },
+  "imports": {
+    "#memory-client/bench-utils": {
+      "types": "./bench-utils.ts",
+      "default": "./bench-utils.ts"
+    },
+    "#memory-client/flame-runner": {
+      "types": "./flame-runner.ts",
+      "default": "./flame-runner.ts"
+    },
+    "#memory-client/runner": {
+      "types": "./runner.ts",
+      "default": "./runner.ts"
+    }
+  },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
     "@tanstack/router-core": "workspace:^",
@@ -10,9 +27,11 @@
   },
   "devDependencies": {
     "@codspeed/vitest-plugin": "^5.5.0",
+    "@platformatic/flame": "^1.6.0",
     "@testing-library/react": "^16.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "@types/jsdom": "28.0.0",
+    "jsdom": "29.1.1",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
     "vitest": "^4.1.4"
@@ -36,8 +55,43 @@
           }
         ]
       },
+      "build:react:flame": {
+        "executor": "nx:noop",
+        "cache": false,
+        "dependsOn": [
+          {
+            "projects": [
+              "@benchmarks/memory-client-navigation-churn-react",
+              "@benchmarks/memory-client-unique-location-churn-react",
+              "@benchmarks/memory-client-preload-churn-react",
+              "@benchmarks/memory-client-loader-data-retention-react",
+              "@benchmarks/memory-client-mount-unmount-react",
+              "@benchmarks/memory-client-interrupted-navigations-react"
+            ],
+            "target": "build:client:flame"
+          }
+        ]
+      },
+      "test:flame:react": {
+        "executor": "nx:noop",
+        "cache": false,
+        "dependsOn": [
+          {
+            "projects": [
+              "@benchmarks/memory-client-navigation-churn-react",
+              "@benchmarks/memory-client-unique-location-churn-react",
+              "@benchmarks/memory-client-preload-churn-react",
+              "@benchmarks/memory-client-loader-data-retention-react",
+              "@benchmarks/memory-client-mount-unmount-react",
+              "@benchmarks/memory-client-interrupted-navigations-react"
+            ],
+            "target": "test:flame"
+          }
+        ]
+      },
       "test:perf:react": {
         "executor": "nx:run-commands",
+        "parallelism": false,
         "cache": false,
         "dependsOn": [
           "build:react"

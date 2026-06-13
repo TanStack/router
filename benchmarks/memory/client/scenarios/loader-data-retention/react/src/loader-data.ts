@@ -1,7 +1,7 @@
 import {
   createDeterministicRandom,
   randomSegment,
-} from '../../../../bench-utils'
+} from '#memory-client/bench-utils'
 
 export const loaderPayloadRecordCount = 512
 

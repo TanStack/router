@@ -10,6 +10,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "memory.bench.ts",
+    "memory.flame.ts",
     "setup.ts",
     "vite.config.ts",
     "../../../bench-utils.ts",

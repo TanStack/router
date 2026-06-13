@@ -18,14 +18,16 @@ be added later without renames.
 
 ```text
 benchmarks/memory/<server|client>/
-  package.json                  Nx targets: build:react, test:perf:react, test:types
+  package.json                  Nx targets: build:react, test:perf:react, test:flame:react, test:types
   bench-utils.ts                memoryBenchOptions, seeded LCG (+ sequential request loop on the server side)
   vitest.react.config.ts        aggregates scenarios/*/react/vite.config.ts
-  scenarios/<scenario>/react/   one isolated app per scenario + memory.bench.ts
+  scenarios/<scenario>/react/   one isolated app per scenario + setup.ts + memory.bench.ts + memory.flame.ts
 ```
 
 One app per scenario; apps and bench names are stable once landed (CodSpeed
 continuity). Never grow an existing scenario for a new case — add a scenario.
+`setup.ts` owns the scenario workload, sanity checks, and any deterministic id
+generation; `memory.bench.ts` and `memory.flame.ts` are thin runners only.
 
 ## How the memory instrument executes a bench
 
@@ -105,12 +107,59 @@ continuity). Never grow an existing scenario for a new case — add a scenario.
 
 ## Run
 
+Smoke-test the CodSpeed/Vitest benchmark entrypoints and typecheck the
+scenarios:
+
 ```bash
 pnpm nx run @benchmarks/memory-server:test:perf:react --outputStyle=stream --skipRemoteCache
 pnpm nx run @benchmarks/memory-client:test:perf:react --outputStyle=stream --skipRemoteCache
 pnpm nx run @benchmarks/memory-server:test:types --outputStyle=stream --skipRemoteCache
 pnpm nx run @benchmarks/memory-client:test:types --outputStyle=stream --skipRemoteCache
 ```
+
+Local attribution profiling, without CodSpeed CLI/login/sudo/upload, uses
+`@platformatic/flame` heap profiles. These targets rebuild the scenarios with
+`--sourcemap true` so the generated profile reports can point back to source;
+the normal CodSpeed benchmark builds are unchanged. Local aggregate scripts run
+with `--parallel=1`, and scenario `test:flame` targets opt out of Nx parallelism
+so profiling workloads do not overlap and bias each other. The Vitest aggregate
+configs also set `fileParallelism: false` so benchmark files run sequentially
+inside `test:perf:react`.
+
+```bash
+pnpm benchmark:memory:server:flame
+pnpm benchmark:memory:client:flame
+```
+
+To profile one scenario, run its `test:flame` target directly:
+
+```bash
+pnpm nx run @benchmarks/memory-server-request-churn-react:test:flame --outputStyle=stream --skipRemoteCache
+pnpm nx run @benchmarks/memory-client-navigation-churn-react:test:flame --outputStyle=stream --skipRemoteCache
+```
+
+Flame writes reports under the scenario's ignored `.profiles/<timestamp>/`
+directory, including `heap-profile-*.html` and `heap-profile-*.md`. The
+`memory.flame.ts` entrypoints run the same workload shape as `memory.bench.ts`
+but manually start profiling after sanity/setup work and stop it after the
+measured workload. Treat these profiles as diagnostic heap-sampling attribution;
+they are not CodSpeed memory metrics such as peak memory, allocated bytes, or
+allocation counts. Reports can include `@platformatic/flame` and pprof shutdown
+frames. Flame runs do not force GC before profiling; doing so would perturb the
+workload and still would not make heap sampling equivalent to CodSpeed memory
+metrics.
+
+Clean local Flame profile output with:
+
+```bash
+pnpm --filter @benchmarks/memory-server clean:profiles
+pnpm --filter @benchmarks/memory-client clean:profiles
+```
+
+Client memory benches are useful for regression tracking of router/React/jsdom
+integration behavior, especially retained route/cache data. They are not pure
+browser-memory measurements, and local Flame attribution can include jsdom,
+React DOM, and profiler shutdown frames.
 
 Real memory measurement, locally (requires the CodSpeed CLI, `codspeed setup`
 once to install the memory executor, and sudo; **uploads results to the

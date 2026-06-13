@@ -29,6 +29,8 @@
     "benchmark:bundle-size:analyze": "node scripts/benchmarks/bundle-size/analyze.mjs",
     "benchmark:client-nav": "nx run @benchmarks/client-nav:test:perf",
     "benchmark:ssr": "nx run @benchmarks/ssr:test:perf",
+    "benchmark:memory:client:flame": "nx run @benchmarks/memory-client:test:flame:react --parallel=1",
+    "benchmark:memory:server:flame": "nx run @benchmarks/memory-server:test:flame:react --parallel=1",
     "build": "nx affected --target=build --exclude=e2e/** --exclude=examples/**",
     "build:all": "nx run-many --target=build --exclude=examples/** --exclude=e2e/**",
     "watch": "pnpm run build:all && nx watch --all -- pnpm run build:all",

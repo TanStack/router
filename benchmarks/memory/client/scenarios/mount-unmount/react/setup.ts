@@ -4,6 +4,7 @@ const appModulePath = './dist/app.js'
 const { mountTestApp } = (await import(
   /* @vite-ignore */ appModulePath
 )) as typeof App
+const mountUnmountIterations = 100
 
 function drainMicrotasks() {
   return Promise.resolve().then(() => Promise.resolve())
@@ -55,7 +56,13 @@ export function setup() {
   }
 
   return {
+    name: 'mem mount-unmount (react)',
     cycle,
+    async run() {
+      for (let index = 0; index < mountUnmountIterations; index++) {
+        await cycle()
+      }
+    },
     async sanity() {
       assertEmptyBody()
       await cycle()

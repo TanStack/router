@@ -6,6 +6,7 @@ const appModulePath = './dist/app.js'
 const { mountTestApp } = (await import(
   /* @vite-ignore */ appModulePath
 )) as typeof App
+const navigationChurnIterations = 300
 
 const uninitialized = () =>
   Promise.reject(new Error('navigation-churn benchmark is not initialized'))
@@ -99,8 +100,14 @@ export function setup() {
   }
 
   return {
+    name: 'mem navigation-churn (react)',
     before,
     navigate: (target: Target) => navigateTo(target),
+    async run() {
+      for (let index = 0; index < navigationChurnIterations; index++) {
+        await navigateTo(index % 2 === 0 ? '/b' : '/a')
+      }
+    },
     async sanity() {
       await before()
 

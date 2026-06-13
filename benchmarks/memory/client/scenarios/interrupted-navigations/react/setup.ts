@@ -1,4 +1,8 @@
 import type * as App from './src/app'
+import {
+  createDeterministicRandom,
+  randomSegment,
+} from '#memory-client/bench-utils'
 
 type NavigationSettlement =
   | {
@@ -17,6 +21,10 @@ const {
   resolveSlowLoader,
   slowLoaderRegistry,
 } = (await import(/* @vite-ignore */ appModulePath)) as typeof App
+const interruptedNavigationIterations = 150
+const interruptedNavigationPairs = createInterruptedNavigationPairs(
+  interruptedNavigationIterations,
+)
 
 const uninitialized = () =>
   Promise.reject(
@@ -28,6 +36,15 @@ const uninitializedSettlement = () =>
     status: 'rejected',
     reason: new Error('interrupted-navigations benchmark is not initialized'),
   })
+
+function createInterruptedNavigationPairs(iterations: number) {
+  const random = createDeterministicRandom(13)
+
+  return Array.from({ length: iterations }, (_, index) => ({
+    slowId: `slow-${index}-${randomSegment(random)}`,
+    fastId: `fast-${index}-${randomSegment(random)}`,
+  }))
+}
 
 async function drainMicrotasks() {
   await Promise.resolve()
@@ -245,8 +262,14 @@ export function setup() {
   }
 
   return {
+    name: 'mem interrupted-navigations (react)',
     before,
     interrupt,
+    async run() {
+      for (const pair of interruptedNavigationPairs) {
+        await interrupt(pair.slowId, pair.fastId)
+      }
+    },
     async sanity() {
       await before()
 

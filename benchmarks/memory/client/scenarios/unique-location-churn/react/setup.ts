@@ -1,4 +1,8 @@
 import type * as App from './src/app'
+import {
+  createDeterministicRandom,
+  randomSegment,
+} from '#memory-client/bench-utils'
 
 type ItemLocation = {
   id: string
@@ -9,6 +13,11 @@ const appModulePath = './dist/app.js'
 const { mountTestApp } = (await import(
   /* @vite-ignore */ appModulePath
 )) as typeof App
+const benchmarkRandom = createDeterministicRandom(0xdecafbad)
+const uniqueLocationChurnIterations = 300
+// Module-level so ids stay unique across runner invocations on one mount; the
+// counter prefix removes any residual LCG birthday-collision risk.
+let locationCounter = 0
 
 const uninitialized = () =>
   Promise.reject(
@@ -104,8 +113,17 @@ export function setup() {
   }
 
   return {
+    name: 'mem unique-location-churn (react)',
     before,
     navigate: (location: ItemLocation) => navigateTo(location),
+    async run() {
+      for (let index = 0; index < uniqueLocationChurnIterations; index++) {
+        const id = `${(locationCounter++).toString(36)}-${randomSegment(benchmarkRandom)}`
+        const q = `q-${randomSegment(benchmarkRandom)}`
+
+        await navigateTo({ id, q })
+      }
+    },
     async sanity() {
       await before()
 
