@@ -20,8 +20,8 @@
     }
   },
   "dependencies": {
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/router-core": "workspace:^",
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/router-core": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

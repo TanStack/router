@@ -220,7 +220,6 @@ export async function setup() {
           const fixture = postFixtures[fixtureIndex]!
           return buildPostRequest(urls.post, fixture)
         }
-
       },
       validateResponse: validateServerFnResponse,
     })
