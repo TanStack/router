@@ -82,6 +82,21 @@ function assertSlowNavigationSettlement(settlement: NavigationSettlement) {
   )
 }
 
+async function awaitExpectedLoadSettlement(loadPromise: Promise<void>) {
+  try {
+    await loadPromise
+  } catch (reason) {
+    if (
+      reasonHasAbortShape(reason) ||
+      reasonHasCancellationShape(reason)
+    ) {
+      return
+    }
+
+    throw reason
+  }
+}
+
 function reasonHasAbortShape(reason: unknown) {
   return reason instanceof DOMException && reason.name === 'AbortError'
 }
@@ -250,13 +265,11 @@ export function setup() {
     resolveSlowLoader(slowId)
 
     const settlement = await slowNavigation
-    // Superseded loads currently always resolve; the guard keeps the bench
-    // alive if router-core ever starts rejecting them.
-    await slowLoadPromise.catch(() => undefined)
+    assertSlowNavigationSettlement(settlement)
+    await awaitExpectedLoadSettlement(slowLoadPromise)
     await drainMicrotasks()
 
     if (assertShape) {
-      assertSlowNavigationSettlement(settlement)
       assertRenderedPage('fast', fastId)
     }
   }

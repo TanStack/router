@@ -24,6 +24,7 @@ export const memoryBenchOptions = {
   warmupIterations: 1,
   time: 0,
   warmupTime: 0,
+  throws: true,
 }
 
 export function createDeterministicRandom(seed: number) {
