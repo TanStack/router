@@ -43,7 +43,6 @@ const tssContentTypeFramed = 'application/x-tss-framed'
 const acceptHeader = `${tssContentTypeFramed}, application/x-ndjson, application/json`
 const xTssSerialized = 'x-tss-serialized'
 const contextMarker = 'ctx-server-fn-churn'
-const expectedIdsByRequest = new WeakMap<Request, string>()
 
 const commonHeaders = {
   'x-tsr-serverFn': 'true',
@@ -186,18 +185,6 @@ function validateEchoedBody(
   }
 }
 
-function validateServerFnBody(
-  body: string,
-  _response: Response,
-  request: Request,
-) {
-  const expectedId = expectedIdsByRequest.get(request)
-
-  if (expectedId) {
-    validateEchoedBody(body, request, expectedId)
-  }
-}
-
 async function assertServerFnChurnSanity(
   handler: StartRequestHandler,
   urls: FnUrls,
@@ -235,26 +222,15 @@ describe('memory', () => {
 
           if (index % 2 === 0) {
             const fixture = getFixtures[fixtureIndex]!
-            const request = buildGetRequest(urls.get, fixture)
 
-            if (index === 0) {
-              expectedIdsByRequest.set(request, fixture.id)
-            }
-
-            return request
+            return buildGetRequest(urls.get, fixture)
           }
 
           const fixture = postFixtures[fixtureIndex]!
-          const request = buildPostRequest(urls.post, fixture)
 
-          if (index === 1) {
-            expectedIdsByRequest.set(request, fixture.id)
-          }
-
-          return request
+          return buildPostRequest(urls.post, fixture)
         },
         validateResponse: validateServerFnResponse,
-        validateBody: validateServerFnBody,
       }),
     memoryBenchOptions,
   )

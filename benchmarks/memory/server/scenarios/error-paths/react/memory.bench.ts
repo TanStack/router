@@ -169,7 +169,6 @@ describe('memory', () => {
         iterations: errorPathsIterations,
         buildRequest: buildNotFoundRequest,
         validateResponse: validateNotFoundResponse,
-        validateBody: validateNotFoundBody,
       }),
     memoryBenchOptions,
   )
@@ -182,7 +181,6 @@ describe('memory', () => {
         iterations: errorPathsIterations,
         buildRequest: buildErrorRequest,
         validateResponse: validateErrorResponse,
-        validateBody: validateErrorBody,
       }),
     memoryBenchOptions,
   )

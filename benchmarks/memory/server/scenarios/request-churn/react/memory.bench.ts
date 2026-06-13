@@ -76,7 +76,6 @@ describe('memory', () => {
         iterations: requestChurnIterations,
         buildRequest: buildItemRequest,
         validateResponse: validateItemResponse,
-        validateBody: validateItemBody,
       }),
     memoryBenchOptions,
   )

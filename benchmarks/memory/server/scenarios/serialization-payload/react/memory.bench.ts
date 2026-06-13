@@ -98,7 +98,6 @@ describe('memory', () => {
         iterations: serializationPayloadIterations,
         buildRequest: buildPayloadRequest,
         validateResponse: validatePayloadResponse,
-        validateBody: validatePayloadBody,
       }),
     memoryBenchOptions,
   )

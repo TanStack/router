@@ -7,7 +7,6 @@ export interface RunSequentialRequestLoopOptions {
   iterations?: number
   buildRequest: (random: () => number, index: number) => Request
   validateResponse?: (response: Response, request: Request) => void
-  validateBody?: (body: string, response: Response, request: Request) => void
 }
 
 export const memoryBenchOptions = {
@@ -30,6 +29,26 @@ export function randomSegment(random: () => number) {
   return Math.floor(random() * 1_000_000_000).toString(36)
 }
 
+export async function drainResponse(response: Response) {
+  const reader = response.body?.getReader()
+
+  if (!reader) {
+    return
+  }
+
+  try {
+    while (true) {
+      const result = await reader.read()
+
+      if (result.done) {
+        break
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
 export async function runSequentialRequestLoop(
   handler: StartRequestHandler,
   {
@@ -37,7 +56,6 @@ export async function runSequentialRequestLoop(
     iterations = 10,
     buildRequest,
     validateResponse,
-    validateBody,
   }: RunSequentialRequestLoopOptions,
 ) {
   const random = createDeterministicRandom(seed)
@@ -57,7 +75,6 @@ export async function runSequentialRequestLoop(
 
     validate(response, request)
 
-    const body = await response.text()
-    validateBody?.(body, response, request)
+    await drainResponse(response)
   }
 }

@@ -69,7 +69,6 @@ describe('memory', () => {
         iterations: peakLargePageIterations,
         buildRequest: buildPeakLargePageRequest,
         validateResponse: validatePeakLargePageResponse,
-        validateBody: validatePeakLargePageBody,
       }),
     memoryBenchOptions,
   )
