@@ -460,16 +460,7 @@ export const MatchInner = (): any => {
                   invariant()
                 }
 
-                const matchId = currentMatch().id
-                const routerMatch = Solid.untrack(() =>
-                  router.getMatch(matchId),
-                )
-                const loaderResult = Solid.createMemo(async () => {
-                  await new Promise((r) => setTimeout(r, 0))
-                  return getLoadPromise(matchId, routerMatch)
-                })
-
-                return <>{loaderResult()}</>
+                return null
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'error'}>
