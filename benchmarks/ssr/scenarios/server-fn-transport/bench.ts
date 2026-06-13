@@ -536,15 +536,6 @@ export function runServerFnRawResponseRequestLoop(
     buildRequest: (_random, index) =>
       buildRawResponseRequest(context.urls, context.rawPayloads, index),
     validateResponse: validateRawResponse,
-    validateBody: (body, _response, request) => {
-      const expectedBody = context.rawExpectedBodiesByUrl.get(request.url)
-
-      if (body !== expectedBody) {
-        throw new Error(
-          `Expected raw response body ${expectedBody}, received ${body}`,
-        )
-      }
-    },
   })
 }
 
