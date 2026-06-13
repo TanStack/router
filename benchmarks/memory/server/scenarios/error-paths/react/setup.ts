@@ -1,4 +1,5 @@
 import {
+  createDeterministicRandom,
   randomSegment,
   runSequentialRequestLoop,
 } from '#memory-server/bench-utils'
@@ -10,6 +11,15 @@ const redirectSeed = 0xdecafbad
 const notFoundSeed = 0xdecafb0d
 const errorSeed = 0xdecafbed
 const unmatchedSeed = 0xdecaf00d
+// Module-level so each error-path bench keeps advancing across runner invocations.
+const redirectRandom = createDeterministicRandom(redirectSeed)
+const notFoundRandom = createDeterministicRandom(notFoundSeed)
+const errorRandom = createDeterministicRandom(errorSeed)
+const unmatchedRandom = createDeterministicRandom(unmatchedSeed)
+let redirectCounter = 0
+let notFoundCounter = 0
+let errorCounter = 0
+let unmatchedCounter = 0
 
 const redirectStatus = 302
 const notFoundStatus = 404
@@ -25,29 +35,37 @@ const requestInit = {
 } satisfies RequestInit
 
 function buildRedirectRequest(random: () => number) {
+  const id = `${(redirectCounter++).toString(36)}-${randomSegment(random)}`
+
   return new Request(
-    `http://localhost/from/${randomSegment(random)}`,
+    `http://localhost/from/${id}`,
     requestInit,
   )
 }
 
 function buildNotFoundRequest(random: () => number) {
+  const id = `${(notFoundCounter++).toString(36)}-${randomSegment(random)}`
+
   return new Request(
-    `http://localhost/missing/${randomSegment(random)}`,
+    `http://localhost/missing/${id}`,
     requestInit,
   )
 }
 
 function buildErrorRequest(random: () => number) {
+  const id = `${(errorCounter++).toString(36)}-${randomSegment(random)}`
+
   return new Request(
-    `http://localhost/boom/${randomSegment(random)}`,
+    `http://localhost/boom/${id}`,
     requestInit,
   )
 }
 
 function buildUnmatchedRequest(random: () => number) {
+  const id = `${(unmatchedCounter++).toString(36)}-${randomSegment(random)}`
+
   return new Request(
-    `http://localhost/nope/${randomSegment(random)}`,
+    `http://localhost/nope/${id}`,
     requestInit,
   )
 }
@@ -152,7 +170,7 @@ export async function setup() {
 
   const runRedirect = () =>
     runSequentialRequestLoop(handler, {
-      seed: redirectSeed,
+      random: redirectRandom,
       iterations: errorPathsIterations,
       buildRequest: buildRedirectRequest,
       validateResponse: validateRedirectResponse,
@@ -160,7 +178,7 @@ export async function setup() {
 
   const runNotFound = () =>
     runSequentialRequestLoop(handler, {
-      seed: notFoundSeed,
+      random: notFoundRandom,
       iterations: errorPathsIterations,
       buildRequest: buildNotFoundRequest,
       validateResponse: validateNotFoundResponse,
@@ -168,7 +186,7 @@ export async function setup() {
 
   const runError = () =>
     runSequentialRequestLoop(handler, {
-      seed: errorSeed,
+      random: errorRandom,
       iterations: errorPathsIterations,
       buildRequest: buildErrorRequest,
       validateResponse: validateErrorResponse,
@@ -176,7 +194,7 @@ export async function setup() {
 
   const runUnmatched = () =>
     runSequentialRequestLoop(handler, {
-      seed: unmatchedSeed,
+      random: unmatchedRandom,
       iterations: errorPathsIterations,
       buildRequest: buildUnmatchedRequest,
       validateResponse: validateNotFoundResponse,

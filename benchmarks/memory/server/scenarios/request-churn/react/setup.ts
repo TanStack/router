@@ -1,4 +1,5 @@
 import {
+  createDeterministicRandom,
   randomSegment,
   runSequentialRequestLoop,
 } from '#memory-server/bench-utils'
@@ -9,6 +10,9 @@ const benchmarkSeed = 0xdecafbad
 const requestChurnIterations = 200
 const itemPageMarker = 'data-bench="request-churn-item"'
 const dehydrationMarker = '$_TSR'
+// Module-level so CodSpeed warmups and measurement never replay URLs.
+const benchmarkRandom = createDeterministicRandom(benchmarkSeed)
+let requestCounter = 0
 
 const requestInit = {
   method: 'GET',
@@ -18,7 +22,7 @@ const requestInit = {
 } satisfies RequestInit
 
 function buildItemRequest(random: () => number) {
-  const id = randomSegment(random)
+  const id = `${(requestCounter++).toString(36)}-${randomSegment(random)}`
   const q = `q-${randomSegment(random)}`
 
   return new Request(`http://localhost/items/${id}?q=${q}`, requestInit)
@@ -66,7 +70,7 @@ export async function setup() {
 
   const run = () =>
     runSequentialRequestLoop(handler, {
-      seed: benchmarkSeed,
+      random: benchmarkRandom,
       iterations: requestChurnIterations,
       buildRequest: buildItemRequest,
       validateResponse: validateItemResponse,

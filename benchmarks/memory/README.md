@@ -2,7 +2,7 @@
 
 Dedicated memory benchmarks for TanStack Router / Start, measured with the
 CodSpeed **memory instrument** (`mode: memory` in
-`.github/workflows/memory-benchmarks.yml`). Two separate benchmarks:
+`.github/workflows/client-nav-benchmarks.yml`). Two separate benchmarks:
 
 - `server/` (`@benchmarks/memory-server`) — React Start apps, requests against
   the built server handler (`handler.fetch`), Node environment.

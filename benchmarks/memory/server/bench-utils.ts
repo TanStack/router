@@ -2,8 +2,17 @@ export interface StartRequestHandler {
   fetch: (request: Request) => Promise<Response> | Response
 }
 
-export interface RunSequentialRequestLoopOptions {
-  seed: number
+type RunSequentialRequestLoopRandomOptions =
+  | {
+      seed: number
+      random?: never
+    }
+  | {
+      random: () => number
+      seed?: never
+    }
+
+export type RunSequentialRequestLoopOptions = RunSequentialRequestLoopRandomOptions & {
   iterations?: number
   buildRequest: (random: () => number, index: number) => Request
   validateResponse?: (response: Response, request: Request) => void
@@ -51,14 +60,13 @@ export async function drainResponse(response: Response) {
 
 export async function runSequentialRequestLoop(
   handler: StartRequestHandler,
-  {
-    seed,
-    iterations = 10,
-    buildRequest,
-    validateResponse,
-  }: RunSequentialRequestLoopOptions,
+  options: RunSequentialRequestLoopOptions,
 ) {
-  const random = createDeterministicRandom(seed)
+  const { iterations = 10, buildRequest, validateResponse } = options
+  const random =
+    options.seed !== undefined
+      ? createDeterministicRandom(options.seed)
+      : options.random
   const validate =
     validateResponse ??
     ((response: Response, request: Request) => {

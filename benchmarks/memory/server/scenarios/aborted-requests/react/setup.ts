@@ -2,6 +2,7 @@ import type { StartRequestHandler } from '#memory-server/bench-utils'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 const abortedRequestIterations = 100
+let abortedRequestCounter = 0
 const eagerMarker = 'data-bench="aborted-requests-eager"'
 const alphaFallbackMarker = 'data-bench="aborted-requests-alpha-fallback"'
 const betaFallbackMarker = 'data-bench="aborted-requests-beta-fallback"'
@@ -130,7 +131,8 @@ async function assertAbortedRequestsSanity(handler: StartRequestHandler) {
 async function runAbortedRequestLoop(handler: StartRequestHandler) {
   for (let index = 0; index < abortedRequestIterations; index++) {
     const controller = new AbortController()
-    const request = buildStreamRequest(`abort-${index}`, controller.signal)
+    const id = `abort-${(abortedRequestCounter++).toString(36)}`
+    const request = buildStreamRequest(id, controller.signal)
     const response = await handler.fetch(request)
     validateDocumentResponse(response, request)
 
