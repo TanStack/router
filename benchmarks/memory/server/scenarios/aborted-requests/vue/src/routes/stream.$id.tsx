@@ -103,8 +103,8 @@ function StreamComponent() {
                   ))}
                 </ul>
               )}
-              />
-            ),
+            />
+          ),
           fallback: () => null,
         }}
       </Suspense>
@@ -120,8 +120,8 @@ function StreamComponent() {
                   ))}
                 </ul>
               )}
-              />
-            ),
+            />
+          ),
           fallback: () => null,
         }}
       </Suspense>

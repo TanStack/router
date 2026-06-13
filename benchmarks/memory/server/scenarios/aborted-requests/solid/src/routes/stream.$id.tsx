@@ -117,7 +117,10 @@ function DeferredRecords(props: {
   promise: Promise<Array<DeferredRecord>>
   dataBench: string
 }) {
-  const [records] = createResource(() => props.promise, (promise) => promise)
+  const [records] = createResource(
+    () => props.promise,
+    (promise) => promise,
+  )
 
   return (
     <Show when={records()}>

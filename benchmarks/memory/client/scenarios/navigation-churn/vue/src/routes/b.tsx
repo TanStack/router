@@ -10,5 +10,7 @@ export const Route = createFileRoute('/b')({
 function BComponent() {
   const data = Route.useLoaderData()
 
-  return <main data-bench-page="b">{`${data.value.name}:${data.value.ts}`}</main>
+  return (
+    <main data-bench-page="b">{`${data.value.name}:${data.value.ts}`}</main>
+  )
 }

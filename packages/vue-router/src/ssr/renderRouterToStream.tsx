@@ -12,7 +12,7 @@ import type { Component } from 'vue'
 const isAbortError = (request: Request, error: unknown) =>
   (request.signal.aborted && error === request.signal.reason) ||
   (error instanceof Error && error.name === 'AbortError') ||
-  ((error as any)?.code === 'ABORT_ERR')
+  (error as any)?.code === 'ABORT_ERR'
 
 function prependDoctype(
   readable: globalThis.ReadableStream,
@@ -178,7 +178,10 @@ export const renderRouterToStream = async ({
       }
 
       writerDone = true
-      return innerWriter.abort(reason).catch(handleWriterError).finally(releaseWriter)
+      return innerWriter
+        .abort(reason)
+        .catch(handleWriterError)
+        .finally(releaseWriter)
     },
   })
 
