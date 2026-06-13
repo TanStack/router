@@ -190,4 +190,31 @@ describe('handleRouteUpdate', () => {
       itemRoute.id,
     )
   })
+
+  it('hydrates the hot module route export with generated route tree state', () => {
+    const rootRoute = new BaseRootRoute({})
+    const itemRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/items/$itemId',
+    })
+    const routeTree = rootRoute.addChildren([itemRoute])
+    const router = createTestRouter(routeTree)
+    const newRoute = new BaseRoute({} as any)
+
+    expect((newRoute as any).to).toBeUndefined()
+
+    const restoreWindow = withWindowRouter(router)
+    try {
+      getHandleRouteUpdate()(itemRoute.id, newRoute)
+    } finally {
+      restoreWindow()
+    }
+
+    expect(newRoute.id).toBe(itemRoute.id)
+    expect(newRoute.path).toBe(itemRoute.path)
+    expect(newRoute.fullPath).toBe(itemRoute.fullPath)
+    expect(newRoute.to).toBe(itemRoute.to)
+    expect((newRoute as any).parentRoute).toBe(rootRoute)
+    expect((newRoute as any).options).toBe((itemRoute as any).options)
+  })
 })

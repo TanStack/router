@@ -166,6 +166,10 @@
               "to": "framework/react/guide/authentication-overview"
             },
             {
+              "label": "Authentication Server Primitives",
+              "to": "framework/react/guide/authentication-server-primitives"
+            },
+            {
               "label": "Authentication",
               "to": "framework/react/guide/authentication"
             },
@@ -194,8 +198,8 @@
               "to": "framework/react/guide/seo"
             },
             {
-              "label": "LLM Optimization (LLMO)",
-              "to": "framework/react/guide/llmo"
+              "label": "Generative Engine Optimization (GEO)",
+              "to": "framework/react/guide/geo"
             }
           ]
         },
@@ -291,6 +295,10 @@
               "to": "framework/solid/guide/authentication-overview"
             },
             {
+              "label": "Authentication Server Primitives",
+              "to": "framework/solid/guide/authentication-server-primitives"
+            },
+            {
               "label": "Authentication",
               "to": "framework/solid/guide/authentication"
             },
@@ -315,8 +323,8 @@
               "to": "framework/solid/guide/seo"
             },
             {
-              "label": "LLM Optimization (LLMO)",
-              "to": "framework/solid/guide/llmo"
+              "label": "Generative Engine Optimization (GEO)",
+              "to": "framework/solid/guide/geo"
             }
           ]
         }

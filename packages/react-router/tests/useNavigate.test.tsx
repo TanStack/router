@@ -2328,7 +2328,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
                   navigate({ to: '.', params: { param: 'bar' } as any })
                 }
               >
-                Navigate to to . with param:bar
+                Navigate to . with param:bar
               </button>
               <Outlet />
             </>

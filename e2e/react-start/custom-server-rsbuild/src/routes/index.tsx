@@ -3,11 +3,11 @@ import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 
 const getGreeting = createServerFn()
-  .inputValidator((d: { name: string }) => d)
+  .validator((d: { name: string }) => d)
   .handler(({ data }) => ({ greeting: `Hello, ${data.name}!` }))
 
 const postMessage = createServerFn({ method: 'POST' })
-  .inputValidator((d: { message: string }) => d)
+  .validator((d: { message: string }) => d)
   .handler(({ data }) => ({ echo: `Echo: ${data.message}` }))
 
 export const Route = createFileRoute('/')({

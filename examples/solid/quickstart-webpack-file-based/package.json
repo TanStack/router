@@ -10,13 +10,12 @@
     "@solidjs/web": "2.0.0-beta.14",
     "@tanstack/solid-router": "^2.0.0-beta.21",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.17",
-    "solid-js": "2.0.0-beta.14",
-    "tailwindcss": "^4.2.2"
+    "solid-js": "2.0.0-beta.14",    "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
     "@babel/core": "^7.28.5",
     "@babel/preset-typescript": "^7.27.1",
-    "@tanstack/router-plugin": "^1.168.13",
+    "@tanstack/router-plugin": "^1.168.18",
     "babel-loader": "^10.0.0",
     "babel-preset-solid": "2.0.0-beta.14",
     "css-loader": "^7.1.2",

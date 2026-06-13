@@ -15,7 +15,7 @@ import { pageStyles, clientStyles, formatTime } from '~/utils/styles'
 // ============================================================================
 
 const getLargePayloadServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { itemCount: number }) => data)
+  .validator((data: { itemCount: number }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 

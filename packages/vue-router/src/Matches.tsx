@@ -258,7 +258,7 @@ export const MatchRoute = Vue.defineComponent({
       if (!status.value) return null
 
       const matchRoute = useMatchRoute()
-      const params = matchRoute(props as any).value as boolean
+      const params = matchRoute(props).value as boolean
 
       // Create a component that renders the slot in a reactive manner
       if (!params || !slots.default) {

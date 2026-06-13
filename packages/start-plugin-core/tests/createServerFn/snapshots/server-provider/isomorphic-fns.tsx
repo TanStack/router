@@ -13,7 +13,7 @@ const getServerEcho_createServerFn_handler = createServerRpc({
   name: "getServerEcho",
   filename: "src/test.ts"
 }, opts => getServerEcho.__executeServer(opts));
-const getServerEcho = createServerFn().inputValidator((input: string) => input).handler(getServerEcho_createServerFn_handler, ({
+const getServerEcho = createServerFn().validator((input: string) => input).handler(getServerEcho_createServerFn_handler, ({
   data
 }) => getEcho(data));
 export { getServerEnv_createServerFn_handler, getServerEcho_createServerFn_handler };

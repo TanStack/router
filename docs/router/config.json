@@ -26,10 +26,6 @@
           "to": "decisions-on-dx"
         },
         {
-          "label": "LLM Assistance Support",
-          "to": "llm-support"
-        },
-        {
           "label": "Comparison",
           "to": "comparison"
         },

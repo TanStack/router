@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start-rsc",
-  "version": "0.1.17",
+  "version": "0.1.24",
   "description": "React Server Components support for TanStack Start",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -98,7 +98,6 @@
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",
-    "@tanstack/react-start-server": "workspace:*",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",

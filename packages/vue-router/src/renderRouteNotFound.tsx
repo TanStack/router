@@ -17,7 +17,7 @@ export function renderRouteNotFound(
 ): Vue.VNode {
   if (!route.options.notFoundComponent) {
     if (router.options.defaultNotFoundComponent) {
-      return Vue.h(router.options.defaultNotFoundComponent as any, data)
+      return Vue.h(router.options.defaultNotFoundComponent, data)
     }
 
     if (process.env.NODE_ENV !== 'production') {
@@ -31,5 +31,5 @@ export function renderRouteNotFound(
     return Vue.h(DefaultGlobalNotFound)
   }
 
-  return Vue.h(route.options.notFoundComponent as any, data)
+  return Vue.h(route.options.notFoundComponent, data)
 }

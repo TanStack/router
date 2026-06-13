@@ -64,7 +64,7 @@ export function useSearch<
     from: opts.from!,
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
-    select: (match: any) => {
+    select: (match) => {
       const search = match.search
       return opts.select ? opts.select(search) : search
     },

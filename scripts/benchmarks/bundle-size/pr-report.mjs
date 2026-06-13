@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import { promises as fsp } from 'node:fs'
 import path from 'node:path'
 import { parseArgs as parseNodeArgs } from 'node:util'
+import vm from 'node:vm'
 
 const DEFAULT_MARKER = '<!-- bundle-size-benchmark -->'
 const INT_FORMAT = new Intl.NumberFormat('en-US', {
@@ -68,11 +69,9 @@ function parseMaybeDataJs(raw) {
   const trimmed = raw.trim()
 
   if (trimmed.startsWith('window.BENCHMARK_DATA')) {
-    return JSON.parse(
-      trimmed
-        .replace(/^window\.BENCHMARK_DATA\s*=\s*/, '')
-        .replace(/;\s*$/, ''),
-    )
+    const sandbox = { window: {} }
+    vm.runInNewContext(trimmed, sandbox, { timeout: 1000 })
+    return sandbox.window.BENCHMARK_DATA
   }
 
   return JSON.parse(trimmed)

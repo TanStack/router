@@ -1,5 +1,85 @@
 # @tanstack/vue-start
 
+## 1.168.24
+
+### Patch Changes
+
+- [#7566](https://github.com/TanStack/router/pull/7566) [`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825) - Add `validator()` as the canonical server function and middleware validator method. Deprecate `inputValidator()` and emit compiler warnings for remaining uses.
+
+- Updated dependencies [[`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825)]:
+  - @tanstack/start-client-core@1.170.12
+  - @tanstack/start-plugin-core@1.171.17
+  - @tanstack/start-server-core@1.169.14
+  - @tanstack/vue-start-client@1.167.17
+  - @tanstack/vue-start-server@1.167.19
+
+## 1.168.23
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.11
+  - @tanstack/start-plugin-core@1.171.16
+  - @tanstack/start-server-core@1.169.13
+  - @tanstack/vue-router@1.170.15
+  - @tanstack/vue-start-client@1.167.16
+  - @tanstack/vue-start-server@1.167.18
+
+## 1.168.22
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.10
+  - @tanstack/start-plugin-core@1.171.15
+  - @tanstack/start-server-core@1.169.12
+  - @tanstack/vue-router@1.170.14
+  - @tanstack/vue-start-client@1.167.15
+  - @tanstack/vue-start-server@1.167.17
+
+## 1.168.21
+
+### Patch Changes
+
+- Updated dependencies [[`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01)]:
+  - @tanstack/vue-router@1.170.13
+  - @tanstack/start-client-core@1.170.9
+  - @tanstack/start-plugin-core@1.171.14
+  - @tanstack/start-server-core@1.169.11
+  - @tanstack/vue-start-client@1.167.14
+  - @tanstack/vue-start-server@1.167.16
+
+## 1.168.20
+
+### Patch Changes
+
+- Updated dependencies [[`301f6ba`](https://github.com/TanStack/router/commit/301f6ba4599386edd6fb3b8423938c48eedb501f)]:
+  - @tanstack/start-plugin-core@1.171.13
+  - @tanstack/start-client-core@1.170.8
+  - @tanstack/start-server-core@1.169.10
+  - @tanstack/vue-router@1.170.12
+  - @tanstack/vue-start-client@1.167.13
+  - @tanstack/vue-start-server@1.167.15
+
+## 1.168.19
+
+### Patch Changes
+
+- Updated dependencies [[`8091918`](https://github.com/TanStack/router/commit/80919186cbdd0deb948b46fe328881a14a08f414)]:
+  - @tanstack/start-plugin-core@1.171.12
+
+## 1.168.18
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.7
+  - @tanstack/start-plugin-core@1.171.11
+  - @tanstack/start-server-core@1.169.9
+  - @tanstack/vue-router@1.170.11
+  - @tanstack/vue-start-client@1.167.12
+  - @tanstack/vue-start-server@1.167.14
+
 ## 1.168.17
 
 ### Patch Changes

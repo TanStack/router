@@ -7,6 +7,13 @@ export interface RunSsrRequestLoopOptions {
   iterations?: number
 }
 
+export interface RunRequestLoopOptions {
+  seed: number
+  iterations?: number
+  buildRequest: (random: () => number, index: number) => Request
+  validateResponse?: (response: Response, request: Request) => void
+}
+
 const requestInit = {
   method: 'GET',
   headers: {
@@ -25,6 +32,28 @@ function createDeterministicRandom(seed: number) {
 
 function randomSegment(random: () => number) {
   return Math.floor(random() * 1_000_000_000).toString(36)
+}
+
+export { createDeterministicRandom, randomSegment }
+
+export async function drainResponse(response: Response) {
+  const reader = response.body?.getReader()
+
+  if (!reader) {
+    return
+  }
+
+  try {
+    while (true) {
+      const result = await reader.read()
+
+      if (result.done) {
+        break
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
 }
 
 function randomSearchValue(random: () => number) {
@@ -60,7 +89,46 @@ export async function runSsrRequestLoop(
       )
     }
 
-    pendingBodyReads.push(response.text().then(() => undefined))
+    pendingBodyReads.push(drainResponse(response))
+  }
+
+  await Promise.all(pendingBodyReads)
+}
+
+export async function runRequestLoop(
+  handler: StartRequestHandler,
+  {
+    seed,
+    iterations = 10,
+    buildRequest,
+    validateResponse,
+  }: RunRequestLoopOptions,
+) {
+  const random = createDeterministicRandom(seed)
+  const pendingBodyReads: Array<Promise<void>> = []
+  const validate =
+    validateResponse ??
+    ((response: Response, request: Request) => {
+      if (response.status !== 200) {
+        throw new Error(
+          `Request failed with non-200 status ${response.status} (${request.url})`,
+        )
+      }
+    })
+
+  for (let index = 0; index < iterations; index++) {
+    const request = buildRequest(random, index)
+    const response = await handler.fetch(request)
+
+    try {
+      validate(response, request)
+    } catch (error) {
+      await Promise.allSettled(pendingBodyReads)
+
+      throw error
+    }
+
+    pendingBodyReads.push(drainResponse(response))
   }
 
   await Promise.all(pendingBodyReads)

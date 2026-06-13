@@ -12,10 +12,9 @@
   "dependencies": {
     "@solidjs/web": "2.0.0-beta.14",
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/router-plugin": "^1.168.13",
+    "@tanstack/router-plugin": "^1.168.18",
     "@tanstack/solid-router": "^2.0.0-beta.21",
-    "@tanstack/solid-router-devtools": "^2.0.0-beta.17",
-    "@trpc/client": "^11.4.3",
+    "@tanstack/solid-router-devtools": "^2.0.0-beta.17",    "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
     "express": "^5.2.1",
     "redaxios": "^0.5.1",
