@@ -53,14 +53,12 @@ const documentRequestInit = {
     accept: 'text/html',
   },
 } satisfies RequestInit
-const serverFnRequestLoopOptions = {
-  seed: benchmarkSeed,
-  iterations: 100,
-} as const
-const serverFnSsrRequestLoopOptions = {
-  seed: benchmarkSeed,
-  iterations: 20,
-} as const
+const serverFnGetLoopIterations = 100
+const serverFnPostLoopIterations = 150
+const serverFnRedirectLoopIterations = 125
+const serverFnNotFoundLoopIterations = 200
+const serverFnSendContextLoopIterations = 175
+const serverFnDocumentSsrLoopIterations = 45
 
 export const serverFnBenchOptions = {
   warmupIterations: 100,
@@ -457,7 +455,8 @@ export function runServerFnGetRequestLoop(
   context: ServerFnBenchContext,
 ) {
   return runRequestLoop(handler, {
-    ...serverFnRequestLoopOptions,
+    seed: benchmarkSeed,
+    iterations: serverFnGetLoopIterations,
     buildRequest: (_random, index) =>
       buildGetRequest(context.urls, context.getQueries, index),
   })
@@ -468,7 +467,8 @@ export function runServerFnPostRequestLoop(
   context: ServerFnBenchContext,
 ) {
   return runRequestLoop(handler, {
-    ...serverFnRequestLoopOptions,
+    seed: benchmarkSeed,
+    iterations: serverFnPostLoopIterations,
     buildRequest: (_random, index) =>
       buildPostRequest(context.urls, context.bodies, index),
   })
@@ -479,7 +479,8 @@ export function runServerFnRedirectRequestLoop(
   context: ServerFnBenchContext,
 ) {
   return runRequestLoop(handler, {
-    ...serverFnRequestLoopOptions,
+    seed: benchmarkSeed,
+    iterations: serverFnRedirectLoopIterations,
     buildRequest: (_random, index) =>
       buildRedirectRequest(context.urls, context.bodies, index),
     validateResponse: validateRedirectResponse,
@@ -491,7 +492,8 @@ export function runServerFnNotFoundRequestLoop(
   context: ServerFnBenchContext,
 ) {
   return runRequestLoop(handler, {
-    ...serverFnRequestLoopOptions,
+    seed: benchmarkSeed,
+    iterations: serverFnNotFoundLoopIterations,
     buildRequest: (_random, index) =>
       buildNotFoundRequest(context.urls, context.bodies, index),
     validateResponse: (response) =>
@@ -504,7 +506,8 @@ export function runServerFnSendContextRequestLoop(
   context: ServerFnBenchContext,
 ) {
   return runRequestLoop(handler, {
-    ...serverFnRequestLoopOptions,
+    seed: benchmarkSeed,
+    iterations: serverFnSendContextLoopIterations,
     buildRequest: (_random, index) =>
       buildContextRequest(context.urls, context.contextBodies, index),
     validateResponse: (response) =>
@@ -516,7 +519,8 @@ export function runServerFnDocumentSsrRequestLoop(
   handler: StartRequestHandler,
 ) {
   return runRequestLoop(handler, {
-    ...serverFnSsrRequestLoopOptions,
+    seed: benchmarkSeed,
+    iterations: serverFnDocumentSsrLoopIterations,
     buildRequest: buildSsrCallRequest,
     validateResponse: validateDocumentResponse,
   })

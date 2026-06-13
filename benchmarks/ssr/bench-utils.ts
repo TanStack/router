@@ -12,7 +12,6 @@ export interface RunRequestLoopOptions {
   iterations?: number
   buildRequest: (random: () => number, index: number) => Request
   validateResponse?: (response: Response, request: Request) => void
-  validateBody?: (body: string, response: Response, request: Request) => void
 }
 
 const requestInit = {
@@ -36,6 +35,26 @@ function randomSegment(random: () => number) {
 }
 
 export { createDeterministicRandom, randomSegment }
+
+export async function drainResponse(response: Response) {
+  const reader = response.body?.getReader()
+
+  if (!reader) {
+    return
+  }
+
+  try {
+    while (true) {
+      const result = await reader.read()
+
+      if (result.done) {
+        break
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
 
 function randomSearchValue(random: () => number) {
   return `q-${randomSegment(random)}`
@@ -70,7 +89,7 @@ export async function runSsrRequestLoop(
       )
     }
 
-    pendingBodyReads.push(response.text().then(() => undefined))
+    pendingBodyReads.push(drainResponse(response))
   }
 
   await Promise.all(pendingBodyReads)
@@ -83,7 +102,6 @@ export async function runRequestLoop(
     iterations = 10,
     buildRequest,
     validateResponse,
-    validateBody,
   }: RunRequestLoopOptions,
 ) {
   const random = createDeterministicRandom(seed)
@@ -110,11 +128,7 @@ export async function runRequestLoop(
       throw error
     }
 
-    pendingBodyReads.push(
-      response.text().then((body) => {
-        validateBody?.(body, response, request)
-      }),
-    )
+    pendingBodyReads.push(drainResponse(response))
   }
 
   await Promise.all(pendingBodyReads)

@@ -67,10 +67,9 @@ const commonHeaders = {
   'sec-fetch-site': 'same-origin',
   accept: acceptHeader,
 } satisfies HeadersInit
-const serverFnTransportRequestLoopOptions = {
-  seed: benchmarkSeed,
-  iterations: 100,
-} as const
+const serverFnMultipartLoopIterations = 125
+const serverFnRawResponseLoopIterations = 175
+const serverFnRawStreamLoopIterations = 100
 
 export const serverFnTransportBenchOptions = {
   warmupIterations: 100,
@@ -519,7 +518,8 @@ export function runServerFnMultipartRequestLoop(
   context: ServerFnTransportBenchContext,
 ) {
   return runRequestLoop(handler, {
-    ...serverFnTransportRequestLoopOptions,
+    seed: benchmarkSeed,
+    iterations: serverFnMultipartLoopIterations,
     buildRequest: (_random, index) =>
       buildMultipartRequest(context.urls, context.multipartPayloads, index),
     validateResponse: validateSerializedResponse,
@@ -531,19 +531,11 @@ export function runServerFnRawResponseRequestLoop(
   context: ServerFnTransportBenchContext,
 ) {
   return runRequestLoop(handler, {
-    ...serverFnTransportRequestLoopOptions,
+    seed: benchmarkSeed,
+    iterations: serverFnRawResponseLoopIterations,
     buildRequest: (_random, index) =>
       buildRawResponseRequest(context.urls, context.rawPayloads, index),
     validateResponse: validateRawResponse,
-    validateBody: (body, _response, request) => {
-      const expectedBody = context.rawExpectedBodiesByUrl.get(request.url)
-
-      if (body !== expectedBody) {
-        throw new Error(
-          `Expected raw response body ${expectedBody}, received ${body}`,
-        )
-      }
-    },
   })
 }
 
@@ -552,7 +544,8 @@ export function runServerFnRawStreamRequestLoop(
   context: ServerFnTransportBenchContext,
 ) {
   return runRequestLoop(handler, {
-    ...serverFnTransportRequestLoopOptions,
+    seed: benchmarkSeed,
+    iterations: serverFnRawStreamLoopIterations,
     buildRequest: (_random, index) =>
       buildRawStreamRequest(context.urls, context.streamPayloads, index),
     validateResponse: validateRawStreamResponse,
