@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { getSlowLoaderDeferred } from '../slow-loaders'
+import { getSlowLoaderDeferred } from '../../../slow-loaders'
 
 export const Route = createFileRoute('/slow/$id')({
   loader: async ({ params }) => {

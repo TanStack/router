@@ -6,7 +6,7 @@ export {
   resolveAllSlowLoaders,
   resolveSlowLoader,
   slowLoaderRegistry,
-} from './slow-loaders'
+} from '../../slow-loaders'
 
 export function mountTestApp(container: Element) {
   const router = getRouter()

@@ -2,7 +2,7 @@ import { RouterProvider } from '@tanstack/react-router'
 import { createRoot } from 'react-dom/client'
 import { getRouter } from './router'
 
-export { getTrackedItemLoaderCount } from './item-payload'
+export { getTrackedItemLoaderCount } from '../../item-payload'
 
 export function mountTestApp(container: Element) {
   const router = getRouter()

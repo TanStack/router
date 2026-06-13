@@ -1,18 +1,15 @@
 import { Await, createFileRoute } from '@tanstack/vue-router'
 import { Suspense } from 'vue'
+import {
+  makeAbortedRequestRecords,
+  type DeferredRecord,
+  type RecordGroup,
+} from '../../../deferred-records'
 
-const recordCount = 20
 const alphaDelayMs = 50
 const betaDelayMs = 75
 const abortProbeAlphaDelayMs = 500
 const abortProbeBetaDelayMs = 750
-
-type RecordGroup = 'alpha' | 'beta'
-
-export interface DeferredRecord {
-  id: string
-  label: string
-}
 
 function isAbortProbeId(id: string) {
   return id === 'sanity-mid-stream' || id.startsWith('abort-')
@@ -62,16 +59,9 @@ function makeDeferredRecords(
   return resolveAfterDelay(
     delayMs,
     signal,
-    () => makeRecords(id, group),
+    () => makeAbortedRequestRecords(id, group),
     () => [],
   )
-}
-
-function makeRecords(id: string, group: RecordGroup): Array<DeferredRecord> {
-  return Array.from({ length: recordCount }, (_, index) => ({
-    id: `${group}-${id}-${index}`,
-    label: `deferred-${group}-${id}-${index}`,
-  }))
 }
 
 export const Route = createFileRoute('/stream/$id')({

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/vue-router'
-import { createItemPayload, trackItemLoaderCall } from '../item-payload'
+import { createItemPayload, trackItemLoaderCall } from '../../../item-payload'
 
 export const Route = createFileRoute('/items/$id')({
   loader: ({ params }: { params: { id: string } }) => {

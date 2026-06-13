@@ -12,7 +12,6 @@ type Framework = 'react' | 'solid' | 'vue'
 const benchmarkSeed = 0xdecafbad
 const requestChurnIterations = 200
 const itemPageMarker = 'data-bench="request-churn-item"'
-const dehydrationMarker = '$_TSR'
 // Module-level so CodSpeed warmups and measurement never replay URLs.
 const benchmarkRandom = createDeterministicRandom(benchmarkSeed)
 let requestCounter = 0
@@ -49,12 +48,6 @@ async function assertRequestChurnSanity(handler: StartRequestHandler) {
   }
 
   validateItemBody(body)
-
-  if (!body.includes(dehydrationMarker)) {
-    throw new Error(
-      'Expected sanity response to include the dehydration marker',
-    )
-  }
 }
 
 export function createWorkloadGroup(

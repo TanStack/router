@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { fixedTimestamp } from '../slow-loaders'
+import { fixedTimestamp } from '../../../slow-loaders'
 
 export const Route = createFileRoute('/fast/$id')({
   loader: ({ params }) => ({

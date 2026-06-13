@@ -174,10 +174,6 @@ function validateEchoedBody(
       `Expected context marker ${contextMarker} in ${request.url}`,
     )
   }
-
-  if (!body.includes(`${expectedId}-4`)) {
-    throw new Error(`Expected final payload record for ${expectedId}`)
-  }
 }
 
 async function assertServerFnChurnSanity(

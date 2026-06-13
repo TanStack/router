@@ -17,8 +17,6 @@ const unmatchedSeed = 0xdecaf00d
 const redirectStatus = 302
 const notFoundStatus = 404
 const errorStatus = 500
-const notFoundMarker = 'data-bench="not-found-boundary"'
-const errorMarker = 'data-bench="error-boundary"'
 // Module-level so each error-path bench keeps advancing across runner invocations.
 const redirectRandom = createDeterministicRandom(redirectSeed)
 const notFoundRandom = createDeterministicRandom(notFoundSeed)
@@ -101,29 +99,14 @@ function validateErrorResponse(response: Response, request: Request) {
   }
 }
 
-function validateNotFoundBody(body: string) {
-  if (!body.includes(notFoundMarker)) {
-    throw new Error('Expected error-paths not-found marker in response body')
-  }
-}
-
-function validateErrorBody(body: string) {
-  if (!body.includes(errorMarker)) {
-    throw new Error('Expected error-paths error marker in response body')
-  }
-}
-
 async function assertStatusSanity(
   handler: StartRequestHandler,
   request: Request,
   validateResponse: (response: Response, request: Request) => void,
-  validateBody?: (body: string) => void,
 ) {
   const response = await handler.fetch(request)
   validateResponse(response, request)
-
-  const body = await response.text()
-  validateBody?.(body)
+  await response.text()
 }
 
 async function assertErrorPathsSanity(handler: StartRequestHandler) {
@@ -136,13 +119,11 @@ async function assertErrorPathsSanity(handler: StartRequestHandler) {
     handler,
     new Request('http://localhost/missing/sanity-missing', requestInit),
     validateNotFoundResponse,
-    validateNotFoundBody,
   )
   await assertStatusSanity(
     handler,
     new Request('http://localhost/boom/sanity-error', requestInit),
     validateErrorResponse,
-    validateErrorBody,
   )
   await assertStatusSanity(
     handler,

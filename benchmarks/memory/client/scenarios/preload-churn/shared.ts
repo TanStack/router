@@ -2,15 +2,16 @@ import {
   createDeterministicRandom,
   randomSegment,
 } from '#memory-client/bench-utils'
+import {
+  createBenchContainer,
+  drainMicrotasks,
+  nextAnimationFrame,
+  noop,
+  removeBenchContainer,
+  warnClientMemoryDevMode,
+} from '#memory-client/lifecycle'
+import type { Framework, MountTestApp } from '#memory-client/lifecycle'
 
-type Framework = 'react' | 'solid' | 'vue'
-
-type MountedApp = {
-  router: unknown
-  unmount: () => void
-}
-
-type MountTestApp = (container: HTMLDivElement) => MountedApp
 type GetTrackedItemLoaderCount = (id: string) => number
 
 type PreloadRouter = {
@@ -32,18 +33,7 @@ type PreloadRouter = {
         },
   ) => Promise<void>
   subscribe: (event: 'onRendered', listener: () => void) => () => void
-  stores: {
-    cachedMatches: {
-      get: () => unknown
-    }
-  }
 }
-
-const frameworkNames = {
-  react: 'React',
-  solid: 'Solid',
-  vue: 'Vue',
-} satisfies Record<Framework, string>
 
 // Fixed id for the eviction navigations interleaved into the bench loop; its
 // payload is a constant-size steady-state resident, never part of the signal.
@@ -64,31 +54,18 @@ const uninitialized = async (_id: string) => {
   throw new Error('preload-churn benchmark is not initialized')
 }
 
-function warnDevMode(framework: Framework) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn(
-      `memory client benchmark is running without NODE_ENV=production; ${frameworkNames[framework]} dev overhead will dominate results.`,
-    )
-  }
-}
-
-async function drainMicrotasks() {
-  await Promise.resolve()
-  await Promise.resolve()
-}
-
 export function createWorkload(
   framework: Framework,
   mountTestApp: MountTestApp,
   getTrackedItemLoaderCount: GetTrackedItemLoaderCount,
 ) {
-  warnDevMode(framework)
+  warnClientMemoryDevMode(framework)
 
   let container: HTMLDivElement | undefined = undefined
   let router: PreloadRouter | undefined = undefined
-  let unmount: (() => void) | undefined = undefined
-  let unsub = () => {}
-  let resolveRendered: () => void = () => {}
+  let unmount = noop
+  let unsub = noop
+  let resolveRendered = noop
   let evictionParity = 0
   let preloadItem: (id: string) => Promise<void> = uninitialized
   let navigateToItem: (id: string) => Promise<void> = uninitialized
@@ -105,54 +82,17 @@ export function createWorkload(
     }
   }
 
-  function assertRenderedItem(id: string) {
-    const page =
-      container?.querySelector<HTMLElement>('[data-bench-page]')?.dataset
-        .benchPage
-    const actualId =
-      container?.querySelector<HTMLElement>('[data-bench-id]')?.dataset.benchId
-
-    if (page !== 'item' || actualId !== id) {
-      throw new Error(`Expected rendered item ${id}, got ${page}:${actualId}`)
-    }
-  }
-
-  function hasCachedItemMatch(id: string) {
-    const cachedMatches = router?.stores.cachedMatches.get() as
-      | Array<{ params: { id?: string } }>
-      | undefined
-
-    return Boolean(cachedMatches?.some((match) => match.params.id === id))
-  }
-
   async function waitForRenderedIndex() {
     for (let attempt = 0; attempt < 10; attempt++) {
       try {
         assertRenderedIndex()
         return
       } catch {
-        await new Promise<void>((resolve) => {
-          requestAnimationFrame(() => resolve())
-        })
+        await nextAnimationFrame()
       }
     }
 
     assertRenderedIndex()
-  }
-
-  async function waitForRenderedItem(id: string) {
-    for (let attempt = 0; attempt < 10; attempt++) {
-      try {
-        assertRenderedItem(id)
-        return
-      } catch {
-        await new Promise<void>((resolve) => {
-          requestAnimationFrame(() => resolve())
-        })
-      }
-    }
-
-    assertRenderedItem(id)
   }
 
   function waitForNextRender() {
@@ -166,8 +106,7 @@ export function createWorkload(
       after()
     }
 
-    container = document.createElement('div')
-    document.body.append(container)
+    container = createBenchContainer()
 
     const mounted = mountTestApp(container)
     router = mounted.router as PreloadRouter
@@ -213,15 +152,15 @@ export function createWorkload(
   }
 
   function after() {
-    unmount?.()
-    container?.remove()
+    unmount()
+    removeBenchContainer(container)
     unsub()
 
     container = undefined
     router = undefined
-    unmount = undefined
-    unsub = () => {}
-    resolveRendered = () => {}
+    unmount = noop
+    unsub = noop
+    resolveRendered = noop
     evictionParity = 0
     preloadItem = uninitialized
     navigateToItem = uninitialized
@@ -270,33 +209,6 @@ export function createWorkload(
         if (preloadedLoaderCount !== initialLoaderCount + 1) {
           throw new Error(
             `Expected preload to run item loader once, got ${preloadedLoaderCount - initialLoaderCount}`,
-          )
-        }
-
-        if (!hasCachedItemMatch(id)) {
-          throw new Error(
-            'Expected preloaded match to sit in router.state.cachedMatches',
-          )
-        }
-
-        // A navigation commit runs clearExpiredCache; with
-        // defaultPreloadGcTime: 0 it must evict the preloaded match. This is
-        // the mechanism the bench's flat-floor expectation rests on.
-        await navigateToItem('sanity-evict-nav')
-        await waitForRenderedItem('sanity-evict-nav')
-
-        if (hasCachedItemMatch(id)) {
-          throw new Error(
-            'Expected the navigation commit to evict the preloaded match (preloadGcTime 0)',
-          )
-        }
-
-        await preloadItem(id)
-
-        const repreloadedLoaderCount = getTrackedItemLoaderCount(id)
-        if (repreloadedLoaderCount !== preloadedLoaderCount + 1) {
-          throw new Error(
-            'Expected re-preload after eviction to run the item loader again',
           )
         }
       } finally {

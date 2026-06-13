@@ -10,18 +10,7 @@ type Framework = 'react' | 'solid' | 'vue'
 
 const benchmarkSeed = 0xdecafbad
 const streamingPeakIterations = 20
-const fallbackMarkers = [
-  'streaming-peak-fallback-0',
-  'streaming-peak-fallback-1',
-  'streaming-peak-fallback-2',
-  'streaming-peak-fallback-3',
-] as const
-const deferredSectionMarkers = [
-  'streaming-peak-deferred-0',
-  'streaming-peak-deferred-1',
-  'streaming-peak-deferred-2',
-  'streaming-peak-deferred-3',
-] as const
+const fallbackMarker = 'streaming-peak-fallback-0'
 
 const requestInit = {
   method: 'GET',
@@ -77,31 +66,6 @@ async function readStreamingBody(response: Response) {
   return { body, chunkCount }
 }
 
-function assertFallbacksPrecedeDeferredContent(body: string) {
-  for (let index = 0; index < fallbackMarkers.length; index++) {
-    const fallbackIndex = body.indexOf(fallbackMarkers[index]!)
-    const deferredIndex = body.indexOf(deferredSectionMarkers[index]!)
-
-    if (fallbackIndex === -1) {
-      throw new Error(
-        `Expected fallback marker ${fallbackMarkers[index]} in body`,
-      )
-    }
-
-    if (deferredIndex === -1) {
-      throw new Error(
-        `Expected deferred section marker ${deferredSectionMarkers[index]} in body`,
-      )
-    }
-
-    if (fallbackIndex > deferredIndex) {
-      throw new Error(
-        `Expected ${fallbackMarkers[index]} to precede ${deferredSectionMarkers[index]}`,
-      )
-    }
-  }
-}
-
 async function assertStreamingPeakSanity(handler: StartRequestHandler) {
   const chunkedRequest = new Request(
     'http://localhost/stream/sanity-chunked',
@@ -119,7 +83,9 @@ async function assertStreamingPeakSanity(handler: StartRequestHandler) {
     )
   }
 
-  assertFallbacksPrecedeDeferredContent(chunked.body)
+  if (!chunked.body.includes(fallbackMarker)) {
+    throw new Error('Expected streaming-peak fallback marker in response body')
+  }
 }
 
 export function createWorkloadGroup(

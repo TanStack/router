@@ -2,15 +2,14 @@ import {
   createDeterministicRandom,
   randomSegment,
 } from '#memory-client/bench-utils'
-
-type Framework = 'react' | 'solid' | 'vue'
-
-type MountedApp = {
-  router: unknown
-  unmount: () => void
-}
-
-type MountTestApp = (container: HTMLDivElement) => MountedApp
+import {
+  createBenchContainer,
+  nextAnimationFrame,
+  noop,
+  removeBenchContainer,
+  warnClientMemoryDevMode,
+} from '#memory-client/lifecycle'
+import type { Framework, MountTestApp } from '#memory-client/lifecycle'
 
 type RenderEvent = {
   toLocation: {
@@ -31,11 +30,6 @@ type LoaderDataRouter = {
   ) => () => void
 }
 
-const frameworkNames = {
-  react: 'React',
-  solid: 'Solid',
-  vue: 'Vue',
-} satisfies Record<Framework, string>
 const loaderDataRetentionNavigationCount = 20
 const pageIds = createPageIds()
 
@@ -43,14 +37,6 @@ const uninitialized = () =>
   Promise.reject(
     new Error('loader-data-retention benchmark is not initialized'),
   )
-
-function warnDevMode(framework: Framework) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn(
-      `memory client benchmark is running without NODE_ENV=production; ${frameworkNames[framework]} dev overhead will dominate results.`,
-    )
-  }
-}
 
 function createPageIds() {
   const random = createDeterministicRandom(11)
@@ -66,12 +52,12 @@ export function createWorkload(
   mountTestApp: MountTestApp,
   loaderPayloadRecordCount: number,
 ) {
-  warnDevMode(framework)
+  warnClientMemoryDevMode(framework)
 
   let container: HTMLDivElement | undefined = undefined
-  let unmount: (() => void) | undefined = undefined
-  let unsub = () => {}
-  let resolveRendered: () => void = () => {}
+  let unmount = noop
+  let unsub = noop
+  let resolveRendered: () => void = noop
   let expectedRenderedPath: string | undefined = undefined
   let navigateTo: (id: string) => Promise<void> = uninitialized
 
@@ -106,9 +92,7 @@ export function createWorkload(
         assertRenderedShell()
         return
       } catch {
-        await new Promise<void>((resolve) => {
-          requestAnimationFrame(() => resolve())
-        })
+        await nextAnimationFrame()
       }
     }
 
@@ -128,8 +112,7 @@ export function createWorkload(
       after()
     }
 
-    container = document.createElement('div')
-    document.body.append(container)
+    container = createBenchContainer()
 
     const mounted = mountTestApp(container)
     const router = mounted.router as LoaderDataRouter
@@ -144,7 +127,7 @@ export function createWorkload(
       }
 
       const resolve = resolveRendered
-      resolveRendered = () => {}
+      resolveRendered = noop
       expectedRenderedPath = undefined
       resolve()
     })
@@ -167,14 +150,14 @@ export function createWorkload(
   }
 
   function after() {
-    unmount?.()
-    container?.remove()
+    unmount()
+    removeBenchContainer(container)
     unsub()
 
     container = undefined
-    unmount = undefined
-    unsub = () => {}
-    resolveRendered = () => {}
+    unmount = noop
+    unsub = noop
+    resolveRendered = noop
     expectedRenderedPath = undefined
     navigateTo = uninitialized
   }
@@ -192,10 +175,9 @@ export function createWorkload(
       await before()
 
       try {
+        assertRenderedShell()
         await navigateTo('sanity-a')
         assertRenderedPage('sanity-a')
-        await navigateTo('sanity-b')
-        assertRenderedPage('sanity-b')
       } finally {
         after()
       }

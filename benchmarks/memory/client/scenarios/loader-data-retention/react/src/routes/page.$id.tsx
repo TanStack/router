@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createLoaderData } from '../loader-data'
+import { createLoaderData } from '../../../loader-data'
 
 export const Route = createFileRoute('/page/$id')({
   loader: ({ params }) => createLoaderData(params.id),

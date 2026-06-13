@@ -1,14 +1,6 @@
 import { Await, createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
-
-const recordCount = 20
-
-type RecordGroup = 'alpha' | 'beta'
-
-export interface DeferredRecord {
-  id: string
-  label: string
-}
+import { makeAbortedRequestRecords } from '../../../deferred-records'
 
 function resolveAfterMicrotasks<T>(microtasks: number, value: () => T) {
   let promise = Promise.resolve()
@@ -20,18 +12,15 @@ function resolveAfterMicrotasks<T>(microtasks: number, value: () => T) {
   return promise.then(value)
 }
 
-function makeRecords(id: string, group: RecordGroup): Array<DeferredRecord> {
-  return Array.from({ length: recordCount }, (_, index) => ({
-    id: `${group}-${id}-${index}`,
-    label: `deferred-${group}-${id}-${index}`,
-  }))
-}
-
 export const Route = createFileRoute('/stream/$id')({
   loader: ({ params }) => ({
     eager: `eager-${params.id}`,
-    alpha: resolveAfterMicrotasks(32, () => makeRecords(params.id, 'alpha')),
-    beta: resolveAfterMicrotasks(64, () => makeRecords(params.id, 'beta')),
+    alpha: resolveAfterMicrotasks(32, () =>
+      makeAbortedRequestRecords(params.id, 'alpha'),
+    ),
+    beta: resolveAfterMicrotasks(64, () =>
+      makeAbortedRequestRecords(params.id, 'beta'),
+    ),
   }),
   component: StreamComponent,
 })

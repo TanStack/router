@@ -1,5 +1,5 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
-import { makeLargePageHead, makeLargePageLevelData } from '../large-page-data'
+import { makeLargePageHead, makeLargePageLevelData } from '../../../large-page-data'
 
 export const Route = createFileRoute('/l1')({
   loader: () => makeLargePageLevelData(1, 0x5eed_1001),

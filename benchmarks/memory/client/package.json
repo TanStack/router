@@ -8,7 +8,8 @@
   "imports": {
     "#memory-client/benchmark": "./benchmark.ts",
     "#memory-client/bench-utils": "./bench-utils.ts",
-    "#memory-client/flame-runner": "./flame-runner.ts"
+    "#memory-client/flame-runner": "./flame-runner.ts",
+    "#memory-client/lifecycle": "./lifecycle.ts"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",

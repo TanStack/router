@@ -1,5 +1,5 @@
 import { Outlet, createFileRoute } from '@tanstack/vue-router'
-import { makeLargePageHead, makeLargePageLevelData } from '../large-page-data'
+import { makeLargePageHead, makeLargePageLevelData } from '../../../large-page-data'
 
 export const Route = createFileRoute('/l1/l2/l3/l4')({
   loader: () => makeLargePageLevelData(4, 0x5eed_1004),

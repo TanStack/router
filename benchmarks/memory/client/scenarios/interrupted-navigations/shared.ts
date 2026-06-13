@@ -2,8 +2,15 @@ import {
   createDeterministicRandom,
   randomSegment,
 } from '#memory-client/bench-utils'
-
-type Framework = 'react' | 'solid' | 'vue'
+import {
+  createBenchContainer,
+  drainMicrotasks,
+  nextAnimationFrame,
+  noop,
+  removeBenchContainer,
+  warnClientMemoryDevMode,
+} from '#memory-client/lifecycle'
+import type { Framework, MountTestApp } from '#memory-client/lifecycle'
 
 type NavigationSettlement =
   | {
@@ -15,12 +22,6 @@ type NavigationSettlement =
       reason: unknown
     }
 
-type MountedApp = {
-  router: unknown
-  unmount: () => void
-}
-
-type MountTestApp = (container: HTMLDivElement) => MountedApp
 type ResolveAllSlowLoaders = () => void
 type ResolveSlowLoader = (id: string) => void
 type SlowLoaderRegistry = {
@@ -47,11 +48,6 @@ type InterruptedNavigationRouter = {
   ) => () => void
 }
 
-const frameworkNames = {
-  react: 'React',
-  solid: 'Solid',
-  vue: 'Vue',
-} satisfies Record<Framework, string>
 const interruptedNavigationIterations = 150
 const interruptedNavigationPairs = createInterruptedNavigationPairs(
   interruptedNavigationIterations,
@@ -68,14 +64,6 @@ const uninitializedSettlement = () =>
     reason: new Error('interrupted-navigations benchmark is not initialized'),
   })
 
-function warnDevMode(framework: Framework) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn(
-      `memory client benchmark is running without NODE_ENV=production; ${frameworkNames[framework]} dev overhead will dominate results.`,
-    )
-  }
-}
-
 function createInterruptedNavigationPairs(iterations: number) {
   const random = createDeterministicRandom(13)
 
@@ -83,11 +71,6 @@ function createInterruptedNavigationPairs(iterations: number) {
     slowId: `slow-${index}-${randomSegment(random)}`,
     fastId: `fast-${index}-${randomSegment(random)}`,
   }))
-}
-
-async function drainMicrotasks() {
-  await Promise.resolve()
-  await Promise.resolve()
 }
 
 function formatReason(reason: unknown) {
@@ -151,12 +134,12 @@ export function createWorkload(
   resolveSlowLoader: ResolveSlowLoader,
   slowLoaderRegistry: SlowLoaderRegistry,
 ) {
-  warnDevMode(framework)
+  warnClientMemoryDevMode(framework)
 
   let container: HTMLDivElement | undefined = undefined
-  let unmount: (() => void) | undefined = undefined
-  let unsub = () => {}
-  let resolveRendered: () => void = () => {}
+  let unmount = noop
+  let unsub = noop
+  let resolveRendered: () => void = noop
   let expectedRenderedPath: string | undefined = undefined
   let navigateFast: (id: string) => Promise<void> = uninitialized
   let startSlowNavigation: (id: string) => Promise<NavigationSettlement> =
@@ -183,9 +166,7 @@ export function createWorkload(
         assertRenderedPage(page, id)
         return
       } catch {
-        await new Promise<void>((resolve) => {
-          requestAnimationFrame(() => resolve())
-        })
+        await nextAnimationFrame()
       }
     }
 
@@ -217,8 +198,7 @@ export function createWorkload(
       after()
     }
 
-    container = document.createElement('div')
-    document.body.append(container)
+    container = createBenchContainer()
 
     const mounted = mountTestApp(container)
     const router = mounted.router as InterruptedNavigationRouter
@@ -234,7 +214,7 @@ export function createWorkload(
       }
 
       const resolve = resolveRendered
-      resolveRendered = () => {}
+      resolveRendered = noop
       expectedRenderedPath = undefined
       resolve()
     })
@@ -274,14 +254,14 @@ export function createWorkload(
 
   function after() {
     resolveAllSlowLoaders()
-    unmount?.()
-    container?.remove()
+    unmount()
+    removeBenchContainer(container)
     unsub()
 
     container = undefined
-    unmount = undefined
-    unsub = () => {}
-    resolveRendered = () => {}
+    unmount = noop
+    unsub = noop
+    resolveRendered = noop
     expectedRenderedPath = undefined
     navigateFast = uninitialized
     startSlowNavigation = uninitializedSettlement
@@ -291,7 +271,7 @@ export function createWorkload(
   async function interrupt(
     slowId: string,
     fastId: string,
-    assertShape = false,
+    assertSettlement = true,
   ) {
     const slowNavigation = startSlowNavigation(slowId)
 
@@ -306,13 +286,13 @@ export function createWorkload(
     resolveSlowLoader(slowId)
 
     const settlement = await slowNavigation
-    assertSlowNavigationSettlement(settlement)
+
+    if (assertSettlement) {
+      assertSlowNavigationSettlement(settlement)
+    }
+
     await awaitExpectedLoadSettlement(slowLoadPromise)
     await drainMicrotasks()
-
-    if (assertShape) {
-      assertRenderedPage('fast', fastId)
-    }
   }
 
   return {
@@ -329,7 +309,8 @@ export function createWorkload(
 
       try {
         assertRenderedPage('shell')
-        await interrupt('sanity-slow', 'sanity-fast', true)
+        await interrupt('sanity-slow', 'sanity-fast', false)
+        assertRenderedPage('fast', 'sanity-fast')
       } finally {
         after()
       }

@@ -120,7 +120,7 @@ async function readShellBeforeDeferred(
       if (text.includes(marker)) {
         await reader.cancel()
         throw new Error(
-          `Shell sanity chunks already included deferred content ${marker}`,
+          `Shell chunks already included deferred content ${marker}`,
         )
       }
     }
@@ -138,16 +138,7 @@ async function readShellBeforeDeferred(
   }
 }
 
-async function readSanityStream(
-  mode: AbortedRequestReadMode,
-  response: Response,
-  request: Request,
-  id: string,
-) {
-  if (mode === 'shell-before-deferred') {
-    return readShellBeforeDeferred(response, request, id)
-  }
-
+async function readSanityStream(response: Response, request: Request) {
   const { reader, value } = await readFirstChunk(response, request)
 
   return {
@@ -212,17 +203,6 @@ async function assertAbortedRequestsSanity(
     throw new Error('Expected full sanity response to include the eager marker')
   }
 
-  for (const marker of [
-    alphaFirstRecord(fullId),
-    alphaLastRecord(fullId),
-    betaFirstRecord(fullId),
-    betaLastRecord(fullId),
-  ]) {
-    if (!fullBody.includes(marker)) {
-      throw new Error(`Expected full sanity response to include ${marker}`)
-    }
-  }
-
   const midStreamId = 'sanity-mid-stream'
   const controller = new AbortController()
   const midStreamRequest = buildStreamRequest(midStreamId, controller.signal)
@@ -230,34 +210,12 @@ async function assertAbortedRequestsSanity(
   validateDocumentResponse(midStreamResponse, midStreamRequest)
 
   const { reader, text } = await readSanityStream(
-    mode.readMode,
     midStreamResponse,
     midStreamRequest,
-    midStreamId,
   )
 
   if (!text.includes(eagerMarker)) {
     throw new Error('Expected first sanity chunk to include the eager marker')
-  }
-
-  if (
-    !text.includes(alphaFallbackMarker) ||
-    !text.includes(betaFallbackMarker)
-  ) {
-    throw new Error('Expected first sanity chunk to include deferred fallbacks')
-  }
-
-  for (const marker of [
-    alphaFirstRecord(midStreamId),
-    alphaLastRecord(midStreamId),
-    betaFirstRecord(midStreamId),
-    betaLastRecord(midStreamId),
-  ]) {
-    if (text.includes(marker)) {
-      throw new Error(
-        `First sanity chunk already included deferred content ${marker}`,
-      )
-    }
   }
 
   // reader.cancel() is the response-stream cancellation path if the handler

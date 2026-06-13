@@ -3,7 +3,7 @@ import { createApp } from 'vue'
 import { getRouter } from './router'
 import type {} from '@tanstack/router-core'
 
-export { loaderPayloadRecordCount } from './loader-data'
+export { loaderPayloadRecordCount } from '../../loader-data'
 
 export function mountTestApp(container: Element) {
   const router = getRouter()

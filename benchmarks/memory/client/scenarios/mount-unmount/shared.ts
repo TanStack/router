@@ -1,35 +1,18 @@
-type Framework = 'react' | 'solid' | 'vue'
-
-type MountedApp = {
-  router: unknown
-  unmount: () => void
-}
-
-type MountTestApp = (container: HTMLDivElement) => MountedApp
+import {
+  createBenchContainer,
+  drainMicrotasks,
+  noop,
+  removeBenchContainer,
+  warnClientMemoryDevMode,
+} from '#memory-client/lifecycle'
+import type { Framework, MountTestApp } from '#memory-client/lifecycle'
 
 type RenderRouter = {
   load: () => Promise<void>
   subscribe: (event: 'onRendered', listener: () => void) => () => void
 }
 
-const frameworkNames = {
-  react: 'React',
-  solid: 'Solid',
-  vue: 'Vue',
-} satisfies Record<Framework, string>
 const mountUnmountIterations = 100
-
-function warnDevMode(framework: Framework) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn(
-      `memory client benchmark is running without NODE_ENV=production; ${frameworkNames[framework]} dev overhead will dominate results.`,
-    )
-  }
-}
-
-function drainMicrotasks() {
-  return Promise.resolve().then(() => Promise.resolve())
-}
 
 function assertEmptyBody() {
   if (document.body.childNodes.length !== 0) {
@@ -43,14 +26,13 @@ export function createWorkload(
   framework: Framework,
   mountTestApp: MountTestApp,
 ) {
-  warnDevMode(framework)
+  warnClientMemoryDevMode(framework)
 
   async function cycle() {
-    const container = document.createElement('div')
-    document.body.append(container)
+    const container = createBenchContainer()
 
-    let unmount = () => {}
-    let unsubscribe = () => {}
+    let unmount = noop
+    let unsubscribe = noop
 
     try {
       const mounted = mountTestApp(container)
@@ -66,10 +48,10 @@ export function createWorkload(
       await router.load()
       await rendered
       unsubscribe()
-      unsubscribe = () => {}
+      unsubscribe = noop
     } finally {
       unmount()
-      container.remove()
+      removeBenchContainer(container)
       unsubscribe()
       await drainMicrotasks()
     }
@@ -85,7 +67,6 @@ export function createWorkload(
     },
     async sanity() {
       assertEmptyBody()
-      await cycle()
       await cycle()
       assertEmptyBody()
     },

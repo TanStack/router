@@ -2,7 +2,7 @@ import { RouterProvider } from '@tanstack/solid-router'
 import { render } from 'solid-js/web'
 import { getRouter } from './router'
 
-export { loaderPayloadRecordCount } from './loader-data'
+export { loaderPayloadRecordCount } from '../../loader-data'
 
 export function mountTestApp(container: Element) {
   const router = getRouter()

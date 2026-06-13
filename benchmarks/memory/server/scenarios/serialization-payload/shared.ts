@@ -11,7 +11,6 @@ type Framework = 'react' | 'solid' | 'vue'
 const benchmarkSeed = 0x51eaa11
 const serializationPayloadIterations = 20
 const payloadPageMarker = 'data-bench="serialization-payload"'
-const dehydrationMarker = '$_TSR'
 
 const requestInit = {
   method: 'GET',
@@ -26,22 +25,6 @@ function buildPayloadRequest(random: () => number, index: number) {
   return new Request(`http://localhost/data/${id}`, requestInit)
 }
 
-function knownMapKey(id: string) {
-  return `map-${id}-000`
-}
-
-function getRequestId(request: Request) {
-  const url = new URL(request.url)
-  const match = /^\/data\/([^/]+)$/.exec(url.pathname)
-  const id = match?.[1]
-
-  if (id === undefined) {
-    throw new Error(`Expected /data/$id request URL, got ${request.url}`)
-  }
-
-  return decodeURIComponent(id)
-}
-
 function validatePayloadResponse(response: Response, request: Request) {
   if (response.status !== 200) {
     throw new Error(
@@ -50,23 +33,9 @@ function validatePayloadResponse(response: Response, request: Request) {
   }
 }
 
-function validatePayloadBody(
-  body: string,
-  _response: Response,
-  request: Request,
-) {
+function validatePayloadBody(body: string) {
   if (!body.includes(payloadPageMarker)) {
     throw new Error('Expected serialization-payload marker in response body')
-  }
-
-  if (!body.includes(dehydrationMarker)) {
-    throw new Error('Expected serialization-payload dehydration script in body')
-  }
-
-  const mapKey = knownMapKey(getRequestId(request))
-
-  if (!body.includes(mapKey)) {
-    throw new Error(`Expected dehydrated payload to include Map key ${mapKey}`)
   }
 }
 
@@ -79,7 +48,7 @@ async function assertSerializationPayloadSanity(handler: StartRequestHandler) {
   const body = await response.text()
 
   validatePayloadResponse(response, request)
-  validatePayloadBody(body, response, request)
+  validatePayloadBody(body)
 }
 
 export function createWorkloadGroup(

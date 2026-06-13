@@ -1,12 +1,13 @@
-type Framework = 'react' | 'solid' | 'vue'
+import {
+  createBenchContainer,
+  nextAnimationFrame,
+  noop,
+  removeBenchContainer,
+  warnClientMemoryDevMode,
+} from '#memory-client/lifecycle'
+import type { Framework, MountTestApp } from '#memory-client/lifecycle'
+
 type Target = '/a' | '/b'
-
-type MountedApp = {
-  router: unknown
-  unmount: () => void
-}
-
-type MountTestApp = (container: HTMLDivElement) => MountedApp
 
 type NavigationRouter = {
   load: () => Promise<void>
@@ -14,34 +15,21 @@ type NavigationRouter = {
   subscribe: (event: 'onRendered', listener: () => void) => () => void
 }
 
-const frameworkNames = {
-  react: 'React',
-  solid: 'Solid',
-  vue: 'Vue',
-} satisfies Record<Framework, string>
 const navigationChurnIterations = 300
 
 const uninitialized = () =>
   Promise.reject(new Error('navigation-churn benchmark is not initialized'))
 
-function warnDevMode(framework: Framework) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn(
-      `memory client benchmark is running without NODE_ENV=production; ${frameworkNames[framework]} dev overhead will dominate results.`,
-    )
-  }
-}
-
 export function createWorkload(
   framework: Framework,
   mountTestApp: MountTestApp,
 ) {
-  warnDevMode(framework)
+  warnClientMemoryDevMode(framework)
 
   let container: HTMLDivElement | undefined = undefined
-  let unmount: (() => void) | undefined = undefined
-  let unsub = () => {}
-  let resolveRendered: () => void = () => {}
+  let unmount = noop
+  let unsub = noop
+  let resolveRendered: () => void = noop
   let navigateTo: (target: Target) => Promise<void> = uninitialized
 
   function assertRenderedPage(target: Target) {
@@ -61,9 +49,7 @@ export function createWorkload(
         assertRenderedPage(target)
         return
       } catch {
-        await new Promise<void>((resolve) => {
-          requestAnimationFrame(() => resolve())
-        })
+        await nextAnimationFrame()
       }
     }
 
@@ -81,8 +67,7 @@ export function createWorkload(
       after()
     }
 
-    container = document.createElement('div')
-    document.body.append(container)
+    container = createBenchContainer()
 
     const mounted = mountTestApp(container)
     const router = mounted.router as NavigationRouter
@@ -108,14 +93,14 @@ export function createWorkload(
   }
 
   function after() {
-    unmount?.()
-    container?.remove()
+    unmount()
+    removeBenchContainer(container)
     unsub()
 
     container = undefined
-    unmount = undefined
-    unsub = () => {}
-    resolveRendered = () => {}
+    unmount = noop
+    unsub = noop
+    resolveRendered = noop
     navigateTo = uninitialized
   }
 

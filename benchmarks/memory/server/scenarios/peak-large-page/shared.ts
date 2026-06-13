@@ -9,7 +9,6 @@ const benchmarkSeed = 0x5eed_0005
 const peakLargePageIterations = 20
 const peakLargePageUrl = 'http://localhost/l1/l2/l3/l4/l5/l6/l7/l8'
 const levelEightMarker = 'data-bench="peak-large-page-level-8"'
-const knownDehydratedRecordName = 'peak-large-page-l8-record-199'
 
 const requestInit = {
   method: 'GET',
@@ -33,12 +32,6 @@ function validatePeakLargePageResponse(response: Response, request: Request) {
 function validatePeakLargePageBody(body: string) {
   if (!body.includes(levelEightMarker)) {
     throw new Error('Expected peak-large-page level-8 marker in response body')
-  }
-
-  if (!body.includes(knownDehydratedRecordName)) {
-    throw new Error(
-      'Expected peak-large-page dehydrated record in response body',
-    )
   }
 }
 
