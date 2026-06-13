@@ -138,7 +138,16 @@ async function readShellBeforeDeferred(
   }
 }
 
-async function readSanityStream(response: Response, request: Request) {
+async function readSanityStream(
+  response: Response,
+  request: Request,
+  mode: AbortedRequestMode,
+  id: string,
+) {
+  if (mode.readMode === 'shell-before-deferred') {
+    return readShellBeforeDeferred(response, request, id)
+  }
+
   const { reader, value } = await readFirstChunk(response, request)
 
   return {
@@ -212,10 +221,12 @@ async function assertAbortedRequestsSanity(
   const { reader, text } = await readSanityStream(
     midStreamResponse,
     midStreamRequest,
+    mode,
+    midStreamId,
   )
 
   if (!text.includes(eagerMarker)) {
-    throw new Error('Expected first sanity chunk to include the eager marker')
+    throw new Error('Expected sanity stream to include the eager marker')
   }
 
   // reader.cancel() is the response-stream cancellation path if the handler
