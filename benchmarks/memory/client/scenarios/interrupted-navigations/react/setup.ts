@@ -86,10 +86,7 @@ async function awaitExpectedLoadSettlement(loadPromise: Promise<void>) {
   try {
     await loadPromise
   } catch (reason) {
-    if (
-      reasonHasAbortShape(reason) ||
-      reasonHasCancellationShape(reason)
-    ) {
+    if (reasonHasAbortShape(reason) || reasonHasCancellationShape(reason)) {
       return
     }
 
