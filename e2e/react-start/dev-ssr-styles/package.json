@@ -44,7 +44,7 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "nitro": "^3.0.260311-beta",
+    "nitro": "^3.0.260603-beta",
     "srvx": "^0.11.9",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
