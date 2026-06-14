@@ -1,6 +1,7 @@
 import {
   createStartHandler,
   defaultStreamHandler,
+  handleStartError,
 } from '@tanstack/solid-start/server'
 import type { Register } from '@tanstack/solid-router'
 import type { RequestHandler } from '@tanstack/solid-start/server'
@@ -13,7 +14,11 @@ export type ServerEntry = { fetch: RequestHandler<Register> }
 export function createServerEntry(entry: ServerEntry): ServerEntry {
   return {
     async fetch(...args) {
-      return await entry.fetch(...args)
+      try {
+        return await entry.fetch(...args)
+      } catch (error) {
+        return handleStartError(error)
+      }
     },
   }
 }

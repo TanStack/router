@@ -25,9 +25,12 @@ import {
   getStartContext,
   runWithStartContext,
 } from '@tanstack/start-storage-context'
-import { requestHandler } from './request-response'
+import { reconcileResponse, requestHandler } from './internal-request-response'
 import { getStartManifest } from './router-manifest'
-import { handleServerAction } from './server-functions-handler'
+import {
+  createServerFnErrorResponse,
+  handleServerAction,
+} from './server-functions-handler'
 import { createEarlyHintsCollector } from './early-hints'
 import {
   createCachedBaseManifestLoader,
@@ -47,6 +50,7 @@ import type {
 } from '@tanstack/start-client-core'
 import type { RequestHandler } from './request-handler'
 import type {
+  AnyRedirect,
   AnyRoute,
   AnyRouter,
   AnySerializationAdapter,
@@ -69,16 +73,15 @@ export interface CreateStartHandlerOptions extends FinalManifestOptions {
   handler: HandlerCallback<AnyRouter>
 }
 
-function getStartResponseHeaders(opts: { router: AnyRouter }) {
-  const headers = mergeHeaders(
+function getStartResponseHeaders(router: AnyRouter) {
+  return mergeHeaders(
     {
       'Content-Type': 'text/html; charset=utf-8',
     },
-    ...opts.router.stores.matches.get().map((match) => {
+    ...router.stores.matches.get().map((match) => {
       return match.headers
     }),
   )
-  return headers
 }
 
 interface PluginAdaptersEntry {
@@ -141,7 +144,9 @@ function hasCsrfMiddleware(
 }
 
 function warnMissingCsrfMiddlewareOnce() {
-  if (hasWarnedMissingCsrfMiddleware) return
+  if (hasWarnedMissingCsrfMiddleware) {
+    return
+  }
   hasWarnedMissingCsrfMiddleware = true
 
   console.warn(`TanStack Start server functions are not protected by the CSRF middleware.
@@ -199,22 +204,12 @@ function isSpecialResponse(value: unknown): value is Response {
 }
 
 /**
- * Normalize middleware result to context shape
- */
-function handleCtxResult(result: TODO) {
-  if (isSsrResponse(result) || isSpecialResponse(result)) {
-    return { response: result }
-  }
-  return result
-}
-
-/**
  * Execute a middleware chain
  */
 async function executeMiddleware(
   middlewares: Array<TODO>,
   ctx: TODO,
-): Promise<{ ctx: TODO; response: HandlerCallbackResult }> {
+): Promise<HandlerCallbackResult> {
   let index = -1
   let streamResponse:
     | Extract<SsrResponse, { serverSsrCleanup: 'stream' }>
@@ -225,11 +220,12 @@ async function executeMiddleware(
       if (response.serverSsrCleanup === 'stream') {
         streamResponse = response
       }
-      ctx.response = response.response
+      ctx.response = reconcileResponse(response.response)
       return
     }
 
-    ctx.response = response
+    ctx.response =
+      response instanceof Response ? reconcileResponse(response) : response
   }
 
   const disposeStreamResponse = async (reason: string) => {
@@ -252,9 +248,14 @@ async function executeMiddleware(
   }
 
   const getFinalResponse = async (): Promise<HandlerCallbackResult> => {
-    const response = ctx.response
+    let response = ctx.response
     if (!response) {
       throwRouteHandlerError()
+    }
+
+    if (response instanceof Response) {
+      response = reconcileResponse(response)
+      ctx.response = response
     }
 
     if (!streamResponse) {
@@ -294,7 +295,9 @@ async function executeMiddleware(
 
     index++
     const middleware = middlewares[index]
-    if (!middleware) return ctx
+    if (!middleware) {
+      return ctx
+    }
 
     let result: TODO
     try {
@@ -308,7 +311,10 @@ async function executeMiddleware(
       throw err
     }
 
-    const normalized = handleCtxResult(result)
+    const normalized =
+      isSsrResponse(result) || isSpecialResponse(result)
+        ? { response: result }
+        : result
     if (normalized) {
       if (normalized.response !== undefined) {
         setResponse(normalized.response)
@@ -321,8 +327,13 @@ async function executeMiddleware(
     return ctx
   }
 
-  await next()
-  return { ctx, response: await getFinalResponse() }
+  try {
+    await next()
+    return await getFinalResponse()
+  } catch (error) {
+    await disposeStreamResponse('middleware error')
+    throw error
+  }
 }
 
 /**
@@ -400,8 +411,8 @@ export function createStartHandler<TRegister = Register>(
     request,
     requestOpts,
   ) => {
-    let router: AnyRouter | null = null as AnyRouter | null
-    let responseOwnsCleanup = false as boolean
+    let router: AnyRouter | undefined
+    let responseOwnsCleanup = false
 
     try {
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
@@ -447,10 +458,15 @@ export function createStartHandler<TRegister = Register>(
       const executedRequestMiddlewares = new Set<TODO>(
         flattenedRequestMiddlewares,
       )
+      const requestMiddlewares = flattenedRequestMiddlewares.map(
+        (d) => d.options.server,
+      )
 
       // Memoized router getter
       const getRouter = async (): Promise<AnyRouter> => {
-        if (router) return router
+        if (router) {
+          return router
+        }
 
         router = await entries.routerEntry.getRouter()
 
@@ -481,6 +497,24 @@ export function createStartHandler<TRegister = Register>(
         return router
       }
 
+      const runStartContext = <TResult>(
+        handlerType: 'router' | 'serverFn',
+        context: TODO,
+        fn: () => TResult | Promise<TResult>,
+      ) => {
+        return runWithStartContext(
+          {
+            getRouter,
+            startOptions: requestStartOptions,
+            contextAfterGlobalMiddlewares: context,
+            request,
+            executedRequestMiddlewares,
+            handlerType,
+          },
+          fn,
+        )
+      }
+
       // Check for server function requests first (early exit)
       if (SERVER_FN_BASE && url.pathname.startsWith(SERVER_FN_BASE)) {
         if (
@@ -499,37 +533,41 @@ export function createStartHandler<TRegister = Register>(
           throw new Error('Invalid server action param for serverFnId')
         }
 
+        const middlewareCtx = {
+          request,
+          pathname: url.pathname,
+          handlerType: 'serverFn',
+          context: createNullProtoObject(requestOpts?.context),
+        }
+
         const serverFnHandler = async ({ context }: TODO) => {
-          return runWithStartContext(
-            {
-              getRouter,
-              startOptions: requestStartOptions,
-              contextAfterGlobalMiddlewares: context,
+          return runStartContext('serverFn', context, () =>
+            handleServerAction({
               request,
-              executedRequestMiddlewares,
-              handlerType: 'serverFn',
-            },
-            () =>
-              handleServerAction({
-                request,
-                context: requestOpts?.context,
-                serverFnId,
-              }),
+              context,
+              serverFnId,
+            }),
           )
         }
 
-        const middlewares = flattenedRequestMiddlewares.map(
-          (d) => d.options.server,
-        )
-        const { response: middlewareResponse } = await executeMiddleware(
-          [...middlewares, serverFnHandler],
-          {
-            request,
-            pathname: url.pathname,
-            handlerType: 'serverFn',
-            context: createNullProtoObject(requestOpts?.context),
-          },
-        )
+        const handleServerFnMiddlewareError = async (
+          error: unknown,
+        ): Promise<HandlerCallbackResult> => {
+          return runStartContext('serverFn', middlewareCtx.context, () =>
+            createServerFnErrorResponse(error),
+          )
+        }
+
+        let middlewareResponse: HandlerCallbackResult
+        try {
+          middlewareResponse = await executeMiddleware(
+            [...requestMiddlewares, serverFnHandler],
+            middlewareCtx,
+          )
+        } catch (error) {
+          // Request middleware can throw before serverFnHandler runs.
+          middlewareResponse = await handleServerFnMiddlewareError(error)
+        }
 
         const result = await handleRedirectResponse(
           middlewareResponse,
@@ -601,9 +639,7 @@ export function createStartHandler<TRegister = Register>(
           requestAssets: ctx?.requestAssets,
         })
 
-        const responseHeaders = getStartResponseHeaders({
-          router: routerInstance,
-        })
+        const responseHeaders = getStartResponseHeaders(routerInstance)
         earlyHints?.appendResponseHeaders(responseHeaders)
         const response = await cb({
           request,
@@ -615,40 +651,20 @@ export function createStartHandler<TRegister = Register>(
 
       // Main request handler
       const requestHandlerMiddleware = async ({ context }: TODO) => {
-        return runWithStartContext(
-          {
+        return runStartContext('router', context, () =>
+          handleServerRoutes({
             getRouter,
-            startOptions: requestStartOptions,
-            contextAfterGlobalMiddlewares: context,
             request,
+            url,
+            executeRouter,
+            context,
             executedRequestMiddlewares,
-            handlerType: 'router',
-          },
-          async () => {
-            try {
-              return await handleServerRoutes({
-                getRouter,
-                request,
-                url,
-                executeRouter,
-                context,
-                executedRequestMiddlewares,
-              })
-            } catch (err) {
-              if (err instanceof Response) {
-                return err
-              }
-              throw err
-            }
-          },
+          }),
         )
       }
 
-      const middlewares = flattenedRequestMiddlewares.map(
-        (d) => d.options.server,
-      )
-      const { response: middlewareResponse } = await executeMiddleware(
-        [...middlewares, requestHandlerMiddleware],
+      const middlewareResponse = await executeMiddleware(
+        [...requestMiddlewares, requestHandlerMiddleware],
         {
           request,
           pathname: url.pathname,
@@ -671,7 +687,7 @@ export function createStartHandler<TRegister = Register>(
         // Transformed streaming response bodies clean up when consumed/cancelled.
         router.serverSsr.cleanup()
       }
-      router = null
+      router = undefined
     }
   }
 
@@ -687,55 +703,51 @@ async function handleRedirectResponse(
   if (!isRedirect(ssrResponse.response)) {
     return ssrResponse
   }
+  const redirectResponse: AnyRedirect = ssrResponse.response
+  const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'
+  const serializeServerFnRedirect = () => {
+    return replaceSsrResponse(
+      ssrResponse,
+      Response.json(
+        { ...redirectResponse.options, isSerializedRedirect: true },
+        { headers: redirectResponse.headers },
+      ),
+      'redirect response replaced',
+    )
+  }
 
-  if (isResolvedRedirect(ssrResponse.response)) {
-    if (request.headers.get('x-tsr-serverFn') === 'true') {
-      return replaceSsrResponse(
-        ssrResponse,
-        Response.json(
-          { ...ssrResponse.response.options, isSerializedRedirect: true },
-          { headers: ssrResponse.response.headers },
-        ),
-        'redirect response replaced',
-      )
+  if (isResolvedRedirect(redirectResponse)) {
+    if (isServerFn) {
+      return serializeServerFnRedirect()
     }
     return ssrResponse
   }
 
-  const opts = ssrResponse.response.options
+  const opts = redirectResponse.options
   if (opts.to && typeof opts.to === 'string' && !opts.to.startsWith('/')) {
     throw new Error(
       `Server side redirects must use absolute paths via the 'href' or 'to' options. The redirect() method's "to" property accepts an internal path only. Use the "href" property to provide an external URL. Received: ${JSON.stringify(opts)}`,
     )
   }
 
-  if (
-    ['params', 'search', 'hash'].some(
-      (d) => typeof (opts as TODO)[d] === 'function',
-    )
-  ) {
+  const functionalRedirectOptionNames = (
+    ['params', 'search', 'hash'] as const
+  ).filter((key) => typeof opts[key] === 'function')
+
+  if (functionalRedirectOptionNames.length) {
     throw new Error(
-      `Server side redirects must use static search, params, and hash values and do not support functional values. Received functional values for: ${Object.keys(
-        opts,
-      )
-        .filter((d) => typeof (opts as TODO)[d] === 'function')
+      `Server side redirects must use static search, params, and hash values and do not support functional values. Received functional values for: ${functionalRedirectOptionNames
         .map((d) => `"${d}"`)
         .join(', ')}`,
     )
   }
 
   const router = await getRouter()
-  const redirect = router.resolveRedirect(ssrResponse.response)
+  // resolveRedirect mutates redirectResponse so serverFn serialization includes href/Location.
+  const redirect = router.resolveRedirect(redirectResponse)
 
-  if (request.headers.get('x-tsr-serverFn') === 'true') {
-    return replaceSsrResponse(
-      ssrResponse,
-      Response.json(
-        { ...ssrResponse.response.options, isSerializedRedirect: true },
-        { headers: ssrResponse.response.headers },
-      ),
-      'redirect response replaced',
-    )
+  if (isServerFn) {
+    return serializeServerFnRedirect()
   }
 
   return replaceSsrResponse(ssrResponse, redirect, 'redirect response replaced')
@@ -768,7 +780,7 @@ async function handleServerRoutes({
   const { matchedRoutes, foundRoute, routeParams } =
     router.getMatchedRoutes(pathname)
 
-  const isExactMatch = foundRoute && routeParams['**'] === undefined
+  const isExactMatch = !!foundRoute && routeParams['**'] === undefined
 
   // Collect and dedupe route middlewares
   const routeMiddlewares: Array<AnyMiddlewareServerFn> = []
@@ -805,8 +817,7 @@ async function handleServerRoutes({
       requestMethod === 'HEAD'
         ? (handlers['HEAD'] ?? handlers['GET'] ?? handlers['ANY'])
         : (handlers[requestMethod] ?? handlers['ANY'])
-    isHeadFallback =
-      requestMethod === 'HEAD' && handler !== undefined && !handlers['HEAD']
+    isHeadFallback = requestMethod === 'HEAD' && !!handler && !handlers['HEAD']
 
     if (handler) {
       const mayDefer = !!foundRoute.options.component
@@ -831,7 +842,7 @@ async function handleServerRoutes({
   routeMiddlewares.push(((ctx: TODO) =>
     executeRouter(ctx.context, matchedRoutes)) as TODO)
 
-  const { ctx, response } = await executeMiddleware(routeMiddlewares, {
+  const response = await executeMiddleware(routeMiddlewares, {
     request,
     context,
     params: routeParams,
@@ -841,11 +852,11 @@ async function handleServerRoutes({
 
   // RFC 9110 §9.3.2: HEAD must carry the same header fields as GET but no body.
   // Resolve any redirect before stripping so the Location header survives.
+  // Keep this SsrResponse-aware strip here instead of relying only on final
+  // reconciliation. At this point we still have stream ownership metadata, so
+  // stripSsrResponseBody can dispose SSR streams when HEAD falls back to GET/ANY.
+  // Generic reconciliation still handles plain Response body dropping later.
   if (isHeadFallback) {
-    if (!ctx.response) {
-      throwRouteHandlerError()
-    }
-
     const resolved = await handleRedirectResponse(response, request, getRouter)
     return stripSsrResponseBody(resolved, 'HEAD body stripped')
   }

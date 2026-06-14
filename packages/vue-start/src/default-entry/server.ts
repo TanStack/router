@@ -1,6 +1,7 @@
 import {
   createStartHandler,
   defaultStreamHandler,
+  handleStartError,
 } from '@tanstack/vue-start/server'
 import type { Register } from '@tanstack/vue-router'
 import type { RequestHandler } from '@tanstack/vue-start/server'
@@ -13,7 +14,11 @@ export type ServerEntry = { fetch: RequestHandler<Register> }
 export function createServerEntry(entry: ServerEntry): ServerEntry {
   return {
     async fetch(...args) {
-      return await entry.fetch(...args)
+      try {
+        return await entry.fetch(...args)
+      } catch (error) {
+        return handleStartError(error)
+      }
     },
   }
 }
