@@ -6,11 +6,15 @@ import {
   stripSearchParams,
 } from '@tanstack/react-router'
 import {
-  DEFAULT_FLAGS,
   buildCompareSearch,
   buildProductsSearch,
   computeSearchChecksum,
+  defaultShopSearchStrip,
+  selectShopPrimitiveSearch,
+  selectShopSearch,
   shopSubscriberIds,
+  tenantSearchKeys,
+  transientSearchKeys,
   validateShopSearch,
   type ShopSearchSchema,
 } from '../../../shared'
@@ -19,9 +23,9 @@ export const Route = createFileRoute('/shop')({
   validateSearch: validateShopSearch,
   search: {
     middlewares: [
-      retainSearchParams<ShopSearchSchema>(['tenant']),
-      stripSearchParams<ShopSearchSchema>(['debug', 'junk']),
-      stripSearchParams<ShopSearchSchema>({ flags: DEFAULT_FLAGS }),
+      retainSearchParams<ShopSearchSchema>(tenantSearchKeys),
+      stripSearchParams<ShopSearchSchema>(transientSearchKeys),
+      stripSearchParams<ShopSearchSchema>(defaultShopSearchStrip),
     ],
   },
   component: ShopLayout,
@@ -29,15 +33,7 @@ export const Route = createFileRoute('/shop')({
 
 function ShopSearchSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => {
-      const typedSearch = search as ShopSearchSchema
-
-      return {
-        tenant: typedSearch.tenant,
-        locale: typedSearch.locale,
-        flags: typedSearch.flags,
-      }
-    },
+    select: selectShopSearch,
     structuralSharing: true,
   })
 
@@ -47,7 +43,7 @@ function ShopSearchSubscriber() {
 
 function ShopPrimitiveSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => `${search.tenant}:${search.locale}`,
+    select: selectShopPrimitiveSearch,
   })
 
   void computeSearchChecksum(selected)

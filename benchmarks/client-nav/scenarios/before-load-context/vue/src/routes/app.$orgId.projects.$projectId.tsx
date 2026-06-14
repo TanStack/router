@@ -1,7 +1,11 @@
 import * as Vue from 'vue'
 import { Outlet, createFileRoute } from '@tanstack/vue-router'
-import { deriveProjectContext, runContextComputation } from '../../../shared'
-import { consumeSelectedValue, middleSubscribers } from '../runtime'
+import {
+  consumeSelectedValue,
+  deriveProjectContext,
+  middleSubscribers,
+  runContextComputation,
+} from '../../../shared'
 
 const ProjectContextSubscriber = Vue.defineComponent({
   props: {

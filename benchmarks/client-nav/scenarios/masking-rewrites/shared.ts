@@ -84,6 +84,22 @@ const linkKinds = [
   'team-project',
 ] as const satisfies ReadonlyArray<LinkKind>
 
+export const MASKING_ROUTE_PATHS = {
+  photos: '/photos',
+  photoDetail: '/photos/$photoId',
+  photoModal: '/photos/$photoId/modal',
+  settingsProfile: '/settings/profile',
+  teamProject: '/teams/$teamId/projects/$projectId',
+} as const
+
+export const MASKING_ROUTE_MARKERS = {
+  photos: 'photos',
+  photoDetail: 'photo-detail',
+  photoModal: 'photo-modal',
+  settingsProfile: 'settings-profile',
+  teamProject: 'team-project',
+} as const
+
 export const routerBasepath = '/app'
 export const publicLocale = 'en'
 export const publicLocalePrefix = `/${publicLocale}`
@@ -93,6 +109,15 @@ export const navigationStepsPerCycle = 8
 export const navigationCyclesPerRun = 2
 export const navigationsPerBenchRun =
   navigationStepsPerCycle * navigationCyclesPerRun
+
+export const photoModalMaskOptions = {
+  from: MASKING_ROUTE_PATHS.photoModal,
+  to: MASKING_ROUTE_PATHS.photoDetail,
+  params: true,
+  search: { page: 1, filter: 'masked', layout: 'detail' },
+  state: { scenario: 'masking-rewrites', mask: 'photo-modal' } as any,
+  unmaskOnReload: true,
+} as const
 
 function createSegments(prefix: string, count: number) {
   const values: Array<string> = []
@@ -191,22 +216,31 @@ export function createActionSearch(
 }
 
 export function internalPhotosPath(trailingSlash = false) {
-  return withOptionalTrailingSlash('/photos', trailingSlash)
+  return withOptionalTrailingSlash(MASKING_ROUTE_PATHS.photos, trailingSlash)
 }
 
 export function internalPhotoDetailPath(
   photoId: string,
   trailingSlash = false,
 ) {
-  return withOptionalTrailingSlash(`/photos/${photoId}`, trailingSlash)
+  return withOptionalTrailingSlash(
+    MASKING_ROUTE_PATHS.photoDetail.replace('$photoId', photoId),
+    trailingSlash,
+  )
 }
 
 export function internalPhotoModalPath(photoId: string, trailingSlash = false) {
-  return withOptionalTrailingSlash(`/photos/${photoId}/modal`, trailingSlash)
+  return withOptionalTrailingSlash(
+    MASKING_ROUTE_PATHS.photoModal.replace('$photoId', photoId),
+    trailingSlash,
+  )
 }
 
 export function internalSettingsProfilePath(trailingSlash = false) {
-  return withOptionalTrailingSlash('/settings/profile', trailingSlash)
+  return withOptionalTrailingSlash(
+    MASKING_ROUTE_PATHS.settingsProfile,
+    trailingSlash,
+  )
 }
 
 export function internalTeamProjectPath(
@@ -215,7 +249,9 @@ export function internalTeamProjectPath(
   trailingSlash = false,
 ) {
   return withOptionalTrailingSlash(
-    `/teams/${teamId}/projects/${projectId}`,
+    MASKING_ROUTE_PATHS.teamProject
+      .replace('$teamId', teamId)
+      .replace('$projectId', projectId),
     trailingSlash,
   )
 }
@@ -331,7 +367,7 @@ function isLegacySettingsPath(pathname: string) {
 }
 
 function isInternalSettingsProfilePath(pathname: string) {
-  return trimTrailingSlash(pathname) === '/settings/profile'
+  return trimTrailingSlash(pathname) === MASKING_ROUTE_PATHS.settingsProfile
 }
 
 export function createMaskingRewrite(): LocationRewrite {
@@ -341,7 +377,7 @@ export function createMaskingRewrite(): LocationRewrite {
 
       if (isLegacySettingsPath(nextUrl.pathname)) {
         nextUrl.pathname = withOptionalTrailingSlash(
-          '/settings/profile',
+          MASKING_ROUTE_PATHS.settingsProfile,
           nextUrl.pathname.endsWith('/'),
         )
         return nextUrl
@@ -495,7 +531,7 @@ export function createLinkOptions(descriptor: LinkDescriptor) {
   if (descriptor.kind === 'photo-detail') {
     return {
       ...baseOptions,
-      to: '/photos/$photoId',
+      to: MASKING_ROUTE_PATHS.photoDetail,
       params: { photoId: descriptor.photoId },
       search: createDescriptorSearch(descriptor),
     }
@@ -504,7 +540,7 @@ export function createLinkOptions(descriptor: LinkDescriptor) {
   if (descriptor.kind === 'auto-masked-modal') {
     return {
       ...baseOptions,
-      to: '/photos/$photoId/modal',
+      to: MASKING_ROUTE_PATHS.photoModal,
       params: { photoId: descriptor.photoId },
       search: createDescriptorSearch(descriptor),
     }
@@ -513,11 +549,11 @@ export function createLinkOptions(descriptor: LinkDescriptor) {
   if (descriptor.kind === 'explicit-masked-modal') {
     return {
       ...baseOptions,
-      to: '/photos/$photoId/modal',
+      to: MASKING_ROUTE_PATHS.photoModal,
       params: { photoId: descriptor.photoId },
       search: createDescriptorSearch(descriptor),
       mask: {
-        to: '/photos/$photoId',
+        to: MASKING_ROUTE_PATHS.photoDetail,
         params: { photoId: descriptor.photoId },
         search: {
           ...createDescriptorSearch(descriptor),
@@ -536,11 +572,11 @@ export function createLinkOptions(descriptor: LinkDescriptor) {
   if (descriptor.kind === 'unmasked-modal') {
     return {
       ...baseOptions,
-      to: '/photos/$photoId/modal',
+      to: MASKING_ROUTE_PATHS.photoModal,
       params: { photoId: descriptor.photoId },
       search: createDescriptorSearch(descriptor),
       mask: {
-        to: '/photos/$photoId/modal',
+        to: MASKING_ROUTE_PATHS.photoModal,
         params: { photoId: descriptor.photoId },
         search: createDescriptorSearch(descriptor),
         state: {
@@ -555,20 +591,34 @@ export function createLinkOptions(descriptor: LinkDescriptor) {
   if (descriptor.kind === 'legacy-settings') {
     return {
       ...baseOptions,
-      to: '/settings/profile',
+      to: MASKING_ROUTE_PATHS.settingsProfile,
       search: createDescriptorSearch(descriptor),
     }
   }
 
   return {
     ...baseOptions,
-    to: '/teams/$teamId/projects/$projectId',
+    to: MASKING_ROUTE_PATHS.teamProject,
     params: {
       teamId: descriptor.teamId,
       projectId: descriptor.projectId,
     },
     search: createDescriptorSearch(descriptor),
     hash: descriptor.hash,
+  }
+}
+
+export function createMaskingLinkActiveOptions(descriptor: LinkDescriptor) {
+  return { includeSearch: descriptor.kind !== 'team-project' }
+}
+
+export function createBuildLocationOptions(
+  fromLocation: unknown,
+  descriptor: LinkDescriptor,
+) {
+  return {
+    _fromLocation: fromLocation,
+    ...createLinkOptions(descriptor),
   }
 }
 
@@ -624,7 +674,7 @@ function createNavigationCycle(cycle: number): Array<NavigationStep> {
       kind: 'navigate',
       label: `auto-masked-modal-${cycle}`,
       options: {
-        to: '/photos/$photoId/modal',
+        to: MASKING_ROUTE_PATHS.photoModal,
         params: { photoId: firstPhotoId },
         search: createActionSearch(cycle, 'auto-mask'),
         replace: true,
@@ -636,7 +686,7 @@ function createNavigationCycle(cycle: number): Array<NavigationStep> {
       kind: 'navigate',
       label: `auto-masked-modal-next-${cycle}`,
       options: {
-        to: '/photos/$photoId/modal',
+        to: MASKING_ROUTE_PATHS.photoModal,
         params: { photoId: secondPhotoId },
         search: createActionSearch(cycle, 'auto-mask-next'),
         replace: true,
@@ -648,11 +698,11 @@ function createNavigationCycle(cycle: number): Array<NavigationStep> {
       kind: 'navigate',
       label: `unmasked-modal-${cycle}`,
       options: {
-        to: '/photos/$photoId/modal',
+        to: MASKING_ROUTE_PATHS.photoModal,
         params: { photoId: unmaskedPhotoId },
         search: createActionSearch(cycle, 'visible-modal'),
         mask: {
-          to: '/photos/$photoId/modal',
+          to: MASKING_ROUTE_PATHS.photoModal,
           params: { photoId: unmaskedPhotoId },
           search: createActionSearch(cycle, 'visible-modal-mask'),
           state: {
@@ -960,7 +1010,7 @@ export function createMaskingRewritesWorkload(
         '[data-built-visible-href]',
         buildLocationExpectedCount,
       )
-      assertRouteMarker(container, { route: 'photos' })
+      assertRouteMarker(container, { route: MASKING_ROUTE_MARKERS.photos })
       assertPublicInternalDifference(
         router.state.location as unknown as BuiltLocationSnapshot,
         internalPhotosPath(),
@@ -969,7 +1019,7 @@ export function createMaskingRewritesWorkload(
       assertBuiltHrefTransforms(container)
 
       const builtMaskedLocation = router.buildLocation({
-        to: '/photos/$photoId/modal',
+        to: MASKING_ROUTE_PATHS.photoModal,
         params: { photoId: firstMaskedPhotoId },
         replace: true,
       } as never) as unknown as BuiltLocationSnapshot
@@ -986,7 +1036,7 @@ export function createMaskingRewritesWorkload(
 
       await lifecycle.navigate(
         {
-          to: '/photos/$photoId/modal',
+          to: MASKING_ROUTE_PATHS.photoModal,
           params: { photoId: firstMaskedPhotoId },
           search: createActionSearch(0, 'sanity-mask'),
           replace: true,
@@ -996,7 +1046,7 @@ export function createMaskingRewritesWorkload(
         { wait: 'rendered', label: 'sanity masked modal' },
       )
       assertRouteMarker(container, {
-        route: 'photo-modal',
+        route: MASKING_ROUTE_MARKERS.photoModal,
         photoId: firstMaskedPhotoId,
       })
       assertPublicInternalDifference(
@@ -1019,7 +1069,9 @@ export function createMaskingRewritesWorkload(
         } as NavigateOptions,
         { wait: 'rendered', label: 'sanity legacy settings' },
       )
-      assertRouteMarker(container, { route: 'settings-profile' })
+      assertRouteMarker(container, {
+        route: MASKING_ROUTE_MARKERS.settingsProfile,
+      })
       assertPublicInternalDifference(
         router.state.location as unknown as BuiltLocationSnapshot,
         internalSettingsProfilePath(),
@@ -1031,7 +1083,7 @@ export function createMaskingRewritesWorkload(
         label: 'sanity team project link',
       })
       assertRouteMarker(container, {
-        route: 'team-project',
+        route: MASKING_ROUTE_MARKERS.teamProject,
         teamId: teamDescriptor.teamId,
         projectId: teamDescriptor.projectId,
       })
@@ -1048,7 +1100,9 @@ export function createMaskingRewritesWorkload(
       )
 
       await runSteps(navigationStepsPerCycle)
-      assertRouteMarker(container, { route: 'photo-detail' })
+      assertRouteMarker(container, {
+        route: MASKING_ROUTE_MARKERS.photoDetail,
+      })
     } finally {
       await lifecycle.after()
     }

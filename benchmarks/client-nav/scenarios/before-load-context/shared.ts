@@ -89,6 +89,10 @@ const beforeLoadLevels: Array<BeforeLoadLevel> = [
   'task',
 ]
 
+export const rootSubscribers = Array.from({ length: 4 }, (_, index) => index)
+export const middleSubscribers = Array.from({ length: 5 }, (_, index) => index)
+export const leafSubscribers = Array.from({ length: 6 }, (_, index) => index)
+
 const rootSeed = 0x51f15e
 const actionSeed = 0xbef05eed
 
@@ -188,6 +192,10 @@ export function runContextComputation(
   }
 
   return value >>> 0
+}
+
+export function consumeSelectedValue(value: number, label: string) {
+  return runContextComputation(value, label, 12)
 }
 
 export function deriveTenantContext(

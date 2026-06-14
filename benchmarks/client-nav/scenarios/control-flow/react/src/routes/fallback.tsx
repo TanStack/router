@@ -1,11 +1,11 @@
 import { createRoute } from '@tanstack/react-router'
-import { UNMATCHED_MARKER } from '../../../shared'
+import { CONTROL_FLOW_PATHS, UNMATCHED_MARKER } from '../../../shared'
 import { ControlFlowMarker } from '../control-flow'
 import { rootRoute } from './__root'
 
 export const fallbackRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/flow/$',
+  path: CONTROL_FLOW_PATHS.fallback,
   component: FallbackPage,
 })
 

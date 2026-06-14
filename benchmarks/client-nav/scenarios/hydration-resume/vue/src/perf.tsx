@@ -1,10 +1,12 @@
 import * as Vue from 'vue'
 import {
+  createDeferredResolvedMarkerAttributes,
+  hydrationResumeSubscriberSlots,
   runHydrationResumeComputation,
   type HydrationResumeDeferredPayload,
 } from '../../shared.ts'
 
-export const subscriberSlots = Array.from({ length: 4 }, (_, index) => index)
+export const subscriberSlots = hydrationResumeSubscriberSlots
 
 export const PerfSubscriber = Vue.defineComponent({
   props: {
@@ -38,10 +40,10 @@ export const DeferredResolved = Vue.defineComponent({
 
       return (
         <div
-          data-hydration-resume-marker="deferred-resolved"
-          data-item-id={props.payload.itemId}
-          data-source={props.source}
-          data-value={props.payload.value}
+          {...createDeferredResolvedMarkerAttributes(
+            props.payload,
+            props.source,
+          )}
         />
       )
     }

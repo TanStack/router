@@ -1,7 +1,12 @@
 import { For } from 'solid-js'
 import { Outlet, createFileRoute } from '@tanstack/solid-router'
-import { deriveTenantContext, runContextComputation } from '../../../shared'
-import { PerfValue, consumeSelectedValue, middleSubscribers } from '../runtime'
+import {
+  consumeSelectedValue,
+  deriveTenantContext,
+  middleSubscribers,
+  runContextComputation,
+} from '../../../shared'
+import { PerfValue } from '../runtime'
 
 export const Route = createFileRoute('/app')({
   beforeLoad: ({ context }) => deriveTenantContext(context),

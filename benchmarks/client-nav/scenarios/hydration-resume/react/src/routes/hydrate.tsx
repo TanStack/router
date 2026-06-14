@@ -1,5 +1,10 @@
 import { Outlet, createRoute } from '@tanstack/react-router'
-import { buildHydrateLoaderData } from '../../../shared.ts'
+import {
+  buildHydrateLoaderData,
+  createHydrateSectionAttributes,
+  hydrationResumeRouteGcTime,
+  hydrationResumeRouteStaleTime,
+} from '../../../shared.ts'
 import { PerfSubscriber, subscriberSlots } from '../perf'
 import { hydrationResumeRuntime } from '../runtime'
 import { rootRoute } from './__root'
@@ -15,8 +20,8 @@ export const hydrateRoute = createRoute({
       sequence,
     )
   },
-  staleTime: Infinity,
-  gcTime: Infinity,
+  staleTime: hydrationResumeRouteStaleTime,
+  gcTime: hydrationResumeRouteGcTime,
   component: HydrateLayout,
 })
 
@@ -31,11 +36,7 @@ function HydrateLayout() {
           seed={loaderData.checksum + slot}
         />
       ))}
-      <div
-        data-hydration-resume-section="hydrate"
-        data-fixture-id={loaderData.fixtureId}
-        data-source={loaderData.source}
-      />
+      <div {...createHydrateSectionAttributes(loaderData)} />
       <Outlet />
     </>
   )

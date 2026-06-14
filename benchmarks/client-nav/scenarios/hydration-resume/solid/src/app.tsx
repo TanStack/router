@@ -2,7 +2,7 @@ import { render } from 'solid-js/web'
 import { RouterProvider } from '@tanstack/solid-router'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import {
-  createDashboardHydrationFixture,
+  createStandaloneHydrationFixture,
   seedHydrationResumeSsrGlobal,
   type HydrationResumeFixture,
 } from '../../shared.ts'
@@ -57,7 +57,7 @@ export async function mountHydratedTestApp(
 }
 
 export function mountTestApp(container: Element) {
-  const fixture = createDashboardHydrationFixture(0)
+  const fixture = createStandaloneHydrationFixture()
   hydrationResumeRuntime.startCycle(fixture)
 
   const router = getRouter()

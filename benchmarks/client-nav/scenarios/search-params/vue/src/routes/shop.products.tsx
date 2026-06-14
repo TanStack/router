@@ -6,8 +6,18 @@ import {
   stripSearchParams,
 } from '@tanstack/vue-router'
 import {
+  createProductsLoaderData,
+  createProductsLoaderDeps,
   computeSearchChecksum,
+  defaultProductsSearchStrip,
+  formatProductsMarker,
   routeSubscriberIds,
+  selectProductsLoaderData,
+  selectProductsLoaderDeps,
+  selectProductsPrimitiveSearch,
+  selectProductsSearch,
+  tenantSearchKeys,
+  transientSearchKeys,
   validateProductsSearch,
   type ProductsSearch,
 } from '../../../shared'
@@ -15,10 +25,7 @@ import {
 const ProductsSearchSubscriber = Vue.defineComponent({
   setup() {
     const selected = Route.useSearch({
-      select: (search) => ({
-        filters: search.filters,
-        flags: search.flags,
-      }),
+      select: selectProductsSearch,
     })
 
     return () => {
@@ -31,11 +38,7 @@ const ProductsSearchSubscriber = Vue.defineComponent({
 const ProductsPrimitiveSubscriber = Vue.defineComponent({
   setup() {
     const selected = Route.useSearch({
-      select: (search) => ({
-        page: search.page,
-        pageSize: search.pageSize,
-        sort: search.sort,
-      }),
+      select: selectProductsPrimitiveSearch,
     })
 
     return () => {
@@ -48,11 +51,7 @@ const ProductsPrimitiveSubscriber = Vue.defineComponent({
 const ProductsLoaderDepsSubscriber = Vue.defineComponent({
   setup() {
     const loaderDeps = Route.useLoaderDeps({
-      select: (deps) => ({
-        page: deps.page,
-        filters: deps.filters,
-        flags: deps.flags,
-      }),
+      select: selectProductsLoaderDeps,
     })
 
     return () => {
@@ -65,10 +64,7 @@ const ProductsLoaderDepsSubscriber = Vue.defineComponent({
 const ProductsLoaderDataSubscriber = Vue.defineComponent({
   setup() {
     const loaderData = Route.useLoaderData({
-      select: (data) => ({
-        checksum: data.checksum,
-        visibleRows: data.visibleRows,
-      }),
+      select: selectProductsLoaderData,
     })
 
     return () => {
@@ -98,7 +94,7 @@ const ProductsPage = Vue.defineComponent({
           <ProductsLoaderDataSubscriber key={`products-loader-data-${id}`} />
         ))}
         <div data-testid="products-marker">
-          {`products:${search.value.tenant}:${search.value.page}:${search.value.filters.price.max}:${search.value.filters.attributes.color}:${loaderData.value.checksum}`}
+          {formatProductsMarker(search.value, loaderData.value)}
         </div>
         <Outlet />
       </>
@@ -110,24 +106,13 @@ export const Route = createFileRoute('/shop/products')({
   validateSearch: validateProductsSearch,
   search: {
     middlewares: [
-      retainSearchParams<ProductsSearch>(['tenant']),
-      stripSearchParams<ProductsSearch>(['debug', 'junk']),
-      stripSearchParams<ProductsSearch>({ view: 'grid' }),
+      retainSearchParams<ProductsSearch>(tenantSearchKeys),
+      stripSearchParams<ProductsSearch>(transientSearchKeys),
+      stripSearchParams<ProductsSearch>(defaultProductsSearchStrip),
     ],
   },
-  loaderDeps: ({ search }) => ({
-    tenant: search.tenant,
-    locale: search.locale,
-    page: search.page,
-    pageSize: search.pageSize,
-    sort: search.sort,
-    filters: search.filters,
-    flags: search.flags,
-  }),
-  loader: ({ deps }) => ({
-    checksum: computeSearchChecksum(deps),
-    visibleRows: deps.page * deps.pageSize,
-  }),
+  loaderDeps: createProductsLoaderDeps,
+  loader: createProductsLoaderData,
   staleTime: 60_000,
   gcTime: 60_000,
   component: ProductsPage,

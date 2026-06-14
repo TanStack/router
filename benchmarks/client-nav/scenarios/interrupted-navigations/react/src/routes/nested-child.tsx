@@ -1,5 +1,10 @@
 import { createRoute } from '@tanstack/react-router'
-import { createNestedChildLoaderKey } from '../../../shared.ts'
+import {
+  createNestedChildLoaderKey,
+  formatInterruptedNestedPayload,
+  interruptedNavigationControlledRouteCacheOptions,
+  interruptedNavigationRoutePaths,
+} from '../../../shared.ts'
 import {
   interruptedNavigationRuntime,
   recordInterruptedCommit,
@@ -8,7 +13,7 @@ import { nestedParentRoute } from './nested-parent'
 
 export const nestedChildRoute = createRoute({
   getParentRoute: () => nestedParentRoute,
-  path: '$id',
+  path: interruptedNavigationRoutePaths.nestedChild,
   loader: ({ params, abortController }) =>
     interruptedNavigationRuntime.createControlledLoad(
       'nestedChild',
@@ -16,7 +21,7 @@ export const nestedChildRoute = createRoute({
       abortController.signal,
       { id: params.id, group: params.group },
     ),
-  gcTime: 0,
+  ...interruptedNavigationControlledRouteCacheOptions,
   component: NestedPage,
 })
 
@@ -30,7 +35,7 @@ function NestedPage() {
       data-interrupted-id={data.id}
       data-interrupted-page="nested"
     >
-      {`${data.kind}:${data.group}:${data.id}:${data.sequence}:${data.checksum}`}
+      {formatInterruptedNestedPayload(data)}
     </main>
   )
 }

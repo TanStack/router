@@ -1,5 +1,6 @@
 import * as Vue from 'vue'
 import { createRoute } from '@tanstack/vue-router'
+import { CONTROL_FLOW_PATHS } from '../../../shared'
 import {
   createControlFlowMarkerElement,
   parseFlowParams,
@@ -21,7 +22,7 @@ const TargetPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
 
 export const targetRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/flow/target/$id',
+  path: CONTROL_FLOW_PATHS.target,
   params: {
     parse: parseFlowParams,
     stringify: stringifyFlowParams,

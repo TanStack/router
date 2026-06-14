@@ -1,6 +1,10 @@
 import * as Vue from 'vue'
 import { Outlet, createRoute } from '@tanstack/vue-router'
-import { createNestedParentLoaderKey } from '../../../shared.ts'
+import {
+  createNestedParentLoaderKey,
+  interruptedNavigationControlledRouteCacheOptions,
+  interruptedNavigationRoutePaths,
+} from '../../../shared.ts'
 import {
   interruptedNavigationRuntime,
   recordInterruptedCommit,
@@ -21,7 +25,7 @@ const NestedLayout: ReturnType<typeof Vue.defineComponent> =
 
 export const nestedParentRoute = createRoute({
   getParentRoute: () => interruptRoute,
-  path: 'nested/$group',
+  path: interruptedNavigationRoutePaths.nestedParent,
   loader: ({ params, abortController }) =>
     interruptedNavigationRuntime.createControlledLoad(
       'nestedParent',
@@ -29,6 +33,6 @@ export const nestedParentRoute = createRoute({
       abortController.signal,
       { id: params.group, group: params.group },
     ),
-  gcTime: 0,
+  ...interruptedNavigationControlledRouteCacheOptions,
   component: NestedLayout,
 })

@@ -70,7 +70,25 @@ interface PendingControlledLoad {
 }
 
 export const interruptedNavigationScenarioSlug = 'interrupted-navigations'
-export const interruptedNavigationHomePath = '/interrupt'
+export const interruptedNavigationRoutePaths = {
+  home: '/interrupt',
+  fastFull: '/interrupt/fast/$id',
+  slowFull: '/interrupt/slow/$id',
+  nestedFull: '/interrupt/nested/$group/$id',
+  fast: 'fast/$id',
+  slow: 'slow/$id',
+  nestedParent: 'nested/$group',
+  nestedChild: '$id',
+} as const
+export const interruptedNavigationHomePath =
+  interruptedNavigationRoutePaths.home
+export const interruptedNavigationFastRouteCacheOptions = {
+  staleTime: 0,
+  gcTime: 0,
+} as const
+export const interruptedNavigationControlledRouteCacheOptions = {
+  gcTime: 0,
+} as const
 
 const interruptedNavigationGroupCount = 10
 const random = createDeterministicRandom(11_011)
@@ -103,6 +121,34 @@ export function runInterruptedNavigationComputation(seed: number) {
   }
 
   return value
+}
+
+export function recordInterruptedNavigationCommit(
+  runtime: InterruptedNavigationRuntime,
+  payload: InterruptedLoaderPayload,
+) {
+  runtime.recordCommit(payload)
+  void runInterruptedNavigationComputation(payload.checksum)
+}
+
+export function formatInterruptedPagePayload(
+  payload: InterruptedLoaderPayload,
+) {
+  return [payload.kind, payload.id, payload.sequence, payload.checksum].join(
+    ':',
+  )
+}
+
+export function formatInterruptedNestedPayload(
+  payload: InterruptedLoaderPayload,
+) {
+  return [
+    payload.kind,
+    payload.group,
+    payload.id,
+    payload.sequence,
+    payload.checksum,
+  ].join(':')
 }
 
 export function createInterruptedNavigationRuntime(): InterruptedNavigationRuntime {
@@ -332,7 +378,7 @@ export function createInterruptedNavigationsWorkload(
   async function navigateFast(id: string) {
     await lifecycle.navigate(
       {
-        to: '/interrupt/fast/$id',
+        to: interruptedNavigationRoutePaths.fastFull,
         params: { id },
         replace: true,
       },
@@ -344,7 +390,7 @@ export function createInterruptedNavigationsWorkload(
   async function startSlowNavigation(id: string) {
     const key = createSlowLoaderKey(id)
     const settlement = startNavigation({
-      to: '/interrupt/slow/$id',
+      to: interruptedNavigationRoutePaths.slowFull,
       params: { id },
       replace: true,
     })
@@ -362,7 +408,7 @@ export function createInterruptedNavigationsWorkload(
     const parentKey = createNestedParentLoaderKey(group)
     const childKey = createNestedChildLoaderKey(group, id)
     const settlement = startNavigation({
-      to: '/interrupt/nested/$group/$id',
+      to: interruptedNavigationRoutePaths.nestedFull,
       params: { group, id },
       replace: true,
     })

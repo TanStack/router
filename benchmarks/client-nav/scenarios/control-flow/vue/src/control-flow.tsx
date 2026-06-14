@@ -1,14 +1,15 @@
 import * as Vue from 'vue'
-import { normalizeFlowId, type ControlFlowBranch } from '../../shared'
+import type { ControlFlowBranch } from '../../shared'
+
+export {
+  parseControlFlowParams as parseFlowParams,
+  stringifyControlFlowParams as stringifyFlowParams,
+} from '../../shared'
 
 type MarkerProps = {
   branch: ControlFlowBranch
   value: string
   checksum?: number
-}
-
-type FlowParams = {
-  id: string
 }
 
 export function createControlFlowMarkerElement(props: MarkerProps) {
@@ -26,15 +27,3 @@ export const EmptyPage = Vue.defineComponent({
     return () => null
   },
 })
-
-export function parseFlowParams(params: { id: string }) {
-  return {
-    id: normalizeFlowId(params.id),
-  }
-}
-
-export function stringifyFlowParams(params: FlowParams) {
-  return {
-    id: normalizeFlowId(params.id),
-  }
-}

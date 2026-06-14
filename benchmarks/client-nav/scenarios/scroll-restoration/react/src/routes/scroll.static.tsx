@@ -1,11 +1,15 @@
 import { createRoute } from '@tanstack/react-router'
-import { SCROLL_CONTAINER_IDS } from '../../../shared.ts'
-import { RestoredMarker, fillerRows } from '../scroll-runtime'
+import {
+  SCROLL_CONTAINER_IDS,
+  SCROLL_ROUTE_PATHS,
+  scrollFillerRows,
+} from '../../../shared.ts'
+import { RestoredMarker } from '../scroll-runtime'
 import { scrollRoute } from './scroll'
 
 export const staticRoute = createRoute({
   getParentRoute: () => scrollRoute,
-  path: 'static',
+  path: SCROLL_ROUTE_PATHS.staticChild,
   component: StaticPage,
 })
 
@@ -17,7 +21,7 @@ function StaticPage() {
         data-scroll-region="static"
       >
         <RestoredMarker id="static" />
-        {fillerRows.map((row) => (
+        {scrollFillerRows.map((row) => (
           <p key={`static-${row}`}>{`Static row ${row}`}</p>
         ))}
       </div>

@@ -2,6 +2,7 @@ import * as Vue from 'vue'
 import { createRoute } from '@tanstack/vue-router'
 import {
   createReportLoaderData,
+  deferredRouteGcTime,
   deferredRouteStaleTime,
   type ReportLoaderData,
 } from '../../../shared'
@@ -33,6 +34,6 @@ export const Route = createRoute({
   path: '/deferred/reports/$reportId',
   loader: ({ params }) => createReportLoaderData(params.reportId),
   staleTime: deferredRouteStaleTime(),
-  gcTime: 0,
+  gcTime: deferredRouteGcTime,
   component: ReportPage,
 })

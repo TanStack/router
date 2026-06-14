@@ -9,6 +9,7 @@ import { installScrollRestorationShims } from './scroll-shim'
 import {
   SCROLL_CONTAINER_ID_LIST,
   SCROLL_CONTAINER_IDS,
+  SCROLL_ROUTE_PATHS,
   SCROLL_START_PATH,
   scrollCycles,
   type ScrollContainerId,
@@ -174,7 +175,7 @@ export function createScrollRestorationWorkload(
   ) {
     await navigateAndWait(
       {
-        to: '/scroll/list/$listId',
+        to: SCROLL_ROUTE_PATHS.list,
         params: { listId: input.listId },
       },
       'list',
@@ -184,7 +185,7 @@ export function createScrollRestorationWorkload(
 
     await navigateAndWait(
       {
-        to: '/scroll/list/$listId/detail/$itemId',
+        to: SCROLL_ROUTE_PATHS.detail,
         params: { listId: input.listId, itemId: input.detailAId },
       },
       'detail',
@@ -205,7 +206,7 @@ export function createScrollRestorationWorkload(
 
     await navigateAndWait(
       {
-        to: '/scroll/list/$listId/detail/$itemId',
+        to: SCROLL_ROUTE_PATHS.detail,
         params: { listId: input.listId, itemId: input.detailAId },
         hash: input.hashId,
         hashScrollIntoView: { block: 'center', inline: 'nearest' },
@@ -229,7 +230,7 @@ export function createScrollRestorationWorkload(
 
     await navigateAndWait(
       {
-        to: '/scroll/list/$listId/detail/$itemId',
+        to: SCROLL_ROUTE_PATHS.detail,
         params: { listId: input.listId, itemId: input.detailBId },
         resetScroll: false,
       },
@@ -248,7 +249,7 @@ export function createScrollRestorationWorkload(
 
     await navigateAndWait(
       {
-        to: '/scroll/static',
+        to: SCROLL_ROUTE_PATHS.static,
       },
       'static',
       'static reset',

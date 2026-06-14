@@ -1,7 +1,17 @@
 import type { ParsedLocation } from '@tanstack/router-core'
 import { createDeterministicRandom } from '#client-nav/bench-utils'
 
-export const SCROLL_START_PATH = '/scroll'
+export const SCROLL_ROUTE_PATHS = {
+  root: '/scroll',
+  list: '/scroll/list/$listId',
+  detail: '/scroll/list/$listId/detail/$itemId',
+  static: '/scroll/static',
+  listChild: 'list/$listId',
+  detailChild: 'detail/$itemId',
+  staticChild: 'static',
+} as const
+
+export const SCROLL_START_PATH = SCROLL_ROUTE_PATHS.root
 
 export type ScrollPage = 'scroll' | 'list' | 'detail' | 'static'
 
@@ -25,6 +35,10 @@ export const SCROLL_CONTAINER_ID_LIST = [
 
 export type ScrollContainerId = (typeof SCROLL_CONTAINER_ID_LIST)[number]
 export type ScrollTargetId = 'window' | ScrollContainerId
+export type ScrollContainerKey = keyof typeof SCROLL_CONTAINER_IDS
+
+export const scrollFillerRows = Array.from({ length: 18 }, (_, index) => index)
+export const scrollSidebarRows = scrollFillerRows.slice(0, 6)
 
 export interface ScrollPosition {
   scrollLeft: number
@@ -89,6 +103,21 @@ export function getScrollRestorationKey(location: ParsedLocation) {
   return location.pathname
 }
 
+export function getScrollRestorationSelector(id: ScrollContainerId) {
+  return `[data-scroll-restoration-id="${id}"]`
+}
+
+export function createScrollToTopSelectors() {
+  return [
+    getScrollRestorationSelector(SCROLL_CONTAINER_IDS.resetPanel),
+    getScrollRestorationSelector(SCROLL_CONTAINER_IDS.list),
+    () =>
+      document.querySelector(
+        getScrollRestorationSelector(SCROLL_CONTAINER_IDS.detail),
+      ),
+  ]
+}
+
 export function normalizeScrollSegment(value: unknown, fallback: string) {
   if (typeof value === 'string' && value.length > 0) {
     return value
@@ -96,6 +125,22 @@ export function normalizeScrollSegment(value: unknown, fallback: string) {
 
   return fallback
 }
+
+export function parseScrollListParams(params: { listId: string }) {
+  return {
+    listId: normalizeScrollSegment(params.listId, 'missing-list'),
+  }
+}
+
+export const stringifyScrollListParams = parseScrollListParams
+
+export function parseScrollDetailParams(params: { itemId: string }) {
+  return {
+    itemId: normalizeScrollSegment(params.itemId, 'missing-item'),
+  }
+}
+
+export const stringifyScrollDetailParams = parseScrollDetailParams
 
 export function runScrollRenderComputation(seed: number) {
   let value = Math.trunc(seed) | 0

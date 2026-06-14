@@ -2,8 +2,10 @@ import * as Vue from 'vue'
 import { Link, useRouter, useRouterState } from '@tanstack/vue-router'
 import {
   buildLocationDescriptors,
+  createBuildLocationOptions,
   createLinkLabel,
   createLinkOptions,
+  createMaskingLinkActiveOptions,
   linkDescriptors,
   readVisiblePublicHref,
   type BuiltLocationSnapshot,
@@ -25,9 +27,7 @@ const PanelLink = Vue.defineComponent({
         data-mask-link-key={props.descriptor.key}
         data-mask-link-kind={props.descriptor.kind}
         data-testid={props.descriptor.testId}
-        activeOptions={{
-          includeSearch: props.descriptor.kind !== 'team-project',
-        }}
+        activeOptions={createMaskingLinkActiveOptions(props.descriptor)}
         activeProps={{ class: 'active-link' }}
         inactiveProps={{ class: 'inactive-link' }}
       >
@@ -53,10 +53,12 @@ const BuildLocationProbe = Vue.defineComponent({
     return () => {
       void locationHref.value
 
-      const builtLocation = router.buildLocation({
-        _fromLocation: router.state.location,
-        ...createLinkOptions(props.descriptor),
-      } as any) as unknown as BuiltLocationSnapshot
+      const builtLocation = router.buildLocation(
+        createBuildLocationOptions(
+          router.state.location,
+          props.descriptor,
+        ) as any,
+      ) as unknown as BuiltLocationSnapshot
       const visiblePublicHref = readVisiblePublicHref(builtLocation)
 
       return (

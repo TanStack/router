@@ -1,6 +1,9 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
-import { deriveTaskListContext, runContextComputation } from '../../../shared'
-import { consumeSelectedValue } from '../runtime'
+import {
+  consumeSelectedValue,
+  deriveTaskListContext,
+  runContextComputation,
+} from '../../../shared'
 
 export const Route = createFileRoute('/app/$orgId/projects/$projectId/tasks')({
   beforeLoad: ({ context }) => deriveTaskListContext(context),

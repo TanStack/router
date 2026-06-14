@@ -4,10 +4,10 @@ export {
   buildLoaderCachePayload,
   createItemLoaderDeps,
   createListLoaderDeps,
+  loaderCacheSubscriberSlots as subscriberSlots,
   normalizeConditionalSearch,
   normalizeListSearch,
   runLoaderCacheSelectorComputation,
 } from '../../shared.ts'
 
 export const loaderCacheRuntime = createLoaderCacheRuntime()
-export const subscriberSlots = Array.from({ length: 5 }, (_, index) => index)

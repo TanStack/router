@@ -1,5 +1,6 @@
 import * as Vue from 'vue'
 import { createRoute } from '@tanstack/vue-router'
+import { MASKING_ROUTE_MARKERS, MASKING_ROUTE_PATHS } from '../../../shared.ts'
 import { rootRoute } from './__root'
 
 const TeamProjectPage = Vue.defineComponent({
@@ -8,7 +9,7 @@ const TeamProjectPage = Vue.defineComponent({
 
     return () => (
       <div
-        data-route-marker="team-project"
+        data-route-marker={MASKING_ROUTE_MARKERS.teamProject}
         data-team-id={params.value.teamId}
         data-project-id={params.value.projectId}
       />
@@ -18,6 +19,6 @@ const TeamProjectPage = Vue.defineComponent({
 
 export const teamProjectRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/teams/$teamId/projects/$projectId',
+  path: MASKING_ROUTE_PATHS.teamProject,
   component: TeamProjectPage,
 })

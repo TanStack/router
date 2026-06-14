@@ -1,6 +1,9 @@
 import * as Vue from 'vue'
 import { createRoute, useBlocker } from '@tanstack/vue-router'
-import { runHistoryEventsBlockersComputation } from '../../../shared.ts'
+import {
+  createHistoryEventsBlockerOptions,
+  runHistoryEventsBlockersComputation,
+} from '../../../shared.ts'
 import {
   historyEventsBlockersRuntime,
   pathSeed,
@@ -11,11 +14,9 @@ import { historyRoute } from './history'
 const FormPage = Vue.defineComponent({
   setup() {
     const params = formRoute.useParams()
-    const resolver = useBlocker({
-      shouldBlockFn: shouldBlockHistoryNavigation,
-      withResolver: true,
-      enableBeforeUnload: false,
-    })
+    const resolver = useBlocker(
+      createHistoryEventsBlockerOptions(shouldBlockHistoryNavigation),
+    )
 
     Vue.watchEffect(() => {
       historyEventsBlockersRuntime.observeResolver(resolver.value)

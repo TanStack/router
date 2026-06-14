@@ -1,6 +1,10 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
-import { deriveTenantContext, runContextComputation } from '../../../shared'
-import { consumeSelectedValue, middleSubscribers } from '../runtime'
+import {
+  consumeSelectedValue,
+  deriveTenantContext,
+  middleSubscribers,
+  runContextComputation,
+} from '../../../shared'
 
 export const Route = createFileRoute('/app')({
   beforeLoad: ({ context }) => deriveTenantContext(context),

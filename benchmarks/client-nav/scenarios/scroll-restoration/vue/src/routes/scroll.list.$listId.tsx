@@ -2,10 +2,13 @@ import * as Vue from 'vue'
 import { Outlet, createRoute } from '@tanstack/vue-router'
 import {
   SCROLL_CONTAINER_IDS,
-  normalizeScrollSegment,
+  SCROLL_ROUTE_PATHS,
+  parseScrollListParams,
   runScrollRenderComputation,
+  scrollFillerRows,
+  stringifyScrollListParams,
 } from '../../../shared.ts'
-import { RestoredMarker, fillerRows } from '../scroll-runtime'
+import { RestoredMarker } from '../scroll-runtime'
 import { scrollRoute } from './scroll'
 
 const ListPage = Vue.defineComponent({
@@ -24,7 +27,7 @@ const ListPage = Vue.defineComponent({
             data-list-checksum={checksum}
           >
             <RestoredMarker id="list" />
-            {fillerRows.map((row) => (
+            {scrollFillerRows.map((row) => (
               <article
                 key={`list-${listId}-${row}`}
               >{`List ${listId} row ${row}`}</article>
@@ -39,14 +42,10 @@ const ListPage = Vue.defineComponent({
 
 export const listRoute = createRoute({
   getParentRoute: () => scrollRoute,
-  path: 'list/$listId',
+  path: SCROLL_ROUTE_PATHS.listChild,
   params: {
-    parse: (params) => ({
-      listId: normalizeScrollSegment(params.listId, 'missing-list'),
-    }),
-    stringify: (params) => ({
-      listId: normalizeScrollSegment(params.listId, 'missing-list'),
-    }),
+    parse: parseScrollListParams,
+    stringify: stringifyScrollListParams,
   },
   component: ListPage,
 })

@@ -1,5 +1,10 @@
 import { createRoute } from '@tanstack/react-router'
 import {
+  formatInterruptedPagePayload,
+  interruptedNavigationFastRouteCacheOptions,
+  interruptedNavigationRoutePaths,
+} from '../../../shared.ts'
+import {
   interruptedNavigationRuntime,
   recordInterruptedCommit,
 } from '../runtime'
@@ -7,11 +12,10 @@ import { interruptRoute } from './interrupt'
 
 export const fastRoute = createRoute({
   getParentRoute: () => interruptRoute,
-  path: 'fast/$id',
+  path: interruptedNavigationRoutePaths.fast,
   loader: ({ params }) =>
     interruptedNavigationRuntime.recordFastLoad(params.id),
-  staleTime: 0,
-  gcTime: 0,
+  ...interruptedNavigationFastRouteCacheOptions,
   component: FastPage,
 })
 
@@ -21,7 +25,7 @@ function FastPage() {
 
   return (
     <main data-interrupted-id={data.id} data-interrupted-page="fast">
-      {`${data.kind}:${data.id}:${data.sequence}:${data.checksum}`}
+      {formatInterruptedPagePayload(data)}
     </main>
   )
 }

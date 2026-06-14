@@ -1,11 +1,12 @@
 import { Outlet, createRoute } from '@tanstack/react-router'
+import { createOutletsRemountsBoardMarker } from '../../../shared'
 import { createRouteLifecycleOptions } from '../outletsRemountsRuntime'
 import { RouteShell } from '../routeShell'
 import { projectRoute } from './workspace.$orgId.projects.$projectId'
 
 function BoardLayout() {
   const params = boardRoute.useParams()
-  const marker = `board:${params.orgId}:${params.projectId}:${params.boardId}`
+  const marker = createOutletsRemountsBoardMarker(params)
 
   return (
     <RouteShell routeId="board" marker={marker}>

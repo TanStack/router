@@ -1,10 +1,12 @@
 import { For } from 'solid-js'
 import { Outlet, createRootRouteWithContext } from '@tanstack/solid-router'
 import {
+  consumeSelectedValue,
+  rootSubscribers,
   runContextComputation,
   type RootBenchmarkContext,
 } from '../../../shared'
-import { PerfValue, consumeSelectedValue, rootSubscribers } from '../runtime'
+import { PerfValue } from '../runtime'
 
 export const Route = createRootRouteWithContext<RootBenchmarkContext>()({
   component: RootComponent,

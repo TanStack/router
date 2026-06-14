@@ -1,11 +1,15 @@
 import { Outlet, createRoute } from '@tanstack/solid-router'
-import { createNestedParentLoaderKey } from '../../../shared.ts'
+import {
+  createNestedParentLoaderKey,
+  interruptedNavigationControlledRouteCacheOptions,
+  interruptedNavigationRoutePaths,
+} from '../../../shared.ts'
 import { CommitEffect, interruptedNavigationRuntime } from '../runtime'
 import { interruptRoute } from './interrupt'
 
 export const nestedParentRoute = createRoute({
   getParentRoute: () => interruptRoute,
-  path: 'nested/$group',
+  path: interruptedNavigationRoutePaths.nestedParent,
   loader: ({ params, abortController }) =>
     interruptedNavigationRuntime.createControlledLoad(
       'nestedParent',
@@ -13,7 +17,7 @@ export const nestedParentRoute = createRoute({
       abortController.signal,
       { id: params.group, group: params.group },
     ),
-  gcTime: 0,
+  ...interruptedNavigationControlledRouteCacheOptions,
   component: NestedLayout,
 })
 

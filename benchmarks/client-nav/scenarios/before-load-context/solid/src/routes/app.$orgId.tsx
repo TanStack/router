@@ -1,6 +1,10 @@
 import { Outlet, createFileRoute } from '@tanstack/solid-router'
-import { deriveOrgContext, runContextComputation } from '../../../shared'
-import { PerfValue, consumeSelectedValue } from '../runtime'
+import {
+  consumeSelectedValue,
+  deriveOrgContext,
+  runContextComputation,
+} from '../../../shared'
+import { PerfValue } from '../runtime'
 
 export const Route = createFileRoute('/app/$orgId')({
   beforeLoad: ({ context, params }) => deriveOrgContext(context, params.orgId),

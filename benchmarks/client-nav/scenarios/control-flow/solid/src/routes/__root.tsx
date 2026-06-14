@@ -1,5 +1,5 @@
 import { Outlet, createRootRoute } from '@tanstack/solid-router'
-import { UNMATCHED_MARKER } from '../../../shared'
+import { ROOT_ERROR_MARKER, UNMATCHED_MARKER } from '../../../shared'
 import { ControlFlowMarker } from '../control-flow'
 
 export const rootRoute = createRootRoute({
@@ -17,5 +17,5 @@ function RootNotFoundComponent() {
 }
 
 function RootErrorComponent() {
-  return <ControlFlowMarker branch="error" value="root" />
+  return <ControlFlowMarker {...ROOT_ERROR_MARKER} />
 }

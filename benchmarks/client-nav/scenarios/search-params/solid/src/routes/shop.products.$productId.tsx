@@ -1,7 +1,10 @@
 import { For } from 'solid-js'
 import { createFileRoute, stripSearchParams } from '@tanstack/solid-router'
 import {
+  formatDetailMarker,
   routeSubscriberIds,
+  selectDetailSearch,
+  transientSearchKeys,
   validateDetailSearch,
   type DetailSearch,
 } from '../../../shared'
@@ -10,19 +13,14 @@ import { PerfValue } from '../perf'
 export const Route = createFileRoute('/shop/products/$productId')({
   validateSearch: validateDetailSearch,
   search: {
-    middlewares: [stripSearchParams<DetailSearch>(['debug', 'junk'])],
+    middlewares: [stripSearchParams<DetailSearch>(transientSearchKeys)],
   },
   component: ProductDetailPage,
 })
 
 function DetailSearchSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => ({
-      tenant: search.tenant,
-      filters: search.filters,
-      detailTab: search.detailTab,
-      panel: search.panel,
-    }),
+    select: selectDetailSearch,
   })
 
   return <PerfValue value={() => selected()} />
@@ -36,7 +34,7 @@ function ProductDetailPage() {
     <>
       <For each={routeSubscriberIds}>{() => <DetailSearchSubscriber />}</For>
       <div data-testid="detail-marker">
-        {`detail:${params().productId}:${search().tenant}:${search().detailTab}:${search().panel}`}
+        {formatDetailMarker(params().productId, search())}
       </div>
     </>
   )

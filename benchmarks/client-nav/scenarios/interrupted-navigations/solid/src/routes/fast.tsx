@@ -1,14 +1,18 @@
 import { createRoute } from '@tanstack/solid-router'
+import {
+  formatInterruptedPagePayload,
+  interruptedNavigationFastRouteCacheOptions,
+  interruptedNavigationRoutePaths,
+} from '../../../shared.ts'
 import { CommitEffect, interruptedNavigationRuntime } from '../runtime'
 import { interruptRoute } from './interrupt'
 
 export const fastRoute = createRoute({
   getParentRoute: () => interruptRoute,
-  path: 'fast/$id',
+  path: interruptedNavigationRoutePaths.fast,
   loader: ({ params }) =>
     interruptedNavigationRuntime.recordFastLoad(params.id),
-  staleTime: 0,
-  gcTime: 0,
+  ...interruptedNavigationFastRouteCacheOptions,
   component: FastPage,
 })
 
@@ -18,7 +22,7 @@ function FastPage() {
   return (
     <main data-interrupted-id={data().id} data-interrupted-page="fast">
       <CommitEffect payload={data()} />
-      {`${data().kind}:${data().id}:${data().sequence}:${data().checksum}`}
+      {formatInterruptedPagePayload(data())}
     </main>
   )
 }

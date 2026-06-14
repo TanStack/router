@@ -4,11 +4,8 @@ import {
   SCROLL_CONTAINER_IDS,
   getScrollRestorationKey,
   runScrollRenderComputation,
+  type ScrollContainerKey,
 } from '../../shared.ts'
-
-type ScrollContainerKey = keyof typeof SCROLL_CONTAINER_IDS
-
-export const fillerRows = Array.from({ length: 18 }, (_, index) => index)
 
 export const RestoredMarker = Vue.defineComponent({
   props: {

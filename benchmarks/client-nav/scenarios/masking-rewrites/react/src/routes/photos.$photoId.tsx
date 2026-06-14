@@ -1,14 +1,20 @@
 import { createRoute } from '@tanstack/react-router'
+import { MASKING_ROUTE_MARKERS, MASKING_ROUTE_PATHS } from '../../../shared.ts'
 import { rootRoute } from './__root'
 
 export const photoDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/photos/$photoId',
+  path: MASKING_ROUTE_PATHS.photoDetail,
   component: PhotoDetailPage,
 })
 
 function PhotoDetailPage() {
   const params = photoDetailRoute.useParams()
 
-  return <div data-route-marker="photo-detail" data-photo-id={params.photoId} />
+  return (
+    <div
+      data-route-marker={MASKING_ROUTE_MARKERS.photoDetail}
+      data-photo-id={params.photoId}
+    />
+  )
 }

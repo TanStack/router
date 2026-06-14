@@ -7,10 +7,14 @@ import {
   stripSearchParams,
 } from '@tanstack/solid-router'
 import {
-  DEFAULT_FLAGS,
   buildCompareSearch,
   buildProductsSearch,
+  defaultShopSearchStrip,
+  selectShopPrimitiveSearch,
+  selectShopSearch,
   shopSubscriberIds,
+  tenantSearchKeys,
+  transientSearchKeys,
   validateShopSearch,
   type ShopSearchSchema,
 } from '../../../shared'
@@ -20,9 +24,9 @@ export const Route = createFileRoute('/shop')({
   validateSearch: validateShopSearch,
   search: {
     middlewares: [
-      retainSearchParams<ShopSearchSchema>(['tenant']),
-      stripSearchParams<ShopSearchSchema>(['debug', 'junk']),
-      stripSearchParams<ShopSearchSchema>({ flags: DEFAULT_FLAGS }),
+      retainSearchParams<ShopSearchSchema>(tenantSearchKeys),
+      stripSearchParams<ShopSearchSchema>(transientSearchKeys),
+      stripSearchParams<ShopSearchSchema>(defaultShopSearchStrip),
     ],
   },
   component: ShopLayout,
@@ -30,11 +34,7 @@ export const Route = createFileRoute('/shop')({
 
 function ShopSearchSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => ({
-      tenant: search.tenant,
-      locale: search.locale,
-      flags: search.flags,
-    }),
+    select: selectShopSearch,
   })
 
   return <PerfValue value={() => selected()} />
@@ -42,7 +42,7 @@ function ShopSearchSubscriber() {
 
 function ShopPrimitiveSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => `${search.tenant}:${search.locale}`,
+    select: selectShopPrimitiveSearch,
   })
 
   return <PerfValue value={() => selected()} />

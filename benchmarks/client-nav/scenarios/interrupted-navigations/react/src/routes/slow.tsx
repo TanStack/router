@@ -1,5 +1,10 @@
 import { createRoute } from '@tanstack/react-router'
-import { createSlowLoaderKey } from '../../../shared.ts'
+import {
+  createSlowLoaderKey,
+  formatInterruptedPagePayload,
+  interruptedNavigationControlledRouteCacheOptions,
+  interruptedNavigationRoutePaths,
+} from '../../../shared.ts'
 import {
   interruptedNavigationRuntime,
   recordInterruptedCommit,
@@ -8,7 +13,7 @@ import { interruptRoute } from './interrupt'
 
 export const slowRoute = createRoute({
   getParentRoute: () => interruptRoute,
-  path: 'slow/$id',
+  path: interruptedNavigationRoutePaths.slow,
   loader: ({ params, abortController }) =>
     interruptedNavigationRuntime.createControlledLoad(
       'slow',
@@ -16,7 +21,7 @@ export const slowRoute = createRoute({
       abortController.signal,
       { id: params.id },
     ),
-  gcTime: 0,
+  ...interruptedNavigationControlledRouteCacheOptions,
   component: SlowPage,
 })
 
@@ -26,7 +31,7 @@ function SlowPage() {
 
   return (
     <main data-interrupted-id={data.id} data-interrupted-page="slow">
-      {`${data.kind}:${data.id}:${data.sequence}:${data.checksum}`}
+      {formatInterruptedPagePayload(data)}
     </main>
   )
 }

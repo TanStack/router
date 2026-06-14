@@ -5,8 +5,16 @@ import {
   stripSearchParams,
 } from '@tanstack/vue-router'
 import {
+  createCompareLoaderData,
+  createCompareLoaderDeps,
   computeSearchChecksum,
+  defaultCompareSearchStrip,
+  formatCompareMarker,
   routeSubscriberIds,
+  selectCompareLoaderDeps,
+  selectCompareSearch,
+  tenantSearchKeys,
+  transientSearchKeys,
   validateCompareSearch,
   type CompareSearch,
 } from '../../../shared'
@@ -14,12 +22,7 @@ import {
 const CompareSearchSubscriber = Vue.defineComponent({
   setup() {
     const selected = Route.useSearch({
-      select: (search) => ({
-        tenant: search.tenant,
-        compareIds: search.compareIds,
-        slots: search.slots,
-        matrix: search.matrix,
-      }),
+      select: selectCompareSearch,
     })
 
     return () => {
@@ -32,11 +35,7 @@ const CompareSearchSubscriber = Vue.defineComponent({
 const CompareLoaderDepsSubscriber = Vue.defineComponent({
   setup() {
     const loaderDeps = Route.useLoaderDeps({
-      select: (deps) => ({
-        compareIds: deps.compareIds,
-        slots: deps.slots,
-        revision: deps.revision,
-      }),
+      select: selectCompareLoaderDeps,
     })
 
     return () => {
@@ -60,7 +59,7 @@ const ComparePage = Vue.defineComponent({
           <CompareLoaderDepsSubscriber key={`compare-loader-deps-${id}`} />
         ))}
         <div data-testid="compare-marker">
-          {`compare:${search.value.tenant}:${search.value.compareIds.length}:${loaderData.value.itemCount}:${loaderData.value.checksum}`}
+          {formatCompareMarker(search.value, loaderData.value)}
         </div>
       </>
     )
@@ -71,22 +70,13 @@ export const Route = createFileRoute('/shop/compare')({
   validateSearch: validateCompareSearch,
   search: {
     middlewares: [
-      retainSearchParams<CompareSearch>(['tenant']),
-      stripSearchParams<CompareSearch>(['debug', 'junk']),
-      stripSearchParams<CompareSearch>({ includeRelated: false }),
+      retainSearchParams<CompareSearch>(tenantSearchKeys),
+      stripSearchParams<CompareSearch>(transientSearchKeys),
+      stripSearchParams<CompareSearch>(defaultCompareSearchStrip),
     ],
   },
-  loaderDeps: ({ search }) => ({
-    tenant: search.tenant,
-    compareIds: search.compareIds,
-    slots: search.slots,
-    matrix: search.matrix,
-    revision: search.revision,
-  }),
-  loader: ({ deps }) => ({
-    checksum: computeSearchChecksum(deps),
-    itemCount: deps.compareIds.length,
-  }),
+  loaderDeps: createCompareLoaderDeps,
+  loader: createCompareLoaderData,
   staleTime: 60_000,
   gcTime: 60_000,
   component: ComparePage,

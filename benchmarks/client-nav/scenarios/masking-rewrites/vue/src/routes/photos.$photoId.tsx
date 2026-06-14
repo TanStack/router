@@ -1,5 +1,6 @@
 import * as Vue from 'vue'
 import { createRoute } from '@tanstack/vue-router'
+import { MASKING_ROUTE_MARKERS, MASKING_ROUTE_PATHS } from '../../../shared.ts'
 import { rootRoute } from './__root'
 
 const PhotoDetailPage = Vue.defineComponent({
@@ -8,7 +9,7 @@ const PhotoDetailPage = Vue.defineComponent({
 
     return () => (
       <div
-        data-route-marker="photo-detail"
+        data-route-marker={MASKING_ROUTE_MARKERS.photoDetail}
         data-photo-id={params.value.photoId}
       />
     )
@@ -17,6 +18,6 @@ const PhotoDetailPage = Vue.defineComponent({
 
 export const photoDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/photos/$photoId',
+  path: MASKING_ROUTE_PATHS.photoDetail,
   component: PhotoDetailPage,
 })

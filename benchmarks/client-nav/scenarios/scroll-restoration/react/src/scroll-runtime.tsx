@@ -3,13 +3,10 @@ import {
   SCROLL_CONTAINER_IDS,
   getScrollRestorationKey,
   runScrollRenderComputation,
+  type ScrollContainerKey,
 } from '../../shared.ts'
 
-export const fillerRows = Array.from({ length: 18 }, (_, index) => index)
-
-export function RestoredMarker(props: {
-  id: keyof typeof SCROLL_CONTAINER_IDS
-}) {
+export function RestoredMarker(props: { id: ScrollContainerKey }) {
   const restorationId = SCROLL_CONTAINER_IDS[props.id]
   const entry = useElementScrollRestoration({
     id: restorationId,

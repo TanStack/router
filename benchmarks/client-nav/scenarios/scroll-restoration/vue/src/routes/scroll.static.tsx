@@ -1,7 +1,11 @@
 import * as Vue from 'vue'
 import { createRoute } from '@tanstack/vue-router'
-import { SCROLL_CONTAINER_IDS } from '../../../shared.ts'
-import { RestoredMarker, fillerRows } from '../scroll-runtime'
+import {
+  SCROLL_CONTAINER_IDS,
+  SCROLL_ROUTE_PATHS,
+  scrollFillerRows,
+} from '../../../shared.ts'
+import { RestoredMarker } from '../scroll-runtime'
 import { scrollRoute } from './scroll'
 
 const StaticPage = Vue.defineComponent({
@@ -13,7 +17,7 @@ const StaticPage = Vue.defineComponent({
           data-scroll-region="static"
         >
           <RestoredMarker id="static" />
-          {fillerRows.map((row) => (
+          {scrollFillerRows.map((row) => (
             <p key={`static-${row}`}>{`Static row ${row}`}</p>
           ))}
         </div>
@@ -24,6 +28,6 @@ const StaticPage = Vue.defineComponent({
 
 export const staticRoute = createRoute({
   getParentRoute: () => scrollRoute,
-  path: 'static',
+  path: SCROLL_ROUTE_PATHS.staticChild,
   component: StaticPage,
 })

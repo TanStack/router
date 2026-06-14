@@ -1,12 +1,16 @@
 import { createRoute } from '@tanstack/react-router'
-import { SEARCH_ERROR_MARKER, validateControlFlowSearch } from '../../../shared'
+import {
+  CONTROL_FLOW_PATHS,
+  SEARCH_ERROR_MARKER,
+  validateControlFlowSearch,
+} from '../../../shared'
 import type { ControlFlowSearch } from '../../../shared'
 import { ControlFlowMarker } from '../control-flow'
 import { rootRoute } from './__root'
 
 export const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/flow/search',
+  path: CONTROL_FLOW_PATHS.search,
   validateSearch: validateControlFlowSearch,
   errorComponent: SearchErrorPage,
   component: SearchPage,

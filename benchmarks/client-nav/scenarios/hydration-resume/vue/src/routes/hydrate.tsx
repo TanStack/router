@@ -1,6 +1,11 @@
 import * as Vue from 'vue'
 import { Outlet, createRoute } from '@tanstack/vue-router'
-import { buildHydrateLoaderData } from '../../../shared.ts'
+import {
+  buildHydrateLoaderData,
+  createHydrateSectionAttributes,
+  hydrationResumeRouteGcTime,
+  hydrationResumeRouteStaleTime,
+} from '../../../shared.ts'
 import { PerfSubscriber, subscriberSlots } from '../perf'
 import { hydrationResumeRuntime } from '../runtime'
 import { rootRoute } from './__root'
@@ -17,11 +22,7 @@ const HydrateLayout = Vue.defineComponent({
             seed={loaderData.value.checksum + slot}
           />
         ))}
-        <div
-          data-hydration-resume-section="hydrate"
-          data-fixture-id={loaderData.value.fixtureId}
-          data-source={loaderData.value.source}
-        />
+        <div {...createHydrateSectionAttributes(loaderData.value)} />
         <Outlet />
       </>
     )
@@ -39,7 +40,7 @@ export const hydrateRoute = createRoute({
       sequence,
     )
   },
-  staleTime: Infinity,
-  gcTime: Infinity,
+  staleTime: hydrationResumeRouteStaleTime,
+  gcTime: hydrationResumeRouteGcTime,
   component: HydrateLayout,
 })

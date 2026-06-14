@@ -1,10 +1,11 @@
 import * as Vue from 'vue'
 import { Outlet, createRootRouteWithContext } from '@tanstack/vue-router'
 import {
+  consumeSelectedValue,
+  rootSubscribers,
   runContextComputation,
   type RootBenchmarkContext,
 } from '../../../shared'
-import { consumeSelectedValue, rootSubscribers } from '../runtime'
 
 const RootContextSubscriber = Vue.defineComponent({
   props: {

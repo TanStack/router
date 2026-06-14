@@ -1,6 +1,11 @@
 import * as Vue from 'vue'
 import { Link, createRoute } from '@tanstack/vue-router'
-import { START_MARKER } from '../../../shared'
+import {
+  CONTROL_FLOW_INVALID_SEARCH_HREF,
+  CONTROL_FLOW_PATHS,
+  CONTROL_FLOW_UNMATCHED_HREF,
+  START_MARKER,
+} from '../../../shared'
 import { rootRoute } from './__root'
 
 const StartPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
@@ -13,7 +18,7 @@ const StartPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
         <nav>
           <Link
             data-testid="control-flow-target-link"
-            to="/flow/target/$id"
+            to={CONTROL_FLOW_PATHS.target}
             params={{ id: 'link-target' }}
             replace
           >
@@ -21,7 +26,7 @@ const StartPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
           </Link>
           <Link
             data-testid="control-flow-before-load-link"
-            to="/flow/redirect-before-load/$id"
+            to={CONTROL_FLOW_PATHS.redirectBeforeLoad}
             params={{ id: 'link-before-load' }}
             replace
           >
@@ -29,7 +34,7 @@ const StartPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
           </Link>
           <Link
             data-testid="control-flow-loader-redirect-link"
-            to="/flow/redirect-loader/$id"
+            to={CONTROL_FLOW_PATHS.redirectLoader}
             params={{ id: 'link-loader' }}
             replace
           >
@@ -37,7 +42,7 @@ const StartPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
           </Link>
           <Link
             data-testid="control-flow-not-found-link"
-            to="/flow/not-found/$id"
+            to={CONTROL_FLOW_PATHS.notFound}
             params={{ id: 'link-missing' }}
             replace
           >
@@ -45,7 +50,7 @@ const StartPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
           </Link>
           <Link
             data-testid="control-flow-error-link"
-            to="/flow/error/$id"
+            to={CONTROL_FLOW_PATHS.error}
             params={{ id: 'link-error' }}
             replace
           >
@@ -53,7 +58,7 @@ const StartPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
           </Link>
           <Link
             data-testid="control-flow-search-link"
-            to="/flow/search"
+            to={CONTROL_FLOW_PATHS.search}
             search={{ mode: 'valid', token: 'link-valid' } as never}
             replace
           >
@@ -61,13 +66,13 @@ const StartPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
           </Link>
           <a
             data-testid="control-flow-invalid-search-link"
-            href="/flow/search?mode=invalid&token=link-invalid"
+            href={CONTROL_FLOW_INVALID_SEARCH_HREF}
           >
             Invalid search
           </a>
           <a
             data-testid="control-flow-unmatched-link"
-            href="/flow/unmatched/link"
+            href={CONTROL_FLOW_UNMATCHED_HREF}
           >
             Unmatched
           </a>
@@ -79,6 +84,6 @@ const StartPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
 
 export const startRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/flow/start',
+  path: CONTROL_FLOW_PATHS.start,
   component: StartPage,
 })

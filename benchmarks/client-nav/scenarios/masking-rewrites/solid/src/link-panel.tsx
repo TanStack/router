@@ -2,8 +2,10 @@ import { For, createMemo } from 'solid-js'
 import { Link, useRouter, useRouterState } from '@tanstack/solid-router'
 import {
   buildLocationDescriptors,
+  createBuildLocationOptions,
   createLinkLabel,
   createLinkOptions,
+  createMaskingLinkActiveOptions,
   linkDescriptors,
   readVisiblePublicHref,
   type BuiltLocationSnapshot,
@@ -18,9 +20,7 @@ function PanelLink(props: { descriptor: LinkDescriptor }) {
       data-mask-link-key={props.descriptor.key}
       data-mask-link-kind={props.descriptor.kind}
       data-testid={props.descriptor.testId}
-      activeOptions={{
-        includeSearch: props.descriptor.kind !== 'team-project',
-      }}
+      activeOptions={createMaskingLinkActiveOptions(props.descriptor)}
       activeProps={{ class: 'active-link' }}
       inactiveProps={{ class: 'inactive-link' }}
     >
@@ -37,10 +37,12 @@ function BuildLocationProbe(props: { descriptor: LinkDescriptor }) {
   const builtLocation = createMemo(() => {
     void locationHref()
 
-    return router.buildLocation({
-      _fromLocation: router.state.location,
-      ...createLinkOptions(props.descriptor),
-    } as any) as unknown as BuiltLocationSnapshot
+    return router.buildLocation(
+      createBuildLocationOptions(
+        router.state.location,
+        props.descriptor,
+      ) as any,
+    ) as unknown as BuiltLocationSnapshot
   })
   const visiblePublicHref = createMemo(() =>
     readVisiblePublicHref(builtLocation()),

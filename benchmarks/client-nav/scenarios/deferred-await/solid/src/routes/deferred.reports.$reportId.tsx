@@ -1,6 +1,7 @@
 import { createRoute } from '@tanstack/solid-router'
 import {
   createReportLoaderData,
+  deferredRouteGcTime,
   deferredRouteStaleTime,
   type ReportSectionLoaderData,
 } from '../../../shared'
@@ -12,7 +13,7 @@ export const Route = createRoute({
   path: '/deferred/reports/$reportId',
   loader: ({ params }) => createReportLoaderData(params.reportId),
   staleTime: deferredRouteStaleTime(),
-  gcTime: 0,
+  gcTime: deferredRouteGcTime,
   component: ReportPage,
 })
 

@@ -1,6 +1,10 @@
 import * as Vue from 'vue'
 import { createRoute } from '@tanstack/vue-router'
-import { ERROR_MARKER, createShallowControlFlowError } from '../../../shared'
+import {
+  CONTROL_FLOW_PATHS,
+  ERROR_MARKER,
+  createShallowControlFlowError,
+} from '../../../shared'
 import {
   EmptyPage,
   createControlFlowMarkerElement,
@@ -17,7 +21,7 @@ const ErrorPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
 
 export const errorRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/flow/error/$id',
+  path: CONTROL_FLOW_PATHS.error,
   params: {
     parse: parseFlowParams,
     stringify: stringifyFlowParams,

@@ -1,7 +1,12 @@
 import * as Vue from 'vue'
 import { Suspense } from 'vue'
 import { Await, createRoute } from '@tanstack/vue-router'
-import type { HydrationResumeDeferredPayload } from '../../../shared.ts'
+import {
+  createDeferredHydrationMarkerAttributes,
+  hydrationResumeRouteGcTime,
+  hydrationResumeRouteStaleTime,
+  type HydrationResumeDeferredPayload,
+} from '../../../shared.ts'
 import { DeferredResolved } from '../perf'
 import { hydrationResumeRuntime } from '../runtime'
 import { hydrateRoute } from './hydrate'
@@ -13,9 +18,11 @@ const DeferredPage = Vue.defineComponent({
     return () => (
       <>
         <div
-          data-hydration-resume-marker="deferred-shell"
-          data-item-id={loaderData.value.itemId}
-          data-source={loaderData.value.source}
+          {...createDeferredHydrationMarkerAttributes(
+            'deferred-shell',
+            loaderData.value.itemId,
+            loaderData.value.source,
+          )}
         />
         <Suspense>
           {{
@@ -32,9 +39,11 @@ const DeferredPage = Vue.defineComponent({
             ),
             fallback: () => (
               <div
-                data-hydration-resume-marker="deferred-fallback"
-                data-item-id={loaderData.value.itemId}
-                data-source={loaderData.value.source}
+                {...createDeferredHydrationMarkerAttributes(
+                  'deferred-fallback',
+                  loaderData.value.itemId,
+                  loaderData.value.source,
+                )}
               />
             ),
           }}
@@ -54,7 +63,7 @@ export const deferredRoute = createRoute({
       sequence,
     )
   },
-  staleTime: Infinity,
-  gcTime: Infinity,
+  staleTime: hydrationResumeRouteStaleTime,
+  gcTime: hydrationResumeRouteGcTime,
   component: DeferredPage,
 })

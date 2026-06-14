@@ -1,7 +1,7 @@
 import { createMemoryHistory, createRouter } from '@tanstack/vue-router'
 import {
-  SCROLL_CONTAINER_IDS,
   SCROLL_START_PATH,
+  createScrollToTopSelectors,
   getScrollRestorationKey,
 } from '../../shared.ts'
 import { routeTree } from './routeTree'
@@ -13,14 +13,7 @@ export function getRouter() {
     }),
     scrollRestoration: true,
     getScrollRestorationKey,
-    scrollToTopSelectors: [
-      `[data-scroll-restoration-id="${SCROLL_CONTAINER_IDS.resetPanel}"]`,
-      `[data-scroll-restoration-id="${SCROLL_CONTAINER_IDS.list}"]`,
-      () =>
-        document.querySelector(
-          `[data-scroll-restoration-id="${SCROLL_CONTAINER_IDS.detail}"]`,
-        ),
-    ],
+    scrollToTopSelectors: createScrollToTopSelectors(),
     routeTree,
   })
 }

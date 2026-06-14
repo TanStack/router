@@ -1,11 +1,14 @@
 import * as Vue from 'vue'
 import { Outlet, createRoute, useParams } from '@tanstack/vue-router'
-import { createOutletsRemountsMarker } from '../../../shared'
+import {
+  createOutletsRemountsMarker,
+  readOutletsRemountsParam,
+} from '../../../shared'
 import {
   createRouteLifecycleOptions,
   recordComponentMount,
 } from '../outletsRemountsRuntime'
-import { createRouteSection, readParam } from '../routeSection'
+import { createRouteSection } from '../routeSection'
 import { workspaceRoute } from './workspace'
 
 const OrgLayout = Vue.defineComponent({
@@ -14,7 +17,7 @@ const OrgLayout = Vue.defineComponent({
     const getMarker = () =>
       createOutletsRemountsMarker({
         kind: 'org',
-        orgId: readParam(params.value, 'orgId'),
+        orgId: readOutletsRemountsParam(params.value, 'orgId'),
       })
     const mountIndex = recordComponentMount('org', getMarker())
 
@@ -28,7 +31,7 @@ const OrgLayout = Vue.defineComponent({
         <>
           <div
             data-outlets-org-marker={marker}
-            data-org-id={readParam(params.value, 'orgId')}
+            data-org-id={readOutletsRemountsParam(params.value, 'orgId')}
           />
           <Outlet />
         </>,

@@ -1,7 +1,10 @@
 import * as Vue from 'vue'
 import { Outlet, createFileRoute } from '@tanstack/vue-router'
-import { deriveProjectsContext, runContextComputation } from '../../../shared'
-import { consumeSelectedValue } from '../runtime'
+import {
+  consumeSelectedValue,
+  deriveProjectsContext,
+  runContextComputation,
+} from '../../../shared'
 
 const ProjectsLayout = Vue.defineComponent({
   setup() {

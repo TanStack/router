@@ -1,22 +1,21 @@
 import { Outlet, createRoute } from '@tanstack/react-router'
 import {
   SCROLL_CONTAINER_IDS,
-  normalizeScrollSegment,
+  SCROLL_ROUTE_PATHS,
+  parseScrollListParams,
   runScrollRenderComputation,
+  scrollFillerRows,
+  stringifyScrollListParams,
 } from '../../../shared.ts'
-import { RestoredMarker, fillerRows } from '../scroll-runtime'
+import { RestoredMarker } from '../scroll-runtime'
 import { scrollRoute } from './scroll'
 
 export const listRoute = createRoute({
   getParentRoute: () => scrollRoute,
-  path: 'list/$listId',
+  path: SCROLL_ROUTE_PATHS.listChild,
   params: {
-    parse: (params) => ({
-      listId: normalizeScrollSegment(params.listId, 'missing-list'),
-    }),
-    stringify: (params) => ({
-      listId: normalizeScrollSegment(params.listId, 'missing-list'),
-    }),
+    parse: parseScrollListParams,
+    stringify: stringifyScrollListParams,
   },
   component: ListPage,
 })
@@ -33,7 +32,7 @@ function ListPage() {
         data-list-checksum={checksum}
       >
         <RestoredMarker id="list" />
-        {fillerRows.map((row) => (
+        {scrollFillerRows.map((row) => (
           <article key={`list-${params.listId}-${row}`}>
             {`List ${params.listId} row ${row}`}
           </article>

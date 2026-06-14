@@ -7,11 +7,15 @@ import {
   stripSearchParams,
 } from '@tanstack/vue-router'
 import {
-  DEFAULT_FLAGS,
   buildCompareSearch,
   buildProductsSearch,
   computeSearchChecksum,
+  defaultShopSearchStrip,
+  selectShopPrimitiveSearch,
+  selectShopSearch,
   shopSubscriberIds,
+  tenantSearchKeys,
+  transientSearchKeys,
   validateShopSearch,
   type ShopSearchSchema,
 } from '../../../shared'
@@ -19,11 +23,7 @@ import {
 const ShopSearchSubscriber = Vue.defineComponent({
   setup() {
     const selected = Route.useSearch({
-      select: (search) => ({
-        tenant: search.tenant,
-        locale: search.locale,
-        flags: search.flags,
-      }),
+      select: selectShopSearch,
     })
 
     return () => {
@@ -36,7 +36,7 @@ const ShopSearchSubscriber = Vue.defineComponent({
 const ShopPrimitiveSubscriber = Vue.defineComponent({
   setup() {
     const selected = Route.useSearch({
-      select: (search) => `${search.tenant}:${search.locale}`,
+      select: selectShopPrimitiveSearch,
     })
 
     return () => {
@@ -86,9 +86,9 @@ export const Route = createFileRoute('/shop')({
   validateSearch: validateShopSearch,
   search: {
     middlewares: [
-      retainSearchParams<ShopSearchSchema>(['tenant']),
-      stripSearchParams<ShopSearchSchema>(['debug', 'junk']),
-      stripSearchParams<ShopSearchSchema>({ flags: DEFAULT_FLAGS }),
+      retainSearchParams<ShopSearchSchema>(tenantSearchKeys),
+      stripSearchParams<ShopSearchSchema>(transientSearchKeys),
+      stripSearchParams<ShopSearchSchema>(defaultShopSearchStrip),
     ],
   },
   component: ShopLayout,

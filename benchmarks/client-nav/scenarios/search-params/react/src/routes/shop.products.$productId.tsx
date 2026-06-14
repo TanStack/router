@@ -1,7 +1,10 @@
 import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
 import {
   computeSearchChecksum,
+  formatDetailMarker,
   routeSubscriberIds,
+  selectDetailSearch,
+  transientSearchKeys,
   validateDetailSearch,
   type DetailSearch,
 } from '../../../shared'
@@ -9,23 +12,14 @@ import {
 export const Route = createFileRoute('/shop/products/$productId')({
   validateSearch: validateDetailSearch,
   search: {
-    middlewares: [stripSearchParams<DetailSearch>(['debug', 'junk'])],
+    middlewares: [stripSearchParams<DetailSearch>(transientSearchKeys)],
   },
   component: ProductDetailPage,
 })
 
 function DetailSearchSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => {
-      const typedSearch = search as DetailSearch
-
-      return {
-        tenant: typedSearch.tenant,
-        filters: typedSearch.filters,
-        detailTab: typedSearch.detailTab,
-        panel: typedSearch.panel,
-      }
-    },
+    select: selectDetailSearch,
     structuralSharing: true,
   })
 
@@ -43,7 +37,7 @@ function ProductDetailPage() {
         <DetailSearchSubscriber key={`detail-search-${id}`} />
       ))}
       <div data-testid="detail-marker">
-        {`detail:${params.productId}:${search.tenant}:${search.detailTab}:${search.panel}`}
+        {formatDetailMarker(params.productId, search)}
       </div>
     </>
   )

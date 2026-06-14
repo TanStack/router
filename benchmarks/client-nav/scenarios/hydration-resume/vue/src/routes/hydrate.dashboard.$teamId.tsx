@@ -1,8 +1,13 @@
 import * as Vue from 'vue'
 import { createRoute } from '@tanstack/vue-router'
 import {
+  buildTeamBeforeLoadContext,
   buildTeamLoaderData,
+  createDashboardHydrationMarkerAttributes,
+  hydrationResumeRouteGcTime,
+  hydrationResumeRouteStaleTime,
   normalizeDashboardSearch,
+  pickDashboardLoaderDeps,
 } from '../../../shared.ts'
 import { PerfSubscriber, subscriberSlots } from '../perf'
 import { getDashboardFixture, hydrationResumeRuntime } from '../runtime'
@@ -28,12 +33,12 @@ const TeamPage = Vue.defineComponent({
           />
         ))}
         <div
-          data-hydration-resume-marker="dashboard"
-          data-team-id={params.value.teamId}
-          data-tab={search.value.tab}
-          data-cursor={search.value.cursor}
-          data-source={loaderData.value.source}
-          data-context-seed={routeContext.value.teamBeforeSeed}
+          {...createDashboardHydrationMarkerAttributes(
+            params.value.teamId,
+            search.value,
+            loaderData.value,
+            routeContext.value.teamBeforeSeed,
+          )}
         />
       </>
     )
@@ -43,24 +48,18 @@ const TeamPage = Vue.defineComponent({
 export const teamRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '$teamId',
-  validateSearch: (search: Record<string, unknown>) =>
-    normalizeDashboardSearch(search),
-  loaderDeps: ({ search }) => ({
-    tab: search.tab,
-    cursor: search.cursor,
-  }),
+  validateSearch: normalizeDashboardSearch,
+  loaderDeps: ({ search }) => pickDashboardLoaderDeps(search),
   beforeLoad: () => {
     const fixture = getDashboardFixture()
     hydrationResumeRuntime.recordBeforeLoad('teamBeforeLoad')
-    return {
-      teamBeforeSeed: fixture.seed + 11,
-    }
+    return buildTeamBeforeLoadContext(fixture)
   },
   loader: () => {
     const sequence = hydrationResumeRuntime.recordLoader('team')
     return buildTeamLoaderData(getDashboardFixture(), 'client', sequence)
   },
-  staleTime: Infinity,
-  gcTime: Infinity,
+  staleTime: hydrationResumeRouteStaleTime,
+  gcTime: hydrationResumeRouteGcTime,
   component: TeamPage,
 })

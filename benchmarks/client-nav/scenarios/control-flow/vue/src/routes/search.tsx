@@ -1,6 +1,10 @@
 import * as Vue from 'vue'
 import { createRoute } from '@tanstack/vue-router'
-import { SEARCH_ERROR_MARKER, validateControlFlowSearch } from '../../../shared'
+import {
+  CONTROL_FLOW_PATHS,
+  SEARCH_ERROR_MARKER,
+  validateControlFlowSearch,
+} from '../../../shared'
 import type { ControlFlowSearch } from '../../../shared'
 import { createControlFlowMarkerElement } from '../control-flow'
 import { rootRoute } from './__root'
@@ -27,7 +31,7 @@ const SearchPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
 
 export const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/flow/search',
+  path: CONTROL_FLOW_PATHS.search,
   validateSearch: validateControlFlowSearch,
   errorComponent: SearchErrorPage,
   component: SearchPage,

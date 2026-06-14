@@ -68,6 +68,13 @@ export interface OutletsRemountsLocation {
   marker: string
 }
 
+export type OutletsRemountsParams = Partial<{
+  orgId: string
+  projectId: string
+  boardId: string
+  cardId: string
+}>
+
 export const outletsRemountsRouteIds = [
   'workspace',
   'org',
@@ -139,6 +146,19 @@ export function cloneOutletsRemountsComponentCounters(
   ) as OutletsRemountsComponentCounters
 }
 
+export function readOutletsRemountsParam(
+  params: OutletsRemountsParams,
+  key: keyof OutletsRemountsParams,
+) {
+  const value = params[key]
+
+  if (typeof value === 'string') {
+    return value
+  }
+
+  return ''
+}
+
 export function buildOutletsRemountsPath(target: OutletsRemountsTarget) {
   if (target.kind === 'org') {
     return `/workspace/${target.orgId}`
@@ -158,6 +178,33 @@ export function createOutletsRemountsMarker(target: OutletsRemountsTarget) {
     target.projectId,
     target.boardId,
     target.cardId,
+  ].join(':')
+}
+
+export function createOutletsRemountsProjectsMarker(
+  params: OutletsRemountsParams,
+) {
+  return `projects:${readOutletsRemountsParam(params, 'orgId')}`
+}
+
+export function createOutletsRemountsProjectMarker(
+  params: OutletsRemountsParams,
+) {
+  return [
+    'project',
+    readOutletsRemountsParam(params, 'orgId'),
+    readOutletsRemountsParam(params, 'projectId'),
+  ].join(':')
+}
+
+export function createOutletsRemountsBoardMarker(
+  params: OutletsRemountsParams,
+) {
+  return [
+    'board',
+    readOutletsRemountsParam(params, 'orgId'),
+    readOutletsRemountsParam(params, 'projectId'),
+    readOutletsRemountsParam(params, 'boardId'),
   ].join(':')
 }
 
@@ -262,4 +309,51 @@ export function runOutletsRemountsComputation(seed: string, rounds = 18) {
   }
 
   return value
+}
+
+export function createOutletsRemountsRuntime() {
+  let lifecycleCounters = createEmptyOutletsRemountsLifecycleCounters()
+  let componentCounters = createEmptyOutletsRemountsComponentCounters()
+
+  function recordLifecycle(
+    routeId: OutletsRemountsRouteId,
+    hook: OutletsRemountsLifecycleHook,
+  ) {
+    lifecycleCounters[routeId][hook] += 1
+    void runOutletsRemountsComputation(`${routeId}:${hook}`)
+  }
+
+  return {
+    resetOutletsRemountsCounters() {
+      lifecycleCounters = createEmptyOutletsRemountsLifecycleCounters()
+      componentCounters = createEmptyOutletsRemountsComponentCounters()
+    },
+    getOutletsRemountsLifecycleCounters(): OutletsRemountsLifecycleCounters {
+      return cloneOutletsRemountsLifecycleCounters(lifecycleCounters)
+    },
+    getOutletsRemountsComponentCounters(): OutletsRemountsComponentCounters {
+      return cloneOutletsRemountsComponentCounters(componentCounters)
+    },
+    createRouteLifecycleOptions(routeId: OutletsRemountsRouteId) {
+      return {
+        onEnter: () => recordLifecycle(routeId, 'enter'),
+        onStay: () => recordLifecycle(routeId, 'stay'),
+        onLeave: () => recordLifecycle(routeId, 'leave'),
+      }
+    },
+    recordComponentMount(routeId: OutletsRemountsComponentId, marker: string) {
+      componentCounters[routeId].mounts += 1
+      void runOutletsRemountsComputation(`${routeId}:mount:${marker}`)
+      return componentCounters[routeId].mounts
+    },
+    recordComponentRender(routeId: OutletsRemountsComponentId, marker: string) {
+      componentCounters[routeId].renders += 1
+      return runOutletsRemountsComputation(`${routeId}:render:${marker}`, 10)
+    },
+    getOutletsRemountsComponentRenderCount(
+      routeId: OutletsRemountsComponentId,
+    ) {
+      return componentCounters[routeId].renders
+    },
+  }
 }

@@ -86,6 +86,34 @@ export interface SearchNavigationSet {
   productId: string
 }
 
+export interface ProductsLoaderDeps {
+  tenant: string
+  locale: string
+  page: number
+  pageSize: number
+  sort: string
+  filters: ProductFilters
+  flags: ShopFlags
+}
+
+export interface ProductsLoaderData {
+  checksum: number
+  visibleRows: number
+}
+
+export interface CompareLoaderDeps {
+  tenant: string
+  compareIds: Array<string>
+  slots: Record<string, CompareSlot>
+  matrix: Record<string, Array<number>>
+  revision: number
+}
+
+export interface CompareLoaderData {
+  checksum: number
+  itemCount: number
+}
+
 const tenantIds = ['tenant-a', 'tenant-b', 'tenant-c', 'tenant-d'] as const
 const locales = ['en-US', 'de-DE', 'fr-FR', 'ja-JP'] as const
 const cohorts = ['alpha', 'beta', 'stable', 'holiday', 'vip'] as const
@@ -123,6 +151,21 @@ export const defaultProductFilters: ProductFilters = {
     sustainable: true,
   },
 }
+
+export const tenantSearchKeys: Array<'tenant'> = ['tenant']
+export const transientSearchKeys: Array<keyof TransientSearch> = [
+  'debug',
+  'junk',
+]
+export const defaultShopSearchStrip = {
+  flags: DEFAULT_FLAGS,
+} satisfies Partial<ShopSearchSchema>
+export const defaultProductsSearchStrip = {
+  view: 'grid',
+} satisfies Partial<ProductsSearch>
+export const defaultCompareSearchStrip = {
+  includeRelated: false,
+} satisfies Partial<CompareSearch>
 
 export const shopSubscriberIds = Array.from({ length: 8 }, (_, index) => index)
 export const routeSubscriberIds = Array.from({ length: 6 }, (_, index) => index)
@@ -576,6 +619,173 @@ export function computeSearchChecksum(value: unknown) {
   return seed
 }
 
+export function selectShopSearch(search: unknown) {
+  const typedSearch = search as ShopSearchSchema
+
+  return {
+    tenant: typedSearch.tenant,
+    locale: typedSearch.locale,
+    flags: typedSearch.flags,
+  }
+}
+
+export function selectShopPrimitiveSearch(search: unknown) {
+  const typedSearch = search as ShopSearchSchema
+
+  return `${typedSearch.tenant}:${typedSearch.locale}`
+}
+
+export function selectProductsSearch(search: unknown) {
+  const typedSearch = search as ProductsSearch
+
+  return {
+    filters: typedSearch.filters,
+    flags: typedSearch.flags,
+  }
+}
+
+export function selectProductsPrimitiveSearch(search: unknown) {
+  const typedSearch = search as ProductsSearch
+
+  return {
+    page: typedSearch.page,
+    pageSize: typedSearch.pageSize,
+    sort: typedSearch.sort,
+  }
+}
+
+export function createProductsLoaderDeps({
+  search,
+}: {
+  search: ProductsSearch
+}) {
+  return {
+    tenant: search.tenant,
+    locale: search.locale,
+    page: search.page,
+    pageSize: search.pageSize,
+    sort: search.sort,
+    filters: search.filters,
+    flags: search.flags,
+  } satisfies ProductsLoaderDeps
+}
+
+export function createProductsLoaderData({
+  deps,
+}: {
+  deps: ProductsLoaderDeps
+}) {
+  return {
+    checksum: computeSearchChecksum(deps),
+    visibleRows: deps.page * deps.pageSize,
+  } satisfies ProductsLoaderData
+}
+
+export function selectProductsLoaderDeps(deps: unknown) {
+  const typedDeps = deps as ProductsLoaderDeps
+
+  return {
+    page: typedDeps.page,
+    filters: typedDeps.filters,
+    flags: typedDeps.flags,
+  }
+}
+
+export function selectProductsLoaderData(data: unknown) {
+  const typedData = data as ProductsLoaderData
+
+  return {
+    checksum: typedData.checksum,
+    visibleRows: typedData.visibleRows,
+  }
+}
+
+export function formatProductsMarker(
+  search: ProductsSearch,
+  loaderData: ProductsLoaderData,
+) {
+  return [
+    'products',
+    search.tenant,
+    search.page,
+    search.filters.price.max,
+    search.filters.attributes.color,
+    loaderData.checksum,
+  ].join(':')
+}
+
+export function selectDetailSearch(search: unknown) {
+  const typedSearch = search as DetailSearch
+
+  return {
+    tenant: typedSearch.tenant,
+    filters: typedSearch.filters,
+    detailTab: typedSearch.detailTab,
+    panel: typedSearch.panel,
+  }
+}
+
+export function formatDetailMarker(productId: string, search: DetailSearch) {
+  return [
+    'detail',
+    productId,
+    search.tenant,
+    search.detailTab,
+    search.panel,
+  ].join(':')
+}
+
+export function selectCompareSearch(search: unknown) {
+  const typedSearch = search as CompareSearch
+
+  return {
+    tenant: typedSearch.tenant,
+    compareIds: typedSearch.compareIds,
+    slots: typedSearch.slots,
+    matrix: typedSearch.matrix,
+  }
+}
+
+export function createCompareLoaderDeps({ search }: { search: CompareSearch }) {
+  return {
+    tenant: search.tenant,
+    compareIds: search.compareIds,
+    slots: search.slots,
+    matrix: search.matrix,
+    revision: search.revision,
+  } satisfies CompareLoaderDeps
+}
+
+export function createCompareLoaderData({ deps }: { deps: CompareLoaderDeps }) {
+  return {
+    checksum: computeSearchChecksum(deps),
+    itemCount: deps.compareIds.length,
+  } satisfies CompareLoaderData
+}
+
+export function selectCompareLoaderDeps(deps: unknown) {
+  const typedDeps = deps as CompareLoaderDeps
+
+  return {
+    compareIds: typedDeps.compareIds,
+    slots: typedDeps.slots,
+    revision: typedDeps.revision,
+  }
+}
+
+export function formatCompareMarker(
+  search: CompareSearch,
+  loaderData: CompareLoaderData,
+) {
+  return [
+    'compare',
+    search.tenant,
+    search.compareIds.length,
+    loaderData.itemCount,
+    loaderData.checksum,
+  ].join(':')
+}
+
 export function assertEqual<T>(actual: T, expected: T, label: string) {
   if (actual !== expected) {
     throw new Error(
@@ -708,7 +918,11 @@ export function createSearchParamsWorkload<TRouter extends AnyRouter>(
       const linkSearch = parseJsonSearch(
         new URL(href, 'https://router.test').search,
       )
-      assertEqual(linkSearch.tenant, buildProductsSearch(41).tenant, 'link tenant')
+      assertEqual(
+        linkSearch.tenant,
+        buildProductsSearch(41).tenant,
+        'link tenant',
+      )
       assertNoTransientSearchKeys(linkSearch, 'products link search')
 
       const set = navigationSets[2]!

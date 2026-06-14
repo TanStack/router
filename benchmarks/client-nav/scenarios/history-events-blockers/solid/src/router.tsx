@@ -1,5 +1,8 @@
 import { createMemoryHistory, createRouter } from '@tanstack/solid-router'
-import { historyEventsBlockersHomePath } from '../../shared.ts'
+import {
+  historyEventsBlockersHomePath,
+  historyEventsBlockersRouterPendingMs,
+} from '../../shared.ts'
 import { routeTree } from './routeTree'
 
 export function getRouter() {
@@ -7,8 +10,8 @@ export function getRouter() {
     history: createMemoryHistory({
       initialEntries: [historyEventsBlockersHomePath],
     }),
-    defaultPendingMs: 0,
-    defaultPendingMinMs: 0,
+    defaultPendingMs: historyEventsBlockersRouterPendingMs,
+    defaultPendingMinMs: historyEventsBlockersRouterPendingMs,
     routeTree,
   })
 }

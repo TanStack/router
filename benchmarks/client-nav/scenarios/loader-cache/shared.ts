@@ -77,6 +77,12 @@ export interface LoaderCacheRuntime {
   ) => Promise<LoaderCachePayload>
 }
 
+export const loaderCacheInitialEntry = '/data'
+export const loaderCacheSubscriberSlots = Array.from(
+  { length: 5 },
+  (_, index) => index,
+)
+
 const random = createDeterministicRandom(6_006)
 
 const token = (prefix: string, index: number) =>

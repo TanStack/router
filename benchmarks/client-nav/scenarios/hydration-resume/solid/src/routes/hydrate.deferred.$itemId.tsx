@@ -1,6 +1,11 @@
 import { Suspense } from 'solid-js'
 import { Await, createRoute } from '@tanstack/solid-router'
-import type { HydrationResumeDeferredPayload } from '../../../shared.ts'
+import {
+  createDeferredHydrationMarkerAttributes,
+  hydrationResumeRouteGcTime,
+  hydrationResumeRouteStaleTime,
+  type HydrationResumeDeferredPayload,
+} from '../../../shared.ts'
 import { DeferredResolved } from '../perf'
 import { hydrationResumeRuntime } from '../runtime'
 import { hydrateRoute } from './hydrate'
@@ -15,8 +20,8 @@ export const deferredRoute = createRoute({
       sequence,
     )
   },
-  staleTime: Infinity,
-  gcTime: Infinity,
+  staleTime: hydrationResumeRouteStaleTime,
+  gcTime: hydrationResumeRouteGcTime,
   component: DeferredPage,
 })
 
@@ -26,16 +31,20 @@ function DeferredPage() {
   return (
     <>
       <div
-        data-hydration-resume-marker="deferred-shell"
-        data-item-id={loaderData().itemId}
-        data-source={loaderData().source}
+        {...createDeferredHydrationMarkerAttributes(
+          'deferred-shell',
+          loaderData().itemId,
+          loaderData().source,
+        )}
       />
       <Suspense
         fallback={
           <div
-            data-hydration-resume-marker="deferred-fallback"
-            data-item-id={loaderData().itemId}
-            data-source={loaderData().source}
+            {...createDeferredHydrationMarkerAttributes(
+              'deferred-fallback',
+              loaderData().itemId,
+              loaderData().source,
+            )}
           />
         }
       >

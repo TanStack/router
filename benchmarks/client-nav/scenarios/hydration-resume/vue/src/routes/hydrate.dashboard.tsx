@@ -1,6 +1,11 @@
 import * as Vue from 'vue'
 import { Outlet, createRoute } from '@tanstack/vue-router'
-import { buildDashboardLoaderData } from '../../../shared.ts'
+import {
+  buildDashboardBeforeLoadContext,
+  buildDashboardLoaderData,
+  hydrationResumeRouteGcTime,
+  hydrationResumeRouteStaleTime,
+} from '../../../shared.ts'
 import { PerfSubscriber, subscriberSlots } from '../perf'
 import { getDashboardFixture, hydrationResumeRuntime } from '../runtime'
 import { hydrateRoute } from './hydrate'
@@ -34,15 +39,13 @@ export const dashboardRoute = createRoute({
   beforeLoad: () => {
     const fixture = getDashboardFixture()
     hydrationResumeRuntime.recordBeforeLoad('dashboardBeforeLoad')
-    return {
-      dashboardBeforeSeed: fixture.seed + 7,
-    }
+    return buildDashboardBeforeLoadContext(fixture)
   },
   loader: () => {
     const sequence = hydrationResumeRuntime.recordLoader('dashboard')
     return buildDashboardLoaderData(getDashboardFixture(), 'client', sequence)
   },
-  staleTime: Infinity,
-  gcTime: Infinity,
+  staleTime: hydrationResumeRouteStaleTime,
+  gcTime: hydrationResumeRouteGcTime,
   component: DashboardLayout,
 })

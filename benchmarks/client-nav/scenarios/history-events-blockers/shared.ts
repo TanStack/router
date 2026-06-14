@@ -116,6 +116,7 @@ type NavigationSettlement =
 export const historyEventsBlockersScenarioSlug = 'history-events-blockers'
 export const historyEventsBlockersHomePath = '/history'
 export const historyEventsBlockersDonePath = '/history/done'
+export const historyEventsBlockersRouterPendingMs = 0
 
 const eventTypes = [
   'onBeforeNavigate',
@@ -279,6 +280,26 @@ export function createHistoryEventsBlockersRuntime(): HistoryEventsBlockersRunti
       }
     },
   }
+}
+
+export function createHistoryEventsBlockerOptions(
+  shouldBlockFn: (args: HistoryBlockerArgs) => boolean,
+) {
+  return {
+    shouldBlockFn,
+    withResolver: true,
+    enableBeforeUnload: false,
+  } as const
+}
+
+export function historyEventsBlockersRouteSeed(value: string) {
+  let seed = 0
+
+  for (let index = 0; index < value.length; index++) {
+    seed = (seed * 31 + value.charCodeAt(index)) >>> 0
+  }
+
+  return seed
 }
 
 export function runHistoryEventsBlockersComputation(seed: number) {

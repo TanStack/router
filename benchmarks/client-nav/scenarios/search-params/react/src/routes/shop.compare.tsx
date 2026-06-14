@@ -4,8 +4,16 @@ import {
   stripSearchParams,
 } from '@tanstack/react-router'
 import {
+  createCompareLoaderData,
+  createCompareLoaderDeps,
   computeSearchChecksum,
+  defaultCompareSearchStrip,
+  formatCompareMarker,
   routeSubscriberIds,
+  selectCompareLoaderDeps,
+  selectCompareSearch,
+  tenantSearchKeys,
+  transientSearchKeys,
   validateCompareSearch,
   type CompareSearch,
 } from '../../../shared'
@@ -14,22 +22,13 @@ export const Route = createFileRoute('/shop/compare')({
   validateSearch: validateCompareSearch,
   search: {
     middlewares: [
-      retainSearchParams<CompareSearch>(['tenant']),
-      stripSearchParams<CompareSearch>(['debug', 'junk']),
-      stripSearchParams<CompareSearch>({ includeRelated: false }),
+      retainSearchParams<CompareSearch>(tenantSearchKeys),
+      stripSearchParams<CompareSearch>(transientSearchKeys),
+      stripSearchParams<CompareSearch>(defaultCompareSearchStrip),
     ],
   },
-  loaderDeps: ({ search }) => ({
-    tenant: search.tenant,
-    compareIds: search.compareIds,
-    slots: search.slots,
-    matrix: search.matrix,
-    revision: search.revision,
-  }),
-  loader: ({ deps }) => ({
-    checksum: computeSearchChecksum(deps),
-    itemCount: deps.compareIds.length,
-  }),
+  loaderDeps: createCompareLoaderDeps,
+  loader: createCompareLoaderData,
   staleTime: 60_000,
   gcTime: 60_000,
   component: ComparePage,
@@ -37,16 +36,7 @@ export const Route = createFileRoute('/shop/compare')({
 
 function CompareSearchSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => {
-      const typedSearch = search as CompareSearch
-
-      return {
-        tenant: typedSearch.tenant,
-        compareIds: typedSearch.compareIds,
-        slots: typedSearch.slots,
-        matrix: typedSearch.matrix,
-      }
-    },
+    select: selectCompareSearch,
     structuralSharing: true,
   })
 
@@ -56,19 +46,7 @@ function CompareSearchSubscriber() {
 
 function CompareLoaderDepsSubscriber() {
   const loaderDeps = Route.useLoaderDeps({
-    select: (deps) => {
-      const typedDeps = deps as {
-        compareIds: CompareSearch['compareIds']
-        slots: CompareSearch['slots']
-        revision: number
-      }
-
-      return {
-        compareIds: typedDeps.compareIds,
-        slots: typedDeps.slots,
-        revision: typedDeps.revision,
-      }
-    },
+    select: selectCompareLoaderDeps,
     structuralSharing: true,
   })
 
@@ -89,7 +67,7 @@ function ComparePage() {
         <CompareLoaderDepsSubscriber key={`compare-loader-deps-${id}`} />
       ))}
       <div data-testid="compare-marker">
-        {`compare:${search.tenant}:${search.compareIds.length}:${loaderData.itemCount}:${loaderData.checksum}`}
+        {formatCompareMarker(search, loaderData)}
       </div>
     </>
   )

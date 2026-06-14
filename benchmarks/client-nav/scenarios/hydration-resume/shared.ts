@@ -109,6 +109,16 @@ type ControlledDeferred = {
 const FIXTURE_COUNT = 8
 const FIXED_UPDATED_AT = 1_700_000_000_000
 
+export const hydrationResumeRouteStaleTime = Infinity
+export const hydrationResumeRouteGcTime = Infinity
+export const hydrationResumeRouterPendingMs = 0
+export const hydrationResumeStandaloneInitialEntry =
+  '/hydrate/live/live-contract'
+export const hydrationResumeSubscriberSlots = Array.from(
+  { length: 4 },
+  (_, index) => index,
+)
+
 function createEmptyCounters(): HydrationResumeCounters {
   return {
     hydrate: 0,
@@ -197,6 +207,10 @@ export function createLiveNavigationTarget(index: number) {
   }
 }
 
+export function createStandaloneHydrationFixture() {
+  return createDashboardHydrationFixture(0)
+}
+
 export function normalizeDashboardSearch(
   search: Record<string, unknown>,
 ): DashboardSearch {
@@ -275,6 +289,75 @@ export function buildLiveLoaderData(
     fixtureId: fixture.fixtureId,
     sequence,
     checksum: checksumText(`${itemId}:live`, fixture.seed + 3),
+  }
+}
+
+export function pickDashboardLoaderDeps(search: DashboardSearch) {
+  return {
+    tab: search.tab,
+    cursor: search.cursor,
+  }
+}
+
+export function createHydrateSectionAttributes(
+  loaderData: HydrationResumeLoaderData,
+) {
+  return {
+    'data-hydration-resume-section': 'hydrate',
+    'data-fixture-id': loaderData.fixtureId,
+    'data-source': loaderData.source,
+  }
+}
+
+export function createDashboardHydrationMarkerAttributes(
+  teamId: string,
+  search: DashboardSearch,
+  loaderData: HydrationResumeLoaderData,
+  teamBeforeSeed: number,
+) {
+  return {
+    'data-hydration-resume-marker': 'dashboard',
+    'data-team-id': teamId,
+    'data-tab': search.tab,
+    'data-cursor': search.cursor,
+    'data-source': loaderData.source,
+    'data-context-seed': teamBeforeSeed,
+  }
+}
+
+export function createLiveHydrationMarkerAttributes(
+  itemId: string,
+  loaderData: HydrationResumeLoaderData,
+) {
+  return {
+    'data-hydration-resume-marker': 'live',
+    'data-item-id': itemId,
+    'data-source': loaderData.source,
+    'data-sequence': loaderData.sequence,
+  }
+}
+
+export function createDeferredHydrationMarkerAttributes(
+  marker: 'deferred-shell' | 'deferred-fallback',
+  itemId: string,
+  source: HydrationResumeDeferredLoaderData['source'],
+) {
+  return {
+    'data-hydration-resume-marker': marker,
+    'data-item-id': itemId,
+    'data-source': source,
+  }
+}
+
+export function createDeferredResolvedMarkerAttributes(
+  payload: HydrationResumeDeferredPayload,
+  source: string,
+) {
+  return {
+    'data-hydration-resume-marker': 'deferred-resolved',
+    'data-item-id': payload.itemId,
+    'data-source': source,
+    'data-value': payload.value,
   }
 }
 
@@ -410,7 +493,17 @@ export type HydrationResumeRuntime = ReturnType<
   typeof createHydrationResumeRuntime
 >
 
-function buildDashboardBeforeLoadContext(
+export function getDashboardHydrationFixture(runtime: HydrationResumeRuntime) {
+  const fixture = runtime.getActiveFixture()
+
+  if (fixture.kind !== 'dashboard') {
+    throw new Error('Expected dashboard hydration fixture')
+  }
+
+  return fixture
+}
+
+export function buildDashboardBeforeLoadContext(
   fixture: Extract<HydrationResumeFixture, { kind: 'dashboard' }>,
 ) {
   return {
@@ -418,7 +511,7 @@ function buildDashboardBeforeLoadContext(
   }
 }
 
-function buildTeamBeforeLoadContext(
+export function buildTeamBeforeLoadContext(
   fixture: Extract<HydrationResumeFixture, { kind: 'dashboard' }>,
 ) {
   return {

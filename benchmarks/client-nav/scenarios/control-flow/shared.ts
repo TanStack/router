@@ -3,7 +3,21 @@ import {
   randomSegment,
 } from '#client-nav/bench-utils'
 
-export const INITIAL_CONTROL_FLOW_PATH = '/flow/start'
+export const CONTROL_FLOW_PATHS = {
+  start: '/flow/start',
+  target: '/flow/target/$id',
+  redirectBeforeLoad: '/flow/redirect-before-load/$id',
+  redirectLoader: '/flow/redirect-loader/$id',
+  notFound: '/flow/not-found/$id',
+  error: '/flow/error/$id',
+  search: '/flow/search',
+  fallback: '/flow/$',
+} as const
+
+export const CONTROL_FLOW_INVALID_SEARCH_HREF = `${CONTROL_FLOW_PATHS.search}?mode=invalid&token=link-invalid`
+export const CONTROL_FLOW_UNMATCHED_HREF = '/flow/unmatched/link'
+
+export const INITIAL_CONTROL_FLOW_PATH = CONTROL_FLOW_PATHS.start
 export const CONTROL_FLOW_CYCLE_COUNT = 2
 export const CONTROL_FLOW_NAVIGATION_COUNT = CONTROL_FLOW_CYCLE_COUNT * 8
 
@@ -35,12 +49,17 @@ export interface ControlFlowSearch {
   checksum: number
 }
 
+export type ControlFlowParams = {
+  id: string
+}
+
 const CONTROL_FLOW_SEED = 0xc0ff_ee10
 const EMPTY_VALUE = 'empty'
 
 export const START_MARKER = createControlFlowMarker('start', 'start')
 export const NOT_FOUND_MARKER = createControlFlowMarker('not-found', 'route')
 export const ERROR_MARKER = createControlFlowMarker('error', 'loader')
+export const ROOT_ERROR_MARKER = createControlFlowMarker('error', 'root')
 export const SEARCH_ERROR_MARKER = createControlFlowMarker(
   'search-error',
   'validation',
@@ -62,6 +81,18 @@ export function normalizeFlowId(value: unknown) {
     .replace(/^-+|-+$/g, '')
 
   return normalized || EMPTY_VALUE
+}
+
+export function parseControlFlowParams(params: ControlFlowParams) {
+  return {
+    id: normalizeFlowId(params.id),
+  }
+}
+
+export function stringifyControlFlowParams(params: ControlFlowParams) {
+  return {
+    id: normalizeFlowId(params.id),
+  }
 }
 
 export function computeControlFlowChecksum(value: string) {
@@ -97,6 +128,14 @@ export function validateControlFlowSearch(
   }
 }
 
+export function createControlFlowTargetRedirect(id: string) {
+  return {
+    to: CONTROL_FLOW_PATHS.target,
+    params: { id },
+    replace: true,
+  }
+}
+
 function createActionId(
   runIndex: number,
   cycle: number,
@@ -111,7 +150,7 @@ function createActionId(
 function createTargetAction(label: string, id: string): ControlFlowAction {
   return {
     label,
-    to: '/flow/target/$id',
+    to: CONTROL_FLOW_PATHS.target,
     params: { id },
     expected: createControlFlowMarker('target', normalizeFlowId(id)),
   }
@@ -153,29 +192,29 @@ export function createControlFlowActions(runIndex: number) {
       createTargetAction('normal target', targetId),
       createRedirectAction(
         'beforeLoad redirect',
-        '/flow/redirect-before-load/$id',
+        CONTROL_FLOW_PATHS.redirectBeforeLoad,
         beforeLoadId,
       ),
       createRedirectAction(
         'loader redirect',
-        '/flow/redirect-loader/$id',
+        CONTROL_FLOW_PATHS.redirectLoader,
         loaderRedirectId,
       ),
       {
         label: 'not found',
-        to: '/flow/not-found/$id',
+        to: CONTROL_FLOW_PATHS.notFound,
         params: { id: notFoundId },
         expected: NOT_FOUND_MARKER,
       },
       {
         label: 'loader error',
-        to: '/flow/error/$id',
+        to: CONTROL_FLOW_PATHS.error,
         params: { id: errorId },
         expected: ERROR_MARKER,
       },
       {
         label: 'valid search',
-        to: '/flow/search',
+        to: CONTROL_FLOW_PATHS.search,
         search: { mode: 'valid', token: validToken, junk: `strip-${cycle}` },
         expected: createControlFlowMarker(
           'search-valid',
@@ -184,7 +223,7 @@ export function createControlFlowActions(runIndex: number) {
       },
       {
         label: 'invalid search',
-        to: '/flow/search',
+        to: CONTROL_FLOW_PATHS.search,
         search: { mode: 'invalid', token: invalidToken },
         expected: SEARCH_ERROR_MARKER,
       },

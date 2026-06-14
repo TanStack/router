@@ -2,7 +2,10 @@ import * as Vue from 'vue'
 import { createFileRoute, stripSearchParams } from '@tanstack/vue-router'
 import {
   computeSearchChecksum,
+  formatDetailMarker,
   routeSubscriberIds,
+  selectDetailSearch,
+  transientSearchKeys,
   validateDetailSearch,
   type DetailSearch,
 } from '../../../shared'
@@ -10,12 +13,7 @@ import {
 const DetailSearchSubscriber = Vue.defineComponent({
   setup() {
     const selected = Route.useSearch({
-      select: (search) => ({
-        tenant: search.tenant,
-        filters: search.filters,
-        detailTab: search.detailTab,
-        panel: search.panel,
-      }),
+      select: selectDetailSearch,
     })
 
     return () => {
@@ -36,7 +34,7 @@ const ProductDetailPage = Vue.defineComponent({
           <DetailSearchSubscriber key={`detail-search-${id}`} />
         ))}
         <div data-testid="detail-marker">
-          {`detail:${params.value.productId}:${search.value.tenant}:${search.value.detailTab}:${search.value.panel}`}
+          {formatDetailMarker(params.value.productId, search.value)}
         </div>
       </>
     )
@@ -46,7 +44,7 @@ const ProductDetailPage = Vue.defineComponent({
 export const Route = createFileRoute('/shop/products/$productId')({
   validateSearch: validateDetailSearch,
   search: {
-    middlewares: [stripSearchParams<DetailSearch>(['debug', 'junk'])],
+    middlewares: [stripSearchParams<DetailSearch>(transientSearchKeys)],
   },
   component: ProductDetailPage,
 })

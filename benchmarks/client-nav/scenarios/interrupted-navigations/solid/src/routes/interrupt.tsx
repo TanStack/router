@@ -2,13 +2,14 @@ import { Show } from 'solid-js'
 import { Outlet, createRoute, useRouterState } from '@tanstack/solid-router'
 import {
   interruptedNavigationHomePath,
+  interruptedNavigationRoutePaths,
   interruptedNavigationScenarioSlug,
 } from '../../../shared.ts'
 import { rootRoute } from './__root'
 
 export const interruptRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/interrupt',
+  path: interruptedNavigationRoutePaths.home,
   component: InterruptLayout,
 })
 

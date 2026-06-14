@@ -1,6 +1,11 @@
 import * as Vue from 'vue'
 import { createRoute } from '@tanstack/vue-router'
-import { buildLiveLoaderData } from '../../../shared.ts'
+import {
+  buildLiveLoaderData,
+  createLiveHydrationMarkerAttributes,
+  hydrationResumeRouteGcTime,
+  hydrationResumeRouteStaleTime,
+} from '../../../shared.ts'
 import { PerfSubscriber, subscriberSlots } from '../perf'
 import { hydrationResumeRuntime } from '../runtime'
 import { hydrateRoute } from './hydrate'
@@ -19,10 +24,10 @@ const LivePage = Vue.defineComponent({
           />
         ))}
         <div
-          data-hydration-resume-marker="live"
-          data-item-id={params.value.itemId}
-          data-source={loaderData.value.source}
-          data-sequence={loaderData.value.sequence}
+          {...createLiveHydrationMarkerAttributes(
+            params.value.itemId,
+            loaderData.value,
+          )}
         />
       </>
     )
@@ -40,7 +45,7 @@ export const liveRoute = createRoute({
       sequence,
     )
   },
-  staleTime: Infinity,
-  gcTime: Infinity,
+  staleTime: hydrationResumeRouteStaleTime,
+  gcTime: hydrationResumeRouteGcTime,
   component: LivePage,
 })

@@ -133,6 +133,31 @@ export function digestSubscriberValue(value: unknown): number {
   return 0
 }
 
+export function createSubscribersSelectorsRuntime() {
+  let subscriberCounts = createEmptySubscriberCounts()
+  let subscriberCountersEnabled = false
+
+  return {
+    resetSubscriberCounts() {
+      subscriberCounts = createEmptySubscriberCounts()
+    },
+    getSubscriberCounts(): SubscriberCounts {
+      return { ...subscriberCounts }
+    },
+    setSubscriberCountersEnabled(enabled: boolean) {
+      subscriberCountersEnabled = enabled
+    },
+    recordSubscriberUpdate(kind: SubscriberCounterKey) {
+      if (subscriberCountersEnabled) {
+        subscriberCounts[kind] += 1
+      }
+    },
+    computeSubscriberValue(index: number, value: unknown) {
+      return runSubscriberComputation(digestSubscriberValue(value) + index)
+    },
+  }
+}
+
 export function normalizeSubscriberSearch(
   search: Record<string, unknown>,
 ): SubscriberSearch {

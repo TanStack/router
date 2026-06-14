@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { Outlet, createRootRoute } from '@tanstack/vue-router'
-import { UNMATCHED_MARKER } from '../../../shared'
+import { ROOT_ERROR_MARKER, UNMATCHED_MARKER } from '../../../shared'
 import { createControlFlowMarkerElement } from '../control-flow'
 
 const Root: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
@@ -19,8 +19,7 @@ const RootNotFoundComponent: ReturnType<typeof Vue.defineComponent> =
 const RootErrorComponent: ReturnType<typeof Vue.defineComponent> =
   Vue.defineComponent({
     setup() {
-      return () =>
-        createControlFlowMarkerElement({ branch: 'error', value: 'root' })
+      return () => createControlFlowMarkerElement(ROOT_ERROR_MARKER)
     },
   })
 

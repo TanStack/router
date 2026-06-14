@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { createRoute, notFound } from '@tanstack/vue-router'
-import { NOT_FOUND_MARKER } from '../../../shared'
+import { CONTROL_FLOW_PATHS, NOT_FOUND_MARKER } from '../../../shared'
 import {
   EmptyPage,
   createControlFlowMarkerElement,
@@ -18,7 +18,7 @@ const NotFoundPage: ReturnType<typeof Vue.defineComponent> =
 
 export const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/flow/not-found/$id',
+  path: CONTROL_FLOW_PATHS.notFound,
   params: {
     parse: parseFlowParams,
     stringify: stringifyFlowParams,

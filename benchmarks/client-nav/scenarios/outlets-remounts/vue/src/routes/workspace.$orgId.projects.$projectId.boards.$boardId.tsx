@@ -1,17 +1,17 @@
 import * as Vue from 'vue'
 import { Outlet, createRoute, useParams } from '@tanstack/vue-router'
+import { createOutletsRemountsBoardMarker } from '../../../shared'
 import {
   createRouteLifecycleOptions,
   recordComponentMount,
 } from '../outletsRemountsRuntime'
-import { createRouteSection, readParam } from '../routeSection'
+import { createRouteSection } from '../routeSection'
 import { projectRoute } from './workspace.$orgId.projects.$projectId'
 
 const BoardLayout = Vue.defineComponent({
   setup() {
     const params = useParams({ strict: false })
-    const getMarker = () =>
-      `board:${readParam(params.value, 'orgId')}:${readParam(params.value, 'projectId')}:${readParam(params.value, 'boardId')}`
+    const getMarker = () => createOutletsRemountsBoardMarker(params.value)
     const mountIndex = recordComponentMount('board', getMarker())
 
     return () =>

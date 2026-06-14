@@ -1,23 +1,22 @@
 import { createRoute } from '@tanstack/react-router'
 import {
   SCROLL_CONTAINER_IDS,
+  SCROLL_ROUTE_PATHS,
   getHashAnchorId,
-  normalizeScrollSegment,
+  parseScrollDetailParams,
   runScrollRenderComputation,
+  scrollFillerRows,
+  stringifyScrollDetailParams,
 } from '../../../shared.ts'
-import { RestoredMarker, fillerRows } from '../scroll-runtime'
+import { RestoredMarker } from '../scroll-runtime'
 import { listRoute } from './scroll.list.$listId'
 
 export const detailRoute = createRoute({
   getParentRoute: () => listRoute,
-  path: 'detail/$itemId',
+  path: SCROLL_ROUTE_PATHS.detailChild,
   params: {
-    parse: (params) => ({
-      itemId: normalizeScrollSegment(params.itemId, 'missing-item'),
-    }),
-    stringify: (params) => ({
-      itemId: normalizeScrollSegment(params.itemId, 'missing-item'),
-    }),
+    parse: parseScrollDetailParams,
+    stringify: stringifyScrollDetailParams,
   },
   component: DetailPage,
 })
@@ -40,7 +39,7 @@ function DetailPage() {
       >
         <RestoredMarker id="detail" />
         <h2 id={hashId}>{`Detail ${params.itemId}`}</h2>
-        {fillerRows.map((row) => (
+        {scrollFillerRows.map((row) => (
           <p key={`detail-${params.itemId}-${row}`}>{`Detail row ${row}`}</p>
         ))}
       </div>

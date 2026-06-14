@@ -1,5 +1,9 @@
 import { createRoute } from '@tanstack/react-router'
-import { ERROR_MARKER, createShallowControlFlowError } from '../../../shared'
+import {
+  CONTROL_FLOW_PATHS,
+  ERROR_MARKER,
+  createShallowControlFlowError,
+} from '../../../shared'
 import {
   ControlFlowMarker,
   EmptyPage,
@@ -10,7 +14,7 @@ import { rootRoute } from './__root'
 
 export const errorRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/flow/error/$id',
+  path: CONTROL_FLOW_PATHS.error,
   params: {
     parse: parseFlowParams,
     stringify: stringifyFlowParams,

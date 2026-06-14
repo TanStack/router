@@ -1,7 +1,12 @@
 import { createRoute } from '@tanstack/react-router'
 import {
+  buildTeamBeforeLoadContext,
   buildTeamLoaderData,
+  createDashboardHydrationMarkerAttributes,
+  hydrationResumeRouteGcTime,
+  hydrationResumeRouteStaleTime,
   normalizeDashboardSearch,
+  pickDashboardLoaderDeps,
 } from '../../../shared.ts'
 import { PerfSubscriber, subscriberSlots } from '../perf'
 import { getDashboardFixture, hydrationResumeRuntime } from '../runtime'
@@ -10,25 +15,19 @@ import { dashboardRoute } from './hydrate.dashboard'
 export const teamRoute = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '$teamId',
-  validateSearch: (search: Record<string, unknown>) =>
-    normalizeDashboardSearch(search),
-  loaderDeps: ({ search }) => ({
-    tab: search.tab,
-    cursor: search.cursor,
-  }),
+  validateSearch: normalizeDashboardSearch,
+  loaderDeps: ({ search }) => pickDashboardLoaderDeps(search),
   beforeLoad: () => {
     const fixture = getDashboardFixture()
     hydrationResumeRuntime.recordBeforeLoad('teamBeforeLoad')
-    return {
-      teamBeforeSeed: fixture.seed + 11,
-    }
+    return buildTeamBeforeLoadContext(fixture)
   },
   loader: () => {
     const sequence = hydrationResumeRuntime.recordLoader('team')
     return buildTeamLoaderData(getDashboardFixture(), 'client', sequence)
   },
-  staleTime: Infinity,
-  gcTime: Infinity,
+  staleTime: hydrationResumeRouteStaleTime,
+  gcTime: hydrationResumeRouteGcTime,
   component: TeamPage,
 })
 
@@ -47,12 +46,12 @@ function TeamPage() {
         />
       ))}
       <div
-        data-hydration-resume-marker="dashboard"
-        data-team-id={params.teamId}
-        data-tab={search.tab}
-        data-cursor={search.cursor}
-        data-source={loaderData.source}
-        data-context-seed={routeContext.teamBeforeSeed}
+        {...createDashboardHydrationMarkerAttributes(
+          params.teamId,
+          search,
+          loaderData,
+          routeContext.teamBeforeSeed,
+        )}
       />
     </>
   )

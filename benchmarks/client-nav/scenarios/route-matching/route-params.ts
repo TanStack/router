@@ -1,4 +1,4 @@
-import { normalizeNumericId, normalizeSlug } from '../../shared'
+import { normalizeNumericId, normalizeSlug } from './shared'
 
 type CatalogParams = {
   category: string

@@ -1,5 +1,3 @@
-import { recordComponentPreload } from '../../shared'
-
 export {
   BOOTSTRAP_INTENT_ITEM_ID,
   BOOTSTRAP_RENDER_REPORT_ID,
@@ -12,22 +10,16 @@ export {
   normalizeItemSearch,
   normalizePreloadIndexSearch,
   normalizeReportSearch,
+  preloadComponent,
+  preloadingInitialEntry,
   recordDetailLoader,
   recordItemBeforeLoad,
   recordItemLoader,
   recordLazyLoader,
   recordLazyRouteResolution,
   recordReportLoader,
+  reportPreloadStaleWindowMs,
   resetPreloadingCounters,
   runPreloadingComputation,
+  staleWindowMs,
 } from '../../shared'
-
-export const staleWindowMs = 60_000
-export const reportPreloadStaleWindowMs = 120_000
-
-export function preloadComponent(
-  kind: Parameters<typeof recordComponentPreload>[0],
-) {
-  recordComponentPreload(kind)
-  return Promise.resolve()
-}

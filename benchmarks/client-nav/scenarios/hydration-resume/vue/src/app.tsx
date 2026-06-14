@@ -2,7 +2,7 @@ import * as Vue from 'vue'
 import { RouterProvider } from '@tanstack/vue-router'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import {
-  createDashboardHydrationFixture,
+  createStandaloneHydrationFixture,
   seedHydrationResumeSsrGlobal,
   type HydrationResumeFixture,
 } from '../../shared.ts'
@@ -70,7 +70,7 @@ export async function mountHydratedTestApp(
 }
 
 export function mountTestApp(container: Element) {
-  const fixture = createDashboardHydrationFixture(0)
+  const fixture = createStandaloneHydrationFixture()
   hydrationResumeRuntime.startCycle(fixture)
 
   const router = getRouter()

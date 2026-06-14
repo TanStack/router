@@ -2,6 +2,7 @@ import * as Vue from 'vue'
 import { Outlet, createRoute, useRouterState } from '@tanstack/vue-router'
 import {
   interruptedNavigationHomePath,
+  interruptedNavigationRoutePaths,
   interruptedNavigationScenarioSlug,
 } from '../../../shared.ts'
 import { rootRoute } from './__root'
@@ -27,6 +28,6 @@ const InterruptLayout: ReturnType<typeof Vue.defineComponent> =
 
 export const interruptRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/interrupt',
+  path: interruptedNavigationRoutePaths.home,
   component: InterruptLayout,
 })

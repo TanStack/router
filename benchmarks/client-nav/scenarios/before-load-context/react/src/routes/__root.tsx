@@ -1,9 +1,10 @@
 import { Outlet, createRootRouteWithContext } from '@tanstack/react-router'
 import {
+  consumeSelectedValue,
+  rootSubscribers,
   runContextComputation,
   type RootBenchmarkContext,
 } from '../../../shared'
-import { consumeSelectedValue, rootSubscribers } from '../runtime'
 
 export const Route = createRootRouteWithContext<RootBenchmarkContext>()({
   component: RootComponent,

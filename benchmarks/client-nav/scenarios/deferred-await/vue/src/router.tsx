@@ -1,13 +1,14 @@
 import { createMemoryHistory, createRouter } from '@tanstack/vue-router'
+import { deferredInitialLocation, deferredRouterPendingMs } from '../../shared'
 import { routeTree } from './routeTree'
 
 export function getRouter() {
   return createRouter({
     history: createMemoryHistory({
-      initialEntries: ['/deferred'],
+      initialEntries: [deferredInitialLocation],
     }),
-    defaultPendingMs: 0,
-    defaultPendingMinMs: 0,
+    defaultPendingMs: deferredRouterPendingMs,
+    defaultPendingMinMs: deferredRouterPendingMs,
     routeTree,
   })
 }

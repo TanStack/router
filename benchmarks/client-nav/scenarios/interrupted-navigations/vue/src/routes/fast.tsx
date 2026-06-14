@@ -1,6 +1,11 @@
 import * as Vue from 'vue'
 import { createRoute } from '@tanstack/vue-router'
 import {
+  formatInterruptedPagePayload,
+  interruptedNavigationFastRouteCacheOptions,
+  interruptedNavigationRoutePaths,
+} from '../../../shared.ts'
+import {
   interruptedNavigationRuntime,
   recordInterruptedCommit,
 } from '../runtime'
@@ -15,7 +20,7 @@ const FastPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
 
       return (
         <main data-interrupted-id={data.value.id} data-interrupted-page="fast">
-          {`${data.value.kind}:${data.value.id}:${data.value.sequence}:${data.value.checksum}`}
+          {formatInterruptedPagePayload(data.value)}
         </main>
       )
     }
@@ -24,10 +29,9 @@ const FastPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
 
 export const fastRoute = createRoute({
   getParentRoute: () => interruptRoute,
-  path: 'fast/$id',
+  path: interruptedNavigationRoutePaths.fast,
   loader: ({ params }) =>
     interruptedNavigationRuntime.recordFastLoad(params.id),
-  staleTime: 0,
-  gcTime: 0,
+  ...interruptedNavigationFastRouteCacheOptions,
   component: FastPage,
 })

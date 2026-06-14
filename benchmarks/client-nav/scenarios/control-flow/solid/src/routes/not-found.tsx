@@ -1,5 +1,5 @@
 import { createRoute, notFound } from '@tanstack/solid-router'
-import { NOT_FOUND_MARKER } from '../../../shared'
+import { CONTROL_FLOW_PATHS, NOT_FOUND_MARKER } from '../../../shared'
 import {
   ControlFlowMarker,
   EmptyPage,
@@ -10,7 +10,7 @@ import { rootRoute } from './__root'
 
 export const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/flow/not-found/$id',
+  path: CONTROL_FLOW_PATHS.notFound,
   params: {
     parse: parseFlowParams,
     stringify: stringifyFlowParams,

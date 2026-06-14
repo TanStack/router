@@ -69,6 +69,9 @@ type DeferredTarget = {
 }
 
 export const REPORT_SECTION_COUNT = 6
+export const deferredInitialLocation = '/deferred'
+export const deferredRouteGcTime = 0
+export const deferredRouterPendingMs = 0
 
 const cycleCountPerInvocation = 8
 const staleWindowMs = 60_000

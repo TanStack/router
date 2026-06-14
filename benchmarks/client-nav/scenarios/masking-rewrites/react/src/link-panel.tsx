@@ -1,8 +1,10 @@
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
 import {
   buildLocationDescriptors,
+  createBuildLocationOptions,
   createLinkLabel,
   createLinkOptions,
+  createMaskingLinkActiveOptions,
   linkDescriptors,
   readVisiblePublicHref,
   type BuiltLocationSnapshot,
@@ -17,7 +19,7 @@ function PanelLink({ descriptor }: { descriptor: LinkDescriptor }) {
       data-mask-link-key={descriptor.key}
       data-mask-link-kind={descriptor.kind}
       data-testid={descriptor.testId}
-      activeOptions={{ includeSearch: descriptor.kind !== 'team-project' }}
+      activeOptions={createMaskingLinkActiveOptions(descriptor)}
       activeProps={{ className: 'active-link' }}
       inactiveProps={{ className: 'inactive-link' }}
     >
@@ -33,10 +35,9 @@ function BuildLocationProbe({ descriptor }: { descriptor: LinkDescriptor }) {
   })
   void locationHref
 
-  const builtLocation = router.buildLocation({
-    _fromLocation: router.state.location,
-    ...createLinkOptions(descriptor),
-  } as any) as unknown as BuiltLocationSnapshot
+  const builtLocation = router.buildLocation(
+    createBuildLocationOptions(router.state.location, descriptor) as any,
+  ) as unknown as BuiltLocationSnapshot
   const visiblePublicHref = readVisiblePublicHref(builtLocation)
 
   return (

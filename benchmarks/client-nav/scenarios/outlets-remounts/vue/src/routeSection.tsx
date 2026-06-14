@@ -5,26 +5,6 @@ import {
 } from './outletsRemountsRuntime'
 import type { OutletsRemountsComponentId } from '../../shared'
 
-export type OutletsRemountsParams = Partial<{
-  orgId: string
-  projectId: string
-  boardId: string
-  cardId: string
-}>
-
-export function readParam(
-  params: OutletsRemountsParams,
-  key: keyof OutletsRemountsParams,
-) {
-  const value = params[key]
-
-  if (typeof value === 'string') {
-    return value
-  }
-
-  return ''
-}
-
 export function createRouteSection(
   routeId: OutletsRemountsComponentId,
   marker: string,

@@ -5,8 +5,15 @@ import {
   stripSearchParams,
 } from '@tanstack/solid-router'
 import {
-  computeSearchChecksum,
+  createCompareLoaderData,
+  createCompareLoaderDeps,
+  defaultCompareSearchStrip,
+  formatCompareMarker,
   routeSubscriberIds,
+  selectCompareLoaderDeps,
+  selectCompareSearch,
+  tenantSearchKeys,
+  transientSearchKeys,
   validateCompareSearch,
   type CompareSearch,
 } from '../../../shared'
@@ -16,22 +23,13 @@ export const Route = createFileRoute('/shop/compare')({
   validateSearch: validateCompareSearch,
   search: {
     middlewares: [
-      retainSearchParams<CompareSearch>(['tenant']),
-      stripSearchParams<CompareSearch>(['debug', 'junk']),
-      stripSearchParams<CompareSearch>({ includeRelated: false }),
+      retainSearchParams<CompareSearch>(tenantSearchKeys),
+      stripSearchParams<CompareSearch>(transientSearchKeys),
+      stripSearchParams<CompareSearch>(defaultCompareSearchStrip),
     ],
   },
-  loaderDeps: ({ search }) => ({
-    tenant: search.tenant,
-    compareIds: search.compareIds,
-    slots: search.slots,
-    matrix: search.matrix,
-    revision: search.revision,
-  }),
-  loader: ({ deps }) => ({
-    checksum: computeSearchChecksum(deps),
-    itemCount: deps.compareIds.length,
-  }),
+  loaderDeps: createCompareLoaderDeps,
+  loader: createCompareLoaderData,
   staleTime: 60_000,
   gcTime: 60_000,
   component: ComparePage,
@@ -39,12 +37,7 @@ export const Route = createFileRoute('/shop/compare')({
 
 function CompareSearchSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => ({
-      tenant: search.tenant,
-      compareIds: search.compareIds,
-      slots: search.slots,
-      matrix: search.matrix,
-    }),
+    select: selectCompareSearch,
   })
 
   return <PerfValue value={() => selected()} />
@@ -52,11 +45,7 @@ function CompareSearchSubscriber() {
 
 function CompareLoaderDepsSubscriber() {
   const loaderDeps = Route.useLoaderDeps({
-    select: (deps) => ({
-      compareIds: deps.compareIds,
-      slots: deps.slots,
-      revision: deps.revision,
-    }),
+    select: selectCompareLoaderDeps,
   })
 
   return <PerfValue value={() => loaderDeps()} />
@@ -73,7 +62,7 @@ function ComparePage() {
         {() => <CompareLoaderDepsSubscriber />}
       </For>
       <div data-testid="compare-marker">
-        {`compare:${search().tenant}:${search().compareIds.length}:${loaderData().itemCount}:${loaderData().checksum}`}
+        {formatCompareMarker(search(), loaderData())}
       </div>
     </>
   )

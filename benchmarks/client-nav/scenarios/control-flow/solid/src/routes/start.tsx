@@ -1,10 +1,15 @@
 import { Link, createRoute } from '@tanstack/solid-router'
-import { START_MARKER } from '../../../shared'
+import {
+  CONTROL_FLOW_INVALID_SEARCH_HREF,
+  CONTROL_FLOW_PATHS,
+  CONTROL_FLOW_UNMATCHED_HREF,
+  START_MARKER,
+} from '../../../shared'
 import { rootRoute } from './__root'
 
 export const startRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/flow/start',
+  path: CONTROL_FLOW_PATHS.start,
   component: StartPage,
 })
 
@@ -17,7 +22,7 @@ function StartPage() {
       <nav>
         <Link
           data-testid="control-flow-target-link"
-          to="/flow/target/$id"
+          to={CONTROL_FLOW_PATHS.target}
           params={{ id: 'link-target' }}
           replace
         >
@@ -25,7 +30,7 @@ function StartPage() {
         </Link>
         <Link
           data-testid="control-flow-before-load-link"
-          to="/flow/redirect-before-load/$id"
+          to={CONTROL_FLOW_PATHS.redirectBeforeLoad}
           params={{ id: 'link-before-load' }}
           replace
         >
@@ -33,7 +38,7 @@ function StartPage() {
         </Link>
         <Link
           data-testid="control-flow-loader-redirect-link"
-          to="/flow/redirect-loader/$id"
+          to={CONTROL_FLOW_PATHS.redirectLoader}
           params={{ id: 'link-loader' }}
           replace
         >
@@ -41,7 +46,7 @@ function StartPage() {
         </Link>
         <Link
           data-testid="control-flow-not-found-link"
-          to="/flow/not-found/$id"
+          to={CONTROL_FLOW_PATHS.notFound}
           params={{ id: 'link-missing' }}
           replace
         >
@@ -49,7 +54,7 @@ function StartPage() {
         </Link>
         <Link
           data-testid="control-flow-error-link"
-          to="/flow/error/$id"
+          to={CONTROL_FLOW_PATHS.error}
           params={{ id: 'link-error' }}
           replace
         >
@@ -57,7 +62,7 @@ function StartPage() {
         </Link>
         <Link
           data-testid="control-flow-search-link"
-          to="/flow/search"
+          to={CONTROL_FLOW_PATHS.search}
           search={{ mode: 'valid', token: 'link-valid' } as never}
           replace
         >
@@ -65,13 +70,13 @@ function StartPage() {
         </Link>
         <a
           data-testid="control-flow-invalid-search-link"
-          href="/flow/search?mode=invalid&token=link-invalid"
+          href={CONTROL_FLOW_INVALID_SEARCH_HREF}
         >
           Invalid search
         </a>
         <a
           data-testid="control-flow-unmatched-link"
-          href="/flow/unmatched/link"
+          href={CONTROL_FLOW_UNMATCHED_HREF}
         >
           Unmatched
         </a>

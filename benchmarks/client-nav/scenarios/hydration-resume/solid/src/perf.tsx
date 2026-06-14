@@ -1,10 +1,12 @@
 import { createRenderEffect } from 'solid-js'
 import {
+  createDeferredResolvedMarkerAttributes,
+  hydrationResumeSubscriberSlots,
   runHydrationResumeComputation,
   type HydrationResumeDeferredPayload,
 } from '../../shared.ts'
 
-export const subscriberSlots = Array.from({ length: 4 }, (_, index) => index)
+export const subscriberSlots = hydrationResumeSubscriberSlots
 
 export function PerfSubscriber(props: { seed: number }) {
   createRenderEffect(() => {
@@ -24,10 +26,7 @@ export function DeferredResolved(props: {
 
   return (
     <div
-      data-hydration-resume-marker="deferred-resolved"
-      data-item-id={props.payload.itemId}
-      data-source={props.source}
-      data-value={props.payload.value}
+      {...createDeferredResolvedMarkerAttributes(props.payload, props.source)}
     />
   )
 }

@@ -1,4 +1,8 @@
 import { createMemoryHistory, createRouter } from '@tanstack/vue-router'
+import {
+  hydrationResumeRouterPendingMs,
+  hydrationResumeStandaloneInitialEntry,
+} from '../../shared.ts'
 import { routeTree, getHydrationResumeRouteIds } from './routeTree'
 import { hydrationResumeRuntime } from './runtime'
 
@@ -10,8 +14,8 @@ export function createHydrationResumeRouter(initialEntry: string) {
       initialEntries: [initialEntry],
     }),
     routeTree,
-    defaultPendingMs: 0,
-    defaultPendingMinMs: 0,
+    defaultPendingMs: hydrationResumeRouterPendingMs,
+    defaultPendingMinMs: hydrationResumeRouterPendingMs,
     hydrate: (dehydratedData: unknown) => {
       hydrationResumeRuntime.recordCustomHydrate(dehydratedData)
     },
@@ -19,7 +23,7 @@ export function createHydrationResumeRouter(initialEntry: string) {
 }
 
 export function getRouter() {
-  return createHydrationResumeRouter('/hydrate/live/live-contract')
+  return createHydrationResumeRouter(hydrationResumeStandaloneInitialEntry)
 }
 
 declare module '@tanstack/vue-router' {

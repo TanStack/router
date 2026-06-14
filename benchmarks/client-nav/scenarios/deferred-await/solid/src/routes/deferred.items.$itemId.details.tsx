@@ -1,6 +1,7 @@
 import { createRoute } from '@tanstack/solid-router'
 import {
   createDetailsLoaderData,
+  deferredRouteGcTime,
   deferredRouteStaleTime,
 } from '../../../shared'
 import { DeferredValue } from '../deferred-value'
@@ -11,7 +12,7 @@ export const Route = createRoute({
   path: 'details',
   loader: ({ params }) => createDetailsLoaderData(params.itemId),
   staleTime: deferredRouteStaleTime(),
-  gcTime: 0,
+  gcTime: deferredRouteGcTime,
   component: DetailsPage,
 })
 

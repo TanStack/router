@@ -5,8 +5,18 @@ import {
   stripSearchParams,
 } from '@tanstack/react-router'
 import {
+  createProductsLoaderData,
+  createProductsLoaderDeps,
   computeSearchChecksum,
+  defaultProductsSearchStrip,
+  formatProductsMarker,
   routeSubscriberIds,
+  selectProductsLoaderData,
+  selectProductsLoaderDeps,
+  selectProductsPrimitiveSearch,
+  selectProductsSearch,
+  tenantSearchKeys,
+  transientSearchKeys,
   validateProductsSearch,
   type ProductsSearch,
 } from '../../../shared'
@@ -15,24 +25,13 @@ export const Route = createFileRoute('/shop/products')({
   validateSearch: validateProductsSearch,
   search: {
     middlewares: [
-      retainSearchParams<ProductsSearch>(['tenant']),
-      stripSearchParams<ProductsSearch>(['debug', 'junk']),
-      stripSearchParams<ProductsSearch>({ view: 'grid' }),
+      retainSearchParams<ProductsSearch>(tenantSearchKeys),
+      stripSearchParams<ProductsSearch>(transientSearchKeys),
+      stripSearchParams<ProductsSearch>(defaultProductsSearchStrip),
     ],
   },
-  loaderDeps: ({ search }) => ({
-    tenant: search.tenant,
-    locale: search.locale,
-    page: search.page,
-    pageSize: search.pageSize,
-    sort: search.sort,
-    filters: search.filters,
-    flags: search.flags,
-  }),
-  loader: ({ deps }) => ({
-    checksum: computeSearchChecksum(deps),
-    visibleRows: deps.page * deps.pageSize,
-  }),
+  loaderDeps: createProductsLoaderDeps,
+  loader: createProductsLoaderData,
   staleTime: 60_000,
   gcTime: 60_000,
   component: ProductsPage,
@@ -40,14 +39,7 @@ export const Route = createFileRoute('/shop/products')({
 
 function ProductsSearchSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => {
-      const typedSearch = search as ProductsSearch
-
-      return {
-        filters: typedSearch.filters,
-        flags: typedSearch.flags,
-      }
-    },
+    select: selectProductsSearch,
     structuralSharing: true,
   })
 
@@ -57,15 +49,7 @@ function ProductsSearchSubscriber() {
 
 function ProductsPrimitiveSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => {
-      const typedSearch = search as ProductsSearch
-
-      return {
-        page: typedSearch.page,
-        pageSize: typedSearch.pageSize,
-        sort: typedSearch.sort,
-      }
-    },
+    select: selectProductsPrimitiveSearch,
     structuralSharing: true,
   })
 
@@ -75,19 +59,7 @@ function ProductsPrimitiveSubscriber() {
 
 function ProductsLoaderDepsSubscriber() {
   const loaderDeps = Route.useLoaderDeps({
-    select: (deps) => {
-      const typedDeps = deps as {
-        page: number
-        filters: ProductsSearch['filters']
-        flags: ProductsSearch['flags']
-      }
-
-      return {
-        page: typedDeps.page,
-        filters: typedDeps.filters,
-        flags: typedDeps.flags,
-      }
-    },
+    select: selectProductsLoaderDeps,
     structuralSharing: true,
   })
 
@@ -97,14 +69,7 @@ function ProductsLoaderDepsSubscriber() {
 
 function ProductsLoaderDataSubscriber() {
   const loaderData = Route.useLoaderData({
-    select: (data) => {
-      const typedData = data as { checksum: number; visibleRows: number }
-
-      return {
-        checksum: typedData.checksum,
-        visibleRows: typedData.visibleRows,
-      }
-    },
+    select: selectProductsLoaderData,
     structuralSharing: true,
   })
 
@@ -131,7 +96,7 @@ function ProductsPage() {
         <ProductsLoaderDataSubscriber key={`products-loader-data-${id}`} />
       ))}
       <div data-testid="products-marker">
-        {`products:${search.tenant}:${search.page}:${search.filters.price.max}:${search.filters.attributes.color}:${loaderData.checksum}`}
+        {formatProductsMarker(search, loaderData)}
       </div>
       <Outlet />
     </>

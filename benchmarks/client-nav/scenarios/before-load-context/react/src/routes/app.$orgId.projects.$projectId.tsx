@@ -1,6 +1,10 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
-import { deriveProjectContext, runContextComputation } from '../../../shared'
-import { consumeSelectedValue, middleSubscribers } from '../runtime'
+import {
+  consumeSelectedValue,
+  deriveProjectContext,
+  middleSubscribers,
+  runContextComputation,
+} from '../../../shared'
 
 export const Route = createFileRoute('/app/$orgId/projects/$projectId')({
   beforeLoad: ({ context, params }) =>

@@ -1,12 +1,16 @@
 import { For } from 'solid-js'
 import { createRoute } from '@tanstack/solid-router'
-import { SCROLL_CONTAINER_IDS } from '../../../shared.ts'
-import { RestoredMarker, fillerRows } from '../scroll-runtime'
+import {
+  SCROLL_CONTAINER_IDS,
+  SCROLL_ROUTE_PATHS,
+  scrollFillerRows,
+} from '../../../shared.ts'
+import { RestoredMarker } from '../scroll-runtime'
 import { scrollRoute } from './scroll'
 
 export const staticRoute = createRoute({
   getParentRoute: () => scrollRoute,
-  path: 'static',
+  path: SCROLL_ROUTE_PATHS.staticChild,
   component: StaticPage,
 })
 
@@ -18,7 +22,9 @@ function StaticPage() {
         data-scroll-region="static"
       >
         <RestoredMarker id="static" />
-        <For each={fillerRows}>{(row) => <p>{`Static row ${row}`}</p>}</For>
+        <For each={scrollFillerRows}>
+          {(row) => <p>{`Static row ${row}`}</p>}
+        </For>
       </div>
     </section>
   )

@@ -7,7 +7,6 @@ import {
   STATIC_ROUTE_COUNT,
   createRouteMarker,
 } from '../../shared'
-import { createMarkerComponent } from './route-components'
 import {
   parseCatalogParams,
   parseCodeParams,
@@ -21,7 +20,8 @@ import {
   stringifyPriorityFallbackParams,
   stringifyPriorityValueParams,
   stringifySlugParams,
-} from './route-params'
+} from '../../route-params'
+import { createMarkerComponent } from './route-components'
 import { Route as rootRoute } from './routes/__root'
 
 const staticRoutes = Array.from({ length: STATIC_ROUTE_COUNT }, (_, index) => {

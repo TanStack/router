@@ -1,4 +1,5 @@
 import { createRoute } from '@tanstack/solid-router'
+import { CONTROL_FLOW_PATHS } from '../../../shared'
 import {
   ControlFlowMarker,
   parseFlowParams,
@@ -8,7 +9,7 @@ import { rootRoute } from './__root'
 
 export const targetRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/flow/target/$id',
+  path: CONTROL_FLOW_PATHS.target,
   params: {
     parse: parseFlowParams,
     stringify: stringifyFlowParams,

@@ -1,6 +1,9 @@
 import * as React from 'react'
 import { createRoute, useBlocker } from '@tanstack/react-router'
-import { runHistoryEventsBlockersComputation } from '../../../shared.ts'
+import {
+  createHistoryEventsBlockerOptions,
+  runHistoryEventsBlockersComputation,
+} from '../../../shared.ts'
 import {
   historyEventsBlockersRuntime,
   pathSeed,
@@ -16,11 +19,9 @@ export const formRoute = createRoute({
 
 function FormPage() {
   const params = formRoute.useParams()
-  const resolver = useBlocker({
-    shouldBlockFn: shouldBlockHistoryNavigation,
-    withResolver: true,
-    enableBeforeUnload: false,
-  })
+  const resolver = useBlocker(
+    createHistoryEventsBlockerOptions(shouldBlockHistoryNavigation),
+  )
 
   React.useEffect(() => {
     historyEventsBlockersRuntime.observeResolver(resolver)

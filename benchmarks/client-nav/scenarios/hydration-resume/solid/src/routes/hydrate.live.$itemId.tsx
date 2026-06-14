@@ -1,6 +1,11 @@
 import { For } from 'solid-js'
 import { createRoute } from '@tanstack/solid-router'
-import { buildLiveLoaderData } from '../../../shared.ts'
+import {
+  buildLiveLoaderData,
+  createLiveHydrationMarkerAttributes,
+  hydrationResumeRouteGcTime,
+  hydrationResumeRouteStaleTime,
+} from '../../../shared.ts'
 import { PerfSubscriber, subscriberSlots } from '../perf'
 import { hydrationResumeRuntime } from '../runtime'
 import { hydrateRoute } from './hydrate'
@@ -16,8 +21,8 @@ export const liveRoute = createRoute({
       sequence,
     )
   },
-  staleTime: Infinity,
-  gcTime: Infinity,
+  staleTime: hydrationResumeRouteStaleTime,
+  gcTime: hydrationResumeRouteGcTime,
   component: LivePage,
 })
 
@@ -31,10 +36,7 @@ function LivePage() {
         {(slot) => <PerfSubscriber seed={loaderData().checksum + slot} />}
       </For>
       <div
-        data-hydration-resume-marker="live"
-        data-item-id={params().itemId}
-        data-source={loaderData().source}
-        data-sequence={loaderData().sequence}
+        {...createLiveHydrationMarkerAttributes(params().itemId, loaderData())}
       />
     </>
   )

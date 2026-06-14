@@ -1,4 +1,5 @@
 import { createRouteMask } from '@tanstack/react-router'
+import { photoModalMaskOptions } from '../../shared.ts'
 import { rootRoute } from './routes/__root'
 import { photoDetailRoute } from './routes/photos.$photoId'
 import { photoModalRoute } from './routes/photos.$photoId.modal'
@@ -16,10 +17,5 @@ export const routeTree = rootRoute.addChildren([
 
 export const photoModalMask = createRouteMask({
   routeTree,
-  from: '/photos/$photoId/modal',
-  to: '/photos/$photoId',
-  params: true,
-  search: { page: 1, filter: 'masked', layout: 'detail' },
-  state: { scenario: 'masking-rewrites', mask: 'photo-modal' } as any,
-  unmaskOnReload: true,
+  ...photoModalMaskOptions,
 })

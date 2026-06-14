@@ -2,23 +2,22 @@ import { For } from 'solid-js'
 import { createRoute } from '@tanstack/solid-router'
 import {
   SCROLL_CONTAINER_IDS,
+  SCROLL_ROUTE_PATHS,
   getHashAnchorId,
-  normalizeScrollSegment,
+  parseScrollDetailParams,
   runScrollRenderComputation,
+  scrollFillerRows,
+  stringifyScrollDetailParams,
 } from '../../../shared.ts'
-import { RestoredMarker, fillerRows } from '../scroll-runtime'
+import { RestoredMarker } from '../scroll-runtime'
 import { listRoute } from './scroll.list.$listId'
 
 export const detailRoute = createRoute({
   getParentRoute: () => listRoute,
-  path: 'detail/$itemId',
+  path: SCROLL_ROUTE_PATHS.detailChild,
   params: {
-    parse: (params) => ({
-      itemId: normalizeScrollSegment(params.itemId, 'missing-item'),
-    }),
-    stringify: (params) => ({
-      itemId: normalizeScrollSegment(params.itemId, 'missing-item'),
-    }),
+    parse: parseScrollDetailParams,
+    stringify: stringifyScrollDetailParams,
   },
   component: DetailPage,
 })
@@ -43,7 +42,9 @@ function DetailPage() {
         <h2
           id={getHashAnchorId(params().itemId)}
         >{`Detail ${params().itemId}`}</h2>
-        <For each={fillerRows}>{(row) => <p>{`Detail row ${row}`}</p>}</For>
+        <For each={scrollFillerRows}>
+          {(row) => <p>{`Detail row ${row}`}</p>}
+        </For>
       </div>
     </section>
   )

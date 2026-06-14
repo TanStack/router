@@ -6,8 +6,17 @@ import {
   stripSearchParams,
 } from '@tanstack/solid-router'
 import {
-  computeSearchChecksum,
+  createProductsLoaderData,
+  createProductsLoaderDeps,
+  defaultProductsSearchStrip,
+  formatProductsMarker,
   routeSubscriberIds,
+  selectProductsLoaderData,
+  selectProductsLoaderDeps,
+  selectProductsPrimitiveSearch,
+  selectProductsSearch,
+  tenantSearchKeys,
+  transientSearchKeys,
   validateProductsSearch,
   type ProductsSearch,
 } from '../../../shared'
@@ -17,24 +26,13 @@ export const Route = createFileRoute('/shop/products')({
   validateSearch: validateProductsSearch,
   search: {
     middlewares: [
-      retainSearchParams<ProductsSearch>(['tenant']),
-      stripSearchParams<ProductsSearch>(['debug', 'junk']),
-      stripSearchParams<ProductsSearch>({ view: 'grid' }),
+      retainSearchParams<ProductsSearch>(tenantSearchKeys),
+      stripSearchParams<ProductsSearch>(transientSearchKeys),
+      stripSearchParams<ProductsSearch>(defaultProductsSearchStrip),
     ],
   },
-  loaderDeps: ({ search }) => ({
-    tenant: search.tenant,
-    locale: search.locale,
-    page: search.page,
-    pageSize: search.pageSize,
-    sort: search.sort,
-    filters: search.filters,
-    flags: search.flags,
-  }),
-  loader: ({ deps }) => ({
-    checksum: computeSearchChecksum(deps),
-    visibleRows: deps.page * deps.pageSize,
-  }),
+  loaderDeps: createProductsLoaderDeps,
+  loader: createProductsLoaderData,
   staleTime: 60_000,
   gcTime: 60_000,
   component: ProductsPage,
@@ -42,10 +40,7 @@ export const Route = createFileRoute('/shop/products')({
 
 function ProductsSearchSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => ({
-      filters: search.filters,
-      flags: search.flags,
-    }),
+    select: selectProductsSearch,
   })
 
   return <PerfValue value={() => selected()} />
@@ -53,11 +48,7 @@ function ProductsSearchSubscriber() {
 
 function ProductsPrimitiveSubscriber() {
   const selected = Route.useSearch({
-    select: (search) => ({
-      page: search.page,
-      pageSize: search.pageSize,
-      sort: search.sort,
-    }),
+    select: selectProductsPrimitiveSearch,
   })
 
   return <PerfValue value={() => selected()} />
@@ -65,11 +56,7 @@ function ProductsPrimitiveSubscriber() {
 
 function ProductsLoaderDepsSubscriber() {
   const loaderDeps = Route.useLoaderDeps({
-    select: (deps) => ({
-      page: deps.page,
-      filters: deps.filters,
-      flags: deps.flags,
-    }),
+    select: selectProductsLoaderDeps,
   })
 
   return <PerfValue value={() => loaderDeps()} />
@@ -77,10 +64,7 @@ function ProductsLoaderDepsSubscriber() {
 
 function ProductsLoaderDataSubscriber() {
   const loaderData = Route.useLoaderData({
-    select: (data) => ({
-      checksum: data.checksum,
-      visibleRows: data.visibleRows,
-    }),
+    select: selectProductsLoaderData,
   })
 
   return <PerfValue value={() => loaderData()} />
@@ -103,7 +87,7 @@ function ProductsPage() {
         {() => <ProductsLoaderDataSubscriber />}
       </For>
       <div data-testid="products-marker">
-        {`products:${search().tenant}:${search().page}:${search().filters.price.max}:${search().filters.attributes.color}:${loaderData().checksum}`}
+        {formatProductsMarker(search(), loaderData())}
       </div>
       <Outlet />
     </>

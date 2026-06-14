@@ -1,6 +1,11 @@
 import * as Vue from 'vue'
 import { createRoute } from '@tanstack/vue-router'
-import { createSlowLoaderKey } from '../../../shared.ts'
+import {
+  createSlowLoaderKey,
+  formatInterruptedPagePayload,
+  interruptedNavigationControlledRouteCacheOptions,
+  interruptedNavigationRoutePaths,
+} from '../../../shared.ts'
 import {
   interruptedNavigationRuntime,
   recordInterruptedCommit,
@@ -16,7 +21,7 @@ const SlowPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
 
       return (
         <main data-interrupted-id={data.value.id} data-interrupted-page="slow">
-          {`${data.value.kind}:${data.value.id}:${data.value.sequence}:${data.value.checksum}`}
+          {formatInterruptedPagePayload(data.value)}
         </main>
       )
     }
@@ -25,7 +30,7 @@ const SlowPage: ReturnType<typeof Vue.defineComponent> = Vue.defineComponent({
 
 export const slowRoute = createRoute({
   getParentRoute: () => interruptRoute,
-  path: 'slow/$id',
+  path: interruptedNavigationRoutePaths.slow,
   loader: ({ params, abortController }) =>
     interruptedNavigationRuntime.createControlledLoad(
       'slow',
@@ -33,6 +38,6 @@ export const slowRoute = createRoute({
       abortController.signal,
       { id: params.id },
     ),
-  gcTime: 0,
+  ...interruptedNavigationControlledRouteCacheOptions,
   component: SlowPage,
 })

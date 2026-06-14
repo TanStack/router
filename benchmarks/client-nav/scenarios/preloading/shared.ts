@@ -92,6 +92,13 @@ export const DEFAULT_ITEM_SEARCH: ItemSearch = { view: 'summary' }
 export const INTENT_ITEM_SEARCH: ItemSearch = { view: 'intent' }
 export const VIEWPORT_ITEM_SEARCH: ItemSearch = { view: 'viewport' }
 export const DEFAULT_REPORT_SEARCH: ReportSearch = { tab: 'summary', page: 1 }
+export const staleWindowMs = 60_000
+export const reportPreloadStaleWindowMs = 120_000
+export const preloadingInitialEntry = [
+  `/preload?intentItemId=${BOOTSTRAP_INTENT_ITEM_ID}`,
+  `renderReportId=${BOOTSTRAP_RENDER_REPORT_ID}`,
+  `viewportItemId=${BOOTSTRAP_VIEWPORT_ITEM_ID}`,
+].join('&')
 
 const cycleCountPerInvocation = 2
 const benchmarkRandom = createDeterministicRandom(0x7072656c)
@@ -261,6 +268,11 @@ export function recordLazyLoader(lazyId: string) {
 export function recordComponentPreload(kind: PreloadComponentKind) {
   counters.componentPreloads[kind] += 1
   return runPreloadingComputation(`component:${kind}`, 16)
+}
+
+export function preloadComponent(kind: PreloadComponentKind) {
+  recordComponentPreload(kind)
+  return Promise.resolve()
 }
 
 export function recordLazyRouteResolution() {

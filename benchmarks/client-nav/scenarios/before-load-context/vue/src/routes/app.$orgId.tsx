@@ -1,7 +1,10 @@
 import * as Vue from 'vue'
 import { Outlet, createFileRoute } from '@tanstack/vue-router'
-import { deriveOrgContext, runContextComputation } from '../../../shared'
-import { consumeSelectedValue } from '../runtime'
+import {
+  consumeSelectedValue,
+  deriveOrgContext,
+  runContextComputation,
+} from '../../../shared'
 
 const OrgLayout = Vue.defineComponent({
   setup() {
