@@ -181,6 +181,23 @@ describe('resolvePath', () => {
     })
   })
 
+  describe('empty and base destinations', () => {
+    it.each([
+      { base: '/', to: '', trailingSlash: 'never', result: '/' },
+      { base: '/a/b', to: '', trailingSlash: 'never', result: '/' },
+      { base: '/a/b/', to: '', trailingSlash: 'never', result: '/' },
+      { base: '/a/b', to: '', trailingSlash: 'always', result: '/' },
+      { base: '/a/b', to: '.', trailingSlash: 'never', result: '/a/b' },
+      { base: '/a/b', to: '.', trailingSlash: 'always', result: '/a/b/' },
+      { base: '/a/b/', to: '.', trailingSlash: 'preserve', result: '/a/b/' },
+    ] as const)(
+      '$base to $to with $trailingSlash',
+      ({ base, to, trailingSlash, result }) => {
+        expect(resolvePath({ base, to, trailingSlash })).toBe(result)
+      },
+    )
+  })
+
   describe.each([{ base: '/' }, { base: '/nested' }])(
     'param routes w/ base=$base',
     ({ base }) => {
@@ -373,6 +390,12 @@ describe.each([{ server: true }, { server: false }])(
           params: { _splat: 'sean/cassiere' },
           result: '/users/sean/cassiere',
         },
+        {
+          name: 'should preserve slash for a named _splat param',
+          path: '/users/$_splat',
+          params: { _splat: 'sean/cassiere' },
+          result: '/users/sean/cassiere',
+        },
       ])('$name', ({ path, params, decoder, result }) => {
         expect(
           interpolatePath({
@@ -520,11 +543,25 @@ describe.each([{ server: true }, { server: false }])(
           params: { _splat: 'query=value' },
           result: '/query%3Dvalue',
         },
-      ])('$name', ({ path, params, result }) => {
+        {
+          name: 'should preserve URL-safe splat characters',
+          path: '/$',
+          params: { _splat: 'AZaz09-_.~!/path' },
+          result: '/AZaz09-_.~!/path',
+        },
+        {
+          name: 'should decode allowed characters in splat segments',
+          path: '/$',
+          params: { _splat: 'a@b/c+d' },
+          result: '/a@b/c+d',
+          decoder: compileDecodeCharMap(['@', '+']),
+        },
+      ])('$name', ({ path, params, result, decoder }) => {
         expect(
           interpolatePath({
             path,
             params,
+            decoder,
             server,
           }).interpolatedPath,
         ).toBe(result)
