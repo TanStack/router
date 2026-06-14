@@ -43,5 +43,6 @@ export type BuildLocationFn = <
     leaveParams?: boolean
     _includeValidateSearch?: boolean
     _isNavigate?: boolean
+    _concreteTo?: boolean
   },
 ) => ParsedLocation

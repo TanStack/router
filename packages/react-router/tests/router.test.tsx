@@ -388,6 +388,27 @@ describe('encoding: path params', () => {
     expect(router.state.location.pathname).toBe('/posts/100%2525')
   })
 
+  it('should preserve a param value starting with $ on initial load', async () => {
+    const { router } = createTestRouter({
+      history,
+      pathParamsAllowedCharacters: ['$'],
+    })
+    window.history.replaceState(null, '', '/posts/$EXAMPLE_CODE%2Ffile.abap')
+
+    render(<RouterProvider router={router} />)
+    await act(() => router.load())
+
+    // The mount-time canonical-URL check must not treat the concrete
+    // pathname as a route template and rewrite it to /posts/undefined
+    expect(window.location.pathname).toBe('/posts/$EXAMPLE_CODE%2Ffile.abap')
+    expect(router.state.location.pathname).toBe(
+      '/posts/$EXAMPLE_CODE%2Ffile.abap',
+    )
+    expect(router.state.matches.at(-1)?.params).toEqual({
+      slug: '$EXAMPLE_CODE/file.abap',
+    })
+  })
+
   describe('pathname and URI syntax characters', () => {
     it.each(URISyntaxCharacters)(
       'pathname should encode $0',
