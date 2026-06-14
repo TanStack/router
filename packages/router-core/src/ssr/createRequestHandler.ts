@@ -67,10 +67,13 @@ export function createRequestHandler<TRouter extends AnyRouter>({
       responseOwnsCleanup = ssrResponse.serverSsrCleanup === 'stream'
       return ssrResponse.response
     } finally {
-      if (!responseOwnsCleanup) {
+      if (!responseOwnsCleanup && !router.serverSsr?.isCleanupClaimed()) {
         // Clean up router SSR state if the callback won't handle it
         // (e.g., if an error occurred before the callback was invoked).
-        // Transformed streaming response bodies clean up when consumed/cancelled.
+        // Transformed streaming response bodies clean up when
+        // consumed/cancelled — both when wrapped via createSsrStreamResponse
+        // and when a transform claimed cleanup ownership directly (a plain
+        // Response wrapping a transformed stream, the pre-1.170 contract).
         router.serverSsr?.cleanup()
       }
     }
