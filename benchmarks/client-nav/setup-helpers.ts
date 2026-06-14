@@ -1,13 +1,4 @@
-export function getRequiredLink(
-  container: ParentNode,
-  testId: string,
-  cache?: Map<string, HTMLAnchorElement>,
-) {
-  const cachedLink = cache?.get(testId)
-  if (cachedLink) {
-    return cachedLink
-  }
-
+export function getRequiredLink(container: ParentNode, testId: string) {
   const link = container.querySelector<HTMLAnchorElement>(
     `[data-testid="${testId}"]`,
   )
@@ -15,14 +6,12 @@ export function getRequiredLink(
     throw new Error(`Unable to find benchmark link: ${testId}`)
   }
 
-  cache?.set(testId, link)
   return link
 }
 
 export async function waitForRequiredLink(
   container: ParentNode,
   testId: string,
-  cache?: Map<string, HTMLAnchorElement>,
 ) {
   for (let attempt = 0; attempt < 10; attempt++) {
     const link = container.querySelector<HTMLAnchorElement>(
@@ -30,7 +19,6 @@ export async function waitForRequiredLink(
     )
 
     if (link) {
-      cache?.set(testId, link)
       return link
     }
 
@@ -39,5 +27,5 @@ export async function waitForRequiredLink(
     })
   }
 
-  return getRequiredLink(container, testId, cache)
+  return getRequiredLink(container, testId)
 }

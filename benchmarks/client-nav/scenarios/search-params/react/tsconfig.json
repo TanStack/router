@@ -1,0 +1,20 @@
+{
+  "extends": "../../../../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "allowImportingTsExtensions": true,
+    "jsxImportSource": "react",
+    "types": ["node", "vite/client", "vitest/globals"]
+  },
+  "include": [
+    "speed.bench.ts",
+    "speed.flame.ts",
+    "setup.ts",
+    "vite.config.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "../shared.ts",
+    "../../../jsdom.ts",
+    "../../../vitest.setup.ts"
+  ]
+}
