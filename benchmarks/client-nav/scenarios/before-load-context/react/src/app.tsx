@@ -17,7 +17,13 @@ export function mountTestApp(container: Element) {
   return {
     router,
     setRootSeed(seed: number) {
-      return updateRootBenchmarkContext(rootContext, seed)
+      const version = updateRootBenchmarkContext(rootContext, seed)
+      router.update({
+        ...router.options,
+        context: rootContext,
+      })
+
+      return version
     },
     getRootVersion() {
       return rootContext.version

@@ -29,10 +29,6 @@ export interface ActionWaitOptions extends WaitOptions {
   wait?: ActionWaitMode
 }
 
-export interface ClickOptions extends ActionWaitOptions {
-  cache?: Map<string, HTMLAnchorElement>
-}
-
 export interface CreateClientNavLifecycleOptions<
   TRouter extends AnyRouter = AnyRouter,
 > {
@@ -360,11 +356,8 @@ export function createClientNavLifecycle<
     })
   }
 
-  function dispatchClick(
-    testId: string,
-    cache?: Map<string, HTMLAnchorElement>,
-  ) {
-    getRequiredLink(getContainer(), testId, cache).dispatchEvent(
+  function dispatchClick(testId: string) {
+    getRequiredLink(getContainer(), testId).dispatchEvent(
       new MouseEvent('click', {
         bubbles: true,
         cancelable: true,
@@ -373,17 +366,15 @@ export function createClientNavLifecycle<
     )
   }
 
-  function click(testId: string, options: ClickOptions = {}) {
-    const { cache, ...waitOptions } = options
-
-    return waitForAction(() => dispatchClick(testId, cache), {
+  function click(testId: string, options: ActionWaitOptions = {}) {
+    return waitForAction(() => dispatchClick(testId), {
       label: `click ${testId}`,
-      ...waitOptions,
+      ...options,
     })
   }
 
-  function waitForLink(testId: string, cache?: Map<string, HTMLAnchorElement>) {
-    return waitForRequiredLink(getContainer(), testId, cache)
+  function waitForLink(testId: string) {
+    return waitForRequiredLink(getContainer(), testId)
   }
 
   function waitForCounterWithDefaultTimeout(

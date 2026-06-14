@@ -7,9 +7,9 @@ import {
 } from '@tanstack/react-router'
 import {
   DEFAULT_FLAGS,
-  compareLinkSearch,
+  buildCompareSearch,
+  buildProductsSearch,
   computeSearchChecksum,
-  productsLinkSearch,
   shopSubscriberIds,
   validateShopSearch,
   type ShopSearchSchema,
@@ -67,7 +67,7 @@ function ShopLayout() {
         <Link
           data-testid="products-strip-link"
           to="/shop/products"
-          search={productsLinkSearch}
+          search={buildProductsSearch(41)}
           replace
           activeOptions={{ includeSearch: true }}
         >
@@ -76,7 +76,7 @@ function ShopLayout() {
         <Link
           data-testid="compare-strip-link"
           to="/shop/compare"
-          search={compareLinkSearch}
+          search={buildCompareSearch(17)}
           replace
           activeOptions={{ includeSearch: true }}
         >

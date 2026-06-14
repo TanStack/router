@@ -10,9 +10,8 @@ export {
 
 export function mountTestApp(container: Element) {
   const router = getRouter()
-  const component = <RouterProvider router={router} />
   const app = createApp({
-    render: () => component,
+    render: () => <RouterProvider router={router} />,
   })
   let didUnmount = false
 

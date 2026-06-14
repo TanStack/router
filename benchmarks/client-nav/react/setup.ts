@@ -13,11 +13,10 @@ export function setup() {
   warnClientNavDevMode('react')
 
   const lifecycle = createClientNavLifecycle({ mountTestApp })
-  const cachedLinks = new Map<string, HTMLAnchorElement>()
   let stepIndex = 0
 
   const steps = [
-    () => lifecycle.click('go-items-1', { cache: cachedLinks }),
+    () => lifecycle.click('go-items-1'),
     () => lifecycle.click('items-details'),
     () =>
       lifecycle.navigate({
@@ -26,7 +25,7 @@ export function setup() {
         replace: true,
       }),
     () => lifecycle.click('items-parent'),
-    () => lifecycle.click('go-search', { cache: cachedLinks }),
+    () => lifecycle.click('go-search'),
     () => lifecycle.click('search-next-page'),
     () =>
       lifecycle.navigate({
@@ -34,25 +33,24 @@ export function setup() {
         search: { page: 1, filter: 'all' },
         replace: true,
       }),
-    () => lifecycle.click('go-ctx', { cache: cachedLinks }),
+    () => lifecycle.click('go-ctx'),
     () =>
       lifecycle.navigate({
         to: '/ctx/$id',
         params: { id: 2 },
         replace: true,
       }),
-    () => lifecycle.click('go-items-2', { cache: cachedLinks }),
+    () => lifecycle.click('go-items-2'),
   ] as const
 
   async function prepareLinks() {
     for (const testId of ['go-items-1', 'go-items-2', 'go-search', 'go-ctx']) {
-      await lifecycle.waitForLink(testId, cachedLinks)
+      await lifecycle.waitForLink(testId)
     }
   }
 
   async function before() {
     stepIndex = 0
-    cachedLinks.clear()
     await lifecycle.before()
     await prepareLinks()
   }

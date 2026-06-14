@@ -6,9 +6,8 @@ import { getRouter } from './router'
 export function mountTestApp(container: HTMLDivElement) {
   const restoreScrollTo = patchMissingScrollToGlobal()
   const router = getRouter()
-  const component = <RouterProvider router={router} />
   const app = createApp({
-    render: () => component,
+    render: () => <RouterProvider router={router} />,
   })
   let didUnmount = false
 

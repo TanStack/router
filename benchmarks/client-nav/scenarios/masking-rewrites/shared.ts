@@ -889,7 +889,6 @@ export function createMaskingRewritesWorkload(
     mountTestApp,
     timeoutMs: 4_000,
   })
-  const cachedLinks = new Map<string, HTMLAnchorElement>()
   let stepIndex = 0
 
   async function waitForScenarioReady() {
@@ -911,13 +910,12 @@ export function createMaskingRewritesWorkload(
 
   async function prepareLinks() {
     for (const testId of requiredNavigationLinkTestIds) {
-      await lifecycle.waitForLink(testId, cachedLinks)
+      await lifecycle.waitForLink(testId)
     }
   }
 
   async function before() {
     stepIndex = 0
-    cachedLinks.clear()
     await lifecycle.before()
     await waitForScenarioReady()
     await prepareLinks()
@@ -930,7 +928,6 @@ export function createMaskingRewritesWorkload(
 
       if (step.kind === 'click') {
         await lifecycle.click(step.testId, {
-          cache: cachedLinks,
           wait: 'rendered',
           label: step.label,
         })
@@ -1030,7 +1027,6 @@ export function createMaskingRewritesWorkload(
       )
 
       await lifecycle.click(teamDescriptor.testId, {
-        cache: cachedLinks,
         wait: 'rendered',
         label: 'sanity team project link',
       })

@@ -363,7 +363,7 @@ export function createDeferredAwaitWorkload(
         params: { itemId },
         replace: true,
       },
-      { label: `deferred item ${itemId}`, wait: 'rendered' },
+      { label: `deferred item ${itemId}`, wait: 'resolved' },
     )
     await waitForPage('item', itemId)
     await waitForMarker(deferredFallbackMarker(primaryKey))
@@ -381,7 +381,7 @@ export function createDeferredAwaitWorkload(
         params: { itemId },
         replace: true,
       },
-      { label: `deferred details ${itemId}`, wait: 'rendered' },
+      { label: `deferred details ${itemId}`, wait: 'resolved' },
     )
     await waitForPage('details', itemId)
     await waitForMarker(deferredFallbackMarker(detailsKey))
@@ -397,7 +397,7 @@ export function createDeferredAwaitWorkload(
         params: { reportId },
         replace: true,
       },
-      { label: `deferred report ${reportId}`, wait: 'rendered' },
+      { label: `deferred report ${reportId}`, wait: 'resolved' },
     )
     await waitForPage('report', reportId)
     await waitForMarkers(fallbackMarkers, `report fallbacks ${reportId}`)

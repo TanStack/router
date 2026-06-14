@@ -90,9 +90,9 @@ const searchVariants = [
 
 const scenarioRandom = createDeterministicRandom(0x510cafe)
 
-export const linkPanelExpectedCount = 300
-export const matchProbeExpectedCount = 80
-export const buildLocationExpectedCount = 30
+const linkPanelExpectedCount = 240
+export const matchProbeExpectedCount = 64
+export const buildLocationExpectedCount = 24
 export const navigationStepsPerCycle = 6
 export const navigationCyclesPerRun = 4
 export const navigationsPerBenchRun =

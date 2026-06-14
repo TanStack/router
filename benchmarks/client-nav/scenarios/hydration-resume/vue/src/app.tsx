@@ -19,9 +19,8 @@ function mountRouterProvider(
   container: Element,
   router: ReturnType<typeof createHydrationResumeRouter>,
 ) {
-  const component = <RouterProvider router={router} />
   const app = Vue.createApp({
-    render: () => component,
+    render: () => <RouterProvider router={router} />,
   })
 
   app.mount(container)

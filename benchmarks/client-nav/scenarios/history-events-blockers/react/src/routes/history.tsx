@@ -4,6 +4,7 @@ import {
   useCanGoBack,
   useRouterState,
 } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import {
   historyEventsBlockersHomePath,
   historyEventsBlockersScenarioSlug,
@@ -36,7 +37,10 @@ function HistoryLayout() {
 
 function CanGoBackProbe() {
   const canGoBack = useCanGoBack()
-  historyEventsBlockersRuntime.recordCanGoBack(canGoBack)
+
+  useEffect(() => {
+    historyEventsBlockersRuntime.recordCanGoBack(canGoBack)
+  }, [canGoBack])
 
   return <span data-history-events-can-go-back={canGoBack ? 'true' : 'false'} />
 }

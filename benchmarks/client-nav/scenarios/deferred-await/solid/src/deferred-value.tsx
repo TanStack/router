@@ -1,4 +1,5 @@
-import { Show, createSignal } from 'solid-js'
+import { Suspense } from 'solid-js'
+import { Await } from '@tanstack/solid-router'
 import {
   deferredFallbackMarker,
   deferredResolvedMarker,
@@ -9,33 +10,24 @@ export function DeferredValue(props: {
   markerKey: string
   promise: Promise<DeferredPayload>
 }) {
-  const [payload, setPayload] = createSignal<DeferredPayload>()
-
-  void props.promise.then((value) => {
-    setPayload(value)
-  })
-
   return (
-    <Show
-      when={payload()}
+    <Suspense
       fallback={
         <span data-deferred-marker={deferredFallbackMarker(props.markerKey)}>
           Loading {props.markerKey}
         </span>
       }
     >
-      {(resolvedPayload) => {
-        const value = resolvedPayload()
-
-        return (
+      <Await promise={props.promise}>
+        {(payload) => (
           <span
             data-deferred-marker={deferredResolvedMarker(props.markerKey)}
-            data-deferred-checksum={value.checksum}
+            data-deferred-checksum={payload.checksum}
           >
-            {value.label}
+            {payload.label}
           </span>
-        )
-      }}
-    </Show>
+        )}
+      </Await>
+    </Suspense>
   )
 }

@@ -493,9 +493,6 @@ export const initialProductsSearch: ProductsSearch = {
   junk: undefined,
 }
 
-export const productsLinkSearch = buildProductsSearch(41)
-export const compareLinkSearch = buildCompareSearch(17)
-
 function parseJsonValue(value: string) {
   try {
     return JSON.parse(value) as unknown
@@ -711,7 +708,7 @@ export function createSearchParamsWorkload<TRouter extends AnyRouter>(
       const linkSearch = parseJsonSearch(
         new URL(href, 'https://router.test').search,
       )
-      assertEqual(linkSearch.tenant, productsLinkSearch.tenant, 'link tenant')
+      assertEqual(linkSearch.tenant, buildProductsSearch(41).tenant, 'link tenant')
       assertNoTransientSearchKeys(linkSearch, 'products link search')
 
       const set = navigationSets[2]!
