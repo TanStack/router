@@ -7,7 +7,5 @@ export const Route = createFileRoute('/dashboard/reports/$reportId')({
 function ReportPage() {
   const params = Route.useParams()
 
-  return (
-    <div data-route-marker="report" data-report-id={params().reportId} />
-  )
+  return <div data-route-marker="report" data-report-id={params().reportId} />
 }

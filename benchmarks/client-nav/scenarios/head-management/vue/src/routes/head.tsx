@@ -1,9 +1,6 @@
 import * as Vue from 'vue'
 import { Outlet, createRoute } from '@tanstack/vue-router'
-import {
-  createHeadLoaderData,
-  createHeadSectionHead,
-} from '../../../shared.ts'
+import { createHeadLoaderData, createHeadSectionHead } from '../../../shared.ts'
 import { Route as rootRoute } from './__root'
 
 const HeadLayout = Vue.defineComponent({

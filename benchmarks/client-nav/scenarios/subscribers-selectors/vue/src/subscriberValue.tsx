@@ -1,5 +1,8 @@
 import * as Vue from 'vue'
-import { computeSubscriberValue, recordSubscriberUpdate } from './subscriberRuntime'
+import {
+  computeSubscriberValue,
+  recordSubscriberUpdate,
+} from './subscriberRuntime'
 import type { SubscriberCounterKey } from '../../shared'
 
 export const SubscriberValue = Vue.defineComponent({

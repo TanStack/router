@@ -7,7 +7,9 @@ import {
 
 export const fillerRows = Array.from({ length: 18 }, (_, index) => index)
 
-export function RestoredMarker(props: { id: keyof typeof SCROLL_CONTAINER_IDS }) {
+export function RestoredMarker(props: {
+  id: keyof typeof SCROLL_CONTAINER_IDS
+}) {
   const restorationId = SCROLL_CONTAINER_IDS[props.id]
   const entry = useElementScrollRestoration({
     id: restorationId,

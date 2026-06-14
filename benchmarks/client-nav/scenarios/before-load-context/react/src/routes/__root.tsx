@@ -1,7 +1,4 @@
-import {
-  Outlet,
-  createRootRouteWithContext,
-} from '@tanstack/react-router'
+import { Outlet, createRootRouteWithContext } from '@tanstack/react-router'
 import {
   runContextComputation,
   type RootBenchmarkContext,

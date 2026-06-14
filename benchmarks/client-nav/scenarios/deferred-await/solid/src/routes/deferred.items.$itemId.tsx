@@ -1,8 +1,5 @@
 import { Outlet, createRoute } from '@tanstack/solid-router'
-import {
-  createItemLoaderData,
-  deferredRouteStaleTime,
-} from '../../../shared'
+import { createItemLoaderData, deferredRouteStaleTime } from '../../../shared'
 import { DeferredValue } from '../deferred-value'
 import { Route as rootRoute } from './__root'
 

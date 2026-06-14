@@ -1,6 +1,10 @@
 import { For } from 'solid-js'
 import { createFileRoute } from '@tanstack/solid-router'
-import { PerfValue, routeSelectors, runPerfSelectorComputation } from '../shared'
+import {
+  PerfValue,
+  routeSelectors,
+  runPerfSelectorComputation,
+} from '../shared'
 
 export const Route = createFileRoute('/ctx/$id')({
   beforeLoad: ({ params }) => ({

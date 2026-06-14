@@ -7,7 +7,5 @@ export const Route = createFileRoute('/settings/{-$tab}')({
 function SettingsPage() {
   const params = Route.useParams()
 
-  return (
-    <div data-route-marker="settings" data-tab={params().tab ?? 'none'} />
-  )
+  return <div data-route-marker="settings" data-tab={params().tab ?? 'none'} />
 }

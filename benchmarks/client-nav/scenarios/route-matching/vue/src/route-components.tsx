@@ -1,8 +1,5 @@
 import * as Vue from 'vue'
-import {
-  createRouteMarker,
-  type RouteKind,
-} from '../../shared'
+import { createRouteMarker, type RouteKind } from '../../shared'
 
 type MarkerProps = {
   kind: RouteKind

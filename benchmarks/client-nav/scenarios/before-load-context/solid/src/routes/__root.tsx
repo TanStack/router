@@ -1,8 +1,5 @@
 import { For } from 'solid-js'
-import {
-  Outlet,
-  createRootRouteWithContext,
-} from '@tanstack/solid-router'
+import { Outlet, createRootRouteWithContext } from '@tanstack/solid-router'
 import {
   runContextComputation,
   type RootBenchmarkContext,

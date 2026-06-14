@@ -1,8 +1,5 @@
 import { Outlet, createRoute } from '@tanstack/solid-router'
-import {
-  createHeadLoaderData,
-  createHeadSectionHead,
-} from '../../../shared.ts'
+import { createHeadLoaderData, createHeadSectionHead } from '../../../shared.ts'
 import { Route as rootRoute } from './__root'
 
 export const Route = createRoute({

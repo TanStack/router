@@ -1,8 +1,5 @@
 import * as Vue from 'vue'
-import {
-  Outlet,
-  createRootRouteWithContext,
-} from '@tanstack/vue-router'
+import { Outlet, createRootRouteWithContext } from '@tanstack/vue-router'
 import {
   runContextComputation,
   type RootBenchmarkContext,

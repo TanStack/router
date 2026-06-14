@@ -1,5 +1,8 @@
 import { createMemo, createRenderEffect } from 'solid-js'
-import { computeSubscriberValue, recordSubscriberUpdate } from './subscriberRuntime'
+import {
+  computeSubscriberValue,
+  recordSubscriberUpdate,
+} from './subscriberRuntime'
 import type { SubscriberCounterKey } from '../../shared'
 
 export function SubscriberValue(props: {
