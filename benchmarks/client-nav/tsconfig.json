@@ -3,5 +3,16 @@
   "compilerOptions": {
     "types": ["node", "vite/client", "vitest/globals"]
   },
-  "include": ["vitest.setup.ts"]
+  "include": [
+    "bench-utils.ts",
+    "benchmark.ts",
+    "jsdom.ts",
+    "lifecycle.ts",
+    "setup-helpers.ts",
+    "vitest.config.ts",
+    "vitest.react.config.ts",
+    "vitest.setup.ts",
+    "vitest.solid.config.ts",
+    "vitest.vue.config.ts"
+  ]
 }

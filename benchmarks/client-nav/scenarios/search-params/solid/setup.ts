@@ -1,0 +1,9 @@
+import type * as App from './src/app'
+import { createSearchParamsWorkload } from '../shared'
+
+const appModulePath = './dist/app.js'
+const { mountTestApp } = (await import(
+  /* @vite-ignore */ appModulePath
+)) as typeof App
+
+export const workload = createSearchParamsWorkload('solid', mountTestApp)

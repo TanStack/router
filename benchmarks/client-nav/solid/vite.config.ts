@@ -1,6 +1,9 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import solid from 'vite-plugin-solid'
 import codspeedPlugin from '@codspeed/vitest-plugin'
+
+const setupFile = fileURLToPath(new URL('../vitest.setup.ts', import.meta.url))
 
 export default defineConfig({
   define: {
@@ -28,7 +31,7 @@ export default defineConfig({
     name: '@benchmarks/client-nav (solid)',
     watch: false,
     environment: 'jsdom',
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: [setupFile],
     server: {
       deps: {
         inline: [/@solidjs/, /@tanstack\/solid-store/],

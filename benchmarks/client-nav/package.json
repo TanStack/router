@@ -10,13 +10,20 @@
     "test:flame:solid": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" ./solid/speed.flame.ts",
     "test:flame:vue": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" ./vue/speed.flame.ts",
     "test:perf": "NODE_ENV=production vitest bench --config ./vitest.config.ts",
-    "test:perf:react": "NODE_ENV=production vitest bench --config ./react/vite.config.ts ./react/speed.bench.ts",
-    "test:perf:solid": "NODE_ENV=production vitest bench --config ./solid/vite.config.ts ./solid/speed.bench.ts",
-    "test:perf:vue": "NODE_ENV=production vitest bench --config ./vue/vite.config.ts ./vue/speed.bench.ts",
-    "test:types": "pnpm run test:types:react && pnpm run test:types:solid && pnpm run test:types:vue",
+    "test:perf:react": "NODE_ENV=production vitest bench --config ./vitest.react.config.ts",
+    "test:perf:solid": "NODE_ENV=production vitest bench --config ./vitest.solid.config.ts",
+    "test:perf:vue": "NODE_ENV=production vitest bench --config ./vitest.vue.config.ts",
+    "test:types": "pnpm run test:types:shared && pnpm run test:types:react && pnpm run test:types:solid && pnpm run test:types:vue",
+    "test:types:shared": "tsc -p ./tsconfig.json --noEmit",
     "test:types:react": "tsc -p ./react/tsconfig.json --noEmit",
     "test:types:solid": "tsc -p ./solid/tsconfig.json --noEmit",
     "test:types:vue": "tsc -p ./vue/tsconfig.json --noEmit"
+  },
+  "imports": {
+    "#client-nav/benchmark": "./benchmark.ts",
+    "#client-nav/bench-utils": "./bench-utils.ts",
+    "#client-nav/lifecycle": "./lifecycle.ts",
+    "#client-nav/setup-helpers": "./setup-helpers.ts"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -51,6 +58,27 @@
               "@tanstack/react-router"
             ],
             "target": "build"
+          },
+          {
+            "projects": [
+              "@benchmarks/client-nav-route-matching-react",
+              "@benchmarks/client-nav-location-building-links-react",
+              "@benchmarks/client-nav-search-params-react",
+              "@benchmarks/client-nav-before-load-context-react",
+              "@benchmarks/client-nav-loader-cache-react",
+              "@benchmarks/client-nav-preloading-react",
+              "@benchmarks/client-nav-subscribers-selectors-react",
+              "@benchmarks/client-nav-outlets-remounts-react",
+              "@benchmarks/client-nav-control-flow-react",
+              "@benchmarks/client-nav-interrupted-navigations-react",
+              "@benchmarks/client-nav-scroll-restoration-react",
+              "@benchmarks/client-nav-masking-rewrites-react",
+              "@benchmarks/client-nav-head-management-react",
+              "@benchmarks/client-nav-deferred-await-react",
+              "@benchmarks/client-nav-history-events-blockers-react",
+              "@benchmarks/client-nav-hydration-resume-react"
+            ],
+            "target": "build:client"
           }
         ]
       },
@@ -62,6 +90,27 @@
               "@tanstack/solid-router"
             ],
             "target": "build"
+          },
+          {
+            "projects": [
+              "@benchmarks/client-nav-route-matching-solid",
+              "@benchmarks/client-nav-location-building-links-solid",
+              "@benchmarks/client-nav-search-params-solid",
+              "@benchmarks/client-nav-before-load-context-solid",
+              "@benchmarks/client-nav-loader-cache-solid",
+              "@benchmarks/client-nav-preloading-solid",
+              "@benchmarks/client-nav-subscribers-selectors-solid",
+              "@benchmarks/client-nav-outlets-remounts-solid",
+              "@benchmarks/client-nav-control-flow-solid",
+              "@benchmarks/client-nav-interrupted-navigations-solid",
+              "@benchmarks/client-nav-scroll-restoration-solid",
+              "@benchmarks/client-nav-masking-rewrites-solid",
+              "@benchmarks/client-nav-head-management-solid",
+              "@benchmarks/client-nav-deferred-await-solid",
+              "@benchmarks/client-nav-history-events-blockers-solid",
+              "@benchmarks/client-nav-hydration-resume-solid"
+            ],
+            "target": "build:client"
           }
         ]
       },
@@ -73,10 +122,32 @@
               "@tanstack/vue-router"
             ],
             "target": "build"
+          },
+          {
+            "projects": [
+              "@benchmarks/client-nav-route-matching-vue",
+              "@benchmarks/client-nav-location-building-links-vue",
+              "@benchmarks/client-nav-search-params-vue",
+              "@benchmarks/client-nav-before-load-context-vue",
+              "@benchmarks/client-nav-loader-cache-vue",
+              "@benchmarks/client-nav-preloading-vue",
+              "@benchmarks/client-nav-subscribers-selectors-vue",
+              "@benchmarks/client-nav-outlets-remounts-vue",
+              "@benchmarks/client-nav-control-flow-vue",
+              "@benchmarks/client-nav-interrupted-navigations-vue",
+              "@benchmarks/client-nav-scroll-restoration-vue",
+              "@benchmarks/client-nav-masking-rewrites-vue",
+              "@benchmarks/client-nav-head-management-vue",
+              "@benchmarks/client-nav-deferred-await-vue",
+              "@benchmarks/client-nav-history-events-blockers-vue",
+              "@benchmarks/client-nav-hydration-resume-vue"
+            ],
+            "target": "build:client"
           }
         ]
       },
       "test:perf": {
+        "parallelism": false,
         "cache": false,
         "dependsOn": [
           "build:react",
@@ -85,36 +156,105 @@
         ]
       },
       "test:flame:react": {
+        "parallelism": false,
         "cache": false,
         "dependsOn": [
-          "build:react"
+          "build:react",
+          {
+            "projects": [
+              "@benchmarks/client-nav-route-matching-react",
+              "@benchmarks/client-nav-location-building-links-react",
+              "@benchmarks/client-nav-search-params-react",
+              "@benchmarks/client-nav-before-load-context-react",
+              "@benchmarks/client-nav-loader-cache-react",
+              "@benchmarks/client-nav-preloading-react",
+              "@benchmarks/client-nav-subscribers-selectors-react",
+              "@benchmarks/client-nav-outlets-remounts-react",
+              "@benchmarks/client-nav-control-flow-react",
+              "@benchmarks/client-nav-interrupted-navigations-react",
+              "@benchmarks/client-nav-scroll-restoration-react",
+              "@benchmarks/client-nav-masking-rewrites-react",
+              "@benchmarks/client-nav-head-management-react",
+              "@benchmarks/client-nav-deferred-await-react",
+              "@benchmarks/client-nav-history-events-blockers-react",
+              "@benchmarks/client-nav-hydration-resume-react"
+            ],
+            "target": "test:flame"
+          }
         ]
       },
       "test:flame:solid": {
+        "parallelism": false,
         "cache": false,
         "dependsOn": [
-          "build:solid"
+          "build:solid",
+          {
+            "projects": [
+              "@benchmarks/client-nav-route-matching-solid",
+              "@benchmarks/client-nav-location-building-links-solid",
+              "@benchmarks/client-nav-search-params-solid",
+              "@benchmarks/client-nav-before-load-context-solid",
+              "@benchmarks/client-nav-loader-cache-solid",
+              "@benchmarks/client-nav-preloading-solid",
+              "@benchmarks/client-nav-subscribers-selectors-solid",
+              "@benchmarks/client-nav-outlets-remounts-solid",
+              "@benchmarks/client-nav-control-flow-solid",
+              "@benchmarks/client-nav-interrupted-navigations-solid",
+              "@benchmarks/client-nav-scroll-restoration-solid",
+              "@benchmarks/client-nav-masking-rewrites-solid",
+              "@benchmarks/client-nav-head-management-solid",
+              "@benchmarks/client-nav-deferred-await-solid",
+              "@benchmarks/client-nav-history-events-blockers-solid",
+              "@benchmarks/client-nav-hydration-resume-solid"
+            ],
+            "target": "test:flame"
+          }
         ]
       },
       "test:flame:vue": {
+        "parallelism": false,
         "cache": false,
         "dependsOn": [
-          "build:vue"
+          "build:vue",
+          {
+            "projects": [
+              "@benchmarks/client-nav-route-matching-vue",
+              "@benchmarks/client-nav-location-building-links-vue",
+              "@benchmarks/client-nav-search-params-vue",
+              "@benchmarks/client-nav-before-load-context-vue",
+              "@benchmarks/client-nav-loader-cache-vue",
+              "@benchmarks/client-nav-preloading-vue",
+              "@benchmarks/client-nav-subscribers-selectors-vue",
+              "@benchmarks/client-nav-outlets-remounts-vue",
+              "@benchmarks/client-nav-control-flow-vue",
+              "@benchmarks/client-nav-interrupted-navigations-vue",
+              "@benchmarks/client-nav-scroll-restoration-vue",
+              "@benchmarks/client-nav-masking-rewrites-vue",
+              "@benchmarks/client-nav-head-management-vue",
+              "@benchmarks/client-nav-deferred-await-vue",
+              "@benchmarks/client-nav-history-events-blockers-vue",
+              "@benchmarks/client-nav-hydration-resume-vue"
+            ],
+            "target": "test:flame"
+          }
         ]
       },
       "test:perf:react": {
+        "parallelism": false,
         "cache": false,
         "dependsOn": [
           "build:react"
         ]
       },
       "test:perf:solid": {
+        "parallelism": false,
         "cache": false,
         "dependsOn": [
           "build:solid"
         ]
       },
       "test:perf:vue": {
+        "parallelism": false,
         "cache": false,
         "dependsOn": [
           "build:vue"
@@ -123,7 +263,60 @@
       "test:types": {
         "cache": false,
         "dependsOn": [
-          "^build"
+          "^build",
+          {
+            "projects": [
+              "@benchmarks/client-nav-route-matching-react",
+              "@benchmarks/client-nav-location-building-links-react",
+              "@benchmarks/client-nav-search-params-react",
+              "@benchmarks/client-nav-before-load-context-react",
+              "@benchmarks/client-nav-loader-cache-react",
+              "@benchmarks/client-nav-preloading-react",
+              "@benchmarks/client-nav-subscribers-selectors-react",
+              "@benchmarks/client-nav-outlets-remounts-react",
+              "@benchmarks/client-nav-control-flow-react",
+              "@benchmarks/client-nav-interrupted-navigations-react",
+              "@benchmarks/client-nav-scroll-restoration-react",
+              "@benchmarks/client-nav-masking-rewrites-react",
+              "@benchmarks/client-nav-head-management-react",
+              "@benchmarks/client-nav-deferred-await-react",
+              "@benchmarks/client-nav-history-events-blockers-react",
+              "@benchmarks/client-nav-hydration-resume-react",
+              "@benchmarks/client-nav-route-matching-solid",
+              "@benchmarks/client-nav-location-building-links-solid",
+              "@benchmarks/client-nav-search-params-solid",
+              "@benchmarks/client-nav-before-load-context-solid",
+              "@benchmarks/client-nav-loader-cache-solid",
+              "@benchmarks/client-nav-preloading-solid",
+              "@benchmarks/client-nav-subscribers-selectors-solid",
+              "@benchmarks/client-nav-outlets-remounts-solid",
+              "@benchmarks/client-nav-control-flow-solid",
+              "@benchmarks/client-nav-interrupted-navigations-solid",
+              "@benchmarks/client-nav-scroll-restoration-solid",
+              "@benchmarks/client-nav-masking-rewrites-solid",
+              "@benchmarks/client-nav-head-management-solid",
+              "@benchmarks/client-nav-deferred-await-solid",
+              "@benchmarks/client-nav-history-events-blockers-solid",
+              "@benchmarks/client-nav-hydration-resume-solid",
+              "@benchmarks/client-nav-route-matching-vue",
+              "@benchmarks/client-nav-location-building-links-vue",
+              "@benchmarks/client-nav-search-params-vue",
+              "@benchmarks/client-nav-before-load-context-vue",
+              "@benchmarks/client-nav-loader-cache-vue",
+              "@benchmarks/client-nav-preloading-vue",
+              "@benchmarks/client-nav-subscribers-selectors-vue",
+              "@benchmarks/client-nav-outlets-remounts-vue",
+              "@benchmarks/client-nav-control-flow-vue",
+              "@benchmarks/client-nav-interrupted-navigations-vue",
+              "@benchmarks/client-nav-scroll-restoration-vue",
+              "@benchmarks/client-nav-masking-rewrites-vue",
+              "@benchmarks/client-nav-head-management-vue",
+              "@benchmarks/client-nav-deferred-await-vue",
+              "@benchmarks/client-nav-history-events-blockers-vue",
+              "@benchmarks/client-nav-hydration-resume-vue"
+            ],
+            "target": "test:types:client"
+          }
         ]
       }
     }

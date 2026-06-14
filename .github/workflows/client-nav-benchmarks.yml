@@ -29,6 +29,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        shard:
+          - 1
+          - 2
         framework:
           - react
           - solid
@@ -73,3 +76,5 @@ jobs:
             pnpm nx run
             @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
             --excludeTaskDependencies
+            --
+            --shard=${{ matrix.shard }}/2
