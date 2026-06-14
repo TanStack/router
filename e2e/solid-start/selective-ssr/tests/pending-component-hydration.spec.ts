@@ -27,4 +27,30 @@ test.describe('pending component hydration', () => {
       expect.stringContaining('Hydration Mismatch'),
     )
   })
+
+  test('ssr:false route hydrates from pending element to loaded state on first load', async ({
+    page,
+  }) => {
+    const browserErrors = collectBrowserErrors(page)
+
+    await page.goto('/ssr-false-pending-component')
+
+    await expect(page).toHaveURL(/ssr-false-pending-component/)
+
+    await expect(
+      page.getByTestId('ssr-false-pending-component-pending'),
+    ).toBeAttached()
+
+    await expect(
+      page.getByTestId('ssr-false-pending-component-ready-label'),
+    ).toHaveText('OK - loader finished', { timeout: 10_000 })
+
+    expect(browserErrors).toEqual([])
+    expect(browserErrors).not.toContainEqual(
+      expect.stringContaining('template is not a function'),
+    )
+    expect(browserErrors).not.toContainEqual(
+      expect.stringContaining('Hydration Mismatch'),
+    )
+  })
 })
