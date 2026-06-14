@@ -3,6 +3,7 @@ import {
   nextAnimationFrame,
   noop,
   removeBenchContainer,
+  settleAfterRender,
   warnClientMemoryDevMode,
 } from '#memory-client/lifecycle'
 import type { Framework, MountTestApp } from '#memory-client/lifecycle'
@@ -47,6 +48,7 @@ export function createWorkload(
     for (let attempt = 0; attempt < 10; attempt++) {
       try {
         assertRenderedPage(target)
+        await settleAfterRender()
         return
       } catch {
         await nextAnimationFrame()
@@ -54,6 +56,7 @@ export function createWorkload(
     }
 
     assertRenderedPage(target)
+    await settleAfterRender()
   }
 
   function waitForNextRender() {
@@ -86,6 +89,7 @@ export function createWorkload(
         }),
         rendered,
       ])
+      await settleAfterRender()
     }
 
     await router.load()
