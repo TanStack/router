@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 1.170.16
+
+### Patch Changes
+
+- [#7584](https://github.com/TanStack/router/pull/7584) [`41e7a24`](https://github.com/TanStack/router/commit/41e7a24f693b0f58c2bef89a2b8c4d084acbd531) - Remove unnecessary setTimeout from Match components
+
 ## 1.170.15
 
 ### Patch Changes

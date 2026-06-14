@@ -7,7 +7,7 @@
     "build": "webpack build && tsc --noEmit"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.170.15",
+    "@tanstack/react-router": "^1.170.16",
     "@tanstack/react-router-devtools": "^1.167.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
