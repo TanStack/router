@@ -2796,6 +2796,68 @@ describe('useRouteContext in the component', () => {
     expect(content).toBeInTheDocument()
   })
 
+  test('context value from beforeLoad is propagated to a sub-route while its loader reloads in the background', async () => {
+    let sawUndefinedContext = false
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home page</div>,
+    })
+    const contextPropagationRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/context-propagation',
+      beforeLoad: () => ({ number: 42 }),
+      component: () => <Outlet />,
+    })
+    const contextPropagationIndexRoute = createRoute({
+      getParentRoute: () => contextPropagationRoute,
+      path: '/',
+      staleTime: 0,
+      loader: async () => {
+        await sleep(WAIT_TIME)
+      },
+      component: () => {
+        const { number } = contextPropagationIndexRoute.useRouteContext()
+        sawUndefinedContext ||= number === undefined
+
+        return (
+          <div>
+            number = {String(number)}, saw undefined ={' '}
+            {String(sawUndefinedContext)}
+          </div>
+        )
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([
+      homeRoute,
+      contextPropagationRoute.addChildren([contextPropagationIndexRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/context-propagation' }))
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    await act(() => router.navigate({ to: '/' }))
+
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+
+    act(() => router.history.back())
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+  })
+
   // Check if context that is updated at the root, is the same in the root route
   test('modified route context, present in the root route', async () => {
     const rootRoute = createRootRoute({
