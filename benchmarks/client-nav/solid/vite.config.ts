@@ -19,7 +19,7 @@ export default defineConfig({
     emptyOutDir: true,
     minify: false,
     lib: {
-      entry: './solid/app.tsx',
+      entry: './solid/src/app.tsx',
       formats: ['es'],
       fileName: 'app',
     },

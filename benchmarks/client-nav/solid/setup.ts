@@ -1,4 +1,4 @@
-import type * as App from './app'
+import type * as App from './src/app'
 import {
   createClientNavLifecycle,
   warnClientNavDevMode,

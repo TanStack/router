@@ -21,7 +21,7 @@ export default defineConfig({
     emptyOutDir: true,
     minify: false,
     lib: {
-      entry: './vue/app.tsx',
+      entry: './vue/src/app.tsx',
       formats: ['es'],
       fileName: 'app',
     },

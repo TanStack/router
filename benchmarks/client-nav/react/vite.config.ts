@@ -19,7 +19,7 @@ export default defineConfig({
     emptyOutDir: true,
     minify: false,
     lib: {
-      entry: './react/app.tsx',
+      entry: './react/src/app.tsx',
       formats: ['es'],
       fileName: 'app',
     },

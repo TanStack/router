@@ -100,7 +100,7 @@ export function createControlFlowWorkload(
   async function navigateTo(action: ControlFlowAction) {
     await lifecycle.navigate(
       {
-        to: action.to,
+        to: action.to as never,
         params: action.params,
         search: action.search,
         replace: true,

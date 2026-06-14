@@ -11,7 +11,8 @@
     "speed.flame.ts",
     "setup.ts",
     "vite.config.ts",
-    "src/app.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
     "../shared.ts",
     "../../../jsdom.ts",
     "../../../vitest.setup.ts"
