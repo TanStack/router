@@ -1,3 +1,4 @@
+import { settleAfterDrainResponse } from '#memory-server/bench-utils'
 import type { StartRequestHandler } from '#memory-server/bench-utils'
 
 export type { StartRequestHandler }
@@ -189,8 +190,7 @@ async function cancelReader(
 }
 
 async function drainCancellation(mode: AbortedRequestDrainMode) {
-  await Promise.resolve()
-  await Promise.resolve()
+  await settleAfterDrainResponse()
 
   if (mode === 'tasks') {
     await new Promise((resolve) => setTimeout(resolve, 0))

@@ -3,6 +3,7 @@ import {
   drainMicrotasks,
   noop,
   removeBenchContainer,
+  settleAfterRender,
   warnClientMemoryDevMode,
 } from '#memory-client/lifecycle'
 import type { Framework, MountTestApp } from '#memory-client/lifecycle'
@@ -47,6 +48,7 @@ export function createWorkload(
 
       await router.load()
       await rendered
+      await settleAfterRender()
       unsubscribe()
       unsubscribe = noop
     } finally {
