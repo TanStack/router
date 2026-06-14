@@ -675,14 +675,24 @@ export function decodePath(path: string) {
  * encodePathLikeUrl('/path/already%20encoded') // '/path/already%20encoded' (preserved)
  */
 export function encodePathLikeUrl(path: string): string {
-  // Encode whitespace and non-ASCII characters that browsers encode in URLs
+  // Encode whitespace, non-ASCII characters, and the URL-unsafe ASCII chars
+  // in the WHATWG URL "path percent-encode set" (`< > " ` { }`). Browsers
+  // always percent-encode these when they appear in a path, and `decodePath`
+  // turns their `%XX` forms into the literal characters - leaving them
+  // un-encoded here causes encode/decode to fail to round-trip, which the
+  // SSR redirect comparator interprets as a URL change and triggers an
+  // infinite redirect loop for inputs like `/<test` (#7587).
+  //
+  // `?` and `#` are intentionally left unencoded because callers pass the
+  // full `pathname + search + hash` string, and those characters are the
+  // query and fragment separators.
 
   // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
   // eslint-disable-next-line no-control-regex
-  if (!/\s|[^\u0000-\u007F]/.test(path)) return path
+  if (!/[\s<>"`{}]|[^\u0000-\u007F]/.test(path)) return path
   // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
   // eslint-disable-next-line no-control-regex
-  return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)
+  return path.replace(/[\s<>"`{}]|[^\u0000-\u007F]/gu, encodeURIComponent)
 }
 
 /**
