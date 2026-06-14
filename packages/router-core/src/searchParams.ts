@@ -9,6 +9,26 @@ export const defaultStringifySearch = stringifySearchWith(
   JSON.parse,
 )
 
+function canStringBeJsonParsed(value: string) {
+  if (!value) {
+    return false
+  }
+
+  const firstCharCode = value.charCodeAt(0)
+
+  return (
+    firstCharCode <= 32 || // ASCII control chars through space (' ')
+    firstCharCode === 34 || // double quote ('"')
+    firstCharCode === 45 || // minus sign ('-')
+    firstCharCode === 91 || // opening bracket ('[')
+    firstCharCode === 123 || // opening brace ('{')
+    (firstCharCode >= 48 && firstCharCode <= 57) || // digits ('0' - '9')
+    value === 'true' ||
+    value === 'false' ||
+    value === 'null'
+  )
+}
+
 /**
  * Build a `parseSearch` function using a provided JSON-like parser.
  *
@@ -20,6 +40,8 @@ export const defaultStringifySearch = stringifySearchWith(
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization
  */
 export function parseSearchWith(parser: (str: string) => any) {
+  const shouldGuardJsonParse = parser === JSON.parse
+
   return (searchStr: string): AnySchema => {
     if (searchStr[0] === '?') {
       searchStr = searchStr.substring(1)
@@ -30,7 +52,10 @@ export function parseSearchWith(parser: (str: string) => any) {
     // Try to parse any query params that might be json
     for (const key in query) {
       const value = query[key]
-      if (typeof value === 'string') {
+      if (
+        typeof value === 'string' &&
+        (!shouldGuardJsonParse || canStringBeJsonParsed(value))
+      ) {
         try {
           query[key] = parser(value)
         } catch (_err) {
@@ -60,6 +85,8 @@ export function stringifySearchWith(
   parser?: (str: string) => any,
 ) {
   const hasParser = typeof parser === 'function'
+  const shouldGuardJsonParse = parser === JSON.parse
+
   function stringifyValue(val: any) {
     if (typeof val === 'object' && val !== null) {
       try {
@@ -67,7 +94,11 @@ export function stringifySearchWith(
       } catch (_err) {
         // silent
       }
-    } else if (hasParser && typeof val === 'string') {
+    } else if (
+      hasParser &&
+      typeof val === 'string' &&
+      (!shouldGuardJsonParse || canStringBeJsonParsed(val))
+    ) {
       try {
         // Check if it's a valid parseable string.
         // If it is, then stringify it again.
