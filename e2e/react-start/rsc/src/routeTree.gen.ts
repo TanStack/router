@@ -32,6 +32,7 @@ import { Route as RscLinkRouteImport } from './routes/rsc-link'
 import { Route as RscLargeRouteImport } from './routes/rsc-large'
 import { Route as RscInvalidationRouteImport } from './routes/rsc-invalidation'
 import { Route as RscHydrationRouteImport } from './routes/rsc-hydration'
+import { Route as RscHmrServerfnRouteImport } from './routes/rsc-hmr-serverfn'
 import { Route as RscGlobalCssRouteImport } from './routes/rsc-global-css'
 import { Route as RscFormsRouteImport } from './routes/rsc-forms'
 import { Route as RscFlightApiRouteImport } from './routes/rsc-flight-api'
@@ -170,6 +171,11 @@ const RscInvalidationRoute = RscInvalidationRouteImport.update({
 const RscHydrationRoute = RscHydrationRouteImport.update({
   id: '/rsc-hydration',
   path: '/rsc-hydration',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscHmrServerfnRoute = RscHmrServerfnRouteImport.update({
+  id: '/rsc-hmr-serverfn',
+  path: '/rsc-hmr-serverfn',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RscGlobalCssRoute = RscGlobalCssRouteImport.update({
@@ -313,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/rsc-flight-api': typeof RscFlightApiRoute
   '/rsc-forms': typeof RscFormsRoute
   '/rsc-global-css': typeof RscGlobalCssRoute
+  '/rsc-hmr-serverfn': typeof RscHmrServerfnRoute
   '/rsc-hydration': typeof RscHydrationRoute
   '/rsc-invalidation': typeof RscInvalidationRoute
   '/rsc-large': typeof RscLargeRoute
@@ -362,6 +369,7 @@ export interface FileRoutesByTo {
   '/rsc-flight-api': typeof RscFlightApiRoute
   '/rsc-forms': typeof RscFormsRoute
   '/rsc-global-css': typeof RscGlobalCssRoute
+  '/rsc-hmr-serverfn': typeof RscHmrServerfnRoute
   '/rsc-hydration': typeof RscHydrationRoute
   '/rsc-invalidation': typeof RscInvalidationRoute
   '/rsc-large': typeof RscLargeRoute
@@ -412,6 +420,7 @@ export interface FileRoutesById {
   '/rsc-flight-api': typeof RscFlightApiRoute
   '/rsc-forms': typeof RscFormsRoute
   '/rsc-global-css': typeof RscGlobalCssRoute
+  '/rsc-hmr-serverfn': typeof RscHmrServerfnRoute
   '/rsc-hydration': typeof RscHydrationRoute
   '/rsc-invalidation': typeof RscInvalidationRoute
   '/rsc-large': typeof RscLargeRoute
@@ -463,6 +472,7 @@ export interface FileRouteTypes {
     | '/rsc-flight-api'
     | '/rsc-forms'
     | '/rsc-global-css'
+    | '/rsc-hmr-serverfn'
     | '/rsc-hydration'
     | '/rsc-invalidation'
     | '/rsc-large'
@@ -512,6 +522,7 @@ export interface FileRouteTypes {
     | '/rsc-flight-api'
     | '/rsc-forms'
     | '/rsc-global-css'
+    | '/rsc-hmr-serverfn'
     | '/rsc-hydration'
     | '/rsc-invalidation'
     | '/rsc-large'
@@ -561,6 +572,7 @@ export interface FileRouteTypes {
     | '/rsc-flight-api'
     | '/rsc-forms'
     | '/rsc-global-css'
+    | '/rsc-hmr-serverfn'
     | '/rsc-hydration'
     | '/rsc-invalidation'
     | '/rsc-large'
@@ -611,6 +623,7 @@ export interface RootRouteChildren {
   RscFlightApiRoute: typeof RscFlightApiRoute
   RscFormsRoute: typeof RscFormsRoute
   RscGlobalCssRoute: typeof RscGlobalCssRoute
+  RscHmrServerfnRoute: typeof RscHmrServerfnRoute
   RscHydrationRoute: typeof RscHydrationRoute
   RscInvalidationRoute: typeof RscInvalidationRoute
   RscLargeRoute: typeof RscLargeRoute
@@ -804,6 +817,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RscHydrationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rsc-hmr-serverfn': {
+      id: '/rsc-hmr-serverfn'
+      path: '/rsc-hmr-serverfn'
+      fullPath: '/rsc-hmr-serverfn'
+      preLoaderRoute: typeof RscHmrServerfnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rsc-global-css': {
       id: '/rsc-global-css'
       path: '/rsc-global-css'
@@ -995,6 +1015,7 @@ const rootRouteChildren: RootRouteChildren = {
   RscFlightApiRoute: RscFlightApiRoute,
   RscFormsRoute: RscFormsRoute,
   RscGlobalCssRoute: RscGlobalCssRoute,
+  RscHmrServerfnRoute: RscHmrServerfnRoute,
   RscHydrationRoute: RscHydrationRoute,
   RscInvalidationRoute: RscInvalidationRoute,
   RscLargeRoute: RscLargeRoute,
