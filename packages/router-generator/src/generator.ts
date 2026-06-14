@@ -693,6 +693,8 @@ export class Generator {
     const routeTreeConfig = buildRouteTreeConfig(
       acc.routeTree,
       config.disableTypes,
+      1,
+      config.isolatedDeclarations,
     )
 
     const createUpdateRoutes = sortedRouteNodes.map((node) => {
@@ -706,7 +708,7 @@ export class Generator {
 
       return [
         [
-          `const ${node.variableName}Route = ${node.variableName}RouteImport.update({
+          `const ${node.variableName}Route${config.isolatedDeclarations && !config.disableTypes ? ': any' : ''} = ${node.variableName}RouteImport.update({
             ${[
               `id: '${node.path}'`,
               !node.isNonPath ||
@@ -823,7 +825,7 @@ export class Generator {
       rootNotFoundComponentNode ||
       rootPendingComponentNode
     ) {
-      rootRouteUpdate = `const rootRouteWithChildren = rootRouteImport${
+      rootRouteUpdate = `const rootRouteWithChildren${config.isolatedDeclarations && !config.disableTypes ? ': any' : ''} = rootRouteImport${
         rootComponentNode ||
         rootErrorComponentNode ||
         rootNotFoundComponentNode ||
