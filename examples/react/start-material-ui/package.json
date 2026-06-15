@@ -12,9 +12,9 @@
   "dependencies": {
     "@emotion/cache": "11.14.0",
     "@emotion/react": "11.14.0",
-    "@emotion/styled": "11.14.0",
-    "@fontsource-variable/roboto": "5.2.5",
-    "@mui/material": "6.4.7",
+    "@emotion/styled": "11.14.1",
+    "@fontsource-variable/roboto": "5.2.10",
+    "@mui/material": "6.5.0",
     "@tanstack/react-router": "^1.170.15",
     "@tanstack/react-router-devtools": "^1.167.0",
     "@tanstack/react-start": "^1.168.25",
@@ -26,8 +26,8 @@
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.0.2",
     "typescript": "^6.0.2",
-    "vite": "^8.0.14"
+    "vite": "^8.0.16"
   }
 }

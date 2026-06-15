@@ -13,9 +13,9 @@
     "test:e2e": "exit 0; rm -rf port*.txt; pnpm run prisma-generate && playwright test --project=chromium"
   },
   "dependencies": {
-    "@libsql/client": "^0.15.15",
-    "@prisma/adapter-libsql": "^7.0.0",
-    "@prisma/client": "^7.0.0",
+    "@libsql/client": "^0.17.3",
+    "@prisma/adapter-libsql": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/react-start": "workspace:^",
@@ -25,17 +25,17 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
-    "@tailwindcss/vite": "^4.2.2",
+    "@playwright/test": "^1.60.0",
+    "@tailwindcss/vite": "^4.3.1",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "dotenv": "^17.2.3",
-    "prisma": "^7.0.0",
-    "tailwindcss": "^4.2.2",
+    "@vitejs/plugin-react": "^6.0.2",
+    "dotenv": "^17.4.2",
+    "prisma": "^7.8.0",
+    "tailwindcss": "^4.3.1",
     "typescript": "^6.0.2",
-    "vite": "^8.0.14"
+    "vite": "^8.0.16"
   }
 }

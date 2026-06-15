@@ -11,24 +11,24 @@
     "prisma-generate": "prisma generate"
   },
   "dependencies": {
-    "@libsql/client": "^0.15.15",
-    "@prisma/adapter-libsql": "^7.0.0",
-    "@prisma/client": "^7.0.0",
+    "@libsql/client": "^0.17.3",
+    "@prisma/adapter-libsql": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "@tanstack/solid-router": "^1.170.15",
     "@tanstack/solid-router-devtools": "^1.167.0",
     "@tanstack/solid-start": "^1.168.25",
     "redaxios": "^0.5.1",
-    "solid-js": "^1.9.10",
+    "solid-js": "^1.9.13",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.1",
     "@types/node": "^22.5.4",
-    "dotenv": "^17.2.3",
-    "prisma": "^7.0.0",
-    "tailwindcss": "^4.2.2",
+    "dotenv": "^17.4.2",
+    "prisma": "^7.8.0",
+    "tailwindcss": "^4.3.1",
     "typescript": "^6.0.2",
-    "vite": "^8.0.14",
-    "vite-plugin-solid": "^2.11.11"
+    "vite": "^8.0.16",
+    "vite-plugin-solid": "^2.11.12"
   }
 }

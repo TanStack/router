@@ -25,8 +25,8 @@ packages:
 
 overrides:
   '@types/babel__traverse': '^7.28.0'
-  vite-plugin-dts: 4.2.3
-  solid-js: 1.9.12
+  vite-plugin-dts: 4.5.4
+  solid-js: 1.9.13
   react: $react
   react-dom: $react-dom
   '@types/react': $@types/react

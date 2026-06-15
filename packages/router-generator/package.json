@@ -65,13 +65,13 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@babel/types": "^7.28.5",
+    "@babel/types": "^7.29.7",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/virtual-file-routes": "workspace:*",
     "jiti": "^2.7.0",
     "magic-string": "^0.30.21",
-    "prettier": "^3.5.0",
+    "prettier": "^3.8.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {

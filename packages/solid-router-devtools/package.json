@@ -69,9 +69,9 @@
     "@tanstack/router-devtools-core": "workspace:*"
   },
   "devDependencies": {
-    "solid-js": "^1.9.10",
+    "solid-js": "^1.9.13",
     "vite": "*",
-    "vite-plugin-solid": "^2.11.10",
+    "vite-plugin-solid": "^2.11.12",
     "@types/node": ">=20"
   },
   "peerDependencies": {

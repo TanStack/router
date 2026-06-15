@@ -9,25 +9,25 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.1",
     "@tanstack/router-plugin": "^1.168.18",
     "@tanstack/vue-router": "^1.170.15",
     "@tanstack/vue-router-devtools": "^1.167.0",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.2.2",
-    "vue": "^3.5.16",
+    "tailwindcss": "^4.3.1",
+    "vue": "^3.5.38",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@eslint/js": "^9.36.0",
-    "@typescript-eslint/eslint-plugin": "^8.44.1",
-    "@typescript-eslint/parser": "^8.44.1",
-    "@vitejs/plugin-vue": "^6.0.5",
+    "@eslint/js": "^9.39.4",
+    "@typescript-eslint/eslint-plugin": "^8.61.0",
+    "@typescript-eslint/parser": "^8.61.0",
+    "@vitejs/plugin-vue": "^6.0.7",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "eslint-plugin-vue": "^9.33.0",
     "typescript": "~5.8.3",
-    "vite": "^8.0.14",
+    "vite": "^8.0.16",
     "vue-eslint-parser": "^9.4.3",
-    "vue-tsc": "^3.1.5"
+    "vue-tsc": "^3.3.5"
   }
 }

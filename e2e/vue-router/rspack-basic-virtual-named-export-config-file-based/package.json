@@ -13,21 +13,21 @@
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "redaxios": "^0.5.1",
-    "vue": "^3.5.16"
+    "vue": "^3.5.38"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
-    "@rsbuild/core": "^2.0.8",
-    "@rsbuild/plugin-babel": "^1.1.2",
-    "@rsbuild/plugin-vue": "^1.2.7",
-    "@rsbuild/plugin-vue-jsx": "^2.0.0",
-    "@tailwindcss/postcss": "^4.2.2",
+    "@playwright/test": "^1.60.0",
+    "@rsbuild/core": "^2.0.14",
+    "@rsbuild/plugin-babel": "^1.2.1",
+    "@rsbuild/plugin-vue": "^1.2.9",
+    "@rsbuild/plugin-vue-jsx": "^2.0.1",
+    "@tailwindcss/postcss": "^4.3.1",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/virtual-file-routes": "workspace:^",
-    "postcss": "^8.5.1",
-    "tailwindcss": "^4.2.2",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.1",
     "typescript": "^6.0.2",
-    "vue-tsc": "^3.1.5"
+    "vue-tsc": "^3.3.5"
   }
 }

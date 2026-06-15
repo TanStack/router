@@ -9,23 +9,23 @@
   "dependencies": {
     "@tanstack/solid-router": "^1.170.15",
     "@tanstack/solid-router-devtools": "^1.167.0",
-    "solid-js": "^1.9.10",
-    "tailwindcss": "^4.2.2"
+    "solid-js": "^1.9.13",
+    "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.28.5",
-    "@babel/preset-typescript": "^7.27.1",
+    "@babel/core": "^7.29.7",
+    "@babel/preset-typescript": "^7.29.7",
     "@tanstack/router-plugin": "^1.168.18",
-    "babel-loader": "^10.0.0",
-    "babel-preset-solid": "^1.9.10",
-    "css-loader": "^7.1.2",
-    "html-webpack-plugin": "^5.6.3",
-    "postcss": "^8.5.6",
-    "postcss-loader": "^8.2.0",
+    "babel-loader": "^10.1.1",
+    "babel-preset-solid": "^1.9.12",
+    "css-loader": "^7.1.4",
+    "html-webpack-plugin": "^5.6.7",
+    "postcss": "^8.5.15",
+    "postcss-loader": "^8.2.1",
     "style-loader": "^4.0.0",
     "typescript": "^6.0.2",
     "webpack": "^5.97.1",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^5.2.4"
+    "webpack-dev-server": "^5.2.5"
   }
 }

@@ -8,17 +8,17 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.2.2",
+    "@tailwindcss/postcss": "^4.3.1",
     "@tanstack/react-router": "^1.170.15",
     "@tanstack/react-router-devtools": "^1.167.0",
-    "postcss": "^8.5.1",
+    "postcss": "^8.5.15",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^4.2.2"
+    "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.8",
-    "@rsbuild/plugin-react": "^2.0.0",
+    "@rsbuild/core": "^2.0.14",
+    "@rsbuild/plugin-react": "^2.0.1",
     "@tanstack/router-plugin": "^1.168.18",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",

@@ -9,16 +9,16 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.1",
     "@tanstack/solid-router": "^1.170.15",
     "@tanstack/solid-router-devtools": "^1.167.0",
-    "@tanstack/solid-virtual": "^3.13.0",
-    "solid-js": "^1.9.10",
-    "tailwindcss": "^4.2.2"
+    "@tanstack/solid-virtual": "^3.13.28",
+    "solid-js": "^1.9.13",
+    "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^2.11.11",
+    "vite-plugin-solid": "^2.11.12",
     "typescript": "^6.0.2",
-    "vite": "^8.0.14"
+    "vite": "^8.0.16"
   }
 }

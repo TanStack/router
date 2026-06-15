@@ -20,18 +20,18 @@
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
-    "solid-js": "^1.9.10"
+    "solid-js": "^1.9.13"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.1",
-    "@rsbuild/plugin-babel": "^1.1.2",
-    "@rsbuild/plugin-solid": "^1.1.1",
+    "@rsbuild/core": "^2.0.14",
+    "@rsbuild/plugin-babel": "^1.2.1",
+    "@rsbuild/plugin-solid": "^1.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
-    "srvx": "^0.11.9",
+    "srvx": "^0.11.16",
     "typescript": "^6.0.2",
-    "vite": "^8.0.14",
-    "vite-plugin-solid": "^2.11.11"
+    "vite": "^8.0.16",
+    "vite-plugin-solid": "^2.11.12"
   },
   "nx": {
     "targets": {

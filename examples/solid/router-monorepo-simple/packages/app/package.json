@@ -11,16 +11,16 @@
   "dependencies": {
     "@router-solid-mono-simple/post-feature": "workspace:*",
     "@router-solid-mono-simple/router": "workspace:*",
-    "solid-js": "^1.9.10"
+    "solid-js": "^1.9.13"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^2.11.11",
+    "vite-plugin-solid": "^2.11.12",
     "typescript": "^6.0.2",
     "@tanstack/solid-router-devtools": "^1.167.0",
-    "vite": "^8.0.14",
-    "tailwindcss": "^4.2.2",
+    "vite": "^8.0.16",
+    "tailwindcss": "^4.3.1",
     "vite-plugin-dts": "^4.5.4",
-    "@tailwindcss/vite": "^4.2.2"
+    "@tailwindcss/vite": "^4.3.1"
   },
   "nx": {
     "targets": {

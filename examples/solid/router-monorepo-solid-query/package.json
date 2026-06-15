@@ -10,19 +10,19 @@
     "dev": "pnpm post-query build && pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.90.9",
-    "@tanstack/solid-query-devtools": "^5.90.0",
+    "@tanstack/solid-query": "^5.101.0",
+    "@tanstack/solid-query-devtools": "^5.101.0",
     "@tanstack/solid-router": "^1.170.15",
     "@tanstack/solid-router-devtools": "^1.167.0",
     "@tanstack/router-plugin": "^1.168.18",
-    "solid-js": "^1.9.10",
+    "solid-js": "^1.9.13",
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "typescript": "^6.0.2",
-    "vite-plugin-solid": "^2.11.11",
-    "vite": "^8.0.14",
+    "vite-plugin-solid": "^2.11.12",
+    "vite": "^8.0.16",
     "vite-plugin-dts": "^4.5.4"
   },
   "keywords": [],

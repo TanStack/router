@@ -17,13 +17,13 @@
   "devDependencies": {
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.0.2",
     "typescript": "^6.0.2",
     "@tanstack/solid-router-devtools": "^1.167.0",
-    "tailwindcss": "^4.2.2",
-    "vite": "^8.0.14",
+    "tailwindcss": "^4.3.1",
+    "vite": "^8.0.16",
     "vite-plugin-dts": "^4.5.4",
-    "@tailwindcss/vite": "^4.2.2"
+    "@tailwindcss/vite": "^4.3.1"
   },
   "nx": {
     "targets": {

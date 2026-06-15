@@ -14,13 +14,13 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "redaxios": "^0.5.1",
-    "solid-js": "^1.9.10",
+    "solid-js": "^1.9.13",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.60.0",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "esbuild": "^0.27.4",
+    "esbuild": "^0.28.1",
     "esbuild-plugin-solid": "^0.6.0"
   }
 }
