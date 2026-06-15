@@ -75,5 +75,8 @@
   "peerDependencies": {
     "arktype": ">=2.0.0-rc <3",
     "@tanstack/react-router": ">=1.43.2"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

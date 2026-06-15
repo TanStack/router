@@ -58,5 +58,8 @@
   },
   "devDependencies": {
     "vite": "*"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

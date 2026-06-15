@@ -78,5 +78,8 @@
     "@tanstack/react-router": "workspace:*",
     "@types/node": ">=20",
     "vite": "*"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

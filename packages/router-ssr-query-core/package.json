@@ -71,5 +71,8 @@
   "peerDependencies": {
     "@tanstack/router-core": ">=1.127.0",
     "@tanstack/query-core": ">=5.90.0"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

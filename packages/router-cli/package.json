@@ -74,5 +74,8 @@
     "@types/node": ">=20",
     "@types/yargs": "^17.0.33",
     "vite": "*"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

@@ -77,5 +77,8 @@
     "@tanstack/solid-start": {
       "optional": true
     }
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

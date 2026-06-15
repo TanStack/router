@@ -72,5 +72,8 @@
     "@tanstack/vue-query": ">=5.90.0",
     "@tanstack/vue-router": ">=1.127.0",
     "vue": "^3.3.0"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

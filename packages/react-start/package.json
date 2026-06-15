@@ -190,5 +190,8 @@
   "devDependencies": {
     "@rsbuild/core": "^2.0.8",
     "@types/node": ">=20"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

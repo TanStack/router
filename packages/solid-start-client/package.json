@@ -82,5 +82,8 @@
   },
   "peerDependencies": {
     "solid-js": ">=1.0.0"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

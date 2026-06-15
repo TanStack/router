@@ -114,5 +114,8 @@
   "devDependencies": {
     "vite": "*",
     "@types/node": ">=20"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

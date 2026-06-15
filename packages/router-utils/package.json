@@ -76,5 +76,8 @@
     "@types/babel__generator": "^7.27.0",
     "vite": "*",
     "@types/node": ">=20"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

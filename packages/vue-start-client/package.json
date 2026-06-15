@@ -70,5 +70,8 @@
   },
   "peerDependencies": {
     "vue": "^3.3.0"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }

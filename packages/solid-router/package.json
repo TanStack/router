@@ -122,5 +122,8 @@
   },
   "peerDependencies": {
     "solid-js": "^1.9.10"
+  },
+  "bugs": {
+    "url": "https://github.com/TanStack/router/issues"
   }
 }
