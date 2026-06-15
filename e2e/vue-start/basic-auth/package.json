@@ -13,28 +13,28 @@
     "test:e2e": "rm -rf port*.txt; mkdir -p .tmp; rm -f .tmp/dev.db .tmp/dev.db-journal .tmp/dev.db-wal .tmp/dev.db-shm; export DATABASE_URL=file:./.tmp/dev.db; pnpm run prisma-generate && pnpm exec prisma migrate deploy && playwright test --project=chromium"
   },
   "dependencies": {
-    "@libsql/client": "^0.15.15",
-    "@prisma/adapter-libsql": "^7.0.0",
-    "@prisma/client": "^7.0.0",
+    "@libsql/client": "^0.17.3",
+    "@prisma/adapter-libsql": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^3.6.0",
-    "vue": "^3.5.25"
+    "vue": "^3.5.38"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
-    "@tailwindcss/vite": "^4.2.2",
+    "@playwright/test": "^1.60.0",
+    "@tailwindcss/vite": "^4.3.1",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
-    "@vitejs/plugin-vue": "^6.0.5",
+    "@vitejs/plugin-vue": "^6.0.7",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
-    "dotenv": "^17.2.3",
-    "prisma": "^7.0.0",
-    "srvx": "^0.11.9",
-    "tailwindcss": "^4.2.2",
+    "dotenv": "^17.4.2",
+    "prisma": "^7.8.0",
+    "srvx": "^0.11.16",
+    "tailwindcss": "^4.3.1",
     "typescript": "^6.0.2",
-    "vite": "^8.0.14"
+    "vite": "^8.0.16"
   }
 }

@@ -117,9 +117,9 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@babel/core": "^7.28.5",
-    "@babel/template": "^7.27.2",
-    "@babel/types": "^7.28.5",
+    "@babel/core": "^7.29.7",
+    "@babel/template": "^7.29.7",
+    "@babel/types": "^7.29.7",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",

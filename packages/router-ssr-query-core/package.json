@@ -64,8 +64,8 @@
     "node": ">=20.19"
   },
   "devDependencies": {
-    "@tanstack/router-core": ">=1.171.7",
-    "@tanstack/query-core": ">=5.90.0",
+    "@tanstack/router-core": ">=1.171.13",
+    "@tanstack/query-core": ">=5.101.0",
     "vite": "*"
   },
   "peerDependencies": {

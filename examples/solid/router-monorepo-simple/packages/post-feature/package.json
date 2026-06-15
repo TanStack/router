@@ -9,12 +9,12 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@router-solid-mono-simple/router": "workspace:*",
-    "solid-js": "^1.9.10"
+    "solid-js": "^1.9.13"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^2.11.11",
+    "vite-plugin-solid": "^2.11.12",
     "typescript": "^6.0.2",
-    "vite": "^8.0.14",
+    "vite": "^8.0.16",
     "vite-plugin-dts": "^4.5.4"
   }
 }

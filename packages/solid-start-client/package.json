@@ -76,9 +76,9 @@
     "@tanstack/start-client-core": "workspace:*"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/jest-dom": "^6.9.1",
     "vite": "*",
-    "vite-plugin-solid": "^2.11.10"
+    "vite-plugin-solid": "^2.11.12"
   },
   "peerDependencies": {
     "solid-js": ">=1.0.0"

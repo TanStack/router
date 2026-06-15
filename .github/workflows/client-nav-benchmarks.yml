@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -65,7 +65,7 @@ jobs:
           @benchmarks/${{ matrix.benchmark }}:build:${{ matrix.framework }}
 
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
-        uses: CodSpeedHQ/action@9d332c4d90b43981c3e55ae8e38e68709996240f # v4.17.0
+        uses: CodSpeedHQ/action@c145068895e045cc725ee76fcd2307624b65c3af # v4.17.5
         with:
           mode: ${{ matrix.mode }}
           run: >-
