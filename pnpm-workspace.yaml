@@ -4,6 +4,9 @@ preferWorkspacePackages: true
 blockExoticSubdeps: true
 trustPolicy: 'no-downgrade'
 
+trustPolicyExclude:
+  - 'chokidar@4.0.3'
+
 packages:
   - 'packages/*'
   - 'benchmarks/*'
