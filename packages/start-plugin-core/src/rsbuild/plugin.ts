@@ -160,7 +160,6 @@ export function tanStackStartRsbuild(
         const resolvedEntryPlan = configContext.resolveEntries()
         const isDev = api.context.action === 'dev'
         const isPreview = api.context.action === 'preview'
-        const shouldInstallServerMiddleware = isDev || isPreview
 
         const entryAliases = createRsbuildResolvedEntryAliases({
           entryPaths: resolvedEntryPlan.entryPaths,
@@ -258,8 +257,11 @@ export function tanStackStartRsbuild(
             htmlFallback: false,
             // server.setup returned callback runs after built-in middleware
             // but BEFORE fallback middleware — the ideal slot for SSR.
-            ...(shouldInstallServerMiddleware &&
-            startPluginOpts.rsbuild?.installServerMiddleware !== false
+            // Preview always installs the middleware since it is the only SSR
+            // handler; dev can opt out when a custom server hosts SSR.
+            ...(isPreview ||
+            (isDev &&
+              startPluginOpts.rsbuild?.installDevServerMiddleware !== false)
               ? {
                   setup: createServerSetup({
                     serverFnBasePath: serverFnBase,

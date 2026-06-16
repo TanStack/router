@@ -31,7 +31,7 @@ export default defineConfig({
     pluginReact({ splitChunks: false }),
     tanstackStart({
       rsbuild: {
-        installServerMiddleware: false,
+        installDevServerMiddleware: false,
         client: {
           output: 'iife',
         },

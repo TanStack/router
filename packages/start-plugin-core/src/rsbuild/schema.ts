@@ -13,7 +13,7 @@ export const tanstackStartRsbuildOptionsSchema =
     .extend({
       rsbuild: z
         .object({
-          installServerMiddleware: z.boolean().optional(),
+          installDevServerMiddleware: z.boolean().optional(),
           client: z
             .object({
               output: rsbuildClientOutputSchema.optional().default('module'),
@@ -41,7 +41,7 @@ export type TanStackStartRsbuildInputConfig = z.input<
   typeof tanstackStartRsbuildOptionsSchema
 > & {
   rsbuild?: {
-    installServerMiddleware?: boolean
+    installDevServerMiddleware?: boolean
     client?: {
       output?: z.input<typeof rsbuildClientOutputSchema>
     }
