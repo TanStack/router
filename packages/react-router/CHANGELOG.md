@@ -1,5 +1,19 @@
 # @tanstack/react-router
 
+## 1.170.16
+
+### Patch Changes
+
+- [#7595](https://github.com/TanStack/router/pull/7595) [`52db703`](https://github.com/TanStack/router/commit/52db7034fd83b17cc45da9ba775ec253f2a9a149) - Perf improvement of useMatch and derived hooks when navigating away from previous match
+
+- [#7575](https://github.com/TanStack/router/pull/7575) [`4a93cff`](https://github.com/TanStack/router/commit/4a93cffffca34702e419bc47db827f964fd0cb65) - useMatches can skip useRef for structural sharing during SSR
+
+- [#7600](https://github.com/TanStack/router/pull/7600) [`f046b06`](https://github.com/TanStack/router/commit/f046b064d32222cad0b7ea061311ca9a474f5990) - Reduce Match rerenders during navigations (PR [#7596](https://github.com/TanStack/router/issues/7596))
+
+- [#7577](https://github.com/TanStack/router/pull/7577) [`689d88e`](https://github.com/TanStack/router/commit/689d88e04c48ec76a18453ab8b82d8d58f2668b6) - Reduce bundle size by sharing structuralSharing selector logic
+
+- [#7627](https://github.com/TanStack/router/pull/7627) [`689c5ab`](https://github.com/TanStack/router/commit/689c5ab32e9bb18d90a5a94c33237b0e418df3e3) - Silence AbortError in renderRouterToStream, this is normal operation
+
 ## 1.170.15
 
 ### Patch Changes
