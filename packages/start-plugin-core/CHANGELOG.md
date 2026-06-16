@@ -1,5 +1,15 @@
 # @tanstack/start-plugin-core
 
+## 1.171.18
+
+### Patch Changes
+
+- [#7372](https://github.com/TanStack/router/pull/7372) [`e499164`](https://github.com/TanStack/router/commit/e499164c722841271af4aa2215483476bdb94c94) - Fix Rsbuild preview support for TanStack Start SSR. Preview always installs the SSR middleware; the `installDevServerMiddleware` option only applies to dev.
+
+- Updated dependencies [[`96eca43`](https://github.com/TanStack/router/commit/96eca43ab8ee21917a8075521bef6dcf15fc7a43)]:
+  - @tanstack/start-server-core@1.169.15
+  - @tanstack/router-generator@1.167.17
+
 ## 1.171.17
 
 ### Patch Changes
