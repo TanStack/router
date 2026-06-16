@@ -198,8 +198,8 @@
               "to": "framework/react/guide/seo"
             },
             {
-              "label": "LLM Optimization (LLMO)",
-              "to": "framework/react/guide/llmo"
+              "label": "Generative Engine Optimization (GEO)",
+              "to": "framework/react/guide/geo"
             }
           ]
         },
@@ -323,8 +323,8 @@
               "to": "framework/solid/guide/seo"
             },
             {
-              "label": "LLM Optimization (LLMO)",
-              "to": "framework/solid/guide/llmo"
+              "label": "Generative Engine Optimization (GEO)",
+              "to": "framework/solid/guide/geo"
             }
           ]
         }
