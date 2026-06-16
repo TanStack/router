@@ -909,6 +909,18 @@ export const locationHistoryActions = new WeakMap<
   HistoryAction
 >()
 
+type LightweightRouteMatchResult = {
+  matchedRoutes: ReadonlyArray<AnyRoute>
+  fullPath: string
+  search: Record<string, unknown>
+  params: Record<string, unknown>
+}
+
+type LightweightRouteMatchCacheEntry = [
+  lastMatchId: string | undefined,
+  result: LightweightRouteMatchResult,
+]
+
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption = 'never',
@@ -1002,6 +1014,10 @@ export class RouterCore<
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: LRUCache<string, string>
   private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
+  private lightweightCache = new WeakMap<
+    ParsedLocation,
+    LightweightRouteMatchCacheEntry
+  >()
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1719,12 +1735,15 @@ export class RouterCore<
    * Only computes fullPath, accumulated search, and params - skipping expensive
    * operations like AbortController, ControlledPromise, loaderDeps, and full match objects.
    */
-  private matchRoutesLightweight(location: ParsedLocation): {
-    matchedRoutes: ReadonlyArray<AnyRoute>
-    fullPath: string
-    search: Record<string, unknown>
-    params: Record<string, unknown>
-  } {
+  private matchRoutesLightweight(
+    location: ParsedLocation,
+  ): LightweightRouteMatchResult {
+    const lastStateMatchId = last(this.stores.matchesId.get())
+    const cached = this.lightweightCache.get(location)
+    if (cached && cached[0] === lastStateMatchId) {
+      return cached[1]
+    }
+
     const { matchedRoutes, routeParams } = this.getMatchedRoutes(
       location.pathname,
     )
@@ -1753,7 +1772,6 @@ export class RouterCore<
     }
 
     // Determine params: reuse from state if possible, otherwise parse
-    const lastStateMatchId = last(this.stores.matchesId.get())
     const lastStateMatch =
       lastStateMatchId && this.stores.matchStores.get(lastStateMatchId)?.get()
     const canReuseParams =
@@ -1780,12 +1798,14 @@ export class RouterCore<
       params = strictParams
     }
 
-    return {
+    const result = {
       matchedRoutes,
       fullPath: lastRoute.fullPath,
       search: accumulatedSearch,
       params,
     }
+    this.lightweightCache.set(location, [lastStateMatchId, result])
+    return result
   }
 
   cancelMatch = (id: string) => {
