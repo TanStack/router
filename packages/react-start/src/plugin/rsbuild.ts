@@ -13,12 +13,7 @@ import type { RsbuildPlugin } from '@rsbuild/core'
 const reactStartRsbuildEnvironmentOverrides = {
   all: {
     resolve: {
-      dedupe: [
-        'react',
-        'react-dom',
-        '@tanstack/react-start',
-        '@tanstack/react-router',
-      ],
+      dedupe: ['react', 'react-dom'],
     },
   },
 } satisfies NonNullable<
