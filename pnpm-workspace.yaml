@@ -5,7 +5,8 @@ blockExoticSubdeps: true
 trustPolicy: 'no-downgrade'
 
 trustPolicyExclude:
-  - 'chokidar@4.0.3'
+  - 'chokidar@4.0.3' # known to be safe, installed by sass, prisma, netlify... no planned releases in v4, packages is on v5 now
+  - 'semver@6.3.1' # installed by babel, ecosystem has been on v7 for 7 years now, but babel is horribly out of date, 6.3.1 is the latest v6 and was released 3 years ago
 
 packages:
   - 'packages/*'
