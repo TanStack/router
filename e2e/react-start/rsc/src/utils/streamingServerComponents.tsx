@@ -102,7 +102,7 @@ async function createNotificationRSC(notification: NotificationData) {
  * then `streamCount` more stream in with delays.
  */
 export const streamNotificationsReadable = createServerFn({ method: 'GET' })
-  .inputValidator(
+  .validator(
     (data: { initialCount: number; streamCount: number; delayMs: number }) =>
       data,
   )
@@ -140,7 +140,7 @@ export const streamNotificationsReadable = createServerFn({ method: 'GET' })
  * then `streamCount` more stream in with delays.
  */
 export const streamNotificationsGenerator = createServerFn({ method: 'GET' })
-  .inputValidator(
+  .validator(
     (data: { initialCount: number; streamCount: number; delayMs: number }) =>
       data,
   )

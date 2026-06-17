@@ -23,7 +23,7 @@ const testMiddleware = createMiddleware({ type: 'function' })
 // Server function with FormData
 export const formDataWithContextFn = createServerFn({ method: 'POST' })
   .middleware([testMiddleware])
-  .inputValidator((data: unknown) => {
+  .validator((data: unknown) => {
     const formData = z.instanceof(FormData).parse(data)
     return {
       name: z.string().parse(formData.get('name')),

@@ -25,7 +25,7 @@ const todoStore: Array<{ id: string; text: string; completed: boolean }> = [
 ]
 
 const addTodo = createServerFn({ method: 'POST' })
-  .inputValidator((data: { text: string }) => data)
+  .validator((data: { text: string }) => data)
   .handler(async ({ data }) => {
     const newTodo = {
       id: `todo_${Date.now()}`,
@@ -37,7 +37,7 @@ const addTodo = createServerFn({ method: 'POST' })
   })
 
 const toggleTodo = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const todo = todoStore.find((t) => t.id === data.id)
     if (todo) {
@@ -47,7 +47,7 @@ const toggleTodo = createServerFn({ method: 'POST' })
   })
 
 const deleteTodo = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const index = todoStore.findIndex((t) => t.id === data.id)
     if (index !== -1) {

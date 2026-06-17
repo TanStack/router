@@ -77,7 +77,7 @@ const connectToDatabase = createServerFn().handler(async () => {
 
 // Authentication (server-only)
 const authenticateUser = createServerFn()
-  .inputValidator(z.object({ token: z.string() }))
+  .validator(z.object({ token: z.string() }))
   .handler(async ({ data }) => {
     const jwtSecret = process.env.JWT_SECRET // Server-only
     return jwt.verify(data.token, jwtSecret)
@@ -257,7 +257,7 @@ import { createServerFn } from '@tanstack/react-start'
 
 // Server-side API calls (can use secret keys)
 const fetchUserData = createServerFn()
-  .inputValidator(z.object({ userId: z.string() }))
+  .validator(z.object({ userId: z.string() }))
   .handler(async ({ data }) => {
     const response = await fetch(
       `${process.env.EXTERNAL_API_URL}/users/${data.userId}`,

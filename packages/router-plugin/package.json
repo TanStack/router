@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-plugin",
-  "version": "1.168.13",
+  "version": "1.168.18",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -128,15 +128,11 @@
   },
   "dependencies": {
     "@babel/core": "^7.28.5",
-    "@babel/plugin-syntax-jsx": "^7.27.1",
-    "@babel/plugin-syntax-typescript": "^7.27.1",
     "@babel/template": "^7.27.2",
-    "@babel/traverse": "^7.28.5",
     "@babel/types": "^7.28.5",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
-    "@tanstack/virtual-file-routes": "workspace:*",
     "chokidar": "^5.0.0",
     "unplugin": "^3.0.0",
     "zod": "^4.4.3"
@@ -144,7 +140,6 @@
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
     "@types/babel__template": "^7.4.4",
-    "@types/babel__traverse": "^7.28.0",
     "@types/node": ">=20"
   },
   "peerDependencies": {

@@ -24,6 +24,7 @@ export interface CreateStartCompilerOptions {
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
   compilerPlugins?: Array<StartCompilerPlugin> | undefined
   serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
+  warn?: (message: string) => void
   onServerFnsById?: (d: Record<string, ServerFn>) => void
   getKnownServerFns: () => Record<string, ServerFn>
   encodeModuleSpecifierInDev?: DevServerFnModuleSpecifierEncoder
@@ -54,6 +55,7 @@ export function createStartCompiler(
     compilerTransforms: options.compilerTransforms,
     compilerPlugins: options.compilerPlugins,
     serverFnProviderModuleDirectives: options.serverFnProviderModuleDirectives,
+    warn: options.warn,
     getKnownServerFns: options.getKnownServerFns,
     devServerFnModuleSpecifierEncoder: options.encodeModuleSpecifierInDev,
     loadModule: options.loadModule,

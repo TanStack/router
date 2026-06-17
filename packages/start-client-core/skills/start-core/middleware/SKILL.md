@@ -20,7 +20,7 @@ sources:
 
 Middleware customizes the behavior of server functions and server routes. It is composable — middleware can depend on other middleware to form a chain.
 
-> **CRITICAL**: TypeScript enforces method order: `middleware()` → `inputValidator()` → `client()` → `server()`. Wrong order causes type errors.
+> **CRITICAL**: TypeScript enforces method order: `middleware()` → `validator()` → `client()` → `server()`. Wrong order causes type errors.
 > **CRITICAL**: Validating the _shape_ of `sendContext` (e.g. `z.string().uuid().parse(...)`) is NOT authorization. A parsed identifier is a well-formed identifier, not an authorized one. Always re-check access against the session principal before using a client-sent ID as a query key, filter, or path parameter.
 
 ## Two Types of Middleware
@@ -29,7 +29,7 @@ Middleware customizes the behavior of server functions and server routes. It is 
 | ----------------- | -------------------------------------------- | ---------------------------------------- |
 | Scope             | All server requests (SSR, routes, functions) | Server functions only                    |
 | Methods           | `.server()`                                  | `.client()`, `.server()`                 |
-| Input validation  | No                                           | Yes (`.inputValidator()`)                |
+| Input validation  | No                                           | Yes (`.validator()`)                     |
 | Client-side logic | No                                           | Yes                                      |
 | Created with      | `createMiddleware()`                         | `createMiddleware({ type: 'function' })` |
 
@@ -160,7 +160,7 @@ import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 
 const workspaceMiddleware = createMiddleware({ type: 'function' })
-  .inputValidator(zodValidator(z.object({ workspaceId: z.string() })))
+  .validator(zodValidator(z.object({ workspaceId: z.string() })))
   .server(async ({ next, data }) => {
     console.log('Workspace:', data.workspaceId)
     return next()
@@ -243,7 +243,7 @@ const authMiddleware = createMiddleware().server(async ({ next, request }) => {
 })
 ```
 
-> **Attach `authMiddleware` to every `createServerFn` that needs auth.** Server functions are RPC endpoints — a route `beforeLoad` does NOT protect the RPC, only the route's UI. Pair every protected route with handler-level enforcement here. See [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) and [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md).
+> **Attach `authMiddleware` to every `createServerFn` that needs auth.** Server functions are API endpoints; a route `beforeLoad` does not protect their data, only the route's UI. Protect the endpoint that reads or mutates private data. See [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) and [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md).
 
 ```tsx
 type Permissions = Record<string, string[]>
@@ -382,10 +382,10 @@ createMiddleware({ type: 'function' })
   .server(() => { ... })
   .client(() => { ... })
 
-// CORRECT — middleware → inputValidator → client → server
+// CORRECT — middleware → validator → client → server
 createMiddleware({ type: 'function' })
   .middleware([dep])
-  .inputValidator(schema)
+  .validator(schema)
   .client(({ next }) => next())
   .server(({ next }) => next())
 ```
@@ -395,4 +395,4 @@ createMiddleware({ type: 'function' })
 - [start-core/server-functions](../server-functions/SKILL.md) — what middleware wraps
 - [start-core/server-routes](../server-routes/SKILL.md) — middleware on API endpoints
 - [start-core/auth-server-primitives](../auth-server-primitives/SKILL.md) — building the `authMiddleware` factory itself: session cookie reads, OAuth state, CSRF
-- [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) — routing-side guards (route `beforeLoad` does NOT protect server functions; pair guards with `authMiddleware` on every protected RPC)
+- [router-core/auth-and-guards](../../../../router-core/skills/router-core/auth-and-guards/SKILL.md) — routing-side UX guards; data auth belongs in the server function, server route, or API endpoint handler/middleware
