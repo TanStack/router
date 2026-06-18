@@ -25,7 +25,7 @@ export const Route = createFileRoute('/hello')({
 ```
 
 > [!NOTE]
-> Server routes are meant for HTTP endpoints that can be called by external consumers, third-party services, or other clients outside your TanStack Start application. If you only need to call server-side logic from within your Start app and want Start to handle serialization for you, use [server functions](./server-functions) instead.
+> Server routes are meant for HTTP endpoints that need to be called from outside your TanStack Start application. If you only need to call server-side logic from within your Start app and want Start to handle serialization for you, use [server functions](./server-functions) instead.
 
 ## Server Routes and App Routes
 
