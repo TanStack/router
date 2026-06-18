@@ -98,4 +98,17 @@ describe('Search Params serialization and deserialization', () => {
       '?foo=%222024-11-18T00%3A00%3A00.000Z%22',
     )
   })
+
+  test('numeric round-trip: strings that look like JSON numbers but do not survive round-trip should stay as strings', () => {
+    // '662E41' is valid JSON scientific notation (6.62e43), but String(6.62e43) !== '662E41'
+    expect(defaultParseSearch('?codAut=662E41')).toEqual({ codAut: '662E41' })
+    // Large integer beyond safe range — precision would be lost
+    expect(defaultParseSearch('?id=723421968459640832')).toEqual({
+      id: '723421968459640832',
+    })
+    // '9e3' parses as 9000 but String(9000) !== '9e3'
+    expect(defaultParseSearch('?n=9e3')).toEqual({ n: '9e3' })
+    // Regular integers that do round-trip cleanly should still parse as numbers
+    expect(defaultParseSearch('?count=42')).toEqual({ count: 42 })
+  })
 })
