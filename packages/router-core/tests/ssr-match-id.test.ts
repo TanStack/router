@@ -24,6 +24,14 @@ describe('ssr match id codec', () => {
     expect(hydrateSsrMatchId('\uFFFDposts\uFFFD1')).toBe('/posts/1')
   })
 
+  it('still decodes legacy null-byte delimiters for backward compatibility', () => {
+    // Payloads emitted before the switch to U+FFFD encoded slashes as U+0000.
+    // hydrateSsrMatchId keeps the legacy decode branch so an in-flight payload
+    // from a previous deploy still hydrates correctly.
+    const nullChar = String.fromCharCode(0)
+    expect(hydrateSsrMatchId(`${nullChar}posts${nullChar}1`)).toBe('/posts/1')
+  })
+
   it('does not emit control characters that are invalid in SSR HTML', () => {
     const dehydratedId = dehydrateSsrMatchId(
       '/$orgId/projects/$projectId//acme/projects/dashboard/{}',
