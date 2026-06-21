@@ -20,14 +20,11 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-async function buildRouter(ssr?: {
-  isBot?: boolean | ((request: Request) => boolean)
-}) {
+async function buildRouter() {
   const rootRoute = createRootRoute({ component: () => null })
   const router = createRouter({
     history: createMemoryHistory({ initialEntries: ['/'] }),
     routeTree: rootRoute,
-    ...(ssr ? { ssr } : {}),
   })
   router.isServer = true
   attachRouterServerSsrUtils({ router, manifest: undefined })
@@ -236,7 +233,7 @@ describe('renderRouterToStream - pipeable sync errors', () => {
   })
 })
 
-describe('renderRouterToStream - bot detection (ssr.isBot)', () => {
+describe('renderRouterToStream - bot detection (isBot option)', () => {
   const BOT_UA = 'Googlebot/2.1 (+http://www.google.com/bot.html)'
   const HUMAN_UA =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
@@ -248,9 +245,10 @@ describe('renderRouterToStream - bot detection (ssr.isBot)', () => {
   // Captures whether renderToPipeableStream was given `onAllReady` (bot, wait
   // for the full document) or `onShellReady` (stream the shell first).
   async function getStreamMode(
-    router: Awaited<ReturnType<typeof buildRouter>>,
     request: Request,
+    isBot?: boolean | ((request: Request) => boolean),
   ): Promise<'allReady' | 'shellReady' | undefined> {
+    const router = await buildRouter()
     let mode: 'allReady' | 'shellReady' | undefined
     reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(
       (_children, opts) => {
@@ -265,6 +263,7 @@ describe('renderRouterToStream - bot detection (ssr.isBot)', () => {
       router,
       responseHeaders: new Headers(),
       children: null,
+      isBot,
     })
     try {
       return mode
@@ -277,45 +276,36 @@ describe('renderRouterToStream - bot detection (ssr.isBot)', () => {
   }
 
   test('default: bot User-Agent waits for allReady', async () => {
-    const mode = await getStreamMode(
-      await buildRouter(),
-      requestWith({ 'user-agent': BOT_UA }),
+    expect(await getStreamMode(requestWith({ 'user-agent': BOT_UA }))).toBe(
+      'allReady',
     )
-    expect(mode).toBe('allReady')
   })
 
   test('default: human User-Agent streams the shell', async () => {
-    const mode = await getStreamMode(
-      await buildRouter(),
-      requestWith({ 'user-agent': HUMAN_UA }),
+    expect(await getStreamMode(requestWith({ 'user-agent': HUMAN_UA }))).toBe(
+      'shellReady',
     )
-    expect(mode).toBe('shellReady')
   })
 
-  test('ssr.isBot=false: bot User-Agent still streams the shell', async () => {
-    const mode = await getStreamMode(
-      await buildRouter({ isBot: false }),
-      requestWith({ 'user-agent': BOT_UA }),
-    )
-    expect(mode).toBe('shellReady')
+  test('isBot=false: bot User-Agent still streams the shell', async () => {
+    expect(
+      await getStreamMode(requestWith({ 'user-agent': BOT_UA }), false),
+    ).toBe('shellReady')
   })
 
-  test('ssr.isBot=true: human User-Agent waits for allReady', async () => {
-    const mode = await getStreamMode(
-      await buildRouter({ isBot: true }),
-      requestWith({ 'user-agent': HUMAN_UA }),
-    )
-    expect(mode).toBe('allReady')
+  test('isBot=true: human User-Agent waits for allReady', async () => {
+    expect(
+      await getStreamMode(requestWith({ 'user-agent': HUMAN_UA }), true),
+    ).toBe('allReady')
   })
 
-  test('ssr.isBot predicate receives the request and controls the mode', async () => {
+  test('isBot predicate receives the request and controls the mode', async () => {
     const isBot = vi.fn(
       (request: Request) => request.headers.get('x-prerender') === '1',
     )
-    const router = await buildRouter({ isBot })
     const request = requestWith({ 'user-agent': HUMAN_UA, 'x-prerender': '1' })
 
-    const mode = await getStreamMode(router, request)
+    const mode = await getStreamMode(request, isBot)
 
     expect(mode).toBe('allReady')
     expect(isBot).toHaveBeenCalledWith(request)

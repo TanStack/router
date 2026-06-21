@@ -41,27 +41,28 @@ const isAbortError = (request: Request, error: unknown) =>
   (request.signal.aborted && error === request.signal.reason) ||
   (error instanceof Error && error.name === 'AbortError')
 
-// `ssr.isBot` lets apps override the default `isbot` User-Agent check that
-// decides whether to wait for the full document before streaming.
-const resolveIsBot = (router: AnyRouter, request: Request): boolean => {
-  const isBot = router.options.ssr?.isBot
-  if (typeof isBot === 'function') return isBot(request)
-  if (typeof isBot === 'boolean') return isBot
-  return isbot(request.headers.get('User-Agent'))
-}
-
 export const renderRouterToStream = async ({
   request,
   router,
   responseHeaders,
   children,
+  isBot,
 }: {
   request: Request
   router: AnyRouter
   responseHeaders: Headers
   children: ReactNode
+  /**
+   * Whether to treat the request as a bot/crawler. Bots wait for the full
+   * document (React's `allReady`) before responding instead of streaming the
+   * shell first. Defaults to the built-in `isbot` User-Agent check.
+   */
+  isBot?: boolean | ((request: Request) => boolean)
 }) => {
-  const isBotRequest = resolveIsBot(router, request)
+  const isBotRequest =
+    typeof isBot === 'function'
+      ? isBot(request)
+      : (isBot ?? isbot(request.headers.get('User-Agent')))
 
   if (typeof ReactDOMServer.renderToReadableStream === 'function') {
     const stream = await ReactDOMServer.renderToReadableStream(children, {

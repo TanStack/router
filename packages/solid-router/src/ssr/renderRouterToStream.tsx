@@ -11,15 +11,6 @@ import type { AnyRouter } from '@tanstack/router-core'
 
 const noop = () => {}
 
-// `ssr.isBot` lets apps override the default `isbot` User-Agent check that
-// decides whether to wait for the server renderer before streaming.
-const resolveIsBot = (router: AnyRouter, request: Request): boolean => {
-  const isBot = router.options.ssr?.isBot
-  if (typeof isBot === 'function') return isBot(request)
-  if (typeof isBot === 'boolean') return isBot
-  return isbot(request.headers.get('User-Agent'))
-}
-
 // Bot responses wait for the server renderer before streaming. If the request
 // disconnects during that wait, unblock so the pipe can abort and clean up.
 async function waitForReadyOrAbort(
@@ -47,13 +38,23 @@ export const renderRouterToStream = async ({
   router,
   responseHeaders,
   children,
+  isBot,
 }: {
   request: Request
   router: AnyRouter
   responseHeaders: Headers
   children: () => JSXElement
+  /**
+   * Whether to treat the request as a bot/crawler. Bots wait for the full
+   * server render before streaming. Defaults to the built-in `isbot`
+   * User-Agent check.
+   */
+  isBot?: boolean | ((request: Request) => boolean)
 }) => {
-  const isBotRequest = resolveIsBot(router, request)
+  const isBotRequest =
+    typeof isBot === 'function'
+      ? isBot(request)
+      : (isBot ?? isbot(request.headers.get('User-Agent')))
 
   const { writable, readable } = new TransformStream()
 
