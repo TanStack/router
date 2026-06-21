@@ -923,6 +923,53 @@ describe('getEnumerableOwnKeys behavior (via replaceEqualDeep)', () => {
       ]
       expect(replaceEqualDeep(prev, next)).toBe(prev)
     })
+
+    it('preserves identity of unchanged nested subtrees when one leaf changes', () => {
+      const prev = {
+        search: { q: 'hello', f: 'live' },
+        params: { username: 'elonmusk', tweetId: '123' },
+        loaderData: {
+          user: { id: '44196397', name: 'Elon' },
+          tabs: ['a', 'b'],
+        },
+      }
+      const next = {
+        search: { q: 'hello', f: 'live' },
+        params: { username: 'elonmusk', tweetId: '123' },
+        loaderData: {
+          user: { id: '44196397', name: 'Musk' },
+          tabs: ['a', 'b'],
+        },
+      }
+      const result = replaceEqualDeep(prev, next)
+      // user.name changed -> top object is new, but every unchanged subtree
+      // (including the array) keeps its previous reference for cheap memo checks.
+      expect(result).not.toBe(prev)
+      expect(result.search).toBe(prev.search)
+      expect(result.params).toBe(prev.params)
+      expect(result.loaderData.tabs).toBe(prev.loaderData.tabs)
+      expect(result.loaderData.user).not.toBe(prev.loaderData.user)
+      expect(result.loaderData.user.name).toBe('Musk')
+    })
+
+    it('bails to next for a nested object carrying a non-enumerable prop', () => {
+      const prevInner: Record<string, number> = { a: 1 }
+      Object.defineProperty(prevInner, 'hidden', {
+        value: 2,
+        enumerable: false,
+      })
+      const nextInner: Record<string, number> = { a: 1 }
+      Object.defineProperty(nextInner, 'hidden', {
+        value: 2,
+        enumerable: false,
+      })
+      const prev = { shared: { x: 1 }, inner: prevInner }
+      const next = { shared: { x: 1 }, inner: nextInner }
+      const result = replaceEqualDeep(prev, next)
+      // inner is not clone-friendly -> returns nextInner; sibling subtree shared.
+      expect(result.inner).toBe(nextInner)
+      expect(result.shared).toBe(prev.shared)
+    })
   })
 })
 
