@@ -79,6 +79,42 @@ describe('Search Params serialization and deserialization', () => {
   })
 
   /*
+   * The default parser only attempts JSON.parse for values that could be JSON,
+   * avoiding a thrown SyntaxError for plain strings. These cases document that
+   * the guard is behavior-preserving (a superset of JSON's value-start grammar).
+   */
+  describe('parse guard for non-JSON strings', () => {
+    test('plain string params are returned unchanged as strings', () => {
+      expect(defaultParseSearch('?q=hello&f=live&src=typed_query')).toEqual({
+        q: 'hello',
+        f: 'live',
+        src: 'typed_query',
+      })
+    })
+
+    test('leading-whitespace JSON values still parse (guard skips whitespace)', () => {
+      // %20 = space; JSON.parse tolerates leading whitespace, so the guard must too
+      expect(defaultParseSearch('?n=%2042')).toEqual({ n: 42 })
+      expect(defaultParseSearch('?o=%20%7B%22a%22%3A1%7D')).toEqual({
+        o: { a: 1 },
+      })
+    })
+
+    test('JSON-looking-but-invalid values fall back to the raw string', () => {
+      expect(defaultParseSearch('?a=1,2,3&b=[oops')).toEqual({
+        a: '1,2,3',
+        b: '[oops',
+      })
+    })
+
+    test('words starting with t/f/n that are not literals stay strings', () => {
+      expect(
+        defaultParseSearch('?a=tweet&b=false_alarm&c=null_island'),
+      ).toEqual({ a: 'tweet', b: 'false_alarm', c: 'null_island' })
+    })
+  })
+
+  /*
    * It can serialize stuff that really shouldn't be passed as input.
    * But just in case, this test serves as documentation of "what would happen"
    * if you did.
