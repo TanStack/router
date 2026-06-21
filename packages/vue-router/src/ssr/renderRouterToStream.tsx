@@ -14,6 +14,15 @@ const isAbortError = (request: Request, error: unknown) =>
   (error instanceof Error && error.name === 'AbortError') ||
   (error as any)?.code === 'ABORT_ERR'
 
+// `ssr.isBot` lets apps override the default `isbot` User-Agent check that
+// decides whether to wait for the full document before streaming.
+const resolveIsBot = (router: AnyRouter, request: Request): boolean => {
+  const isBot = router.options.ssr?.isBot
+  if (typeof isBot === 'function') return isBot(request)
+  if (typeof isBot === 'boolean') return isBot
+  return isbot(request.headers.get('User-Agent'))
+}
+
 function prependDoctype(
   readable: globalThis.ReadableStream,
 ): NodeReadableStream<Uint8Array> {
@@ -76,7 +85,9 @@ export const renderRouterToStream = async ({
 }) => {
   const app = Vue.createSSRApp(App, { router })
 
-  if (isbot(request.headers.get('User-Agent'))) {
+  const isBotRequest = resolveIsBot(router, request)
+
+  if (isBotRequest) {
     try {
       let cleanupAbortListener: (() => void) | undefined
       const abortPromise = new Promise<never>((_, reject) => {

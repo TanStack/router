@@ -509,6 +509,20 @@ export interface RouterOptions<
   origin?: string
   ssr?: {
     nonce?: string
+    /**
+     * Determines whether a request should be treated as a bot/crawler.
+     *
+     * When a request is considered a bot, streaming SSR waits for the entire
+     * document to render (React's `allReady`) before responding, so crawlers
+     * receive complete HTML instead of a progressively streamed shell.
+     *
+     * - `undefined` (default): use the built-in `isbot` User-Agent check.
+     * - `boolean`: force the bot (`true`) or non-bot (`false`) path for every request.
+     * - `(request) => boolean`: provide a custom predicate.
+     *
+     * @default undefined
+     */
+    isBot?: boolean | ((request: Request) => boolean)
   }
 }
 

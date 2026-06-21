@@ -20,11 +20,14 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-async function buildRouter() {
+async function buildRouter(ssr?: {
+  isBot?: boolean | ((request: Request) => boolean)
+}) {
   const rootRoute = createRootRoute({ component: () => null })
   const router = createRouter({
     history: createMemoryHistory({ initialEntries: ['/'] }),
     routeTree: rootRoute,
+    ...(ssr ? { ssr } : {}),
   })
   router.isServer = true
   attachRouterServerSsrUtils({ router, manifest: undefined })
@@ -230,5 +233,91 @@ describe('renderRouterToStream - pipeable sync errors', () => {
     } finally {
       router.serverSsr?.cleanup()
     }
+  })
+})
+
+describe('renderRouterToStream - bot detection (ssr.isBot)', () => {
+  const BOT_UA = 'Googlebot/2.1 (+http://www.google.com/bot.html)'
+  const HUMAN_UA =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+
+  function requestWith(headers: Record<string, string>) {
+    return new Request('http://localhost/', { headers })
+  }
+
+  // Captures whether renderToPipeableStream was given `onAllReady` (bot, wait
+  // for the full document) or `onShellReady` (stream the shell first).
+  async function getStreamMode(
+    router: Awaited<ReturnType<typeof buildRouter>>,
+    request: Request,
+  ): Promise<'allReady' | 'shellReady' | undefined> {
+    let mode: 'allReady' | 'shellReady' | undefined
+    reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(
+      (_children, opts) => {
+        mode = opts.onAllReady ? 'allReady' : 'shellReady'
+        queueMicrotask(() => (opts.onAllReady ?? opts.onShellReady)())
+        return { abort: vi.fn(), pipe: vi.fn() }
+      },
+    )
+
+    const result = await renderRouterToStream({
+      request,
+      router,
+      responseHeaders: new Headers(),
+      children: null,
+    })
+    try {
+      return mode
+    } finally {
+      await unwrapResponse(result)
+        .body?.cancel()
+        .catch(() => {})
+      router.serverSsr?.cleanup()
+    }
+  }
+
+  test('default: bot User-Agent waits for allReady', async () => {
+    const mode = await getStreamMode(
+      await buildRouter(),
+      requestWith({ 'user-agent': BOT_UA }),
+    )
+    expect(mode).toBe('allReady')
+  })
+
+  test('default: human User-Agent streams the shell', async () => {
+    const mode = await getStreamMode(
+      await buildRouter(),
+      requestWith({ 'user-agent': HUMAN_UA }),
+    )
+    expect(mode).toBe('shellReady')
+  })
+
+  test('ssr.isBot=false: bot User-Agent still streams the shell', async () => {
+    const mode = await getStreamMode(
+      await buildRouter({ isBot: false }),
+      requestWith({ 'user-agent': BOT_UA }),
+    )
+    expect(mode).toBe('shellReady')
+  })
+
+  test('ssr.isBot=true: human User-Agent waits for allReady', async () => {
+    const mode = await getStreamMode(
+      await buildRouter({ isBot: true }),
+      requestWith({ 'user-agent': HUMAN_UA }),
+    )
+    expect(mode).toBe('allReady')
+  })
+
+  test('ssr.isBot predicate receives the request and controls the mode', async () => {
+    const isBot = vi.fn(
+      (request: Request) => request.headers.get('x-prerender') === '1',
+    )
+    const router = await buildRouter({ isBot })
+    const request = requestWith({ 'user-agent': HUMAN_UA, 'x-prerender': '1' })
+
+    const mode = await getStreamMode(router, request)
+
+    expect(mode).toBe('allReady')
+    expect(isBot).toHaveBeenCalledWith(request)
   })
 })

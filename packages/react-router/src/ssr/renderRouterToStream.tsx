@@ -41,6 +41,15 @@ const isAbortError = (request: Request, error: unknown) =>
   (request.signal.aborted && error === request.signal.reason) ||
   (error instanceof Error && error.name === 'AbortError')
 
+// `ssr.isBot` lets apps override the default `isbot` User-Agent check that
+// decides whether to wait for the full document before streaming.
+const resolveIsBot = (router: AnyRouter, request: Request): boolean => {
+  const isBot = router.options.ssr?.isBot
+  if (typeof isBot === 'function') return isBot(request)
+  if (typeof isBot === 'boolean') return isBot
+  return isbot(request.headers.get('User-Agent'))
+}
+
 export const renderRouterToStream = async ({
   request,
   router,
@@ -52,6 +61,8 @@ export const renderRouterToStream = async ({
   responseHeaders: Headers
   children: ReactNode
 }) => {
+  const isBotRequest = resolveIsBot(router, request)
+
   if (typeof ReactDOMServer.renderToReadableStream === 'function') {
     const stream = await ReactDOMServer.renderToReadableStream(children, {
       signal: request.signal,
@@ -64,7 +75,7 @@ export const renderRouterToStream = async ({
       },
     })
 
-    if (isbot(request.headers.get('User-Agent'))) {
+    if (isBotRequest) {
       await waitForReadyOrAbort(stream.allReady, request.signal)
     }
 
@@ -150,7 +161,7 @@ export const renderRouterToStream = async ({
       pipeable = ReactDOMServer.renderToPipeableStream(children, {
         nonce: router.options.ssr?.nonce,
         progressiveChunkSize: Number.POSITIVE_INFINITY,
-        ...(isbot(request.headers.get('User-Agent'))
+        ...(isBotRequest
           ? {
               onAllReady() {
                 pipeable!.pipe(reactAppPassthrough)
