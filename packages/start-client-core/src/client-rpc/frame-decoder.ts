@@ -133,6 +133,11 @@ export function createFrameDecoder(
     inputReader = reader
 
     const bufferList: Array<Uint8Array> = []
+    // Index of the first un-consumed chunk in bufferList. Advancing this
+    // pointer is O(1); using bufferList.shift() to drop a consumed chunk is
+    // O(n) and degrades to O(n^2) when a single large frame is assembled from
+    // many small chunks (e.g. a big RawStream payload split across reads).
+    let bufferHead = 0
     let totalLength = 0
 
     /**
@@ -146,7 +151,7 @@ export function createFrameDecoder(
     } | null {
       if (totalLength < FRAME_HEADER_SIZE) return null
 
-      const first = bufferList[0]!
+      const first = bufferList[bufferHead]!
 
       // Fast path: header fits entirely in first chunk (common case)
       if (first.length >= FRAME_HEADER_SIZE) {
@@ -170,7 +175,7 @@ export function createFrameDecoder(
       const headerBytes = new Uint8Array(FRAME_HEADER_SIZE)
       let offset = 0
       let remaining = FRAME_HEADER_SIZE
-      for (let i = 0; i < bufferList.length && remaining > 0; i++) {
+      for (let i = bufferHead; i < bufferList.length && remaining > 0; i++) {
         const chunk = bufferList[i]!
         const toCopy = Math.min(chunk.length, remaining)
         headerBytes.set(chunk.subarray(0, toCopy), offset)
@@ -205,9 +210,8 @@ export function createFrameDecoder(
       let offset = 0
       let remaining = count
 
-      while (remaining > 0 && bufferList.length > 0) {
-        const chunk = bufferList[0]
-        if (!chunk) break
+      while (remaining > 0 && bufferHead < bufferList.length) {
+        const chunk = bufferList[bufferHead]!
         const toCopy = Math.min(chunk.length, remaining)
         result.set(chunk.subarray(0, toCopy), offset)
 
@@ -215,10 +219,24 @@ export function createFrameDecoder(
         remaining -= toCopy
 
         if (toCopy === chunk.length) {
-          bufferList.shift()
+          // Whole chunk consumed: release it and advance the head pointer
+          // (O(1)) instead of bufferList.shift() (O(n)).
+          bufferList[bufferHead++] = EMPTY_BUFFER
         } else {
-          bufferList[0] = chunk.subarray(toCopy)
+          bufferList[bufferHead] = chunk.subarray(toCopy)
         }
+      }
+
+      // Drop consumed chunks so bufferList doesn't grow unbounded over a
+      // long-lived stream. Fully drained is the common terminal state and
+      // resets in O(1); otherwise splice off the consumed prefix once it grows
+      // past a small threshold (amortized O(1) per consumed chunk).
+      if (bufferHead === bufferList.length) {
+        bufferList.length = 0
+        bufferHead = 0
+      } else if (bufferHead >= 32) {
+        bufferList.splice(0, bufferHead)
+        bufferHead = 0
       }
 
       totalLength -= count
