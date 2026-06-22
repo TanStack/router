@@ -38,14 +38,22 @@ function hydrateMatch(
 }
 
 export async function hydrate(router: AnyRouter): Promise<any> {
+  // The server injects SSR bootstrap data via an inline script that runs while
+  // the streamed HTML is parsed. It can be absent at hydration time when the
+  // stream was truncated or the inline script never executed (aborted
+  // navigations, crawlers, in-app webviews, CSP/extension-blocked inline
+  // scripts). Bail out instead of throwing a fatal invariant that takes down
+  // the whole app: leaving `router.ssr` unset makes the client render from
+  // scratch, since the Transitioner runs `router.load()` on mount when it sees
+  // no SSR state.
   if (!window.$_TSR) {
     if (process.env.NODE_ENV !== 'production') {
-      throw new Error(
-        'Invariant failed: Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!',
+      console.warn(
+        'TanStack Router: no SSR bootstrap data found on window.$_TSR; falling back to client-side rendering.',
       )
     }
 
-    invariant()
+    return
   }
 
   const serializationAdapters = router.options.serializationAdapters as
@@ -64,12 +72,12 @@ export async function hydrate(router: AnyRouter): Promise<any> {
 
   if (!window.$_TSR.router) {
     if (process.env.NODE_ENV !== 'production') {
-      throw new Error(
-        'Invariant failed: Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
+      console.warn(
+        'TanStack Router: no dehydrated router found on window.$_TSR.router; falling back to client-side rendering.',
       )
     }
 
-    invariant()
+    return
   }
 
   const dehydratedRouter = window.$_TSR.router

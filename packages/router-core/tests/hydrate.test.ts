@@ -56,13 +56,24 @@ describe('hydrate', () => {
     delete (global as any).window
   })
 
-  it('should throw error if window.$_TSR is not available', async () => {
-    await expect(hydrate(mockRouter)).rejects.toThrow(
-      'Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!',
-    )
+  it('should fall back to client-side rendering if window.$_TSR is not available', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const matchRoutesSpy = vi.spyOn(mockRouter, 'matchRoutes')
+
+    await expect(hydrate(mockRouter)).resolves.toBeUndefined()
+
+    // No SSR state is applied, so the client renders from scratch via the
+    // Transitioner's router.load() on mount (it only skips that when router.ssr
+    // is set).
+    expect(matchRoutesSpy).not.toHaveBeenCalled()
+    expect(mockRouter.ssr).toBeUndefined()
+    expect(warnSpy).toHaveBeenCalled()
   })
 
-  it('should throw error if window.$_TSR.router is not available', async () => {
+  it('should fall back to client-side rendering if window.$_TSR.router is not available', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const matchRoutesSpy = vi.spyOn(mockRouter, 'matchRoutes')
+
     mockWindow.$_TSR = {
       c: vi.fn(),
       p: vi.fn(),
@@ -71,9 +82,11 @@ describe('hydrate', () => {
       // router is missing
     } as any
 
-    await expect(hydrate(mockRouter)).rejects.toThrow(
-      'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
-    )
+    await expect(hydrate(mockRouter)).resolves.toBeUndefined()
+
+    expect(matchRoutesSpy).not.toHaveBeenCalled()
+    expect(mockRouter.ssr).toBeUndefined()
+    expect(warnSpy).toHaveBeenCalled()
   })
 
   it('should initialize serialization adapters when provided', async () => {
