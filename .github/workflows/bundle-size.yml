@@ -98,6 +98,7 @@ jobs:
             --output benchmarks/bundle-size/results/pr-comment.md \
             --base-sha "$BASE_SHA" \
             --dashboard-url "https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME}/benchmarks/bundle-size/"
+          cat benchmarks/bundle-size/results/pr-comment.md
 
       - name: Upsert Sticky PR Comment
         env:
