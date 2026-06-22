@@ -387,7 +387,7 @@ export const Route = createFileRoute('/posts')({
 import { routeTree } from './routeTree.gen'
 
 // Use your routerContext to create a new router
-// This will require that you fullfil the type requirements of the routerContext
+// This will require that you fulfill the type requirements of the routerContext
 const router = createRouter({
   routeTree,
   context: {
