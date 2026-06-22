@@ -731,13 +731,19 @@ const runLoader = async (
           match._nonReactive.loaderPromise = undefined
           return
         }
-        inner.updateMatch(matchId, (prev) => ({
-          ...prev,
-          status: prev.status === 'pending' ? 'success' : prev.status,
-          isFetching: false,
-          context: buildMatchContext(inner, index),
-        }))
-        return
+        // a previous load already produced data, so keep showing it instead of
+        // surfacing the abort
+        if (inner.router.getMatch(matchId)?.status !== 'pending') {
+          inner.updateMatch(matchId, (prev) => ({
+            ...prev,
+            isFetching: false,
+            context: buildMatchContext(inner, index),
+          }))
+          return
+        }
+        // no loaderData yet: fall through to error handling rather than
+        // resolving to `success`, which would render the route component with
+        // loaderData undefined
       }
 
       const pendingPromise = match._nonReactive.minPendingPromise
