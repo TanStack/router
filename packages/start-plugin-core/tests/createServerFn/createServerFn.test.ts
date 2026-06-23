@@ -324,6 +324,142 @@ describe('createServerFn compiles correctly', async () => {
     ])
   })
 
+  test('should dedupe generated ids that collide with known ids', async () => {
+    const serverFnsById: Record<
+      string,
+      {
+        functionName: string
+        functionId: string
+        extractedFilename: string
+        filename: string
+        isClientReferenced?: boolean
+      }
+    > = {
+      'known-action': {
+        functionName: 'knownFn_createServerFn_handler',
+        functionId: 'known-action',
+        extractedFilename: '/test/src/known.ts?tss-serverfn-split',
+        filename: '/test/src/known.ts',
+        isClientReferenced: true,
+      },
+    }
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      generateFunctionId: ({ functionName }) =>
+        functionName === 'generatedFn_createServerFn_handler'
+          ? 'known-action'
+          : undefined,
+      getKnownServerFns: () => serverFnsById,
+      onServerFnsById: (discovered) => {
+        Object.assign(serverFnsById, discovered)
+      },
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const generatedFn = createServerFn()
+          .handler(() => 'generated')
+      `,
+      id: '/test/src/generated.ts',
+    })
+
+    expect(result!.code).toContain('createClientRpc("known-action_1")')
+    expect(serverFnsById['known-action']).toMatchObject({
+      functionName: 'knownFn_createServerFn_handler',
+      functionId: 'known-action',
+    })
+    expect(serverFnsById['known-action_1']).toMatchObject({
+      functionName: 'generatedFn_createServerFn_handler',
+      functionId: 'known-action_1',
+    })
+  })
+
+  test('should dedupe dev generated ids that collide with manual ids', async () => {
+    const devServerFnPayload = {
+      file: '/test/src/test.ts?tss-serverfn-split',
+      export: 'generatedFn_createServerFn_handler',
+    }
+    const manualFunctionId = Buffer.from(
+      JSON.stringify(devServerFnPayload),
+      'utf8',
+    ).toString('base64url')
+    const serverFnsById: Record<
+      string,
+      {
+        functionName: string
+        functionId: string
+        extractedFilename: string
+        filename: string
+        isClientReferenced?: boolean
+      }
+    > = {}
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'dev',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      devServerFnModuleSpecifierEncoder: ({ extractedFilename }) =>
+        extractedFilename,
+      getKnownServerFns: () => ({}),
+      onServerFnsById: (discovered) => {
+        Object.assign(serverFnsById, discovered)
+      },
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const manualFn = createServerFn()
+          .id('${manualFunctionId}')
+          .handler(() => 'manual')
+        const generatedFn = createServerFn()
+          .handler(() => 'generated')
+      `,
+      id: '/test/src/test.ts',
+    })
+
+    const functionIds = Object.keys(serverFnsById).sort()
+    const generatedFunctionId = functionIds.find(
+      (functionId) => functionId !== manualFunctionId,
+    )
+    const generatedPayload = JSON.parse(
+      Buffer.from(generatedFunctionId!, 'base64url').toString('utf8'),
+    )
+
+    expect(result!.code).toContain(`createClientRpc("${manualFunctionId}")`)
+    expect(result!.code).toContain(`createClientRpc("${generatedFunctionId}")`)
+    expect(functionIds).toHaveLength(2)
+    expect(functionIds).toContain(manualFunctionId)
+    expect(generatedPayload).toEqual({
+      ...devServerFnPayload,
+      collision: 1,
+    })
+  })
+
   // TODO remove upon stable
   test('should warn for deprecated inputValidator method', async () => {
     const warn = vi.fn()
