@@ -603,7 +603,9 @@ export interface ServerFnId<
   TInputValidator,
   TStrict extends ServerFnStrict,
 > {
-  id: (id: string) => ServerFnAfterId<
+  id: (
+    id: string,
+  ) => ServerFnAfterId<
     TRegister,
     TMethod,
     TMiddlewares,
@@ -689,12 +691,7 @@ export interface ServerFnValidatorAfterId<
   validator: ValidatorFnAfterId<TRegister, TMethod, TMiddlewares, TStrict>
   // TODO remove upon stable
   /** @deprecated Use `validator` instead. */
-  inputValidator: ValidatorFnAfterId<
-    TRegister,
-    TMethod,
-    TMiddlewares,
-    TStrict
-  >
+  inputValidator: ValidatorFnAfterId<TRegister, TMethod, TMiddlewares, TStrict>
 }
 
 export interface ServerFnAfterIdAfterValidator<
@@ -839,13 +836,7 @@ export interface ServerFnAfterValidator<
       TInputValidator,
       TStrict
     >,
-    ServerFnHandler<
-      TRegister,
-      TMethod,
-      TMiddlewares,
-      TInputValidator,
-      TStrict
-    >,
+    ServerFnHandler<TRegister, TMethod, TMiddlewares, TInputValidator, TStrict>,
     ServerFnId<TRegister, TMethod, TMiddlewares, TInputValidator, TStrict> {}
 
 export interface ServerFnAfterTyper<

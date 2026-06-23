@@ -590,7 +590,9 @@ test('createServerFn id can be set before handler', () => {
 
   expectTypeOf(fn).not.toHaveProperty('id')
 
-  const builderAfterMiddleware = createServerFn().id('list-users').middleware([])
+  const builderAfterMiddleware = createServerFn()
+    .id('list-users')
+    .middleware([])
 
   expectTypeOf(builderAfterMiddleware).toHaveProperty('handler')
   expectTypeOf(builderAfterMiddleware).not.toHaveProperty('id')
