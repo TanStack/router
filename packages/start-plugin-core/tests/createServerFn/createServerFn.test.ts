@@ -118,6 +118,156 @@ describe('createServerFn compiles correctly', async () => {
     `)
   })
 
+  test('should compile server functions with manual ids', async () => {
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const myServerFn = createServerFn()
+          .middleware([])
+          .id('get-user')
+          .handler(() => 'server')`
+
+    const compiledResultClient = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    const compiledResultServerCaller = await compile({
+      code,
+      env: 'server',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    const compiledResultServerProvider = await compile({
+      code,
+      env: 'server',
+      isProviderFile: true,
+      mode: 'build',
+    })
+
+    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
+    expect(compiledResultClient!.code).not.toContain('.id(')
+
+    expect(compiledResultServerCaller!.code).toContain(
+      'createSsrRpc("get-user")',
+    )
+    expect(compiledResultServerCaller!.code).not.toContain('.id(')
+
+    expect(compiledResultServerProvider!.code).toContain('id: "get-user"')
+    expect(compiledResultServerProvider!.code).not.toContain('.id(')
+  })
+
+  test('should register server functions by manual ids', async () => {
+    const serverFnsById: Record<
+      string,
+      {
+        functionName: string
+        functionId: string
+        extractedFilename: string
+        filename: string
+        isClientReferenced?: boolean
+      }
+    > = {}
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      getKnownServerFns: () => ({}),
+      onServerFnsById: (discovered) => {
+        Object.assign(serverFnsById, discovered)
+      },
+    })
+
+    await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const myServerFn = createServerFn()
+          .id('get-user')
+          .handler(() => 'server')
+      `,
+      id: '/test/src/test.ts',
+    })
+
+    expect(serverFnsById['get-user']).toMatchObject({
+      functionId: 'get-user',
+      functionName: 'myServerFn_createServerFn_handler',
+      filename: '/test/src/test.ts',
+      isClientReferenced: true,
+    })
+  })
+
+  test('should reject dynamic manual server function ids', async () => {
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const id = 'get-user'
+        const myServerFn = createServerFn()
+          .id(id)
+          .handler(() => 'server')`
+
+    await expect(
+      compile({
+        code,
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+      }),
+    ).rejects.toThrow(
+      'createServerFn().id() must be called with a string literal',
+    )
+  })
+
+  test('should reject invalid manual server function ids', async () => {
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const myServerFn = createServerFn()
+          .id('users/get')
+          .handler(() => 'server')`
+
+    await expect(
+      compile({
+        code,
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+      }),
+    ).rejects.toThrow(
+      'createServerFn().id() must be a non-empty URL-safe path segment',
+    )
+  })
+
+  test('should reject duplicate manual server function ids', async () => {
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const getUser = createServerFn()
+          .id('user-action')
+          .handler(() => 'get')
+        const updateUser = createServerFn()
+          .id('user-action')
+          .handler(() => 'update')`
+
+    await expect(
+      compile({
+        code,
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+      }),
+    ).rejects.toThrow('Duplicate manual server function id: user-action')
+  })
+
   // TODO remove upon stable
   test('should warn for deprecated inputValidator method', async () => {
     const warn = vi.fn()

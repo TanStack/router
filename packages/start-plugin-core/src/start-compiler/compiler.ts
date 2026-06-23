@@ -1295,6 +1295,7 @@ export class StartCompiler {
 
         // Collect method chain paths by walking DOWN from root through the chain
         const methodChain: MethodChainPaths = {
+          id: null,
           middleware: null,
           validator: null,
           // TODO remove upon stable
@@ -1319,6 +1320,10 @@ export class StartCompiler {
           if (t.isIdentifier(callee.property)) {
             const name = callee.property.name as keyof MethodChainPaths
             if (name in methodChain) {
+              if (kind === 'ServerFn' && name === 'id' && methodChain.id) {
+                throw new Error('createServerFn().id() can only be called once')
+              }
+
               // Get first argument path
               const args = currentPath.get('arguments')
               const firstArgPath =

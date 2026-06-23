@@ -47,6 +47,7 @@ export interface MethodCallInfo {
  * This avoids needing to traverse the AST again in handlers.
  */
 export interface MethodChainPaths {
+  id: MethodCallInfo | null
   middleware: MethodCallInfo | null
   validator: MethodCallInfo | null
   // TODO remove upon stable
