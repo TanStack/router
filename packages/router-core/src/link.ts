@@ -613,18 +613,39 @@ export type PathParamOptions<TRouter extends AnyRouter, TFrom, TTo> =
     ? MakeOptionalPathParams<TRouter, TFrom, TTo>
     : MakeRequiredPathParams<TRouter, TFrom, TTo>
 
+/**
+ * Absolute external URL strings accepted by the `to` prop on `Link`,
+ * `createLink`, and `linkOptions`. Matches the runtime `new URL(to)` check in
+ * `useLinkProps` and the default protocol allowlist (`http:`, `https:`,
+ * `mailto:`, `tel:`). When `to` matches one of these patterns the runtime
+ * short-circuits internal-route handling and renders the value as an
+ * anchor's `href` (still applying `isDangerousProtocol` filtering).
+ *
+ * Internal route paths (e.g. `/dashboard`, `../profile`) remain valid; this
+ * type only widens what is accepted, never narrows it.
+ *
+ * @see https://github.com/TanStack/router/issues/4901
+ */
+export type ExternalUrl =
+  | `http://${string}`
+  | `https://${string}`
+  | `mailto:${string}`
+  | `tel:${string}`
+
 export type ToPathOption<
   TRouter extends AnyRouter = AnyRouter,
   TFrom extends string = string,
   TTo extends string | undefined = string,
-> = ConstrainLiteral<
-  TTo,
-  RelativeToPathAutoComplete<
-    TRouter,
-    NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
-    NoInfer<TTo> & string
-  >
->
+> =
+  | ConstrainLiteral<
+      TTo,
+      RelativeToPathAutoComplete<
+        TRouter,
+        NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
+        NoInfer<TTo> & string
+      >
+    >
+  | ExternalUrl
 
 export type FromPathOption<TRouter extends AnyRouter, TFrom> = ConstrainLiteral<
   TFrom,

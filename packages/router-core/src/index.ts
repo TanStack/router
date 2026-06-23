@@ -30,6 +30,7 @@ export type {
   SearchParamOptions,
   PathParamOptions,
   ToPathOption,
+  ExternalUrl,
   LinkOptions,
   MakeOptionalPathParams,
   FromPathOption,
