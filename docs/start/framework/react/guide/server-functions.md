@@ -414,6 +414,55 @@ Server functions can return Server Components - server-rendered React components
 
 Handle request cancellation with `AbortSignal` for long-running operations.
 
+### Manual function IDs
+
+TanStack Start gives every server function an internal ID. By default, that ID is generated from the source file and extracted function name.
+
+Add `.id()` when a function needs to keep the same identity across file moves or variable renames:
+
+```tsx
+import { createServerFn } from '@tanstack/react-start'
+
+export const getUser = createServerFn({ method: 'GET' })
+  .id('get-user')
+  .handler(async () => {
+    return { id: '123' }
+  })
+```
+
+The value must be a static string literal before `.handler()`. It can contain letters, numbers, `_`, and `-`. Manual IDs must be unique. Duplicate manual IDs fail at compile time. If a generated or plugin-generated ID collides with one, the generated ID gets a suffix such as `_1`.
+
+> [!WARNING]
+> IDs are public. They can show up in browser network requests, logs, proxies, and analytics, so keep them short and non-sensitive. Do not include secrets, private file paths, tenant IDs, user IDs, or sensitive business data.
+
+An ID only locates the function. It does not authenticate the caller, authorize the action, validate input, or provide CSRF protection. Put those checks in middleware or in the handler.
+
+A per-function `.id()` takes precedence over `serverFns.generateFunctionId` for that server function.
+
+#### Manual IDs with factories
+
+Set the ID on the server function produced by the factory, not on the reusable factory itself:
+
+```tsx
+const authedServerFn = createServerFn().middleware([authMiddleware])
+
+export const getUser = authedServerFn()
+  .id('get-user')
+  .handler(async () => {
+    return { id: '123' }
+  })
+
+export const updateUser = authedServerFn({ method: 'POST' })
+  .id('update-user')
+  .handler(async () => {
+    return { ok: true }
+  })
+```
+
+Factory calls do not inherit IDs so each function produced by the factory should declare its own ID.
+
+Keep the same `.id()` value to preserve function identity across file moves and variable renames. Keep the same `method` to preserve call compatibility.
+
 ### Function ID generation for production build
 
 Server functions are addressed by a generated, stable function ID under the hood. These IDs are embedded into the client/SSR builds and used by the server to locate and import the correct module at runtime.
