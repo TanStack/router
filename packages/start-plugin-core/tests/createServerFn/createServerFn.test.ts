@@ -268,6 +268,62 @@ describe('createServerFn compiles correctly', async () => {
     ).rejects.toThrow('Duplicate manual server function id: user-action')
   })
 
+  test('should dedupe generated ids that collide with manual ids', async () => {
+    const serverFnsById: Record<
+      string,
+      {
+        functionName: string
+        functionId: string
+        extractedFilename: string
+        filename: string
+        isClientReferenced?: boolean
+      }
+    > = {}
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      generateFunctionId: ({ functionName }) =>
+        functionName === 'generatedFn_createServerFn_handler'
+          ? 'user-action'
+          : undefined,
+      getKnownServerFns: () => ({}),
+      onServerFnsById: (discovered) => {
+        Object.assign(serverFnsById, discovered)
+      },
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const manualFn = createServerFn()
+          .id('user-action')
+          .handler(() => 'manual')
+        const generatedFn = createServerFn()
+          .handler(() => 'generated')
+      `,
+      id: '/test/src/test.ts',
+    })
+
+    expect(result!.code).toContain('createClientRpc("user-action")')
+    expect(result!.code).toContain('createClientRpc("user-action_1")')
+    expect(Object.keys(serverFnsById).sort()).toEqual([
+      'user-action',
+      'user-action_1',
+    ])
+  })
+
   // TODO remove upon stable
   test('should warn for deprecated inputValidator method', async () => {
     const warn = vi.fn()

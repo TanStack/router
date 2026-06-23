@@ -672,6 +672,15 @@ export class StartCompiler {
     return functionId
   }
 
+  private reserveFunctionId(functionId: string): boolean {
+    if (this.functionIds.has(functionId)) {
+      return false
+    }
+
+    this.functionIds.add(functionId)
+    return true
+  }
+
   private get mode(): 'dev' | 'build' {
     return this.options.mode ?? 'dev'
   }
@@ -1373,6 +1382,7 @@ export class StartCompiler {
         warn: warnFn,
 
         generateFunctionId: (opts) => this.generateFunctionId(opts),
+        reserveFunctionId: (id) => this.reserveFunctionId(id),
         getKnownServerFns: this.options.getKnownServerFns,
         serverFnProviderModuleDirectives:
           this.options.serverFnProviderModuleDirectives,

@@ -323,6 +323,14 @@ export function handleCreateServerFn(
           `Duplicate manual server function id: ${manualFunctionId}`,
         )
       }
+
+      if (!isSameKnownFn && !context.reserveFunctionId(manualFunctionId)) {
+        throw codeFrameError(
+          context.code,
+          id!.callPath.node.loc!,
+          `Duplicate manual server function id: ${manualFunctionId}`,
+        )
+      }
     }
 
     // Check if this function was already discovered by the client build

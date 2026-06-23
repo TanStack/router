@@ -551,7 +551,11 @@ export function startCompilerPlugin(
           const fnId = parsed.query.id
           if (fnId && serverFnsById[fnId]) {
             return `export const devServerFn = ${JSON.stringify(
-              getViteDevServerFnImport(fnId, serverFnsById),
+              getViteDevServerFnImport(
+                fnId,
+                serverFnsById,
+                createViteDevServerFnModuleSpecifierEncoder(root),
+              ),
             )}`
           }
 
@@ -594,7 +598,11 @@ export function startCompilerPlugin(
                   // Re-check after lazy compilation
                   if (serverFnsById[fnId]) {
                     return `export const devServerFn = ${JSON.stringify(
-                      getViteDevServerFnImport(fnId, serverFnsById),
+                      getViteDevServerFnImport(
+                        fnId,
+                        serverFnsById,
+                        createViteDevServerFnModuleSpecifierEncoder(root),
+                      ),
                     )}`
                   }
                 }

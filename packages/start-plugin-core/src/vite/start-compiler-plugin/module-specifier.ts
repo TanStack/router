@@ -51,25 +51,32 @@ export function decodeViteDevServerModuleSpecifier(
 export function getViteDevServerFnImport(
   id: string,
   serverFnsById: Record<string, ServerFn>,
+  encodeModuleSpecifier: DevServerFnModuleSpecifierEncoder,
 ): ViteDevServerFnImport {
   const registeredServerFn = serverFnsById[id]
   if (registeredServerFn) {
     return {
-      file: registeredServerFn.extractedFilename,
+      file: encodeModuleSpecifier({
+        extractedFilename: registeredServerFn.extractedFilename,
+        root: '',
+      }),
       export: registeredServerFn.functionName,
     }
   }
 
   try {
     const decoded = JSON.parse(Buffer.from(id, 'base64url').toString('utf8'))
-    if (typeof decoded.file === 'string' && typeof decoded.export === 'string') {
+    if (
+      typeof decoded.file === 'string' &&
+      typeof decoded.export === 'string'
+    ) {
       return {
         file: decoded.file,
         export: decoded.export,
       }
     }
   } catch {
-    // Manual IDs are not encoded module references; fall through to registry lookup.
+    // Manual IDs are not encoded module references.
   }
 
   throw new Error(`Invalid server function ID: ${id}`)

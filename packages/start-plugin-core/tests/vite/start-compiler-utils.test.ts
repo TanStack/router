@@ -18,18 +18,22 @@ describe('Vite dev server module specifiers', () => {
     ).toString('base64url')
 
     expect(
-      getViteDevServerFnImport(generatedIdShapedManualId, {
-        [generatedIdShapedManualId]: {
-          functionName: 'getUser_createServerFn_handler',
-          functionId: generatedIdShapedManualId,
-          filename: '/repo/app/src/routes/users.tsx',
-          extractedFilename:
-            '/repo/app/src/routes/users.tsx?tss-serverfn-split',
-          isClientReferenced: true,
+      getViteDevServerFnImport(
+        generatedIdShapedManualId,
+        {
+          [generatedIdShapedManualId]: {
+            functionName: 'getUser_createServerFn_handler',
+            functionId: generatedIdShapedManualId,
+            filename: '/repo/app/src/routes/users.tsx',
+            extractedFilename:
+              '/repo/app/src/routes/users.tsx?tss-serverfn-split',
+            isClientReferenced: true,
+          },
         },
-      }),
+        createViteDevServerFnModuleSpecifierEncoder('/repo/app'),
+      ),
     ).toEqual({
-      file: '/repo/app/src/routes/users.tsx?tss-serverfn-split',
+      file: '/src/routes/users.tsx?tss-serverfn-split',
       export: 'getUser_createServerFn_handler',
     })
   })
@@ -43,7 +47,13 @@ describe('Vite dev server module specifiers', () => {
       'utf8',
     ).toString('base64url')
 
-    expect(getViteDevServerFnImport(encodedId, {})).toEqual({
+    expect(
+      getViteDevServerFnImport(
+        encodedId,
+        {},
+        createViteDevServerFnModuleSpecifierEncoder('/repo/app'),
+      ),
+    ).toEqual({
       file: '/src/routes/users.tsx?tss-serverfn-split',
       export: 'getUser_createServerFn_handler',
     })
