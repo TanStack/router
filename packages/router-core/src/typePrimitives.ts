@@ -11,6 +11,11 @@ import type { AnyRouter, RegisteredRouter } from './router'
 import type { UseParamsResult } from './useParams'
 import type { UseSearchResult } from './useSearch'
 import type { Constrain, ConstrainLiteral } from './utils'
+// Remove any `_pathless` folder segments for type extraction
+export type StripPathless<T extends string> =
+  T extends `${infer A}/_pathless/${infer B}`
+    ? `${A}/${B}`
+    : T;
 
 export type ValidateFromPath<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -29,11 +34,16 @@ export type ValidateSearch<
   TFrom extends string = string,
 > = SearchParamOptions<TRouter, TFrom, TTo>
 
+
 export type ValidateParams<
   TRouter extends AnyRouter = RegisteredRouter,
   TTo extends string | undefined = undefined,
   TFrom extends string = string,
-> = PathParamOptions<TRouter, TFrom, TTo>
+> = PathParamOptions<
+  TRouter,
+  StripPathless<TFrom>,
+  TTo extends string ? StripPathless<TTo> : TTo
+>
 
 /**
  * @private
