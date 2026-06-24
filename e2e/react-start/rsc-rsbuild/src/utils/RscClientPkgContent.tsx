@@ -63,7 +63,10 @@ export function RscClientPkgContent() {
         <span style={styles.badge}>SERVER</span>
         <span style={styles.meta}>Rendered before hydration</span>
       </div>
-      <h2 data-testid="rsc-node-module-client-server-title" style={styles.title}>
+      <h2
+        data-testid="rsc-node-module-client-server-title"
+        style={styles.title}
+      >
         Server rendered package boundary
       </h2>
       <p style={styles.description}>

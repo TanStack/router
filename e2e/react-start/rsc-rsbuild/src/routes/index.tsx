@@ -147,13 +147,15 @@ function Home() {
       </div>
 
       <nav style={styles.grid}>
-        {examples.map(({ marker, markerColor, title, description, ...link }) => (
-          <Link key={link.to} {...link} style={styles.card}>
-            <div style={markerStyle(markerColor)}>{marker}</div>
-            <div style={styles.cardTitle}>{title}</div>
-            <div style={styles.cardDescription}>{description}</div>
-          </Link>
-        ))}
+        {examples.map(
+          ({ marker, markerColor, title, description, ...link }) => (
+            <Link key={link.to} {...link} style={styles.card}>
+              <div style={markerStyle(markerColor)}>{marker}</div>
+              <div style={styles.cardTitle}>{title}</div>
+              <div style={styles.cardDescription}>{description}</div>
+            </Link>
+          ),
+        )}
       </nav>
     </main>
   )

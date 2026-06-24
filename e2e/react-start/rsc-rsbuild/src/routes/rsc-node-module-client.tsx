@@ -79,11 +79,15 @@ function RscNodeModuleClientComponent() {
       <div style={styles.summary}>
         <div style={styles.summaryItem}>
           <div style={styles.summaryLabel}>Server source</div>
-          <div style={styles.summaryText}>Route loader + RSC server function</div>
+          <div style={styles.summaryText}>
+            Route loader + RSC server function
+          </div>
         </div>
         <div style={styles.summaryItem}>
           <div style={styles.summaryLabel}>Client source</div>
-          <div style={styles.summaryText}>Component exported from node_modules</div>
+          <div style={styles.summaryText}>
+            Component exported from node_modules
+          </div>
         </div>
       </div>
       {Server}
