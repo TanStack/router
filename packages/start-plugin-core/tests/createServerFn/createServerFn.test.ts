@@ -324,6 +324,105 @@ describe('createServerFn compiles correctly', async () => {
     ])
   })
 
+  test('should dedupe generated ids that collide with later manual ids', async () => {
+    const serverFnsById: Record<
+      string,
+      {
+        functionName: string
+        functionId: string
+        extractedFilename: string
+        filename: string
+        isClientReferenced?: boolean
+      }
+    > = {}
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      generateFunctionId: ({ functionName }) =>
+        functionName === 'generatedFn_createServerFn_handler'
+          ? 'user-action'
+          : undefined,
+      getKnownServerFns: () => ({}),
+      onServerFnsById: (discovered) => {
+        Object.assign(serverFnsById, discovered)
+      },
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const generatedFn = createServerFn()
+          .handler(() => 'generated')
+        const manualFn = createServerFn()
+          .id('user-action')
+          .handler(() => 'manual')
+      `,
+      id: '/test/src/test.ts',
+    })
+
+    expect(result!.code).toContain('createClientRpc("user-action_1")')
+    expect(result!.code).toContain('createClientRpc("user-action")')
+    expect(Object.keys(serverFnsById).sort()).toEqual([
+      'user-action',
+      'user-action_1',
+    ])
+  })
+
+  test('should release manual id reservations when a module is invalidated', async () => {
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      getKnownServerFns: () => ({}),
+    })
+
+    await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const firstFn = createServerFn()
+          .id('user-action')
+          .handler(() => 'first')
+      `,
+      id: '/test/src/first.ts',
+    })
+
+    compiler.invalidateModule('/test/src/first.ts')
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const secondFn = createServerFn()
+          .id('user-action')
+          .handler(() => 'second')
+      `,
+      id: '/test/src/second.ts',
+    })
+
+    expect(result!.code).toContain('createClientRpc("user-action")')
+  })
+
   test('should dedupe generated ids that collide with known ids', async () => {
     const serverFnsById: Record<
       string,

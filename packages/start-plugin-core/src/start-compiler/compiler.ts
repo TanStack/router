@@ -528,6 +528,7 @@ export class StartCompiler {
   // For generating unique function IDs in production builds
   private entryIdToFunctionId = new Map<string, string>()
   private functionIds = new Set<string>()
+  private reservedFunctionIdOwners = new Map<string, string>()
 
   constructor(
     private options: {
@@ -710,7 +711,7 @@ export class StartCompiler {
     return functionId
   }
 
-  private reserveFunctionId(functionId: string): boolean {
+  private reserveFunctionId(functionId: string, moduleId: string): boolean {
     if (
       this.functionIds.has(functionId) ||
       this.hasKnownFunctionId(functionId)
@@ -719,6 +720,7 @@ export class StartCompiler {
     }
 
     this.functionIds.add(functionId)
+    this.reservedFunctionIdOwners.set(functionId, cleanId(moduleId))
     return true
   }
 
@@ -916,6 +918,13 @@ export class StartCompiler {
     const deletedModuleIds = new Set<string>()
     if (normalizedIds.size === 0) {
       return deletedModuleIds
+    }
+
+    for (const [functionId, moduleId] of this.reservedFunctionIdOwners) {
+      if (normalizedIds.has(moduleId)) {
+        this.reservedFunctionIdOwners.delete(functionId)
+        this.functionIds.delete(functionId)
+      }
     }
 
     for (const moduleId of Array.from(this.moduleCache.keys())) {
@@ -1423,7 +1432,8 @@ export class StartCompiler {
         warn: warnFn,
 
         generateFunctionId: (opts) => this.generateFunctionId(opts),
-        reserveFunctionId: (id) => this.reserveFunctionId(id),
+        reserveFunctionId: (functionId) =>
+          this.reserveFunctionId(functionId, id),
         getKnownServerFns: this.options.getKnownServerFns,
         serverFnProviderModuleDirectives:
           this.options.serverFnProviderModuleDirectives,

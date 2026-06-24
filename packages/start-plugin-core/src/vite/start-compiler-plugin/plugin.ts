@@ -157,6 +157,25 @@ function invalidateCompilerVirtualModules(
   })
 }
 
+function deleteServerFnsByModuleIds(
+  serverFnsById: Record<string, ServerFn>,
+  ids: Iterable<string>,
+): void {
+  const moduleIds = new Set(Array.from(ids, cleanId))
+  if (moduleIds.size === 0) {
+    return
+  }
+
+  for (const [functionId, serverFn] of Object.entries(serverFnsById)) {
+    if (
+      moduleIds.has(cleanId(serverFn.filename)) ||
+      moduleIds.has(cleanId(serverFn.extractedFilename))
+    ) {
+      delete serverFnsById[functionId]
+    }
+  }
+}
+
 function getServerFnProviderIds(ids: Iterable<string>) {
   const providerIds = new Set<string>()
 
@@ -445,6 +464,8 @@ export function startCompilerPlugin(
             }
             compiler.invalidateModules(seenImporters)
           }
+
+          deleteServerFnsByModuleIds(serverFnsById, idsToInvalidate)
 
           invalidateModuleNodes(this.environment, importerModulesToInvalidate)
           invalidateServerFnLookupModules(this.environment, idsToInvalidate)

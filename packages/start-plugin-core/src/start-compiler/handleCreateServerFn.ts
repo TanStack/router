@@ -268,10 +268,19 @@ export function handleCreateServerFn(
   const knownFns = context.getKnownServerFns()
   const cleanedContextId = cleanId(context.id)
 
+  const candidateInfos: Array<{
+    candidate: RewriteCandidate
+    candidateVariableDeclarator: NonNullable<
+      ReturnType<typeof getVariableDeclaratorForExpressionPath>
+    >
+    existingVariableName: string
+    functionName: string
+    manualFunctionId: string | undefined
+    variableDeclarator: t.VariableDeclarator
+  }> = []
+
   for (const candidate of candidates) {
     const { path: candidatePath, methodChain } = candidate
-    const { id, validator, inputValidator, handler } = methodChain
-
     const candidateVariableDeclarator = getVariableDeclaratorForExpressionPath(
       candidatePath as babel.NodePath<t.Expression>,
     )
@@ -300,18 +309,41 @@ export function handleCreateServerFn(
     }
     functionNameSet.add(functionName)
 
-    const manualFunctionId = getManualServerFnId(context, id)
-    const functionId =
-      manualFunctionId ??
-      context.generateFunctionId({
-        filename: relativeFilename,
-        functionName,
-        extractedFilename,
-      })
+    const manualFunctionId = getManualServerFnId(context, methodChain.id)
 
-    if (manualFunctionId && !isProviderFile) {
-      const existingFn =
-        serverFnsById[manualFunctionId] ?? knownFns[manualFunctionId]
+    candidateInfos.push({
+      candidate,
+      candidateVariableDeclarator,
+      existingVariableName,
+      functionName,
+      manualFunctionId,
+      variableDeclarator,
+    })
+  }
+
+  const manualFunctionIds = new Map<string, string>()
+  if (!isProviderFile) {
+    for (const { functionName, manualFunctionId, variableDeclarator } of
+      candidateInfos) {
+      if (!manualFunctionId) {
+        continue
+      }
+
+      const existingManualFunctionName =
+        manualFunctionIds.get(manualFunctionId)
+      if (
+        existingManualFunctionName &&
+        existingManualFunctionName !== functionName
+      ) {
+        throw codeFrameError(
+          context.code,
+          variableDeclarator.loc!,
+          `Duplicate manual server function id: ${manualFunctionId}`,
+        )
+      }
+      manualFunctionIds.set(manualFunctionId, functionName)
+
+      const existingFn = knownFns[manualFunctionId]
       const isSameKnownFn =
         existingFn?.functionName === functionName &&
         existingFn.extractedFilename === extractedFilename
@@ -319,7 +351,7 @@ export function handleCreateServerFn(
       if (existingFn && !isSameKnownFn) {
         throw codeFrameError(
           context.code,
-          id!.callPath.node.loc!,
+          variableDeclarator.loc!,
           `Duplicate manual server function id: ${manualFunctionId}`,
         )
       }
@@ -327,11 +359,30 @@ export function handleCreateServerFn(
       if (!isSameKnownFn && !context.reserveFunctionId(manualFunctionId)) {
         throw codeFrameError(
           context.code,
-          id!.callPath.node.loc!,
+          variableDeclarator.loc!,
           `Duplicate manual server function id: ${manualFunctionId}`,
         )
       }
     }
+  }
+
+  for (const candidateInfo of candidateInfos) {
+    const {
+      candidate,
+      candidateVariableDeclarator,
+      existingVariableName,
+      functionName,
+      manualFunctionId,
+    } = candidateInfo
+    const { path: candidatePath, methodChain } = candidate
+    const { id, validator, inputValidator, handler } = methodChain
+    const functionId =
+      manualFunctionId ??
+      context.generateFunctionId({
+        filename: relativeFilename,
+        functionName,
+        extractedFilename,
+      })
 
     // Check if this function was already discovered by the client build
     const knownFn = knownFns[functionId]
