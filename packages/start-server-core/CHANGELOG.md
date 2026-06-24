@@ -1,5 +1,11 @@
 # @tanstack/start-server-core
 
+## 1.169.15
+
+### Patch Changes
+
+- [#7599](https://github.com/TanStack/router/pull/7599) [`96eca43`](https://github.com/TanStack/router/commit/96eca43ab8ee21917a8075521bef6dcf15fc7a43) - Skip a full router.update for faster createStartHandler
+
 ## 1.169.14
 
 ### Patch Changes

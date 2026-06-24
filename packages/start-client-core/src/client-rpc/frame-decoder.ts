@@ -201,6 +201,25 @@ export function createFrameDecoder(
     function extractFlattened(count: number): Uint8Array {
       if (count === 0) return EMPTY_BUFFER
 
+      // Fast path: the requested bytes are fully contained in the first buffered
+      // chunk (the common case — most frames arrive within a single network
+      // read). Return a subarray view instead of allocating a new buffer and
+      // copying `count` bytes. The view shares the chunk's backing ArrayBuffer,
+      // which is safe because buffered chunks are never mutated in place after
+      // being read from the network.
+      const first = bufferList[0]
+      if (first && first.length >= count) {
+        const result = first.subarray(0, count)
+        if (first.length === count) {
+          bufferList.shift()
+        } else {
+          bufferList[0] = first.subarray(count)
+        }
+        totalLength -= count
+        return result
+      }
+
+      // Slow path: the requested bytes span multiple chunks — flatten by copying.
       const result = new Uint8Array(count)
       let offset = 0
       let remaining = count
