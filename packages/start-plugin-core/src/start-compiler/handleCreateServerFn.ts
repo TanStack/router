@@ -323,14 +323,16 @@ export function handleCreateServerFn(
 
   const manualFunctionIds = new Map<string, string>()
   if (!isProviderFile) {
-    for (const { functionName, manualFunctionId, variableDeclarator } of
-      candidateInfos) {
+    for (const {
+      functionName,
+      manualFunctionId,
+      variableDeclarator,
+    } of candidateInfos) {
       if (!manualFunctionId) {
         continue
       }
 
-      const existingManualFunctionName =
-        manualFunctionIds.get(manualFunctionId)
+      const existingManualFunctionName = manualFunctionIds.get(manualFunctionId)
       if (
         existingManualFunctionName &&
         existingManualFunctionName !== functionName
