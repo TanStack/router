@@ -1,4 +1,9 @@
 cleanupUnusedCatalogs: true
+minimumReleaseAgeExclude:
+  - solid-js
+  - '@solidjs/*'
+  - babel-preset-solid
+  - babel-plugin-jsx-dom-expressions
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 blockExoticSubdeps: true
@@ -27,7 +32,10 @@ overrides:
   vite-plugin-dts: 4.2.3
   # Force the Solid v2 babel preset for the v2 vite plugin only (scoped, so it
   # does not affect router-devtools-core, which uses vite-plugin-solid@2.x).
-  'vite-plugin-solid@3.0.0-next.5>babel-preset-solid': 2.0.0-beta.14
+  'vite-plugin-solid@3.0.0-next.5>babel-preset-solid': 2.0.0-beta.15
+  # @rsbuild/plugin-solid hard-pins babel-preset-solid to an older beta; align
+  # it with the rest of the Solid v2 toolchain.
+  '@rsbuild/plugin-solid>babel-preset-solid': 2.0.0-beta.15
   react: $react
   react-dom: $react-dom
   '@types/react': $@types/react

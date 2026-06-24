@@ -10,11 +10,11 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.14",
+    "@solidjs/web": "2.0.0-beta.15",
     "@tanstack/solid-router": "^2.0.0-beta.21",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.17",
     "@tanstack/solid-start": "^2.0.0-beta.22",
-    "solid-js": "2.0.0-beta.14",
+    "solid-js": "2.0.0-beta.15",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
