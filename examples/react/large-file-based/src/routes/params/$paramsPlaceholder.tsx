@@ -28,14 +28,5 @@ export const Route = createFileRoute('/params/$paramsPlaceholder')({
 })
 
 function ParamsComponent() {
-  return (
-    <div className="p-2 space-y-2">
-      <Link
-        to="/params/$paramsPlaceholder"
-        params={{
-          paramsPlaceholder: 'params',
-        }}
-      />
-    </div>
-  )
+  return <div className="p-2 space-y-2"></div>
 }
