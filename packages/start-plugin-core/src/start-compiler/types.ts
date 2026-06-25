@@ -99,6 +99,8 @@ export type GenerateFunctionIdFn = (opts: {
 
 export type ReserveFunctionIdFn = (opts: {
   filename: string
+  functionName: string
+  extractedFilename: string
   functionId: string
 }) => string
 

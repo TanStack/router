@@ -232,22 +232,27 @@ function extractManualServerFnId(
 function getCreateServerFnCallExpression(
   candidatePath: babel.NodePath<t.CallExpression>,
 ): t.CallExpression | undefined {
-  const { callee } = candidatePath.node
-  if (!t.isMemberExpression(callee)) {
-    return undefined
+  let currentCall: t.CallExpression | undefined = candidatePath.node
+
+  while (currentCall) {
+    const callee: t.CallExpression['callee'] = currentCall.callee
+    if (!t.isMemberExpression(callee)) {
+      return undefined
+    }
+
+    const innerCall: t.MemberExpression['object'] = callee.object
+    if (!t.isCallExpression(innerCall)) {
+      return undefined
+    }
+
+    if (t.isIdentifier(innerCall.callee, { name: 'createServerFn' })) {
+      return innerCall
+    }
+
+    currentCall = innerCall
   }
 
-  const rootCall = callee.object
-  if (!t.isCallExpression(rootCall)) {
-    return undefined
-  }
-
-  const rootCallee = rootCall.callee
-  if (!t.isIdentifier(rootCallee) || rootCallee.name !== 'createServerFn') {
-    return undefined
-  }
-
-  return rootCall
+  return undefined
 }
 
 function getSourceTextForNode(
@@ -408,6 +413,8 @@ export function handleCreateServerFn(
       manualFunctionId !== undefined
         ? context.reserveFunctionId({
             filename: relativeFilename,
+            functionName,
+            extractedFilename,
             functionId: manualFunctionId,
           })
         : context.generateFunctionId({

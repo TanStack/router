@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
 import { StartCompiler } from '../../src/start-compiler/compiler'
+import { createViteDevServerFnModuleSpecifierEncoder } from '../../src/vite/start-compiler-plugin/module-specifier'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -152,6 +153,25 @@ describe('createServerFn compiles correctly', async () => {
 
       export const getUser = createServerFn({ method: 'GET', id: manualId })
         .handler(async () => ({ id: '123' }))
+    `
+
+    const compiledResultClient = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
+  })
+
+  test('should preserve a manual id through validator chaining', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      export const getUser = createServerFn({ method: 'GET', id: 'get-user' })
+        .validator((input: string) => input)
+        .handler(async ({ data }) => ({ id: data }))
     `
 
     const compiledResultClient = await compile({
@@ -694,6 +714,75 @@ describe('createServerFn compiles correctly', async () => {
     })
 
     expect(secondResult!.code).toContain('createSsrRpc("get-user")')
+  })
+
+  test('reuses a manual id across caller and provider compiles in one compiler', async () => {
+    const compiler = new StartCompiler({
+      env: 'server',
+      ...getDefaultTestOptions('server'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      getKnownServerFns: () => ({}),
+    })
+
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+      export const getUser = createServerFn({ id: 'get-user' }).handler(async () => 'first')
+    `
+
+    const callerResult = await compiler.compile({
+      code,
+      id: '/test/src/example.tsx',
+    })
+
+    const providerResult = await compiler.compile({
+      code,
+      id: '/test/src/example.tsx?tss-serverfn-split',
+    })
+
+    expect(callerResult!.code).toContain('createSsrRpc("get-user")')
+    expect(providerResult!.code).toContain('id: "get-user"')
+  })
+
+  test('keeps dev manual ids encoded for runtime lookup', async () => {
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'dev',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      getKnownServerFns: () => ({}),
+      devServerFnModuleSpecifierEncoder:
+        createViteDevServerFnModuleSpecifierEncoder('/test'),
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const getUser = createServerFn({ id: 'get-user' }).handler(async () => 'first')
+      `,
+      id: '/test/src/example.tsx',
+    })
+
+    expect(result!.code).toContain('createClientRpc("')
+    expect(result!.code).not.toContain('createClientRpc("get-user")')
   })
 
   test('should resolve createServerFn from the same binding as a known root export', async () => {

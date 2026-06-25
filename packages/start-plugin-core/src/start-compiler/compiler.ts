@@ -516,6 +516,7 @@ export class StartCompiler {
     Map<string, ExportResolution | null>
   >()
   private reservedManualFunctionIds = new Set<string>()
+  private reservedManualFunctionIdOwners = new Map<string, string>()
   private reservedManualFunctionIdsByFilename = new Map<string, Set<string>>()
   // Fast lookup for direct imports from known libraries (e.g., '@tanstack/react-start')
   // Maps: libName → (exportName → Kind)
@@ -615,26 +616,7 @@ export class StartCompiler {
     extractedFilename: string
   }): string {
     if (this.mode === 'dev') {
-      // In dev, encode the file path and export name for direct lookup.
-      // Each bundler adapter supplies its own strategy for encoding
-      // module specifiers that work with its dev server runtime.
-      const encodeModuleSpecifier =
-        this.options.devServerFnModuleSpecifierEncoder
-      if (!encodeModuleSpecifier) {
-        throw new Error(
-          'devServerFnModuleSpecifierEncoder is required in dev mode.',
-        )
-      }
-      const file = encodeModuleSpecifier({
-        extractedFilename: opts.extractedFilename,
-        root: this.options.root,
-      })
-
-      const serverFn = {
-        file,
-        export: opts.functionName,
-      }
-      return Buffer.from(JSON.stringify(serverFn), 'utf8').toString('base64url')
+      return this.generateDevFunctionId(opts)
     }
 
     // Production build: use custom generator or hash
@@ -673,24 +655,61 @@ export class StartCompiler {
     return functionId
   }
 
-  private reserveFunctionId(opts: { filename: string; functionId: string }) {
-    if (
-      this.functionIds.has(opts.functionId) ||
-      this.reservedManualFunctionIds.has(opts.functionId)
-    ) {
+  private reserveFunctionId(opts: {
+    filename: string
+    functionName: string
+    extractedFilename: string
+    functionId: string
+  }) {
+    const entryId = `${opts.filename}--${opts.functionName}`
+    const existingOwner = this.reservedManualFunctionIdOwners.get(opts.functionId)
+
+    if (existingOwner && existingOwner !== entryId) {
       throw new Error(`Duplicate server function id: ${opts.functionId}`)
     }
 
-    this.reservedManualFunctionIds.add(opts.functionId)
-
-    let reservedIds = this.reservedManualFunctionIdsByFilename.get(opts.filename)
-    if (!reservedIds) {
-      reservedIds = new Set<string>()
-      this.reservedManualFunctionIdsByFilename.set(opts.filename, reservedIds)
+    if (!existingOwner && this.functionIds.has(opts.functionId)) {
+      throw new Error(`Duplicate server function id: ${opts.functionId}`)
     }
-    reservedIds.add(opts.functionId)
 
-    return opts.functionId
+    if (!existingOwner) {
+      this.reservedManualFunctionIdOwners.set(opts.functionId, entryId)
+      this.reservedManualFunctionIds.add(opts.functionId)
+
+      let reservedIds = this.reservedManualFunctionIdsByFilename.get(opts.filename)
+      if (!reservedIds) {
+        reservedIds = new Set<string>()
+        this.reservedManualFunctionIdsByFilename.set(opts.filename, reservedIds)
+      }
+      reservedIds.add(opts.functionId)
+    }
+
+    return this.mode === 'dev'
+      ? this.generateDevFunctionId(opts)
+      : opts.functionId
+  }
+
+  private generateDevFunctionId(opts: {
+    functionName: string
+    extractedFilename: string
+  }): string {
+    // In dev, encode the file path and export name for direct lookup.
+    // Each bundler adapter supplies its own strategy for encoding
+    // module specifiers that work with its dev server runtime.
+    const encodeModuleSpecifier = this.options.devServerFnModuleSpecifierEncoder
+    if (!encodeModuleSpecifier) {
+      throw new Error('devServerFnModuleSpecifierEncoder is required in dev mode.')
+    }
+    const file = encodeModuleSpecifier({
+      extractedFilename: opts.extractedFilename,
+      root: this.options.root,
+    })
+
+    const serverFn = {
+      file,
+      export: opts.functionName,
+    }
+    return Buffer.from(JSON.stringify(serverFn), 'utf8').toString('base64url')
   }
 
   private get mode(): 'dev' | 'build' {
@@ -928,6 +947,7 @@ export class StartCompiler {
 
     for (const functionId of reservedIds) {
       this.reservedManualFunctionIds.delete(functionId)
+      this.reservedManualFunctionIdOwners.delete(functionId)
     }
     this.reservedManualFunctionIdsByFilename.delete(relativeFilename)
   }
