@@ -244,6 +244,46 @@ describe('createServerFn compiles correctly', async () => {
     )
   })
 
+  test('should keep static manual id when options include unrelated spread', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      const baseOptions = { method: 'GET' as const }
+
+      export const getUser = createServerFn({ ...baseOptions, id: 'get-user' })
+        .handler(async () => ({ id: '123' }))
+    `
+
+    const compiledResultClient = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
+  })
+
+  test('should keep static manual id when options include unrelated computed keys', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      const key = 'method'
+
+      export const getUser = createServerFn({ [key]: 'GET' as const, id: 'get-user' })
+        .handler(async () => ({ id: '123' }))
+    `
+
+    const compiledResultClient = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
+  })
+
   // TODO remove upon stable
   test('should warn for deprecated inputValidator method', async () => {
     const warn = vi.fn()
