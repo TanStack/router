@@ -115,113 +115,21 @@ jobs:
       published-packages: ${{ steps.publish.outputs.published-packages }}
     permissions:
       actions: read
+      contents: read
       id-token: write
     steps:
-      - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          node-version: 24
-          package-manager-cache: false
-      - name: Download Packed Packages
-        id: download-pack
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
-        with:
-          artifact-ids: ${{ needs.pack.outputs.pack-dir-artifact-id }}
-          path: changeset-pack
-          merge-multiple: true
+          persist-credentials: false
+      - name: Setup Tools
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Publish Packed Packages
         id: publish
-        env:
-          PACK_DIR: ${{ steps.download-pack.outputs.download-path }}
-        run: |
-          node <<'EOF'
-          import { appendFileSync, readFileSync } from 'node:fs'
-          import path from 'node:path'
-          import { spawnSync } from 'node:child_process'
-
-          const packDir = process.env.PACK_DIR
-          const githubOutput = process.env.GITHUB_OUTPUT
-
-          if (!packDir) {
-            throw new Error('PACK_DIR is required')
-          }
-
-          if (!githubOutput) {
-            throw new Error('GITHUB_OUTPUT is required')
-          }
-
-          const publishPlanPath = path.join(packDir, 'publish-plan.json')
-          const publishPlan = JSON.parse(readFileSync(publishPlanPath, 'utf8'))
-          const releases = publishPlan.plan
-            .flat()
-            .filter((release) => release.kind === 'publish')
-
-          const publishedPackages = []
-
-          for (const release of releases) {
-            if (!release.tarball?.path) {
-              throw new Error(
-                `Missing packed tarball metadata for ${release.name}@${release.version}`,
-              )
-            }
-
-            const tarball = path.join(packDir, release.tarball.path)
-            const args = [
-              'publish',
-              tarball,
-              '--tag',
-              release.tag,
-              '--access',
-              release.access,
-              '--registry',
-              release.registry,
-              '--provenance',
-              '--json',
-            ]
-
-            console.info(
-              `Publishing ${release.name}@${release.version} with dist-tag ${release.tag}`,
-            )
-
-            const result = spawnSync('npm', args, {
-              encoding: 'utf8',
-              stdio: ['ignore', 'pipe', 'pipe'],
-            })
-            const output = `${result.stdout || ''}${result.stderr || ''}`
-
-            if (result.stdout) {
-              process.stdout.write(result.stdout)
-            }
-            if (result.stderr) {
-              process.stderr.write(result.stderr)
-            }
-
-            if (result.status !== 0) {
-              if (output.includes('cannot publish over the previously published version')) {
-                console.warn(
-                  `${release.name}@${release.version} is already published; skipping`,
-                )
-                continue
-              }
-
-              process.exit(result.status ?? 1)
-            }
-
-            publishedPackages.push({
-              name: release.name,
-              version: release.version,
-            })
-          }
-
-          appendFileSync(
-            githubOutput,
-            `published=${publishedPackages.length > 0 ? 'true' : 'false'}\n`,
-          )
-          appendFileSync(
-            githubOutput,
-            `published-packages=${JSON.stringify(publishedPackages)}\n`,
-          )
-          EOF
+        uses: changesets/action/publish@8f7aee55a02899b4d6140157e482211eb49fcbee # v2.0.0-next.2
+        with:
+          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
+          create-github-releases: false
 
   github-release:
     name: Create GitHub Release
