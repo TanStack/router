@@ -118,6 +118,52 @@ describe('createServerFn compiles correctly', async () => {
     `)
   })
 
+  test('should use a literal manual id from createServerFn options', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      export const getUser = createServerFn({ method: 'GET', id: 'get-user' })
+        .handler(async () => ({ id: '123' }))
+    `
+
+    const compiledResultClient = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    const compiledResultServerProvider = await compile({
+      code,
+      env: 'server',
+      isProviderFile: true,
+      mode: 'build',
+    })
+
+    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
+    expect(compiledResultServerProvider!.code).toContain('id: "get-user"')
+  })
+
+  test('should use a shorthand constant string id', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      const manualId = 'get-user'
+
+      export const getUser = createServerFn({ method: 'GET', id: manualId })
+        .handler(async () => ({ id: '123' }))
+    `
+
+    const compiledResultClient = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
+  })
+
   // TODO remove upon stable
   test('should warn for deprecated inputValidator method', async () => {
     const warn = vi.fn()

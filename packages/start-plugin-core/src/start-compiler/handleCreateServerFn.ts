@@ -13,6 +13,7 @@ import type {
 import type { CompileStartFrameworkOptions } from '../types'
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
+const MANUAL_SERVER_FN_ID_PATTERN = /^[a-zA-Z0-9_-]+$/
 
 const providerHmrAcceptTemplate = babel.template.statements(
   `
@@ -137,6 +138,109 @@ function getEnvConfig(
     isClientEnvironment: false,
     runtimeCodeType: 'ssr',
   }
+}
+
+function extractManualServerFnId(
+  candidatePath: babel.NodePath<t.CallExpression>,
+  code: string,
+): string | undefined {
+  const [optionsArg] = candidatePath.node.arguments
+  if (!optionsArg || !t.isObjectExpression(optionsArg)) {
+    return undefined
+  }
+
+  if (optionsArg.loc) {
+    const optionsSource = getSourceTextForNode(code, optionsArg.loc)
+    if (optionsSource.includes('...')) {
+      throw codeFrameError(
+        code,
+        optionsArg.loc,
+        'createServerFn({ ...opts }) is not supported for manual ids.',
+      )
+    }
+
+    if (/(^|[,{])\s*\[[^\]]+\]\s*:/.test(optionsSource)) {
+      throw codeFrameError(
+        code,
+        optionsArg.loc,
+        'createServerFn({ [key]: value }) is not supported for manual ids.',
+      )
+    }
+  }
+
+  for (const prop of optionsArg.properties) {
+    if (!t.isObjectProperty(prop)) {
+      continue
+    }
+
+    const isIdKey =
+      (t.isIdentifier(prop.key) && prop.key.name === 'id') ||
+      (t.isStringLiteral(prop.key) && prop.key.value === 'id')
+
+    if (!isIdKey) {
+      continue
+    }
+
+    if (t.isStringLiteral(prop.value)) {
+      if (!MANUAL_SERVER_FN_ID_PATTERN.test(prop.value.value)) {
+        throw codeFrameError(
+          code,
+          prop.value.loc!,
+          'createServerFn({ id }) must use a URL-safe id: [a-zA-Z0-9_-]+',
+        )
+      }
+
+      return prop.value.value
+    }
+
+    if (t.isIdentifier(prop.value)) {
+      const binding = candidatePath.scope.getBinding(prop.value.name)
+      const bindingPath = binding?.path
+      const bindingInit =
+        bindingPath && bindingPath.isVariableDeclarator()
+          ? bindingPath.node.init
+          : undefined
+
+      if (binding?.constant && bindingInit && t.isStringLiteral(bindingInit)) {
+        if (!MANUAL_SERVER_FN_ID_PATTERN.test(bindingInit.value)) {
+          throw codeFrameError(
+            code,
+            bindingInit.loc!,
+            'createServerFn({ id }) must use a URL-safe id: [a-zA-Z0-9_-]+',
+          )
+        }
+
+        return bindingInit.value
+      }
+    }
+
+    throw codeFrameError(
+      code,
+      prop.loc!,
+      'createServerFn({ id }) must use a static string literal or a constant string binding.',
+    )
+  }
+
+  return undefined
+}
+
+function getSourceTextForNode(
+  code: string,
+  loc: {
+    start: { line: number; column: number }
+    end: { line: number; column: number }
+  },
+): string {
+  const lineStarts = [0]
+  for (let index = 0; index < code.length; index++) {
+    if (code[index] === '\n') {
+      lineStarts.push(index + 1)
+    }
+  }
+
+  const startOffset = lineStarts[loc.start.line - 1]! + loc.start.column
+  const endOffset = lineStarts[loc.end.line - 1]! + loc.end.column
+  return code.slice(startOffset, endOffset)
 }
 
 /**
@@ -271,12 +375,16 @@ export function handleCreateServerFn(
     }
     functionNameSet.add(functionName)
 
-    // Generate function ID using pre-computed relative filename
-    const functionId = context.generateFunctionId({
-      filename: relativeFilename,
-      functionName,
-      extractedFilename,
-    })
+    const manualFunctionId = extractManualServerFnId(candidatePath, context.code)
+
+    // Generate function ID using pre-computed relative filename unless the user supplied one.
+    const functionId =
+      manualFunctionId ??
+      context.generateFunctionId({
+        filename: relativeFilename,
+        functionName,
+        extractedFilename,
+      })
 
     // Check if this function was already discovered by the client build
     const knownFn = knownFns[functionId]
