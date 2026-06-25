@@ -623,10 +623,14 @@ export class StartCompiler {
     const entryId = `${opts.filename}--${opts.functionName}`
     let functionId = this.entryIdToFunctionId.get(entryId)
     if (functionId === undefined) {
-      const knownFn = Object.values(this.options.getKnownServerFns()).find(
+      const knownServerFns = this.options.getKnownServerFns()
+      const knownFn = Object.values(knownServerFns).find(
         (serverFn) =>
           serverFn.functionName === opts.functionName &&
           serverFn.extractedFilename === opts.extractedFilename,
+      )
+      const knownFunctionIds = new Set(
+        Object.values(knownServerFns).map((serverFn) => serverFn.functionId),
       )
 
       if (knownFn) {
@@ -642,11 +646,13 @@ export class StartCompiler {
       if (!functionId) {
         functionId = crypto.createHash('sha256').update(entryId).digest('hex')
       }
+      const isCanonicalKnownMatch = knownFn?.functionId === functionId
       // Deduplicate generated/custom IDs so manual reservations stay exact
       // without making the older generateFunctionId hook a breaking change.
       if (
         this.functionIds.has(functionId) ||
-        this.reservedManualFunctionIds.has(functionId)
+        this.reservedManualFunctionIds.has(functionId) ||
+        (!isCanonicalKnownMatch && knownFunctionIds.has(functionId))
       ) {
         let deduplicatedId
         let iteration = 0
@@ -654,7 +660,8 @@ export class StartCompiler {
           deduplicatedId = `${functionId}_${++iteration}`
         } while (
           this.functionIds.has(deduplicatedId) ||
-          this.reservedManualFunctionIds.has(deduplicatedId)
+          this.reservedManualFunctionIds.has(deduplicatedId) ||
+          knownFunctionIds.has(deduplicatedId)
         )
         functionId = deduplicatedId
       }

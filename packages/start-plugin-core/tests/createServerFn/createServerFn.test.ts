@@ -244,6 +244,28 @@ describe('createServerFn compiles correctly', async () => {
     )
   })
 
+  test('should reject computed manual id key aliases', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      const key = \`id\`
+
+      export const getUser = createServerFn({ [key]: 'get-user' })
+        .handler(async () => ({ id: '123' }))
+    `
+
+    await expect(
+      compile({
+        code,
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+      }),
+    ).rejects.toThrow(
+      'createServerFn({ [key]: value }) is not supported for manual ids.',
+    )
+  })
+
   test('should keep static manual id when options include unrelated spread', async () => {
     const code = `
       import { createServerFn } from '@tanstack/react-start'
@@ -773,6 +795,44 @@ describe('createServerFn compiles correctly', async () => {
     })
 
     expect(secondResult!.code).toContain('createSsrRpc("constant_id_1")')
+  })
+
+  test('dedupes generated IDs when known server fn IDs collide', async () => {
+    const knownServerFns = {
+      knownFn: {
+        functionId: 'constant_id',
+        extractedFilename: '/test/src/known-fn.tsx',
+        functionName: 'knownFn',
+      },
+    }
+
+    const compiler = new StartCompiler({
+      env: 'server',
+      ...getDefaultTestOptions('server'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      generateFunctionId: () => 'constant_id',
+      getKnownServerFns: () => knownServerFns,
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const greetUser = createServerFn().handler(async () => 'next')
+      `,
+      id: '/test/src/new-fn.tsx',
+    })
+
+    expect(result!.code).toContain('createSsrRpc("constant_id_1")')
   })
 
   test('dedupes generated IDs around reserved manual IDs', async () => {

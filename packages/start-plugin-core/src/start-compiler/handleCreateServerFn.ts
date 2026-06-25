@@ -277,6 +277,15 @@ function resolveStaticString(
     return bindingInit.value
   }
 
+  if (
+    binding?.constant &&
+    bindingInit &&
+    t.isTemplateLiteral(bindingInit) &&
+    bindingInit.expressions.length === 0
+  ) {
+    return bindingInit.quasis[0]?.value.cooked ?? undefined
+  }
+
   return undefined
 }
 
