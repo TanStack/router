@@ -207,8 +207,9 @@ createServerFn({ [key]: 'create-user' }).handler(async () => {
 
 Automatic IDs are the default and work for most apps. Provide a manual `id` only when you want a fixed, recognizable identifier (for example, stable values in logs or analytics).
 
-Switching between automatic and manual IDs does not change how you call a server function. The call signature, arguments, return value, and network request stay the same.
+Switching between automatic and manual IDs does not change how you call a server function. The call signature, arguments, and return value stay the same, but the server function lookup ID and request URL change to use the manual ID.
 
+Manual IDs are exact reservations. If a generated or custom `generateFunctionId` value collides with a manual ID, the generated value is suffixed instead. If two manual IDs collide, compilation fails.
 
 ### Security Caveats
 
