@@ -1040,43 +1040,42 @@ describe('createServerFn compiles correctly', async () => {
       },
       expectedError: 'Duplicate server function id: get-user',
     },
-  ])('$name for manual ID', async ({
-    knownServerFns,
-    expectedCode,
-    expectedError,
-  }) => {
-    const compiler = new StartCompiler({
-      env: 'server',
-      ...getDefaultTestOptions('server'),
-      mode: 'build',
-      loadModule: async () => {},
-      lookupKinds: new Set(['ServerFn']),
-      lookupConfigurations: [
-        {
-          libName: '@tanstack/react-start',
-          rootExport: 'createServerFn',
-          kind: 'Root',
-        },
-      ],
-      resolveId: async (id) => id,
-      getKnownServerFns: () => knownServerFns,
-    })
+  ])(
+    '$name for manual ID',
+    async ({ knownServerFns, expectedCode, expectedError }) => {
+      const compiler = new StartCompiler({
+        env: 'server',
+        ...getDefaultTestOptions('server'),
+        mode: 'build',
+        loadModule: async () => {},
+        lookupKinds: new Set(['ServerFn']),
+        lookupConfigurations: [
+          {
+            libName: '@tanstack/react-start',
+            rootExport: 'createServerFn',
+            kind: 'Root',
+          },
+        ],
+        resolveId: async (id) => id,
+        getKnownServerFns: () => knownServerFns,
+      })
 
-    const compileResult = compiler.compile({
-      code: `
+      const compileResult = compiler.compile({
+        code: `
         import { createServerFn } from '@tanstack/react-start'
         export const getUser = createServerFn({ id: 'get-user' }).handler(async () => 'manual')
       `,
-      id: '/test/src/get-user.tsx',
-    })
+        id: '/test/src/get-user.tsx',
+      })
 
-    if (expectedError) {
-      await expect(compileResult).rejects.toThrow(expectedError)
-    } else {
-      const result = await compileResult
-      expect(result!.code).toContain(expectedCode)
-    }
-  })
+      if (expectedError) {
+        await expect(compileResult).rejects.toThrow(expectedError)
+      } else {
+        const result = await compileResult
+        expect(result!.code).toContain(expectedCode)
+      }
+    },
+  )
 
   test('releases manual ids after module invalidation', async () => {
     const compiler = new StartCompiler({
