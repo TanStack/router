@@ -181,6 +181,14 @@ function extractManualServerFnId(
       continue
     }
 
+    if (!t.isExpression(prop.value) && !t.isPrivateName(prop.value)) {
+      throw codeFrameError(
+        code,
+        prop.loc!,
+        'createServerFn({ id }) must use a static string literal or a constant string binding.',
+      )
+    }
+
     const idValue = resolveStaticString(candidatePath, prop.value)
 
     if (idValue !== undefined) {
