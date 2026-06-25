@@ -835,6 +835,45 @@ describe('createServerFn compiles correctly', async () => {
     expect(result!.code).toContain('createSsrRpc("constant_id_1")')
   })
 
+  test('reuses canonical known server fn IDs without suffixing', async () => {
+    const knownServerFns = {
+      knownFn: {
+        functionId: 'constant_id',
+        extractedFilename: '/test/src/new-fn.tsx?tss-serverfn-split',
+        functionName: 'greetUser_createServerFn_handler',
+      },
+    }
+
+    const compiler = new StartCompiler({
+      env: 'server',
+      ...getDefaultTestOptions('server'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      generateFunctionId: () => 'constant_id',
+      getKnownServerFns: () => knownServerFns,
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const greetUser = createServerFn().handler(async () => 'next')
+      `,
+      id: '/test/src/new-fn.tsx',
+    })
+
+    expect(result!.code).toContain('createSsrRpc("constant_id")')
+    expect(result!.code).not.toContain('createSsrRpc("constant_id_1")')
+  })
+
   test('dedupes generated IDs around reserved manual IDs', async () => {
     const compiler = new StartCompiler({
       env: 'server',
