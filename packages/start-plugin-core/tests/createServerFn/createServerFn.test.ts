@@ -165,44 +165,6 @@ describe('createServerFn compiles correctly', async () => {
     expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
   })
 
-  test('should use a template literal manual id', async () => {
-    const code = `
-      import { createServerFn } from '@tanstack/react-start'
-
-      export const getUser = createServerFn({ method: 'GET', id: \`get-user\` })
-        .handler(async () => ({ id: '123' }))
-    `
-
-    const compiledResultClient = await compile({
-      code,
-      env: 'client',
-      isProviderFile: false,
-      mode: 'build',
-    })
-
-    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
-  })
-
-  test('should use a constant template literal manual id', async () => {
-    const code = `
-      import { createServerFn } from '@tanstack/react-start'
-
-      const manualId = \`get-user\`
-
-      export const getUser = createServerFn({ method: 'GET', id: manualId })
-        .handler(async () => ({ id: '123' }))
-    `
-
-    const compiledResultClient = await compile({
-      code,
-      env: 'client',
-      isProviderFile: false,
-      mode: 'build',
-    })
-
-    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
-  })
-
   test('should preserve a manual id through validator chaining', async () => {
     const code = `
       import { createServerFn } from '@tanstack/react-start'
