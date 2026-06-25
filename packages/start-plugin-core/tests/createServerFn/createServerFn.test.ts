@@ -145,35 +145,51 @@ describe('createServerFn compiles correctly', async () => {
     expect(compiledResultServerProvider!.code).toContain('id: "get-user"')
   })
 
-  test('should use a shorthand constant string id', async () => {
-    const code = `
-      import { createServerFn } from '@tanstack/react-start'
+  test.each([
+    {
+      name: 'constant binding',
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
 
-      const manualId = 'get-user'
+        const manualId = 'get-user'
 
-      export const getUser = createServerFn({ method: 'GET', id: manualId })
-        .handler(async () => ({ id: '123' }))
-    `
+        export const getUser = createServerFn({ method: 'GET', id: manualId })
+          .handler(async () => ({ id: '123' }))
+      `,
+    },
+    {
+      name: 'validator chain',
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
 
-    const compiledResultClient = await compile({
-      code,
-      env: 'client',
-      isProviderFile: false,
-      mode: 'build',
-    })
+        export const getUser = createServerFn({ method: 'GET', id: 'get-user' })
+          .validator((input: string) => input)
+          .handler(async ({ data }) => ({ id: data }))
+      `,
+    },
+    {
+      name: 'unrelated spread',
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
 
-    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
-  })
+        const baseOptions = { method: 'GET' as const }
 
-  test('should preserve a manual id through validator chaining', async () => {
-    const code = `
-      import { createServerFn } from '@tanstack/react-start'
+        export const getUser = createServerFn({ ...baseOptions, id: 'get-user' })
+          .handler(async () => ({ id: '123' }))
+      `,
+    },
+    {
+      name: 'unrelated computed key',
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
 
-      export const getUser = createServerFn({ method: 'GET', id: 'get-user' })
-        .validator((input: string) => input)
-        .handler(async ({ data }) => ({ id: data }))
-    `
+        const key = 'method'
 
+        export const getUser = createServerFn({ [key]: 'GET' as const, id: 'get-user' })
+          .handler(async () => ({ id: '123' }))
+      `,
+    },
+  ])('should use a manual id with $name', async ({ code }) => {
     const compiledResultClient = await compile({
       code,
       env: 'client',
@@ -264,46 +280,6 @@ describe('createServerFn compiles correctly', async () => {
     ).rejects.toThrow(
       'createServerFn({ [key]: value }) is not supported for manual ids.',
     )
-  })
-
-  test('should keep static manual id when options include unrelated spread', async () => {
-    const code = `
-      import { createServerFn } from '@tanstack/react-start'
-
-      const baseOptions = { method: 'GET' as const }
-
-      export const getUser = createServerFn({ ...baseOptions, id: 'get-user' })
-        .handler(async () => ({ id: '123' }))
-    `
-
-    const compiledResultClient = await compile({
-      code,
-      env: 'client',
-      isProviderFile: false,
-      mode: 'build',
-    })
-
-    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
-  })
-
-  test('should keep static manual id when options include unrelated computed keys', async () => {
-    const code = `
-      import { createServerFn } from '@tanstack/react-start'
-
-      const key = 'method'
-
-      export const getUser = createServerFn({ [key]: 'GET' as const, id: 'get-user' })
-        .handler(async () => ({ id: '123' }))
-    `
-
-    const compiledResultClient = await compile({
-      code,
-      env: 'client',
-      isProviderFile: false,
-      mode: 'build',
-    })
-
-    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
   })
 
   // TODO remove upon stable
