@@ -21,7 +21,8 @@
     "routing",
     "async",
     "async router",
-    "typescript"
+    "typescript",
+    "tanstack-intent"
   ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
