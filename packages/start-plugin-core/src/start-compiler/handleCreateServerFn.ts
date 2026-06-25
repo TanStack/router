@@ -216,29 +216,23 @@ function extractManualServerFnId(
 function getCreateServerFnCallExpression(
   candidatePath: babel.NodePath<t.CallExpression>,
 ): t.CallExpression | undefined {
-  let currentCall: t.CallExpression | undefined = candidatePath.node
+  let currentCall: t.CallExpression = candidatePath.node
   let sawMethodChain = false
 
-  while (currentCall) {
-    const callee: t.CallExpression['callee'] = currentCall.callee
-    if (!t.isMemberExpression(callee)) {
-      return sawMethodChain ? currentCall : undefined
-    }
-
-    const innerCall: t.MemberExpression['object'] = callee.object
-    if (!t.isCallExpression(innerCall)) {
-      return sawMethodChain ? currentCall : undefined
-    }
-
+  // Walk inward through the `createServerFn()...method()...` chain.
+  while (
+    t.isMemberExpression(currentCall.callee) &&
+    t.isCallExpression(currentCall.callee.object)
+  ) {
+    const innerCall = currentCall.callee.object
     if (t.isIdentifier(innerCall.callee, { name: 'createServerFn' })) {
       return innerCall
     }
-
     sawMethodChain = true
     currentCall = innerCall
   }
 
-  return undefined
+  return sawMethodChain ? currentCall : undefined
 }
 
 function resolveStaticString(
