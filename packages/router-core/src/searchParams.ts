@@ -2,11 +2,11 @@ import { decode, encode } from './qss'
 import type { AnySchema } from './validators'
 
 /** Default `parseSearch` that strips leading '?' and JSON-parses values. */
-export const defaultParseSearch = parseSearchWith(JSON.parse)
+export const defaultParseSearch = parseSearchWith((value) => JSON.parse(value))
 /** Default `stringifySearch` using JSON.stringify for complex values. */
 export const defaultStringifySearch = stringifySearchWith(
-  JSON.stringify,
-  JSON.parse,
+  (value) => JSON.stringify(value),
+  (value) => JSON.parse(value),
 )
 
 /**
@@ -19,7 +19,7 @@ export const defaultStringifySearch = stringifySearchWith(
  * @returns A `parseSearch` function compatible with `Router` options.
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization
  */
-export function parseSearchWith(parser: (str: string) => any) {
+export function parseSearchWith(parser: (str: string, key: string) => any) {
   return (searchStr: string): AnySchema => {
     if (searchStr[0] === '?') {
       searchStr = searchStr.substring(1)
@@ -32,7 +32,7 @@ export function parseSearchWith(parser: (str: string) => any) {
       const value = query[key]
       if (typeof value === 'string') {
         try {
-          query[key] = parser(value)
+          query[key] = parser(value, key)
         } catch (_err) {
           // silent
         }
@@ -56,14 +56,14 @@ export function parseSearchWith(parser: (str: string) => any) {
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization
  */
 export function stringifySearchWith(
-  stringify: (search: any) => string,
-  parser?: (str: string) => any,
+  stringify: (search: any, key: string) => string,
+  parser?: (str: string, key: string) => any,
 ) {
   const hasParser = typeof parser === 'function'
-  function stringifyValue(val: any) {
+  function stringifyValue(val: any, key: string) {
     if (typeof val === 'object' && val !== null) {
       try {
-        return stringify(val)
+        return stringify(val, key)
       } catch (_err) {
         // silent
       }
@@ -71,8 +71,8 @@ export function stringifySearchWith(
       try {
         // Check if it's a valid parseable string.
         // If it is, then stringify it again.
-        parser(val)
-        return stringify(val)
+        parser(val, key)
+        return stringify(val, key)
       } catch (_err) {
         // silent
       }
