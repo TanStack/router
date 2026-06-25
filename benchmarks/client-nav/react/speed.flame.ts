@@ -4,6 +4,7 @@ import { setup } from './setup.ts'
 const DURATION_MS = 10_000
 
 const test = setup()
+await test.sanity()
 
 try {
   await test.before()
@@ -13,6 +14,6 @@ try {
     await test.tick()
   }
 } finally {
-  test.after()
+  await test.after()
   window.close()
 }

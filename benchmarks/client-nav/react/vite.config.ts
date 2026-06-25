@@ -1,6 +1,9 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import codspeedPlugin from '@codspeed/vitest-plugin'
+
+const setupFile = fileURLToPath(new URL('../vitest.setup.ts', import.meta.url))
 
 export default defineConfig({
   define: {
@@ -16,7 +19,7 @@ export default defineConfig({
     emptyOutDir: true,
     minify: false,
     lib: {
-      entry: './react/app.tsx',
+      entry: './react/src/app.tsx',
       formats: ['es'],
       fileName: 'app',
     },
@@ -25,6 +28,6 @@ export default defineConfig({
     name: '@benchmarks/client-nav (react)',
     watch: false,
     environment: 'jsdom',
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: [setupFile],
   },
 })

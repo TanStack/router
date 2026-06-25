@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, bench, describe } from 'vitest'
+import { clientNavBenchOptions } from '#client-nav/bench-utils'
 import { setup } from './setup'
 
-describe('client-nav', () => {
-  const test = setup()
+const test = setup()
+await test.sanity()
 
+describe('client-nav', () => {
   /**
    * Running `vitest bench` ignores "suite hooks" like `beforeAll` and `afterAll`,
    * so we use tinybench's `setup` and `teardown` options to run our setup and teardown logic.
@@ -25,8 +27,7 @@ describe('client-nav', () => {
       }
     },
     {
-      warmupIterations: 100,
-      time: 10_000,
+      ...clientNavBenchOptions,
       setup: test.before,
       teardown: test.after,
     },

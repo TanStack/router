@@ -1,0 +1,18 @@
+import { window } from '../../../jsdom.ts'
+import { workload } from './setup.ts'
+
+const DURATION_MS = 10_000
+
+await workload.sanity()
+
+try {
+  await workload.before()
+
+  const startedAt = performance.now()
+  while (performance.now() - startedAt < DURATION_MS) {
+    await workload.run()
+  }
+} finally {
+  await workload.after()
+  window.close()
+}

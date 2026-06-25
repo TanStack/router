@@ -1,0 +1,20 @@
+{
+  "extends": "../../../../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "allowImportingTsExtensions": true,
+    "jsxImportSource": "vue",
+    "types": ["node", "vite/client", "vitest/globals"]
+  },
+  "include": [
+    "speed.bench.ts",
+    "speed.flame.ts",
+    "setup.ts",
+    "vite.config.ts",
+    "src/**/*.tsx",
+    "../shared.ts",
+    "../workload.ts",
+    "../../../jsdom.ts",
+    "../../../vitest.setup.ts"
+  ]
+}

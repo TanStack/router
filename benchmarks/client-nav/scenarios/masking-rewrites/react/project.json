@@ -1,0 +1,54 @@
+{
+  "name": "@benchmarks/client-nav-masking-rewrites-react",
+  "projectType": "application",
+  "targets": {
+    "build:client": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["@tanstack/react-router"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts"
+      }
+    },
+    "build:client:flame": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["@tanstack/react-router"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "NODE_ENV=production vite build --config {projectRoot}/vite.config.ts --sourcemap true"
+      }
+    },
+    "test:flame": {
+      "executor": "nx:run-commands",
+      "parallelism": false,
+      "cache": false,
+      "dependsOn": ["build:client:flame"],
+      "options": {
+        "command": "NODE_ENV=production flame run --md-format=detailed --delay=none --node-options=\"--stack-size=65500\" {projectRoot}/speed.flame.ts",
+        "cwd": "."
+      }
+    },
+    "test:types:client": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        {
+          "projects": ["@tanstack/react-router"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "tsc -p {projectRoot}/tsconfig.json --noEmit"
+      }
+    }
+  }
+}

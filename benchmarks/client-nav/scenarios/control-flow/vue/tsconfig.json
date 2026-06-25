@@ -1,0 +1,26 @@
+{
+  "extends": "../../../../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "allowImportingTsExtensions": true,
+    "jsxImportSource": "vue",
+    "types": ["node", "vite/client", "vitest/globals"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "setup.ts",
+    "speed.bench.ts",
+    "speed.flame.ts",
+    "vite.config.ts",
+    "../flame-jsdom.ts",
+    "../shared.ts",
+    "../workload.ts",
+    "../../../bench-utils.ts",
+    "../../../benchmark.ts",
+    "../../../jsdom.ts",
+    "../../../lifecycle.ts",
+    "../../../setup-helpers.ts",
+    "../../../vitest.setup.ts"
+  ]
+}
