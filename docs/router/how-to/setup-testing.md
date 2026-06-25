@@ -651,9 +651,10 @@ describe('React Query Integration', () => {
       path: '/posts',
       component: PostsList,
       loader: ({ context: { queryClient } }) =>
-        queryClient.ensureQueryData({
+        queryClient.query({
           queryKey: ['posts'],
           queryFn: mockFetchPosts,
+          staleTime: 'static'
         }),
     })
 
