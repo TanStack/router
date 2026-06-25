@@ -159,19 +159,19 @@ function extractManualServerFnId(
       continue
     }
 
-      if (prop.computed) {
-        const keyValue = resolveStaticString(candidatePath, prop.key)
+    if (prop.computed) {
+      const keyValue = resolveStaticString(candidatePath, prop.key)
 
-        if (keyValue === 'id') {
-          throw codeFrameError(
-            code,
-            prop.loc!,
-            'createServerFn({ [key]: value }) is not supported for manual ids.',
-          )
-        }
-
-        continue
+      if (keyValue === 'id') {
+        throw codeFrameError(
+          code,
+          prop.loc!,
+          'createServerFn({ [key]: value }) is not supported for manual ids.',
+        )
       }
+
+      continue
+    }
 
     const isIdKey =
       (t.isIdentifier(prop.key) && prop.key.name === 'id') ||
@@ -412,7 +412,10 @@ export function handleCreateServerFn(
     }
     functionNameSet.add(functionName)
 
-    const manualFunctionId = extractManualServerFnId(candidatePath, context.code)
+    const manualFunctionId = extractManualServerFnId(
+      candidatePath,
+      context.code,
+    )
 
     // Generate function ID using pre-computed relative filename unless the user supplied one.
     const functionId =

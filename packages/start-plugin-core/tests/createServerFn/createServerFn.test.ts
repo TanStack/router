@@ -1107,9 +1107,9 @@ describe('createServerFn compiles correctly', async () => {
     })
 
     expect(firstResult!.code).toContain('createSsrRpc("get-user")')
-    expect(compiler.invalidateModule('/test/src/submit-post-formdata.tsx')).toBe(
-      true,
-    )
+    expect(
+      compiler.invalidateModule('/test/src/submit-post-formdata.tsx'),
+    ).toBe(true)
 
     const secondResult = await compiler.compile({
       code: source,
