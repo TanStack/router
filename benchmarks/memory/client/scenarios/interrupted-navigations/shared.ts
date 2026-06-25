@@ -8,6 +8,7 @@ import {
   nextAnimationFrame,
   noop,
   removeBenchContainer,
+  settleAfterRender,
   warnClientMemoryDevMode,
 } from '#memory-client/lifecycle'
 import type { Framework, MountTestApp } from '#memory-client/lifecycle'
@@ -164,6 +165,7 @@ export function createWorkload(
     for (let attempt = 0; attempt < 10; attempt++) {
       try {
         assertRenderedPage(page, id)
+        await settleAfterRender()
         return
       } catch {
         await nextAnimationFrame()
@@ -171,6 +173,7 @@ export function createWorkload(
     }
 
     assertRenderedPage(page, id)
+    await settleAfterRender()
   }
 
   async function waitForSlowLoader(id: string) {
@@ -229,6 +232,7 @@ export function createWorkload(
         }),
         rendered,
       ])
+      await settleAfterRender()
     }
 
     startSlowNavigation = (id) => {

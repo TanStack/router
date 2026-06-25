@@ -60,6 +60,16 @@ export async function drainResponse(response: Response) {
   }
 }
 
+// CodSpeed reports peak live memory, so queued stream/SSR cleanup from one
+// response can otherwise be sampled during the next churn iteration.
+export async function settleAfterDrainResponse() {
+  await Promise.resolve()
+  await Promise.resolve()
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve)
+  })
+}
+
 export async function runSequentialRequestLoop(
   handler: StartRequestHandler,
   options: RunSequentialRequestLoopOptions,
@@ -86,5 +96,6 @@ export async function runSequentialRequestLoop(
     validate(response, request)
 
     await drainResponse(response)
+    await settleAfterDrainResponse()
   }
 }

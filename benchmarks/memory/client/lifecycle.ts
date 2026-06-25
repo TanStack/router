@@ -44,3 +44,10 @@ export async function drainMicrotasks() {
   await Promise.resolve()
   await Promise.resolve()
 }
+
+// Render signals fire before framework/jsdom cleanup has fully settled; wait a
+// microtask turn and one frame so churn iterations measure steady state.
+export async function settleAfterRender() {
+  await drainMicrotasks()
+  await nextAnimationFrame()
+}
