@@ -136,7 +136,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(8)
+    expect(updates).toBe(4)
   })
 
   test('redirection in preload', async () => {
@@ -146,6 +146,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
       },
     })
 
+    await waitFor(() => expect(router.stores.status.get()).toBe('idle'))
+
     const before = select.mock.calls.length
     await router.preloadRoute({ to: '/posts' })
     const after = select.mock.calls.length
@@ -154,7 +156,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(1)
+    expect(updates).toBe(0)
   })
 
   test('sync beforeLoad', async () => {
@@ -170,7 +172,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(5)
+    expect(updates).toBe(4)
   })
 
   test('nothing', async () => {
@@ -196,7 +198,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(4)
+    expect(updates).toBe(3)
   })
 
   test('hover preload, then navigate, w/ async loaders', async () => {

@@ -1,5 +1,5 @@
 import { isServer } from '@tanstack/router-core/isServer'
-import { locationHistoryActions } from './router'
+import { locationHistoryActions } from './location-change'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
 

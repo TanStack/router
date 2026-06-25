@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import { expect, test, vi } from 'vitest'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
   Link,
   Outlet,
@@ -9,6 +10,63 @@ import {
   createRouter,
   useParams,
 } from '../src'
+
+test('keeps a params reference stable across search updates by default', async () => {
+  const effectSpy = vi.fn()
+  const paramSelections: Array<{ postId?: string }> = []
+
+  const rootRoute = createRootRoute({
+    component: () => <Outlet />,
+  })
+
+  const postRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'posts/$postId',
+    component: PostComponent,
+  })
+
+  function PostComponent() {
+    const params = useParams({ strict: false })
+
+    useEffect(() => {
+      effectSpy(params)
+      paramSelections.push(params)
+    }, [params])
+
+    return <div data-testid="post-id">{params.postId}</div>
+  }
+
+  window.history.replaceState({}, '', '/posts/1?foo=one')
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([postRoute]),
+  })
+
+  render(<RouterProvider router={router} />)
+
+  await act(() => router.load())
+
+  expect(await screen.findByTestId('post-id')).toHaveTextContent('1')
+  await waitFor(() => expect(effectSpy).toHaveBeenCalledTimes(1))
+
+  const initialParamsSelection = paramSelections[0]
+
+  await act(() =>
+    router.navigate({
+      to: postRoute.fullPath,
+      params: { postId: '1' },
+      search: { foo: 'two' },
+    }),
+  )
+
+  await waitFor(() => {
+    expect(router.state.location.search).toEqual({ foo: 'two' })
+    expect(effectSpy).toHaveBeenCalledTimes(1)
+  })
+
+  expect(paramSelections).toHaveLength(1)
+  expect(paramSelections[0]).toBe(initialParamsSelection)
+})
 
 test('useParams must return parsed result if applicable.', async () => {
   const posts = [

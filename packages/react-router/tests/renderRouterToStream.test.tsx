@@ -24,9 +24,9 @@ async function buildRouter() {
   const rootRoute = createRootRoute({ component: () => null })
   const router = createRouter({
     history: createMemoryHistory({ initialEntries: ['/'] }),
+    isServer: true,
     routeTree: rootRoute,
   })
-  router.isServer = true
   attachRouterServerSsrUtils({ router, manifest: undefined })
   await router.load()
   await router.serverSsr!.dehydrate()

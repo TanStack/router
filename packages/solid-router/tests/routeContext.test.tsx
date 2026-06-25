@@ -2451,6 +2451,82 @@ describe('useRouteContext in the component', () => {
     expect(allContextsValid).toBe(true)
   })
 
+  test('context value from beforeLoad is propagated when a sub-route is re-entered while its loader reloads in the background', async () => {
+    let sawUndefinedContext = false
+    const loaderTime = WAIT_TIME * 3
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home page</div>,
+    })
+    const reloadInFlightRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/reload-in-flight',
+      beforeLoad: () => ({ number: 42 }),
+      component: () => <Outlet />,
+    })
+    const reloadInFlightIndexRoute = createRoute({
+      getParentRoute: () => reloadInFlightRoute,
+      path: '/',
+      staleTime: 0,
+      loader: async () => {
+        await sleep(loaderTime)
+      },
+      component: () => {
+        const context = reloadInFlightIndexRoute.useRouteContext()
+        const number = () => context().number
+        sawUndefinedContext ||= number() === undefined
+
+        return (
+          <div>
+            number = {String(number())}, saw undefined ={' '}
+            {String(sawUndefinedContext)}
+          </div>
+        )
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([
+      homeRoute,
+      reloadInFlightRoute.addChildren([reloadInFlightIndexRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(() => <RouterProvider router={router} />)
+
+    await router.navigate({ to: '/reload-in-flight' })
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    await router.navigate({ to: '/' })
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    router.history.back()
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    await router.navigate({ to: '/' })
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    router.history.back()
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    await sleep(loaderTime + 50)
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+  })
+
   test('route context (sleep in loader), present root route', async () => {
     const rootRoute = createRootRoute({
       loader: async () => {

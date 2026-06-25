@@ -20,7 +20,8 @@ test.beforeEach(async ({ page }) => {
         // ignore
       }
 
-      return { finished: Promise.resolve() }
+      const updateCallbackDone = Promise.resolve()
+      return { finished: updateCallbackDone, updateCallbackDone }
     }
   })
 

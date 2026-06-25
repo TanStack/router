@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/vue'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -274,6 +280,33 @@ test('throw error from loader upon initial load', async () => {
 
   const errorElement = await screen.findByText('indexErrorComponent')
   expect(errorElement).toBeInTheDocument()
+})
+
+test('aborted loader does not render the route component with undefined loaderData', async () => {
+  const rootRoute = createRootRoute({})
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: async (): Promise<{ value: string }> => {
+      return Promise.reject(new DOMException('Aborted', 'AbortError'))
+    },
+    component: () => {
+      const data = indexRoute.useLoaderData()
+      return <div data-testid="index-content">value: {data.value.value}</div>
+    },
+    errorComponent: () => (
+      <div data-testid="index-error">indexErrorComponent</div>
+    ),
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({ routeTree })
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByTestId('index-error')).toBeInTheDocument()
+  expect(screen.queryByTestId('index-content')).not.toBeInTheDocument()
 })
 
 test('throw error from beforeLoad when navigating to route', async () => {
@@ -600,8 +633,9 @@ test('reproducer #4546', async () => {
     const routeContext = await screen.findByTestId('index-route-context')
     expect(routeContext).toHaveTextContent('3')
 
-    const loaderData = await screen.findByTestId('index-loader-data')
-    expect(loaderData).toHaveTextContent('3')
+    await waitFor(() =>
+      expect(screen.getByTestId('index-loader-data')).toHaveTextContent('3'),
+    )
   }
 
   fireEvent.click(invalidateRouterButton)
@@ -615,8 +649,9 @@ test('reproducer #4546', async () => {
     const routeContext = await screen.findByTestId('index-route-context')
     expect(routeContext).toHaveTextContent('4')
 
-    const loaderData = await screen.findByTestId('index-loader-data')
-    expect(loaderData).toHaveTextContent('4')
+    await waitFor(() =>
+      expect(screen.getByTestId('index-loader-data')).toHaveTextContent('4'),
+    )
   }
 
   fireEvent.click(idLink)
@@ -630,8 +665,9 @@ test('reproducer #4546', async () => {
     const routeContext = await screen.findByTestId('id-route-context')
     expect(routeContext).toHaveTextContent('5')
 
-    const loaderData = await screen.findByTestId('id-loader-data')
-    expect(loaderData).toHaveTextContent('5')
+    await waitFor(() =>
+      expect(screen.getByTestId('id-loader-data')).toHaveTextContent('5'),
+    )
   }
 })
 

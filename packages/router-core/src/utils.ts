@@ -471,15 +471,19 @@ export function createControlledPromise<T>(onResolve?: (value: T) => void) {
   controlledPromise.status = 'pending'
 
   controlledPromise.resolve = (value: T) => {
-    controlledPromise.status = 'resolved'
-    controlledPromise.value = value
-    resolveLoadPromise(value)
-    onResolve?.(value)
+    if (controlledPromise.status === 'pending') {
+      controlledPromise.status = 'resolved'
+      controlledPromise.value = value
+      resolveLoadPromise(value)
+      onResolve?.(value)
+    }
   }
 
   controlledPromise.reject = (e) => {
-    controlledPromise.status = 'rejected'
-    rejectLoadPromise(e)
+    if (controlledPromise.status === 'pending') {
+      controlledPromise.status = 'rejected'
+      rejectLoadPromise(e)
+    }
   }
 
   return controlledPromise

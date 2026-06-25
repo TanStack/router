@@ -1,10 +1,8 @@
 import * as Vue from 'vue'
 import {
-  createControlledPromise,
   getLocationChangeInfo,
   invariant,
   isNotFound,
-  isRedirect,
   rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -93,9 +91,8 @@ export const Match = Vue.defineComponent({
         router?.options?.defaultPendingComponent,
     )
 
-    const pendingElement = Vue.computed(() =>
-      PendingComponent.value ? Vue.h(PendingComponent.value) : undefined,
-    )
+    const pendingElement = () =>
+      PendingComponent.value ? Vue.h(PendingComponent.value) : undefined
 
     const routeErrorComponent = Vue.computed(
       () =>
@@ -148,19 +145,19 @@ export const Match = Vue.defineComponent({
         resolvedNoSsr || !!matchData.value?._displayPending
 
       const renderMatchContent = (): VNode => {
-        const matchInner = Vue.h(MatchInner, { matchId: actualMatchId })
+        const matchInner = () => Vue.h(MatchInner, { matchId: actualMatchId })
 
         let content: VNode = shouldClientOnly
           ? Vue.h(
               ClientOnly,
               {
-                fallback: pendingElement.value,
+                fallback: pendingElement(),
               },
               {
-                default: () => matchInner,
+                default: matchInner,
               },
             )
-          : matchInner
+          : matchInner()
 
         // Wrap in NotFound boundary if needed
         if (routeNotFoundComponent.value) {
@@ -333,9 +330,7 @@ export const MatchInner = Vue.defineComponent({
           status: match.status,
           error: match.error,
           ssr: match.ssr,
-          _forcePending: match._forcePending,
-          _displayPending: match._displayPending,
-          _nonReactive: match._nonReactive,
+          _: match._,
         },
         remountKey,
       }
@@ -349,42 +344,9 @@ export const MatchInner = Vue.defineComponent({
     const match = Vue.computed(() => combinedState.value?.match)
     const remountKey = Vue.computed(() => combinedState.value?.remountKey)
 
-    const getMatchPromise = (
-      match: {
-        id: string
-        _nonReactive: {
-          displayPendingPromise?: Promise<void>
-          minPendingPromise?: Promise<void>
-          loadPromise?: Promise<void>
-        }
-      },
-      key: 'displayPendingPromise' | 'minPendingPromise' | 'loadPromise',
-    ) => {
-      return (
-        router.getMatch(match.id)?._nonReactive[key] ?? match._nonReactive[key]
-      )
-    }
-
     return (): VNode | null => {
       // If match doesn't exist, return null (component is being unmounted or not ready)
       if (!combinedState.value || !match.value || !route.value) return null
-
-      // Handle different match statuses
-      if (match.value._displayPending) {
-        const PendingComponent =
-          route.value.options.pendingComponent ??
-          router.options.defaultPendingComponent
-
-        return PendingComponent ? Vue.h(PendingComponent) : null
-      }
-
-      if (match.value._forcePending) {
-        const PendingComponent =
-          route.value.options.pendingComponent ??
-          router.options.defaultPendingComponent
-
-        return PendingComponent ? Vue.h(PendingComponent) : null
-      }
 
       if (match.value.status === 'notFound') {
         if (!isNotFound(match.value.error)) {
@@ -395,17 +357,6 @@ export const MatchInner = Vue.defineComponent({
           invariant()
         }
         return renderRouteNotFound(router, route.value, match.value.error)
-      }
-
-      if (match.value.status === 'redirected') {
-        if (!isRedirect(match.value.error)) {
-          if (process.env.NODE_ENV !== 'production') {
-            throw new Error('Invariant failed: Expected a redirect error')
-          }
-
-          invariant()
-        }
-        throw getMatchPromise(match.value, 'loadPromise')
       }
 
       if (match.value.status === 'error') {
@@ -434,29 +385,6 @@ export const MatchInner = Vue.defineComponent({
       }
 
       if (match.value.status === 'pending') {
-        const pendingMinMs =
-          route.value.options.pendingMinMs ?? router.options.defaultPendingMinMs
-
-        const routerMatch = router.getMatch(match.value.id)
-        if (
-          pendingMinMs &&
-          routerMatch &&
-          !routerMatch._nonReactive.minPendingPromise
-        ) {
-          // Create a promise that will resolve after the minPendingMs
-          if (!(isServer ?? router.isServer)) {
-            const minPendingPromise = createControlledPromise<void>()
-
-            routerMatch._nonReactive.minPendingPromise = minPendingPromise
-
-            setTimeout(() => {
-              minPendingPromise.resolve()
-              // We've handled the minPendingPromise, so we can delete it
-              routerMatch._nonReactive.minPendingPromise = undefined
-            }, pendingMinMs)
-          }
-        }
-
         // In Vue, we render the pending component directly instead of throwing a promise
         // because Vue's Suspense doesn't catch thrown promises like React does
         const PendingComponent =
@@ -464,6 +392,19 @@ export const MatchInner = Vue.defineComponent({
           router.options.defaultPendingComponent
 
         if (PendingComponent) {
+          const promise = Vue.toRaw(match.value._).loadPromise
+          const pendingMinMs =
+            route.value.options.pendingMinMs ??
+            router.options.defaultPendingMinMs
+
+          if (process.env.NODE_ENV !== 'production' && !promise) {
+            invariant()
+          }
+
+          if (promise && !(isServer ?? router.isServer) && pendingMinMs) {
+            promise.pendingUntil ??= Date.now() + pendingMinMs
+          }
+
           return Vue.h(PendingComponent)
         }
 
