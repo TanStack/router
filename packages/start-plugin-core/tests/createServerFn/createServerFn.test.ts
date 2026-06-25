@@ -200,16 +200,30 @@ describe('createServerFn compiles correctly', async () => {
     expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
   })
 
-  test('should ignore unrelated spreads when no manual id is present', async () => {
-    const code = `
-      import { createServerFn } from '@tanstack/react-start'
+  test.each([
+    {
+      name: 'unrelated spread',
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
 
-      const baseOptions = { method: 'GET' as const }
+        const baseOptions = { method: 'GET' as const }
 
-      export const getUser = createServerFn({ ...baseOptions })
-        .handler(async () => ({ id: '123' }))
-    `
+        export const getUser = createServerFn({ ...baseOptions })
+          .handler(async () => ({ id: '123' }))
+      `,
+    },
+    {
+      name: 'unrelated computed key',
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
 
+        const key = 'method'
+
+        export const getUser = createServerFn({ [key]: 'GET' as const })
+          .handler(async () => ({ id: '123' }))
+      `,
+    },
+  ])('should ignore $name when no manual id is present', async ({ code }) => {
     const compiledResultClient = await compile({
       code,
       env: 'client',
@@ -220,56 +234,28 @@ describe('createServerFn compiles correctly', async () => {
     expect(compiledResultClient!.code).toContain('createClientRpc(')
   })
 
-  test('should ignore unrelated computed keys when no manual id is present', async () => {
-    const code = `
-      import { createServerFn } from '@tanstack/react-start'
+  test.each([
+    {
+      name: 'literal computed id key',
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
 
-      const key = 'method'
+        export const getUser = createServerFn({ ['id']: 'get-user' })
+          .handler(async () => ({ id: '123' }))
+      `,
+    },
+    {
+      name: 'constant computed id key',
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
 
-      export const getUser = createServerFn({ [key]: 'GET' as const })
-        .handler(async () => ({ id: '123' }))
-    `
+        const key = \`id\`
 
-    const compiledResultClient = await compile({
-      code,
-      env: 'client',
-      isProviderFile: false,
-      mode: 'build',
-    })
-
-    expect(compiledResultClient!.code).toContain('createClientRpc(')
-  })
-
-  test('should reject computed manual id keys', async () => {
-    const code = `
-      import { createServerFn } from '@tanstack/react-start'
-
-      export const getUser = createServerFn({ ['id']: 'get-user' })
-        .handler(async () => ({ id: '123' }))
-    `
-
-    await expect(
-      compile({
-        code,
-        env: 'client',
-        isProviderFile: false,
-        mode: 'build',
-      }),
-    ).rejects.toThrow(
-      'createServerFn({ [key]: value }) is not supported for manual ids.',
-    )
-  })
-
-  test('should reject computed manual id key aliases', async () => {
-    const code = `
-      import { createServerFn } from '@tanstack/react-start'
-
-      const key = \`id\`
-
-      export const getUser = createServerFn({ [key]: 'get-user' })
-        .handler(async () => ({ id: '123' }))
-    `
-
+        export const getUser = createServerFn({ [key]: 'get-user' })
+          .handler(async () => ({ id: '123' }))
+      `,
+    },
+  ])('should reject $name', async ({ code }) => {
     await expect(
       compile({
         code,
@@ -935,7 +921,40 @@ describe('createServerFn compiles correctly', async () => {
     expect(generatedResult!.code).toContain('createSsrRpc("get-user_1")')
   })
 
-  test('rejects duplicate manual IDs in the same file', async () => {
+  test.each([
+    {
+      name: 'in the same file',
+      compileDuplicate: (compiler: StartCompiler) =>
+        compiler.compile({
+          code: `
+            import { createServerFn } from '@tanstack/react-start'
+            export const getUser = createServerFn({ id: 'get-user' }).handler(async () => 'first')
+            export const getOtherUser = createServerFn({ id: 'get-user' }).handler(async () => 'second')
+          `,
+          id: '/test/src/duplicates.tsx',
+        }),
+    },
+    {
+      name: 'across files',
+      compileDuplicate: async (compiler: StartCompiler) => {
+        await compiler.compile({
+          code: `
+            import { createServerFn } from '@tanstack/react-start'
+            export const getUser = createServerFn({ id: 'get-user' }).handler(async () => 'first')
+          `,
+          id: '/test/src/get-user.tsx',
+        })
+
+        return compiler.compile({
+          code: `
+            import { createServerFn } from '@tanstack/react-start'
+            export const getOtherUser = createServerFn({ id: 'get-user' }).handler(async () => 'second')
+          `,
+          id: '/test/src/get-other-user.tsx',
+        })
+      },
+    },
+  ])('rejects duplicate manual IDs $name', async ({ compileDuplicate }) => {
     const compiler = new StartCompiler({
       env: 'server',
       ...getDefaultTestOptions('server'),
@@ -953,53 +972,9 @@ describe('createServerFn compiles correctly', async () => {
       getKnownServerFns: () => ({}),
     })
 
-    await expect(
-      compiler.compile({
-        code: `
-          import { createServerFn } from '@tanstack/react-start'
-          export const getUser = createServerFn({ id: 'get-user' }).handler(async () => 'first')
-          export const getOtherUser = createServerFn({ id: 'get-user' }).handler(async () => 'second')
-        `,
-        id: '/test/src/duplicates.tsx',
-      }),
-    ).rejects.toThrow('Duplicate server function id: get-user')
-  })
-
-  test('rejects duplicate manual IDs across files', async () => {
-    const compiler = new StartCompiler({
-      env: 'server',
-      ...getDefaultTestOptions('server'),
-      mode: 'build',
-      loadModule: async () => {},
-      lookupKinds: new Set(['ServerFn']),
-      lookupConfigurations: [
-        {
-          libName: '@tanstack/react-start',
-          rootExport: 'createServerFn',
-          kind: 'Root',
-        },
-      ],
-      resolveId: async (id) => id,
-      getKnownServerFns: () => ({}),
-    })
-
-    await compiler.compile({
-      code: `
-        import { createServerFn } from '@tanstack/react-start'
-        export const getUser = createServerFn({ id: 'get-user' }).handler(async () => 'first')
-      `,
-      id: '/test/src/get-user.tsx',
-    })
-
-    await expect(
-      compiler.compile({
-        code: `
-          import { createServerFn } from '@tanstack/react-start'
-          export const getOtherUser = createServerFn({ id: 'get-user' }).handler(async () => 'second')
-        `,
-        id: '/test/src/get-other-user.tsx',
-      }),
-    ).rejects.toThrow('Duplicate server function id: get-user')
+    await expect(compileDuplicate(compiler)).rejects.toThrow(
+      'Duplicate server function id: get-user',
+    )
   })
 
   test('rejects a manual ID that collides with a generated ID', async () => {
@@ -1040,16 +1015,36 @@ describe('createServerFn compiles correctly', async () => {
     ).rejects.toThrow('Duplicate server function id: get-user')
   })
 
-  test('reuses a matching known manual server fn ID', async () => {
-    const knownServerFns = {
-      'get-user': {
-        functionId: 'get-user',
-        filename: '/test/src/get-user.tsx',
-        extractedFilename: '/test/src/get-user.tsx?tss-serverfn-split',
-        functionName: 'getUser_createServerFn_handler',
+  test.each([
+    {
+      name: 'reuses matching known metadata',
+      knownServerFns: {
+        'get-user': {
+          functionId: 'get-user',
+          filename: '/test/src/get-user.tsx',
+          extractedFilename: '/test/src/get-user.tsx?tss-serverfn-split',
+          functionName: 'getUser_createServerFn_handler',
+        },
       },
-    }
-
+      expectedCode: 'createSsrRpc("get-user")',
+    },
+    {
+      name: 'rejects mismatched known metadata',
+      knownServerFns: {
+        'get-user': {
+          functionId: 'get-user',
+          filename: '/test/src/other-user.tsx',
+          extractedFilename: '/test/src/other-user.tsx?tss-serverfn-split',
+          functionName: 'getOtherUser_createServerFn_handler',
+        },
+      },
+      expectedError: 'Duplicate server function id: get-user',
+    },
+  ])('$name for manual ID', async ({
+    knownServerFns,
+    expectedCode,
+    expectedError,
+  }) => {
     const compiler = new StartCompiler({
       env: 'server',
       ...getDefaultTestOptions('server'),
@@ -1067,7 +1062,7 @@ describe('createServerFn compiles correctly', async () => {
       getKnownServerFns: () => knownServerFns,
     })
 
-    const result = await compiler.compile({
+    const compileResult = compiler.compile({
       code: `
         import { createServerFn } from '@tanstack/react-start'
         export const getUser = createServerFn({ id: 'get-user' }).handler(async () => 'manual')
@@ -1075,45 +1070,12 @@ describe('createServerFn compiles correctly', async () => {
       id: '/test/src/get-user.tsx',
     })
 
-    expect(result!.code).toContain('createSsrRpc("get-user")')
-  })
-
-  test('rejects a manual ID with mismatched known server fn metadata', async () => {
-    const knownServerFns = {
-      'get-user': {
-        functionId: 'get-user',
-        filename: '/test/src/other-user.tsx',
-        extractedFilename: '/test/src/other-user.tsx?tss-serverfn-split',
-        functionName: 'getOtherUser_createServerFn_handler',
-      },
+    if (expectedError) {
+      await expect(compileResult).rejects.toThrow(expectedError)
+    } else {
+      const result = await compileResult
+      expect(result!.code).toContain(expectedCode)
     }
-
-    const compiler = new StartCompiler({
-      env: 'server',
-      ...getDefaultTestOptions('server'),
-      mode: 'build',
-      loadModule: async () => {},
-      lookupKinds: new Set(['ServerFn']),
-      lookupConfigurations: [
-        {
-          libName: '@tanstack/react-start',
-          rootExport: 'createServerFn',
-          kind: 'Root',
-        },
-      ],
-      resolveId: async (id) => id,
-      getKnownServerFns: () => knownServerFns,
-    })
-
-    await expect(
-      compiler.compile({
-        code: `
-          import { createServerFn } from '@tanstack/react-start'
-          export const getUser = createServerFn({ id: 'get-user' }).handler(async () => 'manual')
-        `,
-        id: '/test/src/get-user.tsx',
-      }),
-    ).rejects.toThrow('Duplicate server function id: get-user')
   })
 
   test('releases manual ids after module invalidation', async () => {
