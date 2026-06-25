@@ -678,7 +678,9 @@ export class StartCompiler {
     functionId: string
   }) {
     const entryId = `${opts.filename}--${opts.functionName}`
-    const existingOwner = this.reservedManualFunctionIdOwners.get(opts.functionId)
+    const existingOwner = this.reservedManualFunctionIdOwners.get(
+      opts.functionId,
+    )
     const knownFn = this.options.getKnownServerFns()[opts.functionId]
 
     if (
@@ -701,7 +703,9 @@ export class StartCompiler {
       this.reservedManualFunctionIdOwners.set(opts.functionId, entryId)
       this.reservedManualFunctionIds.add(opts.functionId)
 
-      let reservedIds = this.reservedManualFunctionIdsByFilename.get(opts.filename)
+      let reservedIds = this.reservedManualFunctionIdsByFilename.get(
+        opts.filename,
+      )
       if (!reservedIds) {
         reservedIds = new Set<string>()
         this.reservedManualFunctionIdsByFilename.set(opts.filename, reservedIds)
@@ -723,7 +727,9 @@ export class StartCompiler {
     // module specifiers that work with its dev server runtime.
     const encodeModuleSpecifier = this.options.devServerFnModuleSpecifierEncoder
     if (!encodeModuleSpecifier) {
-      throw new Error('devServerFnModuleSpecifierEncoder is required in dev mode.')
+      throw new Error(
+        'devServerFnModuleSpecifierEncoder is required in dev mode.',
+      )
     }
     const file = encodeModuleSpecifier({
       extractedFilename: opts.extractedFilename,
@@ -963,9 +969,8 @@ export class StartCompiler {
 
   private clearReservedManualFunctionIdsForModule(moduleId: string): void {
     const relativeFilename = path.relative(this.options.root, moduleId)
-    const reservedIds = this.reservedManualFunctionIdsByFilename.get(
-      relativeFilename,
-    )
+    const reservedIds =
+      this.reservedManualFunctionIdsByFilename.get(relativeFilename)
     if (!reservedIds) {
       return
     }
