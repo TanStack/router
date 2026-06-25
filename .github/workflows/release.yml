@@ -103,7 +103,7 @@ jobs:
         with:
           publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
 
-  publish-npm:
+  publish:
     name: Publish to npm
     needs: [select-mode, pack]
     if: needs.select-mode.outputs.mode == 'publish'
@@ -131,10 +131,10 @@ jobs:
           pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
           create-github-releases: false
 
-  github-release:
+  release:
     name: Create GitHub Release
-    needs: [select-mode, publish-npm]
-    if: needs.publish-npm.outputs.published == 'true'
+    needs: [select-mode, publish]
+    if: needs.publish.outputs.published == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
