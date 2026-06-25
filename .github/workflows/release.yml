@@ -33,9 +33,6 @@ jobs:
           persist-credentials: false
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
-      - name: Enter Pre-Release Mode
-        if: "contains(github.ref_name, '-pre') && !hashFiles('.changeset/pre.json')"
-        run: pnpm changeset pre enter pre
       - name: Determine Release Channel
         id: release-channel
         run: |
@@ -68,7 +65,7 @@ jobs:
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Enter Pre-Release Mode
-        if: "contains(github.ref_name, '-pre') && !hashFiles('.changeset/pre.json')"
+        if: needs.select-mode.outputs.prerelease == 'true' && !hashFiles('.changeset/pre.json')
         run: pnpm changeset pre enter pre
       - name: Create or Update Release Pull Request
         uses: changesets/action/version@8f7aee55a02899b4d6140157e482211eb49fcbee # v2.0.0-next.2
@@ -85,6 +82,8 @@ jobs:
     if: needs.select-mode.outputs.mode == 'publish'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
     outputs:
       pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
     permissions:
@@ -97,7 +96,7 @@ jobs:
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Run Build
-        run: pnpm run build:all -- --skipRemoteCache
+        run: pnpm run build:all
       - name: Pack Packages
         id: pack
         uses: changesets/action/pack@8f7aee55a02899b4d6140157e482211eb49fcbee # v2.0.0-next.2
