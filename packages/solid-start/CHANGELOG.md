@@ -1,5 +1,16 @@
 # @tanstack/solid-start
 
+## 2.0.0-beta.23
+
+### Patch Changes
+
+- [#7688](https://github.com/TanStack/router/pull/7688) [`259efbe`](https://github.com/TanStack/router/commit/259efbe5301df3246f1a13dd7eece24f1d3038f9) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.15`
+
+- Updated dependencies [[`41e7a24`](https://github.com/TanStack/router/commit/41e7a24f693b0f58c2bef89a2b8c4d084acbd531), [`51b4bd4`](https://github.com/TanStack/router/commit/51b4bd4f372ac81ac0cd5a3cf51150f7b799c95e), [`259efbe`](https://github.com/TanStack/router/commit/259efbe5301df3246f1a13dd7eece24f1d3038f9)]:
+  - @tanstack/solid-router@2.0.0-beta.22
+  - @tanstack/solid-start-client@2.0.0-beta.22
+  - @tanstack/solid-start-server@2.0.0-beta.22
+
 ## 2.0.0-beta.22
 
 ### Patch Changes
