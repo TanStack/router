@@ -642,12 +642,21 @@ export class StartCompiler {
       if (!functionId) {
         functionId = crypto.createHash('sha256').update(entryId).digest('hex')
       }
-      // Deduplicate in case the generated id conflicts with an existing id
+      // Deduplicate generated/custom IDs so manual reservations stay exact
+      // without making the older generateFunctionId hook a breaking change.
       if (
         this.functionIds.has(functionId) ||
         this.reservedManualFunctionIds.has(functionId)
       ) {
-        throw new Error(`Duplicate server function id: ${functionId}`)
+        let deduplicatedId
+        let iteration = 0
+        do {
+          deduplicatedId = `${functionId}_${++iteration}`
+        } while (
+          this.functionIds.has(deduplicatedId) ||
+          this.reservedManualFunctionIds.has(deduplicatedId)
+        )
+        functionId = deduplicatedId
       }
       this.entryIdToFunctionId.set(entryId, functionId)
       this.functionIds.add(functionId)

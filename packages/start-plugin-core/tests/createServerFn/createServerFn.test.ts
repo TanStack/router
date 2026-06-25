@@ -184,6 +184,66 @@ describe('createServerFn compiles correctly', async () => {
     expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
   })
 
+  test('should ignore unrelated spreads when no manual id is present', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      const baseOptions = { method: 'GET' as const }
+
+      export const getUser = createServerFn({ ...baseOptions })
+        .handler(async () => ({ id: '123' }))
+    `
+
+    const compiledResultClient = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    expect(compiledResultClient!.code).toContain('createClientRpc(')
+  })
+
+  test('should ignore unrelated computed keys when no manual id is present', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      const key = 'method'
+
+      export const getUser = createServerFn({ [key]: 'GET' as const })
+        .handler(async () => ({ id: '123' }))
+    `
+
+    const compiledResultClient = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    expect(compiledResultClient!.code).toContain('createClientRpc(')
+  })
+
+  test('should reject computed manual id keys', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      export const getUser = createServerFn({ ['id']: 'get-user' })
+        .handler(async () => ({ id: '123' }))
+    `
+
+    await expect(
+      compile({
+        code,
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+      }),
+    ).rejects.toThrow(
+      'createServerFn({ [key]: value }) is not supported for manual ids.',
+    )
+  })
+
   // TODO remove upon stable
   test('should warn for deprecated inputValidator method', async () => {
     const warn = vi.fn()
@@ -637,7 +697,7 @@ describe('createServerFn compiles correctly', async () => {
     )
   })
 
-  test('fails when custom IDs collide across compiler instances', async () => {
+  test('dedupes generated custom IDs across compiler instances', async () => {
     const compiler = new StartCompiler({
       env: 'server',
       ...getDefaultTestOptions('server'),
@@ -664,15 +724,54 @@ describe('createServerFn compiles correctly', async () => {
       id: '/test/src/submit-post-formdata.tsx',
     })
 
-    await expect(
-      compiler.compile({
-        code: `
-          import { createServerFn } from '@tanstack/react-start'
-          export const greetUser = createServerFn().handler(async () => 'second')
-        `,
-        id: '/test/src/formdata-redirect/index.tsx',
-      }),
-    ).rejects.toThrow('Duplicate server function id: constant_id')
+    const secondResult = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const greetUser = createServerFn().handler(async () => 'second')
+      `,
+      id: '/test/src/formdata-redirect/index.tsx',
+    })
+
+    expect(secondResult!.code).toContain('createSsrRpc("constant_id_1")')
+  })
+
+  test('dedupes generated IDs around reserved manual IDs', async () => {
+    const compiler = new StartCompiler({
+      env: 'server',
+      ...getDefaultTestOptions('server'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      generateFunctionId: () => 'get-user',
+      getKnownServerFns: () => ({}),
+    })
+
+    const manualResult = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const getUser = createServerFn({ id: 'get-user' }).handler(async () => 'manual')
+      `,
+      id: '/test/src/manual.tsx',
+    })
+
+    const generatedResult = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const getUser = createServerFn().handler(async () => 'generated')
+      `,
+      id: '/test/src/generated.tsx',
+    })
+
+    expect(manualResult!.code).toContain('createSsrRpc("get-user")')
+    expect(generatedResult!.code).toContain('createSsrRpc("get-user_1")')
   })
 
   test('releases manual ids after module invalidation', async () => {

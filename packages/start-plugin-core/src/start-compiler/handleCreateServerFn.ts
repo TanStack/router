@@ -154,29 +154,24 @@ function extractManualServerFnId(
     return undefined
   }
 
-  if (optionsArg.loc) {
-    const optionsSource = getSourceTextForNode(code, optionsArg.loc)
-    if (optionsSource.includes('...')) {
-      throw codeFrameError(
-        code,
-        optionsArg.loc,
-        'createServerFn({ ...opts }) is not supported for manual ids.',
-      )
-    }
-
-    if (/(^|[,{])\s*\[[^\]]+\]\s*:/.test(optionsSource)) {
-      throw codeFrameError(
-        code,
-        optionsArg.loc,
-        'createServerFn({ [key]: value }) is not supported for manual ids.',
-      )
-    }
-  }
-
   for (const prop of optionsArg.properties) {
     if (!t.isObjectProperty(prop)) {
       continue
     }
+
+      if (prop.computed) {
+        const keyValue = resolveStaticString(candidatePath, prop.key)
+
+        if (keyValue === 'id') {
+          throw codeFrameError(
+            code,
+            prop.loc!,
+            'createServerFn({ [key]: value }) is not supported for manual ids.',
+          )
+        }
+
+        continue
+      }
 
     const isIdKey =
       (t.isIdentifier(prop.key) && prop.key.name === 'id') ||
@@ -255,23 +250,34 @@ function getCreateServerFnCallExpression(
   return undefined
 }
 
-function getSourceTextForNode(
-  code: string,
-  loc: {
-    start: { line: number; column: number }
-    end: { line: number; column: number }
-  },
-): string {
-  const lineStarts = [0]
-  for (let index = 0; index < code.length; index++) {
-    if (code[index] === '\n') {
-      lineStarts.push(index + 1)
-    }
+function resolveStaticString(
+  candidatePath: babel.NodePath<t.CallExpression>,
+  value: t.Expression | t.PrivateName,
+): string | undefined {
+  if (t.isStringLiteral(value)) {
+    return value.value
   }
 
-  const startOffset = lineStarts[loc.start.line - 1]! + loc.start.column
-  const endOffset = lineStarts[loc.end.line - 1]! + loc.end.column
-  return code.slice(startOffset, endOffset)
+  if (t.isTemplateLiteral(value) && value.expressions.length === 0) {
+    return value.quasis[0]?.value.cooked ?? undefined
+  }
+
+  if (!t.isIdentifier(value)) {
+    return undefined
+  }
+
+  const binding = candidatePath.scope.getBinding(value.name)
+  const bindingPath = binding?.path
+  const bindingInit =
+    bindingPath && bindingPath.isVariableDeclarator()
+      ? bindingPath.node.init
+      : undefined
+
+  if (binding?.constant && bindingInit && t.isStringLiteral(bindingInit)) {
+    return bindingInit.value
+  }
+
+  return undefined
 }
 
 /**
