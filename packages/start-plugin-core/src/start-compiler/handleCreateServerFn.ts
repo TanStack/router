@@ -181,8 +181,10 @@ function extractManualServerFnId(
       continue
     }
 
-    if (t.isStringLiteral(prop.value)) {
-      if (!MANUAL_SERVER_FN_ID_PATTERN.test(prop.value.value)) {
+    const idValue = resolveStaticString(candidatePath, prop.value)
+
+    if (idValue !== undefined) {
+      if (!MANUAL_SERVER_FN_ID_PATTERN.test(idValue)) {
         throw codeFrameError(
           code,
           prop.value.loc!,
@@ -190,28 +192,7 @@ function extractManualServerFnId(
         )
       }
 
-      return prop.value.value
-    }
-
-    if (t.isIdentifier(prop.value)) {
-      const binding = candidatePath.scope.getBinding(prop.value.name)
-      const bindingPath = binding?.path
-      const bindingInit =
-        bindingPath && bindingPath.isVariableDeclarator()
-          ? bindingPath.node.init
-          : undefined
-
-      if (binding?.constant && bindingInit && t.isStringLiteral(bindingInit)) {
-        if (!MANUAL_SERVER_FN_ID_PATTERN.test(bindingInit.value)) {
-          throw codeFrameError(
-            code,
-            bindingInit.loc!,
-            'createServerFn({ id }) must use a URL-safe id: [a-zA-Z0-9_-]+',
-          )
-        }
-
-        return bindingInit.value
-      }
+      return idValue
     }
 
     throw codeFrameError(
@@ -228,22 +209,24 @@ function getCreateServerFnCallExpression(
   candidatePath: babel.NodePath<t.CallExpression>,
 ): t.CallExpression | undefined {
   let currentCall: t.CallExpression | undefined = candidatePath.node
+  let sawMethodChain = false
 
   while (currentCall) {
     const callee: t.CallExpression['callee'] = currentCall.callee
     if (!t.isMemberExpression(callee)) {
-      return undefined
+      return sawMethodChain ? currentCall : undefined
     }
 
     const innerCall: t.MemberExpression['object'] = callee.object
     if (!t.isCallExpression(innerCall)) {
-      return undefined
+      return sawMethodChain ? currentCall : undefined
     }
 
     if (t.isIdentifier(innerCall.callee, { name: 'createServerFn' })) {
       return innerCall
     }
 
+    sawMethodChain = true
     currentCall = innerCall
   }
 

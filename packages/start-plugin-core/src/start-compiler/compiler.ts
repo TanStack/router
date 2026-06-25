@@ -679,6 +679,15 @@ export class StartCompiler {
   }) {
     const entryId = `${opts.filename}--${opts.functionName}`
     const existingOwner = this.reservedManualFunctionIdOwners.get(opts.functionId)
+    const knownFn = this.options.getKnownServerFns()[opts.functionId]
+
+    if (
+      knownFn &&
+      (knownFn.functionName !== opts.functionName ||
+        knownFn.extractedFilename !== opts.extractedFilename)
+    ) {
+      throw new Error(`Duplicate server function id: ${opts.functionId}`)
+    }
 
     if (existingOwner && existingOwner !== entryId) {
       throw new Error(`Duplicate server function id: ${opts.functionId}`)
