@@ -9,6 +9,8 @@ import type { StartCompilerTransformContext } from '../types'
 export interface CompilationContext extends StartCompilerTransformContext {
   /** Generate a unique function ID */
   generateFunctionId: GenerateFunctionIdFn
+  /** Reserve a user-supplied function ID for the current module. */
+  reserveFunctionId: ReserveFunctionIdFn
   /** Get known server functions from previous builds (e.g., client build) */
   getKnownServerFns: () => Record<string, ServerFn>
   /** Module-level directives to add to extracted server function provider files. */
@@ -93,6 +95,11 @@ export type GenerateFunctionIdFn = (opts: {
   filename: string
   functionName: string
   extractedFilename: string
+}) => string
+
+export type ReserveFunctionIdFn = (opts: {
+  filename: string
+  functionId: string
 }) => string
 
 /**

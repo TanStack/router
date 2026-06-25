@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import * as t from '@babel/types'
+import path from 'pathe'
 import {
   deadCodeElimination,
   extractModuleInfoFromAst,
@@ -514,6 +515,8 @@ export class StartCompiler {
     string,
     Map<string, ExportResolution | null>
   >()
+  private reservedManualFunctionIds = new Set<string>()
+  private reservedManualFunctionIdsByFilename = new Map<string, Set<string>>()
   // Fast lookup for direct imports from known libraries (e.g., '@tanstack/react-start')
   // Maps: libName → (exportName → Kind)
   // This allows O(1) resolution for the common case without async resolveId calls
@@ -658,18 +661,36 @@ export class StartCompiler {
         functionId = crypto.createHash('sha256').update(entryId).digest('hex')
       }
       // Deduplicate in case the generated id conflicts with an existing id
-      if (this.functionIds.has(functionId)) {
-        let deduplicatedId
-        let iteration = 0
-        do {
-          deduplicatedId = `${functionId}_${++iteration}`
-        } while (this.functionIds.has(deduplicatedId))
-        functionId = deduplicatedId
+      if (
+        this.functionIds.has(functionId) ||
+        this.reservedManualFunctionIds.has(functionId)
+      ) {
+        throw new Error(`Duplicate server function id: ${functionId}`)
       }
       this.entryIdToFunctionId.set(entryId, functionId)
       this.functionIds.add(functionId)
     }
     return functionId
+  }
+
+  private reserveFunctionId(opts: { filename: string; functionId: string }) {
+    if (
+      this.functionIds.has(opts.functionId) ||
+      this.reservedManualFunctionIds.has(opts.functionId)
+    ) {
+      throw new Error(`Duplicate server function id: ${opts.functionId}`)
+    }
+
+    this.reservedManualFunctionIds.add(opts.functionId)
+
+    let reservedIds = this.reservedManualFunctionIdsByFilename.get(opts.filename)
+    if (!reservedIds) {
+      reservedIds = new Set<string>()
+      this.reservedManualFunctionIdsByFilename.set(opts.filename, reservedIds)
+    }
+    reservedIds.add(opts.functionId)
+
+    return opts.functionId
   }
 
   private get mode(): 'dev' | 'build' {
@@ -871,6 +892,7 @@ export class StartCompiler {
     for (const moduleId of Array.from(this.moduleCache.keys())) {
       const normalizedModuleId = cleanId(moduleId)
       if (normalizedIds.has(normalizedModuleId)) {
+        this.clearReservedManualFunctionIdsForModule(normalizedModuleId)
         this.moduleCache.delete(moduleId)
         deletedModuleIds.add(normalizedModuleId)
       }
@@ -893,6 +915,21 @@ export class StartCompiler {
     this.exportResolutionCache.clear()
 
     return deletedModuleIds
+  }
+
+  private clearReservedManualFunctionIdsForModule(moduleId: string): void {
+    const relativeFilename = path.relative(this.options.root, moduleId)
+    const reservedIds = this.reservedManualFunctionIdsByFilename.get(
+      relativeFilename,
+    )
+    if (!reservedIds) {
+      return
+    }
+
+    for (const functionId of reservedIds) {
+      this.reservedManualFunctionIds.delete(functionId)
+    }
+    this.reservedManualFunctionIdsByFilename.delete(relativeFilename)
   }
 
   public async getTransitiveImporters(
@@ -1368,6 +1405,7 @@ export class StartCompiler {
         warn: warnFn,
 
         generateFunctionId: (opts) => this.generateFunctionId(opts),
+        reserveFunctionId: (opts) => this.reserveFunctionId(opts),
         getKnownServerFns: this.options.getKnownServerFns,
         serverFnProviderModuleDirectives:
           this.options.serverFnProviderModuleDirectives,

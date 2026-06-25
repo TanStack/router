@@ -144,7 +144,12 @@ function extractManualServerFnId(
   candidatePath: babel.NodePath<t.CallExpression>,
   code: string,
 ): string | undefined {
-  const [optionsArg] = candidatePath.node.arguments
+  const createServerFnCall = getCreateServerFnCallExpression(candidatePath)
+  if (!createServerFnCall) {
+    return undefined
+  }
+
+  const [optionsArg] = createServerFnCall.arguments
   if (!optionsArg || !t.isObjectExpression(optionsArg)) {
     return undefined
   }
@@ -222,6 +227,27 @@ function extractManualServerFnId(
   }
 
   return undefined
+}
+
+function getCreateServerFnCallExpression(
+  candidatePath: babel.NodePath<t.CallExpression>,
+): t.CallExpression | undefined {
+  const { callee } = candidatePath.node
+  if (!t.isMemberExpression(callee)) {
+    return undefined
+  }
+
+  const rootCall = callee.object
+  if (!t.isCallExpression(rootCall)) {
+    return undefined
+  }
+
+  const rootCallee = rootCall.callee
+  if (!t.isIdentifier(rootCallee) || rootCallee.name !== 'createServerFn') {
+    return undefined
+  }
+
+  return rootCall
 }
 
 function getSourceTextForNode(
@@ -379,12 +405,16 @@ export function handleCreateServerFn(
 
     // Generate function ID using pre-computed relative filename unless the user supplied one.
     const functionId =
-      manualFunctionId ??
-      context.generateFunctionId({
-        filename: relativeFilename,
-        functionName,
-        extractedFilename,
-      })
+      manualFunctionId !== undefined
+        ? context.reserveFunctionId({
+            filename: relativeFilename,
+            functionId: manualFunctionId,
+          })
+        : context.generateFunctionId({
+            filename: relativeFilename,
+            functionName,
+            extractedFilename,
+          })
 
     // Check if this function was already discovered by the client build
     const knownFn = knownFns[functionId]
