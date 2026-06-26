@@ -19,7 +19,7 @@ overrides:
   '@playwright/test': ^1.57.0
   '@tanstack/query-core': ^5.99.0
   '@tanstack/react-query': ^5.99.0
-  '@tanstack/solid-query': ^6.0.0-beta.4
+  '@tanstack/solid-query': ^6.0.0-beta.5
   '@tanstack/vue-query': ^5.99.0
   '@tanstack/history': workspace:*
   '@tanstack/router-core': workspace:*
@@ -99,8 +99,8 @@ importers:
         specifier: ^5.99.0
         version: 5.99.0(react@19.2.3)
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/vite-config':
         specifier: 0.5.2
         version: 0.5.2(@types/node@25.0.9)(typescript@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -3749,11 +3749,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query-devtools':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -3795,11 +3795,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query-devtools':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4444,11 +4444,11 @@ importers:
         specifier: 2.0.0-beta.15
         version: 2.0.0-beta.15(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query-devtools':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4732,11 +4732,11 @@ importers:
         specifier: 2.0.0-beta.15
         version: 2.0.0-beta.15(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query-devtools':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -4940,11 +4940,11 @@ importers:
         specifier: 2.0.0-beta.15
         version: 2.0.0-beta.15(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query-devtools':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -5013,8 +5013,8 @@ importers:
         specifier: 2.0.0-beta.15
         version: 2.0.0-beta.15(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -5083,8 +5083,8 @@ importers:
         specifier: 2.0.0-beta.15
         version: 2.0.0-beta.15(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -10429,8 +10429,8 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -10583,11 +10583,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query-devtools':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -10626,11 +10626,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query-devtools':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -11013,11 +11013,11 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query-devtools':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -11062,11 +11062,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query-devtools':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -11111,8 +11111,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -11151,8 +11151,8 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -11188,8 +11188,8 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -11505,11 +11505,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query-devtools':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -11588,8 +11588,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -11931,11 +11931,11 @@ importers:
         specifier: 2.0.0-beta.15
         version: 2.0.0-beta.15(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query-devtools':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -12258,8 +12258,8 @@ importers:
         specifier: 2.0.0-beta.15
         version: 2.0.0-beta.15(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: ^2.0.0-beta.22
         version: link:../../../packages/solid-router
@@ -13380,8 +13380,8 @@ importers:
         specifier: 2.0.0-beta.15
         version: 2.0.0-beta.15(solid-js@2.0.0-beta.15)
       '@tanstack/solid-query':
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       '@tanstack/solid-router':
         specifier: workspace:*
         version: link:../solid-router
@@ -19404,6 +19404,9 @@ packages:
   '@tanstack/query-core@5.99.0':
     resolution: {integrity: sha512-3Jv3WQG0BCcH7G+7lf/bP8QyBfJOXeY+T08Rin3GZ1bshvwlbPt7NrDHMEzGdKIOmOzvIQmxjk28YEQX60k7pQ==}
 
+  '@tanstack/query-devtools@5.101.0':
+    resolution: {integrity: sha512-MVqw17k08RQtGGLEL654+dX/btbX9p/8WjkznO//zusLTMaObxi3Q+MoFwGVkC9K3tqjn8qrrNhJevXx4fJTeQ==}
+
   '@tanstack/query-devtools@5.67.2':
     resolution: {integrity: sha512-O4QXFFd7xqp6EX7sdvc9tsVO8nm4lpWBqwpgjpVLW5g7IeOY6VnS/xvs/YzbRhBVkKTMaJMOUGU7NhSX+YGoNg==}
 
@@ -19412,9 +19415,6 @@ packages:
 
   '@tanstack/query-devtools@5.91.1':
     resolution: {integrity: sha512-l8bxjk6BMsCaVQH6NzQEE/bEgFy1hAs5qbgXl0xhzezlaQbPk6Mgz9BqEg2vTLPOHD8N4k+w/gdgCbEzecGyNg==}
-
-  '@tanstack/query-devtools@5.93.0':
-    resolution: {integrity: sha512-+kpsx1NQnOFTZsw6HAFCW3HkKg0+2cepGtAWXjiiSOJJ1CtQpt72EE2nyZb+AjAbLRPoeRmPJ8MtQd8r8gsPdg==}
 
   '@tanstack/react-devtools@0.7.0':
     resolution: {integrity: sha512-HJH+oNBYQotgsKWAQqvkY8KnfQbbZptHbrkPGVaIwj393vVFGT1BuXMYy+rlmOYxczyerb90ltRFgsQyUtJTuw==}
@@ -19460,14 +19460,14 @@ packages:
     peerDependencies:
       solid-js: '>=1.9.7'
 
-  '@tanstack/solid-query-devtools@6.0.0-beta.4':
-    resolution: {integrity: sha512-ASurNsVm1kZ5Zgvzx31VXs8JAMVvsZvxD6v5eYsc2RTpVS1eY2aNT6SW1wpbC5JPUvTRFzqPC1tI1miEZlPf/w==}
+  '@tanstack/solid-query-devtools@6.0.0-beta.5':
+    resolution: {integrity: sha512-AXTqg/tr3KcxW1KUTwK0EZ7nvrB9AGT1JB4/duy0JkOfPOl16Tb0WOOEcjnkYDHKnDIFUVFqjSXHhzh8W076vg==}
     peerDependencies:
-      '@tanstack/solid-query': ^6.0.0-beta.4
+      '@tanstack/solid-query': ^6.0.0-beta.5
       solid-js: '>=2.0.0-beta.0 <3.0.0'
 
-  '@tanstack/solid-query@6.0.0-beta.4':
-    resolution: {integrity: sha512-g8o4Fqo1i/V14V4DXMhtu5vk6Ix1ShliBl9Y+3XsV5aB/ja2swAOksblJo2hFcXJdkKTlLru+xTHnEkL57/CeA==}
+  '@tanstack/solid-query@6.0.0-beta.5':
+    resolution: {integrity: sha512-vKVLgo9yfVnQYGvLAsZ2qro+dzQJSftyBVxRrd198/fDjq+mwpAR/bEWWq1FZFsfHMIXfBrvZ5IQAYcwbWmbgA==}
     peerDependencies:
       solid-js: '>=2.0.0-beta.0 <3.0.0'
 
@@ -32876,13 +32876,13 @@ snapshots:
 
   '@tanstack/query-core@5.99.0': {}
 
+  '@tanstack/query-devtools@5.101.0': {}
+
   '@tanstack/query-devtools@5.67.2': {}
 
   '@tanstack/query-devtools@5.90.1': {}
 
   '@tanstack/query-devtools@5.91.1': {}
-
-  '@tanstack/query-devtools@5.93.0': {}
 
   '@tanstack/react-devtools@0.7.0(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@2.0.0-beta.15)':
     dependencies:
@@ -32936,13 +32936,13 @@ snapshots:
       - csstype
       - utf-8-validate
 
-  '@tanstack/solid-query-devtools@6.0.0-beta.4(@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)':
+  '@tanstack/solid-query-devtools@6.0.0-beta.5(@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15))(solid-js@2.0.0-beta.15)':
     dependencies:
-      '@tanstack/query-devtools': 5.93.0
-      '@tanstack/solid-query': 6.0.0-beta.4(solid-js@2.0.0-beta.15)
+      '@tanstack/query-devtools': 5.101.0
+      '@tanstack/solid-query': 6.0.0-beta.5(solid-js@2.0.0-beta.15)
       solid-js: 2.0.0-beta.15
 
-  '@tanstack/solid-query@6.0.0-beta.4(solid-js@2.0.0-beta.15)':
+  '@tanstack/solid-query@6.0.0-beta.5(solid-js@2.0.0-beta.15)':
     dependencies:
       '@tanstack/query-core': 5.99.0
       solid-js: 2.0.0-beta.15
