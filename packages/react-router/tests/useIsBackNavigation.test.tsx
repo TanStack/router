@@ -46,6 +46,14 @@ function RootComponent() {
       <Link to="/" preferBack viewTransition data-testid="preferback-home-vt">
         Back home (view transition)
       </Link>
+      <Link
+        to="/"
+        preferBack
+        reloadDocument
+        data-testid="preferback-home-reload"
+      >
+        Back home (reload)
+      </Link>
       <HookProbe />
       <Outlet />
     </>
@@ -190,6 +198,29 @@ describe('Link preferBack', () => {
     await screen.findByText('IndexTitle')
 
     expect(vtAtBack).toBe(true)
+  })
+
+  test('reloadDocument takes precedence: no back shortcut, full navigate', async () => {
+    const { router } = setup(['/'])
+    await screen.findByText('IndexTitle')
+    await act(() => fireEvent.click(screen.getByText('About')))
+    await screen.findByText('AboutTitle')
+
+    const backSpy = vi.spyOn(router.history, 'back')
+    // Stub navigate so the full-document reload path doesn't touch window.location.
+    const navigateSpy = vi
+      .spyOn(router, 'navigate')
+      .mockResolvedValue(undefined)
+
+    await act(() =>
+      fireEvent.click(screen.getByTestId('preferback-home-reload')),
+    )
+
+    // The back shortcut is skipped; reloadDocument flows through to navigate.
+    expect(backSpy).not.toHaveBeenCalled()
+    expect(navigateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ reloadDocument: true }),
+    )
   })
 
   describe('match modes (pathname vs exact)', () => {

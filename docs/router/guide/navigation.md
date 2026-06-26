@@ -133,8 +133,8 @@ export type LinkOptions<
   preloadDelay?: number
   // If true, will render the link without the href attribute
   disabled?: boolean
-  // If true, clicking goes back via `history.back()` when the resolved target is the previous history entry (see "History-aware links" below)
-  preferBack?: boolean
+  // History-aware back navigation when the resolved target is the previous history entry (see "History-aware links" below). `true`/`'pathname'` match by pathname; `'exact'` also requires search to match.
+  preferBack?: boolean | 'pathname' | 'exact'
 }
 ```
 

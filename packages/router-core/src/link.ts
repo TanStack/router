@@ -694,7 +694,7 @@ export interface LinkOptionsProps {
   /**
    * Makes the link history-aware: when its target is the previous history entry,
    * clicking goes back instead of pushing (preserving forward history + scroll).
-   * `'exact'` also requires search to match; falls back to a normal push otherwise.
+   * `'exact'` also requires search to match; otherwise falls back to a normal navigation
    * @default false
    */
   preferBack?: boolean | 'pathname' | 'exact'

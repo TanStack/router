@@ -405,7 +405,9 @@ export function useLinkProps<
   const currentLocation = useStore(
     router.stores.location,
     (l) => l,
-    (prev, next) => prev.href === next.href,
+    (prev, next) =>
+      prev.href === next.href &&
+      prev.state.__TSR_index === next.state.__TSR_index,
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -418,6 +420,7 @@ export function useLinkProps<
   // entry. `'exact'` also matches search. Reuses `next`, so no extra buildLocation.
   const isBackNavigation =
     !!preferBack &&
+    !_reloadDocument &&
     resolveIsBackNavigation(
       router,
       currentLocation,
