@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-router-ssr-query",
-  "version": "2.0.0-beta.22",
+  "version": "2.0.0-beta.23",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -67,19 +67,19 @@
     "@tanstack/router-ssr-query-core": "workspace:*"
   },
   "devDependencies": {
-    "@solidjs/web": "2.0.0-beta.14",
+    "@solidjs/web": "2.0.0-beta.15",
     "@tanstack/solid-query": "^6.0.0-beta.5",
     "@tanstack/solid-router": "workspace:*",
     "eslint-plugin-solid": "^0.14.5",
-    "solid-js": "2.0.0-beta.14",
+    "solid-js": "2.0.0-beta.15",
     "vite": "*",
     "vite-plugin-solid": "^3.0.0-next.5"
   },
   "peerDependencies": {
-    "@solidjs/web": ">=2.0.0-beta.14",
+    "@solidjs/web": ">=2.0.0-beta.15",
     "@tanstack/query-core": ">=5.90.0",
     "@tanstack/solid-query": ">=5.90.0",
     "@tanstack/solid-router": ">=2.0.0-alpha.1",
-    "solid-js": ">=2.0.0-beta.14"
+    "solid-js": ">=2.0.0-beta.15"
   }
 }

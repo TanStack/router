@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-start-server",
-  "version": "2.0.0-beta.21",
+  "version": "2.0.0-beta.22",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -63,8 +63,8 @@
     "@tanstack/start-server-core": "workspace:*"
   },
   "devDependencies": {
-    "@solidjs/web": "2.0.0-beta.14",
-    "solid-js": "2.0.0-beta.14",
+    "@solidjs/web": "2.0.0-beta.15",
+    "solid-js": "2.0.0-beta.15",
     "typescript": "^6.0.2",
     "vite": "*",
     "vite-plugin-solid": "^3.0.0-next.5"

@@ -12,13 +12,13 @@
     "@tanstack/solid-query": "^6.0.0-beta.5",
     "@router-solid-mono-solid-query/post-feature": "workspace:*",
     "@router-solid-mono-solid-query/router": "workspace:*",
-    "solid-js": "2.0.0-beta.14",
-    "@solidjs/web": "2.0.0-beta.14"
+    "solid-js": "2.0.0-beta.15",
+    "@solidjs/web": "2.0.0-beta.15"
   },
   "devDependencies": {
     "vite-plugin-solid": "^3.0.0-next.5",
     "typescript": "^6.0.2",
-    "@tanstack/solid-router-devtools": "^2.0.0-beta.17",
+    "@tanstack/solid-router-devtools": "^2.0.0-beta.18",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.14",
     "vite-plugin-dts": "^4.5.4",

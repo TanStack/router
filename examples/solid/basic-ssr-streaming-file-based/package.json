@@ -11,16 +11,16 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.14",
+    "@solidjs/web": "2.0.0-beta.15",
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/solid-router": "^2.0.0-beta.21",
-    "@tanstack/solid-router-devtools": "^2.0.0-beta.17",
+    "@tanstack/solid-router": "^2.0.0-beta.22",
+    "@tanstack/solid-router-devtools": "^2.0.0-beta.18",
     "compression": "^1.8.0",
     "express": "^5.2.1",
     "get-port": "^7.1.0",
     "node-fetch": "^3.3.2",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.14",
+    "solid-js": "2.0.0-beta.15",
     "tailwindcss": "^4.2.2",
     "zod": "^4.4.3"
   },

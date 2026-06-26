@@ -11,11 +11,11 @@
   },
   "dependencies": {
     "@auth/core": "^0.41.1",
-    "@solidjs/web": "2.0.0-beta.14",
-    "@tanstack/solid-router": "^2.0.0-beta.21",
-    "@tanstack/solid-router-devtools": "^2.0.0-beta.17",
-    "@tanstack/solid-start": "^2.0.0-beta.22",
-    "solid-js": "2.0.0-beta.14",
+    "@solidjs/web": "2.0.0-beta.15",
+    "@tanstack/solid-router": "^2.0.0-beta.22",
+    "@tanstack/solid-router-devtools": "^2.0.0-beta.18",
+    "@tanstack/solid-start": "^2.0.0-beta.23",
+    "solid-js": "2.0.0-beta.15",
     "start-authjs": "^1.0.0",
     "tailwind-merge": "^3.6.0"
   },
