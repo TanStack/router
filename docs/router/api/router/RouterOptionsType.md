@@ -204,7 +204,7 @@ const router = createRouter({
 
 - Type: `boolean`
 - Optional, defaults to `false`
-- If `true`, replays the view transition a navigation opted into (`<Link viewTransition>` / `navigate({ viewTransition })`) when the user later traverses that entry with the browser Back/Forward buttons. Without it, traversals arrive as `popstate` and play a hard cut. Replay is symmetric: a transition opted into on `A → B` plays on both `B → A` (back) and a later `A → B` (forward).
+- If `true`, replays the view transition a navigation opted into (`<Link viewTransition>` / `navigate({ viewTransition })`) when the user later traverses that entry with the browser Back/Forward buttons. Without it, those per-navigation opt-ins are not replayed on traversal, so Back/Forward fall back to the router's normal behavior (`defaultViewTransition` if set, otherwise no transition). Replay is symmetric: a transition opted into on `A → B` plays on both `B → A` (back) and a later `A → B` (forward).
 - Recorded values are kept in-memory (lost on hard reload, degrading to no transition) so a functional [`ViewTransitionOptions`](./ViewTransitionOptionsType.md) `types` callback survives. Opt-in; does not change `defaultViewTransition` behavior.
 
 ### `defaultHashScrollIntoView` property

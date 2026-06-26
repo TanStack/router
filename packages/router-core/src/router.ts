@@ -283,7 +283,9 @@ export interface RouterOptions<
   /**
    * If `true`, replays the view transition a navigation opted into (via `<Link viewTransition>`
    * or `navigate({ viewTransition })`) when the user later traverses that entry with the browser
-   * Back/Forward buttons. Without it, traversals arrive as `popstate` and play a hard cut.
+   * Back/Forward buttons. Without it, per-navigation `viewTransition` opt-ins are not replayed on
+   * traversal, so Back/Forward fall back to the router's normal behavior (`defaultViewTransition`
+   * if set, otherwise no transition).
    *
    * Recorded values are kept in-memory (lost on hard reload, degrading to no transition) so a
    * functional `ViewTransitionOptions["types"]` survives. Opt-in; does not affect `defaultViewTransition`.
@@ -2694,7 +2696,10 @@ export class RouterCore<
 
     if (historyAction === 'PUSH' || historyAction === 'REPLACE') {
       if (this.shouldViewTransition) {
-        this.viewTransitionsByIndex.set(arrivingIndex, this.shouldViewTransition)
+        this.viewTransitionsByIndex.set(
+          arrivingIndex,
+          this.shouldViewTransition,
+        )
       } else {
         this.viewTransitionsByIndex.delete(arrivingIndex)
       }

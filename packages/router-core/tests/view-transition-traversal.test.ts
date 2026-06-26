@@ -35,9 +35,17 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function createRouter(options: { replayViewTransitionOnTraversal?: boolean } = {}) {
+function createRouter(
+  options: {
+    replayViewTransitionOnTraversal?: boolean
+    defaultViewTransition?: boolean
+  } = {},
+) {
   const rootRoute = new BaseRootRoute({})
-  const indexRoute = new BaseRoute({ getParentRoute: () => rootRoute, path: '/' })
+  const indexRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
   const aRoute = new BaseRoute({ getParentRoute: () => rootRoute, path: '/a' })
   const bRoute = new BaseRoute({ getParentRoute: () => rootRoute, path: '/b' })
 
@@ -55,7 +63,10 @@ async function mount(router: ReturnType<typeof createRouter>) {
 }
 
 /** Drive a browser-style traversal and await the load it triggers. */
-async function traverse(router: ReturnType<typeof createRouter>, fn: () => void) {
+async function traverse(
+  router: ReturnType<typeof createRouter>,
+  fn: () => void,
+) {
   fn()
   await router.latestLoadPromise
 }
@@ -185,5 +196,39 @@ describe('replayViewTransitionOnTraversal', () => {
     // No replay: browser back is a hard cut by default.
     expect(startViewTransitionSpy).not.toHaveBeenCalled()
     expect(router.viewTransitionsByIndex.size).toBe(0)
+  })
+
+  test('replays on a multi-step GO traversal', async () => {
+    const router = createRouter({ replayViewTransitionOnTraversal: true })
+    await mount(router)
+
+    await router.navigate({ to: '/a' }) // index 1, plain
+    await router.navigate({ to: '/b', viewTransition: true }) // index 2, recorded
+    startViewTransitionSpy.mockClear()
+
+    // history.go(-2): "/b" (2) -> "/" (0). The transitioned entry (2) is the leaving
+    // endpoint, so the GO branch replays it.
+    await traverse(router, () => router.history.go(-2))
+
+    expect(router.state.location.pathname).toBe('/')
+    expect(startViewTransitionSpy).toHaveBeenCalledTimes(1)
+  })
+
+  test('falls back to defaultViewTransition when nothing is recorded', async () => {
+    const router = createRouter({
+      replayViewTransitionOnTraversal: true,
+      defaultViewTransition: true,
+    })
+    await mount(router)
+
+    await router.navigate({ to: '/a' }) // plain: no per-navigation opt-in recorded
+    expect(router.viewTransitionsByIndex.has(1)).toBe(false)
+    startViewTransitionSpy.mockClear()
+
+    await traverse(router, () => router.history.back())
+
+    // The traversal still transitions, but via defaultViewTransition — the option
+    // does not suppress it.
+    expect(startViewTransitionSpy).toHaveBeenCalledTimes(1)
   })
 })

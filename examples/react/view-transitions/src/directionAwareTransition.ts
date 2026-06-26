@@ -15,6 +15,7 @@ import type { ViewTransitionOptions } from '@tanstack/react-router'
  */
 const PAGE_ORDER = ['/', '/how-it-works', '/explore', '/posts']
 
+/** Rank a pathname within `PAGE_ORDER` using the longest matching prefix. */
 function pageRank(pathname: string): number {
   // longest matching prefix so e.g. /posts/123 ranks with /posts
   let best = -1
@@ -31,7 +32,9 @@ function pageRank(pathname: string): number {
 
 export const slideByDirection: ViewTransitionOptions = {
   types: ({ fromLocation, toLocation }) => {
-    if (!fromLocation) return ['slide-left']
+    if (!fromLocation) {
+      return ['slide-left']
+    }
     const from = pageRank(fromLocation.pathname)
     const to = pageRank(toLocation.pathname)
     // Moving to a later page slides left; to an earlier page slides right.
