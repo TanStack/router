@@ -133,6 +133,8 @@ export type LinkOptions<
   preloadDelay?: number
   // If true, will render the link without the href attribute
   disabled?: boolean
+  // If true, clicking goes back via `history.back()` when the resolved target is the previous history entry (see "Direction-aware links" below)
+  preferBack?: boolean
 }
 ```
 
@@ -732,6 +734,22 @@ const link = (
   </Link>
 )
 ```
+
+### History-aware links (`preferBack`)
+
+> ⚠️ The `preferBack` prop and the `useIsBackNavigation` hook are currently _experimental_.
+
+A regular "Back to X" link always **pushes** a new history entry — even when `/x` is the entry the user just came from — discarding forward history and the browser's native per-entry scroll restoration.
+
+Setting `preferBack` makes the link history-aware: when its resolved target matches the previous history entry, clicking it calls `router.history.back()` instead of pushing. Otherwise it behaves like a normal link, falling back to a push (or `replace`, if also set) — including when the previous entry is unknown to the router (e.g. a fresh load or deep link). It always renders a real `<a href>`, so keyboard nav, "copy link", and middle/modifier-click keep working.
+
+```tsx
+<Link to="/issues" preferBack>
+  Back to issues
+</Link>
+```
+
+By default (`preferBack` / `preferBack="pathname"`) the target is matched by **pathname only**, so going back restores the user's exact prior search params and scroll position. Use `preferBack="exact"` to also require the search to match (it then pushes when the search differs). For custom links or buttons, the underlying [`useIsBackNavigation`](../api/router/useIsBackNavigation.md) hook returns whether navigating to the given options would go back.
 
 ## `useNavigate`
 

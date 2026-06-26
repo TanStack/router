@@ -285,6 +285,7 @@ export type {
   ClearCacheFn,
   CreateRouterFn,
   SSROption,
+  RouterHistoryEntry,
 } from './router'
 
 export * from './config'

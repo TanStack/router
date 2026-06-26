@@ -18,6 +18,7 @@ import { useRouter } from './useRouter'
 import { useForwardedRef, useIntersectionObserver } from './utils'
 
 import { useHydrated } from './ClientOnly'
+import { resolveIsBackNavigation } from './useIsBackNavigation'
 import type {
   AnyRouter,
   Constrain,
@@ -73,6 +74,7 @@ export function useLinkProps<
     startTransition,
     resetScroll,
     viewTransition,
+    preferBack,
     // element props
     children,
     target,
@@ -412,6 +414,19 @@ export function useLinkProps<
     return router.buildLocation(opts as any)
   }, [router, currentLocation, _options])
 
+  // History-aware links: when `preferBack` is set and the resolved target is
+  // the previous history entry, a primary click should go back rather than push.
+  // `true`/`'pathname'` match by pathname; `'exact'` also requires search.
+  // Reuses the already-built `next`, so no extra `buildLocation` call.
+  const isBackNavigation =
+    !!preferBack &&
+    resolveIsBackNavigation(
+      router,
+      currentLocation,
+      next,
+      preferBack === 'exact' ? 'exact' : 'pathname',
+    )
+
   // Use publicHref - it contains the correct href for display
   // When a rewrite changes the origin, publicHref is the full URL
   // Otherwise it's the origin-stripped path
@@ -625,6 +640,15 @@ export function useLinkProps<
         unsub()
         setIsTransitioning(false)
       })
+
+      // History-aware: the target is the previous history entry, so go back
+      // instead of pushing. This preserves forward history and the browser's
+      // native per-entry scroll restoration. Scroll/viewTransition behavior is
+      // handled by the router's existing popstate handling.
+      if (isBackNavigation) {
+        router.history.back({ ignoreBlocker })
+        return
+      }
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
