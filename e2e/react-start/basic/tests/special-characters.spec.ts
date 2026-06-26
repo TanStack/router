@@ -64,6 +64,24 @@ test.describe('Unicode route rendering', () => {
 
       expect(param).toBe('대|')
     })
+
+    test('should not cause redirect loop for curly braces in path params', async ({
+      page,
+      baseURL,
+    }) => {
+      // %7B/%7D (curly braces) must not trigger infinite 307 redirects
+      const res = await page.goto('/specialChars/%7B%7Bapp_name%7D%7D')
+      await page.waitForLoadState('load')
+
+      // Should not redirect — URL stays encoded
+      expect(page.url()).toBe(
+        `${baseURL}/specialChars/%7B%7Bapp_name%7D%7D`,
+      )
+      expect(res!.status()).toBe(200)
+
+      const param = await page.getByTestId('special-param').textContent()
+      expect(param).toBe('{{app_name}}')
+    })
   })
 
   test.describe('Special characters in search params', () => {
