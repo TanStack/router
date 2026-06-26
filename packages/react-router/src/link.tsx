@@ -642,6 +642,9 @@ export function useLinkProps<
       // Target is the previous entry — pop instead of pushing to preserve forward
       // history and native scroll restoration (handled via the router's popstate).
       if (isBackNavigation) {
+        if (viewTransition !== undefined) {
+          router.shouldViewTransition = viewTransition
+        }
         router.history.back({ ignoreBlocker })
         return
       }

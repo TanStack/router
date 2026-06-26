@@ -43,6 +43,9 @@ function RootComponent() {
       <Link to="/contact" preferBack data-testid="preferback-contact">
         Prefer contact
       </Link>
+      <Link to="/" preferBack viewTransition data-testid="preferback-home-vt">
+        Back home (view transition)
+      </Link>
       <HookProbe />
       <Outlet />
     </>
@@ -168,6 +171,25 @@ describe('Link preferBack', () => {
     expect(backSpy).not.toHaveBeenCalled()
     // Fell back to a push: a new entry at index 2, not a pop to index 0.
     expect(router.history.location.state.__TSR_index).toBe(2)
+  })
+
+  test('carries the link\'s viewTransition intent onto the back navigation', async () => {
+    const { router } = setup(['/'])
+    await screen.findByText('IndexTitle')
+    await act(() => fireEvent.click(screen.getByText('About')))
+    await screen.findByText('AboutTitle')
+
+    const origBack = router.history.back.bind(router.history)
+    let vtAtBack: unknown = 'unset'
+    vi.spyOn(router.history, 'back').mockImplementation((opts) => {
+      vtAtBack = router.shouldViewTransition
+      return origBack(opts)
+    })
+
+    await act(() => fireEvent.click(screen.getByTestId('preferback-home-vt')))
+    await screen.findByText('IndexTitle')
+
+    expect(vtAtBack).toBe(true)
   })
 
   describe('match modes (pathname vs exact)', () => {

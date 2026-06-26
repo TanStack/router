@@ -75,11 +75,29 @@ export function useIsBackNavigation<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
+  const _options = React.useMemo(
+    () => options,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      router,
+      options.from,
+      options._fromLocation,
+      options.hash,
+      options.to,
+      options.search,
+      options.params,
+      options.state,
+      options.mask,
+      options.unsafeRelative,
+    ],
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   return React.useMemo(() => {
     const next = router.buildLocation({
       _fromLocation: currentLocation,
-      ...options,
+      ..._options,
     } as any)
     return resolveIsBackNavigation(router, currentLocation, next, match)
-  }, [router, currentLocation, options, match])
+  }, [router, currentLocation, _options, match])
 }
