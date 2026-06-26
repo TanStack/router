@@ -39,7 +39,7 @@
     "vue": "^3.5.16"
   },
   "devDependencies": {
-    "@rsbuild/core": "2.1.0-rc.0",
+    "@rsbuild/core": "^2.1.0",
     "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/router-plugin": "workspace:^",
     "@types/react": "^19.0.8",
