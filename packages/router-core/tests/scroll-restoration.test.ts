@@ -45,6 +45,103 @@ describe('setupScrollRestoration', () => {
 
     window.history.scrollRestoration = previousScrollRestoration
   })
+})
+
+describe('element scroll restoration', () => {
+  const SELECTOR = '[data-scroll-restoration-id="container"]'
+
+  function createScrollableElement() {
+    const el = document.createElement('div')
+    el.setAttribute('data-scroll-restoration-id', 'container')
+
+    // jsdom has no layout, so back scrollTop/scrollLeft with real storage and
+    // make `scrollTo` actually apply, so we can assert the user-visible result.
+    let top = 0
+    let left = 0
+    Object.defineProperty(el, 'scrollTop', {
+      configurable: true,
+      get: () => top,
+      set: (v: number) => {
+        top = v
+      },
+    })
+    Object.defineProperty(el, 'scrollLeft', {
+      configurable: true,
+      get: () => left,
+      set: (v: number) => {
+        left = v
+      },
+    })
+    const scrollTo = vi.fn((opts: { top?: number; left?: number }) => {
+      if (opts.top !== undefined) top = opts.top
+      if (opts.left !== undefined) left = opts.left
+    })
+    ;(el as any).scrollTo = scrollTo
+
+    document.body.appendChild(el)
+    return { el, scrollTo }
+  }
+
+  test('does not reset a restored element that is also in scrollToTopSelectors', async () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({ getParentRoute: () => rootRoute, path: '/' })
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+    })
+
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, pageRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      scrollRestoration: true,
+      // Key by pathname so revisiting `/page` restores its cached scroll.
+      getScrollRestorationKey: (location) => location.pathname,
+      scrollToTopSelectors: [SELECTOR],
+    })
+
+    await router.load()
+
+    const { el, scrollTo } = createScrollableElement()
+
+    const homeLocation = router.buildLocation({ to: '/' })
+    const pageLocation = router.buildLocation({ to: '/page' })
+
+    // Simulate the user scrolling the element on `/page`.
+    el.scrollTop = 100
+    el.dispatchEvent(new Event('scroll'))
+
+    // Navigating away snapshots the element's scroll position under `/page`.
+    router.emit({
+      type: 'onBeforeLoad',
+      fromLocation: pageLocation,
+      toLocation: homeLocation,
+      pathChanged: true,
+      hrefChanged: true,
+      hashChanged: false,
+    })
+
+    // Re-render `/page` with a scroll-resetting navigation (PUSH).
+    router._scroll.next = true
+    router.emit({
+      type: 'onRendered',
+      fromLocation: homeLocation,
+      toLocation: pageLocation,
+      pathChanged: true,
+      hrefChanged: true,
+      hashChanged: false,
+    })
+
+    // The element's restored scroll position must survive: the scroll-to-top
+    // fallback should not reset an element that was just restored.
+    expect(el.scrollTop).toBe(100)
+    expect(scrollTo).not.toHaveBeenCalledWith(
+      expect.objectContaining({ top: 0 }),
+    )
+
+    el.remove()
+  })
 
   test.each([
     ['omitted', undefined],

@@ -319,6 +319,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       const hashScrollIntoViewOptions =
         event.toLocation.state.__hashScrollIntoViewOptions ?? true
       let windowRestored = false
+      const restoredElements = new Set<Element>()
 
       if (shouldResetScroll) {
         const action = locationHistoryActions.get(event.toLocation)
@@ -351,6 +352,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
               if (element) {
                 element.scrollLeft = scrollX
                 element.scrollTop = scrollY
+                restoredElements.add(element)
               }
             }
           }
@@ -367,6 +369,13 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
           if (scrollToTopSelectors) {
             scrollToTopElements ??= getScrollToTopElements(scrollToTopSelectors)
             for (const element of scrollToTopElements) {
+              // A successful element scroll restoration must suppress the
+              // scroll-to-top fallback for that element, mirroring how
+              // `windowRestored` suppresses it for the window. Otherwise the
+              // just-restored scroll position is immediately reset to 0.
+              if (restoredElements.has(element)) {
+                continue
+              }
               element.scrollTo(scrollOptions)
             }
           }
