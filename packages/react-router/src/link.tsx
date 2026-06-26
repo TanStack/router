@@ -414,10 +414,8 @@ export function useLinkProps<
     return router.buildLocation(opts as any)
   }, [router, currentLocation, _options])
 
-  // History-aware links: when `preferBack` is set and the resolved target is
-  // the previous history entry, a primary click should go back rather than push.
-  // `true`/`'pathname'` match by pathname; `'exact'` also requires search.
-  // Reuses the already-built `next`, so no extra `buildLocation` call.
+  // History-aware: go back instead of pushing when the target is the previous
+  // entry. `'exact'` also matches search. Reuses `next`, so no extra buildLocation.
   const isBackNavigation =
     !!preferBack &&
     resolveIsBackNavigation(
@@ -641,10 +639,8 @@ export function useLinkProps<
         setIsTransitioning(false)
       })
 
-      // History-aware: the target is the previous history entry, so go back
-      // instead of pushing. This preserves forward history and the browser's
-      // native per-entry scroll restoration. Scroll/viewTransition behavior is
-      // handled by the router's existing popstate handling.
+      // Target is the previous entry — pop instead of pushing to preserve forward
+      // history and native scroll restoration (handled via the router's popstate).
       if (isBackNavigation) {
         router.history.back({ ignoreBlocker })
         return

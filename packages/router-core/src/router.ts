@@ -957,19 +957,17 @@ declare global {
 }
 
 /**
- * A snapshot of a history entry the router has visited, keyed by its
- * `__TSR_index`. Used to reconstruct navigation direction (e.g. whether a
- * link's target is the previous entry) since the browser only exposes the
- * current entry.
+ * A visited history entry keyed by its `__TSR_index`, used to resolve navigation
+ * direction (the browser only exposes the current entry).
  */
 export interface RouterHistoryEntry {
   /** The entry's `__TSR_index` in the history stack. */
   index: number
-  /** The parsed (basepath-stripped) pathname, comparable to `buildLocation().pathname`. */
+  /** Parsed (basepath-stripped) pathname, comparable to `buildLocation().pathname`. */
   pathname: string
-  /** The search string including the leading `?`, comparable to `buildLocation().searchStr`. */
+  /** Search string incl. leading `?`, comparable to `buildLocation().searchStr`. */
   searchStr: string
-  /** The full href (pathname + search + hash), without origin. */
+  /** Full href (pathname + search + hash), without origin. */
   href: string
 }
 
@@ -1025,13 +1023,9 @@ export class RouterCore<
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   pendingBuiltLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   /**
-   * In-memory map of visited history entries keyed by their `__TSR_index`.
-   *
-   * The browser only ever exposes the *current* history entry, so to answer
-   * "what was the previous entry?" (used by history-aware links via
-   * {@link getHistoryEntry}) the router records every location it commits,
-   * keyed by index. Maintained from {@link updateLatestLocation}, the single
-   * place `latestLocation` is recomputed from history.
+   * Visited history entries keyed by `__TSR_index` (recorded in
+   * {@link updateLatestLocation}), so the router can resolve the previous entry —
+   * which the browser doesn't expose. Read via {@link getHistoryEntry}.
    */
   historyEntries = new Map<number, RouterHistoryEntry>()
   basepath!: string
@@ -1266,14 +1260,9 @@ export class RouterCore<
       this.latestLocation,
     )
 
-    // Record the committed entry by its history index. `replace` keeps the same
-    // index, so it overwrites the slot in place; a push after going back reuses
-    // the truncated forward slot and overwrites it on the next call. The
-    // back-navigation decision only ever reads `index - 1` (always the true
-    // previous entry on the current linear branch), so stale higher indices
-    // left behind by truncation are harmless and need no pruning. We store the
-    // parsed (basepath-stripped) pathname so it compares directly against
-    // `buildLocation().pathname`.
+    // Record the committed entry by index. `replace` overwrites the same index;
+    // truncated forward entries are harmless since the back-decision only reads
+    // `index - 1`. Stored pathname/search compare directly with buildLocation().
     const index = this.latestLocation.state.__TSR_index ?? 0
     this.historyEntries.set(index, {
       index,
@@ -1284,12 +1273,9 @@ export class RouterCore<
   }
 
   /**
-   * Look up a previously-visited history entry by its `__TSR_index`.
-   *
-   * Returns `undefined` for entries the router has not seen — e.g. entries that
-   * existed before the app loaded (a fresh page load or deep link). Consumers
-   * such as history-aware links should degrade gracefully when this is
-   * `undefined`.
+   * Look up a visited history entry by its `__TSR_index`. Returns `undefined` for
+   * entries the router never recorded (e.g. a fresh page load or deep link), so
+   * consumers should degrade gracefully.
    */
   getHistoryEntry = (index: number): RouterHistoryEntry | undefined =>
     this.historyEntries.get(index)

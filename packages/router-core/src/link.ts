@@ -692,24 +692,9 @@ export interface LinkOptionsProps {
    */
   preloadIntentProximity?: number
   /**
-   * Makes the link history-aware: when its resolved target matches the previous
-   * history entry, clicking it calls `history.back()` instead of pushing a new
-   * entry. This preserves forward history and the browser's native per-entry
-   * scroll restoration (typical for "Back to X" links).
-   *
-   * Controls how the target is matched against the previous entry:
-   * - `false` (default) — disabled; behaves like a normal link.
-   * - `true` / `'pathname'` — match by **pathname** only, so a plain
-   *   `<Link to="/x" preferBack>` pops back to the previous `/x` entry and
-   *   restores its exact search params and scroll position.
-   * - `'exact'` — match by **pathname + search**, so the link only goes back
-   *   when its resolved search also equals the previous entry's.
-   *
-   * It is best-effort: the link falls back to a normal push (or replace, if `replace`
-   * is also set) when the target does not match the previous entry, or when the
-   * previous entry is unknown to the router (e.g. a fresh page load or deep link).
-   * The element always renders a real `<a href>`, so keyboard navigation, "copy
-   * link", and middle/modifier-click (open in new tab) keep working.
+   * Makes the link history-aware: when its target is the previous history entry,
+   * clicking goes back instead of pushing (preserving forward history + scroll).
+   * `'exact'` also requires search to match; falls back to a normal push otherwise.
    * @default false
    */
   preferBack?: boolean | 'pathname' | 'exact'

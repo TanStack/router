@@ -18,13 +18,9 @@ import type {
 export type BackNavigationMatch = 'pathname' | 'exact'
 
 /**
- * Decide whether navigating to `target` would land on the *previous* history
- * entry, meaning a `history.back()` is preferable to a push.
- *
- * Pure and framework-agnostic: it relies only on the router's in-memory
- * per-index entry tracking (`router.getHistoryEntry`). Returns `false` at the
- * start of history (index 0) and when the previous entry is unknown (e.g. a
- * fresh page load or deep link), so callers degrade gracefully to a normal push.
+ * Whether navigating to `target` lands on the previous history entry (so a
+ * `history.back()` is preferable to a push). Returns `false` at index 0 or when
+ * the previous entry is unknown, so callers degrade gracefully to a push.
  */
 export function resolveIsBackNavigation(
   router: AnyRouter,
@@ -41,22 +37,17 @@ export function resolveIsBackNavigation(
 }
 
 /**
- * Returns `true` when a link/navigation to the given options would resolve to
- * the *previous* history entry — i.e. clicking it should go "back" rather than
- * push a new entry.
+ * Returns `true` when navigating to the given options would resolve to the
+ * previous history entry — i.e. it should go "back" rather than push. The
+ * primitive behind `preferBack`, for use in custom links or buttons.
  *
- * This is the primitive behind the `preferBack` prop on `Link`. Use it directly
- * when building custom links or buttons that want the same history-aware
- * behavior. It returns `false` on the server and falls back to `false` whenever
- * the previous entry is unknown to the router, so it is always safe to branch on.
- *
- * Pass `match: 'exact'` to also require the search to match (defaults to
- * `'pathname'`, which restores the previous entry's exact search and scroll).
+ * Returns `false` on the server and whenever the previous entry is unknown, so
+ * it's always safe to branch on. Pass `match: 'exact'` to also require search to
+ * match (defaults to `'pathname'`).
  *
  * @example
  * const isBack = useIsBackNavigation({ to: '/issues' })
- * // isBack === true  -> call router.history.back()
- * // isBack === false -> navigate normally
+ * // isBack ? router.history.back() : router.navigate({ to: '/issues' })
  */
 export function useIsBackNavigation<
   TRouter extends AnyRouter = RegisteredRouter,

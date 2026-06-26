@@ -133,7 +133,7 @@ export type LinkOptions<
   preloadDelay?: number
   // If true, will render the link without the href attribute
   disabled?: boolean
-  // If true, clicking goes back via `history.back()` when the resolved target is the previous history entry (see "Direction-aware links" below)
+  // If true, clicking goes back via `history.back()` when the resolved target is the previous history entry (see "History-aware links" below)
   preferBack?: boolean
 }
 ```
