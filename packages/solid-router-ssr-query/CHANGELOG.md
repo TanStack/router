@@ -1,5 +1,11 @@
 # @tanstack/solid-router-ssr-query
 
+## 2.0.0-beta.24
+
+### Patch Changes
+
+- [#7702](https://github.com/TanStack/router/pull/7702) [`e56bb22`](https://github.com/TanStack/router/commit/e56bb22fc3924a6ba189955d27b4b8fa49ad5c92) - Upgrade `@tanstack/solid-query` to `6.0.0-beta.5`
+
 ## 2.0.0-beta.23
 
 ### Patch Changes
