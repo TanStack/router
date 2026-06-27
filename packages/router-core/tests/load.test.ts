@@ -373,6 +373,61 @@ describe('beforeLoad skip or exec', () => {
 
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
+
+  test('throws if rejected preload beforeLoad (error) when throwOnError is true', async () => {
+    const beforeLoadError = new Error('error')
+    const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
+      if (preload) throw beforeLoadError
+      await Promise.resolve()
+    })
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const router = setup({
+      beforeLoad,
+    })
+
+    await expect(
+      router.preloadRoute({ to: '/foo', throwOnError: true }),
+    ).rejects.toBe(beforeLoadError)
+
+    expect(consoleSpy).not.toHaveBeenCalled()
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    consoleSpy.mockRestore()
+  })
+
+  test('throws if rejected preload beforeLoad (notFound) when throwOnError is true', async () => {
+    const notFoundError = notFound()
+    const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
+      if (preload) throw notFoundError
+      await Promise.resolve()
+    })
+    const router = setup({
+      beforeLoad,
+    })
+
+    await expect(
+      router.preloadRoute({ to: '/foo', throwOnError: true }),
+    ).rejects.toBe(notFoundError)
+
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+  })
+
+  test('follows redirect if rejected preload beforeLoad (redirect) when throwOnError is true', async () => {
+    const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
+      if (preload) throw redirect({ to: '/bar' })
+      await Promise.resolve()
+    })
+    const router = setup({
+      beforeLoad,
+    })
+
+    await expect(
+      router.preloadRoute({ to: '/foo', throwOnError: true }),
+    ).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ routeId: '/bar' })]),
+    )
+
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('loader skip or exec', () => {
@@ -589,6 +644,61 @@ describe('loader skip or exec', () => {
     await router.navigate({ to: '/foo' })
 
     expect(loader).toHaveBeenCalledTimes(2)
+  })
+
+  test('throws if rejected preload (error) when throwOnError is true', async () => {
+    const loaderError = new Error('error')
+    const loader: Loader = vi.fn(async ({ preload }) => {
+      if (preload) throw loaderError
+      await Promise.resolve()
+    })
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const router = setup({
+      loader,
+    })
+
+    await expect(
+      router.preloadRoute({ to: '/foo', throwOnError: true }),
+    ).rejects.toBe(loaderError)
+
+    expect(consoleSpy).not.toHaveBeenCalled()
+    expect(loader).toHaveBeenCalledTimes(1)
+    consoleSpy.mockRestore()
+  })
+
+  test('throws if rejected preload (notFound) when throwOnError is true', async () => {
+    const notFoundError = notFound()
+    const loader: Loader = vi.fn(async ({ preload }) => {
+      if (preload) throw notFoundError
+      await Promise.resolve()
+    })
+    const router = setup({
+      loader,
+    })
+
+    await expect(
+      router.preloadRoute({ to: '/foo', throwOnError: true }),
+    ).rejects.toBe(notFoundError)
+
+    expect(loader).toHaveBeenCalledTimes(1)
+  })
+
+  test('follows redirect if rejected preload (redirect) when throwOnError is true', async () => {
+    const loader: Loader = vi.fn(async ({ preload }) => {
+      if (preload) throw redirect({ to: '/bar' })
+      await Promise.resolve()
+    })
+    const router = setup({
+      loader,
+    })
+
+    await expect(
+      router.preloadRoute({ to: '/foo', throwOnError: true }),
+    ).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ routeId: '/bar' })]),
+    )
+
+    expect(loader).toHaveBeenCalledTimes(1)
   })
 
   test('skip if pending preload (error)', async () => {
