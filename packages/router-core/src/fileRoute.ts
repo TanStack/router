@@ -78,7 +78,8 @@ export interface FileRouteOptions<
       TLoaderDeps,
       AnyContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      TRegister
     > {}
 
 export type CreateFileRoute<
@@ -148,7 +149,8 @@ export type LazyRouteOptions = Pick<
     AnyContext,
     AnyContext,
     AnyContext,
-    AnyContext
+    AnyContext,
+    Register
   >,
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >

@@ -10,4 +10,10 @@ const search = z.object({
 export const Route = createFileRoute('/search')({
   component: () => <div>Hello /search!</div>,
   validateSearch: search,
+  head: ({ matches }) => {
+    if (matches[0].routeId) {
+      // ...
+    }
+    return {}
+  },
 })
