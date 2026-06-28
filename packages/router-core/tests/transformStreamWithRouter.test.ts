@@ -20,6 +20,11 @@ import {
 import { createTestRouter } from './routerTestUtils'
 import type { RouterManagedTag } from '../src/manifest'
 
+const alwaysStream = {
+  render: true,
+  head: true,
+}
+
 const MAX_LEFTOVER_CHARS = 2048
 const MAX_ROUTER_HTML_CHARS = 16 * 1024 * 1024
 
@@ -206,7 +211,11 @@ describe('transformStreamWithRouter — real SSR scripts', () => {
   test('flushes stream-end scripts before body close when serialization finishes before transform starts', async () => {
     const streamed = createDeferred<string>()
     const router = createRealSsrRouter({ streamed: streamed.promise })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -247,7 +256,11 @@ describe('transformStreamWithRouter — real SSR scripts', () => {
   test('fuses the final resolver and stream-end scripts', async () => {
     const streamed = createControlledStream<string>()
     const router = createRealSsrRouter({ streamed: streamed.stream })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -286,7 +299,11 @@ describe('transformStreamWithRouter — real SSR scripts', () => {
   test('flushes stream-end scripts even when no barrier marker was emitted', async () => {
     const streamed = createDeferred<string>()
     const router = createRealSsrRouter({ streamed: streamed.promise })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -317,7 +334,11 @@ describe('transformStreamWithRouter — real SSR scripts', () => {
   test('keeps stream scripts before uppercase body close', async () => {
     const streamed = createDeferred<string>()
     const router = createRealSsrRouter({ streamed: streamed.promise })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()

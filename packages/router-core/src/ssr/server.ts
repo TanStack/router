@@ -24,3 +24,17 @@ export {
   getNormalizedURL,
   getOrigin,
 } from './ssr-server'
+export {
+  getDefaultSsrStreamingValue,
+  resolveSsrStreaming,
+  shouldStreamSsrChannel,
+} from './streaming'
+export type {
+  ResolvedSsrStreaming,
+  SsrStreamingChannel,
+  SsrStreamingConfig,
+  SsrStreamingOption,
+  SsrStreamingOverride,
+  SsrStreamingResolverContext,
+  SsrStreamingResolverResult,
+} from './streaming'

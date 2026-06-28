@@ -1,7 +1,6 @@
 import { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import * as Vue from 'vue'
 import { pipeToWebWritable, renderToString } from 'vue/server-renderer'
-import { isbot } from 'isbot'
 import {
   createSsrStreamResponse,
   transformReadableStreamWithRouter,
@@ -75,8 +74,9 @@ export const renderRouterToStream = async ({
   App: Component
 }) => {
   const app = Vue.createSSRApp(App, { router })
+  const shouldStreamRender = router.serverSsr!.shouldStream('render')
 
-  if (isbot(request.headers.get('User-Agent'))) {
+  if (!shouldStreamRender) {
     try {
       let cleanupAbortListener: (() => void) | undefined
       const abortPromise = new Promise<never>((_, reject) => {
@@ -185,18 +185,6 @@ export const renderRouterToStream = async ({
     },
   })
 
-  // `pipeToWebWritable` returns void (see @vue/server-renderer). Pass a
-  // proxy writable so request aborts can abort the real TransformStream
-  // writer even while Vue holds a lock on the proxy writable.
-  try {
-    pipeToWebWritable(app, {}, vueWritable)
-  } catch (err) {
-    console.error('Error in Vue pipeToWebWritable:', err)
-    // Setup failed before any pipe was wired; abort writable so the
-    // readable side errors instead of hanging until the lifetime timeout.
-    abortVuePipe(err)
-  }
-
   if (request.signal.aborted) {
     abortVuePipe(request.signal.reason)
   } else {
@@ -205,6 +193,20 @@ export const renderRouterToStream = async ({
     router.serverSsr?.onCleanup(() => {
       request.signal.removeEventListener('abort', onRequestAbort)
     })
+  }
+
+  // `pipeToWebWritable` returns void (see @vue/server-renderer). Pass a
+  // proxy writable so request aborts can abort the real TransformStream
+  // writer even while Vue holds a lock on the proxy writable.
+  if (!request.signal.aborted) {
+    try {
+      pipeToWebWritable(app, {}, vueWritable)
+    } catch (err) {
+      console.error('Error in Vue pipeToWebWritable:', err)
+      // Setup failed before any pipe was wired; abort writable so the
+      // readable side errors instead of hanging until the lifetime timeout.
+      abortVuePipe(err)
+    }
   }
 
   const doctypedStream = prependDoctype(readable)

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SyncOnlyRouteImport } from './routes/sync-only'
+import { Route as StreamingPolicyRouteImport } from './routes/streaming-policy'
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as SlowRenderRouteImport } from './routes/slow-render'
 import { Route as QueryHeavyRouteImport } from './routes/query-heavy'
@@ -24,6 +25,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const SyncOnlyRoute = SyncOnlyRouteImport.update({
   id: '/sync-only',
   path: '/sync-only',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StreamingPolicyRoute = StreamingPolicyRouteImport.update({
+  id: '/streaming-policy',
+  path: '/streaming-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StreamRoute = StreamRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/query-heavy': typeof QueryHeavyRoute
   '/slow-render': typeof SlowRenderRoute
   '/stream': typeof StreamRoute
+  '/streaming-policy': typeof StreamingPolicyRoute
   '/sync-only': typeof SyncOnlyRoute
 }
 export interface FileRoutesByTo {
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/query-heavy': typeof QueryHeavyRoute
   '/slow-render': typeof SlowRenderRoute
   '/stream': typeof StreamRoute
+  '/streaming-policy': typeof StreamingPolicyRoute
   '/sync-only': typeof SyncOnlyRoute
 }
 export interface FileRoutesById {
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/query-heavy': typeof QueryHeavyRoute
   '/slow-render': typeof SlowRenderRoute
   '/stream': typeof StreamRoute
+  '/streaming-policy': typeof StreamingPolicyRoute
   '/sync-only': typeof SyncOnlyRoute
 }
 export interface FileRouteTypes {
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/query-heavy'
     | '/slow-render'
     | '/stream'
+    | '/streaming-policy'
     | '/sync-only'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/query-heavy'
     | '/slow-render'
     | '/stream'
+    | '/streaming-policy'
     | '/sync-only'
   id:
     | '__root__'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/query-heavy'
     | '/slow-render'
     | '/stream'
+    | '/streaming-policy'
     | '/sync-only'
   fileRoutesById: FileRoutesById
 }
@@ -170,6 +182,7 @@ export interface RootRouteChildren {
   QueryHeavyRoute: typeof QueryHeavyRoute
   SlowRenderRoute: typeof SlowRenderRoute
   StreamRoute: typeof StreamRoute
+  StreamingPolicyRoute: typeof StreamingPolicyRoute
   SyncOnlyRoute: typeof SyncOnlyRoute
 }
 
@@ -180,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/sync-only'
       fullPath: '/sync-only'
       preLoaderRoute: typeof SyncOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/streaming-policy': {
+      id: '/streaming-policy'
+      path: '/streaming-policy'
+      fullPath: '/streaming-policy'
+      preLoaderRoute: typeof StreamingPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stream': {
@@ -266,6 +286,7 @@ const rootRouteChildren: RootRouteChildren = {
   QueryHeavyRoute: QueryHeavyRoute,
   SlowRenderRoute: SlowRenderRoute,
   StreamRoute: StreamRoute,
+  StreamingPolicyRoute: StreamingPolicyRoute,
   SyncOnlyRoute: SyncOnlyRoute,
 }
 export const routeTree = rootRouteImport

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as StreamingPolicyRouteImport } from './routes/streaming-policy'
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as RawStreamRouteImport } from './routes/raw-stream'
@@ -73,6 +74,11 @@ import { Route as RedirectTargetServerFnViaBeforeLoadRouteImport } from './route
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StreamingPolicyRoute = StreamingPolicyRouteImport.update({
+  id: '/streaming-policy',
+  path: '/streaming-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StreamRoute = StreamRouteImport.update({
@@ -399,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/streaming-policy': typeof StreamingPolicyRoute
   '/users': typeof UsersRouteWithChildren
   '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
@@ -455,6 +462,7 @@ export interface FileRoutesByTo {
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/streaming-policy': typeof StreamingPolicyRoute
   '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
@@ -515,6 +523,7 @@ export interface FileRoutesById {
   '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/streaming-policy': typeof StreamingPolicyRoute
   '/users': typeof UsersRouteWithChildren
   '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
@@ -578,6 +587,7 @@ export interface FileRouteTypes {
     | '/raw-stream'
     | '/scripts'
     | '/stream'
+    | '/streaming-policy'
     | '/users'
     | '/not-found/parent-boundary'
     | '/specialChars/malformed'
@@ -634,6 +644,7 @@ export interface FileRouteTypes {
     | '/links'
     | '/scripts'
     | '/stream'
+    | '/streaming-policy'
     | '/not-found/parent-boundary'
     | '/specialChars/malformed'
     | '/api/users'
@@ -693,6 +704,7 @@ export interface FileRouteTypes {
     | '/raw-stream'
     | '/scripts'
     | '/stream'
+    | '/streaming-policy'
     | '/users'
     | '/not-found/parent-boundary'
     | '/specialChars/malformed'
@@ -756,6 +768,7 @@ export interface RootRouteChildren {
   RawStreamRoute: typeof RawStreamRouteWithChildren
   ScriptsRoute: typeof ScriptsRoute
   StreamRoute: typeof StreamRoute
+  StreamingPolicyRoute: typeof StreamingPolicyRoute
   UsersRoute: typeof UsersRouteWithChildren
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
   MultiCookieRedirectTargetRoute: typeof MultiCookieRedirectTargetRoute
@@ -774,6 +787,13 @@ declare module '@tanstack/solid-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/streaming-policy': {
+      id: '/streaming-policy'
+      path: '/streaming-policy'
+      fullPath: '/streaming-policy'
+      preLoaderRoute: typeof StreamingPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stream': {
@@ -1404,6 +1424,7 @@ const rootRouteChildren: RootRouteChildren = {
   RawStreamRoute: RawStreamRouteWithChildren,
   ScriptsRoute: ScriptsRoute,
   StreamRoute: StreamRoute,
+  StreamingPolicyRoute: StreamingPolicyRoute,
   UsersRoute: UsersRouteWithChildren,
   ApiUsersRoute: ApiUsersRouteWithChildren,
   MultiCookieRedirectTargetRoute: MultiCookieRedirectTargetRoute,

@@ -111,6 +111,7 @@ import type {
   AnySerializationAdapter,
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
+import type { SsrStreamingChannel } from './ssr/streaming'
 import type { GetStoreConfig, RouterStores } from './stores'
 
 export type ControllablePromise<T = any> = Promise<T> & {
@@ -791,6 +792,8 @@ export type ClearCacheFn<TRouter extends AnyRouter> = (opts?: {
 }) => void
 
 export interface ServerSsr {
+  /** Framework-only: whether the named SSR channel may stream. */
+  shouldStream: (channel: SsrStreamingChannel) => boolean
   /** Framework-only: injects router-owned HTML into the SSR stream. */
   injectHtml: (html: string) => void
   /** Framework-only: injects a router-owned script tag into the SSR stream. */

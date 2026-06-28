@@ -1,5 +1,4 @@
 import * as Solid from 'solid-js/web'
-import { isbot } from 'isbot'
 import {
   createSsrStreamResponse,
   transformReadableStreamWithRouter,
@@ -11,8 +10,9 @@ import type { AnyRouter } from '@tanstack/router-core'
 
 const noop = () => {}
 
-// Bot responses wait for the server renderer before streaming. If the request
-// disconnects during that wait, unblock so the pipe can abort and clean up.
+// Full-document responses wait for the server renderer before streaming. If
+// the request disconnects during that wait, unblock so the pipe can abort and
+// clean up.
 async function waitForReadyOrAbort(
   ready: Promise<unknown>,
   signal: AbortSignal,
@@ -44,6 +44,7 @@ export const renderRouterToStream = async ({
   responseHeaders: Headers
   children: () => JSXElement
 }) => {
+  const shouldStreamRender = router.serverSsr!.shouldStream('render')
   const { writable, readable } = new TransformStream()
 
   const docType = Solid.ssr('<!DOCTYPE html>')
@@ -121,7 +122,7 @@ export const renderRouterToStream = async ({
     })
   }
 
-  if (isbot(request.headers.get('User-Agent'))) {
+  if (!shouldStreamRender) {
     await waitForReadyOrAbort(
       Promise.resolve(stream as unknown),
       request.signal,

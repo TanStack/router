@@ -94,8 +94,7 @@
   "dependencies": {
     "@tanstack/history": "workspace:*",
     "@tanstack/react-store": "^0.9.3",
-    "@tanstack/router-core": "workspace:*",
-    "isbot": "^5.1.22"
+    "@tanstack/router-core": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",

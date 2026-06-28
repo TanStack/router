@@ -184,6 +184,7 @@
   "dependencies": {
     "@tanstack/history": "workspace:*",
     "cookie-es": "^3.0.0",
+    "isbot": "^5.1.22",
     "seroval": "^1.5.4",
     "seroval-plugins": "^1.5.4"
   },

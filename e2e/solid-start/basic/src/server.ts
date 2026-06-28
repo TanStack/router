@@ -1,11 +1,69 @@
-// DO NOT DELETE THIS FILE!!!
-// This file is a good smoke test to make sure the custom server entry is working
-import handler from '@tanstack/solid-start/server-entry'
+import {
+  createStartHandler,
+  defaultStreamHandler,
+} from '@tanstack/solid-start/server'
+import defaultServerEntry, {
+  createServerEntry,
+} from '@tanstack/solid-start/server-entry'
+import type { SsrStreamingResolverResult } from '@tanstack/solid-start/server'
+
+type SsrStreamingOverride = {
+  render?: boolean
+  head?: boolean
+}
 
 console.log("[server-entry]: using custom server entry in 'src/server.ts'")
 
-export default {
-  fetch(request: Request) {
-    return handler.fetch(request)
-  },
+function getStreamingPolicy(request: Request): SsrStreamingResolverResult {
+  const url = new URL(request.url)
+
+  switch (url.searchParams.get('streaming')) {
+    case 'all':
+      return {
+        render: true,
+        head: true,
+      }
+    case 'none':
+      return {
+        render: false,
+      }
+    case 'render-only':
+      return {
+        render: true,
+      }
+    case 'head-only':
+      return {
+        render: false,
+        head: true,
+      }
+    default:
+      return undefined
+  }
 }
+
+function getStreamingOverride(
+  request: Request,
+): SsrStreamingOverride | undefined {
+  return getStreamingPolicy(request)
+}
+
+const handler = createStartHandler({
+  handler: defaultStreamHandler,
+  ssr: {
+    streaming: ({ request }) => getStreamingPolicy(request),
+  },
+})
+
+export default createServerEntry({
+  fetch(request) {
+    if (process.env.STREAMING_SSR_ENTRY_FORM === 'default-entry') {
+      return defaultServerEntry.fetch(request, {
+        ssr: {
+          streaming: getStreamingOverride(request),
+        },
+      } as any)
+    }
+
+    return handler(request)
+  },
+})

@@ -7,6 +7,11 @@ import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { transformStreamWithRouter } from '../src/ssr/transformStreamWithRouter'
 import { createTestRouter } from './routerTestUtils'
 
+const alwaysStream = {
+  render: true,
+  head: true,
+}
+
 /**
  * CI-stable tests for the SSR cleanup contract. These do not rely on GC
  * timing; they exercise the observable behavior:
@@ -41,7 +46,11 @@ function deferred<T>() {
 describe('serverSsr.cleanup', () => {
   test('onCleanup listeners run exactly once', () => {
     const router = buildRouter()
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     let calls = 0
     router.serverSsr!.onCleanup(() => {
@@ -56,7 +65,11 @@ describe('serverSsr.cleanup', () => {
 
   test('listener that re-enters cleanup() does not re-fire siblings', () => {
     const router = buildRouter()
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     const order: Array<string> = []
     router.serverSsr!.onCleanup(() => {
@@ -74,7 +87,11 @@ describe('serverSsr.cleanup', () => {
 
   test('listener errors are swallowed and do not stop subsequent listeners', () => {
     const router = buildRouter()
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     const order: Array<string> = []
     router.serverSsr!.onCleanup(() => {
@@ -93,7 +110,11 @@ describe('serverSsr.cleanup', () => {
   test('cleanup before pending serialization resolves drops late scripts safely', async () => {
     const value = deferred<string>()
     const router = buildRouter({ value: value.promise })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -109,7 +130,11 @@ describe('serverSsr.cleanup', () => {
   test('serialization completion does not clear render-finished listeners', async () => {
     const value = deferred<string>()
     const router = buildRouter({ value: value.promise })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -136,7 +161,11 @@ describe('serverSsr.cleanup', () => {
   test('render-finished listeners can synchronously finish serialization', async () => {
     const value = deferred<string>()
     const router = buildRouter({ value: value.promise })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -159,7 +188,11 @@ describe('serverSsr.cleanup', () => {
 
   test('late serialization listener runs safely and returns unsubscribe', async () => {
     const router = buildRouter()
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -176,7 +209,11 @@ describe('serverSsr.cleanup', () => {
 
   test('stream fast path only reserves when no SSR work is pending', async () => {
     const router = buildRouter()
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -193,7 +230,11 @@ describe('serverSsr.cleanup', () => {
   test('stream fast path rejects while SSR work is pending', async () => {
     const value = deferred<string>()
     const router = buildRouter({ value: value.promise })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -221,7 +262,11 @@ describe('serverSsr.cleanup', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const router = buildRouter()
     try {
-      attachRouterServerSsrUtils({ router, manifest: undefined })
+      attachRouterServerSsrUtils({
+        router,
+        manifest: undefined,
+        streaming: alwaysStream,
+      })
 
       const calls: Array<string> = []
       router.serverSsr!.onInjectedHtml(() => {
@@ -253,7 +298,11 @@ describe('serverSsr.cleanup', () => {
       ],
     }
 
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
     expect(calls).toEqual(['attach'])
 
     router.serverSsr!.cleanup()
