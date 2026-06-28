@@ -28,9 +28,7 @@ type DocumentWithViewTransition = Document & {
   }
 }
 
-let startViewTransitionDescriptor:
-  | PropertyDescriptor
-  | undefined
+let startViewTransitionDescriptor: PropertyDescriptor | undefined
 let startViewTransitionMock: ReturnType<typeof vi.fn>
 
 beforeEach(() => {

@@ -32,18 +32,16 @@ test.describe('SSR hydration capped route assets', () => {
     await page.goto('/hydration-capped-assets/child')
     await page.waitForLoadState('networkidle')
 
-    await expect(
-      page.getByTestId('issue-7-parent-not-found'),
-    ).toBeInViewport()
+    await expect(page.getByTestId('issue-7-parent-not-found')).toBeInViewport()
     await expect(
       page.getByTestId('issue-7-child-route-component'),
     ).not.toBeInViewport()
 
-    await expect(page.locator('meta[name="issue-7-child-head"]')).toHaveCount(
-      0,
-    )
+    await expect(page.locator('meta[name="issue-7-child-head"]')).toHaveCount(0)
     expect(
-      await page.evaluate(() => Boolean((window as any).__ISSUE_7_CHILD_SCRIPT)),
+      await page.evaluate(() =>
+        Boolean((window as any).__ISSUE_7_CHILD_SCRIPT),
+      ),
     ).toBe(false)
   })
 })

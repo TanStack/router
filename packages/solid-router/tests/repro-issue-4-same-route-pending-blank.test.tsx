@@ -82,9 +82,7 @@ test('same-route pending replacement without fallback keeps stale content until 
   expect(await screen.findByText('Page 1')).toBeInTheDocument()
 
   const currentMatch = () =>
-    router.stores.matches
-      .get()
-      .find((match) => match.routeId === postsRoute.id)
+    router.stores.matches.get().find((match) => match.routeId === postsRoute.id)
   const navigation = router.navigate({
     to: '/posts',
     search: { page: 2 },
@@ -96,12 +94,14 @@ test('same-route pending replacement without fallback keeps stale content until 
       const current = currentMatch()
       expect(current).toBeDefined()
       expect(
-        router.stores.pendingMatches.get().some(
-          (match) =>
-            match.routeId === postsRoute.id &&
-            match.status === 'pending' &&
-            match.id !== current?.id,
-        ),
+        router.stores.pendingMatches
+          .get()
+          .some(
+            (match) =>
+              match.routeId === postsRoute.id &&
+              match.status === 'pending' &&
+              match.id !== current?.id,
+          ),
       ).toBe(true)
     },
     { timeout: 1000 },

@@ -48,8 +48,9 @@ describe('issue 9 redirect status overwrite', () => {
     await router.load()
 
     expect(router.statusCode).toBe(404)
-    expect(router.state.matches.some((match) => match.status === 'notFound'))
-      .toBe(true)
+    expect(
+      router.state.matches.some((match) => match.status === 'notFound'),
+    ).toBe(true)
 
     await router.navigate({ to: '/redirect' })
 
