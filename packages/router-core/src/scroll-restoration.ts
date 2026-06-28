@@ -319,6 +319,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       const hashScrollIntoViewOptions =
         event.toLocation.state.__hashScrollIntoViewOptions ?? true
       let windowRestored = false
+      let restoredElements: Set<Element> | undefined
 
       if (shouldResetScroll) {
         const action = locationHistoryActions.get(event.toLocation)
@@ -351,6 +352,8 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
               if (element) {
                 element.scrollLeft = scrollX
                 element.scrollTop = scrollY
+                restoredElements ??= new Set()
+                restoredElements.add(element)
               }
             }
           }
@@ -367,6 +370,9 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
           if (scrollToTopSelectors) {
             scrollToTopElements ??= getScrollToTopElements(scrollToTopSelectors)
             for (const element of scrollToTopElements) {
+              if (restoredElements?.has(element)) {
+                continue
+              }
               element.scrollTo(scrollOptions)
             }
           }
