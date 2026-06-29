@@ -17,12 +17,21 @@ const devServerTimeout = 30_000
 class DevServer {
   readonly url: string
   private stopPromise: Promise<void> | null = null
+  private startupError: Error | null = null
+  private readonly startupErrorPromise: Promise<never>
 
   private constructor(
     readonly port: number,
     private readonly childProcess: ReturnType<typeof spawn>,
   ) {
     this.url = `http://localhost:${port}`
+    this.startupErrorPromise = new Promise<never>((_, reject) => {
+      this.childProcess.once('error', (error) => {
+        this.startupError = error
+        reject(this.createStartupError(error))
+      })
+    })
+    this.startupErrorPromise.catch(() => {})
   }
 
   static async start(port: number): Promise<DevServer> {
@@ -53,6 +62,8 @@ class DevServer {
     const startedAt = Date.now()
 
     while (Date.now() - startedAt <= timeoutMs) {
+      this.throwIfStartupFailed()
+
       if (this.childProcess.exitCode !== null) {
         throw new Error(
           `Dev server exited before responding: code=${this.childProcess.exitCode} signal=${this.childProcess.signalCode}`,
@@ -60,20 +71,44 @@ class DevServer {
       }
 
       try {
-        const res = await fetch(this.url, {
-          signal: AbortSignal.timeout(1000),
-        })
+        const res = await this.awaitWithStartupFailure(
+          fetch(this.url, {
+            signal: AbortSignal.timeout(1000),
+          }),
+        )
         if (res.ok) {
           return
         }
       } catch {
+        this.throwIfStartupFailed()
         // ignore
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 200))
+      await this.awaitWithStartupFailure(this.delay(200))
     }
 
     throw new Error(`Timed out waiting for ${this.url}`)
+  }
+
+  private async awaitWithStartupFailure<T>(promise: Promise<T>): Promise<T> {
+    this.throwIfStartupFailed()
+    return await Promise.race([promise, this.startupErrorPromise])
+  }
+
+  private throwIfStartupFailed(): void {
+    if (this.startupError) {
+      throw this.createStartupError(this.startupError)
+    }
+  }
+
+  private createStartupError(error: Error): Error {
+    return new Error('Dev server failed to start', {
+      cause: error,
+    })
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise<void>((resolve) => setTimeout(resolve, ms))
   }
 
   async stop(): Promise<void> {
