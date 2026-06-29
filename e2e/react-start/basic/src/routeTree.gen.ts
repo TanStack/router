@@ -26,6 +26,7 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SpecialCharsRouteRouteImport } from './routes/specialChars/route'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
+import { Route as HydrationCappedAssetsRouteRouteImport } from './routes/hydration-capped-assets/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
@@ -53,6 +54,7 @@ import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-lo
 import { Route as NotFoundViaBeforeLoadTargetRootRouteImport } from './routes/not-found/via-beforeLoad-target-root'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
 import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
+import { Route as HydrationCappedAssetsChildRouteImport } from './routes/hydration-capped-assets/child'
 import { Route as ApiUsersRouteImport } from './routes/api.users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as SpecialCharsMalformedRouteRouteImport } from './routes/specialChars/malformed/route'
@@ -165,6 +167,12 @@ const NotFoundRouteRoute = NotFoundRouteRouteImport.update({
   path: '/not-found',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HydrationCappedAssetsRouteRoute =
+  HydrationCappedAssetsRouteRouteImport.update({
+    id: '/hydration-capped-assets',
+    path: '/hydration-capped-assets',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -304,6 +312,12 @@ const MultiCookieRedirectTargetRoute =
     id: '/multi-cookie-redirect/target',
     path: '/multi-cookie-redirect/target',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const HydrationCappedAssetsChildRoute =
+  HydrationCappedAssetsChildRouteImport.update({
+    id: '/child',
+    path: '/child',
+    getParentRoute: () => HydrationCappedAssetsRouteRoute,
   } as any)
 const ApiUsersRoute = ApiUsersRouteImport.update({
   id: '/api/users',
@@ -448,6 +462,7 @@ const NotFoundDeepBCDRoute = NotFoundDeepBCDRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/hydration-capped-assets': typeof HydrationCappedAssetsRouteRouteWithChildren
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
@@ -468,6 +483,7 @@ export interface FileRoutesByFullPath {
   '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/hydration-capped-assets/child': typeof HydrationCappedAssetsChildRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
@@ -518,6 +534,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/hydration-capped-assets': typeof HydrationCappedAssetsRouteRouteWithChildren
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/async-scripts': typeof AsyncScriptsRoute
   '/client-only': typeof ClientOnlyRoute
@@ -531,6 +548,7 @@ export interface FileRoutesByTo {
   '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/hydration-capped-assets/child': typeof HydrationCappedAssetsChildRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
@@ -580,6 +598,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/hydration-capped-assets': typeof HydrationCappedAssetsRouteRouteWithChildren
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
@@ -602,6 +621,7 @@ export interface FileRoutesById {
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/hydration-capped-assets/child': typeof HydrationCappedAssetsChildRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
@@ -654,6 +674,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/hydration-capped-assets'
     | '/not-found'
     | '/search-params'
     | '/specialChars'
@@ -674,6 +695,7 @@ export interface FileRouteTypes {
     | '/not-found/parent-boundary'
     | '/specialChars/malformed'
     | '/api/users'
+    | '/hydration-capped-assets/child'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-beforeLoad-target-root'
@@ -724,6 +746,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/hydration-capped-assets'
     | '/specialChars'
     | '/async-scripts'
     | '/client-only'
@@ -737,6 +760,7 @@ export interface FileRouteTypes {
     | '/type-only-reexport'
     | '/specialChars/malformed'
     | '/api/users'
+    | '/hydration-capped-assets/child'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-beforeLoad-target-root'
@@ -785,6 +809,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/hydration-capped-assets'
     | '/not-found'
     | '/search-params'
     | '/specialChars'
@@ -807,6 +832,7 @@ export interface FileRouteTypes {
     | '/specialChars/malformed'
     | '/_layout/_layout-2'
     | '/api/users'
+    | '/hydration-capped-assets/child'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-beforeLoad-target-root'
@@ -858,6 +884,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HydrationCappedAssetsRouteRoute: typeof HydrationCappedAssetsRouteRouteWithChildren
   NotFoundRouteRoute: typeof NotFoundRouteRouteWithChildren
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   SpecialCharsRouteRoute: typeof SpecialCharsRouteRouteWithChildren
@@ -1003,6 +1030,13 @@ declare module '@tanstack/react-router' {
       path: '/not-found'
       fullPath: '/not-found'
       preLoaderRoute: typeof NotFoundRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hydration-capped-assets': {
+      id: '/hydration-capped-assets'
+      path: '/hydration-capped-assets'
+      fullPath: '/hydration-capped-assets'
+      preLoaderRoute: typeof HydrationCappedAssetsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -1194,6 +1228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MultiCookieRedirectTargetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hydration-capped-assets/child': {
+      id: '/hydration-capped-assets/child'
+      path: '/child'
+      fullPath: '/hydration-capped-assets/child'
+      preLoaderRoute: typeof HydrationCappedAssetsChildRouteImport
+      parentRoute: typeof HydrationCappedAssetsRouteRoute
+    }
     '/api/users': {
       id: '/api/users'
       path: '/api/users'
@@ -1378,6 +1419,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface HydrationCappedAssetsRouteRouteChildren {
+  HydrationCappedAssetsChildRoute: typeof HydrationCappedAssetsChildRoute
+}
+
+const HydrationCappedAssetsRouteRouteChildren: HydrationCappedAssetsRouteRouteChildren =
+  {
+    HydrationCappedAssetsChildRoute: HydrationCappedAssetsChildRoute,
+  }
+
+const HydrationCappedAssetsRouteRouteWithChildren =
+  HydrationCappedAssetsRouteRoute._addFileChildren(
+    HydrationCappedAssetsRouteRouteChildren,
+  )
 
 interface NotFoundDeepBCRouteRouteChildren {
   NotFoundDeepBCDRoute: typeof NotFoundDeepBCDRoute
@@ -1630,6 +1685,7 @@ const FooBarQuxHereRouteWithChildren = FooBarQuxHereRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HydrationCappedAssetsRouteRoute: HydrationCappedAssetsRouteRouteWithChildren,
   NotFoundRouteRoute: NotFoundRouteRouteWithChildren,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   SpecialCharsRouteRoute: SpecialCharsRouteRouteWithChildren,
