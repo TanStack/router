@@ -1,6 +1,13 @@
 import { expect, test, testWithHydration } from './fixtures'
+import { expectQueryHeavyRouteToStream } from '../../../streaming-ssr-assertions'
 
 test.describe('Query heavy route (9 useSuspenseQuery)', () => {
+  test('streams fast query reveals before slow queries resolve', async ({
+    baseURL,
+  }) => {
+    await expectQueryHeavyRouteToStream(baseURL)
+  })
+
   test('all queries resolve with server data', async ({ page }) => {
     await page.goto('/query-heavy')
 

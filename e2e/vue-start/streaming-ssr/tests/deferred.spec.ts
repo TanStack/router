@@ -1,6 +1,13 @@
 import { expect, test, testWithHydration } from './fixtures'
+import { expectDeferredRouteToStream } from '../../../streaming-ssr-assertions'
 
 test.describe('Deferred data streaming', () => {
+  test('streams the shell before deferred data resolves', async ({
+    baseURL,
+  }) => {
+    await expectDeferredRouteToStream(baseURL)
+  })
+
   test('shows immediate data right away and deferred data after loading', async ({
     page,
   }) => {
