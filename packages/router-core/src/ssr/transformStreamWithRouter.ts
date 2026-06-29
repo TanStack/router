@@ -785,10 +785,15 @@ function makeMainStream(
 
         const chunkString = leftover ? leftover + text : text
 
-        // If we already saw </body>, everything else is tail. Keep it bounded
-        // and held until router scripts are ready so injection remains before </body>.
-        if (state >= MergeState.HoldingTail) {
-          appendTail(chunkString)
+        // If we already saw </body>, keep the captured close tail held so
+        // router scripts can still land before it. Later app chunks can stream
+        // before that held tail; Solid uses this shape for Suspense reveal
+        // templates/scripts emitted after the document shell.
+        if (state === MergeState.HoldingTail) {
+          flushPendingRouterHtml()
+          if (cleanedUp || isDone()) return
+          writeChunk(chunkString)
+          if (cleanedUp || isDone()) return
           leftover = ''
           continue
         }

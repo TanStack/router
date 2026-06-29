@@ -918,6 +918,47 @@ describe('transformStreamWithRouter — cleanup side-effects', () => {
       full.indexOf('</body>'),
     )
   })
+
+  test('streams app chunks emitted after the document close before final tail', async () => {
+    const { router, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
+
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+    const reader = (out as any).getReader()
+
+    upstream.push('<html><body><main>shell</main></body></html>')
+
+    const shell = await reader.read()
+    expect(shell.done).toBe(false)
+    const shellText = Buffer.from(shell.value).toString('utf8')
+    expect(shellText).toContain('<main>shell</main>')
+    expect(shellText).not.toContain('</body>')
+
+    upstream.push(
+      '<template id="fast">fast</template><script>$df("fast")</script>',
+    )
+
+    const reveal = await reader.read()
+    expect(reveal.done).toBe(false)
+    const revealText = Buffer.from(reveal.value).toString('utf8')
+    expect(revealText).toContain('<template id="fast">fast</template>')
+    expect(revealText).not.toContain('</body>')
+
+    upstream.close()
+    finishSerialization()
+
+    let rest = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      rest += Buffer.from(value).toString('utf8')
+    }
+
+    const full = shellText + revealText + rest
+    expect(full.indexOf('<template id="fast">fast</template>')).toBeLessThan(
+      full.indexOf('</body>'),
+    )
+  })
 })
 
 describe('transformStreamWithRouter — injected HTML ordering', () => {
