@@ -1,11 +1,7 @@
 import { expect } from '@playwright/test'
 
 type DeferredRouteMarker = 'immediate' | 'fallback' | 'deferred' | 'documentEnd'
-type QueryHeavyRouteMarker =
-  | 'shell'
-  | 'fastQuery'
-  | 'slowQuery'
-  | 'documentEnd'
+type QueryHeavyRouteMarker = 'shell' | 'fastQuery' | 'slowQuery' | 'documentEnd'
 
 type RequiredDeferredRouteMarker = Exclude<DeferredRouteMarker, 'fallback'>
 
