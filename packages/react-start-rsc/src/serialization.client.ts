@@ -21,6 +21,8 @@ type SerializedRsc = {
   kind: 'renderable' | 'composite'
   stream: ReadableStream<Uint8Array>
   slotUsagesStream?: ReadableStream<RscSlotUsageEvent>
+  cssHrefs?: Array<string>
+  jsPreloads?: Array<string>
 }
 
 const adapter = createSerializationAdapter({
@@ -30,12 +32,21 @@ const adapter = createSerializationAdapter({
     throw new Error('RSC cannot be serialized on client')
   },
   fromSerializable: (value: SerializedRsc): AnyCompositeComponent => {
+    // Rsbuild SSR sends asset deps with each serialized RSC so the client can
+    // preload only if that specific stream is rendered. When absent, decode
+    // starts eagerly and discovers assets from the Flight payload as before.
+    const options = {
+      cssHrefs: value.cssHrefs,
+      jsPreloads: value.jsPreloads,
+    }
+
     if (value.kind === 'renderable') {
-      return createRenderableFromStream(value.stream)
+      return createRenderableFromStream(value.stream, options)
     }
 
     return createCompositeFromStream(value.stream, {
       slotUsagesStream: value.slotUsagesStream,
+      ...options,
     })
   },
 })

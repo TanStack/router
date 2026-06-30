@@ -1,14 +1,10 @@
-import { resolveViteId } from '../utils'
+import { createIdFilter, resolveViteId } from '../utils'
 import type { Plugin } from 'vite'
 
 type VirtualModuleLoadHandler = (
   this: any,
   id: string,
 ) => string | null | undefined | Promise<string | null | undefined>
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 export function createVirtualModule(opts: {
   name: string
@@ -31,7 +27,7 @@ export function createVirtualModule(opts: {
     enforce: opts.enforce,
     sharedDuringBuild: opts.sharedDuringBuild,
     resolveId: {
-      filter: { id: new RegExp(escapeRegExp(opts.moduleId)) },
+      filter: { id: createIdFilter([opts.moduleId]) },
       handler(id) {
         if (id === opts.moduleId) {
           return resolvedId
@@ -41,7 +37,7 @@ export function createVirtualModule(opts: {
       },
     },
     load: {
-      filter: { id: new RegExp(escapeRegExp(resolvedId)) },
+      filter: { id: createIdFilter([resolvedId]) },
       handler(id) {
         if (id !== resolvedId) {
           return undefined

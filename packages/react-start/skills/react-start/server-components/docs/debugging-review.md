@@ -15,7 +15,7 @@ Checks:
 
 - inspect `vite.config.*`
 - inspect imports from `@tanstack/react-start/rsc`
-- normalize to `renderServerComponent`, `createCompositeComponent`, `CompositeComponent`, `.inputValidator(...)`
+- normalize to `renderServerComponent`, `createCompositeComponent`, `CompositeComponent`, `.validator(...)`
 
 ### 2. Wrong environment failure
 

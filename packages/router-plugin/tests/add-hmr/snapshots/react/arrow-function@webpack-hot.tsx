@@ -66,6 +66,7 @@ if (import.meta.webpackHot) {
       oldRoute._componentsPromise = undefined;
       oldRoute._lazyPromise = undefined;
       router.setRoutes(router.buildRouteTree());
+      syncHotRouteExport(oldRoute);
       router.resolvePathCache.clear();
       const filter = m => m.routeId === oldRoute.id;
       const activeMatch = router.stores.matches.get().find(filter);
@@ -104,6 +105,14 @@ if (import.meta.webpackHot) {
         });
       }
       ;
+      function syncHotRouteExport(liveRoute) {
+        newRoute.options = liveRoute.options;
+        newRoute.parentRoute = liveRoute.parentRoute;
+        newRoute._path = liveRoute._path;
+        newRoute._id = liveRoute._id;
+        newRoute._fullPath = liveRoute._fullPath;
+        newRoute._to = liveRoute._to;
+      }
       function getStoreMatch(matchId) {
         return router.stores.pendingMatchStores.get(matchId)?.get() || router.stores.matchStores.get(matchId)?.get() || router.stores.cachedMatchStores.get(matchId)?.get();
       }

@@ -39,18 +39,22 @@ test.describe('transformAssets with CDN prefix', () => {
     }
   })
 
-  test('SSR HTML contains CDN-prefixed modulepreload links', async ({
+  test('SSR HTML contains CDN-prefixed script preload links', async ({
     page,
   }) => {
     const html = await getSSRHtml(page)
 
-    // All modulepreload links should point to the CDN origin
-    const modulepreloads = html.match(/rel="modulepreload"[^>]*href="([^"]+)"/g)
-    expect(modulepreloads).toBeTruthy()
-    expect(modulepreloads!.length).toBeGreaterThan(0)
+    // All script preload links should point to the CDN origin
+    const scriptPreloads = Array.from(
+      html.matchAll(
+        /<link\b(?=[^>]*\brel="modulepreload")(?=[^>]*\bhref="([^"]+)")[^>]*>/g,
+      ),
+    )
+    expect(scriptPreloads).toBeTruthy()
+    expect(scriptPreloads.length).toBeGreaterThan(0)
 
-    for (const match of modulepreloads!) {
-      const href = match.match(/href="([^"]+)"/)?.[1]
+    for (const match of scriptPreloads) {
+      const href = match[1]
       expect(href).toBeTruthy()
       expect(href).toMatch(/^http:\/\/localhost:\d+\//)
     }
@@ -61,10 +65,10 @@ test.describe('transformAssets with CDN prefix', () => {
   }) => {
     const html = await getSSRHtml(page)
 
-    const modulepreloadLink = html.match(
+    const scriptPreloadLink = html.match(
       /<link[^>]*rel="modulepreload"[^>]*crossorigin="anonymous"[^>]*>/,
     )
-    expect(modulepreloadLink).toBeTruthy()
+    expect(scriptPreloadLink).toBeTruthy()
 
     const stylesheetLink = html.match(
       /<link[^>]*rel="stylesheet"[^>]*crossorigin="use-credentials"[^>]*>/,
@@ -134,10 +138,8 @@ test.describe('transformAssets with CDN prefix', () => {
   }) => {
     const html = await getSSRHtml(page)
 
-    // The client entry script should contain an import() with CDN-prefixed URL
-    // JSON.stringify produces double quotes; bundler optimisation may use single quotes
     const clientEntryMatch = html.match(
-      /import\(["'](http:\/\/localhost:\d+\/[^"']+)["']\)/,
+      /<script\b[^>]+src="(http:\/\/localhost:\d+\/[^"]*\/index[^"]*)"[^>]*>/,
     )
     expect(clientEntryMatch).toBeTruthy()
     expect(clientEntryMatch![1]).toMatch(/^http:\/\/localhost:\d+\//)

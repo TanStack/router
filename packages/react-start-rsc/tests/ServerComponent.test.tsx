@@ -36,7 +36,14 @@ vi.mock('@vitejs/plugin-rsc/ssr', () => {
 
 import { createFromReadableStream as browserDecode } from '@vitejs/plugin-rsc/browser'
 
-import { createServerComponentFromStream } from '../src/createServerComponentFromStream'
+import {
+  createCompositeFromStream,
+  createServerComponentFromStream,
+} from '../src/createServerComponentFromStream'
+import {
+  SERVER_COMPONENT_CSS_HREFS,
+  SERVER_COMPONENT_JS_PRELOADS,
+} from '../src/ServerComponentTypes'
 
 describe('ServerComponent (client)', () => {
   it('decodes a stream only once', async () => {
@@ -82,5 +89,30 @@ describe('ServerComponent (client)', () => {
 
     // Resolve the decode to complete the test cleanly
     resolvePromise!(React.createElement('div', null, 'ok'))
+  })
+
+  it('defers decode when SSR asset deps are provided', async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.close()
+      },
+    })
+
+    const decodeMock = browserDecode as unknown as ReturnType<typeof vi.fn>
+    decodeMock.mockClear()
+    decodeMock.mockResolvedValue(React.createElement('div', null, 'ok'))
+
+    const Component = createCompositeFromStream(stream, {
+      cssHrefs: ['/assets/component.css'],
+      jsPreloads: ['/assets/component.js'],
+    })
+
+    expect(decodeMock).not.toHaveBeenCalled()
+    expect(Array.from(Component[SERVER_COMPONENT_CSS_HREFS]!)).toEqual([
+      '/assets/component.css',
+    ])
+    expect(Array.from(Component[SERVER_COMPONENT_JS_PRELOADS]!)).toEqual([
+      '/assets/component.js',
+    ])
   })
 })

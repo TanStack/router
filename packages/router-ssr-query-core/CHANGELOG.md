@@ -1,5 +1,11 @@
 # @tanstack/router-ssr-query-core
 
+## 1.169.1
+
+### Patch Changes
+
+- [#7497](https://github.com/TanStack/router/pull/7497) [`d1997b6`](https://github.com/TanStack/router/commit/d1997b66d7c24c1d64772bb8bab5caf9c6d9cc48) - fix streaming
+
 ## 1.169.0
 
 ### Minor Changes

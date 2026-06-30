@@ -134,7 +134,7 @@ skills:
       - '@tanstack/start-server-core'
     covers:
       - createServerFn (GET/POST)
-      - inputValidator (Zod or function)
+      - validator (Zod or function)
       - useServerFn hook
       - Server context utilities (getRequest, getRequestHeader, setResponseHeader, setResponseStatus)
       - Error handling (throw errors, redirect, notFound)
@@ -229,7 +229,7 @@ skills:
       - Middleware factories
       - Fetch override precedence
       - Header merging
-      - Method order enforcement (middleware → inputValidator → client → server)
+      - Method order enforcement (middleware → validator → client → server)
     tasks:
       - 'Add authentication middleware'
       - 'Pass context through middleware chain'
@@ -247,7 +247,7 @@ skills:
 
       - mistake: 'Wrong middleware method order'
         mechanism: >-
-          TypeScript enforces method order: middleware → inputValidator
+          TypeScript enforces method order: middleware → validator
           → client → server. Wrong order causes type errors and
           runtime failures.
         source: 'docs/start/framework/react/guide/middleware.md'
@@ -498,7 +498,7 @@ skills:
         mechanism: >-
           Older snippets may use renderRsc or .validator(...).
           Normalize them to renderServerComponent and
-          .inputValidator(...) before using them in current code.
+          .validator(...) before using them in current code.
         source: 'docs/start/framework/react/guide/server-functions.md'
         priority: MEDIUM
         status: active

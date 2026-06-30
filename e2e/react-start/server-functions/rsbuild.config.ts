@@ -13,4 +13,7 @@ export default defineConfig({
       root: outDir,
     },
   },
+  performance: {
+    buildCache: process.env.E2E_RSBUILD_BUILD_CACHE !== 'false',
+  },
 })

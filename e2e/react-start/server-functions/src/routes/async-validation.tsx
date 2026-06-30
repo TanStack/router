@@ -12,7 +12,7 @@ const asyncValidationSchema = z
   .refine((data) => Promise.resolve(data !== 'invalid'))
 
 const asyncValidationServerFn = createServerFn()
-  .inputValidator(asyncValidationSchema)
+  .validator(asyncValidationSchema)
   .handler(({ data }) => data)
 
 function RouteComponent() {

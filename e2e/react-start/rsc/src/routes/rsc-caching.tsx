@@ -15,7 +15,7 @@ import { pageStyles, clientStyles, formatTime } from '~/utils/styles'
 // ============================================================================
 
 const getCachedDataServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { dataType: string }) => data)
+  .validator((data: { dataType: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
     const fetchId = Math.random().toString(36).slice(2, 8)

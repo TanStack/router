@@ -36,7 +36,7 @@ const serverStyles = {
  * - Explicitly refetching updates the server timestamp (simulating fresh data)
  */
 export const getProductDetailComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { productId: string }) => data)
+  .validator((data: { productId: string }) => data)
   .handler(async ({ data }) => {
     const fetchedAt = Date.now()
 

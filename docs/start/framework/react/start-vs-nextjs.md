@@ -68,13 +68,13 @@ Both frameworks handle the fundamentals - code splitting, caching, SSR, static o
 
 ### The Build Pipeline
 
-**Next.js** uses a custom build system (historically Webpack, now Turbopack). It's tightly integrated with their architecture, which enables optimizations but limits flexibility. Turbopack has improved dev speed, but it's still no match for Vite.
+**Next.js** uses a custom build system (historically Webpack, now Turbopack). It's tightly integrated with their architecture, which enables optimizations but limits flexibility. Turbopack has improved dev speed, but it's still no match for Vite or Rsbuild.
 
-**TanStack Start** is built on Vite. This means:
+**TanStack Start** supports Vite and Rsbuild. This means:
 
 - Faster dev server startup
 - Faster HMR
-- Access to the entire Vite plugin ecosystem
+- Access to modern plugin ecosystems
 - Standard tooling that transfers to other projects
 
 ### The Runtime
@@ -253,7 +253,7 @@ With RSC support, the question isn't "what does Start lack?" - it's: **"Why give
 
 **Caching model** - Explicit SWR primitives you already understand if you've used TanStack Query. No implicit layers to debug.
 
-**Dev experience** - Vite's speed is real. Instant startup, fast HMR, lower resource usage. This compounds over a workday - and even more so when AI agents are iterating on your code in tight loops.
+**Dev experience** - Vite and Rsbuild are fast. Instant startup, fast HMR, lower resource usage. This compounds over a workday - and even more so when AI agents are iterating on your code in tight loops.
 
 **Deployment as a feature** - Start treats deployment flexibility as a first-class feature. Cloudflare, Netlify, AWS, Fly, Railway, your own servers - they're all equally supported. Your app works the same everywhere because it's built on standards, not platform-specific optimizations. This means you can:
 
@@ -275,7 +275,7 @@ With RSC support, the question isn't "what does Start lack?" - it's: **"Why give
 | **Type safety**      | End-to-end, compile-time             | TypeScript support with boundary gaps |
 | **Server functions** | Typed, validated, middleware support | Untyped boundary, no middleware       |
 | **Caching**          | Explicit SWR primitives              | Multi-layer implicit caching          |
-| **Build tool**       | Vite                                 | Turbopack/Webpack                     |
+| **Build tool**       | Vite or Rsbuild                      | Turbopack/Webpack                     |
 | **Deployment**       | Equal support everywhere             | Optimized for Vercel                  |
 | **Routing**          | Best-in-class type safety            | File-based, basic types               |
 | **RSC**              | Supported                            | Supported                             |

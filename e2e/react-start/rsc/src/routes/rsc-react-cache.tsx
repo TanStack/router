@@ -511,7 +511,7 @@ async function ReactCacheContent({
 
 // Server component that demonstrates React.cache
 const getReactCacheServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { testCache: boolean }) => data)
+  .validator((data: { testCache: boolean }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 

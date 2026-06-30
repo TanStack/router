@@ -124,7 +124,7 @@ export function useMatch<
       return undefined
     }
 
-    const res = opts.select ? opts.select(selectedMatch as any) : selectedMatch
+    const res = opts.select ? opts.select(selectedMatch) : selectedMatch
     if (prev === undefined) return res as TSelected
     return replaceEqualDeep(prev, res) as TSelected
   }) as any
