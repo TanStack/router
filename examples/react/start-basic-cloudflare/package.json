@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
-    "postinstall": "npm run cf-typegen"
+    "postinstall": "WRANGLER_LOG=warn npm run --silent cf-typegen"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.170.16",
