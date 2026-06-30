@@ -706,7 +706,9 @@ export type MatchRouteFn<
     TTo
   >,
   opts?: MatchRouteOptions,
-) => false | RouteById<TRouteTree, Extract<TResolved, string>>['types']['allParams']
+) =>
+  | false
+  | RouteById<TRouteTree, Extract<TResolved, string>>['types']['allParams']
 
 export type UpdateFn<
   TRouteTree extends AnyRoute,
