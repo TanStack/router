@@ -1,10 +1,12 @@
 /// <reference types="vite/client" />
 import {
+  ClientOnly,
   HeadContent,
   Link,
   Outlet,
   Scripts,
   createRootRoute,
+  useRouterState,
 } from '@tanstack/solid-router'
 
 import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
@@ -65,6 +67,10 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  const routerState = useRouterState({
+    select: (state) => ({ isLoading: state.isLoading, status: state.status }),
+  })
+
   return (
     <html>
       <head>
@@ -156,6 +162,14 @@ function RootComponent() {
             This Route Does Not Exist
           </Link>
         </div>
+        <ClientOnly>
+          <div hidden>
+            <b data-testid="router-isLoading">
+              {routerState().isLoading ? 'true' : 'false'}
+            </b>
+            <b data-testid="router-status">{routerState().status}</b>
+          </div>
+        </ClientOnly>
         <Outlet />
         <div class="inline-div">This is an inline styled div</div>
         <TanStackRouterDevtoolsInProd />

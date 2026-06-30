@@ -157,7 +157,7 @@ const getUser = createServerFn({ method: 'GET' }).handler(async () => {
 
 // Update session
 const login = createServerFn({ method: 'POST' })
-  .inputValidator((data: { userId: string }) => data)
+  .validator((data: { userId: string }) => data)
   .handler(async ({ data }) => {
     await updateSession(sessionConfig, { userId: data.userId })
     return { success: true }

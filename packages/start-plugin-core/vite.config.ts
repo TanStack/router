@@ -21,6 +21,7 @@ export default mergeConfig(
       './src/vite/index.ts',
       './src/rsbuild/index.ts',
       './src/rsbuild/types.ts',
+      './src/rsbuild/start-compiler-metadata-loader.ts',
     ],
     srcDir: './src',
     outDir: './dist',

@@ -181,7 +181,7 @@ Use `useServerFn` to call server functions from React components with proper int
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 
 const updatePost = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string; title: string }) => data)
+  .validator((data: { id: string; title: string }) => data)
   .handler(async ({ data }) => {
     await db.posts.update(data.id, { title: data.title })
     return { success: true }

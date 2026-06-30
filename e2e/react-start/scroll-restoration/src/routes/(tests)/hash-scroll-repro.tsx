@@ -52,6 +52,15 @@ function Component() {
           >
             #one
           </Link>
+          <Link
+            to="/hash-scroll-repro"
+            hash="four"
+            className="rounded border px-3 py-2"
+            data-testid="hash-scroll-section-four-no-reset-link"
+            resetScroll={false}
+          >
+            #four no reset
+          </Link>
         </div>
       </div>
 

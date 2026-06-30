@@ -22,6 +22,7 @@ async function compile(opts: {
   env: 'client' | 'server'
   code: string
   id: string
+  warn?: (message: string) => void
 }) {
   const compiler = new StartCompiler({
     ...opts,
@@ -42,6 +43,7 @@ async function compile(opts: {
         kind: 'Root',
       },
     ],
+    warn: opts.warn,
     getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
@@ -71,6 +73,54 @@ describe('createMiddleware compiles correctly', async () => {
         `./snapshots/client/${filename}`,
       )
     })
+  })
+
+  test('should compile validator method', async () => {
+    const code = `
+      import { createMiddleware } from '@tanstack/react-start'
+      const myMiddleware = createMiddleware({ type: 'function' })
+        .validator((input: string) => input)
+        .server(async ({ next }) => {
+          return next()
+        })`
+
+    const result = await compile({
+      env: 'client',
+      code,
+      id: 'test.ts',
+    })
+
+    expect(result!.code).toMatchInlineSnapshot(`
+      "import { createMiddleware } from '@tanstack/react-start';
+      const myMiddleware = createMiddleware({
+        type: 'function'
+      });"
+    `)
+  })
+
+  // TODO remove upon stable
+  test('should warn for deprecated inputValidator method', async () => {
+    const warn = vi.fn()
+    const code = `
+      import { createMiddleware } from '@tanstack/react-start'
+      const myMiddleware = createMiddleware({ type: 'function' })
+        .inputValidator((input: string) => input)
+        .server(async ({ next }) => {
+          return next()
+        })`
+
+    await compile({
+      env: 'client',
+      code,
+      id: 'test.ts',
+      warn,
+    })
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'createMiddleware().inputValidator() is deprecated. Use createMiddleware().validator() instead.',
+      ),
+    )
   })
 
   test('should use fast path for direct imports from known library (no extra resolveId calls)', async () => {

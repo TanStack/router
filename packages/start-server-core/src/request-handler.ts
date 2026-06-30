@@ -9,7 +9,8 @@ type EarlyHintsOptions = {
    * Fire-and-forget callback for HTTP 103 Early Hints.
    * Only invoked in production (when TSS_DEV_SERVER !== 'true').
    *
-   * The `static` phase contains transformed manifest assets for matched routes.
+   * The `static` phase contains transformed manifest preloads and stylesheets
+   * for matched routes.
    * The `dynamic` phase runs after route load, is skipped for redirects, and
    * can contain route `head().links` or empty `hints` and `links` arrays.
    * `hints` and `links` contain only values not emitted in earlier phases.

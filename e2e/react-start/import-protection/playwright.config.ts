@@ -4,8 +4,10 @@ import { isErrorMode } from './tests/utils/isErrorMode'
 import packageJson from './package.json' with { type: 'json' }
 
 const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+const viteBundledDev = process.env.E2E_VITE_BUNDLED_DEV === 'true'
 const e2ePortKey =
-  process.env.E2E_PORT_KEY ?? `${packageJson.name}-${toolchain}`
+  process.env.E2E_PORT_KEY ??
+  `${packageJson.name}-${toolchain}${viteBundledDev ? '-bundled-dev' : ''}`
 const distDir = process.env.E2E_DIST_DIR ?? 'dist'
 const PORT = await getTestServerPort(e2ePortKey)
 const baseURL = `http://localhost:${PORT}`
@@ -44,6 +46,7 @@ export default defineConfig({
             VITE_SERVER_PORT: String(PORT),
             E2E_DIST_DIR: distDir,
             E2E_PORT_KEY: e2ePortKey,
+            E2E_VITE_BUNDLED_DEV: String(viteBundledDev),
           },
         },
       }),

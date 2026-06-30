@@ -4,7 +4,14 @@ import type { Pattern } from './utils'
 
 export interface CompiledMatcher {
   pattern: Pattern
+  literal?: string
   test: (value: string) => boolean
+}
+
+const globLikePatternRE = /[*?![\]{}()]/
+
+export function isLiteralMatcherPattern(pattern: string): boolean {
+  return !globLikePatternRE.test(pattern)
 }
 
 /**
@@ -22,6 +29,14 @@ export function compileMatcher(pattern: Pattern): CompiledMatcher {
         pattern.lastIndex = 0
         return pattern.test(value)
       },
+    }
+  }
+
+  if (isLiteralMatcherPattern(pattern)) {
+    return {
+      pattern,
+      literal: pattern,
+      test: (value: string) => value === pattern,
     }
   }
 

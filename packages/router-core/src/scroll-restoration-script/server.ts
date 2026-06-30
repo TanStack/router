@@ -6,25 +6,16 @@ import {
 import { escapeHtml } from '../utils'
 import type { AnyRouter } from '../router'
 
-type InlineScrollRestorationScriptOptions = {
-  storageKey: string
-  key?: string
-}
-
 const defaultInlineScrollRestorationScript = `(${minifiedScrollRestorationScript})(${escapeHtml(
-  JSON.stringify({
-    storageKey,
-  } satisfies InlineScrollRestorationScriptOptions),
+  JSON.stringify(storageKey),
 )})`
 
-function getScrollRestorationScript(
-  options: InlineScrollRestorationScriptOptions,
-) {
-  if (options.storageKey === storageKey && options.key === undefined) {
+function getScrollRestorationScript(key?: string) {
+  if (key === undefined) {
     return defaultInlineScrollRestorationScript
   }
 
-  return `(${minifiedScrollRestorationScript})(${escapeHtml(JSON.stringify(options))})`
+  return `(${minifiedScrollRestorationScript})(${escapeHtml(JSON.stringify(storageKey))},${escapeHtml(JSON.stringify(key))})`
 }
 
 export function getScrollRestorationScriptForRouter(router: AnyRouter) {
@@ -48,8 +39,5 @@ export function getScrollRestorationScriptForRouter(router: AnyRouter) {
     return defaultInlineScrollRestorationScript
   }
 
-  return getScrollRestorationScript({
-    storageKey,
-    key: userKey,
-  })
+  return getScrollRestorationScript(userKey)
 }

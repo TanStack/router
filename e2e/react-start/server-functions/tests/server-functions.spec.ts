@@ -57,6 +57,8 @@ test('Consistent server function returns both on client and server for GET and P
       .textContent()) || ''
   expect(expected).not.toBe('')
 
+  await expect(page.getByTestId('consistent-client-hydrated')).toBeAttached()
+
   await page.getByTestId('test-consistent-server-fn-calls-btn').click()
   await page.waitForLoadState('networkidle')
 
@@ -770,8 +772,8 @@ test('redirect via server function with middleware does not cause serialization 
 })
 
 test.describe('unhandled exception in middleware (issue #5266)', () => {
-  // Whitelist the expected 500 error since this test verifies error handling
-  test.use({ whitelistErrors: ['500'] })
+  // Whitelist expected browser console errors since this test verifies error handling.
+  test.use({ whitelistErrors: ['500', 'Unhandled middleware exception'] })
 
   test('does not crash server and shows error component', async ({ page }) => {
     // This test verifies that when a middleware throws an unhandled exception,

@@ -13,7 +13,11 @@ describe('searchMiddleware - mutation prevention', () => {
       // so retainSearchParams should add them from search
       const result = middleware({
         search: originalSearch,
-        next: () => ({ page: 'new' }) as any,
+        next: () =>
+          ({
+            search: { page: 'new' },
+            meta: {},
+          }) as any,
       })
 
       expect(originalSearch).toEqual(originalCopy)
@@ -29,7 +33,11 @@ describe('searchMiddleware - mutation prevention', () => {
       // next() returns object without 'id' and 'filter' keys
       const result1 = middleware({
         search: sharedSearch,
-        next: () => ({ page: '2' }) as any,
+        next: () =>
+          ({
+            search: { page: '2' },
+            meta: {},
+          }) as any,
       })
 
       expect(sharedSearch).toEqual({ id: '1', filter: 'active', page: '1' })
@@ -37,7 +45,11 @@ describe('searchMiddleware - mutation prevention', () => {
 
       const result2 = middleware({
         search: sharedSearch,
-        next: () => ({ page: '3' }) as any,
+        next: () =>
+          ({
+            search: { page: '3' },
+            meta: {},
+          }) as any,
       })
 
       expect(sharedSearch).toEqual({ id: '1', filter: 'active', page: '1' })
@@ -52,7 +64,11 @@ describe('searchMiddleware - mutation prevention', () => {
 
       const result = middleware({
         search: originalSearch,
-        next: () => ({ id: '2' }) as any,
+        next: () =>
+          ({
+            search: { id: '2' },
+            meta: {},
+          }) as any,
       })
 
       expect(originalSearch).toEqual(originalCopy)

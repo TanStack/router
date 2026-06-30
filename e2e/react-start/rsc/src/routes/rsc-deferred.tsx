@@ -44,7 +44,7 @@ async function fetchDeferredAnalytics(): Promise<{
 }
 
 const getDeferredDataBundle = createServerFn({ method: 'GET' })
-  .inputValidator((data: { reportType: string }) => data)
+  .validator((data: { reportType: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
     const instanceId = Math.random().toString(36).slice(2, 8)
