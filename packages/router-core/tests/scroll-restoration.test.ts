@@ -86,7 +86,10 @@ describe('element scroll restoration', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
 
     const rootRoute = new BaseRootRoute({})
-    const indexRoute = new BaseRoute({ getParentRoute: () => rootRoute, path: '/' })
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
     const pageRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/page',
