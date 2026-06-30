@@ -41,7 +41,7 @@ With asset URL transforms (CDN):
 ```ts
 export default createStartHandler({
   handler: defaultStreamHandler,
-  transformAssetUrls: 'https://cdn.example.com',
+  transformAssets: 'https://cdn.example.com',
 })
 ```
 
@@ -157,7 +157,7 @@ const getUser = createServerFn({ method: 'GET' }).handler(async () => {
 
 // Update session
 const login = createServerFn({ method: 'POST' })
-  .inputValidator((data: { userId: string }) => data)
+  .validator((data: { userId: string }) => data)
   .handler(async ({ data }) => {
     await updateSession(sessionConfig, { userId: data.userId })
     return { success: true }

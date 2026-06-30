@@ -403,6 +403,7 @@ function parseSegments<TRouteLike extends RouteLike>(
     }
 
     node.parse = parseParams ?? null
+    node.priority = route.options?.params?.priority ?? 0
 
     // make node "matchable"
     if (isLeaf && !node.route) {
@@ -430,16 +431,20 @@ function sortDynamic(
     suffix?: string
     caseSensitive: boolean
     parse: null | ((params: Record<string, string>) => unknown)
+    priority: number
   },
   b: {
     prefix?: string
     suffix?: string
     caseSensitive: boolean
     parse: null | ((params: Record<string, string>) => unknown)
+    priority: number
   },
 ) {
   if (a.parse && !b.parse) return -1
   if (!a.parse && b.parse) return 1
+  if (a.parse && b.parse && (a.priority || b.priority))
+    return b.priority - a.priority
   if (a.prefix && b.prefix && a.prefix !== b.prefix) {
     if (a.prefix.startsWith(b.prefix)) return -1
     if (b.prefix.startsWith(a.prefix)) return 1
@@ -512,6 +517,7 @@ function createStaticNode<T extends RouteLike>(
     fullPath,
     parent: null,
     parse: null,
+    priority: 0,
   }
 }
 
@@ -543,6 +549,7 @@ function createDynamicNode<T extends RouteLike>(
     fullPath,
     parent: null,
     parse: null,
+    priority: 0,
     caseSensitive,
     prefix,
     suffix,
@@ -605,6 +612,9 @@ type SegmentNode<T extends RouteLike> = {
 
   /** route.options.params.parse function, set on the last node of the route */
   parse: null | ((params: Record<string, string>) => unknown)
+
+  /** route.options.params.priority ?? 0 */
+  priority: number
 }
 
 type RouteLike = {
@@ -618,6 +628,7 @@ type RouteLike = {
     parseParams?: (params: Record<string, string>) => unknown
     params?: {
       parse?: (params: Record<string, string>) => unknown
+      priority?: number
     }
   }
 } &

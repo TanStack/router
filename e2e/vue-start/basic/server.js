@@ -79,19 +79,22 @@ export async function createSpaServer() {
 
 if (isSpaMode) {
   createSpaServer().then(async ({ app }) =>
-    app.listen(port, () => {
+    app.listen(port, (error) => {
+      if (error) throw error
       console.info(`Client Server: http://localhost:${port}`)
     }),
   )
 
   createStartServer().then(async ({ app }) =>
-    app.listen(startPort, () => {
+    app.listen(startPort, (error) => {
+      if (error) throw error
       console.info(`Start Server: http://localhost:${startPort}`)
     }),
   )
 } else {
   createStartServer().then(async ({ app }) =>
-    app.listen(port, () => {
+    app.listen(port, (error) => {
+      if (error) throw error
       console.info(`Start Server: http://localhost:${port}`)
     }),
   )

@@ -43,6 +43,9 @@ export type ReferenceRouteCompilerPluginResult = {
 export type ReferenceRouteCompilerPlugin = {
   name: string
   getStableRouteOptionKeys?: () => Array<string>
+  onRouteOptions?: (
+    ctx: ReferenceRouteCompilerPluginContext,
+  ) => void | ReferenceRouteCompilerPluginResult
   onAddHmr?: (
     ctx: ReferenceRouteCompilerPluginContext,
   ) => void | ReferenceRouteCompilerPluginResult

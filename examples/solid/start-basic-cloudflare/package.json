@@ -9,12 +9,12 @@
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
-    "postinstall": "npm run cf-typegen"
+    "postinstall": "WRANGLER_LOG=warn npm run --silent cf-typegen"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.169.2",
-    "@tanstack/solid-router-devtools": "^1.166.13",
-    "@tanstack/solid-start": "^1.167.62",
+    "@tanstack/solid-router": "^1.170.16",
+    "@tanstack/solid-router-devtools": "^1.167.0",
+    "@tanstack/solid-start": "^1.168.26",
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
@@ -23,7 +23,7 @@
     "@types/node": "^22.5.4",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
+    "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11",
     "wrangler": "^4.74.0"
   }

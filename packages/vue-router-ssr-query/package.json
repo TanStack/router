@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/vue-router-ssr-query",
-  "version": "1.166.12",
+  "version": "1.167.1",
   "description": "Modern and scalable routing for Vue applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -62,7 +62,6 @@
     "@tanstack/router-ssr-query-core": "workspace:*"
   },
   "devDependencies": {
-    "@tanstack/vue-query": "^5.92.0",
     "@tanstack/vue-router": "workspace:*",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "vite": "*",

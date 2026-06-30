@@ -1,5 +1,17 @@
 # @tanstack/router-devtools
 
+## 1.167.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- Updated dependencies [[`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14)]:
+  - @tanstack/react-router@1.170.0
+  - @tanstack/react-router-devtools@1.167.0
+
 ## 1.166.13
 
 ### Patch Changes

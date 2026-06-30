@@ -16,6 +16,12 @@ export function normalizePath(path: string): string {
   return path.replace(/\\/g, '/')
 }
 
+export const routeFactoryCallCodeFilter = [
+  /\bcreateFileRoute\s*\(/,
+  /\bcreateRootRoute\s*\(/,
+  /\bcreateRootRouteWithContext\s*(?:<|\()/,
+]
+
 export function getObjectPropertyKeyName(
   prop: t.ObjectProperty,
 ): string | undefined {

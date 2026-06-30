@@ -13,6 +13,7 @@ const baseURL = `http://localhost:${PORT}`
  */
 export default defineConfig({
   testDir: './tests',
+  testIgnore: /rsbuild-cache\.spec\.ts/,
   workers: 1,
 
   reporter: [['line']],

@@ -95,8 +95,11 @@ Mock mode is useful during development because it lets you keep working even whe
 
 You can override the defaults:
 
-```ts
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
@@ -111,6 +114,26 @@ export default defineConfig({
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      importProtection: {
+        // Always error, even in dev
+        behavior: 'error',
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
 
 Or set different behaviors per mode:
 
@@ -127,8 +150,11 @@ importProtection: {
 
 You can add your own deny rules on top of the defaults. Rules are specified per environment using glob patterns (via [picomatch](https://github.com/micromatch/picomatch)) or regular expressions.
 
-```ts
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
@@ -151,6 +177,34 @@ export default defineConfig({
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      importProtection: {
+        client: {
+          // Block specific npm packages from the client bundle
+          specifiers: ['@prisma/client', 'bcrypt'],
+          // Block files in a custom directory
+          files: ['**/db/**'],
+        },
+        server: {
+          // Block browser-only libraries from the server
+          specifiers: ['localforage'],
+        },
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
 
 ### Checking third-party packages
 

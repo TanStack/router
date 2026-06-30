@@ -2,18 +2,21 @@ import { describe, expect, test } from 'vitest'
 import {
   compileMatcher,
   compileMatchers,
+  isLiteralMatcherPattern,
   matchesAny,
 } from '../../src/import-protection/matchers'
 
 describe('compileMatcher', () => {
   test('matches exact strings', () => {
     const m = compileMatcher('@tanstack/react-start/server')
+    expect(m.literal).toBe('@tanstack/react-start/server')
     expect(m.test('@tanstack/react-start/server')).toBe(true)
     expect(m.test('@tanstack/react-start/client')).toBe(false)
   })
 
   test('matches glob with *', () => {
     const m = compileMatcher('**/*.server.*')
+    expect(m.literal).toBeUndefined()
     expect(m.test('src/utils/db.server.ts')).toBe(true)
     expect(m.test('src/utils/db.client.ts')).toBe(false)
     expect(m.test('secret.server.js')).toBe(true)
@@ -36,6 +39,18 @@ describe('compileMatcher', () => {
     expect(m.test('pg')).toBe(true)
     // Would fail without resetting lastIndex
     expect(m.test('pg')).toBe(true)
+  })
+})
+
+describe('isLiteralMatcherPattern', () => {
+  test('classifies exact strings as literals', () => {
+    expect(isLiteralMatcherPattern('@tanstack/react-start/server')).toBe(true)
+    expect(isLiteralMatcherPattern('node:fs')).toBe(true)
+  })
+
+  test('classifies glob syntax as non-literal', () => {
+    expect(isLiteralMatcherPattern('**/*.server.*')).toBe(false)
+    expect(isLiteralMatcherPattern('{pg,postgres}')).toBe(false)
   })
 })
 

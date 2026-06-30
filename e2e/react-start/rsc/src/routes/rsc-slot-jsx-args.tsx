@@ -18,7 +18,7 @@ import {
 // ============================================================================
 
 const getPromoServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { headline: string }) => data)
+  .validator((data: { headline: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 

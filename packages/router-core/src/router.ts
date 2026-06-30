@@ -52,6 +52,7 @@ import type {
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
+  HistoryAction,
   HistoryLocation,
   HistoryState,
   ParsedHistoryState,
@@ -78,6 +79,7 @@ import type {
   RouteLike,
   RouteMask,
   SearchMiddleware,
+  SearchMiddlewareMeta,
 } from './route'
 import type {
   FullSearchSchema,
@@ -97,7 +99,11 @@ import type {
   CommitLocationOptions,
   NavigateFn,
 } from './RouterProvider'
-import type { Manifest, RouterManagedTag } from './manifest'
+import type {
+  Manifest,
+  ManifestRouteAssets,
+  RouterManagedTag,
+} from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
@@ -340,9 +346,8 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#dehydrate-method)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration)
    */
-  dehydrate?: () => Constrain<
-    TDehydrated,
-    ValidateSerializableInput<Register, TDehydrated>
+  dehydrate?: () => Awaitable<
+    Constrain<TDehydrated, ValidateSerializableInput<Register, TDehydrated>>
   >
   /**
    * A function that will be called when the router is hydrated.
@@ -740,7 +745,10 @@ export type GetMatchRoutesFn = (pathname: string) => {
 
 export type EmitFn = (routerEvent: RouterEvent) => void
 
-export type LoadFn = (opts?: { sync?: boolean }) => Promise<void>
+export type LoadFn = (opts?: {
+  sync?: boolean
+  action?: { type: HistoryAction }
+}) => Promise<void>
 
 export type CommitLocationFn = ({
   viewTransition,
@@ -783,32 +791,45 @@ export type ClearCacheFn<TRouter extends AnyRouter> = (opts?: {
 }) => void
 
 export interface ServerSsr {
-  /**
-   * Injects HTML synchronously into the stream.
-   * Emits an onInjectedHtml event that listeners can handle.
-   * If no subscriber is listening, the HTML is buffered and can be retrieved via takeBufferedHtml().
-   */
+  /** Framework-only: injects router-owned HTML into the SSR stream. */
   injectHtml: (html: string) => void
-  /**
-   * Injects a script tag synchronously into the stream.
-   */
+  /** Framework-only: injects a router-owned script tag into the SSR stream. */
   injectScript: (script: string) => void
   isDehydrated: () => boolean
   isSerializationFinished: () => boolean
+  /** Framework-only: atomically reserves the pass-through stream path if safe. */
+  reserveStreamFastPath: () => boolean
+  /** Framework-only. */
+  onInjectedHtml: (listener: () => void) => () => void
+  /** Framework-only. */
   onRenderFinished: (listener: () => void) => void
+  /** Framework-only. */
   setRenderFinished: () => void
+  /** Framework-only. */
   cleanup: () => void
-  onSerializationFinished: (listener: () => void) => void
-  dehydrate: (opts?: {
-    requestAssets?: Array<RouterManagedTag>
-  }) => Promise<void>
-  takeBufferedScripts: () => RouterManagedTag | undefined
   /**
-   * Takes any buffered HTML that was injected.
-   * Returns the buffered HTML string (which may include multiple script tags) or undefined if empty.
+   * Register a listener invoked when the SSR request lifecycle ends (success,
+   * error, abort, or stream lifetime expiry). Use to tear down per-request
+   * resources whose references would otherwise pin the router (e.g. query
+   * cache subscriptions, gcTime timers, abort controllers).
+   *
+   * Listeners run synchronously and exactly once. Errors are caught and logged.
    */
+  onCleanup: (listener: () => void) => void
+  /** Framework-only. */
+  onSerializationFinished: (listener: () => void) => () => void
+  /** Framework-only. */
+  dehydrate: (opts?: { requestAssets?: ManifestRouteAssets }) => Promise<void>
+  /** Framework-only. */
+  takeBufferedScripts: () => RouterManagedTag | undefined
+  /** Framework-only: takes buffered router-owned HTML. */
   takeBufferedHtml: () => string | undefined
+  /** Framework-only. */
   liftScriptBarrier: () => void
+}
+
+export interface RouterSsrLifecycle {
+  onServerSsrAttach?: Array<(serverSsr: ServerSsr) => void>
 }
 
 export type AnyRouterWithContext<TContext> = RouterCore<
@@ -883,6 +904,23 @@ export function getLocationChangeInfo(
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
 
+export const locationHistoryActions = new WeakMap<
+  ParsedLocation,
+  HistoryAction
+>()
+
+type LightweightRouteMatchResult = {
+  matchedRoutes: ReadonlyArray<AnyRoute>
+  fullPath: string
+  search: Record<string, unknown>
+  params: Record<string, unknown>
+}
+
+type LightweightRouteMatchCacheEntry = [
+  lastMatchId: string | undefined,
+  result: LightweightRouteMatchResult,
+]
+
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption = 'never',
@@ -938,13 +976,16 @@ export class RouterCore<
   tempLocationKey: string | undefined = `${Math.round(
     Math.random() * 10000000,
   )}`
-  resetNextScroll = true
+  _scroll: {
+    next: boolean
+    restoring?: boolean
+    restoration?: boolean
+    reset?: boolean
+  } = { next: true }
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
   viewTransitionPromise?: ControlledPromise<true>
-  isScrollRestoring = false
-  isScrollRestorationSetup = false
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
@@ -973,6 +1014,10 @@ export class RouterCore<
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: LRUCache<string, string>
   private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
+  private lightweightCache = new WeakMap<
+    ParsedLocation,
+    LightweightRouteMatchCacheEntry
+  >()
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1690,12 +1735,15 @@ export class RouterCore<
    * Only computes fullPath, accumulated search, and params - skipping expensive
    * operations like AbortController, ControlledPromise, loaderDeps, and full match objects.
    */
-  private matchRoutesLightweight(location: ParsedLocation): {
-    matchedRoutes: ReadonlyArray<AnyRoute>
-    fullPath: string
-    search: Record<string, unknown>
-    params: Record<string, unknown>
-  } {
+  private matchRoutesLightweight(
+    location: ParsedLocation,
+  ): LightweightRouteMatchResult {
+    const lastStateMatchId = last(this.stores.matchesId.get())
+    const cached = this.lightweightCache.get(location)
+    if (cached && cached[0] === lastStateMatchId) {
+      return cached[1]
+    }
+
     const { matchedRoutes, routeParams } = this.getMatchedRoutes(
       location.pathname,
     )
@@ -1724,7 +1772,6 @@ export class RouterCore<
     }
 
     // Determine params: reuse from state if possible, otherwise parse
-    const lastStateMatchId = last(this.stores.matchesId.get())
     const lastStateMatch =
       lastStateMatchId && this.stores.matchStores.get(lastStateMatchId)?.get()
     const canReuseParams =
@@ -1751,12 +1798,14 @@ export class RouterCore<
       params = strictParams
     }
 
-    return {
+    const result = {
       matchedRoutes,
       fullPath: lastRoute.fullPath,
       search: accumulatedSearch,
       params,
     }
+    this.lightweightCache.set(location, [lastStateMatchId, result])
+    return result
   }
 
   cancelMatch = (id: string) => {
@@ -1935,7 +1984,7 @@ export class RouterCore<
           const roundTrip = this.getMatchedRoutes(nextPathname)
           if (roundTrip.foundRoute?.id !== destRoute.id) {
             console.warn(
-              `Generated path "${nextPathname}" for route "${destRoute.id}" did not match the same route after params.stringify.`,
+              `Generated path "${nextPathname}" for route "${destRoute.id}" matched route "${roundTrip.foundRoute?.id}" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.`,
             )
           }
         } catch {
@@ -2132,6 +2181,7 @@ export class RouterCore<
     ignoreBlocker,
     ...next
   }) => {
+    let historyAction: HistoryAction | undefined
     const isSameState = () => {
       // the following props are ignored but may still be provided when navigating,
       // temporarily add the previous values to the next state so they don't affect
@@ -2207,17 +2257,25 @@ export class RouterCore<
 
       this.shouldViewTransition = viewTransition
 
-      this.history[next.replace ? 'replace' : 'push'](
+      historyAction = next.replace ? 'REPLACE' : 'PUSH'
+
+      this.history[historyAction === 'REPLACE' ? 'replace' : 'push'](
         nextHistory.publicHref,
         nextHistory.state,
         { ignoreBlocker },
       )
     }
 
-    this.resetNextScroll = next.resetScroll ?? true
+    this._scroll.next = next.resetScroll ?? true
 
     if (!this.history.subscribers.size) {
-      this.load()
+      this.load(
+        historyAction
+          ? {
+              action: { type: historyAction },
+            }
+          : undefined,
+      )
     }
 
     return this.commitLocationPromise
@@ -2272,7 +2330,7 @@ export class RouterCore<
 
     // Clear pending location after commit starts
     // We do this on next microtask to allow synchronous navigate calls to chain
-    Promise.resolve().then(() => {
+    queueMicrotask(() => {
       if (this.pendingBuiltLocation === location) {
         this.pendingBuiltLocation = undefined
       }
@@ -2332,7 +2390,7 @@ export class RouterCore<
             `Blocked navigation to dangerous protocol: ${reloadHref}`,
           )
         }
-        return Promise.resolve()
+        return
       }
 
       // Check blockers for external URLs unless ignoreBlocker is true
@@ -2348,7 +2406,7 @@ export class RouterCore<
               action: 'PUSH',
             })
             if (shouldBlock) {
-              return Promise.resolve()
+              return
             }
           }
         }
@@ -2359,7 +2417,7 @@ export class RouterCore<
       } else {
         window.location.href = reloadHref
       }
-      return Promise.resolve()
+      return
     }
 
     return this.buildAndCommitLocation({
@@ -2419,7 +2477,8 @@ export class RouterCore<
     })
   }
 
-  load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
+  load: LoadFn = async (opts): Promise<void> => {
+    const historyAction = opts?.action?.type
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
     let loadPromise: Promise<void>
@@ -2431,6 +2490,11 @@ export class RouterCore<
       this.startTransition(async () => {
         try {
           this.beforeLoad()
+          if (historyAction) {
+            locationHistoryActions.set(this.latestLocation, historyAction)
+          } else {
+            locationHistoryActions.delete(this.latestLocation)
+          }
           const next = this.latestLocation
           const prevLocation = this.stores.resolvedLocation.get()
           const locationChangeInfo = getLocationChangeInfo(next, prevLocation)
@@ -2967,6 +3031,8 @@ export class RouterCore<
 
   serverSsr?: ServerSsr
 
+  serverSsrLifecycle?: RouterSsrLifecycle
+
   hasNotFoundMatch = () => {
     return this.stores.matches
       .get()
@@ -3094,115 +3160,108 @@ function applySearchMiddleware({
 }
 
 function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
-  const context = {
-    dest: null as unknown as BuildNextOptions,
-    _includeValidateSearch: false,
-    middlewares: [] as Array<SearchMiddleware<any>>,
-  }
+  let dest: BuildNextOptions
+  let includeValidateSearch: boolean | undefined
+  const middlewares = [] as Array<SearchMiddleware<any>>
 
   for (const route of destRoutes) {
-    if ('search' in route.options) {
-      if (route.options.search?.middlewares) {
-        context.middlewares.push(...route.options.search.middlewares)
+    const routeOptions = route.options
+    if ('search' in routeOptions) {
+      if (routeOptions.search?.middlewares) {
+        middlewares.push(...routeOptions.search.middlewares)
       }
     }
     // TODO remove preSearchFilters and postSearchFilters in v2
-    else if (
-      route.options.preSearchFilters ||
-      route.options.postSearchFilters
-    ) {
+    else if (routeOptions.preSearchFilters || routeOptions.postSearchFilters) {
       const legacyMiddleware: SearchMiddleware<any> = ({ search, next }) => {
-        let nextSearch = search
-
-        if (
-          'preSearchFilters' in route.options &&
-          route.options.preSearchFilters
-        ) {
-          nextSearch = route.options.preSearchFilters.reduce(
-            (prev, next) => next(prev),
-            search,
-          )
-        }
+        const nextSearch = routeOptions.preSearchFilters
+          ? routeOptions.preSearchFilters.reduce(
+              (prev, next) => next(prev),
+              search,
+            )
+          : search
 
         const result = next(nextSearch)
 
-        if (
-          'postSearchFilters' in route.options &&
-          route.options.postSearchFilters
-        ) {
-          return route.options.postSearchFilters.reduce(
-            (prev, next) => next(prev),
-            result,
-          )
-        }
+        return routeOptions.postSearchFilters
+          ? routeOptions.postSearchFilters.reduce(
+              (prev, next) => next(prev),
+              result,
+            )
+          : result
+      }
+      middlewares.push(legacyMiddleware)
+    }
 
+    const routeValidateSearch = routeOptions.validateSearch
+    if (routeValidateSearch) {
+      const validate: SearchMiddleware<any> = ({ search, next, meta }) => {
+        const result = next(search)
+        if (includeValidateSearch) {
+          try {
+            const validated = validateSearch(routeValidateSearch, result) as any
+
+            if (meta && validated) {
+              for (const key in validated) {
+                if (!(key in result)) {
+                  ;(meta.defaulted ||= new Map()).set(key, validated[key])
+                }
+              }
+            }
+            return { ...result, ...validated }
+          } catch {
+            // ignore errors here because they are already handled in matchRoutes
+          }
+        }
         return result
       }
-      context.middlewares.push(legacyMiddleware)
-    }
 
-    if (route.options.validateSearch) {
-      const validate: SearchMiddleware<any> = ({ search, next }) => {
-        const result = next(search)
-        if (!context._includeValidateSearch) return result
-        try {
-          const validatedSearch = {
-            ...result,
-            ...(validateSearch(route.options.validateSearch, result) ??
-              undefined),
-          }
-          return validatedSearch
-        } catch {
-          // ignore errors here because they are already handled in matchRoutes
-          return result
-        }
-      }
-
-      context.middlewares.push(validate)
+      middlewares.push(validate)
     }
   }
-
-  // the chain ends here since `next` is not called
-  const final: SearchMiddleware<any> = ({ search }) => {
-    const dest = context.dest
-    if (!dest.search) {
-      return {}
-    }
-    if (dest.search === true) {
-      return search
-    }
-    return functionalUpdate(dest.search, search)
-  }
-
-  context.middlewares.push(final)
 
   const applyNext = (
     index: number,
     currentSearch: any,
-    middlewares: Array<SearchMiddleware<any>>,
+    meta?: SearchMiddlewareMeta,
   ): any => {
     // no more middlewares left, return the current search
     if (index >= middlewares.length) {
-      return currentSearch
+      if (!dest.search) {
+        return {}
+      }
+      if (dest.search === true) {
+        return currentSearch
+      }
+      const result = functionalUpdate(dest.search, currentSearch)
+      if (meta) {
+        meta.explicit = result
+      }
+      return result
     }
 
-    const middleware = middlewares[index]!
-
-    const next = (newSearch: any): any => {
-      return applyNext(index + 1, newSearch, middlewares)
+    const next = (newSearch: any, collectMeta?: true): any => {
+      if (collectMeta) {
+        const nextMeta = meta || ({} as SearchMiddlewareMeta)
+        return {
+          search: applyNext(index + 1, newSearch, nextMeta),
+          meta: nextMeta,
+        }
+      }
+      return applyNext(index + 1, newSearch, meta)
     }
 
-    return middleware({ search: currentSearch, next })
+    return (middlewares[index]! as any)({ search: currentSearch, next, meta })
   }
 
   return function middleware(
     search: any,
-    dest: BuildNextOptions,
+    nextDest: BuildNextOptions,
     _includeValidateSearch: boolean,
   ) {
-    context.dest = dest
-    context._includeValidateSearch = _includeValidateSearch
-    return applyNext(0, search, context.middlewares)
+    dest = nextDest
+    includeValidateSearch = _includeValidateSearch
+    return applyNext(0, search)
   }
 }
 

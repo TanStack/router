@@ -57,7 +57,8 @@ if (DEVELOPMENT) {
     }
   })
 
-  const httpServer = app.listen(PORT, async () => {
+  const httpServer = app.listen(PORT, async (error) => {
+    if (error) throw error
     await devServer.afterListen()
     console.log(`Server is running on http://localhost:${PORT}`)
   })
@@ -74,7 +75,8 @@ if (DEVELOPMENT) {
       next(error)
     }
   })
-  app.listen(PORT, () => {
+  app.listen(PORT, (error) => {
+    if (error) throw error
     console.log(`Server is running on http://localhost:${PORT}`)
   })
 }

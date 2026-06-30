@@ -1,1 +1,0 @@
-import{c as l,a as e,b as o}from"./index-BwsVWHwV.js";import{S as t}from"./scroll-block-BAas_Ct-.js";const c=l("/(tests)/lazy-with-loader-page")({component:a});function a(){return e("div",{class:"p-2"},[e("h3",null,[o("lazy-with-loader-page")]),e("hr",null,null),e(t,null,null)])}export{c as Route};

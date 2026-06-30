@@ -33,7 +33,10 @@ function* findPendingLazyPayloads(
     el.type === 'link' &&
     el.props?.rel === 'stylesheet'
   ) {
-    const cssHref = el.props['data-rsc-css-href'] as string | undefined
+    let cssHref: string | undefined
+    if ('data-rsc-css-href' in el.props) {
+      cssHref = el.props.href
+    }
     if (cssHref && cssCollector) {
       cssCollector(cssHref)
     }

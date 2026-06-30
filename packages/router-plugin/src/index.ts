@@ -11,6 +11,11 @@ export type {
   HmrOptions,
 } from './core/config'
 export type { RouterPluginContext } from './core/router-plugin-context'
+export { getObjectPropertyKeyName } from './core/utils'
+export type {
+  ReferenceRouteCompilerPlugin,
+  ReferenceRouteCompilerPluginContext,
+} from './core/code-splitter/plugins'
 export {
   tsrSplit,
   splitRouteIdentNodes,

@@ -1,3 +1,8 @@
+export type RoutePathSegmentMetadata = {
+  literalLeadingUnderscore?: boolean
+  literalTrailingUnderscore?: boolean
+}
+
 export type RouteNode = {
   filePath: string
   fullPath: string
@@ -20,6 +25,8 @@ export type RouteNode = {
    * (e.g., when the parent is a virtual file-less route that gets filtered out).
    */
   _virtualParentRoutePath?: string
+  /** Internal routePath segment metadata for escaped or explicit literal syntax. */
+  _routePathSegmentMetadata?: Array<RoutePathSegmentMetadata | undefined>
 }
 
 export interface GetRouteNodesResult {

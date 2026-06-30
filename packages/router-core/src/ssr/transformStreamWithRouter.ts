@@ -3,264 +3,492 @@ import { Readable } from 'node:stream'
 import { TSR_SCRIPT_BARRIER_ID } from './constants'
 import type { AnyRouter } from '../router'
 
+export type TransformStreamWithRouterOptions = {
+  /** Timeout for serialization to complete after app render finishes (default: 60000ms) */
+  timeoutMs?: number
+  /** Maximum lifetime of the stream transform (default: 120000ms). Safety net for cleanup. */
+  lifetimeMs?: number
+  /**
+   * Called exactly once when the stream is torn down due to abort/error/
+   * cancel/timeout — NOT on natural successful completion. Use this to
+   * abort a hidden producer upstream of any PassThrough you passed in
+   * (e.g. React `renderToPipeableStream`'s `abort()`).
+   * Errors thrown from this callback are swallowed.
+   */
+  onAbort?: (reason?: unknown) => void
+}
+
 export function transformReadableStreamWithRouter(
   router: AnyRouter,
   routerStream: ReadableStream,
+  opts?: TransformStreamWithRouterOptions,
 ) {
-  return transformStreamWithRouter(router, routerStream)
+  return transformStreamWithRouter(router, routerStream, opts)
 }
 
 export function transformPipeableStreamWithRouter(
   router: AnyRouter,
   routerStream: Readable,
+  opts?: TransformStreamWithRouterOptions,
 ) {
   return Readable.fromWeb(
-    transformStreamWithRouter(router, Readable.toWeb(routerStream)),
+    transformStreamWithRouter(router, Readable.toWeb(routerStream), opts),
   )
 }
-
-// Use string constants for simple indexOf matching
-const BODY_END_TAG = '</body>'
-const HTML_END_TAG = '</html>'
 
 // Minimum length of a valid closing tag: </a> = 4 characters
 const MIN_CLOSING_TAG_LENGTH = 4
 
 // Default timeout values (in milliseconds)
 const DEFAULT_SERIALIZATION_TIMEOUT_MS = 60000
-const DEFAULT_LIFETIME_TIMEOUT_MS = 60000
+const DEFAULT_LIFETIME_TIMEOUT_MS = DEFAULT_SERIALIZATION_TIMEOUT_MS * 2
+const MAX_LEFTOVER_CHARS = 2048
+const MAX_TAIL_CHARS = 64 * 1024
+const MAX_ROUTER_HTML_CHARS = 16 * 1024 * 1024
+const MAX_PENDING_WRITE_CHARS = 16 * 1024 * 1024
+
+// Merge lifecycle: body bytes can stream, router HTML must precede tail,
+// terminal states own close/error/cleanup exactly once.
+const MergeState = {
+  ReadingBody: 0,
+  HoldingTail: 1,
+  AppDone: 2,
+  Draining: 3,
+  Done: 4,
+} as const
+
+type MergeState = (typeof MergeState)[keyof typeof MergeState]
 
 // Module-level encoder (stateless, safe to reuse)
 const textEncoder = new TextEncoder()
 
-/**
- * Finds the position just after the last valid HTML closing tag in the string.
- *
- * Valid closing tags match the pattern: </[a-zA-Z][\w:.-]*>
- * Examples: </div>, </my-component>, </slot:name.nested>
- *
- * @returns Position after the last closing tag, or -1 if none found
- */
-function findLastClosingTagEnd(str: string): number {
-  const len = str.length
-  if (len < MIN_CLOSING_TAG_LENGTH) return -1
+const noop = () => {}
+const resolvedPromise = Promise.resolve()
 
-  let i = len - 1
+// Returns -bodyEndIndex - 2 when </body> is found; otherwise returns
+// the position after the last valid closing tag, or -1 when none exists.
+function findHtmlBoundary(str: string): number {
+  let lastClosingTagEnd = -1
+  let searchFrom = str.length - MIN_CLOSING_TAG_LENGTH
 
-  while (i >= MIN_CLOSING_TAG_LENGTH - 1) {
-    // Look for > (charCode 62)
-    if (str.charCodeAt(i) === 62) {
-      // Look backwards for valid tag name characters
-      let j = i - 1
+  while (searchFrom >= 0) {
+    const openSlash = str.lastIndexOf('</', searchFrom)
+    if (openSlash === -1) break
 
-      // Skip through valid tag name characters
-      while (j >= 1) {
-        const code = str.charCodeAt(j)
-        // Check if it's a valid tag name char: [a-zA-Z0-9_:.-]
-        if (
-          (code >= 97 && code <= 122) || // a-z
-          (code >= 65 && code <= 90) || // A-Z
-          (code >= 48 && code <= 57) || // 0-9
-          code === 95 || // _
-          code === 58 || // :
-          code === 46 || // .
-          code === 45 // -
-        ) {
-          j--
-        } else {
-          break
-        }
-      }
+    // Fast case-insensitive match for </body>. Negative return encodes the
+    // body start index without allocating a result object.
+    if (
+      (str.charCodeAt(openSlash + 2) | 32) === 98 &&
+      (str.charCodeAt(openSlash + 3) | 32) === 111 &&
+      (str.charCodeAt(openSlash + 4) | 32) === 100 &&
+      (str.charCodeAt(openSlash + 5) | 32) === 121 &&
+      str.charCodeAt(openSlash + 6) === 62
+    ) {
+      return -openSlash - 2
+    }
 
-      // Check if the first char after </ is a valid start char (letter only)
-      const tagNameStart = j + 1
-      if (tagNameStart < i) {
-        const startCode = str.charCodeAt(tagNameStart)
-        // Tag name must start with a letter (a-z or A-Z)
-        if (
-          (startCode >= 97 && startCode <= 122) ||
-          (startCode >= 65 && startCode <= 90)
-        ) {
-          // Check for </ (charCodes: < = 60, / = 47)
+    if (lastClosingTagEnd === -1) {
+      let i = openSlash + 2
+      const startCode = str.charCodeAt(i)
+      if (
+        (startCode >= 97 && startCode <= 122) ||
+        (startCode >= 65 && startCode <= 90)
+      ) {
+        i++
+        while (i < str.length) {
+          const code = str.charCodeAt(i)
           if (
-            j >= 1 &&
-            str.charCodeAt(j) === 47 &&
-            str.charCodeAt(j - 1) === 60
+            (code >= 97 && code <= 122) || // a-z
+            (code >= 65 && code <= 90) || // A-Z
+            (code >= 48 && code <= 57) || // 0-9
+            code === 95 || // _
+            code === 58 || // :
+            code === 46 || // .
+            code === 45 // -
           ) {
-            return i + 1 // Return position after the closing >
+            i++
+          } else {
+            break
           }
+        }
+
+        if (str.charCodeAt(i) === 62) {
+          lastClosingTagEnd = i + 1
         }
       }
     }
-    i--
+
+    searchFrom = openSlash - 1
   }
-  return -1
+
+  return lastClosingTagEnd
+}
+
+/**
+ * Releasing the lock can throw if a pending read is still settling or if the
+ * lock was already released.
+ */
+type ReaderOps = {
+  cancel: (reason?: unknown) => Promise<unknown>
+  releaseLock: () => void
+}
+
+function safeReleaseReader(reader: ReaderOps) {
+  try {
+    reader.releaseLock()
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Cancel a reader without producing an unhandled rejection. `reader.cancel()`
+ * can reject (e.g. when the underlying source's cancel() throws), and
+ * downstream cancel() should still wait for upstream teardown when possible.
+ */
+function safeCancelReader(reader: ReaderOps, reason?: unknown): Promise<void> {
+  let cancelPromise: Promise<unknown> | undefined
+  try {
+    cancelPromise = reader.cancel(reason)
+  } catch {
+    // ignore
+  }
+
+  if (!safeReleaseReader(reader) && cancelPromise) {
+    return cancelPromise.then(noop, noop).then(() => {
+      safeReleaseReader(reader)
+    })
+  }
+
+  return cancelPromise ? cancelPromise.then(noop, noop) : resolvedPromise
+}
+
+function createReaderState<T>(appStream: ReadableStream<T>) {
+  const reader = appStream.getReader()
+  let released = false
+
+  return {
+    reader,
+    cancel: (reason?: unknown) => {
+      if (released) return resolvedPromise
+      released = true
+      return safeCancelReader(reader, reason)
+    },
+    release: () => {
+      if (released) return
+      released = true
+      safeReleaseReader(reader)
+    },
+  }
+}
+
+function createAbortNotifier(opts?: TransformStreamWithRouterOptions) {
+  let abortNotified = false
+  return (reason?: unknown) => {
+    if (abortNotified) return
+    abortNotified = true
+    try {
+      opts?.onAbort?.(reason)
+    } catch {
+      // swallow user errors
+    }
+  }
 }
 
 export function transformStreamWithRouter(
   router: AnyRouter,
   appStream: ReadableStream,
-  opts?: {
-    /** Timeout for serialization to complete after app render finishes (default: 60000ms) */
-    timeoutMs?: number
-    /** Maximum lifetime of the stream transform (default: 60000ms). Safety net for cleanup. */
-    lifetimeMs?: number
-  },
+  opts?: TransformStreamWithRouterOptions,
 ) {
-  // Check upfront if serialization already finished synchronously
-  // This is the fast path for routes with no deferred data
-  const serializationAlreadyFinished =
-    router.serverSsr?.isSerializationFinished() ?? false
+  const serverSsr = router.serverSsr
+  if (!serverSsr) {
+    throw new Error('Invariant failed: router.serverSsr is required')
+  }
+  if (serverSsr.reserveStreamFastPath()) {
+    return makeFastPathStream(appStream, opts, serverSsr)
+  }
 
-  // Take any HTML that was buffered before we started listening
-  const initialBufferedHtml = router.serverSsr?.takeBufferedHtml()
+  return makeMainStream(serverSsr, appStream, opts)
+}
 
-  // True passthrough: if serialization already finished and nothing buffered,
-  // we can avoid any decoding/scanning while still honoring cleanup + setRenderFinished.
-  if (serializationAlreadyFinished && !initialBufferedHtml) {
-    let cleanedUp = false
-    let controller: ReadableStreamDefaultController<Uint8Array> | undefined
-    let isStreamClosed = false
-    let lifetimeTimeoutHandle: ReturnType<typeof setTimeout> | undefined
+// =====================================================================
+// Fast path: passthrough with cleanup + backpressure on app reads.
+// =====================================================================
+function makeFastPathStream(
+  appStream: ReadableStream<Uint8Array>,
+  opts?: TransformStreamWithRouterOptions,
+  serverSsr?: NonNullable<AnyRouter['serverSsr']>,
+) {
+  let cleanedUp = false
+  let controller: ReadableStreamDefaultController<Uint8Array> | undefined
+  let state: MergeState = MergeState.ReadingBody
+  let lifetimeTimeoutHandle: ReturnType<typeof setTimeout> | undefined
+  let stopListeningToInjectedHtml: (() => void) | undefined
+  const readerState = createReaderState(appStream)
+  const notifyAbort = createAbortNotifier(opts)
+  const isDone = () => state === MergeState.Done
+  let renderFinished = false
 
-    const cleanup = () => {
-      if (cleanedUp) return
-      cleanedUp = true
-
-      if (lifetimeTimeoutHandle !== undefined) {
-        clearTimeout(lifetimeTimeoutHandle)
-        lifetimeTimeoutHandle = undefined
-      }
-
-      router.serverSsr?.cleanup()
+  const finishSsrRendering = () => {
+    if (!serverSsr || renderFinished) return true
+    renderFinished = true
+    try {
+      serverSsr.setRenderFinished()
+      return true
+    } catch (error) {
+      safeError(error)
+      cleanup(error)
+      return false
     }
+  }
 
-    const safeClose = () => {
-      if (isStreamClosed) return
-      isStreamClosed = true
+  const cleanup = (reason?: unknown, cancelReader = true) => {
+    if (cleanedUp) return resolvedPromise
+    cleanedUp = true
+
+    if (lifetimeTimeoutHandle !== undefined) {
+      clearTimeout(lifetimeTimeoutHandle)
+      lifetimeTimeoutHandle = undefined
+    }
+    try {
+      stopListeningToInjectedHtml?.()
+    } catch {
+      // ignore
+    }
+    stopListeningToInjectedHtml = undefined
+
+    if (cancelReader) {
+      // Notify the producer immediately. Reader cancellation may take time to
+      // settle, and upstream renderers must tolerate abort + cancel overlap.
+      notifyAbort(reason)
+    }
+    const readerDone = cancelReader
+      ? readerState.cancel(reason)
+      : (readerState.release(), resolvedPromise)
+    if (serverSsr) {
       try {
-        controller?.close()
-      } catch {
-        // ignore
+        serverSsr.cleanup()
+      } catch (error) {
+        console.error('Error in SSR cleanup:', error)
       }
     }
+    return readerDone
+  }
 
-    const safeError = (error: unknown) => {
-      if (isStreamClosed) return
-      isStreamClosed = true
-      try {
-        controller?.error(error)
-      } catch {
-        // ignore
-      }
+  const safeClose = () => {
+    if (isDone()) return
+    state = MergeState.Done
+    try {
+      controller?.close()
+    } catch {
+      // ignore
     }
+  }
 
-    const lifetimeMs = opts?.lifetimeMs ?? DEFAULT_LIFETIME_TIMEOUT_MS
-    lifetimeTimeoutHandle = setTimeout(() => {
-      if (!cleanedUp && !isStreamClosed) {
-        console.warn(
-          `SSR stream transform exceeded maximum lifetime (${lifetimeMs}ms), forcing cleanup`,
-        )
-        safeError(new Error('Stream lifetime exceeded'))
-        cleanup()
-      }
-    }, lifetimeMs)
+  const safeError = (error: unknown) => {
+    if (isDone()) return
+    state = MergeState.Done
+    try {
+      controller?.error(error)
+    } catch {
+      // ignore
+    }
+  }
 
-    const stream = new ReadableStream<Uint8Array>({
-      start(c: ReadableStreamDefaultController<Uint8Array>) {
-        controller = c
-      },
-      cancel() {
-        isStreamClosed = true
-        cleanup()
-      },
+  if (serverSsr) {
+    stopListeningToInjectedHtml = serverSsr.onInjectedHtml(() => {
+      const err = new Error('SSR router HTML injected during fast path')
+      safeError(err)
+      cleanup(err)
     })
+  }
 
-    ;(async () => {
-      const reader = appStream.getReader()
+  const lifetimeMs = opts?.lifetimeMs ?? DEFAULT_LIFETIME_TIMEOUT_MS
+  lifetimeTimeoutHandle = setTimeout(() => {
+    if (!cleanedUp && !isDone()) {
+      const err = new Error('Stream lifetime exceeded')
+      console.warn(
+        `SSR stream transform exceeded maximum lifetime (${lifetimeMs}ms), forcing cleanup`,
+      )
+      safeError(err)
+      cleanup(err)
+    }
+  }, lifetimeMs)
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c
+    },
+    async pull(c) {
+      if (cleanedUp || isDone()) return
       try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          if (cleanedUp || isStreamClosed) return
-          controller?.enqueue(value as unknown as Uint8Array)
+        const { done, value } = await readerState.reader.read()
+        if (!done) {
+          if (!cleanedUp && !isDone()) {
+            c.enqueue(value)
+          }
+          return
         }
 
-        if (cleanedUp || isStreamClosed) return
+        if (cleanedUp || isDone()) return
 
-        router.serverSsr?.setRenderFinished()
+        if (!finishSsrRendering()) return
         safeClose()
-        cleanup()
+        return cleanup(undefined, false)
       } catch (error) {
         if (cleanedUp) return
         console.error('Error reading appStream:', error)
-        router.serverSsr?.setRenderFinished()
+        if (state < MergeState.AppDone) {
+          try {
+            serverSsr?.setRenderFinished()
+          } catch {
+            // ignore
+          }
+        }
         safeError(error)
-        cleanup()
+        return cleanup(error)
       } finally {
-        reader.releaseLock()
+        if (cleanedUp || isDone()) {
+          readerState.release()
+        }
       }
-    })().catch((error) => {
-      if (cleanedUp) return
-      console.error('Error in stream transform:', error)
-      safeError(error)
-      cleanup()
-    })
+    },
+    cancel(reason) {
+      state = MergeState.Done
+      return cleanup(reason)
+    },
+  })
 
-    return stream
-  }
+  return stream
+}
 
+// =====================================================================
+// Main path: scan + inject router HTML/scripts with full backpressure.
+//
+// ALL output (app chunks AND router-injected HTML/scripts) flows through a
+// single pendingWrites queue and is only enqueued onto the downstream
+// controller when desiredSize > 0. This prevents native-memory growth of
+// queued Uint8Arrays under slow HTTP consumers.
+// =====================================================================
+function makeMainStream(
+  serverSsr: NonNullable<AnyRouter['serverSsr']>,
+  appStream: ReadableStream,
+  opts?: TransformStreamWithRouterOptions,
+) {
   let stopListeningToInjectedHtml: (() => void) | undefined
   let stopListeningToSerializationFinished: (() => void) | undefined
   let serializationTimeoutHandle: ReturnType<typeof setTimeout> | undefined
   let lifetimeTimeoutHandle: ReturnType<typeof setTimeout> | undefined
   let cleanedUp = false
 
-  let controller: ReadableStreamDefaultController<any>
-  let isStreamClosed = false
+  let controller: ReadableStreamDefaultController<Uint8Array> | undefined
+  let closeWhenDrained = false
+  let state: MergeState = MergeState.ReadingBody
 
-  const textDecoder = new TextDecoder()
+  const readerState = createReaderState(appStream)
+  const notifyAbort = createAbortNotifier(opts)
 
-  // concat'd router HTML; avoids array joins on each flush
-  let pendingRouterHtml = initialBufferedHtml ?? ''
+  // Single output queue: app chunks + router-injected HTML/scripts.
+  // Stored as STRINGS to avoid holding native-backed Uint8Arrays in our queue
+  // while waiting for downstream capacity. Encoding happens at enqueue time
+  // (drainPending) so the bytes live only inside the controller's internal
+  // queue, not in two places.
+  //
+  // Uses an index pointer instead of Array.prototype.shift() (which is O(n))
+  // so many small router-injected script chunks stay O(1) per chunk.
+  const pendingWrites: Array<string> = []
+  let pendingWriteHead = 0
+  let pendingWriteChars = 0
 
-  // between-chunk text buffer; keep bounded to avoid unbounded memory
-  let leftover = ''
+  function clearPending() {
+    pendingWrites.length = 0
+    pendingWriteHead = 0
+    pendingWriteChars = 0
+  }
 
-  // captured closing tags from </body> onward
-  let pendingClosingTags = ''
-
-  // conservative cap: enough to hold any partial closing tag + a bit
-  const MAX_LEFTOVER_CHARS = 2048
-
-  let isAppRendering = true
-  let streamBarrierLifted = false
-  let serializationFinished = serializationAlreadyFinished
-
-  function safeEnqueue(chunk: string | Uint8Array) {
-    if (isStreamClosed) return
-    if (typeof chunk === 'string') {
-      controller.enqueue(textEncoder.encode(chunk))
-    } else {
-      controller.enqueue(chunk)
+  // Backpressure: pull() resolves drainResolve to let the read loop advance.
+  let drainResolve: (() => void) | null = null
+  const waitForDrain = () =>
+    new Promise<void>((r) => {
+      drainResolve = r
+    })
+  const signalDrain = () => {
+    if (drainResolve) {
+      const r = drainResolve
+      drainResolve = null
+      r()
     }
   }
 
+  const isDone = () => state === MergeState.Done
+
+  function drainPending() {
+    if (!controller || isDone()) return
+    while (pendingWriteHead < pendingWrites.length) {
+      const ds = controller.desiredSize
+      if (ds !== null && ds <= 0) return
+      const next = pendingWrites[pendingWriteHead]!
+      // Release reference for GC; compact when fully drained.
+      pendingWrites[pendingWriteHead] = ''
+      pendingWriteHead++
+      pendingWriteChars -= next.length
+      try {
+        controller.enqueue(textEncoder.encode(next))
+      } catch (error) {
+        safeError(error)
+        cleanup(error)
+        return
+      }
+    }
+    // Fully drained: reset array so it doesn't grow unbounded across SSR.
+    if (pendingWriteHead >= pendingWrites.length) {
+      pendingWrites.length = 0
+      pendingWriteHead = 0
+    }
+    // If we've flushed everything and tryFinish requested close, close now.
+    if (closeWhenDrained && pendingWriteHead >= pendingWrites.length) {
+      closeWhenDrained = false
+      safeClose()
+      cleanup(undefined, false)
+    }
+  }
+
+  /**
+   * Enqueue a string chunk through the backpressure queue. Stored as a
+   * string and encoded only when the downstream actually accepts the chunk
+   * — keeps native-memory pressure inside the controller's queue (which
+   * honors desiredSize) rather than ours.
+   */
+  function writeChunk(chunk: string) {
+    if (cleanedUp || isDone()) return
+    if (!chunk.length) return
+    if (pendingWriteChars + chunk.length > MAX_PENDING_WRITE_CHARS) {
+      const err = new Error('SSR stream pending output exceeded maximum buffer')
+      safeError(err)
+      cleanup(err)
+      return
+    }
+    pendingWrites.push(chunk)
+    pendingWriteChars += chunk.length
+    drainPending()
+  }
+
   function safeClose() {
-    if (isStreamClosed) return
-    isStreamClosed = true
+    if (isDone()) return
+    state = MergeState.Done
     try {
-      controller.close()
+      controller?.close()
     } catch {
       // ignore
     }
   }
 
   function safeError(error: unknown) {
-    if (isStreamClosed) return
-    isStreamClosed = true
+    if (isDone()) return
+    state = MergeState.Done
     try {
-      controller.error(error)
+      controller?.error(error)
     } catch {
       // ignore
     }
@@ -269,8 +497,8 @@ export function transformStreamWithRouter(
   /**
    * Cleanup with guards; must be idempotent.
    */
-  function cleanup() {
-    if (cleanedUp) return
+  function cleanup(reason?: unknown, cancelReader = true) {
+    if (cleanedUp) return resolvedPromise
     cleanedUp = true
 
     try {
@@ -291,155 +519,317 @@ export function transformStreamWithRouter(
       lifetimeTimeoutHandle = undefined
     }
 
-    pendingRouterHtml = ''
+    clearPendingRouterHtml()
     leftover = ''
-    pendingClosingTags = ''
+    pendingTail = ''
+    clearPending()
 
-    router.serverSsr?.cleanup()
+    if (cancelReader) {
+      // Notify the producer immediately. Reader cancellation may take time to
+      // settle, and upstream renderers must tolerate abort + cancel overlap.
+      notifyAbort(reason)
+    }
+    const readerDone = cancelReader
+      ? readerState.cancel(reason)
+      : (readerState.release(), resolvedPromise)
+    signalDrain()
+    try {
+      serverSsr.cleanup()
+    } catch (error) {
+      console.error('Error in SSR cleanup:', error)
+    }
+    return readerDone
   }
 
-  const stream = new ReadableStream({
-    start(c: ReadableStreamDefaultController<any>) {
+  const textDecoder = new TextDecoder()
+
+  // Router-injected scripts/HTML waiting for the next safe body boundary.
+  // Keep chunks separate so flushing does not flatten a large rope string.
+  const pendingRouterHtml: Array<string> = []
+  let pendingRouterHtmlChars = 0
+
+  // between-chunk text buffer; keep bounded to avoid unbounded memory
+  let leftover = ''
+
+  // captured bytes from </body> onward; must stay behind router scripts.
+  let pendingTail = ''
+
+  let streamBarrierLifted = false
+  let streamBarrierMarkerSeen = false
+  let serializationFinished = false
+
+  function noteBarrierMarker(chunk: string) {
+    if (streamBarrierMarkerSeen) return
+    if (chunk.includes(TSR_SCRIPT_BARRIER_ID)) {
+      streamBarrierMarkerSeen = true
+    }
+  }
+
+  function liftBarrierAfterBoundary() {
+    if (streamBarrierLifted) return
+    if (!streamBarrierMarkerSeen) return
+    streamBarrierLifted = true
+    serverSsr.liftScriptBarrier()
+  }
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
       controller = c
+      // If anything queued before start (shouldn't happen but be safe), drain.
+      drainPending()
     },
-    cancel() {
-      isStreamClosed = true
-      cleanup()
+    pull() {
+      // Consumer has capacity; flush queue then unblock read loop.
+      drainPending()
+      signalDrain()
+    },
+    cancel(reason) {
+      state = MergeState.Done
+      return cleanup(reason)
     },
   })
 
-  function flushPendingRouterHtml() {
-    if (!pendingRouterHtml) return
-    safeEnqueue(pendingRouterHtml)
-    pendingRouterHtml = ''
+  function drainRouterHtml() {
+    if (cleanedUp || isDone()) return
+    let html: string | undefined
+    try {
+      html = serverSsr.takeBufferedHtml()
+    } catch (error) {
+      safeError(error)
+      cleanup(error)
+      return
+    }
+    if (!html) return
+    if (state >= MergeState.Draining) {
+      // At this point final tail/close has already been queued. Emitting late
+      // router HTML would put scripts after </body> or drop them silently.
+      const err = new Error(
+        'SSR router HTML injected after stream finalization',
+      )
+      safeError(err)
+      cleanup(err)
+      return
+    }
+    if (state === MergeState.HoldingTail) {
+      flushPendingRouterHtml()
+      writeChunk(html)
+    } else {
+      if (pendingRouterHtmlChars + html.length > MAX_ROUTER_HTML_CHARS) {
+        const err = new Error('SSR router HTML exceeded maximum buffer')
+        safeError(err)
+        cleanup(err)
+        return
+      }
+      pendingRouterHtml.push(html)
+      pendingRouterHtmlChars += html.length
+    }
   }
 
-  function appendRouterHtml(html: string) {
-    if (!html) return
-    pendingRouterHtml += html
+  function flushPendingRouterHtml() {
+    if (!pendingRouterHtml.length) return
+    for (const html of pendingRouterHtml) {
+      writeChunk(html)
+    }
+    clearPendingRouterHtml()
+  }
+
+  function clearPendingRouterHtml() {
+    pendingRouterHtml.length = 0
+    pendingRouterHtmlChars = 0
+  }
+
+  function appendTail(chunk: string) {
+    pendingTail += chunk
+    if (pendingTail.length > MAX_TAIL_CHARS) {
+      throw new Error('SSR stream tail exceeded maximum buffer')
+    }
+  }
+
+  function waitForBackpressure() {
+    return !!(
+      controller &&
+      controller.desiredSize !== null &&
+      controller.desiredSize <= 0
+    )
+  }
+
+  function startSerializationTimeout() {
+    if (cleanedUp || isDone()) return
+    if (serializationTimeoutHandle !== undefined) return
+    const timeoutMs = opts?.timeoutMs ?? DEFAULT_SERIALIZATION_TIMEOUT_MS
+    serializationTimeoutHandle = setTimeout(() => {
+      if (!cleanedUp && !isDone()) {
+        const err = new Error('Serialization timeout after app render finished')
+        console.error('Serialization timeout after app render finished')
+        safeError(err)
+        cleanup(err)
+      }
+    }, timeoutMs)
   }
 
   /**
-   * Finish only when app done and serialization complete.
+   * Finish only when app done and serialization complete. Queues final
+   * output and requests close-when-drained so we don't close ahead of
+   * pending writes still waiting on downstream capacity.
    */
   function tryFinish() {
-    if (isAppRendering || !serializationFinished) return
-    if (cleanedUp || isStreamClosed) return
+    if (state !== MergeState.AppDone || !serializationFinished) return
+    if (cleanedUp || isDone()) return
 
     if (serializationTimeoutHandle !== undefined) {
       clearTimeout(serializationTimeoutHandle)
       serializationTimeoutHandle = undefined
     }
 
+    drainRouterHtml()
+    if (cleanedUp || isDone()) return
+
     // Flush any remaining bytes in the TextDecoder
     const decoderRemainder = textDecoder.decode()
 
-    if (leftover) safeEnqueue(leftover)
-    if (decoderRemainder) safeEnqueue(decoderRemainder)
+    if (leftover) writeChunk(leftover)
+    if (cleanedUp || isDone()) return
+    if (decoderRemainder) writeChunk(decoderRemainder)
+    if (cleanedUp || isDone()) return
     flushPendingRouterHtml()
-    if (pendingClosingTags) safeEnqueue(pendingClosingTags)
+    if (cleanedUp || isDone()) return
+    if (pendingTail) writeChunk(pendingTail)
+    if (cleanedUp || isDone()) return
 
-    safeClose()
-    cleanup()
+    leftover = ''
+    pendingTail = ''
+
+    state = MergeState.Draining
+    closeWhenDrained = true
+    // Try immediately; if queue not drained yet, pull() will retry.
+    drainPending()
+  }
+
+  function finishAppRendering() {
+    if (state >= MergeState.AppDone) return
+    state = MergeState.AppDone
+    try {
+      serverSsr.setRenderFinished()
+    } catch (error) {
+      safeError(error)
+      cleanup(error)
+      return
+    }
+    drainRouterHtml()
+    if (cleanedUp || isDone()) return
+    serializationFinished =
+      serializationFinished || serverSsr.isSerializationFinished()
+    if (serializationFinished) {
+      tryFinish()
+    } else {
+      startSerializationTimeout()
+    }
   }
 
   // Safety net: cleanup even if consumer never reads
-  const lifetimeMs = opts?.lifetimeMs ?? DEFAULT_LIFETIME_TIMEOUT_MS
+  const timeoutMs = opts?.timeoutMs ?? DEFAULT_SERIALIZATION_TIMEOUT_MS
+  const lifetimeMs = opts?.lifetimeMs ?? timeoutMs * 2
   lifetimeTimeoutHandle = setTimeout(() => {
-    if (!cleanedUp && !isStreamClosed) {
+    if (!cleanedUp && !isDone()) {
+      const err = new Error('Stream lifetime exceeded')
       console.warn(
         `SSR stream transform exceeded maximum lifetime (${lifetimeMs}ms), forcing cleanup`,
       )
-      safeError(new Error('Stream lifetime exceeded'))
-      cleanup()
+      safeError(err)
+      cleanup(err)
     }
   }, lifetimeMs)
 
-  if (!serializationAlreadyFinished) {
-    stopListeningToInjectedHtml = router.subscribe('onInjectedHtml', () => {
-      if (cleanedUp || isStreamClosed) return
-      const html = router.serverSsr?.takeBufferedHtml()
-      if (!html) return
+  stopListeningToInjectedHtml = serverSsr.onInjectedHtml(() => {
+    drainRouterHtml()
+  })
 
-      // If we've already captured </body> (pendingClosingTags), we must keep appending
-      // so injection stays before the stored closing tags.
-      if (isAppRendering || leftover || pendingClosingTags) {
-        appendRouterHtml(html)
-      } else {
-        // App is done rendering - flush any pending buffer first to maintain order,
-        // then write the new HTML directly
-        flushPendingRouterHtml()
-        safeEnqueue(html)
-      }
-    })
+  stopListeningToSerializationFinished = serverSsr.onSerializationFinished(
+    () => {
+      serializationFinished = true
+      drainRouterHtml()
+      tryFinish()
+    },
+  )
 
-    stopListeningToSerializationFinished = router.subscribe(
-      'onSerializationFinished',
-      () => {
-        serializationFinished = true
-        tryFinish()
-      },
-    )
+  // Subscriptions are installed before snapshots, so missed events are
+  // recovered by these synchronous drains/rechecks.
+  drainRouterHtml()
+  if (cleanedUp || isDone()) return stream
+  serializationFinished =
+    serializationFinished || serverSsr.isSerializationFinished()
+  if (serializationFinished) {
+    drainRouterHtml()
+    if (cleanedUp || isDone()) return stream
   }
 
   // Transform the appStream
   ;(async () => {
-    const reader = appStream.getReader()
     try {
       while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        if (cleanedUp || isStreamClosed) return
-
-        const text =
-          value instanceof Uint8Array
-            ? textDecoder.decode(value, { stream: true })
-            : String(value)
-
-        // Fast path: most chunks have no pending left-over.
-        const chunkString = leftover ? leftover + text : text
-
-        if (!streamBarrierLifted) {
-          if (chunkString.includes(TSR_SCRIPT_BARRIER_ID)) {
-            streamBarrierLifted = true
-            router.serverSsr?.liftScriptBarrier()
-          }
+        // Backpressure: pause upstream reads while downstream is full.
+        if (waitForBackpressure()) {
+          await waitForDrain()
+          if (cleanedUp || isDone()) return
         }
 
-        // If we already saw </body>, everything else is part of tail; buffer it.
-        if (pendingClosingTags) {
-          pendingClosingTags += chunkString
+        const { done, value } = await readerState.reader.read()
+        if (done) break
+
+        if (cleanedUp || isDone()) return
+
+        const text =
+          typeof value === 'string'
+            ? value
+            : textDecoder.decode(value as ArrayBufferView, { stream: true })
+
+        const chunkString = leftover ? leftover + text : text
+
+        // If we already saw </body>, everything else is tail. Keep it bounded
+        // and held until router scripts are ready so injection remains before </body>.
+        if (state >= MergeState.HoldingTail) {
+          appendTail(chunkString)
           leftover = ''
           continue
         }
 
-        const bodyEndIndex = chunkString.indexOf(BODY_END_TAG)
-        const htmlEndIndex = chunkString.indexOf(HTML_END_TAG)
-
-        if (
-          bodyEndIndex !== -1 &&
-          htmlEndIndex !== -1 &&
-          bodyEndIndex < htmlEndIndex
-        ) {
-          pendingClosingTags = chunkString.slice(bodyEndIndex)
-          safeEnqueue(chunkString.slice(0, bodyEndIndex))
+        const boundary = findHtmlBoundary(chunkString)
+        if (boundary < -1) {
+          const bodyEndIndex = -boundary - 2
+          state = MergeState.HoldingTail
+          appendTail(chunkString.slice(bodyEndIndex))
+          const bodyChunk = chunkString.slice(0, bodyEndIndex)
+          writeChunk(bodyChunk)
+          if (cleanedUp || isDone()) return
+          noteBarrierMarker(bodyChunk)
+          liftBarrierAfterBoundary()
+          if (cleanedUp || isDone()) return
           flushPendingRouterHtml()
           leftover = ''
           continue
         }
 
-        const lastClosingTagEnd = findLastClosingTagEnd(chunkString)
+        const lastClosingTagEnd = boundary
 
         if (lastClosingTagEnd > 0) {
-          safeEnqueue(chunkString.slice(0, lastClosingTagEnd))
+          const safeChunk = chunkString.slice(0, lastClosingTagEnd)
+          writeChunk(safeChunk)
+          if (cleanedUp || isDone()) return
+          noteBarrierMarker(safeChunk)
+          liftBarrierAfterBoundary()
+          if (cleanedUp || isDone()) return
           flushPendingRouterHtml()
 
           leftover = chunkString.slice(lastClosingTagEnd)
           if (leftover.length > MAX_LEFTOVER_CHARS) {
             // Ensure bounded memory even if a consumer streams long text sequences
             // without any closing tags. This may reduce injection granularity but is correct.
-            safeEnqueue(leftover.slice(0, leftover.length - MAX_LEFTOVER_CHARS))
+            noteBarrierMarker(leftover)
+            const flushed = leftover.slice(
+              0,
+              leftover.length - MAX_LEFTOVER_CHARS,
+            )
+            writeChunk(flushed)
             leftover = leftover.slice(-MAX_LEFTOVER_CHARS)
           }
         } else {
@@ -447,8 +837,10 @@ export function transformStreamWithRouter(
           // but stream older bytes to prevent unbounded buffering.
           const combined = chunkString
           if (combined.length > MAX_LEFTOVER_CHARS) {
+            noteBarrierMarker(combined)
             const flushUpto = combined.length - MAX_LEFTOVER_CHARS
-            safeEnqueue(combined.slice(0, flushUpto))
+            const flushed = combined.slice(0, flushUpto)
+            writeChunk(flushed)
             leftover = combined.slice(flushUpto)
           } else {
             leftover = combined
@@ -456,40 +848,29 @@ export function transformStreamWithRouter(
         }
       }
 
-      if (cleanedUp || isStreamClosed) return
+      if (cleanedUp || isDone()) return
 
-      isAppRendering = false
-      router.serverSsr?.setRenderFinished()
-
-      if (serializationFinished) {
-        tryFinish()
-      } else {
-        const timeoutMs = opts?.timeoutMs ?? DEFAULT_SERIALIZATION_TIMEOUT_MS
-        serializationTimeoutHandle = setTimeout(() => {
-          if (!cleanedUp && !isStreamClosed) {
-            console.error('Serialization timeout after app render finished')
-            safeError(
-              new Error('Serialization timeout after app render finished'),
-            )
-            cleanup()
-          }
-        }, timeoutMs)
-      }
+      finishAppRendering()
     } catch (error) {
       if (cleanedUp) return
       console.error('Error reading appStream:', error)
-      isAppRendering = false
-      router.serverSsr?.setRenderFinished()
+      if (state < MergeState.AppDone) {
+        try {
+          serverSsr.setRenderFinished()
+        } catch {
+          // ignore
+        }
+      }
       safeError(error)
-      cleanup()
+      cleanup(error)
     } finally {
-      reader.releaseLock()
+      readerState.release()
     }
   })().catch((error) => {
     if (cleanedUp) return
     console.error('Error in stream transform:', error)
     safeError(error)
-    cleanup()
+    cleanup(error)
   })
 
   return stream

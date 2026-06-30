@@ -9,7 +9,8 @@ type EarlyHintsOptions = {
    * Fire-and-forget callback for HTTP 103 Early Hints.
    * Only invoked in production (when TSS_DEV_SERVER !== 'true').
    *
-   * The `static` phase contains transformed manifest assets for matched routes.
+   * The `static` phase contains transformed manifest preloads and stylesheets
+   * for matched routes.
    * The `dynamic` phase runs after route load, is skipped for redirects, and
    * can contain route `head().links` or empty `hints` and `links` arrays.
    * `hints` and `links` contain only values not emitted in earlier phases.
@@ -45,7 +46,19 @@ type EarlyHintsOptions = {
   responseLinkHeader?: boolean | ResponseLinkHeaderOptions
 }
 
+type InlineCssOptions = {
+  /**
+   * Controls whether Start inlines build-collected CSS for this request.
+   *
+   * This only has an effect when the build was created with
+   * `server.build.inlineCss` enabled. Defaults to `true` so builds with inline
+   * CSS enabled continue to inline CSS unless a request opts out.
+   */
+  inlineCss?: boolean
+}
+
 export type RequestOptions<TRegister> = EarlyHintsOptions &
+  InlineCssOptions &
   (TRegister extends {
     server: { requestContext: infer TRequestContext }
   }

@@ -16,6 +16,7 @@ import { Route as QueryHeavyRouteImport } from './routes/query-heavy'
 import { Route as NestedDeferredRouteImport } from './routes/nested-deferred'
 import { Route as ManyPromisesRouteImport } from './routes/many-promises'
 import { Route as FastSerialRouteImport } from './routes/fast-serial'
+import { Route as DeferredRejectionRouteImport } from './routes/deferred-rejection'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as ConcurrentRouteImport } from './routes/concurrent'
 import { Route as IndexRouteImport } from './routes/index'
@@ -55,6 +56,11 @@ const FastSerialRoute = FastSerialRouteImport.update({
   path: '/fast-serial',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeferredRejectionRoute = DeferredRejectionRouteImport.update({
+  id: '/deferred-rejection',
+  path: '/deferred-rejection',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DeferredRoute = DeferredRouteImport.update({
   id: '/deferred',
   path: '/deferred',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/concurrent': typeof ConcurrentRoute
   '/deferred': typeof DeferredRoute
+  '/deferred-rejection': typeof DeferredRejectionRoute
   '/fast-serial': typeof FastSerialRoute
   '/many-promises': typeof ManyPromisesRoute
   '/nested-deferred': typeof NestedDeferredRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/concurrent': typeof ConcurrentRoute
   '/deferred': typeof DeferredRoute
+  '/deferred-rejection': typeof DeferredRejectionRoute
   '/fast-serial': typeof FastSerialRoute
   '/many-promises': typeof ManyPromisesRoute
   '/nested-deferred': typeof NestedDeferredRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/concurrent': typeof ConcurrentRoute
   '/deferred': typeof DeferredRoute
+  '/deferred-rejection': typeof DeferredRejectionRoute
   '/fast-serial': typeof FastSerialRoute
   '/many-promises': typeof ManyPromisesRoute
   '/nested-deferred': typeof NestedDeferredRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/concurrent'
     | '/deferred'
+    | '/deferred-rejection'
     | '/fast-serial'
     | '/many-promises'
     | '/nested-deferred'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/concurrent'
     | '/deferred'
+    | '/deferred-rejection'
     | '/fast-serial'
     | '/many-promises'
     | '/nested-deferred'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/concurrent'
     | '/deferred'
+    | '/deferred-rejection'
     | '/fast-serial'
     | '/many-promises'
     | '/nested-deferred'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConcurrentRoute: typeof ConcurrentRoute
   DeferredRoute: typeof DeferredRoute
+  DeferredRejectionRoute: typeof DeferredRejectionRoute
   FastSerialRoute: typeof FastSerialRoute
   ManyPromisesRoute: typeof ManyPromisesRoute
   NestedDeferredRoute: typeof NestedDeferredRoute
@@ -211,6 +224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FastSerialRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/deferred-rejection': {
+      id: '/deferred-rejection'
+      path: '/deferred-rejection'
+      fullPath: '/deferred-rejection'
+      preLoaderRoute: typeof DeferredRejectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/deferred': {
       id: '/deferred'
       path: '/deferred'
@@ -239,6 +259,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConcurrentRoute: ConcurrentRoute,
   DeferredRoute: DeferredRoute,
+  DeferredRejectionRoute: DeferredRejectionRoute,
   FastSerialRoute: FastSerialRoute,
   ManyPromisesRoute: ManyPromisesRoute,
   NestedDeferredRoute: NestedDeferredRoute,

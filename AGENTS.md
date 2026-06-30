@@ -21,6 +21,7 @@ TanStack Router is a type-safe router with built-in caching and URL state manage
 - Framework-agnostic core logic separated from React/Solid bindings
 - Type-safe routing with search params and path params
 - Use workspace protocol for internal dependencies (`workspace:*`)
+- Always use curly braces for `if`, `else`, loops, and similar control statements. Never write one-line bodies like `if (foo) x = 1`.
 
 ## Dev environment tips
 

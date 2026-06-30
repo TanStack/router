@@ -29,7 +29,7 @@ function RootComponent() {
       <head>
         <HeadContent
           assetCrossOrigin={{
-            modulepreload: 'anonymous',
+            script: 'anonymous',
             stylesheet: 'use-credentials',
           }}
         />

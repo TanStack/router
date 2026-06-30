@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import ReactDOMServer from 'react-dom/server'
 
 import {
   Link,
@@ -26,6 +27,10 @@ async function asyncToThrowFn() {
 
 function throwFn() {
   throw new Error('error thrown')
+}
+
+function primitiveThrowFn() {
+  throw 'primitive error thrown'
 }
 
 let history: RouterHistory
@@ -261,6 +266,83 @@ describe.each([true, false])(
     })
   },
 )
+
+test('errorComponent receives primitive errors thrown from beforeLoad', async () => {
+  const rootRoute = createRootRoute()
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: function Home() {
+      return (
+        <div>
+          <Link to="/about">link to about</Link>
+        </div>
+      )
+    },
+  })
+  const aboutRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/about',
+    beforeLoad: primitiveThrowFn,
+    component: function About() {
+      return <div>About route content</div>
+    },
+    errorComponent: ({ error }) => <div>Error: {String(error)}</div>,
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
+
+  const router = createRouter({
+    routeTree,
+    history,
+  })
+
+  render(<RouterProvider router={router} />)
+
+  const linkToAbout = await screen.findByRole('link', {
+    name: 'link to about',
+  })
+
+  await act(() => fireEvent.click(linkToAbout))
+
+  expect(
+    await screen.findByText('Error: primitive error thrown', undefined, {
+      timeout: 750,
+    }),
+  ).toBeInTheDocument()
+  expect(screen.queryByText('About route content')).not.toBeInTheDocument()
+})
+
+test('SSR errorComponent receives primitive errors thrown from beforeLoad', async () => {
+  const history = createMemoryHistory({ initialEntries: ['/about'] })
+  const rootRoute = createRootRoute({
+    component: function Root() {
+      return <Outlet />
+    },
+  })
+  const aboutRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/about',
+    beforeLoad: primitiveThrowFn,
+    component: function About() {
+      return <div>About route content</div>
+    },
+    errorComponent: ({ error }) => <div>Error: {String(error)}</div>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([aboutRoute]),
+    history,
+  })
+  router.isServer = true
+
+  await router.load()
+
+  expect(router.state.statusCode).toBe(500)
+  const html = ReactDOMServer.renderToString(<RouterProvider router={router} />)
+  expect(html).toContain('Error:')
+  expect(html).toContain('primitive error thrown')
+})
 
 describe('notFoundComponent is rendered when an error is thrown in params.parse', () => {
   test('displays notFoundComponent when error is thrown in params.parse', async () => {

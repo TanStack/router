@@ -5,6 +5,7 @@ import { ENTRY_POINTS } from '../constants'
 import type { EnvironmentConfig } from '@rsbuild/core'
 import type { ResolvedStartEntryPlan } from '../planning'
 import type { RsbuildEnvironmentOverrides } from './types'
+import type { ScriptFormat } from '@tanstack/router-core'
 
 const require = createRequire(import.meta.url)
 
@@ -23,6 +24,8 @@ export const RSBUILD_RSC_LAYERS = {
   /** Server-Side Rendering layer — standard Node resolve */
   ssr: 'server-side-rendering',
 } as const
+
+export const RSBUILD_CLIENT_ASSETS_DIR = 'assets'
 
 export type RsbuildEnvironmentName =
   (typeof RSBUILD_ENVIRONMENT_NAMES)[keyof typeof RSBUILD_ENVIRONMENT_NAMES]
@@ -72,6 +75,7 @@ export function createRsbuildEnvironmentPlan(opts: {
   publicBase: string
   serverFnProviderEnv: string
   environmentOverrides?: RsbuildEnvironmentOverrides
+  scriptFormat?: ScriptFormat
   rsc?: boolean | undefined
   dev?: boolean | undefined
 }): RsbuildEnvironmentPlanResult {
@@ -87,6 +91,20 @@ export function createRsbuildEnvironmentPlan(opts: {
       : {}),
   }
   const environmentOverrides = opts.environmentOverrides ?? {}
+  const scriptFormat = opts.scriptFormat ?? 'module'
+  const clientOutputModule = scriptFormat === 'module'
+  const userClientOutputModule =
+    environmentOverrides.client?.output?.module ??
+    environmentOverrides.all?.output?.module
+
+  if (
+    typeof userClientOutputModule === 'boolean' &&
+    userClientOutputModule !== clientOutputModule
+  ) {
+    throw new Error(
+      'TanStack Start rsbuild.client.output controls environments.client.output.module. Remove environments.client.output.module or set rsbuild.client.output to match it.',
+    )
+  }
 
   return {
     environments: {
@@ -102,9 +120,19 @@ export function createRsbuildEnvironmentPlan(opts: {
           },
           output: {
             target: 'web',
-            module: true,
+            module: clientOutputModule,
             distPath: {
               root: opts.clientOutputDirectory,
+              js: `${RSBUILD_CLIENT_ASSETS_DIR}/js`,
+              jsAsync: `${RSBUILD_CLIENT_ASSETS_DIR}/js/async`,
+              css: `${RSBUILD_CLIENT_ASSETS_DIR}/css`,
+              cssAsync: `${RSBUILD_CLIENT_ASSETS_DIR}/css/async`,
+              svg: `${RSBUILD_CLIENT_ASSETS_DIR}/svg`,
+              font: `${RSBUILD_CLIENT_ASSETS_DIR}/font`,
+              wasm: `${RSBUILD_CLIENT_ASSETS_DIR}/wasm`,
+              image: `${RSBUILD_CLIENT_ASSETS_DIR}/image`,
+              media: `${RSBUILD_CLIENT_ASSETS_DIR}/media`,
+              assets: `${RSBUILD_CLIENT_ASSETS_DIR}/assets`,
             },
             assetPrefix: opts.publicBase,
           },
@@ -224,7 +252,7 @@ export function resolveRsbuildOutputDirectory(opts: {
 }
 
 function normalizeEntryPath(path: string) {
-  return path.replaceAll('\\', '/')
+  return path.includes('\\') ? path.replaceAll('\\', '/') : path
 }
 
 function resolveFromRoot(specifier: string, root: string): string {

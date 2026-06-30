@@ -25,12 +25,9 @@ import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   AssignAllServerFnContext,
-  FunctionMiddlewareServerFnResult,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
 } from './createMiddleware'
-
-type TODO = any
 
 export type ServerFnStrict = boolean | { input?: boolean; output?: boolean }
 
@@ -88,6 +85,16 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
     resolvedOptions.method = 'GET' as Method
   }
 
+  const setValidator = (validator: any) => {
+    // TODO remove upon stable
+    const newOptions = {
+      ...resolvedOptions,
+      validator,
+      inputValidator: validator,
+    }
+    return createServerFn(undefined, newOptions) as any
+  }
+
   const res: ServerFnBuilder<Register, Method, ServerFnStrict> = {
     options: resolvedOptions,
     middleware: (middleware) => {
@@ -109,14 +116,13 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
         ...resolvedOptions,
         middleware: newMiddleware,
       }
-      const res = createServerFn(undefined, newOptions) as any
+      const res = createServerFn(undefined, newOptions)
       res[TSS_SERVER_FUNCTION_FACTORY] = true
       return res
     },
-    inputValidator: (inputValidator) => {
-      const newOptions = { ...resolvedOptions, inputValidator }
-      return createServerFn(undefined, newOptions) as any
-    },
+    validator: setValidator,
+    // TODO remove upon stable
+    inputValidator: setValidator,
     handler: (...args) => {
       // This function signature changes due to AST transformations
       // in the babel plugin. We need to cast it to the correct
@@ -150,7 +156,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           const result = await executeMiddleware(resolvedMiddleware, 'client', {
             ...extractedFn,
             ...newOptions,
-            data: opts?.data as any,
+            data: opts?.data,
             headers: opts?.headers,
             signal: opts?.signal,
             fetch: opts?.fetch,
@@ -214,7 +220,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       ...resolvedOptions,
       ...options,
     }
-    return createServerFn(undefined, newOptions) as any
+    return createServerFn(undefined, newOptions)
   }
   return Object.assign(fun, res) as any
 }
@@ -252,16 +258,19 @@ export async function executeMiddleware(
 
     // Execute the middleware
     try {
-      if (
-        'inputValidator' in nextMiddleware.options &&
-        nextMiddleware.options.inputValidator &&
-        env === 'server'
-      ) {
+      let validator =
+        'validator' in nextMiddleware.options
+          ? nextMiddleware.options.validator
+          : undefined
+
+      // TODO remove upon stable
+      if (!validator && 'inputValidator' in nextMiddleware.options) {
+        validator = nextMiddleware.options.inputValidator
+      }
+
+      if (validator && env === 'server') {
         // Execute the middleware's input function
-        ctx.data = await execValidator(
-          nextMiddleware.options.inputValidator,
-          ctx.data,
-        )
+        ctx.data = await execValidator(validator as AnyValidator, ctx.data)
       }
 
       let middlewareFn: MiddlewareFn | undefined = undefined
@@ -497,6 +506,9 @@ export type ServerFnBaseOptions<
     TMiddlewares,
     ReadonlyArray<AnyFunctionMiddleware | AnyRequestMiddleware>
   >
+  validator?: ConstrainValidator<TRegister, TMethod, TInputValidator, TStrict>
+  // TODO remove upon stable
+  /** @deprecated Use `validator` instead. */
   inputValidator?: ConstrainValidator<
     TRegister,
     TMethod,
@@ -640,12 +652,7 @@ export type ValidatorFn<
   TMiddlewares,
   TStrict extends ServerFnStrict,
 > = <TInputValidator>(
-  inputValidator: ConstrainValidator<
-    TRegister,
-    TMethod,
-    TInputValidator,
-    TStrict
-  >,
+  validator: ConstrainValidator<TRegister, TMethod, TInputValidator, TStrict>,
 ) => ServerFnAfterValidator<
   TRegister,
   TMethod,
@@ -660,6 +667,9 @@ export interface ServerFnValidator<
   TMiddlewares,
   TStrict extends ServerFnStrict,
 > {
+  validator: ValidatorFn<TRegister, TMethod, TMiddlewares, TStrict>
+  // TODO remove upon stable
+  /** @deprecated Use `validator` instead. */
   inputValidator: ValidatorFn<TRegister, TMethod, TMiddlewares, TStrict>
 }
 
@@ -811,6 +821,9 @@ export interface ServerFnTypes<
   method: TMethod
   strict: TStrict
   middlewares: TMiddlewares
+  validator: TInputValidator
+  // TODO remove upon stable
+  /** @deprecated Use `validator` instead. */
   inputValidator: TInputValidator
   response: TResponse
   allServerContext: AssignAllServerFnContext<TRegister, TMiddlewares>
@@ -904,17 +917,21 @@ export async function execValidator(
 function serverFnBaseToMiddleware(
   options: ServerFnBaseOptions<any, any, any, any, any>,
 ): AnyFunctionMiddleware {
+  // TODO remove upon stable
+  const validator = options.validator ?? options.inputValidator
+
   return {
     '~types': undefined!,
     options: {
-      inputValidator: options.inputValidator,
+      // TODO remove upon stable
+      inputValidator: validator,
       client: async ({ next, sendContext, fetch, ...ctx }) => {
         const payload = {
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
           fetch,
-        } as any
+        }
 
         // Execute the extracted function
         // but not before serializing the context
@@ -924,18 +941,12 @@ function serverFnBaseToMiddleware(
       },
       server: async ({ next, ...ctx }) => {
         // Execute the server function
-        const result = await options.serverFn?.(ctx as TODO)
+        const result = await options.serverFn?.(ctx)
 
         return next({
           ...ctx,
           result,
-        } as any) as unknown as FunctionMiddlewareServerFnResult<
-          any,
-          any,
-          any,
-          any,
-          any
-        >
+        } as any)
       },
     },
   }

@@ -6,6 +6,7 @@ const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
 const e2ePortKey =
   process.env.E2E_PORT_KEY ?? `${packageJson.name}-${toolchain}`
 const distDir = process.env.E2E_DIST_DIR ?? 'dist'
+const viteBundledDev = process.env.E2E_VITE_BUNDLED_DEV === 'true'
 const PORT = await getTestServerPort(e2ePortKey)
 const baseURL = `http://localhost:${PORT}`
 const devCommand =
@@ -34,6 +35,7 @@ export default defineConfig({
       E2E_TOOLCHAIN: toolchain,
       E2E_DIST_DIR: distDir,
       E2E_PORT_KEY: e2ePortKey,
+      E2E_VITE_BUNDLED_DEV: String(viteBundledDev),
     },
   },
 

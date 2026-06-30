@@ -1,5 +1,158 @@
 # @tanstack/start-client-core
 
+## 1.170.12
+
+### Patch Changes
+
+- [#7566](https://github.com/TanStack/router/pull/7566) [`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825) - Add `validator()` as the canonical server function and middleware validator method. Deprecate `inputValidator()` and emit compiler warnings for remaining uses.
+
+## 1.170.11
+
+### Patch Changes
+
+- Updated dependencies [[`776d8ef`](https://github.com/TanStack/router/commit/776d8ef283e5bd9ffe97d43bc3a7f58064cd7e03)]:
+  - @tanstack/router-core@1.171.13
+  - @tanstack/start-storage-context@1.167.15
+
+## 1.170.10
+
+### Patch Changes
+
+- Updated dependencies [[`df1076c`](https://github.com/TanStack/router/commit/df1076c03ae5a51ab384bebd4d6afda20fb6f107)]:
+  - @tanstack/router-core@1.171.12
+  - @tanstack/start-storage-context@1.167.14
+
+## 1.170.9
+
+### Patch Changes
+
+- Updated dependencies [[`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01)]:
+  - @tanstack/router-core@1.171.11
+  - @tanstack/start-storage-context@1.167.13
+
+## 1.170.8
+
+### Patch Changes
+
+- Updated dependencies [[`2cca73c`](https://github.com/TanStack/router/commit/2cca73c92262ffd96dac4e283c9f69fb37f4b43a), [`7a83e67`](https://github.com/TanStack/router/commit/7a83e67e6596fbef21cb0a88a7127f5935bed2ba), [`76b3d3b`](https://github.com/TanStack/router/commit/76b3d3b24522bd3d1d216674c441252c9b8f184c)]:
+  - @tanstack/router-core@1.171.10
+  - @tanstack/start-storage-context@1.167.12
+
+## 1.170.7
+
+### Patch Changes
+
+- Updated dependencies [[`b4cd5af`](https://github.com/TanStack/router/commit/b4cd5af8d0f9d4aaa2d29095e6a261b9181bc778)]:
+  - @tanstack/router-core@1.171.9
+  - @tanstack/start-storage-context@1.167.11
+
+## 1.170.6
+
+### Patch Changes
+
+- Updated dependencies [[`2f53749`](https://github.com/TanStack/router/commit/2f5374945e2138559a51464f45a5152eae67e1dd)]:
+  - @tanstack/router-core@1.171.8
+  - @tanstack/start-storage-context@1.167.10
+
+## 1.170.5
+
+### Patch Changes
+
+- Updated dependencies [[`d1997b6`](https://github.com/TanStack/router/commit/d1997b66d7c24c1d64772bb8bab5caf9c6d9cc48)]:
+  - @tanstack/router-core@1.171.7
+  - @tanstack/start-storage-context@1.167.9
+
+## 1.170.4
+
+### Patch Changes
+
+- Fix serialization adapter module resolution in TanStack Start. Vite dev now uses clean runtime-specific virtual module IDs instead of browser requests containing encoded null-byte virtual IDs, which avoids reverse proxy failures. When no serialization adapters are configured, Vite and Rsbuild now resolve `#tanstack-start-plugin-adapters` through the package empty-adapter fallback. ([#7484](https://github.com/TanStack/router/pull/7484))
+
+## 1.170.3
+
+### Patch Changes
+
+- Updated dependencies [[`51a97a1`](https://github.com/TanStack/router/commit/51a97a167fb3ef1b8ca70fbb63db635158f43509)]:
+  - @tanstack/router-core@1.171.6
+  - @tanstack/start-storage-context@1.167.8
+
+## 1.170.2
+
+### Patch Changes
+
+- Updated dependencies [[`5268ba4`](https://github.com/TanStack/router/commit/5268ba4566233ea58880df85f167ad0401a93a46)]:
+  - @tanstack/router-core@1.171.5
+  - @tanstack/start-storage-context@1.167.7
+
+## 1.170.1
+
+### Patch Changes
+
+- Updated dependencies [[`0300f87`](https://github.com/TanStack/router/commit/0300f87ec5a7f878ffbe0b181acf84cba9139960), [`0300f87`](https://github.com/TanStack/router/commit/0300f87ec5a7f878ffbe0b181acf84cba9139960)]:
+  - @tanstack/router-core@1.171.4
+  - @tanstack/start-storage-context@1.167.6
+
+## 1.170.0
+
+### Minor Changes
+
+- Add deferred Hydrate boundary support for TanStack Start. ([#7362](https://github.com/TanStack/router/pull/7362))
+
+  Hydrate boundaries can now be code-split by the Start compiler, preload their generated client chunks, preserve server-rendered fallback HTML, and replay interaction-triggered events after hydration. The compiler integration now uses a Start-owned compiler plugin for Hydrate virtual modules across Vite and Rsbuild, with dev invalidation for generated virtual modules.
+
+  Shared AST utilities used by the router code-splitter and Hydrate virtual modules were moved into `@tanstack/router-utils` so both pipelines can retain referenced top-level declarations, unwrap local exports, and let dead-code elimination remove unused route module code.
+
+### Patch Changes
+
+- Updated dependencies [[`5fa9e55`](https://github.com/TanStack/router/commit/5fa9e555f3a2edb5e45586623e6bcbfa7f7c7a6b)]:
+  - @tanstack/router-core@1.171.3
+  - @tanstack/start-storage-context@1.167.5
+
+## 1.169.4
+
+### Patch Changes
+
+- Updated dependencies [[`b60eb36`](https://github.com/TanStack/router/commit/b60eb36e59e8a468ee0742cbcf7f47aca1ff1c67)]:
+  - @tanstack/router-core@1.171.2
+  - @tanstack/start-storage-context@1.167.4
+
+## 1.169.3
+
+### Patch Changes
+
+- Updated dependencies [[`d9cf933`](https://github.com/TanStack/router/commit/d9cf9331b83fcbd2abfee75d839d862f9bb18e6b)]:
+  - @tanstack/router-core@1.171.1
+  - @tanstack/start-storage-context@1.167.3
+
+## 1.169.2
+
+### Patch Changes
+
+- Updated dependencies [[`d533f87`](https://github.com/TanStack/router/commit/d533f87976704098a40b48f160b37c28c8182806)]:
+  - @tanstack/router-core@1.171.0
+  - @tanstack/start-storage-context@1.167.2
+
+## 1.169.1
+
+### Patch Changes
+
+- Updated dependencies [[`2387a2e`](https://github.com/TanStack/router/commit/2387a2eea0683004cc400b9f71bed5944eb60110)]:
+  - @tanstack/router-core@1.170.1
+  - @tanstack/start-storage-context@1.167.1
+
+## 1.169.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- Updated dependencies [[`b1c061a`](https://github.com/TanStack/router/commit/b1c061aff9185cdf5fdc08c0136382a9dce0302f), [`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14), [`5ae2ae5`](https://github.com/TanStack/router/commit/5ae2ae5e0f8ce32e02667a482ea9be52a6150240)]:
+  - @tanstack/router-core@1.170.0
+  - @tanstack/start-fn-stubs@1.162.0
+  - @tanstack/start-storage-context@1.167.0
+
 ## 1.168.2
 
 ### Patch Changes

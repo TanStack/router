@@ -13,9 +13,9 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
-  page: fallback(z.number(), 1).default(1),
-  category: fallback(z.string(), 'all').default('all'),
-  showSale: fallback(z.boolean(), false).default(false),
+  page: z.number().default(1).catch(1),
+  category: z.string().default('all').catch('all'),
+  showSale: z.boolean().default(false).catch(false),
 })
 
 export const Route = createFileRoute('/products')({
@@ -100,7 +100,6 @@ Start by identifying what search parameters your route needs:
 
 ```tsx
 import { z } from 'zod'
-import { fallback } from '@tanstack/zod-adapter'
 
 const shopSearchSchema = z.object({
   // Pagination
@@ -238,7 +237,7 @@ const dashboardSchema = z.object({
       status: z.enum(['active', 'inactive']).optional(),
       type: z.string().optional(),
     })
-    .default({}),
+    .prefault({}),
 })
 ```
 
@@ -333,7 +332,7 @@ export const Route = createFileRoute('/example')({
 
 ### Problem: Search Parameters Cause TypeScript Errors
 
-**Cause:** Missing or incorrect schema definition with Zod v3.
+**Cause:** Missing or incorrect schema definition.
 
 **Solution:** Ensure your schema covers all search parameters and use proper types:
 
@@ -345,12 +344,12 @@ export const Route = createFileRoute('/page')({
 
 // ✅ Complete schema with proper validation
 const searchSchema = z.object({
-  page: fallback(z.number(), 1).default(1),
-  category: fallback(z.string(), 'all').default('all'),
+  page: z.number().default(1).catch(1),
+  category: z.string().default('all').catch('all'),
 })
 
 export const Route = createFileRoute('/page')({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   component: MyPage,
 })
 ```
@@ -382,7 +381,7 @@ const schema = z.object({
 ```tsx
 const schema = z.object({
   // Required with default (navigation can omit, but always present in component)
-  page: fallback(z.number(), 1).default(1),
+  page: z.number().default(1).catch(1),
 
   // Truly optional (can be undefined in component)
   searchTerm: z.string().optional(),
@@ -397,8 +396,8 @@ const schema = z.object({
 
 ```tsx
 const schema = z.object({
-  filters: fallback(
-    z.object({
+  filters: z
+    .object({
       status: z.enum(['active', 'inactive']).optional(),
       tags: z.string().array().optional(),
       dateRange: z
@@ -407,9 +406,9 @@ const schema = z.object({
           end: z.string().pipe(z.coerce.date()),
         })
         .optional(),
-    }),
-    {},
-  ).default({}),
+    })
+    .prefault({})
+    .catch({}),
 })
 ```
 
