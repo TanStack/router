@@ -632,9 +632,7 @@ describe('decodePath', () => {
 
     it('should still decode safe characters', () => {
       // Regular letters/unicode should still be decoded
-      expect(decodePath('/%D1%88%D0%B5%D0%BB%D0%BB%D1%8B').path).toBe(
-        '/шеллы',
-      )
+      expect(decodePath('/%D1%88%D0%B5%D0%BB%D0%BB%D1%8B').path).toBe('/шеллы')
     })
   })
 })

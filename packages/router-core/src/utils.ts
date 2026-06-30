@@ -539,8 +539,9 @@ export function findLast<T>(
 const PATH_UNSAFE_RE = /[\x00-\x1f\x7f"<>`{}]/g
 
 function sanitizePathSegment(segment: string): string {
-  return segment.replace(PATH_UNSAFE_RE, (ch) =>
-    '%' + ch.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'),
+  return segment.replace(
+    PATH_UNSAFE_RE,
+    (ch) => '%' + ch.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'),
   )
 }
 

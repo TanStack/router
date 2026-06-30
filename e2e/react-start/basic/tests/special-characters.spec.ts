@@ -74,9 +74,7 @@ test.describe('Unicode route rendering', () => {
       await page.waitForLoadState('load')
 
       // Should not redirect — URL stays encoded
-      expect(page.url()).toBe(
-        `${baseURL}/specialChars/%7B%7Bapp_name%7D%7D`,
-      )
+      expect(page.url()).toBe(`${baseURL}/specialChars/%7B%7Bapp_name%7D%7D`)
       expect(res!.status()).toBe(200)
 
       const param = await page.getByTestId('special-param').textContent()
