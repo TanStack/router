@@ -50,14 +50,23 @@ const getStoreConfig = () => ({
   batch: (fn: () => void) => fn(),
 })
 
-function makeRouter() {
+const alwaysStream = {
+  render: true,
+  head: true,
+}
+
+function makeRouter(opts?: { onLoad?: (router: any) => void }) {
   const rootRoute = new BaseRootRoute({})
+  let router!: any
   const indexRoute = new BaseRoute({
     getParentRoute: () => rootRoute,
     path: '/',
     component: () => null,
+    loader: () => {
+      opts?.onLoad?.(router)
+    },
   })
-  const router = new RouterCore(
+  router = new RouterCore(
     {
       history: createMemoryHistory({ initialEntries: ['/'] }),
       routeTree: rootRoute.addChildren([indexRoute]),
@@ -69,7 +78,11 @@ function makeRouter() {
 }
 
 function makeStreamResponse(router: ReturnType<typeof makeRouter>) {
-  attachRouterServerSsrUtils({ router: router as any, manifest: undefined })
+  attachRouterServerSsrUtils({
+    router: router as any,
+    manifest: undefined,
+    streaming: alwaysStream,
+  })
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(new TextEncoder().encode('stream'))
@@ -322,6 +335,145 @@ describe('createStartHandler SSR cleanup ownership', () => {
     expect(response).toBe(replacement)
     expect(dispose).toHaveBeenCalledOnce()
     expect(router.serverSsr).toBeUndefined()
+  })
+})
+
+describe('createStartHandler streaming policy', () => {
+  it('resolves streaming before router.load', async () => {
+    const seenInLoader: Array<{ render: boolean; head: boolean }> = []
+    const router = makeRouter({
+      onLoad: (requestRouter) => {
+        seenInLoader.push({
+          render: requestRouter.serverSsr!.shouldStream('render'),
+          head: requestRouter.serverSsr!.shouldStream('head'),
+        })
+      },
+    })
+    startMocks.router = router
+
+    const handler = createStartHandler({
+      handler: () => new Response('ok'),
+      ssr: {
+        streaming: {
+          render: false,
+          head: true,
+        },
+      },
+    })
+
+    const response = await handler(new Request('http://localhost/'), {})
+
+    expect(response.status).toBe(200)
+    expect(seenInLoader).toEqual([
+      {
+        render: false,
+        head: true,
+      },
+    ])
+  })
+
+  it('resolver can use request headers', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+
+    const handler = createStartHandler({
+      handler: ({ router: requestRouter }) => {
+        expect(requestRouter.serverSsr!.shouldStream('render')).toBe(false)
+        expect(requestRouter.serverSsr!.shouldStream('head')).toBe(false)
+        return new Response('ok')
+      },
+      ssr: {
+        streaming: ({ request }) => {
+          if (request.headers.get('x-streaming') === 'none') {
+            return { render: false }
+          }
+          return undefined
+        },
+      },
+    })
+
+    const response = await handler(
+      new Request('http://localhost/', {
+        headers: {
+          'x-streaming': 'none',
+        },
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(200)
+  })
+
+  it('request options patch the handler-level streaming policy', async () => {
+    const seenInLoader: Array<{ render: boolean; head: boolean }> = []
+    const router = makeRouter({
+      onLoad: (requestRouter) => {
+        seenInLoader.push({
+          render: requestRouter.serverSsr!.shouldStream('render'),
+          head: requestRouter.serverSsr!.shouldStream('head'),
+        })
+      },
+    })
+    startMocks.router = router
+
+    const handler = createStartHandler({
+      handler: ({ router: requestRouter }) => {
+        expect(requestRouter.serverSsr!.shouldStream('render')).toBe(false)
+        expect(requestRouter.serverSsr!.shouldStream('head')).toBe(true)
+        return new Response('ok')
+      },
+      ssr: {
+        streaming: {
+          render: false,
+        },
+      },
+    })
+
+    const response = await handler(new Request('http://localhost/'), {
+      ssr: {
+        streaming: {
+          head: true,
+        },
+      },
+    })
+
+    expect(response.status).toBe(200)
+    expect(seenInLoader).toEqual([
+      {
+        render: false,
+        head: true,
+      },
+    ])
+  })
+
+  it('request options can preserve the built-in render policy', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+
+    const handler = createStartHandler({
+      handler: ({ router: requestRouter }) => {
+        expect(requestRouter.serverSsr!.shouldStream('render')).toBe(false)
+        expect(requestRouter.serverSsr!.shouldStream('head')).toBe(true)
+        return new Response('ok')
+      },
+    })
+
+    const response = await handler(
+      new Request('http://localhost/', {
+        headers: {
+          'user-agent': 'Mozilla/5.0 compatible Googlebot/2.1',
+        },
+      }),
+      {
+        ssr: {
+          streaming: {
+            head: true,
+          },
+        },
+      },
+    )
+
+    expect(response.status).toBe(200)
   })
 })
 

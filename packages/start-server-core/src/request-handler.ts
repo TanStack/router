@@ -1,4 +1,5 @@
 import type { OnEarlyHints, ResponseLinkHeaderOptions } from './early-hints'
+import type { SsrStreamingOverride } from '@tanstack/router-core/ssr/server'
 
 type BaseContext = {
   nonce?: string
@@ -57,8 +58,22 @@ type InlineCssOptions = {
   inlineCss?: boolean
 }
 
+type SsrOptions = {
+  ssr?: {
+    /**
+     * Overrides the resolved SSR streaming policy for this request.
+     *
+     * This is a partial patch on top of the handler-level or built-in policy.
+     * For example, `{ head: true }` enables head streaming while preserving
+     * the existing render streaming decision.
+     */
+    streaming?: SsrStreamingOverride
+  }
+}
+
 export type RequestOptions<TRegister> = EarlyHintsOptions &
   InlineCssOptions &
+  SsrOptions &
   (TRegister extends {
     server: { requestContext: infer TRequestContext }
   }

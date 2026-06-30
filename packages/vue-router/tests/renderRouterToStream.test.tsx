@@ -25,6 +25,16 @@ vi.mock('vue/server-renderer', async () => {
 // Imported after mock so the wrapper picks up the mocked binding.
 const { renderRouterToStream } = await import('../src/ssr/renderRouterToStream')
 
+const alwaysStream = {
+  render: true,
+  head: true,
+}
+
+const neverStream = {
+  render: false,
+  head: false,
+}
+
 function unwrapResponse(
   result: Awaited<ReturnType<typeof renderRouterToStream>>,
 ) {
@@ -37,7 +47,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-async function buildRouter() {
+async function buildRouter(streaming = alwaysStream) {
   const rootRoute = createRootRoute({
     component: { template: '<div/>' } as any,
   })
@@ -46,7 +56,7 @@ async function buildRouter() {
     routeTree: rootRoute,
   })
   router.isServer = true
-  attachRouterServerSsrUtils({ router, manifest: undefined })
+  attachRouterServerSsrUtils({ router, manifest: undefined, streaming })
   await router.load()
   return router
 }
@@ -62,11 +72,54 @@ function drainBody(response: Response) {
 }
 
 describe('renderRouterToStream - sync setup failures', () => {
-  test('bot string response injects final scripts and cleans up', async () => {
+  test('render channel=true uses streaming renderer', async () => {
+    rendererMocks.pipeToWebWritable.mockImplementationOnce(() => {})
+    const router = await buildRouter(alwaysStream)
+
+    try {
+      const response = unwrapResponse(
+        await renderRouterToStream({
+          request: new Request('http://localhost/'),
+          router,
+          responseHeaders: new Headers(),
+          App: { template: '<div/>' } as any,
+        }),
+      )
+
+      expect(response).toBeDefined()
+      expect(rendererMocks.pipeToWebWritable).toHaveBeenCalledOnce()
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
+  test('render channel=false uses full-document renderer', async () => {
+    rendererMocks.renderToString.mockResolvedValueOnce(
+      '<html><body><main>full</main></body></html>',
+    )
+    const router = await buildRouter(neverStream)
+    await router.serverSsr!.dehydrate()
+
+    const response = unwrapResponse(
+      await renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        App: { template: '<div/>' } as any,
+      }),
+    )
+
+    expect(await response.text()).toContain('<main>full</main>')
+    expect(rendererMocks.renderToString).toHaveBeenCalledOnce()
+    expect(rendererMocks.pipeToWebWritable).not.toHaveBeenCalled()
+    expect(router.serverSsr).toBeUndefined()
+  })
+
+  test('blocked render full response injects final scripts and cleans up', async () => {
     rendererMocks.renderToString.mockResolvedValueOnce(
       '<html><body><main>bot</main></body></html>',
     )
-    const router = await buildRouter()
+    const router = await buildRouter(neverStream)
     await router.serverSsr!.dehydrate()
     const cleanup = vi.spyOn(router.serverSsr!, 'cleanup')
 

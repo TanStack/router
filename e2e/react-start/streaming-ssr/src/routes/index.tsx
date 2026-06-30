@@ -52,6 +52,12 @@ function Index() {
           </Link>{' '}
           - Tests nested components with deferred data
         </li>
+        <li>
+          <Link to="/streaming-policy" data-testid="link-streaming-policy">
+            Streaming Policy
+          </Link>{' '}
+          - Tests request-controlled SSR streaming policy
+        </li>
       </ul>
     </div>
   )

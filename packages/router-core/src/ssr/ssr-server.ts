@@ -13,11 +13,13 @@ import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
 import { dehydrateSsrMatchId } from './ssr-match-id'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
+import { shouldStreamSsrChannel } from './streaming'
 import type { LRUCache } from '../lru-cache'
 import type { DehydratedMatch, DehydratedRouter } from './types'
 import type { AnySerializationAdapter } from './serializer/transformer'
 import type { AnyRouter, ServerSsr } from '../router'
 import type { AnyRouteMatch } from '../Matches'
+import type { ResolvedSsrStreaming } from './streaming'
 import type {
   Manifest,
   ManifestRoute,
@@ -379,11 +381,19 @@ export function attachRouterServerSsrUtils({
   router,
   manifest,
   getRequestAssets,
+  streaming,
 }: {
   router: AnyRouter
   manifest: ServerManifest | undefined
   getRequestAssets?: () => ManifestRouteAssets | undefined
+  streaming: ResolvedSsrStreaming
 }) {
+  if (!streaming) {
+    throw new Error(
+      'Invariant failed: attachRouterServerSsrUtils requires a resolved SSR streaming policy. Use createRequestHandler/createStartHandler or pass the result of resolveSsrStreaming().',
+    )
+  }
+
   router.ssr = {
     get manifest() {
       if (!manifest) return manifest
@@ -476,6 +486,7 @@ export function attachRouterServerSsrUtils({
   })
 
   const serverSsr: ServerSsr = {
+    shouldStream: (channel) => shouldStreamSsrChannel(streaming, channel),
     injectHtml: (html: string) => {
       if (!html || cleanupStarted) return
       // Buffer the HTML so it can be retrieved via takeBufferedHtml()

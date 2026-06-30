@@ -54,6 +54,8 @@ export default defineConfig({
       PORT: String(PORT),
       E2E_DIST_DIR: distDir,
       E2E_PORT_KEY: e2ePortKey,
+      STREAMING_SSR_ENTRY_FORM:
+        process.env.STREAMING_SSR_ENTRY_FORM ?? 'create-start-handler',
     },
   },
 

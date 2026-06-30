@@ -20,6 +20,11 @@ import {
 import { createTestRouter } from './routerTestUtils'
 import type { RouterManagedTag } from '../src/manifest'
 
+const alwaysStream = {
+  render: true,
+  head: true,
+}
+
 const MAX_LEFTOVER_CHARS = 2048
 const MAX_ROUTER_HTML_CHARS = 16 * 1024 * 1024
 
@@ -206,7 +211,11 @@ describe('transformStreamWithRouter — real SSR scripts', () => {
   test('flushes stream-end scripts before body close when serialization finishes before transform starts', async () => {
     const streamed = createDeferred<string>()
     const router = createRealSsrRouter({ streamed: streamed.promise })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -247,7 +256,11 @@ describe('transformStreamWithRouter — real SSR scripts', () => {
   test('fuses the final resolver and stream-end scripts', async () => {
     const streamed = createControlledStream<string>()
     const router = createRealSsrRouter({ streamed: streamed.stream })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -286,7 +299,11 @@ describe('transformStreamWithRouter — real SSR scripts', () => {
   test('flushes stream-end scripts even when no barrier marker was emitted', async () => {
     const streamed = createDeferred<string>()
     const router = createRealSsrRouter({ streamed: streamed.promise })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -317,7 +334,11 @@ describe('transformStreamWithRouter — real SSR scripts', () => {
   test('keeps stream scripts before uppercase body close', async () => {
     const streamed = createDeferred<string>()
     const router = createRealSsrRouter({ streamed: streamed.promise })
-    attachRouterServerSsrUtils({ router, manifest: undefined })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: undefined,
+      streaming: alwaysStream,
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -894,6 +915,47 @@ describe('transformStreamWithRouter — cleanup side-effects', () => {
     }
     // All scripts must appear before </body>.
     expect(full.indexOf('<script>S49</script>')).toBeLessThan(
+      full.indexOf('</body>'),
+    )
+  })
+
+  test('streams app chunks emitted after the document close before final tail', async () => {
+    const { router, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
+
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+    const reader = (out as any).getReader()
+
+    upstream.push('<html><body><main>shell</main></body></html>')
+
+    const shell = await reader.read()
+    expect(shell.done).toBe(false)
+    const shellText = Buffer.from(shell.value).toString('utf8')
+    expect(shellText).toContain('<main>shell</main>')
+    expect(shellText).not.toContain('</body>')
+
+    upstream.push(
+      '<template id="fast">fast</template><script>$df("fast")</script>',
+    )
+
+    const reveal = await reader.read()
+    expect(reveal.done).toBe(false)
+    const revealText = Buffer.from(reveal.value).toString('utf8')
+    expect(revealText).toContain('<template id="fast">fast</template>')
+    expect(revealText).not.toContain('</body>')
+
+    upstream.close()
+    finishSerialization()
+
+    let rest = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      rest += Buffer.from(value).toString('utf8')
+    }
+
+    const full = shellText + revealText + rest
+    expect(full.indexOf('<template id="fast">fast</template>')).toBeLessThan(
       full.indexOf('</body>'),
     )
   })

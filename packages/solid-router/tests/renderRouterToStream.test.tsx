@@ -19,6 +19,16 @@ vi.mock('solid-js/web', async () => {
 // Imported after mock so the wrapper picks up the mocked binding.
 const { renderRouterToStream } = await import('../src/ssr/renderRouterToStream')
 
+const alwaysStream = {
+  render: true,
+  head: true,
+}
+
+const neverStream = {
+  render: false,
+  head: false,
+}
+
 function unwrapResponse(
   result: Awaited<ReturnType<typeof renderRouterToStream>>,
 ) {
@@ -31,7 +41,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-async function buildRouter() {
+async function buildRouter(streaming = alwaysStream) {
   const rootRoute = createRootRoute({
     component: () => null,
   })
@@ -40,9 +50,17 @@ async function buildRouter() {
     routeTree: rootRoute,
   })
   router.isServer = true
-  attachRouterServerSsrUtils({ router, manifest: undefined })
+  attachRouterServerSsrUtils({ router, manifest: undefined, streaming })
   await router.load()
   return router
+}
+
+function deferred() {
+  let resolve!: () => void
+  const promise = new Promise<void>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
 }
 
 function drainBody(response: Response) {
@@ -56,6 +74,71 @@ function drainBody(response: Response) {
 }
 
 describe('renderRouterToStream - bot abort', () => {
+  test('render channel=true does not wait for full render', async () => {
+    const neverReady = new Promise<void>(() => {})
+    solidMocks.pipeTo.mockImplementationOnce(() => Promise.resolve())
+    solidMocks.renderToStream.mockImplementationOnce(
+      () =>
+        ({
+          then: neverReady.then.bind(neverReady),
+          pipeTo: solidMocks.pipeTo,
+        }) as any,
+    )
+
+    const router = await buildRouter(alwaysStream)
+    try {
+      await expect(
+        renderRouterToStream({
+          request: new Request('http://localhost/'),
+          router,
+          responseHeaders: new Headers(),
+          children: () => null,
+        }),
+      ).resolves.toBeDefined()
+
+      expect(solidMocks.pipeTo).toHaveBeenCalled()
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
+  test('render channel=false waits for full render', async () => {
+    const ready = deferred()
+    solidMocks.pipeTo.mockImplementationOnce(() => Promise.resolve())
+    solidMocks.renderToStream.mockImplementationOnce(
+      () =>
+        ({
+          then: ready.promise.then.bind(ready.promise),
+          pipeTo: solidMocks.pipeTo,
+        }) as any,
+    )
+
+    const router = await buildRouter(neverStream)
+    try {
+      const renderPromise = renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: () => null,
+      })
+
+      await expect(
+        Promise.race([
+          renderPromise.then(() => 'resolved'),
+          new Promise<'pending'>((resolve) =>
+            setTimeout(() => resolve('pending'), 50),
+          ),
+        ]),
+      ).resolves.toBe('pending')
+
+      ready.resolve()
+      await expect(renderPromise).resolves.toBeDefined()
+      expect(solidMocks.pipeTo).toHaveBeenCalled()
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
   test('request abort during bot wait returns and terminates response stream', async () => {
     const neverReady = new Promise<void>(() => {})
     solidMocks.pipeTo.mockImplementationOnce(
@@ -74,7 +157,7 @@ describe('renderRouterToStream - bot abort', () => {
         }) as any,
     )
 
-    const router = await buildRouter()
+    const router = await buildRouter(neverStream)
     const abortController = new AbortController()
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {

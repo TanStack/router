@@ -89,6 +89,58 @@ export default createServerEntry({
 })
 ```
 
+## Per-request SSR options
+
+The default server entry handler accepts request options as its second argument.
+Use this when you want to keep Start's default handler but override one setting
+for a specific request.
+
+```tsx
+// src/server.ts
+import handler, { createServerEntry } from '@tanstack/react-start/server-entry'
+
+export default createServerEntry({
+  fetch(request) {
+    return handler.fetch(request, {
+      ssr: {
+        streaming: {
+          render: request.headers.get('x-render-stream') !== 'false',
+        },
+      },
+    })
+  },
+})
+```
+
+`ssr.streaming` in request options is a partial override. For example,
+`{ render: false }` disables render streaming for that request.
+
+If you need full handler-level control, create the Start handler yourself:
+
+```tsx
+// src/server.ts
+import {
+  createStartHandler,
+  defaultStreamHandler,
+} from '@tanstack/react-start/server'
+import { createServerEntry } from '@tanstack/react-start/server-entry'
+
+const handler = createStartHandler({
+  handler: defaultStreamHandler,
+  ssr: {
+    streaming: ({ request }) => {
+      if (request.headers.get('user-agent')?.includes('Googlebot')) {
+        return { render: false }
+      }
+
+      return { render: true }
+    },
+  },
+})
+
+export default createServerEntry({ fetch: handler })
+```
+
 ## Server Configuration
 
 The server entry point is where you can configure server-specific behavior:

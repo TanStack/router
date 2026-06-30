@@ -12,6 +12,11 @@ import type {
 } from '../src/manifest'
 import type { DehydratedRouter } from '../src/ssr/types'
 
+const alwaysStream = {
+  render: true,
+  head: true,
+}
+
 function buildRouter() {
   const rootRoute = new BaseRootRoute({})
   const indexRoute = new BaseRoute({
@@ -74,6 +79,7 @@ async function dehydrateManifest() {
   attachRouterServerSsrUtils({
     router,
     manifest,
+    streaming: alwaysStream,
   })
 
   await router.load()
@@ -121,6 +127,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     attachRouterServerSsrUtils({
       router,
       manifest,
+      streaming: alwaysStream,
     })
 
     await router.load()
@@ -155,6 +162,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     attachRouterServerSsrUtils({
       router,
       manifest,
+      streaming: alwaysStream,
       getRequestAssets: () => requestAssets,
     })
 
@@ -191,6 +199,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     attachRouterServerSsrUtils({
       router,
       manifest,
+      streaming: alwaysStream,
       getRequestAssets: () => requestAssets,
     })
 
@@ -209,6 +218,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     attachRouterServerSsrUtils({
       router,
       manifest,
+      streaming: alwaysStream,
     })
 
     await router.load()
@@ -271,6 +281,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     attachRouterServerSsrUtils({
       router,
       manifest,
+      streaming: alwaysStream,
     })
 
     await router.load()
@@ -299,6 +310,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     attachRouterServerSsrUtils({
       router,
       manifest,
+      streaming: alwaysStream,
     })
 
     await router.load()
@@ -372,6 +384,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     attachRouterServerSsrUtils({
       router,
       manifest,
+      streaming: alwaysStream,
     })
 
     await router.load()

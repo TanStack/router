@@ -6,10 +6,13 @@ import {
   getOrigin,
 } from './ssr-server'
 import { normalizeSsrResponse } from './handlerCallback'
+import { resolveSsrStreaming } from './streaming'
+import { isPromise } from '../utils'
 import type { HandlerCallback } from './handlerCallback'
 import type { AnyHeaders } from './headers'
 import type { AnyRouter } from '../router'
 import type { ServerManifest } from '../manifest'
+import type { SsrStreamingOption } from './streaming'
 
 export type RequestHandler<TRouter extends AnyRouter> = (
   cb: HandlerCallback<TRouter>,
@@ -19,21 +22,20 @@ export function createRequestHandler<TRouter extends AnyRouter>({
   createRouter,
   request,
   getRouterManifest,
+  ssr,
 }: {
   createRouter: () => TRouter
   request: Request
   getRouterManifest?: () => ServerManifest | Promise<ServerManifest>
+  ssr?: {
+    streaming?: SsrStreamingOption
+  }
 }): RequestHandler<TRouter> {
   return async (cb) => {
     const router = createRouter()
     let responseOwnsCleanup = false
 
     try {
-      attachRouterServerSsrUtils({
-        router,
-        manifest: await getRouterManifest?.(),
-      })
-
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
       const { url } = getNormalizedURL(request.url, 'http://localhost')
       const origin = getOrigin(request)
@@ -48,6 +50,25 @@ export function createRequestHandler<TRouter extends AnyRouter>({
       router.update({
         history,
         origin: router.options.origin ?? origin,
+      })
+
+      const maybeStreaming = resolveSsrStreaming({
+        request,
+        router,
+        streaming: ssr?.streaming,
+      })
+      const streaming = isPromise(maybeStreaming)
+        ? await maybeStreaming
+        : maybeStreaming
+      const maybeManifest = getRouterManifest?.()
+      const manifest = isPromise(maybeManifest)
+        ? await maybeManifest
+        : maybeManifest
+
+      attachRouterServerSsrUtils({
+        router,
+        manifest,
+        streaming,
       })
 
       await router.load()

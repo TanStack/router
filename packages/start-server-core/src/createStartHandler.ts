@@ -19,6 +19,7 @@ import {
   isSsrResponse,
   normalizeSsrResponse,
   replaceSsrResponse,
+  resolveSsrStreaming,
   stripSsrResponseBody,
 } from '@tanstack/router-core/ssr/server'
 import {
@@ -56,6 +57,7 @@ import type {
   HandlerCallback,
   HandlerCallbackResult,
   SsrResponse,
+  SsrStreamingOption,
 } from '@tanstack/router-core/ssr/server'
 import type { FinalManifestOptions } from './finalManifest'
 
@@ -65,8 +67,19 @@ type AnyMiddlewareServerFn =
   | AnyRequestMiddleware['options']['server']
   | AnyFunctionMiddleware['options']['server']
 
+function isPromiseLike<T>(value: T | Promise<T>): value is Promise<T> {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    typeof (value as Promise<T>).then === 'function',
+  )
+}
+
 export interface CreateStartHandlerOptions extends FinalManifestOptions {
   handler: HandlerCallback<AnyRouter>
+  ssr?: {
+    streaming?: SsrStreamingOption
+  }
 }
 
 function getStartResponseHeaders(opts: { router: AnyRouter }) {
@@ -377,12 +390,17 @@ function handlerToMiddleware(
 export function createStartHandler<TRegister = Register>(
   cbOrOptions: HandlerCallback<AnyRouter> | CreateStartHandlerOptions,
 ): RequestHandler<TRegister> {
-  const handlerOptions: FinalManifestOptions =
-    typeof cbOrOptions === 'function' ? {} : cbOrOptions
+  const startHandlerOptions =
+    typeof cbOrOptions === 'function' ? undefined : cbOrOptions
   const cb: HandlerCallback<AnyRouter> =
     typeof cbOrOptions === 'function' ? cbOrOptions : cbOrOptions.handler
+  const {
+    handler: _handler,
+    ssr,
+    ...finalManifestOptions
+  } = startHandlerOptions ?? {}
   const finalManifestResolver = createFinalManifestResolver({
-    ...handlerOptions,
+    ...finalManifestOptions,
     cacheCreateTransform: process.env.TSS_DEV_SERVER !== 'true',
   })
   const resolveManifestForRequest =
@@ -577,9 +595,20 @@ export function createStartHandler<TRegister = Register>(
 
         const routerInstance = await getRouter()
 
+        const maybeStreaming = resolveSsrStreaming({
+          request,
+          router: routerInstance,
+          streaming: ssr?.streaming,
+          streamingOverride: requestOpts?.ssr?.streaming,
+        })
+        const streaming = isPromiseLike(maybeStreaming)
+          ? await maybeStreaming
+          : maybeStreaming
+
         attachRouterServerSsrUtils({
           router: routerInstance,
           manifest,
+          streaming,
           getRequestAssets: () =>
             getStartContext({ throwIfNotFound: false })?.requestAssets,
         })

@@ -14,23 +14,55 @@ vi.mock('react-dom/server', () => ({
 
 const { renderRouterToStream } = await import('../src/ssr/renderRouterToStream')
 
+const alwaysStream = {
+  render: true,
+  head: true,
+}
+
+const neverStream = {
+  render: false,
+  head: false,
+}
+
 afterEach(() => {
   reactDomServerMocks.renderToReadableStream = undefined
   reactDomServerMocks.renderToPipeableStream.mockReset()
   vi.restoreAllMocks()
 })
 
-async function buildRouter() {
+async function buildRouter(streaming = alwaysStream) {
   const rootRoute = createRootRoute({ component: () => null })
   const router = createRouter({
     history: createMemoryHistory({ initialEntries: ['/'] }),
     routeTree: rootRoute,
   })
   router.isServer = true
-  attachRouterServerSsrUtils({ router, manifest: undefined })
+  attachRouterServerSsrUtils({ router, manifest: undefined, streaming })
   await router.load()
   await router.serverSsr!.dehydrate()
   return router
+}
+
+function deferred() {
+  let resolve!: () => void
+  const promise = new Promise<void>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
+function makeReadableReactStream(allReady: Promise<void>) {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(
+        new TextEncoder().encode('<html><body>ok</body></html>'),
+      )
+      controller.close()
+    },
+  }) as ReadableStream<Uint8Array> & { allReady: Promise<void> }
+
+  stream.allReady = allReady
+  return stream
 }
 
 async function expectBodyRejects(response: Response, message: string) {
@@ -52,6 +84,113 @@ function unwrapResponse(
 }
 
 describe('renderRouterToStream - pipeable sync errors', () => {
+  test('render channel=true uses onShellReady for bot UA', async () => {
+    let options!: { onShellReady?: () => void; onAllReady?: () => void }
+    reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(
+      (_children, opts) => {
+        options = opts
+        return { abort: vi.fn(), pipe: vi.fn() }
+      },
+    )
+
+    const router = await buildRouter(alwaysStream)
+    try {
+      await renderRouterToStream({
+        request: new Request('http://localhost/', {
+          headers: { 'user-agent': 'Googlebot' },
+        }),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      })
+
+      expect(options.onShellReady).toEqual(expect.any(Function))
+      expect(options.onAllReady).toBeUndefined()
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
+  test('render channel=false uses onAllReady for human UA', async () => {
+    let options!: { onShellReady?: () => void; onAllReady?: () => void }
+    reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(
+      (_children, opts) => {
+        options = opts
+        return { abort: vi.fn(), pipe: vi.fn() }
+      },
+    )
+
+    const router = await buildRouter(neverStream)
+    try {
+      await renderRouterToStream({
+        request: new Request('http://localhost/', {
+          headers: { 'user-agent': 'Mozilla/5.0' },
+        }),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      })
+
+      expect(options.onAllReady).toEqual(expect.any(Function))
+      expect(options.onShellReady).toBeUndefined()
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
+  test('readable stream waits for allReady only when render=false', async () => {
+    const ready = deferred()
+    reactDomServerMocks.renderToReadableStream = vi.fn(() =>
+      Promise.resolve(makeReadableReactStream(ready.promise)),
+    )
+
+    const router = await buildRouter(neverStream)
+    try {
+      const renderPromise = renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      })
+
+      await expect(
+        Promise.race([
+          renderPromise.then(() => 'resolved'),
+          new Promise<'pending'>((resolve) =>
+            setTimeout(() => resolve('pending'), 50),
+          ),
+        ]),
+      ).resolves.toBe('pending')
+
+      ready.resolve()
+      await expect(renderPromise).resolves.toBeDefined()
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
+  test('readable stream does not wait for allReady when render=true', async () => {
+    const ready = deferred()
+    reactDomServerMocks.renderToReadableStream = vi.fn(() =>
+      Promise.resolve(makeReadableReactStream(ready.promise)),
+    )
+
+    const router = await buildRouter(alwaysStream)
+    try {
+      await expect(
+        renderRouterToStream({
+          request: new Request('http://localhost/'),
+          router,
+          responseHeaders: new Headers(),
+          children: null,
+        }),
+      ).resolves.toBeDefined()
+    } finally {
+      ready.resolve()
+      router.serverSsr?.cleanup()
+    }
+  })
+
   test('sync onError before pipeable is assigned still aborts pipeable', async () => {
     const abort = vi.fn()
     reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(

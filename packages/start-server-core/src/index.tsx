@@ -17,10 +17,20 @@ export {
   attachRouterServerSsrUtils,
   createRequestHandler,
   defineHandlerCallback,
+  resolveSsrStreaming,
   transformReadableStreamWithRouter,
   transformPipeableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'
-export type { HandlerCallback } from '@tanstack/router-core/ssr/server'
+export type {
+  HandlerCallback,
+  ResolvedSsrStreaming,
+  SsrStreamingChannel,
+  SsrStreamingConfig,
+  SsrStreamingOption,
+  SsrStreamingOverride,
+  SsrStreamingResolverContext,
+  SsrStreamingResolverResult,
+} from '@tanstack/router-core/ssr/server'
 
 export * from './request-response'
 

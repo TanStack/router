@@ -1,6 +1,5 @@
 import { PassThrough } from 'node:stream'
 import ReactDOMServer from 'react-dom/server'
-import { isbot } from 'isbot'
 import {
   createSsrStreamResponse,
   transformPipeableStreamWithRouter,
@@ -12,9 +11,9 @@ import type { ReactNode } from 'react'
 
 const noop = () => {}
 
-// Bot responses wait for `allReady` so crawlers receive complete HTML.
-// If the request disconnects during that wait, React may not settle quickly;
-// unblock the wait so the response pipeline can abort and clean up.
+// Full-document responses wait for `allReady`. If the request disconnects
+// during that wait, React may not settle quickly; unblock the wait so the
+// response pipeline can abort and clean up.
 async function waitForReadyOrAbort(
   ready: Promise<unknown>,
   signal: AbortSignal,
@@ -52,6 +51,8 @@ export const renderRouterToStream = async ({
   responseHeaders: Headers
   children: ReactNode
 }) => {
+  const shouldStreamRender = router.serverSsr!.shouldStream('render')
+
   if (typeof ReactDOMServer.renderToReadableStream === 'function') {
     const stream = await ReactDOMServer.renderToReadableStream(children, {
       signal: request.signal,
@@ -64,7 +65,7 @@ export const renderRouterToStream = async ({
       },
     })
 
-    if (isbot(request.headers.get('User-Agent'))) {
+    if (!shouldStreamRender) {
       await waitForReadyOrAbort(stream.allReady, request.signal)
     }
 
@@ -150,14 +151,14 @@ export const renderRouterToStream = async ({
       pipeable = ReactDOMServer.renderToPipeableStream(children, {
         nonce: router.options.ssr?.nonce,
         progressiveChunkSize: Number.POSITIVE_INFINITY,
-        ...(isbot(request.headers.get('User-Agent'))
+        ...(shouldStreamRender
           ? {
-              onAllReady() {
+              onShellReady() {
                 pipeable!.pipe(reactAppPassthrough)
               },
             }
           : {
-              onShellReady() {
+              onAllReady() {
                 pipeable!.pipe(reactAppPassthrough)
               },
             }),
