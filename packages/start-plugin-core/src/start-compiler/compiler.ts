@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import * as t from '@babel/types'
+import path from 'pathe'
 import {
   deadCodeElimination,
   extractModuleInfoFromAst,
@@ -514,6 +515,9 @@ export class StartCompiler {
     string,
     Map<string, ExportResolution | null>
   >()
+  private reservedManualFunctionIds = new Set<string>()
+  private reservedManualFunctionIdOwners = new Map<string, string>()
+  private reservedManualFunctionIdsByFilename = new Map<string, Set<string>>()
   // Fast lookup for direct imports from known libraries (e.g., '@tanstack/react-start')
   // Maps: libName → (exportName → Kind)
   // This allows O(1) resolution for the common case without async resolveId calls
@@ -612,36 +616,21 @@ export class StartCompiler {
     extractedFilename: string
   }): string {
     if (this.mode === 'dev') {
-      // In dev, encode the file path and export name for direct lookup.
-      // Each bundler adapter supplies its own strategy for encoding
-      // module specifiers that work with its dev server runtime.
-      const encodeModuleSpecifier =
-        this.options.devServerFnModuleSpecifierEncoder
-      if (!encodeModuleSpecifier) {
-        throw new Error(
-          'devServerFnModuleSpecifierEncoder is required in dev mode.',
-        )
-      }
-      const file = encodeModuleSpecifier({
-        extractedFilename: opts.extractedFilename,
-        root: this.options.root,
-      })
-
-      const serverFn = {
-        file,
-        export: opts.functionName,
-      }
-      return Buffer.from(JSON.stringify(serverFn), 'utf8').toString('base64url')
+      return this.generateDevFunctionId(opts)
     }
 
     // Production build: use custom generator or hash
     const entryId = `${opts.filename}--${opts.functionName}`
     let functionId = this.entryIdToFunctionId.get(entryId)
     if (functionId === undefined) {
-      const knownFn = Object.values(this.options.getKnownServerFns()).find(
+      const knownServerFns = this.options.getKnownServerFns()
+      const knownFn = Object.values(knownServerFns).find(
         (serverFn) =>
           serverFn.functionName === opts.functionName &&
           serverFn.extractedFilename === opts.extractedFilename,
+      )
+      const knownFunctionIds = new Set(
+        Object.values(knownServerFns).map((serverFn) => serverFn.functionId),
       )
 
       if (knownFn) {
@@ -657,19 +646,101 @@ export class StartCompiler {
       if (!functionId) {
         functionId = crypto.createHash('sha256').update(entryId).digest('hex')
       }
-      // Deduplicate in case the generated id conflicts with an existing id
-      if (this.functionIds.has(functionId)) {
+      const isCanonicalKnownMatch = knownFn?.functionId === functionId
+      // Deduplicate generated/custom IDs so manual reservations stay exact
+      // without making the older generateFunctionId hook a breaking change.
+      if (
+        this.functionIds.has(functionId) ||
+        this.reservedManualFunctionIds.has(functionId) ||
+        (!isCanonicalKnownMatch && knownFunctionIds.has(functionId))
+      ) {
         let deduplicatedId
         let iteration = 0
         do {
           deduplicatedId = `${functionId}_${++iteration}`
-        } while (this.functionIds.has(deduplicatedId))
+        } while (
+          this.functionIds.has(deduplicatedId) ||
+          this.reservedManualFunctionIds.has(deduplicatedId) ||
+          knownFunctionIds.has(deduplicatedId)
+        )
         functionId = deduplicatedId
       }
       this.entryIdToFunctionId.set(entryId, functionId)
       this.functionIds.add(functionId)
     }
     return functionId
+  }
+
+  private reserveFunctionId(opts: {
+    filename: string
+    functionName: string
+    extractedFilename: string
+    functionId: string
+  }) {
+    const entryId = `${opts.filename}--${opts.functionName}`
+    const existingOwner = this.reservedManualFunctionIdOwners.get(
+      opts.functionId,
+    )
+    const knownFn = this.options.getKnownServerFns()[opts.functionId]
+
+    if (
+      knownFn &&
+      (knownFn.functionName !== opts.functionName ||
+        knownFn.extractedFilename !== opts.extractedFilename)
+    ) {
+      throw new Error(`Duplicate server function id: ${opts.functionId}`)
+    }
+
+    if (existingOwner && existingOwner !== entryId) {
+      throw new Error(`Duplicate server function id: ${opts.functionId}`)
+    }
+
+    if (!existingOwner && this.functionIds.has(opts.functionId)) {
+      throw new Error(`Duplicate server function id: ${opts.functionId}`)
+    }
+
+    if (!existingOwner) {
+      this.reservedManualFunctionIdOwners.set(opts.functionId, entryId)
+      this.reservedManualFunctionIds.add(opts.functionId)
+
+      let reservedIds = this.reservedManualFunctionIdsByFilename.get(
+        opts.filename,
+      )
+      if (!reservedIds) {
+        reservedIds = new Set<string>()
+        this.reservedManualFunctionIdsByFilename.set(opts.filename, reservedIds)
+      }
+      reservedIds.add(opts.functionId)
+    }
+
+    return this.mode === 'dev'
+      ? this.generateDevFunctionId(opts)
+      : opts.functionId
+  }
+
+  private generateDevFunctionId(opts: {
+    functionName: string
+    extractedFilename: string
+  }): string {
+    // In dev, encode the file path and export name for direct lookup.
+    // Each bundler adapter supplies its own strategy for encoding
+    // module specifiers that work with its dev server runtime.
+    const encodeModuleSpecifier = this.options.devServerFnModuleSpecifierEncoder
+    if (!encodeModuleSpecifier) {
+      throw new Error(
+        'devServerFnModuleSpecifierEncoder is required in dev mode.',
+      )
+    }
+    const file = encodeModuleSpecifier({
+      extractedFilename: opts.extractedFilename,
+      root: this.options.root,
+    })
+
+    const serverFn = {
+      file,
+      export: opts.functionName,
+    }
+    return Buffer.from(JSON.stringify(serverFn), 'utf8').toString('base64url')
   }
 
   private get mode(): 'dev' | 'build' {
@@ -871,6 +942,7 @@ export class StartCompiler {
     for (const moduleId of Array.from(this.moduleCache.keys())) {
       const normalizedModuleId = cleanId(moduleId)
       if (normalizedIds.has(normalizedModuleId)) {
+        this.clearReservedManualFunctionIdsForModule(normalizedModuleId)
         this.moduleCache.delete(moduleId)
         deletedModuleIds.add(normalizedModuleId)
       }
@@ -893,6 +965,21 @@ export class StartCompiler {
     this.exportResolutionCache.clear()
 
     return deletedModuleIds
+  }
+
+  private clearReservedManualFunctionIdsForModule(moduleId: string): void {
+    const relativeFilename = path.relative(this.options.root, moduleId)
+    const reservedIds =
+      this.reservedManualFunctionIdsByFilename.get(relativeFilename)
+    if (!reservedIds) {
+      return
+    }
+
+    for (const functionId of reservedIds) {
+      this.reservedManualFunctionIds.delete(functionId)
+      this.reservedManualFunctionIdOwners.delete(functionId)
+    }
+    this.reservedManualFunctionIdsByFilename.delete(relativeFilename)
   }
 
   public async getTransitiveImporters(
@@ -1368,6 +1455,7 @@ export class StartCompiler {
         warn: warnFn,
 
         generateFunctionId: (opts) => this.generateFunctionId(opts),
+        reserveFunctionId: (opts) => this.reserveFunctionId(opts),
         getKnownServerFns: this.options.getKnownServerFns,
         serverFnProviderModuleDirectives:
           this.options.serverFnProviderModuleDirectives,

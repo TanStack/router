@@ -157,6 +157,71 @@ The build process replaces server function implementations with RPC stubs in cli
 > const { getUser } = await import('~/utils/users.functions')
 > ```
 
+## Manual Server Function IDs
+
+By default, TanStack Start generates a function ID for each server function. You can optionally provide a manual ID when you want a stable, explicit identifier under your control.
+
+Use manual IDs when you need predictable identifiers across refactors, clearer diagnostics, or explicit naming conventions.
+
+```tsx
+import { createServerFn } from '@tanstack/react-start'
+
+export const getUser = createServerFn({ method: 'GET', id: 'get-user' })
+  .validator((data: { userId: string }) => data)
+  .handler(async ({ data }) => {
+    return findUserById(data.userId)
+  })
+```
+
+### Rules for Manual IDs
+
+Manual IDs must follow these rules:
+
+1. Allowed characters are letters, numbers, underscore, and dash.
+2. The ID must match this pattern: `[a-zA-Z0-9_-]+`.
+3. The ID must be statically analyzable:
+   - String literal is allowed.
+   - Constant string binding is allowed.
+   - Computed ID keys are not supported.
+
+```tsx
+// ✅ literal string ID
+createServerFn({ id: 'create-user' }).handler(async () => {
+  return { ok: true }
+})
+
+// ✅ constant string binding ID
+const userLookupId = 'lookup-user'
+createServerFn({ id: userLookupId }).handler(async () => {
+  return { ok: true }
+})
+
+// ❌ computed ID key is not supported
+const key = 'id'
+createServerFn({ [key]: 'create-user' }).handler(async () => {
+  return { ok: true }
+})
+```
+
+### Automatic and Manual IDs
+
+Automatic IDs are the default and work for most apps. Provide a manual `id` only when you want a fixed, recognizable identifier (for example, stable values in logs or analytics).
+
+Switching between automatic and manual IDs does not change how you call a server function. The call signature, arguments, and return value stay the same, but the server function lookup ID and request URL change to use the manual ID.
+
+Manual IDs are exact reservations. If a generated or custom `generateFunctionId` value collides with a manual ID, the generated value is suffixed instead. If two manual IDs collide, compilation fails.
+
+### Security Caveats
+
+Manual IDs improve stability and readability, but they are not a security feature.
+
+1. Do not treat function IDs as secrets.
+2. Do not rely on manual IDs for authorization.
+3. Authorize every server function in middleware or inside the handler.
+4. Keep same-origin and CSRF protections enabled for server function endpoints.
+
+Changing from automatic IDs to manual IDs does not change your security boundary. Your security boundary remains the server-side authorization and request protection checks.
+
 ## Parameters & Validation
 
 Server functions accept a single `data` parameter. Since they cross the network boundary, validation ensures type safety and runtime correctness.

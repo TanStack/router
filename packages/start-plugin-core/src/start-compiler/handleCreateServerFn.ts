@@ -13,6 +13,7 @@ import type {
 import type { CompileStartFrameworkOptions } from '../types'
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
+const MANUAL_SERVER_FN_ID_PATTERN = /^[a-zA-Z0-9_-]+$/
 
 const providerHmrAcceptTemplate = babel.template.statements(
   `
@@ -137,6 +138,140 @@ function getEnvConfig(
     isClientEnvironment: false,
     runtimeCodeType: 'ssr',
   }
+}
+
+function extractManualServerFnId(
+  candidatePath: babel.NodePath<t.CallExpression>,
+  code: string,
+): string | undefined {
+  const createServerFnCall = getCreateServerFnCallExpression(candidatePath)
+  if (!createServerFnCall) {
+    return undefined
+  }
+
+  const [optionsArg] = createServerFnCall.arguments
+  if (!optionsArg || !t.isObjectExpression(optionsArg)) {
+    return undefined
+  }
+
+  for (const prop of optionsArg.properties) {
+    if (!t.isObjectProperty(prop)) {
+      continue
+    }
+
+    if (prop.computed) {
+      const keyValue = resolveStaticString(candidatePath, prop.key)
+
+      if (keyValue === 'id') {
+        throw codeFrameError(
+          code,
+          prop.loc!,
+          'createServerFn({ [key]: value }) is not supported for manual ids.',
+        )
+      }
+
+      continue
+    }
+
+    const isIdKey =
+      (t.isIdentifier(prop.key) && prop.key.name === 'id') ||
+      (t.isStringLiteral(prop.key) && prop.key.value === 'id')
+
+    if (!isIdKey) {
+      continue
+    }
+
+    if (!t.isExpression(prop.value) && !t.isPrivateName(prop.value)) {
+      throw codeFrameError(
+        code,
+        prop.loc!,
+        'createServerFn({ id }) must use a static string literal or a constant string binding.',
+      )
+    }
+
+    const idValue = resolveStaticString(candidatePath, prop.value)
+
+    if (idValue !== undefined) {
+      if (!MANUAL_SERVER_FN_ID_PATTERN.test(idValue)) {
+        throw codeFrameError(
+          code,
+          prop.value.loc!,
+          'createServerFn({ id }) must use a URL-safe id: [a-zA-Z0-9_-]+',
+        )
+      }
+
+      return idValue
+    }
+
+    throw codeFrameError(
+      code,
+      prop.loc!,
+      'createServerFn({ id }) must use a static string literal or a constant string binding.',
+    )
+  }
+
+  return undefined
+}
+
+function getCreateServerFnCallExpression(
+  candidatePath: babel.NodePath<t.CallExpression>,
+): t.CallExpression | undefined {
+  let currentCall: t.CallExpression = candidatePath.node
+  let sawMethodChain = false
+
+  // Walk inward through the `createServerFn()...method()...` chain.
+  while (
+    t.isMemberExpression(currentCall.callee) &&
+    t.isCallExpression(currentCall.callee.object)
+  ) {
+    const innerCall = currentCall.callee.object
+    if (t.isIdentifier(innerCall.callee, { name: 'createServerFn' })) {
+      return innerCall
+    }
+    sawMethodChain = true
+    currentCall = innerCall
+  }
+
+  return sawMethodChain ? currentCall : undefined
+}
+
+function resolveStaticString(
+  candidatePath: babel.NodePath<t.CallExpression>,
+  value: t.Expression | t.PrivateName,
+): string | undefined {
+  if (t.isStringLiteral(value)) {
+    return value.value
+  }
+
+  if (t.isTemplateLiteral(value) && value.expressions.length === 0) {
+    return value.quasis[0]?.value.cooked ?? undefined
+  }
+
+  if (!t.isIdentifier(value)) {
+    return undefined
+  }
+
+  const binding = candidatePath.scope.getBinding(value.name)
+  const bindingPath = binding?.path
+  const bindingInit =
+    bindingPath && bindingPath.isVariableDeclarator()
+      ? bindingPath.node.init
+      : undefined
+
+  if (binding?.constant && bindingInit && t.isStringLiteral(bindingInit)) {
+    return bindingInit.value
+  }
+
+  if (
+    binding?.constant &&
+    bindingInit &&
+    t.isTemplateLiteral(bindingInit) &&
+    bindingInit.expressions.length === 0
+  ) {
+    return bindingInit.quasis[0]?.value.cooked ?? undefined
+  }
+
+  return undefined
 }
 
 /**
@@ -271,12 +406,25 @@ export function handleCreateServerFn(
     }
     functionNameSet.add(functionName)
 
-    // Generate function ID using pre-computed relative filename
-    const functionId = context.generateFunctionId({
-      filename: relativeFilename,
-      functionName,
-      extractedFilename,
-    })
+    const manualFunctionId = extractManualServerFnId(
+      candidatePath,
+      context.code,
+    )
+
+    // Generate function ID using pre-computed relative filename unless the user supplied one.
+    const functionId =
+      manualFunctionId !== undefined
+        ? context.reserveFunctionId({
+            filename: relativeFilename,
+            functionName,
+            extractedFilename,
+            functionId: manualFunctionId,
+          })
+        : context.generateFunctionId({
+            filename: relativeFilename,
+            functionName,
+            extractedFilename,
+          })
 
     // Check if this function was already discovered by the client build
     const knownFn = knownFns[functionId]
