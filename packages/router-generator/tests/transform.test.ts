@@ -522,4 +522,140 @@ describe('transform', () => {
     )
     expect(result.output).not.toContain('createLazyFileRoute')
   })
+
+  describe('higher-order route wrappers', () => {
+    it('injects the route id into a wrapped createFileRoute call', async () => {
+      const node = makeNode()
+      const result = await transform({
+        source: [
+          "import { createFileRoute } from '@tanstack/react-router'",
+          "import { createExperimentRoute } from '../experiments'",
+          '',
+          "export const Route = createExperimentRoute('exp-1')(",
+          "  createFileRoute('/old')({ component: Home }),",
+          ')',
+        ].join('\n'),
+        ctx: {
+          target: 'react',
+          routeId: '/new',
+          lazy: false,
+        },
+        node,
+      })
+
+      expect(result.result).toBe('modified')
+      if (result.result !== 'modified') {
+        throw new Error(`expected modified result, got ${result.result}`)
+      }
+      expect(result.output).toContain("createFileRoute('/new')")
+      // the wrapper call must be preserved untouched
+      expect(result.output).toContain("createExperimentRoute('exp-1')(")
+      // options are still read for the wrapped call
+      expect(node.createFileRouteProps).toEqual(new Set(['component']))
+    })
+
+    it('swaps eager to lazy constructor inside a wrapper', async () => {
+      const result = await transform({
+        source: [
+          "import { createFileRoute } from '@tanstack/react-router'",
+          "import { createExperimentRoute } from '../experiments'",
+          '',
+          "export const Route = createExperimentRoute('exp-1')(",
+          "  createFileRoute('/old')({}),",
+          ')',
+        ].join('\n'),
+        ctx: {
+          target: 'react',
+          routeId: '/new',
+          lazy: true,
+        },
+        node: makeNode('lazy'),
+      })
+
+      expect(result.result).toBe('modified')
+      if (result.result !== 'modified') {
+        throw new Error(`expected modified result, got ${result.result}`)
+      }
+      expect(result.output).toContain("createLazyFileRoute('/new')")
+      expect(result.output).toContain("createExperimentRoute('exp-1')(")
+      expect(result.output).toContain('createLazyFileRoute }')
+    })
+
+    it('handles multiple nested wrappers', async () => {
+      const result = await transform({
+        source: [
+          "import { createFileRoute } from '@tanstack/react-router'",
+          "import { withA, withB } from '../wrappers'",
+          '',
+          "export const Route = withA(withB('b')(createFileRoute('/old')({})))",
+        ].join('\n'),
+        ctx: {
+          target: 'react',
+          routeId: '/new',
+          lazy: false,
+        },
+        node: makeNode(),
+      })
+
+      expect(result.result).toBe('modified')
+      if (result.result !== 'modified') {
+        throw new Error(`expected modified result, got ${result.result}`)
+      }
+      expect(result.output).toContain("createFileRoute('/new')")
+      expect(result.output).toContain("withA(withB('b')(")
+    })
+
+    it('returns a malformed error for a wrapped createFileRoute missing options', async () => {
+      const result = await transform({
+        source: [
+          "import { createFileRoute } from '@tanstack/react-router'",
+          "import { createExperimentRoute } from '../experiments'",
+          '',
+          "export const Route = createExperimentRoute('exp-1')(createFileRoute('/old'))",
+        ].join('\n'),
+        ctx: {
+          target: 'react',
+          routeId: '/new',
+          lazy: false,
+        },
+        node: makeNode(),
+      })
+
+      expect(result.result).toBe('error')
+      if (result.result !== 'error') {
+        throw new Error(`expected error result, got ${result.result}`)
+      }
+      expect(String(result.error)).toContain(
+        "expected Route export in /new to use createFileRoute('/path')({...})",
+      )
+    })
+
+    it('errors when more than one createFileRoute call is present', async () => {
+      const result = await transform({
+        source: [
+          "import { createFileRoute } from '@tanstack/react-router'",
+          "import { combine } from '../wrappers'",
+          '',
+          'export const Route = combine(',
+          "  createFileRoute('/a')({}),",
+          "  createFileRoute('/b')({}),",
+          ')',
+        ].join('\n'),
+        ctx: {
+          target: 'react',
+          routeId: '/new',
+          lazy: false,
+        },
+        node: makeNode(),
+      })
+
+      expect(result.result).toBe('error')
+      if (result.result !== 'error') {
+        throw new Error(`expected error result, got ${result.result}`)
+      }
+      expect(String(result.error)).toContain(
+        'expected exactly one createFileRoute/createLazyFileRoute call',
+      )
+    })
+  })
 })
