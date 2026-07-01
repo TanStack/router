@@ -251,7 +251,7 @@ Follow the [`Nitro`](#nitro) deployment instructions to produce a Node.js server
     "start": "node .output/server/index.mjs"
 ```
 
-2. Push your project to a Git repository (GitHub, GitLab, or Bitbucket).
+2. Push your project to a GitHub repository.
 
 3. In [hPanel](https://hpanel.hostinger.com), create a Node.js application, connect your repository, and set:
 
