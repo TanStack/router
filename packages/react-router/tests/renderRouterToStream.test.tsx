@@ -232,3 +232,82 @@ describe('renderRouterToStream - pipeable sync errors', () => {
     }
   })
 })
+
+describe('renderRouterToStream - bot detection (isBot option)', () => {
+  const BOT_UA = 'Googlebot/2.1 (+http://www.google.com/bot.html)'
+  const HUMAN_UA =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+
+  function requestWith(headers: Record<string, string>) {
+    return new Request('http://localhost/', { headers })
+  }
+
+  // Captures whether renderToPipeableStream was given `onAllReady` (bot, wait
+  // for the full document) or `onShellReady` (stream the shell first).
+  async function getStreamMode(
+    request: Request,
+    isBot?: boolean | ((request: Request) => boolean),
+  ): Promise<'allReady' | 'shellReady' | undefined> {
+    const router = await buildRouter()
+    let mode: 'allReady' | 'shellReady' | undefined
+    reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(
+      (_children, opts) => {
+        mode = opts.onAllReady ? 'allReady' : 'shellReady'
+        queueMicrotask(() => (opts.onAllReady ?? opts.onShellReady)())
+        return { abort: vi.fn(), pipe: vi.fn() }
+      },
+    )
+
+    const result = await renderRouterToStream({
+      request,
+      router,
+      responseHeaders: new Headers(),
+      children: null,
+      isBot,
+    })
+    try {
+      return mode
+    } finally {
+      await unwrapResponse(result)
+        .body?.cancel()
+        .catch(() => {})
+      router.serverSsr?.cleanup()
+    }
+  }
+
+  test('default: bot User-Agent waits for allReady', async () => {
+    expect(await getStreamMode(requestWith({ 'user-agent': BOT_UA }))).toBe(
+      'allReady',
+    )
+  })
+
+  test('default: human User-Agent streams the shell', async () => {
+    expect(await getStreamMode(requestWith({ 'user-agent': HUMAN_UA }))).toBe(
+      'shellReady',
+    )
+  })
+
+  test('isBot=false: bot User-Agent still streams the shell', async () => {
+    expect(
+      await getStreamMode(requestWith({ 'user-agent': BOT_UA }), false),
+    ).toBe('shellReady')
+  })
+
+  test('isBot=true: human User-Agent waits for allReady', async () => {
+    expect(
+      await getStreamMode(requestWith({ 'user-agent': HUMAN_UA }), true),
+    ).toBe('allReady')
+  })
+
+  test('isBot predicate receives the request and controls the mode', async () => {
+    const isBot = vi.fn(
+      (request: Request) => request.headers.get('x-prerender') === '1',
+    )
+    const request = requestWith({ 'user-agent': HUMAN_UA, 'x-prerender': '1' })
+
+    const mode = await getStreamMode(request, isBot)
+
+    expect(mode).toBe('allReady')
+    expect(isBot).toHaveBeenCalledWith(request)
+  })
+})
