@@ -24,6 +24,7 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 - [`vercel`](#vercel): Deploy to Vercel
 - [`railway`](#nodejs--railway--docker): Deploy to Railway
 - [`node-server`](#nodejs--railway--docker): Deploy to a Node.js server
+- [`hostinger`](#hostinger): Deploy to Hostinger
 - [`bun`](#bun): Deploy to a Bun server
 - [`appwrite-sites`](#appwrite-sites): Deploy to Appwrite Sites
 - ... and more to come!
@@ -236,6 +237,28 @@ You can start your application by running:
 ```sh
 npm run start
 ```
+
+### Hostinger
+
+[Hostinger](https://www.hostinger.com) can host TanStack Start applications on its Node.js hosting.
+
+Follow the [`Nitro`](#nitro) deployment instructions to produce a Node.js server build. Nitro writes the output to `.output`, using `.output/server/index.mjs` as the server entry point.
+
+1. Ensure `build` and `start` scripts are present in your `package.json` file:
+
+```json
+    "build": "vite build",
+    "start": "node .output/server/index.mjs"
+```
+
+2. Push your project to a Git repository (GitHub, GitLab, or Bitbucket).
+
+3. In [hPanel](https://hpanel.hostinger.com), create a Node.js application, connect your repository, and set:
+
+   - **Build command:** `npm run build`
+   - **Entry point:** `.output/server/index.mjs`
+
+4. Deploy. Once the build completes, you can attach a custom domain and Hostinger will provision HTTPS automatically.
 
 ### Bun
 
