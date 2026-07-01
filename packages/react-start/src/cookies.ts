@@ -13,6 +13,28 @@ type SetCookieFn = (
   options?: CookieSerializeOptions,
 ) => void
 
+// Exported (but not part of the package's public entry) so they can be unit
+// tested directly, since `createIsomorphicFn`'s uncompiled runtime fallback
+// always resolves to the `.server()` implementation once one is registered,
+// making the `.client()` branch unreachable through `getCookie`/`setCookie`
+// outside of a Start-compiled bundle.
+export function getClientCookie(name: string): string | undefined {
+  return parse(document.cookie)[name]
+}
+
+export function setClientCookie(
+  name: string,
+  value: string,
+  options?: CookieSerializeOptions,
+): void {
+  if (options?.httpOnly && process.env.NODE_ENV !== 'production') {
+    console.warn(
+      '`setCookie` was called with `httpOnly: true` in the browser. Browsers silently discard cookies written via `document.cookie` when `HttpOnly` is set, so this cookie will NOT be set.',
+    )
+  }
+  document.cookie = serialize(name, value, options)
+}
+
 /**
  * Get a cookie value by name. Works on both the server (reads the current
  * request's `Cookie` header) and the client (reads `document.cookie`).
@@ -24,7 +46,7 @@ type SetCookieFn = (
  */
 export const getCookie: GetCookieFn = createIsomorphicFn()
   .server(getServerCookie)
-  .client((name: string) => parse(document.cookie)[name])
+  .client(getClientCookie)
 
 /**
  * Set a cookie value by name. Works on both the server (sets a `Set-Cookie`
@@ -38,11 +60,4 @@ export const getCookie: GetCookieFn = createIsomorphicFn()
  */
 export const setCookie: SetCookieFn = createIsomorphicFn()
   .server(setServerCookie)
-  .client((name: string, value: string, options?: CookieSerializeOptions) => {
-    if (options?.httpOnly && process.env.NODE_ENV !== 'production') {
-      console.warn(
-        '`setCookie` was called with `httpOnly: true` in the browser. `HttpOnly` cannot be set from client-side JavaScript, so this cookie will NOT be HttpOnly-protected.',
-      )
-    }
-    document.cookie = serialize(name, value, options)
-  })
+  .client(setClientCookie)
