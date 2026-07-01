@@ -25,7 +25,9 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test": "pnpm test:build",
+    "test": "pnpm test:build && pnpm test:unit",
+    "test:unit": "vitest",
+    "test:unit:dev": "vitest --watch",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build && vite build -c vite.config.server-entry.ts"
   },

@@ -60,6 +60,12 @@
         "default": "./dist/esm/client-rpc/index.js"
       }
     },
+    "./cookies": {
+      "import": {
+        "types": "./dist/esm/cookies.d.ts",
+        "default": "./dist/esm/cookies.js"
+      }
+    },
     "./hydration": {
       "import": {
         "types": "./dist/esm/hydration.d.ts",
@@ -109,6 +115,7 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/start-fn-stubs": "workspace:*",
     "@tanstack/start-storage-context": "workspace:*",
+    "cookie-es": "^3.0.0",
     "seroval": "^1.5.4"
   },
   "devDependencies": {
