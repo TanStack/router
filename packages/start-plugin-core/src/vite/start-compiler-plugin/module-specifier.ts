@@ -1,4 +1,12 @@
-import type { DevServerFnModuleSpecifierEncoder } from '../../start-compiler/types'
+import type {
+  DevServerFnModuleSpecifierEncoder,
+  ServerFn,
+} from '../../start-compiler/types'
+
+export type ViteDevServerFnImport = {
+  file: string
+  export: string
+}
 
 export function createViteDevServerFnModuleSpecifierEncoder(
   root: string,
@@ -38,4 +46,38 @@ export function decodeViteDevServerModuleSpecifier(
   const queryIndex = sourceFile.indexOf('?')
 
   return queryIndex === -1 ? sourceFile : sourceFile.slice(0, queryIndex)
+}
+
+export function getViteDevServerFnImport(
+  id: string,
+  serverFnsById: Record<string, ServerFn>,
+  encodeModuleSpecifier: DevServerFnModuleSpecifierEncoder,
+): ViteDevServerFnImport {
+  const registeredServerFn = serverFnsById[id]
+  if (registeredServerFn) {
+    return {
+      file: encodeModuleSpecifier({
+        extractedFilename: registeredServerFn.extractedFilename,
+        root: '',
+      }),
+      export: registeredServerFn.functionName,
+    }
+  }
+
+  try {
+    const decoded = JSON.parse(Buffer.from(id, 'base64url').toString('utf8'))
+    if (
+      typeof decoded.file === 'string' &&
+      typeof decoded.export === 'string'
+    ) {
+      return {
+        file: decoded.file,
+        export: decoded.export,
+      }
+    }
+  } catch {
+    // Manual IDs are not encoded module references.
+  }
+
+  throw new Error(`Invalid server function ID: ${id}`)
 }

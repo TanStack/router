@@ -118,6 +118,447 @@ describe('createServerFn compiles correctly', async () => {
     `)
   })
 
+  test('should compile server functions with manual ids', async () => {
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const myServerFn = createServerFn()
+          .middleware([])
+          .id('get-user')
+          .handler(() => 'server')`
+
+    const compiledResultClient = await compile({
+      code,
+      env: 'client',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    const compiledResultServerCaller = await compile({
+      code,
+      env: 'server',
+      isProviderFile: false,
+      mode: 'build',
+    })
+
+    const compiledResultServerProvider = await compile({
+      code,
+      env: 'server',
+      isProviderFile: true,
+      mode: 'build',
+    })
+
+    expect(compiledResultClient!.code).toContain('createClientRpc("get-user")')
+    expect(compiledResultClient!.code).not.toContain('.id(')
+
+    expect(compiledResultServerCaller!.code).toContain(
+      'createSsrRpc("get-user")',
+    )
+    expect(compiledResultServerCaller!.code).not.toContain('.id(')
+
+    expect(compiledResultServerProvider!.code).toContain('id: "get-user"')
+    expect(compiledResultServerProvider!.code).not.toContain('.id(')
+  })
+
+  test('should register server functions by manual ids', async () => {
+    const serverFnsById: Record<
+      string,
+      {
+        functionName: string
+        functionId: string
+        extractedFilename: string
+        filename: string
+        isClientReferenced?: boolean
+      }
+    > = {}
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      getKnownServerFns: () => ({}),
+      onServerFnsById: (discovered) => {
+        Object.assign(serverFnsById, discovered)
+      },
+    })
+
+    await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const myServerFn = createServerFn()
+          .id('get-user')
+          .handler(() => 'server')
+      `,
+      id: '/test/src/test.ts',
+    })
+
+    expect(serverFnsById['get-user']).toMatchObject({
+      functionId: 'get-user',
+      functionName: 'myServerFn_createServerFn_handler',
+      filename: '/test/src/test.ts',
+      isClientReferenced: true,
+    })
+  })
+
+  test('should reject dynamic manual server function ids', async () => {
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const id = 'get-user'
+        const myServerFn = createServerFn()
+          .id(id)
+          .handler(() => 'server')`
+
+    await expect(
+      compile({
+        code,
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+      }),
+    ).rejects.toThrow(
+      'createServerFn().id() must be called with a string literal',
+    )
+  })
+
+  test('should reject invalid manual server function ids', async () => {
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const myServerFn = createServerFn()
+          .id('users/get')
+          .handler(() => 'server')`
+
+    await expect(
+      compile({
+        code,
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+      }),
+    ).rejects.toThrow(
+      'createServerFn().id() must be a non-empty URL-safe path segment',
+    )
+  })
+
+  test('should reject duplicate manual server function ids', async () => {
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const getUser = createServerFn()
+          .id('user-action')
+          .handler(() => 'get')
+        const updateUser = createServerFn()
+          .id('user-action')
+          .handler(() => 'update')`
+
+    await expect(
+      compile({
+        code,
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+      }),
+    ).rejects.toThrow('Duplicate manual server function id: user-action')
+  })
+
+  test('should dedupe generated ids that collide with manual ids', async () => {
+    const serverFnsById: Record<
+      string,
+      {
+        functionName: string
+        functionId: string
+        extractedFilename: string
+        filename: string
+        isClientReferenced?: boolean
+      }
+    > = {}
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      generateFunctionId: ({ functionName }) =>
+        functionName === 'generatedFn_createServerFn_handler'
+          ? 'user-action'
+          : undefined,
+      getKnownServerFns: () => ({}),
+      onServerFnsById: (discovered) => {
+        Object.assign(serverFnsById, discovered)
+      },
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const manualFn = createServerFn()
+          .id('user-action')
+          .handler(() => 'manual')
+        const generatedFn = createServerFn()
+          .handler(() => 'generated')
+      `,
+      id: '/test/src/test.ts',
+    })
+
+    expect(result!.code).toContain('createClientRpc("user-action")')
+    expect(result!.code).toContain('createClientRpc("user-action_1")')
+    expect(Object.keys(serverFnsById).sort()).toEqual([
+      'user-action',
+      'user-action_1',
+    ])
+  })
+
+  test('should dedupe generated ids that collide with later manual ids', async () => {
+    const serverFnsById: Record<
+      string,
+      {
+        functionName: string
+        functionId: string
+        extractedFilename: string
+        filename: string
+        isClientReferenced?: boolean
+      }
+    > = {}
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      generateFunctionId: ({ functionName }) =>
+        functionName === 'generatedFn_createServerFn_handler'
+          ? 'user-action'
+          : undefined,
+      getKnownServerFns: () => ({}),
+      onServerFnsById: (discovered) => {
+        Object.assign(serverFnsById, discovered)
+      },
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const generatedFn = createServerFn()
+          .handler(() => 'generated')
+        const manualFn = createServerFn()
+          .id('user-action')
+          .handler(() => 'manual')
+      `,
+      id: '/test/src/test.ts',
+    })
+
+    expect(result!.code).toContain('createClientRpc("user-action_1")')
+    expect(result!.code).toContain('createClientRpc("user-action")')
+    expect(Object.keys(serverFnsById).sort()).toEqual([
+      'user-action',
+      'user-action_1',
+    ])
+  })
+
+  test('should release manual id reservations when a module is invalidated', async () => {
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      getKnownServerFns: () => ({}),
+    })
+
+    await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const firstFn = createServerFn()
+          .id('user-action')
+          .handler(() => 'first')
+      `,
+      id: '/test/src/first.ts',
+    })
+
+    compiler.invalidateModule('/test/src/first.ts')
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const secondFn = createServerFn()
+          .id('user-action')
+          .handler(() => 'second')
+      `,
+      id: '/test/src/second.ts',
+    })
+
+    expect(result!.code).toContain('createClientRpc("user-action")')
+  })
+
+  test('should dedupe generated ids that collide with known ids', async () => {
+    const serverFnsById: Record<
+      string,
+      {
+        functionName: string
+        functionId: string
+        extractedFilename: string
+        filename: string
+        isClientReferenced?: boolean
+      }
+    > = {
+      'known-action': {
+        functionName: 'knownFn_createServerFn_handler',
+        functionId: 'known-action',
+        extractedFilename: '/test/src/known.ts?tss-serverfn-split',
+        filename: '/test/src/known.ts',
+        isClientReferenced: true,
+      },
+    }
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      generateFunctionId: ({ functionName }) =>
+        functionName === 'generatedFn_createServerFn_handler'
+          ? 'known-action'
+          : undefined,
+      getKnownServerFns: () => serverFnsById,
+      onServerFnsById: (discovered) => {
+        Object.assign(serverFnsById, discovered)
+      },
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const generatedFn = createServerFn()
+          .handler(() => 'generated')
+      `,
+      id: '/test/src/generated.ts',
+    })
+
+    expect(result!.code).toContain('createClientRpc("known-action_1")')
+    expect(serverFnsById['known-action']).toMatchObject({
+      functionName: 'knownFn_createServerFn_handler',
+      functionId: 'known-action',
+    })
+    expect(serverFnsById['known-action_1']).toMatchObject({
+      functionName: 'generatedFn_createServerFn_handler',
+      functionId: 'known-action_1',
+    })
+  })
+
+  test('should dedupe dev generated ids that collide with manual ids', async () => {
+    const devServerFnPayload = {
+      file: '/test/src/test.ts?tss-serverfn-split',
+      export: 'generatedFn_createServerFn_handler',
+    }
+    const manualFunctionId = Buffer.from(
+      JSON.stringify(devServerFnPayload),
+      'utf8',
+    ).toString('base64url')
+    const serverFnsById: Record<
+      string,
+      {
+        functionName: string
+        functionId: string
+        extractedFilename: string
+        filename: string
+        isClientReferenced?: boolean
+      }
+    > = {}
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'dev',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      resolveId: async (id) => id,
+      devServerFnModuleSpecifierEncoder: ({ extractedFilename }) =>
+        extractedFilename,
+      getKnownServerFns: () => ({}),
+      onServerFnsById: (discovered) => {
+        Object.assign(serverFnsById, discovered)
+      },
+    })
+
+    const result = await compiler.compile({
+      code: `
+        import { createServerFn } from '@tanstack/react-start'
+        const manualFn = createServerFn()
+          .id('${manualFunctionId}')
+          .handler(() => 'manual')
+        const generatedFn = createServerFn()
+          .handler(() => 'generated')
+      `,
+      id: '/test/src/test.ts',
+    })
+
+    const functionIds = Object.keys(serverFnsById).sort()
+    const generatedFunctionId = functionIds.find(
+      (functionId) => functionId !== manualFunctionId,
+    )
+    const generatedPayload = JSON.parse(
+      Buffer.from(generatedFunctionId!, 'base64url').toString('utf8'),
+    )
+
+    expect(result!.code).toContain(`createClientRpc("${manualFunctionId}")`)
+    expect(result!.code).toContain(`createClientRpc("${generatedFunctionId}")`)
+    expect(functionIds).toHaveLength(2)
+    expect(functionIds).toContain(manualFunctionId)
+    expect(generatedPayload).toEqual({
+      ...devServerFnPayload,
+      collision: 1,
+    })
+  })
+
   // TODO remove upon stable
   test('should warn for deprecated inputValidator method', async () => {
     const warn = vi.fn()

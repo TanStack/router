@@ -578,6 +578,68 @@ test('createServerFn strict false factory preserves strictness', () => {
   >()
 })
 
+test('createServerFn id can be set before handler', () => {
+  const builder = createServerFn().id('get-user')
+
+  expectTypeOf(builder).toHaveProperty('handler')
+  expectTypeOf(builder).toHaveProperty('middleware')
+  expectTypeOf(builder).toHaveProperty('validator')
+  expectTypeOf(builder).not.toHaveProperty('id')
+
+  const fn = builder.handler(() => ({}))
+
+  expectTypeOf(fn).not.toHaveProperty('id')
+
+  const builderAfterMiddleware = createServerFn()
+    .id('list-users')
+    .middleware([])
+
+  expectTypeOf(builderAfterMiddleware).toHaveProperty('handler')
+  expectTypeOf(builderAfterMiddleware).not.toHaveProperty('id')
+
+  const builderWithIdAfterMiddleware = createServerFn()
+    .middleware([])
+    .id('update-user')
+
+  expectTypeOf(builderWithIdAfterMiddleware).toHaveProperty('handler')
+  expectTypeOf(builderWithIdAfterMiddleware).not.toHaveProperty('id')
+
+  const builderWithIdAfterValidator = createServerFn()
+    .validator((input: { id: string }) => input)
+    .id('delete-user')
+
+  expectTypeOf(builderWithIdAfterValidator).toHaveProperty('handler')
+  expectTypeOf(builderWithIdAfterValidator).not.toHaveProperty('id')
+})
+
+test('createServerFn factory children set their own ids', () => {
+  const middleware = createMiddleware({ type: 'function' }).server(
+    ({ next }) => {
+      return next({ context: { user: 'alice' } as const })
+    },
+  )
+
+  const createAuthedServerFn = createServerFn({ method: 'POST' }).middleware([
+    middleware,
+  ])
+
+  const builder = createAuthedServerFn().id('save-user')
+
+  expectTypeOf(builder).toHaveProperty('handler')
+  expectTypeOf(builder).not.toHaveProperty('id')
+
+  builder.handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      context: {
+        readonly user: 'alice'
+      }
+      data: undefined
+      method: 'POST'
+      serverFnMeta: ServerFnMeta
+    }>()
+  })
+})
+
 test('createServerFn strict input false can validate function', () => {
   const fn = createServerFn({ strict: { input: false } })
     .validator((input: { func: () => 'input' }) => ({

@@ -24,6 +24,7 @@ import { resolveViteId } from '../../utils'
 import {
   createViteDevServerFnModuleSpecifierEncoder,
   decodeViteDevServerModuleSpecifier,
+  getViteDevServerFnImport,
 } from './module-specifier'
 import { mergeHotUpdateModules } from './hot-update'
 import type {
@@ -156,6 +157,25 @@ function invalidateCompilerVirtualModules(
   })
 }
 
+function deleteServerFnsByModuleIds(
+  serverFnsById: Record<string, ServerFn>,
+  ids: Iterable<string>,
+): void {
+  const moduleIds = new Set(Array.from(ids, cleanId))
+  if (moduleIds.size === 0) {
+    return
+  }
+
+  for (const [functionId, serverFn] of Object.entries(serverFnsById)) {
+    if (
+      moduleIds.has(cleanId(serverFn.filename)) ||
+      moduleIds.has(cleanId(serverFn.extractedFilename))
+    ) {
+      delete serverFnsById[functionId]
+    }
+  }
+}
+
 function getServerFnProviderIds(ids: Iterable<string>) {
   const providerIds = new Set<string>()
 
@@ -189,9 +209,7 @@ function getDevServerFnValidatorModule(): string {
   return `
 export async function getServerFnById(id, _access) {
   const validateIdImport = ${JSON.stringify(validateServerFnIdVirtualModule)} + '?id=' + id
-  await import(/* @vite-ignore */ '/@id/__x00__' + validateIdImport)
-  const decoded = Buffer.from(id, 'base64url').toString('utf8')
-  const devServerFn = JSON.parse(decoded)
+  const { devServerFn } = await import(/* @vite-ignore */ '/@id/__x00__' + validateIdImport)
   const mod = await import(/* @vite-ignore */ devServerFn.file)
   return mod[devServerFn.export]
 }
@@ -447,6 +465,8 @@ export function startCompilerPlugin(
             compiler.invalidateModules(seenImporters)
           }
 
+          deleteServerFnsByModuleIds(serverFnsById, idsToInvalidate)
+
           invalidateModuleNodes(this.environment, importerModulesToInvalidate)
           invalidateServerFnLookupModules(this.environment, idsToInvalidate)
           const compilerVirtualModules = invalidateCompilerVirtualModules(
@@ -551,7 +571,13 @@ export function startCompilerPlugin(
           const parsed = parseIdQuery(id)
           const fnId = parsed.query.id
           if (fnId && serverFnsById[fnId]) {
-            return `export {}`
+            return `export const devServerFn = ${JSON.stringify(
+              getViteDevServerFnImport(
+                fnId,
+                serverFnsById,
+                createViteDevServerFnModuleSpecifierEncoder(root),
+              ),
+            )}`
           }
 
           // ID not yet registered — the source file may not have been
@@ -592,7 +618,13 @@ export function startCompilerPlugin(
 
                   // Re-check after lazy compilation
                   if (serverFnsById[fnId]) {
-                    return `export {}`
+                    return `export const devServerFn = ${JSON.stringify(
+                      getViteDevServerFnImport(
+                        fnId,
+                        serverFnsById,
+                        createViteDevServerFnModuleSpecifierEncoder(root),
+                      ),
+                    )}`
                   }
                 }
               }

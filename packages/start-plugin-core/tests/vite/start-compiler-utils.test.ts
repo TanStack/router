@@ -2,11 +2,63 @@ import { describe, expect, test } from 'vitest'
 import {
   createViteDevServerFnModuleSpecifierEncoder,
   decodeViteDevServerModuleSpecifier,
+  getViteDevServerFnImport,
 } from '../../src/vite/start-compiler-plugin/module-specifier'
 import { mergeHotUpdateModules } from '../../src/vite/start-compiler-plugin/hot-update'
 import type { EnvironmentModuleNode } from 'vite'
 
 describe('Vite dev server module specifiers', () => {
+  test('resolves registered server function ids before decoding them', () => {
+    const generatedIdShapedManualId = Buffer.from(
+      JSON.stringify({
+        file: '/src/routes/wrong.tsx?tss-serverfn-split',
+        export: 'wrong_createServerFn_handler',
+      }),
+      'utf8',
+    ).toString('base64url')
+
+    expect(
+      getViteDevServerFnImport(
+        generatedIdShapedManualId,
+        {
+          [generatedIdShapedManualId]: {
+            functionName: 'getUser_createServerFn_handler',
+            functionId: generatedIdShapedManualId,
+            filename: '/repo/app/src/routes/users.tsx',
+            extractedFilename:
+              '/repo/app/src/routes/users.tsx?tss-serverfn-split',
+            isClientReferenced: true,
+          },
+        },
+        createViteDevServerFnModuleSpecifierEncoder('/repo/app'),
+      ),
+    ).toEqual({
+      file: '/src/routes/users.tsx?tss-serverfn-split',
+      export: 'getUser_createServerFn_handler',
+    })
+  })
+
+  test('falls back to decoding generated dev server function ids', () => {
+    const encodedId = Buffer.from(
+      JSON.stringify({
+        file: '/src/routes/users.tsx?tss-serverfn-split',
+        export: 'getUser_createServerFn_handler',
+      }),
+      'utf8',
+    ).toString('base64url')
+
+    expect(
+      getViteDevServerFnImport(
+        encodedId,
+        {},
+        createViteDevServerFnModuleSpecifierEncoder('/repo/app'),
+      ),
+    ).toEqual({
+      file: '/src/routes/users.tsx?tss-serverfn-split',
+      export: 'getUser_createServerFn_handler',
+    })
+  })
+
   test('encodes app files as root-relative dev server paths', () => {
     const encode = createViteDevServerFnModuleSpecifierEncoder('/repo/app')
 

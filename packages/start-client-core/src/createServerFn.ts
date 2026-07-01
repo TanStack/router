@@ -97,6 +97,13 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
 
   const res: ServerFnBuilder<Register, Method, ServerFnStrict> = {
     options: resolvedOptions,
+    id: (id) => {
+      const newOptions = {
+        ...resolvedOptions,
+        id,
+      }
+      return createServerFn(undefined, newOptions) as any
+    },
     middleware: (middleware) => {
       // multiple calls to `middleware()` merge the middlewares with the previously supplied ones
       // this is primarily useful for letting users create their own abstractions on top of `createServerFn`
@@ -216,8 +223,10 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
     },
   } as ServerFnBuilder<Register, Method, ServerFnStrict>
   const fun = (options?: ServerFnOptions<Method, ServerFnStrict>) => {
+    const inheritedOptions = { ...resolvedOptions }
+    delete inheritedOptions.id
     const newOptions = {
-      ...resolvedOptions,
+      ...inheritedOptions,
       ...options,
     }
     return createServerFn(undefined, newOptions)
@@ -500,6 +509,7 @@ export type ServerFnBaseOptions<
   TInputValidator = unknown,
   TStrict extends ServerFnStrict = true,
 > = {
+  id?: string
   method: TMethod
   strict?: TStrict
   middleware?: Constrain<
@@ -586,6 +596,135 @@ export type AppendMiddlewares<TMiddlewares, TNewMiddlewares> =
       : TMiddlewares
     : TNewMiddlewares
 
+export interface ServerFnId<
+  TRegister,
+  TMethod extends Method,
+  TMiddlewares,
+  TInputValidator,
+  TStrict extends ServerFnStrict,
+> {
+  id: (
+    id: string,
+  ) => ServerFnAfterId<
+    TRegister,
+    TMethod,
+    TMiddlewares,
+    TInputValidator,
+    TStrict
+  >
+}
+
+export interface ServerFnAfterId<
+  TRegister,
+  TMethod extends Method,
+  TMiddlewares,
+  TInputValidator,
+  TStrict extends ServerFnStrict,
+>
+  extends
+    ServerFnWithTypes<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      undefined,
+      TStrict
+    >,
+    ServerFnMiddlewareAfterId<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    >,
+    ServerFnValidatorAfterId<TRegister, TMethod, TMiddlewares, TStrict>,
+    ServerFnHandler<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    > {}
+
+export interface ServerFnMiddlewareAfterId<
+  TRegister,
+  TMethod extends Method,
+  TMiddlewares,
+  TInputValidator,
+  TStrict extends ServerFnStrict,
+> {
+  middleware: <const TNewMiddlewares>(
+    middlewares: Constrain<
+      TNewMiddlewares,
+      ReadonlyArray<AnyFunctionMiddleware | AnyRequestMiddleware | AnyServerFn>
+    >,
+  ) => ServerFnAfterId<
+    TRegister,
+    TMethod,
+    AppendMiddlewares<TMiddlewares, TNewMiddlewares>,
+    TInputValidator,
+    TStrict
+  >
+}
+
+export type ValidatorFnAfterId<
+  TRegister,
+  TMethod extends Method,
+  TMiddlewares,
+  TStrict extends ServerFnStrict,
+> = <TInputValidator>(
+  validator: ConstrainValidator<TRegister, TMethod, TInputValidator, TStrict>,
+) => ServerFnAfterIdAfterValidator<
+  TRegister,
+  TMethod,
+  TMiddlewares,
+  TInputValidator,
+  TStrict
+>
+
+export interface ServerFnValidatorAfterId<
+  TRegister,
+  TMethod extends Method,
+  TMiddlewares,
+  TStrict extends ServerFnStrict,
+> {
+  validator: ValidatorFnAfterId<TRegister, TMethod, TMiddlewares, TStrict>
+  // TODO remove upon stable
+  /** @deprecated Use `validator` instead. */
+  inputValidator: ValidatorFnAfterId<TRegister, TMethod, TMiddlewares, TStrict>
+}
+
+export interface ServerFnAfterIdAfterValidator<
+  TRegister,
+  TMethod extends Method,
+  TMiddlewares,
+  TInputValidator,
+  TStrict extends ServerFnStrict,
+>
+  extends
+    ServerFnWithTypes<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      undefined,
+      TStrict
+    >,
+    ServerFnMiddlewareAfterId<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    >,
+    ServerFnHandler<
+      TRegister,
+      TMethod,
+      TMiddlewares,
+      TInputValidator,
+      TStrict
+    > {}
+
 export interface ServerFnMiddleware<
   TRegister,
   TMethod extends Method,
@@ -625,6 +764,7 @@ export interface ServerFnAfterMiddleware<
     >,
     ServerFnMiddleware<TRegister, TMethod, TMiddlewares, undefined, TStrict>,
     ServerFnValidator<TRegister, TMethod, TMiddlewares, TStrict>,
+    ServerFnId<TRegister, TMethod, TMiddlewares, TInputValidator, TStrict>,
     ServerFnHandler<
       TRegister,
       TMethod,
@@ -696,13 +836,8 @@ export interface ServerFnAfterValidator<
       TInputValidator,
       TStrict
     >,
-    ServerFnHandler<
-      TRegister,
-      TMethod,
-      TMiddlewares,
-      TInputValidator,
-      TStrict
-    > {}
+    ServerFnHandler<TRegister, TMethod, TMiddlewares, TInputValidator, TStrict>,
+    ServerFnId<TRegister, TMethod, TMiddlewares, TInputValidator, TStrict> {}
 
 export interface ServerFnAfterTyper<
   TRegister,
@@ -764,6 +899,7 @@ export interface ServerFnBuilder<
     >,
     ServerFnMiddleware<TRegister, TMethod, undefined, undefined, TStrict>,
     ServerFnValidator<TRegister, TMethod, undefined, TStrict>,
+    ServerFnId<TRegister, TMethod, undefined, undefined, TStrict>,
     ServerFnHandler<TRegister, TMethod, undefined, undefined, TStrict> {
   <
     TNewMethod extends Method = TMethod,

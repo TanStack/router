@@ -44,6 +44,12 @@ type StartCompilerAstPlugin = StartCompilerPlugin & {
   transformAst: NonNullable<StartCompilerPlugin['transformAst']>
 }
 
+type GenerateFunctionIdOpts = {
+  filename: string
+  functionName: string
+  extractedFilename: string
+}
+
 export type BuiltInLookupKind =
   | 'ServerFn'
   | 'Middleware'
@@ -522,6 +528,7 @@ export class StartCompiler {
   // For generating unique function IDs in production builds
   private entryIdToFunctionId = new Map<string, string>()
   private functionIds = new Set<string>()
+  private reservedFunctionIdOwners = new Map<string, string>()
 
   constructor(
     private options: {
@@ -606,70 +613,115 @@ export class StartCompiler {
    * In dev mode, uses a base64-encoded JSON with file path and export name.
    * In build mode, uses SHA256 hash or custom generator.
    */
-  private generateFunctionId(opts: {
-    filename: string
-    functionName: string
-    extractedFilename: string
-  }): string {
-    if (this.mode === 'dev') {
-      // In dev, encode the file path and export name for direct lookup.
-      // Each bundler adapter supplies its own strategy for encoding
-      // module specifiers that work with its dev server runtime.
-      const encodeModuleSpecifier =
-        this.options.devServerFnModuleSpecifierEncoder
-      if (!encodeModuleSpecifier) {
-        throw new Error(
-          'devServerFnModuleSpecifierEncoder is required in dev mode.',
-        )
-      }
-      const file = encodeModuleSpecifier({
-        extractedFilename: opts.extractedFilename,
-        root: this.options.root,
-      })
-
-      const serverFn = {
-        file,
-        export: opts.functionName,
-      }
-      return Buffer.from(JSON.stringify(serverFn), 'utf8').toString('base64url')
-    }
-
-    // Production build: use custom generator or hash
+  private generateFunctionId(opts: GenerateFunctionIdOpts): string {
     const entryId = `${opts.filename}--${opts.functionName}`
     let functionId = this.entryIdToFunctionId.get(entryId)
     if (functionId === undefined) {
-      const knownFn = Object.values(this.options.getKnownServerFns()).find(
-        (serverFn) =>
-          serverFn.functionName === opts.functionName &&
-          serverFn.extractedFilename === opts.extractedFilename,
-      )
+      const knownFn = this.getKnownServerFn(opts)
 
       if (knownFn) {
         functionId = knownFn.functionId
+      } else if (this.mode === 'dev') {
+        functionId = this.generateDevFunctionId(opts)
+      } else {
+        functionId = this.generateBuildFunctionId(entryId, opts)
       }
 
-      if (this.options.generateFunctionId) {
-        functionId ??= this.options.generateFunctionId({
-          filename: opts.filename,
-          functionName: opts.functionName,
-        })
-      }
-      if (!functionId) {
-        functionId = crypto.createHash('sha256').update(entryId).digest('hex')
-      }
-      // Deduplicate in case the generated id conflicts with an existing id
-      if (this.functionIds.has(functionId)) {
-        let deduplicatedId
-        let iteration = 0
-        do {
-          deduplicatedId = `${functionId}_${++iteration}`
-        } while (this.functionIds.has(deduplicatedId))
-        functionId = deduplicatedId
-      }
       this.entryIdToFunctionId.set(entryId, functionId)
       this.functionIds.add(functionId)
     }
     return functionId
+  }
+
+  private getKnownServerFn(opts: GenerateFunctionIdOpts): ServerFn | undefined {
+    return Object.values(this.options.getKnownServerFns()).find(
+      (serverFn) =>
+        serverFn.functionName === opts.functionName &&
+        serverFn.extractedFilename === opts.extractedFilename,
+    )
+  }
+
+  private isFunctionIdAvailable(
+    functionId: string,
+    opts: GenerateFunctionIdOpts,
+  ): boolean {
+    if (this.functionIds.has(functionId)) {
+      return false
+    }
+
+    const knownFn = this.options.getKnownServerFns()[functionId]
+    return (
+      !knownFn ||
+      (knownFn.functionName === opts.functionName &&
+        knownFn.extractedFilename === opts.extractedFilename)
+    )
+  }
+
+  private hasKnownFunctionId(functionId: string): boolean {
+    return !!this.options.getKnownServerFns()[functionId]
+  }
+
+  private generateDevFunctionId(opts: GenerateFunctionIdOpts): string {
+    const encodeModuleSpecifier = this.options.devServerFnModuleSpecifierEncoder
+    if (!encodeModuleSpecifier) {
+      throw new Error(
+        'devServerFnModuleSpecifierEncoder is required in dev mode.',
+      )
+    }
+    const file = encodeModuleSpecifier({
+      extractedFilename: opts.extractedFilename,
+      root: this.options.root,
+    })
+
+    const createFunctionId = (collision?: number) =>
+      Buffer.from(
+        JSON.stringify({
+          file,
+          export: opts.functionName,
+          ...(collision ? { collision } : undefined),
+        }),
+        'utf8',
+      ).toString('base64url')
+
+    let functionId = createFunctionId()
+    let iteration = 0
+    while (!this.isFunctionIdAvailable(functionId, opts)) {
+      functionId = createFunctionId(++iteration)
+    }
+    return functionId
+  }
+
+  private generateBuildFunctionId(
+    entryId: string,
+    opts: GenerateFunctionIdOpts,
+  ): string {
+    let functionId = this.options.generateFunctionId?.({
+      filename: opts.filename,
+      functionName: opts.functionName,
+    })
+    if (!functionId) {
+      functionId = crypto.createHash('sha256').update(entryId).digest('hex')
+    }
+
+    const baseFunctionId = functionId
+    let iteration = 0
+    while (!this.isFunctionIdAvailable(functionId, opts)) {
+      functionId = `${baseFunctionId}_${++iteration}`
+    }
+    return functionId
+  }
+
+  private reserveFunctionId(functionId: string, moduleId: string): boolean {
+    if (
+      this.functionIds.has(functionId) ||
+      this.hasKnownFunctionId(functionId)
+    ) {
+      return false
+    }
+
+    this.functionIds.add(functionId)
+    this.reservedFunctionIdOwners.set(functionId, cleanId(moduleId))
+    return true
   }
 
   private get mode(): 'dev' | 'build' {
@@ -866,6 +918,13 @@ export class StartCompiler {
     const deletedModuleIds = new Set<string>()
     if (normalizedIds.size === 0) {
       return deletedModuleIds
+    }
+
+    for (const [functionId, moduleId] of this.reservedFunctionIdOwners) {
+      if (normalizedIds.has(moduleId)) {
+        this.reservedFunctionIdOwners.delete(functionId)
+        this.functionIds.delete(functionId)
+      }
     }
 
     for (const moduleId of Array.from(this.moduleCache.keys())) {
@@ -1295,6 +1354,7 @@ export class StartCompiler {
 
         // Collect method chain paths by walking DOWN from root through the chain
         const methodChain: MethodChainPaths = {
+          id: null,
           middleware: null,
           validator: null,
           // TODO remove upon stable
@@ -1319,6 +1379,10 @@ export class StartCompiler {
           if (t.isIdentifier(callee.property)) {
             const name = callee.property.name as keyof MethodChainPaths
             if (name in methodChain) {
+              if (kind === 'ServerFn' && name === 'id' && methodChain.id) {
+                throw new Error('createServerFn().id() can only be called once')
+              }
+
               // Get first argument path
               const args = currentPath.get('arguments')
               const firstArgPath =
@@ -1368,6 +1432,8 @@ export class StartCompiler {
         warn: warnFn,
 
         generateFunctionId: (opts) => this.generateFunctionId(opts),
+        reserveFunctionId: (functionId) =>
+          this.reserveFunctionId(functionId, id),
         getKnownServerFns: this.options.getKnownServerFns,
         serverFnProviderModuleDirectives:
           this.options.serverFnProviderModuleDirectives,

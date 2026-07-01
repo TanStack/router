@@ -13,6 +13,7 @@ import type {
 import type { CompileStartFrameworkOptions } from '../types'
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
+const MANUAL_SERVER_FN_ID_REGEX = /^[A-Za-z0-9_-]+$/
 
 const providerHmrAcceptTemplate = babel.template.statements(
   `
@@ -155,6 +156,34 @@ function buildServerFnMetaObject(
   ])
 }
 
+function getManualServerFnId(
+  context: CompilationContext,
+  id: MethodCallInfo | null,
+): string | undefined {
+  if (!id) {
+    return undefined
+  }
+
+  const idArg = id.callPath.node.arguments[0]
+  if (!idArg || !t.isStringLiteral(idArg)) {
+    throw codeFrameError(
+      context.code,
+      id.callPath.node.loc!,
+      'createServerFn().id() must be called with a string literal',
+    )
+  }
+
+  if (!MANUAL_SERVER_FN_ID_REGEX.test(idArg.value)) {
+    throw codeFrameError(
+      context.code,
+      idArg.loc!,
+      'createServerFn().id() must be a non-empty URL-safe path segment using only letters, numbers, "_", or "-"',
+    )
+  }
+
+  return idArg.value
+}
+
 /**
  * Generates the RPC stub expression for provider files.
  * Uses pre-compiled template for performance.
@@ -239,10 +268,19 @@ export function handleCreateServerFn(
   const knownFns = context.getKnownServerFns()
   const cleanedContextId = cleanId(context.id)
 
+  const candidateInfos: Array<{
+    candidate: RewriteCandidate
+    candidateVariableDeclarator: NonNullable<
+      ReturnType<typeof getVariableDeclaratorForExpressionPath>
+    >
+    existingVariableName: string
+    functionName: string
+    manualFunctionId: string | undefined
+    variableDeclarator: t.VariableDeclarator
+  }> = []
+
   for (const candidate of candidates) {
     const { path: candidatePath, methodChain } = candidate
-    const { validator, inputValidator, handler } = methodChain
-
     const candidateVariableDeclarator = getVariableDeclaratorForExpressionPath(
       candidatePath as babel.NodePath<t.Expression>,
     )
@@ -271,12 +309,82 @@ export function handleCreateServerFn(
     }
     functionNameSet.add(functionName)
 
-    // Generate function ID using pre-computed relative filename
-    const functionId = context.generateFunctionId({
-      filename: relativeFilename,
+    const manualFunctionId = getManualServerFnId(context, methodChain.id)
+
+    candidateInfos.push({
+      candidate,
+      candidateVariableDeclarator,
+      existingVariableName,
       functionName,
-      extractedFilename,
+      manualFunctionId,
+      variableDeclarator,
     })
+  }
+
+  const manualFunctionIds = new Map<string, string>()
+  if (!isProviderFile) {
+    for (const {
+      functionName,
+      manualFunctionId,
+      variableDeclarator,
+    } of candidateInfos) {
+      if (!manualFunctionId) {
+        continue
+      }
+
+      const existingManualFunctionName = manualFunctionIds.get(manualFunctionId)
+      if (
+        existingManualFunctionName &&
+        existingManualFunctionName !== functionName
+      ) {
+        throw codeFrameError(
+          context.code,
+          variableDeclarator.loc!,
+          `Duplicate manual server function id: ${manualFunctionId}`,
+        )
+      }
+      manualFunctionIds.set(manualFunctionId, functionName)
+
+      const existingFn = knownFns[manualFunctionId]
+      const isSameKnownFn =
+        existingFn?.functionName === functionName &&
+        existingFn.extractedFilename === extractedFilename
+
+      if (existingFn && !isSameKnownFn) {
+        throw codeFrameError(
+          context.code,
+          variableDeclarator.loc!,
+          `Duplicate manual server function id: ${manualFunctionId}`,
+        )
+      }
+
+      if (!isSameKnownFn && !context.reserveFunctionId(manualFunctionId)) {
+        throw codeFrameError(
+          context.code,
+          variableDeclarator.loc!,
+          `Duplicate manual server function id: ${manualFunctionId}`,
+        )
+      }
+    }
+  }
+
+  for (const candidateInfo of candidateInfos) {
+    const {
+      candidate,
+      candidateVariableDeclarator,
+      existingVariableName,
+      functionName,
+      manualFunctionId,
+    } = candidateInfo
+    const { path: candidatePath, methodChain } = candidate
+    const { id, validator, inputValidator, handler } = methodChain
+    const functionId =
+      manualFunctionId ??
+      context.generateFunctionId({
+        filename: relativeFilename,
+        functionName,
+        extractedFilename,
+      })
 
     // Check if this function was already discovered by the client build
     const knownFn = knownFns[functionId]
@@ -293,6 +401,10 @@ export function handleCreateServerFn(
     // Use canonical extracted filename from known functions if available
     const canonicalExtractedFilename =
       knownFn?.extractedFilename ?? extractedFilename
+
+    if (id) {
+      stripMethodCall(id.callPath)
+    }
 
     // TODO remove upon stable
     if (inputValidator) {
