@@ -24,7 +24,7 @@ type SetCookieFn = (
  */
 export const getCookie: GetCookieFn = createIsomorphicFn()
   .server(getServerCookie)
-  .client((name: string) => parse(document.cookie)[name]) as GetCookieFn
+  .client((name: string) => parse(document.cookie)[name])
 
 /**
  * Set a cookie value by name. Works on both the server (sets a `Set-Cookie`
@@ -39,5 +39,10 @@ export const getCookie: GetCookieFn = createIsomorphicFn()
 export const setCookie: SetCookieFn = createIsomorphicFn()
   .server(setServerCookie)
   .client((name: string, value: string, options?: CookieSerializeOptions) => {
+    if (options?.httpOnly && process.env.NODE_ENV !== 'production') {
+      console.warn(
+        '`setCookie` was called with `httpOnly: true` in the browser. `HttpOnly` cannot be set from client-side JavaScript, so this cookie will NOT be HttpOnly-protected.',
+      )
+    }
     document.cookie = serialize(name, value, options)
-  }) as SetCookieFn
+  })
