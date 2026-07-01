@@ -201,6 +201,100 @@ test('createServerFn with standard validator', () => {
   expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
 })
 
+test('createServerFn with standard validator and object input (issue #7671)', () => {
+  interface ObjectValidator {
+    readonly '~standard': {
+      types?: {
+        input: { id: string }
+        output: { id: string }
+      }
+      validate: (input: unknown) => {
+        value: { id: string }
+      }
+    }
+  }
+  const validator: ObjectValidator = {
+    ['~standard']: {
+      validate: (input: unknown) => ({
+        value: input as { id: string },
+      }),
+    },
+  }
+
+  const fnAfterValidator = createServerFn({
+    method: 'GET',
+  }).validator(validator)
+
+  const fn = fnAfterValidator.handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      context: undefined
+      data: { id: string }
+      method: 'GET'
+      serverFnMeta: ServerFnMeta
+    }>()
+  })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+    data: { id: string }
+    headers?: HeadersInit
+    signal?: AbortSignal
+    fetch?: CustomFetch
+  }>()
+})
+
+test('createServerFn with parse-method validator and object input (issue #7671 regression)', () => {
+  // Simulates zod v3 schema which uses a `parse` method (AnyValidatorObj)
+  // Zod v3's parse() takes `unknown` as input (typed per generic, not fixed)
+  interface ZodLikeObjectSchema {
+    parse(input: unknown): { id: string }
+  }
+  const schema: ZodLikeObjectSchema = {
+    parse: (input) => input as { id: string },
+  }
+
+  const fnAfterValidator = createServerFn({
+    method: 'GET',
+  }).validator(schema)
+
+  fnAfterValidator.handler((ctx) => {
+    // This should be { id: string } but regressed to unknown in 1.168.24
+    expectTypeOf(ctx.data).toEqualTypeOf<{ id: string }>()
+  })
+})
+
+test('createServerFn with standard-schema+parse validator (zod v3.25+ GET, issue #7671)', () => {
+  // Simulates zod 3.25+ which has BOTH ~standard AND parse methods
+  interface ZodLikeStandardAndParse {
+    readonly '~standard': {
+      readonly types?: {
+        readonly input: { id: string }
+        readonly output: { id: string }
+      }
+      readonly vendor: string
+      readonly version: number
+      readonly validate: (value: unknown) => { value: { id: string } } | { issues: ReadonlyArray<{ message: string }> }
+    }
+    parse(input: unknown): { id: string }
+  }
+  const schema: ZodLikeStandardAndParse = {
+    '~standard': {
+      vendor: 'zod',
+      version: 1,
+      validate: (value) => ({ value: value as { id: string } }),
+    },
+    parse: (input) => input as { id: string },
+  }
+
+  const fnAfterValidator = createServerFn({
+    method: 'GET',
+  }).validator(schema)
+
+  fnAfterValidator.handler((ctx) => {
+    // This should be { id: string }
+    expectTypeOf(ctx.data).toEqualTypeOf<{ id: string }>()
+  })
+})
+
 test('createServerFn with async standard validator', () => {
   interface AsyncValidator {
     readonly '~standard': {
