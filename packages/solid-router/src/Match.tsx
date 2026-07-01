@@ -86,10 +86,15 @@ export const Match = (props: { matchId: string }) => {
           currentMatchState().ssr === false ||
           currentMatchState().ssr === 'data-only'
 
+        // Selective SSR (`ssr: false` and `ssr: 'data-only'`) renders the
+        // pending component inside the suspense boundary on the server, so
+        // rendering a suspense fallback while hydrating would try to claim
+        // markup the server never sent, causing a hydration mismatch. Outside
+        // of hydration (client-side navigation or pure CSR) the fallback must
+        // stay so the pending component can show while the match suspends.
         const shouldSkipSuspenseFallback =
-          (isServer ?? router.isServer)
-            ? resolvedNoSsr
-            : currentMatchState().ssr === 'data-only'
+          resolvedNoSsr &&
+          ((isServer ?? router.isServer) || !!Solid.sharedConfig.context)
 
         const ResolvedSuspenseBoundary = () => Solid.Suspense
 
@@ -110,8 +115,6 @@ export const Match = (props: { matchId: string }) => {
               <Dynamic
                 component={ResolvedSuspenseBoundary()}
                 fallback={
-                  // Data-only SSR renders the inner fallback on the server, so
-                  // avoid adding an extra suspense fallback on the client.
                   shouldSkipSuspenseFallback ? undefined : (
                     <Dynamic component={resolvePendingComponent()} />
                   )
