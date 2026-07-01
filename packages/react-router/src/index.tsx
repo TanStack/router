@@ -298,6 +298,8 @@ export { useRouter } from './useRouter'
 export { useRouterState } from './useRouterState'
 export { useLocation } from './useLocation'
 export { useCanGoBack } from './useCanGoBack'
+export { useIsBackNavigation } from './useIsBackNavigation'
+export type { BackNavigationMatch } from './useIsBackNavigation'
 
 export { CatchNotFound, DefaultGlobalNotFound } from './not-found'
 export { notFound, isNotFound } from '@tanstack/router-core'
