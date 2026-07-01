@@ -102,6 +102,10 @@
               "to": "framework/react/guide/environment-functions"
             },
             {
+              "label": "Cookies",
+              "to": "framework/react/guide/cookies"
+            },
+            {
               "label": "Middleware",
               "to": "framework/react/guide/middleware"
             },
@@ -237,6 +241,10 @@
             {
               "label": "Environment Functions",
               "to": "framework/solid/guide/environment-functions"
+            },
+            {
+              "label": "Cookies",
+              "to": "framework/solid/guide/cookies"
             },
             {
               "label": "Middleware",
