@@ -120,7 +120,6 @@
     "@tanstack/vue-router": "workspace:*",
     "@tanstack/vue-start-client": "workspace:*",
     "@tanstack/vue-start-server": "workspace:*",
-    "cookie-es": "^3.0.0",
     "pathe": "^2.0.3"
   },
   "devDependencies": {

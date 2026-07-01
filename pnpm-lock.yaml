@@ -12708,9 +12708,6 @@ importers:
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
-      cookie-es:
-        specifier: ^3.0.0
-        version: 3.1.1
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
@@ -13209,9 +13206,6 @@ importers:
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
-      cookie-es:
-        specifier: ^3.0.0
-        version: 3.1.1
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
@@ -13293,6 +13287,9 @@ importers:
       '@tanstack/start-storage-context':
         specifier: workspace:*
         version: link:../start-storage-context
+      cookie-es:
+        specifier: ^3.0.0
+        version: 3.1.1
       seroval:
         specifier: ^1.5.4
         version: 1.5.4
@@ -13607,9 +13604,6 @@ importers:
       '@tanstack/vue-start-server':
         specifier: workspace:*
         version: link:../vue-start-server
-      cookie-es:
-        specifier: ^3.0.0
-        version: 3.1.1
       pathe:
         specifier: ^2.0.3
         version: 2.0.3

@@ -170,7 +170,6 @@
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
-    "cookie-es": "^3.0.0",
     "pathe": "^2.0.3"
   },
   "peerDependencies": {

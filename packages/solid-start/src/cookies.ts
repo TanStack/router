@@ -1,39 +1,13 @@
-import { createIsomorphicFn } from '@tanstack/start-client-core'
+import { createCookieFns } from '@tanstack/start-client-core/cookies'
 import {
   getCookie as getServerCookie,
   setCookie as setServerCookie,
 } from '@tanstack/start-server-core'
-import { parse, serialize } from 'cookie-es'
-import type { CookieSerializeOptions } from 'cookie-es'
 
-type GetCookieFn = (name: string) => string | undefined
-type SetCookieFn = (
-  name: string,
-  value: string,
-  options?: CookieSerializeOptions,
-) => void
-
-// Exported (but not part of the package's public entry) so they can be unit
-// tested directly, since `createIsomorphicFn`'s uncompiled runtime fallback
-// always resolves to the `.server()` implementation once one is registered,
-// making the `.client()` branch unreachable through `getCookie`/`setCookie`
-// outside of a Start-compiled bundle.
-export function getClientCookie(name: string): string | undefined {
-  return parse(document.cookie)[name]
-}
-
-export function setClientCookie(
-  name: string,
-  value: string,
-  options?: CookieSerializeOptions,
-): void {
-  if (options?.httpOnly && process.env.NODE_ENV !== 'production') {
-    console.warn(
-      '`setCookie` was called with `httpOnly: true` in the browser. Browsers silently discard cookies written via `document.cookie` when `HttpOnly` is set, so this cookie will NOT be set.',
-    )
-  }
-  document.cookie = serialize(name, value, options)
-}
+const cookieFns = createCookieFns({
+  getCookie: getServerCookie,
+  setCookie: setServerCookie,
+})
 
 /**
  * Get a cookie value by name. Works on both the server (reads the current
@@ -44,9 +18,7 @@ export function setClientCookie(
  * const authorization = getCookie('Authorization')
  * ```
  */
-export const getCookie: GetCookieFn = createIsomorphicFn()
-  .server(getServerCookie)
-  .client(getClientCookie)
+export const getCookie = cookieFns.getCookie
 
 /**
  * Set a cookie value by name. Works on both the server (sets a `Set-Cookie`
@@ -58,6 +30,4 @@ export const getCookie: GetCookieFn = createIsomorphicFn()
  * setCookie('Authorization', '1234567')
  * ```
  */
-export const setCookie: SetCookieFn = createIsomorphicFn()
-  .server(setServerCookie)
-  .client(setClientCookie)
+export const setCookie = cookieFns.setCookie
