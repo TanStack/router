@@ -349,6 +349,6 @@ describe('granular stores', () => {
     ).toBe('pending')
     expect(router.stores.pendingMatches.get()[0]?.status).toBe('pending')
     expect(router.stores.cachedMatches.get()[0]?.status).toBe('success')
-    expect(router.getMatch(duplicatedId)?.status).toBe('success')
+    expect(router.getMatch(duplicatedId)?.status).toBe('pending')
   })
 })

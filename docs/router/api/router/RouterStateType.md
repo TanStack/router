@@ -9,7 +9,6 @@ The `RouterState` type represents shape of the internal state of the router. The
 type RouterState = {
   status: 'pending' | 'idle'
   isLoading: boolean
-  isTransitioning: boolean
   matches: Array<RouteMatch>
   location: ParsedLocation
   resolvedLocation: ParsedLocation
@@ -29,11 +28,6 @@ The `RouterState` type contains all of the properties that are available on the 
 
 - Type: `boolean`
 - `true` if the router is currently loading a route or waiting for a route to finish loading.
-
-### `isTransitioning` property
-
-- Type: `boolean`
-- `true` if the router is currently transitioning to a new route.
 
 ### `matches` property
 

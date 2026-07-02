@@ -91,11 +91,7 @@ export function useMatch<
       ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
       : (nearestMatch?.hasPending() ?? false)
 
-    if (
-      !hasPendingMatch &&
-      !router.stores.isTransitioning.get() &&
-      (opts.shouldThrow ?? true)
-    ) {
+    if (!hasPendingMatch && (opts.shouldThrow ?? true)) {
       if (process.env.NODE_ENV !== 'production') {
         throw new Error(
           `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
@@ -114,10 +110,7 @@ export function useMatch<
         ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
         : (nearestMatch?.hasPending() ?? false)
 
-      if (
-        prev !== undefined &&
-        (hasPendingMatch || router.stores.isTransitioning.get())
-      ) {
+      if (prev !== undefined && hasPendingMatch) {
         return prev
       }
 

@@ -9,7 +9,6 @@ import {
 import type * as Vue from 'vue'
 import type {
   BuildLocationFn,
-  ControlledPromise,
   NavigateFn,
   NavigateOptions,
   ParsedLocation,
@@ -1285,8 +1284,6 @@ test('when creating a child route with context, search, params, loader, loaderDe
     search: TExpectedSearch
     context: TExpectedContext
     loaderDeps: { detailPage: number; invoicePage: number }
-    beforeLoadPromise?: ControlledPromise<void>
-    loaderPromise?: ControlledPromise<void>
     componentsPromise?: Promise<Array<void>>
     loaderData?: TExpectedLoaderData
   }

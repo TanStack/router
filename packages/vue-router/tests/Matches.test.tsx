@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   cleanup,
   fireEvent,
@@ -7,6 +7,7 @@ import {
   waitFor,
 } from '@testing-library/vue'
 import { createMemoryHistory } from '@tanstack/history'
+import { createControlledPromise } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
@@ -156,6 +157,103 @@ test('should show pendingComponent of root route', async () => {
   // In Vue, the initial render completes synchronously before async loaders,
   // so we verify the final content loads correctly
   expect(await rendered.findByTestId('root-content')).toBeInTheDocument()
+})
+
+test('pending fallback remains visible through pendingMinMs', async () => {
+  vi.useFakeTimers()
+
+  try {
+    const root = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const index = createRoute({
+      getParentRoute: () => root,
+      path: '/',
+      component: () => <div>Index</div>,
+    })
+    const slow = createRoute({
+      getParentRoute: () => root,
+      path: '/slow',
+      pendingMs: 0,
+      pendingMinMs: 100,
+      pendingComponent: () => <div>Slow pending</div>,
+      loader: async () => {
+        await new Promise<void>((resolve) => setTimeout(resolve, 10))
+      },
+      component: () => <div>Slow content</div>,
+    })
+    const router = createRouter({
+      routeTree: root.addChildren([index, slow]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      defaultPendingMs: 0,
+    })
+
+    render(<RouterProvider router={router} />)
+    expect(await screen.findByText('Index')).toBeInTheDocument()
+
+    const navigation = router.navigate({ to: '/slow' })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(await screen.findByText('Slow pending')).toBeInTheDocument()
+
+    await vi.advanceTimersByTimeAsync(99)
+    expect(screen.getByText('Slow pending')).toBeInTheDocument()
+    expect(screen.queryByText('Slow content')).not.toBeInTheDocument()
+
+    await vi.advanceTimersByTimeAsync(1)
+    await navigation
+    expect(await screen.findByText('Slow content')).toBeInTheDocument()
+  } finally {
+    cleanup()
+    vi.useRealTimers()
+  }
+})
+
+test('pending match without fallback does not arm pendingMinMs', async () => {
+  vi.useFakeTimers()
+
+  try {
+    const loaderGate = createControlledPromise<void>()
+    const root = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const slow = createRoute({
+      getParentRoute: () => root,
+      path: '/slow',
+      pendingMinMs: 100,
+      loader: async () => {
+        await loaderGate
+      },
+      component: () => <div>Slow content</div>,
+    })
+    const router = createRouter({
+      routeTree: root.addChildren([slow]),
+      history: createMemoryHistory({ initialEntries: ['/slow'] }),
+      defaultPendingMs: 0,
+    })
+    router.stores.setMatches(router.matchRoutes(router.latestLocation))
+
+    render(<RouterProvider router={router} />)
+
+    await vi.advanceTimersByTimeAsync(0)
+
+    const slowMatch = router.state.matches.find(
+      (match) => match.routeId === slow.id,
+    )!
+    const loadPromise = slowMatch._.loadPromise
+
+    expect(slowMatch.status).toBe('pending')
+    expect(loadPromise?.pendingUntil).toBeUndefined()
+
+    loaderGate.resolve()
+
+    await vi.advanceTimersByTimeAsync(0)
+    await router.latestLoadPromise
+
+    expect(screen.getByText('Slow content')).toBeInTheDocument()
+  } finally {
+    cleanup()
+    vi.useRealTimers()
+  }
 })
 
 describe('matching on different param types', () => {

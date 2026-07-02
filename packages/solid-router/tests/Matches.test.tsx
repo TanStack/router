@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createSignal } from 'solid-js'
 import {
   cleanup,
@@ -8,6 +8,7 @@ import {
   waitFor,
 } from '@solidjs/testing-library'
 import { createMemoryHistory } from '@tanstack/history'
+import { createControlledPromise } from '@tanstack/router-core'
 import {
   Link,
   MatchRoute,
@@ -152,6 +153,158 @@ test('should show pendingComponent of root route', async () => {
 
   expect(await rendered.findByTestId('root-pending')).toBeInTheDocument()
   expect(await rendered.findByTestId('root-content')).toBeInTheDocument()
+})
+
+test('pending fallback remains visible through pendingMinMs', async () => {
+  vi.useFakeTimers()
+
+  try {
+    const root = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const index = createRoute({
+      getParentRoute: () => root,
+      path: '/',
+      component: () => <div>Index</div>,
+    })
+    const slow = createRoute({
+      getParentRoute: () => root,
+      path: '/slow',
+      pendingMs: 0,
+      pendingMinMs: 100,
+      pendingComponent: () => <div>Slow pending</div>,
+      loader: async () => {
+        await new Promise<void>((resolve) => setTimeout(resolve, 10))
+      },
+      component: () => <div>Slow content</div>,
+    })
+    const router = createRouter({
+      routeTree: root.addChildren([index, slow]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      defaultPendingMs: 0,
+    })
+
+    render(() => <RouterProvider router={router} />)
+    expect(await screen.findByText('Index')).toBeInTheDocument()
+
+    const navigation = router.navigate({ to: '/slow' })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(await screen.findByText('Slow pending')).toBeInTheDocument()
+
+    await vi.advanceTimersByTimeAsync(99)
+    expect(screen.getByText('Slow pending')).toBeInTheDocument()
+    expect(screen.queryByText('Slow content')).not.toBeInTheDocument()
+
+    await vi.advanceTimersByTimeAsync(1)
+    await navigation
+    expect(await screen.findByText('Slow content')).toBeInTheDocument()
+  } finally {
+    cleanup()
+    vi.useRealTimers()
+  }
+})
+
+test('pending match without fallback does not arm pendingMinMs', async () => {
+  vi.useFakeTimers()
+
+  try {
+    const loaderGate = createControlledPromise<void>()
+    const root = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const slow = createRoute({
+      getParentRoute: () => root,
+      path: '/slow',
+      pendingMinMs: 100,
+      loader: async () => {
+        await loaderGate
+      },
+      component: () => <div>Slow content</div>,
+    })
+    const router = createRouter({
+      routeTree: root.addChildren([slow]),
+      history: createMemoryHistory({ initialEntries: ['/slow'] }),
+      defaultPendingMs: 0,
+    })
+    router.stores.setMatches(router.matchRoutes(router.latestLocation))
+
+    render(() => <RouterProvider router={router} />)
+
+    await vi.advanceTimersByTimeAsync(0)
+
+    const slowMatch = router.state.matches.find(
+      (match) => match.routeId === slow.id,
+    )!
+    const loadPromise = slowMatch._.loadPromise
+
+    expect(slowMatch.status).toBe('pending')
+    expect(loadPromise?.pendingUntil).toBeUndefined()
+
+    loadPromise?.resolve()
+    loaderGate.resolve()
+  } finally {
+    cleanup()
+    vi.useRealTimers()
+  }
+})
+
+test('same-route pending replacement respects pendingMinMs', async () => {
+  const page2Gate = createControlledPromise<void>()
+  const history = createMemoryHistory({ initialEntries: ['/posts?page=1'] })
+  const root = createRootRoute({
+    component: () => <Outlet />,
+  })
+
+  function Posts() {
+    const data = postsRoute.useLoaderData()
+    return <div data-testid="post-content">{data()}</div>
+  }
+
+  const postsRoute = createRoute({
+    getParentRoute: () => root,
+    path: '/posts',
+    validateSearch: (search) => ({
+      page: Number(search.page ?? 1),
+    }),
+    loaderDeps: ({ search }) => ({ page: search.page }),
+    pendingMs: 0,
+    pendingMinMs: 100,
+    pendingComponent: () => <div data-testid="replacement-pending" />,
+    loader: async ({ deps }) => {
+      if (deps.page === 2) {
+        await page2Gate
+      }
+
+      return `Page ${deps.page}`
+    },
+    component: Posts,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([postsRoute]),
+    history,
+    defaultPendingMs: 0,
+  })
+
+  render(() => <RouterProvider router={router} />)
+  expect(await screen.findByText('Page 1')).toBeInTheDocument()
+
+  const navigation = router.navigate({
+    to: '/posts',
+    search: { page: 2 },
+  })
+
+  expect(await screen.findByTestId('replacement-pending')).toBeInTheDocument()
+
+  const pendingMatch = router.stores.pendingMatches
+    .get()
+    .find((match) => match.routeId === postsRoute.id)!
+
+  expect(pendingMatch._.loadPromise?.pendingUntil).toBeTypeOf('number')
+
+  page2Gate.resolve()
+  await navigation
+
+  expect(await screen.findByText('Page 2')).toBeInTheDocument()
 })
 
 test('MatchRoute updates for navigation and reactive params changes', async () => {

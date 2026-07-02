@@ -43,9 +43,9 @@ async function buildRouter() {
   })
   const router = createRouter({
     history: createMemoryHistory({ initialEntries: ['/'] }),
+    isServer: true,
     routeTree: rootRoute,
   })
-  router.isServer = true
   attachRouterServerSsrUtils({ router, manifest: undefined })
   await router.load()
   return router

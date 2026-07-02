@@ -136,7 +136,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(9)
+    expect(updates).toBe(4)
   })
 
   test('redirection in preload', async () => {
@@ -156,6 +156,11 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // Any change that increases this number should be investigated.
     // Note: Solid has different update counts than React due to different reactivity
     expect(updates).toBe(2)
+    expect(
+      router.stores.cachedMatches
+        .get()
+        .some((match) => match.pathname === '/posts'),
+    ).toBe(false)
   })
 
   test('sync beforeLoad', async () => {
@@ -172,7 +177,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Solid has different update counts than React due to different reactivity
-    expect(updates).toBe(5)
+    expect(updates).toBe(4)
   })
 
   test('nothing', async () => {
@@ -198,7 +203,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(4)
+    expect(updates).toBe(3)
   })
 
   test('hover preload, then navigate, w/ async loaders', async () => {

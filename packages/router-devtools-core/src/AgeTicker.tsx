@@ -35,7 +35,7 @@ export function AgeTicker({
     return null
   }
 
-  const route = router().looseRoutesById[match.routeId]!
+  const route = router().routesById[match.routeId]!
 
   if (!route.options.loader) {
     return null
