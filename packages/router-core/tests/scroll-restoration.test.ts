@@ -3,7 +3,12 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
-function createRouter(options: { scrollRestoration?: boolean } = {}) {
+function createRouter(
+  options: {
+    scrollRestoration?: boolean
+    scrollToTopSelectors?: Array<string | (() => Element | null | undefined)>
+  } = {},
+) {
   const rootRoute = new BaseRootRoute({})
   const indexRoute = new BaseRoute({
     getParentRoute: () => rootRoute,
@@ -19,6 +24,7 @@ function createRouter(options: { scrollRestoration?: boolean } = {}) {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  document.body.innerHTML = ''
 })
 
 describe('setupScrollRestoration', () => {
@@ -81,4 +87,49 @@ describe('setupScrollRestoration', () => {
       window.history.scrollRestoration = previousScrollRestoration
     },
   )
+
+  test('does not reset a restored element through scrollToTopSelectors', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+
+    const router = createRouter({
+      scrollRestoration: true,
+      scrollToTopSelectors: ['#main-content'],
+    })
+    const element = document.createElement('div')
+
+    element.id = 'main-content'
+    element.scrollTo = vi.fn((options?: ScrollToOptions) => {
+      element.scrollTop = options?.top ?? 0
+      element.scrollLeft = options?.left ?? 0
+    })
+    document.body.append(element)
+
+    element.scrollTop = 400
+    element.dispatchEvent(new Event('scroll', { bubbles: true }))
+
+    const location = router.latestLocation
+
+    router.emit({
+      type: 'onBeforeLoad',
+      toLocation: location,
+      fromLocation: location,
+      pathChanged: false,
+      hrefChanged: false,
+      hashChanged: false,
+    })
+
+    element.scrollTop = 0
+
+    router.emit({
+      type: 'onRendered',
+      toLocation: location,
+      fromLocation: location,
+      pathChanged: false,
+      hrefChanged: false,
+      hashChanged: false,
+    })
+
+    expect(element.scrollTop).toBe(400)
+    expect(element.scrollTo).not.toHaveBeenCalled()
+  })
 })
