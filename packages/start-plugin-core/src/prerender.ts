@@ -219,6 +219,12 @@ export async function prerender({
             )
             await new Promise((resolve) => setTimeout(resolve, retryDelay))
             retriesByPath.set(page.path, retries + 1)
+            // `addCrawlPageTask` early-returns for any path already in `seen`
+            // (added on the first attempt), so without clearing it here the
+            // retry re-queue is a no-op: the task never re-runs, the page is
+            // silently dropped, and `failOnError` is never reached. Remove the
+            // path so the retry actually re-enqueues and re-fetches.
+            seen.delete(page.path)
             addCrawlPageTask(page)
           } else if (prerenderOptions.failOnError ?? true) {
             throw error
