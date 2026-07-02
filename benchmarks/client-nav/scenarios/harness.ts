@@ -58,7 +58,16 @@ export type ScenarioStep =
   | { type: 'forward' }
   | { type: 'go'; delta: number }
 
-const timerHop = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
+/**
+ * One macrotask turn via `setImmediate` rather than `setTimeout(0)`: both
+ * yield deterministically to the event loop (timers, MessageChannel, React's
+ * Node scheduler), but a timer costs ~3-4 syscalls (timerfd + epoll) per hop
+ * while an immediate costs ~1. CodSpeed excludes syscall time from the
+ * measure — inconsistently past a threshold, which flagged the hop-heavy
+ * benches as "skipped" — so the loop must stay syscall-lean.
+ */
+const timerHop = () =>
+  new Promise<void>((resolve) => setImmediate(() => resolve()))
 
 async function settle(hops: number) {
   for (let i = 0; i < hops; i++) {

@@ -63,7 +63,10 @@ export function assertReady(container: HTMLElement) {
 }
 
 // Mounts per benchmark iteration.
-export const ticksPerIteration = 2
+// 6 mounts per iteration: a single mount simulates to only ~8ms of CPU, and
+// very short measures amplify the relative impact of allocator/GC
+// quantization; 6 keeps the measure comfortably above ~50ms simulated.
+export const ticksPerIteration = 6
 
 export const benchOptions = {
   warmupIterations: 100,

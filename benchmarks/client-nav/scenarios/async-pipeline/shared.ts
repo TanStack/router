@@ -14,12 +14,18 @@
  */
 import type { ScenarioStep } from '../harness'
 
-/** Resolves after exactly `hops` chained 0ms timer hops. */
+/**
+ * Resolves after exactly `hops` chained macrotask turns. Uses `setImmediate`
+ * rather than `setTimeout(0)`: both are counted, deterministic event-loop
+ * turns, but timers cost ~3-4 syscalls per hop (timerfd + epoll) and CodSpeed
+ * excludes syscall time from the measure — inconsistently past a threshold —
+ * which destabilized the hop-heavy benches.
+ */
 export function hopDelay(hops: number): Promise<void> {
   let promise = Promise.resolve()
   for (let i = 0; i < hops; i++) {
     promise = promise.then(
-      () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
+      () => new Promise<void>((resolve) => setImmediate(() => resolve())),
     )
   }
   return promise
