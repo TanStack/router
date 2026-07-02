@@ -174,10 +174,16 @@ export type ResolveOptionalParams<TPath extends string, T> = {
   [K in ParsePathParams<TPath>['optional']]?: T | undefined
 }
 
+export type ResolveVariadicParams<TPath extends string, T> = {
+  [K in ParsePathParams<TPath>['variadic']]: Array<T>
+}
+
 export type ResolveParams<
   TPath extends string,
   T = string,
-> = ResolveRequiredParams<TPath, T> & ResolveOptionalParams<TPath, T>
+> = ResolveRequiredParams<TPath, T> &
+  ResolveOptionalParams<TPath, T> &
+  ResolveVariadicParams<TPath, T>
 
 export type ParseParamsFn<in out TPath extends string, in out TParams> = (
   rawParams: Expand<ResolveParams<TPath>>,

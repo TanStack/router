@@ -7,8 +7,15 @@ export const SEGMENT_TYPE_PATHNAME = 0
 export const SEGMENT_TYPE_PARAM = 1
 export const SEGMENT_TYPE_WILDCARD = 2
 export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
+export const SEGMENT_TYPE_VARIADIC = 6
 const SEGMENT_TYPE_INDEX = 4
 const SEGMENT_TYPE_PATHLESS = 5 // only used in matching to represent pathless routes that need to carry more information
+
+// per-variadic consumption counts pack into 17-bit lanes of one float64-exact
+// integer (3 lanes × 17 bits stays below the 2**53 integer limit)
+const VARIADIC_MAX_PER_PATH = 3
+const VARIADIC_LANE_SIZE = 2 ** 17
+const VARIADIC_LANE_MAX = VARIADIC_LANE_SIZE - 1
 
 /**
  * All the kinds of segments that can be present in a route path.
@@ -18,6 +25,7 @@ export type SegmentKind =
   | typeof SEGMENT_TYPE_PARAM
   | typeof SEGMENT_TYPE_WILDCARD
   | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+  | typeof SEGMENT_TYPE_VARIADIC
 
 /**
  * All the kinds of segments that can be present in the segment tree.
@@ -143,6 +151,29 @@ export function parseSegment(
           return output as ParsedSegment
         }
       }
+    } else if (firstChar === 46) {
+      // '.'
+      // Check for {...$paramName} (variadic param, matches 0..n segments)
+      // /^\{\.\.\.\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}$/ (no prefix/suffix)
+      if (
+        openBrace + 4 < part.length &&
+        part.charCodeAt(openBrace + 2) === 46 && // '.'
+        part.charCodeAt(openBrace + 3) === 46 && // '.'
+        part.charCodeAt(openBrace + 4) === 36 // '$'
+      ) {
+        const paramStart = openBrace + 5
+        const paramEnd = closeBrace
+        // Validate param name exists
+        if (paramStart < paramEnd) {
+          output[0] = SEGMENT_TYPE_VARIADIC
+          output[1] = start + openBrace
+          output[2] = start + paramStart
+          output[3] = start + paramEnd
+          output[4] = start + closeBrace + 1
+          output[5] = end
+          return output as ParsedSegment
+        }
+      }
     } else if (firstChar === 36) {
       // '$'
       const dollarPos = openBrace + 1
@@ -181,6 +212,23 @@ export function parseSegment(
   output[4] = end
   output[5] = end
   return output as ParsedSegment
+}
+
+// Skips segments that cannot anchor the boundary between two unbounded
+// segments: optionals are skippable and params match any single segment.
+function nearestAnchor<T extends RouteLike>(
+  node: AnySegmentNode<T>,
+): AnySegmentNode<T> | null {
+  let barrier: AnySegmentNode<T> | null = node
+  while (
+    barrier &&
+    (barrier.kind === SEGMENT_TYPE_OPTIONAL_PARAM ||
+      barrier.kind === SEGMENT_TYPE_PARAM ||
+      barrier.kind === SEGMENT_TYPE_PATHLESS)
+  ) {
+    barrier = barrier.parent
+  }
+  return barrier
 }
 
 /**
@@ -336,7 +384,72 @@ function parseSegments<TRouteLike extends RouteLike>(
           }
           break
         }
+        case SEGMENT_TYPE_VARIADIC: {
+          const prefix_raw = path.substring(start, segment[1])
+          const suffix_raw = path.substring(segment[4], end)
+          if (prefix_raw || suffix_raw) {
+            if (process.env.NODE_ENV !== 'production') {
+              throw new Error(
+                `Invariant failed: variadic path parameters cannot have a prefix or suffix: ${path}`,
+              )
+            }
+            invariant()
+          }
+          if (nearestAnchor(node)?.kind === SEGMENT_TYPE_VARIADIC) {
+            if (process.env.NODE_ENV !== 'production') {
+              throw new Error(
+                `Invariant failed: consecutive variadic path parameters must be separated by a static segment: ${path}`,
+              )
+            }
+            invariant()
+          }
+          let ordinal = 0
+          for (
+            let ancestor: AnySegmentNode<TRouteLike> | null = node;
+            ancestor;
+            ancestor = ancestor.parent
+          ) {
+            if (ancestor.kind === SEGMENT_TYPE_VARIADIC) ordinal++
+          }
+          if (ordinal >= VARIADIC_MAX_PER_PATH) {
+            if (process.env.NODE_ENV !== 'production') {
+              throw new Error(
+                `Invariant failed: a route path supports at most ${VARIADIC_MAX_PER_PATH} variadic path parameters: ${path}`,
+              )
+            }
+            invariant()
+          }
+          const existingNode =
+            !parseParams &&
+            node.variadic?.find(
+              (s) => !s.parse && s.variadicOrdinal === ordinal,
+            )
+          if (existingNode) {
+            nextNode = existingNode
+          } else {
+            const next = createDynamicNode<TRouteLike>(
+              SEGMENT_TYPE_VARIADIC,
+              route.fullPath ?? route.from,
+              false,
+            )
+            next.variadicOrdinal = ordinal
+            nextNode = next
+            next.depth = depth
+            next.parent = node
+            node.variadic ??= []
+            node.variadic.push(next)
+          }
+          break
+        }
         case SEGMENT_TYPE_WILDCARD: {
+          if (nearestAnchor(node)?.kind === SEGMENT_TYPE_VARIADIC) {
+            if (process.env.NODE_ENV !== 'production') {
+              throw new Error(
+                `Invariant failed: a wildcard cannot follow a variadic path parameter without a static segment between them: ${path}`,
+              )
+            }
+            invariant()
+          }
           const prefix_raw = path.substring(start, segment[1])
           const suffix_raw = path.substring(segment[4], end)
           const actuallyCaseSensitive =
@@ -492,6 +605,12 @@ function sortTreeNodes(node: SegmentNode<RouteLike>) {
       sortTreeNodes(child)
     }
   }
+  if (node.variadic?.length) {
+    node.variadic.sort(sortDynamic)
+    for (const child of node.variadic) {
+      sortTreeNodes(child)
+    }
+  }
   if (node.wildcard?.length) {
     node.wildcard.sort(sortDynamic)
     for (const child of node.wildcard) {
@@ -512,12 +631,14 @@ function createStaticNode<T extends RouteLike>(
     staticInsensitive: null,
     dynamic: null,
     optional: null,
+    variadic: null,
     wildcard: null,
     route: null,
     fullPath,
     parent: null,
     parse: null,
     priority: 0,
+    variadicOrdinal: 0,
   }
 }
 
@@ -529,7 +650,8 @@ function createDynamicNode<T extends RouteLike>(
   kind:
     | typeof SEGMENT_TYPE_PARAM
     | typeof SEGMENT_TYPE_WILDCARD
-    | typeof SEGMENT_TYPE_OPTIONAL_PARAM,
+    | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+    | typeof SEGMENT_TYPE_VARIADIC,
   fullPath: string,
   caseSensitive: boolean,
   prefix?: string,
@@ -544,12 +666,14 @@ function createDynamicNode<T extends RouteLike>(
     staticInsensitive: null,
     dynamic: null,
     optional: null,
+    variadic: null,
     wildcard: null,
     route: null,
     fullPath,
     parent: null,
     parse: null,
     priority: 0,
+    variadicOrdinal: 0,
     caseSensitive,
     prefix,
     suffix,
@@ -568,6 +692,7 @@ type DynamicSegmentNode<T extends RouteLike> = SegmentNode<T> & {
     | typeof SEGMENT_TYPE_PARAM
     | typeof SEGMENT_TYPE_WILDCARD
     | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+    | typeof SEGMENT_TYPE_VARIADIC
   prefix?: string
   suffix?: string
   caseSensitive: boolean
@@ -597,6 +722,9 @@ type SegmentNode<T extends RouteLike> = {
   /** Optional dynamic segments ({-$param}) */
   optional: Array<DynamicSegmentNode<T>> | null
 
+  /** Variadic segments ({...$param}) */
+  variadic: Array<DynamicSegmentNode<T>> | null
+
   /** Wildcard segments ($ - lowest priority) */
   wildcard: Array<DynamicSegmentNode<T>> | null
 
@@ -615,6 +743,9 @@ type SegmentNode<T extends RouteLike> = {
 
   /** route.options.params.priority ?? 0 */
   priority: number
+
+  /** ordinal among the path's variadic segments; lane index into a frame's `variadicCounts` */
+  variadicOrdinal: number
 }
 
 type RouteLike = {
@@ -716,9 +847,12 @@ export function findSingleMatch(
   return findMatch(path, tree, fuzzy)
 }
 
+/** Raw params from a matched path; variadic params are arrays of decoded segments. */
+export type RawRouteParams = Record<string, string | Array<string>>
+
 type RouteMatch<T extends Extract<RouteLike, { fullPath: string }>> = {
   route: T
-  rawParams: Record<string, string>
+  rawParams: RawRouteParams
   branch: ReadonlyArray<T>
 }
 
@@ -841,7 +975,7 @@ function findMatch<T extends RouteLike>(
    * The raw (unparsed) params extracted from the path.
    * This will be the exhaustive list of all params defined in the route's path.
    */
-  rawParams: Record<string, string>
+  rawParams: RawRouteParams
 } | null {
   const parts = path.split('/')
   const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
@@ -874,12 +1008,13 @@ function extractParams<T extends RouteLike>(
     node: AnySegmentNode<T>
     skipped: number
     extract?: ParamExtractionState
-    rawParams?: Record<string, string>
+    rawParams?: RawRouteParams
+    variadicCounts?: number
   },
-): [rawParams: Record<string, string>, state: ParamExtractionState] {
+): [rawParams: RawRouteParams, state: ParamExtractionState] {
   const list = buildBranch(leaf.node)
   let nodeParts: Array<string> | null = null
-  const rawParams: Record<string, string> = Object.create(null)
+  const rawParams: RawRouteParams = Object.create(null)
   /** which segment of the path we're currently processing */
   let partIndex = leaf.extract?.part ?? 0
   /** which node of the route tree branch we're currently processing */
@@ -944,6 +1079,29 @@ function extractParams<T extends RouteLike>(
           ? part!.substring(preLength, part!.length - sufLength)
           : part
       if (value) rawParams[name] = decodeURIComponent(value)
+    } else if (node.kind === SEGMENT_TYPE_VARIADIC) {
+      const count =
+        Math.floor(
+          (leaf.variadicCounts ?? 0) /
+            VARIADIC_LANE_SIZE ** node.variadicOrdinal,
+        ) % VARIADIC_LANE_SIZE
+      nodeParts ??= leaf.node.fullPath.split('/')
+      const nodePart = nodeParts[segmentCount]!
+      const name = nodePart.substring(5, nodePart.length - 1)
+      if (count === 0) {
+        rawParams[name] = []
+        partIndex-- // stay on the same part
+        pathIndex = currentPathIndex - 1 // undo pathIndex advancement; -1 to account for loop increment
+        continue
+      }
+      const values: Array<string> = [decodeURIComponent(part!)]
+      for (let extra = 1; extra < count; extra++) {
+        const extraPart = parts[partIndex + extra]!
+        values.push(decodeURIComponent(extraPart))
+        pathIndex += 1 + extraPart.length
+      }
+      partIndex += count - 1
+      rawParams[name] = values
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
       const value = path.substring(
@@ -1005,10 +1163,13 @@ type MatchStackFrame<T extends RouteLike> = {
   statics: number
   dynamics: number
   optionals: number
+  variadics: number
+  /** URL segments consumed by the variadic segment, if any */
+  variadicCounts: number
   /** intermediary state for param extraction */
   extract?: ParamExtractionState
   /** intermediary params from param extraction */
-  rawParams?: Record<string, string>
+  rawParams?: RawRouteParams
 }
 
 function getNodeMatch<T extends RouteLike>(
@@ -1047,6 +1208,8 @@ function getNodeMatch<T extends RouteLike>(
       statics: 0,
       dynamics: 0,
       optionals: 0,
+      variadics: 0,
+      variadicCounts: 0,
     },
   ]
 
@@ -1055,7 +1218,17 @@ function getNodeMatch<T extends RouteLike>(
 
   while (stack.length) {
     const frame = stack.pop()!
-    const { node, index, skipped, depth, statics, dynamics, optionals } = frame
+    const {
+      node,
+      index,
+      skipped,
+      depth,
+      statics,
+      dynamics,
+      optionals,
+      variadics,
+      variadicCounts,
+    } = frame
     let { extract, rawParams } = frame
 
     // Wildcard candidates are pushed speculatively as fallbacks in case a
@@ -1099,7 +1272,13 @@ function getNodeMatch<T extends RouteLike>(
         bestMatch = frame
       }
       // beyond the length of the path parts, only some segment types can match
-      if (!node.optional && !node.wildcard && !node.index && !node.pathless)
+      if (
+        !node.optional &&
+        !node.variadic &&
+        !node.wildcard &&
+        !node.index &&
+        !node.pathless
+      )
         continue
     }
 
@@ -1116,6 +1295,8 @@ function getNodeMatch<T extends RouteLike>(
         statics,
         dynamics,
         optionals,
+        variadics,
+        variadicCounts,
         extract,
         rawParams,
       }
@@ -1142,7 +1323,7 @@ function getNodeMatch<T extends RouteLike>(
       }
     }
 
-    // 5. Try wildcard match
+    // 6. Try wildcard match
     if (node.wildcard) {
       for (let i = node.wildcard.length - 1; i >= 0; i--) {
         const segment = node.wildcard[i]!
@@ -1169,9 +1350,42 @@ function getNodeMatch<T extends RouteLike>(
           statics,
           dynamics,
           optionals,
+          variadics,
+          variadicCounts,
           extract,
           rawParams,
         })
+      }
+    }
+
+    // 5. Try variadic match
+    if (node.variadic) {
+      const nextDepth = depth + 1
+      // a URL beyond the lane maximum fails to match rather than corrupt counts
+      const maxConsume = isBeyondPath
+        ? 0
+        : Math.min(partsLength - index, VARIADIC_LANE_MAX)
+      // sum of segmentScore over k consumed segments, in closed form: topScore - 2 ** (partsLength - index - k)
+      const topScore = 2 ** (partsLength - index)
+      for (let i = node.variadic.length - 1; i >= 0; i--) {
+        const segment = node.variadic[i]!
+        const lane = VARIADIC_LANE_SIZE ** segment.variadicOrdinal
+        // larger consumptions pushed first so the smallest pops first
+        for (let k = maxConsume; k >= 0; k--) {
+          stack.push({
+            node: segment,
+            index: index + k,
+            skipped,
+            depth: nextDepth,
+            statics,
+            dynamics,
+            optionals,
+            variadics: variadics + topScore - 2 ** (partsLength - index - k),
+            variadicCounts: variadicCounts + k * lane,
+            extract,
+            rawParams,
+          })
+        }
       }
     }
 
@@ -1190,6 +1404,8 @@ function getNodeMatch<T extends RouteLike>(
           statics,
           dynamics,
           optionals,
+          variadics,
+          variadicCounts,
           extract,
           rawParams,
         }) // enqueue skipping the optional
@@ -1213,6 +1429,8 @@ function getNodeMatch<T extends RouteLike>(
             statics,
             dynamics,
             optionals: optionals + segmentScore(partsLength, index),
+            variadics,
+            variadicCounts,
             extract,
             rawParams,
           })
@@ -1240,6 +1458,8 @@ function getNodeMatch<T extends RouteLike>(
           statics,
           dynamics: dynamics + segmentScore(partsLength, index),
           optionals,
+          variadics,
+          variadicCounts,
           extract,
           rawParams,
         })
@@ -1260,6 +1480,8 @@ function getNodeMatch<T extends RouteLike>(
           statics: statics + segmentScore(partsLength, index),
           dynamics,
           optionals,
+          variadics,
+          variadicCounts,
           extract,
           rawParams,
         })
@@ -1278,6 +1500,8 @@ function getNodeMatch<T extends RouteLike>(
           statics: statics + segmentScore(partsLength, index),
           dynamics,
           optionals,
+          variadics,
+          variadicCounts,
           extract,
           rawParams,
         })
@@ -1297,6 +1521,8 @@ function getNodeMatch<T extends RouteLike>(
           statics,
           dynamics,
           optionals,
+          variadics,
+          variadicCounts,
           extract,
           rawParams,
         })
@@ -1338,7 +1564,7 @@ function validateParseParams<T extends RouteLike>(
   parts: Array<string>,
   frame: MatchStackFrame<T>,
 ) {
-  let rawParams: Record<string, string>
+  let rawParams: RawRouteParams
   let state: ParamExtractionState
 
   try {
@@ -1353,7 +1579,10 @@ function validateParseParams<T extends RouteLike>(
   if (!frame.node.parse) return true
 
   try {
-    if (frame.node.parse(rawParams) === false) return null
+    // widening parse's input in RouteLike breaks route-type variance; each
+    // route's own params.parse already types variadic keys as arrays
+    if (frame.node.parse(rawParams as Record<string, string>) === false)
+      return null
   } catch {
     // Thrown parse errors should be surfaced on the selected match by
     // extractStrictParams, not used as fallback route selection.
@@ -1376,10 +1605,12 @@ function isFrameMoreSpecific(
         (next.dynamics === prev.dynamics &&
           (next.optionals > prev.optionals ||
             (next.optionals === prev.optionals &&
-              ((next.node.kind === SEGMENT_TYPE_INDEX) >
-                (prev.node.kind === SEGMENT_TYPE_INDEX) ||
-                ((next.node.kind === SEGMENT_TYPE_INDEX) ===
-                  (prev.node.kind === SEGMENT_TYPE_INDEX) &&
-                  next.depth > prev.depth)))))))
+              (next.variadics > prev.variadics ||
+                (next.variadics === prev.variadics &&
+                  ((next.node.kind === SEGMENT_TYPE_INDEX) >
+                    (prev.node.kind === SEGMENT_TYPE_INDEX) ||
+                    ((next.node.kind === SEGMENT_TYPE_INDEX) ===
+                      (prev.node.kind === SEGMENT_TYPE_INDEX) &&
+                      next.depth > prev.depth)))))))))
   )
 }
