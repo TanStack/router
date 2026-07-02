@@ -35,6 +35,14 @@ The `RouterOptions` type accepts an object with the following properties and met
 - A function that will be used to parse search params when parsing the current location.
 - Defaults to `defaultParseSearch`.
 
+### `search.raw` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `false`
+- If `false`, the default JSON-first search param parser is used.
+- If `true`, search params are passed to validators as raw strings, shorthand for `parseSearch: parseSearchWith(null, { inferTypes: false })` and `stringifySearch: stringifySearchWith(null, null)`.
+
 ### `search.strict` property
 
 - Type: `boolean`

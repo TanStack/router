@@ -33,7 +33,12 @@ import {
 import { createLRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
-import { defaultParseSearch, defaultStringifySearch } from './searchParams'
+import {
+  defaultParseSearch,
+  defaultStringifySearch,
+  parseSearchWith,
+  stringifySearchWith,
+} from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
 import { loadMatches, loadRouteChunk, routeNeedsPreload } from './load-matches'
@@ -428,6 +433,15 @@ export interface RouterOptions<
      * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#search.strict-property)
      */
     strict?: boolean
+    /**
+     * If `true`, search params are passed to validators as raw strings, shorthand for
+     * `parseSearch: parseSearchWith(null, { inferTypes: false })` and
+     * `stringifySearch: stringifySearchWith(null, null)`.
+     *
+     * @default false
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#search.raw-property)
+     */
+    raw?: boolean
   }
 
   /**
@@ -1037,6 +1051,13 @@ export class RouterCore<
   ) {
     this.getStoreConfig = getStoreConfig
 
+    const rawSearch = options.search?.raw ?? false
+    if (rawSearch && (options.parseSearch || options.stringifySearch)) {
+      console.warn(
+        '`search.raw` is `true`, custom `parseSearch`/`stringifySearch` are ignored. Remove them or set `search.raw` to `false`.',
+      )
+    }
+
     this.update({
       defaultPreloadDelay: 50,
       defaultPendingMs: 1000,
@@ -1045,8 +1066,12 @@ export class RouterCore<
       ...options,
       caseSensitive: options.caseSensitive ?? false,
       notFoundMode: options.notFoundMode ?? 'fuzzy',
-      stringifySearch: options.stringifySearch ?? defaultStringifySearch,
-      parseSearch: options.parseSearch ?? defaultParseSearch,
+      stringifySearch: rawSearch
+        ? stringifySearchWith(null, null)
+        : (options.stringifySearch ?? defaultStringifySearch),
+      parseSearch: rawSearch
+        ? parseSearchWith(null, { inferTypes: false })
+        : (options.parseSearch ?? defaultParseSearch),
       protocolAllowlist:
         options.protocolAllowlist ?? DEFAULT_PROTOCOL_ALLOWLIST,
     })
