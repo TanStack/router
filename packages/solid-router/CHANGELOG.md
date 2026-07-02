@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 2.0.0-beta.23
+
+### Patch Changes
+
+- [#7734](https://github.com/TanStack/router/pull/7734) [`f9b0e57`](https://github.com/TanStack/router/commit/f9b0e57ce00780b1887bd50a6543c0ad4ff5b8e7) - Fix hydration desync by resolving `defaultNotFoundComponent` at render time instead of lazily mutating the boundary route's `options.notFoundComponent`. Route objects are module singletons shared across server requests, so once the server handled any 404, later SSRs of valid URLs wrapped the match in a `CatchNotFound` boundary the client didn't render, shifting hydration keys and leaving the subtree inert.
+
 ## 2.0.0-beta.22
 
 ### Patch Changes
