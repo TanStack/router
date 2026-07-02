@@ -281,6 +281,19 @@ export interface RouterOptions<
    */
   defaultViewTransition?: boolean | ViewTransitionOptions
   /**
+   * If `true`, replays the view transition a navigation opted into (via `<Link viewTransition>`
+   * or `navigate({ viewTransition })`) when the user later traverses that entry with the browser
+   * Back/Forward buttons. Without it, per-navigation `viewTransition` opt-ins are not replayed on
+   * traversal, so Back/Forward fall back to the router's normal behavior (`defaultViewTransition`
+   * if set, otherwise no transition).
+   *
+   * Recorded values are kept in-memory (lost on hard reload, degrading to no transition) so a
+   * functional `ViewTransitionOptions["types"]` survives. Opt-in; does not affect `defaultViewTransition`.
+   *
+   * @default false
+   */
+  replayViewTransitionOnTraversal?: boolean
+  /**
    * The default `hashScrollIntoView` a route should use if no hashScrollIntoView is provided while navigating
    *
    * See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) for more information on `ScrollIntoViewOptions`.
@@ -984,6 +997,11 @@ export class RouterCore<
   } = { next: true }
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
   isViewTransitionTypesSupported?: boolean = undefined
+  // For `replayViewTransitionOnTraversal`: the transition each history entry (by `__TSR_index`)
+  // was committed with, kept in-memory so a functional `types` survives by reference.
+  viewTransitionsByIndex = new Map<number, boolean | ViewTransitionOptions>()
+  // The `__TSR_index` we were last at, used as the "leaving" entry on a traversal.
+  lastViewTransitionIndex: number | undefined = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
   viewTransitionPromise?: ControlledPromise<true>
 
@@ -2463,6 +2481,10 @@ export class RouterCore<
 
   load: LoadFn = async (opts): Promise<void> => {
     const historyAction = opts?.action?.type
+    if (this.options.replayViewTransitionOnTraversal && historyAction) {
+      // Runs before `startViewTransition` reads `this.shouldViewTransition` in `onReady`.
+      this.recordOrReplayViewTransition(historyAction)
+    }
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
     let loadPromise: Promise<void>
@@ -2660,6 +2682,37 @@ export class RouterCore<
     if (newStatusCode !== undefined) {
       this.stores.statusCode.set(newStatusCode)
     }
+  }
+
+  /**
+   * On commit (PUSH/REPLACE) record the entry's transition (truthy only, so it never short-circuits
+   * `defaultViewTransition`; a non-transition commit clears any stale recording). On traversal
+   * (BACK/FORWARD/GO) replay it, checking the leaving then the arriving entry so a transition
+   * opted into on A→B replays on both B→A (back) and a later A→B (forward). Never clobbers an
+   * already-set `shouldViewTransition`.
+   */
+  recordOrReplayViewTransition = (historyAction: HistoryAction) => {
+    const arrivingIndex = this.history.location.state.__TSR_index
+
+    if (historyAction === 'PUSH' || historyAction === 'REPLACE') {
+      if (this.shouldViewTransition) {
+        this.viewTransitionsByIndex.set(
+          arrivingIndex,
+          this.shouldViewTransition,
+        )
+      } else {
+        this.viewTransitionsByIndex.delete(arrivingIndex)
+      }
+    } else {
+      this.shouldViewTransition =
+        this.shouldViewTransition ??
+        (this.lastViewTransitionIndex !== undefined
+          ? this.viewTransitionsByIndex.get(this.lastViewTransitionIndex)
+          : undefined) ??
+        this.viewTransitionsByIndex.get(arrivingIndex)
+    }
+
+    this.lastViewTransitionIndex = arrivingIndex
   }
 
   startViewTransition = (fn: () => Promise<void>) => {
