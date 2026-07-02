@@ -10,11 +10,11 @@
     "start": "srvx --prod -s ../client dist/server/index.js"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.170.16",
-    "@tanstack/react-router-devtools": "^1.167.0",
-    "@tanstack/react-start": "^1.168.26",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-router-devtools": "workspace:^",
+    "@tanstack/react-start": "workspace:*",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
@@ -22,9 +22,9 @@
     "@rsbuild/core": "^2.0.11",
     "@rsbuild/plugin-react": "^2.0.0",
     "@rsbuild/plugin-tailwindcss": "^2.0.3",
-    "@types/node": "^22.5.4",
-    "@types/react": "^19.0.8",
-    "@types/react-dom": "^19.0.3",
+    "@types/node": "25.0.9",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
     "srvx": "^0.11.18",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2"
