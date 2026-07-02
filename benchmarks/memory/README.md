@@ -2,7 +2,11 @@
 
 Dedicated memory benchmarks for TanStack Router / Start, measured with the
 CodSpeed **memory instrument** (`mode: memory` in
-`.github/workflows/client-nav-benchmarks.yml`). Two separate benchmarks:
+`.github/workflows/client-nav-benchmarks.yml`). The workflow runs on **every**
+push to `main` (no paths filter): CodSpeed compares a PR against the run on its
+merge-base commit, and a main commit without a run makes CodSpeed silently fall
+back to an older base — a single outlier base run then flags phantom
+regressions on every PR until the next run lands. Two separate benchmarks:
 
 - `server/` (`@benchmarks/memory-server`) — React/Solid/Vue Start apps, requests against
   the built server handler (`handler.fetch`), Node environment.
@@ -92,9 +96,13 @@ same workload through the Flame profiler.
   navigation with its render signal via `Promise.all([navigate, rendered])`
   is fine — never overlap distinct work items.
 - Randomness only via the seeded LCG in `bench-utils.ts`; no `Math.random`,
-  `Date.now`, or timers — with one documented exception: `streaming-peak`'s
-  deferred sections use small `setTimeout` delays so deferred stream chunks are
-  observable across framework renderers.
+  `Date.now`, or timers with a nonzero delay — anywhere async ordering must be
+  staged (`streaming-peak`'s deferred sections, `aborted-requests`' deferred
+  loader data and post-abort drain), chain **0ms `setTimeout` hops** and count
+  event-loop turns instead. A wall-clock delay races renderer work differently
+  depending on runner load and instrumentation overhead, which makes the
+  single measured run non-reproducible; 0ms hops fire in registration order in
+  the timers phase, so the interleaving is a pure function of the schedule.
 - Sanity assertions run once at module load and throw on wrong
   status/markers, so a bench can never silently measure the wrong thing.
 - Server requests follow `benchmarks/ssr` conventions: document GETs send
