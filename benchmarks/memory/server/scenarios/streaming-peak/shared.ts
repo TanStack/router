@@ -98,6 +98,7 @@ export function createWorkloadGroup(
       iterations: streamingPeakIterations,
       buildRequest: buildStreamingRequest,
       validateResponse: validateStreamingResponse,
+      pinGcBetweenIterations: true,
     })
 
   return {
