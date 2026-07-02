@@ -19,7 +19,7 @@ describe('client-search-params', () => {
   afterAll(test.after)
 
   bench(
-    'search-params navigation loop (react)',
+    'client-search-params navigation loop (react)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()

@@ -19,7 +19,7 @@ describe('client-loaders', () => {
   afterAll(test.after)
 
   bench(
-    'loaders navigation loop (react)',
+    'client-loaders navigation loop (react)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()

@@ -19,7 +19,7 @@ describe('client-nested-params', () => {
   afterAll(test.after)
 
   bench(
-    'nested-params navigation loop (vue)',
+    'client-nested-params navigation loop (vue)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()

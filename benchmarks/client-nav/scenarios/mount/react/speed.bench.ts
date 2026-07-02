@@ -19,7 +19,7 @@ describe('client-mount', () => {
   afterAll(test.after)
 
   bench(
-    'mount loop (react)',
+    'client-mount loop (react)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()

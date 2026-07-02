@@ -19,7 +19,7 @@ describe('client-control-flow', () => {
   afterAll(test.after)
 
   bench(
-    'control-flow navigation loop (react)',
+    'client-control-flow navigation loop (react)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()

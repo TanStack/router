@@ -19,7 +19,7 @@ describe('client-search-params', () => {
   afterAll(test.after)
 
   bench(
-    'search-params navigation loop (vue)',
+    'client-search-params navigation loop (vue)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()

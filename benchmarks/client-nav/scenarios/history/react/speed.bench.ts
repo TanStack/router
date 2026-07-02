@@ -19,7 +19,7 @@ describe('client-history', () => {
   afterAll(test.after)
 
   bench(
-    'history navigation loop (react)',
+    'client-history navigation loop (react)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()

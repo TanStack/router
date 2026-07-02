@@ -19,7 +19,7 @@ describe('client-async-pipeline', () => {
   afterAll(test.after)
 
   bench(
-    'async-pipeline navigation loop (vue)',
+    'client-async-pipeline navigation loop (vue)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()

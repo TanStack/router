@@ -19,7 +19,7 @@ describe('client-links', () => {
   afterAll(test.after)
 
   bench(
-    'links navigation loop (react)',
+    'client-links navigation loop (react)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()

@@ -19,7 +19,7 @@ describe('client-head', () => {
   afterAll(test.after)
 
   bench(
-    'head navigation loop (vue)',
+    'client-head navigation loop (vue)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()

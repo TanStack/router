@@ -19,7 +19,7 @@ describe('client-preload', () => {
   afterAll(test.after)
 
   bench(
-    'preload interaction loop (react)',
+    'client-preload interaction loop (react)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()

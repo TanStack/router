@@ -19,7 +19,7 @@ describe('client-route-tree-scale', () => {
   afterAll(test.after)
 
   bench(
-    'route-tree-scale navigation loop (vue)',
+    'client-route-tree-scale navigation loop (vue)',
     async () => {
       for (let i = 0; i < ticksPerIteration; i++) {
         await test.tick()
