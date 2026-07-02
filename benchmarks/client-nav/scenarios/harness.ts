@@ -89,6 +89,60 @@ async function settleUntil(isSettled: () => boolean, label: string) {
   )
 }
 
+/**
+ * Reroute zero-delay `window.setTimeout` calls onto `setImmediate` for the
+ * duration of the benchmark. jsdom delivers history traversals through two
+ * nested `window.setTimeout(0)` tasks; Node clamps those to 1ms of wall
+ * time, so with nothing else pending the event loop blocks in `epoll_wait`
+ * until each timer expires — and that blocked wall-time is recorded as
+ * highly variable syscall time (5-26ms across runs), enough for CodSpeed to
+ * skip-warn the history benches. Zero-delay timeouts carry no ordering
+ * semantics a check-phase immediate doesn't satisfy, and the suite's
+ * conventions already forbid real-delay timers in measured code; non-zero
+ * delays are passed through untouched.
+ */
+function patchZeroDelayTimeouts() {
+  const originalSetTimeout = window.setTimeout.bind(window)
+  const originalClearTimeout = window.clearTimeout.bind(window)
+  const immediates = new Map<number, NodeJS.Immediate>()
+  // Negative ids cannot collide with real jsdom timer ids.
+  let nextImmediateId = -2
+
+  window.setTimeout = ((
+    handler: (...handlerArgs: Array<any>) => void,
+    delay?: number,
+    ...args: Array<any>
+  ) => {
+    if (!delay) {
+      const id = nextImmediateId--
+      immediates.set(
+        id,
+        setImmediate(() => {
+          immediates.delete(id)
+          handler(...args)
+        }),
+      )
+      return id
+    }
+    return originalSetTimeout(handler, delay, ...args)
+  }) as typeof window.setTimeout
+
+  window.clearTimeout = ((id: number) => {
+    const immediate = immediates.get(id)
+    if (immediate) {
+      clearImmediate(immediate)
+      immediates.delete(id)
+      return
+    }
+    originalClearTimeout(id)
+  }) as typeof window.clearTimeout
+
+  return () => {
+    window.setTimeout = originalSetTimeout as typeof window.setTimeout
+    window.clearTimeout = originalClearTimeout as typeof window.clearTimeout
+  }
+}
+
 export interface ScenarioSetupOptions {
   frameworkLabel: string
   mount: (container: HTMLElement) => MountedScenarioApp
@@ -130,12 +184,14 @@ export function createScenarioSetup(options: ScenarioSetupOptions) {
   let container: HTMLDivElement | undefined = undefined
   let unmount: (() => void) | undefined = undefined
   let unsub = () => {}
+  let restoreTimeouts = () => {}
   let stepIndex = 0
   let next: () => Promise<void> = () =>
     Promise.reject(new Error('Benchmark not initialized'))
 
   async function before() {
     stepIndex = 0
+    restoreTimeouts = patchZeroDelayTimeouts()
     window.history.replaceState(null, '', options.initialUrl ?? '/')
     container = document.createElement('div')
     document.body.append(container)
@@ -252,6 +308,8 @@ export function createScenarioSetup(options: ScenarioSetupOptions) {
     unmount?.()
     container?.remove()
     unsub()
+    restoreTimeouts()
+    restoreTimeouts = () => {}
     unmount = undefined
     container = undefined
   }
