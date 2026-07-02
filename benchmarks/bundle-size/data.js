@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782941793389,
+  "lastUpdate": 1783022026166,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,90 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "manuel.schiller@caligano.de",
-            "name": "Manuel Schiller",
-            "username": "schiller-manuel"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "6069eba64369dbddb0d8dccdb4407f0e1a82259e",
-          "message": "fix: hoist inline component definitions for proper React HMR (#6919)\n\n* fix: hoist inline component definitions for proper React HMR\n\nthis reverts #6197 and implements a proper fix\n\nfixes #6339\n\n* add changeset",
-          "timestamp": "2026-03-13T21:24:40+01:00",
-          "tree_id": "a3602692b13b3f0c4fb1b0840f72ec9f005bbe69",
-          "url": "https://github.com/TanStack/router/commit/6069eba64369dbddb0d8dccdb4407f0e1a82259e"
-        },
-        "date": 1773433620167,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89175,
-            "unit": "bytes",
-            "extra": "raw=280668; brotli=77537"
-          },
-          {
-            "name": "react-router.full",
-            "value": 92232,
-            "unit": "bytes",
-            "extra": "raw=291168; brotli=80219"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 37299,
-            "unit": "bytes",
-            "extra": "raw=111917; brotli=33523"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41724,
-            "unit": "bytes",
-            "extra": "raw=125200; brotli=37454"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 53541,
-            "unit": "bytes",
-            "extra": "raw=152925; brotli=48142"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 58446,
-            "unit": "bytes",
-            "extra": "raw=168805; brotli=52504"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 102044,
-            "unit": "bytes",
-            "extra": "raw=320758; brotli=88321"
-          },
-          {
-            "name": "react-start.full",
-            "value": 105437,
-            "unit": "bytes",
-            "extra": "raw=330720; brotli=91200"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 49923,
-            "unit": "bytes",
-            "extra": "raw=150412; brotli=44175"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 55515,
-            "unit": "bytes",
-            "extra": "raw=166658; brotli=49024"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -19717,6 +19633,132 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/ecbbd9a8ec1d2433382cd30d13b0764e504e91cf"
         },
         "date": 1782941791842,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89469,
+            "unit": "bytes",
+            "extra": "raw=280455; brotli=77817; initial_gzip=89330"
+          },
+          {
+            "name": "react-router.full",
+            "value": 93290,
+            "unit": "bytes",
+            "extra": "raw=292635; brotli=81047; initial_gzip=93148"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36416,
+            "unit": "bytes",
+            "extra": "raw=108624; brotli=32821; initial_gzip=36288"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41587,
+            "unit": "bytes",
+            "extra": "raw=124207; brotli=37419; initial_gzip=41459"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54340,
+            "unit": "bytes",
+            "extra": "raw=153723; brotli=48844; initial_gzip=54208"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 60450,
+            "unit": "bytes",
+            "extra": "raw=172932; brotli=54198; initial_gzip=60317"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104474,
+            "unit": "bytes",
+            "extra": "raw=330046; brotli=90438; initial_gzip=104332"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 105227,
+            "unit": "bytes",
+            "extra": "raw=331454; brotli=91040; initial_gzip=104356"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107979,
+            "unit": "bytes",
+            "extra": "raw=340214; brotli=93421; initial_gzip=107840"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102135,
+            "unit": "bytes",
+            "extra": "raw=324339; brotli=87871; initial_gzip=101961"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 102548,
+            "unit": "bytes",
+            "extra": "raw=325299; brotli=88284; initial_gzip=102379"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105432,
+            "unit": "bytes",
+            "extra": "raw=334635; brotli=90730; initial_gzip=105258"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50903,
+            "unit": "bytes",
+            "extra": "raw=155907; brotli=44934; initial_gzip=50772"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 54244,
+            "unit": "bytes",
+            "extra": "raw=164139; brotli=47977; initial_gzip=50830"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56846,
+            "unit": "bytes",
+            "extra": "raw=173363; brotli=50145; initial_gzip=56713"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 72838,
+            "unit": "bytes",
+            "extra": "raw=212349; brotli=64541; initial_gzip=72707"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 76934,
+            "unit": "bytes",
+            "extra": "raw=225288; brotli=67967; initial_gzip=76800"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@florianpellet.com",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": false,
+          "id": "a6337fb98e62e499b8743a86d8ff06db9e0beb87",
+          "message": "bench(memory): stabilize CodSpeed memory benchmarks (#7730)\n\n* bench(memory): stabilize CodSpeed memory benchmarks\n\nMemory flags on PRs were ~85% noise, from two causes:\n\n1. Stale baselines (dominant): the Benchmarks workflow only ran on main\n   pushes touching packages/** or benchmarks/**. Main commits outside\n   those paths had no CodSpeed run, so PRs were compared against an old\n   base run ([^unexpected-base] on every recent codspeed-hq comment; six\n   late-June PRs all compared to the same June-23 run). One outlier base\n   measurement then replays into every PR until the next eligible push.\n   Fix: drop the paths filter for the push trigger + weekly cron backstop.\n\n2. Wall-clock timers racing the single measured run: aborted-requests\n   (solid/vue) resolved deferred loader data on 500/750ms timeouts raced\n   against abort, and drained cancellation with at most one setTimeout(0);\n   streaming-peak staggered deferred sections by milliseconds. Under\n   variable runner load and instrumentation slowdown the interleaving —\n   and therefore the allocation sequence — differed run to run. Fix:\n   count 0ms timers-phase hops (event-loop turns) instead of milliseconds\n   everywhere async ordering must be staged, and drain aborts with a\n   fixed 8-turn settlement barrier.\n\nLocal before/after evidence (8 fresh-process runs per config, CodSpeed V8\ndeterminism flags, idle + CPU-stressed; kernel peak RSS spread):\n\n  aborted-requests/solid idle    11.2MB -> 1.8MB (GC counts bit-identical)\n  aborted-requests/solid stress   7.7MB -> 2.5MB\n  streaming-peak/solid   idle     6.2MB -> 2.5MB\n  request-churn/solid (untouched control): unchanged, confirming harness\n\nstreaming-peak/vue keeps ~2% proxy-level variance at any tick count; its\nPR flags were the identical -3.2% in all three occurrences, i.e. the\nstale-base artifact rather than per-run jitter.\n\nBench names and workload shapes are unchanged; absolute values will step\nonce on the CodSpeed dashboard from the removed cross-iteration overlap\n(e.g. aborted-requests/solid retained 15.6MB -> 2.5MB per invocation).\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* bench(memory): exclude docs/examples/e2e from main benchmark runs, drop cron\n\npaths-ignore instead of no filter: docs/examples/e2e-only pushes cannot\naffect benchmark results, and falling back across such a commit is safe\nbecause the previous run's benchmark-relevant code is identical. The\nweekly cron backstop is unnecessary for the same reason.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n* bench(memory): pin GC between iterations in peak-shape scenarios\n\nA/A runs of the real memory instrument showed the two big-payload peak\nscenarios were still unstable with no timers involved: whether V8\ncollects iteration i's garbage before iteration i+1 allocates its\npayload is not reproducible run to run, so the measured peak flipped by\na whole payload (serialization-payload solid: 6.8-9.2 MB across\nidentical runs; peak-large-page: 3.5-3.7 MB).\n\nPeak scenarios measure the footprint of a single request, not\naccumulation, so pin the collection points: settle two event-loop turns\n(so trailing renderer/stream teardown is included) and force a GC after\neach iteration. Peak then deterministically measures\nmax(single-request footprint). Churn scenarios are unchanged — their\nsignal is accumulation, which a forced GC would mask; the README rule\nnow spells out both sides.\n\nA/A validation (3 identical instrumented runs, solid suite):\n\n  serialization-payload  6.8-9.2 MB  -> 3.5-3.6 MB\n  peak-large-page        3.5-3.7 MB  -> 754-757 KB (0.45% spread)\n  streaming-peak         38.5-39.5   -> 30.3/30.3/30.3 MB\n  churn scenarios        unchanged (aborted-requests 1.4 MB x3)\n\nAbsolute values step because cross-iteration garbage no longer inflates\nthe peak; the new values are the per-request footprint the scenarios\nwere designed to track.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Fable 5 <noreply@anthropic.com>",
+          "timestamp": "2026-07-02T21:44:55+02:00",
+          "tree_id": "5e883451e918a2849ebc28aa27bb3b8dc83c0104",
+          "url": "https://github.com/TanStack/router/commit/a6337fb98e62e499b8743a86d8ff06db9e0beb87"
+        },
+        "date": 1783022024613,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
