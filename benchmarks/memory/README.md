@@ -2,11 +2,13 @@
 
 Dedicated memory benchmarks for TanStack Router / Start, measured with the
 CodSpeed **memory instrument** (`mode: memory` in
-`.github/workflows/client-nav-benchmarks.yml`). The workflow runs on **every**
-push to `main` (no paths filter): CodSpeed compares a PR against the run on its
-merge-base commit, and a main commit without a run makes CodSpeed silently fall
-back to an older base — a single outlier base run then flags phantom
-regressions on every PR until the next run lands. Two separate benchmarks:
+`.github/workflows/client-nav-benchmarks.yml`). The workflow runs on every
+push to `main` except docs/examples/e2e-only pushes: CodSpeed compares a PR
+against the run on its merge-base commit, and a main commit without a run makes
+CodSpeed silently fall back to an older base — a single outlier base run then
+flags phantom regressions on every PR until the next run lands. (Falling back
+across a docs-only commit is safe: the previous run's benchmark-relevant code
+is identical.) Two separate benchmarks:
 
 - `server/` (`@benchmarks/memory-server`) — React/Solid/Vue Start apps, requests against
   the built server handler (`handler.fetch`), Node environment.
