@@ -364,6 +364,15 @@ export function startCompilerPlugin(
 
                 if (r) {
                   if (!r.external) {
+                    // Keep import-protection's own virtual ids (e.g. mock-edge)
+                    // `\0`-prefixed: `loadModule`/`this.load()` routes them to the
+                    // import-protection `load` handler by matching on the `\0`
+                    // prefix. Stripping it via cleanId() makes the load fall
+                    // through to vite:load-fallback, which fs.readFile()s the
+                    // bare id and throws ENOENT in build mode (#7725).
+                    if (r.id.startsWith('\0tanstack-start-import-protection:')) {
+                      return r.id
+                    }
                     return cleanId(r.id)
                   }
                 }
