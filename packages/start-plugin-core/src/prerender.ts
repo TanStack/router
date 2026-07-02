@@ -219,6 +219,7 @@ export async function prerender({
             )
             await new Promise((resolve) => setTimeout(resolve, retryDelay))
             retriesByPath.set(page.path, retries + 1)
+            seen.delete(page.path)
             addCrawlPageTask(page)
           } else if (prerenderOptions.failOnError ?? true) {
             throw error
