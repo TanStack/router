@@ -87,12 +87,21 @@ export const Match = (props: { matchId: string }) => {
           () => route().options.onCatch ?? router.options.defaultOnCatch,
         )
 
+        // `defaultNotFoundComponent` must be resolved here at render time, not
+        // via the lazy route-option mutation in load-matches (which only runs
+        // when a notFound is actually handled). Route objects are module
+        // singletons shared across server requests, so relying on that mutation
+        // makes the presence of the CatchNotFound boundary — and therefore
+        // Solid's hydration keys — depend on whether the server has previously
+        // served a 404, while a freshly-hydrating client never has it applied.
         const routeNotFoundComponent = Solid.createMemo(() =>
           route().isRoot
             ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
               (route().options.notFoundComponent ??
-              router.options.notFoundRoute?.options.component)
-            : route().options.notFoundComponent,
+              router.options.notFoundRoute?.options.component ??
+              router.options.defaultNotFoundComponent)
+            : (route().options.notFoundComponent ??
+              router.options.defaultNotFoundComponent),
         )
 
         const resolvedNoSsr = Solid.createMemo(
