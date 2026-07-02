@@ -16,6 +16,9 @@ export default defineConfig({
       codspeedPlugin(),
     tanstackRouter({
       target: 'solid',
+      // Real file-based apps code-split by default; this scenario keeps it on
+      // so navigations also exercise lazy route-chunk resolution.
+      autoCodeSplitting: true,
       routesDirectory: `${rootDir}src/routes`,
       generatedRouteTree: `${rootDir}src/routeTree.gen.ts`,
     }),

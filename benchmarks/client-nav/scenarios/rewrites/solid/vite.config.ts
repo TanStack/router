@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
+import solid from 'vite-plugin-solid'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
@@ -15,14 +15,11 @@ export default defineConfig({
     !!(process.env.VITEST && process.env.WITH_INSTRUMENTATION) &&
       codspeedPlugin(),
     tanstackRouter({
-      target: 'react',
-      // Real file-based apps code-split by default; this scenario keeps it on
-      // so navigations also exercise lazy route-chunk resolution.
-      autoCodeSplitting: true,
+      target: 'solid',
       routesDirectory: `${rootDir}src/routes`,
       generatedRouteTree: `${rootDir}src/routeTree.gen.ts`,
     }),
-    react(),
+    solid({ hot: false, dev: false }),
   ],
   build: {
     outDir: './dist',
@@ -34,10 +31,18 @@ export default defineConfig({
       fileName: 'app',
     },
   },
+  resolve: {
+    conditions: ['solid', 'browser'],
+  },
   test: {
-    name: '@benchmarks/client-nav route-tree-scale (react)',
+    name: '@benchmarks/client-nav rewrites (solid)',
     watch: false,
     environment: 'jsdom',
     setupFiles: ['../../../vitest.setup.ts'],
+    server: {
+      deps: {
+        inline: [/@solidjs/, /@tanstack\/solid-store/],
+      },
+    },
   },
 })

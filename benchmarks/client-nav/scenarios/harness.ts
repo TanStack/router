@@ -94,6 +94,12 @@ export interface ScenarioSetupOptions {
   steps: ReadonlyArray<ScenarioStep>
   /** Sanity check run once per step during the warm-up lap in `before()`. */
   assertAfterStep?: (stepIndex: number, container: HTMLElement) => void
+  /**
+   * URL the window is reset to before mounting (default '/'). Scenarios whose
+   * router uses a `basepath` or an input rewrite must start on an external
+   * URL that maps to their initial route.
+   */
+  initialUrl?: string
 }
 
 function warnAboutDevMode(frameworkLabel: string) {
@@ -121,7 +127,7 @@ export function createScenarioSetup(options: ScenarioSetupOptions) {
 
   async function before() {
     stepIndex = 0
-    window.history.replaceState(null, '', '/')
+    window.history.replaceState(null, '', options.initialUrl ?? '/')
     container = document.createElement('div')
     document.body.append(container)
 

@@ -17,15 +17,18 @@ export interface LeafParams {
   h: string
 }
 
+// Several values need percent-encoding in the URL (spaces, `&`, `%`, `+`,
+// unicode) so every navigation exercises the param encode/decode paths, not
+// just plain-ASCII interpolation.
 const baseParams: LeafParams = {
   a: 'alpha',
-  b: 'bravo',
-  c: 'charlie',
+  b: 'bravo & co',
+  c: 'charlie 100%',
   d: 'delta',
-  e: 'echo',
-  f: 'foxtrot',
+  e: 'écho-café',
+  f: 'foxtrot+one',
   g: 'golf',
-  h: 'hotel',
+  h: 'hôtel',
 }
 
 /**

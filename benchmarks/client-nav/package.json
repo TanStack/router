@@ -64,6 +64,7 @@
               "@benchmarks/client-nav-mount-react",
               "@benchmarks/client-nav-nested-params-react",
               "@benchmarks/client-nav-preload-react",
+              "@benchmarks/client-nav-rewrites-react",
               "@benchmarks/client-nav-route-tree-scale-react",
               "@benchmarks/client-nav-search-params-react"
             ],
@@ -91,6 +92,7 @@
               "@benchmarks/client-nav-mount-solid",
               "@benchmarks/client-nav-nested-params-solid",
               "@benchmarks/client-nav-preload-solid",
+              "@benchmarks/client-nav-rewrites-solid",
               "@benchmarks/client-nav-route-tree-scale-solid",
               "@benchmarks/client-nav-search-params-solid"
             ],
@@ -118,6 +120,7 @@
               "@benchmarks/client-nav-mount-vue",
               "@benchmarks/client-nav-nested-params-vue",
               "@benchmarks/client-nav-preload-vue",
+              "@benchmarks/client-nav-rewrites-vue",
               "@benchmarks/client-nav-route-tree-scale-vue",
               "@benchmarks/client-nav-search-params-vue"
             ],
@@ -202,8 +205,11 @@
               "@benchmarks/client-nav-preload-react",
               "@benchmarks/client-nav-preload-solid",
               "@benchmarks/client-nav-preload-vue",
+              "@benchmarks/client-nav-rewrites-react",
               "@benchmarks/client-nav-route-tree-scale-react",
+              "@benchmarks/client-nav-rewrites-solid",
               "@benchmarks/client-nav-route-tree-scale-solid",
+              "@benchmarks/client-nav-rewrites-vue",
               "@benchmarks/client-nav-route-tree-scale-vue",
               "@benchmarks/client-nav-search-params-react",
               "@benchmarks/client-nav-search-params-solid",

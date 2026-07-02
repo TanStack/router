@@ -27,14 +27,17 @@ export const steps = [
   'go-home',
 ] as const
 
+// The dynamic ids and the splat carry characters that need percent-encoding
+// (spaces, `&`, `%`, `+`, unicode) so matching also exercises the segment
+// encode/decode paths.
 const expectedMarkers = [
-  'sec-a:11',
+  'sec-a:item 11%',
   'sec-f:settings',
-  'files:x/y/z',
+  'files:x/ü y/z',
   'release:9',
   'alpha',
   'promo',
-  'sec-c:42',
+  'sec-c:q&a+42',
   'sec-d:about',
   'home',
 ] as const
