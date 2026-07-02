@@ -8,10 +8,12 @@
  * work, keeping the loop stationary.
  *
  * Hover-intent preloading was verified manually per adapter (standalone jsdom
- * run inspecting `router.state.cachedMatches` after dispatching
- * `mouseover` + `mouseenter` on a link): React listens to the synthetic
- * mouseEnter (driven by `mouseover`), Solid and Vue listen to the native
- * `mouseenter` — the harness hover step dispatches both.
+ * run inspecting the router's cached matches after dispatching `mouseover` on
+ * a link). The harness hover step dispatches a single `mouseover`, which
+ * triggers the preload pipeline exactly once in every adapter: React
+ * synthesizes mouseEnter from it, Solid/Vue attach a native `mouseover`
+ * handler. (Solid/Vue also listen to `mouseenter`; dispatching both events
+ * would preload twice for them but once for React.)
  */
 import type { ScenarioStep } from '../harness'
 

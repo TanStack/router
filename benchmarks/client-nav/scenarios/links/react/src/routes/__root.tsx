@@ -1,6 +1,5 @@
 import {
   Link,
-  MatchRoute,
   Outlet,
   createRootRoute,
   useMatchRoute,
@@ -26,19 +25,21 @@ function StatusPanel() {
           {matchRoute({ to: '/items/$id', params: { id } }) ? `on-${id}` : ''}
         </span>
       ))}
-      <MatchRoute to="/">{(match) => (match ? 'at-home' : '')}</MatchRoute>
-      <MatchRoute to="/about">
-        {(match) => (match ? 'at-about' : '')}
-      </MatchRoute>
-      <MatchRoute to="/" fuzzy>
-        {(match) => (match ? 'under-root' : '')}
-      </MatchRoute>
-      <MatchRoute to="/about" fuzzy>
-        {(match) => (match ? 'under-about' : '')}
-      </MatchRoute>
-      <MatchRoute to="/about" includeSearch>
-        {(match) => (match ? 'about-search' : '')}
-      </MatchRoute>
+      {/* Static probes use the setup-scoped matchRoute instead of
+          <MatchRoute>: vue-router's MatchRoute creates an undisposed watcher
+          per render (one leaked subscription per navigation), so all three
+          apps use useMatchRoute for cross-framework parity. */}
+      <span>{matchRoute({ to: '/' }) ? 'at-home' : ''}</span>
+      <span>{matchRoute({ to: '/about' }) ? 'at-about' : ''}</span>
+      <span>{matchRoute({ to: '/', fuzzy: true }) ? 'under-root' : ''}</span>
+      <span>
+        {matchRoute({ to: '/about', fuzzy: true }) ? 'under-about' : ''}
+      </span>
+      <span>
+        {matchRoute({ to: '/about', includeSearch: true })
+          ? 'about-search'
+          : ''}
+      </span>
     </aside>
   )
 }

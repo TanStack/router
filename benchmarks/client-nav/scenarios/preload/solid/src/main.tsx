@@ -6,6 +6,11 @@ export function createTestRouter() {
   return createRouter({
     routeTree,
     scrollRestoration: true,
+    // Key the scroll-restoration cache by pathname instead of the default
+    // random per-entry location key: with push navigations the default mints
+    // a fresh key per navigation and the module-level cache grows one entry
+    // per push for the whole run, which is non-stationary.
+    getScrollRestorationKey: (location) => location.pathname,
     defaultPreload: 'intent',
     defaultPreloadDelay: 0,
     defaultPreloadStaleTime: 0,

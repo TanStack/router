@@ -40,9 +40,12 @@ export type ScenarioStep =
     }
   | {
       /**
-       * Dispatches `mouseover` + `mouseenter` on the link (React synthesizes
-       * `mouseEnter` from `mouseover`; Solid and Vue listen to the native
-       * `mouseenter`), which triggers `preload: 'intent'`, then settles.
+       * Dispatches a single `mouseover` on the link, which triggers
+       * `preload: 'intent'` exactly once in every adapter: React synthesizes
+       * `mouseEnter` from `mouseover`, and Solid/Vue attach a native
+       * `mouseover` preload handler. (Solid/Vue also listen to `mouseenter` —
+       * dispatching both events would run the preload pipeline twice for them
+       * but only once for React.) Then settles via counted 0ms hops.
        */
       type: 'hover'
       testId: string
@@ -161,9 +164,6 @@ export function createScenarioSetup(options: ScenarioSetupOptions) {
           const link = getRequiredLink(container!, step.testId, cachedLinks)
           link.dispatchEvent(
             new MouseEvent('mouseover', { bubbles: true, cancelable: true }),
-          )
-          link.dispatchEvent(
-            new MouseEvent('mouseenter', { bubbles: false, cancelable: false }),
           )
           await settle(step.settleHops ?? 4)
           return

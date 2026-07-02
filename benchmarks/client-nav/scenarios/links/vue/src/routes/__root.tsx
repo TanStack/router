@@ -1,7 +1,6 @@
 import * as Vue from 'vue'
 import {
   Link,
-  MatchRoute,
   Outlet,
   createRootRoute,
   useMatchRoute,
@@ -20,27 +19,26 @@ const StatusPanel = Vue.defineComponent({
       id,
       match: matchRoute({ to: '/items/$id', params: { id } }),
     }))
+    // Static probes use the setup-scoped matchRoute instead of <MatchRoute>:
+    // vue-router's MatchRoute creates an undisposed watcher per render (one
+    // leaked subscription per navigation), so all three apps use
+    // useMatchRoute for cross-framework parity.
+    const atHome = matchRoute({ to: '/' })
+    const atAbout = matchRoute({ to: '/about' })
+    const underRoot = matchRoute({ to: '/', fuzzy: true })
+    const underAbout = matchRoute({ to: '/about', fuzzy: true })
+    const aboutSearch = matchRoute({ to: '/about', includeSearch: true })
 
     return () => (
       <aside>
         {probes.map(({ id, match }) => (
           <span key={id}>{match.value ? `on-${id}` : ''}</span>
         ))}
-        <MatchRoute to="/">
-          {(match: unknown) => (match ? 'at-home' : '')}
-        </MatchRoute>
-        <MatchRoute to="/about">
-          {(match: unknown) => (match ? 'at-about' : '')}
-        </MatchRoute>
-        <MatchRoute to="/" fuzzy>
-          {(match: unknown) => (match ? 'under-root' : '')}
-        </MatchRoute>
-        <MatchRoute to="/about" fuzzy>
-          {(match: unknown) => (match ? 'under-about' : '')}
-        </MatchRoute>
-        <MatchRoute to="/about" includeSearch>
-          {(match: unknown) => (match ? 'about-search' : '')}
-        </MatchRoute>
+        <span>{atHome.value ? 'at-home' : ''}</span>
+        <span>{atAbout.value ? 'at-about' : ''}</span>
+        <span>{underRoot.value ? 'under-root' : ''}</span>
+        <span>{underAbout.value ? 'under-about' : ''}</span>
+        <span>{aboutSearch.value ? 'about-search' : ''}</span>
       </aside>
     )
   },
