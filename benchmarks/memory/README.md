@@ -51,9 +51,15 @@ same workload through the Flame profiler.
   does the exact opposite. Client benches therefore register **both** — in
   any given mode exactly one pair runs.
 - The process runs with V8 determinism flags (predictable GC schedule,
-  `--no-opt`). Never call `global.gc()` manually. Because of `--no-opt`,
-  allocation counts overstate production; numbers are for regression
-  tracking, not absolute claims.
+  `--no-opt`). Never call `global.gc()` manually in **churn** scenarios —
+  their signal is accumulation across iterations, which a forced collection
+  masks. **Peak** scenarios do the opposite: they set
+  `pinGcBetweenIterations` on the request loop so a collection runs between
+  iterations. Their signal is the footprint of a single request, and without
+  pinned GC points the measured peak flips by a whole payload depending on
+  whether iteration i's garbage is collected before iteration i+1 allocates.
+  Because of `--no-opt`, allocation counts overstate production; numbers are
+  for regression tracking, not absolute claims.
 - Keep each bench under **~1.5M allocations** (instrument overhead grows past
   2M); this is the main constraint when tuning iteration counts.
 
