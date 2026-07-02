@@ -1,8 +1,8 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
-import { isRedirect, parseRedirect } from '@tanstack/router-core'
+import { isPromise, isRedirect, parseRedirect } from '@tanstack/router-core'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
-import { getStartOptions } from './getStartOptions'
+import { initStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
 import { createNullProtoObject, safeObjectMerge } from './safeObjectMerge'
 import type {
@@ -152,16 +152,23 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
 
       return Object.assign(
         async (opts?: CompiledFetcherFnOptions) => {
+          const startOptions = initStartOptions()
           // Start by executing the client-side middleware chain
-          const result = await executeMiddleware(resolvedMiddleware, 'client', {
-            ...extractedFn,
-            ...newOptions,
-            data: opts?.data,
-            headers: opts?.headers,
-            signal: opts?.signal,
-            fetch: opts?.fetch,
-            context: createNullProtoObject(),
-          })
+          const result = await executeMiddleware(
+            resolvedMiddleware,
+            'client',
+            {
+              ...extractedFn,
+              ...newOptions,
+              data: opts?.data,
+              headers: opts?.headers,
+              signal: opts?.signal,
+              fetch: opts?.fetch,
+              context: createNullProtoObject(),
+            },
+            (isPromise(startOptions) ? await startOptions : startOptions)
+              ?.functionMiddleware,
+          )
 
           const redirect = parseRedirect(result.error)
           if (redirect) {
@@ -202,6 +209,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
               resolvedMiddleware,
               'server',
               ctx,
+              startContext.startOptions.functionMiddleware,
             ).then((d) => ({
               // Only send the result and sendContext back to the client
               result: d.result,
@@ -229,8 +237,8 @@ export async function executeMiddleware(
   middlewares: Array<AnyFunctionMiddleware | AnyRequestMiddleware>,
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
+  globalMiddlewares: Array<AnyFunctionMiddleware> = [],
 ): Promise<ServerFnMiddlewareResult> {
-  const globalMiddlewares = getStartOptions()?.functionMiddleware || []
   let flattenedMiddlewares = flattenMiddlewares([
     ...globalMiddlewares,
     ...middlewares,

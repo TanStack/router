@@ -19,6 +19,7 @@ import {
   createMultiplexedStream,
 } from './frame-protocol'
 import type { LateStreamRegistration } from './frame-protocol'
+import type { AnyStartInstanceOptions } from '@tanstack/start-client-core'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
 // Cache serovalPlugins at module level to avoid repeated calls
@@ -37,10 +38,12 @@ export const handleServerAction = async ({
   request,
   context,
   serverFnId,
+  startOptions,
 }: {
   request: Request
   context: any
   serverFnId: string
+  startOptions: AnyStartInstanceOptions
 }) => {
   const method = request.method
   const methodUpper = method.toUpperCase()
@@ -66,7 +69,7 @@ export const handleServerAction = async ({
 
   // Initialize serovalPlugins lazily (cached at module level)
   if (!serovalPlugins) {
-    serovalPlugins = getDefaultSerovalPlugins()
+    serovalPlugins = getDefaultSerovalPlugins(startOptions)
   }
 
   const contentType = request.headers.get('Content-Type')

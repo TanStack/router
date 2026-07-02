@@ -77,6 +77,26 @@ test.describe('SSR serialization adapters', () => {
 })
 
 test.describe('server functions serialization adapters', () => {
+  test('client entry server functions use custom serialization adapters', async ({
+    page,
+  }) => {
+    await page.goto('/server-function/nested?client-entry-server-fn')
+    await awaitPageLoaded(page)
+
+    const result = await page
+      .waitForFunction(
+        () => (window as any).__serializationAdapterClientEntryResult,
+      )
+      .then((handle) => handle.jsonValue())
+
+    expect(result).toEqual({
+      status: 'success',
+      ping: 'ready',
+      shout: 'HELLO WORLD',
+      whisper: 'hello world',
+    })
+  })
+
   test('custom error', async ({ page }) => {
     await page.goto('/server-function/custom-error')
     await awaitPageLoaded(page)
