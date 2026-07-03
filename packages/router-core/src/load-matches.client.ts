@@ -911,11 +911,13 @@ export function startBackgroundLoad(
       undefined,
       isCurrentOrCancel,
     )
-    if (isPromise(assets)) {
-      await assets
-    }
+    const assetsOk = isPromise(assets) ? await assets : assets
 
-    if (isCurrentOrCancel()) {
+    // The background commit is atomic for data and assets: when asset
+    // projection for the fresh data failed, publishing would expose new
+    // loaderData under head output that still describes the previous data.
+    // Keep the old lane; the fetching markers are cleared by the finalizer.
+    if (assetsOk && isCurrentOrCancel()) {
       router.stores.setMatches(matches)
       committed = true
     }

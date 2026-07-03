@@ -17,6 +17,12 @@ const withServerAssets = (
   headers,
 })
 
+const logAssetError = (match: AnyRouteMatch, error: unknown): void => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.error(`Error executing head for route ${match.routeId}:`, error)
+  }
+}
+
 export const projectServerRouteAssets = (
   router: AnyRouter,
   matches: Array<AnyRouteMatch>,
@@ -29,155 +35,87 @@ export const projectServerRouteAssets = (
       continue
     }
 
-    try {
-      const assetContext = {
-        ssr: router.options.ssr,
-        matches,
-        match,
-        params: match.params,
-        loaderData: match.loaderData,
-      }
-
-      const head = routeOptions.head?.(assetContext)
-      let scripts: any
-      try {
-        scripts = routeOptions.scripts?.(assetContext)
-      } catch (error) {
-        // `head` may be async and abandoned because `scripts` threw
-        // synchronously. Own its rejection so it cannot become unhandled.
-        void Promise.allSettled([head])
-        throw error
-      }
-      let headers: any
-      try {
-        headers = routeOptions.headers?.(assetContext)
-      } catch (error) {
-        // `head`/`scripts` may be async and abandoned because `headers` threw
-        // synchronously. Own rejections so they cannot become unhandled.
-        void Promise.allSettled([head, scripts])
-        throw error
-      }
-
-      if (isPromise(head) || isPromise(scripts) || isPromise(headers)) {
-        return continueServerRouteAssets(
-          router,
-          matches,
-          i,
-          match,
-          head,
-          scripts,
-          headers,
-        )
-      }
-
-      matches[i] = withServerAssets(match, head, scripts, headers)
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error(`Error executing head for route ${match.routeId}:`, error)
-      }
+    const assetContext = {
+      ssr: router.options.ssr,
+      matches,
+      match,
+      params: match.params,
+      loaderData: match.loaderData,
     }
-  }
-}
 
-const continueServerRouteAssets = async (
-  router: AnyRouter,
-  matches: Array<AnyRouteMatch>,
-  startIndex: number,
-  firstMatch: AnyRouteMatch,
-  firstHead: any,
-  firstScripts: any,
-  firstHeaders: any,
-): Promise<void> => {
-  let i = startIndex
-  let match = firstMatch
-  let head = firstHead
-  let scripts = firstScripts
-  let headers = firstHeaders
+    // Each asset kind commits independently: route headers are response
+    // behavior and must not be dropped because a decorative head()/scripts()
+    // failed, and vice versa.
+    let syncFailed = false
+    let head: any
+    let scripts: any
+    let headers: any
+    try {
+      head = routeOptions.head?.(assetContext)
+    } catch (error) {
+      syncFailed = true
+      logAssetError(match, error)
+    }
+    try {
+      scripts = routeOptions.scripts?.(assetContext)
+    } catch (error) {
+      syncFailed = true
+      logAssetError(match, error)
+    }
+    try {
+      headers = routeOptions.headers?.(assetContext)
+    } catch (error) {
+      syncFailed = true
+      logAssetError(match, error)
+    }
 
-  while (true) {
-    const results = await Promise.allSettled([head, scripts, headers])
-
-    const headResult = results[0]
-    const scriptResult = results[1]
-    const headerResult = results[2]
-
-    if (
-      headResult.status === 'fulfilled' &&
-      scriptResult.status === 'fulfilled' &&
-      headerResult.status === 'fulfilled'
-    ) {
+    if (syncFailed) {
+      // A sync throw must not hold the response hostage waiting on the other
+      // hooks' async work. Commit the sync-available values and abandon any
+      // pending promises, owning their rejections so they cannot become
+      // unhandled.
+      const settle = (value: any) => {
+        if (isPromise(value)) {
+          void Promise.allSettled([value])
+          return undefined
+        }
+        return value
+      }
       matches[i] = withServerAssets(
         match,
-        headResult.value,
-        scriptResult.value,
-        headerResult.value,
+        settle(head),
+        settle(scripts),
+        settle(headers),
       )
-    } else if (process.env.NODE_ENV !== 'production') {
-      const failed =
-        headResult.status === 'rejected'
-          ? headResult
-          : scriptResult.status === 'rejected'
-            ? scriptResult
-            : headerResult
-      console.error(
-        `Error executing head for route ${match.routeId}:`,
-        (failed as PromiseRejectedResult).reason,
-      )
+      continue
     }
 
-    for (i++; i < matches.length; i++) {
-      match = matches[i]!
-      const routeOptions = router.routesById[match.routeId]!.options
-      if (
-        !(routeOptions.head || routeOptions.scripts || routeOptions.headers)
-      ) {
-        continue
-      }
-
-      try {
-        const assetContext = {
-          ssr: router.options.ssr,
-          matches,
-          match,
-          params: match.params,
-          loaderData: match.loaderData,
-        }
-
-        head = routeOptions.head?.(assetContext)
-        try {
-          scripts = routeOptions.scripts?.(assetContext)
-        } catch (error) {
-          // `head` may be async and abandoned because `scripts` threw
-          // synchronously. Own its rejection so it cannot become unhandled.
-          void Promise.allSettled([head])
-          throw error
-        }
-        try {
-          headers = routeOptions.headers?.(assetContext)
-        } catch (error) {
-          // `head`/`scripts` may be async and abandoned because `headers` threw
-          // synchronously. Own rejections so they cannot become unhandled.
-          void Promise.allSettled([head, scripts])
-          throw error
-        }
-
-        if (isPromise(head) || isPromise(scripts) || isPromise(headers)) {
-          break
-        }
-
-        matches[i] = withServerAssets(match, head, scripts, headers)
-      } catch (error) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.error(
-            `Error executing head for route ${match.routeId}:`,
-            error,
+    if (isPromise(head) || isPromise(scripts) || isPromise(headers)) {
+      return Promise.allSettled([head, scripts, headers]).then(
+        ([headResult, scriptResult, headerResult]) => {
+          matches[i] = withServerAssets(
+            match,
+            headResult.status === 'fulfilled' ? headResult.value : undefined,
+            scriptResult.status === 'fulfilled'
+              ? scriptResult.value
+              : undefined,
+            headerResult.status === 'fulfilled'
+              ? headerResult.value
+              : undefined,
           )
-        }
-      }
+
+          const failed = [headResult, scriptResult, headerResult].find(
+            (result) => result.status === 'rejected',
+          ) as PromiseRejectedResult | undefined
+          if (failed) {
+            logAssetError(match, failed.reason)
+          }
+
+          return projectServerRouteAssets(router, matches, i + 1)
+        },
+      )
     }
 
-    if (i >= matches.length) {
-      return
-    }
+    matches[i] = withServerAssets(match, head, scripts, headers)
   }
 }

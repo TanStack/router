@@ -264,6 +264,16 @@ export async function hydrate(router: AnyRouter): Promise<any> {
             match.__beforeLoadContext,
           )
 
+          // The server rendered no assets for ssr:false matches — including
+          // matches it intentionally omitted at an error/notFound boundary,
+          // which the dehydrated payload also marks ssr:false. Their
+          // head()/scripts() could only run with missing or stale loader
+          // data here; the follow-up client load projects assets for the
+          // lane it actually commits.
+          if (match.ssr === false) {
+            return
+          }
+
           const assetContext = {
             ssr: router.options.ssr,
             matches,

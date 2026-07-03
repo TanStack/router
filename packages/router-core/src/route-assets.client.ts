@@ -18,16 +18,26 @@ function commitClientAssets(
   }
 }
 
+/**
+ * Projects head()/scripts() into the given lane.
+ *
+ * Returns whether every asset hook committed cleanly. Background reloads use
+ * this to keep their publication atomic: fresh loaderData must not be
+ * committed under assets that could not be computed for it. Ownership loss
+ * also returns false — the caller's currentness check decides what to do.
+ */
 export function projectClientRouteAssets(
   router: AnyRouter,
   matches: Array<AnyRouteMatch>,
   preload?: boolean,
   isCurrent?: () => boolean,
   startIndex = 0,
-): void | Promise<void> {
+): boolean | Promise<boolean> {
+  let ok = true
+
   for (let i = startIndex; i < matches.length; i++) {
     if (isCurrent && !isCurrent()) {
-      return
+      return false
     }
 
     const match = matches[i]!
@@ -54,7 +64,7 @@ export function projectClientRouteAssets(
         // This pass lost ownership before the normal Promise.all path could
         // observe `head`; allSettled owns any later rejection.
         void Promise.allSettled([head])
-        return
+        return false
       }
 
       let scripts: any
@@ -70,40 +80,45 @@ export function projectClientRouteAssets(
         // This pass lost ownership before the normal Promise.all path could
         // observe the asset promises; allSettled owns any later rejection.
         void Promise.allSettled([head, scripts])
-        return
+        return false
       }
 
       if (isPromise(head) || isPromise(scripts)) {
         return Promise.all([head, scripts]).then(
           ([headResult, scriptResult]) => {
-            if (!isCurrent || isCurrent()) {
-              commitClientAssets(matches, i, headResult, scriptResult)
-              return projectClientRouteAssets(
-                router,
-                matches,
-                preload,
-                isCurrent,
-                i + 1,
-              )
+            if (isCurrent && !isCurrent()) {
+              return false
             }
+            commitClientAssets(matches, i, headResult, scriptResult)
+            const rest = projectClientRouteAssets(
+              router,
+              matches,
+              preload,
+              isCurrent,
+              i + 1,
+            )
+            return isPromise(rest) ? rest.then((r) => r && ok) : rest && ok
           },
           (error) => {
-            if (!isCurrent || isCurrent()) {
-              if (process.env.NODE_ENV !== 'production') {
-                console.error(
-                  `Error executing head for route ${match.routeId}:`,
-                  error,
-                )
-              }
+            if (isCurrent && !isCurrent()) {
+              return false
+            }
 
-              return projectClientRouteAssets(
-                router,
-                matches,
-                preload,
-                isCurrent,
-                i + 1,
+            if (process.env.NODE_ENV !== 'production') {
+              console.error(
+                `Error executing head for route ${match.routeId}:`,
+                error,
               )
             }
+
+            const rest = projectClientRouteAssets(
+              router,
+              matches,
+              preload,
+              isCurrent,
+              i + 1,
+            )
+            return isPromise(rest) ? rest.then(() => false) : false
           },
         )
       }
@@ -111,12 +126,15 @@ export function projectClientRouteAssets(
       commitClientAssets(matches, i, head, scripts)
     } catch (error) {
       if (isCurrent && !isCurrent()) {
-        return
+        return false
       }
 
+      ok = false
       if (process.env.NODE_ENV !== 'production') {
         console.error(`Error executing head for route ${match.routeId}:`, error)
       }
     }
   }
+
+  return ok
 }
