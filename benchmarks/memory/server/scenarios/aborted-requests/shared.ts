@@ -268,7 +268,7 @@ export function createWorkloadGroup(
     sanity: () => assertAbortedRequestsSanity(handler, mode),
     workloads: [
       {
-        name: `mem aborted-requests (${framework})`,
+        name: `mem server aborted-requests (${framework})`,
         run,
       },
     ],

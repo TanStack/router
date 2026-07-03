@@ -105,7 +105,7 @@ export function createWorkloadGroup(
     sanity: () => assertStreamingPeakSanity(handler),
     workloads: [
       {
-        name: `mem streaming-peak chunked (${framework})`,
+        name: `mem server streaming-peak chunked (${framework})`,
         run,
       },
     ],

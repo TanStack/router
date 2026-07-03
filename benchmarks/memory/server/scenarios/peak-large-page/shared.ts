@@ -61,7 +61,7 @@ export function createWorkloadGroup(
     sanity: () => assertPeakLargePageSanity(handler),
     workloads: [
       {
-        name: `mem peak-large-page (${framework})`,
+        name: `mem server peak-large-page (${framework})`,
         run,
       },
     ],

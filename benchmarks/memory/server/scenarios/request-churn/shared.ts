@@ -74,7 +74,7 @@ export function createWorkloadGroup(
     sanity: () => assertRequestChurnSanity(handler),
     workloads: [
       {
-        name: `mem request-churn (${framework})`,
+        name: `mem server request-churn (${framework})`,
         run,
       },
     ],

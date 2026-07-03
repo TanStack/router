@@ -172,19 +172,19 @@ export function createWorkloadGroup(
     sanity: () => assertErrorPathsSanity(handler),
     workloads: [
       {
-        name: `mem error-paths redirect (${framework})`,
+        name: `mem server error-paths redirect (${framework})`,
         run: runRedirect,
       },
       {
-        name: `mem error-paths not-found (${framework})`,
+        name: `mem server error-paths not-found (${framework})`,
         run: runNotFound,
       },
       {
-        name: `mem error-paths error (${framework})`,
+        name: `mem server error-paths error (${framework})`,
         run: runError,
       },
       {
-        name: `mem error-paths unmatched (${framework})`,
+        name: `mem server error-paths unmatched (${framework})`,
         run: runUnmatched,
       },
     ],
