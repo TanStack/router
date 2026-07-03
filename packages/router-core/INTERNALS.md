@@ -147,7 +147,10 @@ There are several kinds of commit. Keep them separate:
 - **Pending publication**: `onReady(matches)` publishes a render-ready pending
   lane into active matches so frameworks can render pending UI. It does not run
   route lifecycle hooks, cache reconciliation, `loadedAt`, or the final view
-  transition. It also clears the pending match pool for that load pass.
+  transition. It also clears the pending match pool for that load pass. It does
+  preserve exiting success matches in `cachedMatches` — publication removes
+  them from the active pool, and if the load is later superseded the final
+  commit that would have cached them never runs.
 - **Final client commit**: `commitFinalMatches()` publishes the final active
   lane, reconciles cache, clears pending state, updates `loadedAt`, and runs
   `onLeave`, `onStay`, and `onEnter`.

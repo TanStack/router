@@ -24,10 +24,12 @@ const commitFinalMatches = (
   router.batch(() => {
     const now = Date.now()
     const cached = stores.cachedMatches.get().slice()
+    // Pending publication may already have preserved exiting base matches.
+    const cachedIds = new Set(cached.map((match) => match.id))
 
     for (let i = 0; i < baseMatches.length; i++) {
       const match = baseMatches[i]!
-      if (nextMatches[i]?.id !== match.id) {
+      if (nextMatches[i]?.id !== match.id && !cachedIds.has(match.id)) {
         cached.push({
           ...match,
           isFetching: false,
@@ -165,6 +167,31 @@ export const loadClientRouter = async (
       }
 
       router.batch(() => {
+        // Publication replaces the active lane before final commit, so
+        // exiting success matches must be preserved in the cache here: if
+        // this load is superseded (e.g. back navigation) the final commit
+        // that would have cached them never runs, and their fresh data
+        // would otherwise be lost from every pool.
+        const publishedIds = new Set(matches.map((match) => match.id))
+        const cached = stores.cachedMatches.get()
+        const cachedIds = new Set(cached.map((match) => match.id))
+        const exiting = stores.matches
+          .get()
+          .filter(
+            (match) =>
+              match.status === 'success' &&
+              !publishedIds.has(match.id) &&
+              !cachedIds.has(match.id),
+          )
+        if (exiting.length) {
+          stores.setCached([
+            ...cached,
+            ...exiting.map((match) => ({
+              ...match,
+              isFetching: false as const,
+            })),
+          ])
+        }
         stores.setMatches(matches)
         if (stores.pendingIds.get().length) {
           stores.setPending([])
