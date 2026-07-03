@@ -22,6 +22,11 @@ export default defineConfig({
     minify: false,
   },
   test: {
+    // Keep lazily-compiled code alive for the whole run: the pinned
+    // collections age code fast enough for V8 to flush unused bytecode,
+    // and the mid-measurement recompile injects a multi-MB allocation
+    // burst at a run-dependent time.
+    execArgv: ['--no-flush-bytecode'],
     name: '@benchmarks/memory-server streaming-peak (react)',
     watch: false,
     environment: 'node',
