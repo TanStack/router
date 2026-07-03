@@ -7,6 +7,7 @@
     "dev": "rsbuild dev",
     "dev:e2e": "rsbuild dev --port $PORT",
     "build": "rsbuild build && tsc --noEmit",
+    "preview": "rsbuild preview",
     "start": "node server.js",
     "test:e2e-full": "pnpm build && sh -c 'rm -f \"port-${E2E_PORT_KEY:-$npm_package_name}.txt\" \"port-${E2E_PORT_KEY:-$npm_package_name}-external.txt\"' && playwright test --project=chromium"
   },
@@ -16,6 +17,10 @@
         {
           "toolchain": "rsbuild",
           "mode": "ssr"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "preview"
         }
       ]
     }
@@ -28,7 +33,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@rsbuild/core": "^2.0.8",
+    "@rsbuild/core": "^2.1.2",
     "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",

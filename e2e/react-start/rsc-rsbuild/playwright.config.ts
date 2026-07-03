@@ -6,6 +6,7 @@ import {
 } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
+const mode = process.env.MODE ?? 'ssr'
 const e2ePortKey = process.env.E2E_PORT_KEY ?? packageJson.name
 const distDir = process.env.E2E_DIST_DIR ?? 'dist'
 
@@ -21,6 +22,8 @@ if (process.env.TEST_WORKER_INDEX === undefined) {
 const PORT = await getTestServerPort(e2ePortKey)
 const EXTERNAL_PORT = await getDummyServerPort(e2ePortKey)
 const baseURL = `http://localhost:${PORT}`
+const command =
+  mode === 'preview' ? `pnpm preview --port ${PORT}` : 'pnpm start'
 
 export default defineConfig({
   testDir: './tests',
@@ -35,11 +38,12 @@ export default defineConfig({
   },
 
   webServer: {
-    command: 'pnpm start',
+    command,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
     env: {
+      MODE: mode,
       PORT: String(PORT),
       E2E_DIST_DIR: distDir,
       E2E_PORT_KEY: e2ePortKey,

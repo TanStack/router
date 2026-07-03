@@ -16,7 +16,7 @@
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.11",
+    "@rsbuild/core": "^2.1.2",
     "@rsbuild/plugin-babel": "^1.1.2",
     "@rsbuild/plugin-solid": "^1.1.1",
     "@tanstack/router-plugin": "^1.168.18",
