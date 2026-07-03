@@ -106,7 +106,7 @@ export const projectServerRouteAssets = (
 
           const failed = [headResult, scriptResult, headerResult].find(
             (result) => result.status === 'rejected',
-          ) as PromiseRejectedResult | undefined
+          )
           if (failed) {
             logAssetError(match, failed.reason)
           }
