@@ -24,12 +24,15 @@ const commitFinalMatches = (
   router.batch(() => {
     const now = Date.now()
     const cached = stores.cachedMatches.get().slice()
-    // Pending publication may already have preserved exiting base matches.
-    const cachedIds = new Set(cached.map((match) => match.id))
 
     for (let i = 0; i < baseMatches.length; i++) {
       const match = baseMatches[i]!
-      if (nextMatches[i]?.id !== match.id && !cachedIds.has(match.id)) {
+      // Pending publication may already have preserved exiting base matches;
+      // base match ids are unique, so scanning pushed entries is harmless.
+      if (
+        nextMatches[i]?.id !== match.id &&
+        !cached.some((c) => c.id === match.id)
+      ) {
         cached.push({
           ...match,
           isFetching: false,
@@ -172,16 +175,14 @@ export const loadClientRouter = async (
         // this load is superseded (e.g. back navigation) the final commit
         // that would have cached them never runs, and their fresh data
         // would otherwise be lost from every pool.
-        const publishedIds = new Set(matches.map((match) => match.id))
         const cached = stores.cachedMatches.get()
-        const cachedIds = new Set(cached.map((match) => match.id))
         const exiting = stores.matches
           .get()
           .filter(
             (match) =>
               match.status === 'success' &&
-              !publishedIds.has(match.id) &&
-              !cachedIds.has(match.id),
+              !matches.some((m) => m.id === match.id) &&
+              !cached.some((m) => m.id === match.id),
           )
         if (exiting.length) {
           stores.setCached([
