@@ -3,6 +3,7 @@ import { isRedirect } from './redirect'
 import { rootRouteId } from './root'
 import type { NotFoundError } from './not-found'
 import type { ParsedLocation } from './location'
+import type { AnyRoute } from './route'
 import type { AnyRouteMatch } from './Matches'
 import type { AnyRouter } from './router'
 
@@ -56,6 +57,20 @@ export type BackgroundLoad = {
 export const markError = (inner: InnerLoadContext, index: number) => {
   inner.badIndex = Math.min(inner.badIndex ?? index, index)
 }
+
+export const commitMatch = (
+  inner: InnerLoadContext,
+  index: number,
+  patch: Partial<AnyRouteMatch>,
+): AnyRouteMatch => {
+  return (inner.matches[index] = {
+    ...inner.matches[index]!,
+    ...patch,
+  })
+}
+
+export const getLoader = (loaderOption: AnyRoute['options']['loader']) =>
+  typeof loaderOption === 'function' ? loaderOption : loaderOption?.handler
 
 export const getMatchContext = (
   inner: Pick<InnerLoadContext, 'router' | 'matches'>,

@@ -4,6 +4,8 @@ import { isRedirect } from './redirect'
 import { loadRouteChunk } from './route-chunks'
 import { projectClientRouteAssets } from './route-assets.client'
 import {
+  commitMatch,
+  getLoader,
   getMatchContext,
   getNotFoundBoundaryIndex,
   getNotFoundBoundaryPatch,
@@ -23,9 +25,6 @@ import type { InnerLoadContext, SerialFailure } from './load-matches'
 
 const isRouteControl = (error: unknown) =>
   isRedirect(error) || isNotFound(error)
-
-const getLoader = (loaderOption: AnyRoute['options']['loader']) =>
-  typeof loaderOption === 'function' ? loaderOption : loaderOption?.handler
 
 // Route work may only commit while it still owns the lane entry it is about to
 // mutate. Each client load pass stamps its matches with an AbortController:
@@ -57,17 +56,6 @@ const requireCurrentMatch = (
   }
 
   return match
-}
-
-const commitMatch = (
-  inner: InnerLoadContext,
-  index: number,
-  patch: Partial<AnyRouteMatch>,
-): AnyRouteMatch => {
-  return (inner.matches[index] = {
-    ...inner.matches[index]!,
-    ...patch,
-  })
 }
 
 function getNavigate(inner: InnerLoadContext) {

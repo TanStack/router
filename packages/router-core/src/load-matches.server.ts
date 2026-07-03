@@ -5,6 +5,8 @@ import { isRedirect } from './redirect'
 import { loadRouteChunk } from './route-chunks'
 import { projectServerRouteAssets } from './route-assets.server'
 import {
+  commitMatch,
+  getLoader,
   getMatchContext,
   getNotFoundBoundaryIndex,
   markError,
@@ -20,17 +22,6 @@ import type {
 import type { AnyRouteMatch, MakeRouteMatch } from './Matches'
 import type { SSROption } from './router'
 import type { InnerLoadContext, LoadMatchesArg } from './load-matches'
-
-const commitMatch = (
-  inner: InnerLoadContext,
-  index: number,
-  patch: Partial<AnyRouteMatch>,
-): AnyRouteMatch => {
-  return (inner.matches[index] = {
-    ...inner.matches[index]!,
-    ...patch,
-  })
-}
 
 const handleServerRedirectOrNotFound = (
   inner: InnerLoadContext,
@@ -346,9 +337,7 @@ const loadServerRouteMatch = async (
   const initialMatch = inner.matches[index]!
   const { routeId } = initialMatch
   const route = inner.router.routesById[routeId]!
-  const loaderOption = route.options.loader
-  const loader =
-    typeof loaderOption === 'function' ? loaderOption : loaderOption?.handler
+  const loader = getLoader(route.options.loader)
 
   const routeChunkPromise =
     initialMatch.ssr === true ? loadRouteChunk(route) : undefined
@@ -407,14 +396,12 @@ const loadServerRouteMatch = async (
 export const loadServerMatches = async (
   arg: LoadMatchesArg,
 ): Promise<Array<MakeRouteMatch>> => {
+  // The server pipeline is request-local: preload, background, and pending
+  // publication are client-side semantics and are deliberately not copied.
   const inner: InnerLoadContext = {
     router: arg.router,
     location: arg.location,
     matches: arg.matches,
-    preload: arg.preload,
-    forceStaleReload: arg.forceReload,
-    background: arg.background,
-    onReady: arg.onReady,
   }
   const matchPromises: Array<Promise<AnyRouteMatch>> = []
 
