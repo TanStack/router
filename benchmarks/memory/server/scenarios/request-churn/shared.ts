@@ -68,6 +68,7 @@ export function createWorkloadGroup(
       iterations: requestChurnIterations,
       buildRequest: buildItemRequest,
       validateResponse: validateItemResponse,
+      pinGcBetweenIterations: true,
     })
 
   return {

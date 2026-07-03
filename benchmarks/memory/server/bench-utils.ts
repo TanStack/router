@@ -17,14 +17,16 @@ export type RunSequentialRequestLoopOptions =
     iterations?: number
     buildRequest: (random: () => number, index: number) => Request
     validateResponse?: (response: Response, request: Request) => void
-    // For peak-shape scenarios only. Their signal is the footprint of a
-    // single request, but whether V8 collects iteration i's garbage before
-    // iteration i+1 allocates its payload is not reproducible run to run —
-    // the measured peak flips by a whole payload depending on GC timing.
-    // Forcing a collection between iterations pins the GC points so peak
-    // deterministically measures max(single-request footprint). Churn
-    // scenarios must never set this: their signal is accumulation across
-    // iterations, which a forced GC would mask.
+    // Whether V8 collects iteration i's garbage before iteration i+1
+    // allocates its payload is not reproducible run to run — the measured
+    // peak flips by a whole payload depending on GC timing, which shifts
+    // with runner hardware. Forcing a collection between iterations pins
+    // the GC points so peak deterministically measures the largest
+    // single-iteration footprint plus any reachable accumulation.
+    // Accumulation signals stay visible: leaked or cached objects are
+    // still referenced, so a forced collection cannot reclaim them — it
+    // only removes floating garbage, whose collection timing is the
+    // dominant cross-run noise source.
     pinGcBetweenIterations?: boolean
   }
 
@@ -102,13 +104,58 @@ export async function runSequentialRequestLoop(
     await drainResponse(response)
 
     if (pinGcBetweenIterations) {
-      // Two 0ms timer hops first, so trailing renderer/stream teardown
-      // scheduled for the next turns runs before the collection — otherwise
-      // its garbage survives into the next iteration's measurements.
-      await new Promise<void>((resolve) => setTimeout(resolve, 0))
-      await new Promise<void>((resolve) => setTimeout(resolve, 0))
-      // Present under CodSpeed (--expose-gc); absent in plain smoke runs.
-      ;(globalThis as { gc?: () => void }).gc?.()
+      // 8 turns minimum: React's post-request stream teardown spans several
+      // event-loop turns, and a shorter floor lets it race the collection
+      // point on some runs (heap size reads stable one turn too early).
+      await settleAndPinGc(8)
     }
+  }
+}
+
+// Settle trailing renderer/stream teardown, then pin a collection point.
+// gc() is present under CodSpeed (--expose-gc); in plain smoke runs there is
+// nothing to pin, so fall back to `minTicks` 0ms timer hops that still let
+// teardown scheduled for the next turns run between iterations.
+export async function settleAndPinGc(minTicks: number) {
+  const gc = (globalThis as { gc?: () => void }).gc
+
+  if (gc) {
+    await settlePinnedGc(gc, minTicks)
+    return
+  }
+
+  for (let tick = 0; tick < minTicks; tick++) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  }
+}
+
+const maxGcSettleTurns = 16
+
+// A fixed number of settle turns before the pinned collection is
+// hardware-fragile: teardown that needs one more event-loop turn on a given
+// runner leaks a whole payload of garbage past the collection point and
+// flips the measured peak bimodally. Hop one full event-loop turn and
+// collect until the post-collection heap size stops moving (two identical
+// consecutive readings), bounded so a drifting heap cannot stall the run —
+// an unsettled exit then just means one iteration measures like the
+// fixed-turn barrier did. Heap-size stability alone can read as quiescent
+// one turn before teardown scheduled on later timers has run (React's
+// post-abort teardown spans several turns), so never exit before the
+// scenario's proven fixed turn count either — the barrier must settle
+// strictly more than the fixed-count barrier it replaced, never less.
+async function settlePinnedGc(gc: () => void, minTurns: number) {
+  let previousHeapUsed = -1
+
+  for (let turn = 0; turn < maxGcSettleTurns; turn++) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+    gc()
+
+    const { heapUsed } = process.memoryUsage()
+
+    if (heapUsed === previousHeapUsed && turn + 1 >= minTurns) {
+      return
+    }
+
+    previousHeapUsed = heapUsed
   }
 }

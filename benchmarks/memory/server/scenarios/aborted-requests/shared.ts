@@ -1,3 +1,4 @@
+import { settleAndPinGc } from '#memory-server/bench-utils'
 import type { StartRequestHandler } from '#memory-server/bench-utils'
 
 export type { StartRequestHandler }
@@ -185,14 +186,14 @@ async function cancelReader(
 
 const cancellationDrainTicks = 8
 
-// Fixed-count settlement barrier: each 0ms timer hop runs one full event-loop
-// turn (microtasks flush between hops), so post-abort renderer teardown
-// finishes within a deterministic number of turns instead of bleeding a
-// load-dependent amount of work into later iterations of the measured run.
+// Post-abort settlement barrier. Under CodSpeed this settles renderer
+// teardown and pins a collection point after every aborted request, so the
+// measured peak cannot drift with how much floating garbage the previous
+// iterations happened to leave behind. In smoke runs it falls back to a
+// fixed number of 0ms timer hops (one full event-loop turn each) so
+// teardown still finishes before the next iteration starts.
 async function drainCancellation() {
-  for (let tick = 0; tick < cancellationDrainTicks; tick++) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 0))
-  }
+  await settleAndPinGc(cancellationDrainTicks)
 }
 
 async function assertAbortedRequestsSanity(
