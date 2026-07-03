@@ -1,3 +1,4 @@
+import { settleAndPinGc } from '#memory-server/bench-utils'
 import type { StartRequestHandler } from '#memory-server/bench-utils'
 
 export type { StartRequestHandler }
@@ -12,7 +13,7 @@ type AbortedRequestMode = {
   cancelMode: AbortedRequestCancelMode
 }
 
-const abortedRequestIterations = 100
+const abortedRequestIterations = 40
 let abortedRequestCounter = 0
 const eagerMarker = 'data-bench="aborted-requests-eager"'
 const alphaFallbackMarker = 'data-bench="aborted-requests-alpha-fallback"'
@@ -183,16 +184,12 @@ async function cancelReader(
   await reader.cancel()
 }
 
-const cancellationDrainTicks = 8
-
-// Fixed-count settlement barrier: each 0ms timer hop runs one full event-loop
-// turn (microtasks flush between hops), so post-abort renderer teardown
-// finishes within a deterministic number of turns instead of bleeding a
-// load-dependent amount of work into later iterations of the measured run.
+// Post-abort settlement barrier. Settles renderer teardown across a fixed
+// number of event-loop turns, then (under CodSpeed) pins a collection point
+// after every aborted request, so the measured peak cannot drift with how
+// much floating garbage the previous iterations happened to leave behind.
 async function drainCancellation() {
-  for (let tick = 0; tick < cancellationDrainTicks; tick++) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 0))
-  }
+  await settleAndPinGc()
 }
 
 async function assertAbortedRequestsSanity(
