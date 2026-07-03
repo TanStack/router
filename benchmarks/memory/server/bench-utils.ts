@@ -28,6 +28,13 @@ export type RunSequentialRequestLoopOptions =
     // only removes floating garbage, whose collection timing is the
     // dominant cross-run noise source.
     pinGcBetweenIterations?: boolean
+    // For peak-shape scenarios ONLY (flat inter-iteration heap floor):
+    // verify each pinned collection actually returned the heap to the
+    // floor, extending the barrier when a runner's late teardown holds the
+    // payload past the fixed window. Churn/abort scenarios must not set
+    // this: their floor legitimately drifts, so the verification caps out
+    // chronically and the extra collections it fires destabilize the peak.
+    verifyGcFloor?: boolean
   }
 
 export const memoryBenchOptions = {
@@ -80,6 +87,7 @@ export async function runSequentialRequestLoop(
     buildRequest,
     validateResponse,
     pinGcBetweenIterations = false,
+    verifyGcFloor = false,
   } = options
   const random =
     options.seed !== undefined
@@ -95,7 +103,7 @@ export async function runSequentialRequestLoop(
       }
     })
 
-  const gcPinState = createGcPinState()
+  const gcPinState = verifyGcFloor ? createGcPinState() : undefined
 
   for (let index = 0; index < iterations; index++) {
     const request = buildRequest(random, index)
@@ -154,7 +162,7 @@ export function createGcPinState(): GcPinState {
 // the fixed-count barrier fails. A workload that genuinely accumulates
 // reachable memory raises the floor as it goes (the floor is the minimum
 // seen), so accumulation still measures; it only pays the turn cap.
-export async function settleAndPinGc(state: GcPinState) {
+export async function settleAndPinGc(state?: GcPinState) {
   for (let turn = 0; turn < settleTurnsBeforeGc; turn++) {
     await new Promise<void>((resolve) => setTimeout(resolve, 0))
   }
@@ -168,6 +176,10 @@ export async function settleAndPinGc(state: GcPinState) {
   gc()
   await new Promise<void>((resolve) => setTimeout(resolve, 0))
   gc()
+
+  if (!state) {
+    return
+  }
 
   let heapUsed = process.memoryUsage().heapUsed
 

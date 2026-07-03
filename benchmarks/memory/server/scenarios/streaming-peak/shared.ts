@@ -99,6 +99,7 @@ export function createWorkloadGroup(
       buildRequest: buildStreamingRequest,
       validateResponse: validateStreamingResponse,
       pinGcBetweenIterations: true,
+      verifyGcFloor: true,
     })
 
   return {

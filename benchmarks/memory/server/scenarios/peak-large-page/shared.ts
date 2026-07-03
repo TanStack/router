@@ -55,6 +55,7 @@ export function createWorkloadGroup(
       buildRequest: buildPeakLargePageRequest,
       validateResponse: validatePeakLargePageResponse,
       pinGcBetweenIterations: true,
+      verifyGcFloor: true,
     })
 
   return {

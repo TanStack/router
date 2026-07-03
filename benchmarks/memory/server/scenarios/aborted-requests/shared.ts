@@ -1,8 +1,5 @@
-import { createGcPinState, settleAndPinGc } from '#memory-server/bench-utils'
-import type {
-  GcPinState,
-  StartRequestHandler,
-} from '#memory-server/bench-utils'
+import { settleAndPinGc } from '#memory-server/bench-utils'
+import type { StartRequestHandler } from '#memory-server/bench-utils'
 
 export type { StartRequestHandler }
 
@@ -191,8 +188,8 @@ async function cancelReader(
 // number of event-loop turns, then (under CodSpeed) pins a collection point
 // after every aborted request, so the measured peak cannot drift with how
 // much floating garbage the previous iterations happened to leave behind.
-async function drainCancellation(gcPinState: GcPinState) {
-  await settleAndPinGc(gcPinState)
+async function drainCancellation() {
+  await settleAndPinGc()
 }
 
 async function assertAbortedRequestsSanity(
@@ -231,15 +228,13 @@ async function assertAbortedRequestsSanity(
   // does not observe Request.signal for this in-process request.
   controller.abort()
   await cancelReader(reader, mode.cancelMode)
-  await drainCancellation(createGcPinState())
+  await drainCancellation()
 }
 
 async function runAbortedRequestLoop(
   handler: StartRequestHandler,
   mode: AbortedRequestMode,
 ) {
-  const gcPinState = createGcPinState()
-
   for (let index = 0; index < abortedRequestIterations; index++) {
     const controller = new AbortController()
     const id = `abort-${(abortedRequestCounter++).toString(36)}`
@@ -255,7 +250,7 @@ async function runAbortedRequestLoop(
     )
     controller.abort()
     await cancelReader(reader, mode.cancelMode)
-    await drainCancellation(gcPinState)
+    await drainCancellation()
   }
 }
 

@@ -62,6 +62,7 @@ export function createWorkloadGroup(
       buildRequest: buildPayloadRequest,
       validateResponse: validatePayloadResponse,
       pinGcBetweenIterations: true,
+      verifyGcFloor: true,
     })
 
   return {
