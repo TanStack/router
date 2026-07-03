@@ -943,6 +943,20 @@ export async function loadClientMatches(
       }
 
       if (inner.matches[i]!._.dehydrated) {
+        const dehydratedMatch = inner.matches[i]!
+        // A dehydrated notFound/error is a server-committed boundary: the
+        // server intentionally omitted every match below it. Replay it as
+        // this pass's serial failure so the follow-up client load caps the
+        // lane the same way instead of loading, committing, and projecting
+        // assets for descendants the server never rendered.
+        if (
+          (dehydratedMatch.status === 'notFound' &&
+            isNotFound(dehydratedMatch.error)) ||
+          dehydratedMatch.status === 'error'
+        ) {
+          failure = [i, dehydratedMatch.error]
+          break
+        }
         matchPromises[i] = loadClientRouteMatch(inner, matchPromises, i)
         continue
       }
