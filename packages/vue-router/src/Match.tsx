@@ -330,6 +330,7 @@ export const MatchInner = Vue.defineComponent({
           status: match.status,
           error: match.error,
           ssr: match.ssr,
+          _displayPending: match._displayPending,
           _: match._,
         },
         remountKey,
@@ -347,6 +348,17 @@ export const MatchInner = Vue.defineComponent({
     return (): VNode | null => {
       // If match doesn't exist, return null (component is being unmounted or not ready)
       if (!combinedState.value || !match.value || !route.value) return null
+
+      // A hydration display match keeps rendering pending UI until the
+      // follow-up client load clears the marker, even though its local
+      // loadPromise was already settled by hydrate().
+      if (match.value._displayPending) {
+        const PendingComponent =
+          route.value.options.pendingComponent ??
+          router.options.defaultPendingComponent
+
+        return PendingComponent ? Vue.h(PendingComponent) : null
+      }
 
       if (match.value.status === 'notFound') {
         if (!isNotFound(match.value.error)) {
@@ -392,17 +404,22 @@ export const MatchInner = Vue.defineComponent({
           router.options.defaultPendingComponent
 
         if (PendingComponent) {
-          const promise = Vue.toRaw(match.value._).loadPromise
+          // Vue can render a stale match snapshot after its match-local
+          // promise was settled/removed (hydration display matches,
+          // cancelMatches) but before the newer lane commits, so a missing
+          // local promise is a legitimate state here. Only a still-pending
+          // local promise owns pendingMinMs timing.
+          const localPromise = Vue.toRaw(match.value._).loadPromise
           const pendingMinMs =
             route.value.options.pendingMinMs ??
             router.options.defaultPendingMinMs
 
-          if (process.env.NODE_ENV !== 'production' && !promise) {
-            invariant()
-          }
-
-          if (promise && !(isServer ?? router.isServer) && pendingMinMs) {
-            promise.pendingUntil ??= Date.now() + pendingMinMs
+          if (
+            !(isServer ?? router.isServer) &&
+            localPromise?.status === 'pending' &&
+            pendingMinMs
+          ) {
+            localPromise.pendingUntil ??= Date.now() + pendingMinMs
           }
 
           return Vue.h(PendingComponent)
