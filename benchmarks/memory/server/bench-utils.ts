@@ -104,58 +104,39 @@ export async function runSequentialRequestLoop(
     await drainResponse(response)
 
     if (pinGcBetweenIterations) {
-      // 8 turns minimum: React's post-request stream teardown spans several
-      // event-loop turns, and a shorter floor lets it race the collection
-      // point on some runs (heap size reads stable one turn too early).
-      await settleAndPinGc(8)
+      await settleAndPinGc()
     }
   }
 }
 
-// Settle trailing renderer/stream teardown, then pin a collection point.
-// gc() is present under CodSpeed (--expose-gc); in plain smoke runs there is
-// nothing to pin, so fall back to `minTicks` 0ms timer hops that still let
-// teardown scheduled for the next turns run between iterations.
-export async function settleAndPinGc(minTicks: number) {
+// Renderer/stream teardown spans several event-loop turns (React and Vue
+// need more than the two turns the original barrier allowed for), and a
+// too-short settle window leaks a whole payload of garbage past the
+// collection point, flipping the measured peak bimodally between runs.
+// Every step here is a fixed count on purpose: an adaptive exit (collect
+// until the post-GC heap size stops moving) makes the collection points
+// land at data-dependent turns, which re-introduces exactly the run-to-run
+// variance this barrier exists to remove — heap-size readings never fully
+// stabilize under the instrumented CI environment, so the exit point (and
+// with it every subsequent GC point) shifted between identical runs.
+const settleTurnsBeforeGc = 16
+
+// Settle trailing renderer/stream teardown with a fixed number of 0ms timer
+// hops (one full event-loop turn each, microtasks flushing between hops),
+// then pin a collection point. The second collection one turn later picks
+// up whatever the first collection's finalizers released. gc() is present
+// under CodSpeed (--expose-gc); in plain smoke runs there is nothing to
+// pin, so only the settle hops run.
+export async function settleAndPinGc() {
+  for (let turn = 0; turn < settleTurnsBeforeGc; turn++) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  }
+
   const gc = (globalThis as { gc?: () => void }).gc
 
   if (gc) {
-    await settlePinnedGc(gc, minTicks)
-    return
-  }
-
-  for (let tick = 0; tick < minTicks; tick++) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 0))
-  }
-}
-
-const maxGcSettleTurns = 16
-
-// A fixed number of settle turns before the pinned collection is
-// hardware-fragile: teardown that needs one more event-loop turn on a given
-// runner leaks a whole payload of garbage past the collection point and
-// flips the measured peak bimodally. Hop one full event-loop turn and
-// collect until the post-collection heap size stops moving (two identical
-// consecutive readings), bounded so a drifting heap cannot stall the run —
-// an unsettled exit then just means one iteration measures like the
-// fixed-turn barrier did. Heap-size stability alone can read as quiescent
-// one turn before teardown scheduled on later timers has run (React's
-// post-abort teardown spans several turns), so never exit before the
-// scenario's proven fixed turn count either — the barrier must settle
-// strictly more than the fixed-count barrier it replaced, never less.
-async function settlePinnedGc(gc: () => void, minTurns: number) {
-  let previousHeapUsed = -1
-
-  for (let turn = 0; turn < maxGcSettleTurns; turn++) {
+    gc()
     await new Promise<void>((resolve) => setTimeout(resolve, 0))
     gc()
-
-    const { heapUsed } = process.memoryUsage()
-
-    if (heapUsed === previousHeapUsed && turn + 1 >= minTurns) {
-      return
-    }
-
-    previousHeapUsed = heapUsed
   }
 }

@@ -184,16 +184,12 @@ async function cancelReader(
   await reader.cancel()
 }
 
-const cancellationDrainTicks = 8
-
-// Post-abort settlement barrier. Under CodSpeed this settles renderer
-// teardown and pins a collection point after every aborted request, so the
-// measured peak cannot drift with how much floating garbage the previous
-// iterations happened to leave behind. In smoke runs it falls back to a
-// fixed number of 0ms timer hops (one full event-loop turn each) so
-// teardown still finishes before the next iteration starts.
+// Post-abort settlement barrier. Settles renderer teardown across a fixed
+// number of event-loop turns, then (under CodSpeed) pins a collection point
+// after every aborted request, so the measured peak cannot drift with how
+// much floating garbage the previous iterations happened to leave behind.
 async function drainCancellation() {
-  await settleAndPinGc(cancellationDrainTicks)
+  await settleAndPinGc()
 }
 
 async function assertAbortedRequestsSanity(
