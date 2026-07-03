@@ -32,12 +32,16 @@ test.describe('SSR hydration capped route assets', () => {
     await page.goto('/hydration-capped-assets/child')
     await page.waitForLoadState('networkidle')
 
-    await expect(page.getByTestId('capped-assets-parent-not-found')).toBeInViewport()
+    await expect(
+      page.getByTestId('capped-assets-parent-not-found'),
+    ).toBeInViewport()
     await expect(
       page.getByTestId('capped-assets-child-component'),
     ).not.toBeInViewport()
 
-    await expect(page.locator('meta[name="capped-assets-child-head"]')).toHaveCount(0)
+    await expect(
+      page.locator('meta[name="capped-assets-child-head"]'),
+    ).toHaveCount(0)
     expect(
       await page.evaluate(() =>
         Boolean((window as any).__CAPPED_ASSETS_CHILD_SCRIPT),
