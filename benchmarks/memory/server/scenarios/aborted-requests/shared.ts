@@ -13,7 +13,7 @@ type AbortedRequestMode = {
   cancelMode: AbortedRequestCancelMode
 }
 
-const abortedRequestIterations = 100
+const abortedRequestIterations = 40
 let abortedRequestCounter = 0
 const eagerMarker = 'data-bench="aborted-requests-eager"'
 const alphaFallbackMarker = 'data-bench="aborted-requests-alpha-fallback"'

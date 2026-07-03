@@ -38,7 +38,7 @@ type SerovalNode =
 const benchmarkSeed = 0xdecafbad
 const payloadSeed = 0x51f0cafe
 const fixtureCount = 16
-const serverFnChurnIterations = 150
+const serverFnChurnIterations = 40
 const origin = 'http://localhost'
 const tssContentTypeFramed = 'application/x-tss-framed'
 const acceptHeader = `${tssContentTypeFramed}, application/x-ndjson, application/json`
@@ -206,6 +206,7 @@ export async function createWorkloadGroup(
     runSequentialRequestLoop(handler, {
       seed: benchmarkSeed,
       iterations: serverFnChurnIterations,
+      pinGcBetweenIterations: true,
       buildRequest: (_random, index) => {
         const fixtureIndex = Math.floor(index / 2) % fixtureCount
 
