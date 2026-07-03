@@ -6,12 +6,10 @@ type Framework = 'react' | 'solid' | 'vue'
 
 type AbortedRequestReadMode = 'first-chunk' | 'shell-before-deferred'
 type AbortedRequestCancelMode = 'plain' | 'swallow-abort-error'
-type AbortedRequestDrainMode = 'microtasks' | 'tasks'
 
 type AbortedRequestMode = {
   readMode: AbortedRequestReadMode
   cancelMode: AbortedRequestCancelMode
-  drainMode: AbortedRequestDrainMode
 }
 
 const abortedRequestIterations = 100
@@ -29,17 +27,14 @@ const abortedRequestModes: Record<Framework, AbortedRequestMode> = {
   react: {
     readMode: 'first-chunk',
     cancelMode: 'plain',
-    drainMode: 'microtasks',
   },
   solid: {
     readMode: 'first-chunk',
     cancelMode: 'plain',
-    drainMode: 'tasks',
   },
   vue: {
     readMode: 'shell-before-deferred',
     cancelMode: 'swallow-abort-error',
-    drainMode: 'tasks',
   },
 }
 
@@ -188,12 +183,15 @@ async function cancelReader(
   await reader.cancel()
 }
 
-async function drainCancellation(mode: AbortedRequestDrainMode) {
-  await Promise.resolve()
-  await Promise.resolve()
+const cancellationDrainTicks = 8
 
-  if (mode === 'tasks') {
-    await new Promise((resolve) => setTimeout(resolve, 0))
+// Fixed-count settlement barrier: each 0ms timer hop runs one full event-loop
+// turn (microtasks flush between hops), so post-abort renderer teardown
+// finishes within a deterministic number of turns instead of bleeding a
+// load-dependent amount of work into later iterations of the measured run.
+async function drainCancellation() {
+  for (let tick = 0; tick < cancellationDrainTicks; tick++) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
   }
 }
 
@@ -233,7 +231,7 @@ async function assertAbortedRequestsSanity(
   // does not observe Request.signal for this in-process request.
   controller.abort()
   await cancelReader(reader, mode.cancelMode)
-  await drainCancellation(mode.drainMode)
+  await drainCancellation()
 }
 
 async function runAbortedRequestLoop(
@@ -255,7 +253,7 @@ async function runAbortedRequestLoop(
     )
     controller.abort()
     await cancelReader(reader, mode.cancelMode)
-    await drainCancellation(mode.drainMode)
+    await drainCancellation()
   }
 }
 

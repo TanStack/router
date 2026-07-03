@@ -61,6 +61,7 @@ export function createWorkloadGroup(
       iterations: serializationPayloadIterations,
       buildRequest: buildPayloadRequest,
       validateResponse: validatePayloadResponse,
+      pinGcBetweenIterations: true,
     })
 
   return {
