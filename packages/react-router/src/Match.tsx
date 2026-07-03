@@ -287,6 +287,8 @@ function OnRendered() {
   return null
 }
 
+const permaPendingPromise = new Promise(() => {})
+
 export const MatchInner = React.memo(function MatchInnerImpl({
   matchId,
 }: {
@@ -338,15 +340,17 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     const out = Comp ? <Comp key={key} /> : <Outlet />
 
     if (match._displayPending) {
-      throw getMatchPromise(match, 'displayPendingPromise')
+      throw (
+        getMatchPromise(match, 'displayPendingPromise') ?? permaPendingPromise
+      )
     }
 
     if (match._forcePending) {
-      throw getMatchPromise(match, 'minPendingPromise')
+      throw getMatchPromise(match, 'minPendingPromise') ?? permaPendingPromise
     }
 
     if (match.status === 'pending') {
-      throw getMatchPromise(match, 'loadPromise')
+      throw getMatchPromise(match, 'loadPromise') ?? permaPendingPromise
     }
 
     if (match.status === 'notFound') {
@@ -368,7 +372,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
         invariant()
       }
-      throw getMatchPromise(match, 'loadPromise')
+      throw getMatchPromise(match, 'loadPromise') ?? permaPendingPromise
     }
 
     if (match.status === 'error') {
@@ -435,11 +439,11 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }, [key, route.options.component, router.options.defaultComponent])
 
   if (match._displayPending) {
-    throw getMatchPromise(match, 'displayPendingPromise')
+    throw getMatchPromise(match, 'displayPendingPromise') ?? permaPendingPromise
   }
 
   if (match._forcePending) {
-    throw getMatchPromise(match, 'minPendingPromise')
+    throw getMatchPromise(match, 'minPendingPromise') ?? permaPendingPromise
   }
 
   // see also hydrate() in packages/router-core/src/ssr/ssr-client.ts
@@ -464,7 +468,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         }
       }
     }
-    throw getMatchPromise(match, 'loadPromise')
+    throw getMatchPromise(match, 'loadPromise') ?? permaPendingPromise
   }
 
   if (match.status === 'notFound') {
@@ -491,7 +495,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       invariant()
     }
 
-    throw getMatchPromise(match, 'loadPromise')
+    throw getMatchPromise(match, 'loadPromise') ?? permaPendingPromise
   }
 
   if (match.status === 'error') {
@@ -516,7 +520,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       )
     }
 
-    throw match.error
+    throw match.error ?? new Error('Unknown match error!')
   }
 
   return out
