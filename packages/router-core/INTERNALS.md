@@ -619,9 +619,9 @@ sequenceDiagram
   else lane completed
     L-->>P: loaded preload lane
   end
-  alt every match success
-    P->>P: project and await preload assets
-    P->>C: cache owned preload matches only
+  alt successful prefix non-empty
+    P->>P: project and await assets for the success prefix
+    P->>C: cache owned success-prefix matches only
   end
   P->>P: settle preload-owned load promises
 ```
