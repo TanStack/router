@@ -1810,7 +1810,19 @@ export class RouterCore<
         continue
       }
 
-      cancelMatch(matchId)
+      // Only cancel active matches with in-flight route work. A settled
+      // success match keeps its controller un-aborted: loaders may have
+      // handed that signal to still-streaming deferred data, and the public
+      // contract only cancels it when the route unloads or its loader call
+      // becomes outdated.
+      const match = this.getMatch(matchId)
+      if (
+        match &&
+        (match.status === 'pending' || match.isFetching === 'loader')
+      ) {
+        match.abortController.abort()
+        settleMatchLoad(match)
+      }
     }
   }
 
