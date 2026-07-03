@@ -69,7 +69,7 @@ export function createWorkloadGroup(
     sanity: () => assertSerializationPayloadSanity(handler),
     workloads: [
       {
-        name: `mem serialization-payload (${framework})`,
+        name: `mem server serialization-payload (${framework})`,
         run,
       },
     ],

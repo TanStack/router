@@ -227,7 +227,7 @@ export async function createWorkloadGroup(
     sanity: () => assertServerFnChurnSanity(handler, urls),
     workloads: [
       {
-        name: `mem server-fn-churn (${framework})`,
+        name: `mem server server-fn-churn (${framework})`,
         run,
       },
     ],
