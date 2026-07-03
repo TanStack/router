@@ -425,9 +425,10 @@ that may be discarded by the boundary trim.
    result is written even when the value is `undefined`; a reload that returns
    `undefined` clears stale `loaderData` instead of preserving the previous
    value.
-7. `shouldReload` and loader failures are normalized and finalized. Serial
-   `beforeLoad` failures are finalized by `loadClientMatches()` using the same
-   finalizer. Route chunk failures are committed directly.
+7. `shouldReload`, loader, and route chunk failures are normalized and
+   finalized through the same route failure lifecycle (`onError`,
+   redirect/notFound conversion). Serial `beforeLoad` failures are finalized
+   by `loadClientMatches()` using the same finalizer.
 8. `pendingMinMs` is honored if pending UI was rendered.
 9. Success clears error/fetching, sets `updatedAt`, and settles load promise.
 
@@ -516,14 +517,23 @@ redirects are handled inside `startBackgroundLoad()`.
 
 ### Component/chunk failure while handling another failure
 
-If loading an `errorComponent` or `notFoundComponent` fails, the component/chunk
-failure replaces the original route failure and is committed directly as an
-error. It must not recursively try to load another boundary component.
+A primary route chunk failure (lazyFn or a route component preload observed by
+the loader phase) goes through `normalizeRouteFailure` like loader failures,
+so `onError` and redirect/notFound conversion apply. Only when loading an
+`errorComponent` or `notFoundComponent` boundary chunk fails does the
+component failure replace the original route failure and commit directly as
+an error — it must not recursively try to load another boundary component.
+
+Boundary chunk requests are per-component-type: `loadRouteChunk(route,
+'errorComponent')` joins that component's own in-flight chunk but never
+waits on the whole-route `_componentsPromise`, so an unrelated slow or failed
+component chunk cannot block or poison boundary UI. Rejected preloads are
+evicted (not cached), so a later load generation can retry.
 
 ```mermaid
 flowchart TD
-  F["loader/beforeLoad throws"] --> N["normalizeRouteFailure"]
-  Chunk["route/component chunk throws"] --> Direct
+  F["loader/beforeLoad/chunk throws"] --> N["normalizeRouteFailure"]
+  Chunk["boundary component chunk throws"] --> Direct
   N --> R{"redirect?"}
   R -->|"yes"| RT["settle source match and throw resolved redirect"]
   R -->|"no"| NF{"notFound?"}

@@ -7625,7 +7625,11 @@ test('loader AbortError followed by component preload failure commits error', as
   await expect(loadPromise).resolves.toBeUndefined()
   const updatedMatch = getLaneMatch(matches, targetMatch.id)
   expect(updatedMatch?.status).toBe('error')
-  expect(updatedMatch?.error).toBe(chunkError)
+  // Error finalization no longer waits on the whole-route component chunk,
+  // so the pending-status AbortError commits immediately as the route error;
+  // the later chunk rejection is owned separately and can retry on the next
+  // load generation instead of replacing the committed failure.
+  expect((updatedMatch?.error as Error | undefined)?.name).toBe('AbortError')
   expect(updatedMatch?._.loadPromise).toBeUndefined()
 })
 

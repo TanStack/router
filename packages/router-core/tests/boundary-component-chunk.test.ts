@@ -66,11 +66,16 @@ describe('route boundary component preloads', () => {
 
     await vi.waitFor(() => expect(errorComponentPreloadCalls).toBe(1))
     errorComponentGate.resolve()
-    await Promise.resolve()
 
-    const match = router.state.matches.find((item) => item.routeId === route.id)
-    expect(match?.status).toBe('error')
-    expect(match?.error).toBe(routeError)
+    // The route component chunk (componentGate) is still pending: the error
+    // state must commit without waiting for it.
+    await vi.waitFor(() => {
+      const match = router.state.matches.find(
+        (item) => item.routeId === route.id,
+      )
+      expect(match?.status).toBe('error')
+      expect(match?.error).toBe(routeError)
+    })
 
     componentGate.resolve()
     await loadPromise

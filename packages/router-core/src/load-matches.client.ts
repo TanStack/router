@@ -630,14 +630,18 @@ const loadClientRouteMatch = async (
         await routeChunkPromise
       }
     } catch (chunkError) {
-      // A route/component chunk failure replaces the loader result and is committed
-      // as the route error for this loader generation.
+      // A route/component chunk failure replaces the loader result, but it
+      // still goes through the normal route failure lifecycle (onError,
+      // redirect/notFound conversion) like beforeLoad and loader failures.
+      // If loading a boundary component subsequently fails,
+      // finalizeRouteFailure commits that failure directly instead of
+      // recursing into another boundary chunk.
+      requireCurrentMatch(inner, index, passController)
       return finalizeRouteFailure(
         inner,
         index,
-        chunkError,
+        normalizeRouteFailure(inner, index, chunkError),
         passController,
-        true,
       )
     }
 

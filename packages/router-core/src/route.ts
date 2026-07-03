@@ -703,6 +703,13 @@ export interface Route<
   /** @internal */
   _componentsPromise?: Promise<void>
   /** @internal */
+  _componentPromises?: Partial<
+    Record<
+      'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent',
+      Promise<void> | undefined
+    >
+  >
+  /** @internal */
   _componentsLoaded?: boolean
   lazyFn?: () => Promise<
     LazyRoute<
@@ -1714,6 +1721,13 @@ export class BaseRoute<
   _lazyPromise?: Promise<void>
   /** @internal */
   _componentsPromise?: Promise<void>
+  /** @internal */
+  _componentPromises?: Partial<
+    Record<
+      'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent',
+      Promise<void> | undefined
+    >
+  >
 
   constructor(
     options?: RouteOptions<
