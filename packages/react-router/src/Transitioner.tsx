@@ -26,8 +26,13 @@ export function Transitioner() {
   router.startTransition = (fn: () => void) => {
     setIsTransitioning(true)
     React.startTransition(() => {
-      fn()
-      setIsTransitioning(false)
+      try {
+        fn()
+      } finally {
+        // A throwing commit must not strand isTransitioning, which would
+        // permanently block onResolved and the idle status transition.
+        setIsTransitioning(false)
+      }
     })
   }
 

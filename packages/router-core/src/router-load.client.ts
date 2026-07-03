@@ -69,14 +69,21 @@ const commitFinalMatches = (
     const current = baseMatches[i]
     const nextMatch = nextMatches[i]
 
-    if (current && current.routeId !== nextMatch?.routeId) {
-      router.routesById[current.routeId]!.options.onLeave?.(current)
-    }
+    // The commit already happened; lifecycle hooks are notifications. A
+    // throwing hook must not skip the remaining hooks or corrupt the
+    // framework transition state, but it has to stay observable.
+    try {
+      if (current && current.routeId !== nextMatch?.routeId) {
+        router.routesById[current.routeId]!.options.onLeave?.(current)
+      }
 
-    if (nextMatch) {
-      router.routesById[nextMatch.routeId]!.options[
-        current?.routeId === nextMatch.routeId ? 'onStay' : 'onEnter'
-      ]?.(nextMatch)
+      if (nextMatch) {
+        router.routesById[nextMatch.routeId]!.options[
+          current?.routeId === nextMatch.routeId ? 'onStay' : 'onEnter'
+        ]?.(nextMatch)
+      }
+    } catch (err) {
+      Promise.reject(err)
     }
   }
 }
@@ -93,6 +100,7 @@ export const loadClientRouter = async (
 
   const isCurrentLoad = () => router.latestLoadPromise === loadPromise
   let startedBackgroundLoad = false
+  let loadContext: InnerLoadContext | undefined
 
   try {
     const backgroundLoad = router._backgroundLoad
@@ -163,7 +171,7 @@ export const loadClientRouter = async (
         }
       })
     }
-    const loadContext: InnerLoadContext = {
+    loadContext = {
       router,
       forceStaleReload: sameHref,
       matches: pendingMatches,
@@ -239,6 +247,13 @@ export const loadClientRouter = async (
         replace: true,
         ignoreBlocker: true,
       })
+    } else if (err !== loadContext && !isRedirect(err)) {
+      // Anything else is a genuine failure (asset projection, view
+      // transition, user onLeave/onStay/onEnter hooks). The public load
+      // promise still resolves — navigation state was already committed or
+      // superseded — but the error must stay observable to the app's
+      // unhandled-rejection reporting instead of vanishing.
+      Promise.reject(err)
     }
   }
 
