@@ -116,6 +116,19 @@ const joinPreloadedActiveMatch = async (
     throw inner
   }
 
+  // The owner can also be a render-ready pending publication: onReady() moved
+  // it into the active store (clearing the pending pool) while the foreground
+  // final commit is still in flight, so the store snapshot is stuck at
+  // status 'pending' even though its local work settled. Wait for the
+  // foreground load to commit before judging the owner's outcome.
+  if (match.status === 'pending' && inner.router.latestLoadPromise) {
+    await inner.router.latestLoadPromise
+    match = inner.router.getMatch(matchId, false)
+    if (!match || match.abortController.signal.aborted) {
+      throw inner
+    }
+  }
+
   // From here the preload lane uses the owner match read-only. It must not clone
   // or cache a borrowed active match as if the preload generated it itself.
   inner.matches[index] = match

@@ -249,6 +249,20 @@ export const loadClientRouter = async (
   }
 
   loadPromise.resolve()
+
+  // A superseded or redirected load must not settle its public await before
+  // the navigation chain does: callers of router.load()/invalidate() rely on
+  // observing post-settlement state, and the preload borrow protocol uses the
+  // foreground load promise as its "committed or gone" signal.
+  let latest = router.latestLoadPromise
+  while (latest && latest !== loadPromise) {
+    await latest
+    if (router.latestLoadPromise === latest) {
+      break
+    }
+    latest = router.latestLoadPromise
+  }
+
   if (startedBackgroundLoad) {
     // Background stale reloads run after the foreground lane is done. If that
     // background work is sync, its commit is queued in the next microtask; yield
