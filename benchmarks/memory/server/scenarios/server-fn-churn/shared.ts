@@ -38,7 +38,9 @@ type SerovalNode =
 const benchmarkSeed = 0xdecafbad
 const payloadSeed = 0x51f0cafe
 const fixtureCount = 16
-const serverFnChurnIterations = 40
+// Sized to sit just above the 2s measured-run floor on CI (per-iteration
+// cost with the pinned collection is ~0.08-0.11s across frameworks).
+const serverFnChurnIterations = 30
 const origin = 'http://localhost'
 const tssContentTypeFramed = 'application/x-tss-framed'
 const acceptHeader = `${tssContentTypeFramed}, application/x-ndjson, application/json`

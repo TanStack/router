@@ -9,7 +9,9 @@ export type { StartRequestHandler }
 
 type Framework = 'react' | 'solid' | 'vue'
 
-const errorPathsIterations = 40
+// Sized to sit just above the 2s measured-run floor on CI (per-iteration
+// cost with the pinned collection is ~0.13-0.19s across frameworks).
+const errorPathsIterations = 18
 const redirectSeed = 0xdecafbad
 const notFoundSeed = 0xdecafb0d
 const errorSeed = 0xdecafbed
