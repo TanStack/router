@@ -274,17 +274,6 @@ export const MatchInner = (): any => {
           route().options.pendingComponent ??
           router.options.defaultPendingComponent
 
-        const pendingReplacement = () => {
-          return router.stores.pendingMatches
-            .get()
-            .find(
-              (pending) =>
-                pending.routeId === currentMatchState().routeId &&
-                pending.status === 'pending' &&
-                pending.id !== currentMatch().id,
-            )
-        }
-
         const armPending = (pendingMatch: any) => {
           const FallbackComponent = PendingComponent()
           const pendingMinMs =
@@ -330,14 +319,6 @@ export const MatchInner = (): any => {
 
         return (
           <Solid.Switch>
-            <Solid.Match when={pendingReplacement()}>
-              {(pendingMatch) => {
-                const FallbackComponent = armPending(pendingMatch())
-                return FallbackComponent ? (
-                  <Dynamic component={FallbackComponent} />
-                ) : null
-              }}
-            </Solid.Match>
             <Solid.Match when={currentMatch().status === 'pending'}>
               {(_) => {
                 const loadPromise = currentMatch()._.loadPromise
