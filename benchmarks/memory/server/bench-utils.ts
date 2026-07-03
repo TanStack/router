@@ -95,6 +95,8 @@ export async function runSequentialRequestLoop(
       }
     })
 
+  const gcPinState = createGcPinState()
+
   for (let index = 0; index < iterations; index++) {
     const request = buildRequest(random, index)
     const response = await handler.fetch(request)
@@ -104,7 +106,7 @@ export async function runSequentialRequestLoop(
     await drainResponse(response)
 
     if (pinGcBetweenIterations) {
-      await settleAndPinGc()
+      await settleAndPinGc(gcPinState)
     }
   }
 }
@@ -113,13 +115,27 @@ export async function runSequentialRequestLoop(
 // need more than the two turns the original barrier allowed for), and a
 // too-short settle window leaks a whole payload of garbage past the
 // collection point, flipping the measured peak bimodally between runs.
-// Every step here is a fixed count on purpose: an adaptive exit (collect
+// The settle length is a fixed count on purpose: an adaptive exit (collect
 // until the post-GC heap size stops moving) makes the collection points
 // land at data-dependent turns, which re-introduces exactly the run-to-run
 // variance this barrier exists to remove — heap-size readings never fully
 // stabilize under the instrumented CI environment, so the exit point (and
 // with it every subsequent GC point) shifted between identical runs.
 const settleTurnsBeforeGc = 16
+const maxSettleTurns = 64
+// Below every scenario's payload size, above normal inter-iteration jitter.
+const settledHeapSlackBytes = 256 * 1024
+
+// Tracks the smallest post-collection heap size seen in a workload run:
+// the inter-iteration floor the heap must return to before the next
+// iteration may start.
+export interface GcPinState {
+  floorHeapUsed: number
+}
+
+export function createGcPinState(): GcPinState {
+  return { floorHeapUsed: Infinity }
+}
 
 // Settle trailing renderer/stream teardown with a fixed number of 0ms timer
 // hops (one full event-loop turn each, microtasks flushing between hops),
@@ -127,16 +143,46 @@ const settleTurnsBeforeGc = 16
 // up whatever the first collection's finalizers released. gc() is present
 // under CodSpeed (--expose-gc); in plain smoke runs there is nothing to
 // pin, so only the settle hops run.
-export async function settleAndPinGc() {
+//
+// The collection is then verified against the inter-iteration heap floor:
+// on some runners the response teardown holds the payload past the fixed
+// settle window (released only by a later internal timer), and that one
+// still-reachable payload survives the collection and bleeds into the next
+// iteration's measured peak. When the post-collection heap has not returned
+// to the floor, keep hopping and collecting — bounded — until the payload
+// is actually released, so the barrier self-heals in exactly the case where
+// the fixed-count barrier fails. A workload that genuinely accumulates
+// reachable memory raises the floor as it goes (the floor is the minimum
+// seen), so accumulation still measures; it only pays the turn cap.
+export async function settleAndPinGc(state: GcPinState) {
   for (let turn = 0; turn < settleTurnsBeforeGc; turn++) {
     await new Promise<void>((resolve) => setTimeout(resolve, 0))
   }
 
   const gc = (globalThis as { gc?: () => void }).gc
 
-  if (gc) {
-    gc()
+  if (!gc) {
+    return
+  }
+
+  gc()
+  await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  gc()
+
+  let heapUsed = process.memoryUsage().heapUsed
+
+  for (
+    let turn = settleTurnsBeforeGc;
+    turn < maxSettleTurns &&
+    heapUsed > state.floorHeapUsed + settledHeapSlackBytes;
+    turn++
+  ) {
     await new Promise<void>((resolve) => setTimeout(resolve, 0))
     gc()
+    heapUsed = process.memoryUsage().heapUsed
+  }
+
+  if (heapUsed < state.floorHeapUsed) {
+    state.floorHeapUsed = heapUsed
   }
 }
