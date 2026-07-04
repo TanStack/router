@@ -11,6 +11,7 @@ import {
   getNotFoundBoundaryPatch,
   markError,
   normalizeRouteFailure,
+  serialFailurePrefixCap,
   settleMatchLoad,
 } from './load-matches'
 import type { NotFoundError } from './not-found'
@@ -73,13 +74,11 @@ const joinPreloadedActiveMatch = async (
   const matchId = inner.matches[index]!.id
 
   // A preload can reuse an active/pending match by ID, but it does not own that
-  // match. If the foreground owner is already gone or aborted, this speculative
-  // preload pass has nothing safe to borrow.
+  // match. If the foreground owner is already gone, this speculative preload
+  // pass has nothing safe to borrow. (An aborted owner is caught by the
+  // re-read and check below.)
   let match = inner.router.getMatch(matchId, false)
   if (!match) {
-    throw inner
-  }
-  if (match.abortController.signal.aborted) {
     throw inner
   }
 
@@ -147,47 +146,45 @@ const finalizeRouteFailure = async (
   index: number,
   error: unknown,
   abortController: AbortController,
-  componentFailure?: boolean,
 ): Promise<void> => {
   let errorIndex = index
+  let componentFailure = false
 
   let currentMatch = requireCurrentMatch(inner, index, abortController)
 
-  if (!componentFailure) {
-    try {
-      if (isNotFound(error)) {
-        errorIndex = getNotFoundBoundaryIndex(inner, error)
-        const boundaryMatch = inner.matches[errorIndex]!
+  try {
+    if (isNotFound(error)) {
+      errorIndex = getNotFoundBoundaryIndex(inner, error)
+      const boundaryMatch = inner.matches[errorIndex]!
 
-        if (inner.preload?.includes(boundaryMatch.id)) {
-          // The selected boundary is owned by an active/pending route match.
-          // A speculative preload must not load its boundary component or mutate it.
-          throw inner
-        }
-        await loadRouteChunk(
-          inner.router.routesById[boundaryMatch.routeId],
-          'notFoundComponent',
-        )
-      } else if (!isRedirect(error)) {
-        await loadRouteChunk(
-          inner.router.routesById[currentMatch.routeId],
-          'errorComponent',
-        )
-      }
-    } catch (chunkError) {
-      if (chunkError === inner) {
-        // Preserve the stale-pass sentinel from the borrowed-boundary branch;
-        // it is not a component preload failure.
+      if (inner.preload?.includes(boundaryMatch.id)) {
+        // The selected boundary is owned by an active/pending route match.
+        // A speculative preload must not load its boundary component or mutate it.
         throw inner
       }
-      // This error already came from component/chunk loading, so commit it
-      // directly instead of trying to load another boundary component.
-      error = chunkError
-      componentFailure = true
+      await loadRouteChunk(
+        inner.router.routesById[boundaryMatch.routeId],
+        'notFoundComponent',
+      )
+    } else if (!isRedirect(error)) {
+      await loadRouteChunk(
+        inner.router.routesById[currentMatch.routeId],
+        'errorComponent',
+      )
     }
-
-    currentMatch = requireCurrentMatch(inner, index, abortController)
+  } catch (chunkError) {
+    if (chunkError === inner) {
+      // Preserve the stale-pass sentinel from the borrowed-boundary branch;
+      // it is not a component preload failure.
+      throw inner
+    }
+    // This error already came from component/chunk loading, so commit it
+    // directly instead of trying to load another boundary component.
+    error = chunkError
+    componentFailure = true
   }
+
+  currentMatch = requireCurrentMatch(inner, index, abortController)
 
   const pendingWait = waitPendingMin(currentMatch)
   if (pendingWait) {
@@ -221,13 +218,6 @@ const finalizeRouteFailure = async (
     }
   }
 
-  const matchToCommit = inner.matches[errorIndex]
-  if (!matchToCommit) {
-    // The lane was shortened by a newer outcome before this finalizer could
-    // commit. Cancel this stale finalizer.
-    throw inner
-  }
-
   inner.requiresCommit = true
   markError(inner, errorIndex)
 
@@ -238,7 +228,7 @@ const finalizeRouteFailure = async (
     context: getMatchContext(
       inner,
       errorIndex,
-      matchToCommit.__beforeLoadContext,
+      inner.matches[errorIndex]!.__beforeLoadContext,
     ),
     updatedAt: Date.now(),
   })
@@ -269,7 +259,7 @@ const setupPendingTimeout = (
   if (
     match.status === 'pending' &&
     onReady &&
-    !inner.pendingPublished &&
+    !inner.rendered &&
     (routeOptions.pendingComponent ??
       (inner.router.options as any).defaultPendingComponent)
   ) {
@@ -284,14 +274,13 @@ const setupPendingTimeout = (
       const publish = () => {
         const current = inner.matches[index]
         if (
-          !inner.pendingPublished &&
+          !inner.rendered &&
           current?._.loadPromise === promise &&
           current.status === 'pending'
         ) {
           // Publish the current render-ready lane so pending UI can render while
           // beforeLoad/loader work continues.
-          inner.pendingPublished = true
-          inner.rendered ||= onReady(inner.matches.slice()) ?? true
+          inner.rendered = onReady(inner.matches.slice()) ?? true
         }
       }
 
@@ -546,9 +535,13 @@ const loadClientRouteMatch = async (
       return finishMatchLoad(inner, index)
     }
 
+    // A serial failure is part of the foreground render lane. Retained
+    // ancestors must honor shouldReload/staleTime in that lane instead of
+    // being deferred into background work that may be discarded by the boundary.
     if (
       loader &&
       inner.background &&
+      !inner.serialFailure &&
       (loaderOption?.staleReloadMode ??
         router.options.defaultStaleReloadMode) !== 'blocking'
     ) {
@@ -836,13 +829,11 @@ export function startBackgroundLoad(
     }
 
     if (redirectError) {
-      if (isCurrent()) {
-        void router.navigate({
-          ...(redirectError as any).options,
-          replace: true,
-          ignoreBlocker: true,
-        })
-      }
+      void router.navigate({
+        ...(redirectError as any).options,
+        replace: true,
+        ignoreBlocker: true,
+      })
       return
     }
 
@@ -850,7 +841,6 @@ export function startBackgroundLoad(
       // eslint-disable-next-line prefer-const
       let [index, error] = failure
       try {
-        requireCurrent()
         await loadRouteChunk(
           router.routesById[matches[index]!.routeId],
           'errorComponent',
@@ -879,7 +869,6 @@ export function startBackgroundLoad(
       const index = getNotFoundBoundaryIndex(inner, notFoundError)
       const match = matches[index]!
       try {
-        requireCurrent()
         await loadRouteChunk(
           router.routesById[match.routeId],
           'notFoundComponent',
@@ -941,11 +930,12 @@ export async function loadClientMatches(
   const matchPromises: Array<Promise<AnyRouteMatch>> = []
 
   let firstNotFound: NotFoundError | undefined
-  let failure: SerialFailure | undefined
 
   for (
     let i = 0;
-    i < inner.matches.length && !failure && inner.badIndex === undefined;
+    i < inner.matches.length &&
+    !inner.serialFailure &&
+    inner.badIndex === undefined;
     i++
   ) {
     try {
@@ -966,7 +956,7 @@ export async function loadClientMatches(
             isNotFound(dehydratedMatch.error)) ||
           dehydratedMatch.status === 'error'
         ) {
-          failure = [i, dehydratedMatch.error]
+          inner.serialFailure = [i, dehydratedMatch.error]
           break
         }
         matchPromises[i] = loadClientRouteMatch(inner, matchPromises, i)
@@ -975,9 +965,11 @@ export async function loadClientMatches(
 
       const beforeLoadResult = handleClientBeforeLoad(inner, i)
       if (isPromise(beforeLoadResult)) {
-        failure = (await beforeLoadResult) as SerialFailure | undefined
+        inner.serialFailure = (await beforeLoadResult) as
+          | SerialFailure
+          | undefined
       } else {
-        failure = beforeLoadResult as SerialFailure | undefined
+        inner.serialFailure = beforeLoadResult as SerialFailure | undefined
       }
     } catch (err) {
       if (err === inner) {
@@ -994,32 +986,19 @@ export async function loadClientMatches(
   }
 
   let maxIndexExclusive = inner.badIndex ?? inner.matches.length
-  if (failure) {
-    const [index, error] = failure
+  if (inner.serialFailure) {
     maxIndexExclusive = Math.min(
       maxIndexExclusive,
-      isRedirect(error)
-        ? 0
-        : isNotFound(error)
-          ? Math.min(getNotFoundBoundaryIndex(inner, error) + 1, index)
-          : index,
+      serialFailurePrefixCap(inner, inner.serialFailure),
     )
   }
 
-  const background = inner.background
-  if (failure) {
-    // A serial failure is part of the foreground render lane. Retained
-    // ancestors must honor shouldReload/staleTime in that lane instead of
-    // being deferred into background work that may be discarded by the boundary.
-    inner.background = undefined
-  }
   for (let i = 0; i < maxIndexExclusive; i++) {
     matchPromises[i] ||= loadClientRouteMatch(inner, matchPromises, i)
   }
-  inner.background = background
 
-  if (failure) {
-    const [index, error] = failure
+  if (inner.serialFailure) {
+    const [index, error] = inner.serialFailure
     matchPromises.push(
       finalizeRouteFailure(
         inner,

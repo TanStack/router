@@ -175,7 +175,6 @@ export const loadClientRouter = async (
       })
     }
 
-    let loadedMatches: Array<AnyRouteMatch> = pendingMatches
     const background = opts?.sync ? undefined : ([] as Array<number>)
     const commitReady = (matches: Array<AnyRouteMatch>) => {
       if (!isCurrentLoad()) {
@@ -218,9 +217,9 @@ export const loadClientRouter = async (
       onReady: commitReady,
     }
     try {
-      loadedMatches = (await loadClientMatches(
-        loadContext,
-      )) as Array<AnyRouteMatch>
+      // loadClientMatches mutates the pendingMatches lane in place; its
+      // return value is that same array.
+      await loadClientMatches(loadContext)
     } catch (err) {
       if (err === loadContext) {
         // This foreground lane was superseded before reaching a route outcome.
@@ -234,7 +233,7 @@ export const loadClientRouter = async (
     }
 
     const backgroundIndices = background?.filter((index) => {
-      const match = loadedMatches[index]
+      const match = pendingMatches[index]
       return match && match.status === 'success' && !match.globalNotFound
     })
     const backgroundLength = backgroundIndices?.length
@@ -242,7 +241,7 @@ export const loadClientRouter = async (
       sameHref &&
       backgroundLength &&
       !loadContext.requiresCommit &&
-      !loadContext.pendingPublished
+      !loadContext.rendered
 
     if (isCurrentLoad()) {
       if (backgroundOnly) {
@@ -255,7 +254,7 @@ export const loadClientRouter = async (
       } else {
         const assets = projectClientRouteAssets(
           router,
-          loadedMatches,
+          pendingMatches,
           undefined,
           isCurrentLoad,
         )
@@ -266,7 +265,7 @@ export const loadClientRouter = async (
           await router.startViewTransition(async () => {
             if (isCurrentLoad()) {
               router.startTransition(() => {
-                commitFinalMatches(router, baseMatches, loadedMatches)
+                commitFinalMatches(router, baseMatches, pendingMatches)
               })
             }
           })
@@ -275,7 +274,7 @@ export const loadClientRouter = async (
     }
     if (isCurrentLoad() && backgroundLength) {
       startedBackgroundLoad = true
-      startBackgroundLoad(router, next, loadedMatches, backgroundIndices)
+      startBackgroundLoad(router, next, pendingMatches, backgroundIndices)
     }
   } catch (err) {
     if (isCurrentLoad() && isRedirect(err)) {
@@ -307,12 +306,17 @@ export const loadClientRouter = async (
   // the navigation chain does: callers of router.load()/invalidate() rely on
   // observing post-settlement state, and the preload borrow protocol uses the
   // foreground load promise as its "committed or gone" signal.
+  //
+  // Termination invariant: latestLoadPromise is only ever installed as a fresh
+  // promise by a newer pass (top of this function) or cleared to undefined by
+  // the owning pass in the same sync block that resolves it (above). So after
+  // `await latest`, latestLoadPromise is either undefined or a strictly newer
+  // pass's promise — never `latest` (or this pass's loadPromise) again. Any
+  // future writer that resolves latestLoadPromise without replacing/clearing
+  // it would turn this loop into an infinite microtask spin.
   let latest = router.latestLoadPromise
-  while (latest && latest !== loadPromise) {
+  while (latest) {
     await latest
-    if (router.latestLoadPromise === latest) {
-      break
-    }
     latest = router.latestLoadPromise
   }
 

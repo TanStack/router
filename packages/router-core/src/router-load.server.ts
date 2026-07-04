@@ -79,7 +79,6 @@ export const loadServerRouter = async (
     router.redirect = resolvedRedirect
   } finally {
     const commitLocationPromise = router.commitLocationPromise
-    router.latestLoadPromise = undefined
     router.commitLocationPromise = undefined
     commitLocationPromise?.resolve()
   }

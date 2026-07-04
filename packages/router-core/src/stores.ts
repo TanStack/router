@@ -111,7 +111,7 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
 }
 
 export function createRouterStores<TRouteTree extends AnyRoute>(
-  initialState: RouterState<TRouteTree> & { loadedAt: number },
+  initialLocation: ParsedLocation<FullSearchSchema<TRouteTree>>,
   config: StoreConfig,
 ): RouterStores<TRouteTree> {
   const { createMutableStore, createReadonlyStore, batch, init } = config
@@ -122,11 +122,13 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   const cachedMatchStores = new Map<string, MatchStore>()
 
   // atoms
-  const status = createMutableStore(initialState.status)
-  const loadedAt = createMutableStore(initialState.loadedAt)
-  const isLoading = createMutableStore(initialState.isLoading)
-  const location = createMutableStore(initialState.location)
-  const resolvedLocation = createMutableStore(initialState.resolvedLocation)
+  const status = createMutableStore<RouterState<TRouteTree>['status']>('idle')
+  const loadedAt = createMutableStore(0)
+  const isLoading = createMutableStore(false)
+  const location = createMutableStore(initialLocation)
+  const resolvedLocation = createMutableStore<
+    ParsedLocation<FullSearchSchema<TRouteTree>> | undefined
+  >(undefined)
   const matchesId = createMutableStore<Array<string>>([])
   const pendingIds = createMutableStore<Array<string>>([])
   const cachedIds = createMutableStore<Array<string>>([])
@@ -236,8 +238,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     setCached,
   } as RouterStores<TRouteTree>
 
-  // initialize the active matches
-  setMatches(initialState.matches as Array<AnyRouteMatch>)
   init?.(store as unknown as RouterStores<AnyRoute>)
 
   // setters to update non-reactive utilities in sync with the reactive stores

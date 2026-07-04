@@ -14,7 +14,7 @@ export const preloadClientRoute = async (
 ): Promise<Array<AnyRouteMatch> | undefined> => {
   const next = opts._builtLocation ?? router.buildLocation(opts)
 
-  let matches = router.matchRoutes(next, {
+  const matches = router.matchRoutes(next, {
     throwOnError: true,
     preload: true,
   })
@@ -72,7 +72,8 @@ export const preloadClientRoute = async (
   }
 
   try {
-    matches = await loadClientMatches(loadContext)
+    // loadClientMatches mutates the lane in place and returns it.
+    await loadClientMatches(loadContext)
 
     await cacheSuccessfulPrefix()
 

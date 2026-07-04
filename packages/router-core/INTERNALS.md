@@ -416,10 +416,10 @@ flowchart TD
 - Converts thrown/returned redirects and notFounds into a serial failure record.
 
 This is why a child loader never sees a half-finished parent beforeLoad context.
-When the serial phase records a beforeLoad failure, retained ancestor prefix
-loaders run with `inner.background` temporarily disabled. Those reloads belong
-to the foreground failure lane and must not be deferred into a background batch
-that may be discarded by the boundary trim.
+When the serial phase records a beforeLoad failure (`inner.serialFailure`),
+retained ancestor prefix loaders skip background selection. Those reloads
+belong to the foreground failure lane and must not be deferred into a
+background batch that may be discarded by the boundary trim.
 
 ### loader and chunk work on the client
 
@@ -1048,7 +1048,7 @@ flowchart TD
   Chunks --> Rebuild["restore ssr, rebuild route context and head/scripts"]
   Rebuild --> Full{"no ssr:false and not SPA mode?"}
   Full -->|"yes"| Done["settle, clear dehydrated, set resolvedLocation"]
-  Full -->|"no"| Load["Promise.resolve().then(router.load) for SPA/ssr:false matches"]
+  Full -->|"no"| Load["router.load() for SPA/ssr:false matches"]
 ```
 
 Hydration display pending uses `_displayPending`, not the normal client pending

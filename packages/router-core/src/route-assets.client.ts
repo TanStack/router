@@ -33,8 +33,6 @@ export function projectClientRouteAssets(
   isCurrent?: () => boolean,
   startIndex = 0,
 ): boolean | Promise<boolean> {
-  let ok = true
-
   for (let i = startIndex; i < matches.length; i++) {
     if (isCurrent && !isCurrent()) {
       return false
@@ -97,7 +95,7 @@ export function projectClientRouteAssets(
               isCurrent,
               i + 1,
             )
-            return isPromise(rest) ? rest.then((r) => r && ok) : rest && ok
+            return rest
           },
           (error) => {
             if (isCurrent && !isCurrent()) {
@@ -129,12 +127,22 @@ export function projectClientRouteAssets(
         return false
       }
 
-      ok = false
       if (process.env.NODE_ENV !== 'production') {
         console.error(`Error executing head for route ${match.routeId}:`, error)
       }
+
+      // Keep projecting the rest of the lane, but force the overall result
+      // to false — same shape as the async rejection handler above.
+      const rest = projectClientRouteAssets(
+        router,
+        matches,
+        preload,
+        isCurrent,
+        i + 1,
+      )
+      return isPromise(rest) ? rest.then(() => false) : false
     }
   }
 
-  return ok
+  return true
 }

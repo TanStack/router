@@ -272,34 +272,6 @@ export const MatchInner = (): any => {
           route().options.pendingComponent ??
           router.options.defaultPendingComponent
 
-        const armPending = (pendingMatch: any) => {
-          const FallbackComponent = PendingComponent()
-          const pendingMinMs =
-            route().options.pendingMinMs ?? router.options.defaultPendingMinMs
-          const loadPromise = pendingMatch._.loadPromise
-          const promise =
-            loadPromise?.status === 'pending'
-              ? loadPromise
-              : router.latestLoadPromise
-
-          if (process.env.NODE_ENV !== 'production' && !promise) {
-            throw new Error(
-              `Invariant failed: pending match "${pendingMatch.id}" has no loadPromise`,
-            )
-          }
-
-          if (
-            !(isServer ?? router.isServer) &&
-            FallbackComponent &&
-            pendingMinMs &&
-            loadPromise?.status === 'pending'
-          ) {
-            loadPromise.pendingUntil ??= Date.now() + pendingMinMs
-          }
-
-          return FallbackComponent
-        }
-
         const out = () => {
           const Comp =
             route().options.component ?? router.options.defaultComponent
@@ -343,15 +315,20 @@ export const MatchInner = (): any => {
                   )
                 }
 
-                const FallbackComponent =
+                const FallbackComponent = PendingComponent()
+                const pendingMinMs =
+                  route().options.pendingMinMs ??
+                  router.options.defaultPendingMinMs
+                if (
+                  !(isServer ?? router.isServer) &&
+                  FallbackComponent &&
+                  pendingMinMs &&
                   loadPromise?.status === 'pending'
-                    ? armPending(currentMatch())
-                    : PendingComponent()
+                ) {
+                  loadPromise.pendingUntil ??= Date.now() + pendingMinMs
+                }
 
-                const [loaderResult] = Solid.createResource(async () => {
-                  await Promise.resolve()
-                  return promise
-                })
+                const [loaderResult] = Solid.createResource(() => promise)
 
                 return (
                   <>

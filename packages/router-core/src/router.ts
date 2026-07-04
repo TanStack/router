@@ -37,7 +37,7 @@ import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
 import { getLocationChangeInfo } from './location-change'
-import { settleMatchLoad } from './load-matches'
+import { getMatchContext, settleMatchLoad } from './load-matches'
 import { preloadClientRoute } from './router-preload.client'
 import { loadClientRouter } from './router-load.client'
 import { loadServerRouter } from './router-load.server'
@@ -1184,17 +1184,7 @@ export class RouterCore<
     if (!this.stores && this.latestLocation) {
       const config = this.getStoreConfig(this)
       this.batch = config.batch
-      this.stores = createRouterStores(
-        {
-          loadedAt: 0,
-          isLoading: false,
-          status: 'idle',
-          resolvedLocation: undefined,
-          location: this.latestLocation,
-          matches: [],
-        },
-        config,
-      )
+      this.stores = createRouterStores(this.latestLocation, config)
 
       if (!(isServer ?? this.isServer)) {
         setupScrollRestoration(this)
@@ -1612,13 +1602,10 @@ export class RouterCore<
           // dehydrated match can legitimately hold a pending loadPromise
           // (hydration keeps readiness across rematching), and dropping the
           // marker would make the follow-up load re-run its server work.
-          _:
-            loadPromise || existingMatch._.dehydrated
-              ? {
-                  loadPromise,
-                  dehydrated: existingMatch._.dehydrated,
-                }
-              : {},
+          _: {
+            loadPromise,
+            dehydrated: existingMatch._.dehydrated,
+          },
           search,
           _strictSearch: strictMatchSearch,
           searchError,
@@ -1686,15 +1673,11 @@ export class RouterCore<
         } as RouteContextOptions<any, any, any, any, any>)
       }
 
-      if (match.__routeContext || match.__beforeLoadContext) {
-        match.context = {
-          ...parentContext,
-          ...match.__routeContext,
-          ...match.__beforeLoadContext,
-        }
-      } else {
-        match.context = parentContext
-      }
+      match.context = getMatchContext(
+        { router: this, matches },
+        index,
+        match.__beforeLoadContext,
+      )
     }
 
     for (let i = 0; i < matches.length; i++) {
@@ -1801,7 +1784,7 @@ export class RouterCore<
     }
 
     for (const matchId of this.stores.pendingIds.get()) {
-      const match = this.getMatch(matchId)
+      const match = this.stores.pendingMatchStores.get(matchId)?.get()
       if (match) {
         cancelMatch(match)
       }
@@ -1818,7 +1801,7 @@ export class RouterCore<
       // handed that signal to still-streaming deferred data, and the public
       // contract only cancels it when the route unloads or its loader call
       // becomes outdated.
-      const match = this.getMatch(matchId)
+      const match = this.stores.matchStores.get(matchId)?.get()
       if (match && (match.status === 'pending' || match.isFetching !== false)) {
         cancelMatch(match)
       }
@@ -2481,37 +2464,35 @@ export class RouterCore<
       TDehydrated
     >
   > = (opts) => {
-    const invalidateLive = (d: MakeRouteMatch<TRouteTree>) => {
-      if (opts?.filter?.(d as MakeRouteMatchUnion<this>) ?? true) {
+    // `live` gates the only policy difference between the pools: cached
+    // entries stay `status: 'success'` until they are reused, expired, or
+    // explicitly cleared, so only live/pending matches may flip to pending.
+    const makeInvalidate =
+      (live: boolean) => (d: MakeRouteMatch<TRouteTree>) => {
+        if (!(opts?.filter?.(d as MakeRouteMatchUnion<this>) ?? true)) {
+          return d
+        }
         return {
           ...d,
           invalid: true,
-          ...(opts?.forcePending ||
-          d.status === 'error' ||
-          d.status === 'notFound'
+          ...(live &&
+          (opts?.forcePending ||
+            d.status === 'error' ||
+            d.status === 'notFound')
             ? ({ status: 'pending', error: undefined } as const)
             : undefined),
         }
       }
-      return d
-    }
-    const invalidateCached = (d: MakeRouteMatch<TRouteTree>) => {
-      if (opts?.filter?.(d as MakeRouteMatchUnion<this>) ?? true) {
-        return {
-          ...d,
-          invalid: true,
-        }
-      }
-      return d
-    }
 
     this.batch(() => {
-      this.stores.setMatches(this.stores.matches.get().map(invalidateLive))
+      this.stores.setMatches(
+        this.stores.matches.get().map(makeInvalidate(true)),
+      )
       this.stores.setCached(
-        this.stores.cachedMatches.get().map(invalidateCached),
+        this.stores.cachedMatches.get().map(makeInvalidate(false)),
       )
       this.stores.setPending(
-        this.stores.pendingMatches.get().map(invalidateLive),
+        this.stores.pendingMatches.get().map(makeInvalidate(true)),
       )
     })
 

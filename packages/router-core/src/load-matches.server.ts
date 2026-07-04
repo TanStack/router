@@ -11,6 +11,7 @@ import {
   getNotFoundBoundaryIndex,
   markError,
   normalizeRouteFailure,
+  serialFailurePrefixCap,
 } from './load-matches'
 import type { NotFoundError } from './not-found'
 import type {
@@ -434,15 +435,9 @@ export const loadServerMatches = async (
   }
 
   const failure = inner.serialFailure
-  let maxIndexExclusive = inner.matches.length
-  if (failure) {
-    const [index, error] = failure
-    maxIndexExclusive = isRedirect(error)
-      ? 0
-      : isNotFound(error)
-        ? Math.min(getNotFoundBoundaryIndex(inner, error) + 1, index)
-        : index
-  }
+  const maxIndexExclusive = failure
+    ? serialFailurePrefixCap(inner, failure)
+    : inner.matches.length
 
   for (let i = 0; i < maxIndexExclusive; i++) {
     matchPromises[i] ||= loadServerRouteMatch(inner, matchPromises, i)
@@ -457,26 +452,14 @@ export const loadServerMatches = async (
   let fatalError: unknown
   let hasFatalError = false
 
-  const results = await Promise.all(
-    matchPromises.map((promise) =>
-      promise.then(
-        () => ({ ok: true as const }),
-        (reason) => ({
-          ok: false as const,
-          error:
-            process.env.NODE_ENV !== 'production' && reason === undefined
-              ? new Error('Route load failed with undefined')
-              : reason,
-        }),
-      ),
-    ),
-  )
-
-  for (const result of results) {
-    if (result.ok) {
+  for (const result of await Promise.allSettled(matchPromises)) {
+    if (result.status === 'fulfilled') {
       continue
     }
-    const reason = result.error
+    const reason =
+      process.env.NODE_ENV !== 'production' && result.reason === undefined
+        ? new Error('Route load failed with undefined')
+        : result.reason
     if (isRedirect(reason)) {
       firstRedirect ||= reason
     } else if (isNotFound(reason)) {

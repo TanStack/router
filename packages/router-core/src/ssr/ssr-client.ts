@@ -110,8 +110,6 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         }
       }
 
-      route.options.ssr = match.ssr
-
       match._.dehydrated = match.ssr !== false
 
       if (match.ssr === false) {
@@ -334,8 +332,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     return
   }
 
-  void Promise.resolve()
-    .then(() => router.load())
+  void router
+    .load()
     .catch((err) => {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Error during router hydration:', err)
