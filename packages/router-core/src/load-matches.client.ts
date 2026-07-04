@@ -290,7 +290,7 @@ const setupPendingTimeout = (
       promise &&
       !promise.pendingTimeout
     ) {
-      promise.pendingTimeout = setTimeout(() => {
+      const publish = () => {
         const current = inner.matches[index]
         if (
           !inner.pendingPublished &&
@@ -302,7 +302,21 @@ const setupPendingTimeout = (
           inner.pendingPublished = true
           inner.rendered ||= onReady(inner.matches.slice()) ?? true
         }
-      }, pendingMs)
+      }
+
+      if (
+        (pendingMs as number) <= 0 &&
+        inner.router.stores.matchesId.get().length === 0
+      ) {
+        // Nothing is rendered yet (bare initial load): deferring a
+        // pendingMs-0 publication to a macrotask would let the browser
+        // paint a blank frame before the fallback (#4759). Publish now.
+        // When content IS displayed, the timer path stays preferable — a
+        // later publication captures a fresher lane snapshot.
+        publish()
+      } else {
+        promise.pendingTimeout = setTimeout(publish, pendingMs)
+      }
     }
   }
 }
