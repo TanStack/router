@@ -665,7 +665,7 @@ export interface LinkOptionsProps {
   target?: HTMLAnchorElement['target']
   /**
    * Configurable options to determine if the link should be considered active or not
-   * @default {exact:true,includeHash:true}
+   * @default {includeSearch:true}
    */
   activeOptions?: ActiveOptions
   /**
