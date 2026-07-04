@@ -83,7 +83,7 @@ function setup({ failVia }: { failVia: 'render' | 'loader' }) {
       errorRenders++
       return (
         <div data-testid="error-ui">
-          error: {(props.error as Error).message}
+          error: {(props.error).message}
         </div>
       )
     },
@@ -128,7 +128,7 @@ test.each(['render', 'loader'] as const)(
     // React must not have torn the tree down with a hooks-order violation.
     const hooksCrash = consoleError.mock.calls.find((call) =>
       call.some((arg) =>
-        String((arg as any)?.message ?? arg).includes('Rendered more hooks'),
+        String((arg)?.message ?? arg).includes('Rendered more hooks'),
       ),
     )
     expect(hooksCrash).toBeUndefined()
