@@ -140,6 +140,11 @@ const joinPreloadedActiveMatch = async (
  * ended in redirect/notFound/error is ignored and the navigation runs its
  * own loader, so preload-flavored outcomes cannot leak into navigations.
  *
+ * The donor is discovered here, at loader time, from the registered preload
+ * lanes (or, for a preload that finished in the meantime, from its cache
+ * entry) — the join point is discoverable state, not plumbing threaded
+ * through match creation.
+ *
  * Joining is gated on the donor's loader actually being IN FLIGHT
  * (isFetching === 'loader'): before that, the preload's serial phase may
  * itself be waiting on this navigation through the borrow protocol, and
@@ -152,35 +157,43 @@ const adoptInFlightPreload = async (
   passController: AbortController,
 ): Promise<{ loaderData: unknown } | undefined> => {
   const match = inner.matches[index]!
-  const lane = match._.preloadLane
-  if (!lane) {
-    return undefined
-  }
-  match._.preloadLane = undefined
 
-  const readDonor = () =>
-    lane.matches.find((m) => m.id === match.id && m.preload)
-  let donor = readDonor()
+  for (const lane of inner.router._preloadLanes!) {
+    if (lane === inner) {
+      continue
+    }
+    const readDonor = () =>
+      lane.matches.find((m) => m.id === match.id && m.preload)
+    let donor = readDonor()
+    if (!donor) {
+      continue
+    }
 
-  if (donor && donor.status !== 'success') {
-    if (
-      donor.isFetching !== 'loader' ||
-      donor._.loadPromise?.status !== 'pending'
-    ) {
+    if (donor.status !== 'success') {
+      if (
+        donor.isFetching !== 'loader' ||
+        donor._.loadPromise?.status !== 'pending'
+      ) {
+        return undefined
+      }
+      commitMatch(inner, index, { isFetching: 'loader' })
+      // The preload pass settles every owned match's loadPromise in its
+      // finally, so this wait cannot hang even for aborted preloads.
+      await donor._.loadPromise
+      requireCurrentMatch(inner, index, passController)
+      donor = readDonor()
+    }
+
+    if (donor?.status !== 'success') {
       return undefined
     }
-    commitMatch(inner, index, { isFetching: 'loader' })
-    // The preload pass settles every owned match's loadPromise in its
-    // finally, so this wait cannot hang even for aborted preloads.
-    await donor._.loadPromise
-    requireCurrentMatch(inner, index, passController)
-    donor = readDonor()
+    return { loaderData: donor.loaderData }
   }
 
-  if (donor?.status !== 'success') {
-    return undefined
-  }
-  return { loaderData: donor.loaderData }
+  // A preload that completes in the microtask window between matchRoutes
+  // and this loader phase is simply not adopted — the navigation runs its
+  // own loader, which is correct, just not deduplicated. Not worth a hedge.
+  return undefined
 }
 
 function waitPendingMin(match: AnyRouteMatch): Promise<void> | undefined {
@@ -619,11 +632,15 @@ const loadClientRouteMatch = async (
 
     // Actually run the loader and handle the result
     try {
-      // Gate on the lane handle before awaiting: adoption is async, and an
+      // Gate on live DONOR lanes before awaiting: adoption is async, and an
       // unconditional await would break the synchronous loader-start
-      // contract for the (overwhelmingly common) no-preload case.
+      // contract — both for the (overwhelmingly common) no-preload case and
+      // for a preload pass seeing only its own registered lane.
+      const preloadLanes = inner.router._preloadLanes
       const adopted =
-        loader && inner.matches[index]!._.preloadLane
+        loader &&
+        preloadLanes?.size &&
+        !(preloadLanes.size === 1 && preloadLanes.has(inner))
           ? await adoptInFlightPreload(inner, index, passController)
           : undefined
 
