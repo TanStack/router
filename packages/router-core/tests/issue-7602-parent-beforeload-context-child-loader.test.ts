@@ -85,12 +85,8 @@ describe('parent beforeLoad context propagation to child (issue #7602)', () => {
   })
 
   test('reused child match is republished with fresh parent beforeLoad context while its reload is still running', async () => {
-    const {
-      router,
-      loaderContextNumbers,
-      secondLoaderGate,
-      getChildMatch,
-    } = setup()
+    const { router, loaderContextNumbers, secondLoaderGate, getChildMatch } =
+      setup()
 
     await router.load()
     expect(loaderContextNumbers).toEqual([42])

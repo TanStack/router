@@ -93,9 +93,7 @@ describe('issue #6221: head does not run before loader data is ready', () => {
       path: '/quote',
       loader: quoteLoader,
       head: ({ loaderData }) => ({
-        meta: [
-          { title: `Quote by ${(loaderData as any)?.author ?? '...'}` },
-        ],
+        meta: [{ title: `Quote by ${(loaderData as any)?.author ?? '...'}` }],
       }),
     })
 

@@ -67,7 +67,7 @@ test('hover preloads of child routes do not re-run the active stale layout loade
 
   // The active layout match is still the rendered success match.
   const active = router.stores.matches.get()
-  expect(
-    active.find((match) => match.routeId === postsRoute.id)?.status,
-  ).toBe('success')
+  expect(active.find((match) => match.routeId === postsRoute.id)?.status).toBe(
+    'success',
+  )
 })

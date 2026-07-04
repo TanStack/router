@@ -87,9 +87,7 @@ test('clearCache during an in-flight preload does not crash and the preload stil
     const preloaded = await preloadPromise
 
     // The preload completed and cached its owned successful match.
-    expect(preloaded?.some((match) => match.routeId === fooRoute.id)).toBe(
-      true,
-    )
+    expect(preloaded?.some((match) => match.routeId === fooRoute.id)).toBe(true)
     expect(
       router.stores.cachedMatches
         .get()
@@ -129,9 +127,7 @@ test('invalidate during an in-flight preload does not crash and both loads settl
     expect(barLoader).toHaveBeenCalledTimes(2)
 
     // The preload still settled cleanly and cached its result.
-    expect(preloaded?.some((match) => match.routeId === fooRoute.id)).toBe(
-      true,
-    )
+    expect(preloaded?.some((match) => match.routeId === fooRoute.id)).toBe(true)
     expect(
       router.stores.cachedMatches
         .get()

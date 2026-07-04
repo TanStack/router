@@ -77,14 +77,14 @@ function setup({ failVia }: { failVia: 'render' | 'loader' }) {
 
   let errorRenders = 0
   const router = createRouter({
-    routeTree: rootRoute.addChildren([
-      testRoute.addChildren([testIndexRoute]),
-    ]),
+    routeTree: rootRoute.addChildren([testRoute.addChildren([testIndexRoute])]),
     history: createMemoryHistory({ initialEntries: ['/test'] }),
     defaultErrorComponent: (props: ErrorComponentProps) => {
       errorRenders++
       return (
-        <div data-testid="error-ui">error: {(props.error as Error).message}</div>
+        <div data-testid="error-ui">
+          error: {(props.error as Error).message}
+        </div>
       )
     },
   })
@@ -98,9 +98,7 @@ test.each(['render', 'loader'] as const)(
     // Error boundaries log caught errors through console.error, and so does a
     // hooks-order crash. Capture instead of polluting the test output, then
     // inspect the captured calls for the crash signature.
-    const consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => {})
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const { router, childLoader, getErrorRenders } = setup({ failVia })
     render(<RouterProvider router={router} />)

@@ -32,9 +32,7 @@ describe('issue #7635: dehydrated parent beforeLoad error caps child head', () =
   it('does not run child loader/head after hydrating a server error boundary', async () => {
     const serverError = new Error('App beforeLoad failed')
     const appHead = vi.fn(({ match }: any) => ({
-      meta: [
-        { title: match.error ? 'App error title' : 'App success title' },
-      ],
+      meta: [{ title: match.error ? 'App error title' : 'App success title' }],
     }))
     const childHead = vi.fn(() => ({
       meta: [{ title: 'Child success title' }],

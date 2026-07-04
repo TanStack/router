@@ -17,7 +17,7 @@ import { createTestRouter } from './routerTestUtils'
  * context that was missing the ancestors' beforeLoad contributions.
  */
 
-describe("parent context when child validateSearch fails (issue #4696)", () => {
+describe('parent context when child validateSearch fails (issue #4696)', () => {
   const setup = () => {
     const rootLoaderContexts: Array<Record<string, unknown>> = []
 

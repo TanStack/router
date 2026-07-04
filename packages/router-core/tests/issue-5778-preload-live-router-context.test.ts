@@ -61,23 +61,26 @@ function setup() {
 // __beforeLoadContext layers — a change to the read-only borrow protocol
 // that belongs in a dedicated follow-up, not this PR. The documented
 // workaround (router.invalidate() after context changes) is pinned below.
-test.fails('preload sees updated router context without an explicit invalidate', async () => {
-  const { router, seen, updateContext } = setup()
+test.fails(
+  'preload sees updated router context without an explicit invalidate',
+  async () => {
+    const { router, seen, updateContext } = setup()
 
-  await router.load()
-  updateContext('new')
+    await router.load()
+    updateContext('new')
 
-  // Hover intent: the preload borrows the active root match. Its
-  // committed context must not shadow the live router context that a
-  // navigation would see.
-  await router.preloadRoute({ to: '/foo' } as any)
-  expect(seen).toEqual(['new'])
+    // Hover intent: the preload borrows the active root match. Its
+    // committed context must not shadow the live router context that a
+    // navigation would see.
+    await router.preloadRoute({ to: '/foo' } as any)
+    expect(seen).toEqual(['new'])
 
-  // Sanity: a real navigation sees the same value.
-  await router.navigate({ to: '/foo' } as any)
-  await router.latestLoadPromise
-  expect(seen).toEqual(['new', 'new'])
-})
+    // Sanity: a real navigation sees the same value.
+    await router.navigate({ to: '/foo' } as any)
+    await router.latestLoadPromise
+    expect(seen).toEqual(['new', 'new'])
+  },
+)
 
 test('preload sees updated router context after the documented invalidate() pattern', async () => {
   const { router, seen, updateContext } = setup()
