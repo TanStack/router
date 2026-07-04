@@ -98,7 +98,12 @@ export const projectServerRouteAssets = (
           },
           (error) => {
             logAssetError(match, error)
-            matches[i] = withServerAssets(match, syncHead, syncScripts, undefined)
+            matches[i] = withServerAssets(
+              match,
+              syncHead,
+              syncScripts,
+              undefined,
+            )
             return projectServerRouteAssets(router, matches, i + 1)
           },
         )
