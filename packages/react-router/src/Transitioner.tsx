@@ -87,18 +87,31 @@ export function Transitioner() {
       // A mount load can settle before this component observes the
       // isLoading flip (loads started before mount, or loads completing
       // within this effect's batch), leaving the router status stuck at
-      // 'pending' so onResolved/onRendered never fire. Repair it the same
-      // way ssr-client does after its follow-up load.
-      batch(() => {
+      // 'pending' so the load lifecycle events and onRendered never fire.
+      // Repair is deferred one macrotask: when the flips WERE observed,
+      // React's already-scheduled render/effects run first, emit the
+      // events, and set status 'idle' via the onResolved effect — making
+      // this a no-op. Only a genuinely unobserved load still reads
+      // 'pending' here, and then this emits what the pipeline would have.
+      setTimeout(() => {
         if (
           router.stores.status.get() === 'pending' &&
           !router.stores.isLoading.get() &&
           !router.stores.hasPending.get()
         ) {
-          router.stores.status.set('idle')
-          router.stores.resolvedLocation.set(router.stores.location.get())
+          const changeInfo = getLocationChangeInfo(
+            router.stores.location.get(),
+            router.stores.resolvedLocation.get(),
+          )
+          router.emit({ type: 'onLoad', ...changeInfo })
+          router.emit({ type: 'onBeforeRouteMount', ...changeInfo })
+          router.emit({ type: 'onResolved', ...changeInfo })
+          batch(() => {
+            router.stores.status.set('idle')
+            router.stores.resolvedLocation.set(router.stores.location.get())
+          })
         }
-      })
+      }, 0)
     }
 
     tryLoad()

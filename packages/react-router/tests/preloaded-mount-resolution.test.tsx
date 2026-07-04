@@ -63,7 +63,14 @@ test('mounting after a settled load still resolves status and fires onRendered',
   })
 
   const onRendered = vi.fn()
-  const unsubscribe = router.subscribe('onRendered', onRendered)
+  const onResolved = vi.fn()
+  const onLoad = vi.fn()
+  const unsubscribers = [
+    router.subscribe('onRendered', onRendered),
+    router.subscribe('onResolved', onResolved),
+    router.subscribe('onLoad', onLoad),
+  ]
+  const unsubscribe = () => unsubscribers.forEach((fn) => fn())
   const container = document.createElement('div')
   document.body.appendChild(container)
   const reactRoot = createRoot(container)
@@ -88,6 +95,8 @@ test('mounting after a settled load still resolves status and fires onRendered',
       router.stores.location.get().href,
     )
     await until(() => onRendered.mock.calls.length > 0, 'onRendered to fire')
+    await until(() => onResolved.mock.calls.length > 0, 'onResolved to fire')
+    await until(() => onLoad.mock.calls.length > 0, 'onLoad to fire')
   } finally {
     unsubscribe()
     reactRoot.unmount()

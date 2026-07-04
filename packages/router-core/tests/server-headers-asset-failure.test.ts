@@ -61,6 +61,34 @@ describe('server asset projection route headers', () => {
     expect(targetMatch!.headers).toEqual(expectedHeaders)
   })
 
+  test('commits async head alongside async headers when scripts throws synchronously', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      head: async () => ({ meta: [{ title: 'kept title' }] }),
+      scripts: () => {
+        throw new Error('scripts failed')
+      },
+      headers: async () => expectedHeaders,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/target'] }),
+      isServer: true,
+    })
+
+    await router.load()
+
+    const targetMatch = router.state.matches.find(
+      (match) => match.routeId === targetRoute.id,
+    )
+    // The response waits on async headers regardless, so the pending head
+    // must be committed rather than abandoned.
+    expect(targetMatch!.headers).toEqual(expectedHeaders)
+    expect(targetMatch!.meta).toEqual([{ title: 'kept title' }])
+  })
+
   test('awaits async route headers when head throws synchronously', async () => {
     const rootRoute = new BaseRootRoute({})
     const targetRoute = new BaseRoute({

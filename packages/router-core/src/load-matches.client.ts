@@ -94,9 +94,13 @@ const joinPreloadedActiveMatch = async (
   // be a render-ready pending publication (onReady() moved it into the
   // active store, clearing the pending pool, while the final commit is
   // still in flight — the snapshot is stuck at status 'pending' even though
-  // its local work settled). Wait for the foreground load and re-read until
-  // the owner reaches a committed state; each iteration re-reads because a
-  // newer load can re-publish a pending lane for the same match.
+  // its local work settled). Wait for the foreground load and re-read;
+  // each iteration re-reads because a newer load can re-publish a pending
+  // lane for the same match. The wait is BOUNDED: a speculative preload
+  // must not outwait sustained navigation churn, and dropping the pass
+  // (throwing the ownership sentinel) is the correct outcome when the
+  // owner never reaches a committed state.
+  let foregroundWaits = 0
   while (true) {
     match = inner.router.getMatch(matchId, false)
     if (!match || match.abortController.signal.aborted) {
@@ -112,16 +116,10 @@ const joinPreloadedActiveMatch = async (
       break
     }
 
-    await foreground
-    if (inner.router.latestLoadPromise === foreground) {
-      // The chain settled without being replaced; a final re-read below
-      // decides the outcome instead of spinning on the same promise.
-      match = inner.router.getMatch(matchId, false)
-      if (!match || match.abortController.signal.aborted) {
-        throw inner
-      }
-      break
+    if (foregroundWaits++ >= 3) {
+      throw inner
     }
+    await foreground
   }
 
   // From here the preload lane uses the owner match read-only. It must not clone
