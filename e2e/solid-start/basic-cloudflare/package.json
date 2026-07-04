@@ -9,7 +9,7 @@
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "cf-typegen": "wrangler types",
-    "postinstall": "npm run cf-typegen",
+    "postinstall": "WRANGLER_LOG=warn npm run --silent cf-typegen",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
