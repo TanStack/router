@@ -95,6 +95,5 @@ describe('hydrated stay match data preservation', () => {
     expect(
       router.state.matches.find((m) => m.routeId === rootRoute.id)?.loaderData,
     ).toEqual({ root: 'server' })
-
   })
 })
