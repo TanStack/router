@@ -7512,7 +7512,7 @@ test('loader AbortError respects pendingMinMs before committing error', async ()
       router,
       location,
       matches,
-      onReady: async (readyMatches) => {
+      onReady: (readyMatches) => {
         const readyMatch = readyMatches.find(
           (match) => match.routeId === targetRoute.id,
         )!
@@ -8131,7 +8131,7 @@ describe('head execution', () => {
         router,
         location,
         matches,
-        onReady: async () => {
+        onReady: () => {
           oldOnReady()
         },
       })
@@ -9182,7 +9182,7 @@ describe('match loadPromise lifecycle', () => {
         router,
         location,
         matches,
-        onReady: async (readyMatches) => {
+        onReady: (readyMatches) => {
           const readyMatch = readyMatches.find(
             (match) => match.routeId === targetRoute.id,
           )!
@@ -9483,7 +9483,7 @@ describe('match loadPromise lifecycle', () => {
       router,
       location: fooLocation,
       matches: firstMatches,
-      onReady: async (readyMatches) => {
+      onReady: (readyMatches) => {
         staleOnReady(readyMatches)
       },
     })
@@ -9608,7 +9608,7 @@ describe('match loadPromise lifecycle', () => {
       router,
       location: staleLocation,
       matches: staleMatches,
-      onReady: async (readyMatches) => {
+      onReady: (readyMatches) => {
         staleOnReady(readyMatches)
       },
     })
@@ -9743,7 +9743,7 @@ describe('match loadPromise lifecycle', () => {
       router,
       location,
       matches,
-      onReady: async (readyMatches) => {
+      onReady: (readyMatches) => {
         oldOnReady(readyMatches)
       },
     })
@@ -9801,7 +9801,7 @@ describe('match loadPromise lifecycle', () => {
       router,
       location,
       matches,
-      onReady: async (readyMatches) => {
+      onReady: (readyMatches) => {
         staleOnReady(readyMatches)
       },
     })
@@ -10039,7 +10039,7 @@ describe('match loadPromise lifecycle', () => {
         router,
         location: staleLocation,
         matches: staleMatches,
-        onReady: async (readyMatches) => {
+        onReady: (readyMatches) => {
           staleOnReady(readyMatches)
         },
       })
@@ -10064,7 +10064,7 @@ describe('match loadPromise lifecycle', () => {
       router,
       location: freshLocation,
       matches: freshMatches,
-      onReady: async (readyMatches) => {
+      onReady: (readyMatches) => {
         freshOnReady(readyMatches)
       },
     })
@@ -10151,7 +10151,7 @@ describe('match loadPromise lifecycle', () => {
           router,
           location: staleLocation,
           matches: staleMatches,
-          onReady: async (readyMatches) => {
+          onReady: (readyMatches) => {
             staleOnReady(readyMatches)
           },
         })
@@ -10176,7 +10176,7 @@ describe('match loadPromise lifecycle', () => {
         router,
         location: freshLocation,
         matches: freshMatches,
-        onReady: async (readyMatches) => {
+        onReady: (readyMatches) => {
           freshOnReady(readyMatches)
         },
       })
@@ -10528,7 +10528,7 @@ describe('match loadPromise lifecycle', () => {
         router,
         location,
         matches,
-        onReady: async (readyMatches) => {
+        onReady: (readyMatches) => {
           const readyMatch = readyMatches.find(
             (match) => match.routeId === targetRoute.id,
           )!
@@ -10591,7 +10591,7 @@ describe('match loadPromise lifecycle', () => {
         router,
         location,
         matches,
-        onReady: async (readyMatches) => {
+        onReady: (readyMatches) => {
           const readyMatch = readyMatches.find(
             (match) => match.routeId === errorRoute.id,
           )!
@@ -10652,7 +10652,7 @@ describe('match loadPromise lifecycle', () => {
         router,
         location,
         matches,
-        onReady: async (readyMatches) => {
+        onReady: (readyMatches) => {
           const readyMatch = readyMatches.find(
             (match) => match.routeId === missingRoute.id,
           )!
@@ -11531,7 +11531,6 @@ describe('match loadPromise lifecycle', () => {
     vi.useFakeTimers()
     try {
       const beforeLoadGate = createControlledPromise<void>()
-      const onReadyGate = createControlledPromise<void>()
       const rootRoute = new BaseRootRoute({})
       const parentRoute = new BaseRoute({
         getParentRoute: () => rootRoute,
@@ -11564,12 +11563,10 @@ describe('match loadPromise lifecycle', () => {
         router,
         location,
         matches,
-        onReady: async (readyMatches) => {
+        onReady: (readyMatches) => {
           calls.push({
             ids: readyMatches.map((match) => match.id),
           })
-
-          await onReadyGate
         },
       })
 
@@ -11577,8 +11574,6 @@ describe('match loadPromise lifecycle', () => {
       await vi.waitFor(() => expect(calls).toHaveLength(1))
 
       beforeLoadGate.resolve()
-      await Promise.resolve()
-      onReadyGate.resolve()
       const loadedMatches = await loadPromise
 
       expect(calls).toEqual([{ ids: initialIds }])

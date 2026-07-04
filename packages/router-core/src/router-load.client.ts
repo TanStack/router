@@ -237,11 +237,14 @@ export const loadClientRouter = async (
       return match && match.status === 'success' && !match.globalNotFound
     })
     const backgroundLength = backgroundIndices?.length
+    // Pending-UI publication implies requiresCommit: publish() only fires for
+    // a lane match still at status 'pending' (setupPendingTimeout guards in
+    // load-matches.client.ts), and every pending-status match forces
+    // requiresCommit before this line (loadClientRouteMatch's pre-await write,
+    // finalizeRouteFailure, or the catch above) or aborts this evaluation
+    // entirely.
     const backgroundOnly =
-      sameHref &&
-      backgroundLength &&
-      !loadContext.requiresCommit &&
-      !loadContext.rendered
+      sameHref && backgroundLength && !loadContext.requiresCommit
 
     if (isCurrentLoad()) {
       if (backgroundOnly) {

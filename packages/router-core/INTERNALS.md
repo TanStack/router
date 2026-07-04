@@ -347,8 +347,9 @@ is the `backgroundOnly` case:
 
 - The target href equals the resolved/current href.
 - The filtered background list is non-empty.
-- No route work set `requiresCommit`.
-- No pending UI was published.
+- No route work set `requiresCommit`. (Pending-UI publication implies
+  `requiresCommit`: pending UI can only be published for a pending-status
+  match, and every pending-status match forces `requiresCommit`.)
 
 The foreground pass clears pending/isLoading and then starts the background
 reload. If a background load was started, `loadClientRouter()` yields one
@@ -375,7 +376,7 @@ flowchart TD
   BF -->|"redirect"| Prefix0["loader prefix length = 0"]
   BF -->|"notFound"| NFPrefix["prefix = min(boundary + 1, failing index)"]
   BF -->|"regular error"| ErrPrefix["prefix ends before failing route"]
-  BF -->|"none"| FullPrefix["prefix = full lane or first bad index"]
+  BF -->|"none"| FullPrefix["prefix = full lane"]
 
   Prefix0 --> Loaders["start loader/chunk promises for prefix"]
   NFPrefix --> Loaders

@@ -13,10 +13,10 @@ export type InnerLoadContext = {
   /** Target location for this private load lane. */
   location: ParsedLocation
   /**
-   * Pending lane was published for presentation (truthy = published; a Promise
-   * is the framework render promise to await). Final commit still owns effects.
+   * Pending lane was published for presentation (publication is synchronous).
+   * Final commit still owns effects.
    */
-  rendered?: true | Promise<void>
+  rendered?: true
   /** Private match lane being loaded. */
   matches: Array<AnyRouteMatch>
   /**
@@ -24,12 +24,15 @@ export type InnerLoadContext = {
    * this pass borrows read-only instead of owning in the cache.
    */
   preload?: Array<string>
-  /** Earliest route index with a committed route error. */
+  /**
+   * Earliest route index with a committed route error (loader/chunk phase
+   * only; never set during the serial beforeLoad phase).
+   */
   badIndex?: number
   /** Same-href client load should revalidate stale matches. */
   forceStaleReload?: boolean
   /** Callback that publishes pending UI when the lane becomes renderable. */
-  onReady?: (matches: Array<AnyRouteMatch>) => void | Promise<void>
+  onReady?: (matches: Array<AnyRouteMatch>) => void
   /** beforeLoad failure captured during the serial phase. */
   serialFailure?: SerialFailure
   /** Client background reload indices selected during foreground matching. */
@@ -47,7 +50,7 @@ export type LoadMatchesArg = {
   preload?: Array<string>
   forceReload?: boolean
   background?: Array<number>
-  onReady?: (matches: Array<AnyRouteMatch>) => void | Promise<void>
+  onReady?: (matches: Array<AnyRouteMatch>) => void
 }
 
 export type BackgroundLoad = {

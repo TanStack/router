@@ -9,6 +9,7 @@ import {
   getLoader,
   getMatchContext,
   getNotFoundBoundaryIndex,
+  getNotFoundBoundaryPatch,
   markError,
   normalizeRouteFailure,
   serialFailurePrefixCap,
@@ -27,15 +28,12 @@ import type { InnerLoadContext, LoadMatchesArg } from './load-matches'
 const handleServerRedirectOrNotFound = (
   inner: InnerLoadContext,
   index: number,
-  match: AnyRouteMatch,
   err: unknown,
 ): void => {
   if (isRedirect(err)) {
-    if (err.redirectHandled && !err.options.reloadDocument) {
+    if (err.redirectHandled) {
       throw err
     }
-
-    match._.error = err
 
     err.options._fromLocation = inner.location
     err.redirectHandled = true
@@ -92,12 +90,7 @@ const finalizeServerRouteFailure = async (
   }
 
   if (!componentError) {
-    handleServerRedirectOrNotFound(inner, index, inner.matches[index]!, error)
-  }
-
-  const matchToCommit = inner.matches[errorIndex]
-  if (!matchToCommit) {
-    return
+    handleServerRedirectOrNotFound(inner, index, error)
   }
 
   markError(inner, errorIndex)
@@ -107,7 +100,7 @@ const finalizeServerRouteFailure = async (
     context: getMatchContext(
       inner,
       errorIndex,
-      matchToCommit.__beforeLoadContext,
+      inner.matches[errorIndex]!.__beforeLoadContext,
     ),
     updatedAt: Date.now(),
   })
@@ -307,26 +300,7 @@ const commitServerNotFoundBoundary = (
   err: NotFoundError,
 ): number => {
   const index = getNotFoundBoundaryIndex(inner, err)
-  const match = inner.matches[index]!
-  const routeId = match.routeId
-
-  err.routeId = routeId
-  commitMatch(
-    inner,
-    index,
-    routeId === rootRouteId
-      ? {
-          status: 'success',
-          error: undefined,
-          globalNotFound: true,
-          context: getMatchContext(inner, index, match.__beforeLoadContext),
-        }
-      : {
-          status: 'notFound',
-          error: err,
-          context: getMatchContext(inner, index, match.__beforeLoadContext),
-        },
-  )
+  commitMatch(inner, index, getNotFoundBoundaryPatch(inner, index, err))
   return index
 }
 

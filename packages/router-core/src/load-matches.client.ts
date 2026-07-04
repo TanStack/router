@@ -204,8 +204,8 @@ const finalizeRouteFailure = async (
     }
 
     if (isNotFound(error)) {
-      inner.requiresCommit = true
-
+      // No requiresCommit write here: this branch always throws, and
+      // loadClientRouter's catch owns the flag for thrown outcomes.
       commitMatch(inner, index, {
         status: 'notFound',
         error,
@@ -238,9 +238,9 @@ const finalizeRouteFailure = async (
 const recordBeforeLoadFailure = (
   inner: InnerLoadContext,
   index: number,
+  abortController: AbortController,
   error: unknown,
 ): SerialFailure => {
-  const abortController = inner.matches[index]!.abortController
   requireCurrentMatch(inner, index, abortController)
   error = normalizeRouteFailure(inner, index, error)
   requireCurrentMatch(inner, index, abortController).__beforeLoadContext =
@@ -280,7 +280,8 @@ const setupPendingTimeout = (
         ) {
           // Publish the current render-ready lane so pending UI can render while
           // beforeLoad/loader work continues.
-          inner.rendered = onReady(inner.matches.slice()) ?? true
+          onReady(inner.matches.slice())
+          inner.rendered = true
         }
       }
 
@@ -330,7 +331,7 @@ const handleClientBeforeLoad = (
 
   if (serialError !== undefined) {
     pending()
-    return recordBeforeLoadFailure(inner, index, serialError)
+    return recordBeforeLoadFailure(inner, index, abortController, serialError)
   }
 
   setupPendingTimeout(inner, routeOptions, index, existingMatch)
@@ -355,7 +356,12 @@ const handleClientBeforeLoad = (
     requireCurrentMatch(inner, index, abortController)
 
     if (isRouteControl(beforeLoadContext)) {
-      return recordBeforeLoadFailure(inner, index, beforeLoadContext)
+      return recordBeforeLoadFailure(
+        inner,
+        index,
+        abortController,
+        beforeLoadContext,
+      )
     }
 
     commitBeforeLoad(beforeLoadContext)
@@ -396,10 +402,9 @@ const handleClientBeforeLoad = (
     if (isPromise(beforeLoadContext)) {
       requireCurrentMatch(inner, index, abortController)
       pending()
-      return beforeLoadContext.then(updateContext, (err) => {
-        requireCurrentMatch(inner, index, abortController)
-        return recordBeforeLoadFailure(inner, index, err)
-      })
+      return beforeLoadContext.then(updateContext, (err) =>
+        recordBeforeLoadFailure(inner, index, abortController, err),
+      )
     }
   } catch (err) {
     if (err === inner) {
@@ -407,7 +412,7 @@ const handleClientBeforeLoad = (
     }
 
     pending()
-    return recordBeforeLoadFailure(inner, index, err)
+    return recordBeforeLoadFailure(inner, index, abortController, err)
   }
 
   return updateContext(beforeLoadContext)
@@ -550,6 +555,10 @@ const loadClientRouteMatch = async (
     }
   }
 
+  // Must stay before the first await and keep the status === 'pending'
+  // disjunct: the backgroundOnly decision in loadClientRouter relies on every
+  // pending-status lane match setting requiresCommit, since pending UI can
+  // only be published for a pending match.
   if (loader || match.status === 'pending' || match.invalid) {
     inner.requiresCommit = true
   }
@@ -787,7 +796,6 @@ export function startBackgroundLoad(
           throw error
         }
 
-        requireCurrent()
         return (matches[index] = {
           ...match,
           isFetching: false,
@@ -847,10 +855,6 @@ export function startBackgroundLoad(
         )
         requireCurrent()
       } catch (componentError) {
-        if (componentError === token) {
-          cancelBatch()
-          return
-        }
         if (!isCurrentOrCancel()) {
           return
         }
@@ -880,10 +884,6 @@ export function startBackgroundLoad(
           invalid: false,
         }
       } catch (componentError) {
-        if (componentError === token) {
-          cancelBatch()
-          return
-        }
         if (!isCurrentOrCancel()) {
           return
         }
@@ -931,13 +931,7 @@ export async function loadClientMatches(
 
   let firstNotFound: NotFoundError | undefined
 
-  for (
-    let i = 0;
-    i < inner.matches.length &&
-    !inner.serialFailure &&
-    inner.badIndex === undefined;
-    i++
-  ) {
+  for (let i = 0; i < inner.matches.length && !inner.serialFailure; i++) {
     try {
       if (inner.preload?.includes(inner.matches[i]!.id)) {
         await (matchPromises[i] = joinPreloadedActiveMatch(inner, i))
@@ -985,7 +979,7 @@ export async function loadClientMatches(
     }
   }
 
-  let maxIndexExclusive = inner.badIndex ?? inner.matches.length
+  let maxIndexExclusive = inner.matches.length
   if (inner.serialFailure) {
     maxIndexExclusive = Math.min(
       maxIndexExclusive,
@@ -1064,10 +1058,6 @@ export async function loadClientMatches(
     while (inner.matches.length > errorIndex + 1) {
       settleMatchLoad(inner.matches.pop()!)
     }
-  }
-
-  if (inner.rendered && inner.rendered !== true) {
-    await inner.rendered
   }
 
   if (firstNotFound) {
