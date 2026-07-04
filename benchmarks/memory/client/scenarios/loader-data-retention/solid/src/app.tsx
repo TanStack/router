@@ -1,5 +1,5 @@
 import { RouterProvider } from '@tanstack/solid-router'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { getRouter } from './router'
 
 export { loaderPayloadRecordCount } from '../../loader-data'
