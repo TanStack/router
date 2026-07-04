@@ -1,40 +1,107 @@
 'use client'
 
 import * as React from 'react'
-import { batch, useStore } from '@tanstack/react-store'
+import { batch } from '@tanstack/react-store'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
-import { useLayoutEffect, usePrevious } from './utils'
+import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
 
 export function Transitioner() {
   const router = useRouter()
   const mountLoadForRouter = React.useRef({ router, mounted: false })
 
-  const [isTransitioning, setIsTransitioning] = React.useState(false)
-  // Track pending state changes
-  const isLoading = useStore(router.stores.isLoading, (value) => value)
-  const hasPending = useStore(router.stores.hasPending, (value) => value)
+  // `transitioning` bridges router time and React time: raised before the
+  // commit's startTransition, lowered by the tick effect below — which
+  // React runs only after committing the transition render, keeping the
+  // onResolved edge render-coupled. A counter (not a boolean) so nested
+  // transitions can never coalesce into an unobservable no-change.
+  const transitioning = React.useRef(false)
+  const [transitionTick, setTransitionTick] = React.useState(0)
 
-  const previousIsLoading = usePrevious(isLoading)
+  const previous = React.useRef({
+    isLoading: false,
+    isPagePending: false,
+    isAnyPending: false,
+  })
 
-  const isAnyPending = isLoading || isTransitioning || hasPending
-  const previousIsAnyPending = usePrevious(isAnyPending)
+  // Single emitter for the load lifecycle. Level changes arrive through
+  // synchronous store subscriptions — which, unlike render-observed edges,
+  // cannot lose a flip to React batching — plus the render-coupled
+  // transition edge. One emitter means nothing to arbitrate.
+  const emitEdges = React.useCallback(() => {
+    const isLoading = router.stores.isLoading.get()
+    const isPagePending = isLoading || router.stores.hasPending.get()
+    const isAnyPending = isPagePending || transitioning.current
+    const prev = previous.current
+    previous.current = { isLoading, isPagePending, isAnyPending }
 
-  const isPagePending = isLoading || hasPending
-  const previousIsPagePending = usePrevious(isPagePending)
+    const changeInfo = () =>
+      getLocationChangeInfo(
+        router.stores.location.get(),
+        router.stores.resolvedLocation.get(),
+      )
+
+    if (prev.isLoading && !isLoading) {
+      // The new URL has committed and the new matches are in state.matches.
+      router.emit({ type: 'onLoad', ...changeInfo() })
+    }
+    if (prev.isPagePending && !isPagePending) {
+      router.emit({ type: 'onBeforeRouteMount', ...changeInfo() })
+    }
+    if (prev.isAnyPending && !isAnyPending) {
+      router.emit({ type: 'onResolved', ...changeInfo() })
+      batch(() => {
+        router.stores.status.set('idle')
+        router.stores.resolvedLocation.set(router.stores.location.get())
+      })
+    }
+  }, [router])
 
   router.startTransition = (fn: () => void) => {
-    setIsTransitioning(true)
+    transitioning.current = true
+    // Register the rising transition level so the falling edge resolves
+    // even when the load's own levels already settled.
+    emitEdges()
     React.startTransition(() => {
       try {
         fn()
       } finally {
-        // A throwing commit must not strand isTransitioning, which would
-        // permanently block onResolved and the idle status transition.
-        setIsTransitioning(false)
+        // A throwing commit must not strand the transition level, which
+        // would permanently block onResolved and the idle transition.
+        setTransitionTick((tick) => tick + 1)
       }
     })
   }
+
+  // Render-coupled falling edge: this effect runs only after React
+  // committed the render that included the transition's tick bump.
+  useLayoutEffect(() => {
+    if (transitioning.current) {
+      transitioning.current = false
+      emitEdges()
+    }
+  }, [transitionTick, emitEdges])
+
+  // Armed before the mount load below, so every load — including one that
+  // settled before mount (the mount load below still toggles isLoading) —
+  // produces an observable edge.
+  useLayoutEffect(() => {
+    previous.current.isLoading = router.stores.isLoading.get()
+    previous.current.isPagePending =
+      previous.current.isLoading || router.stores.hasPending.get()
+    previous.current.isAnyPending =
+      previous.current.isPagePending || transitioning.current
+
+    const subscriptions = [
+      router.stores.isLoading.subscribe(emitEdges),
+      router.stores.hasPending.subscribe(emitEdges),
+    ]
+    return () => {
+      for (const subscription of subscriptions) {
+        subscription.unsubscribe()
+      }
+    }
+  }, [router, emitEdges])
 
   // Subscribe to location changes
   // and try to load the new location
@@ -77,89 +144,10 @@ export function Transitioner() {
     }
     mountLoadForRouter.current = { router, mounted: true }
 
-    const tryLoad = async () => {
-      try {
-        await router.load()
-      } catch (err) {
-        console.error(err)
-      }
-
-      // A mount load can settle before this component observes the
-      // isLoading flip (loads started before mount, or loads completing
-      // within this effect's batch), leaving the router status stuck at
-      // 'pending' so the load lifecycle events and onRendered never fire.
-      // Repair is deferred one macrotask: when the flips WERE observed,
-      // React's already-scheduled render/effects run first, emit the
-      // events, and set status 'idle' via the onResolved effect — making
-      // this a no-op. Only a genuinely unobserved load still reads
-      // 'pending' here, and then this emits what the pipeline would have.
-      setTimeout(() => {
-        if (
-          router.stores.status.get() === 'pending' &&
-          !router.stores.isLoading.get() &&
-          !router.stores.hasPending.get()
-        ) {
-          const changeInfo = getLocationChangeInfo(
-            router.stores.location.get(),
-            router.stores.resolvedLocation.get(),
-          )
-          router.emit({ type: 'onLoad', ...changeInfo })
-          router.emit({ type: 'onBeforeRouteMount', ...changeInfo })
-          router.emit({ type: 'onResolved', ...changeInfo })
-          batch(() => {
-            router.stores.status.set('idle')
-            router.stores.resolvedLocation.set(router.stores.location.get())
-          })
-        }
-      }, 0)
-    }
-
-    tryLoad()
+    router.load().catch((err) => {
+      console.error(err)
+    })
   }, [router])
-
-  useLayoutEffect(() => {
-    // The router was loading and now it's not
-    if (previousIsLoading && !isLoading) {
-      router.emit({
-        type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
-        ...getLocationChangeInfo(
-          router.stores.location.get(),
-          router.stores.resolvedLocation.get(),
-        ),
-      })
-    }
-  }, [previousIsLoading, router, isLoading])
-
-  useLayoutEffect(() => {
-    // emit onBeforeRouteMount
-    if (previousIsPagePending && !isPagePending) {
-      router.emit({
-        type: 'onBeforeRouteMount',
-        ...getLocationChangeInfo(
-          router.stores.location.get(),
-          router.stores.resolvedLocation.get(),
-        ),
-      })
-    }
-  }, [isPagePending, previousIsPagePending, router])
-
-  useLayoutEffect(() => {
-    if (previousIsAnyPending && !isAnyPending) {
-      const changeInfo = getLocationChangeInfo(
-        router.stores.location.get(),
-        router.stores.resolvedLocation.get(),
-      )
-      router.emit({
-        type: 'onResolved',
-        ...changeInfo,
-      })
-
-      batch(() => {
-        router.stores.status.set('idle')
-        router.stores.resolvedLocation.set(router.stores.location.get())
-      })
-    }
-  }, [isAnyPending, previousIsAnyPending, router])
 
   return null
 }
