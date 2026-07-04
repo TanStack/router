@@ -164,9 +164,6 @@ export const Match = (props: { matchId: string }) => {
                     }}
                   >
                     <Solid.Switch>
-                      <Solid.Match when={currentMatchState()._displayPending}>
-                        <Dynamic component={resolvePendingComponent()} />
-                      </Solid.Match>
                       <Solid.Match when={resolvedNoSsr}>
                         <ClientOnly
                           fallback={
@@ -255,6 +252,7 @@ export const MatchInner = (): any => {
         id: currentMatch.id,
         status: currentMatch.status,
         error: currentMatch.error,
+        _displayPending: currentMatch._displayPending,
         _: currentMatch._,
       },
     }
@@ -319,6 +317,18 @@ export const MatchInner = (): any => {
 
         return (
           <Solid.Switch>
+            <Solid.Match when={currentMatch()._displayPending}>
+              {(_) => {
+                // Hydration display match: its loadPromise was settled by
+                // hydrate(), so the normal pending branch must not run.
+                // MatchInner only mounts after ClientOnly hydrated, so this
+                // renders outside the hydration key sequence.
+                const FallbackComponent = PendingComponent()
+                return FallbackComponent ? (
+                  <Dynamic component={FallbackComponent} />
+                ) : null
+              }}
+            </Solid.Match>
             <Solid.Match when={currentMatch().status === 'pending'}>
               {(_) => {
                 const loadPromise = currentMatch()._.loadPromise
