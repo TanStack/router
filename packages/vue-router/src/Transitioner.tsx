@@ -106,8 +106,7 @@ export function useTransitionerSetup() {
   // settled before mount (the mount load below still toggles isLoading) —
   // produces an observable edge.
   previous.isLoading = router.stores.isLoading.get()
-  previous.isPagePending =
-    previous.isLoading || router.stores.hasPending.get()
+  previous.isPagePending = previous.isLoading || router.stores.hasPending.get()
   previous.isAnyPending = previous.isPagePending || transitioning
 
   const subscriptions = [
