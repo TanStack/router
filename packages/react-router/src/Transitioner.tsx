@@ -83,6 +83,22 @@ export function Transitioner() {
       } catch (err) {
         console.error(err)
       }
+
+      // A mount load can settle before this component observes the
+      // isLoading flip (loads started before mount, or loads completing
+      // within this effect's batch), leaving the router status stuck at
+      // 'pending' so onResolved/onRendered never fire. Repair it the same
+      // way ssr-client does after its follow-up load.
+      batch(() => {
+        if (
+          router.stores.status.get() === 'pending' &&
+          !router.stores.isLoading.get() &&
+          !router.stores.hasPending.get()
+        ) {
+          router.stores.status.set('idle')
+          router.stores.resolvedLocation.set(router.stores.location.get())
+        }
+      })
     }
 
     tryLoad()
