@@ -61,7 +61,7 @@ describe('preload adoption', () => {
     await preload
   })
 
-  test('a sibling preload adopts another preload lane\'s in-flight loader', async () => {
+  test("a sibling preload adopts another preload lane's in-flight loader", async () => {
     const loaderGate = createControlledPromise<string>()
     const loader = vi.fn(() => loaderGate)
 

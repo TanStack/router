@@ -3645,8 +3645,7 @@ describe('loader skip or exec', () => {
     // The navigation adopted the in-flight preload's loader run.
     expect(loader).toHaveBeenCalledTimes(1)
     expect(
-      router.state.matches.find((match) => match.id === '/foo/foo')
-        ?.loaderData,
+      router.state.matches.find((match) => match.id === '/foo/foo')?.loaderData,
     ).toBe('preloaded')
   })
 
