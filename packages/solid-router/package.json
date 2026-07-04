@@ -33,7 +33,7 @@
     "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js -p tsconfig.legacy.json",
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js -p tsconfig.legacy.json",
     "test:types:ts60": "tsc -p tsconfig.legacy.json",
-    "test:unit": "vitest && vitest --mode server",
+    "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
     "test:perf": "vitest bench",
     "test:perf:dev": "pnpm run test:perf --watch --hideSkippedTests",

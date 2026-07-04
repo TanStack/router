@@ -1608,13 +1608,15 @@ export class RouterCore<
           params: routeParams,
           _strictParams: strictParams,
           abortController,
-          _: loadPromise
-            ? {
-                loadPromise,
-              }
-            : existingMatch._.dehydrated
+          // Preserve readiness ownership AND the hydration marker: a
+          // dehydrated match can legitimately hold a pending loadPromise
+          // (hydration keeps readiness across rematching), and dropping the
+          // marker would make the follow-up load re-run its server work.
+          _:
+            loadPromise || existingMatch._.dehydrated
               ? {
-                  dehydrated: true,
+                  loadPromise,
+                  dehydrated: existingMatch._.dehydrated,
                 }
               : {},
           search,
