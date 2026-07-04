@@ -1448,6 +1448,13 @@ export class RouterCore<
     const { foundRoute, routeParams } = matchedRoutesResult
     let { matchedRoutes } = matchedRoutesResult
     let isGlobalNotFound = false
+    // Accumulates each route's strict (params.parse-applied) params as we walk
+    // down the match chain, so that `match.params` on a child match includes
+    // its ancestors' parsed params. Kept separate from `routeParams`, which
+    // must stay as the raw, un-parsed params used to interpolate `match.pathname`
+    // for every route in the chain -- otherwise a parent route's params.parse
+    // would leak its parsed value into the pathname of routes matched afterward.
+    const accumulatedStrictParams: Record<string, unknown> = Object.create(null)
 
     // Check to see if the route needs a 404 entry
     if (
@@ -1565,7 +1572,24 @@ export class RouterCore<
 
       const previousMatch = previousActiveMatchesByRouteId.get(route.id)
 
-      const strictParams = existingMatch?._strictParams ?? usedParams
+      // `usedParams` holds the raw path params for this route's full path
+      // (interpolated from the untouched `routeParams`). For keys an ancestor
+      // route has already parsed via its own `params.parse`, prefer that
+      // already-accumulated (parsed) value over the raw one, so this route's
+      // own `params.parse` receives its ancestors' parsed params -- matching
+      // pre-parse behavior -- without letting a route that owns no `parse`
+      // for that key clobber the ancestor's parsed value.
+      let strictParams: Record<string, unknown>
+      if (existingMatch) {
+        strictParams = existingMatch._strictParams!
+      } else {
+        strictParams = Object.assign(Object.create(null), usedParams)
+        for (const key in usedParams) {
+          if (key in accumulatedStrictParams) {
+            strictParams[key] = accumulatedStrictParams[key]
+          }
+        }
+      }
 
       let paramsError: unknown = undefined
 
@@ -1587,7 +1611,7 @@ export class RouterCore<
         }
       }
 
-      Object.assign(routeParams, strictParams)
+      Object.assign(accumulatedStrictParams, strictParams)
 
       const cause = previousMatch ? 'stay' : 'enter'
 
@@ -1597,7 +1621,7 @@ export class RouterCore<
         match = {
           ...existingMatch,
           cause,
-          params: previousMatch?.params ?? routeParams,
+          params: previousMatch?.params ?? accumulatedStrictParams,
           _strictParams: strictParams,
           search: previousMatch
             ? nullReplaceEqualDeep(previousMatch.search, preMatchSearch)
@@ -1618,7 +1642,7 @@ export class RouterCore<
           ssr: (isServer ?? this.isServer) ? undefined : route.options.ssr,
           index,
           routeId: route.id,
-          params: previousMatch?.params ?? routeParams,
+          params: previousMatch?.params ?? accumulatedStrictParams,
           _strictParams: strictParams,
           pathname: interpolatedPath,
           updatedAt: Date.now(),
@@ -1681,8 +1705,8 @@ export class RouterCore<
       // Update the match's params
       const previousMatch = previousActiveMatchesByRouteId.get(match.routeId)
       match.params = previousMatch
-        ? nullReplaceEqualDeep(previousMatch.params, routeParams)
-        : routeParams
+        ? nullReplaceEqualDeep(previousMatch.params, accumulatedStrictParams)
+        : accumulatedStrictParams
 
       if (!existingMatch) {
         const parentMatch = matches[index - 1]
