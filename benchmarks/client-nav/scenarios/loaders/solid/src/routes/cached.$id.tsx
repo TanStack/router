@@ -15,9 +15,12 @@ export const Route = createFileRoute('/cached/$id')({
 const subscriberIndexes = Array.from({ length: 2 }, (_, index) => index)
 
 function PerfValue(props: { value: () => number }) {
-  createRenderEffect(() => {
-    void props.value()
-  })
+  createRenderEffect(
+    () => {
+      void props.value()
+    },
+    () => {},
+  )
 
   return null
 }

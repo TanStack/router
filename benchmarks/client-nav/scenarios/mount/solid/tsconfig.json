@@ -2,7 +2,7 @@
   "extends": "../../../../../tsconfig.json",
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "allowImportingTsExtensions": true,
     "types": ["node", "vite/client", "vitest/globals"]
   },

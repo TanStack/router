@@ -13,9 +13,12 @@ export const Route = createFileRoute('/l/$a/$b/$c/$d/$e')({
 
 function ParamsSubscriberOne() {
   const value = Route.useParams({ select: (params) => smallHash(params.e) })
-  createRenderEffect(() => {
-    void value()
-  })
+  createRenderEffect(
+    () => {
+      void value()
+    },
+    () => {},
+  )
   return null
 }
 
@@ -23,17 +26,23 @@ function ParamsSubscriberTwo() {
   const value = Route.useParams({
     select: (params) => smallHash(`${params.e}:2`),
   })
-  createRenderEffect(() => {
-    void value()
-  })
+  createRenderEffect(
+    () => {
+      void value()
+    },
+    () => {},
+  )
   return null
 }
 
 function ContextSubscriberOne() {
   const value = Route.useRouteContext({ select: (context) => context.ctxE })
-  createRenderEffect(() => {
-    void value()
-  })
+  createRenderEffect(
+    () => {
+      void value()
+    },
+    () => {},
+  )
   return null
 }
 
@@ -41,9 +50,12 @@ function ContextSubscriberTwo() {
   const value = Route.useRouteContext({
     select: (context) => (context.ctxE * 31 + 7) >>> 0,
   })
-  createRenderEffect(() => {
-    void value()
-  })
+  createRenderEffect(
+    () => {
+      void value()
+    },
+    () => {},
+  )
   return null
 }
 
