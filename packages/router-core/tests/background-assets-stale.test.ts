@@ -45,12 +45,14 @@ describe('background asset projection failure', () => {
       loader,
       head: ({ loaderData }) => {
         headCalls += 1
-        if (loaderData.title === 'fresh') {
+        // The loader always resolves before head runs in this test, so
+        // loaderData is never undefined here.
+        if (loaderData!.title === 'fresh') {
           throw new Error('head projection failed')
         }
 
         return {
-          meta: [{ title: loaderData.title }],
+          meta: [{ title: loaderData!.title }],
         }
       },
       staleTime: 0,

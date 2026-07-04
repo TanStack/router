@@ -9,6 +9,12 @@ type AnyRouteWithPrivateProps = AnyRoute & {
   options: Record<string, unknown>
   parentRoute: AnyRoute
   _componentsPromise?: Promise<void>
+  _componentPromises?: Partial<
+    Record<
+      'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent',
+      Promise<void> | undefined
+    >
+  >
   _lazyPromise?: Promise<void>
   update: (options: Record<string, unknown>) => unknown
   _path: string

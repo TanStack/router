@@ -86,7 +86,7 @@ export const projectServerRouteAssets = (
       const syncScripts = settle(scripts)
 
       if (isPromise(headers)) {
-        return (headers as Promise<any>).then(
+        return headers.then(
           (headerValue) => {
             matches[i] = withServerAssets(
               match,
