@@ -1,9 +1,8 @@
 import * as Vue from 'vue'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { batch, useStore } from '@tanstack/vue-store'
+import { batch } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
-import { usePrevious } from './utils'
 
 // Track mount state per router to avoid double-loading
 let mountLoadForRouter = { router: null as any, mounted: false }
@@ -14,7 +13,7 @@ let mountLoadForRouter = { router: null as any, mounted: false }
  * - router.startTransition
  * - router.startViewTransition
  * - History subscription
- * - Router event watchers
+ * - Router lifecycle event emission
  *
  * Must be called during component setup phase.
  */
@@ -26,41 +25,95 @@ export function useTransitionerSetup() {
     return
   }
 
-  const isLoading = useStore(router.stores.isLoading, (value) => value)
+  // `transitioning` bridges router time and Vue time: raised before the
+  // simulated transition runs, lowered by a single nextTick callback —
+  // which runs only after Vue has flushed the reactive updates, keeping
+  // the onResolved edge flush-coupled.
+  let transitioning = false
 
-  // Track if we're in a transition - using a ref to track async transitions
-  const isTransitioning = Vue.ref(false)
+  const previous = {
+    isLoading: false,
+    isPagePending: false,
+    isAnyPending: false,
+  }
 
-  // Track pending state changes
-  const hasPending = useStore(router.stores.hasPending, (value) => value)
+  // Single emitter for the load lifecycle. Level changes arrive through
+  // synchronous store subscriptions — which, unlike watcher-observed edges,
+  // cannot lose a flip to Vue's flush batching — plus the flush-coupled
+  // transition edge. One emitter means nothing to arbitrate.
+  const emitEdges = () => {
+    const isLoading = router.stores.isLoading.get()
+    const isPagePending = isLoading || router.stores.hasPending.get()
+    const isAnyPending = isPagePending || transitioning
+    const prev = { ...previous }
+    previous.isLoading = isLoading
+    previous.isPagePending = isPagePending
+    previous.isAnyPending = isAnyPending
 
-  const previousIsLoading = usePrevious(() => isLoading.value)
+    const changeInfo = () =>
+      getLocationChangeInfo(
+        router.stores.location.get(),
+        router.stores.resolvedLocation.get(),
+      )
 
-  const isAnyPending = Vue.computed(
-    () => isLoading.value || isTransitioning.value || hasPending.value,
-  )
-  const previousIsAnyPending = usePrevious(() => isAnyPending.value)
-
-  const isPagePending = Vue.computed(() => isLoading.value || hasPending.value)
-  const previousIsPagePending = usePrevious(() => isPagePending.value)
+    if (prev.isLoading && !isLoading) {
+      // The new URL has committed and the new matches are in state.matches.
+      router.emit({ type: 'onLoad', ...changeInfo() })
+    }
+    // Commit idle/resolvedLocation on the FIRST falling edge (guarded for
+    // idempotence): these store updates join the same reactive flush as the
+    // new matches, so matchRoute/status consumers can never render one
+    // flush behind the committed lane. Only the onResolved EVENT is
+    // flush-coupled to the deferred transition edge.
+    const commitIdle = () => {
+      if (router.stores.status.get() === 'pending') {
+        batch(() => {
+          router.stores.status.set('idle')
+          router.stores.resolvedLocation.set(router.stores.location.get())
+        })
+      }
+    }
+    if (prev.isPagePending && !isPagePending) {
+      router.emit({ type: 'onBeforeRouteMount', ...changeInfo() })
+      commitIdle()
+    }
+    if (prev.isAnyPending && !isAnyPending) {
+      router.emit({ type: 'onResolved', ...changeInfo() })
+      commitIdle()
+    }
+  }
 
   // Implement startTransition similar to React/Solid
   // Vue doesn't have a native useTransition like React 18, so we simulate it
   router.startTransition = (fn: () => void) => {
-    isTransitioning.value = true
+    transitioning = true
+    // Register the rising transition level so the falling edge resolves
+    // even when the load's own levels already settled.
+    emitEdges()
     try {
       fn()
     } finally {
-      // Use nextTick to ensure Vue has processed all reactive updates
+      // Flush-coupled falling edge: use nextTick so the transition level
+      // only lowers after Vue has processed all reactive updates.
       void Vue.nextTick(() => {
-        try {
-          isTransitioning.value = false
-        } catch {
-          // Ignore errors if component is unmounted
-        }
+        transitioning = false
+        emitEdges()
       })
     }
   }
+
+  // Armed before the mount load below, so every load — including one that
+  // settled before mount (the mount load below still toggles isLoading) —
+  // produces an observable edge.
+  previous.isLoading = router.stores.isLoading.get()
+  previous.isPagePending =
+    previous.isLoading || router.stores.hasPending.get()
+  previous.isAnyPending = previous.isPagePending || transitioning
+
+  const subscriptions = [
+    router.stores.isLoading.subscribe(emitEdges),
+    router.stores.hasPending.subscribe(emitEdges),
+  ]
 
   // Vue updates DOM asynchronously (next tick). The View Transitions API expects the
   // update callback promise to resolve only after the DOM has been updated.
@@ -108,23 +161,28 @@ export function useTransitionerSetup() {
     }
   })
 
-  // Track if component is mounted to prevent updates after unmount
-  const isMounted = Vue.ref(false)
-
+  // One-shot idle repair at arm time: Vue's mount-load guard is
+  // module-global, so a remount with the same router skips the mount load,
+  // and a load that settled while unmounted produces no future edge.
+  // Repair the stranded 'pending' status here.
   Vue.onMounted(() => {
-    isMounted.value = true
-    if (!isAnyPending.value) {
-      if (router.stores.status.get() === 'pending') {
-        batch(() => {
-          router.stores.status.set('idle')
-          router.stores.resolvedLocation.set(router.stores.location.get())
-        })
-      }
+    if (
+      !router.stores.isLoading.get() &&
+      !router.stores.hasPending.get() &&
+      !transitioning &&
+      router.stores.status.get() === 'pending'
+    ) {
+      batch(() => {
+        router.stores.status.set('idle')
+        router.stores.resolvedLocation.set(router.stores.location.get())
+      })
     }
   })
 
   Vue.onUnmounted(() => {
-    isMounted.value = false
+    for (const subscription of subscriptions) {
+      subscription.unsubscribe()
+    }
     if (unsubscribe) {
       unsubscribe()
     }
@@ -147,78 +205,6 @@ export function useTransitionerSetup() {
       }
     }
     tryLoad()
-  })
-
-  // Setup watchers for emitting events
-  // All watchers check isMounted to prevent updates after unmount
-  Vue.watch(
-    () => isLoading.value,
-    (newValue) => {
-      if (!isMounted.value) return
-      try {
-        if (previousIsLoading.value.previous && !newValue) {
-          router.emit({
-            type: 'onLoad',
-            ...getLocationChangeInfo(
-              router.stores.location.get(),
-              router.stores.resolvedLocation.get(),
-            ),
-          })
-        }
-      } catch {
-        // Ignore errors if component is unmounted
-      }
-    },
-  )
-
-  Vue.watch(isPagePending, (newValue) => {
-    if (!isMounted.value) return
-    try {
-      // emit onBeforeRouteMount
-      if (previousIsPagePending.value.previous && !newValue) {
-        router.emit({
-          type: 'onBeforeRouteMount',
-          ...getLocationChangeInfo(
-            router.stores.location.get(),
-            router.stores.resolvedLocation.get(),
-          ),
-        })
-        if (router.stores.status.get() === 'pending') {
-          batch(() => {
-            router.stores.status.set('idle')
-            router.stores.resolvedLocation.set(router.stores.location.get())
-          })
-        }
-      }
-    } catch {
-      // Ignore errors if component is unmounted
-    }
-  })
-
-  Vue.watch(isAnyPending, (newValue) => {
-    if (!isMounted.value) return
-    try {
-      if (!newValue && router.stores.status.get() === 'pending') {
-        batch(() => {
-          router.stores.status.set('idle')
-          router.stores.resolvedLocation.set(router.stores.location.get())
-        })
-      }
-
-      // The router was pending and now it's not
-      if (previousIsAnyPending.value.previous && !newValue) {
-        const changeInfo = getLocationChangeInfo(
-          router.stores.location.get(),
-          router.stores.resolvedLocation.get(),
-        )
-        router.emit({
-          type: 'onResolved',
-          ...changeInfo,
-        })
-      }
-    } catch {
-      // Ignore errors if component is unmounted
-    }
   })
 }
 

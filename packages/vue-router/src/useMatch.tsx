@@ -2,11 +2,7 @@ import * as Vue from 'vue'
 import { invariant } from '@tanstack/router-core'
 import { useStore } from '@tanstack/vue-store'
 import { isServer } from '@tanstack/router-core/isServer'
-import {
-  injectDummyPendingMatch,
-  injectPendingMatch,
-  routeIdContext,
-} from './matchContext'
+import { routeIdContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -114,9 +110,6 @@ export function useMatch<
     >
   }
 
-  const hasPendingNearestMatch = opts.from
-    ? injectDummyPendingMatch()
-    : injectPendingMatch()
   // Set up reactive match value based on lookup strategy.
   let match: Readonly<Vue.Ref<any>>
 
@@ -141,17 +134,10 @@ export function useMatch<
     }
   }
 
-  const hasPendingRouteMatch = opts.from
-    ? useStore(router.stores.pendingRouteIds, (ids) => ids)
-    : undefined
-
   const result = Vue.computed(() => {
     const selectedMatch = match.value
     if (selectedMatch === undefined) {
-      const hasPendingMatch = opts.from
-        ? Boolean(hasPendingRouteMatch?.value[opts.from!])
-        : hasPendingNearestMatch.value
-      if (!hasPendingMatch && (opts.shouldThrow ?? true)) {
+      if (opts.shouldThrow ?? true) {
         if (process.env.NODE_ENV !== 'production') {
           throw new Error(
             `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,

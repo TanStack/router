@@ -11,11 +11,7 @@ import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
-import {
-  matchContext,
-  pendingMatchContext,
-  routeIdContext,
-} from './matchContext'
+import { matchContext, routeIdContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { VNode } from 'vue'
@@ -58,11 +54,6 @@ export const Match = Vue.defineComponent({
     const activeMatch = useStore(
       router.stores.getRouteMatchStore(routeId),
       (value) => value,
-    )
-    const isPendingMatchRef = useStore(
-      router.stores.pendingRouteIds,
-      (pendingRouteIds) => Boolean(pendingRouteIds[routeId]),
-      { equal: Object.is },
     )
     const loadedAt = useStore(router.stores.loadedAt, (value) => value)
 
@@ -133,8 +124,6 @@ export const Match = Vue.defineComponent({
       () => activeMatch.value?.id ?? props.matchId,
     )
     Vue.provide(matchContext, matchIdRef)
-
-    Vue.provide(pendingMatchContext, isPendingMatchRef)
 
     return (): VNode => {
       const actualMatchId = matchData.value?.matchId ?? props.matchId

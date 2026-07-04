@@ -89,7 +89,7 @@ export function useMatch<
 
     const hasPendingMatch = opts.from
       ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
-      : (nearestMatch?.hasPending() ?? false)
+      : false
 
     if (!hasPendingMatch && (opts.shouldThrow ?? true)) {
       if (process.env.NODE_ENV !== 'production') {
@@ -108,7 +108,7 @@ export function useMatch<
     if (selectedMatch === undefined) {
       const hasPendingMatch = opts.from
         ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
-        : (nearestMatch?.hasPending() ?? false)
+        : false
 
       if (prev !== undefined && hasPendingMatch) {
         return prev

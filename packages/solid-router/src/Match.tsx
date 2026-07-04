@@ -45,17 +45,10 @@ export const Match = (props: { matchId: string }) => {
     }
   })
 
-  const hasPendingMatch = Solid.createMemo(() => {
-    const currentRouteId = rawMatchState()?.routeId
-    return currentRouteId
-      ? Boolean(router.stores.pendingRouteIds.get()[currentRouteId])
-      : false
-  })
   const nearestMatch = {
     matchId: () => rawMatchState()?.matchId,
     routeId: () => rawMatchState()?.routeId,
     match,
-    hasPending: hasPendingMatch,
   }
 
   return (
