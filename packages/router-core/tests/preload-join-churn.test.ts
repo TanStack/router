@@ -4,11 +4,11 @@ import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 /**
- * A preload that borrows an active match waits for the foreground load to
- * commit — but that wait must be bounded. Under sustained navigation churn
- * (every foreground load replaced by a newer one before the borrowed owner
- * commits), the preload must settle by dropping the speculative pass
- * instead of hanging its awaiter indefinitely.
+ * A preload that borrows an active match waits for the current foreground
+ * load exactly once. Under sustained navigation churn (every foreground
+ * load replaced by a newer one before the borrowed owner commits), the
+ * preload must settle by yielding the speculative pass instead of hanging
+ * its awaiter indefinitely.
  */
 
 describe('preload join under navigation churn', () => {
@@ -78,8 +78,8 @@ describe('preload join under navigation churn', () => {
         await vi.advanceTimersByTimeAsync(1)
       }
 
-      // The preload must have given up by now (bounded wait), even though
-      // the foreground owner still has not committed.
+      // The preload must have given up by now (single-shot foreground
+      // wait), even though the foreground owner still has not committed.
       await vi.waitFor(() => expect(preloadSettled).toBe(true))
 
       for (const gate of gates) {

@@ -624,8 +624,8 @@ sequenceDiagram
   alt borrowed loadPromise pending
     J->>F: await borrowed loadPromise
   end
-  loop owner still pending-status or in pending store, and a foreground load exists
-    J->>F: await router.latestLoadPromise
+  opt owner still pending-status or in pending store, and a foreground load exists
+    J->>F: await router.latestLoadPromise once
     J->>R: re-read owner match
   end
   alt owner missing/aborted
@@ -659,9 +659,10 @@ Why wait for both `loadPromise` and sometimes `latestLoadPromise`?
   store and cleared the pending pool while the final commit is still in
   flight, so its snapshot is stuck at `status: 'pending'` even though its
   local work settled. Both shapes wait for the foreground load.
-- The wait is a re-read loop, not a single await: a newer foreground load can
-  re-publish a pending lane for the same match, so the join re-reads the owner
-  after each foreground settlement until it reaches a committed state.
+- The foreground wait is single-shot by design: the join awaits the current
+  `latestLoadPromise` exactly once and re-reads the owner. If the owner still
+  has not committed (a newer navigation re-published it), the speculative
+  pass yields via the ownership sentinel instead of chasing navigation churn.
 
 Without the foreground wait, a preload can observe a transient pending-store
 owner and start descendant work before the navigation that owns the parent has
