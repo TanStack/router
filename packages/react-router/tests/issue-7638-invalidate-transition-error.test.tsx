@@ -81,11 +81,7 @@ function setup({ failVia }: { failVia: 'render' | 'loader' }) {
     history: createMemoryHistory({ initialEntries: ['/test'] }),
     defaultErrorComponent: (props: ErrorComponentProps) => {
       errorRenders++
-      return (
-        <div data-testid="error-ui">
-          error: {(props.error).message}
-        </div>
-      )
+      return <div data-testid="error-ui">error: {props.error.message}</div>
     },
   })
 
@@ -128,7 +124,7 @@ test.each(['render', 'loader'] as const)(
     // React must not have torn the tree down with a hooks-order violation.
     const hooksCrash = consoleError.mock.calls.find((call) =>
       call.some((arg) =>
-        String((arg)?.message ?? arg).includes('Rendered more hooks'),
+        String(arg?.message ?? arg).includes('Rendered more hooks'),
       ),
     )
     expect(hooksCrash).toBeUndefined()
