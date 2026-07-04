@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -49,6 +49,38 @@ describe('stay-match abort scope', () => {
 
     await router.navigate({ to: '/dashboard/settings' })
     expect(getSignal()?.aborted).toBe(false)
+  })
+
+  test('cancelMatches aborts an active match with an in-flight beforeLoad marker', async () => {
+    // A pending publication can move a lane into the active store while an
+    // ancestor stay match is still mid-beforeLoad (status 'success',
+    // isFetching 'beforeLoad', pending pool cleared). cancelMatches must
+    // treat any fetching marker as in-flight work and abort it.
+    const rootRoute = new BaseRootRoute({})
+    const aRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/a',
+      loader: () => 'a data',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([aRoute]),
+      history: createMemoryHistory({ initialEntries: ['/a'] }),
+    })
+
+    await router.load()
+
+    const matchId = router.state.matches.find(
+      (match) => match.routeId === aRoute.id,
+    )!.id
+    router.updateMatch(matchId, (match) => ({
+      ...match,
+      isFetching: 'beforeLoad' as const,
+    }))
+    const signal = router.getMatch(matchId)!.abortController.signal
+    expect(signal.aborted).toBe(false)
+
+    router.cancelMatches()
+    expect(signal.aborted).toBe(true)
   })
 
   test('invalidate does not abort a success stay-match signal', async () => {

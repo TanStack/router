@@ -16,6 +16,42 @@ import { createTestRouter } from './routerTestUtils'
  */
 
 describe('route chunk failure lifecycle', () => {
+  test('a rejected lazy chunk is retried on the next load instead of replaying forever', async () => {
+    let lazyCalls = 0
+    const chunkError = new Error('lazy chunk failed once')
+
+    const rootRoute = new BaseRootRoute({})
+    const lazyRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/lazy',
+      loader: () => 'loaded',
+    }).lazy(() => {
+      lazyCalls++
+      if (lazyCalls === 1) {
+        return Promise.reject(chunkError)
+      }
+      return Promise.resolve({ options: {} } as any)
+    })
+
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([lazyRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.navigate({ to: '/lazy' })
+    expect(
+      router.state.matches.find((match) => match.routeId === lazyRoute.id)
+        ?.status,
+    ).toBe('error')
+
+    await router.invalidate()
+    expect(lazyCalls).toBe(2)
+    expect(
+      router.state.matches.find((match) => match.routeId === lazyRoute.id)
+        ?.status,
+    ).toBe('success')
+  })
+
   test('calls route onError when lazy route chunk rejects during navigation', async () => {
     const chunkError = new Error('lazy chunk failed')
     let capturedError: unknown

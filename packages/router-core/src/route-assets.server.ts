@@ -71,9 +71,10 @@ export const projectServerRouteAssets = (
 
     if (syncFailed) {
       // A sync throw must not hold the response hostage waiting on the other
-      // hooks' async work. Commit the sync-available values and abandon any
-      // pending promises, owning their rejections so they cannot become
-      // unhandled.
+      // DECORATIVE hooks' async work: commit sync-available head/scripts and
+      // abandon pending ones, owning their rejections so they cannot become
+      // unhandled. A pending headers() promise is different — headers are
+      // response behavior, so it is always awaited.
       const settle = (value: any) => {
         if (isPromise(value)) {
           void Promise.allSettled([value])
@@ -81,12 +82,29 @@ export const projectServerRouteAssets = (
         }
         return value
       }
-      matches[i] = withServerAssets(
-        match,
-        settle(head),
-        settle(scripts),
-        settle(headers),
-      )
+      const syncHead = settle(head)
+      const syncScripts = settle(scripts)
+
+      if (isPromise(headers)) {
+        return (headers as Promise<any>).then(
+          (headerValue) => {
+            matches[i] = withServerAssets(
+              match,
+              syncHead,
+              syncScripts,
+              headerValue,
+            )
+            return projectServerRouteAssets(router, matches, i + 1)
+          },
+          (error) => {
+            logAssetError(match, error)
+            matches[i] = withServerAssets(match, syncHead, syncScripts, undefined)
+            return projectServerRouteAssets(router, matches, i + 1)
+          },
+        )
+      }
+
+      matches[i] = withServerAssets(match, syncHead, syncScripts, headers)
       continue
     }
 

@@ -15,6 +15,22 @@ import type { AnyRouteMatch } from './Matches'
 import type { AnyRouter, LoadFn } from './router'
 import type { InnerLoadContext } from './load-matches'
 
+// Exiting matches are preserved in the cache both at pending publication and
+// at final commit; the dedup + isFetching-reset shape must stay identical in
+// both paths. Exiting match ids are unique per lane, so a linear scan over
+// the (small) cache is sufficient.
+const pushExitingMatch = (
+  cached: Array<AnyRouteMatch>,
+  match: AnyRouteMatch,
+): void => {
+  if (!cached.some((c) => c.id === match.id)) {
+    cached.push({
+      ...match,
+      isFetching: false,
+    })
+  }
+}
+
 const commitFinalMatches = (
   router: AnyRouter,
   baseMatches: Array<AnyRouteMatch>,
@@ -27,16 +43,8 @@ const commitFinalMatches = (
 
     for (let i = 0; i < baseMatches.length; i++) {
       const match = baseMatches[i]!
-      // Pending publication may already have preserved exiting base matches;
-      // base match ids are unique, so scanning pushed entries is harmless.
-      if (
-        nextMatches[i]?.id !== match.id &&
-        !cached.some((c) => c.id === match.id)
-      ) {
-        cached.push({
-          ...match,
-          isFetching: false,
-        })
+      if (nextMatches[i]?.id !== match.id) {
+        pushExitingMatch(cached, match)
       }
     }
 
@@ -75,20 +83,25 @@ const commitFinalMatches = (
     const nextMatch = nextMatches[i]
 
     // The commit already happened; lifecycle hooks are notifications. A
-    // throwing hook must not skip the remaining hooks or corrupt the
-    // framework transition state, but it has to stay observable.
-    try {
-      if (current && current.routeId !== nextMatch?.routeId) {
+    // throwing hook must not skip the remaining hooks — including the same
+    // index's enter/stay hook — or corrupt the framework transition state,
+    // but it has to stay observable.
+    if (current && current.routeId !== nextMatch?.routeId) {
+      try {
         router.routesById[current.routeId]!.options.onLeave?.(current)
+      } catch (err) {
+        Promise.reject(err)
       }
+    }
 
-      if (nextMatch) {
+    if (nextMatch) {
+      try {
         router.routesById[nextMatch.routeId]!.options[
           current?.routeId === nextMatch.routeId ? 'onStay' : 'onEnter'
         ]?.(nextMatch)
+      } catch (err) {
+        Promise.reject(err)
       }
-    } catch (err) {
-      Promise.reject(err)
     }
   }
 }
@@ -175,23 +188,20 @@ export const loadClientRouter = async (
         // this load is superseded (e.g. back navigation) the final commit
         // that would have cached them never runs, and their fresh data
         // would otherwise be lost from every pool.
-        const cached = stores.cachedMatches.get()
-        const exiting = stores.matches
-          .get()
-          .filter(
-            (match) =>
-              match.status === 'success' &&
-              !matches.some((m) => m.id === match.id) &&
-              !cached.some((m) => m.id === match.id),
-          )
-        if (exiting.length) {
-          stores.setCached([
-            ...cached,
-            ...exiting.map((match) => ({
-              ...match,
-              isFetching: false as const,
-            })),
-          ])
+        let cached: Array<AnyRouteMatch> | undefined
+        for (const match of stores.matches.get()) {
+          if (
+            match.status === 'success' &&
+            !matches.some((m) => m.id === match.id)
+          ) {
+            pushExitingMatch(
+              (cached ||= stores.cachedMatches.get().slice()),
+              match,
+            )
+          }
+        }
+        if (cached) {
+          stores.setCached(cached)
         }
         stores.setMatches(matches)
         if (stores.pendingIds.get().length) {

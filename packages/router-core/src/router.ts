@@ -1793,16 +1793,16 @@ export class RouterCore<
   }
 
   cancelMatches() {
-    const cancelMatch = (matchId: string) => {
-      const match = this.getMatch(matchId)
-      if (match) {
-        match.abortController.abort()
-        settleMatchLoad(match)
-      }
+    const cancelMatch = (match: AnyRouteMatch) => {
+      match.abortController.abort()
+      settleMatchLoad(match)
     }
 
     for (const matchId of this.stores.pendingIds.get()) {
-      cancelMatch(matchId)
+      const match = this.getMatch(matchId)
+      if (match) {
+        cancelMatch(match)
+      }
     }
 
     for (const matchId of this.stores.matchesId.get()) {
@@ -1810,18 +1810,15 @@ export class RouterCore<
         continue
       }
 
-      // Only cancel active matches with in-flight route work. A settled
+      // Only cancel active matches with in-flight route work (pending, or
+      // any fetching marker — beforeLoad and loader alike). A settled idle
       // success match keeps its controller un-aborted: loaders may have
       // handed that signal to still-streaming deferred data, and the public
       // contract only cancels it when the route unloads or its loader call
       // becomes outdated.
       const match = this.getMatch(matchId)
-      if (
-        match &&
-        (match.status === 'pending' || match.isFetching === 'loader')
-      ) {
-        match.abortController.abort()
-        settleMatchLoad(match)
+      if (match && (match.status === 'pending' || match.isFetching !== false)) {
+        cancelMatch(match)
       }
     }
   }

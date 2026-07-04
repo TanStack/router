@@ -60,4 +60,28 @@ describe('server asset projection route headers', () => {
     expect(targetMatch).toBeDefined()
     expect(targetMatch!.headers).toEqual(expectedHeaders)
   })
+
+  test('awaits async route headers when head throws synchronously', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      head: () => {
+        throw new Error('head failed')
+      },
+      headers: async () => expectedHeaders,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/target'] }),
+      isServer: true,
+    })
+
+    await router.load()
+
+    const targetMatch = router.state.matches.find(
+      (match) => match.routeId === targetRoute.id,
+    )
+    expect(targetMatch!.headers).toEqual(expectedHeaders)
+  })
 })

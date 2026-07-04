@@ -73,4 +73,47 @@ describe('lifecycle hook errors', () => {
       process.off('unhandledRejection', unhandledRejection)
     }
   })
+  test('a throwing onLeave does not skip the entered route hooks at the same index', async () => {
+    const unhandledRejection = vi.fn()
+    process.on('unhandledRejection', unhandledRejection)
+
+    try {
+      const leaveError = new Error('onLeave failed')
+      const aOnLeave = vi.fn(() => {
+        throw leaveError
+      })
+      const bOnEnter = vi.fn()
+
+      const rootRoute = new BaseRootRoute({})
+      const aRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/a',
+        onLeave: aOnLeave,
+      })
+      const bRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/b',
+        onEnter: bOnEnter,
+      })
+
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([aRoute, bRoute]),
+        history: createMemoryHistory({ initialEntries: ['/a'] }),
+      })
+
+      await router.load()
+      await router.navigate({ to: '/b' })
+
+      expect(aOnLeave).toHaveBeenCalledTimes(1)
+      expect(bOnEnter).toHaveBeenCalledTimes(1)
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(unhandledRejection).toHaveBeenCalledWith(
+        leaveError,
+        expect.anything(),
+      )
+    } finally {
+      process.off('unhandledRejection', unhandledRejection)
+    }
+  })
 })

@@ -107,6 +107,7 @@ function handleRouteUpdate(
   oldRoute.options = nextOptions
   oldRoute.update(nextOptions)
   oldRoute._componentsPromise = undefined
+  oldRoute._componentPromises = undefined
   oldRoute._lazyPromise = undefined
 
   router.setRoutes(router.buildRouteTree())

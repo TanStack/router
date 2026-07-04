@@ -89,31 +89,38 @@ const joinPreloadedActiveMatch = async (
     await match._.loadPromise
   }
 
-  // If the borrowed match still lives in the pending store, its local readiness
-  // may have settled before the foreground load committed the lane. Wait for the
-  // foreground load so the preload observes the committed owner, not a transient
-  // pending-store snapshot.
-  if (inner.router.stores.pendingMatchStores.has(matchId)) {
-    await inner.router.latestLoadPromise
-  }
-
-  // Re-read after the waits because the owner may have committed, redirected,
-  // disappeared, or been aborted while this preload was observing it.
-  match = inner.router.getMatch(matchId, false)
-  if (!match || match.abortController.signal.aborted) {
-    throw inner
-  }
-
-  // The owner can also be a render-ready pending publication: onReady() moved
-  // it into the active store (clearing the pending pool) while the foreground
-  // final commit is still in flight, so the store snapshot is stuck at
-  // status 'pending' even though its local work settled. Wait for the
-  // foreground load to commit before judging the owner's outcome.
-  if (match.status === 'pending' && inner.router.latestLoadPromise) {
-    await inner.router.latestLoadPromise
+  // The borrowed match's local readiness can settle before the foreground
+  // load commits the lane: the owner may still sit in the pending store, or
+  // be a render-ready pending publication (onReady() moved it into the
+  // active store, clearing the pending pool, while the final commit is
+  // still in flight — the snapshot is stuck at status 'pending' even though
+  // its local work settled). Wait for the foreground load and re-read until
+  // the owner reaches a committed state; each iteration re-reads because a
+  // newer load can re-publish a pending lane for the same match.
+  while (true) {
     match = inner.router.getMatch(matchId, false)
     if (!match || match.abortController.signal.aborted) {
       throw inner
+    }
+
+    const foreground = inner.router.latestLoadPromise
+    if (
+      !foreground ||
+      (match.status !== 'pending' &&
+        !inner.router.stores.pendingMatchStores.has(matchId))
+    ) {
+      break
+    }
+
+    await foreground
+    if (inner.router.latestLoadPromise === foreground) {
+      // The chain settled without being replaced; a final re-read below
+      // decides the outcome instead of spinning on the same promise.
+      match = inner.router.getMatch(matchId, false)
+      if (!match || match.abortController.signal.aborted) {
+        throw inner
+      }
+      break
     }
   }
 

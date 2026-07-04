@@ -89,6 +89,18 @@ export function loadRouteChunk(
       } catch (error) {
         route._lazyPromise = Promise.reject(error)
       }
+
+      // A rejected lazy chunk must not be replayed forever: evict it so the
+      // next load generation retries the import, like component chunk
+      // preloads. Awaiters of the evicted promise still own the rejection.
+      const lazyPromise = route._lazyPromise
+      if (lazyPromise) {
+        void lazyPromise.then(null, () => {
+          if (route._lazyPromise === lazyPromise) {
+            route._lazyPromise = undefined
+          }
+        })
+      }
     } else {
       route._lazyLoaded = true
     }
