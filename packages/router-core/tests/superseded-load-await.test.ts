@@ -162,8 +162,8 @@ describe('superseded load await', () => {
     expect(load1Settled).toBe(true)
     expect(lastSettled).toBe('four')
     expect(router.latestLoadPromise).toBeUndefined()
-    expect(
-      router.stores.matches.get().some((m) => m.routeId === '/four'),
-    ).toBe(true)
+    expect(router.stores.matches.get().some((m) => m.routeId === '/four')).toBe(
+      true,
+    )
   })
 })
