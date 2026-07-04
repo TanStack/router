@@ -149,6 +149,12 @@ export interface RouteMatch<
     dehydrated?: boolean
     /** Internal loader error used by match loading. */
     error?: unknown
+    /**
+     * Internal: a private in-flight preload lane already loading this
+     * match. The loader phase adopts its successful result instead of
+     * running the loader twice.
+     */
+    preloadLane?: { matches: Array<AnyRouteMatch> }
   }
   loaderData?: TLoaderData
   /** Internal route context scratch value. */

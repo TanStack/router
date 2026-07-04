@@ -1550,6 +1550,20 @@ export class RouterCore<
         loaderDepsHash
 
       const existingMatch = this.getMatch(matchId)
+      // A private in-flight preload lane may already be loading this exact
+      // match. Attach a join handle so the loader phase can adopt its
+      // successful result instead of executing the loader twice. (A preload
+      // pass registers its lane only after matching, so it never finds
+      // itself here — but it may join a concurrent sibling preload.)
+      let preloadLane: { matches: Array<AnyRouteMatch> } | undefined
+      if (this._preloadLanes) {
+        for (const lane of this._preloadLanes) {
+          if (lane.matches.some((m) => m.id === matchId && m.preload)) {
+            preloadLane = lane
+            break
+          }
+        }
+      }
       const previousMatch =
         previousActiveMatches[index]?.routeId === route.id
           ? previousActiveMatches[index]
@@ -1605,6 +1619,7 @@ export class RouterCore<
           _: {
             loadPromise,
             dehydrated: existingMatch._.dehydrated,
+            preloadLane,
           },
           search,
           _strictSearch: strictMatchSearch,
@@ -1637,8 +1652,9 @@ export class RouterCore<
           _: pending
             ? {
                 loadPromise: createControlledPromise(),
+                preloadLane,
               }
-            : {},
+            : { preloadLane },
           abortController,
           cause,
           loaderDeps,
@@ -2380,6 +2396,8 @@ export class RouterCore<
   }
 
   declare latestLoadPromise: undefined | ControlledPromise<void>
+  /** Private in-flight preload lanes, joinable by navigations (client only). */
+  declare _preloadLanes: Set<{ matches: Array<AnyRouteMatch> }> | undefined
   declare _backgroundLoad: BackgroundLoad | undefined
 
   load: LoadFn = async (opts) => {

@@ -133,6 +133,56 @@ const joinPreloadedActiveMatch = async (
   return match
 }
 
+/**
+ * The mirror of joinPreloadedActiveMatch: a navigation adopts an in-flight
+ * private preload's SUCCESSFUL loader result instead of executing the loader
+ * a second time. Only data is adopted — never control flow: a preload that
+ * ended in redirect/notFound/error is ignored and the navigation runs its
+ * own loader, so preload-flavored outcomes cannot leak into navigations.
+ *
+ * Joining is gated on the donor's loader actually being IN FLIGHT
+ * (isFetching === 'loader'): before that, the preload's serial phase may
+ * itself be waiting on this navigation through the borrow protocol, and
+ * joining would deadlock the pair. Once the donor's loader started, its
+ * serial phase is over by construction and the pass settles independently.
+ */
+const adoptInFlightPreload = async (
+  inner: InnerLoadContext,
+  index: number,
+  passController: AbortController,
+): Promise<{ loaderData: unknown } | undefined> => {
+  const match = inner.matches[index]!
+  const lane = match._.preloadLane
+  if (!lane) {
+    return undefined
+  }
+  match._.preloadLane = undefined
+
+  const readDonor = () =>
+    lane.matches.find((m) => m.id === match.id && m.preload)
+  let donor = readDonor()
+
+  if (donor && donor.status !== 'success') {
+    if (
+      donor.isFetching !== 'loader' ||
+      donor._.loadPromise?.status !== 'pending'
+    ) {
+      return undefined
+    }
+    commitMatch(inner, index, { isFetching: 'loader' })
+    // The preload pass settles every owned match's loadPromise in its
+    // finally, so this wait cannot hang even for aborted preloads.
+    await donor._.loadPromise
+    requireCurrentMatch(inner, index, passController)
+    donor = readDonor()
+  }
+
+  if (donor?.status !== 'success') {
+    return undefined
+  }
+  return { loaderData: donor.loaderData }
+}
+
 function waitPendingMin(match: AnyRouteMatch): Promise<void> | undefined {
   const remaining = (match._.loadPromise?.pendingUntil ?? 0) - Date.now()
   if (remaining > 0) {
@@ -569,31 +619,45 @@ const loadClientRouteMatch = async (
 
     // Actually run the loader and handle the result
     try {
-      // Kick off the loader!
-      const loaderResult = loader?.(
-        getLoaderContext(inner, matchPromises, index, route),
-      )
-      const loaderResultIsPromise = isPromise(loaderResult)
-      if (loaderResultIsPromise || routeChunkPromise) {
+      // Gate on the lane handle before awaiting: adoption is async, and an
+      // unconditional await would break the synchronous loader-start
+      // contract for the (overwhelmingly common) no-preload case.
+      const adopted =
+        loader && inner.matches[index]!._.preloadLane
+          ? await adoptInFlightPreload(inner, index, passController)
+          : undefined
+
+      if (adopted) {
         commitMatch(inner, index, {
-          isFetching: 'loader',
+          loaderData: adopted.loaderData,
         })
-      }
-
-      if (loader) {
-        const loaderData = loaderResultIsPromise
-          ? await loaderResult
-          : loaderResult
-
-        requireCurrentMatch(inner, index, passController)
-
-        if (isRouteControl(loaderData)) {
-          throw loaderData
+      } else {
+        // Kick off the loader!
+        const loaderResult = loader?.(
+          getLoaderContext(inner, matchPromises, index, route),
+        )
+        const loaderResultIsPromise = isPromise(loaderResult)
+        if (loaderResultIsPromise || routeChunkPromise) {
+          commitMatch(inner, index, {
+            isFetching: 'loader',
+          })
         }
 
-        commitMatch(inner, index, {
-          loaderData,
-        })
+        if (loader) {
+          const loaderData = loaderResultIsPromise
+            ? await loaderResult
+            : loaderResult
+
+          requireCurrentMatch(inner, index, passController)
+
+          if (isRouteControl(loaderData)) {
+            throw loaderData
+          }
+
+          commitMatch(inner, index, {
+            loaderData,
+          })
+        }
       }
     } catch (error) {
       if (error === inner) {

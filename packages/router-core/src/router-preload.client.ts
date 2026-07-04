@@ -71,6 +71,10 @@ export const preloadClientRoute = async (
     }
   }
 
+  // Register the lane so concurrent navigations (and sibling preloads) can
+  // adopt this pass's in-flight loader results instead of re-running them.
+  ;(router._preloadLanes ??= new Set()).add(loadContext)
+
   try {
     // loadClientMatches mutates the lane in place and returns it.
     await loadClientMatches(loadContext)
@@ -105,6 +109,7 @@ export const preloadClientRoute = async (
     }
     return
   } finally {
+    router._preloadLanes.delete(loadContext)
     for (const match of matches) {
       if (match.preload) {
         settleMatchLoad(match)

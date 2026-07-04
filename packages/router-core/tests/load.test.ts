@@ -3628,15 +3628,26 @@ describe('loader skip or exec', () => {
     expect(loader).toHaveBeenCalledTimes(1)
   })
 
-  test('exec if pending preload (success)', async () => {
-    const loader = vi.fn(() => sleep(100))
+  test('adopt if pending preload (success)', async () => {
+    const loader = vi.fn(async () => {
+      await sleep(100)
+      return 'preloaded'
+    })
     const router = setup({ loader })
     router.preloadRoute({ to: '/foo' })
-    await Promise.resolve()
+    // Wait until the preload's loader is actually in flight — adoption is
+    // deliberately gated on that (a preload still in its serial phase may
+    // itself be waiting on the navigation through the borrow protocol).
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
     expect(router.stores.cachedMatches.get()).toEqual([])
     await router.navigate({ to: '/foo' })
 
-    expect(loader).toHaveBeenCalledTimes(2)
+    // The navigation adopted the in-flight preload's loader run.
+    expect(loader).toHaveBeenCalledTimes(1)
+    expect(
+      router.state.matches.find((match) => match.id === '/foo/foo')
+        ?.loaderData,
+    ).toBe('preloaded')
   })
 
   test('exec if rejected preload (notFound)', async () => {
@@ -3747,7 +3758,6 @@ describe('loader skip or exec', () => {
       await vi.waitFor(() => expect(rejectFoo).toHaveLength(1))
 
       const navigation = router.navigate({ to: '/foo' })
-      await vi.waitFor(() => expect(rejectFoo).toHaveLength(2))
       await vi.advanceTimersByTimeAsync(1)
       await vi.waitFor(() =>
         expect(
@@ -3756,10 +3766,16 @@ describe('loader skip or exec', () => {
           ),
         ).toBe(true),
       )
+      // The navigation adopted the in-flight preload loader: no second run.
+      expect(rejectFoo).toHaveLength(1)
 
       rejectFoo[0]!(redirect({ to: '/bar' }))
       await preload
 
+      // The preload's redirect is control flow the navigation must not
+      // adopt: instead of leaking to /bar, the navigation runs its OWN
+      // loader once the failed donor settles.
+      await vi.waitFor(() => expect(rejectFoo).toHaveLength(2))
       expect(
         router.state.matches.find((match) => match.id === '/foo/foo')?.status,
       ).toBe('pending')

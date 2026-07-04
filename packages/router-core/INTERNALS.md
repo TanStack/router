@@ -674,6 +674,32 @@ finished. Tests anchor this with:
 - `joined preload waits for borrowed notFound to commit`
 - `preload canceled by borrowed owner disappearance projects no assets and caches nothing`
 
+### Navigation adoption of in-flight preloads
+
+Borrowing has a mirror. While a preload pass is loading, its lane is
+registered in `router._preloadLanes`. A navigation (or sibling preload) that
+matches the same match id attaches a join handle (`match._.preloadLane`) and,
+in its loader phase, adopts the donor's SUCCESSFUL loader result instead of
+executing the loader a second time.
+
+Adoption is deliberately narrow:
+
+- Data only, never control flow. A donor that ends in redirect, notFound, or
+  error is ignored and the pass runs its own loader — preload-flavored
+  outcomes cannot leak into navigations.
+- The pass always runs its own `beforeLoad` (navigation semantics); only the
+  loader run is shared.
+- Joining is gated on the donor's loader being IN FLIGHT
+  (`isFetching === 'loader'`). Before that, the preload's serial phase may
+  itself be waiting on this navigation through the borrow protocol, and
+  joining would deadlock the pair. Once the donor's loader started, its
+  serial phase is over by construction and the preload settles
+  independently — the preload's finalizer settles every owned load promise,
+  so the adoption wait cannot hang.
+- Private lanes stay private: nothing enters `cachedMatches` before the
+  preload finishes, and the preload's own cache write already skips ids that
+  became active in the meantime.
+
 Preload route-control behavior:
 
 - A private preload redirect recursively preloads the redirect target. It does
