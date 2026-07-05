@@ -61,10 +61,42 @@ test('server-side redirect', async ({ page, baseURL }) => {
   expect(page.url()).toBe(`${baseURL}/posts/1`)
 
   // do not follow redirects since we want to test the Location header
+  // first go to the route WITHOUT the base path, this will just add the base path
   await page.request
     .get('/redirect/throw-it', { maxRedirects: 0 })
     .then((res) => {
       const headers = new Headers(res.headers())
+      expect(headers.get('location')).toBe('/custom/basepath/redirect/throw-it')
+    })
+  await page.request
+    .get('/custom/basepath/redirect/throw-it', { maxRedirects: 0 })
+    .then((res) => {
+      const headers = new Headers(res.headers())
       expect(headers.get('location')).toBe('/custom/basepath/posts/1')
     })
+})
+
+test('navigate() with href containing basepath', async ({ page, baseURL }) => {
+  await page.goto('/navigate-test')
+  await expect(page.getByTestId('navigate-test-component')).toBeVisible()
+
+  const btn = page.getByTestId('to-posts-href-with-basepath-btn')
+  await btn.click()
+  // Should navigate to /custom/basepath/posts, NOT /custom/basepath/custom/basepath/posts
+  await page.waitForURL(`${baseURL}/posts`)
+  await expect(page.getByTestId('posts-component')).toBeVisible()
+})
+
+test('navigate() with href containing basepath and reloadDocument=true', async ({
+  page,
+  baseURL,
+}) => {
+  await page.goto('/navigate-test')
+  await expect(page.getByTestId('navigate-test-component')).toBeVisible()
+
+  const btn = page.getByTestId('to-posts-href-with-basepath-reload-btn')
+  await btn.click()
+  // Should navigate to /custom/basepath/posts, NOT stay on current page
+  await page.waitForURL(`${baseURL}/posts`)
+  await expect(page.getByTestId('posts-component')).toBeVisible()
 })

@@ -16,7 +16,7 @@ function Page() {
       <p>
         <Link
           aria-label="Documentation"
-          from="/$project/$version"
+          from="/$project/$version/"
           to="/$project/$version/docs"
         >
           Get started with our documentation.

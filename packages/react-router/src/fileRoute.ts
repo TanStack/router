@@ -1,5 +1,3 @@
-/* eslint-disable react-hooks/rules-of-hooks */
-import warning from 'tiny-warning'
 import { createRoute } from './route'
 
 import { useMatch } from './useMatch'
@@ -9,6 +7,7 @@ import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
 import { useRouter } from './useRouter'
+import { useRouteContext } from './useRouteContext'
 import type { UseParamsRoute } from './useParams'
 import type { UseMatchRoute } from './useMatch'
 import type { UseSearchRoute } from './useSearch'
@@ -28,7 +27,7 @@ import type {
   RouteById,
   RouteConstraints,
   RouteIds,
-  RouteLoaderFn,
+  RouteLoaderEntry,
   UpdatableRouteOptions,
   UseNavigateResult,
 } from '@tanstack/router-core'
@@ -47,39 +46,16 @@ import type { UseRouteContextRoute } from './useRouteContext'
  * @returns A function that accepts Route options and returns a Route instance.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createFileRouteFunction
  */
-/**
- * Creates a file-based Route factory for a given path.
- *
- * Used by TanStack Router's file-based routing to associate a file with a
- * route. The returned function accepts standard route options. In normal usage
- * the `path` string is inserted and maintained by the `tsr` generator.
- *
- * @param path File path literal for the route (usually auto-generated).
- * @returns A function that accepts Route options and returns a Route instance.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createFileRouteFunction
- */
-/**
- * Creates a file-based Route factory for a given path.
- * Used by file-based routing to associate a file with a route. The returned
- * function accepts standard route options; the path is typically auto-managed
- * by the generator.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createFileRouteFunction
- */
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
   TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
   TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
-  TFullPath extends
-    RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
+  TFullPath extends RouteConstraints['TFullPath'] =
+    FileRoutesByPath[TFilePath]['fullPath'],
 >(
   path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
-  if (typeof path === 'object') {
-    return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
-      silent: true,
-    }).createRoute(path) as any
-  }
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
     silent: true,
   }).createRoute
@@ -89,21 +65,13 @@ export function createFileRoute<
   @deprecated It's no longer recommended to use the `FileRoute` class directly.
   Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
 */
-/** 
-  @deprecated It's no longer recommended to use the `FileRoute` class directly.
-  Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
-*/
-/**
-  @deprecated It's no longer recommended to use the `FileRoute` class directly.
-  Instead, use `createFileRoute('/path')(options)` to create a file route.
-*/
 export class FileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
   TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
   TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
-  TFullPath extends
-    RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
+  TFullPath extends RouteConstraints['TFullPath'] =
+    FileRoutesByPath[TFilePath]['fullPath'],
 > {
   silent?: boolean
 
@@ -176,26 +144,19 @@ export class FileRoute<
     TMiddlewares,
     THandlers
   > => {
-    warning(
-      this.silent,
-      'FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.',
-    )
+    if (process.env.NODE_ENV !== 'production') {
+      if (!this.silent) {
+        console.warn(
+          'Warning: FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.',
+        )
+      }
+    }
     const route = createRoute(options as any)
     ;(route as any).isRoot = false
     return route as any
   }
 }
 
-/** 
-  @deprecated It's recommended not to split loaders into separate files.
-  Instead, place the loader function in the the main route file, inside the
-  `createFileRoute('/path/to/file)(options)` options.
-*/
-/** 
-  @deprecated It's recommended not to split loaders into separate files.
-  Instead, place the loader function in the the main route file, inside the
-  `createFileRoute('/path/to/file)(options)` options.
-*/
 /**
   @deprecated It's recommended not to split loaders into separate files.
   Instead, place the loader function in the main route file via `createFileRoute`.
@@ -208,7 +169,7 @@ export function FileRouteLoader<
 ): <TLoaderFn>(
   loaderFn: Constrain<
     TLoaderFn,
-    RouteLoaderFn<
+    RouteLoaderEntry<
       Register,
       TRoute['parentRoute'],
       TRoute['types']['id'],
@@ -220,10 +181,11 @@ export function FileRouteLoader<
     >
   >,
 ) => TLoaderFn {
-  warning(
-    false,
-    `FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
-  )
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(
+      `Warning: FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
+    )
+  }
   return (loaderFn) => loaderFn as any
 }
 
@@ -250,7 +212,6 @@ export class LazyRoute<TRoute extends AnyRoute> {
     } & LazyRouteOptions,
   ) {
     this.options = opts
-    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   useMatch: UseMatchRoute<TRoute['id']> = (opts) => {
@@ -262,10 +223,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
-    return useMatch({
-      from: this.options.id,
-      select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.options.id })
   }
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
@@ -312,22 +270,6 @@ export class LazyRoute<TRoute extends AnyRoute> {
  * @returns A function that accepts lazy route options and returns a `LazyRoute`.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyRouteFunction
  */
-/**
- * Creates a lazily-configurable code-based route stub by ID.
- *
- * Use this for code-splitting with code-based routes. The returned function
- * accepts only non-critical route options like `component`, `pendingComponent`,
- * `errorComponent`, and `notFoundComponent` which are applied when the route
- * is matched.
- *
- * @param id Route ID string literal to associate with the lazy route.
- * @returns A function that accepts lazy route options and returns a `LazyRoute`.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyRouteFunction
- */
-/**
- * Create a lazily-configurable code-based route stub by ID.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyRouteFunction
- */
 export function createLazyRoute<
   TRouter extends AnyRouter = RegisteredRouter,
   TId extends string = string,
@@ -350,21 +292,6 @@ export function createLazyRoute<
  *
  * @param id File path literal for the route file.
  * @returns A function that accepts lazy route options and returns a `LazyRoute`.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyFileRouteFunction
- */
-/**
- * Creates a lazily-configurable file-based route stub by file path.
- *
- * Use this for code-splitting with file-based routes (eg. `.lazy.tsx` files).
- * The returned function accepts only non-critical route options like
- * `component`, `pendingComponent`, `errorComponent`, and `notFoundComponent`.
- *
- * @param id File path literal for the route file.
- * @returns A function that accepts lazy route options and returns a `LazyRoute`.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyFileRouteFunction
- */
-/**
- * Create a lazily-configurable file-based route stub by file path.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyFileRouteFunction
  */
 export function createLazyFileRoute<

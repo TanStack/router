@@ -19,7 +19,7 @@ TanStack Start's Selective SSR feature lets you configure:
 
 ## How does this compare to SPA mode?
 
-TanStack Start's [SPA mode](../spa-mode) completely disables server-side execution of `beforeLoad` and `loader`, as well as server-side rendering of route components. Selective SSR allows you to configure server-side handling on a per-route basis, either statically or dynamically.
+TanStack Start's [SPA mode](./spa-mode) completely disables server-side execution of `beforeLoad` and `loader`, as well as server-side rendering of route components. Selective SSR allows you to configure server-side handling on a per-route basis, either statically or dynamically.
 
 ## Configuration
 

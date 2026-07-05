@@ -9,22 +9,37 @@ This guide will help you use Tailwind CSS in your TanStack Start project.
 
 ## Tailwind CSS Version 4 (Latest)
 
-The latest version of Tailwind CSS is 4. And it has some configuration changes that majorly differ from Tailwind CSS Version 3. It's **easier and recommended** to set up Tailwind CSS Version 4 in a TanStack Start project, as TanStack Start uses Vite as its build tool.
+The latest version of Tailwind CSS is 4. And it has some configuration changes that majorly differ from Tailwind CSS Version 3. It's **easier and recommended** to set up Tailwind CSS Version 4 in a TanStack Start project with either Vite or Rsbuild.
 
 ### Install Tailwind CSS
 
-Install Tailwind CSS and it's Vite plugin.
+Install Tailwind CSS and the integration for your build tool.
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
 
 ```shell
 npm install tailwindcss @tailwindcss/vite
 ```
 
-### Configure The Vite Plugin
+# Rsbuild
 
-Add the `@tailwindcss/vite` plugin to your Vite configuration.
+```shell
+npm install tailwindcss @tailwindcss/postcss postcss
+```
 
-```ts
-// vite.config.ts
+<!-- ::end:tabs -->
+
+### Configure Tailwind CSS
+
+Add Tailwind CSS to your build tool configuration.
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -39,18 +54,49 @@ export default defineConfig({
 })
 ```
 
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { pluginReact } from '@rsbuild/plugin-react'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  server: {
+    port: 3000,
+  },
+  plugins: [pluginReact(), tanstackStart()],
+})
+```
+
+```js title="postcss.config.mjs"
+export default {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+}
+```
+
+<!-- ::end:tabs -->
+
 ### Import Tailwind in your CSS file
 
 You need to create a CSS file to configure Tailwind CSS instead of the configuration file in version 4. You can do this by creating a `src/styles/app.css` file or name it whatever you want.
 
 ```css
 /* src/styles/app.css */
-@import 'tailwindcss';
+@import 'tailwindcss' source('../');
 ```
 
 ## Import the CSS file in your `__root.tsx` file
 
-Import the CSS file in your `__root.tsx` file with the `?url` query and make sure to add the **triple slash** directive to the top of the file.
+Import the CSS file in your `__root.tsx` file.
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+Use the `?url` query and make sure to add the **triple slash** directive to the top of the file.
 
 ```tsx
 // src/routes/__root.tsx
@@ -70,6 +116,28 @@ export const Route = createRootRoute({
   component: RootComponent,
 })
 ```
+
+# Rsbuild
+
+Use a side-effect import so Start can discover the generated stylesheet as a route asset.
+
+```tsx
+// src/routes/__root.tsx
+import { createRootRoute } from '@tanstack/react-router'
+import '../styles/app.css'
+
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      // your meta tags and site config
+    ],
+    // other head config
+  }),
+  component: RootComponent,
+})
+```
+
+<!-- ::end:tabs -->
 
 ## Use Tailwind CSS anywhere in your project
 

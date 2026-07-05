@@ -2,6 +2,7 @@ export * from './global'
 
 export { TSR_DEFERRED_PROMISE, defer } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
+export { invariant } from './invariant'
 export { preloadWarning } from './link'
 export type {
   IsRequiredParams,
@@ -14,7 +15,6 @@ export type {
   ResolveCurrentPath,
   ResolveParentPath,
   ResolveRelativePath,
-  LinkCurrentTargetElement,
   FindDescendantToPaths,
   InferDescendantToPaths,
   RelativeToPath,
@@ -38,8 +38,6 @@ export type {
   ToSubOptionsProps,
   RequiredToOptions,
 } from './link'
-
-export { componentTypes } from './load-matches'
 
 export type {
   RouteToPath,
@@ -70,7 +68,40 @@ export type {
 } from './fileRoute'
 
 export type { ParsedLocation } from './location'
-export type { Manifest, RouterManagedTag } from './manifest'
+export type {
+  Manifest,
+  ServerManifest,
+  ManifestRoute,
+  ManifestRouteAssets,
+  ServerManifestRoute,
+  ManifestCssLink,
+  ManifestInlineCss,
+  ServerManifestInlineCss,
+  InlineCssTemplate,
+  ManifestScript,
+  RouterManagedTag,
+  RouterManagedTitleTag,
+  RouterManagedMetaTag,
+  RouterManagedInlineCssTag,
+  RouterManagedScriptTag,
+  RouterManagedLinkTag,
+  RouterManagedStyleTag,
+  AssetCrossOrigin,
+  AssetCrossOriginConfig,
+  ManifestAssetLink,
+  ScriptFormat,
+} from './manifest'
+export {
+  DEV_STYLES_ATTR,
+  appendUniqueUserTags,
+  createInlineCssStyleAsset,
+  getAssetCrossOrigin,
+  getManifestScriptFormat,
+  getScriptPreloadAttrs,
+  getStylesheetHref,
+  resolveManifestAssetLink,
+  resolveManifestCssLink,
+} from './manifest'
 export { isMatch } from './Matches'
 export type {
   AnyMatchAndValue,
@@ -100,12 +131,8 @@ export {
   removeTrailingSlash,
   exactPathTest,
   resolvePath,
-  parsePathname,
   interpolatePath,
-  matchPathname,
-  matchByPath,
 } from './path'
-export type { Segment } from './path'
 export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
@@ -171,11 +198,14 @@ export type {
   FileBaseRouteOptions,
   BaseRouteOptions,
   UpdatableRouteOptions,
+  LoaderStaleReloadMode,
   RouteLoaderFn,
+  RouteLoaderEntry,
   LoaderFnContext,
   RouteContextFn,
   ContextOptions,
   RouteContextOptions,
+  SsrContextOptions,
   BeforeLoadContextOptions,
   RootRouteOptions,
   RootRouteOptionsExtensions,
@@ -193,8 +223,17 @@ export type {
   RootRoute,
   FilebaseRouteOptionsInterface,
 } from './route'
-export { processRouteTree } from './process-route-tree'
-export type { ProcessRouteTreeResult } from './process-route-tree'
+export {
+  createNonReactiveMutableStore,
+  createNonReactiveReadonlyStore,
+} from './stores'
+export type {
+  RouterBatchFn,
+  RouterReadableStore,
+  GetStoreConfig,
+  RouterStores,
+  RouterWritableStore,
+} from './stores'
 export {
   defaultSerializeError,
   getLocationChangeInfo,
@@ -270,15 +309,18 @@ export type { SearchSerializer, SearchParser } from './searchParams'
 export type { OptionalStructuralSharing } from './structuralSharing'
 
 export {
-  last,
   functionalUpdate,
+  hasKeys,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,
   deepEqual,
   createControlledPromise,
   isModuleNotFoundError,
-  decodePath,
+  DEFAULT_PROTOCOL_ALLOWLIST,
+  escapeHtml,
+  isDangerousProtocol,
+  buildDevStylesUrl,
 } from './utils'
 export type {
   NoInfer,
@@ -365,6 +407,8 @@ export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 export type {
   Redirect,
   RedirectOptions,
+  RedirectOptionsRoute,
+  RedirectFnRoute,
   ResolvedRedirect,
   AnyRedirect,
 } from './redirect'
@@ -381,12 +425,9 @@ export { isNotFound, notFound } from './not-found'
 
 export {
   defaultGetScrollRestorationKey,
-  restoreScroll,
+  getElementScrollRestorationEntry,
   storageKey,
-  getCssSelector,
-  scrollRestorationCache,
   setupScrollRestoration,
-  handleHashScroll,
 } from './scroll-restoration'
 
 export type {
@@ -419,7 +460,6 @@ export type {
   AnySerializationAdapter,
   SerializationAdapter,
   ValidateSerializableInput,
-  ValidateSerializableInputResult,
   SerializerExtensions,
   ValidateSerializable,
   RegisteredSerializableInput,
@@ -428,6 +468,7 @@ export type {
   Serializable,
   TSR_SERIALIZABLE,
   TsrSerializable,
+  SerializationError,
 } from './ssr/serializer/transformer'
 
 export {
@@ -439,8 +480,15 @@ export {
 export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
 
 export {
-  composeRewrites,
-  executeRewriteInput,
-  executeRewriteOutput,
-} from './rewrite'
+  RawStream,
+  createRawStreamRPCPlugin,
+  createRawStreamDeserializePlugin,
+} from './ssr/serializer/RawStream'
+export type {
+  OnRawStreamCallback,
+  RawStreamHint,
+  RawStreamOptions,
+} from './ssr/serializer/RawStream'
+
+export { composeRewrites, executeRewriteInput } from './rewrite'
 export type { LocationRewrite, LocationRewriteFunction } from './router'

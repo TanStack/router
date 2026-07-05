@@ -1,12 +1,10 @@
+'use client'
+
 import * as React from 'react'
-import {
-  getLocationChangeInfo,
-  handleHashScroll,
-  trimPathRight,
-} from '@tanstack/router-core'
+import { batch, useStore } from '@tanstack/react-store'
+import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
 
 export function Transitioner() {
   const router = useRouter()
@@ -14,20 +12,15 @@ export function Transitioner() {
 
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   // Track pending state changes
-  const { hasPendingMatches, isLoading } = useRouterState({
-    select: (s) => ({
-      isLoading: s.isLoading,
-      hasPendingMatches: s.matches.some((d) => d.status === 'pending'),
-    }),
-    structuralSharing: true,
-  })
+  const isLoading = useStore(router.stores.isLoading, (value) => value)
+  const hasPending = useStore(router.stores.hasPending, (value) => value)
 
   const previousIsLoading = usePrevious(isLoading)
 
-  const isAnyPending = isLoading || isTransitioning || hasPendingMatches
+  const isAnyPending = isLoading || isTransitioning || hasPending
   const previousIsAnyPending = usePrevious(isAnyPending)
 
-  const isPagePending = isLoading || hasPendingMatches
+  const isPagePending = isLoading || hasPending
   const previousIsPagePending = usePrevious(isPagePending)
 
   router.startTransition = (fn: () => void) => {
@@ -52,9 +45,12 @@ export function Transitioner() {
       _includeValidateSearch: true,
     })
 
+    // Check if the current URL matches the canonical form.
+    // Compare publicHref (browser-facing URL) for consistency with
+    // the server-side redirect check in router.beforeLoad.
     if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
+      trimPathRight(router.latestLocation.publicHref) !==
+      trimPathRight(nextLocation.publicHref)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
@@ -92,7 +88,10 @@ export function Transitioner() {
     if (previousIsLoading && !isLoading) {
       router.emit({
         type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
-        ...getLocationChangeInfo(router.state),
+        ...getLocationChangeInfo(
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
+        ),
       })
     }
   }, [previousIsLoading, router, isLoading])
@@ -102,26 +101,29 @@ export function Transitioner() {
     if (previousIsPagePending && !isPagePending) {
       router.emit({
         type: 'onBeforeRouteMount',
-        ...getLocationChangeInfo(router.state),
+        ...getLocationChangeInfo(
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
+        ),
       })
     }
   }, [isPagePending, previousIsPagePending, router])
 
   useLayoutEffect(() => {
-    // The router was pending and now it's not
     if (previousIsAnyPending && !isAnyPending) {
+      const changeInfo = getLocationChangeInfo(
+        router.stores.location.get(),
+        router.stores.resolvedLocation.get(),
+      )
       router.emit({
         type: 'onResolved',
-        ...getLocationChangeInfo(router.state),
+        ...changeInfo,
       })
 
-      router.__store.setState((s) => ({
-        ...s,
-        status: 'idle',
-        resolvedLocation: s.location,
-      }))
-
-      handleHashScroll(router)
+      batch(() => {
+        router.stores.status.set('idle')
+        router.stores.resolvedLocation.set(router.stores.location.get())
+      })
     }
   }, [isAnyPending, previousIsAnyPending, router])
 

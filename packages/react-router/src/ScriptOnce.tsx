@@ -1,21 +1,20 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
 /**
  * Server-only helper to emit a script tag exactly once during SSR.
- * Appends an internal marker to signal hydration completion.
  */
 export function ScriptOnce({ children }: { children: string }) {
   const router = useRouter()
-  if (!router.isServer) {
+  if (!(isServer ?? router.isServer)) {
     return null
   }
 
   return (
     <script
       nonce={router.options.ssr?.nonce}
-      className="$tsr"
       dangerouslySetInnerHTML={{
-        __html: [children].filter(Boolean).join('\n') + ';$_TSR.c()',
+        __html: children + ';document.currentScript.remove()',
       }}
     />
   )

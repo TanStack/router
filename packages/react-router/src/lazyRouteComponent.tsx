@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { isModuleNotFoundError } from '@tanstack/router-core'
+import { reactUse } from './utils'
 import type { AsyncRouteComponent } from './route'
 
 /**
@@ -79,7 +80,11 @@ export function lazyRouteComponent<
     }
 
     if (!comp) {
-      throw load()
+      if (reactUse) {
+        reactUse(load())
+      } else {
+        throw load()
+      }
     }
 
     return React.createElement(comp, props)

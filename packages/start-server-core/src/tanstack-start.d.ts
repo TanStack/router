@@ -1,7 +1,7 @@
 declare module 'tanstack-start-manifest:v' {
-  import type { Manifest } from '@tanstack/router-core'
+  import type { ServerManifest } from '@tanstack/router-core'
 
-  export const tsrStartManifest: () => Manifest & { clientEntry: string }
+  export const tsrStartManifest: () => ServerManifest
 }
 
 declare module 'tanstack-start-route-tree:v' {
@@ -10,11 +10,14 @@ declare module 'tanstack-start-route-tree:v' {
   export const routeTree: AnyRoute | undefined
 }
 
-declare module '#tanstack-start-server-fn-manifest' {
-  type ServerFn = (...args: Array<any>) => Promise<any>
-  export function getServerFnById(id: string): Promise<ServerFn>
-}
+declare module '#tanstack-start-server-fn-resolver' {
+  export type ServerFnLookupAccess = { origin: 'client' } | { origin: 'server' }
 
-declare module 'tanstack-start-injected-head-scripts:v' {
-  export const injectedHeadScripts: string | undefined
+  export type ServerFn = ((...args: Array<any>) => Promise<any>) & {
+    method?: 'GET' | 'POST'
+  }
+  export function getServerFnById(
+    id: string,
+    access: ServerFnLookupAccess,
+  ): Promise<ServerFn>
 }

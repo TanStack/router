@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
 
@@ -188,7 +189,7 @@ export type LooseAsyncReturnType<T> = T extends (
  * Return the last element of an array.
  * Intended for non-empty arrays used within router internals.
  */
-export function last<T>(arr: Array<T>) {
+export function last<T>(arr: ReadonlyArray<T>) {
   return arr[arr.length - 1]
 }
 
@@ -211,7 +212,19 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   return updater
 }
 
-const hasOwn = Object.prototype.hasOwnProperty
+export const hasOwn = Object.prototype.hasOwnProperty
+const isEnumerable = Object.prototype.propertyIsEnumerable
+
+export function hasKeys(obj: Record<string, unknown>) {
+  for (const key in obj) {
+    if (hasOwn.call(obj, key)) return true
+  }
+  return false
+}
+
+export const createNull = () => Object.create(null)
+export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
+  replaceEqualDeep(prev, next, createNull)
 
 /**
  * This function returns `prev` if `_next` is deeply equal.
@@ -219,10 +232,20 @@ const hasOwn = Object.prototype.hasOwnProperty
  * This can be used for structural sharing between immutable JSON values for example.
  * Do not use this with signals
  */
-export function replaceEqualDeep<T>(prev: any, _next: T): T {
+export function replaceEqualDeep<T>(
+  prev: any,
+  _next: T,
+  _makeObj = () => ({}),
+  _depth = 0,
+): T {
+  if (isServer) {
+    return _next
+  }
   if (prev === _next) {
     return prev
   }
+
+  if (_depth > 500) return _next
 
   const next = _next as any
 
@@ -236,7 +259,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
   if (!nextItems) return next
   const prevSize = prevItems.length
   const nextSize = nextItems.length
-  const copy: any = array ? new Array(nextSize) : {}
+  const copy: any = array ? new Array(nextSize) : _makeObj()
 
   let equalItems = 0
 
@@ -261,7 +284,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
       continue
     }
 
-    const v = replaceEqualDeep(p, n)
+    const v = replaceEqualDeep(p, n, _makeObj, _depth + 1)
     copy[key] = v
     if (v === p) equalItems++
   }
@@ -272,17 +295,27 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
 /**
  * Equivalent to `Reflect.ownKeys`, but ensures that objects are "clone-friendly":
  * will return false if object has any non-enumerable properties.
+ *
+ * Optimized for the common case where objects have no symbol properties.
  */
 function getEnumerableOwnKeys(o: object) {
-  const keys = []
   const names = Object.getOwnPropertyNames(o)
+
+  // Fast path: check all string property names are enumerable
   for (const name of names) {
-    if (!Object.prototype.propertyIsEnumerable.call(o, name)) return false
-    keys.push(name)
+    if (!isEnumerable.call(o, name)) return false
   }
+
+  // Only check symbols if the object has any (most plain objects don't)
   const symbols = Object.getOwnPropertySymbols(o)
+
+  // Fast path: no symbols, return names directly (avoids array allocation/concat)
+  if (symbols.length === 0) return names
+
+  // Slow path: has symbols, need to check and merge
+  const keys: Array<string | symbol> = names
   for (const symbol of symbols) {
-    if (!Object.prototype.propertyIsEnumerable.call(o, symbol)) return false
+    if (!isEnumerable.call(o, symbol)) return false
     keys.push(symbol)
   }
   return keys
@@ -473,8 +506,8 @@ export function isPromise<T>(
 ): value is Promise<Awaited<T>> {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      typeof (value as Promise<T>).then === 'function',
+    typeof value === 'object' &&
+    typeof (value as Promise<T>).then === 'function',
   )
 }
 
@@ -489,71 +522,206 @@ export function findLast<T>(
   return undefined
 }
 
-const DECODE_IGNORE_LIST = Array.from(
-  new Map([
-    ['%', '%25'],
-    ['\\', '%5C'],
-  ]).values(),
-)
+/**
+ * Re-encode characters that are unsafe in URL paths.
+ * Includes ASCII control characters (0x00-0x1F, 0x7F) and a subset of the
+ * WHATWG URL "path percent-encode set" (", <, >, `, {, }).
+ *
+ * Space (0x20) is intentionally excluded — decodeURI decodes %20 to space
+ * and the router stores decoded spaces in location.pathname. The existing
+ * encodePathLikeUrl already handles re-encoding spaces for outgoing URLs.
+ *
+ * These characters are decoded by decodeURI but must remain percent-encoded
+ * in paths to match how upstream layers (CDNs, edge middleware, browsers)
+ * interpret the URL, preventing infinite redirect loops and path mismatches.
+ */
+// eslint-disable-next-line no-control-regex
+const PATH_UNSAFE_RE = /[\x00-\x1f\x7f"<>`{}]/g
 
-export function decodePath(
-  part: string,
-  decodeIgnore: Array<string> = DECODE_IGNORE_LIST,
-): string {
-  function splitAndDecode(
-    part: string,
-    decodeIgnore: Array<string>,
-    startIndex = 0,
-  ): string {
-    // decode the path / path segment by splitting it into parts defined by the ignore list.
-    // once these pieces have been decoded, join them back together to form the final decoded path segment with the ignored character in place.
-    // we walk through the ignore list linearly, breaking the segment up into pieces and decoding each piece individually.
-    // use index traversal to avoid making unnecessary copies of the array.
-    for (let i = startIndex; i < decodeIgnore.length; i++) {
-      const char = decodeIgnore[i]!.toUpperCase()
+function sanitizePathSegment(segment: string): string {
+  return segment.replace(
+    PATH_UNSAFE_RE,
+    (ch) => '%' + ch.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'),
+  )
+}
 
-      // check if the part includes the current ignore character
-      // if it doesn't continue to the next ignore character
-      if (part.includes(char)) {
-        // split the part into pieces that needs to be checked and decoded
-        const partsToDecode = part.split(char)
-        const partsToJoin: Array<string> = []
-
-        // now check and decode each piece individually taking into consideration the remaining ignored characters.
-        // since we are walking through the list linearly, we only need to consider ignore items not yet traversed.
-        for (const partToDecode of partsToDecode) {
-          // once we have traversed the entire ignore list, each decoded part is returned.
-          partsToJoin.push(splitAndDecode(partToDecode, decodeIgnore, i + 1))
-        }
-
-        // and join them back together to form the final decoded path segment with the ignored character in place.
-        return partsToJoin.join(char)
+function decodeSegment(segment: string): string {
+  let decoded: string
+  try {
+    decoded = decodeURI(segment)
+  } catch {
+    // if the decoding fails, try to decode the various parts leaving the malformed tags in place
+    decoded = segment.replaceAll(/%[0-9A-F]{2}/gi, (match) => {
+      try {
+        return decodeURI(match)
+      } catch {
+        return match
       }
-    }
+    })
+  }
+  return sanitizePathSegment(decoded)
+}
 
-    // once we have reached the end of the ignore list, we start walking back returning each decoded part.
-    // should there be no matching characters, the path segment as a whole will be decoded.
-    try {
-      return decodeURI(part)
-    } catch {
-      // if the decoding fails, try to decode the various parts leaving the malformed tags in place
-      return part.replaceAll(/%[0-9A-F]{2}/g, (match) => {
-        try {
-          return decodeURI(match)
-        } catch {
-          return match
-        }
-      })
-    }
+/**
+ * Default list of URL protocols to allow in links, redirects, and navigation.
+ * Any absolute URL protocol not in this list is treated as dangerous by default.
+ */
+export const DEFAULT_PROTOCOL_ALLOWLIST = [
+  // Standard web navigation
+  'http:',
+  'https:',
+
+  // Common browser-safe actions
+  'mailto:',
+  'tel:',
+]
+
+/**
+ * Check if a URL string uses a protocol that is not in the allowlist.
+ * Returns true for blocked protocols like javascript:, blob:, data:, etc.
+ *
+ * The URL constructor correctly normalizes:
+ * - Mixed case (JavaScript: → javascript:)
+ * - Whitespace/control characters (java\nscript: → javascript:)
+ * - Leading whitespace
+ *
+ * For relative URLs (no protocol), returns false (safe).
+ *
+ * @param url - The URL string to check
+ * @param allowlist - Set of protocols to allow
+ * @returns true if the URL uses a protocol that is not allowed
+ */
+export function isDangerousProtocol(
+  url: string,
+  allowlist: Set<string>,
+): boolean {
+  if (!url) return false
+
+  try {
+    // Use the URL constructor - it correctly normalizes protocols
+    // per WHATWG URL spec, handling all bypass attempts automatically
+    const parsed = new URL(url)
+    return !allowlist.has(parsed.protocol)
+  } catch {
+    // URL constructor throws for relative URLs (no protocol)
+    // These are safe - they can't execute scripts
+    return false
+  }
+}
+
+// This utility is based on https://github.com/zertosh/htmlescape
+// License: https://github.com/zertosh/htmlescape/blob/0527ca7156a524d256101bb310a9f970f63078ad/LICENSE
+const HTML_ESCAPE_LOOKUP: { [match: string]: string } = {
+  '&': '\\u0026',
+  '>': '\\u003e',
+  '<': '\\u003c',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029',
+}
+
+const HTML_ESCAPE_REGEX = /[&><\u2028\u2029]/g
+
+/**
+ * Escape HTML special characters in a string to prevent XSS attacks
+ * when embedding strings in script tags during SSR.
+ *
+ * This is essential for preventing XSS vulnerabilities when user-controlled
+ * content is embedded in inline scripts.
+ */
+export function escapeHtml(str: string): string {
+  return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
+}
+
+export function decodePath(path: string) {
+  if (!path) return { path, handledProtocolRelativeURL: false }
+
+  // Fast path: most paths are already decoded and safe.
+  // Only fall back to the slower scan/regex path when we see a '%' (encoded),
+  // a backslash (explicitly handled), a control character, or a protocol-relative
+  // prefix which needs collapsing.
+  // eslint-disable-next-line no-control-regex
+  if (!/[%\\\x00-\x1f\x7f]/.test(path) && !path.startsWith('//')) {
+    return { path, handledProtocolRelativeURL: false }
   }
 
-  // if the path segment does not contain any encoded uri components return the path as is
-  if (part === '' || !/%[0-9A-Fa-f]{2}/g.test(part)) return part
+  const re = /%25|%5C/gi
+  let cursor = 0
+  let result = ''
+  let match
+  while (null !== (match = re.exec(path))) {
+    result += decodeSegment(path.slice(cursor, match.index)) + match[0]
+    cursor = re.lastIndex
+  }
+  result = result + decodeSegment(cursor ? path.slice(cursor) : path)
 
-  // ensure all encoded characters are uppercase
-  const normalizedPart = part.replaceAll(/%[0-9a-f]{2}/g, (match) =>
-    match.toUpperCase(),
-  )
+  // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
+  // This is defense-in-depth: since control characters are no longer decoded,
+  // paths like "/%0d/evil.com" can no longer become "//evil.com". But we keep
+  // this check to guard against other edge cases.
+  let handledProtocolRelativeURL = false
+  if (result.startsWith('//')) {
+    handledProtocolRelativeURL = true
+    result = '/' + result.replace(/^\/+/, '')
+  }
 
-  return splitAndDecode(normalizedPart, decodeIgnore)
+  return { path: result, handledProtocolRelativeURL }
+}
+
+/**
+ * Encodes a path the same way `new URL()` would, but without the overhead of full URL parsing.
+ *
+ * This function encodes:
+ * - Whitespace characters (spaces → %20, tabs → %09, etc.)
+ * - Non-ASCII/Unicode characters (emojis, accented characters, etc.)
+ *
+ * It preserves:
+ * - Already percent-encoded sequences (won't double-encode %2F, %25, etc.)
+ * - ASCII special characters valid in URL paths (@, $, &, +, etc.)
+ * - Forward slashes as path separators
+ *
+ * Used to generate proper href values for SSR without constructing URL objects.
+ *
+ * @example
+ * encodePathLikeUrl('/path/file name.pdf') // '/path/file%20name.pdf'
+ * encodePathLikeUrl('/path/日本語') // '/path/%E6%97%A5%E6%9C%AC%E8%AA%9E'
+ * encodePathLikeUrl('/path/already%20encoded') // '/path/already%20encoded' (preserved)
+ */
+export function encodePathLikeUrl(path: string): string {
+  // Encode whitespace and non-ASCII characters that browsers encode in URLs
+
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
+  // eslint-disable-next-line no-control-regex
+  if (!/\s|[^\u0000-\u007F]/.test(path)) return path
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
+  // eslint-disable-next-line no-control-regex
+  return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)
+}
+
+/**
+ * Builds the dev-mode CSS styles URL for route-scoped CSS collection.
+ * Used by HeadContent components in all framework implementations to construct
+ * the URL for the `/@tanstack-start/styles.css` endpoint.
+ *
+ * @param basepath - The router's basepath (may or may not have leading slash)
+ * @param routeIds - Array of matched route IDs to include in the CSS collection
+ * @returns The full URL path for the dev styles CSS endpoint
+ */
+export function buildDevStylesUrl(
+  basepath: string,
+  routeIds: Array<string>,
+): string {
+  // Trim all leading and trailing slashes from basepath
+  const trimmedBasepath = basepath.replace(/^\/+|\/+$/g, '')
+  // Build normalized basepath: empty string for root, or '/path' for non-root
+  const normalizedBasepath = trimmedBasepath === '' ? '' : `/${trimmedBasepath}`
+  return `${normalizedBasepath}/@tanstack-start/styles.css?routes=${encodeURIComponent(routeIds.join(','))}`
+}
+
+export function arraysEqual<T>(a: Array<T>, b: Array<T>) {
+  if (a === b) return true
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
 }

@@ -1,4 +1,9 @@
-import { useRouterState } from './useRouterState'
+'use client'
+
+import { useStore } from '@tanstack/react-store'
+import { isServer } from '@tanstack/router-core/isServer'
+import { useRouter } from './useRouter'
+import { useStructuralSharing } from './useMatch'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -37,11 +42,6 @@ export type UseLocationResult<
  * @returns The current location (or selected value).
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLocationHook
  */
-/**
- * Read the current location from the router state with optional selection.
- * Useful for subscribing to just the pieces of location you care about.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLocationHook
- */
 export function useLocation<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
@@ -50,8 +50,19 @@ export function useLocation<
   opts?: UseLocationBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseLocationResult<TRouter, TSelected> {
-  return useRouterState({
-    select: (state: any) =>
-      opts?.select ? opts.select(state.location) : state.location,
-  } as any) as UseLocationResult<TRouter, TSelected>
+  const router = useRouter<TRouter>()
+
+  if (isServer ?? router.isServer) {
+    const location = router.stores.location.get()
+    return (
+      opts?.select ? opts.select(location as any) : location
+    ) as UseLocationResult<TRouter, TSelected>
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  return useStore(
+    router.stores.location,
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+    useStructuralSharing(opts, router),
+  ) as UseLocationResult<TRouter, TSelected>
 }

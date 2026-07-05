@@ -804,7 +804,7 @@ describe('encoding: URL path segment', () => {
     await router.load()
 
     expect(router.state.location.pathname).toBe(path)
-    expect(new URL(router.state.location.url).pathname).toBe(url)
+    expect(router.state.location.href).toBe(url)
   })
 })
 
@@ -834,6 +834,50 @@ describe('router emits events during rendering', () => {
     await router.navigate({ to: '/$', params: { _splat: 'tanner' } })
 
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
+    unsub()
+  })
+
+  it('should emit the "onRendered" event when a route renders, after navigation, and after param/search updates', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      scrollRestoration: true,
+    })
+
+    const mockOnRendered = vi.fn()
+    const unsub = router.subscribe('onRendered', mockOnRendered)
+    await router.load()
+
+    await waitFor(() => expect(mockOnRendered).toBeCalledTimes(0))
+    render(() => <RouterProvider router={router} />)
+
+    await waitFor(() => expect(mockOnRendered).toBeCalledTimes(1))
+    expect(mockOnRendered.mock.calls[0]?.[0]?.toLocation.pathname).toBe('/')
+
+    await router.navigate({ to: '/posts/$slug', params: { slug: 'first' } })
+
+    await waitFor(() => expect(mockOnRendered).toBeCalledTimes(2))
+    expect(mockOnRendered.mock.calls[1]?.[0]?.toLocation.pathname).toBe(
+      '/posts/first',
+    )
+
+    await router.navigate({ to: '/posts/$slug', params: { slug: 'second' } })
+
+    await waitFor(() => expect(mockOnRendered).toBeCalledTimes(3))
+    expect(mockOnRendered.mock.calls[2]?.[0]?.toLocation.pathname).toBe(
+      '/posts/second',
+    )
+
+    await router.navigate({
+      to: '/posts/$slug',
+      params: { slug: 'second' },
+      search: { root: 'search-change' },
+    })
+
+    await waitFor(() => expect(mockOnRendered).toBeCalledTimes(4))
+    expect(mockOnRendered.mock.calls[3]?.[0]?.toLocation.search.root).toBe(
+      'search-change',
+    )
+
     unsub()
   })
 
@@ -1016,6 +1060,88 @@ describe('invalidate', () => {
     router.state.matches.forEach((match) => {
       expect(match.invalid).toBe(false)
     })
+  })
+
+  it('re-runs loaders that throw notFound() when invalidated via HMR filter', async () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/hmr-not-found'],
+    })
+    const loader = vi.fn(() => {
+      throw notFound()
+    })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const hmrRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/hmr-not-found',
+      loader,
+      component: () => <div data-testid="hmr-route">Route</div>,
+      notFoundComponent: () => (
+        <div data-testid="hmr-route-not-found">Route Not Found</div>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([hmrRoute]),
+      history,
+    })
+
+    render(() => <RouterProvider router={router} />)
+    await router.load()
+
+    await screen.findByTestId('hmr-route-not-found')
+    const initialCalls = loader.mock.calls.length
+    expect(initialCalls).toBeGreaterThan(0)
+
+    await router.invalidate({
+      filter: (match) => match.routeId === hmrRoute.id,
+    })
+
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(initialCalls + 1))
+    await screen.findByTestId('hmr-route-not-found')
+    expect(screen.queryByTestId('hmr-route')).not.toBeInTheDocument()
+  })
+
+  it('keeps rendering a route notFoundComponent when loader returns notFound() after invalidate', async () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/loader-not-found'],
+    })
+    const loader = vi.fn(() => notFound())
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const loaderRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/loader-not-found',
+      loader,
+      component: () => <div data-testid="loader-route">Route</div>,
+      notFoundComponent: () => (
+        <div data-testid="loader-not-found-component">Route Not Found</div>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([loaderRoute]),
+      history,
+    })
+
+    render(() => <RouterProvider router={router} />)
+    await router.load()
+
+    await screen.findByTestId('loader-not-found-component')
+    const initialCalls = loader.mock.calls.length
+    expect(initialCalls).toBeGreaterThan(0)
+
+    await router.invalidate()
+
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(initialCalls + 1))
+    await screen.findByTestId('loader-not-found-component')
+    expect(screen.queryByTestId('loader-route')).not.toBeInTheDocument()
   })
 })
 
@@ -1326,18 +1452,6 @@ describe('route ids should be consistent after rebuilding the route tree', () =>
 })
 
 describe('route id uniqueness', () => {
-  it('flatRoute should not have routes with duplicated route ids', () => {
-    const { router } = createTestRouter({
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-    const routeIdSet = new Set<string>()
-
-    router.flatRoutes.forEach((route) => {
-      expect(routeIdSet.has(route.id)).toBe(false)
-      routeIdSet.add(route.id)
-    })
-  })
-
   it('routesById should not have routes duplicated route ids', () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/'] }),
@@ -1648,7 +1762,7 @@ describe('statusCode reset on navigation', () => {
 
   describe.each([true, false])(
     'status code is set when loader/beforeLoad throws (isAsync=%s)',
-    async (isAsync) => {
+    (isAsync) => {
       const throwingFun = isAsync
         ? (toThrow: () => void) => async () => {
             await new Promise((resolve) => setTimeout(resolve, 10))

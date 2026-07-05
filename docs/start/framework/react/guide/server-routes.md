@@ -24,6 +24,9 @@ export const Route = createFileRoute('/hello')({
 })
 ```
 
+> [!NOTE]
+> Server routes are meant for HTTP endpoints that need to be called from outside your TanStack Start application. If you only need to call server-side logic from within your Start app and want Start to handle serialization for you, use [server functions](./server-functions) instead.
+
 ## Server Routes and App Routes
 
 Because server routes can be defined in the same directory as your app routes, you can even use the same file for both!
@@ -110,7 +113,7 @@ Server route requests are handled by Start automatically by default or by Start'
 
 The start handler is responsible for matching an incoming request to a server route and executing the appropriate middleware and handler.
 
-If you need to customize the server handler, you can do so by creating a custom handler and then passing the event to the start handler. See [The Server Entry Point](../server-entry-point).
+If you need to customize the server handler, you can do so by creating a custom handler and then passing the event to the start handler. See [The Server Entry Point](./server-entry-point).
 
 ## Defining a Server Route
 
@@ -314,7 +317,7 @@ export const Route = createFileRoute('/file/$')({
 
 ## Handling requests with a body
 
-To handle POST requests,you can add a `POST` handler to the route object. The handler will receive the request object as the first argument, and you can access the request body using the `request.json()` method.
+To handle POST requests, you can add a `POST` handler to the route object. The handler will receive the request object as the first argument, and you can access the request body using the `request.json()` method.
 
 ```ts
 // routes/hello.ts
@@ -367,20 +370,19 @@ export const Route = createFileRoute('/hello')({
 // {"message":"Hello, World!"}
 ```
 
-## Using the `json` helper function
+## Using the `Response.json` helper function
 
-Or you can use the `json` helper function to automatically set the `Content-Type` header to `application/json` and serialize the JSON object for you.
+Or you can use the [`Response.json`](https://developer.mozilla.org/en-US/docs/Web/API/Response/json_static) helper function to automatically set the `Content-Type` header to `application/json` and serialize the JSON object for you.
 
 ```ts
 // routes/hello.ts
 import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
 
 export const Route = createFileRoute('/hello')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        return json({ message: 'Hello, World!' })
+        return Response.json({ message: 'Hello, World!' })
       },
     },
   },
@@ -397,7 +399,6 @@ You can set the status code of the response by passing it as a property of the s
 ```ts
 // routes/hello.ts
 import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
 
 export const Route = createFileRoute('/hello')({
   server: {
@@ -409,7 +410,7 @@ export const Route = createFileRoute('/hello')({
             status: 404,
           })
         }
-        return json(user)
+        return Response.json(user)
       },
     },
   },

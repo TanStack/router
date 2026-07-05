@@ -1,39 +1,27 @@
 import * as Solid from 'solid-js'
-import {
-  getLocationChangeInfo,
-  handleHashScroll,
-  trimPathRight,
-} from '@tanstack/router-core'
+import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
-import { usePrevious } from './utils'
 
 export function Transitioner() {
   const router = useRouter()
   let mountLoadForRouter = { router, mounted: false }
-  const isLoading = useRouterState({
-    select: ({ isLoading }) => isLoading,
-  })
+  const isLoading = Solid.createMemo(() => router.stores.isLoading.get())
 
-  if (router.isServer) {
+  if (isServer ?? router.isServer) {
     return null
   }
 
   const [isSolidTransitioning, startSolidTransition] = Solid.useTransition()
 
   // Track pending state changes
-  const hasPendingMatches = useRouterState({
-    select: (s) => s.matches.some((d) => d.status === 'pending'),
-  })
+  const hasPending = Solid.createMemo(() => router.stores.hasPending.get())
 
-  const previousIsLoading = usePrevious(isLoading)
+  const isAnyPending = Solid.createMemo(
+    () => isLoading() || isSolidTransitioning() || hasPending(),
+  )
 
-  const isAnyPending = () =>
-    isLoading() || isSolidTransitioning() || hasPendingMatches()
-  const previousIsAnyPending = usePrevious(isAnyPending)
-
-  const isPagePending = () => isLoading() || hasPendingMatches()
-  const previousIsPagePending = usePrevious(isPagePending)
+  const isPagePending = Solid.createMemo(() => isLoading() || hasPending())
 
   router.startTransition = (fn: () => void | Promise<void>) => {
     Solid.startTransition(() => {
@@ -55,9 +43,12 @@ export function Transitioner() {
       _includeValidateSearch: true,
     })
 
+    // Check if the current URL matches the canonical form.
+    // Compare publicHref (browser-facing URL) for consistency with
+    // the server-side redirect check in router.beforeLoad.
     if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
+      trimPathRight(router.latestLocation.publicHref) !==
+      trimPathRight(nextLocation.publicHref)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
@@ -89,57 +80,59 @@ export function Transitioner() {
     })
   })
 
-  Solid.createRenderEffect(
-    Solid.on(
-      [previousIsLoading, isLoading],
-      ([previousIsLoading, isLoading]) => {
-        if (previousIsLoading.previous && !isLoading) {
-          router.emit({
-            type: 'onLoad',
-            ...getLocationChangeInfo(router.state),
-          })
-        }
-      },
-    ),
-  )
+  Solid.createRenderEffect((previousIsLoading = false) => {
+    const currentIsLoading = isLoading()
 
-  Solid.createComputed(
-    Solid.on(
-      [isPagePending, previousIsPagePending],
-      ([isPagePending, previousIsPagePending]) => {
-        // emit onBeforeRouteMount
-        if (previousIsPagePending.previous && !isPagePending) {
-          router.emit({
-            type: 'onBeforeRouteMount',
-            ...getLocationChangeInfo(router.state),
-          })
-        }
-      },
-    ),
-  )
+    if (previousIsLoading && !currentIsLoading) {
+      router.emit({
+        type: 'onLoad',
+        ...getLocationChangeInfo(
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
+        ),
+      })
+    }
 
-  Solid.createRenderEffect(
-    Solid.on(
-      [isAnyPending, previousIsAnyPending],
-      ([isAnyPending, previousIsAnyPending]) => {
-        // The router was pending and now it's not
-        if (previousIsAnyPending.previous && !isAnyPending) {
-          router.emit({
-            type: 'onResolved',
-            ...getLocationChangeInfo(router.state),
-          })
+    return currentIsLoading
+  })
 
-          router.__store.setState((s) => ({
-            ...s,
-            status: 'idle',
-            resolvedLocation: s.location,
-          }))
+  Solid.createComputed((previousIsPagePending = false) => {
+    const currentIsPagePending = isPagePending()
 
-          handleHashScroll(router)
-        }
-      },
-    ),
-  )
+    if (previousIsPagePending && !currentIsPagePending) {
+      router.emit({
+        type: 'onBeforeRouteMount',
+        ...getLocationChangeInfo(
+          router.stores.location.get(),
+          router.stores.resolvedLocation.get(),
+        ),
+      })
+    }
+
+    return currentIsPagePending
+  })
+
+  Solid.createRenderEffect((previousIsAnyPending = false) => {
+    const currentIsAnyPending = isAnyPending()
+
+    if (previousIsAnyPending && !currentIsAnyPending) {
+      const changeInfo = getLocationChangeInfo(
+        router.stores.location.get(),
+        router.stores.resolvedLocation.get(),
+      )
+      router.emit({
+        type: 'onResolved',
+        ...changeInfo,
+      })
+
+      Solid.batch(() => {
+        router.stores.status.set('idle')
+        router.stores.resolvedLocation.set(router.stores.location.get())
+      })
+    }
+
+    return currentIsAnyPending
+  })
 
   return null
 }

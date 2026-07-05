@@ -19,11 +19,14 @@ export const Route = createFileRoute('/factory/')({
   component: RouteComponent,
 })
 
-const fnInsideRoute = createServerFn({ method: 'GET' }).handler(() => {
-  return {
-    name: 'fnInsideRoute',
-  }
-})
+const fnInsideRoute = createServerFn({ method: 'GET' }).handler(
+  ({ method }) => {
+    return {
+      name: 'fnInsideRoute',
+      method,
+    }
+  },
+)
 
 const functions = {
   fnInsideRoute: {
@@ -31,6 +34,7 @@ const functions = {
     type: 'serverFn',
     expected: {
       name: 'fnInsideRoute',
+      method: 'GET',
     },
   },
   fooFnInsideFactoryFile: {
@@ -39,7 +43,8 @@ const functions = {
 
     expected: {
       name: 'fooFnInsideFactoryFile',
-      context: { foo: 'foo' },
+      context: { foo: 'foo', method: 'GET' },
+      method: 'GET',
     },
   },
   fooFn: {
@@ -48,7 +53,8 @@ const functions = {
 
     expected: {
       name: 'fooFn',
-      context: { foo: 'foo' },
+      context: { foo: 'foo', method: 'GET' },
+      method: 'GET',
     },
   },
   fooFnPOST: {
@@ -57,7 +63,8 @@ const functions = {
 
     expected: {
       name: 'fooFnPOST',
-      context: { foo: 'foo' },
+      context: { foo: 'foo', method: 'POST' },
+      method: 'POST',
     },
   },
   barFn: {
@@ -66,7 +73,8 @@ const functions = {
 
     expected: {
       name: 'barFn',
-      context: { foo: 'foo', bar: 'bar' },
+      context: { foo: 'foo', method: 'GET', bar: 'bar' },
+      method: 'GET',
     },
   },
   barFnPOST: {
@@ -75,7 +83,8 @@ const functions = {
 
     expected: {
       name: 'barFnPOST',
-      context: { foo: 'foo', bar: 'bar' },
+      context: { foo: 'foo', method: 'POST', bar: 'bar' },
+      method: 'POST',
     },
   },
   localFn: {
@@ -84,7 +93,14 @@ const functions = {
 
     expected: {
       name: 'localFn',
-      context: { foo: 'foo', bar: 'bar', local: 'local', another: 'another' },
+      context: {
+        foo: 'foo',
+        method: 'GET',
+        bar: 'bar',
+        local: 'local',
+        another: 'another',
+      },
+      method: 'GET',
     },
   },
   localFnPOST: {
@@ -93,7 +109,14 @@ const functions = {
 
     expected: {
       name: 'localFnPOST',
-      context: { foo: 'foo', bar: 'bar', local: 'local', another: 'another' },
+      context: {
+        foo: 'foo',
+        method: 'POST',
+        bar: 'bar',
+        local: 'local',
+        another: 'another',
+      },
+      method: 'POST',
     },
   },
   composedFn: {
@@ -101,7 +124,14 @@ const functions = {
     type: 'serverFn',
     expected: {
       name: 'composedFn',
-      context: { foo: 'foo', bar: 'bar', another: 'another', local: 'local' },
+      context: {
+        foo: 'foo',
+        method: 'GET',
+        bar: 'bar',
+        another: 'another',
+        local: 'local',
+      },
+      method: 'GET',
     },
   },
   fakeFn: {

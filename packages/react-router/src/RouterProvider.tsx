@@ -1,16 +1,15 @@
+'use client'
+
 import * as React from 'react'
+import { hasKeys } from '@tanstack/router-core'
 import { Matches } from './Matches'
-import { getRouterContext } from './routerContext'
+import { routerContext } from './routerContext'
 import type {
   AnyRouter,
   RegisteredRouter,
   RouterOptions,
 } from '@tanstack/router-core'
 
-/**
- * Low-level provider that places the router into React context and optionally
- * updates router options from props. Most apps should use `RouterProvider`.
- */
 /**
  * Low-level provider that places the router into React context and optionally
  * updates router options from props. Most apps should use `RouterProvider`.
@@ -25,7 +24,7 @@ export function RouterContextProvider<
 }: RouterProps<TRouter, TDehydrated> & {
   children: React.ReactNode
 }) {
-  if (Object.keys(rest).length > 0) {
+  if (hasKeys(rest)) {
     // Allow the router to update options on the router instance
     router.update({
       ...router.options,
@@ -34,10 +33,8 @@ export function RouterContextProvider<
         ...router.options.context,
         ...rest.context,
       },
-    } as any)
+    })
   }
-
-  const routerContext = getRouterContext()
 
   const provider = (
     <routerContext.Provider value={router as AnyRouter}>
@@ -60,11 +57,6 @@ export function RouterContextProvider<
  * instance after creation.
  *
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouterFunction
- */
-/**
- * Top-level component that renders the active route matches and provides the
- * router to the React tree via context. Accepts the same options as
- * `createRouter` via props to update the router instance.
  */
 export function RouterProvider<
   TRouter extends AnyRouter = RegisteredRouter,

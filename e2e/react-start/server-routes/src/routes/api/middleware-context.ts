@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createMiddleware, json } from '@tanstack/react-start'
+import { createMiddleware } from '@tanstack/react-start'
 
 const testParentMiddleware = createMiddleware().server(async ({ next }) => {
   const result = await next({ context: { testParent: true } })
@@ -18,7 +18,7 @@ export const Route = createFileRoute('/api/middleware-context')({
     middleware: [testMiddleware],
     handlers: {
       GET: ({ request, context }) => {
-        return json({
+        return Response.json({
           url: request.url,
           context: context,
           expectedContext: { testParent: true, test: true },

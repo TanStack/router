@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import { getRequestHeaders } from '@tanstack/solid-start/server'
-import { createMiddleware, json } from '@tanstack/solid-start'
+import { createMiddleware } from '@tanstack/solid-start'
 import type { User } from '~/utils/users'
 
 const userLoggerMiddleware = createMiddleware().server(async ({ next }) => {
@@ -55,7 +55,7 @@ export const Route = createFileRoute('/api/users')({
 
         const list = data.slice(0, 10)
 
-        return json(
+        return Response.json(
           list.map((u) => ({ id: u.id, name: u.name, email: u.email })),
         )
       },

@@ -3,7 +3,6 @@ import { test } from 'vitest'
 test('dummy', () => {})
 /*
 import { expectTypeOf, test } from 'vitest'
-import { json } from '../../router-core/src/ssr/json'
 import '../../start-client-core/src/serverRoute'
 import { createMiddleware } from '../../start-client-core/src/createMiddleware'
 import { createFileRoute as defaultCreateFileRoute } from '../../react-router/src/fileRoute'
@@ -41,7 +40,7 @@ test('createServerFileRoute with methods with no middleware', () => {
         request: Request
       }>()
 
-      return json({
+      return Response.json({
         test: 'test',
       })
     },
@@ -56,7 +55,7 @@ test('createServerFileRoute with methods with no middleware', () => {
         request: Request
       }>()
 
-      return json({
+      return Response.json({
         test: 'test',
       })
     }),
@@ -83,7 +82,7 @@ test('createServerFileRoute with methods and route middleware context', () => {
         request: Request
       }>()
 
-      return json({
+      return Response.json({
         test: 'test',
       })
     },
@@ -98,7 +97,7 @@ test('createServerFileRoute with methods and route middleware context', () => {
         request: Request
       }>()
 
-      return json({
+      return Response.json({
         test: 'test',
       })
     }),
@@ -129,7 +128,7 @@ test('createServerFileRoute with methods middleware and route middleware', () =>
         request: Request
       }>()
 
-      return json({
+      return Response.json({
         test: 'test',
       })
     }),
@@ -178,7 +177,7 @@ test('createServerFileRoute with a parent middleware context', () => {
           request: Request
         }>()
 
-        return json({ test: 'test' })
+        return Response.json({ test: 'test' })
       },
     })
 
@@ -199,7 +198,7 @@ test('createServerFileRoute with a parent middleware context', () => {
           request: Request
         }>()
 
-        return json({ test: 'test' })
+        return Response.json({ test: 'test' })
       }),
     }))
 })
@@ -232,7 +231,7 @@ test('createServerFileRoute with parent middleware params', () => {
         request: Request
       }>()
 
-      return json({ test: 'test' })
+      return Response.json({ test: 'test' })
     },
   })
 
@@ -245,7 +244,7 @@ test('createServerFileRoute with parent middleware params', () => {
         request: Request
       }>()
 
-      return json({ test: 'test' })
+      return Response.json({ test: 'test' })
     }),
   }))
 })
@@ -268,7 +267,7 @@ test('createServerFileRoute with no params', () => {
         request: Request
       }>()
 
-      return json({ test: 'test' })
+      return Response.json({ test: 'test' })
     },
   })
 
@@ -281,7 +280,7 @@ test('createServerFileRoute with no params', () => {
         request: Request
       }>()
 
-      return json({ test: 'test' })
+      return Response.json({ test: 'test' })
     }),
   }))
 })

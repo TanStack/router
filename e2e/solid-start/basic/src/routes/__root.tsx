@@ -1,16 +1,18 @@
 /// <reference types="vite/client" />
 import {
+  ClientOnly,
   HeadContent,
   Link,
   Outlet,
   Scripts,
   createRootRoute,
+  useRouterState,
 } from '@tanstack/solid-router'
 
 import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
 import { HydrationScript } from 'solid-js/web'
 import { NotFound } from '~/components/NotFound'
-import appCss from '~/styles/app.css?url'
+import '~/styles/app.css'
 import { seo } from '~/utils/seo'
 
 export const Route = createRootRoute({
@@ -27,7 +29,6 @@ export const Route = createRootRoute({
       }),
     ],
     links: [
-      { rel: 'stylesheet', href: appCss },
       {
         rel: 'apple-touch-icon',
         sizes: '180x180',
@@ -66,6 +67,10 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  const routerState = useRouterState({
+    select: (state) => ({ isLoading: state.isLoading, status: state.status }),
+  })
+
   return (
     <html>
       <head>
@@ -140,6 +145,14 @@ function RootComponent() {
             redirect
           </Link>{' '}
           <Link
+            to="/raw-stream"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Raw Stream
+          </Link>{' '}
+          <Link
             // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{
@@ -149,6 +162,14 @@ function RootComponent() {
             This Route Does Not Exist
           </Link>
         </div>
+        <ClientOnly>
+          <div hidden>
+            <b data-testid="router-isLoading">
+              {routerState().isLoading ? 'true' : 'false'}
+            </b>
+            <b data-testid="router-status">{routerState().status}</b>
+          </div>
+        </ClientOnly>
         <Outlet />
         <div class="inline-div">This is an inline styled div</div>
         <TanStackRouterDevtoolsInProd />

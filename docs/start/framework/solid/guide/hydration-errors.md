@@ -126,4 +126,4 @@ export const Route = createFileRoute('/unstable')({
 - **Use `<ClientOnly>`/`<NoHydration>`** for inherently dynamic UI
 - **Use Selective SSR** when server HTML cannot be stable
 
-See also: [Execution Model](../execution-model.md), [Code Execution Patterns](../code-execution-patterns.md), [Selective SSR](../selective-ssr.md), [Server Functions](../server-functions.md)
+See also: [Execution Model](./execution-model.md), [Code Execution Patterns](./code-execution-patterns.md), [Selective SSR](./selective-ssr.md), [Server Functions](./server-functions.md)

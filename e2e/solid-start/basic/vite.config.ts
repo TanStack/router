@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import viteSolid from 'vite-plugin-solid'
 import { isSpaMode } from './tests/utils/isSpaMode'
 import { isPrerender } from './tests/utils/isPrerender'
+import tailwindcss from '@tailwindcss/vite'
 
 const spaModeConfiguration = {
   enabled: true,
@@ -19,23 +19,29 @@ const prerenderConfiguration = {
       '/this-route-does-not-exist',
       '/redirect',
       '/i-do-not-exist',
-      '/not-found/via-beforeLoad',
-      '/not-found/via-loader',
+      '/not-found',
+      '/specialChars/search',
+      '/specialChars/hash',
+      '/specialChars/malformed',
       '/search-params/default',
       '/transition',
+      '/users',
     ].some((p) => page.path.includes(p)),
   maxRedirects: 100,
 }
 
+const outDir = process.env.E2E_DIST_DIR ?? 'dist'
+
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
+  build: {
+    outDir,
+  },
   server: {
     port: 3000,
   },
   plugins: [
-    tsConfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
-    // @ts-ignore we want to keep one test with verboseFileRoutes off even though the option is hidden
+    tailwindcss(),
     tanstackStart({
       spa: isSpaMode ? spaModeConfiguration : undefined,
       prerender: isPrerender ? prerenderConfiguration : undefined,

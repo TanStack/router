@@ -10,10 +10,17 @@ export function routesManifestPlugin(): GeneratorPlugin {
   return {
     name: 'routes-manifest-plugin',
     onRouteTreeChanged: ({ routeTree, rootRouteNode, routeNodes }) => {
-      const routesManifest = {
+      const allChildren = routeTree.map((d) => d.routePath)
+      const routes: Record<
+        string,
+        {
+          filePath: string
+          children: Array<string>
+        }
+      > = {
         [rootRouteId]: {
           filePath: rootRouteNode.fullPath,
-          children: routeTree.map((d) => d.routePath),
+          children: allChildren,
         },
         ...Object.fromEntries(
           routeNodes.map((d) => {
@@ -23,7 +30,6 @@ export function routesManifestPlugin(): GeneratorPlugin {
               filePathId,
               {
                 filePath: d.fullPath,
-                parent: d.parent?.routePath ? d.parent.routePath : undefined,
                 children: d.children?.map((childRoute) => childRoute.routePath),
               },
             ]
@@ -31,7 +37,7 @@ export function routesManifestPlugin(): GeneratorPlugin {
         ),
       }
 
-      globalThis.TSS_ROUTES_MANIFEST = { routes: routesManifest }
+      globalThis.TSS_ROUTES_MANIFEST = routes
     },
   }
 }

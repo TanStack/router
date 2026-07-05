@@ -1,17 +1,23 @@
+'use client'
+
 import * as React from 'react'
+import { useStore } from '@tanstack/react-store'
 import { flushSync } from 'react-dom'
 import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
+  hasKeys,
+  isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
-import { useRouterState } from './useRouterState'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
 import { useForwardedRef, useIntersectionObserver } from './utils'
 
+import { useHydrated } from './ClientOnly'
 import type {
   AnyRouter,
   Constrain,
@@ -48,9 +54,10 @@ export function useLinkProps<
   forwardedRef?: React.ForwardedRef<Element>,
 ): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
-  const [isTransitioning, setIsTransitioning] = React.useState(false)
-  const hasRenderFetched = React.useRef(false)
   const innerRef = useForwardedRef(forwardedRef)
+
+  // Determine if we're on the server - used for tree-shaking client-only code
+  const _isServer = isServer ?? router.isServer
 
   const {
     // custom props
@@ -60,6 +67,7 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
+    preloadIntentProximity: _preloadIntentProximity,
     hashScrollIntoView,
     replace,
     startTransition,
@@ -72,6 +80,7 @@ export function useLinkProps<
     style,
     className,
     onClick,
+    onBlur,
     onFocus,
     onMouseEnter,
     onMouseLeave,
@@ -90,80 +99,122 @@ export function useLinkProps<
     ...propsSafeToSpread
   } = options
 
-  // subscribe to search params to re-build location if it changes
-  const currentSearch = useRouterState({
-    select: (s) => s.location.search,
-    structuralSharing: true as any,
-  })
+  // ==========================================================================
+  // SERVER EARLY RETURN
+  // On the server, we return static props without any event handlers,
+  // effects, or client-side interactivity.
+  //
+  // For SSR parity (to avoid hydration errors), we still compute the link's
+  // active status on the server, but we avoid creating any router-state
+  // subscriptions by reading from the location store directly.
+  //
+  // Note: `location.hash` is not available on the server.
+  // ==========================================================================
+  if (_isServer) {
+    const safeInternal = isSafeInternal(to)
 
-  const from = options.from
+    // If `to` is obviously an absolute URL, treat as external and avoid
+    // computing the internal location via `buildLocation`.
+    if (
+      typeof to === 'string' &&
+      !safeInternal &&
+      // Quick checks to avoid `new URL` in common internal-like cases
+      to.indexOf(':') > -1
+    ) {
+      try {
+        new URL(to)
+        if (isDangerousProtocol(to, router.protocolAllowlist)) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(`Blocked Link with dangerous protocol: ${to}`)
+          }
+          return {
+            ...propsSafeToSpread,
+            ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+            href: undefined,
+            ...(children && { children }),
+            ...(target && { target }),
+            ...(disabled && { disabled }),
+            ...(style && { style }),
+            ...(className && { className }),
+          }
+        }
 
-  const _options = React.useMemo(
-    () => {
-      return { ...options, from }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      router,
-      currentSearch,
-      from,
-      options._fromLocation,
-      options.hash,
-      options.to,
-      options.search,
-      options.params,
-      options.state,
-      options.mask,
-      options.unsafeRelative,
-    ],
-  )
-
-  const next = React.useMemo(
-    () => router.buildLocation({ ..._options } as any),
-    [router, _options],
-  )
-
-  const hrefOption = React.useMemo(() => {
-    if (disabled) {
-      return undefined
-    }
-    let href = next.maskedLocation ? next.maskedLocation.url : next.url
-
-    let external = false
-    if (router.origin) {
-      if (href.startsWith(router.origin)) {
-        href = router.history.createHref(href.replace(router.origin, '')) || '/'
-      } else {
-        external = true
+        return {
+          ...propsSafeToSpread,
+          ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+          href: to,
+          ...(children && { children }),
+          ...(target && { target }),
+          ...(disabled && { disabled }),
+          ...(style && { style }),
+          ...(className && { className }),
+        }
+      } catch {
+        // Not an absolute URL
       }
     }
-    return { href, external }
-  }, [disabled, next.maskedLocation, next.url, router.origin, router.history])
 
-  const externalLink = React.useMemo(() => {
-    if (hrefOption?.external) {
-      return hrefOption.href
-    }
-    try {
-      new URL(to as any)
-      return to
-    } catch {}
-    return undefined
-  }, [to, hrefOption])
+    const next = router.buildLocation({ ...options, from: options.from } as any)
 
-  const preload =
-    options.reloadDocument || externalLink
-      ? false
-      : (userPreload ?? router.options.defaultPreload)
-  const preloadDelay =
-    userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
+    // Use publicHref - it contains the correct href for display
+    // When a rewrite changes the origin, publicHref is the full URL
+    // Otherwise it's the origin-stripped path
+    // This avoids constructing URL objects in the hot path
+    const hrefOptionPublicHref = next.maskedLocation
+      ? next.maskedLocation.publicHref
+      : next.publicHref
+    const hrefOptionExternal = next.maskedLocation
+      ? next.maskedLocation.external
+      : next.external
+    const hrefOption = getHrefOption(
+      hrefOptionPublicHref,
+      hrefOptionExternal,
+      router.history,
+      disabled,
+    )
 
-  const isActive = useRouterState({
-    select: (s) => {
+    const externalLink = (() => {
+      if (hrefOption?.external) {
+        if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(
+              `Blocked Link with dangerous protocol: ${hrefOption.href}`,
+            )
+          }
+          return undefined
+        }
+        return hrefOption.href
+      }
+
+      if (safeInternal) return undefined
+
+      // Only attempt URL parsing when it looks like an absolute URL.
+      if (typeof to === 'string' && to.indexOf(':') > -1) {
+        try {
+          new URL(to)
+          if (isDangerousProtocol(to, router.protocolAllowlist)) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn(`Blocked Link with dangerous protocol: ${to}`)
+            }
+            return undefined
+          }
+          return to
+        } catch {}
+      }
+
+      return undefined
+    })()
+
+    const isActive = (() => {
       if (externalLink) return false
-      if (activeOptions?.exact) {
+
+      const currentLocation = router.stores.location.get()
+
+      const exact = activeOptions?.exact ?? false
+
+      if (exact) {
         const testExact = exactPathTest(
-          s.location.pathname,
+          currentLocation.pathname,
           next.pathname,
           router.basepath,
         )
@@ -172,7 +223,7 @@ export function useLinkProps<
         }
       } else {
         const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
+          currentLocation.pathname,
           router.basepath,
         )
         const nextPathSplit = removeTrailingSlash(
@@ -190,30 +241,337 @@ export function useLinkProps<
         }
       }
 
-      if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next.search, {
-          partial: !activeOptions?.exact,
-          ignoreUndefined: !activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
+      const includeSearch = activeOptions?.includeSearch ?? true
+      if (includeSearch) {
+        if (currentLocation.search !== next.search) {
+          const currentSearchEmpty =
+            !currentLocation.search ||
+            (typeof currentLocation.search === 'object' &&
+              !hasKeys(currentLocation.search))
+          const nextSearchEmpty =
+            !next.search ||
+            (typeof next.search === 'object' &&
+              !hasKeys(next.search as Record<string, unknown>))
+
+          if (!(currentSearchEmpty && nextSearchEmpty)) {
+            const searchTest = deepEqual(currentLocation.search, next.search, {
+              partial: !exact,
+              ignoreUndefined: !activeOptions?.explicitUndefined,
+            })
+            if (!searchTest) {
+              return false
+            }
+          }
         }
       }
 
+      // Hash is not available on the server
       if (activeOptions?.includeHash) {
-        return s.location.hash === next.hash
+        return false
       }
+
       return true
-    },
-  })
+    })()
 
+    if (externalLink) {
+      return {
+        ...propsSafeToSpread,
+        ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+        href: externalLink,
+        ...(children && { children }),
+        ...(target && { target }),
+        ...(disabled && { disabled }),
+        ...(style && { style }),
+        ...(className && { className }),
+      }
+    }
+
+    const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+      isActive
+        ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
+        : STATIC_EMPTY_OBJECT
+
+    const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+      isActive
+        ? STATIC_EMPTY_OBJECT
+        : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
+
+    const resolvedStyle = (() => {
+      const baseStyle = style
+      const activeStyle = resolvedActiveProps.style
+      const inactiveStyle = resolvedInactiveProps.style
+
+      if (!baseStyle && !activeStyle && !inactiveStyle) {
+        return undefined
+      }
+
+      if (baseStyle && !activeStyle && !inactiveStyle) {
+        return baseStyle
+      }
+
+      if (!baseStyle && activeStyle && !inactiveStyle) {
+        return activeStyle
+      }
+
+      if (!baseStyle && !activeStyle && inactiveStyle) {
+        return inactiveStyle
+      }
+
+      return {
+        ...baseStyle,
+        ...activeStyle,
+        ...inactiveStyle,
+      }
+    })()
+
+    const resolvedClassName = (() => {
+      const baseClassName = className
+      const activeClassName = resolvedActiveProps.className
+      const inactiveClassName = resolvedInactiveProps.className
+
+      if (!baseClassName && !activeClassName && !inactiveClassName) {
+        return ''
+      }
+
+      let out = ''
+
+      if (baseClassName) {
+        out = baseClassName
+      }
+
+      if (activeClassName) {
+        out = out ? `${out} ${activeClassName}` : activeClassName
+      }
+
+      if (inactiveClassName) {
+        out = out ? `${out} ${inactiveClassName}` : inactiveClassName
+      }
+
+      return out
+    })()
+
+    return {
+      ...propsSafeToSpread,
+      ...resolvedActiveProps,
+      ...resolvedInactiveProps,
+      href: hrefOption?.href,
+      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+      disabled: !!disabled,
+      target,
+      ...(resolvedStyle && { style: resolvedStyle }),
+      ...(resolvedClassName && { className: resolvedClassName }),
+      ...(disabled && STATIC_DISABLED_PROPS),
+      ...(isActive && STATIC_ACTIVE_PROPS),
+    }
+  }
+
+  // ==========================================================================
+  // CLIENT-ONLY CODE
+  // Everything below this point only runs on the client. The `isServer` check
+  // above is a compile-time constant that bundlers use for dead code elimination,
+  // so this entire section is removed from server bundles.
+  //
+  // We disable the rules-of-hooks lint rule because these hooks appear after
+  // an early return. This is safe because:
+  // 1. `isServer` is a compile-time constant from conditional exports
+  // 2. In server bundles, this code is completely eliminated by the bundler
+  // 3. In client bundles, `isServer` is `false`, so the early return never executes
+  // ==========================================================================
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const isHydrated = useHydrated()
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const _options = React.useMemo(
+    () => options,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      router,
+      options.from,
+      options._fromLocation,
+      options.hash,
+      options.to,
+      options.search,
+      options.params,
+      options.state,
+      options.mask,
+      options.unsafeRelative,
+    ],
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const currentLocation = useStore(
+    router.stores.location,
+    (l) => l,
+    (prev, next) => prev.href === next.href,
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const next = React.useMemo(() => {
+    const opts = { _fromLocation: currentLocation, ..._options }
+    return router.buildLocation(opts as any)
+  }, [router, currentLocation, _options])
+
+  // Use publicHref - it contains the correct href for display
+  // When a rewrite changes the origin, publicHref is the full URL
+  // Otherwise it's the origin-stripped path
+  // This avoids constructing URL objects in the hot path
+  const hrefOptionPublicHref = next.maskedLocation
+    ? next.maskedLocation.publicHref
+    : next.publicHref
+  const hrefOptionExternal = next.maskedLocation
+    ? next.maskedLocation.external
+    : next.external
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const hrefOption = React.useMemo(
+    () =>
+      getHrefOption(
+        hrefOptionPublicHref,
+        hrefOptionExternal,
+        router.history,
+        disabled,
+      ),
+    [disabled, hrefOptionExternal, hrefOptionPublicHref, router.history],
+  )
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const externalLink = React.useMemo(() => {
+    if (hrefOption?.external) {
+      // Block dangerous protocols for external links
+      if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `Blocked Link with dangerous protocol: ${hrefOption.href}`,
+          )
+        }
+        return undefined
+      }
+      return hrefOption.href
+    }
+    const safeInternal = isSafeInternal(to)
+    if (safeInternal) return undefined
+    if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
+    try {
+      new URL(to as any)
+      // Block dangerous protocols like javascript:, blob:, data:
+      if (isDangerousProtocol(to, router.protocolAllowlist)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Blocked Link with dangerous protocol: ${to}`)
+        }
+        return undefined
+      }
+      return to
+    } catch {}
+    return undefined
+  }, [to, hrefOption, router.protocolAllowlist])
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const isActive = React.useMemo(() => {
+    if (externalLink) return false
+    if (activeOptions?.exact) {
+      const testExact = exactPathTest(
+        currentLocation.pathname,
+        next.pathname,
+        router.basepath,
+      )
+      if (!testExact) {
+        return false
+      }
+    } else {
+      const currentPathSplit = removeTrailingSlash(
+        currentLocation.pathname,
+        router.basepath,
+      )
+      const nextPathSplit = removeTrailingSlash(next.pathname, router.basepath)
+
+      const pathIsFuzzyEqual =
+        currentPathSplit.startsWith(nextPathSplit) &&
+        (currentPathSplit.length === nextPathSplit.length ||
+          currentPathSplit[nextPathSplit.length] === '/')
+
+      if (!pathIsFuzzyEqual) {
+        return false
+      }
+    }
+
+    if (activeOptions?.includeSearch ?? true) {
+      const searchTest = deepEqual(currentLocation.search, next.search, {
+        partial: !activeOptions?.exact,
+        ignoreUndefined: !activeOptions?.explicitUndefined,
+      })
+      if (!searchTest) {
+        return false
+      }
+    }
+
+    if (activeOptions?.includeHash) {
+      return isHydrated && currentLocation.hash === next.hash
+    }
+    return true
+  }, [
+    activeOptions?.exact,
+    activeOptions?.explicitUndefined,
+    activeOptions?.includeHash,
+    activeOptions?.includeSearch,
+    currentLocation,
+    externalLink,
+    isHydrated,
+    next.hash,
+    next.pathname,
+    next.search,
+    router.basepath,
+  ])
+
+  // Get the active props
+  const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
+    ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
+    : STATIC_EMPTY_OBJECT
+
+  // Get the inactive props
+  const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+    isActive
+      ? STATIC_EMPTY_OBJECT
+      : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
+
+  const resolvedClassName = [
+    className,
+    resolvedActiveProps.className,
+    resolvedInactiveProps.className,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const resolvedStyle = (style ||
+    resolvedActiveProps.style ||
+    resolvedInactiveProps.style) && {
+    ...style,
+    ...resolvedActiveProps.style,
+    ...resolvedInactiveProps.style,
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [isTransitioning, setIsTransitioning] = React.useState(false)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const hasRenderFetched = React.useRef(false)
+
+  const preload =
+    options.reloadDocument || externalLink
+      ? false
+      : (userPreload ?? router.options.defaultPreload)
+  const preloadDelay =
+    userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const doPreload = React.useCallback(() => {
-    router.preloadRoute({ ..._options } as any).catch((err) => {
-      console.warn(err)
-      console.warn(preloadWarning)
-    })
-  }, [router, _options])
+    router
+      .preloadRoute({ ..._options, _builtLocation: next } as any)
+      .catch((err) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
+  }, [router, _options, next])
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const preloadViewportIoCallback = React.useCallback(
     (entry: IntersectionObserverEntry | undefined) => {
       if (entry?.isIntersecting) {
@@ -223,6 +581,7 @@ export function useLinkProps<
     [doPreload],
   )
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useIntersectionObserver(
     innerRef,
     preloadViewportIoCallback,
@@ -230,6 +589,7 @@ export function useLinkProps<
     { disabled: !!disabled || !(preload === 'viewport') },
   )
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   React.useEffect(() => {
     if (hasRenderFetched.current) {
       return
@@ -291,6 +651,7 @@ export function useLinkProps<
       ...(style && { style }),
       ...(className && { className }),
       ...(onClick && { onClick }),
+      ...(onBlur && { onBlur }),
       ...(onFocus && { onFocus }),
       ...(onMouseEnter && { onMouseEnter }),
       ...(onMouseLeave && { onMouseLeave }),
@@ -298,69 +659,40 @@ export function useLinkProps<
     }
   }
 
-  // The click handler
-  const handleFocus = (_: React.MouseEvent) => {
-    if (disabled) return
-    if (preload) {
-      doPreload()
-    }
-  }
-
-  const handleTouchStart = handleFocus
-
-  const handleEnter = (e: React.MouseEvent) => {
-    if (disabled || !preload) return
+  const enqueueIntentPreload = (e: React.MouseEvent | React.FocusEvent) => {
+    if (disabled || preload !== 'intent') return
 
     if (!preloadDelay) {
       doPreload()
-    } else {
-      const eventTarget = e.target
-      if (timeoutMap.has(eventTarget)) {
-        return
-      }
-      const id = setTimeout(() => {
-        timeoutMap.delete(eventTarget)
-        doPreload()
-      }, preloadDelay)
-      timeoutMap.set(eventTarget, id)
+      return
     }
+
+    const eventTarget = e.currentTarget
+
+    if (timeoutMap.has(eventTarget)) {
+      return
+    }
+
+    const id = setTimeout(() => {
+      timeoutMap.delete(eventTarget)
+      doPreload()
+    }, preloadDelay)
+    timeoutMap.set(eventTarget, id)
   }
 
-  const handleLeave = (e: React.MouseEvent) => {
+  const handleTouchStart = (_: React.TouchEvent) => {
+    if (disabled || preload !== 'intent') return
+    doPreload()
+  }
+
+  const handleLeave = (e: React.MouseEvent | React.FocusEvent) => {
     if (disabled || !preload || !preloadDelay) return
-    const eventTarget = e.target
+    const eventTarget = e.currentTarget
     const id = timeoutMap.get(eventTarget)
     if (id) {
       clearTimeout(id)
       timeoutMap.delete(eventTarget)
     }
-  }
-
-  // Get the active props
-  const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
-    ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
-    : STATIC_EMPTY_OBJECT
-
-  // Get the inactive props
-  const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive
-      ? STATIC_EMPTY_OBJECT
-      : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
-
-  const resolvedClassName = [
-    className,
-    resolvedActiveProps.className,
-    resolvedInactiveProps.className,
-  ]
-    .filter(Boolean)
-    .join(' ')
-
-  const resolvedStyle = (style ||
-    resolvedActiveProps.style ||
-    resolvedInactiveProps.style) && {
-    ...style,
-    ...resolvedActiveProps.style,
-    ...resolvedInactiveProps.style,
   }
 
   return {
@@ -370,8 +702,9 @@ export function useLinkProps<
     href: hrefOption?.href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
-    onFocus: composeHandlers([onFocus, handleFocus]),
-    onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
+    onBlur: composeHandlers([onBlur, handleLeave]),
+    onFocus: composeHandlers([onFocus, enqueueIntentPreload]),
+    onMouseEnter: composeHandlers([onMouseEnter, enqueueIntentPreload]),
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     disabled: !!disabled,
@@ -380,7 +713,7 @@ export function useLinkProps<
     ...(resolvedClassName && { className: resolvedClassName }),
     ...(disabled && STATIC_DISABLED_PROPS),
     ...(isActive && STATIC_ACTIVE_PROPS),
-    ...(isTransitioning && STATIC_TRANSITIONING_PROPS),
+    ...(isHydrated && isTransitioning && STATIC_TRANSITIONING_PROPS),
   }
 }
 
@@ -405,6 +738,30 @@ const composeHandlers =
       handler(e)
     }
   }
+
+function getHrefOption(
+  publicHref: string,
+  external: boolean,
+  history: AnyRouter['history'],
+  disabled: boolean | undefined,
+) {
+  if (disabled) return undefined
+  // Full URL means rewrite changed the origin - treat as external-like
+  if (external) {
+    return { href: publicHref, external: true }
+  }
+  return {
+    href: history.createHref(publicHref) || '/',
+    external: false,
+  }
+}
+
+function isSafeInternal(to: unknown) {
+  if (typeof to !== 'string') return false
+  const zero = to.charCodeAt(0)
+  if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
+  return zero === 46 // '.', '..', './', '../'
+}
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
   ? React.JSX.IntrinsicElements[TComp]
@@ -511,7 +868,7 @@ export type LinkComponent<
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
 > {
-  defaultFrom: TDefaultFrom
+  defaultFrom: TDefaultFrom;
   <
     TRouter extends AnyRouter = RegisteredRouter,
     const TTo extends string | undefined = undefined,
@@ -567,11 +924,7 @@ export function createLink<const TComp>(
 export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   (props, ref) => {
     const { _asChild, ...rest } = props
-    const {
-      type: _type,
-      ref: innerRef,
-      ...linkProps
-    } = useLinkProps(rest as any, ref)
+    const { type: _type, ...linkProps } = useLinkProps(rest as any, ref)
 
     const children =
       typeof rest.children === 'function'
@@ -580,20 +933,13 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
           })
         : rest.children
 
-    if (_asChild === undefined) {
+    if (!_asChild) {
       // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
       // @ts-expect-error
-      delete linkProps.disabled
+      const { disabled: _, ...rest } = linkProps
+      return React.createElement('a', rest, children)
     }
-
-    return React.createElement(
-      _asChild ? _asChild : 'a',
-      {
-        ...linkProps,
-        ref: innerRef,
-      },
-      children,
-    )
+    return React.createElement(_asChild, linkProps, children)
   },
 ) as any
 

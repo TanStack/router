@@ -1,5 +1,5 @@
 import { getStartContext } from '@tanstack/start-storage-context'
-import { createIsomorphicFn } from './createIsomorphicFn'
+import { createIsomorphicFn } from '@tanstack/start-fn-stubs'
 import type { AnyStartInstanceOptions } from './createStart'
 
 export const getStartOptions: () => AnyStartInstanceOptions | undefined =

@@ -1,1 +1,1 @@
-export { getServerFnById } from '#tanstack-start-server-fn-manifest'
+export { getServerFnById } from '#tanstack-start-server-fn-resolver'

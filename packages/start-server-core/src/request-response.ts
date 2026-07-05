@@ -42,20 +42,103 @@ import type { RequestHandler } from './request-handler'
 interface StartEvent {
   h3Event: H3Event
 }
-const eventStorage = new AsyncLocalStorage<StartEvent>()
+
+// Use a global symbol to ensure the same AsyncLocalStorage instance is shared
+// across different bundles that may each bundle this module.
+const GLOBAL_EVENT_STORAGE_KEY = Symbol.for('tanstack-start:event-storage')
+
+const globalObj = globalThis as typeof globalThis & {
+  [GLOBAL_EVENT_STORAGE_KEY]?: AsyncLocalStorage<StartEvent>
+}
+
+if (!globalObj[GLOBAL_EVENT_STORAGE_KEY]) {
+  globalObj[GLOBAL_EVENT_STORAGE_KEY] = new AsyncLocalStorage<StartEvent>()
+}
+
+const eventStorage = globalObj[GLOBAL_EVENT_STORAGE_KEY]
 
 export type { ResponseHeaderName, RequestHeaderName }
+
+type HeadersWithGetSetCookie = Headers & {
+  getSetCookie?: () => Array<string>
+}
+
+type MaybePromise<T> = T | Promise<T>
+
+function isPromiseLike<T>(value: MaybePromise<T>): value is Promise<T> {
+  return typeof (value as Promise<T>).then === 'function'
+}
+
+function getSetCookieValues(headers: Headers): Array<string> {
+  const headersWithSetCookie = headers as HeadersWithGetSetCookie
+  if (typeof headersWithSetCookie.getSetCookie === 'function') {
+    return headersWithSetCookie.getSetCookie()
+  }
+  const value = headers.get('set-cookie')
+  return value ? [value] : []
+}
+
+function mergeEventResponseHeaders(response: Response, event: H3Event): void {
+  if (response.ok) {
+    return
+  }
+
+  const eventSetCookies = getSetCookieValues(event.res.headers)
+  if (eventSetCookies.length === 0) {
+    return
+  }
+
+  const responseSetCookies = getSetCookieValues(response.headers)
+  response.headers.delete('set-cookie')
+  for (const cookie of responseSetCookies) {
+    response.headers.append('set-cookie', cookie)
+  }
+  for (const cookie of eventSetCookies) {
+    response.headers.append('set-cookie', cookie)
+  }
+}
+
+function attachResponseHeaders<T>(
+  value: MaybePromise<T>,
+  event: H3Event,
+): MaybePromise<T> {
+  if (isPromiseLike(value)) {
+    return value.then((resolved) => {
+      if (resolved instanceof Response) {
+        mergeEventResponseHeaders(resolved, event)
+      }
+      return resolved
+    })
+  }
+
+  if (value instanceof Response) {
+    mergeEventResponseHeaders(value, event)
+  }
+
+  return value
+}
 
 export function requestHandler<TRegister = unknown>(
   handler: RequestHandler<TRegister>,
 ) {
   return (request: Request, requestOpts: any): Promise<Response> | Response => {
-    const h3Event = new H3Event(request)
+    let h3Event: H3Event
+    try {
+      h3Event = new H3Event(request)
+    } catch (error) {
+      if (error instanceof URIError) {
+        return new Response(null, {
+          status: 400,
+          statusText: 'Bad Request',
+        })
+      }
+      throw error
+    }
 
     const response = eventStorage.run({ h3Event }, () =>
       handler(request, requestOpts),
     )
-    return h3_toResponse(response, h3Event)
+    return h3_toResponse(attachResponseHeaders(response, h3Event), h3Event)
   }
 }
 
@@ -75,8 +158,7 @@ export function getRequest(): Request {
 }
 
 export function getRequestHeaders(): TypedHeaders<RequestHeaderMap> {
-  // TODO `as any` not needed when fetchdts is updated
-  return getH3Event().req.headers as any
+  return getH3Event().req.headers
 }
 
 export function getRequestHeader(name: RequestHeaderName): string | undefined {
@@ -212,7 +294,16 @@ export function setResponseStatus(code?: number, text?: string): void {
  */
 export function getCookies(): Record<string, string> {
   const event = getH3Event()
-  return h3_parseCookies(event)
+  const cookies = h3_parseCookies(event)
+  const definedCookies: Record<string, string> = Object.create(null)
+
+  for (const [name, value] of Object.entries(cookies)) {
+    if (value !== undefined) {
+      definedCookies[name] = value
+    }
+  }
+
+  return definedCookies
 }
 
 /**
@@ -224,7 +315,7 @@ export function getCookies(): Record<string, string> {
  * ```
  */
 export function getCookie(name: string): string | undefined {
-  return getCookies()[name] || undefined
+  return getCookies()[name]
 }
 
 /**
@@ -324,10 +415,9 @@ export function clearSession(config: Partial<SessionConfig>): Promise<void> {
   return h3_clearSession(event, { name: 'start', ...config })
 }
 
-// not public API
 export function getResponse() {
   const event = getH3Event()
-  return event._res
+  return event.res
 }
 
 // not public API (yet)

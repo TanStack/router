@@ -122,6 +122,28 @@ function RouteComponent() {
           </Link>
         </li>
       </ul>
+      <hr />
+      <h3 className="pb-2">Parsed params with strict false</h3>
+      <ul className="grid mb-2">
+        <li>
+          <Link
+            data-testid="strict-false-version-1"
+            to="/params-ps/strict-false/$version"
+            params={{ version: 1 }}
+          >
+            /params-ps/strict-false/$version (1)
+          </Link>
+        </li>
+        <li>
+          <Link
+            data-testid="strict-false-version-2"
+            to="/params-ps/strict-false/$version"
+            params={{ version: 2 }}
+          >
+            /params-ps/strict-false/$version (2)
+          </Link>
+        </li>
+      </ul>
     </div>
   )
 }

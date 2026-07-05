@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import * as React from 'react'
 import { Link, Outlet } from '@tanstack/react-router'
 
 import { fetchInvoices } from '../posts'

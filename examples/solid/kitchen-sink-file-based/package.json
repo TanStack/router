@@ -5,24 +5,23 @@
   "scripts": {
     "dev": "vite --port 3000",
     "build": "vite build && tsc --noEmit",
-    "serve": "vite preview",
+    "preview": "vite preview",
     "start": "vite"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.15",
-    "@tanstack/solid-router": "^1.135.2",
-    "@tanstack/solid-router-devtools": "^1.135.2",
+    "@tailwindcss/vite": "^4.2.2",
+    "@tanstack/solid-router": "^1.170.17",
+    "@tanstack/solid-router-devtools": "^1.167.0",
     "immer": "^10.1.1",
-    "postcss": "^8.5.1",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.1.15",
-    "zod": "^3.24.2"
+    "tailwindcss": "^4.2.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.135.2",
-    "typescript": "^5.7.2",
-    "vite": "^7.1.7",
-    "vite-plugin-solid": "^2.11.10"
+    "@tanstack/router-plugin": "^1.168.19",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.14",
+    "vite-plugin-solid": "^2.11.11"
   }
 }

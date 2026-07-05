@@ -1,17 +1,18 @@
 import * as React from 'react'
 
 import { TSR_DEFERRED_PROMISE, defer } from '@tanstack/router-core'
-import type { DeferredPromise } from '@tanstack/router-core'
+import { reactUse } from './utils'
 
 export type AwaitOptions<T> = {
   promise: Promise<T>
 }
 
-/** Suspend until a deferred promise resolves/rejects and return its data. */
 /** Suspend until a deferred promise resolves or rejects and return its data. */
-export function useAwaited<T>({
-  promise: _promise,
-}: AwaitOptions<T>): [T, DeferredPromise<T>] {
+export function useAwaited<T>({ promise: _promise }: AwaitOptions<T>): T {
+  if (reactUse) {
+    const data = reactUse(_promise)
+    return data
+  }
   const promise = defer(_promise)
 
   if (promise[TSR_DEFERRED_PROMISE].status === 'pending') {
@@ -22,13 +23,9 @@ export function useAwaited<T>({
     throw promise[TSR_DEFERRED_PROMISE].error
   }
 
-  return [promise[TSR_DEFERRED_PROMISE].data, promise]
+  return promise[TSR_DEFERRED_PROMISE].data
 }
 
-/**
- * Component that suspends on a deferred promise and renders its child with
- * the resolved value. Optionally provides a Suspense fallback.
- */
 /**
  * Component that suspends on a deferred promise and renders its child with
  * the resolved value. Optionally provides a Suspense fallback.
@@ -52,7 +49,7 @@ function AwaitInner<T>(
     children: (result: T) => React.ReactNode
   },
 ): React.JSX.Element {
-  const [data] = useAwaited(props)
+  const data = useAwaited(props)
 
   return props.children(data) as React.JSX.Element
 }

@@ -83,13 +83,36 @@ export function route(
   }
 }
 
+/**
+ * Mount a physical directory of route files at a given path prefix.
+ *
+ * @param pathPrefix - The path prefix to mount the directory at. Use empty string '' to merge routes at the current level.
+ * @param directory - The directory containing the route files, relative to the routes directory.
+ */
+export function physical(pathPrefix: string, directory: string): PhysicalSubtree
+/**
+ * Mount a physical directory of route files at the current level (empty path prefix).
+ * This is equivalent to `physical('', directory)`.
+ *
+ * @param directory - The directory containing the route files, relative to the routes directory.
+ */
+export function physical(directory: string): PhysicalSubtree
 export function physical(
-  pathPrefix: string,
-  directory: string,
+  pathPrefixOrDirectory: string,
+  directory?: string,
 ): PhysicalSubtree {
+  if (directory === undefined) {
+    // Single argument: directory only, use empty path prefix
+    return {
+      type: 'physical',
+      directory: pathPrefixOrDirectory,
+      pathPrefix: '',
+    }
+  }
+  // Two arguments: pathPrefix and directory
   return {
     type: 'physical',
     directory,
-    pathPrefix,
+    pathPrefix: pathPrefixOrDirectory,
   }
 }

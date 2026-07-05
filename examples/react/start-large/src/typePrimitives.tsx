@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { Link, redirect, useNavigate } from '@tanstack/react-router'
 import type {
   RegisteredRouter,
@@ -20,7 +21,13 @@ export function useCustomNavigate<TRouter extends RegisteredRouter, TOptions>(
 ): void
 export function useCustomNavigate(options: ValidateNavigateOptions): void {
   const navigate = useNavigate()
-  navigate(options)
+
+  const useIsomorphicLayoutEffect =
+    typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
+
+  useIsomorphicLayoutEffect(() => {
+    navigate(options)
+  }, [navigate, options])
 }
 
 export function MyLink<TRouter extends RegisteredRouter, TOptions>(

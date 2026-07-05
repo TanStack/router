@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { ClientOnly, createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { createServerFn } from '@tanstack/react-start'
 
@@ -20,25 +20,25 @@ export const Route = createFileRoute('/consistent')({
 })
 
 const cons_getFn1 = createServerFn()
-  .inputValidator((d: { username: string }) => d)
+  .validator((d: { username: string }) => d)
   .handler(({ data }) => {
     return { payload: data }
   })
 
 const cons_serverGetFn1 = createServerFn()
-  .inputValidator((d: { username: string }) => d)
+  .validator((d: { username: string }) => d)
   .handler(async ({ data }) => {
     return cons_getFn1({ data })
   })
 
 const cons_postFn1 = createServerFn({ method: 'POST' })
-  .inputValidator((d: { username: string }) => d)
+  .validator((d: { username: string }) => d)
   .handler(({ data }) => {
     return { payload: data }
   })
 
 const cons_serverPostFn1 = createServerFn({ method: 'POST' })
-  .inputValidator((d: { username: string }) => d)
+  .validator((d: { username: string }) => d)
   .handler(({ data }) => {
     return cons_postFn1({ data })
   })
@@ -116,6 +116,9 @@ function ConsistentServerFnCalls() {
       >
         Test Consistent server function responses
       </button>
+      <ClientOnly>
+        <span data-testid="consistent-client-hydrated" hidden />
+      </ClientOnly>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 export type LRUCache<TKey, TValue> = {
   get: (key: TKey) => TValue | undefined
   set: (key: TKey, value: TValue) => void
+  clear: () => void
 }
 
 export function createLRUCache<TKey, TValue>(
@@ -63,6 +64,11 @@ export function createLRUCache<TKey, TValue>(
         if (!oldest) oldest = entry
         cache.set(key, entry)
       }
+    },
+    clear() {
+      cache.clear()
+      oldest = undefined
+      newest = undefined
     },
   }
 }

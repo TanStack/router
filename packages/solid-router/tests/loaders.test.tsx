@@ -11,6 +11,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useLoaderData,
   useRouter,
 } from '../src'
 
@@ -318,6 +319,33 @@ test('throw error from beforeLoad when navigating to route', async () => {
 
   const indexElement = await screen.findByText('fooErrorComponent')
   expect(indexElement).toBeInTheDocument()
+})
+
+test('throw abortError from loader upon initial load with basepath', async () => {
+  window.history.replaceState(null, 'root', '/app')
+  const rootRoute = createRootRoute({})
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: async () => {
+      return Promise.reject(new DOMException('Aborted', 'AbortError'))
+    },
+    component: () => <div>Index route content</div>,
+    errorComponent: () => (
+      <div data-testid="index-error">indexErrorComponent</div>
+    ),
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({ routeTree, basepath: '/app' })
+
+  render(() => <RouterProvider router={router} />)
+
+  const indexElement = await screen.findByText('Index route content')
+  expect(indexElement).toBeInTheDocument()
+  expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
+  expect(window.location.pathname.startsWith('/app')).toBe(true)
 })
 
 test('reproducer #4245', async () => {
@@ -712,6 +740,51 @@ test('clears pendingTimeout when match resolves', async () => {
   expect(defaultPendingComponentOnMountMock).not.toHaveBeenCalled()
   expect(nestedPendingComponentOnMountMock).not.toHaveBeenCalled()
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
+})
+
+test('useLoaderData retains previous data while route match is pending', async () => {
+  const history = createMemoryHistory({ initialEntries: ['/app'] })
+  const rootRoute = createRootRoute({
+    component: () => {
+      const loaderData = useLoaderData({ from: '/app' })
+
+      return (
+        <>
+          <div data-testid="combined">{`${loaderData().length}:0`}</div>
+          <Outlet />
+        </>
+      )
+    },
+  })
+  const appRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/app',
+    loader: () => 'loaded',
+    component: () => <div>App route</div>,
+  })
+  const routeTree = rootRoute.addChildren([appRoute])
+  const router = createRouter({ routeTree, history })
+
+  render(() => <RouterProvider router={router} />)
+
+  expect(await screen.findByTestId('combined')).toHaveTextContent('6:0')
+
+  const appMatch = router.state.matches.find(
+    (match) => match.routeId === '/app',
+  )
+
+  expect(appMatch).toBeDefined()
+
+  if (!appMatch) {
+    throw new Error('Expected /app match to be active')
+  }
+
+  router.stores.setPending([{ ...appMatch, id: `${appMatch.id}__pending` }])
+  router.stores.setMatches(
+    router.state.matches.filter((match) => match.routeId !== '/app'),
+  )
+
+  expect(screen.getByTestId('combined')).toHaveTextContent('6:0')
 })
 
 test('cancelMatches after pending timeout', async () => {

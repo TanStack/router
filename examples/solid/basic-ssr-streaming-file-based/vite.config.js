@@ -3,6 +3,7 @@ import path from 'node:path'
 import { defineConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import tailwindcss from '@tailwindcss/vite'
 
 const __filename = url.fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -14,7 +15,7 @@ const ssrBuildConfig = {
   ssrEmitAssets: true,
   copyPublicDir: false,
   emptyOutDir: true,
-  rollupOptions: {
+  rolldownOptions: {
     input: path.resolve(__dirname, 'src/entry-server.tsx'),
     output: {
       entryFileNames: 'static/[name].js',
@@ -30,7 +31,7 @@ const clientBuildConfig = {
   emitAssets: true,
   copyPublicDir: true,
   emptyOutDir: true,
-  rollupOptions: {
+  rolldownOptions: {
     input: path.resolve(__dirname, 'src/entry-client.tsx'),
     output: {
       entryFileNames: 'static/[name].js',
@@ -44,6 +45,7 @@ const clientBuildConfig = {
 export default defineConfig((configEnv) => {
   return {
     plugins: [
+      tailwindcss(),
       tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
       solid({ ssr: true }),
     ],

@@ -9,6 +9,67 @@ test('Smoke - Renders home', async ({ page }) => {
   ).toBeVisible()
 })
 
+test('restores the prior scroll position after browser back then forward', async ({
+  page,
+}) => {
+  await page.goto(toRuntimePath('/'))
+  await page.getByRole('link', { name: 'Head-/normal-page' }).click()
+  await page.waitForURL('**/normal-page')
+  await expect(page.getByTestId('at-the-top')).toBeInViewport()
+
+  const scrollY = await page.evaluate(async () => {
+    window.scrollTo(0, document.documentElement.scrollHeight)
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    return window.scrollY
+  })
+
+  expect(scrollY).toBeGreaterThan(0)
+  await expect(page.getByTestId('at-the-bottom')).toBeInViewport()
+
+  await page.goBack()
+  await expect(
+    page.getByRole('heading', { name: 'Welcome Home!' }),
+  ).toBeVisible()
+
+  await page.goForward()
+  await page.waitForURL('**/normal-page')
+  await page.waitForFunction(
+    (expectedScrollY) => Math.abs(window.scrollY - expectedScrollY) <= 2,
+    scrollY,
+  )
+  await expect(page.getByTestId('at-the-bottom')).toBeInViewport()
+})
+
+test('restores the prior scroll position after browser back navigation', async ({
+  page,
+}) => {
+  await page.goto(toRuntimePath('/normal-page'))
+  await expect(page.getByTestId('at-the-top')).toBeInViewport()
+
+  const scrollY = await page.evaluate(async () => {
+    window.scrollTo(0, document.documentElement.scrollHeight)
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    return window.scrollY
+  })
+
+  expect(scrollY).toBeGreaterThan(0)
+  await expect(page.getByTestId('at-the-bottom')).toBeInViewport()
+
+  await page.getByRole('link', { name: 'Foot-/', exact: true }).click()
+  await page.waitForURL('**/')
+  await expect(
+    page.getByRole('heading', { name: 'Welcome Home!' }),
+  ).toBeVisible()
+
+  await page.goBack()
+  await page.waitForURL('**/normal-page')
+  await page.waitForFunction(
+    (expectedScrollY) => Math.abs(window.scrollY - expectedScrollY) <= 2,
+    scrollY,
+  )
+  await expect(page.getByTestId('at-the-bottom')).toBeInViewport()
+})
+
 const pages = [
   linkOptions({ to: '/normal-page' }),
   linkOptions({ to: '/lazy-page' }),

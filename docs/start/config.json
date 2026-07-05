@@ -22,12 +22,16 @@
               "to": "framework/react/getting-started"
             },
             {
-              "label": "Quick Start",
-              "to": "framework/react/quick-start"
-            },
-            {
               "label": "Build from Scratch",
               "to": "framework/react/build-from-scratch"
+            },
+            {
+              "label": "Comparison",
+              "to": "framework/react/comparison"
+            },
+            {
+              "label": "Start vs Next.js",
+              "to": "framework/react/start-vs-nextjs"
             },
             {
               "label": "Migrate from Next.js",
@@ -45,10 +49,6 @@
             {
               "label": "Getting Started",
               "to": "framework/solid/getting-started"
-            },
-            {
-              "label": "Quick Start",
-              "to": "framework/solid/quick-start"
             },
             {
               "label": "Build from Scratch",
@@ -78,12 +78,20 @@
               "to": "framework/react/guide/code-execution-patterns"
             },
             {
+              "label": "Import Protection",
+              "to": "framework/react/guide/import-protection"
+            },
+            {
               "label": "Environment Variables",
               "to": "framework/react/guide/environment-variables"
             },
             {
               "label": "Server Functions",
               "to": "framework/react/guide/server-functions"
+            },
+            {
+              "label": "Server Components",
+              "to": "framework/react/guide/server-components"
             },
             {
               "label": "Static Server Functions",
@@ -110,6 +118,10 @@
               "to": "framework/react/guide/hydration-errors"
             },
             {
+              "label": "Deferred Hydration",
+              "to": "framework/react/guide/deferred-hydration"
+            },
+            {
               "label": "Selective SSR",
               "to": "framework/react/guide/selective-ssr"
             },
@@ -122,8 +134,24 @@
               "to": "framework/react/guide/static-prerendering"
             },
             {
+              "label": "Incremental Static Regeneration (ISR)",
+              "to": "framework/react/guide/isr"
+            },
+            {
               "label": "Server Entry Point",
               "to": "framework/react/guide/server-entry-point"
+            },
+            {
+              "label": "Early Hints",
+              "to": "framework/react/guide/early-hints"
+            },
+            {
+              "label": "CDN Asset URLs",
+              "to": "framework/react/guide/cdn-asset-urls"
+            },
+            {
+              "label": "CSS Styling",
+              "to": "framework/react/guide/css-styling"
             },
             {
               "label": "Client Entry Point",
@@ -136,6 +164,10 @@
             {
               "label": "Authentication Overview",
               "to": "framework/react/guide/authentication-overview"
+            },
+            {
+              "label": "Authentication Server Primitives",
+              "to": "framework/react/guide/authentication-server-primitives"
             },
             {
               "label": "Authentication",
@@ -156,6 +188,18 @@
             {
               "label": "Tailwind CSS Integration",
               "to": "framework/react/guide/tailwind-integration"
+            },
+            {
+              "label": "Rendering Markdown",
+              "to": "framework/react/guide/rendering-markdown"
+            },
+            {
+              "label": "SEO",
+              "to": "framework/react/guide/seo"
+            },
+            {
+              "label": "Generative Engine Optimization (GEO)",
+              "to": "framework/react/guide/geo"
             }
           ]
         },
@@ -173,6 +217,10 @@
             {
               "label": "Code Execution Patterns",
               "to": "framework/solid/guide/code-execution-patterns"
+            },
+            {
+              "label": "Import Protection",
+              "to": "framework/solid/guide/import-protection"
             },
             {
               "label": "Environment Variables",
@@ -207,6 +255,10 @@
               "to": "framework/solid/guide/hydration-errors"
             },
             {
+              "label": "Deferred Hydration",
+              "to": "framework/solid/guide/deferred-hydration"
+            },
+            {
               "label": "Selective SSR",
               "to": "framework/solid/guide/selective-ssr"
             },
@@ -223,6 +275,14 @@
               "to": "framework/solid/guide/server-entry-point"
             },
             {
+              "label": "Early Hints",
+              "to": "framework/solid/guide/early-hints"
+            },
+            {
+              "label": "CSS Styling",
+              "to": "framework/solid/guide/css-styling"
+            },
+            {
               "label": "Client Entry Point",
               "to": "framework/solid/guide/client-entry-point"
             },
@@ -233,6 +293,10 @@
             {
               "label": "Authentication Overview",
               "to": "framework/solid/guide/authentication-overview"
+            },
+            {
+              "label": "Authentication Server Primitives",
+              "to": "framework/solid/guide/authentication-server-primitives"
             },
             {
               "label": "Authentication",
@@ -253,6 +317,14 @@
             {
               "label": "Tailwind CSS Integration",
               "to": "framework/solid/guide/tailwind-integration"
+            },
+            {
+              "label": "SEO",
+              "to": "framework/solid/guide/seo"
+            },
+            {
+              "label": "Generative Engine Optimization (GEO)",
+              "to": "framework/solid/guide/geo"
             }
           ]
         }
@@ -302,6 +374,10 @@
               "to": "framework/react/examples/start-material-ui"
             },
             {
+              "label": "Basic + Auth.js",
+              "to": "framework/react/examples/start-basic-authjs"
+            },
+            {
               "label": "Basic + Static rendering",
               "to": "framework/react/examples/start-basic-static"
             },
@@ -315,10 +391,6 @@
           "label": "solid",
           "children": [
             {
-              "label": "Bare",
-              "to": "framework/solid/examples/start-bare"
-            },
-            {
               "label": "Basic",
               "to": "framework/solid/examples/start-basic"
             },
@@ -331,16 +403,20 @@
               "to": "framework/solid/examples/start-basic-auth"
             },
             {
+              "label": "Basic + Supabase Auth",
+              "to": "framework/solid/examples/start-supabase-basic"
+            },
+            {
+              "label": "Basic + Convex + Better Auth",
+              "to": "framework/solid/examples/start-convex-better-auth"
+            },
+            {
+              "label": "Basic + Auth.js",
+              "to": "framework/solid/examples/start-basic-authjs"
+            },
+            {
               "label": "Basic + Static rendering",
               "to": "framework/solid/examples/start-basic-static"
-            },
-            {
-              "label": "Basic + Supabase",
-              "to": "framework/solid/examples/start-basic-supabase"
-            },
-            {
-              "label": "Bare + Convex + Better Auth",
-              "to": "framework/solid/examples/start-convex-better-auth"
             },
             {
               "label": "Cloudflare Vite Plugin",
@@ -372,6 +448,19 @@
             {
               "label": "Fetching Data from External API",
               "to": "framework/react/tutorial/fetching-external-api"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Reading and Writing a File",
+              "to": "framework/solid/tutorial/reading-writing-file"
+            },
+            {
+              "label": "Fetching Data from External API",
+              "to": "framework/solid/tutorial/fetching-external-api"
             }
           ]
         }

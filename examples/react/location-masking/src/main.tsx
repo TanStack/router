@@ -13,7 +13,6 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import axios from 'redaxios'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import './styles.css'
@@ -31,25 +30,34 @@ class NotFoundError extends Error {}
 const fetchPhotos = async () => {
   console.info('Fetching photos...')
   await new Promise((r) => setTimeout(r, 500))
-  return axios
-    .get<Array<PhotoType>>('https://jsonplaceholder.typicode.com/photos')
-    .then((r) => r.data.slice(0, 10))
+  // Generate mock photos using picsum.photos since via.placeholder.com is down
+  return Array.from({ length: 10 }, (_, i) => ({
+    id: String(i + 1),
+    title: `Photo ${i + 1}`,
+    url: `https://picsum.photos/600/400?random=${i + 1}`,
+    thumbnailUrl: `https://picsum.photos/200/200?random=${i + 1}`,
+    albumId: '1',
+  }))
 }
 
 const fetchPhoto = async (photoId: string) => {
   console.info(`Fetching photo with id ${photoId}...`)
   await new Promise((r) => setTimeout(r, 500))
-  const photo = await axios
-    .get<PhotoType>(`https://jsonplaceholder.typicode.com/photos/${photoId}`)
-    .then((r) => r.data)
-    .catch((err) => {
-      if (err.status === 404) {
-        throw new NotFoundError(`Photo with id "${photoId}" not found!`)
-      }
-      throw err
-    })
 
-  return photo
+  // Simulate photo not found for invalid IDs
+  const photoIdNum = parseInt(photoId, 10)
+  if (isNaN(photoIdNum) || photoIdNum < 1 || photoIdNum > 10) {
+    throw new NotFoundError(`Photo with id "${photoId}" not found!`)
+  }
+
+  // Generate mock photo using picsum.photos
+  return {
+    id: photoId,
+    title: `Photo ${photoId}`,
+    url: `https://picsum.photos/600/400?random=${photoId}`,
+    thumbnailUrl: `https://picsum.photos/200/200?random=${photoId}`,
+    albumId: '1',
+  }
 }
 
 type PhotoModal = {

@@ -1,25 +1,29 @@
 import { expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import type { RequestServerNextFn } from '../createMiddleware'
-import type { ConstrainValidator } from '../createServerFn'
-import type { Register } from '@tanstack/router-core'
+import type { ConstrainValidator, CustomFetch } from '../createServerFn'
+import type { Register, SerializationError } from '@tanstack/router-core'
+import type { ServerFnMeta } from '../constants'
 
 test('createServeMiddleware removes middleware after middleware,', () => {
   const middleware = createMiddleware({ type: 'function' })
 
   expectTypeOf(middleware).toHaveProperty('middleware')
   expectTypeOf(middleware).toHaveProperty('server')
+  expectTypeOf(middleware).toHaveProperty('validator')
+  // TODO remove upon stable
   expectTypeOf(middleware).toHaveProperty('inputValidator')
 
   const middlewareAfterMiddleware = middleware.middleware([])
 
-  expectTypeOf(middlewareAfterMiddleware).toHaveProperty('inputValidator')
+  expectTypeOf(middlewareAfterMiddleware).toHaveProperty('validator')
   expectTypeOf(middlewareAfterMiddleware).toHaveProperty('server')
   expectTypeOf(middlewareAfterMiddleware).not.toHaveProperty('middleware')
 
-  const middlewareAfterInput = middleware.inputValidator(() => {})
+  const middlewareAfterInput = middleware.validator(() => {})
 
   expectTypeOf(middlewareAfterInput).toHaveProperty('server')
+  expectTypeOf(middlewareAfterInput).not.toHaveProperty('validator')
   expectTypeOf(middlewareAfterInput).not.toHaveProperty('middleware')
 
   const middlewareAfterServer = middleware.server(async (options) => {
@@ -42,6 +46,7 @@ test('createServeMiddleware removes middleware after middleware,', () => {
 
   expectTypeOf(middlewareAfterServer).not.toHaveProperty('server')
   expectTypeOf(middlewareAfterServer).not.toHaveProperty('input')
+  expectTypeOf(middlewareAfterServer).not.toHaveProperty('validator')
   expectTypeOf(middlewareAfterServer).not.toHaveProperty('middleware')
 })
 
@@ -56,7 +61,7 @@ test('createMiddleware merges server context', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             a: boolean
           }
@@ -80,7 +85,7 @@ test('createMiddleware merges server context', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             b: string
           }
@@ -103,7 +108,7 @@ test('createMiddleware merges server context', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             c: number
           }
@@ -129,7 +134,7 @@ test('createMiddleware merges server context', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             d: number
           }
@@ -155,6 +160,7 @@ test('createMiddleware merges client context and sends to the server', () => {
         context: { a: boolean }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -172,6 +178,7 @@ test('createMiddleware merges client context and sends to the server', () => {
         context: { b: string }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -190,6 +197,7 @@ test('createMiddleware merges client context and sends to the server', () => {
         context: { a: boolean; b: string; c: number }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -213,6 +221,7 @@ test('createMiddleware merges client context and sends to the server', () => {
         context: { a: boolean; b: string; c: number }
         sendContext: { a: boolean; b: string; c: number; d: 5 }
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -236,7 +245,7 @@ test('createMiddleware merges client context and sends to the server', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             e: string
           }
@@ -252,7 +261,7 @@ test('createMiddleware merges client context and sends to the server', () => {
 
 test('createMiddleware merges input', () => {
   const middleware1 = createMiddleware({ type: 'function' })
-    .inputValidator(() => {
+    .validator(() => {
       return {
         a: 'a',
       } as const
@@ -264,7 +273,7 @@ test('createMiddleware merges input', () => {
 
   const middleware2 = createMiddleware({ type: 'function' })
     .middleware([middleware1])
-    .inputValidator(() => {
+    .validator(() => {
       return {
         b: 'b',
       } as const
@@ -276,7 +285,7 @@ test('createMiddleware merges input', () => {
 
   createMiddleware({ type: 'function' })
     .middleware([middleware2])
-    .inputValidator(() => ({ c: 'c' }) as const)
+    .validator(() => ({ c: 'c' }) as const)
     .server(({ next, data }) => {
       expectTypeOf(data).toEqualTypeOf<{
         readonly a: 'a'
@@ -301,6 +310,7 @@ test('createMiddleware merges server context and client context, sends server co
         context: { fromClient1: string }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -314,7 +324,7 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             fromServer1: string
           }
@@ -340,6 +350,7 @@ test('createMiddleware merges server context and client context, sends server co
         context: { fromClient2: string }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -353,7 +364,7 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             fromServer2: string
           }
@@ -387,6 +398,7 @@ test('createMiddleware merges server context and client context, sends server co
         }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -403,7 +415,7 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             fromServer3: string
           }
@@ -444,6 +456,7 @@ test('createMiddleware merges server context and client context, sends server co
         }
         sendContext: { toServer1: 'toServer1' }
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -463,7 +476,7 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             fromServer4: string
           }
@@ -511,6 +524,7 @@ test('createMiddleware merges server context and client context, sends server co
         }
         sendContext: { toServer1: 'toServer1'; toServer2: 'toServer2' }
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -532,7 +546,7 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             fromServer5: string
           }
@@ -563,7 +577,10 @@ test('createMiddleware sendContext cannot send a function', () => {
         .parameter(0)
         .exclude<undefined>()
         .toHaveProperty('sendContext')
-        .toEqualTypeOf<{ func: 'Function is not serializable' } | undefined>()
+        .toEqualTypeOf<
+          | { func: SerializationError<'Function may not be serializable'> }
+          | undefined
+        >()
 
       return next()
     })
@@ -572,14 +589,17 @@ test('createMiddleware sendContext cannot send a function', () => {
         .parameter(0)
         .exclude<undefined>()
         .toHaveProperty('sendContext')
-        .toEqualTypeOf<{ func: 'Function is not serializable' } | undefined>()
+        .toEqualTypeOf<
+          | { func: SerializationError<'Function may not be serializable'> }
+          | undefined
+        >()
 
       return next()
     })
 })
 
 test('createMiddleware cannot validate function', () => {
-  const validator = createMiddleware({ type: 'function' }).inputValidator<
+  const validator = createMiddleware({ type: 'function' }).validator<
     (input: { func: () => 'string' }) => { output: 'string' }
   >
 
@@ -595,7 +615,7 @@ test('createMiddleware cannot validate function', () => {
 })
 
 test('createMiddleware can validate Date', () => {
-  const validator = createMiddleware({ type: 'function' }).inputValidator<
+  const validator = createMiddleware({ type: 'function' }).validator<
     (input: Date) => { output: 'string' }
   >
 
@@ -607,7 +627,7 @@ test('createMiddleware can validate Date', () => {
 })
 
 test('createMiddleware can validate FormData', () => {
-  const validator = createMiddleware({ type: 'function' }).inputValidator<
+  const validator = createMiddleware({ type: 'function' }).validator<
     (input: FormData) => { output: 'string' }
   >
 
@@ -623,7 +643,7 @@ test('createMiddleware can validate FormData', () => {
 })
 
 test('createMiddleware merging from parent with undefined validator', () => {
-  const middleware1 = createMiddleware({ type: 'function' }).inputValidator(
+  const middleware1 = createMiddleware({ type: 'function' }).validator(
     (input: { test: string }) => input.test,
   )
 
@@ -638,7 +658,7 @@ test('createMiddleware merging from parent with undefined validator', () => {
 
 test('createMiddleware validator infers unknown for default input type', () => {
   createMiddleware({ type: 'function' })
-    .inputValidator((input) => {
+    .validator((input) => {
       expectTypeOf(input).toEqualTypeOf<unknown>()
 
       if (typeof input === 'number') return 'success' as const
@@ -659,6 +679,8 @@ test('createMiddleware with type request, no middleware or context', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
+      serverFnMeta?: ServerFnMeta
     }>()
 
     const result = await options.next()
@@ -681,6 +703,8 @@ test('createMiddleware with type request, no middleware with context', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      handlerType: 'serverFn' | 'router'
+      serverFnMeta?: ServerFnMeta
     }>()
 
     const result = await options.next({ context: { a: 'a' } })
@@ -704,6 +728,8 @@ test('createMiddleware with type request, middleware and context', () => {
         next: RequestServerNextFn<{}, undefined>
         pathname: string
         context: undefined
+        handlerType: 'serverFn' | 'router'
+        serverFnMeta?: ServerFnMeta
       }>()
 
       const result = await options.next({ context: { a: 'a' } })
@@ -727,6 +753,8 @@ test('createMiddleware with type request, middleware and context', () => {
         next: RequestServerNextFn<{}, undefined>
         pathname: string
         context: { a: string }
+        handlerType: 'serverFn' | 'router'
+        serverFnMeta?: ServerFnMeta
       }>()
 
       const result = await options.next({ context: { b: 'b' } })
@@ -740,4 +768,60 @@ test('createMiddleware with type request, middleware and context', () => {
 
       return result
     })
+})
+
+test('createMiddleware with type request can return Response directly', () => {
+  createMiddleware({ type: 'request' }).server(async (options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      request: Request
+      next: RequestServerNextFn<{}, undefined>
+      pathname: string
+      context: undefined
+      handlerType: 'serverFn' | 'router'
+      serverFnMeta?: ServerFnMeta
+    }>()
+
+    // Should be able to return a Response directly
+    if (Math.random() > 0.5) {
+      return new Response('Unauthorized', { status: 401 })
+    }
+
+    // Or return the result from next()
+    return options.next()
+  })
+})
+
+test('createMiddleware with type request can return Promise<Response>', () => {
+  createMiddleware({ type: 'request' }).server(async (options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      request: Request
+      next: RequestServerNextFn<{}, undefined>
+      pathname: string
+      context: undefined
+      handlerType: 'serverFn' | 'router'
+      serverFnMeta?: ServerFnMeta
+    }>()
+
+    // Should be able to return a Promise<Response>
+    return Promise.resolve(new Response('OK', { status: 200 }))
+  })
+})
+
+test('createMiddleware with type request can return sync Response', () => {
+  createMiddleware({ type: 'request' }).server((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      request: Request
+      next: RequestServerNextFn<{}, undefined>
+      pathname: string
+      context: undefined
+      handlerType: 'serverFn' | 'router'
+      serverFnMeta?: ServerFnMeta
+    }>()
+
+    // Should be able to return a synchronous Response
+    return new Response(JSON.stringify({ error: 'Not Found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
 })

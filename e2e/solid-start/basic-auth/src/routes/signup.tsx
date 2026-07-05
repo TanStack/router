@@ -9,7 +9,7 @@ import { useAppSession } from '~/utils/session'
 export const signupFn = createServerFn({
   method: 'POST',
 })
-  .inputValidator(
+  .validator(
     (data: { email: string; password: string; redirectUrl?: string }) => data,
   )
   .handler(async ({ data: payload }) => {
@@ -88,7 +88,7 @@ function SignupComp() {
           },
         })
       }}
-      afterSubmit={
+      afterSubmit={() =>
         signupMutation.data()?.error ? (
           <>
             <div class="text-red-400">{signupMutation.data()?.message}</div>

@@ -1,16 +1,15 @@
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import viteSolid from 'vite-plugin-solid'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
   server: {
     port: 3000,
   },
   plugins: [
-    tsConfigPaths({
-      projects: ['./tsconfig.json'],
-    }),
+    tailwindcss(),
     tanstackStart({
       spa: {
         enabled: true,

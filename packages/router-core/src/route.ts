@@ -1,9 +1,11 @@
-import invariant from 'tiny-invariant'
-import { joinPaths, trimPathLeft } from './path'
+import { invariant } from './invariant'
+import { joinPaths, trimPathLeft, trimPathRight } from './path'
 import { notFound } from './not-found'
+import { redirect } from './redirect'
 import { rootRouteId } from './root'
 import type { LazyRoute } from './fileRoute'
 import type { NotFoundError } from './not-found'
+import type { RedirectFnRoute } from './redirect'
 import type { NavigateOptions, ParsePathParams } from './link'
 import type { ParsedLocation } from './location'
 import type {
@@ -14,7 +16,7 @@ import type {
   RouteMatch,
 } from './Matches'
 import type { RootRouteId } from './root'
-import type { ParseRoute, RouteById, RoutePaths } from './routeInfo'
+import type { ParseRoute, RouteById, RouteIds, RoutePaths } from './routeInfo'
 import type { AnyRouter, Register, RegisteredRouter, SSROption } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
@@ -72,9 +74,17 @@ export type RoutePathOptionsIntersection<TCustomId, TPath> = {
 
 export type SearchFilter<TInput, TResult = TInput> = (prev: TInput) => TResult
 
+export type SearchMiddlewareMeta = {
+  removed?: Map<string, unknown>
+  removedAny?: Set<string>
+  defaulted?: Map<string, unknown>
+  explicit?: unknown
+}
+
 export type SearchMiddlewareContext<TSearchSchema> = {
   search: TSearchSchema
   next: (newSearch: TSearchSchema) => TSearchSchema
+  meta?: SearchMiddlewareMeta
 }
 
 export type SearchMiddleware<TSearchSchema> = (
@@ -171,9 +181,13 @@ export type ResolveParams<
 
 export type ParseParamsFn<in out TPath extends string, in out TParams> = (
   rawParams: Expand<ResolveParams<TPath>>,
-) => TParams extends ResolveParams<TPath, any>
-  ? TParams
-  : ResolveParams<TPath, any>
+) => TParams | false
+
+type ValidateParsedParams<TPath extends string, TParams> = [TParams] extends [
+  ResolveParams<TPath, any>,
+]
+  ? unknown
+  : never
 
 export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
   params: TParams,
@@ -181,14 +195,22 @@ export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
 
 export type ParamsOptions<in out TPath extends string, in out TParams> = {
   params?: {
-    parse?: ParseParamsFn<TPath, TParams>
+    parse?: ParseParamsFn<TPath, TParams> & ValidateParsedParams<TPath, TParams>
+    /**
+     * When multiple route candidates use `params.parse` during matching,
+     * higher priorities are tried first.
+     *
+     * @default 0
+     */
+    priority?: number
     stringify?: StringifyParamsFn<TPath, TParams>
   }
 
   /** 
   @deprecated Use params.parse instead
   */
-  parseParams?: ParseParamsFn<TPath, TParams>
+  parseParams?: ParseParamsFn<TPath, TParams> &
+    ValidateParsedParams<TPath, TParams>
 
   /** 
   @deprecated Use params.stringify instead
@@ -290,11 +312,44 @@ export type ResolveRouteContext<TRouteContextFn, TBeforeLoadFn> = Assign<
   ContextAsyncReturnType<TBeforeLoadFn>
 >
 
+export type ResolveRouteLoaderFn<TLoaderFn> = TLoaderFn extends {
+  handler: infer THandler
+}
+  ? THandler
+  : TLoaderFn
+
+export type RouteLoaderObject<
+  TRegister,
+  TParentRoute extends AnyRoute = AnyRoute,
+  TId extends string = string,
+  TParams = {},
+  TLoaderDeps = {},
+  TRouterContext = {},
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
+> = {
+  handler: RouteLoaderFn<
+    TRegister,
+    TParentRoute,
+    TId,
+    TParams,
+    TLoaderDeps,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TServerMiddlewares,
+    THandlers
+  >
+  staleReloadMode?: LoaderStaleReloadMode
+}
+
 export type ResolveLoaderData<TLoaderFn> = unknown extends TLoaderFn
   ? TLoaderFn
-  : LooseAsyncReturnType<TLoaderFn> extends never
+  : LooseAsyncReturnType<ResolveRouteLoaderFn<TLoaderFn>> extends never
     ? undefined
-    : LooseAsyncReturnType<TLoaderFn>
+    : LooseAsyncReturnType<ResolveRouteLoaderFn<TLoaderFn>>
 
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
@@ -773,6 +828,14 @@ export interface Route<
     TServerMiddlewares,
     THandlers
   >
+  /**
+   * Create a redirect with `from` automatically set to this route's path.
+   * Enables relative redirects like `Route.redirect({ to: './overview' })`.
+   * @param opts Redirect options (same as `redirect()` but without `from`)
+   * @returns A redirect Response that can be thrown from loaders/beforeLoad
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
+   */
+  redirect: RedirectFnRoute<TFullPath>
 }
 
 export type AnyRoute = Route<
@@ -852,12 +915,14 @@ export type RouteContextFn<
   in out TSearchValidator,
   in out TParams,
   in out TRouterContext,
+  in out TRouteId,
 > = (
   ctx: RouteContextOptions<
     TParentRoute,
     TSearchValidator,
     TParams,
-    TRouterContext
+    TRouterContext,
+    TRouteId
   >,
 ) => any
 
@@ -939,7 +1004,8 @@ export interface FilebaseRouteOptionsInterface<
         TParentRoute,
         TParams,
         TRouterContext,
-        TLoaderDeps
+        TLoaderDeps,
+        TId
       >,
     ) => any
   >
@@ -967,6 +1033,7 @@ export interface FilebaseRouteOptionsInterface<
         TParams,
         TRouterContext,
         TRouteContextFn,
+        TId,
         TServerMiddlewares,
         THandlers
       >,
@@ -996,8 +1063,7 @@ export interface FilebaseRouteOptionsInterface<
 
   loader?: Constrain<
     TLoaderFn,
-    (
-      ctx: LoaderFnContext<
+    | RouteLoaderFn<
         TRegister,
         TParentRoute,
         TId,
@@ -1008,13 +1074,19 @@ export interface FilebaseRouteOptionsInterface<
         TBeforeLoadFn,
         TServerMiddlewares,
         THandlers
-      >,
-    ) => ValidateSerializableLifecycleResult<
-      TRegister,
-      TParentRoute,
-      TSSR,
-      TLoaderFn
-    >
+      >
+    | RouteLoaderObject<
+        TRegister,
+        TParentRoute,
+        TId,
+        TParams,
+        TLoaderDeps,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn,
+        TServerMiddlewares,
+        THandlers
+      >
   >
 }
 
@@ -1058,6 +1130,7 @@ export type BaseRouteOptions<
 export interface ContextOptions<
   in out TParentRoute extends AnyRoute,
   in out TParams,
+  in out TRouteId,
 > {
   abortController: AbortController
   preload: boolean
@@ -1070,6 +1143,7 @@ export interface ContextOptions<
   buildLocation: BuildLocationFn
   cause: 'preload' | 'enter' | 'stay'
   matches: Array<MakeRouteMatchUnion>
+  routeId: TRouteId
 }
 
 export interface RouteContextOptions<
@@ -1077,7 +1151,8 @@ export interface RouteContextOptions<
   in out TParams,
   in out TRouterContext,
   in out TLoaderDeps,
-> extends ContextOptions<TParentRoute, TParams> {
+  in out TRouteId,
+> extends ContextOptions<TParentRoute, TParams, TRouteId> {
   deps: TLoaderDeps
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
 }
@@ -1110,9 +1185,12 @@ export interface BeforeLoadContextOptions<
   in out TParams,
   in out TRouterContext,
   in out TRouteContextFn,
+  in out TRouteId,
   in out TServerMiddlewares,
   in out THandlers,
-> extends ContextOptions<TParentRoute, TParams>,
+>
+  extends
+    ContextOptions<TParentRoute, TParams, TRouteId>,
     FullSearchSchemaOption<TParentRoute, TSearchValidator> {
   context: Expand<
     BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>
@@ -1131,6 +1209,9 @@ type AssetFnContextOptions<
   in out TBeforeLoadFn,
   in out TLoaderDeps,
 > = {
+  ssr?: {
+    nonce?: string
+  }
   matches: Array<
     RouteMatch<
       TRouteId,
@@ -1172,8 +1253,7 @@ export interface DefaultUpdatableRouteOptionsExtensions {
   pendingComponent?: unknown
 }
 
-export interface UpdatableRouteOptionsExtensions
-  extends DefaultUpdatableRouteOptionsExtensions {}
+export interface UpdatableRouteOptionsExtensions extends DefaultUpdatableRouteOptionsExtensions {}
 
 export interface UpdatableRouteOptions<
   in out TParentRoute extends AnyRoute,
@@ -1186,11 +1266,17 @@ export interface UpdatableRouteOptions<
   in out TRouterContext,
   in out TRouteContextFn,
   in out TBeforeLoadFn,
-> extends UpdatableStaticRouteOption,
-    UpdatableRouteOptionsExtensions {
-  // If true, this route will be matched as case-sensitive
+>
+  extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
+  /**
+   * If true, this route will be matched as case-sensitive
+   *
+   * @default false
+   */
   caseSensitive?: boolean
-  // If true, this route will be forcefully wrapped in a suspense boundary
+  /**
+   * If true, this route will be forcefully wrapped in a suspense boundary
+   */
   wrapInSuspense?: boolean
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
 
@@ -1203,9 +1289,7 @@ export interface UpdatableRouteOptions<
   preloadGcTime?: number
   search?: {
     middlewares?: Array<
-      SearchMiddleware<
-        ResolveFullSearchSchemaInput<TParentRoute, TSearchValidator>
-      >
+      SearchMiddleware<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
     >
   }
   /** 
@@ -1285,7 +1369,7 @@ export interface UpdatableRouteOptions<
       TBeforeLoadFn,
       TLoaderDeps
     >,
-  ) => Awaitable<Record<string, string>>
+  ) => Awaitable<Record<string, string> | undefined>
   head?: (
     ctx: AssetFnContextOptions<
       TRouteId,
@@ -1356,6 +1440,45 @@ export type RouteLoaderFn<
   >,
 ) => any
 
+export type LoaderStaleReloadMode = 'background' | 'blocking'
+
+export type RouteLoaderEntry<
+  TRegister,
+  TParentRoute extends AnyRoute = AnyRoute,
+  TId extends string = string,
+  TParams = {},
+  TLoaderDeps = {},
+  TRouterContext = {},
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
+> =
+  | RouteLoaderFn<
+      TRegister,
+      TParentRoute,
+      TId,
+      TParams,
+      TLoaderDeps,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TServerMiddlewares,
+      THandlers
+    >
+  | RouteLoaderObject<
+      TRegister,
+      TParentRoute,
+      TId,
+      TParams,
+      TLoaderDeps,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TServerMiddlewares,
+      THandlers
+    >
+
 export interface LoaderFnContext<
   in out TRegister = unknown,
   in out TParentRoute extends AnyRoute = AnyRoute,
@@ -1397,8 +1520,7 @@ export interface DefaultRootRouteOptionsExtensions {
   shellComponent?: unknown
 }
 
-export interface RootRouteOptionsExtensions
-  extends DefaultRootRouteOptionsExtensions {}
+export interface RootRouteOptionsExtensions extends DefaultRootRouteOptionsExtensions {}
 
 export interface RootRouteOptions<
   TRegister = unknown,
@@ -1411,7 +1533,9 @@ export interface RootRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
-> extends Omit<
+>
+  extends
+    Omit<
       RouteOptions<
         TRegister,
         any, // TParentRoute
@@ -1488,9 +1612,11 @@ export type ErrorComponentProps<TError = Error> = {
   info?: { componentStack: string }
   reset: () => void
 }
+
 export type NotFoundRouteProps = {
-  // TODO: Make sure this is `| null | undefined` (this is for global not-founds)
-  data: unknown
+  data?: unknown
+  isNotFound: boolean
+  routeId: RouteIds<RegisteredRouter['routeTree']>
 }
 
 export class BaseRoute<
@@ -1669,10 +1795,13 @@ export class BaseRoute<
     if (isRoot) {
       this._path = rootRouteId as TPath
     } else if (!this.parentRoute) {
-      invariant(
-        false,
-        `Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
-      )
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
+        )
+      }
+
+      invariant()
     }
 
     let path: undefined | string = isRoot ? rootRouteId : options?.path
@@ -1706,7 +1835,7 @@ export class BaseRoute<
     this._path = path as TPath
     this._id = id as TId
     this._fullPath = fullPath as TFullPath
-    this._to = fullPath as TrimPathRight<TFullPath>
+    this._to = trimPathRight(fullPath) as TrimPathRight<TFullPath>
   }
 
   addChildren: RouteAddChildrenFn<
@@ -1864,18 +1993,39 @@ export class BaseRoute<
     this.lazyFn = lazyFn
     return this
   }
+
+  /**
+   * Create a redirect with `from` automatically set to this route's fullPath.
+   * Enables relative redirects like `Route.redirect({ to: './overview' })`.
+   * @param opts Redirect options (same as `redirect()` but without `from`)
+   * @returns A redirect Response that can be thrown from loaders/beforeLoad
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
+   */
+  redirect: RedirectFnRoute<TFullPath> = (opts) =>
+    redirect({ from: this.fullPath, ...opts } as any)
 }
 
 export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   id: TId
 
   constructor({ id }: { id: TId }) {
-    this.id = id as any
+    this.id = id
   }
 
   notFound = (opts?: NotFoundError) => {
     return notFound({ routeId: this.id as string, ...opts })
   }
+
+  /**
+   * Create a redirect with `from` automatically set to this route's path.
+   * Enables relative redirects like `routeApi.redirect({ to: './overview' })`.
+   * @param opts Redirect options (same as `redirect()` but without `from`)
+   * @returns A redirect Response that can be thrown from loaders/beforeLoad
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
+   */
+  redirect: RedirectFnRoute<RouteTypesById<TRouter, TId>['fullPath']> = (
+    opts,
+  ) => redirect({ from: this.id as string, ...opts } as any)
 }
 
 export interface RootRoute<
@@ -1892,25 +2042,25 @@ export interface RootRoute<
   in out TServerMiddlewares = unknown,
   in out THandlers = undefined,
 > extends Route<
-    TRegister,
-    any, // TParentRoute
-    '/', // TPath
-    '/', // TFullPath
-    string, // TCustomId
-    RootRouteId, // TId
-    TSearchValidator, // TSearchValidator
-    {}, // TParams
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren, // TChildren
-    TFileRouteTypes,
-    TSSR,
-    TServerMiddlewares,
-    THandlers
-  > {}
+  TRegister,
+  any, // TParentRoute
+  '/', // TPath
+  '/', // TFullPath
+  string, // TCustomId
+  RootRouteId, // TId
+  TSearchValidator, // TSearchValidator
+  {}, // TParams
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TChildren, // TChildren
+  TFileRouteTypes,
+  TSSR,
+  TServerMiddlewares,
+  THandlers
+> {}
 
 export class BaseRootRoute<
   in out TRegister = Register,

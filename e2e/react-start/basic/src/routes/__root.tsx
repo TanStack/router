@@ -1,16 +1,18 @@
 /// <reference types="vite/client" />
 import * as React from 'react'
 import {
+  ClientOnly,
   HeadContent,
   Link,
   Outlet,
   Scripts,
   createRootRoute,
+  useRouterState,
 } from '@tanstack/react-router'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
-import appCss from '~/styles/app.css?url'
+import '~/styles/app.css'
 import { seo } from '~/utils/seo'
 
 export const Route = createRootRoute({
@@ -30,7 +32,6 @@ export const Route = createRootRoute({
       }),
     ],
     links: [
-      { rel: 'stylesheet', href: appCss },
       {
         rel: 'apple-touch-icon',
         sizes: '180x180',
@@ -93,10 +94,17 @@ const RouterDevtools =
       )
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const { isLoading, status } = useRouterState({
+    select: (state) => ({ isLoading: state.isLoading, status: state.status }),
+    structuralSharing: true,
+  })
+
   return (
     <html>
       <head>
         <HeadContent />
+        <script src="/head-script.js" />
+        <script src="/head-async-script.js" async={true} />
       </head>
       <body>
         <div className="p-2 flex gap-2 text-lg">
@@ -142,6 +150,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Scripts
           </Link>{' '}
           <Link
+            to="/async-scripts"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Async Scripts
+          </Link>{' '}
+          <Link
             to="/inline-scripts"
             activeProps={{
               className: 'font-bold',
@@ -166,6 +182,30 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             redirect
           </Link>{' '}
           <Link
+            to="/not-found"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            not-found
+          </Link>{' '}
+          <Link
+            to="/client-only"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Client Only
+          </Link>{' '}
+          <Link
+            to="/raw-stream"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Raw Stream
+          </Link>{' '}
+          <Link
             // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{
@@ -176,12 +216,22 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         <hr />
+        <ClientOnly>
+          <div hidden>
+            <b data-testid="router-isLoading">{isLoading ? 'true' : 'false'}</b>
+            <b data-testid="router-status">{status}</b>
+          </div>
+        </ClientOnly>
         {children}
         <div className="inline-div">This is an inline styled div</div>
         <React.Suspense fallback={null}>
           <RouterDevtools position="bottom-right" />
         </React.Suspense>
+        <script src="/before-scripts-script.js" />
+        <script src="/before-scripts-async-script.js" async={true} />
         <Scripts />
+        <script src="/user-script.js" />
+        <script src="/async-user-script.js" async={true} />
       </body>
     </html>
   )

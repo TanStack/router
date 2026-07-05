@@ -23,7 +23,12 @@ coverage
 # tests
 packages/router-generator/tests/**/*.gen.ts
 packages/router-generator/tests/**/*.gen.js
-e2e/**/port*.txt
+**/port*.txt
+**/test-results/**
+
+# Playwright artifacts
+**/playwright-report/
+**/blob-report/
 
 # misc
 .DS_Store
@@ -54,10 +59,13 @@ ts-perf
 /examples/*/*/package-lock.json
 
 .netlify
+.vercel
 
 nx-cloud.env
 .nx/cache
 .nx/workspace-data
+.nx/polygraph
+.nx/self-healing
 
 gpt/db.json
 
@@ -79,3 +87,9 @@ vite.config.ts.timestamp_*
 **/llms
 
 **/.tanstack
+
+# eslint-plugin-start perf fixtures
+/e2e/eslint-plugin-start/src/perf/generated
+
+# local memory flame profiles
+benchmarks/memory/**/.profiles/

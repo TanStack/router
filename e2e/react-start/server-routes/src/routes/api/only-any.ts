@@ -1,11 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
 
 export const Route = createFileRoute('/api/only-any')({
   server: {
     handlers: {
       ANY: ({ request }) => {
-        return json(
+        return Response.json(
           {
             handler: 'ANY',
             method: request.method,

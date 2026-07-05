@@ -1,5 +1,5 @@
 import { RouterCore } from '@tanstack/router-core'
-import { createFileRoute, createLazyFileRoute } from './fileRoute'
+import { getStoreFactory } from './routerStores'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
@@ -88,11 +88,6 @@ declare module '@tanstack/router-core' {
  * @returns A Router instance to be provided to `RouterProvider`.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouterFunction
  */
-/**
- * Create a new React router instance from `RouterOptions`.
- * Pass the resulting router to `RouterProvider`.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouterFunction
- */
 export const createRouter: CreateRouterFn = (options) => {
   return new Router(options)
 }
@@ -119,14 +114,6 @@ export class Router<
       TDehydrated
     >,
   ) {
-    super(options)
+    super(options, getStoreFactory)
   }
-}
-
-if (typeof globalThis !== 'undefined') {
-  ;(globalThis as any).createFileRoute = createFileRoute
-  ;(globalThis as any).createLazyFileRoute = createLazyFileRoute
-} else if (typeof window !== 'undefined') {
-  ;(window as any).createFileRoute = createFileRoute
-  ;(window as any).createLazyFileRoute = createLazyFileRoute
 }

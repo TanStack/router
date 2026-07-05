@@ -1,4 +1,3 @@
-import { json } from '@tanstack/react-start'
 import axios from 'redaxios'
 import type { User } from '~/utils/users'
 import { createFileRoute } from '@tanstack/react-router'
@@ -17,14 +16,14 @@ export const Route = createFileRoute('/api/users/$id')({
         try {
           const res = await axios.get<User>(`${queryURL}/users/` + params.id)
 
-          return json({
+          return Response.json({
             id: res.data.id,
             name: res.data.name,
             email: res.data.email,
           })
         } catch (e) {
           console.error(e)
-          return json({ error: 'User not found' }, { status: 404 })
+          return Response.json({ error: 'User not found' }, { status: 404 })
         }
       },
     },

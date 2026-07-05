@@ -1,17 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import * as React from 'react'
-import { redirect, useRouter, useRouterState } from '@tanstack/react-router'
+import { redirect, useRouter } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { useAuth } from '../auth'
-import { sleep } from '../utils'
-import { siApple, siGithub, siGoogle } from 'simple-icons'
+import { siGithub } from 'simple-icons'
 
-import {
-  GoogleAuthProvider,
-  GithubAuthProvider,
-  OAuthProvider,
-} from 'firebase/auth'
+import { GithubAuthProvider } from 'firebase/auth'
 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 const fallback = '/dashboard' as const

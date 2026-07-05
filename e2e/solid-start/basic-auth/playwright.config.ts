@@ -1,6 +1,12 @@
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
+
+// Ensure port file is written next to this config, even if Playwright loads it
+// from a different working directory.
+process.chdir(path.dirname(fileURLToPath(import.meta.url)))
 
 const PORT = await getTestServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
@@ -19,7 +25,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `VITE_SERVER_PORT=${PORT} pnpm build && PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`,
+    command: `pnpm build && VITE_SERVER_PORT=${PORT} PORT=${PORT} pnpm start`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',

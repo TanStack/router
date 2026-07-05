@@ -34,7 +34,7 @@ There are two types of middleware: **request middleware** and **server function 
 | ----------------- | -------------------------------- | -------------------------- |
 | Scope             | All server requests              | Server functions only      |
 | Methods           | `.server()`                      | `.client()`, `.server()`   |
-| Input Validation  | No                               | Yes (`.inputValidator()`)  |
+| Input Validation  | No                               | Yes (`.validator()`)       |
 | Client-side Logic | No                               | Yes                        |
 | Dependencies      | Can depend on request middleware | Can depend on both types   |
 
@@ -166,6 +166,8 @@ export const Route = createFileRoute('/foo')({
 You can pass middleware to specific server route methods by using the `createHandlers` utility and passing a middleware array to the `middleware` property of the method object.
 
 ```tsx
+import { createMiddleware } from '@tanstack/react-start'
+
 const loggingMiddleware = createMiddleware().server(() => {
   //...
 })
@@ -208,7 +210,7 @@ const loggingMiddleware = createMiddleware({ type: 'function' })
 Server function middleware has the following methods:
 
 - `middleware`: Add a middleware to the chain.
-- `inputValidator`: Modify the data object before it is passed to this middleware and any nested middleware and eventually the server function.
+- `validator`: Modify the data object before it is passed to this middleware and any nested middleware and eventually the server function.
 - `client`: Define client-side logic that the middleware will execute on the client before (and after) the server function calls into the server to execute the function.
 - `server`: Define server-side logic that the middleware will execute on the server before (and after) the server function is executed.
 
@@ -223,16 +225,16 @@ The `.client` method is used to define client-side logic that the middleware wil
 import { createMiddleware } from '@tanstack/react-start'
 
 const loggingMiddleware = createMiddleware({ type: 'function' }).client(
-  async ({ next, context, request }) => {
+  async ({ next, context }) => {
     const result = await next() // <-- This will execute the next middleware in the chain and eventually, the RPC to the server
     return result
   },
 )
 ```
 
-### The `.inputValidator` method
+### The `.validator` method
 
-The `inputValidator` method is used to modify the data object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the data object and returns a validated (and optionally modified) data object. It's common to use a validation library like `zod` to do this.
+The `validator` method is used to modify the data object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the data object and returns a validated (and optionally modified) data object. It's common to use a validation library like `zod` to do this.
 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
@@ -244,7 +246,7 @@ const mySchema = z.object({
 })
 
 const workspaceMiddleware = createMiddleware({ type: 'function' })
-  .inputValidator(zodValidator(mySchema))
+  .validator(zodValidator(mySchema))
   .server(({ next, data }) => {
     console.log('Workspace ID:', data.workspaceId)
     return next()
@@ -324,6 +326,8 @@ const loggingMiddleware = createMiddleware({ type: 'function' })
 **Client context is NOT sent to the server by default since this could end up unintentionally sending large payloads to the server.** If you need to send client context to the server, you must call the `next` function with a `sendContext` property and object to transmit any data to the server. Any properties passed to `sendContext` will be merged, serialized and sent to the server along with the data and will be available on the normal context object of any nested server middleware.
 
 ```tsx
+import { createMiddleware } from '@tanstack/react-start'
+
 const requestLogger = createMiddleware({ type: 'function' })
   .client(async ({ next, context }) => {
     return next({
@@ -342,10 +346,12 @@ const requestLogger = createMiddleware({ type: 'function' })
 
 #### Client-Sent Context Security
 
-You may have noticed that in the example above that while client-sent context is type-safe, it is is not required to be validated at runtime. If you pass dynamic user-generated data via context, that could pose a security concern, so **if you are sending dynamic data from the client to the server via context, you should validate it in the server-side middleware before using it.**
+You may have noticed that in the example above while client-sent context is type-safe, it is not required to be validated at runtime. If you pass dynamic user-generated data via context, that could pose a security concern, so **if you are sending dynamic data from the client to the server via context, you should validate it in the server-side middleware before using it.**
+
+> **Shape validation is not authorization.** A parsed UUID/number is a _well-formed_ identifier, not an _authorized_ one. If the value is going to be used as a query key, filter, or path parameter — anything that selects which row(s) get read or written — you must also verify the session principal has access to it. Otherwise a logged-in user can rewrite the value in their own request and walk other tenants' data.
 
 ```tsx
-import { zodValidator } from '@tanstack/zod-adapter'
+import { createMiddleware } from '@tanstack/react-start'
 import { z } from 'zod'
 
 const requestLogger = createMiddleware({ type: 'function' })
@@ -356,13 +362,22 @@ const requestLogger = createMiddleware({ type: 'function' })
       },
     })
   })
-  .server(async ({ next, data, context }) => {
-    // Validate the workspace ID before using it
-    const workspaceId = zodValidator(z.number()).parse(context.workspaceId)
-    console.log('Workspace ID:', workspaceId)
-    return next()
+  .middleware([authMiddleware]) // session loaded server-side, NOT from sendContext
+  .server(async ({ next, context }) => {
+    // 1. Validate shape
+    const workspaceId = z.string().uuid().parse(context.workspaceId)
+    // 2. Validate access — does this session principal have membership?
+    const member = await db.memberships.find({
+      userId: context.session.userId,
+      workspaceId,
+    })
+    if (!member) throw new Error('Not a member of this workspace')
+    // 3. Now safe to use as a query key.
+    return next({ context: { workspaceId } })
   })
 ```
+
+Always derive the session itself from a server-trusted source (a cookie + DB lookup in `authMiddleware`), never from `sendContext`. Anything the client can send, the client can lie about.
 
 ### Sending Server Context to the Client
 
@@ -372,6 +387,8 @@ Similar to sending client context to the server, you can also send server contex
 > The return type of `next` in `client` can only be inferred from middleware known in the current middleware chain. Therefore the most accurate return type of `next` is in middleware at the end of the middleware chain
 
 ```tsx
+import { createMiddleware } from '@tanstack/react-start'
+
 const serverTimer = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
     return next({
@@ -398,13 +415,16 @@ const requestLogger = createMiddleware({ type: 'function' })
 
 Global middleware runs automatically for every request in your application. This is useful for functionality like authentication, logging, and monitoring that should apply to all requests.
 
+> [!NOTE]
+> The `src/start.ts` file is not included in the default TanStack Start template. You'll need to create this file when you want to configure global middleware or other Start-level options.
+
 ### Global Request Middleware
 
-To have a middleware run for **every request handled by Start**, you can create a middleware and return it as `requestMiddleware` in the `createStart` function in your `src/start.ts` file:
+To have a middleware run for **every request handled by Start**, create a `src/start.ts` file and use the `createStart` function to return your middleware configuration:
 
 ```tsx
 // src/start.ts
-import { createStart } from '@tanstack/react-start'
+import { createStart, createMiddleware } from '@tanstack/react-start'
 
 const myGlobalMiddleware = createMiddleware().server(() => {
   //...
@@ -420,9 +440,54 @@ export const startInstance = createStart(() => {
 > [!NOTE]
 > Global **request** middleware runs before **every request, including server routes, SSR and server functions**.
 
+### CSRF Middleware
+
+Server functions are same-origin RPC endpoints and should be protected from cross-site requests. If your app does not define `src/start.ts`, TanStack Start installs its CSRF middleware automatically for server functions.
+
+If you define a custom `src/start.ts`, add `createCsrfMiddleware()` explicitly:
+
+```tsx
+// src/start.ts
+import { createStart, createCsrfMiddleware } from '@tanstack/react-start'
+
+const csrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === 'serverFn',
+})
+
+export const startInstance = createStart(() => ({
+  requestMiddleware: [csrfMiddleware],
+}))
+```
+
+By default, `Origin` and `Referer` checks compare against the incoming request URL origin. If your deployment needs to allow a different public origin, configure it on the CSRF middleware with `createCsrfMiddleware({ origin: 'https://app.example.com' })`.
+
+By default, `createCsrfMiddleware()` validates every request handled by the middleware. Use `filter: (ctx) => ctx.handlerType === 'serverFn'` when installing it globally for server function protection. It verifies same-origin browser request metadata with `Sec-Fetch-Site`, `Origin`, or `Referer` headers and rejects requests that cannot be proven same-origin.
+
+You can also use the same middleware to protect any other route.
+
+```tsx
+export const Route = createFileRoute('/api/foo')({
+  server: {
+    middleware: [createCsrfMiddleware()],
+    handlers: { GET: () => {...} }
+  }
+})
+```
+
+If you define `src/start.ts` without the CSRF middleware, Start shows a development warning for server function requests. If you intentionally handle CSRF another way, disable the warning:
+
+```tsx
+// vite.config.ts or rsbuild.config.ts
+tanstackStart({
+  serverFns: {
+    disableCsrfMiddlewareWarning: true,
+  },
+})
+```
+
 ### Global Server Function Middleware
 
-To have a middleware run for **every server function in your application**, you can create a middleware and return it to the `createStart` function as `functionMiddleware` in your `src/start.ts` file:
+To have a middleware run for **every server function in your application**, add it to the `functionMiddleware` array in your `src/start.ts` file:
 
 ```tsx
 // src/start.ts
@@ -434,23 +499,6 @@ export const startInstance = createStart(() => {
     functionMiddleware: [loggingMiddleware],
   }
 })
-```
-
-### Global Middleware Type Safety
-
-Global middleware types are inherently **detached** from server functions themselves. This means that if a global middleware supplies additional context to server functions or other server function specific middleware, the types will not be automatically passed through to the server function or other server function specific middleware.
-
-To solve this, add the global middleware you are trying to reference to the server function's middleware array. **The global middleware will be deduped to a single entry (the global instance), and your server function will receive the correct types.**
-
-```tsx
-import { authMiddleware } from './authMiddleware'
-
-const fn = createServerFn()
-  .middleware([authMiddleware])
-  .handler(async ({ context }) => {
-    console.log(context.user) // <-- Now this will be typed!
-    // ...
-  })
 ```
 
 ### Middleware Execution Order
@@ -466,6 +514,8 @@ Middleware is executed dependency-first, starting with global middleware, follow
 - `fn`
 
 ```tsx
+import { createMiddleware, createServerFn } from '@tanstack/react-start'
+
 const globalMiddleware1 = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
     console.log('globalMiddleware1')
@@ -516,17 +566,18 @@ const fn = createServerFn()
 
 ### Reading/Modifying the Server Response
 
-Middleware that uses the `server` method executes in the same context as server functions, so you can follow the exact same [Server Function Context Utilities](../server-functions.md#server-function-context) to read and modify anything about the request headers, status codes, etc.
+Middleware that uses the `server` method executes in the same context as server functions, so you can follow the exact same [Server Function Context Utilities](./server-functions.md#server-function-context) to read and modify anything about the request headers, status codes, etc.
 
 ### Modifying the Client Request
 
-Middleware that uses the `client` method executes in a **completely different client-side context** than server functions, so you can't use the same utilities to read and modify the request. However, you can still modify the request returning additional properties when calling the `next` function. Currently supported properties are:
+Middleware that uses the `client` method executes in a **completely different client-side context** than server functions, so you can't use the same utilities to read and modify the request. However, you can still modify the request by returning additional properties when calling the `next` function.
 
-- `headers`: An object containing headers to be added to the request.
+#### Setting Custom Headers
 
-Here's an example of adding an `Authorization` header any request using this middleware:
+You can add headers to the outgoing request by passing a `headers` object to `next`:
 
 ```tsx
+import { createMiddleware } from '@tanstack/react-start'
 import { getToken } from 'my-auth-library'
 
 const authMiddleware = createMiddleware({ type: 'function' }).client(
@@ -540,6 +591,220 @@ const authMiddleware = createMiddleware({ type: 'function' }).client(
 )
 ```
 
+#### Header Merging Across Middleware
+
+When multiple middlewares set headers, they are **merged together**. Later middlewares can add new headers or override headers set by earlier middlewares:
+
+```tsx
+import { createMiddleware } from '@tanstack/react-start'
+
+const firstMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    return next({
+      headers: {
+        'X-Request-ID': '12345',
+        'X-Source': 'first-middleware',
+      },
+    })
+  },
+)
+
+const secondMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    return next({
+      headers: {
+        'X-Timestamp': Date.now().toString(),
+        'X-Source': 'second-middleware', // Overrides first middleware
+      },
+    })
+  },
+)
+
+// Final headers will include:
+// - X-Request-ID: '12345' (from first)
+// - X-Timestamp: '<timestamp>' (from second)
+// - X-Source: 'second-middleware' (second overrides first)
+```
+
+You can also set headers directly at the call site:
+
+```tsx
+await myServerFn({
+  data: { name: 'John' },
+  headers: {
+    'X-Custom-Header': 'call-site-value',
+  },
+})
+```
+
+**Header precedence (all headers are merged, later values override earlier):**
+
+1. Earlier middleware headers
+2. Later middleware headers (override earlier)
+3. Call-site headers (override all middleware headers)
+
+#### Custom Fetch Implementation
+
+For advanced use cases, you can provide a custom `fetch` implementation to control how server function requests are made. This is useful for:
+
+- Adding request interceptors or retry logic
+- Using a custom HTTP client
+- Testing and mocking
+- Adding telemetry or monitoring
+
+**Via Client Middleware:**
+
+```tsx
+import { createMiddleware } from '@tanstack/react-start'
+import type { CustomFetch } from '@tanstack/react-start'
+
+const customFetchMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    const customFetch: CustomFetch = async (url, init) => {
+      console.log('Request starting:', url)
+      const start = Date.now()
+
+      const response = await fetch(url, init)
+
+      console.log('Request completed in', Date.now() - start, 'ms')
+      return response
+    }
+
+    return next({ fetch: customFetch })
+  },
+)
+```
+
+**Directly at Call Site:**
+
+```tsx
+import type { CustomFetch } from '@tanstack/react-start'
+
+const myFetch: CustomFetch = async (url, init) => {
+  // Add custom logic here
+  return fetch(url, init)
+}
+
+await myServerFn({
+  data: { name: 'John' },
+  fetch: myFetch,
+})
+```
+
+#### Fetch Override Precedence
+
+When custom fetch implementations are provided at multiple levels, the following precedence applies (highest to lowest priority):
+
+| Priority    | Source             | Description                                          |
+| ----------- | ------------------ | ---------------------------------------------------- |
+| 1 (highest) | Call site          | `serverFn({ fetch: customFetch })`                   |
+| 2           | Later middleware   | Last middleware in chain that provides `fetch`       |
+| 3           | Earlier middleware | First middleware in chain that provides `fetch`      |
+| 4           | createStart        | `createStart({ serverFns: { fetch: customFetch } })` |
+| 5 (lowest)  | Default            | Global `fetch` function                              |
+
+**Key principle:** The call site always wins. This allows you to override middleware behavior for specific calls when needed.
+
+```tsx
+import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import type { CustomFetch } from '@tanstack/react-start'
+
+// Middleware sets a fetch that adds logging
+const loggingMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    const loggingFetch: CustomFetch = async (url, init) => {
+      console.log('Middleware fetch:', url)
+      return fetch(url, init)
+    }
+    return next({ fetch: loggingFetch })
+  },
+)
+
+const myServerFn = createServerFn()
+  .middleware([loggingMiddleware])
+  .handler(async () => {
+    return { message: 'Hello' }
+  })
+
+// Uses middleware's loggingFetch
+await myServerFn()
+
+// Override with custom fetch for this specific call
+const testFetch: CustomFetch = async (url, init) => {
+  console.log('Test fetch:', url)
+  return fetch(url, init)
+}
+await myServerFn({ fetch: testFetch }) // Uses testFetch, NOT loggingFetch
+```
+
+**Chained Middleware Example:**
+
+When multiple middlewares provide fetch, the last one wins:
+
+```tsx
+import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import type { CustomFetch } from '@tanstack/react-start'
+
+const firstMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    const firstFetch: CustomFetch = (url, init) => {
+      const headers = new Headers(init?.headers)
+      headers.set('X-From', 'first-middleware')
+      return fetch(url, { ...init, headers })
+    }
+    return next({ fetch: firstFetch })
+  },
+)
+
+const secondMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    const secondFetch: CustomFetch = (url, init) => {
+      const headers = new Headers(init?.headers)
+      headers.set('X-From', 'second-middleware')
+      return fetch(url, { ...init, headers })
+    }
+    return next({ fetch: secondFetch })
+  },
+)
+
+const myServerFn = createServerFn()
+  .middleware([firstMiddleware, secondMiddleware])
+  .handler(async () => {
+    // Request will have X-From: 'second-middleware'
+    // because secondMiddleware's fetch overrides firstMiddleware's fetch
+    return { message: 'Hello' }
+  })
+```
+
+**Global Fetch via createStart:**
+
+You can set a default custom fetch for all server functions in your application by providing `serverFns.fetch` in `createStart`. This is useful for adding global request interceptors, retry logic, or telemetry:
+
+```tsx
+// src/start.ts
+import { createStart } from '@tanstack/react-start'
+import type { CustomFetch } from '@tanstack/react-start'
+
+const globalFetch: CustomFetch = async (url, init) => {
+  console.log('Global fetch:', url)
+  // Add retry logic, telemetry, etc.
+  return fetch(url, init)
+}
+
+export const startInstance = createStart(() => {
+  return {
+    serverFns: {
+      fetch: globalFetch,
+    },
+  }
+})
+```
+
+This global fetch has lower priority than middleware and call-site fetch, so you can still override it for specific server functions or calls when needed.
+
+> [!NOTE]
+> Custom fetch only applies on the client side. During SSR, server functions are called directly without going through fetch.
+
 ## Environment and Performance
 
 ### Environment Tree Shaking
@@ -548,3 +813,84 @@ Middleware functionality is tree-shaken based on the environment for each bundle
 
 - On the server, nothing is tree-shaken, so all code used in middleware will be included in the server bundle.
 - On the client, all server-specific code is removed from the client bundle. This means any code used in the `server` method is always removed from the client bundle. `data` validation code will also be removed.
+
+## Middleware Factories
+
+Static middlewares are created once and reused across routes. A middleware factory wraps that creation in a function, allowing it to accept parameters and behave differently depending on the caller's needs. Authorization is a common use case.
+
+**Authentication (Static Base Middleware) Example:**
+
+This middleware validates the session and injects it into `context` for downstream middlewares.
+
+> **Attach `authMiddleware` to every `createServerFn` that needs auth.** Server functions are API endpoints, so protect the endpoint that reads or mutates private data. A route `beforeLoad` guard improves route UX, but it is not the data boundary. See [Authentication Server Primitives](./authentication-server-primitives.md).
+
+```tsx
+// middleware.ts
+import { createMiddleware } from '@tanstack/react-start'
+import { auth } from './my-auth'
+
+export const authMiddleware = createMiddleware().server(
+  async ({ next, request }) => {
+    const session = await auth.getSession({ headers: request.headers })
+
+    if (!session) {
+      throw new Error('Unauthorized')
+    }
+
+    return await next({
+      context: { session },
+    })
+  },
+)
+```
+
+**Authorization (Middleware Factory) Example:**
+
+The middleware validates access based on the dynamic `permissions` parameter, composing with `authMiddleware` so `context.session` is already available.
+
+```tsx
+// middleware.ts
+import { createMiddleware } from '@tanstack/react-start'
+import { auth } from './my-auth'
+
+export const authMiddleware = createMiddleware().server(
+  async ({ next, request }) => {
+    // ... (implementation from authentication example above)
+  },
+)
+
+type Permissions = Record<string, string[]>
+
+export function authorizationMiddleware(permissions: Permissions) {
+  return createMiddleware({ type: 'function' })
+    .middleware([authMiddleware])
+    .server(async ({ next, context }) => {
+      const granted = await auth.hasPermission(context.session, permissions)
+
+      if (!granted) {
+        throw new Error('Forbidden')
+      }
+
+      return await next()
+    })
+}
+```
+
+**Usage in a Server Function:**
+
+Access requirements are defined per server function, without duplicating any middleware logic.
+
+```tsx
+import { createServerFn } from '@tanstack/react-start'
+import { authorizationMiddleware } from './middleware'
+
+export const getClients = createServerFn()
+  .middleware([
+    authorizationMiddleware({
+      client: ['read'],
+    }),
+  ])
+  .handler(async ({ context }) => {
+    return { message: 'The user can read clients.' }
+  })
+```

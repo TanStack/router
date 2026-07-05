@@ -1,7 +1,7 @@
 import { createPlugin } from 'seroval'
-import type { SerovalNode } from 'seroval'
+import type { PluginInfo, SerovalNode } from 'seroval'
 
-export interface ErrorNode {
+export interface ErrorNode extends PluginInfo {
   message: SerovalNode
 }
 
@@ -38,6 +38,6 @@ export const ShallowErrorPlugin = /* @__PURE__ */ createPlugin<
     return 'new Error(' + ctx.serialize(node.message) + ')'
   },
   deserialize(node, ctx) {
-    return new Error(ctx.deserialize(node.message) as string)
+    return new Error(ctx.deserialize(node.message))
   },
 })

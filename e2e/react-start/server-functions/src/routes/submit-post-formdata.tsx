@@ -10,7 +10,7 @@ const testValues = {
 }
 
 export const greetUser = createServerFn({ method: 'POST' })
-  .inputValidator((data: FormData) => {
+  .validator((data: FormData) => {
     if (!(data instanceof FormData)) {
       throw new Error('Invalid! FormData is required')
     }
@@ -33,7 +33,7 @@ function SubmitPostFormDataFn() {
     <div className="p-2 m-2 grid gap-2">
       <h3>Submit POST FormData Fn Call</h3>
       <div className="overflow-y-auto">
-        It should return navigate and return{' '}
+        It should navigate to a raw response of {''}
         <code>
           <pre data-testid="expected-submit-post-formdata-server-fn-result">
             Hello, {testValues.name}!

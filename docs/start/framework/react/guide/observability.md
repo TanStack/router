@@ -61,7 +61,7 @@ Add logging to your server functions to track execution, performance, and errors
 import { createServerFn } from '@tanstack/react-start'
 
 const getUser = createServerFn({ method: 'GET' })
-  .inputValidator((id: string) => id)
+  .validator((id: string) => id)
   .handler(async ({ data: id }) => {
     const startTime = Date.now()
 
@@ -97,21 +97,21 @@ Create middleware to log all requests and responses:
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 
-const requestLogger = createMiddleware().handler(async ({ next }) => {
+const requestLogger = createMiddleware().server(async ({ request, next }) => {
   const startTime = Date.now()
   const timestamp = new Date().toISOString()
 
   console.log(`[${timestamp}] ${request.method} ${request.url} - Starting`)
 
   try {
-    const response = await next()
+    const result = await next()
     const duration = Date.now() - startTime
 
     console.log(
-      `[${timestamp}] ${request.method} ${request.url} - ${response.status} (${duration}ms)`,
+      `[${timestamp}] ${request.method} ${request.url} - ${result.response.status} (${duration}ms)`,
     )
 
-    return response
+    return result
   } catch (error) {
     const duration = Date.now() - startTime
     console.error(
@@ -128,7 +128,7 @@ export const Route = createFileRoute('/api/users')({
     middleware: [requestLogger],
     handlers: {
       GET: async () => {
-        return json({ users: await getUsers() })
+        return Response.json({ users: await getUsers() })
       },
     },
   },
@@ -185,7 +185,6 @@ Create server routes for health monitoring:
 ```tsx
 // routes/health.ts
 import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
 
 export const Route = createFileRoute('/health')({
   server: {
@@ -200,7 +199,7 @@ export const Route = createFileRoute('/health')({
           version: process.env.npm_package_version,
         }
 
-        return json(checks)
+        return Response.json(checks)
       },
     },
   },
@@ -314,7 +313,7 @@ export const Route = createFileRoute('/metrics')({
   server: {
     handlers: {
       GET: async () => {
-        return json({
+        return Response.json({
           system: {
             uptime: process.uptime(),
             memory: process.memoryUsage(),
@@ -335,16 +334,16 @@ Add helpful debug information to responses:
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 
-const debugMiddleware = createMiddleware().handler(async ({ next }) => {
-  const response = await next()
+const debugMiddleware = createMiddleware().server(async ({ next }) => {
+  const result = await next()
 
   if (process.env.NODE_ENV === 'development') {
-    response.headers.set('X-Debug-Timestamp', new Date().toISOString())
-    response.headers.set('X-Debug-Node-Version', process.version)
-    response.headers.set('X-Debug-Uptime', process.uptime().toString())
+    result.response.headers.set('X-Debug-Timestamp', new Date().toISOString())
+    result.response.headers.set('X-Debug-Node-Version', process.version)
+    result.response.headers.set('X-Debug-Uptime', process.uptime().toString())
   }
 
-  return response
+  return result
 })
 ```
 
@@ -459,7 +458,7 @@ export const Route = createFileRoute('/admin/errors')({
           ...data,
         }))
 
-        return json({ errors })
+        return Response.json({ errors })
       },
     },
   },
@@ -635,7 +634,7 @@ import { trace, SpanStatusCode } from '@opentelemetry/api'
 const tracer = trace.getTracer('tanstack-start')
 
 const getUserWithTracing = createServerFn({ method: 'GET' })
-  .inputValidator((id: string) => id)
+  .validator((id: string) => id)
   .handler(async ({ data: id }) => {
     return tracer.startActiveSpan('get-user', async (span) => {
       span.setAttributes({
@@ -668,7 +667,7 @@ import { trace, SpanStatusCode } from '@opentelemetry/api'
 
 const tracer = trace.getTracer('tanstack-start')
 
-const tracingMiddleware = createMiddleware().handler(
+const tracingMiddleware = createMiddleware().server(
   async ({ next, request }) => {
     const url = new URL(request.url)
 
@@ -682,10 +681,10 @@ const tracingMiddleware = createMiddleware().handler(
         })
 
         try {
-          const response = await next()
-          span.setAttribute('http.status_code', response.status)
+          const result = await next()
+          span.setAttribute('http.status_code', result.response.status)
           span.setStatus({ code: SpanStatusCode.OK })
-          return response
+          return result
         } catch (error) {
           span.recordException(error)
           span.setStatus({

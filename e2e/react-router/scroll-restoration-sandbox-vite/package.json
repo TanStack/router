@@ -7,31 +7,29 @@
     "dev:hash": "VITE_APP_HISTORY=hash vite --port 3000",
     "dev:e2e": "vite",
     "build": "vite build && tsc --noEmit",
-    "serve": "vite preview",
+    "preview": "vite preview",
     "start": "vite",
     "test:e2e:browser": "VITE_APP_HISTORY=browser playwright test --config=playwright.browser.config.ts --project=chromium",
     "test:e2e:hash": "VITE_APP_HISTORY=hash playwright test --config=playwright.hash.config.ts --project=chromium",
     "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:browser && pnpm run test:e2e:hash"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.15",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
-    "@tanstack/zod-adapter": "workspace:^",
-    "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.1.15",
-    "zod": "^3.24.2"
+    "tailwindcss": "^4.2.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^7.1.7"
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.14"
   }
 }

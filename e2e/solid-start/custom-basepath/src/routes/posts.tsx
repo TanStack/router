@@ -19,7 +19,7 @@ function PostsComponent() {
   const posts = Route.useLoaderData()
 
   return (
-    <div class="p-2 flex gap-2">
+    <div class="p-2 flex gap-2" data-testid="posts-component">
       <ul class="list-disc pl-4">
         <For each={posts()}>
           {(post) => {

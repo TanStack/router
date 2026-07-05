@@ -7,7 +7,7 @@ import {
 } from 'solid-js/web'
 import { MetaProvider } from '@solidjs/meta'
 import { Asset } from '../Asset'
-import { useTags } from '../HeadContent'
+import { useTags } from '../headContentUtils'
 import { RouterProvider } from '../RouterProvider'
 import { Scripts } from '../Scripts'
 import type { AnyRouter } from '@tanstack/router-core'

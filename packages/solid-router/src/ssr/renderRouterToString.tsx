@@ -3,7 +3,7 @@ import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
 
-export const renderRouterToString = async ({
+export const renderRouterToString = ({
   router,
   responseHeaders,
   children,
@@ -26,12 +26,13 @@ export const renderRouterToString = async ({
       plugins: serovalPlugins,
     } as any)
     router.serverSsr!.setRenderFinished()
-    const injectedHtml = await Promise.all(router.serverSsr!.injectedHtml).then(
-      (htmls) => htmls.join(''),
-    )
-    html = html.replace(`</body>`, `${injectedHtml}</body>`)
+
+    const injectedHtml = router.serverSsr!.takeBufferedHtml()
+    if (injectedHtml) {
+      html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
+    }
     return new Response(`<!DOCTYPE html>${html}`, {
-      status: router.state.statusCode,
+      status: router.stores.statusCode.get(),
       headers: responseHeaders,
     })
   } catch (error) {
@@ -40,5 +41,7 @@ export const renderRouterToString = async ({
       status: 500,
       headers: responseHeaders,
     })
+  } finally {
+    router.serverSsr?.cleanup()
   }
 }

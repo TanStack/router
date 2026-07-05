@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FooBarRouteImport } from './routes/foo/bar'
-import { Route as fooBarDetailsRouteImport } from './routes/foo/bar/details'
-import { Route as fooBarHomeRouteImport } from './routes/foo/bar/home'
+import { Route as FooBarDetailsRouteImport } from './routes/foo/bar/details'
+import { Route as FooBarHomeRouteImport } from './routes/foo/bar/home'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,12 +24,12 @@ const FooBarRoute = FooBarRouteImport.update({
   path: '/foo/bar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const fooBarDetailsRoute = fooBarDetailsRouteImport.update({
+const FooBarDetailsRoute = FooBarDetailsRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => FooBarRoute,
 } as any)
-const fooBarHomeRoute = fooBarHomeRouteImport.update({
+const FooBarHomeRoute = FooBarHomeRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => FooBarRoute,
@@ -38,20 +38,20 @@ const fooBarHomeRoute = fooBarHomeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/foo/bar': typeof FooBarRouteWithChildren
-  '/foo/bar/': typeof fooBarHomeRoute
-  '/foo/bar/$id': typeof fooBarDetailsRoute
+  '/foo/bar/': typeof FooBarHomeRoute
+  '/foo/bar/$id': typeof FooBarDetailsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/foo/bar': typeof fooBarHomeRoute
-  '/foo/bar/$id': typeof fooBarDetailsRoute
+  '/foo/bar': typeof FooBarHomeRoute
+  '/foo/bar/$id': typeof FooBarDetailsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/foo/bar': typeof FooBarRouteWithChildren
-  '/foo/bar/': typeof fooBarHomeRoute
-  '/foo/bar/$id': typeof fooBarDetailsRoute
+  '/foo/bar/': typeof FooBarHomeRoute
+  '/foo/bar/$id': typeof FooBarDetailsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -86,27 +86,27 @@ declare module '@tanstack/react-router' {
       id: '/foo/bar/$id'
       path: '/$id'
       fullPath: '/foo/bar/$id'
-      preLoaderRoute: typeof fooBarDetailsRouteImport
+      preLoaderRoute: typeof FooBarDetailsRouteImport
       parentRoute: typeof FooBarRoute
     }
     '/foo/bar/': {
       id: '/foo/bar/'
       path: '/'
       fullPath: '/foo/bar/'
-      preLoaderRoute: typeof fooBarHomeRouteImport
+      preLoaderRoute: typeof FooBarHomeRouteImport
       parentRoute: typeof FooBarRoute
     }
   }
 }
 
 interface FooBarRouteChildren {
-  fooBarHomeRoute: typeof fooBarHomeRoute
-  fooBarDetailsRoute: typeof fooBarDetailsRoute
+  FooBarHomeRoute: typeof FooBarHomeRoute
+  FooBarDetailsRoute: typeof FooBarDetailsRoute
 }
 
 const FooBarRouteChildren: FooBarRouteChildren = {
-  fooBarHomeRoute: fooBarHomeRoute,
-  fooBarDetailsRoute: fooBarDetailsRoute,
+  FooBarHomeRoute: FooBarHomeRoute,
+  FooBarDetailsRoute: FooBarDetailsRoute,
 }
 
 const FooBarRouteWithChildren =

@@ -1,12 +1,12 @@
 'package: arktype-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/arktype-adapter/**/*'
-'package: directive-functions-plugin':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/directive-functions-plugin/**/*'
 'package: eslint-plugin-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/eslint-plugin-router/**/*'
+'package: eslint-plugin-start':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/eslint-plugin-start/**/*'
 'package: history':
   - changed-files:
       - any-glob-to-any-file: 'packages/history/**/*'
@@ -28,6 +28,9 @@
 'package: react-start-client':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-start-client/**/*'
+'package: react-start-rsc':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/react-start-rsc/**/*'
 'package: react-start-server':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-start-server/**/*'
@@ -58,9 +61,6 @@
 'package: router-vite-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-vite-plugin/**/*'
-'package: server-functions-plugin':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/server-functions-plugin/**/*'
 'package: solid-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-router/**/*'
@@ -82,6 +82,9 @@
 'package: start-client-core':
   - changed-files:
       - any-glob-to-any-file: 'packages/start-client-core/**/*'
+'package: start-fn-stubs':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/start-fn-stubs/**/*'
 'package: start-plugin-core':
   - changed-files:
       - any-glob-to-any-file: 'packages/start-plugin-core/**/*'
@@ -100,6 +103,24 @@
 'package: virtual-file-routes':
   - changed-files:
       - any-glob-to-any-file: 'packages/virtual-file-routes/**/*'
+'package: vue-router':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-router/**/*'
+'package: vue-router-devtools':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-router-devtools/**/*'
+'package: vue-router-ssr-query':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-router-ssr-query/**/*'
+'package: vue-start':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-start/**/*'
+'package: vue-start-client':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-start-client/**/*'
+'package: vue-start-server':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-start-server/**/*'
 'package: zod-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/zod-adapter/**/*'

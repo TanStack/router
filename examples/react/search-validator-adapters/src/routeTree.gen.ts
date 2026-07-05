@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersZodIndexRouteImport } from './routes/users/zod.index'
@@ -39,9 +37,9 @@ const UsersArktypeIndexRoute = UsersArktypeIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/users/arktype': typeof UsersArktypeIndexRoute
-  '/users/valibot': typeof UsersValibotIndexRoute
-  '/users/zod': typeof UsersZodIndexRoute
+  '/users/arktype/': typeof UsersArktypeIndexRoute
+  '/users/valibot/': typeof UsersValibotIndexRoute
+  '/users/zod/': typeof UsersZodIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -58,7 +56,7 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
+  fullPaths: '/' | '/users/arktype/' | '/users/valibot/' | '/users/zod/'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
   id: '__root__' | '/' | '/users/arktype/' | '/users/valibot/' | '/users/zod/'
@@ -83,62 +81,25 @@ declare module '@tanstack/react-router' {
     '/users/zod/': {
       id: '/users/zod/'
       path: '/users/zod'
-      fullPath: '/users/zod'
+      fullPath: '/users/zod/'
       preLoaderRoute: typeof UsersZodIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/users/valibot/': {
       id: '/users/valibot/'
       path: '/users/valibot'
-      fullPath: '/users/valibot'
+      fullPath: '/users/valibot/'
       preLoaderRoute: typeof UsersValibotIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/users/arktype/': {
       id: '/users/arktype/'
       path: '/users/arktype'
-      fullPath: '/users/arktype'
+      fullPath: '/users/arktype/'
       preLoaderRoute: typeof UsersArktypeIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
-}
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/users/arktype.index' {
-  const createFileRoute: CreateFileRoute<
-    '/users/arktype/',
-    FileRoutesByPath['/users/arktype/']['parentRoute'],
-    FileRoutesByPath['/users/arktype/']['id'],
-    FileRoutesByPath['/users/arktype/']['path'],
-    FileRoutesByPath['/users/arktype/']['fullPath']
-  >
-}
-declare module './routes/users/valibot.index' {
-  const createFileRoute: CreateFileRoute<
-    '/users/valibot/',
-    FileRoutesByPath['/users/valibot/']['parentRoute'],
-    FileRoutesByPath['/users/valibot/']['id'],
-    FileRoutesByPath['/users/valibot/']['path'],
-    FileRoutesByPath['/users/valibot/']['fullPath']
-  >
-}
-declare module './routes/users/zod.index' {
-  const createFileRoute: CreateFileRoute<
-    '/users/zod/',
-    FileRoutesByPath['/users/zod/']['parentRoute'],
-    FileRoutesByPath['/users/zod/']['id'],
-    FileRoutesByPath['/users/zod/']['path'],
-    FileRoutesByPath['/users/zod/']['fullPath']
-  >
 }
 
 const rootRouteChildren: RootRouteChildren = {
