@@ -627,7 +627,7 @@ export class Generator {
         const last = segments[segments.length - 1] ?? ''
         return indexTokenSegmentRegex.test(last) ? -1 : 1
       },
-      (d) => d,
+      (d) => d.routePath,
     ])
 
     const routeImports: Array<ImportDeclaration> = []
