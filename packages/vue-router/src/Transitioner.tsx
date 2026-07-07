@@ -41,9 +41,7 @@ export function useTransitionerSetup() {
   // advances resolvedLocation to the new location. Reused for the (possibly
   // nextTick-deferred) onResolved emission so it reports the navigation that
   // actually resolved instead of a from===to no-op. Reset once consumed.
-  let resolvedChangeInfo:
-    | ReturnType<typeof getLocationChangeInfo>
-    | undefined
+  let resolvedChangeInfo: ReturnType<typeof getLocationChangeInfo> | undefined
 
   // Single emitter for the load lifecycle. Level changes arrive through
   // synchronous store subscriptions — which, unlike watcher-observed edges,
