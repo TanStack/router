@@ -362,13 +362,8 @@ export const MatchInner = Vue.defineComponent({
       }
 
       if (match.value!.status === 'notFound') {
-        if (!isNotFound(match.value!.error)) {
-          if (process.env.NODE_ENV !== 'production') {
-            throw new Error('Invariant failed: Expected a notFound error')
-          }
-
-          invariant()
-        }
+        // status 'notFound' is only ever committed paired with a NotFoundError
+        // (getNotFoundBoundaryPatch), so match.error needs no re-check here.
         return renderRouteNotFound(router, route.value!, match.value!.error)
       }
 

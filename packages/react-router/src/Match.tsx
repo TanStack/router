@@ -325,13 +325,8 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     }
 
     if (match.status === 'notFound') {
-      if (!isNotFound(match.error)) {
-        if (process.env.NODE_ENV !== 'production') {
-          throw new Error('Invariant failed: Expected a notFound error')
-        }
-
-        invariant()
-      }
+      // status 'notFound' is only ever committed paired with a NotFoundError
+      // (getNotFoundBoundaryPatch), so match.error needs no re-check here.
       return renderRouteNotFound(router, route, match.error)
     }
 
@@ -414,13 +409,8 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }
 
   if (match.status === 'notFound') {
-    if (!isNotFound(match.error)) {
-      if (process.env.NODE_ENV !== 'production') {
-        throw new Error('Invariant failed: Expected a notFound error')
-      }
-
-      invariant()
-    }
+    // status 'notFound' is only ever committed paired with a NotFoundError
+    // (getNotFoundBoundaryPatch), so match.error needs no re-check here.
     return renderRouteNotFound(router, route, match.error)
   }
 

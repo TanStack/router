@@ -222,12 +222,10 @@ export const loadClientRouter = async (
       // return value is that same array.
       await loadClientMatches(loadContext)
     } catch (err) {
-      if (err === loadContext) {
-        // This foreground lane was superseded before reaching a route outcome.
-        // Let the outer load cleanup settle it as cancellation, not route error.
-        throw err
-      }
-      if (isRedirect(err)) {
+      if (err === loadContext || isRedirect(err)) {
+        // A superseded foreground lane (the loadContext sentinel) settles as
+        // cancellation, not route error; redirects hand over to navigation.
+        // Both are handled by the outer catch below.
         throw err
       }
       if (!isNotFound(err)) {

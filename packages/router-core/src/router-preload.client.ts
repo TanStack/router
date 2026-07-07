@@ -54,19 +54,19 @@ export const preloadClientRoute = async (
 
     let ownedMatches: Array<AnyRouteMatch> | undefined
     for (const match of prefix) {
-      if (!match.preload || router.getMatch(match.id, false)) {
-        continue
+      // A cache entry this pass borrowed without reloading (same `updatedAt`
+      // as the cached snapshot) is not owned work: re-caching it would
+      // restamp `preload: true` — silently demoting a navigation entry from
+      // gcTime to preloadGcTime — while keeping its old `updatedAt`. Only
+      // snapshots whose loader ran under this pass (fresh `updatedAt`) may
+      // replace an existing cache entry.
+      if (
+        match.preload &&
+        !router.getMatch(match.id, false) &&
+        router.getMatch(match.id)?.updatedAt !== match.updatedAt
+      ) {
+        ;(ownedMatches ||= []).push(match)
       }
-      // A cache entry this pass borrowed without reloading is not owned
-      // work: re-caching it would restamp `preload: true` — silently
-      // demoting a navigation entry from gcTime to preloadGcTime — while
-      // keeping its old `updatedAt`. Only snapshots whose loader ran under
-      // this pass (fresh `updatedAt`) may replace an existing cache entry.
-      const cachedMatch = router.getMatch(match.id)
-      if (cachedMatch && cachedMatch.updatedAt === match.updatedAt) {
-        continue
-      }
-      ;(ownedMatches ||= []).push(match)
     }
     if (ownedMatches) {
       router.stores.setCached([

@@ -293,14 +293,14 @@ const finalizeRouteFailure = async (
   markError(inner, errorIndex)
 
   commitMatch(inner, errorIndex, {
-    error,
-    status: 'error' as const,
-    isFetching: false as const,
     context: getMatchContext(
       inner,
       errorIndex,
       inner.matches[errorIndex]!.__beforeLoadContext,
     ),
+    error,
+    status: 'error' as const,
+    isFetching: false as const,
     updatedAt: Date.now(),
   })
   finishMatchLoad(inner, errorIndex)
@@ -1021,25 +1021,26 @@ export async function loadClientMatches(
   let firstNotFound: NotFoundError | undefined
 
   for (let i = 0; i < inner.matches.length && !inner.serialFailure; i++) {
+    // Reads below happen synchronously at iteration start, before any await
+    // could let a newer pass replace the lane entry.
+    const match = inner.matches[i]!
     try {
-      if (inner.preload?.includes(inner.matches[i]!.id)) {
+      if (inner.preload?.includes(match.id)) {
         await (matchPromises[i] = joinPreloadedActiveMatch(inner, i))
         continue
       }
 
-      if (inner.matches[i]!._.dehydrated) {
-        const dehydratedMatch = inner.matches[i]!
+      if (match._.dehydrated) {
         // A dehydrated notFound/error is a server-committed boundary: the
         // server intentionally omitted every match below it. Replay it as
         // this pass's serial failure so the follow-up client load caps the
         // lane the same way instead of loading, committing, and projecting
         // assets for descendants the server never rendered.
         if (
-          (dehydratedMatch.status === 'notFound' &&
-            isNotFound(dehydratedMatch.error)) ||
-          dehydratedMatch.status === 'error'
+          (match.status === 'notFound' && isNotFound(match.error)) ||
+          match.status === 'error'
         ) {
-          inner.serialFailure = [i, dehydratedMatch.error]
+          inner.serialFailure = [i, match.error]
           break
         }
         matchPromises[i] = loadClientRouteMatch(inner, matchPromises, i)

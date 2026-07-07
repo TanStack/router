@@ -86,11 +86,10 @@ export function Transitioner() {
   // settled before mount (the mount load below still toggles isLoading) —
   // produces an observable edge.
   useLayoutEffect(() => {
-    previous.current.isLoading = router.stores.isLoading.get()
-    previous.current.isPagePending =
-      previous.current.isLoading || router.stores.hasPending.get()
-    previous.current.isAnyPending =
-      previous.current.isPagePending || transitioning.current
+    const isLoading = router.stores.isLoading.get()
+    const isPagePending = isLoading || router.stores.hasPending.get()
+    const isAnyPending = isPagePending || transitioning.current
+    previous.current = { isLoading, isPagePending, isAnyPending }
 
     const subscriptions = [
       router.stores.isLoading.subscribe(emitEdges),

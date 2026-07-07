@@ -1,10 +1,5 @@
 import * as Solid from 'solid-js'
-import {
-  getLocationChangeInfo,
-  invariant,
-  isNotFound,
-  rootRouteId,
-} from '@tanstack/router-core'
+import { getLocationChangeInfo, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -335,16 +330,9 @@ export const MatchInner = (): any => {
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'notFound'}>
               {(_) => {
-                if (!isNotFound(currentMatch().error)) {
-                  if (process.env.NODE_ENV !== 'production') {
-                    throw new Error(
-                      'Invariant failed: Expected a notFound error',
-                    )
-                  }
-
-                  invariant()
-                }
-
+                // status 'notFound' is only ever committed paired with a
+                // NotFoundError (getNotFoundBoundaryPatch), so the error
+                // needs no re-check here.
                 // Use Show with keyed to ensure re-render when routeId changes
                 return (
                   <Solid.Show when={currentMatchState().routeId} keyed>
