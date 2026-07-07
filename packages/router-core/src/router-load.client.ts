@@ -1,4 +1,5 @@
 import { createControlledPromise, isPromise } from './utils'
+import { isNotFound } from './not-found'
 import { isRedirect } from './redirect'
 import {
   getLocationChangeInfo,
@@ -229,6 +230,18 @@ export const loadClientRouter = async (
       if (isRedirect(err)) {
         throw err
       }
+      if (!isNotFound(err)) {
+        // Anything else thrown here is a fatal machinery failure (e.g.
+        // resolveRedirect threw); a notFound lane was already committed and
+        // trimmed with settled promises. Keep the failure observable, and
+        // settle the lane's load promises — the loader phase may never have
+        // run for some matches (a serial redirect caps the prefix at 0), and
+        // committing them unsettled would hang Suspense forever.
+        Promise.reject(err)
+        for (const match of pendingMatches) {
+          settleMatchLoad(match)
+        }
+      }
       loadContext.requiresCommit = true
     }
 
@@ -303,6 +316,11 @@ export const loadClientRouter = async (
     commitLocationPromise?.resolve()
   }
 
+  // Ordering invariant: the success lane must already be published
+  // (setMatches in commitFinalMatches above) before this resolve. Framework
+  // Match components throw router.latestLoadPromise for stale pending
+  // snapshots and rely on that ordering to avoid a suspense busy-loop on an
+  // already-resolved load.
   loadPromise.resolve()
 
   // A superseded or redirected load must not settle its public await before

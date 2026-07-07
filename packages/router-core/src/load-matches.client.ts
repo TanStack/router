@@ -29,11 +29,15 @@ const isRouteControl = (error: unknown) =>
 
 // Route work may only commit while it still owns the lane entry it is about to
 // mutate. Each client load pass stamps its matches with an AbortController:
-// starting a newer load replaces the controller, cancellation aborts its signal,
-// and a different pending public location means this pass no longer represents
-// the browser target. Compare publicHref, not href, because href may be the
-// router-internal path while publicHref includes basepath/rewrite output. Any
-// of those cases makes continuing unsafe because stale beforeLoad/loader/chunk
+// starting a newer load replaces the controller, and cancellation aborts its
+// signal. Speculative (preload) passes additionally yield when a different
+// public location is being built — compare publicHref, not href, because href
+// may be the router-internal path while publicHref includes basepath/rewrite
+// output. Foreground navigation passes must NOT treat a merely-built pending
+// location as ownership loss: a history blocker can still discard that commit
+// (so no replacement load would ever start), and true supersession is
+// observed via the controller once the newer load runs cancelMatches. Any of
+// those cases makes continuing unsafe because stale beforeLoad/loader/chunk
 // work could write into the current lane.
 //
 // Throwing `inner` is intentional. `loadClientMatches` catches that exact object
@@ -45,7 +49,9 @@ const requireCurrentMatch = (
   abortController: AbortController,
 ): AnyRouteMatch => {
   const match = inner.matches[index]
-  const pendingLocation = inner.router.pendingBuiltLocation
+  const pendingLocation = inner.preload
+    ? inner.router.pendingBuiltLocation
+    : undefined
   if (
     !match ||
     match.abortController !== abortController ||
@@ -174,7 +180,9 @@ const adoptInFlightPreload = async (
         donor.isFetching !== 'loader' ||
         donor._.loadPromise?.status !== 'pending'
       ) {
-        return undefined
+        // Not joinable (e.g. still in its serial phase) — a later registered
+        // lane may hold the same match with its loader already in flight.
+        continue
       }
       commitMatch(inner, index, { isFetching: 'loader' })
       // The preload pass settles every owned match's loadPromise in its

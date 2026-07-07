@@ -97,4 +97,61 @@ describe('preload adoption', () => {
         .find((match) => match.routeId === fooRoute.id)?.loaderData,
     ).toBe('once')
   })
+
+  test('a non-joinable earlier lane does not hide a later lane with its loader in flight', async () => {
+    const beforeLoadGate = createControlledPromise<void>()
+    let beforeLoadCalls = 0
+    const loaderGate = createControlledPromise<string>()
+    const loader = vi.fn(() => loaderGate)
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      beforeLoad: async () => {
+        beforeLoadCalls++
+        if (beforeLoadCalls === 1) {
+          // Keep the FIRST preload's serial phase in flight so its lane
+          // holds a non-joinable donor; later calls proceed immediately.
+          await beforeLoadGate
+        }
+      },
+      loader,
+    })
+
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, fooRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+
+    // First lane: registered first, stuck in its serial phase.
+    const first = router.preloadRoute({ to: '/foo' } as any)
+    await vi.waitFor(() => expect(beforeLoadCalls).toBe(1))
+
+    // Second lane: its loader is in flight and therefore joinable.
+    const second = router.preloadRoute({ to: '/foo' } as any)
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
+
+    // The navigation must scan PAST the first (serial-phase) lane and adopt
+    // the second lane's in-flight loader run instead of re-running it.
+    const navigation = router.navigate({ to: '/foo' })
+    await vi.waitFor(() => expect(beforeLoadCalls).toBe(3))
+    loaderGate.resolve('once')
+    await Promise.all([navigation, second])
+
+    expect(loader).toHaveBeenCalledTimes(1)
+    expect(
+      router.state.matches.find((match) => match.routeId === fooRoute.id)
+        ?.loaderData,
+    ).toBe('once')
+
+    beforeLoadGate.resolve()
+    await first
+  })
 })

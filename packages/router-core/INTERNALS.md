@@ -172,8 +172,12 @@ Client match work is current when all of these hold:
 - `inner.matches[index].abortController` is the controller captured by this
   async pass.
 - The controller signal has not been aborted.
-- If `router.pendingBuiltLocation` exists, its public browser href still equals
-  the load context public href.
+- For speculative (preload) passes only: if `router.pendingBuiltLocation`
+  exists, its public browser href still equals the load context public href.
+  Foreground navigation passes ignore a merely-built pending location — a
+  history blocker can still discard that commit, in which case no replacement
+  load ever starts. Their supersession is observed through the abort
+  controller once the newer load actually runs `cancelMatches()`.
 
 The helper `requireCurrentMatch(inner, index, controller)` checks those
 conditions. It throws `inner` as a private sentinel when ownership is lost.
@@ -896,7 +900,7 @@ stateDiagram-v2
   Current --> Stale: controller identity changed
   Current --> Stale: controller aborted
   Current --> Stale: match removed from private lane
-  Current --> Stale: pendingBuiltLocation publicHref changed
+  Current --> Stale: pendingBuiltLocation publicHref changed (preload pass only)
   Current --> Stale: background token replaced
   Current --> Stale: latestLoadPromise replaced
   Stale --> [*]: throw private sentinel or return without publishing
