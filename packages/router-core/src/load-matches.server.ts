@@ -64,29 +64,30 @@ const finalizeServerRouteFailure = async (
   inner: InnerLoadContext,
   index: number,
   error: unknown,
-  componentError?: boolean,
 ): Promise<void> => {
   const routesById = inner.router.routesById
   let errorIndex = index
+  // Set when loading a boundary component (errorComponent/notFoundComponent)
+  // chunk fails: that failure replaces the original one and commits directly
+  // as an error — it must not recurse into another boundary chunk.
+  let componentError = false
 
-  if (!componentError) {
-    try {
-      if (isNotFound(error)) {
-        errorIndex = getNotFoundBoundaryIndex(inner, error)
-        await loadRouteChunk(
-          routesById[inner.matches[errorIndex]!.routeId],
-          'notFoundComponent',
-        )
-      } else if (!isRedirect(error)) {
-        await loadRouteChunk(
-          routesById[inner.matches[index]!.routeId],
-          'errorComponent',
-        )
-      }
-    } catch (chunkError) {
-      error = chunkError
-      componentError = true
+  try {
+    if (isNotFound(error)) {
+      errorIndex = getNotFoundBoundaryIndex(inner, error)
+      await loadRouteChunk(
+        routesById[inner.matches[errorIndex]!.routeId],
+        'notFoundComponent',
+      )
+    } else if (!isRedirect(error)) {
+      await loadRouteChunk(
+        routesById[inner.matches[index]!.routeId],
+        'errorComponent',
+      )
     }
+  } catch (chunkError) {
+    error = chunkError
+    componentError = true
   }
 
   if (!componentError) {
@@ -342,6 +343,27 @@ const loadServerRouteMatch = async (
       throw loaderError
     }
 
+    if ((loaderError as any)?.name === 'AbortError') {
+      // A loader's own AbortError (e.g. an internal fetch timeout) is not a
+      // route failure: settle the match without committing an error instead
+      // of turning the abort into a 500. If the match's own signal was
+      // aborted, leave the match as-is.
+      if (!inner.matches[index]!.abortController.signal.aborted) {
+        commitMatch(inner, index, {
+          status:
+            inner.matches[index]!.status === 'pending'
+              ? 'success'
+              : inner.matches[index]!.status,
+          context: getMatchContext(
+            inner,
+            index,
+            inner.matches[index]!.__beforeLoadContext,
+          ),
+        })
+      }
+      return inner.matches[index]!
+    }
+
     await finalizeServerRouteFailure(
       inner,
       index,
@@ -355,7 +377,16 @@ const loadServerRouteMatch = async (
       await routeChunkPromise
     }
   } catch (chunkError) {
-    await finalizeServerRouteFailure(inner, index, chunkError, true)
+    // A primary route chunk failure goes through the normal route failure
+    // lifecycle (onError, redirect/notFound conversion) like loader
+    // failures. Only a subsequent boundary component chunk failure commits
+    // directly inside finalizeServerRouteFailure instead of recursing into
+    // another boundary chunk.
+    await finalizeServerRouteFailure(
+      inner,
+      index,
+      normalizeRouteFailure(inner, index, chunkError),
+    )
     return inner.matches[index]!
   }
 
@@ -399,11 +430,14 @@ export const loadServerMatches = async (
         matchPromises[i] = Promise.resolve(finishServerSkippedMatch(inner, i))
       }
     } catch (err) {
-      if (isNotFound(err)) {
-        firstNotFound ||= err
-      } else {
+      if (!isNotFound(err)) {
         throw err
       }
+      // An `ssr()` option can throw notFound(). Record it as the pass's
+      // serial failure so the loader prefix is capped at the selected
+      // boundary — the throwing route and descendants whose beforeLoad
+      // never ran must not load.
+      recordServerBeforeLoadFailure(inner, i, err)
       break
     }
   }

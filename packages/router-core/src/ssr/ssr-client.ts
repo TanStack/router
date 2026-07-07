@@ -85,13 +85,16 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // First step is to rehydrate loaderData and beforeLoad context.
   let firstNonSsrMatch: AnyRouteMatch | undefined = undefined
   let hasSsrFalseMatches = false
+  const dehydratedMatchesById = new Map(
+    dehydratedRouter.matches.map(
+      (dehydrated) => [hydrateSsrMatchId(dehydrated.i), dehydrated] as const,
+    ),
+  )
   const routeChunkPromise = Promise.all(
     matches.map((match) => {
       const route = routesById[match.routeId]!
 
-      const dehydratedMatch = dehydratedRouter.matches.find(
-        (dehydrated) => hydrateSsrMatchId(dehydrated.i) === match.id,
-      )
+      const dehydratedMatch = dehydratedMatchesById.get(match.id)
       if (!dehydratedMatch) {
         match.ssr = false
       } else {

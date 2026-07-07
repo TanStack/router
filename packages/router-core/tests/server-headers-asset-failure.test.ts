@@ -89,6 +89,35 @@ describe('server asset projection route headers', () => {
     expect(targetMatch!.meta).toEqual([{ title: 'kept title' }])
   })
 
+  test('logs every rejected asset hook when several reject asynchronously', async () => {
+    const headError = new Error('head failed')
+    const headersError = new Error('headers failed')
+    const rootRoute = new BaseRootRoute({})
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      head: async () => {
+        throw headError
+      },
+      headers: async () => {
+        throw headersError
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/target'] }),
+      isServer: true,
+    })
+
+    await router.load()
+
+    const loggedErrors = vi
+      .mocked(console.error)
+      .mock.calls.map((call) => call.at(-1))
+    expect(loggedErrors).toContain(headError)
+    expect(loggedErrors).toContain(headersError)
+  })
+
   test('awaits async route headers when head throws synchronously', async () => {
     const rootRoute = new BaseRootRoute({})
     const targetRoute = new BaseRoute({

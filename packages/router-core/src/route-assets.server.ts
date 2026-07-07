@@ -108,11 +108,10 @@ export const projectServerRouteAssets = (
               : undefined,
           )
 
-          const failed = [headResult, scriptResult, headerResult].find(
-            (result) => result.status === 'rejected',
-          )
-          if (failed) {
-            logAssetError(match, failed.reason)
+          for (const result of [headResult, scriptResult, headerResult]) {
+            if (result.status === 'rejected') {
+              logAssetError(match, result.reason)
+            }
           }
 
           return projectServerRouteAssets(router, matches, i + 1)
