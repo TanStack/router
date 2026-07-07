@@ -1602,9 +1602,13 @@ export class RouterCore<
         const loadPromise = existingMatch._.loadPromise
         match = {
           ...existingMatch,
-          cause,
           params: routeParams,
           _strictParams: strictParams,
+          search,
+          _strictSearch: strictMatchSearch,
+          searchError,
+          preload,
+          cause,
           abortController,
           // Preserve readiness ownership AND the hydration marker: a
           // dehydrated match can legitimately hold a pending loadPromise
@@ -1614,10 +1618,6 @@ export class RouterCore<
             loadPromise,
             dehydrated: existingMatch._.dehydrated,
           },
-          search,
-          _strictSearch: strictMatchSearch,
-          searchError,
-          preload,
         }
       } else {
         const pending =
@@ -1634,11 +1634,12 @@ export class RouterCore<
           routeId: route.id,
           params: routeParams,
           _strictParams: strictParams,
-          pathname: interpolatedPath,
-          updatedAt: Date.now(),
           search,
           _strictSearch: strictMatchSearch,
           searchError,
+          preload,
+          pathname: interpolatedPath,
+          updatedAt: Date.now(),
           status: pending ? 'pending' : 'success',
           isFetching: false,
           paramsError,
@@ -1651,7 +1652,6 @@ export class RouterCore<
           cause,
           loaderDeps,
           invalid: false,
-          preload,
           staticData: routeOptions.staticData || {},
           fullPath: route.fullPath,
         } as AnyRouteMatch

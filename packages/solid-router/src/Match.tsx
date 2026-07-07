@@ -12,6 +12,14 @@ import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
+// The scroll restoration script is only ever emitted during SSR. Selecting
+// the component through an `isServer === false` constant (same DCE pattern as
+// router-core's loadRouter) lets client bundles drop ScrollRestoration and
+// its ScriptOnce template entirely; Solid's compiler otherwise hides the
+// condition inside a memo where the minifier cannot see it.
+const ScrollRestorationScript =
+  isServer === false ? () => null : ScrollRestoration
+
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
 
@@ -173,9 +181,9 @@ export const Match = (props: { matchId: string }) => {
             {currentMatchState().parentRouteId === rootRouteId ? (
               <>
                 <OnRendered />
-                {router.options.scrollRestoration &&
-                (isServer ?? router.isServer) ? (
-                  <ScrollRestoration />
+                {(isServer ?? router.isServer) &&
+                router.options.scrollRestoration ? (
+                  <ScrollRestorationScript />
                 ) : null}
               </>
             ) : null}

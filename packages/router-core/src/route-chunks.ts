@@ -6,14 +6,6 @@ type RouteComponentType =
   | 'pendingComponent'
   | 'notFoundComponent'
 
-function preloadComponent(component: any): Promise<void> | undefined {
-  try {
-    return component?.preload?.()
-  } catch (error) {
-    return Promise.reject(error)
-  }
-}
-
 /**
  * Preloads one component type with per-type in-flight tracking.
  *
@@ -39,7 +31,12 @@ function preloadRouteComponent(
     }
   }
 
-  const preload = preloadComponent(route.options[componentType])
+  let preload: Promise<void> | undefined
+  try {
+    preload = (route.options[componentType] as any)?.preload?.()
+  } catch (error) {
+    preload = Promise.reject(error)
+  }
   if (!preload) {
     delete cache[componentType]
     return undefined

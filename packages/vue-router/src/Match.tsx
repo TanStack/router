@@ -199,8 +199,11 @@ export const Match = Vue.defineComponent({
           isChildOfRoot
             ? Vue.h(Vue.Fragment, null, [
                 Vue.h(OnRendered),
-                router.options.scrollRestoration &&
-                (isServer ?? router.isServer)
+                // isServer first: the minifier folds the whole expression
+                // to `null` in client bundles (with the options read leading,
+                // a dead `(options.scrollRestoration, null)` read survives).
+                (isServer ?? router.isServer) &&
+                router.options.scrollRestoration
                   ? Vue.h(ScrollRestoration)
                   : null,
               ])

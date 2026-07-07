@@ -58,10 +58,6 @@ export type BackgroundLoad = {
   controller: AbortController
 }
 
-export const markError = (inner: InnerLoadContext, index: number) => {
-  inner.badIndex = Math.min(inner.badIndex ?? index, index)
-}
-
 export const commitMatch = (
   inner: InnerLoadContext,
   index: number,

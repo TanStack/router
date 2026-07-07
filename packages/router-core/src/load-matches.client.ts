@@ -9,7 +9,6 @@ import {
   getMatchContext,
   getNotFoundBoundaryIndex,
   getNotFoundBoundaryPatch,
-  markError,
   normalizeRouteFailure,
   serialFailurePrefixCap,
   settleMatchLoad,
@@ -290,18 +289,19 @@ const finalizeRouteFailure = async (
   }
 
   inner.requiresCommit = true
-  markError(inner, errorIndex)
+  // single-call-site inline of the shared badIndex rule (byte-size)
+  inner.badIndex = Math.min(inner.badIndex ?? errorIndex, errorIndex)
 
   commitMatch(inner, errorIndex, {
+    status: 'error' as const,
+    error,
+    isFetching: false as const,
+    updatedAt: Date.now(),
     context: getMatchContext(
       inner,
       errorIndex,
       inner.matches[errorIndex]!.__beforeLoadContext,
     ),
-    error,
-    status: 'error' as const,
-    isFetching: false as const,
-    updatedAt: Date.now(),
   })
   finishMatchLoad(inner, errorIndex)
 }
@@ -745,8 +745,8 @@ const loadClientRouteMatch = async (
     }
 
     commitMatch(inner, index, {
-      error: undefined,
       status: 'success',
+      error: undefined,
       isFetching: false,
       updatedAt: Date.now(),
     })
@@ -952,8 +952,8 @@ export function startBackgroundLoad(
 
       matches[index] = {
         ...matches[index]!,
-        error,
         status: 'error',
+        error,
         isFetching: false,
         updatedAt: Date.now(),
       }
@@ -978,8 +978,8 @@ export function startBackgroundLoad(
         }
         matches[index] = {
           ...matches[index]!,
-          error: componentError,
           status: 'error',
+          error: componentError,
           isFetching: false,
           updatedAt: Date.now(),
         }

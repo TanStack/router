@@ -10,7 +10,6 @@ import {
   getMatchContext,
   getNotFoundBoundaryIndex,
   getNotFoundBoundaryPatch,
-  markError,
   normalizeRouteFailure,
   serialFailurePrefixCap,
 } from './load-matches'
@@ -94,7 +93,8 @@ const finalizeServerRouteFailure = async (
     handleServerRedirectOrNotFound(inner, index, error)
   }
 
-  markError(inner, errorIndex)
+  // single-call-site inline of the shared badIndex rule (byte-size)
+  inner.badIndex = Math.min(inner.badIndex ?? errorIndex, errorIndex)
   commitMatch(inner, errorIndex, {
     error,
     status: 'error' as const,
