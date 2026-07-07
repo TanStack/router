@@ -15,7 +15,11 @@ import { matchContext, routeIdContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { VNode } from 'vue'
-import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  ParsedLocation,
+  RootRouteOptions,
+} from '@tanstack/router-core'
 
 export const Match = Vue.defineComponent({
   name: 'Match',
@@ -241,24 +245,32 @@ const OnRendered = Vue.defineComponent({
       (resolvedLocation) => resolvedLocation?.state.__TSR_key,
     )
 
-    let prevHref: string | undefined
-
+    // Track the resolvedLocation as of the last emission so onRendered can
+    // report the correct fromLocation. By the time this watcher fires,
+    // Transitioner has already advanced resolvedLocation to the new location,
+    // so router.stores.resolvedLocation.get() cannot be used as fromLocation.
+    // Stored on the router (not a closure) because a cross-route navigation
+    // remounts this keyed component, which would otherwise reset the tracker.
     Vue.watch(
       location,
       () => {
-        if (location.value) {
-          const currentHref = router.latestLocation.href
-          if (prevHref === undefined || prevHref !== currentHref) {
-            router.emit({
-              type: 'onRendered',
-              ...getLocationChangeInfo(
-                router.stores.location.get(),
-                router.stores.resolvedLocation.get(),
-              ),
-            })
-            prevHref = currentHref
-          }
+        const currentResolvedLocation = router.stores.resolvedLocation.get()
+        const previousResolvedLocation = (router as any)
+          .__tsrOnRenderedLocation as ParsedLocation | undefined
+        if (
+          currentResolvedLocation &&
+          (!previousResolvedLocation ||
+            previousResolvedLocation.href !== currentResolvedLocation.href)
+        ) {
+          router.emit({
+            type: 'onRendered',
+            ...getLocationChangeInfo(
+              router.stores.location.get(),
+              previousResolvedLocation ?? currentResolvedLocation,
+            ),
+          })
         }
+        ;(router as any).__tsrOnRenderedLocation = currentResolvedLocation
       },
       { immediate: true },
     )
@@ -336,41 +348,41 @@ export const MatchInner = Vue.defineComponent({
 
     return (): VNode | null => {
       // If match doesn't exist, return null (component is being unmounted or not ready)
-      if (!combinedState.value || !match.value || !route.value) return null
+      if (!combinedState.value) return null
 
       // A hydration display match keeps rendering pending UI until the
       // follow-up client load clears the marker, even though its local
       // loadPromise was already settled by hydrate().
-      if (match.value._displayPending) {
+      if (match.value!._displayPending) {
         const PendingComponent =
-          route.value.options.pendingComponent ??
+          route.value!.options.pendingComponent ??
           router.options.defaultPendingComponent
 
         return PendingComponent ? Vue.h(PendingComponent) : null
       }
 
-      if (match.value.status === 'notFound') {
-        if (!isNotFound(match.value.error)) {
+      if (match.value!.status === 'notFound') {
+        if (!isNotFound(match.value!.error)) {
           if (process.env.NODE_ENV !== 'production') {
             throw new Error('Invariant failed: Expected a notFound error')
           }
 
           invariant()
         }
-        return renderRouteNotFound(router, route.value, match.value.error)
+        return renderRouteNotFound(router, route.value!, match.value!.error)
       }
 
-      if (match.value.status === 'error') {
+      if (match.value!.status === 'error') {
         // Check if this route or any parent has an error component
         const RouteErrorComponent =
-          route.value.options.errorComponent ??
+          route.value!.options.errorComponent ??
           router.options.defaultErrorComponent
 
         // If this route has an error component, render it directly
         // This is more reliable than relying on Vue's error boundary
         if (RouteErrorComponent) {
           return Vue.h(RouteErrorComponent, {
-            error: match.value.error,
+            error: match.value!.error,
             reset: () => {
               router.invalidate()
             },
@@ -382,10 +394,10 @@ export const MatchInner = Vue.defineComponent({
 
         // If there's no error component for this route, throw the error
         // so it can bubble up to the nearest parent with an error component
-        throw match.value.error
+        throw match.value!.error
       }
 
-      if (match.value.status === 'pending') {
+      if (match.value!.status === 'pending') {
         // In Vue, we render the pending component directly instead of throwing a promise
         // because Vue's Suspense doesn't catch thrown promises like React does
         const PendingComponent =
@@ -398,9 +410,9 @@ export const MatchInner = Vue.defineComponent({
           // cancelMatches) but before the newer lane commits, so a missing
           // local promise is a legitimate state here. Only a still-pending
           // local promise owns pendingMinMs timing.
-          const localPromise = Vue.toRaw(match.value._).loadPromise
+          const localPromise = Vue.toRaw(match.value!._).loadPromise
           const pendingMinMs =
-            route.value.options.pendingMinMs ??
+            route.value!.options.pendingMinMs ??
             router.options.defaultPendingMinMs
 
           if (
@@ -420,7 +432,7 @@ export const MatchInner = Vue.defineComponent({
 
       // Success status - render the component with remount key
       const Comp =
-        route.value.options.component ?? router.options.defaultComponent
+        route.value!.options.component ?? router.options.defaultComponent
       const key = remountKey.value
 
       if (Comp) {
@@ -484,10 +496,7 @@ export const Outlet = Vue.defineComponent({
 
     return (): VNode | null => {
       if (parentGlobalNotFound.value) {
-        if (!route.value) {
-          return null
-        }
-        return renderRouteNotFound(router, route.value, undefined)
+        return renderRouteNotFound(router, route.value!, undefined)
       }
 
       if (!childMatchData.value) {

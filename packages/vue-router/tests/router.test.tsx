@@ -839,6 +839,53 @@ describe('router emits events during rendering', () => {
     unsub()
   })
 
+  it('should emit "onResolved" with change info describing the navigation', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    render(<RouterProvider router={router} />)
+    await sleep(0)
+
+    const mockOnResolved = vi.fn()
+    const unsub = router.subscribe('onResolved', mockOnResolved)
+
+    await router.navigate({ to: '/posts/$slug', params: { slug: 'first' } })
+    await waitFor(() => expect(mockOnResolved).toBeCalledTimes(1))
+
+    const payload = mockOnResolved.mock.calls[0]?.[0]
+    expect(payload?.fromLocation?.pathname).toBe('/')
+    expect(payload?.toLocation.pathname).toBe('/posts/first')
+    expect(payload?.pathChanged).toBe(true)
+    expect(payload?.hrefChanged).toBe(true)
+
+    unsub()
+  })
+
+  it('should emit "onRendered" with the previous location as fromLocation', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    render(<RouterProvider router={router} />)
+    await sleep(0)
+
+    const mockOnRendered = vi.fn()
+    const unsub = router.subscribe('onRendered', mockOnRendered)
+
+    await router.navigate({ to: '/posts/$slug', params: { slug: 'first' } })
+    await waitFor(() => expect(mockOnRendered).toBeCalledTimes(1))
+
+    const payload = mockOnRendered.mock.calls[0]?.[0]
+    expect(payload?.fromLocation?.pathname).toBe('/')
+    expect(payload?.toLocation.pathname).toBe('/posts/first')
+    expect(payload?.fromLocation?.href).not.toBe(payload?.toLocation.href)
+
+    unsub()
+  })
+
   it('should emit the "onRendered" event when a route renders, after navigation, and after param/search updates', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/'] }),

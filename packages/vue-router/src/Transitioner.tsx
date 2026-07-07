@@ -37,6 +37,14 @@ export function useTransitionerSetup() {
     isAnyPending: false,
   }
 
+  // Change info captured at the pagePending falling edge, before commitIdle()
+  // advances resolvedLocation to the new location. Reused for the (possibly
+  // nextTick-deferred) onResolved emission so it reports the navigation that
+  // actually resolved instead of a from===to no-op. Reset once consumed.
+  let resolvedChangeInfo:
+    | ReturnType<typeof getLocationChangeInfo>
+    | undefined
+
   // Single emitter for the load lifecycle. Level changes arrive through
   // synchronous store subscriptions — which, unlike watcher-observed edges,
   // cannot lose a flip to Vue's flush batching — plus the flush-coupled
@@ -74,11 +82,16 @@ export function useTransitionerSetup() {
       }
     }
     if (prev.isPagePending && !isPagePending) {
-      router.emit({ type: 'onBeforeRouteMount', ...changeInfo() })
+      resolvedChangeInfo = changeInfo()
+      router.emit({ type: 'onBeforeRouteMount', ...resolvedChangeInfo })
       commitIdle()
     }
     if (prev.isAnyPending && !isAnyPending) {
-      router.emit({ type: 'onResolved', ...changeInfo() })
+      router.emit({
+        type: 'onResolved',
+        ...(resolvedChangeInfo ?? changeInfo()),
+      })
+      resolvedChangeInfo = undefined
       commitIdle()
     }
   }
