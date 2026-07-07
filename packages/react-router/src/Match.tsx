@@ -487,16 +487,7 @@ export const Outlet = React.memo(function OutletImpl() {
   ) : null
 
   if (parentGlobalNotFound) {
-    if (!route) {
-      if (process.env.NODE_ENV !== 'production') {
-        throw new Error(
-          'Invariant failed: Could not resolve route for Outlet render',
-        )
-      }
-
-      invariant()
-    }
-    return renderRouteNotFound(router, route, undefined)
+    return renderRouteNotFound(router, route!, undefined)
   }
 
   if (!childMatchId) {
