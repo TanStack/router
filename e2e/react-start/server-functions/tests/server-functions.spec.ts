@@ -718,6 +718,102 @@ test('server-only imports in middleware.server() are stripped from client build'
   ).toContainText('test-header-value')
 })
 
+test('server function reached only through a cross-file middleware is registered in the manifest (issue #7213)', async ({
+  page,
+}) => {
+  // Regression test for https://github.com/TanStack/router/issues/7213.
+  // A middleware defined in a separate file calls a server function defined in
+  // yet another separate file, and that middleware is applied to a server
+  // function. In production builds this used to fail at runtime with
+  // "Server function info not found for [ID]" because the server function that
+  // is only reachable through the middleware was never registered in the
+  // server function manifest. It worked in dev and when everything lived in a
+  // single file.
+  await page.goto('/middleware/serverfn-in-middleware')
+
+  await page.waitForLoadState('networkidle')
+
+  // Invoke the server function whose middleware calls a cross-file server fn.
+  await page.getByTestId('test-serverfn-in-middleware-btn').click()
+
+  // The middleware's server-fn call must resolve without a manifest lookup error.
+  await expect(
+    page.getByTestId('serverfn-in-middleware-result'),
+  ).toContainText('hello from server fn called by middleware')
+
+  // No "Server function info not found" (or any other) error should surface.
+  await expect(
+    page.getByTestId('serverfn-in-middleware-error'),
+  ).toHaveCount(0)
+})
+
+test('server function called only from another server function is registered in the manifest (issue #7213)', async ({
+  page,
+}) => {
+  // Sibling of the issue #7213 case: `fnOnlyCalledByServer` lives in its own
+  // file and is only ever invoked from inside `proxyFnThatCallsServerOnlyFn`'s
+  // handler (never from client code). Its handler-body reference is stripped
+  // from the caller module during the server transform, so — like the
+  // middleware case — it used to be absent from the production manifest and
+  // failed at runtime with "Server function info not found for [ID]".
+  await page.goto('/server-only-fn')
+
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-server-only-fn-btn').click()
+
+  // The nested server-only function must resolve and return its real result.
+  const expected = await page
+    .getByTestId('expected-server-only-fn-result')
+    .textContent()
+  await expect(page.getByTestId('server-only-fn-result')).toHaveText(
+    expected ?? '',
+  )
+  await expect(page.getByTestId('server-only-fn-result')).toContainText(
+    'hello from server-only function',
+  )
+})
+
+test('server functions discovered across a multi-level cross-file chain (issue #7213)', async ({
+  page,
+}) => {
+  // chainLevelA (client-called) -> chainLevelB (handler) -> chainLevelC (handler),
+  // each in its own file. levelC is only reachable through levelB's handler, so
+  // it is discovered only once the provider-module discovery fixpoint iterates a
+  // second time. If that didn't happen, the nested call would fail at runtime
+  // with "Server function info not found".
+  await page.goto('/nested-server-fns')
+
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-nested-server-fns-btn').click()
+
+  await expect(page.getByTestId('nested-server-fns-result')).toContainText(
+    'deepest-chain-value',
+  )
+  await expect(page.getByTestId('nested-server-fns-error')).toHaveCount(0)
+})
+
+test('server function in a separate package resolves its nested server-only fn (issue #7213)', async ({
+  page,
+}) => {
+  // `sharedServerFn` is exported by a separate workspace package and called from
+  // the client. Its handler calls `sharedInnerServerFn`, a server-only function
+  // in that same package — i.e. defined OUTSIDE the app root and reachable only
+  // through a handler. This used to fail in production with "Server function info
+  // not found" because functions outside the app root were not discovered.
+  await page.goto('/shared-package-server-fn')
+
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-shared-package-btn').click()
+
+  await expect(page.getByTestId('shared-package-result')).toContainText(
+    'from-shared-package-inner',
+  )
+  await expect(page.getByTestId('shared-package-error')).toHaveCount(0)
+})
+
 test('middleware factories with server-only imports are stripped from client build', async ({
   page,
 }) => {

@@ -11,11 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SubmitPostFormdataRouteImport } from './routes/submit-post-formdata'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as SharedPackageServerFnRouteImport } from './routes/shared-package-server-fn'
 import { Route as ServerOnlyFnRouteImport } from './routes/server-only-fn'
 import { Route as ServerFnInClientOnlyFnRouteImport } from './routes/server-fn-in-client-only-fn'
 import { Route as SerializeFormDataRouteImport } from './routes/serialize-form-data'
 import { Route as ReturnNullRouteImport } from './routes/return-null'
 import { Route as RawResponseRouteImport } from './routes/raw-response'
+import { Route as NestedServerFnsRouteImport } from './routes/nested-server-fns'
 import { Route as MultipartRouteImport } from './routes/multipart'
 import { Route as IsomorphicFnsRouteImport } from './routes/isomorphic-fns'
 import { Route as HeadersRouteImport } from './routes/headers'
@@ -40,6 +42,7 @@ import { Route as AbortSignalIndexRouteImport } from './routes/abort-signal/inde
 import { Route as RedirectTestTargetRouteImport } from './routes/redirect-test/target'
 import { Route as RedirectTestSsrTargetRouteImport } from './routes/redirect-test-ssr/target'
 import { Route as MiddlewareUnhandledExceptionRouteImport } from './routes/middleware/unhandled-exception'
+import { Route as MiddlewareServerfnInMiddlewareRouteImport } from './routes/middleware/serverfn-in-middleware'
 import { Route as MiddlewareServerImportMiddlewareRouteImport } from './routes/middleware/server-import-middleware'
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
 import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middleware/request-middleware'
@@ -62,6 +65,11 @@ const SubmitPostFormdataRoute = SubmitPostFormdataRouteImport.update({
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SharedPackageServerFnRoute = SharedPackageServerFnRouteImport.update({
+  id: '/shared-package-server-fn',
+  path: '/shared-package-server-fn',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServerOnlyFnRoute = ServerOnlyFnRouteImport.update({
@@ -87,6 +95,11 @@ const ReturnNullRoute = ReturnNullRouteImport.update({
 const RawResponseRoute = RawResponseRouteImport.update({
   id: '/raw-response',
   path: '/raw-response',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NestedServerFnsRoute = NestedServerFnsRouteImport.update({
+  id: '/nested-server-fns',
+  path: '/nested-server-fns',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MultipartRoute = MultipartRouteImport.update({
@@ -210,6 +223,12 @@ const MiddlewareUnhandledExceptionRoute =
     path: '/middleware/unhandled-exception',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MiddlewareServerfnInMiddlewareRoute =
+  MiddlewareServerfnInMiddlewareRouteImport.update({
+    id: '/middleware/serverfn-in-middleware',
+    path: '/middleware/serverfn-in-middleware',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MiddlewareServerImportMiddlewareRoute =
   MiddlewareServerImportMiddlewareRouteImport.update({
     id: '/middleware/server-import-middleware',
@@ -296,11 +315,13 @@ export interface FileRoutesByFullPath {
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/multipart': typeof MultipartRoute
+  '/nested-server-fns': typeof NestedServerFnsRoute
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/server-fn-in-client-only-fn': typeof ServerFnInClientOnlyFnRoute
   '/server-only-fn': typeof ServerOnlyFnRoute
+  '/shared-package-server-fn': typeof SharedPackageServerFnRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
@@ -313,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
+  '/middleware/serverfn-in-middleware': typeof MiddlewareServerfnInMiddlewareRoute
   '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
@@ -342,11 +364,13 @@ export interface FileRoutesByTo {
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/multipart': typeof MultipartRoute
+  '/nested-server-fns': typeof NestedServerFnsRoute
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/server-fn-in-client-only-fn': typeof ServerFnInClientOnlyFnRoute
   '/server-only-fn': typeof ServerOnlyFnRoute
+  '/shared-package-server-fn': typeof SharedPackageServerFnRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
@@ -359,6 +383,7 @@ export interface FileRoutesByTo {
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
+  '/middleware/serverfn-in-middleware': typeof MiddlewareServerfnInMiddlewareRoute
   '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
@@ -389,11 +414,13 @@ export interface FileRoutesById {
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/multipart': typeof MultipartRoute
+  '/nested-server-fns': typeof NestedServerFnsRoute
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/server-fn-in-client-only-fn': typeof ServerFnInClientOnlyFnRoute
   '/server-only-fn': typeof ServerOnlyFnRoute
+  '/shared-package-server-fn': typeof SharedPackageServerFnRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
@@ -406,6 +433,7 @@ export interface FileRoutesById {
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
+  '/middleware/serverfn-in-middleware': typeof MiddlewareServerfnInMiddlewareRoute
   '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
@@ -437,11 +465,13 @@ export interface FileRouteTypes {
     | '/headers'
     | '/isomorphic-fns'
     | '/multipart'
+    | '/nested-server-fns'
     | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
     | '/server-fn-in-client-only-fn'
     | '/server-only-fn'
+    | '/shared-package-server-fn'
     | '/status'
     | '/submit-post-formdata'
     | '/abort-signal/$method'
@@ -454,6 +484,7 @@ export interface FileRouteTypes {
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/middleware/server-import-middleware'
+    | '/middleware/serverfn-in-middleware'
     | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
@@ -483,11 +514,13 @@ export interface FileRouteTypes {
     | '/headers'
     | '/isomorphic-fns'
     | '/multipart'
+    | '/nested-server-fns'
     | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
     | '/server-fn-in-client-only-fn'
     | '/server-only-fn'
+    | '/shared-package-server-fn'
     | '/status'
     | '/submit-post-formdata'
     | '/abort-signal/$method'
@@ -500,6 +533,7 @@ export interface FileRouteTypes {
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/middleware/server-import-middleware'
+    | '/middleware/serverfn-in-middleware'
     | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
@@ -529,11 +563,13 @@ export interface FileRouteTypes {
     | '/headers'
     | '/isomorphic-fns'
     | '/multipart'
+    | '/nested-server-fns'
     | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
     | '/server-fn-in-client-only-fn'
     | '/server-only-fn'
+    | '/shared-package-server-fn'
     | '/status'
     | '/submit-post-formdata'
     | '/abort-signal/$method'
@@ -546,6 +582,7 @@ export interface FileRouteTypes {
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/middleware/server-import-middleware'
+    | '/middleware/serverfn-in-middleware'
     | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
@@ -576,11 +613,13 @@ export interface RootRouteChildren {
   HeadersRoute: typeof HeadersRoute
   IsomorphicFnsRoute: typeof IsomorphicFnsRoute
   MultipartRoute: typeof MultipartRoute
+  NestedServerFnsRoute: typeof NestedServerFnsRoute
   RawResponseRoute: typeof RawResponseRoute
   ReturnNullRoute: typeof ReturnNullRoute
   SerializeFormDataRoute: typeof SerializeFormDataRoute
   ServerFnInClientOnlyFnRoute: typeof ServerFnInClientOnlyFnRoute
   ServerOnlyFnRoute: typeof ServerOnlyFnRoute
+  SharedPackageServerFnRoute: typeof SharedPackageServerFnRoute
   StatusRoute: typeof StatusRoute
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
   AbortSignalMethodRoute: typeof AbortSignalMethodRoute
@@ -593,6 +632,7 @@ export interface RootRouteChildren {
   MiddlewareRequestMiddlewareRoute: typeof MiddlewareRequestMiddlewareRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
   MiddlewareServerImportMiddlewareRoute: typeof MiddlewareServerImportMiddlewareRoute
+  MiddlewareServerfnInMiddlewareRoute: typeof MiddlewareServerfnInMiddlewareRoute
   MiddlewareUnhandledExceptionRoute: typeof MiddlewareUnhandledExceptionRoute
   RedirectTestSsrTargetRoute: typeof RedirectTestSsrTargetRoute
   RedirectTestTargetRoute: typeof RedirectTestTargetRoute
@@ -628,6 +668,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/shared-package-server-fn': {
+      id: '/shared-package-server-fn'
+      path: '/shared-package-server-fn'
+      fullPath: '/shared-package-server-fn'
+      preLoaderRoute: typeof SharedPackageServerFnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/server-only-fn': {
       id: '/server-only-fn'
       path: '/server-only-fn'
@@ -661,6 +708,13 @@ declare module '@tanstack/react-router' {
       path: '/raw-response'
       fullPath: '/raw-response'
       preLoaderRoute: typeof RawResponseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nested-server-fns': {
+      id: '/nested-server-fns'
+      path: '/nested-server-fns'
+      fullPath: '/nested-server-fns'
+      preLoaderRoute: typeof NestedServerFnsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/multipart': {
@@ -831,6 +885,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MiddlewareUnhandledExceptionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/serverfn-in-middleware': {
+      id: '/middleware/serverfn-in-middleware'
+      path: '/middleware/serverfn-in-middleware'
+      fullPath: '/middleware/serverfn-in-middleware'
+      preLoaderRoute: typeof MiddlewareServerfnInMiddlewareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/middleware/server-import-middleware': {
       id: '/middleware/server-import-middleware'
       path: '/middleware/server-import-middleware'
@@ -936,11 +997,13 @@ const rootRouteChildren: RootRouteChildren = {
   HeadersRoute: HeadersRoute,
   IsomorphicFnsRoute: IsomorphicFnsRoute,
   MultipartRoute: MultipartRoute,
+  NestedServerFnsRoute: NestedServerFnsRoute,
   RawResponseRoute: RawResponseRoute,
   ReturnNullRoute: ReturnNullRoute,
   SerializeFormDataRoute: SerializeFormDataRoute,
   ServerFnInClientOnlyFnRoute: ServerFnInClientOnlyFnRoute,
   ServerOnlyFnRoute: ServerOnlyFnRoute,
+  SharedPackageServerFnRoute: SharedPackageServerFnRoute,
   StatusRoute: StatusRoute,
   SubmitPostFormdataRoute: SubmitPostFormdataRoute,
   AbortSignalMethodRoute: AbortSignalMethodRoute,
@@ -953,6 +1016,7 @@ const rootRouteChildren: RootRouteChildren = {
   MiddlewareRequestMiddlewareRoute: MiddlewareRequestMiddlewareRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
   MiddlewareServerImportMiddlewareRoute: MiddlewareServerImportMiddlewareRoute,
+  MiddlewareServerfnInMiddlewareRoute: MiddlewareServerfnInMiddlewareRoute,
   MiddlewareUnhandledExceptionRoute: MiddlewareUnhandledExceptionRoute,
   RedirectTestSsrTargetRoute: RedirectTestSsrTargetRoute,
   RedirectTestTargetRoute: RedirectTestTargetRoute,

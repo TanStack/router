@@ -1,0 +1,14 @@
+{
+  "name": "@tanstack/react-start-e2e-shared-server-fns",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "@tanstack/react-start": "*"
+  },
+  "devDependencies": {
+    "@tanstack/react-start": "workspace:*"
+  }
+}

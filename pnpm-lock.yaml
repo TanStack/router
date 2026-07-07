@@ -2987,6 +2987,9 @@ importers:
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
+      '@tanstack/react-start-e2e-shared-server-fns':
+        specifier: workspace:*
+        version: link:../server-functions-shared-lib
       js-cookie:
         specifier: ^3.0.5
         version: 3.0.5
@@ -3103,6 +3106,12 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+
+  e2e/react-start/server-functions-shared-lib:
+    devDependencies:
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
 
   e2e/react-start/server-routes:
     dependencies:

@@ -66,6 +66,14 @@ function RouteComponent() {
             Function middleware receives functionId and filename
           </Route.Link>
         </li>
+        <li>
+          <Route.Link
+            to="./serverfn-in-middleware"
+            data-testid="serverfn-in-middleware-link"
+          >
+            Server function called from a middleware in a separate file
+          </Route.Link>
+        </li>
       </ul>
     </div>
   )
