@@ -26,7 +26,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.61.0",
     "@rsbuild/core": "^2.0.11",
     "@rsbuild/plugin-babel": "^1.0.5",
     "@rsbuild/plugin-vue": "^1.2.2",
