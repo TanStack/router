@@ -21,7 +21,7 @@
     "vue": "^3.5.16"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.61.0",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",

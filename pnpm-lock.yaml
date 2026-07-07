@@ -15,7 +15,7 @@ overrides:
   eslint: ^9.22.0
   vite: ^8.0.14
   '@types/node': 25.0.9
-  '@playwright/test': ^1.57.0
+  '@playwright/test': ^1.61.0
   '@tanstack/query-core': ^5.99.0
   '@tanstack/react-query': ^5.99.0
   '@tanstack/solid-query': ^5.99.0
@@ -80,8 +80,8 @@ importers:
         specifier: 22.7.5
         version: 22.7.5(nx@22.7.5(@swc-node/register@1.11.1(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@swc/core@1.15.33(@swc/helpers@0.5.23))(@swc/types@0.1.26)(typescript@6.0.2))(@swc/core@1.15.33(@swc/helpers@0.5.23))(debug@4.4.3))
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@swc-node/core':
         specifier: ^1.14.1
         version: 1.14.1(@swc/core@1.15.33(@swc/helpers@0.5.23))(@swc/types@0.1.26)
@@ -566,8 +566,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -609,8 +609,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -652,8 +652,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -698,8 +698,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -747,8 +747,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -796,8 +796,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -851,8 +851,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -897,8 +897,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -952,8 +952,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -1004,8 +1004,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -1038,8 +1038,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -1084,8 +1084,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -1124,8 +1124,8 @@ importers:
         specifier: ^2.4.0
         version: 2.4.0(babel-plugin-macros@3.1.0)
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -1176,8 +1176,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -1210,8 +1210,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -1244,8 +1244,8 @@ importers:
         version: 0.5.1
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -1296,8 +1296,8 @@ importers:
         version: 0.5.1
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -1363,8 +1363,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -1415,8 +1415,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -1464,8 +1464,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -1519,8 +1519,8 @@ importers:
         version: 3.6.0
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -1604,8 +1604,8 @@ importers:
         version: 3.6.0
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -1662,8 +1662,8 @@ importers:
         specifier: ^1.29.0
         version: 1.29.1(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(workerd@1.20260317.1)(wrangler@4.75.0)
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -1732,8 +1732,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -1830,8 +1830,8 @@ importers:
         version: 3.6.0
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -1876,8 +1876,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -1922,8 +1922,8 @@ importers:
         version: 0.11.15
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -1971,8 +1971,8 @@ importers:
         specifier: ^1.29.0
         version: 1.29.1(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(workerd@1.20260317.1)(wrangler@4.75.0)
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:*
         version: link:../../e2e-utils
@@ -2032,8 +2032,8 @@ importers:
         version: 0.5.1
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -2093,8 +2093,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -2197,8 +2197,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../../../packages/router-core
@@ -2249,8 +2249,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -2341,8 +2341,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -2402,8 +2402,8 @@ importers:
         specifier: ^2.4.0
         version: 2.4.0(babel-plugin-macros@3.1.0)
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -2451,8 +2451,8 @@ importers:
         version: 3.3.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -2500,8 +2500,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -2561,8 +2561,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -2610,8 +2610,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -2671,8 +2671,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -2729,8 +2729,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -2775,8 +2775,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.8
         version: 2.0.8
@@ -2830,8 +2830,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -3007,8 +3007,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -3071,8 +3071,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -3141,8 +3141,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -3196,8 +3196,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -3291,8 +3291,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3334,8 +3334,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3383,8 +3383,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:*
         version: link:../../e2e-utils
@@ -3429,8 +3429,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3472,8 +3472,8 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3530,8 +3530,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -3594,8 +3594,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -3643,8 +3643,8 @@ importers:
         version: 1.9.12
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3677,8 +3677,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3711,8 +3711,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3751,8 +3751,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3791,8 +3791,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3828,8 +3828,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3871,8 +3871,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3917,8 +3917,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3960,8 +3960,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -4003,8 +4003,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -4040,8 +4040,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -4074,8 +4074,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -4105,8 +4105,8 @@ importers:
         version: 1.9.12
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -4151,8 +4151,8 @@ importers:
         version: 1.9.12
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -4212,8 +4212,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -4255,8 +4255,8 @@ importers:
         version: 4.2.2
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -4295,8 +4295,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -4344,8 +4344,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -4420,8 +4420,8 @@ importers:
         version: 3.6.0
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -4472,8 +4472,8 @@ importers:
         specifier: ^1.29.0
         version: 1.29.1(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(workerd@1.20260317.1)(wrangler@4.75.0)
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -4533,8 +4533,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -4607,8 +4607,8 @@ importers:
         version: 1.9.12
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -4641,8 +4641,8 @@ importers:
         version: 1.9.12
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:*
         version: link:../../e2e-utils
@@ -4687,8 +4687,8 @@ importers:
         version: 1.9.12
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -4794,8 +4794,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -4843,8 +4843,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -4987,8 +4987,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -5054,8 +5054,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -5103,8 +5103,8 @@ importers:
         version: 1.9.12
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5171,8 +5171,8 @@ importers:
         version: 1.9.12
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5220,8 +5220,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -5275,8 +5275,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -5333,8 +5333,8 @@ importers:
         version: 3.5.25(typescript@5.8.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5376,8 +5376,8 @@ importers:
         version: 3.5.25(typescript@5.8.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5422,8 +5422,8 @@ importers:
         specifier: ^9.36.0
         version: 9.36.0
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5483,8 +5483,8 @@ importers:
         specifier: ^9.36.0
         version: 9.36.0
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5544,8 +5544,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5590,8 +5590,8 @@ importers:
         version: 3.5.25(typescript@5.9.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5645,8 +5645,8 @@ importers:
         version: 3.5.25(typescript@5.8.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5700,8 +5700,8 @@ importers:
         version: 3.5.25(typescript@5.8.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5749,8 +5749,8 @@ importers:
         version: 3.5.25(typescript@5.8.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5804,8 +5804,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5850,8 +5850,8 @@ importers:
         version: 3.5.25(typescript@5.8.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5902,8 +5902,8 @@ importers:
         version: 3.5.25(typescript@6.0.2)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5933,8 +5933,8 @@ importers:
         version: 3.5.25(typescript@6.0.2)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -5988,8 +5988,8 @@ importers:
         version: 3.5.25(typescript@6.0.2)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -6055,8 +6055,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -6107,8 +6107,8 @@ importers:
         version: 3.5.25(typescript@5.8.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -6156,8 +6156,8 @@ importers:
         version: 3.5.25(typescript@5.8.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -6211,8 +6211,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@rsbuild/core':
         specifier: ^2.0.11
         version: 2.0.14
@@ -6293,8 +6293,8 @@ importers:
         version: 3.5.25(typescript@6.0.2)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -6348,8 +6348,8 @@ importers:
         specifier: ^1.29.0
         version: 1.29.1(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(workerd@1.20260317.1)(wrangler@4.75.0)
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -6449,8 +6449,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -6492,8 +6492,8 @@ importers:
         version: 3.5.25(typescript@6.0.2)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:*
         version: link:../../e2e-utils
@@ -6538,8 +6538,8 @@ importers:
         version: 3.5.25(typescript@6.0.2)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -6608,8 +6608,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -6660,8 +6660,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -6816,8 +6816,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -6886,8 +6886,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -6975,8 +6975,8 @@ importers:
         version: 3.5.25(typescript@6.0.2)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -7024,8 +7024,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -7082,8 +7082,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.57.0
-        version: 1.58.0
+        specifier: ^1.61.0
+        version: 1.61.1
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -17180,8 +17180,8 @@ packages:
     engines: {node: '>=22.6.0'}
     hasBin: true
 
-  '@playwright/test@1.58.0':
-    resolution: {integrity: sha512-fWza+Lpbj6SkQKCrU6si4iu+fD2dD3gxNHFhUPxsfXBPhnv3rRSQVd0NtBUT9Z/RhF/boCBcuUaMUSTRTopjZg==}
+  '@playwright/test@1.61.1':
+    resolution: {integrity: sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -24396,13 +24396,13 @@ packages:
     resolution: {integrity: sha512-emEcLuomt2j03vxD54giVB4SxTjnsqkU692xZOZXHDVoYyypEm+b3jpiTcc+Cf+myooc+/Ly0z01jqeNHVgJGw==}
     engines: {node: '>=16.0.0'}
 
-  playwright-core@1.58.0:
-    resolution: {integrity: sha512-aaoB1RWrdNi3//rOeKuMiS65UCcgOVljU46At6eFcOFPFHWtd2weHRRow6z/n+Lec0Lvu0k9ZPKJSjPugikirw==}
+  playwright-core@1.61.1:
+    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.58.0:
-    resolution: {integrity: sha512-2SVA0sbPktiIY/MCOPX8e86ehA/e+tDNq+e5Y8qjKYti2Z/JG7xnronT/TXTIkKbYGWlCbuucZ6dziEgkoEjQQ==}
+  playwright@1.61.1:
+    resolution: {integrity: sha512-DWnY5o3YbLWK4GovuAVwpqL+1VwGNdUGrRr++8j8PtQQzvAVZUIMjKQ90fY689sEJZJBbZVw1rXaOKSTitkzPQ==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -30656,9 +30656,9 @@ snapshots:
       pprof-to-md: 0.1.0
       react-pprof: 1.4.0
 
-  '@playwright/test@1.58.0':
+  '@playwright/test@1.61.1':
     dependencies:
-      playwright: 1.58.0
+      playwright: 1.61.1
 
   '@polka/url@1.0.0-next.28': {}
 
@@ -39105,11 +39105,11 @@ snapshots:
       pvutils: 1.1.3
       tslib: 2.8.1
 
-  playwright-core@1.58.0: {}
+  playwright-core@1.61.1: {}
 
-  playwright@1.58.0:
+  playwright@1.61.1:
     dependencies:
-      playwright-core: 1.58.0
+      playwright-core: 1.61.1
     optionalDependencies:
       fsevents: 2.3.2
 
