@@ -1452,8 +1452,16 @@ export class RouterCore<
           for (let i = matchedRoutes.length - 1; i >= 0; i--) {
             const route = matchedRoutes[i]!
             if (route.children) {
-              globalNotFoundRouteId = route.id
-              break
+              // Prefer the deepest matched route that can actually render
+              // the notFound. Without a notFoundComponent anywhere, fall
+              // back to the deepest matched route with children.
+              if (route.options.notFoundComponent) {
+                globalNotFoundRouteId = route.id
+                break
+              }
+              if (globalNotFoundRouteId === rootRouteId) {
+                globalNotFoundRouteId = route.id
+              }
             }
           }
         }
