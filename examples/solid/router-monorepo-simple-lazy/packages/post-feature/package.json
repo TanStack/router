@@ -18,8 +18,8 @@
   "dependencies": {
     "@tanstack/solid-query": "^6.0.0-beta.5",
     "@router-solid-mono-simple-lazy/router": "workspace:*",
-    "solid-js": "2.0.0-beta.15",
-    "@solidjs/web": "2.0.0-beta.15"
+    "solid-js": "2.0.0-beta.16",
+    "@solidjs/web": "2.0.0-beta.16"
   },
   "devDependencies": {
     "vite-plugin-solid": "^3.0.0-next.5",

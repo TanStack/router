@@ -10,14 +10,14 @@
     "dev": "pnpm post-query build && pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.15",
+    "@solidjs/web": "2.0.0-beta.16",
     "@tanstack/router-plugin": "^1.168.18",
     "@tanstack/solid-query": "^6.0.0-beta.5",
     "@tanstack/solid-query-devtools": "^6.0.0-beta.5",
     "@tanstack/solid-router": "^2.0.0-beta.23",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.18",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.15"
+    "solid-js": "2.0.0-beta.16"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

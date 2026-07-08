@@ -9,11 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.15",
+    "@solidjs/web": "2.0.0-beta.16",
     "@tanstack/solid-router": "^2.0.0-beta.23",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.18",
     "@tanstack/solid-start": "^2.0.0-beta.24",
-    "solid-js": "2.0.0-beta.15"
+    "solid-js": "2.0.0-beta.16"
   },
   "devDependencies": {
     "@netlify/vite-plugin-tanstack-start": "^1.1.4",
