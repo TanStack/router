@@ -4,6 +4,7 @@ import {
   redirect,
   useRouter,
 } from '@tanstack/react-router'
+import { useState } from 'react'
 import { Descope } from '@descope/react-sdk'
 
 export const Route = createFileRoute('/login')({
@@ -18,6 +19,10 @@ export const Route = createFileRoute('/login')({
 
 function LoginComp() {
   const router = useRouter()
+  // The flow's web component has to download and fetch its flow definition
+  // before it renders anything. `onReady` fires once that's done — until then
+  // we show a loader so the user never sees an empty box.
+  const [ready, setReady] = useState(false)
 
   return (
     <div className="mx-auto max-w-md p-6 py-16">
@@ -27,28 +32,39 @@ function LoginComp() {
         </h1>
         {/*
          * The Descope flow renders as a web component that requires the
-         * browser, so `ClientOnly` keeps it out of the SSR pass.
+         * browser, so `ClientOnly` keeps it out of the SSR pass. The loader
+         * covers two phases: SSR + hydration (via the `fallback`), and the
+         * web component's own load (until `onReady`). We keep the flow mounted
+         * but hidden during that second phase so it can actually load.
          */}
-        <ClientOnly
-          fallback={
-            <p className="text-center text-sm text-gray-500">Loading…</p>
-          }
-        >
-          <Descope
-            flowId="sign-up-or-in"
-            theme="dark"
-            onSuccess={async () => {
-              // Re-run the root loader so the server picks up the new session
-              // cookie, then send the user home.
-              await router.invalidate()
-              await router.navigate({ to: '/' })
-            }}
-            onError={(err) => {
-              console.error('Descope flow error', err)
-            }}
-          />
+        <ClientOnly fallback={<Loader />}>
+          {!ready && <Loader />}
+          <div className={ready ? undefined : 'hidden'}>
+            <Descope
+              flowId="sign-up-or-in"
+              theme="dark"
+              onReady={() => setReady(true)}
+              onSuccess={async () => {
+                // Re-run the root loader so the server picks up the new session
+                // cookie, then send the user home.
+                await router.invalidate()
+                await router.navigate({ to: '/' })
+              }}
+              onError={(err) => {
+                console.error('Descope flow error', err)
+              }}
+            />
+          </div>
         </ClientOnly>
       </div>
+    </div>
+  )
+}
+
+function Loader() {
+  return (
+    <div className="flex justify-center py-8">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-700 border-t-gray-300" />
     </div>
   )
 }
