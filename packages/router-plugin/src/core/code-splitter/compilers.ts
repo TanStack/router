@@ -124,6 +124,13 @@ function removeSplitSearchParamFromFilename(filename: string) {
   return bareFilename!
 }
 
+// Escapes a value so it can be safely interpolated into a single-quoted
+// string literal, e.g. filenames containing `'` would otherwise produce
+// unparsable code (#7754)
+function escapeSingleQuotedString(value: string) {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+}
+
 export function addSharedSearchParamToFilename(filename: string) {
   const [bareFilename] = filename.split('?')
   return `${bareFilename}?${tsrShared}=1`
@@ -623,7 +630,7 @@ export function compileCodeSplitReferenceRoute(
                         ) {
                           programPath.unshiftContainer('body', [
                             template.statement(
-                              `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
+                              `const ${splitNodeMeta.localImporterIdent} = () => import('${escapeSingleQuotedString(splitUrl)}')`,
                             )(),
                           ])
                         }
@@ -719,7 +726,7 @@ export function compileCodeSplitReferenceRoute(
                         ) {
                           programPath.unshiftContainer('body', [
                             template.statement(
-                              `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
+                              `const ${splitNodeMeta.localImporterIdent} = () => import('${escapeSingleQuotedString(splitUrl)}')`,
                             )(),
                           ])
                         }
