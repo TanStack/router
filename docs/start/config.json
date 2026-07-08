@@ -370,6 +370,10 @@
               "to": "framework/react/examples/start-workos"
             },
             {
+              "label": "Descope",
+              "to": "framework/react/examples/start-descope"
+            },
+            {
               "label": "Material UI",
               "to": "framework/react/examples/start-material-ui"
             },

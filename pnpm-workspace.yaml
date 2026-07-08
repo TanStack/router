@@ -12,6 +12,7 @@ trustPolicyExclude:
   - '@netlify/edge-bundler@14.7.0' # existing Netlify dev transitive flagged by pnpm 11.9 trust downgrade checks
   - '@netlify/serverless-functions-api@2.7.1' # existing Netlify dev transitive flagged by pnpm 11.9 trust downgrade checks
   - '@netlify/zip-it-and-ship-it@14.1.11' # existing Netlify dev transitive flagged by pnpm 11.9 trust downgrade checks
+  - 'reselect@5.1.1' # transitive of @descope/react-sdk widgets (start-descope example), provenance dropped in this release
 
 packages:
   - 'packages/*'

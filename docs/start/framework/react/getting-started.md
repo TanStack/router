@@ -47,6 +47,7 @@ To use a different example, replace `start-basic` with one of the slugs below.
 - [Supabase](https://github.com/TanStack/router/tree/main/examples/react/start-supabase-basic) (`start-supabase-basic`)
 - [Trellaux](https://github.com/TanStack/router/tree/main/examples/react/start-trellaux) (`start-trellaux`)
 - [WorkOS](https://github.com/TanStack/router/tree/main/examples/react/start-workos) (`start-workos`)
+- [Descope](https://github.com/TanStack/router/tree/main/examples/react/start-descope) (`start-descope`)
 - [Material UI](https://github.com/TanStack/router/tree/main/examples/react/start-material-ui) (`start-material-ui`)
 
 Each example page also includes a StackBlitz preview so you can inspect it before cloning.

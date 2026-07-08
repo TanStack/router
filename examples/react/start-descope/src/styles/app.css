@@ -1,0 +1,36 @@
+@import 'tailwindcss' source('../');
+
+@theme {
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji';
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-800, currentcolor);
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-gray-800;
+  }
+
+  html,
+  body {
+    @apply bg-[#0a0f1a] text-gray-200;
+  }
+
+  .using-mouse * {
+    outline: none !important;
+  }
+}
