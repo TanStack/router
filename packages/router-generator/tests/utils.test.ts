@@ -981,7 +981,9 @@ describe('sortRouteNodes', () => {
 
   /** Every distinct ordering of `arr` (Heap-free recursive permutation). */
   function permutations<T>(arr: Array<T>): Array<Array<T>> {
-    if (arr.length <= 1) return [arr]
+    if (arr.length <= 1) {
+      return [arr]
+    }
     const result: Array<Array<T>> = []
     arr.forEach((item, i) => {
       const rest = [...arr.slice(0, i), ...arr.slice(i + 1)]
