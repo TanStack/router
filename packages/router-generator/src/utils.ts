@@ -123,6 +123,38 @@ export function multiSortBy<T>(
   return result
 }
 
+/**
+ * Sorts route nodes into the deterministic order used when generating the route
+ * tree. Precedence: root (`__root`) first, then by slash-separated segment
+ * count, then index segments before non-index, and finally — the tiebreaker —
+ * by `routePath`.
+ *
+ * The `routePath` tiebreaker is load-bearing: `routePath` is unique per node, so
+ * it gives the comparator a total order. Without it (e.g. comparing whole route
+ * nodes), any nodes tying on every earlier key are left in an engine- and
+ * input-order-dependent order by `Array.prototype.sort`, which makes the
+ * generated route tree churn non-deterministically across machines and Node
+ * versions.
+ */
+export function sortRouteNodes(
+  routeNodes: Array<RouteNode>,
+  indexTokenSegmentRegex: RegExp,
+): Array<RouteNode> {
+  return multiSortBy(routeNodes, [
+    (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
+    (d) =>
+      d.routePath === undefined
+        ? undefined
+        : countSlashSeparatedParts(d.routePath),
+    (d) => {
+      const segments = d.routePath?.split('/').filter(Boolean) ?? []
+      const last = segments[segments.length - 1] ?? ''
+      return indexTokenSegmentRegex.test(last) ? -1 : 1
+    },
+    (d) => d.routePath,
+  ])
+}
+
 export function cleanPath(path: string) {
   // remove double slashes
   return path.replace(/\/{2,}/g, '/')

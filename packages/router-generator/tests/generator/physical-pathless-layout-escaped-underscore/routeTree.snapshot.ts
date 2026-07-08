@@ -10,23 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char91__rootIndexChar93IndexRouteImport } from './routes/[__root-index]/index'
-import { Route as LayoutRouteImport } from './routes/_layout'
-import { Route as FooRouteImport } from './routes/[_]foo'
-import { Route as Char91__literalChar93RouteImport } from './routes/[__literal]'
 import { Route as _layoutRouteImport } from './routes/__layout'
-import { Route as RootIndexIndexRouteImport } from './routes/[_]root-index/index'
-import { Route as LayoutNestedRouteImport } from './routes/_layout/_nested'
-import { Route as LayoutBarRouteImport } from './routes/_layout/[_]bar'
-import { Route as Layout_nested2RouteImport } from './routes/_layout/__nested2'
-import { Route as LayoutChar91__doubleChar93RouteImport } from './routes/_layout/[__double]'
+import { Route as Char91__literalChar93RouteImport } from './routes/[__literal]'
+import { Route as FooRouteImport } from './routes/[_]foo'
+import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as _layoutQuxRouteImport } from './routes/__layout/[_]qux'
-import { Route as LayoutNestedTrailingIndexRouteImport } from './routes/_layout/nested-trailing[_]/index'
-import { Route as LayoutNestedIndexIndexRouteImport } from './routes/_layout/[_]nested-index/index'
+import { Route as LayoutChar91__doubleChar93RouteImport } from './routes/_layout/[__double]'
+import { Route as Layout_nested2RouteImport } from './routes/_layout/__nested2'
+import { Route as LayoutBarRouteImport } from './routes/_layout/[_]bar'
+import { Route as LayoutNestedRouteImport } from './routes/_layout/_nested'
+import { Route as RootIndexIndexRouteImport } from './routes/[_]root-index/index'
 import { Route as LayoutChar91__doubleIndexChar93IndexRouteImport } from './routes/_layout/[__double-index]/index'
-import { Route as LayoutNestedBazRouteImport } from './routes/_layout/_nested/[_]baz'
-import { Route as LayoutNestedIndexIdRouteImport } from './routes/_layout/[_]nested-index/$id'
-import { Route as Layout_nested2DeepRouteImport } from './routes/_layout/__nested2/[_]deep'
 import { Route as LayoutChar91__doubleIndexChar93IdRouteImport } from './routes/_layout/[__double-index]/$id'
+import { Route as Layout_nested2DeepRouteImport } from './routes/_layout/__nested2/[_]deep'
+import { Route as LayoutNestedIndexIndexRouteImport } from './routes/_layout/[_]nested-index/index'
+import { Route as LayoutNestedIndexIdRouteImport } from './routes/_layout/[_]nested-index/$id'
+import { Route as LayoutNestedBazRouteImport } from './routes/_layout/_nested/[_]baz'
+import { Route as LayoutNestedTrailingIndexRouteImport } from './routes/_layout/nested-trailing[_]/index'
 import { Route as LayoutNestedDeepIndexIndexRouteImport } from './routes/_layout/_nested/[_]deep-index/index'
 
 const Char91__rootIndexChar93IndexRoute =
@@ -35,13 +35,8 @@ const Char91__rootIndexChar93IndexRoute =
     path: '/__root-index/',
     getParentRoute: () => rootRouteImport,
   } as any)
-const LayoutRoute = LayoutRouteImport.update({
-  id: '/_layout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FooRoute = FooRouteImport.update({
-  id: '/_foo',
-  path: '/_foo',
+const _layoutRoute = _layoutRouteImport.update({
+  id: '/__layout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char91__literalChar93Route = Char91__literalChar93RouteImport.update({
@@ -49,27 +44,19 @@ const Char91__literalChar93Route = Char91__literalChar93RouteImport.update({
   path: '/__literal',
   getParentRoute: () => rootRouteImport,
 } as any)
-const _layoutRoute = _layoutRouteImport.update({
-  id: '/__layout',
+const FooRoute = FooRouteImport.update({
+  id: '/_foo',
+  path: '/_foo',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RootIndexIndexRoute = RootIndexIndexRouteImport.update({
-  id: '/_root-index/',
-  path: '/_root-index/',
+const LayoutRoute = LayoutRouteImport.update({
+  id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LayoutNestedRoute = LayoutNestedRouteImport.update({
-  id: '/_nested',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutBarRoute = LayoutBarRouteImport.update({
-  id: '/_bar',
-  path: '/_bar',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const Layout_nested2Route = Layout_nested2RouteImport.update({
-  id: '/__nested2',
-  getParentRoute: () => LayoutRoute,
+const _layoutQuxRoute = _layoutQuxRouteImport.update({
+  id: '/_qux',
+  path: '/_qux',
+  getParentRoute: () => _layoutRoute,
 } as any)
 const LayoutChar91__doubleChar93Route =
   LayoutChar91__doubleChar93RouteImport.update({
@@ -77,21 +64,23 @@ const LayoutChar91__doubleChar93Route =
     path: '/__double',
     getParentRoute: () => LayoutRoute,
   } as any)
-const _layoutQuxRoute = _layoutQuxRouteImport.update({
-  id: '/_qux',
-  path: '/_qux',
-  getParentRoute: () => _layoutRoute,
-} as any)
-const LayoutNestedTrailingIndexRoute =
-  LayoutNestedTrailingIndexRouteImport.update({
-    id: '/nested-trailing_/',
-    path: '/nested-trailing_/',
-    getParentRoute: () => LayoutRoute,
-  } as any)
-const LayoutNestedIndexIndexRoute = LayoutNestedIndexIndexRouteImport.update({
-  id: '/_nested-index/',
-  path: '/_nested-index/',
+const Layout_nested2Route = Layout_nested2RouteImport.update({
+  id: '/__nested2',
   getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutBarRoute = LayoutBarRouteImport.update({
+  id: '/_bar',
+  path: '/_bar',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutNestedRoute = LayoutNestedRouteImport.update({
+  id: '/_nested',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const RootIndexIndexRoute = RootIndexIndexRouteImport.update({
+  id: '/_root-index/',
+  path: '/_root-index/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutChar91__doubleIndexChar93IndexRoute =
   LayoutChar91__doubleIndexChar93IndexRouteImport.update({
@@ -99,25 +88,36 @@ const LayoutChar91__doubleIndexChar93IndexRoute =
     path: '/__double-index/',
     getParentRoute: () => LayoutRoute,
   } as any)
-const LayoutNestedBazRoute = LayoutNestedBazRouteImport.update({
-  id: '/_baz',
-  path: '/_baz',
-  getParentRoute: () => LayoutNestedRoute,
+const LayoutChar91__doubleIndexChar93IdRoute =
+  LayoutChar91__doubleIndexChar93IdRouteImport.update({
+    id: '/__double-index/$id',
+    path: '/__double-index/$id',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const Layout_nested2DeepRoute = Layout_nested2DeepRouteImport.update({
+  id: '/_deep',
+  path: '/_deep',
+  getParentRoute: () => Layout_nested2Route,
+} as any)
+const LayoutNestedIndexIndexRoute = LayoutNestedIndexIndexRouteImport.update({
+  id: '/_nested-index/',
+  path: '/_nested-index/',
+  getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutNestedIndexIdRoute = LayoutNestedIndexIdRouteImport.update({
   id: '/_nested-index/$id',
   path: '/_nested-index/$id',
   getParentRoute: () => LayoutRoute,
 } as any)
-const Layout_nested2DeepRoute = Layout_nested2DeepRouteImport.update({
-  id: '/_deep',
-  path: '/_deep',
-  getParentRoute: () => Layout_nested2Route,
+const LayoutNestedBazRoute = LayoutNestedBazRouteImport.update({
+  id: '/_baz',
+  path: '/_baz',
+  getParentRoute: () => LayoutNestedRoute,
 } as any)
-const LayoutChar91__doubleIndexChar93IdRoute =
-  LayoutChar91__doubleIndexChar93IdRouteImport.update({
-    id: '/__double-index/$id',
-    path: '/__double-index/$id',
+const LayoutNestedTrailingIndexRoute =
+  LayoutNestedTrailingIndexRouteImport.update({
+    id: '/nested-trailing_/',
+    path: '/nested-trailing_/',
     getParentRoute: () => LayoutRoute,
   } as any)
 const LayoutNestedDeepIndexIndexRoute =
@@ -263,18 +263,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91__rootIndexChar93IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_layout': {
-      id: '/_layout'
+    '/__layout': {
+      id: '/__layout'
       path: ''
       fullPath: '/'
-      preLoaderRoute: typeof LayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_foo': {
-      id: '/_foo'
-      path: '/_foo'
-      fullPath: '/_foo'
-      preLoaderRoute: typeof FooRouteImport
+      preLoaderRoute: typeof _layoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/__literal': {
@@ -284,32 +277,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91__literalChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/__layout': {
-      id: '/__layout'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof _layoutRouteImport
+    '/_foo': {
+      id: '/_foo'
+      path: '/_foo'
+      fullPath: '/_foo'
+      preLoaderRoute: typeof FooRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_root-index/': {
-      id: '/_root-index/'
-      path: '/_root-index'
-      fullPath: '/_root-index/'
-      preLoaderRoute: typeof RootIndexIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_layout/_nested': {
-      id: '/_layout/_nested'
+    '/_layout': {
+      id: '/_layout'
       path: ''
       fullPath: '/'
-      preLoaderRoute: typeof LayoutNestedRouteImport
-      parentRoute: typeof LayoutRoute
+      preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_layout/_bar': {
-      id: '/_layout/_bar'
-      path: '/_bar'
-      fullPath: '/_bar'
-      preLoaderRoute: typeof LayoutBarRouteImport
+    '/__layout/_qux': {
+      id: '/__layout/_qux'
+      path: '/_qux'
+      fullPath: '/_qux'
+      preLoaderRoute: typeof _layoutQuxRouteImport
+      parentRoute: typeof _layoutRoute
+    }
+    '/_layout/__double': {
+      id: '/_layout/__double'
+      path: '/__double'
+      fullPath: '/__double'
+      preLoaderRoute: typeof LayoutChar91__doubleChar93RouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/__nested2': {
@@ -319,33 +312,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Layout_nested2RouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/__double': {
-      id: '/_layout/__double'
-      path: '/__double'
-      fullPath: '/__double'
-      preLoaderRoute: typeof LayoutChar91__doubleChar93RouteImport
+    '/_layout/_bar': {
+      id: '/_layout/_bar'
+      path: '/_bar'
+      fullPath: '/_bar'
+      preLoaderRoute: typeof LayoutBarRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/__layout/_qux': {
-      id: '/__layout/_qux'
-      path: '/_qux'
-      fullPath: '/_qux'
-      preLoaderRoute: typeof _layoutQuxRouteImport
-      parentRoute: typeof _layoutRoute
-    }
-    '/_layout/nested-trailing_/': {
-      id: '/_layout/nested-trailing_/'
-      path: '/nested-trailing_'
-      fullPath: '/nested-trailing_/'
-      preLoaderRoute: typeof LayoutNestedTrailingIndexRouteImport
+    '/_layout/_nested': {
+      id: '/_layout/_nested'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof LayoutNestedRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/_nested-index/': {
-      id: '/_layout/_nested-index/'
-      path: '/_nested-index'
-      fullPath: '/_nested-index/'
-      preLoaderRoute: typeof LayoutNestedIndexIndexRouteImport
-      parentRoute: typeof LayoutRoute
+    '/_root-index/': {
+      id: '/_root-index/'
+      path: '/_root-index'
+      fullPath: '/_root-index/'
+      preLoaderRoute: typeof RootIndexIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_layout/__double-index/': {
       id: '/_layout/__double-index/'
@@ -354,18 +340,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutChar91__doubleIndexChar93IndexRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/_nested/_baz': {
-      id: '/_layout/_nested/_baz'
-      path: '/_baz'
-      fullPath: '/_baz'
-      preLoaderRoute: typeof LayoutNestedBazRouteImport
-      parentRoute: typeof LayoutNestedRoute
-    }
-    '/_layout/_nested-index/$id': {
-      id: '/_layout/_nested-index/$id'
-      path: '/_nested-index/$id'
-      fullPath: '/_nested-index/$id'
-      preLoaderRoute: typeof LayoutNestedIndexIdRouteImport
+    '/_layout/__double-index/$id': {
+      id: '/_layout/__double-index/$id'
+      path: '/__double-index/$id'
+      fullPath: '/__double-index/$id'
+      preLoaderRoute: typeof LayoutChar91__doubleIndexChar93IdRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/__nested2/_deep': {
@@ -375,11 +354,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Layout_nested2DeepRouteImport
       parentRoute: typeof Layout_nested2Route
     }
-    '/_layout/__double-index/$id': {
-      id: '/_layout/__double-index/$id'
-      path: '/__double-index/$id'
-      fullPath: '/__double-index/$id'
-      preLoaderRoute: typeof LayoutChar91__doubleIndexChar93IdRouteImport
+    '/_layout/_nested-index/': {
+      id: '/_layout/_nested-index/'
+      path: '/_nested-index'
+      fullPath: '/_nested-index/'
+      preLoaderRoute: typeof LayoutNestedIndexIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/_nested-index/$id': {
+      id: '/_layout/_nested-index/$id'
+      path: '/_nested-index/$id'
+      fullPath: '/_nested-index/$id'
+      preLoaderRoute: typeof LayoutNestedIndexIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/_nested/_baz': {
+      id: '/_layout/_nested/_baz'
+      path: '/_baz'
+      fullPath: '/_baz'
+      preLoaderRoute: typeof LayoutNestedBazRouteImport
+      parentRoute: typeof LayoutNestedRoute
+    }
+    '/_layout/nested-trailing_/': {
+      id: '/_layout/nested-trailing_/'
+      path: '/nested-trailing_'
+      fullPath: '/nested-trailing_/'
+      preLoaderRoute: typeof LayoutNestedTrailingIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/_nested/_deep-index/': {
