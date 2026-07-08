@@ -13,6 +13,7 @@ env:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   test:
@@ -36,6 +37,14 @@ jobs:
           main-branch-name: main
       - name: Run Checks
         run: pnpm run test:pr --parallel=3
+      - name: Run CodeSpeed Benchmarks
+        env:
+          CODSPEED_TOKEN: ${{ secrets.CODSPEED_TOKEN }}
+        run: |
+          pnpm nx run-many \
+            --projects=@benchmarks/client-nav,@benchmarks/ssr,@benchmarks/memory-client,@benchmarks/memory-server \
+            --targets=test:codspeed:react,test:codspeed:solid,test:codspeed:vue \
+            --outputStyle=stream
       - name: Stop Nx Agents
         if: ${{ always() }}
         run: npx nx-cloud stop-all-agents
