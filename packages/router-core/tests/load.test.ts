@@ -2176,6 +2176,106 @@ describe('routeId in context options', () => {
   })
 })
 
+describe('preload survives cache eviction during an in-flight load', () => {
+  // https://github.com/TanStack/router/issues/7759
+  const setup = ({ loader }: { loader: Loader }) => {
+    const rootRoute = new BaseRootRoute({})
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader,
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    return router
+  }
+
+  test('preloadRoute settles cleanly when the cached match is evicted while its loader is in flight', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    let releaseLoader!: () => void
+    const loaderGate = new Promise<void>((resolve) => {
+      releaseLoader = resolve
+    })
+    let loaderStarted!: () => void
+    const loaderStartedPromise = new Promise<void>((resolve) => {
+      loaderStarted = resolve
+    })
+
+    const router = setup({
+      loader: async () => {
+        loaderStarted()
+        await loaderGate
+      },
+    })
+
+    const preload = router.preloadRoute({ to: '/foo' })
+    await loaderStartedPromise
+
+    // evict the preload's cached match while its loader is still running
+    router.clearCache()
+    releaseLoader()
+
+    const matches = await preload
+
+    expect(matches).toBeDefined()
+    expect(consoleError).not.toHaveBeenCalled()
+
+    consoleError.mockRestore()
+  })
+
+  test('a second preload awaiting the in-flight load settles after eviction', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    let releaseLoader!: () => void
+    const loaderGate = new Promise<void>((resolve) => {
+      releaseLoader = resolve
+    })
+    let loaderStarted!: () => void
+    const loaderStartedPromise = new Promise<void>((resolve) => {
+      loaderStarted = resolve
+    })
+
+    const router = setup({
+      loader: async () => {
+        loaderStarted()
+        await loaderGate
+      },
+    })
+
+    const firstPreload = router.preloadRoute({ to: '/foo' })
+    await loaderStartedPromise
+
+    // joins the first preload by awaiting its loaderPromise
+    const secondPreload = router.preloadRoute({ to: '/foo' })
+    await Promise.resolve()
+    await Promise.resolve()
+
+    router.clearCache()
+    releaseLoader()
+
+    // without the eviction guards the first preload throws instead of
+    // resolving the shared loaderPromise, so the second one never settles
+    const [firstMatches, secondMatches] = await Promise.all([
+      firstPreload,
+      secondPreload,
+    ])
+
+    expect(firstMatches).toBeDefined()
+    expect(secondMatches).toBeDefined()
+    expect(consoleError).not.toHaveBeenCalled()
+
+    consoleError.mockRestore()
+  })
+})
+
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }

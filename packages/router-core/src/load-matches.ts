@@ -370,7 +370,9 @@ const preBeforeLoadSetup = (
   setupPendingTimeout(inner, matchId, route, existingMatch)
 
   const then = () => {
-    const match = inner.router.getMatch(matchId)!
+    const match = inner.router.getMatch(matchId)
+    // in case the match was evicted while awaiting the previous beforeLoad
+    if (!match) return
     if (
       match.preload &&
       (match.status === 'redirected' || match.status === 'notFound')
@@ -391,7 +393,10 @@ const executeBeforeLoad = (
   index: number,
   route: AnyRoute,
 ): void | Promise<void> => {
-  const match = inner.router.getMatch(matchId)!
+  const match = inner.router.getMatch(matchId)
+  // in case the match was evicted while `preBeforeLoadSetup` was awaiting the
+  // previous beforeLoad
+  if (!match) return
 
   // explicitly capture the previous loadPromise
   let prevLoadPromise = match._nonReactive.loadPromise
@@ -835,7 +840,9 @@ const loadRouteMatch = async (
       ;(async () => {
         try {
           await runLoader(inner, matchPromises, matchId, index, route)
-          const match = inner.router.getMatch(matchId)!
+          // in case the match was evicted while the loader was running, fall
+          // back to the matched object so its promises still settle
+          const match = inner.router.getMatch(matchId) ?? inner.matches[index]!
           match._nonReactive.loaderPromise?.resolve()
           match._nonReactive.loadPromise?.resolve()
           match._nonReactive.loaderPromise = undefined
@@ -903,20 +910,23 @@ const loadRouteMatch = async (
         return prevMatch
       }
       await prevMatch._nonReactive.loaderPromise
-      const match = inner.router.getMatch(matchId)!
-      const error = match._nonReactive.error || match.error
-      if (error) {
-        handleRedirectAndNotFound(inner, match, error)
-      }
+      const match = inner.router.getMatch(matchId)
+      // in case the match was evicted while awaiting the in-flight load
+      if (match) {
+        const error = match._nonReactive.error || match.error
+        if (error) {
+          handleRedirectAndNotFound(inner, match, error)
+        }
 
-      if (match.status === 'pending') {
-        await handleLoader(
-          preload,
-          prevMatch,
-          previousRouteMatchId,
-          match,
-          route,
-        )
+        if (match.status === 'pending') {
+          await handleLoader(
+            preload,
+            prevMatch,
+            previousRouteMatchId,
+            match,
+            route,
+          )
+        }
       }
     } else {
       const nextPreload =
@@ -933,7 +943,10 @@ const loadRouteMatch = async (
       await handleLoader(preload, prevMatch, previousRouteMatchId, match, route)
     }
   }
-  const match = inner.router.getMatch(matchId)!
+  // In case the match was evicted while the loader was in flight, fall back to
+  // the matched object (`_nonReactive` is stable across store updates) so its
+  // promises and timeout still settle and concurrent loads don't hang.
+  const match = inner.router.getMatch(matchId) ?? inner.matches[index]!
   if (!loaderIsRunningAsync) {
     match._nonReactive.loaderPromise?.resolve()
     match._nonReactive.loadPromise?.resolve()
@@ -952,7 +965,7 @@ const loadRouteMatch = async (
       isFetching: nextIsFetching,
       invalid: false,
     }))
-    return inner.router.getMatch(matchId)!
+    return inner.router.getMatch(matchId) ?? match
   } else {
     return match
   }
