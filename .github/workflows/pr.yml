@@ -19,6 +19,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     env:
+      CODSPEED_TOKEN: ${{ secrets.CODSPEED_TOKEN }}
       TSR_TMP_DIR: ./tmp
     steps:
       - name: Checkout
@@ -27,7 +28,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Start Nx Agents
-        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
+        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml" --with-env-vars="CODSPEED_TOKEN"
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Get base and head commits for `nx affected`
@@ -37,8 +38,6 @@ jobs:
       - name: Run Checks
         run: pnpm run test:pr --parallel=3
       - name: Run CodeSpeed Benchmarks
-        env:
-          CODSPEED_TOKEN: ${{ secrets.CODSPEED_TOKEN }}
         run: |
           if [ -z "$CODSPEED_TOKEN" ]; then
             echo "::notice::Skipping CodeSpeed benchmarks because CODSPEED_TOKEN is not configured for Nx Agent execution."
