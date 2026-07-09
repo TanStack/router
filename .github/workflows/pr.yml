@@ -31,9 +31,11 @@ jobs:
           persist-credentials: false
       - name: Start Nx Agents
         run: |
+          codspeed_env_vars="ACTIONS_ID_TOKEN_REQUEST_TOKEN,ACTIONS_ID_TOKEN_REQUEST_URL,CI,GITHUB_ACTIONS,GITHUB_API_URL,GITHUB_BASE_REF,GITHUB_HEAD_REF,GITHUB_REF,GITHUB_REF_NAME,GITHUB_REF_TYPE,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_RUN_ATTEMPT,GITHUB_RUN_ID,GITHUB_RUN_NUMBER,GITHUB_SERVER_URL,GITHUB_SHA,GITHUB_WORKFLOW,GITHUB_WORKFLOW_REF,GITHUB_WORKFLOW_SHA"
+
           npx nx-cloud start-ci-run \
             --distribute-on=".nx/workflows/dynamic-changesets.yaml" \
-            --with-env-vars="ACTIONS_ID_TOKEN_REQUEST_TOKEN,ACTIONS_ID_TOKEN_REQUEST_URL,CODSPEED_TOKEN"
+            --with-env-vars="$codspeed_env_vars"
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Get base and head commits for `nx affected`
