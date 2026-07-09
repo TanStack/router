@@ -13,7 +13,6 @@ env:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   test:
@@ -41,6 +40,11 @@ jobs:
         env:
           CODSPEED_TOKEN: ${{ secrets.CODSPEED_TOKEN }}
         run: |
+          if [ -z "$CODSPEED_TOKEN" ]; then
+            echo "::notice::Skipping CodeSpeed benchmarks because CODSPEED_TOKEN is not configured for Nx Agent execution."
+            exit 0
+          fi
+
           pnpm nx run-many \
             --projects=@benchmarks/client-nav,@benchmarks/ssr,@benchmarks/memory-client,@benchmarks/memory-server \
             --targets=test:codspeed:react,test:codspeed:solid,test:codspeed:vue \
