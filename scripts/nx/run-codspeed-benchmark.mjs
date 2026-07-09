@@ -98,10 +98,13 @@ async function ensureGithubEventPath() {
   const eventDir = await mkdtemp(join(tmpdir(), 'codspeed-github-event-'))
   const eventPath = join(eventDir, 'event.json')
   const repository = process.env.GITHUB_REPOSITORY ?? ''
+  const repositoryId = Number.parseInt(process.env.GITHUB_REPOSITORY_ID ?? '0', 10)
   const pullRequestNumber = getPullRequestNumber()
   const event = {
     repository: {
       full_name: repository,
+      id: repositoryId,
+      private: true,
     },
     ...(pullRequestNumber ? { number: pullRequestNumber } : {}),
     pull_request: {
@@ -111,12 +114,14 @@ async function ensureGithubEventPath() {
         sha: process.env.GITHUB_SHA ?? '',
         repo: {
           full_name: repository,
+          id: repositoryId,
         },
       },
       base: {
         ref: process.env.GITHUB_BASE_REF ?? '',
         repo: {
           full_name: repository,
+          id: repositoryId,
         },
       },
     },
