@@ -18,8 +18,10 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
-      CODSPEED_TOKEN: ${{ secrets.CODSPEED_TOKEN }}
       TSR_TMP_DIR: ./tmp
     steps:
       - name: Checkout
@@ -28,7 +30,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Start Nx Agents
-        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml" --with-env-vars="CODSPEED_TOKEN"
+        run: |
+          oidc_response=$(curl -fsSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=codspeed.io")
+          CODSPEED_TOKEN=$(node -e 'const fs = require("node:fs"); const { value } = JSON.parse(fs.readFileSync(0, "utf8")); if (!value) { process.exit(1) } process.stdout.write(value)' <<< "$oidc_response")
+          echo "::add-mask::$CODSPEED_TOKEN"
+          echo "CODSPEED_TOKEN=$CODSPEED_TOKEN" >> "$GITHUB_ENV"
+          export CODSPEED_TOKEN
+
+          npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml" --with-env-vars="CODSPEED_TOKEN"
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Get base and head commits for `nx affected`
