@@ -78,24 +78,40 @@ function getSetCookieValues(headers: Headers): Array<string> {
   return value ? [value] : []
 }
 
-function mergeEventResponseHeaders(response: Response, event: H3Event): void {
+function mergeEventResponseHeaders(
+  response: Response,
+  event: H3Event,
+): Response {
   if (response.ok) {
-    return
+    return response
   }
 
   const eventSetCookies = getSetCookieValues(event.res.headers)
   if (eventSetCookies.length === 0) {
-    return
+    return response
   }
 
   const responseSetCookies = getSetCookieValues(response.headers)
-  response.headers.delete('set-cookie')
+  let target = response
+  try {
+    response.headers.delete('set-cookie')
+  } catch {
+    // Response.redirect() responses have immutable headers per spec,
+    // so merge into a mutable copy instead
+    target = new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    })
+    target.headers.delete('set-cookie')
+  }
   for (const cookie of responseSetCookies) {
-    response.headers.append('set-cookie', cookie)
+    target.headers.append('set-cookie', cookie)
   }
   for (const cookie of eventSetCookies) {
-    response.headers.append('set-cookie', cookie)
+    target.headers.append('set-cookie', cookie)
   }
+  return target
 }
 
 function attachResponseHeaders<T>(
@@ -105,14 +121,14 @@ function attachResponseHeaders<T>(
   if (isPromiseLike(value)) {
     return value.then((resolved) => {
       if (resolved instanceof Response) {
-        mergeEventResponseHeaders(resolved, event)
+        return mergeEventResponseHeaders(resolved, event) as T
       }
       return resolved
     })
   }
 
   if (value instanceof Response) {
-    mergeEventResponseHeaders(value, event)
+    return mergeEventResponseHeaders(value, event) as T
   }
 
   return value
