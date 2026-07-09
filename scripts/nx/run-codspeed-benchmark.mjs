@@ -63,6 +63,8 @@ if (!benchmarkConfig || !vitestConfig) {
   process.exit(1)
 }
 
+await ensureGithubEventPath()
+
 const codspeed = await findCodSpeedBinary()
 const codspeedArgs = [
   'run',
@@ -87,6 +89,59 @@ await execFile(codspeed, codspeedArgs, {
     WITH_INSTRUMENTATION: '1',
   },
 })
+
+async function ensureGithubEventPath() {
+  if (process.env.GITHUB_EVENT_PATH || process.env.GITHUB_ACTIONS !== 'true') {
+    return
+  }
+
+  const eventDir = await mkdtemp(join(tmpdir(), 'codspeed-github-event-'))
+  const eventPath = join(eventDir, 'event.json')
+  const repository = process.env.GITHUB_REPOSITORY ?? ''
+  const pullRequestNumber = getPullRequestNumber()
+  const event = {
+    repository: {
+      full_name: repository,
+    },
+    ...(pullRequestNumber ? { number: pullRequestNumber } : {}),
+    pull_request: {
+      ...(pullRequestNumber ? { number: pullRequestNumber } : {}),
+      head: {
+        ref: process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME ?? '',
+        sha: process.env.GITHUB_SHA ?? '',
+        repo: {
+          full_name: repository,
+        },
+      },
+      base: {
+        ref: process.env.GITHUB_BASE_REF ?? '',
+        repo: {
+          full_name: repository,
+        },
+      },
+    },
+  }
+
+  await writeFile(eventPath, JSON.stringify(event), 'utf8')
+  process.env.GITHUB_EVENT_PATH = eventPath
+}
+
+function getPullRequestNumber() {
+  const match = process.env.GITHUB_REF?.match(/^refs\/pull\/(\d+)\//)
+
+  if (match) {
+    return Number.parseInt(match[1], 10)
+  }
+
+  const refName = process.env.GITHUB_REF_NAME ?? ''
+  const refNameMatch = refName.match(/^(\d+)\//)
+
+  if (refNameMatch) {
+    return Number.parseInt(refNameMatch[1], 10)
+  }
+
+  return undefined
+}
 
 async function findCodSpeedBinary() {
   const path = await which('codspeed')
