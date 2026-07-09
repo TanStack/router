@@ -372,7 +372,9 @@ const preBeforeLoadSetup = (
   const then = () => {
     const match = inner.router.getMatch(matchId)
     // in case the match was evicted while awaiting the previous beforeLoad
-    if (!match) return
+    if (!match) {
+      return
+    }
     if (
       match.preload &&
       (match.status === 'redirected' || match.status === 'notFound')
@@ -396,7 +398,9 @@ const executeBeforeLoad = (
   const match = inner.router.getMatch(matchId)
   // in case the match was evicted while `preBeforeLoadSetup` was awaiting the
   // previous beforeLoad
-  if (!match) return
+  if (!match) {
+    return
+  }
 
   // explicitly capture the previous loadPromise
   let prevLoadPromise = match._nonReactive.loadPromise
