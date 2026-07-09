@@ -50,6 +50,7 @@ export async function resolveSessionFromRequest(): Promise<SessionUser | null> {
       setCookie(SESSION_COOKIE, authInfo.jwt, {
         httpOnly: false,
         sameSite: 'lax',
+        secure: true,
         path: '/',
       })
     }

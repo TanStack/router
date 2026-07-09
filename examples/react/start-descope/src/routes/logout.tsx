@@ -20,10 +20,15 @@ function LogoutComp() {
       } catch (err) {
         console.error('Descope logout error', err)
       }
-      // Clear the server-readable cookies, then refresh and go home.
-      await clearServerSession()
-      await router.invalidate()
-      await router.navigate({ to: '/' })
+      try {
+        // Clear the server-readable cookies, then refresh and go home.
+        await clearServerSession()
+        await router.invalidate()
+        await router.navigate({ to: '/' })
+      } catch (err) {
+        console.error('Logout cleanup error', err)
+        await router.navigate({ to: '/' })
+      }
     }
     doLogout()
     // eslint-disable-next-line react-hooks/exhaustive-deps
