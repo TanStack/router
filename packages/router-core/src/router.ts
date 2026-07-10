@@ -2994,19 +2994,43 @@ export class RouterCore<
       return false
     }
 
+    const params = Object.assign(Object.create(null), match.rawParams)
+    const destinationPath = trimPathRight(next.pathname)
+    const destinationRoute = this.routesByPath[
+      destinationPath as keyof typeof this.routesByPath
+    ] as AnyRoute | undefined
+    if (destinationRoute) {
+      try {
+        for (const matchedRoute of this.getRouteBranch(destinationRoute)) {
+          const parseParams =
+            matchedRoute.options.params?.parse ??
+            matchedRoute.options.parseParams
+          if (parseParams) {
+            const parsedParams = parseParams(params as Record<string, string>)
+            if (parsedParams === false) {
+              return false
+            }
+            Object.assign(params, parsedParams)
+          }
+        }
+      } catch {
+        return false
+      }
+    }
+
     if (location.params) {
-      if (!deepEqual(match.rawParams, location.params, { partial: true })) {
+      if (!deepEqual(params, location.params, { partial: true })) {
         return false
       }
     }
 
     if (opts?.includeSearch ?? true) {
       return deepEqual(baseLocation.search, next.search, { partial: true })
-        ? match.rawParams
+        ? params
         : false
     }
 
-    return match.rawParams
+    return params
   }
 
   ssr?: {
