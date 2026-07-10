@@ -1,5 +1,15 @@
 # @tanstack/start-client-core
 
+## 1.170.13
+
+### Patch Changes
+
+- [#7662](https://github.com/TanStack/router/pull/7662) [`ba52d2b`](https://github.com/TanStack/router/commit/ba52d2b8f9e95d6becd1be14c020b35f3231e02c) - perf: zero-copy frame payload extraction in the client frame decoder. When a frame's bytes are fully contained in the first buffered chunk (the common case), return a subarray view instead of allocating a new buffer and copying. This is on the hot path for decoding streamed server-function responses and `RawStream` payloads.
+
+- Updated dependencies [[`9809a06`](https://github.com/TanStack/router/commit/9809a0619d4ed3fe8c2a393af5b9eca4b6c7695b)]:
+  - @tanstack/router-core@1.171.14
+  - @tanstack/start-storage-context@1.167.16
+
 ## 1.170.12
 
 ### Patch Changes
