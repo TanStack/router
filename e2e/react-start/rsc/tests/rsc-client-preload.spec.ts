@@ -3,11 +3,23 @@ import { test } from '@tanstack/router-e2e-utils'
 import { waitForHydration } from './hydration'
 
 test.describe('RSC Client Component Preload Tests', () => {
-  function getModulePreloads(html: string): Array<string> {
+  function getLinkHrefs(html: string, rel: string): Array<string> {
     return Array.from(
-      html.matchAll(/<link rel="modulepreload" href="([^"]*)"/g),
-      (match) => match[1]!,
-    )
+      html.matchAll(/<link\b[^>]*>/g),
+      (match) => match[0],
+    ).flatMap((tag) => {
+      const relValue = tag.match(/\brel="([^"]*)"/)?.[1]
+      const href = tag.match(/\bhref="([^"]*)"/)?.[1]
+      return relValue?.split(/\s+/).includes(rel) && href ? [href] : []
+    })
+  }
+
+  function getModulePreloads(html: string): Array<string> {
+    return getLinkHrefs(html, 'modulepreload')
+  }
+
+  function getStylesheets(html: string): Array<string> {
+    return getLinkHrefs(html, 'stylesheet')
   }
 
   test('client component JS is modulepreloaded in SSR HTML', async ({
@@ -30,24 +42,23 @@ test.describe('RSC Client Component Preload Tests', () => {
     )
 
     expect(extraPreloads.length).toBeGreaterThan(0)
+    expect(extraPreloads.some((href) => href.includes('/assets/'))).toBe(true)
   })
 
-  test('client component CSS is preloaded in head', async ({ page }) => {
-    await page.goto('/rsc-client-preload')
+  test('client component CSS is included in SSR HTML', async ({ page }) => {
+    const response = await page.goto('/rsc-client-preload')
+    const html = await response?.text()
     await page.waitForURL('/rsc-client-preload')
+
+    expect(html).toBeDefined()
 
     // Verify client component is visible
     await expect(page.getByTestId('client-widget')).toBeVisible()
 
-    // Check for CSS preload link in <head>
-    // In dev mode, CSS is loaded differently than prod, so we check for stylesheet
-    const cssPreload = page.locator(
-      'head link[rel="preload"][as="style"], head link[rel="stylesheet"][href*="ClientWidget"]',
-    )
-    const cssPreloadCount = await cssPreload.count()
+    const stylesheetHrefs = getStylesheets(html!)
 
-    // Should have at least one CSS preload or stylesheet for the client component
-    expect(cssPreloadCount).toBeGreaterThanOrEqual(0) // Relaxed for dev mode
+    expect(stylesheetHrefs.length).toBeGreaterThan(0)
+    expect(stylesheetHrefs.some((href) => href.includes('/assets/'))).toBe(true)
   })
 
   test('client component renders with CSS module styles applied', async ({

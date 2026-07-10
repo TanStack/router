@@ -79,6 +79,7 @@ import type {
   RouteLike,
   RouteMask,
   SearchMiddleware,
+  SearchMiddlewareMeta,
 } from './route'
 import type {
   FullSearchSchema,
@@ -908,6 +909,18 @@ export const locationHistoryActions = new WeakMap<
   HistoryAction
 >()
 
+type LightweightRouteMatchResult = {
+  matchedRoutes: ReadonlyArray<AnyRoute>
+  fullPath: string
+  search: Record<string, unknown>
+  params: Record<string, unknown>
+}
+
+type LightweightRouteMatchCacheEntry = [
+  lastMatchId: string | undefined,
+  result: LightweightRouteMatchResult,
+]
+
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption = 'never',
@@ -963,13 +976,16 @@ export class RouterCore<
   tempLocationKey: string | undefined = `${Math.round(
     Math.random() * 10000000,
   )}`
-  resetNextScroll = true
+  _scroll: {
+    next: boolean
+    restoring?: boolean
+    restoration?: boolean
+    reset?: boolean
+  } = { next: true }
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
   viewTransitionPromise?: ControlledPromise<true>
-  isScrollRestoring = false
-  isScrollRestorationSetup = false
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
@@ -998,6 +1014,10 @@ export class RouterCore<
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: LRUCache<string, string>
   private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
+  private lightweightCache = new WeakMap<
+    ParsedLocation,
+    LightweightRouteMatchCacheEntry
+  >()
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1715,12 +1735,15 @@ export class RouterCore<
    * Only computes fullPath, accumulated search, and params - skipping expensive
    * operations like AbortController, ControlledPromise, loaderDeps, and full match objects.
    */
-  private matchRoutesLightweight(location: ParsedLocation): {
-    matchedRoutes: ReadonlyArray<AnyRoute>
-    fullPath: string
-    search: Record<string, unknown>
-    params: Record<string, unknown>
-  } {
+  private matchRoutesLightweight(
+    location: ParsedLocation,
+  ): LightweightRouteMatchResult {
+    const lastStateMatchId = last(this.stores.matchesId.get())
+    const cached = this.lightweightCache.get(location)
+    if (cached && cached[0] === lastStateMatchId) {
+      return cached[1]
+    }
+
     const { matchedRoutes, routeParams } = this.getMatchedRoutes(
       location.pathname,
     )
@@ -1749,7 +1772,6 @@ export class RouterCore<
     }
 
     // Determine params: reuse from state if possible, otherwise parse
-    const lastStateMatchId = last(this.stores.matchesId.get())
     const lastStateMatch =
       lastStateMatchId && this.stores.matchStores.get(lastStateMatchId)?.get()
     const canReuseParams =
@@ -1776,12 +1798,14 @@ export class RouterCore<
       params = strictParams
     }
 
-    return {
+    const result = {
       matchedRoutes,
       fullPath: lastRoute.fullPath,
       search: accumulatedSearch,
       params,
     }
+    this.lightweightCache.set(location, [lastStateMatchId, result])
+    return result
   }
 
   cancelMatch = (id: string) => {
@@ -2226,7 +2250,7 @@ export class RouterCore<
       )
     }
 
-    this.resetNextScroll = next.resetScroll ?? true
+    this._scroll.next = next.resetScroll ?? true
 
     if (!this.history.subscribers.size) {
       this.load(
@@ -2290,7 +2314,7 @@ export class RouterCore<
 
     // Clear pending location after commit starts
     // We do this on next microtask to allow synchronous navigate calls to chain
-    Promise.resolve().then(() => {
+    queueMicrotask(() => {
       if (this.pendingBuiltLocation === location) {
         this.pendingBuiltLocation = undefined
       }
@@ -2350,7 +2374,7 @@ export class RouterCore<
             `Blocked navigation to dangerous protocol: ${reloadHref}`,
           )
         }
-        return Promise.resolve()
+        return
       }
 
       // Check blockers for external URLs unless ignoreBlocker is true
@@ -2366,7 +2390,7 @@ export class RouterCore<
               action: 'PUSH',
             })
             if (shouldBlock) {
-              return Promise.resolve()
+              return
             }
           }
         }
@@ -2377,7 +2401,7 @@ export class RouterCore<
       } else {
         window.location.href = reloadHref
       }
-      return Promise.resolve()
+      return
     }
 
     return this.buildAndCommitLocation({
@@ -3120,115 +3144,108 @@ function applySearchMiddleware({
 }
 
 function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
-  const context = {
-    dest: null as unknown as BuildNextOptions,
-    _includeValidateSearch: false,
-    middlewares: [] as Array<SearchMiddleware<any>>,
-  }
+  let dest: BuildNextOptions
+  let includeValidateSearch: boolean | undefined
+  const middlewares = [] as Array<SearchMiddleware<any>>
 
   for (const route of destRoutes) {
-    if ('search' in route.options) {
-      if (route.options.search?.middlewares) {
-        context.middlewares.push(...route.options.search.middlewares)
+    const routeOptions = route.options
+    if ('search' in routeOptions) {
+      if (routeOptions.search?.middlewares) {
+        middlewares.push(...routeOptions.search.middlewares)
       }
     }
     // TODO remove preSearchFilters and postSearchFilters in v2
-    else if (
-      route.options.preSearchFilters ||
-      route.options.postSearchFilters
-    ) {
+    else if (routeOptions.preSearchFilters || routeOptions.postSearchFilters) {
       const legacyMiddleware: SearchMiddleware<any> = ({ search, next }) => {
-        let nextSearch = search
-
-        if (
-          'preSearchFilters' in route.options &&
-          route.options.preSearchFilters
-        ) {
-          nextSearch = route.options.preSearchFilters.reduce(
-            (prev, next) => next(prev),
-            search,
-          )
-        }
+        const nextSearch = routeOptions.preSearchFilters
+          ? routeOptions.preSearchFilters.reduce(
+              (prev, next) => next(prev),
+              search,
+            )
+          : search
 
         const result = next(nextSearch)
 
-        if (
-          'postSearchFilters' in route.options &&
-          route.options.postSearchFilters
-        ) {
-          return route.options.postSearchFilters.reduce(
-            (prev, next) => next(prev),
-            result,
-          )
-        }
+        return routeOptions.postSearchFilters
+          ? routeOptions.postSearchFilters.reduce(
+              (prev, next) => next(prev),
+              result,
+            )
+          : result
+      }
+      middlewares.push(legacyMiddleware)
+    }
 
+    const routeValidateSearch = routeOptions.validateSearch
+    if (routeValidateSearch) {
+      const validate: SearchMiddleware<any> = ({ search, next, meta }) => {
+        const result = next(search)
+        if (includeValidateSearch) {
+          try {
+            const validated = validateSearch(routeValidateSearch, result) as any
+
+            if (meta && validated) {
+              for (const key in validated) {
+                if (!(key in result)) {
+                  ;(meta.defaulted ||= new Map()).set(key, validated[key])
+                }
+              }
+            }
+            return { ...result, ...validated }
+          } catch {
+            // ignore errors here because they are already handled in matchRoutes
+          }
+        }
         return result
       }
-      context.middlewares.push(legacyMiddleware)
-    }
 
-    if (route.options.validateSearch) {
-      const validate: SearchMiddleware<any> = ({ search, next }) => {
-        const result = next(search)
-        if (!context._includeValidateSearch) return result
-        try {
-          const validatedSearch = {
-            ...result,
-            ...(validateSearch(route.options.validateSearch, result) ??
-              undefined),
-          }
-          return validatedSearch
-        } catch {
-          // ignore errors here because they are already handled in matchRoutes
-          return result
-        }
-      }
-
-      context.middlewares.push(validate)
+      middlewares.push(validate)
     }
   }
-
-  // the chain ends here since `next` is not called
-  const final: SearchMiddleware<any> = ({ search }) => {
-    const dest = context.dest
-    if (!dest.search) {
-      return {}
-    }
-    if (dest.search === true) {
-      return search
-    }
-    return functionalUpdate(dest.search, search)
-  }
-
-  context.middlewares.push(final)
 
   const applyNext = (
     index: number,
     currentSearch: any,
-    middlewares: Array<SearchMiddleware<any>>,
+    meta?: SearchMiddlewareMeta,
   ): any => {
     // no more middlewares left, return the current search
     if (index >= middlewares.length) {
-      return currentSearch
+      if (!dest.search) {
+        return {}
+      }
+      if (dest.search === true) {
+        return currentSearch
+      }
+      const result = functionalUpdate(dest.search, currentSearch)
+      if (meta) {
+        meta.explicit = result
+      }
+      return result
     }
 
-    const middleware = middlewares[index]!
-
-    const next = (newSearch: any): any => {
-      return applyNext(index + 1, newSearch, middlewares)
+    const next = (newSearch: any, collectMeta?: true): any => {
+      if (collectMeta) {
+        const nextMeta = meta || ({} as SearchMiddlewareMeta)
+        return {
+          search: applyNext(index + 1, newSearch, nextMeta),
+          meta: nextMeta,
+        }
+      }
+      return applyNext(index + 1, newSearch, meta)
     }
 
-    return middleware({ search: currentSearch, next })
+    return (middlewares[index]! as any)({ search: currentSearch, next, meta })
   }
 
   return function middleware(
     search: any,
-    dest: BuildNextOptions,
+    nextDest: BuildNextOptions,
     _includeValidateSearch: boolean,
   ) {
-    context.dest = dest
-    context._includeValidateSearch = _includeValidateSearch
-    return applyNext(0, search, context.middlewares)
+    dest = nextDest
+    includeValidateSearch = _includeValidateSearch
+    return applyNext(0, search)
   }
 }
 

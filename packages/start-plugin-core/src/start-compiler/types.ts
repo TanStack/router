@@ -48,6 +48,8 @@ export interface MethodCallInfo {
  */
 export interface MethodChainPaths {
   middleware: MethodCallInfo | null
+  validator: MethodCallInfo | null
+  // TODO remove upon stable
   inputValidator: MethodCallInfo | null
   handler: MethodCallInfo | null
   server: MethodCallInfo | null

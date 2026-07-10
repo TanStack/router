@@ -1,5 +1,78 @@
 # @tanstack/start-server-core
 
+## 1.169.16
+
+### Patch Changes
+
+- Updated dependencies [[`9809a06`](https://github.com/TanStack/router/commit/9809a0619d4ed3fe8c2a393af5b9eca4b6c7695b), [`ba52d2b`](https://github.com/TanStack/router/commit/ba52d2b8f9e95d6becd1be14c020b35f3231e02c)]:
+  - @tanstack/router-core@1.171.14
+  - @tanstack/start-client-core@1.170.13
+  - @tanstack/start-storage-context@1.167.16
+
+## 1.169.15
+
+### Patch Changes
+
+- [#7599](https://github.com/TanStack/router/pull/7599) [`96eca43`](https://github.com/TanStack/router/commit/96eca43ab8ee21917a8075521bef6dcf15fc7a43) - Skip a full router.update for faster createStartHandler
+
+## 1.169.14
+
+### Patch Changes
+
+- Updated dependencies [[`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825)]:
+  - @tanstack/start-client-core@1.170.12
+
+## 1.169.13
+
+### Patch Changes
+
+- Updated dependencies [[`776d8ef`](https://github.com/TanStack/router/commit/776d8ef283e5bd9ffe97d43bc3a7f58064cd7e03)]:
+  - @tanstack/router-core@1.171.13
+  - @tanstack/start-client-core@1.170.11
+  - @tanstack/start-storage-context@1.167.15
+
+## 1.169.12
+
+### Patch Changes
+
+- Updated dependencies [[`df1076c`](https://github.com/TanStack/router/commit/df1076c03ae5a51ab384bebd4d6afda20fb6f107)]:
+  - @tanstack/router-core@1.171.12
+  - @tanstack/start-client-core@1.170.10
+  - @tanstack/start-storage-context@1.167.14
+
+## 1.169.11
+
+### Patch Changes
+
+- Updated dependencies [[`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01)]:
+  - @tanstack/router-core@1.171.11
+  - @tanstack/start-client-core@1.170.9
+  - @tanstack/start-storage-context@1.167.13
+
+## 1.169.10
+
+### Patch Changes
+
+- Updated dependencies [[`2cca73c`](https://github.com/TanStack/router/commit/2cca73c92262ffd96dac4e283c9f69fb37f4b43a), [`7a83e67`](https://github.com/TanStack/router/commit/7a83e67e6596fbef21cb0a88a7127f5935bed2ba), [`76b3d3b`](https://github.com/TanStack/router/commit/76b3d3b24522bd3d1d216674c441252c9b8f184c)]:
+  - @tanstack/router-core@1.171.10
+  - @tanstack/start-client-core@1.170.8
+  - @tanstack/start-storage-context@1.167.12
+
+## 1.169.9
+
+### Patch Changes
+
+- Updated dependencies [[`b4cd5af`](https://github.com/TanStack/router/commit/b4cd5af8d0f9d4aaa2d29095e6a261b9181bc778)]:
+  - @tanstack/router-core@1.171.9
+  - @tanstack/start-client-core@1.170.7
+  - @tanstack/start-storage-context@1.167.11
+
+## 1.169.8
+
+### Patch Changes
+
+- [#7509](https://github.com/TanStack/router/pull/7509) [`9cb7a00`](https://github.com/TanStack/router/commit/9cb7a003e6e5fa3706711870c7b10a5266356e3b) - feat(rsbuild): add RSC support
+
 ## 1.169.7
 
 ### Patch Changes

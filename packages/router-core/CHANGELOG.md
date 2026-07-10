@@ -1,5 +1,49 @@
 # @tanstack/router-core
 
+## 1.171.14
+
+### Patch Changes
+
+- [#7695](https://github.com/TanStack/router/pull/7695) [`9809a06`](https://github.com/TanStack/router/commit/9809a0619d4ed3fe8c2a393af5b9eca4b6c7695b) - fix(router-core): re-encode URL-unsafe characters in `sanitizePathSegment` to prevent infinite redirect loops
+
+  `sanitizePathSegment` now re-encodes characters in the WHATWG URL "path percent-encode set" (`<`, `>`, `"`, `` ` ``, `{`, `}`) and ASCII control characters back to their percent-encoded form, instead of stripping control characters. This prevents mismatches between the original URL and the router's internal representation that previously caused infinite 307 redirect loops on paths containing these characters (e.g. `/%7B%7Btemplate%7D%7D`).
+
+  Fixes [#7587](https://github.com/TanStack/router/issues/7587).
+
+## 1.171.13
+
+### Patch Changes
+
+- [#7562](https://github.com/TanStack/router/pull/7562) [`776d8ef`](https://github.com/TanStack/router/commit/776d8ef283e5bd9ffe97d43bc3a7f58064cd7e03) - Prevent scroll restoration listeners from being installed when scroll restoration is disabled.
+
+## 1.171.12
+
+### Patch Changes
+
+- [#7559](https://github.com/TanStack/router/pull/7559) [`df1076c`](https://github.com/TanStack/router/commit/df1076c03ae5a51ab384bebd4d6afda20fb6f107) - Fix retained search params overriding explicit default-valued navigations when used with `stripSearchParams`.
+
+## 1.171.11
+
+### Patch Changes
+
+- [#7555](https://github.com/TanStack/router/pull/7555) [`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01) - Fix search middleware composition so `retainSearchParams` does not restore search params that a downstream `stripSearchParams` removed.
+
+## 1.171.10
+
+### Patch Changes
+
+- [#7381](https://github.com/TanStack/router/pull/7381) [`2cca73c`](https://github.com/TanStack/router/commit/2cca73c92262ffd96dac4e283c9f69fb37f4b43a) - fix(router-core): use search validator output type for search middleware context
+
+- [#7549](https://github.com/TanStack/router/pull/7549) [`7a83e67`](https://github.com/TanStack/router/commit/7a83e67e6596fbef21cb0a88a7127f5935bed2ba) - Fix `retainSearchParams` preserving current search params when validation adds default search values during navigation.
+
+- [#7533](https://github.com/TanStack/router/pull/7533) [`76b3d3b`](https://github.com/TanStack/router/commit/76b3d3b24522bd3d1d216674c441252c9b8f184c) - delete $\_TSR immediately on stream end
+
+## 1.171.9
+
+### Patch Changes
+
+- [#7524](https://github.com/TanStack/router/pull/7524) [`b4cd5af`](https://github.com/TanStack/router/commit/b4cd5af8d0f9d4aaa2d29095e6a261b9181bc778) - defer `$_TSR` teardown until DOMContentLoaded
+
 ## 1.171.8
 
 ### Patch Changes

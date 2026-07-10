@@ -16,7 +16,7 @@ test('SSR HTML emits IIFE client scripts and classic script preloads', async ({
   expect(html).toMatch(/<link[^>]+rel="preload"[^>]+as="script"/)
 
   const clientEntry = html.match(
-    /<script\b[^>]+src="([^"]*\/static\/js\/index[^"]*)"[^>]*>/,
+    /<script\b[^>]+src="([^"]*\/assets\/js\/index[^"]*)"[^>]*>/,
   )
   expect(clientEntry).toBeTruthy()
   expect(clientEntry![0]).toContain('async')

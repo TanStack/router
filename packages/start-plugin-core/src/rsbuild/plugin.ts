@@ -11,6 +11,7 @@ import { escapeRegExp, normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
 import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
+  RSBUILD_CLIENT_ASSETS_DIR,
   RSBUILD_ENVIRONMENT_NAMES,
   RSBUILD_RSC_LAYERS,
   createRsbuildEnvironmentPlan,
@@ -23,7 +24,7 @@ import {
   START_MANIFEST_PLACEHOLDER,
   registerVirtualModules,
 } from './virtual-modules'
-import { createServerSetup } from './dev-server'
+import { createServerSetup } from './server-middleware'
 import { registerClientBuildCapture } from './normalized-client-build'
 import { registerRouterPlugins } from './start-router-plugin'
 import { postBuildWithRsbuild } from './post-build'
@@ -158,6 +159,7 @@ export function tanStackStartRsbuild(
 
         const resolvedEntryPlan = configContext.resolveEntries()
         const isDev = api.context.action === 'dev'
+        const isPreview = api.context.action === 'preview'
 
         const entryAliases = createRsbuildResolvedEntryAliases({
           entryPaths: resolvedEntryPlan.entryPaths,
@@ -184,6 +186,21 @@ export function tanStackStartRsbuild(
 
         return mergeRsbuildConfig(rsbuildConfig, {
           source: {
+            ...(rscEnabled
+              ? {
+                  include: [
+                    // RSC needs SWC to inspect package code in node_modules so directives such as "use client" can be discovered.
+                    // This follows Rsbuild's documented broad include form for compiling node_modules, with core-js excluded:
+                    // https://rsbuild.rs/config/source/include#compile-node_modules
+                    //
+                    // TODO: Once the Rspack rule matching needed here is ready, narrow this to React-aware packages, for example via
+                    // descriptionData: { "peerDependencies.react": /./ }, so unrelated dependencies are not sent through swc-loader.
+                    {
+                      not: /[\\/]core-js[\\/]/,
+                    },
+                  ],
+                }
+              : {}),
             define: {
               'process.env.TSS_SERVER_FN_BASE': JSON.stringify(serverFnBase),
               'import.meta.env.TSS_SERVER_FN_BASE':
@@ -228,6 +245,10 @@ export function tanStackStartRsbuild(
             },
           },
           server: {
+            ...(rsbuildConfig.server?.printUrls === undefined ||
+            rsbuildConfig.server.printUrls === true
+              ? { printUrls: ({ urls }: { urls: Array<string> }) => urls }
+              : {}),
             // Rsbuild compression currently treats Node's raw header array
             // writeHead form as an object, which corrupts SSR response headers.
             compress: false,
@@ -236,11 +257,17 @@ export function tanStackStartRsbuild(
             htmlFallback: false,
             // server.setup returned callback runs after built-in middleware
             // but BEFORE fallback middleware — the ideal slot for SSR.
-            ...(isDev &&
-            startPluginOpts.rsbuild?.installDevServerMiddleware !== false
+            // Preview always installs the middleware since it is the only SSR
+            // handler; dev can opt out when a custom server hosts SSR.
+            ...(isPreview ||
+            (isDev &&
+              startPluginOpts.rsbuild?.installDevServerMiddleware !== false)
               ? {
                   setup: createServerSetup({
                     serverFnBasePath: serverFnBase,
+                    serverOutputDirectory:
+                      resolvedStartConfig.outputDirectories.server,
+                    publicBase: resolvedStartConfig.basePaths.publicBase,
                   }),
                 }
               : {}),
@@ -299,7 +326,7 @@ export function tanStackStartRsbuild(
         ssrIsProvider,
         serializationAdapters: corePluginOpts.serializationAdapters,
         getDevClientEntryUrl: (publicBase: string) =>
-          joinURL(publicBase, 'static/js/index.js'),
+          joinURL(publicBase, RSBUILD_CLIENT_ASSETS_DIR, 'js/index.js'),
         rscEnabled,
         scriptFormat,
       })
@@ -507,9 +534,12 @@ export function tanStackStartRsbuild(
             // Add ServerPlugin with HMR callback
             config.plugins.push(
               new rscPlugins.ServerPlugin({
-                clientEntryName: 'index',
-                runtimeEntryName: 'index',
-                injectSsrModulesToEntries: ['index'],
+                cssLink: {
+                  precedence: false,
+                  props: {
+                    'data-rsc-css-href': '',
+                  },
+                },
                 onServerComponentChanges: () => {
                   // Send rsc:update to connected clients for HMR
                   devServerRef?.sockWrite('custom', {

@@ -230,7 +230,7 @@ export interface RegisterVirtualModulesOptions {
   /**
    * Get the URL at which the rsbuild dev server serves the client entry JS.
    * Called lazily inside modifyRspackConfig when getConfig() is available.
-   * Example return: '/static/js/index.js'
+   * Example return: '/assets/js/index.js'
    */
   getDevClientEntryUrl: (publicBase: string) => string
   /** Whether RSC virtual modules should be registered. */
@@ -433,7 +433,7 @@ export function registerVirtualModules(
         : `export function createFromReadableStream() { throw new Error('RSC browser decode is only available in the client environment') }
 export function createFromFetch() { throw new Error('RSC browser decode is only available in the client environment') }`
       content[rscPaths.rscSsrDecode] = isServerEnv
-        ? `export * from '@tanstack/react-start/rsbuild/ssr-decode'`
+        ? `export { setOnClientReference, createFromReadableStream } from '@tanstack/react-start/rsbuild/ssr-decode'`
         : `export function setOnClientReference() {}
 export function createFromReadableStream() { throw new Error('RSC SSR decode is only available in the server environment') }`
     }

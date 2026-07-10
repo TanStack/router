@@ -391,11 +391,9 @@ export const BaseTanStackRouterDevtoolsPanel =
               ![
                 'stores',
                 'basepath',
-                'injectedHtml',
                 'subscribers',
                 'latestLoadPromise',
-                'navigateTimeout',
-                'resetNextScroll',
+                '_scroll',
                 'tempLocationKey',
                 'latestLocation',
                 'routeTree',

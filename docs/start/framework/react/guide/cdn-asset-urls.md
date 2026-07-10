@@ -317,16 +317,21 @@ Warmup has no effect in development mode or when `cache: false`.
 
 > **Note:** In development mode (`TSS_DEV_SERVER`), caching is always skipped regardless of the `cache` setting, so you always get fresh manifests.
 
-## Use Relative Vite Asset Paths for Client Navigation
+## Keep Client Navigation Chunks on the CDN
 
 `transformAssets` rewrites the URLs in the SSR HTML: script preload hints, stylesheet links, and the client entry script. This means the browser's initial page load can fetch those assets from the CDN.
 
-When users navigate client-side, TanStack Router lazy-loads route chunks using `import()` calls with paths baked in by the bundler. With Vite's default `base: '/'`, those paths are absolute, such as `/assets/about-abc123.js`, and resolve against the app server origin instead of the CDN.
+When users navigate client-side, TanStack Router lazy-loads route chunks using `import()` calls with paths baked in by the bundler. Configure your bundler so those async chunk URLs resolve relative to the client entry script that `transformAssets` rewrites to the CDN.
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+With Vite's default `base: '/'`, lazy route chunk paths are absolute, such as `/assets/about-abc123.js`, and resolve against the app server origin instead of the CDN.
 
 For Vite builds, set `base: ''` so Vite generates relative import paths for client-side chunks.
 
-```ts
-// vite.config.ts
+```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 
 export default defineConfig({
@@ -345,6 +350,25 @@ Using an empty string rather than `'./'` is important. Both produce relative cli
 | `''`            | CDN through `transformAssets` | CDN, relative to entry module |
 
 Use `base: ''` whenever you use `transformAssets` with Vite and want initial-load assets and client-navigation chunks served from the same CDN.
+
+# Rsbuild
+
+For Rsbuild builds, set `output.assetPrefix` to `'auto'` so Rspack derives async chunk URLs from the loaded client entry script.
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+
+export default defineConfig({
+  output: {
+    assetPrefix: 'auto',
+  },
+  // ... plugins, etc.
+})
+```
+
+With `assetPrefix: 'auto'`, the client entry script can be loaded from the CDN by `transformAssets`, and async route chunks resolve relative to that entry script during client-side navigation.
+
+<!-- ::end:tabs -->
 
 ## What This Does Not Rewrite
 
@@ -368,7 +392,7 @@ If this stylesheet must use a CDN URL, use a bundler-level option or build-time 
 `transformAssets` also does not rewrite asset URLs imported directly in your components:
 
 ```tsx
-// This import resolves to a URL at build time by Vite.
+// This import resolves to a URL at build time by your bundler.
 import logo from './logo.svg'
 
 function Header() {
@@ -376,10 +400,15 @@ function Header() {
 }
 ```
 
-For these asset imports in Vite builds, use Vite's `experimental.renderBuiltUrl` in your `vite.config.ts`.
+For these asset imports, use the URL controls provided by your bundler.
 
-```ts
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+For Vite builds, use Vite's `experimental.renderBuiltUrl` in your `vite.config.ts`.
+
+```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 
 export default defineConfig({
@@ -394,3 +423,19 @@ export default defineConfig({
   },
 })
 ```
+
+# Rsbuild
+
+For Rsbuild builds where the CDN origin is known at build time, use `output.assetPrefix` in your `rsbuild.config.ts`.
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+
+export default defineConfig({
+  output: {
+    assetPrefix: 'https://cdn.example.com/',
+  },
+})
+```
+
+<!-- ::end:tabs -->

@@ -384,6 +384,7 @@ export function startCompilerPlugin(
             id,
             code,
             detectedKinds,
+            warn: (message) => this.warn(message),
           })
 
           return result

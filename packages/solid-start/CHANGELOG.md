@@ -1,5 +1,119 @@
 # @tanstack/solid-start
 
+## 1.168.27
+
+### Patch Changes
+
+- Updated dependencies [[`ba52d2b`](https://github.com/TanStack/router/commit/ba52d2b8f9e95d6becd1be14c020b35f3231e02c)]:
+  - @tanstack/start-client-core@1.170.13
+  - @tanstack/solid-router@1.170.17
+  - @tanstack/solid-start-client@1.168.15
+  - @tanstack/solid-start-server@1.167.21
+  - @tanstack/start-plugin-core@1.171.19
+  - @tanstack/start-server-core@1.169.16
+
+## 1.168.26
+
+### Patch Changes
+
+- Updated dependencies [[`96eca43`](https://github.com/TanStack/router/commit/96eca43ab8ee21917a8075521bef6dcf15fc7a43), [`41e7a24`](https://github.com/TanStack/router/commit/41e7a24f693b0f58c2bef89a2b8c4d084acbd531), [`e499164`](https://github.com/TanStack/router/commit/e499164c722841271af4aa2215483476bdb94c94)]:
+  - @tanstack/start-server-core@1.169.15
+  - @tanstack/solid-router@1.170.16
+  - @tanstack/start-plugin-core@1.171.18
+  - @tanstack/solid-start-server@1.167.20
+  - @tanstack/solid-start-client@1.168.14
+
+## 1.168.25
+
+### Patch Changes
+
+- [#7566](https://github.com/TanStack/router/pull/7566) [`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825) - Add `validator()` as the canonical server function and middleware validator method. Deprecate `inputValidator()` and emit compiler warnings for remaining uses.
+
+- Updated dependencies [[`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825)]:
+  - @tanstack/start-client-core@1.170.12
+  - @tanstack/start-plugin-core@1.171.17
+  - @tanstack/solid-start-client@1.168.13
+  - @tanstack/start-server-core@1.169.14
+  - @tanstack/solid-start-server@1.167.19
+
+## 1.168.24
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.170.15
+  - @tanstack/solid-start-client@1.168.12
+  - @tanstack/solid-start-server@1.167.18
+  - @tanstack/start-client-core@1.170.11
+  - @tanstack/start-plugin-core@1.171.16
+  - @tanstack/start-server-core@1.169.13
+
+## 1.168.23
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.170.14
+  - @tanstack/solid-start-client@1.168.11
+  - @tanstack/solid-start-server@1.167.17
+  - @tanstack/start-client-core@1.170.10
+  - @tanstack/start-plugin-core@1.171.15
+  - @tanstack/start-server-core@1.169.12
+
+## 1.168.22
+
+### Patch Changes
+
+- Updated dependencies [[`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01)]:
+  - @tanstack/solid-router@1.170.13
+  - @tanstack/solid-start-client@1.168.10
+  - @tanstack/solid-start-server@1.167.16
+  - @tanstack/start-client-core@1.170.9
+  - @tanstack/start-plugin-core@1.171.14
+  - @tanstack/start-server-core@1.169.11
+
+## 1.168.21
+
+### Patch Changes
+
+- Updated dependencies [[`301f6ba`](https://github.com/TanStack/router/commit/301f6ba4599386edd6fb3b8423938c48eedb501f)]:
+  - @tanstack/start-plugin-core@1.171.13
+  - @tanstack/solid-router@1.170.12
+  - @tanstack/solid-start-client@1.168.9
+  - @tanstack/solid-start-server@1.167.15
+  - @tanstack/start-client-core@1.170.8
+  - @tanstack/start-server-core@1.169.10
+
+## 1.168.20
+
+### Patch Changes
+
+- Updated dependencies [[`8091918`](https://github.com/TanStack/router/commit/80919186cbdd0deb948b46fe328881a14a08f414)]:
+  - @tanstack/start-plugin-core@1.171.12
+
+## 1.168.19
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.170.11
+  - @tanstack/solid-start-client@1.168.8
+  - @tanstack/solid-start-server@1.167.14
+  - @tanstack/start-client-core@1.170.7
+  - @tanstack/start-plugin-core@1.171.11
+  - @tanstack/start-server-core@1.169.9
+
+## 1.168.18
+
+### Patch Changes
+
+- [#7509](https://github.com/TanStack/router/pull/7509) [`9cb7a00`](https://github.com/TanStack/router/commit/9cb7a003e6e5fa3706711870c7b10a5266356e3b) - feat(rsbuild): add RSC support
+
+- Updated dependencies [[`9cb7a00`](https://github.com/TanStack/router/commit/9cb7a003e6e5fa3706711870c7b10a5266356e3b)]:
+  - @tanstack/start-plugin-core@1.171.10
+  - @tanstack/start-server-core@1.169.8
+  - @tanstack/solid-start-server@1.167.13
+
 ## 1.168.17
 
 ### Patch Changes
