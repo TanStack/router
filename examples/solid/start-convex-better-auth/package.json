@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.9.7",
-    "@solidjs/web": "2.0.0-beta.16",
+    "@solidjs/web": "2.0.0-beta.17",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-router": "^2.0.0-beta.23",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.18",
@@ -22,7 +22,7 @@
     "convex": "^1.28.2",
     "convex-solidjs": "^0.0.3",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.16",
+    "solid-js": "2.0.0-beta.17",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.2.2",
     "zod": "^4.4.3"

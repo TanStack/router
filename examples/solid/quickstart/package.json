@@ -9,11 +9,11 @@
     "start": "vite"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.16",
+    "@solidjs/web": "2.0.0-beta.17",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-router": "^2.0.0-beta.23",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.18",
-    "solid-js": "2.0.0-beta.16",
+    "solid-js": "2.0.0-beta.17",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

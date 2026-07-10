@@ -14,13 +14,13 @@
     "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:browser && pnpm run test:e2e:hash"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.16",
+    "@solidjs/web": "2.0.0-beta.17",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.16",
+    "solid-js": "2.0.0-beta.17",
     "tailwindcss": "^4.2.2",
     "zod": "^4.4.3"
   },
