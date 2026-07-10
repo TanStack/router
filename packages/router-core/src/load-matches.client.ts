@@ -160,7 +160,7 @@ const adoptInFlightPreload = async (
   inner: InnerLoadContext,
   index: number,
   passController: AbortController,
-): Promise<{ loaderData: unknown } | undefined> => {
+): Promise<true | undefined> => {
   const match = inner.matches[index]!
 
   for (const lane of inner.router._preloadLanes!) {
@@ -194,7 +194,8 @@ const adoptInFlightPreload = async (
     if (donor?.status !== 'success') {
       return undefined
     }
-    return { loaderData: donor.loaderData }
+    commitMatch(inner, index, { loaderData: donor.loaderData })
+    return true
   }
 
   // A preload that completes in the microtask window between matchRoutes
@@ -652,11 +653,7 @@ const loadClientRouteMatch = async (
           ? await adoptInFlightPreload(inner, index, passController)
           : undefined
 
-      if (adopted) {
-        commitMatch(inner, index, {
-          loaderData: adopted.loaderData,
-        })
-      } else {
+      if (!adopted) {
         // Kick off the loader!
         const loaderResult = loader?.(
           getLoaderContext(inner, matchPromises, index, route),
@@ -1048,13 +1045,9 @@ export async function loadClientMatches(
       }
 
       const beforeLoadResult = handleClientBeforeLoad(inner, i)
-      if (isPromise(beforeLoadResult)) {
-        inner.serialFailure = (await beforeLoadResult) as
-          | SerialFailure
-          | undefined
-      } else {
-        inner.serialFailure = beforeLoadResult as SerialFailure | undefined
-      }
+      inner.serialFailure = (
+        isPromise(beforeLoadResult) ? await beforeLoadResult : beforeLoadResult
+      ) as SerialFailure | undefined
     } catch (err) {
       if (err === inner) {
         // This pass lost ownership before serial loading reached a route outcome.
@@ -1069,13 +1062,9 @@ export async function loadClientMatches(
     }
   }
 
-  let maxIndexExclusive = inner.matches.length
-  if (inner.serialFailure) {
-    maxIndexExclusive = Math.min(
-      maxIndexExclusive,
-      serialFailurePrefixCap(inner, inner.serialFailure),
-    )
-  }
+  const maxIndexExclusive = inner.serialFailure
+    ? serialFailurePrefixCap(inner, inner.serialFailure)
+    : inner.matches.length
 
   for (let i = 0; i < maxIndexExclusive; i++) {
     matchPromises[i] ||= loadClientRouteMatch(inner, matchPromises, i)
@@ -1125,7 +1114,7 @@ export async function loadClientMatches(
     throw fatalError
   }
 
-  const errorIndex = inner.badIndex
+  let trimIndex = inner.badIndex
 
   if (firstNotFound) {
     // Determine once which matched route will actually render the
@@ -1141,11 +1130,11 @@ export async function loadClientMatches(
     const patch = getNotFoundBoundaryPatch(inner, index, firstNotFound)
     commitMatch(inner, index, patch)
     finishMatchLoad(inner, index)
-    while (inner.matches.length > index + 1) {
-      settleMatchLoad(inner.matches.pop()!)
-    }
-  } else if (errorIndex !== undefined) {
-    while (inner.matches.length > errorIndex + 1) {
+    trimIndex = index
+  }
+
+  if (trimIndex !== undefined) {
+    while (inner.matches.length > trimIndex + 1) {
       settleMatchLoad(inner.matches.pop()!)
     }
   }

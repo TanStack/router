@@ -55,20 +55,6 @@ function preloadRouteComponent(
   return preload
 }
 
-function preloadRouteComponents(
-  route: AnyRoute,
-): Promise<Array<void>> | undefined {
-  let preloads: Array<Promise<void>> | undefined
-  for (const componentType of componentTypes) {
-    const preload = preloadRouteComponent(route, componentType, false)
-    if (preload) {
-      ;(preloads ||= []).push(preload)
-    }
-  }
-
-  return preloads && Promise.all(preloads)
-}
-
 export function loadRouteChunk(
   route: AnyRoute,
   componentType?: RouteComponentType,
@@ -91,13 +77,11 @@ export function loadRouteChunk(
       // next load generation retries the import, like component chunk
       // preloads. Awaiters of the evicted promise still own the rejection.
       const lazyPromise = route._lazyPromise
-      if (lazyPromise) {
-        void lazyPromise.then(null, () => {
-          if (route._lazyPromise === lazyPromise) {
-            route._lazyPromise = undefined
-          }
-        })
-      }
+      void lazyPromise.catch(() => {
+        if (route._lazyPromise === lazyPromise) {
+          route._lazyPromise = undefined
+        }
+      })
     } else {
       route._lazyLoaded = true
     }
@@ -115,7 +99,14 @@ export function loadRouteChunk(
       return preloadRouteComponent(route, componentType, true)
     }
     if (!route._componentsPromise) {
-      const componentsPromise = preloadRouteComponents(route)
+      let preloads: Array<Promise<void>> | undefined
+      for (const type of componentTypes) {
+        const preload = preloadRouteComponent(route, type, false)
+        if (preload) {
+          ;(preloads ||= []).push(preload)
+        }
+      }
+      const componentsPromise = preloads && Promise.all(preloads)
 
       if (componentsPromise) {
         route._componentsPromise = componentsPromise.then(

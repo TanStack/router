@@ -866,7 +866,7 @@ const preloadRouterRoute =
     ? async () => undefined
     : isServer === false
       ? preloadClientRoute
-      : (router: AnyRouter, opts: any) =>
+      : async (router: AnyRouter, opts: any) =>
           router.isServer ? undefined : preloadClientRoute(router, opts)
 
 export interface ViewTransitionOptions {
@@ -2392,9 +2392,7 @@ export class RouterCore<
   declare _preloadLanes: Set<{ matches: Array<AnyRouteMatch> }> | undefined
   declare _backgroundLoad: BackgroundLoad | undefined
 
-  load: LoadFn = async (opts) => {
-    await loadRouter(this, opts)
-  }
+  load: LoadFn = (opts) => loadRouter(this, opts)
 
   startViewTransition = (fn: () => Promise<void>): Promise<void> => {
     const shouldViewTransition =
@@ -2579,9 +2577,7 @@ export class RouterCore<
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory
-  > = async (opts) => {
-    return preloadRouterRoute(this, opts)
-  }
+  > = (opts) => preloadRouterRoute(this, opts)
 
   matchRoute: MatchRouteFn<
     TRouteTree,

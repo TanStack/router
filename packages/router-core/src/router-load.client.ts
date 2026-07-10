@@ -245,7 +245,7 @@ export const loadClientRouter = async (
 
     const backgroundIndices = background?.filter((index) => {
       const match = pendingMatches[index]
-      return match && match.status === 'success' && !match.globalNotFound
+      return match?.status === 'success' && !match.globalNotFound
     })
     const backgroundLength = backgroundIndices?.length
     // Pending-UI publication implies requiresCommit: publish() only fires for
@@ -341,8 +341,9 @@ export const loadClientRouter = async (
 
   if (startedBackgroundLoad) {
     // Background stale reloads run after the foreground lane is done. If that
-    // background work is sync, its commit is queued in the next microtask; yield
-    // once so the caller does not observe the temporary fetching marker.
-    await Promise.resolve()
+    // background work is sync, the async loader and its Promise.all reduction
+    // queue two continuations; yield for both so the caller does not observe
+    // the temporary fetching marker.
+    await Promise.resolve().then()
   }
 }

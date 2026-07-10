@@ -91,14 +91,13 @@ export function Transitioner() {
     const isAnyPending = isPagePending || transitioning.current
     previous.current = { isLoading, isPagePending, isAnyPending }
 
-    const subscriptions = [
-      router.stores.isLoading.subscribe(emitEdges),
-      router.stores.hasPending.subscribe(emitEdges),
-    ]
+    const isLoadingSubscription =
+      router.stores.isLoading.subscribe(emitEdges)
+    const hasPendingSubscription =
+      router.stores.hasPending.subscribe(emitEdges)
     return () => {
-      for (const subscription of subscriptions) {
-        subscription.unsubscribe()
-      }
+      isLoadingSubscription.unsubscribe()
+      hasPendingSubscription.unsubscribe()
     }
   }, [router, emitEdges])
 
