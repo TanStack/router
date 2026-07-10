@@ -145,6 +145,41 @@ test('should show pendingComponent of root route', async () => {
   expect(await rendered.findByTestId('root-content')).toBeInTheDocument()
 })
 
+test('useMatchRoute matches typed params from routes with custom parse and stringify functions', async () => {
+  const rootRoute = createRootRoute()
+  const invoiceRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/invoices/$invoiceId',
+    params: {
+      parse: ({ invoiceId }: { invoiceId: string }) => ({
+        invoiceId: Number(invoiceId),
+      }),
+      stringify: ({ invoiceId }: { invoiceId: number }) => ({
+        invoiceId: String(invoiceId),
+      }),
+    },
+    component: () => {
+      const matchRoute = useMatchRoute()
+      const match = matchRoute({
+        to: '/invoices/$invoiceId',
+        params: { invoiceId: 123 },
+      })
+
+      return <div data-testid="match">{JSON.stringify(match)}</div>
+    },
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoiceRoute]),
+    history: createMemoryHistory({ initialEntries: ['/invoices/123'] }),
+  })
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByTestId('match')).toHaveTextContent(
+    '{"invoiceId":123}',
+  )
+})
+
 describe('matching on different param types', () => {
   const testCases = [
     {
