@@ -412,26 +412,39 @@ export const MatchInner = (): any => {
                   }
                 }
 
-                const loaderResult = Solid.createMemo(async () => {
-                  await new Promise((r) => setTimeout(r, 0))
-                  return router.getMatch(currentMatch().id)?._nonReactive
-                    .loadPromise
-                })
-
                 const FallbackComponent = Solid.untrack(
                   () =>
                     route().options.pendingComponent ??
                     router.options.defaultPendingComponent,
                 )
 
-                return (
-                  <>
-                    {FallbackComponent && pendingMinMs > 0 ? (
-                      <Dynamic component={FallbackComponent} />
-                    ) : null}
-                    {loaderResult()}
-                  </>
-                )
+                // Only suspend on the load promise during SSR, where the
+                // streaming engine needs the Loading boundary to wait for the
+                // match to settle. On the client, suspending here means an
+                // async source is live in the tree whenever a match is
+                // pending; since Solid 2.0.0-beta.16 that routes every signal
+                // write into a transition hold for the rest of the flush,
+                // which breaks router-core's synchronous write-then-load
+                // flows (e.g. invalidate() reloading a notFound match).
+                if (isServer ?? router.isServer) {
+                  const loaderResult = Solid.createMemo(
+                    () =>
+                      router.getMatch(currentMatch().id)?._nonReactive
+                        .loadPromise,
+                  )
+                  return (
+                    <>
+                      {FallbackComponent && pendingMinMs > 0 ? (
+                        <Dynamic component={FallbackComponent} />
+                      ) : null}
+                      {loaderResult()}
+                    </>
+                  )
+                }
+
+                return FallbackComponent ? (
+                  <Dynamic component={FallbackComponent} />
+                ) : null
               }}
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'notFound'}>
