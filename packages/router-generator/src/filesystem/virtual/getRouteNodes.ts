@@ -301,11 +301,21 @@ export async function getRouteNodesRecursive(
             node.id = ensureLeadingUnderScore(fileNameWithoutExt)
           }
           const lastSegment = node.id
+          // Layout ids from filenames like `pathless.layout.tsx` become
+          // `_pathless.layout`. Those dots are part of the identifier, not
+          // path separators — if we pass them through determineInitialRoutePath
+          // raw, SPLIT_REGEX turns them into `/` and children mount under a
+          // real `/layout` URL segment (regression from 1.145.1, #7761).
+          // Escape unbracketed dots so the id stays one pathless segment.
+          const segmentForPath = removeLeadingSlash(lastSegment).replace(
+            /(?<!\[)\.(?!\])/g,
+            '[.]',
+          )
           // Process the segment to handle escape sequences like [_]
           const {
             routePath: escapedSegment,
             originalRoutePath: originalSegment,
-          } = determineInitialRoutePath(removeLeadingSlash(lastSegment))
+          } = determineInitialRoutePath(segmentForPath)
           const routePath = `${parentRoutePath}${escapedSegment}`
           // Store the original path with brackets for escape detection
           const originalRoutePath = `${parentOriginalRoutePath}${originalSegment}`
