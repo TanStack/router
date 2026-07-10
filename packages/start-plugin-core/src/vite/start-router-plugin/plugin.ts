@@ -11,6 +11,7 @@ import { prerenderRoutesPlugin } from '../../start-router-plugin/generator-plugi
 import { buildRouteTreeFileFooterFromConfig } from '../../start-router-plugin/route-tree-footer'
 import { pruneServerOnlySubtrees } from '../../start-router-plugin/pruneServerOnlySubtrees'
 import { SERVER_PROP } from '../../start-router-plugin/constants'
+import { mergeStartGeneratorPlugins } from '../../start-router-plugin/merge-generator-plugins'
 import type { GetConfigFn } from '../../types'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
 import type {
@@ -146,15 +147,21 @@ export function tanStackStartRouter(
     clientTreePlugin,
     tanstackRouterGenerator(() => {
       const routerConfig = getConfig().startConfig.router
-      const plugins = [clientTreeGeneratorPlugin, routesManifestPlugin()]
+      const internalPlugins = [
+        clientTreeGeneratorPlugin,
+        routesManifestPlugin(),
+      ]
       if (startPluginOpts.prerender?.enabled === true) {
-        plugins.push(prerenderRoutesPlugin())
+        internalPlugins.push(prerenderRoutesPlugin())
       }
       return {
         ...routerConfig,
         target: corePluginOpts.framework,
         routeTreeFileFooter: getRouteTreeFileFooter,
-        plugins,
+        plugins: mergeStartGeneratorPlugins(
+          internalPlugins,
+          routerConfig.plugins,
+        ),
       }
     }, routerPluginContext),
     tanStackRouterCodeSplitter(() => {
