@@ -2,4 +2,4 @@
 '@tanstack/router-core': patch
 ---
 
-Fix matchRoute matching for custom parsed path parameters
+Fix `matchRoute` to respect parsed path parameters, route precedence, and exact trailing-slash matching.
