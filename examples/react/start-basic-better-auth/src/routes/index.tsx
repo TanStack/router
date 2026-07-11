@@ -1,12 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute('/')({
   component: Home,
-});
+})
 
 function Home() {
-  const { session } = Route.useRouteContext();
-  const user = session?.user;
+  const { session } = Route.useRouteContext()
+  const user = session?.user
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -32,10 +32,10 @@ function Home() {
               />
             )}
             <p>
-              <strong>Name:</strong> {user?.name ?? "N/A"}
+              <strong>Name:</strong> {user?.name ?? 'N/A'}
             </p>
             <p>
-              <strong>Email:</strong> {user?.email ?? "N/A"}
+              <strong>Email:</strong> {user?.email ?? 'N/A'}
             </p>
           </div>
         ) : (
@@ -46,5 +46,5 @@ function Home() {
         )}
       </div>
     </div>
-  );
+  )
 }

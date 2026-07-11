@@ -1,22 +1,22 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { authClient } from "~/utils/auth-client";
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { authClient } from '~/utils/auth-client'
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute('/login')({
   beforeLoad: ({ context }) => {
     if (context.session) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: '/' })
     }
   },
   component: Login,
-});
+})
 
 function Login() {
   const handleGitHubSignIn = () => {
     authClient.signIn.social({
-      provider: "github",
-      callbackURL: "/",
-    });
-  };
+      provider: 'github',
+      callbackURL: '/',
+    })
+  }
 
   return (
     <div className="max-w-md mx-auto mt-10">
@@ -39,5 +39,5 @@ function Login() {
         </p>
       </div>
     </div>
-  );
+  )
 }
