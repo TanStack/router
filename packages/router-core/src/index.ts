@@ -388,6 +388,8 @@ export type {
   ResolveValidatorOutput,
 } from './validators'
 
+export { formatValidationError } from './validationError'
+
 export type {
   UseRouteContextBaseOptions,
   UseRouteContextOptions,
