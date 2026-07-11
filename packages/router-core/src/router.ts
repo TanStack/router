@@ -37,7 +37,7 @@ import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
 import { getLocationChangeInfo } from './location-change'
-import { settleMatchLoad } from './load-matches'
+import { getMatchContext, settleMatchLoad } from './load-matches'
 import { preloadClientRoute } from './router-preload.client'
 import { loadClientRouter } from './router-load.client'
 import { loadServerRouter } from './router-load.server'
@@ -866,7 +866,7 @@ const preloadRouterRoute =
     ? async () => undefined
     : isServer === false
       ? preloadClientRoute
-      : (router: AnyRouter, opts: any) =>
+      : async (router: AnyRouter, opts: any) =>
           router.isServer ? undefined : preloadClientRoute(router, opts)
 
 export interface ViewTransitionOptions {
@@ -1184,17 +1184,7 @@ export class RouterCore<
     if (!this.stores && this.latestLocation) {
       const config = this.getStoreConfig(this)
       this.batch = config.batch
-      this.stores = createRouterStores(
-        {
-          loadedAt: 0,
-          isLoading: false,
-          status: 'idle',
-          resolvedLocation: undefined,
-          location: this.latestLocation,
-          matches: [],
-        },
-        config,
-      )
+      this.stores = createRouterStores(this.latestLocation, config)
 
       if (!(isServer ?? this.isServer)) {
         setupScrollRestoration(this)
@@ -1462,8 +1452,16 @@ export class RouterCore<
           for (let i = matchedRoutes.length - 1; i >= 0; i--) {
             const route = matchedRoutes[i]!
             if (route.children) {
-              globalNotFoundRouteId = route.id
-              break
+              // Prefer the deepest matched route that can actually render
+              // the notFound. Without a notFoundComponent anywhere, fall
+              // back to the deepest matched route with children.
+              if (route.options.notFoundComponent) {
+                globalNotFoundRouteId = route.id
+                break
+              }
+              if (globalNotFoundRouteId === rootRouteId) {
+                globalNotFoundRouteId = route.id
+              }
             }
           }
         }
@@ -1604,23 +1602,22 @@ export class RouterCore<
         const loadPromise = existingMatch._.loadPromise
         match = {
           ...existingMatch,
-          cause,
           params: routeParams,
           _strictParams: strictParams,
-          abortController,
-          _: loadPromise
-            ? {
-                loadPromise,
-              }
-            : existingMatch._.dehydrated
-              ? {
-                  dehydrated: true,
-                }
-              : {},
           search,
           _strictSearch: strictMatchSearch,
           searchError,
           preload,
+          cause,
+          abortController,
+          // Preserve readiness ownership AND the hydration marker: a
+          // dehydrated match can legitimately hold a pending loadPromise
+          // (hydration keeps readiness across rematching), and dropping the
+          // marker would make the follow-up load re-run its server work.
+          _: {
+            loadPromise,
+            dehydrated: existingMatch._.dehydrated,
+          },
         }
       } else {
         const pending =
@@ -1637,11 +1634,12 @@ export class RouterCore<
           routeId: route.id,
           params: routeParams,
           _strictParams: strictParams,
-          pathname: interpolatedPath,
-          updatedAt: Date.now(),
           search,
           _strictSearch: strictMatchSearch,
           searchError,
+          preload,
+          pathname: interpolatedPath,
+          updatedAt: Date.now(),
           status: pending ? 'pending' : 'success',
           isFetching: false,
           paramsError,
@@ -1654,7 +1652,6 @@ export class RouterCore<
           cause,
           loaderDeps,
           invalid: false,
-          preload,
           staticData: routeOptions.staticData || {},
           fullPath: route.fullPath,
         } as AnyRouteMatch
@@ -1684,15 +1681,11 @@ export class RouterCore<
         } as RouteContextOptions<any, any, any, any, any>)
       }
 
-      if (match.__routeContext || match.__beforeLoadContext) {
-        match.context = {
-          ...parentContext,
-          ...match.__routeContext,
-          ...match.__beforeLoadContext,
-        }
-      } else {
-        match.context = parentContext
-      }
+      match.context = getMatchContext(
+        { router: this, matches },
+        index,
+        match.__beforeLoadContext,
+      )
     }
 
     for (let i = 0; i < matches.length; i++) {
@@ -1793,16 +1786,16 @@ export class RouterCore<
   }
 
   cancelMatches() {
-    const cancelMatch = (matchId: string) => {
-      const match = this.getMatch(matchId)
-      if (match) {
-        match.abortController.abort()
-        settleMatchLoad(match)
-      }
+    const cancelMatch = (match: AnyRouteMatch) => {
+      match.abortController.abort()
+      settleMatchLoad(match)
     }
 
     for (const matchId of this.stores.pendingIds.get()) {
-      cancelMatch(matchId)
+      const match = this.stores.pendingMatchStores.get(matchId)?.get()
+      if (match) {
+        cancelMatch(match)
+      }
     }
 
     for (const matchId of this.stores.matchesId.get()) {
@@ -1810,7 +1803,16 @@ export class RouterCore<
         continue
       }
 
-      cancelMatch(matchId)
+      // Only cancel active matches with in-flight route work (pending, or
+      // any fetching marker — beforeLoad and loader alike). A settled idle
+      // success match keeps its controller un-aborted: loaders may have
+      // handed that signal to still-streaming deferred data, and the public
+      // contract only cancels it when the route unloads or its loader call
+      // becomes outdated.
+      const match = this.stores.matchStores.get(matchId)?.get()
+      if (match && (match.status === 'pending' || match.isFetching !== false)) {
+        cancelMatch(match)
+      }
     }
   }
 
@@ -2386,11 +2388,11 @@ export class RouterCore<
   }
 
   declare latestLoadPromise: undefined | ControlledPromise<void>
+  /** Private in-flight preload lanes, joinable by navigations (client only). */
+  declare _preloadLanes: Set<{ matches: Array<AnyRouteMatch> }> | undefined
   declare _backgroundLoad: BackgroundLoad | undefined
 
-  load: LoadFn = async (opts) => {
-    await loadRouter(this, opts)
-  }
+  load: LoadFn = (opts) => loadRouter(this, opts)
 
   startViewTransition = (fn: () => Promise<void>): Promise<void> => {
     const shouldViewTransition =
@@ -2470,37 +2472,35 @@ export class RouterCore<
       TDehydrated
     >
   > = (opts) => {
-    const invalidateLive = (d: MakeRouteMatch<TRouteTree>) => {
-      if (opts?.filter?.(d as MakeRouteMatchUnion<this>) ?? true) {
+    // `live` gates the only policy difference between the pools: cached
+    // entries stay `status: 'success'` until they are reused, expired, or
+    // explicitly cleared, so only live/pending matches may flip to pending.
+    const makeInvalidate =
+      (live: boolean) => (d: MakeRouteMatch<TRouteTree>) => {
+        if (!(opts?.filter?.(d as MakeRouteMatchUnion<this>) ?? true)) {
+          return d
+        }
         return {
           ...d,
           invalid: true,
-          ...(opts?.forcePending ||
-          d.status === 'error' ||
-          d.status === 'notFound'
+          ...(live &&
+          (opts?.forcePending ||
+            d.status === 'error' ||
+            d.status === 'notFound')
             ? ({ status: 'pending', error: undefined } as const)
             : undefined),
         }
       }
-      return d
-    }
-    const invalidateCached = (d: MakeRouteMatch<TRouteTree>) => {
-      if (opts?.filter?.(d as MakeRouteMatchUnion<this>) ?? true) {
-        return {
-          ...d,
-          invalid: true,
-        }
-      }
-      return d
-    }
 
     this.batch(() => {
-      this.stores.setMatches(this.stores.matches.get().map(invalidateLive))
+      this.stores.setMatches(
+        this.stores.matches.get().map(makeInvalidate(true)),
+      )
       this.stores.setCached(
-        this.stores.cachedMatches.get().map(invalidateCached),
+        this.stores.cachedMatches.get().map(makeInvalidate(false)),
       )
       this.stores.setPending(
-        this.stores.pendingMatches.get().map(invalidateLive),
+        this.stores.pendingMatches.get().map(makeInvalidate(true)),
       )
     })
 
@@ -2577,9 +2577,7 @@ export class RouterCore<
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory
-  > = async (opts) => {
-    return preloadRouterRoute(this, opts)
-  }
+  > = (opts) => preloadRouterRoute(this, opts)
 
   matchRoute: MatchRouteFn<
     TRouteTree,

@@ -1,4 +1,5 @@
 import { createControlledPromise, isPromise } from './utils'
+import { isNotFound } from './not-found'
 import { isRedirect } from './redirect'
 import {
   getLocationChangeInfo,
@@ -15,6 +16,22 @@ import type { AnyRouteMatch } from './Matches'
 import type { AnyRouter, LoadFn } from './router'
 import type { InnerLoadContext } from './load-matches'
 
+// Exiting matches are preserved in the cache both at pending publication and
+// at final commit; the dedup + isFetching-reset shape must stay identical in
+// both paths. Exiting match ids are unique per lane, so a linear scan over
+// the (small) cache is sufficient.
+const pushExitingMatch = (
+  cached: Array<AnyRouteMatch>,
+  match: AnyRouteMatch,
+): void => {
+  if (!cached.some((c) => c.id === match.id)) {
+    cached.push({
+      ...match,
+      isFetching: false,
+    })
+  }
+}
+
 const commitFinalMatches = (
   router: AnyRouter,
   baseMatches: Array<AnyRouteMatch>,
@@ -28,10 +45,7 @@ const commitFinalMatches = (
     for (let i = 0; i < baseMatches.length; i++) {
       const match = baseMatches[i]!
       if (nextMatches[i]?.id !== match.id) {
-        cached.push({
-          ...match,
-          isFetching: false,
-        })
+        pushExitingMatch(cached, match)
       }
     }
 
@@ -69,14 +83,26 @@ const commitFinalMatches = (
     const current = baseMatches[i]
     const nextMatch = nextMatches[i]
 
+    // The commit already happened; lifecycle hooks are notifications. A
+    // throwing hook must not skip the remaining hooks — including the same
+    // index's enter/stay hook — or corrupt the framework transition state,
+    // but it has to stay observable.
     if (current && current.routeId !== nextMatch?.routeId) {
-      router.routesById[current.routeId]!.options.onLeave?.(current)
+      try {
+        router.routesById[current.routeId]!.options.onLeave?.(current)
+      } catch (err) {
+        Promise.reject(err)
+      }
     }
 
     if (nextMatch) {
-      router.routesById[nextMatch.routeId]!.options[
-        current?.routeId === nextMatch.routeId ? 'onStay' : 'onEnter'
-      ]?.(nextMatch)
+      try {
+        router.routesById[nextMatch.routeId]!.options[
+          current?.routeId === nextMatch.routeId ? 'onStay' : 'onEnter'
+        ]?.(nextMatch)
+      } catch (err) {
+        Promise.reject(err)
+      }
     }
   }
 }
@@ -93,6 +119,7 @@ export const loadClientRouter = async (
 
   const isCurrentLoad = () => router.latestLoadPromise === loadPromise
   let startedBackgroundLoad = false
+  let loadContext: InnerLoadContext | undefined
 
   try {
     const backgroundLoad = router._backgroundLoad
@@ -149,7 +176,6 @@ export const loadClientRouter = async (
       })
     }
 
-    let loadedMatches: Array<AnyRouteMatch> = pendingMatches
     const background = opts?.sync ? undefined : ([] as Array<number>)
     const commitReady = (matches: Array<AnyRouteMatch>) => {
       if (!isCurrentLoad()) {
@@ -157,13 +183,33 @@ export const loadClientRouter = async (
       }
 
       router.batch(() => {
+        // Publication replaces the active lane before final commit, so
+        // exiting success matches must be preserved in the cache here: if
+        // this load is superseded (e.g. back navigation) the final commit
+        // that would have cached them never runs, and their fresh data
+        // would otherwise be lost from every pool.
+        let cached: Array<AnyRouteMatch> | undefined
+        for (const match of stores.matches.get()) {
+          if (
+            match.status === 'success' &&
+            !matches.some((m) => m.id === match.id)
+          ) {
+            pushExitingMatch(
+              (cached ||= stores.cachedMatches.get().slice()),
+              match,
+            )
+          }
+        }
+        if (cached) {
+          stores.setCached(cached)
+        }
         stores.setMatches(matches)
         if (stores.pendingIds.get().length) {
           stores.setPending([])
         }
       })
     }
-    const loadContext: InnerLoadContext = {
+    loadContext = {
       router,
       forceStaleReload: sameHref,
       matches: pendingMatches,
@@ -172,31 +218,44 @@ export const loadClientRouter = async (
       onReady: commitReady,
     }
     try {
-      loadedMatches = (await loadClientMatches(
-        loadContext,
-      )) as Array<AnyRouteMatch>
+      // loadClientMatches mutates the pendingMatches lane in place; its
+      // return value is that same array.
+      await loadClientMatches(loadContext)
     } catch (err) {
-      if (err === loadContext) {
-        // This foreground lane was superseded before reaching a route outcome.
-        // Let the outer load cleanup settle it as cancellation, not route error.
+      if (err === loadContext || isRedirect(err)) {
+        // A superseded foreground lane (the loadContext sentinel) settles as
+        // cancellation, not route error; redirects hand over to navigation.
+        // Both are handled by the outer catch below.
         throw err
       }
-      if (isRedirect(err)) {
-        throw err
+      if (!isNotFound(err)) {
+        // Anything else thrown here is a fatal machinery failure (e.g.
+        // resolveRedirect threw); a notFound lane was already committed and
+        // trimmed with settled promises. Keep the failure observable, and
+        // settle the lane's load promises — the loader phase may never have
+        // run for some matches (a serial redirect caps the prefix at 0), and
+        // committing them unsettled would hang Suspense forever.
+        Promise.reject(err)
+        for (const match of pendingMatches) {
+          settleMatchLoad(match)
+        }
       }
       loadContext.requiresCommit = true
     }
 
     const backgroundIndices = background?.filter((index) => {
-      const match = loadedMatches[index]
-      return match && match.status === 'success' && !match.globalNotFound
+      const match = pendingMatches[index]
+      return match?.status === 'success' && !match.globalNotFound
     })
     const backgroundLength = backgroundIndices?.length
+    // Pending-UI publication implies requiresCommit: publish() only fires for
+    // a lane match still at status 'pending' (setupPendingTimeout guards in
+    // load-matches.client.ts), and every pending-status match forces
+    // requiresCommit before this line (loadClientRouteMatch's pre-await write,
+    // finalizeRouteFailure, or the catch above) or aborts this evaluation
+    // entirely.
     const backgroundOnly =
-      sameHref &&
-      backgroundLength &&
-      !loadContext.requiresCommit &&
-      !loadContext.pendingPublished
+      sameHref && backgroundLength && !loadContext.requiresCommit
 
     if (isCurrentLoad()) {
       if (backgroundOnly) {
@@ -209,7 +268,7 @@ export const loadClientRouter = async (
       } else {
         const assets = projectClientRouteAssets(
           router,
-          loadedMatches,
+          pendingMatches,
           undefined,
           isCurrentLoad,
         )
@@ -220,7 +279,7 @@ export const loadClientRouter = async (
           await router.startViewTransition(async () => {
             if (isCurrentLoad()) {
               router.startTransition(() => {
-                commitFinalMatches(router, baseMatches, loadedMatches)
+                commitFinalMatches(router, baseMatches, pendingMatches)
               })
             }
           })
@@ -229,7 +288,7 @@ export const loadClientRouter = async (
     }
     if (isCurrentLoad() && backgroundLength) {
       startedBackgroundLoad = true
-      startBackgroundLoad(router, next, loadedMatches, backgroundIndices)
+      startBackgroundLoad(router, next, pendingMatches, backgroundIndices)
     }
   } catch (err) {
     if (isCurrentLoad() && isRedirect(err)) {
@@ -239,6 +298,13 @@ export const loadClientRouter = async (
         replace: true,
         ignoreBlocker: true,
       })
+    } else if (err !== loadContext && !isRedirect(err)) {
+      // Anything else is a genuine failure (asset projection, view
+      // transition, user onLeave/onStay/onEnter hooks). The public load
+      // promise still resolves — navigation state was already committed or
+      // superseded — but the error must stay observable to the app's
+      // unhandled-rejection reporting instead of vanishing.
+      Promise.reject(err)
     }
   }
 
@@ -248,11 +314,36 @@ export const loadClientRouter = async (
     commitLocationPromise?.resolve()
   }
 
+  // Ordering invariant: the success lane must already be published
+  // (setMatches in commitFinalMatches above) before this resolve. Framework
+  // Match components throw router.latestLoadPromise for stale pending
+  // snapshots and rely on that ordering to avoid a suspense busy-loop on an
+  // already-resolved load.
   loadPromise.resolve()
+
+  // A superseded or redirected load must not settle its public await before
+  // the navigation chain does: callers of router.load()/invalidate() rely on
+  // observing post-settlement state, and the preload borrow protocol uses the
+  // foreground load promise as its "committed or gone" signal.
+  //
+  // Termination invariant: latestLoadPromise is only ever installed as a fresh
+  // promise by a newer pass (top of this function) or cleared to undefined by
+  // the owning pass in the same sync block that resolves it (above). So after
+  // `await latest`, latestLoadPromise is either undefined or a strictly newer
+  // pass's promise — never `latest` (or this pass's loadPromise) again. Any
+  // future writer that resolves latestLoadPromise without replacing/clearing
+  // it would turn this loop into an infinite microtask spin.
+  let latest = router.latestLoadPromise
+  while (latest) {
+    await latest
+    latest = router.latestLoadPromise
+  }
+
   if (startedBackgroundLoad) {
     // Background stale reloads run after the foreground lane is done. If that
-    // background work is sync, its commit is queued in the next microtask; yield
-    // once so the caller does not observe the temporary fetching marker.
-    await Promise.resolve()
+    // background work is sync, the async loader and its Promise.all reduction
+    // queue two continuations; yield for both so the caller does not observe
+    // the temporary fetching marker.
+    await Promise.resolve().then()
   }
 }

@@ -68,26 +68,27 @@ export const loadServerRouter = async (
       router.stores.setMatches(matchedMatches)
     }
 
-    router.statusCode = resolvedRedirect
-      ? (resolvedRedirect.options as any).statusCode
-      : isNotFound(err)
-        ? 404
-        : router.stores.matches.get().some((d) => d.status === 'error')
-          ? 500
-          : 200
+    // Committed-match state owns the 404/500 derivation below; here only the
+    // outcomes it cannot see are recorded (redirect metadata, and a notFound
+    // that may not have a committed boundary match).
+    if (resolvedRedirect) {
+      router.statusCode = (resolvedRedirect.options as any).statusCode
+    } else if (isNotFound(err)) {
+      router.statusCode = 404
+    }
     router.redirect = resolvedRedirect
   } finally {
     const commitLocationPromise = router.commitLocationPromise
-    router.latestLoadPromise = undefined
     router.commitLocationPromise = undefined
     commitLocationPromise?.resolve()
   }
 
-  const newStatusCode = router.stores.matches
-    .get()
-    .some((d) => d.status === 'notFound' || d.globalNotFound)
+  const finalMatches = router.stores.matches.get()
+  const newStatusCode = finalMatches.some(
+    (d) => d.status === 'notFound' || d.globalNotFound,
+  )
     ? 404
-    : router.stores.matches.get().some((d) => d.status === 'error')
+    : finalMatches.some((d) => d.status === 'error')
       ? 500
       : undefined
   if (newStatusCode) {

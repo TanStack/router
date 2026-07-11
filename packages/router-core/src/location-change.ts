@@ -5,12 +5,14 @@ export function getLocationChangeInfo(
   location: ParsedLocation,
   resolvedLocation?: ParsedLocation,
 ) {
-  const fromLocation = resolvedLocation
-  const toLocation = location
-  const pathChanged = fromLocation?.pathname !== toLocation.pathname
-  const hrefChanged = fromLocation?.href !== toLocation.href
-  const hashChanged = fromLocation?.hash !== toLocation.hash
-  return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
+  // built directly from the parameters: local aliases survive minification
+  return {
+    fromLocation: resolvedLocation,
+    toLocation: location,
+    pathChanged: resolvedLocation?.pathname !== location.pathname,
+    hrefChanged: resolvedLocation?.href !== location.href,
+    hashChanged: resolvedLocation?.hash !== location.hash,
+  }
 }
 
 export const locationHistoryActions = new WeakMap<

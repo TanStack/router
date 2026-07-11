@@ -85,13 +85,16 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // First step is to rehydrate loaderData and beforeLoad context.
   let firstNonSsrMatch: AnyRouteMatch | undefined = undefined
   let hasSsrFalseMatches = false
+  const dehydratedMatchesById = new Map(
+    dehydratedRouter.matches.map(
+      (dehydrated) => [hydrateSsrMatchId(dehydrated.i), dehydrated] as const,
+    ),
+  )
   const routeChunkPromise = Promise.all(
     matches.map((match) => {
       const route = routesById[match.routeId]!
 
-      const dehydratedMatch = dehydratedRouter.matches.find(
-        (dehydrated) => hydrateSsrMatchId(dehydrated.i) === match.id,
-      )
+      const dehydratedMatch = dehydratedMatchesById.get(match.id)
       if (!dehydratedMatch) {
         match.ssr = false
       } else {
@@ -109,8 +112,6 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           match.globalNotFound = dehydratedMatch.g
         }
       }
-
-      route.options.ssr = match.ssr
 
       match._.dehydrated = match.ssr !== false
 
@@ -264,6 +265,16 @@ export async function hydrate(router: AnyRouter): Promise<any> {
             match.__beforeLoadContext,
           )
 
+          // The server rendered no assets for ssr:false matches — including
+          // matches it intentionally omitted at an error/notFound boundary,
+          // which the dehydrated payload also marks ssr:false. Their
+          // head()/scripts() could only run with missing or stale loader
+          // data here; the follow-up client load projects assets for the
+          // lane it actually commits.
+          if (match.ssr === false) {
+            return
+          }
+
           const assetContext = {
             ssr: router.options.ssr,
             matches,
@@ -324,8 +335,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     return
   }
 
-  void Promise.resolve()
-    .then(() => router.load())
+  void router
+    .load()
     .catch((err) => {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Error during router hydration:', err)

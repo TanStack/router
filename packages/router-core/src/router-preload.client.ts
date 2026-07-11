@@ -14,7 +14,7 @@ export const preloadClientRoute = async (
 ): Promise<Array<AnyRouteMatch> | undefined> => {
   const next = opts._builtLocation ?? router.buildLocation(opts)
 
-  let matches = router.matchRoutes(next, {
+  const matches = router.matchRoutes(next, {
     throwOnError: true,
     preload: true,
   })
@@ -28,33 +28,66 @@ export const preloadClientRoute = async (
       .concat(router.stores.pendingIds.get()),
   }
 
-  try {
-    matches = await loadClientMatches(loadContext)
+  // A failed descendant must not discard the work of its successful
+  // ancestors: the leading run of success matches is projected and cached so
+  // repeated hovers (and the eventual navigation) can reuse those loads. The
+  // cache invariant still holds — only owned success snapshots enter the
+  // cache; the failed/pending tail never does.
+  const cacheSuccessfulPrefix = async (): Promise<void> => {
+    let prefixEnd = 0
+    while (matches[prefixEnd]?.status === 'success') {
+      prefixEnd++
+    }
+    if (!prefixEnd) {
+      return
+    }
 
-    if (matches.every((match) => match.status === 'success')) {
-      const assets = projectClientRouteAssets(router, matches, true)
-      if (isPromise(assets)) {
-        await assets
-      }
+    const prefix =
+      prefixEnd === matches.length ? matches : matches.slice(0, prefixEnd)
+    const assets = projectClientRouteAssets(router, prefix, true)
+    if (isPromise(assets)) {
+      await assets
+    }
 
-      let ownedMatches: Array<AnyRouteMatch> | undefined
-      for (const match of matches) {
-        if (match.preload && !router.getMatch(match.id, false)) {
-          ;(ownedMatches ||= []).push(match)
-        }
-      }
-      if (ownedMatches) {
-        router.stores.setCached([
-          ...router.stores.cachedMatches
-            .get()
-            .filter(
-              (cachedMatch) =>
-                !ownedMatches.some((match) => match.id === cachedMatch.id),
-            ),
-          ...ownedMatches,
-        ])
+    let ownedMatches: Array<AnyRouteMatch> | undefined
+    for (const match of prefix) {
+      // A cache entry this pass borrowed without reloading (same `updatedAt`
+      // as the cached snapshot) is not owned work: re-caching it would
+      // restamp `preload: true` — silently demoting a navigation entry from
+      // gcTime to preloadGcTime — while keeping its old `updatedAt`. Only
+      // snapshots whose loader ran under this pass (fresh `updatedAt`) may
+      // replace an existing cache entry.
+      if (
+        match.preload &&
+        !router.getMatch(match.id, false) &&
+        router.getMatch(match.id)?.updatedAt !== match.updatedAt
+      ) {
+        ;(ownedMatches ||= []).push(match)
       }
     }
+    if (ownedMatches) {
+      router.stores.setCached([
+        ...router.stores.cachedMatches
+          .get()
+          .filter(
+            (cachedMatch) =>
+              !ownedMatches.some((match) => match.id === cachedMatch.id),
+          ),
+        ...ownedMatches,
+      ])
+    }
+  }
+
+  // Register the lane so concurrent navigations (and sibling preloads) can
+  // adopt this pass's in-flight loader results instead of re-running them.
+  const preloadLanes = (router._preloadLanes ??= new Set())
+  preloadLanes.add(loadContext)
+
+  try {
+    // loadClientMatches mutates the lane in place and returns it.
+    await loadClientMatches(loadContext)
+
+    await cacheSuccessfulPrefix()
 
     return matches
   } catch (err) {
@@ -73,12 +106,18 @@ export const preloadClientRoute = async (
         _fromLocation: next,
       })
     }
+
+    // notFound/error outcomes are not fatal to the app, and the successful
+    // ancestor prefix is still valid cacheable work.
+    await cacheSuccessfulPrefix()
+
     if (process.env.NODE_ENV !== 'production' && !isNotFound(err)) {
       // Preload errors are not fatal, but we should still log them
       console.error(err)
     }
     return
   } finally {
+    preloadLanes.delete(loadContext)
     for (const match of matches) {
       if (match.preload) {
         settleMatchLoad(match)

@@ -295,9 +295,14 @@ test('same-route pending replacement respects pendingMinMs', async () => {
 
   expect(await screen.findByTestId('replacement-pending')).toBeInTheDocument()
 
-  const pendingMatch = router.stores.pendingMatches
+  // The pending fallback only renders once core publishes the render-ready
+  // pending lane into the active store (after pendingMs), so the armed match
+  // is read from the active matches, not the pending pool.
+  const pendingMatch = router.stores.matches
     .get()
-    .find((match) => match.routeId === postsRoute.id)!
+    .find(
+      (match) => match.routeId === postsRoute.id && match.status === 'pending',
+    )!
 
   expect(pendingMatch._.loadPromise?.pendingUntil).toBeTypeOf('number')
 

@@ -4,11 +4,13 @@ import { isRedirect } from './redirect'
 import { loadRouteChunk } from './route-chunks'
 import { projectClientRouteAssets } from './route-assets.client'
 import {
+  commitMatch,
+  getLoader,
   getMatchContext,
   getNotFoundBoundaryIndex,
   getNotFoundBoundaryPatch,
-  markError,
   normalizeRouteFailure,
+  serialFailurePrefixCap,
   settleMatchLoad,
 } from './load-matches'
 import type { NotFoundError } from './not-found'
@@ -24,16 +26,17 @@ import type { InnerLoadContext, SerialFailure } from './load-matches'
 const isRouteControl = (error: unknown) =>
   isRedirect(error) || isNotFound(error)
 
-const getLoader = (loaderOption: AnyRoute['options']['loader']) =>
-  typeof loaderOption === 'function' ? loaderOption : loaderOption?.handler
-
 // Route work may only commit while it still owns the lane entry it is about to
 // mutate. Each client load pass stamps its matches with an AbortController:
-// starting a newer load replaces the controller, cancellation aborts its signal,
-// and a different pending public location means this pass no longer represents
-// the browser target. Compare publicHref, not href, because href may be the
-// router-internal path while publicHref includes basepath/rewrite output. Any
-// of those cases makes continuing unsafe because stale beforeLoad/loader/chunk
+// starting a newer load replaces the controller, and cancellation aborts its
+// signal. Speculative (preload) passes additionally yield when a different
+// public location is being built — compare publicHref, not href, because href
+// may be the router-internal path while publicHref includes basepath/rewrite
+// output. Foreground navigation passes must NOT treat a merely-built pending
+// location as ownership loss: a history blocker can still discard that commit
+// (so no replacement load would ever start), and true supersession is
+// observed via the controller once the newer load runs cancelMatches. Any of
+// those cases makes continuing unsafe because stale beforeLoad/loader/chunk
 // work could write into the current lane.
 //
 // Throwing `inner` is intentional. `loadClientMatches` catches that exact object
@@ -45,7 +48,9 @@ const requireCurrentMatch = (
   abortController: AbortController,
 ): AnyRouteMatch => {
   const match = inner.matches[index]
-  const pendingLocation = inner.router.pendingBuiltLocation
+  const pendingLocation = inner.preload
+    ? inner.router.pendingBuiltLocation
+    : undefined
   if (
     !match ||
     match.abortController !== abortController ||
@@ -57,17 +62,6 @@ const requireCurrentMatch = (
   }
 
   return match
-}
-
-const commitMatch = (
-  inner: InnerLoadContext,
-  index: number,
-  patch: Partial<AnyRouteMatch>,
-): AnyRouteMatch => {
-  return (inner.matches[index] = {
-    ...inner.matches[index]!,
-    ...patch,
-  })
 }
 
 function getNavigate(inner: InnerLoadContext) {
@@ -85,13 +79,11 @@ const joinPreloadedActiveMatch = async (
   const matchId = inner.matches[index]!.id
 
   // A preload can reuse an active/pending match by ID, but it does not own that
-  // match. If the foreground owner is already gone or aborted, this speculative
-  // preload pass has nothing safe to borrow.
+  // match. If the foreground owner is already gone, this speculative preload
+  // pass has nothing safe to borrow. (An aborted owner is caught by the
+  // re-read and check below.)
   let match = inner.router.getMatch(matchId, false)
   if (!match) {
-    throw inner
-  }
-  if (match.abortController.signal.aborted) {
     throw inner
   }
 
@@ -101,19 +93,30 @@ const joinPreloadedActiveMatch = async (
     await match._.loadPromise
   }
 
-  // If the borrowed match still lives in the pending store, its local readiness
-  // may have settled before the foreground load committed the lane. Wait for the
-  // foreground load so the preload observes the committed owner, not a transient
-  // pending-store snapshot.
-  if (inner.router.stores.pendingMatchStores.has(matchId)) {
-    await inner.router.latestLoadPromise
-  }
-
-  // Re-read after the waits because the owner may have committed, redirected,
-  // disappeared, or been aborted while this preload was observing it.
+  // The borrowed match's local readiness can settle before the foreground
+  // load commits the lane: the owner may still sit in the pending store, or
+  // be a render-ready pending publication (onReady() moved it into the
+  // active store, clearing the pending pool, while the final commit is
+  // still in flight — the snapshot is stuck at status 'pending' even though
+  // its local work settled). Wait for the current foreground load exactly
+  // once: if the owner still has not committed after that, a newer
+  // navigation owns it, and this speculative pass yields (the final status
+  // check below throws the ownership sentinel) instead of chasing churn.
   match = inner.router.getMatch(matchId, false)
   if (!match || match.abortController.signal.aborted) {
     throw inner
+  }
+  if (
+    inner.router.latestLoadPromise &&
+    (match.status === 'pending' ||
+      inner.router.stores.pendingMatchStores.has(matchId))
+  ) {
+    await inner.router.latestLoadPromise
+
+    match = inner.router.getMatch(matchId, false)
+    if (!match || match.abortController.signal.aborted) {
+      throw inner
+    }
   }
 
   // From here the preload lane uses the owner match read-only. It must not clone
@@ -135,6 +138,72 @@ const joinPreloadedActiveMatch = async (
   return match
 }
 
+/**
+ * The mirror of joinPreloadedActiveMatch: a navigation adopts an in-flight
+ * private preload's SUCCESSFUL loader result instead of executing the loader
+ * a second time. Only data is adopted — never control flow: a preload that
+ * ended in redirect/notFound/error is ignored and the navigation runs its
+ * own loader, so preload-flavored outcomes cannot leak into navigations.
+ *
+ * The donor is discovered here, at loader time, from the registered preload
+ * lanes (or, for a preload that finished in the meantime, from its cache
+ * entry) — the join point is discoverable state, not plumbing threaded
+ * through match creation.
+ *
+ * Joining is gated on the donor's loader actually being IN FLIGHT
+ * (isFetching === 'loader'): before that, the preload's serial phase may
+ * itself be waiting on this navigation through the borrow protocol, and
+ * joining would deadlock the pair. Once the donor's loader started, its
+ * serial phase is over by construction and the pass settles independently.
+ */
+const adoptInFlightPreload = async (
+  inner: InnerLoadContext,
+  index: number,
+  passController: AbortController,
+): Promise<true | undefined> => {
+  const match = inner.matches[index]!
+
+  for (const lane of inner.router._preloadLanes!) {
+    if (lane === inner) {
+      continue
+    }
+    const readDonor = () =>
+      lane.matches.find((m) => m.id === match.id && m.preload)
+    let donor = readDonor()
+    if (!donor) {
+      continue
+    }
+
+    if (donor.status !== 'success') {
+      if (
+        donor.isFetching !== 'loader' ||
+        donor._.loadPromise?.status !== 'pending'
+      ) {
+        // Not joinable (e.g. still in its serial phase) — a later registered
+        // lane may hold the same match with its loader already in flight.
+        continue
+      }
+      commitMatch(inner, index, { isFetching: 'loader' })
+      // The preload pass settles every owned match's loadPromise in its
+      // finally, so this wait cannot hang even for aborted preloads.
+      await donor._.loadPromise
+      requireCurrentMatch(inner, index, passController)
+      donor = readDonor()
+    }
+
+    if (donor?.status !== 'success') {
+      return undefined
+    }
+    commitMatch(inner, index, { loaderData: donor.loaderData })
+    return true
+  }
+
+  // A preload that completes in the microtask window between matchRoutes
+  // and this loader phase is simply not adopted — the navigation runs its
+  // own loader, which is correct, just not deduplicated. Not worth a hedge.
+  return undefined
+}
+
 function waitPendingMin(match: AnyRouteMatch): Promise<void> | undefined {
   const remaining = (match._.loadPromise?.pendingUntil ?? 0) - Date.now()
   if (remaining > 0) {
@@ -148,47 +217,45 @@ const finalizeRouteFailure = async (
   index: number,
   error: unknown,
   abortController: AbortController,
-  componentFailure?: boolean,
 ): Promise<void> => {
   let errorIndex = index
+  let componentFailure = false
 
   let currentMatch = requireCurrentMatch(inner, index, abortController)
 
-  if (!componentFailure) {
-    try {
-      if (isNotFound(error)) {
-        errorIndex = getNotFoundBoundaryIndex(inner, error)
-        const boundaryMatch = inner.matches[errorIndex]!
+  try {
+    if (isNotFound(error)) {
+      errorIndex = getNotFoundBoundaryIndex(inner, error)
+      const boundaryMatch = inner.matches[errorIndex]!
 
-        if (inner.preload?.includes(boundaryMatch.id)) {
-          // The selected boundary is owned by an active/pending route match.
-          // A speculative preload must not load its boundary component or mutate it.
-          throw inner
-        }
-        await loadRouteChunk(
-          inner.router.routesById[boundaryMatch.routeId],
-          'notFoundComponent',
-        )
-      } else if (!isRedirect(error)) {
-        await loadRouteChunk(
-          inner.router.routesById[currentMatch.routeId],
-          'errorComponent',
-        )
-      }
-    } catch (chunkError) {
-      if (chunkError === inner) {
-        // Preserve the stale-pass sentinel from the borrowed-boundary branch;
-        // it is not a component preload failure.
+      if (inner.preload?.includes(boundaryMatch.id)) {
+        // The selected boundary is owned by an active/pending route match.
+        // A speculative preload must not load its boundary component or mutate it.
         throw inner
       }
-      // This error already came from component/chunk loading, so commit it
-      // directly instead of trying to load another boundary component.
-      error = chunkError
-      componentFailure = true
+      await loadRouteChunk(
+        inner.router.routesById[boundaryMatch.routeId],
+        'notFoundComponent',
+      )
+    } else if (!isRedirect(error)) {
+      await loadRouteChunk(
+        inner.router.routesById[currentMatch.routeId],
+        'errorComponent',
+      )
     }
-
-    currentMatch = requireCurrentMatch(inner, index, abortController)
+  } catch (chunkError) {
+    if (chunkError === inner) {
+      // Preserve the stale-pass sentinel from the borrowed-boundary branch;
+      // it is not a component preload failure.
+      throw inner
+    }
+    // This error already came from component/chunk loading, so commit it
+    // directly instead of trying to load another boundary component.
+    error = chunkError
+    componentFailure = true
   }
+
+  currentMatch = requireCurrentMatch(inner, index, abortController)
 
   const pendingWait = waitPendingMin(currentMatch)
   if (pendingWait) {
@@ -208,8 +275,8 @@ const finalizeRouteFailure = async (
     }
 
     if (isNotFound(error)) {
-      inner.requiresCommit = true
-
+      // No requiresCommit write here: this branch always throws, and
+      // loadClientRouter's catch owns the flag for thrown outcomes.
       commitMatch(inner, index, {
         status: 'notFound',
         error,
@@ -222,26 +289,20 @@ const finalizeRouteFailure = async (
     }
   }
 
-  const matchToCommit = inner.matches[errorIndex]
-  if (!matchToCommit) {
-    // The lane was shortened by a newer outcome before this finalizer could
-    // commit. Cancel this stale finalizer.
-    throw inner
-  }
-
   inner.requiresCommit = true
-  markError(inner, errorIndex)
+  // single-call-site inline of the shared badIndex rule (byte-size)
+  inner.badIndex = Math.min(inner.badIndex ?? errorIndex, errorIndex)
 
   commitMatch(inner, errorIndex, {
-    error,
     status: 'error' as const,
+    error,
     isFetching: false as const,
+    updatedAt: Date.now(),
     context: getMatchContext(
       inner,
       errorIndex,
-      matchToCommit.__beforeLoadContext,
+      inner.matches[errorIndex]!.__beforeLoadContext,
     ),
-    updatedAt: Date.now(),
   })
   finishMatchLoad(inner, errorIndex)
 }
@@ -249,9 +310,9 @@ const finalizeRouteFailure = async (
 const recordBeforeLoadFailure = (
   inner: InnerLoadContext,
   index: number,
+  abortController: AbortController,
   error: unknown,
 ): SerialFailure => {
-  const abortController = inner.matches[index]!.abortController
   requireCurrentMatch(inner, index, abortController)
   error = normalizeRouteFailure(inner, index, error)
   requireCurrentMatch(inner, index, abortController).__beforeLoadContext =
@@ -270,7 +331,7 @@ const setupPendingTimeout = (
   if (
     match.status === 'pending' &&
     onReady &&
-    !inner.pendingPublished &&
+    !inner.rendered &&
     (routeOptions.pendingComponent ??
       (inner.router.options as any).defaultPendingComponent)
   ) {
@@ -282,19 +343,33 @@ const setupPendingTimeout = (
       promise &&
       !promise.pendingTimeout
     ) {
-      promise.pendingTimeout = setTimeout(() => {
+      const publish = () => {
         const current = inner.matches[index]
         if (
-          !inner.pendingPublished &&
+          !inner.rendered &&
           current?._.loadPromise === promise &&
           current.status === 'pending'
         ) {
           // Publish the current render-ready lane so pending UI can render while
           // beforeLoad/loader work continues.
-          inner.pendingPublished = true
-          inner.rendered ||= onReady(inner.matches.slice()) ?? true
+          onReady(inner.matches.slice())
+          inner.rendered = true
         }
-      }, pendingMs)
+      }
+
+      if (
+        (pendingMs as number) <= 0 &&
+        inner.router.stores.matchesId.get().length === 0
+      ) {
+        // Nothing is rendered yet (bare initial load): deferring a
+        // pendingMs-0 publication to a macrotask would let the browser
+        // paint a blank frame before the fallback (#4759). Publish now.
+        // When content IS displayed, the timer path stays preferable — a
+        // later publication captures a fresher lane snapshot.
+        publish()
+      } else {
+        promise.pendingTimeout = setTimeout(publish, pendingMs)
+      }
     }
   }
 }
@@ -328,7 +403,7 @@ const handleClientBeforeLoad = (
 
   if (serialError !== undefined) {
     pending()
-    return recordBeforeLoadFailure(inner, index, serialError)
+    return recordBeforeLoadFailure(inner, index, abortController, serialError)
   }
 
   setupPendingTimeout(inner, routeOptions, index, existingMatch)
@@ -353,7 +428,12 @@ const handleClientBeforeLoad = (
     requireCurrentMatch(inner, index, abortController)
 
     if (isRouteControl(beforeLoadContext)) {
-      return recordBeforeLoadFailure(inner, index, beforeLoadContext)
+      return recordBeforeLoadFailure(
+        inner,
+        index,
+        abortController,
+        beforeLoadContext,
+      )
     }
 
     commitBeforeLoad(beforeLoadContext)
@@ -394,10 +474,9 @@ const handleClientBeforeLoad = (
     if (isPromise(beforeLoadContext)) {
       requireCurrentMatch(inner, index, abortController)
       pending()
-      return beforeLoadContext.then(updateContext, (err) => {
-        requireCurrentMatch(inner, index, abortController)
-        return recordBeforeLoadFailure(inner, index, err)
-      })
+      return beforeLoadContext.then(updateContext, (err) =>
+        recordBeforeLoadFailure(inner, index, abortController, err),
+      )
     }
   } catch (err) {
     if (err === inner) {
@@ -405,7 +484,7 @@ const handleClientBeforeLoad = (
     }
 
     pending()
-    return recordBeforeLoadFailure(inner, index, err)
+    return recordBeforeLoadFailure(inner, index, abortController, err)
   }
 
   return updateContext(beforeLoadContext)
@@ -533,9 +612,13 @@ const loadClientRouteMatch = async (
       return finishMatchLoad(inner, index)
     }
 
+    // A serial failure is part of the foreground render lane. Retained
+    // ancestors must honor shouldReload/staleTime in that lane instead of
+    // being deferred into background work that may be discarded by the boundary.
     if (
       loader &&
       inner.background &&
+      !inner.serialFailure &&
       (loaderOption?.staleReloadMode ??
         router.options.defaultStaleReloadMode) !== 'blocking'
     ) {
@@ -544,6 +627,10 @@ const loadClientRouteMatch = async (
     }
   }
 
+  // Must stay before the first await and keep the status === 'pending'
+  // disjunct: the backgroundOnly decision in loadClientRouter relies on every
+  // pending-status lane match setting requiresCommit, since pending UI can
+  // only be published for a pending match.
   if (loader || match.status === 'pending' || match.invalid) {
     inner.requiresCommit = true
   }
@@ -554,31 +641,45 @@ const loadClientRouteMatch = async (
 
     // Actually run the loader and handle the result
     try {
-      // Kick off the loader!
-      const loaderResult = loader?.(
-        getLoaderContext(inner, matchPromises, index, route),
-      )
-      const loaderResultIsPromise = isPromise(loaderResult)
-      if (loaderResultIsPromise || routeChunkPromise) {
-        commitMatch(inner, index, {
-          isFetching: 'loader',
-        })
-      }
+      // Gate on live DONOR lanes before awaiting: adoption is async, and an
+      // unconditional await would break the synchronous loader-start
+      // contract — both for the (overwhelmingly common) no-preload case and
+      // for a preload pass seeing only its own registered lane.
+      const preloadLanes = inner.router._preloadLanes
+      const adopted =
+        loader &&
+        preloadLanes?.size &&
+        !(preloadLanes.size === 1 && preloadLanes.has(inner))
+          ? await adoptInFlightPreload(inner, index, passController)
+          : undefined
 
-      if (loader) {
-        const loaderData = loaderResultIsPromise
-          ? await loaderResult
-          : loaderResult
-
-        requireCurrentMatch(inner, index, passController)
-
-        if (isRouteControl(loaderData)) {
-          throw loaderData
+      if (!adopted) {
+        // Kick off the loader!
+        const loaderResult = loader?.(
+          getLoaderContext(inner, matchPromises, index, route),
+        )
+        const loaderResultIsPromise = isPromise(loaderResult)
+        if (loaderResultIsPromise || routeChunkPromise) {
+          commitMatch(inner, index, {
+            isFetching: 'loader',
+          })
         }
 
-        commitMatch(inner, index, {
-          loaderData,
-        })
+        if (loader) {
+          const loaderData = loaderResultIsPromise
+            ? await loaderResult
+            : loaderResult
+
+          requireCurrentMatch(inner, index, passController)
+
+          if (isRouteControl(loaderData)) {
+            throw loaderData
+          }
+
+          commitMatch(inner, index, {
+            loaderData,
+          })
+        }
       }
     } catch (error) {
       if (error === inner) {
@@ -617,14 +718,18 @@ const loadClientRouteMatch = async (
         await routeChunkPromise
       }
     } catch (chunkError) {
-      // A route/component chunk failure replaces the loader result and is committed
-      // as the route error for this loader generation.
+      // A route/component chunk failure replaces the loader result, but it
+      // still goes through the normal route failure lifecycle (onError,
+      // redirect/notFound conversion) like beforeLoad and loader failures.
+      // If loading a boundary component subsequently fails,
+      // finalizeRouteFailure commits that failure directly instead of
+      // recursing into another boundary chunk.
+      requireCurrentMatch(inner, index, passController)
       return finalizeRouteFailure(
         inner,
         index,
-        chunkError,
+        normalizeRouteFailure(inner, index, chunkError),
         passController,
-        true,
       )
     }
 
@@ -637,8 +742,8 @@ const loadClientRouteMatch = async (
     }
 
     commitMatch(inner, index, {
-      error: undefined,
       status: 'success',
+      error: undefined,
       isFetching: false,
       updatedAt: Date.now(),
     })
@@ -777,7 +882,6 @@ export function startBackgroundLoad(
           throw error
         }
 
-        requireCurrent()
         return (matches[index] = {
           ...match,
           isFetching: false,
@@ -819,13 +923,11 @@ export function startBackgroundLoad(
     }
 
     if (redirectError) {
-      if (isCurrent()) {
-        void router.navigate({
-          ...(redirectError as any).options,
-          replace: true,
-          ignoreBlocker: true,
-        })
-      }
+      void router.navigate({
+        ...(redirectError as any).options,
+        replace: true,
+        ignoreBlocker: true,
+      })
       return
     }
 
@@ -833,17 +935,12 @@ export function startBackgroundLoad(
       // eslint-disable-next-line prefer-const
       let [index, error] = failure
       try {
-        requireCurrent()
         await loadRouteChunk(
           router.routesById[matches[index]!.routeId],
           'errorComponent',
         )
         requireCurrent()
       } catch (componentError) {
-        if (componentError === token) {
-          cancelBatch()
-          return
-        }
         if (!isCurrentOrCancel()) {
           return
         }
@@ -852,8 +949,8 @@ export function startBackgroundLoad(
 
       matches[index] = {
         ...matches[index]!,
-        error,
         status: 'error',
+        error,
         isFetching: false,
         updatedAt: Date.now(),
       }
@@ -862,7 +959,6 @@ export function startBackgroundLoad(
       const index = getNotFoundBoundaryIndex(inner, notFoundError)
       const match = matches[index]!
       try {
-        requireCurrent()
         await loadRouteChunk(
           router.routesById[match.routeId],
           'notFoundComponent',
@@ -874,17 +970,13 @@ export function startBackgroundLoad(
           invalid: false,
         }
       } catch (componentError) {
-        if (componentError === token) {
-          cancelBatch()
-          return
-        }
         if (!isCurrentOrCancel()) {
           return
         }
         matches[index] = {
           ...matches[index]!,
-          error: componentError,
           status: 'error',
+          error: componentError,
           isFetching: false,
           updatedAt: Date.now(),
         }
@@ -898,11 +990,13 @@ export function startBackgroundLoad(
       undefined,
       isCurrentOrCancel,
     )
-    if (isPromise(assets)) {
-      await assets
-    }
+    const assetsOk = isPromise(assets) ? await assets : assets
 
-    if (isCurrentOrCancel()) {
+    // The background commit is atomic for data and assets: when asset
+    // projection for the fresh data failed, publishing would expose new
+    // loaderData under head output that still describes the previous data.
+    // Keep the old lane; the fetching markers are cleared by the finalizer.
+    if (assetsOk && isCurrentOrCancel()) {
       router.stores.setMatches(matches)
       committed = true
     }
@@ -922,30 +1016,38 @@ export async function loadClientMatches(
   const matchPromises: Array<Promise<AnyRouteMatch>> = []
 
   let firstNotFound: NotFoundError | undefined
-  let failure: SerialFailure | undefined
 
-  for (
-    let i = 0;
-    i < inner.matches.length && !failure && inner.badIndex === undefined;
-    i++
-  ) {
+  for (let i = 0; i < inner.matches.length && !inner.serialFailure; i++) {
+    // Reads below happen synchronously at iteration start, before any await
+    // could let a newer pass replace the lane entry.
+    const match = inner.matches[i]!
     try {
-      if (inner.preload?.includes(inner.matches[i]!.id)) {
+      if (inner.preload?.includes(match.id)) {
         await (matchPromises[i] = joinPreloadedActiveMatch(inner, i))
         continue
       }
 
-      if (inner.matches[i]!._.dehydrated) {
+      if (match._.dehydrated) {
+        // A dehydrated notFound/error is a server-committed boundary: the
+        // server intentionally omitted every match below it. Replay it as
+        // this pass's serial failure so the follow-up client load caps the
+        // lane the same way instead of loading, committing, and projecting
+        // assets for descendants the server never rendered.
+        if (
+          (match.status === 'notFound' && isNotFound(match.error)) ||
+          match.status === 'error'
+        ) {
+          inner.serialFailure = [i, match.error]
+          break
+        }
         matchPromises[i] = loadClientRouteMatch(inner, matchPromises, i)
         continue
       }
 
       const beforeLoadResult = handleClientBeforeLoad(inner, i)
-      if (isPromise(beforeLoadResult)) {
-        failure = (await beforeLoadResult) as SerialFailure | undefined
-      } else {
-        failure = beforeLoadResult as SerialFailure | undefined
-      }
+      inner.serialFailure = (
+        isPromise(beforeLoadResult) ? await beforeLoadResult : beforeLoadResult
+      ) as SerialFailure | undefined
     } catch (err) {
       if (err === inner) {
         // This pass lost ownership before serial loading reached a route outcome.
@@ -960,33 +1062,16 @@ export async function loadClientMatches(
     }
   }
 
-  let maxIndexExclusive = inner.badIndex ?? inner.matches.length
-  if (failure) {
-    const [index, error] = failure
-    maxIndexExclusive = Math.min(
-      maxIndexExclusive,
-      isRedirect(error)
-        ? 0
-        : isNotFound(error)
-          ? Math.min(getNotFoundBoundaryIndex(inner, error) + 1, index)
-          : index,
-    )
-  }
+  const maxIndexExclusive = inner.serialFailure
+    ? serialFailurePrefixCap(inner, inner.serialFailure)
+    : inner.matches.length
 
-  const background = inner.background
-  if (failure) {
-    // A serial failure is part of the foreground render lane. Retained
-    // ancestors must honor shouldReload/staleTime in that lane instead of
-    // being deferred into background work that may be discarded by the boundary.
-    inner.background = undefined
-  }
   for (let i = 0; i < maxIndexExclusive; i++) {
     matchPromises[i] ||= loadClientRouteMatch(inner, matchPromises, i)
   }
-  inner.background = background
 
-  if (failure) {
-    const [index, error] = failure
+  if (inner.serialFailure) {
+    const [index, error] = inner.serialFailure
     matchPromises.push(
       finalizeRouteFailure(
         inner,
@@ -1029,7 +1114,7 @@ export async function loadClientMatches(
     throw fatalError
   }
 
-  const errorIndex = inner.badIndex
+  let trimIndex = inner.badIndex
 
   if (firstNotFound) {
     // Determine once which matched route will actually render the
@@ -1045,17 +1130,13 @@ export async function loadClientMatches(
     const patch = getNotFoundBoundaryPatch(inner, index, firstNotFound)
     commitMatch(inner, index, patch)
     finishMatchLoad(inner, index)
-    while (inner.matches.length > index + 1) {
-      settleMatchLoad(inner.matches.pop()!)
-    }
-  } else if (errorIndex !== undefined) {
-    while (inner.matches.length > errorIndex + 1) {
-      settleMatchLoad(inner.matches.pop()!)
-    }
+    trimIndex = index
   }
 
-  if (inner.rendered && inner.rendered !== true) {
-    await inner.rendered
+  if (trimIndex !== undefined) {
+    while (inner.matches.length > trimIndex + 1) {
+      settleMatchLoad(inner.matches.pop()!)
+    }
   }
 
   if (firstNotFound) {

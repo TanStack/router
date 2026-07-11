@@ -769,7 +769,7 @@ test('clears pendingTimeout when match resolves', async () => {
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
 })
 
-test('useLoaderData retains previous data while route match is pending', async () => {
+test('useLoaderData({ from }) surfaces the missing match when the route leaves the active lane', async () => {
   const history = createMemoryHistory({ initialEntries: ['/app'] })
   const rootRoute = createRootRoute({
     component: () => {
@@ -806,12 +806,22 @@ test('useLoaderData retains previous data while route match is pending', async (
     throw new Error('Expected /app match to be active')
   }
 
+  // Synthetically move /app out of the active lane and into the pending pool.
+  // A real navigation never produces this state — pending publication keeps the
+  // incoming lane in the active matches, so a `from` match the store publishes
+  // stays continuously resolvable. useMatch({ from }) no longer suppresses its
+  // missing-match invariant while a route is only pending (matching React/Vue),
+  // so the stale loader data is not retained — the invariant is surfaced.
   router.stores.setPending([{ ...appMatch, id: `${appMatch.id}__pending` }])
   router.stores.setMatches(
     router.state.matches.filter((match) => match.routeId !== '/app'),
   )
 
-  expect(screen.getByTestId('combined')).toHaveTextContent('6:0')
+  expect(
+    await screen.findByText(
+      'Invariant failed: Could not find an active match from "/app"',
+    ),
+  ).toBeInTheDocument()
 })
 
 test('cancelMatches after pending timeout', async () => {

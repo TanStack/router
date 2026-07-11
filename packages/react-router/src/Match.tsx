@@ -325,13 +325,8 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     }
 
     if (match.status === 'notFound') {
-      if (!isNotFound(match.error)) {
-        if (process.env.NODE_ENV !== 'production') {
-          throw new Error('Invariant failed: Expected a notFound error')
-        }
-
-        invariant()
-      }
+      // status 'notFound' is only ever committed paired with a NotFoundError
+      // (getNotFoundBoundaryPatch), so match.error needs no re-check here.
       return renderRouteNotFound(router, route, match.error)
     }
 
@@ -406,11 +401,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       ? (routeOptions.pendingMinMs ?? router.options.defaultPendingMinMs)
       : undefined
     const localPromise = match._.loadPromise
-    if (
-      !(isServer ?? router.isServer) &&
-      localPromise?.status === 'pending' &&
-      pendingMinMs
-    ) {
+    if (localPromise?.status === 'pending' && pendingMinMs) {
       localPromise.pendingUntil ??= Date.now() + pendingMinMs
     }
 
@@ -418,32 +409,12 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }
 
   if (match.status === 'notFound') {
-    if (!isNotFound(match.error)) {
-      if (process.env.NODE_ENV !== 'production') {
-        throw new Error('Invariant failed: Expected a notFound error')
-      }
-
-      invariant()
-    }
+    // status 'notFound' is only ever committed paired with a NotFoundError
+    // (getNotFoundBoundaryPatch), so match.error needs no re-check here.
     return renderRouteNotFound(router, route, match.error)
   }
 
   if (match.status === 'error') {
-    if (isServer ?? router.isServer) {
-      const RouteErrorComponent =
-        (routeOptions.errorComponent ?? router.options.defaultErrorComponent) ||
-        ErrorComponent
-      return (
-        <RouteErrorComponent
-          error={match.error as any}
-          reset={undefined as any}
-          info={{
-            componentStack: '',
-          }}
-        />
-      )
-    }
-
     throw match.error
   }
 
@@ -506,16 +477,7 @@ export const Outlet = React.memo(function OutletImpl() {
   ) : null
 
   if (parentGlobalNotFound) {
-    if (!route) {
-      if (process.env.NODE_ENV !== 'production') {
-        throw new Error(
-          'Invariant failed: Could not resolve route for Outlet render',
-        )
-      }
-
-      invariant()
-    }
-    return renderRouteNotFound(router, route, undefined)
+    return renderRouteNotFound(router, route!, undefined)
   }
 
   if (!childMatchId) {

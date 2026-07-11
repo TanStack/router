@@ -1,10 +1,5 @@
 import * as Solid from 'solid-js'
-import {
-  getLocationChangeInfo,
-  invariant,
-  isNotFound,
-  rootRouteId,
-} from '@tanstack/router-core'
+import { getLocationChangeInfo, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -16,6 +11,14 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
+
+// The scroll restoration script is only ever emitted during SSR. Selecting
+// the component through an `isServer === false` constant (same DCE pattern as
+// router-core's loadRouter) lets client bundles drop ScrollRestoration and
+// its ScriptOnce template entirely; Solid's compiler otherwise hides the
+// condition inside a memo where the minifier cannot see it.
+const ScrollRestorationScript =
+  isServer === false ? () => null : ScrollRestoration
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
@@ -45,17 +48,10 @@ export const Match = (props: { matchId: string }) => {
     }
   })
 
-  const hasPendingMatch = Solid.createMemo(() => {
-    const currentRouteId = rawMatchState()?.routeId
-    return currentRouteId
-      ? Boolean(router.stores.pendingRouteIds.get()[currentRouteId])
-      : false
-  })
   const nearestMatch = {
     matchId: () => rawMatchState()?.matchId,
     routeId: () => rawMatchState()?.routeId,
     match,
-    hasPending: hasPendingMatch,
   }
 
   return (
@@ -164,9 +160,6 @@ export const Match = (props: { matchId: string }) => {
                     }}
                   >
                     <Solid.Switch>
-                      <Solid.Match when={currentMatchState()._displayPending}>
-                        <Dynamic component={resolvePendingComponent()} />
-                      </Solid.Match>
                       <Solid.Match when={resolvedNoSsr}>
                         <ClientOnly
                           fallback={
@@ -188,9 +181,9 @@ export const Match = (props: { matchId: string }) => {
             {currentMatchState().parentRouteId === rootRouteId ? (
               <>
                 <OnRendered />
-                {router.options.scrollRestoration &&
-                (isServer ?? router.isServer) ? (
-                  <ScrollRestoration />
+                {(isServer ?? router.isServer) &&
+                router.options.scrollRestoration ? (
+                  <ScrollRestorationScript />
                 ) : null}
               </>
             ) : null}
@@ -255,6 +248,7 @@ export const MatchInner = (): any => {
         id: currentMatch.id,
         status: currentMatch.status,
         error: currentMatch.error,
+        _displayPending: currentMatch._displayPending,
         _: currentMatch._,
       },
     }
@@ -274,45 +268,6 @@ export const MatchInner = (): any => {
           route().options.pendingComponent ??
           router.options.defaultPendingComponent
 
-        const pendingReplacement = () => {
-          return router.stores.pendingMatches
-            .get()
-            .find(
-              (pending) =>
-                pending.routeId === currentMatchState().routeId &&
-                pending.status === 'pending' &&
-                pending.id !== currentMatch().id,
-            )
-        }
-
-        const armPending = (pendingMatch: any) => {
-          const FallbackComponent = PendingComponent()
-          const pendingMinMs =
-            route().options.pendingMinMs ?? router.options.defaultPendingMinMs
-          const loadPromise = pendingMatch._.loadPromise
-          const promise =
-            loadPromise?.status === 'pending'
-              ? loadPromise
-              : router.latestLoadPromise
-
-          if (process.env.NODE_ENV !== 'production' && !promise) {
-            throw new Error(
-              `Invariant failed: pending match "${pendingMatch.id}" has no loadPromise`,
-            )
-          }
-
-          if (
-            !(isServer ?? router.isServer) &&
-            FallbackComponent &&
-            pendingMinMs &&
-            loadPromise?.status === 'pending'
-          ) {
-            loadPromise.pendingUntil ??= Date.now() + pendingMinMs
-          }
-
-          return FallbackComponent
-        }
-
         const out = () => {
           const Comp =
             route().options.component ?? router.options.defaultComponent
@@ -330,9 +285,13 @@ export const MatchInner = (): any => {
 
         return (
           <Solid.Switch>
-            <Solid.Match when={pendingReplacement()}>
-              {(pendingMatch) => {
-                const FallbackComponent = armPending(pendingMatch())
+            <Solid.Match when={currentMatch()._displayPending}>
+              {(_) => {
+                // Hydration display match: its loadPromise was settled by
+                // hydrate(), so the normal pending branch must not run.
+                // MatchInner only mounts after ClientOnly hydrated, so this
+                // renders outside the hydration key sequence.
+                const FallbackComponent = PendingComponent()
                 return FallbackComponent ? (
                   <Dynamic component={FallbackComponent} />
                 ) : null
@@ -352,15 +311,20 @@ export const MatchInner = (): any => {
                   )
                 }
 
-                const FallbackComponent =
+                const FallbackComponent = PendingComponent()
+                const pendingMinMs =
+                  route().options.pendingMinMs ??
+                  router.options.defaultPendingMinMs
+                if (
+                  !(isServer ?? router.isServer) &&
+                  FallbackComponent &&
+                  pendingMinMs &&
                   loadPromise?.status === 'pending'
-                    ? armPending(currentMatch())
-                    : PendingComponent()
+                ) {
+                  loadPromise.pendingUntil ??= Date.now() + pendingMinMs
+                }
 
-                const [loaderResult] = Solid.createResource(async () => {
-                  await Promise.resolve()
-                  return promise
-                })
+                const [loaderResult] = Solid.createResource(() => promise)
 
                 return (
                   <>
@@ -374,16 +338,9 @@ export const MatchInner = (): any => {
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'notFound'}>
               {(_) => {
-                if (!isNotFound(currentMatch().error)) {
-                  if (process.env.NODE_ENV !== 'production') {
-                    throw new Error(
-                      'Invariant failed: Expected a notFound error',
-                    )
-                  }
-
-                  invariant()
-                }
-
+                // status 'notFound' is only ever committed paired with a
+                // NotFoundError (getNotFoundBoundaryPatch), so the error
+                // needs no re-check here.
                 // Use Show with keyed to ensure re-render when routeId changes
                 return (
                   <Solid.Show when={currentMatchState().routeId} keyed>

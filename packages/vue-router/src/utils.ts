@@ -3,26 +3,6 @@ import * as Vue from 'vue'
 export const useLayoutEffect =
   typeof window !== 'undefined' ? Vue.effect : Vue.effect
 
-export const usePrevious = (fn: () => boolean) => {
-  return Vue.computed(
-    (
-      prev: { current: boolean | null; previous: boolean | null } = {
-        current: null,
-        previous: null,
-      },
-    ) => {
-      const current = fn()
-
-      if (prev.current !== current) {
-        prev.previous = prev.current
-        prev.current = current
-      }
-
-      return prev
-    },
-  )
-}
-
 /**
  * React hook to wrap `IntersectionObserver`.
  *

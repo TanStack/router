@@ -497,6 +497,8 @@ export function isModuleNotFoundError(error: any): boolean {
   // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // safari: "Importing a module script failed."
+  // webpack/rspack: error.name === "ChunkLoadError", message like "Loading chunk 42 failed."
+  if (error?.name === 'ChunkLoadError') return true
   if (typeof error?.message !== 'string') return false
   return (
     error.message.startsWith('Failed to fetch dynamically imported module') ||

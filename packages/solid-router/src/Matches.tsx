@@ -66,16 +66,11 @@ function MatchesInner() {
   const routeId = () => (matchId() ? rootRouteId : undefined)
   const match = () =>
     routeId() ? router.stores.getRouteMatchStore(rootRouteId).get() : undefined
-  const hasPendingMatch = () =>
-    routeId()
-      ? Boolean(router.stores.pendingRouteIds.get()[rootRouteId])
-      : false
   const resetKey = () => router.stores.loadedAt.get()
   const nearestMatch = {
     matchId,
     routeId,
     match,
-    hasPending: hasPendingMatch,
   }
 
   const matchComponent = () => {

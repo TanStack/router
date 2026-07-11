@@ -5,10 +5,13 @@ import { isRedirect } from './redirect'
 import { loadRouteChunk } from './route-chunks'
 import { projectServerRouteAssets } from './route-assets.server'
 import {
+  commitMatch,
+  getLoader,
   getMatchContext,
   getNotFoundBoundaryIndex,
-  markError,
+  getNotFoundBoundaryPatch,
   normalizeRouteFailure,
+  serialFailurePrefixCap,
 } from './load-matches'
 import type { NotFoundError } from './not-found'
 import type {
@@ -21,29 +24,15 @@ import type { AnyRouteMatch, MakeRouteMatch } from './Matches'
 import type { SSROption } from './router'
 import type { InnerLoadContext, LoadMatchesArg } from './load-matches'
 
-const commitMatch = (
-  inner: InnerLoadContext,
-  index: number,
-  patch: Partial<AnyRouteMatch>,
-): AnyRouteMatch => {
-  return (inner.matches[index] = {
-    ...inner.matches[index]!,
-    ...patch,
-  })
-}
-
 const handleServerRedirectOrNotFound = (
   inner: InnerLoadContext,
   index: number,
-  match: AnyRouteMatch,
   err: unknown,
 ): void => {
   if (isRedirect(err)) {
-    if (err.redirectHandled && !err.options.reloadDocument) {
+    if (err.redirectHandled) {
       throw err
     }
-
-    match._.error = err
 
     err.options._fromLocation = inner.location
     err.redirectHandled = true
@@ -74,48 +63,45 @@ const finalizeServerRouteFailure = async (
   inner: InnerLoadContext,
   index: number,
   error: unknown,
-  componentError?: boolean,
 ): Promise<void> => {
   const routesById = inner.router.routesById
   let errorIndex = index
+  // Set when loading a boundary component (errorComponent/notFoundComponent)
+  // chunk fails: that failure replaces the original one and commits directly
+  // as an error — it must not recurse into another boundary chunk.
+  let componentError = false
 
-  if (!componentError) {
-    try {
-      if (isNotFound(error)) {
-        errorIndex = getNotFoundBoundaryIndex(inner, error)
-        await loadRouteChunk(
-          routesById[inner.matches[errorIndex]!.routeId],
-          'notFoundComponent',
-        )
-      } else if (!isRedirect(error)) {
-        await loadRouteChunk(
-          routesById[inner.matches[index]!.routeId],
-          'errorComponent',
-        )
-      }
-    } catch (chunkError) {
-      error = chunkError
-      componentError = true
+  try {
+    if (isNotFound(error)) {
+      errorIndex = getNotFoundBoundaryIndex(inner, error)
+      await loadRouteChunk(
+        routesById[inner.matches[errorIndex]!.routeId],
+        'notFoundComponent',
+      )
+    } else if (!isRedirect(error)) {
+      await loadRouteChunk(
+        routesById[inner.matches[index]!.routeId],
+        'errorComponent',
+      )
     }
+  } catch (chunkError) {
+    error = chunkError
+    componentError = true
   }
 
   if (!componentError) {
-    handleServerRedirectOrNotFound(inner, index, inner.matches[index]!, error)
+    handleServerRedirectOrNotFound(inner, index, error)
   }
 
-  const matchToCommit = inner.matches[errorIndex]
-  if (!matchToCommit) {
-    return
-  }
-
-  markError(inner, errorIndex)
+  // single-call-site inline of the shared badIndex rule (byte-size)
+  inner.badIndex = Math.min(inner.badIndex ?? errorIndex, errorIndex)
   commitMatch(inner, errorIndex, {
     error,
     status: 'error' as const,
     context: getMatchContext(
       inner,
       errorIndex,
-      matchToCommit.__beforeLoadContext,
+      inner.matches[errorIndex]!.__beforeLoadContext,
     ),
     updatedAt: Date.now(),
   })
@@ -315,26 +301,7 @@ const commitServerNotFoundBoundary = (
   err: NotFoundError,
 ): number => {
   const index = getNotFoundBoundaryIndex(inner, err)
-  const match = inner.matches[index]!
-  const routeId = match.routeId
-
-  err.routeId = routeId
-  commitMatch(
-    inner,
-    index,
-    routeId === rootRouteId
-      ? {
-          status: 'success',
-          error: undefined,
-          globalNotFound: true,
-          context: getMatchContext(inner, index, match.__beforeLoadContext),
-        }
-      : {
-          status: 'notFound',
-          error: err,
-          context: getMatchContext(inner, index, match.__beforeLoadContext),
-        },
-  )
+  commitMatch(inner, index, getNotFoundBoundaryPatch(inner, index, err))
   return index
 }
 
@@ -346,9 +313,7 @@ const loadServerRouteMatch = async (
   const initialMatch = inner.matches[index]!
   const { routeId } = initialMatch
   const route = inner.router.routesById[routeId]!
-  const loaderOption = route.options.loader
-  const loader =
-    typeof loaderOption === 'function' ? loaderOption : loaderOption?.handler
+  const loader = getLoader(route.options.loader)
 
   const routeChunkPromise =
     initialMatch.ssr === true ? loadRouteChunk(route) : undefined
@@ -378,6 +343,27 @@ const loadServerRouteMatch = async (
       throw loaderError
     }
 
+    if ((loaderError as any)?.name === 'AbortError') {
+      // A loader's own AbortError (e.g. an internal fetch timeout) is not a
+      // route failure: settle the match without committing an error instead
+      // of turning the abort into a 500. If the match's own signal was
+      // aborted, leave the match as-is.
+      if (!inner.matches[index]!.abortController.signal.aborted) {
+        commitMatch(inner, index, {
+          status:
+            inner.matches[index]!.status === 'pending'
+              ? 'success'
+              : inner.matches[index]!.status,
+          context: getMatchContext(
+            inner,
+            index,
+            inner.matches[index]!.__beforeLoadContext,
+          ),
+        })
+      }
+      return inner.matches[index]!
+    }
+
     await finalizeServerRouteFailure(
       inner,
       index,
@@ -391,7 +377,16 @@ const loadServerRouteMatch = async (
       await routeChunkPromise
     }
   } catch (chunkError) {
-    await finalizeServerRouteFailure(inner, index, chunkError, true)
+    // A primary route chunk failure goes through the normal route failure
+    // lifecycle (onError, redirect/notFound conversion) like loader
+    // failures. Only a subsequent boundary component chunk failure commits
+    // directly inside finalizeServerRouteFailure instead of recursing into
+    // another boundary chunk.
+    await finalizeServerRouteFailure(
+      inner,
+      index,
+      normalizeRouteFailure(inner, index, chunkError),
+    )
     return inner.matches[index]!
   }
 
@@ -407,14 +402,12 @@ const loadServerRouteMatch = async (
 export const loadServerMatches = async (
   arg: LoadMatchesArg,
 ): Promise<Array<MakeRouteMatch>> => {
+  // The server pipeline is request-local: preload, background, and pending
+  // publication are client-side semantics and are deliberately not copied.
   const inner: InnerLoadContext = {
     router: arg.router,
     location: arg.location,
     matches: arg.matches,
-    preload: arg.preload,
-    forceStaleReload: arg.forceReload,
-    background: arg.background,
-    onReady: arg.onReady,
   }
   const matchPromises: Array<Promise<AnyRouteMatch>> = []
 
@@ -437,25 +430,22 @@ export const loadServerMatches = async (
         matchPromises[i] = Promise.resolve(finishServerSkippedMatch(inner, i))
       }
     } catch (err) {
-      if (isNotFound(err)) {
-        firstNotFound ||= err
-      } else {
+      if (!isNotFound(err)) {
         throw err
       }
+      // An `ssr()` option can throw notFound(). Record it as the pass's
+      // serial failure so the loader prefix is capped at the selected
+      // boundary — the throwing route and descendants whose beforeLoad
+      // never ran must not load.
+      recordServerBeforeLoadFailure(inner, i, err)
       break
     }
   }
 
   const failure = inner.serialFailure
-  let maxIndexExclusive = inner.matches.length
-  if (failure) {
-    const [index, error] = failure
-    maxIndexExclusive = isRedirect(error)
-      ? 0
-      : isNotFound(error)
-        ? Math.min(getNotFoundBoundaryIndex(inner, error) + 1, index)
-        : index
-  }
+  const maxIndexExclusive = failure
+    ? serialFailurePrefixCap(inner, failure)
+    : inner.matches.length
 
   for (let i = 0; i < maxIndexExclusive; i++) {
     matchPromises[i] ||= loadServerRouteMatch(inner, matchPromises, i)
@@ -470,26 +460,14 @@ export const loadServerMatches = async (
   let fatalError: unknown
   let hasFatalError = false
 
-  const results = await Promise.all(
-    matchPromises.map((promise) =>
-      promise.then(
-        () => ({ ok: true as const }),
-        (reason) => ({
-          ok: false as const,
-          error:
-            process.env.NODE_ENV !== 'production' && reason === undefined
-              ? new Error('Route load failed with undefined')
-              : reason,
-        }),
-      ),
-    ),
-  )
-
-  for (const result of results) {
-    if (result.ok) {
+  for (const result of await Promise.allSettled(matchPromises)) {
+    if (result.status === 'fulfilled') {
       continue
     }
-    const reason = result.error
+    const reason =
+      process.env.NODE_ENV !== 'production' && result.reason === undefined
+        ? new Error('Route load failed with undefined')
+        : result.reason
     if (isRedirect(reason)) {
       firstRedirect ||= reason
     } else if (isNotFound(reason)) {

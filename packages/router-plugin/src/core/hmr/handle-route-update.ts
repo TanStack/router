@@ -9,6 +9,12 @@ type AnyRouteWithPrivateProps = AnyRoute & {
   options: Record<string, unknown>
   parentRoute: AnyRoute
   _componentsPromise?: Promise<void>
+  _componentPromises?: Partial<
+    Record<
+      'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent',
+      Promise<void> | undefined
+    >
+  >
   _lazyPromise?: Promise<void>
   update: (options: Record<string, unknown>) => unknown
   _path: string
@@ -107,6 +113,7 @@ function handleRouteUpdate(
   oldRoute.options = nextOptions
   oldRoute.update(nextOptions)
   oldRoute._componentsPromise = undefined
+  oldRoute._componentPromises = undefined
   oldRoute._lazyPromise = undefined
 
   router.setRoutes(router.buildRouteTree())

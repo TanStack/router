@@ -3,6 +3,7 @@ import { isRedirect } from './redirect'
 import { rootRouteId } from './root'
 import type { NotFoundError } from './not-found'
 import type { ParsedLocation } from './location'
+import type { AnyRoute } from './route'
 import type { AnyRouteMatch } from './Matches'
 import type { AnyRouter } from './router'
 
@@ -11,10 +12,11 @@ export type InnerLoadContext = {
   router: AnyRouter
   /** Target location for this private load lane. */
   location: ParsedLocation
-  /** Framework render promise returned by pending publication. */
-  rendered?: true | Promise<void>
-  /** Pending lane was published for presentation; final commit still owns effects. */
-  pendingPublished?: true
+  /**
+   * Pending lane was published for presentation (publication is synchronous).
+   * Final commit still owns effects.
+   */
+  rendered?: true
   /** Private match lane being loaded. */
   matches: Array<AnyRouteMatch>
   /**
@@ -22,13 +24,16 @@ export type InnerLoadContext = {
    * this pass borrows read-only instead of owning in the cache.
    */
   preload?: Array<string>
-  /** Earliest route index with a committed route error. */
+  /**
+   * Earliest route index with a committed route error (loader/chunk phase
+   * only; never set during the serial beforeLoad phase).
+   */
   badIndex?: number
   /** Same-href client load should revalidate stale matches. */
   forceStaleReload?: boolean
   /** Callback that publishes pending UI when the lane becomes renderable. */
-  onReady?: (matches: Array<AnyRouteMatch>) => void | Promise<void>
-  /** Server beforeLoad failure captured during the serial phase. */
+  onReady?: (matches: Array<AnyRouteMatch>) => void
+  /** beforeLoad failure captured during the serial phase. */
   serialFailure?: SerialFailure
   /** Client background reload indices selected during foreground matching. */
   background?: Array<number>
@@ -45,7 +50,7 @@ export type LoadMatchesArg = {
   preload?: Array<string>
   forceReload?: boolean
   background?: Array<number>
-  onReady?: (matches: Array<AnyRouteMatch>) => void | Promise<void>
+  onReady?: (matches: Array<AnyRouteMatch>) => void
 }
 
 export type BackgroundLoad = {
@@ -53,9 +58,19 @@ export type BackgroundLoad = {
   controller: AbortController
 }
 
-export const markError = (inner: InnerLoadContext, index: number) => {
-  inner.badIndex = Math.min(inner.badIndex ?? index, index)
+export const commitMatch = (
+  inner: InnerLoadContext,
+  index: number,
+  patch: Partial<AnyRouteMatch>,
+): AnyRouteMatch => {
+  return (inner.matches[index] = {
+    ...inner.matches[index]!,
+    ...patch,
+  })
 }
+
+export const getLoader = (loaderOption: AnyRoute['options']['loader']) =>
+  typeof loaderOption === 'function' ? loaderOption : loaderOption?.handler
 
 export const getMatchContext = (
   inner: Pick<InnerLoadContext, 'router' | 'matches'>,
@@ -111,6 +126,22 @@ export const getNotFoundBoundaryIndex = (
   // otherwise default to root for untargeted notFounds.
   return requestedRouteId ? startIndex : 0
 }
+
+/**
+ * Exclusive loader-prefix bound for a serial beforeLoad failure: redirects
+ * run no loaders, notFounds run up to the selected boundary (never past the
+ * throwing route), regular errors run everything before the failing route.
+ * Single owner of this rule for the client and server pipelines.
+ */
+export const serialFailurePrefixCap = (
+  inner: InnerLoadContext,
+  [index, error]: SerialFailure,
+): number =>
+  isRedirect(error)
+    ? 0
+    : isNotFound(error)
+      ? Math.min(getNotFoundBoundaryIndex(inner, error) + 1, index)
+      : index
 
 export const normalizeRouteFailure = (
   inner: InnerLoadContext,

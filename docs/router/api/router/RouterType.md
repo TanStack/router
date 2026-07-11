@@ -35,15 +35,11 @@ An instance of the `Router` has the following properties and methods:
 - Matches a pathname and search params against the router's route tree and returns an array of route matches.
 - If `opts.throwOnError` is `true`, any errors that occur during the matching process will be thrown (in addition to being returned in the route match's `error` property).
 
-### `.cancelMatch` method
-
-- Type: `(matchId: string) => void`
-- Cancels a route match that is currently pending by calling `match.abortController.abort()`.
-
 ### `.cancelMatches` method
 
 - Type: `() => void`
-- Cancels all route matches that are currently pending by calling `match.abortController.abort()` on each one.
+- Aborts and settles route matches that still have in-flight route work — matches in the `pending` status or currently fetching `beforeLoad`/loader — by calling `match.abortController.abort()` on each one.
+- Settled `success` matches are no longer aborted, because their abort signals may be held by streamed/deferred data.
 
 ### `.buildLocation` method
 
