@@ -968,7 +968,9 @@ function extractParams<T extends RouteLike>(
     }
     const part = parts[partIndex]
     const currentPathIndex = pathIndex
-    if (part) pathIndex += part.length
+    if (part) {
+      pathIndex += part.length
+    }
     nodeParts ??= leaf.node.fullPath.split('/')
     const nodePart = nodeParts[segmentCount]!
     if (node.kind === SEGMENT_TYPE_PATHNAME) {
@@ -1159,7 +1161,7 @@ function getNodeMatch<T extends RouteLike>(
   while (stack.length) {
     const frame = stack.pop()!
     const { node, index, skipped, depth, statics, dynamics, optionals } = frame
-    let { extract, rawParams, parsedParams } = frame
+    let { extract, rawParams, parsedParams, parsedParamsState } = frame
 
     // Wildcard candidates are pushed speculatively as fallbacks in case a
     // higher-priority wildcard later fails params.parse. If a better wildcard
@@ -1179,6 +1181,7 @@ function getNodeMatch<T extends RouteLike>(
       rawParams = frame.rawParams
       extract = frame.extract
       parsedParams = frame.parsedParams
+      parsedParamsState = frame.parsedParamsState
     }
 
     // In fuzzy mode, track the best partial match we've found so far
@@ -1223,6 +1226,7 @@ function getNodeMatch<T extends RouteLike>(
         extract,
         rawParams,
         parsedParams,
+        parsedParamsState,
       }
       let indexValid = true
       if (node.index.parse) {
@@ -1277,6 +1281,7 @@ function getNodeMatch<T extends RouteLike>(
           extract,
           rawParams,
           parsedParams,
+          parsedParamsState,
         })
       }
     }
@@ -1299,6 +1304,7 @@ function getNodeMatch<T extends RouteLike>(
           extract,
           rawParams,
           parsedParams,
+          parsedParamsState,
         }) // enqueue skipping the optional
       }
       if (!isBeyondPath) {
@@ -1323,6 +1329,7 @@ function getNodeMatch<T extends RouteLike>(
             extract,
             rawParams,
             parsedParams,
+            parsedParamsState,
           })
         }
       }
@@ -1351,6 +1358,7 @@ function getNodeMatch<T extends RouteLike>(
           extract,
           rawParams,
           parsedParams,
+          parsedParamsState,
         })
       }
     }
@@ -1372,6 +1380,7 @@ function getNodeMatch<T extends RouteLike>(
           extract,
           rawParams,
           parsedParams,
+          parsedParamsState,
         })
       }
     }
@@ -1391,6 +1400,7 @@ function getNodeMatch<T extends RouteLike>(
           extract,
           rawParams,
           parsedParams,
+          parsedParamsState,
         })
       }
     }
@@ -1411,6 +1421,7 @@ function getNodeMatch<T extends RouteLike>(
           extract,
           rawParams,
           parsedParams,
+          parsedParamsState,
         })
       }
     }
@@ -1473,7 +1484,9 @@ function validateParseParams<T extends RouteLike>(
       extractedParams,
     )
     const result = frame.node.parse(params as Record<string, string>)
-    if (result === false) return null
+    if (result === false) {
+      return null
+    }
     const parsedParams = Object.assign(
       Object.create(null),
       frame.parsedParams,
