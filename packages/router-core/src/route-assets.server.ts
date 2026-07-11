@@ -4,9 +4,9 @@ import type { AnyRouter } from './router'
 
 const withServerAssets = (
   match: AnyRouteMatch,
-  head: any,
-  scripts: any,
-  headers: any,
+  head?: any,
+  scripts?: any,
+  headers?: any,
 ): AnyRouteMatch => ({
   ...match,
   meta: head?.meta,
@@ -30,6 +30,13 @@ export const projectServerRouteAssets = (
 ): void | Promise<void> => {
   for (let i = startIndex; i < matches.length; i++) {
     const match = matches[i]!
+    if (match.ssr === false) {
+      // A client-only branch contributes no server response assets. Clear
+      // every field as well as skipping the hooks so a reused match cannot
+      // leak assets from an earlier SSR-enabled generation.
+      matches[i] = withServerAssets(match)
+      continue
+    }
     const routeOptions = router.routesById[match.routeId]!.options
     if (!(routeOptions.head || routeOptions.scripts || routeOptions.headers)) {
       continue
@@ -69,28 +76,37 @@ export const projectServerRouteAssets = (
       logAssetError(match, error)
     }
 
-    if (syncFailed && !isPromise(headers)) {
+    if (syncFailed) {
       // A sync throw must not hold the response hostage waiting on the
       // other DECORATIVE hooks' async work: commit sync-available
-      // head/scripts and abandon pending ones, owning their rejections so
-      // they cannot become unhandled. When headers() is async the response
-      // waits for it regardless (headers are response behavior), so that
-      // case falls through to the generic per-kind branch below, which
-      // awaits ALL kinds — nothing extra is blocked and a pending head()
-      // is committed instead of dropped.
-      const settle = (value: any) => {
-        if (isPromise(value)) {
-          void Promise.allSettled([value])
-          return undefined
-        }
-        return value
+      // head/scripts and abandon pending ones, owning their rejections. An
+      // async headers() remains response-significant, but it is awaited on
+      // its own so a decorative promise cannot hold the response open.
+      if (isPromise(head)) {
+        void head.then(
+          (value) => (head = value),
+          (error) => logAssetError(match, error),
+        )
+        head = undefined
       }
-      matches[i] = withServerAssets(
-        match,
-        settle(head),
-        settle(scripts),
-        headers,
-      )
+      if (isPromise(scripts)) {
+        void scripts.then(
+          (value) => (scripts = value),
+          (error) => logAssetError(match, error),
+        )
+        scripts = undefined
+      }
+      if (isPromise(headers)) {
+        const commit = (value: any) => {
+          matches[i] = withServerAssets(match, head, scripts, value)
+          return projectServerRouteAssets(router, matches, i + 1)
+        }
+        return headers.then(commit, (error) => {
+          logAssetError(match, error)
+          return commit(undefined)
+        })
+      }
+      matches[i] = withServerAssets(match, head, scripts, headers)
       continue
     }
 

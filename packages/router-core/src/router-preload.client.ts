@@ -1,9 +1,12 @@
 import { isNotFound } from './not-found'
 import { isRedirect } from './redirect'
-import { loadClientMatches } from './load-matches.client'
+import {
+  abortDiscardedMatchControllers,
+  loadClientMatches,
+} from './load-matches.client'
 import { projectClientRouteAssets } from './route-assets.client'
 import { settleMatchLoad } from './load-matches'
-import { isPromise } from './utils'
+import { deepEqual, isPromise } from './utils'
 import type { AnyRouteMatch } from './Matches'
 import type { AnyRouter } from './router'
 import type { InnerLoadContext } from './load-matches'
@@ -12,12 +15,23 @@ export const preloadClientRoute = async (
   router: AnyRouter,
   opts: any,
 ): Promise<Array<AnyRouteMatch> | undefined> => {
+  const previousLatestLoadPromise = router.latestLoadPromise
   const next = opts._builtLocation ?? router.buildLocation(opts)
 
   const matches = router.matchRoutes(next, {
     throwOnError: true,
     preload: true,
+    _isCurrent: () =>
+      router.latestLoadPromise === previousLatestLoadPromise,
   })
+
+  // Route matching can execute user context code. If it synchronously starts
+  // a navigation, this speculative pass no longer owns the remaining match
+  // callbacks or any work derived from its partial lane.
+  if (router.latestLoadPromise !== previousLatestLoadPromise) {
+    abortDiscardedMatchControllers(router, matches)
+    return
+  }
 
   const loadContext: InnerLoadContext = {
     router,
@@ -33,7 +47,43 @@ export const preloadClientRoute = async (
   // repeated hovers (and the eventual navigation) can reuse those loads. The
   // cache invariant still holds — only owned success snapshots enter the
   // cache; the failed/pending tail never does.
-  const cacheSuccessfulPrefix = async (): Promise<void> => {
+  const preloadBorrowsAreCurrent = (): boolean => {
+    for (const borrowed of matches) {
+      if (borrowed.preload) {
+        continue
+      }
+      const match = router.getMatch(borrowed.id, false)
+      if (!match) {
+        return false
+      }
+      if (
+        match.abortController !== borrowed.abortController ||
+        borrowed.abortController.signal.aborted
+      ) {
+        const routeOptions = router.routesById[borrowed.routeId]!.options
+        if (
+          routeOptions.loader ||
+          routeOptions.beforeLoad ||
+          routeOptions.context ||
+          !deepEqual(match.params, borrowed.params) ||
+          !deepEqual(match.search, borrowed.search) ||
+          !deepEqual(match.context, borrowed.context)
+        ) {
+          return false
+        }
+      }
+      if (
+        match.status !== 'success' ||
+        match.isFetching !== false ||
+        match._.error
+      ) {
+        return false
+      }
+    }
+    return true
+  }
+
+  const cacheSuccessfulPrefix = async (): Promise<false | void> => {
     let prefixEnd = 0
     while (matches[prefixEnd]?.status === 'success') {
       prefixEnd++
@@ -44,37 +94,54 @@ export const preloadClientRoute = async (
 
     const prefix =
       prefixEnd === matches.length ? matches : matches.slice(0, prefixEnd)
-    const assets = projectClientRouteAssets(router, prefix, true)
+    const assets = projectClientRouteAssets(
+      router,
+      prefix,
+      true,
+      preloadBorrowsAreCurrent,
+    )
     if (isPromise(assets)) {
       await assets
     }
+    if (!preloadBorrowsAreCurrent()) {
+      return false
+    }
 
+    const previousCachedMatches = router.stores.cachedMatches.get()
     let ownedMatches: Array<AnyRouteMatch> | undefined
     for (const match of prefix) {
-      // A cache entry this pass borrowed without reloading (same `updatedAt`
-      // as the cached snapshot) is not owned work: re-caching it would
+      // A cached snapshot this pass reused without a successful loader
+      // generation is not owned work: re-caching it would
       // restamp `preload: true` — silently demoting a navigation entry from
-      // gcTime to preloadGcTime — while keeping its old `updatedAt`. Only
-      // snapshots whose loader ran under this pass (fresh `updatedAt`) may
-      // replace an existing cache entry.
+      // gcTime to preloadGcTime. Only explicit successful loader generations
+      // are reusable cache data; loaderless speculative matches stay private.
+      // Asset projection can finish out of order across concurrent preloads,
+      // so an older loader generation must not overwrite a newer cached one.
       if (
-        match.preload &&
         !router.getMatch(match.id, false) &&
-        router.getMatch(match.id)?.updatedAt !== match.updatedAt
+        match._.preloadLoaderSuccess
       ) {
-        ;(ownedMatches ||= []).push(match)
+        const cachedMatch = previousCachedMatches.find(
+          (candidate) => candidate.id === match.id,
+        )
+        if (
+          !cachedMatch ||
+          (cachedMatch._.loaderGeneration ?? 0) <=
+            match._.loaderGeneration!
+        ) {
+          ;(ownedMatches ||= []).push(match)
+        }
       }
     }
     if (ownedMatches) {
       router.stores.setCached([
-        ...router.stores.cachedMatches
-          .get()
-          .filter(
-            (cachedMatch) =>
-              !ownedMatches.some((match) => match.id === cachedMatch.id),
-          ),
+        ...previousCachedMatches.filter(
+          (cachedMatch) =>
+            !ownedMatches.some((match) => match.id === cachedMatch.id),
+        ),
         ...ownedMatches,
       ])
+      abortDiscardedMatchControllers(router, previousCachedMatches)
     }
   }
 
@@ -87,7 +154,9 @@ export const preloadClientRoute = async (
     // loadClientMatches mutates the lane in place and returns it.
     await loadClientMatches(loadContext)
 
-    await cacheSuccessfulPrefix()
+    if ((await cacheSuccessfulPrefix()) === false) {
+      return
+    }
 
     return matches
   } catch (err) {
@@ -123,5 +192,9 @@ export const preloadClientRoute = async (
         settleMatchLoad(match)
       }
     }
+    abortDiscardedMatchControllers(
+      router,
+      matches.concat(loadContext.discardedMatches ?? []),
+    )
   }
 }

@@ -10,15 +10,22 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
-import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  AnyRouter,
+  ParsedLocation,
+  RootRouteOptions,
+} from '@tanstack/router-core'
 
-// The scroll restoration script is only ever emitted during SSR. Selecting
-// the component through an `isServer === false` constant (same DCE pattern as
-// router-core's loadRouter) lets client bundles drop ScrollRestoration and
-// its ScriptOnce template entirely; Solid's compiler otherwise hides the
-// condition inside a memo where the minifier cannot see it.
-const ScrollRestorationScript =
-  isServer === false ? () => null : ScrollRestoration
+// Keep the client constant undefined so Rollup can remove the server-only
+// component instead of Solid compiling a reactive false branch around it.
+const renderScrollRestoration =
+  isServer === false
+    ? undefined
+    : (router: AnyRouter) =>
+        (isServer ?? router.isServer) && router.options.scrollRestoration ? (
+          <ScrollRestoration />
+        ) : null
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
@@ -86,8 +93,6 @@ export const Match = (props: { matchId: string }) => {
             ? resolvedNoSsr
             : currentMatchState().ssr === 'data-only'
 
-        const ResolvedSuspenseBoundary = () => Solid.Suspense
-
         const ResolvedCatchBoundary = () =>
           routeErrorComponent() ? CatchBoundary : SafeFragment
 
@@ -102,8 +107,7 @@ export const Match = (props: { matchId: string }) => {
         return (
           <ShellComponent>
             <nearestMatchContext.Provider value={nearestMatch}>
-              <Dynamic
-                component={ResolvedSuspenseBoundary()}
+              <Solid.Suspense
                 fallback={
                   // Data-only SSR renders the inner fallback on the server, so
                   // avoid adding an extra suspense fallback on the client.
@@ -175,16 +179,13 @@ export const Match = (props: { matchId: string }) => {
                     </Solid.Switch>
                   </Dynamic>
                 </Dynamic>
-              </Dynamic>
+              </Solid.Suspense>
             </nearestMatchContext.Provider>
 
             {currentMatchState().parentRouteId === rootRouteId ? (
               <>
                 <OnRendered />
-                {(isServer ?? router.isServer) &&
-                router.options.scrollRestoration ? (
-                  <ScrollRestorationScript />
-                ) : null}
+                {renderScrollRestoration?.(router)}
               </>
             ) : null}
           </ShellComponent>
@@ -206,13 +207,23 @@ function OnRendered() {
   )
   Solid.createEffect(
     Solid.on([location], () => {
-      router.emit({
-        type: 'onRendered',
-        ...getLocationChangeInfo(
-          router.stores.location.get(),
-          router.stores.resolvedLocation.get(),
-        ),
-      })
+      const currentResolvedLocation = router.stores.resolvedLocation.get()
+      const previousResolvedLocation = (router as any)
+        .__tsrRendered as ParsedLocation | undefined
+      if (
+        currentResolvedLocation &&
+        (!previousResolvedLocation ||
+          previousResolvedLocation.state.__TSR_key !== location())
+      ) {
+        router.emit({
+          type: 'onRendered',
+          ...getLocationChangeInfo(
+            currentResolvedLocation,
+            previousResolvedLocation ?? currentResolvedLocation,
+          ),
+        })
+      }
+      ;(router as any).__tsrRendered = currentResolvedLocation
     }),
   )
   return null
@@ -299,31 +310,32 @@ export const MatchInner = (): any => {
             </Solid.Match>
             <Solid.Match when={currentMatch().status === 'pending'}>
               {(_) => {
-                const loadPromise = currentMatch()._.loadPromise
+                const initialLoadPromise = currentMatch()._.loadPromise
+                // A published pending snapshot can outlive its local owner.
+                // The router-wide promise waits for this transition to commit,
+                // so suspending on it here would create a cycle.
                 const promise =
-                  loadPromise?.status === 'pending'
-                    ? loadPromise
-                    : router.latestLoadPromise
-
-                if (process.env.NODE_ENV !== 'production' && !promise) {
-                  throw new Error(
-                    `Invariant failed: pending match "${currentMatch().id}" has no loadPromise`,
-                  )
-                }
-
+                  initialLoadPromise?.status === 'pending'
+                    ? initialLoadPromise
+                    : undefined
                 const FallbackComponent = PendingComponent()
                 const pendingMinMs =
                   route().options.pendingMinMs ??
                   router.options.defaultPendingMinMs
-                if (
-                  !(isServer ?? router.isServer) &&
-                  FallbackComponent &&
-                  pendingMinMs &&
-                  loadPromise?.status === 'pending'
-                ) {
-                  loadPromise.pendingUntil ??= Date.now() + pendingMinMs
-                }
-
+                let pendingUntil: number | undefined
+                Solid.createRenderEffect(() => {
+                  const loadPromise = currentMatch()._.loadPromise
+                  if (
+                    !(isServer ?? router.isServer) &&
+                    FallbackComponent &&
+                    pendingMinMs &&
+                    loadPromise?.status === 'pending'
+                  ) {
+                    pendingUntil ??=
+                      loadPromise.pendingUntil ?? Date.now() + pendingMinMs
+                    loadPromise.pendingUntil ??= pendingUntil
+                  }
+                })
                 const [loaderResult] = Solid.createResource(() => promise)
 
                 return (
@@ -396,10 +408,10 @@ export const Outlet = () => {
   )
 
   const childMatchId = Solid.createMemo(() => {
-    const currentRouteId = routeId()
-    return currentRouteId
-      ? router.stores.childMatchIdByRouteId.get()[currentRouteId]
-      : undefined
+    const parentIndex = parentMatch()?.index
+    return parentIndex === undefined
+      ? undefined
+      : router.stores.matchesId.get()[parentIndex + 1]
   })
 
   const shouldShowNotFound = () => parentGlobalNotFound()

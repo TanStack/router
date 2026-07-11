@@ -248,16 +248,9 @@ export const MatchRoute = Vue.defineComponent({
     },
   },
   setup(props, { slots }) {
-    const router = useRouter()
-    const status = useStore(
-      router.stores.matchRouteDeps,
-      (value) => value.status,
-    )
+    const matchRoute = useMatchRoute()
 
     return () => {
-      if (!status.value) return null
-
-      const matchRoute = useMatchRoute()
       const params = matchRoute(props).value as boolean
 
       // Create a component that renders the slot in a reactive manner

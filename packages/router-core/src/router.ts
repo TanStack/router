@@ -38,6 +38,7 @@ import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
 import { getLocationChangeInfo } from './location-change'
 import { getMatchContext, settleMatchLoad } from './load-matches'
+import { abortDiscardedMatchControllers } from './load-matches.client'
 import { preloadClientRoute } from './router-preload.client'
 import { loadClientRouter } from './router-load.client'
 import { loadServerRouter } from './router-load.server'
@@ -624,6 +625,8 @@ export interface MatchRoutesOpts {
   preload?: boolean
   throwOnError?: boolean
   dest?: BuildNextOptions
+  /** @internal Stop a load preflight after reentrant work takes ownership. */
+  _isCurrent?: () => boolean
 }
 
 export type InferRouterContext<TRouteTree extends AnyRoute> =
@@ -1295,7 +1298,14 @@ export class RouterCore<
   emit: EmitFn = (routerEvent) => {
     this.subscribers.forEach((listener) => {
       if (listener.eventType === routerEvent.type) {
-        listener.fn(routerEvent)
+        try {
+          listener.fn(routerEvent)
+        } catch (err) {
+          // Router events are notifications. A broken observer must not stop
+          // later observers or interrupt navigation/transition finalization,
+          // but its failure remains globally observable.
+          Promise.reject(err)
+        }
       }
     })
   }
@@ -1429,6 +1439,7 @@ export class RouterCore<
   ): Array<AnyRouteMatch> {
     const throwOnError = opts?.throwOnError
     const preload = opts?.preload === true
+    const isCurrent = opts?._isCurrent
     const matchedRoutesResult = this.getMatchedRoutes(next.pathname)
     const { foundRoute, routeParams } = matchedRoutesResult
     let { matchedRoutes } = matchedRoutesResult
@@ -1471,229 +1482,283 @@ export class RouterCore<
     const matches: Array<AnyRouteMatch> = []
     const previousActiveMatches = this.stores.matches.get()
     const rootContext = this.options.context ?? {}
+    let hmrGenerationMismatch = false
 
-    for (let index = 0; index < matchedRoutes.length; index++) {
-      const route = matchedRoutes[index]!
-      const routeOptions = route.options
-      // Take each matched route and resolve + validate its search params
-      // This has to happen serially because each route's search params
-      // can depend on the parent route's search params
-      // It must also happen before we create the match so that we can
-      // pass the search params to the route's potential key function
-      // which is used to uniquely identify the route match in state
+    try {
+      for (let index = 0; index < matchedRoutes.length; index++) {
+        if (isCurrent && !isCurrent()) {
+          break
+        }
+        const route = matchedRoutes[index]!
+        const routeOptions = route.options
+        // Take each matched route and resolve + validate its search params
+        // This has to happen serially because each route's search params
+        // can depend on the parent route's search params
+        // It must also happen before we create the match so that we can
+        // pass the search params to the route's potential key function
+        // which is used to uniquely identify the route match in state
 
-      const parentMatch = matches[index - 1]
+        const parentMatch = matches[index - 1]
 
-      let preMatchSearch: Record<string, any>
-      let strictMatchSearch: Record<string, any>
-      let searchError: any
+        let preMatchSearch: Record<string, any>
+        let strictMatchSearch: Record<string, any>
+        let searchError: any
 
-      {
-        // Validate the search params and stabilize them
-        const parentSearch = parentMatch?.search ?? next.search
-        const parentStrictSearch = parentMatch?._strictSearch
+        {
+          // Validate the search params and stabilize them
+          const parentSearch = parentMatch?.search ?? next.search
+          const parentStrictSearch = parentMatch?._strictSearch
 
-        try {
-          const strictSearch =
-            validateSearch(routeOptions.validateSearch, { ...parentSearch }) ??
-            undefined
+          try {
+            const strictSearch =
+              validateSearch(routeOptions.validateSearch, {
+                ...parentSearch,
+              }) ?? undefined
 
-          preMatchSearch = {
-            ...parentSearch,
-            ...strictSearch,
+            preMatchSearch = {
+              ...parentSearch,
+              ...strictSearch,
+            }
+            strictMatchSearch = { ...parentStrictSearch, ...strictSearch }
+          } catch (err: any) {
+            let searchParamError = err
+            if (!(err instanceof SearchParamError)) {
+              searchParamError = new SearchParamError(
+                err?.message ?? String(err),
+                {
+                  cause: err,
+                },
+              )
+            }
+
+            if (throwOnError) {
+              throw searchParamError
+            }
+
+            preMatchSearch = parentSearch
+            strictMatchSearch = {}
+            searchError = searchParamError
           }
-          strictMatchSearch = { ...parentStrictSearch, ...strictSearch }
-        } catch (err: any) {
-          let searchParamError = err
-          if (!(err instanceof SearchParamError)) {
-            searchParamError = new SearchParamError(
-              err?.message ?? String(err),
-              {
+        }
+
+        if (isCurrent && !isCurrent()) {
+          break
+        }
+
+        // This is where we need to call route.options.loaderDeps() to get any additional
+        // deps that the route's loader function might need to run. We need to do this
+        // before we create the match so that we can pass the deps to the route's
+        // potential key function which is used to uniquely identify the route match in state
+
+        const loaderDeps =
+          routeOptions.loaderDeps?.({
+            search: preMatchSearch,
+          }) ?? ''
+
+        if (isCurrent && !isCurrent()) {
+          break
+        }
+
+        const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
+
+        if (isCurrent && !isCurrent()) {
+          break
+        }
+
+        const { interpolatedPath, usedParams } = interpolatePath({
+          path: route.fullPath,
+          params: routeParams,
+          decoder: this.pathParamsDecoder,
+          ...(isServer === undefined ? { server: this.isServer } : undefined),
+        })
+
+        // Waste not, want not. If we already have a match for this route,
+        // reuse it. This is important for layout routes, which might stick
+        // around between navigation actions that only change leaf routes.
+
+        // Existing matches are matches that are already loaded along with
+        // pending matches that are still loading
+        const matchId =
+          // route.id for disambiguation
+          route.id +
+          // interpolatedPath for param changes
+          interpolatedPath +
+          // explicit deps
+          loaderDepsHash
+
+        const storedMatch = this.getMatch(matchId)
+        if (
+          process.env.NODE_ENV !== 'production' &&
+          storedMatch &&
+          storedMatch._.hmrGeneration !== (route._hmrGeneration ?? 0)
+        ) {
+          // Route context and parsed params are generation-derived. Once a
+          // hot route changes, its whole descendant suffix must be rebuilt so
+          // children cannot retain context derived from the old parent.
+          hmrGenerationMismatch = true
+        }
+        // A legacy notFoundRoute is appended after the partially matched
+        // branch, so the same id can move to a different parent/depth. Its
+        // cached context belongs to the old parent and cannot be reused.
+        const existingMatch =
+          !hmrGenerationMismatch && storedMatch?.index === index
+            ? storedMatch
+            : undefined
+        const previousMatch =
+          previousActiveMatches[index]?.routeId === route.id
+            ? previousActiveMatches[index]
+            : undefined
+
+        const strictParams = existingMatch?._strictParams ?? usedParams
+
+        let paramsError: unknown
+
+        if (!existingMatch) {
+          try {
+            extractStrictParams(route, strictParams)
+          } catch (err: any) {
+            if (isNotFound(err) || isRedirect(err)) {
+              paramsError = err
+            } else {
+              paramsError = new PathParamError(err?.message ?? String(err), {
                 cause: err,
-              },
-            )
-          }
+              })
+            }
 
-          if (throwOnError) {
-            throw searchParamError
-          }
-
-          preMatchSearch = parentSearch
-          strictMatchSearch = {}
-          searchError = searchParamError
-        }
-      }
-
-      // This is where we need to call route.options.loaderDeps() to get any additional
-      // deps that the route's loader function might need to run. We need to do this
-      // before we create the match so that we can pass the deps to the route's
-      // potential key function which is used to uniquely identify the route match in state
-
-      const loaderDeps =
-        routeOptions.loaderDeps?.({
-          search: preMatchSearch,
-        }) ?? ''
-
-      const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
-
-      const { interpolatedPath, usedParams } = interpolatePath({
-        path: route.fullPath,
-        params: routeParams,
-        decoder: this.pathParamsDecoder,
-        ...(isServer === undefined ? { server: this.isServer } : undefined),
-      })
-
-      // Waste not, want not. If we already have a match for this route,
-      // reuse it. This is important for layout routes, which might stick
-      // around between navigation actions that only change leaf routes.
-
-      // Existing matches are matches that are already loaded along with
-      // pending matches that are still loading
-      const matchId =
-        // route.id for disambiguation
-        route.id +
-        // interpolatedPath for param changes
-        interpolatedPath +
-        // explicit deps
-        loaderDepsHash
-
-      const existingMatch = this.getMatch(matchId)
-      const previousMatch =
-        previousActiveMatches[index]?.routeId === route.id
-          ? previousActiveMatches[index]
-          : undefined
-
-      const strictParams = existingMatch?._strictParams ?? usedParams
-
-      let paramsError: unknown
-
-      if (!existingMatch) {
-        try {
-          extractStrictParams(route, strictParams)
-        } catch (err: any) {
-          if (isNotFound(err) || isRedirect(err)) {
-            paramsError = err
-          } else {
-            paramsError = new PathParamError(err?.message ?? String(err), {
-              cause: err,
-            })
-          }
-
-          if (throwOnError) {
-            throw paramsError
+            if (throwOnError) {
+              throw paramsError
+            }
           }
         }
-      }
 
-      Object.assign(routeParams, strictParams)
-
-      const cause = preload ? 'preload' : previousMatch ? 'stay' : 'enter'
-      const parentContext = parentMatch?.context ?? rootContext
-      const search = previousMatch
-        ? nullReplaceEqualDeep(previousMatch.search, preMatchSearch)
-        : existingMatch
-          ? nullReplaceEqualDeep(existingMatch.search, preMatchSearch)
-          : preMatchSearch
-
-      const abortController = new AbortController()
-      let match: AnyRouteMatch
-
-      if (existingMatch) {
-        const loadPromise = existingMatch._.loadPromise
-        match = {
-          ...existingMatch,
-          params: routeParams,
-          _strictParams: strictParams,
-          search,
-          _strictSearch: strictMatchSearch,
-          searchError,
-          preload,
-          cause,
-          abortController,
-          // Preserve readiness ownership AND the hydration marker: a
-          // dehydrated match can legitimately hold a pending loadPromise
-          // (hydration keeps readiness across rematching), and dropping the
-          // marker would make the follow-up load re-run its server work.
-          _: {
-            loadPromise,
-            dehydrated: existingMatch._.dehydrated,
-          },
+        if (isCurrent && !isCurrent()) {
+          break
         }
-      } else {
-        const pending =
-          !(isServer ?? this.isServer) &&
-          (routeOptions.loader ||
-            routeOptions.beforeLoad ||
-            route.lazyFn ||
-            routeNeedsPreload(route))
 
-        match = {
-          id: matchId,
-          ssr: routeOptions.ssr,
+        Object.assign(routeParams, strictParams)
+
+        const cause = preload ? 'preload' : previousMatch ? 'stay' : 'enter'
+        const parentContext = parentMatch?.context ?? rootContext
+        const search = previousMatch
+          ? nullReplaceEqualDeep(previousMatch.search, preMatchSearch)
+          : existingMatch
+            ? nullReplaceEqualDeep(existingMatch.search, preMatchSearch)
+            : preMatchSearch
+
+        const abortController = new AbortController()
+        let match: AnyRouteMatch
+
+        if (existingMatch) {
+          const loadPromise = existingMatch._.loadPromise
+          match = {
+            ...existingMatch,
+            index,
+            params: routeParams,
+            _strictParams: strictParams,
+            search,
+            _strictSearch: strictMatchSearch,
+            searchError,
+            preload,
+            cause,
+            abortController,
+            // Preserve readiness ownership AND the hydration marker: a
+            // dehydrated match can legitimately hold a pending loadPromise
+            // (hydration keeps readiness across rematching), and dropping the
+            // marker would make the follow-up load re-run its server work.
+            _: {
+              loadPromise,
+              dehydrated: existingMatch._.dehydrated,
+              loaderAbortController: existingMatch._.loaderAbortController,
+              loaderGeneration: existingMatch._.loaderGeneration,
+            },
+          }
+        } else {
+          const pending =
+            !(isServer ?? this.isServer) &&
+            (routeOptions.loader ||
+              routeOptions.beforeLoad ||
+              route.lazyFn ||
+              routeNeedsPreload(route))
+
+          match = {
+            id: matchId,
+            ssr: routeOptions.ssr,
+            index,
+            routeId: route.id,
+            params: routeParams,
+            _strictParams: strictParams,
+            search,
+            _strictSearch: strictMatchSearch,
+            searchError,
+            preload,
+            pathname: interpolatedPath,
+            updatedAt: Date.now(),
+            status: pending ? 'pending' : 'success',
+            isFetching: false,
+            paramsError,
+            _: pending
+              ? {
+                  loadPromise: createControlledPromise(),
+                }
+              : {},
+            abortController,
+            cause,
+            loaderDeps,
+            invalid: false,
+            staticData: routeOptions.staticData || {},
+            fullPath: route.fullPath,
+          } as AnyRouteMatch
+        }
+
+        if (process.env.NODE_ENV !== 'production') {
+          match._.hmrGeneration = route._hmrGeneration ?? 0
+        }
+
+        if (!preload && !match._.dehydrated) {
+          // If we have a global not found, mark the right match as global not found
+          match.globalNotFound = globalNotFoundRouteId === route.id
+        }
+
+        matches[index] = match
+
+        if (!existingMatch && routeOptions.context) {
+          match.__routeContext = routeOptions.context({
+            deps: match.loaderDeps,
+            params: match.params,
+            context: parentContext,
+            location: next,
+            navigate: (opts: any) =>
+              this.navigate({ ...opts, _fromLocation: next }),
+            buildLocation: this.buildLocation,
+            cause: match.cause,
+            abortController: match.abortController,
+            preload,
+            matches,
+            routeId: route.id,
+          } as RouteContextOptions<any, any, any, any, any>)
+        }
+
+        match.context = getMatchContext(
+          { router: this, matches },
           index,
-          routeId: route.id,
-          params: routeParams,
-          _strictParams: strictParams,
-          search,
-          _strictSearch: strictMatchSearch,
-          searchError,
-          preload,
-          pathname: interpolatedPath,
-          updatedAt: Date.now(),
-          status: pending ? 'pending' : 'success',
-          isFetching: false,
-          paramsError,
-          _: pending
-            ? {
-                loadPromise: createControlledPromise(),
-              }
-            : {},
-          abortController,
-          cause,
-          loaderDeps,
-          invalid: false,
-          staticData: routeOptions.staticData || {},
-          fullPath: route.fullPath,
-        } as AnyRouteMatch
+          match.__beforeLoadContext,
+        )
       }
 
-      if (!preload) {
-        // If we have a global not found, mark the right match as global not found
-        match.globalNotFound = globalNotFoundRouteId === route.id
+      for (let i = 0; i < matches.length; i++) {
+        const previousMatch = previousActiveMatches[i]
+        const match = matches[i]!
+        if (previousMatch && previousMatch.routeId === match.routeId) {
+          match.params = nullReplaceEqualDeep(previousMatch.params, routeParams)
+        }
       }
-
-      matches[index] = match
-
-      if (!existingMatch && routeOptions.context) {
-        match.__routeContext = routeOptions.context({
-          deps: match.loaderDeps,
-          params: match.params,
-          context: parentContext,
-          location: next,
-          navigate: (opts: any) =>
-            this.navigate({ ...opts, _fromLocation: next }),
-          buildLocation: this.buildLocation,
-          cause: match.cause,
-          abortController: match.abortController,
-          preload,
-          matches,
-          routeId: route.id,
-        } as RouteContextOptions<any, any, any, any, any>)
+    } catch (err) {
+      // This candidate lane never escaped matching. Abort only its fresh pass
+      // controllers; loaderAbortController may belong to retained cached data.
+      for (const match of matches) {
+        match.abortController.abort()
       }
-
-      match.context = getMatchContext(
-        { router: this, matches },
-        index,
-        match.__beforeLoadContext,
-      )
-    }
-
-    for (let i = 0; i < matches.length; i++) {
-      const previousMatch = previousActiveMatches[i]
-      const match = matches[i]!
-      if (previousMatch && previousMatch.routeId === match.routeId) {
-        match.params = nullReplaceEqualDeep(previousMatch.params, routeParams)
-      }
+      throw err
     }
 
     return matches
@@ -2391,6 +2456,8 @@ export class RouterCore<
   /** Private in-flight preload lanes, joinable by navigations (client only). */
   declare _preloadLanes: Set<{ matches: Array<AnyRouteMatch> }> | undefined
   declare _backgroundLoad: BackgroundLoad | undefined
+  /** Last lane owned by a final/background commit, excluding pending UI publication. */
+  declare _lastFinalMatches: Array<AnyRouteMatch> | undefined
 
   load: LoadFn = (opts) => loadRouter(this, opts)
 
@@ -2472,6 +2539,10 @@ export class RouterCore<
       TDehydrated
     >
   > = (opts) => {
+    const previousMatches = this.stores.matches.get()
+    // A hydrated client may invalidate before its first normal client load.
+    // Preserve that terminal lane before forcePending mutates active state.
+    this._lastFinalMatches ??= previousMatches
     // `live` gates the only policy difference between the pools: cached
     // entries stay `status: 'success'` until they are reused, expired, or
     // explicitly cleared, so only live/pending matches may flip to pending.
@@ -2505,7 +2576,14 @@ export class RouterCore<
     })
 
     this.shouldViewTransition = false
-    return this.load({ sync: opts?.sync })
+    const loadPromise = this.load({ sync: opts?.sync })
+    // Client rematching can throw before loadClientRouter raises isLoading.
+    // Restore the terminal active lane synchronously when that happens so a
+    // failed forcePending invalidation cannot strand unowned pending UI.
+    if (!(isServer ?? this.isServer) && !this.stores.isLoading.get()) {
+      this.stores.setMatches(previousMatches)
+    }
+    return loadPromise
   }
 
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
@@ -2568,6 +2646,7 @@ export class RouterCore<
     }
 
     this.stores.setCached(nextCachedMatches)
+    abortDiscardedMatchControllers(this, cachedMatches)
   }
 
   loadRouteChunk = loadRouteChunk

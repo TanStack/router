@@ -15,7 +15,11 @@ type AnyRouteWithPrivateProps = AnyRoute & {
       Promise<void> | undefined
     >
   >
+  _componentsLoaded?: boolean
   _lazyPromise?: Promise<void>
+  _lazyGeneration?: number
+  _hmrGeneration?: number
+  _lazyLoaded?: boolean
   update: (options: Record<string, unknown>) => unknown
   _path: string
   _id: string
@@ -114,15 +118,21 @@ function handleRouteUpdate(
   oldRoute.update(nextOptions)
   oldRoute._componentsPromise = undefined
   oldRoute._componentPromises = undefined
+  oldRoute._componentsLoaded = false
   oldRoute._lazyPromise = undefined
+  oldRoute._lazyGeneration = (oldRoute._lazyGeneration ?? 0) + 1
+  oldRoute._hmrGeneration = (oldRoute._hmrGeneration ?? 0) + 1
+  oldRoute._lazyLoaded = false
 
   router.setRoutes(router.buildRouteTree())
   syncHotRouteExport(oldRoute)
   router.resolvePathCache.clear()
 
   const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
-  const activeMatch = router.stores.matches.get().find(filter)
-  const pendingMatch = router.stores.pendingMatches.get().find(filter)
+  const activeMatches = router.stores.matches.get()
+  const pendingMatches = router.stores.pendingMatches.get()
+  const activeMatch = activeMatches.find(filter)
+  const pendingMatch = pendingMatches.find(filter)
   const cachedMatches = router.stores.cachedMatches.get().filter(filter)
 
   if (activeMatch || pendingMatch || cachedMatches.length > 0) {
@@ -133,18 +143,28 @@ function handleRouteUpdate(
     //
     // We update the store directly so the clear is visible before invalidate
     // reads the store and rematches the route.
-    if (removedKeys.has('loader') || removedKeys.has('beforeLoad')) {
-      const matchIds = [
-        activeMatch?.id,
-        pendingMatch?.id,
-        ...cachedMatches.map((match) => match.id),
-      ].filter(Boolean) as Array<string>
+    const projectedAssetsRemoved =
+      removedKeys.has('head') || removedKeys.has('scripts')
+    if (
+      removedKeys.has('loader') ||
+      removedKeys.has('beforeLoad') ||
+      projectedAssetsRemoved
+    ) {
+      const liveStores = [
+        activeMatch &&
+          ([
+            router.stores.matchStores.get(activeMatch.id),
+            activeMatches,
+          ] as const),
+        pendingMatch &&
+          ([
+            router.stores.pendingMatchStores.get(pendingMatch.id),
+            pendingMatches,
+          ] as const),
+      ]
       router.batch(() => {
-        for (const matchId of matchIds) {
-          const store =
-            router.stores.pendingMatchStores.get(matchId) ||
-            router.stores.matchStores.get(matchId) ||
-            router.stores.cachedMatchStores.get(matchId)
+        for (const live of liveStores) {
+          const store = live?.[0]
           if (store) {
             store.set((prev) => {
               const next: AnyRouteMatchWithPrivateProps = { ...prev }
@@ -154,7 +174,17 @@ function handleRouteUpdate(
               }
               if (removedKeys.has('beforeLoad')) {
                 next.__beforeLoadContext = undefined
-                next.context = rebuildMatchContextWithoutBeforeLoad(next)
+                next.context = rebuildMatchContextWithoutBeforeLoad(
+                  next,
+                  live[1],
+                )
+              }
+              if (projectedAssetsRemoved) {
+                next.meta = undefined
+                next.links = undefined
+                next.headScripts = undefined
+                next.scripts = undefined
+                next.styles = undefined
               }
 
               return next
@@ -162,6 +192,14 @@ function handleRouteUpdate(
           }
         }
       })
+
+      // Cached matches are a flat pool rather than an ordered route lane, so
+      // their parent context cannot be reconstructed positionally. Their
+      // projected assets also cannot be recomputed until a later visit.
+      // Discard entries whose hot route contract changed and rematch later.
+      if (cachedMatches.length > 0) {
+        router.clearCache({ filter })
+      }
     }
 
     router.invalidate({ filter, sync: true })
@@ -179,59 +217,12 @@ function handleRouteUpdate(
     newRoute._to = liveRoute._to
   }
 
-  function getStoreMatch(matchId: string) {
-    return (
-      router.stores.pendingMatchStores.get(matchId)?.get() ||
-      router.stores.matchStores.get(matchId)?.get() ||
-      router.stores.cachedMatchStores.get(matchId)?.get()
-    )
-  }
-
-  function getMatchList(matchId: string) {
-    const pendingMatches = router.stores.pendingMatches.get()
-    if (pendingMatches.some((match) => match.id === matchId)) {
-      return pendingMatches
-    }
-
-    const activeMatches = router.stores.matches.get()
-    if (activeMatches.some((match) => match.id === matchId)) {
-      return activeMatches
-    }
-
-    const cachedMatches = router.stores.cachedMatches.get()
-    if (cachedMatches.some((match) => match.id === matchId)) {
-      return cachedMatches
-    }
-
-    return []
-  }
-
-  function getParentMatch(match: AnyRouteMatch) {
-    const matchList = getMatchList(match.id)
-    const matchIndex = matchList.findIndex((item) => item.id === match.id)
-
-    if (matchIndex <= 0) {
-      return undefined
-    }
-
-    const parentMatch = matchList[matchIndex - 1]!
-    return getStoreMatch(parentMatch.id) || parentMatch
-  }
-
   function rebuildMatchContextWithoutBeforeLoad(
     match: AnyRouteMatchWithPrivateProps,
+    lane: Array<AnyRouteMatch>,
   ) {
-    const parentMatch = getParentMatch(match)
-    const getParentContext = (
-      router as unknown as {
-        getParentContext?: (
-          parentMatch?: AnyRouteMatch,
-        ) => Record<string, unknown> | undefined
-      }
-    ).getParentContext
-    const parentContext = getParentContext
-      ? getParentContext.call(router, parentMatch)
-      : (parentMatch?.context ?? router.options.context)
+    const parentContext =
+      lane[match.index - 1]?.context ?? router.options.context
 
     return {
       ...(parentContext ?? {}),

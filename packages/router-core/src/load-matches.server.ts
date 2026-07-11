@@ -148,6 +148,7 @@ const runServerBeforeLoad = (
     search,
     abortController,
     params,
+    preload: false,
     context,
     location: inner.location,
     navigate: (opts: any) =>
@@ -242,16 +243,27 @@ const handleServerBeforeLoad = (
     })),
   }
 
-  const tempSsr = route.options.ssr(ssrFnContext)
-  if (isPromise(tempSsr)) {
-    return tempSsr.then((ssr) => {
-      existingMatch.ssr = parentOverride(ssr ?? defaultSsr)
-      return queueServerBeforeLoad() as any
-    }) as Promise<false | void | AnyRouteMatch>
+  const applySsr = (ssr: SSROption | undefined) => {
+    existingMatch.ssr = parentOverride(ssr ?? defaultSsr)
+    return queueServerBeforeLoad()
   }
-
-  existingMatch.ssr = parentOverride(tempSsr ?? defaultSsr)
-  return queueServerBeforeLoad()
+  let tempSsr
+  try {
+    tempSsr = route.options.ssr(ssrFnContext)
+  } catch (error) {
+    recordServerBeforeLoadFailure(inner, index, error)
+    return
+  }
+  return isPromise(tempSsr)
+    ? tempSsr.then(
+        // The package build's PromiseLike narrowing excludes the private
+        // `false` serial-failure sentinel even though this function carries it.
+        applySsr as any,
+        (error) => {
+          recordServerBeforeLoadFailure(inner, index, error)
+        },
+      )
+    : applySsr(tempSsr)
 }
 
 const getServerLoaderContext = (
@@ -479,20 +491,32 @@ export const loadServerMatches = async (
   }
 
   if (firstRedirect) {
+    for (const match of inner.matches) {
+      match.abortController.abort()
+    }
     throw firstRedirect
   }
 
   const notFoundToThrow = firstNotFound
   const errorIndex = inner.badIndex
+  let notFoundWins = false
 
   if (!hasFatalError && notFoundToThrow) {
-    const index = commitServerNotFoundBoundary(inner, notFoundToThrow)
-    while (inner.matches.length > index + 1) {
-      inner.matches.pop()
+    const index = getNotFoundBoundaryIndex(inner, notFoundToThrow)
+    // A regular error already committed at an equal or shallower route owns
+    // the render boundary. A deeper concurrent notFound must not overwrite
+    // that error or make the server return 404 for UI that renders as 500.
+    if (errorIndex == null || index < errorIndex) {
+      commitServerNotFoundBoundary(inner, notFoundToThrow)
+      notFoundWins = true
+    }
+    const trimIndex = notFoundWins ? index : errorIndex!
+    while (inner.matches.length > trimIndex + 1) {
+      inner.matches.pop()!.abortController.abort()
     }
   } else if (!hasFatalError) {
     while (errorIndex != null && inner.matches.length > errorIndex + 1) {
-      inner.matches.pop()
+      inner.matches.pop()!.abortController.abort()
     }
   }
 
@@ -506,7 +530,7 @@ export const loadServerMatches = async (
     throw fatalError
   }
 
-  if (notFoundToThrow) {
+  if (notFoundWins) {
     throw notFoundToThrow
   }
 

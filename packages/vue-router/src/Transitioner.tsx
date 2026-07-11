@@ -31,16 +31,11 @@ export function useTransitionerSetup() {
   // the onResolved edge flush-coupled.
   let transitioning = false
 
-  const previous = {
-    isLoading: false,
-    isPagePending: false,
-    isAnyPending: false,
-  }
+  const previous: [boolean, boolean] = [false, false]
 
-  // Change info captured at the pagePending falling edge, before commitIdle()
-  // advances resolvedLocation to the new location. Reused for the (possibly
-  // nextTick-deferred) onResolved emission so it reports the navigation that
-  // actually resolved instead of a from===to no-op. Reset once consumed.
+  // Change info captured at the loading falling edge, before resolvedLocation
+  // advances. Reused for onResolved so it reports the navigation that actually
+  // resolved instead of a from===to no-op.
   let resolvedChangeInfo: ReturnType<typeof getLocationChangeInfo> | undefined
 
   // Single emitter for the load lifecycle. Level changes arrive through
@@ -49,12 +44,11 @@ export function useTransitionerSetup() {
   // transition edge. One emitter means nothing to arbitrate.
   const emitEdges = () => {
     const isLoading = router.stores.isLoading.get()
-    const isPagePending = isLoading || router.stores.hasPending.get()
-    const isAnyPending = isPagePending || transitioning
-    const prev = { ...previous }
-    previous.isLoading = isLoading
-    previous.isPagePending = isPagePending
-    previous.isAnyPending = isAnyPending
+    const isAnyPending = isLoading || transitioning
+    const wasLoading = previous[0]
+    const wasAnyPending = previous[1]
+    previous[0] = isLoading
+    previous[1] = isAnyPending
 
     const changeInfo = () =>
       getLocationChangeInfo(
@@ -62,35 +56,30 @@ export function useTransitionerSetup() {
         router.stores.resolvedLocation.get(),
       )
 
-    if (prev.isLoading && !isLoading) {
+    if (wasLoading && !isLoading) {
       // The new URL has committed and the new matches are in state.matches.
-      router.emit({ type: 'onLoad', ...changeInfo() })
-    }
-    // Commit idle/resolvedLocation on the FIRST falling edge (guarded for
-    // idempotence): these store updates join the same reactive flush as the
-    // new matches, so matchRoute/status consumers can never render one
-    // flush behind the committed lane. Only the onResolved EVENT is
-    // flush-coupled to the deferred transition edge.
-    const commitIdle = () => {
-      if (router.stores.status.get() === 'pending') {
-        batch(() => {
-          router.stores.status.set('idle')
-          router.stores.resolvedLocation.set(router.stores.location.get())
-        })
-      }
-    }
-    if (prev.isPagePending && !isPagePending) {
       resolvedChangeInfo = changeInfo()
+      // Expose the completed location before lifecycle subscribers run. A
+      // subscriber may synchronously start the next navigation; status remains
+      // pending until Vue has flushed the completed navigation's render.
+      router.stores.resolvedLocation.set(router.stores.location.get())
+      router.emit({ type: 'onLoad', ...resolvedChangeInfo })
       router.emit({ type: 'onBeforeRouteMount', ...resolvedChangeInfo })
-      commitIdle()
     }
-    if (prev.isAnyPending && !isAnyPending) {
+    // Idle state and onResolved are flush-coupled to the transition edge so
+    // public idle never precedes the destination DOM.
+    if (wasAnyPending && !isAnyPending) {
       router.emit({
         type: 'onResolved',
         ...(resolvedChangeInfo ?? changeInfo()),
       })
       resolvedChangeInfo = undefined
-      commitIdle()
+      if (
+        !router.stores.isLoading.get() &&
+        router.stores.status.get() === 'pending'
+      ) {
+        router.stores.status.set('idle')
+      }
     }
   }
 
@@ -116,14 +105,10 @@ export function useTransitionerSetup() {
   // Armed before the mount load below, so every load — including one that
   // settled before mount (the mount load below still toggles isLoading) —
   // produces an observable edge.
-  previous.isLoading = router.stores.isLoading.get()
-  previous.isPagePending = previous.isLoading || router.stores.hasPending.get()
-  previous.isAnyPending = previous.isPagePending || transitioning
+  previous[0] = router.stores.isLoading.get()
+  previous[1] = previous[0] || transitioning
 
-  const subscriptions = [
-    router.stores.isLoading.subscribe(emitEdges),
-    router.stores.hasPending.subscribe(emitEdges),
-  ]
+  const isLoadingSubscription = router.stores.isLoading.subscribe(emitEdges)
 
   // Vue updates DOM asynchronously (next tick). The View Transitions API expects the
   // update callback promise to resolve only after the DOM has been updated.
@@ -138,7 +123,7 @@ export function useTransitionerSetup() {
     originalStartViewTransition
 
   router.startViewTransition = (fn: () => Promise<void>) => {
-    return originalStartViewTransition?.(async () => {
+    return originalStartViewTransition(async () => {
       await fn()
       await Vue.nextTick()
     })
@@ -178,7 +163,6 @@ export function useTransitionerSetup() {
   Vue.onMounted(() => {
     if (
       !router.stores.isLoading.get() &&
-      !router.stores.hasPending.get() &&
       !transitioning &&
       router.stores.status.get() === 'pending'
     ) {
@@ -190,9 +174,8 @@ export function useTransitionerSetup() {
   })
 
   Vue.onUnmounted(() => {
-    for (const subscription of subscriptions) {
-      subscription.unsubscribe()
-    }
+    ;(router as any).__tsrOnRenderedLocation = undefined
+    isLoadingSubscription.unsubscribe()
     if (unsubscribe) {
       unsubscribe()
     }
@@ -200,21 +183,20 @@ export function useTransitionerSetup() {
 
   // Try to load the initial location
   Vue.onMounted(() => {
+    const currentLocation = router.stores.location.get()
+    const locationIsCurrent =
+      router.history.location.href === currentLocation.publicHref &&
+      router.history.location.state.__TSR_key ===
+        currentLocation.state.__TSR_key
     if (
-      (typeof window !== 'undefined' && router.ssr) ||
-      (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
+      locationIsCurrent &&
+      ((typeof window !== 'undefined' && router.ssr) ||
+        (mountLoadForRouter.router === router && mountLoadForRouter.mounted))
     ) {
       return
     }
     mountLoadForRouter = { router, mounted: true }
-    const tryLoad = async () => {
-      try {
-        await router.load()
-      } catch (err) {
-        console.error(err)
-      }
-    }
-    tryLoad()
+    void router.load().catch((err) => console.error(err))
   })
 }
 

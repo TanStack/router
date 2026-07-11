@@ -14,14 +14,10 @@ export function Transitioner() {
 
   const [isSolidTransitioning, startSolidTransition] = Solid.useTransition()
 
-  // Track pending state changes
-  const hasPending = Solid.createMemo(() => router.stores.hasPending.get())
-
   const isAnyPending = Solid.createMemo(
-    () => isLoading() || isSolidTransitioning() || hasPending(),
+    () => isLoading() || isSolidTransitioning(),
   )
-
-  const isPagePending = Solid.createMemo(() => isLoading() || hasPending())
+  let resolvedChangeInfo: ReturnType<typeof getLocationChangeInfo> | undefined
 
   router.startTransition = (fn: () => void | Promise<void>) => {
     Solid.startTransition(() => {
@@ -55,80 +51,77 @@ export function Transitioner() {
 
     Solid.onCleanup(() => {
       unsub()
+      ;(router as any).__tsrRendered = undefined
     })
   })
 
   // Try to load the initial location
   Solid.createRenderEffect(() => {
     Solid.untrack(() => {
+      const currentLocation = router.stores.location.get()
       if (
         // if we are hydrating from SSR, loading is triggered in ssr-client
-        (typeof window !== 'undefined' && router.ssr) ||
+        (typeof window !== 'undefined' &&
+          router.ssr &&
+          router.history.location.href ===
+            currentLocation.publicHref &&
+          router.history.location.state.__TSR_key ===
+            currentLocation.state.__TSR_key) ||
         (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
       ) {
         return
       }
       mountLoadForRouter = { router, mounted: true }
-      const tryLoad = async () => {
-        try {
-          await router.load()
-        } catch (err) {
-          console.error(err)
-        }
-      }
-      tryLoad()
+      void router.load().catch((err) => console.error(err))
     })
   })
 
-  Solid.createRenderEffect((previousIsLoading = false) => {
+  Solid.createComputed((previousIsLoading = false) => {
     const currentIsLoading = isLoading()
 
     if (previousIsLoading && !currentIsLoading) {
+      const nextResolvedLocation = router.stores.location.get()
+      resolvedChangeInfo = getLocationChangeInfo(
+        nextResolvedLocation,
+        router.stores.resolvedLocation.get(),
+      )
+      // Expose the completed location before lifecycle subscribers run. A
+      // subscriber may synchronously start the next navigation; status stays
+      // pending until Solid commits the completed navigation's render.
+      router.stores.resolvedLocation.set(nextResolvedLocation)
       router.emit({
         type: 'onLoad',
-        ...getLocationChangeInfo(
-          router.stores.location.get(),
-          router.stores.resolvedLocation.get(),
-        ),
+        ...resolvedChangeInfo,
+      })
+      router.emit({
+        type: 'onBeforeRouteMount',
+        ...resolvedChangeInfo,
       })
     }
 
     return currentIsLoading
   })
 
-  Solid.createComputed((previousIsPagePending = false) => {
-    const currentIsPagePending = isPagePending()
-
-    if (previousIsPagePending && !currentIsPagePending) {
-      router.emit({
-        type: 'onBeforeRouteMount',
-        ...getLocationChangeInfo(
-          router.stores.location.get(),
-          router.stores.resolvedLocation.get(),
-        ),
-      })
-    }
-
-    return currentIsPagePending
-  })
-
   Solid.createRenderEffect((previousIsAnyPending = false) => {
     const currentIsAnyPending = isAnyPending()
 
     if (previousIsAnyPending && !currentIsAnyPending) {
-      const changeInfo = getLocationChangeInfo(
-        router.stores.location.get(),
-        router.stores.resolvedLocation.get(),
-      )
+      const nextResolvedLocation = router.stores.location.get()
+      const changeInfo =
+        resolvedChangeInfo ??
+        getLocationChangeInfo(
+          nextResolvedLocation,
+          router.stores.resolvedLocation.get(),
+        )
+      resolvedChangeInfo = undefined
       router.emit({
         type: 'onResolved',
         ...changeInfo,
       })
 
-      Solid.batch(() => {
+      if (!router.stores.isLoading.get()) {
         router.stores.status.set('idle')
-        router.stores.resolvedLocation.set(router.stores.location.get())
-      })
+      }
     }
 
     return currentIsAnyPending

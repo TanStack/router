@@ -8,7 +8,11 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { z } from 'zod'
-import { composeRewrites, notFound } from '@tanstack/router-core'
+import {
+  composeRewrites,
+  createControlledPromise,
+  notFound,
+} from '@tanstack/router-core'
 import {
   Link,
   Outlet,
@@ -857,6 +861,150 @@ describe('encoding/decoding: URL path segment', () => {
 })
 
 describe('router emits events during rendering', () => {
+  it.each(['onLoad', 'onBeforeRouteMount'] as const)(
+    'keeps completed-navigation lifecycle state stable when %s starts a new navigation',
+    async (reentrantEvent) => {
+      const nextLoader = createControlledPromise<void>()
+      const rootRoute = createRootRoute({ component: Outlet })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <div>Index</div>,
+      })
+      const firstRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/first',
+        component: () => <div>First</div>,
+      })
+      const nextRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/next',
+        loader: () => nextLoader,
+        component: () => <div>Next</div>,
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, firstRoute, nextRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+
+      render(<RouterProvider router={router} />)
+      await waitFor(() => {
+        expect(screen.getByText('Index')).toBeInTheDocument()
+        expect(router.stores.status.get()).toBe('idle')
+      })
+
+      const loadPaths: Array<string> = []
+      const beforeMountPaths: Array<string> = []
+      const resolvedPaths: Array<string> = []
+      let nextNavigation: Promise<void> | undefined
+      const startNextNavigation = (pathname: string) => {
+        if (pathname === '/first') {
+          nextNavigation = router.navigate({ to: '/next' })
+        }
+      }
+      const unsubscribers = [
+        router.subscribe('onLoad', (event) => {
+          loadPaths.push(event.toLocation.pathname)
+          if (reentrantEvent === 'onLoad') {
+            startNextNavigation(event.toLocation.pathname)
+          }
+        }),
+        router.subscribe('onBeforeRouteMount', (event) => {
+          beforeMountPaths.push(event.toLocation.pathname)
+          if (reentrantEvent === 'onBeforeRouteMount') {
+            startNextNavigation(event.toLocation.pathname)
+          }
+        }),
+        router.subscribe('onResolved', (event) => {
+          resolvedPaths.push(event.toLocation.pathname)
+        }),
+      ]
+
+      const firstNavigation = router.navigate({ to: '/first' })
+
+      await waitFor(() => {
+        expect(nextNavigation).toBeDefined()
+        expect(router.state.location.pathname).toBe('/next')
+        expect(router.stores.isLoading.get()).toBe(true)
+        expect(router.stores.status.get()).toBe('pending')
+        expect(router.stores.resolvedLocation.get()?.pathname).toBe('/first')
+        expect(loadPaths).toEqual(['/first'])
+        expect(beforeMountPaths).toEqual(['/first'])
+        expect(resolvedPaths).toEqual([])
+      })
+
+      nextLoader.resolve()
+      await act(async () => {
+        await Promise.all([firstNavigation, nextNavigation!])
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('Next')).toBeInTheDocument()
+        expect(router.stores.isLoading.get()).toBe(false)
+        expect(router.stores.status.get()).toBe('idle')
+        expect(router.stores.resolvedLocation.get()?.pathname).toBe('/next')
+        expect(loadPaths).toEqual(['/first', '/next'])
+        expect(beforeMountPaths).toEqual(['/first', '/next'])
+        expect(resolvedPaths).toEqual(['/next'])
+      })
+
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe()
+      }
+    },
+  )
+
+  it('does not let an onResolved navigation get marked idle by the previous edge', async () => {
+    const nextLoader = createControlledPromise<void>()
+    const nextLoaderFn = vi.fn(() => nextLoader)
+    const rootRoute = createRootRoute({ component: Outlet })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const firstRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/first',
+    })
+    const nextRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/next',
+      loader: nextLoaderFn,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, firstRoute, nextRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    render(<RouterProvider router={router} />)
+    await waitFor(() => expect(router.state.status).toBe('idle'))
+
+    let nextNavigation: Promise<void> | undefined
+    const unsubscribe = router.subscribe('onResolved', (event) => {
+      if (event.toLocation.pathname === '/first') {
+        nextNavigation = router.navigate({ to: '/next' })
+      }
+    })
+
+    const firstNavigation = router.navigate({ to: '/first' })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/next'))
+    await waitFor(() => expect(nextLoaderFn).toHaveBeenCalledTimes(1))
+
+    expect(router.state.isLoading).toBe(true)
+    expect(router.state.status).toBe('pending')
+    expect(router.state.resolvedLocation?.pathname).toBe('/first')
+
+    nextLoader.resolve()
+    await act(async () => {
+      await Promise.all([firstNavigation, nextNavigation])
+    })
+    await waitFor(() => expect(router.state.status).toBe('idle'))
+    expect(router.state.resolvedLocation?.pathname).toBe('/next')
+
+    unsubscribe()
+  })
+
   it('during initial load, should emit the "onResolved" event', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/'] }),

@@ -738,6 +738,10 @@ export interface Route<
   /** @internal */
   _lazyPromise?: Promise<void>
   /** @internal */
+  _lazyGeneration?: number
+  /** @internal Development-only generation advanced by route HMR. */
+  _hmrGeneration?: number
+  /** @internal */
   _lazyLoaded?: boolean
   rank: number
   to: TrimPathRight<TFullPath>
@@ -1719,6 +1723,10 @@ export class BaseRoute<
   >
   /** @internal */
   _lazyPromise?: Promise<void>
+  /** @internal */
+  _lazyGeneration?: number
+  /** @internal Development-only generation advanced by route HMR. */
+  _hmrGeneration?: number
   /** @internal */
   _componentsPromise?: Promise<void>
   /** @internal */

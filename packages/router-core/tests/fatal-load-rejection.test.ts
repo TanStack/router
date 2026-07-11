@@ -20,11 +20,18 @@ describe('fatal load rejection', () => {
 
     try {
       const boom = new Error('resolveRedirect failed')
+      let blockErrorComponentPreload = true
+      const errorComponentPreload = vi.fn(() =>
+        blockErrorComponentPreload
+          ? new Promise<void>(() => {})
+          : Promise.resolve(),
+      )
 
       const rootRoute = new BaseRootRoute({
         // Never runs: the serial redirect caps the loader prefix at 0. Its
         // loadPromise (created for the beforeLoad phase) must still settle.
         loader: () => 'root data',
+        errorComponent: { preload: errorComponentPreload } as any,
       })
       const badRoute = new BaseRoute({
         getParentRoute: () => rootRoute,
@@ -54,6 +61,10 @@ describe('fatal load rejection', () => {
 
       await router.load()
 
+      // Fatal defensive settlement must not invoke more user route work: a
+      // never-settling error component cannot hold router.load() open.
+      expect(errorComponentPreload).not.toHaveBeenCalled()
+
       // The failure stayed observable.
       await new Promise((resolve) => setTimeout(resolve, 0))
       expect(unhandledRejection).toHaveBeenCalledWith(boom, expect.anything())
@@ -66,6 +77,7 @@ describe('fatal load rejection', () => {
       // A dangling readiness owner would strand framework consumers on the
       // failed lane. Prove liveness through a normal follow-up navigation
       // instead of inspecting match-owned promise bookkeeping.
+      blockErrorComponentPreload = false
       await router.navigate({ to: '/safe' })
       expect(router.state.location.pathname).toBe('/safe')
       expect(router.state.isLoading).toBe(false)
@@ -78,5 +90,56 @@ describe('fatal load rejection', () => {
     } finally {
       process.off('unhandledRejection', unhandledRejection)
     }
+  })
+
+  test('a fatal server redirect-resolution failure returns 500', async () => {
+    const boom = new Error('server resolveRedirect failed')
+    const rootRoute = new BaseRootRoute({})
+    const badRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/bad',
+      beforeLoad: () => {
+        throw redirect({
+          to: '/bad',
+          search: () => {
+            throw boom
+          },
+        })
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([badRoute]),
+      history: createMemoryHistory({ initialEntries: ['/bad'] }),
+      isServer: true,
+    })
+
+    await router.load()
+
+    expect(router.redirect).toBeUndefined()
+    expect(router.statusCode).toBe(500)
+  })
+
+  test('a server route-context redirect that fails top-level resolution returns 500', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const badRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/bad',
+      context: () => {
+        // Route context runs during matchRoutes(), before loadServerMatches has
+        // a lane it can reduce. The top-level redirect resolver must still be
+        // covered by the server failure/status policy.
+        throw redirect({ href: 'javascript:alert(1)' })
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([badRoute]),
+      history: createMemoryHistory({ initialEntries: ['/bad'] }),
+      isServer: true,
+    })
+
+    await expect(router.load()).resolves.toBeUndefined()
+
+    expect(router.redirect).toBeUndefined()
+    expect(router.statusCode).toBe(500)
   })
 })

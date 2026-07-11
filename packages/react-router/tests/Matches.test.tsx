@@ -570,6 +570,75 @@ test('Match view re-renders when same-id ssr field changes', () => {
   rendered.unmount()
 })
 
+test('Outlet follows a legacy notFoundRoute when its same-id match moves to a shallower index', async () => {
+  const root = createRootRoute({ component: Outlet })
+  const parent = createRoute({
+    getParentRoute: () => root,
+    path: '/parent',
+    component: () => (
+      <div>
+        Parent layout
+        <Outlet />
+      </div>
+    ),
+  })
+  const known = createRoute({
+    getParentRoute: () => parent,
+    path: '/known',
+  })
+  const home = createRoute({
+    getParentRoute: () => root,
+    path: '/home',
+    component: () => <div>Home</div>,
+  })
+  const legacyNotFound = createRoute({
+    getParentRoute: () => root,
+    path: '/404',
+    loader: () => 'not found',
+    component: () => <div>Legacy not found</div>,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([parent.addChildren([known]), home]),
+    history: createMemoryHistory({ initialEntries: ['/parent/missing'] }),
+    notFoundRoute: legacyNotFound,
+  })
+
+  await router.load()
+  const rootMatchId = router.stores.matches.get()[0]!.id
+  const rendered = render(
+    <RouterContextProvider router={router}>
+      <Match matchId={rootMatchId} />
+    </RouterContextProvider>,
+  )
+
+  expect(rendered.container).toHaveTextContent('Parent layout')
+  expect(rendered.container).toHaveTextContent('Legacy not found')
+
+  await act(async () => {
+    await router.navigate({ to: '/home' })
+  })
+  expect(
+    router.stores.cachedMatches
+      .get()
+      .find((match) => match.routeId === legacyNotFound.id)?.index,
+  ).toBe(2)
+
+  await act(async () => {
+    await router.navigate({ to: '/missing' } as any)
+  })
+
+  expect(rendered.container).not.toHaveTextContent('Parent layout')
+  expect(rendered.container).toHaveTextContent('Legacy not found')
+  expect(
+    router.stores.matches
+      .get()
+      .find((match) => match.routeId === legacyNotFound.id)?.index,
+  ).toBe(1)
+  rendered.unmount()
+})
+
 test('fast load before pendingMs does not arm pendingUntil', async () => {
   vi.useFakeTimers()
 

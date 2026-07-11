@@ -9,7 +9,7 @@ import { useRouter } from './useRouter'
 import { useStructuralSharing } from './useMatch'
 import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
-import { Match } from './Match'
+import { Match, PendingFallback } from './Match'
 import { SafeFragment } from './SafeFragment'
 import type {
   StructuralSharingOption,
@@ -51,7 +51,15 @@ export function Matches() {
   const PendingComponent =
     rootRoute.options.pendingComponent ?? router.options.defaultPendingComponent
 
-  const pendingElement = PendingComponent ? <PendingComponent /> : null
+  const pendingElement = PendingComponent ? (
+    <PendingFallback
+      matchStore={router.stores.getRouteMatchStore(rootRoute.id)}
+      pendingMinMs={
+        rootRoute.options.pendingMinMs ?? router.options.defaultPendingMinMs
+      }
+      component={PendingComponent}
+    />
+  ) : null
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
@@ -76,12 +84,11 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const _isServer = isServer ?? router.isServer
-  const matchId = _isServer
+  const matchId = (isServer ?? router.isServer)
     ? router.stores.firstId.get()
     : // eslint-disable-next-line react-hooks/rules-of-hooks
       useStore(router.stores.firstId, (id) => id)
-  const resetKey = _isServer
+  const resetKey = (isServer ?? router.isServer)
     ? router.stores.loadedAt.get()
     : // eslint-disable-next-line react-hooks/rules-of-hooks
       useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
