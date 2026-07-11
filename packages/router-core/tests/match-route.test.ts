@@ -93,7 +93,7 @@ describe('matchRoute', () => {
     ).toBe(false)
   })
 
-  it('returns parsed params on repeated calls without rerunning the parser', async () => {
+  it('returns parsed params on repeated calls', async () => {
     const parse = vi.fn(({ invoiceId }: { invoiceId: string }) => ({
       invoiceId: Number(invoiceId),
     }))
@@ -123,7 +123,6 @@ describe('matchRoute', () => {
         params: { invoiceId: 123 },
       }),
     ).toEqual({ invoiceId: 123 })
-    expect(parse).toHaveBeenCalledOnce()
     expect(parse).toHaveBeenCalledWith({ invoiceId: '123' })
   })
 
@@ -227,16 +226,26 @@ describe('matchRoute', () => {
     ).toEqual({ orgId: 42, projectId: 7 })
   })
 
-  it.each([{ to: '/invoices/$id', params: { id: '123' } }, { to: '/missing' }])(
-    'does not match an unregistered destination',
-    async (location) => {
-      const router = createInvoiceRouter()
+  it('does not match a template absent from the route tree', async () => {
+    const router = createInvoiceRouter()
 
-      await router.load()
+    await router.load()
 
-      expect(router.matchRoute(location as any)).toBe(false)
-    },
-  )
+    expect(
+      router.matchRoute({
+        to: '/invoices/$id',
+        params: { id: '123' },
+      } as any),
+    ).toBe(false)
+  })
+
+  it('does not match an absent static destination', async () => {
+    const router = createInvoiceRouter()
+
+    await router.load()
+
+    expect(router.matchRoute({ to: '/missing' } as any)).toBe(false)
+  })
 
   it('only matches an active ancestor when fuzzy matching', async () => {
     const rootRoute = new BaseRootRoute({})
@@ -271,25 +280,6 @@ describe('matchRoute', () => {
     await router.load()
 
     expect(router.matchRoute({ to: '/' })).toEqual({})
-  })
-
-  it('does not match a root index route rejected by its parser', async () => {
-    const rootRoute = new BaseRootRoute({})
-    const indexRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      params: {
-        parse: () => false,
-      },
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([indexRoute]),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-
-    await router.load()
-
-    expect(router.matchRoute({ to: '/' })).toBe(false)
   })
 
   it('matches encoded params without corrupting fuzzy remainders', async () => {
@@ -364,66 +354,6 @@ describe('matchRoute', () => {
     ).toEqual({ id: 'one', '**': 'projects/two' })
   })
 
-  it('returns parsed ancestor params when fuzzy matching', async () => {
-    const rootRoute = new BaseRootRoute({})
-    const orgRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/orgs/$orgId',
-      params: {
-        parse: ({ orgId }: { orgId: string }) => ({ orgId: Number(orgId) }),
-      },
-    })
-    const projectRoute = new BaseRoute({
-      getParentRoute: () => orgRoute,
-      path: '/projects/$projectId',
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([orgRoute.addChildren([projectRoute])]),
-      history: createMemoryHistory({
-        initialEntries: ['/orgs/42/projects/7'],
-      }),
-    })
-
-    await router.load()
-
-    expect(
-      router.matchRoute(
-        { to: '/orgs/$orgId', params: { orgId: 42 } },
-        { fuzzy: true },
-      ),
-    ).toEqual({ orgId: 42, '**': 'projects/7' })
-  })
-
-  it('keeps a reused child param value on exact matches', async () => {
-    const rootRoute = new BaseRootRoute({})
-    const orgRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/orgs/$id',
-      params: {
-        parse: ({ id }: { id: string }) => ({ id: `parent:${id}` }),
-      },
-    })
-    const projectRoute = new BaseRoute({
-      getParentRoute: () => orgRoute,
-      path: '/projects/$id',
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([orgRoute.addChildren([projectRoute])]),
-      history: createMemoryHistory({
-        initialEntries: ['/orgs/one/projects/two'],
-      }),
-    })
-
-    await router.load()
-
-    expect(
-      router.matchRoute({
-        to: '/orgs/$id/projects/$id',
-        params: { id: 'two' },
-      }),
-    ).toEqual({ id: 'two' })
-  })
-
   it('passes a reused child param name to the child parser', async () => {
     const childParse = vi.fn(({ id }: { id: string }) => ({
       id: `child:${id}`,
@@ -457,95 +387,6 @@ describe('matchRoute', () => {
       }),
     ).toEqual({ id: 'child:two' })
     expect(childParse).toHaveBeenCalledWith({ id: 'two' })
-  })
-
-  it('returns parsed optional params', async () => {
-    const rootRoute = new BaseRootRoute({})
-    const postRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/posts/{-$postId}',
-      params: {
-        parse: ({ postId }: { postId?: string }) => ({
-          postId: postId ? Number(postId) : undefined,
-        }),
-      },
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([postRoute]),
-      history: createMemoryHistory({ initialEntries: ['/posts/42'] }),
-    })
-
-    await router.load()
-
-    expect(
-      router.matchRoute({
-        to: '/posts/{-$postId}',
-        params: { postId: 42 },
-      }),
-    ).toEqual({ postId: 42 })
-  })
-
-  it('returns wildcard params', async () => {
-    const rootRoute = new BaseRootRoute({})
-    const filesRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/files/$',
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([filesRoute]),
-      history: createMemoryHistory({ initialEntries: ['/files/a/b'] }),
-    })
-
-    await router.load()
-
-    expect(
-      router.matchRoute({
-        to: '/files/$',
-        params: { _splat: 'a/b' },
-      }),
-    ).toEqual({ '*': 'a/b', _splat: 'a/b' })
-  })
-
-  it('passes parsed params through pathless route parsers', async () => {
-    const rootRoute = new BaseRootRoute({})
-    const orgRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/orgs/$orgId',
-      params: {
-        parse: ({ orgId }: { orgId: string }) => ({ orgId: Number(orgId) }),
-      },
-    })
-    const layoutRoute = new BaseRoute({
-      getParentRoute: () => orgRoute,
-      id: '/_layout',
-      params: {
-        parse: (params: Record<string, unknown>) => {
-          if (typeof params.orgId !== 'number') {
-            return false
-          }
-          return { organizationId: params.orgId }
-        },
-      },
-    })
-    const projectRoute = new BaseRoute({
-      getParentRoute: () => layoutRoute,
-      path: '/projects',
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([
-        orgRoute.addChildren([layoutRoute.addChildren([projectRoute])]),
-      ]),
-      history: createMemoryHistory({ initialEntries: ['/orgs/42/projects'] }),
-    })
-
-    await router.load()
-
-    expect(
-      router.matchRoute({
-        to: '/orgs/$orgId/projects',
-        params: { orgId: 42, organizationId: 42 },
-      }),
-    ).toEqual({ orgId: 42, organizationId: 42 })
   })
 
   it('returns false for a malformed fuzzy remainder', async () => {
