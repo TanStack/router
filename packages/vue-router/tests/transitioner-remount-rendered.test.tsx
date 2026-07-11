@@ -112,8 +112,6 @@ test('onRendered fires for a same-href navigation with a new history key', async
   await waitFor(() => expect(onRendered).toHaveBeenCalledTimes(1))
   onRendered.mockClear()
 
-  const previousLocation = router.stores.resolvedLocation.get()!
-
   await router.navigate({
     to: '/',
     state: { sameHrefState: true } as any,
@@ -121,12 +119,8 @@ test('onRendered fires for a same-href navigation with a new history key', async
   await waitFor(() => expect(onRendered).toHaveBeenCalledTimes(1))
 
   const event = onRendered.mock.calls[0]![0]
-  expect(event.fromLocation?.state.__TSR_key).toBe(
-    previousLocation.state.__TSR_key,
-  )
-  expect(event.toLocation.state.__TSR_key).not.toBe(
-    previousLocation.state.__TSR_key,
-  )
+  expect((event.fromLocation?.state as any).sameHrefState).toBeUndefined()
+  expect((event.toLocation.state as any).sameHrefState).toBe(true)
   expect(event.fromLocation?.href).toBe('/')
   expect(event.toLocation.href).toBe('/')
   expect(event.hrefChanged).toBe(false)

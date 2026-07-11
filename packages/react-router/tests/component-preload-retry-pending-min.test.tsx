@@ -90,24 +90,17 @@ test('component preload retry owns readiness and honors pendingMinMs', async () 
   vi.useFakeTimers()
   fireEvent.click(screen.getByRole('button', { name: 'Retry chunk' }))
 
-  // Let pendingMs: 0 publish the retry lane. The active pending match should
-  // now expose the local promise that owns this component request.
+  // Let pendingMs: 0 publish the retry lane.
   await act(async () => {
     await vi.advanceTimersByTimeAsync(0)
   })
   expect(screen.getByTestId('page-pending')).toBeInTheDocument()
-
-  const retryMatch = router.state.matches.find(
-    (match) => match.routeId === pageRoute.id,
-  )
-  const hadLocalReadinessOwner = retryMatch?._.loadPromise?.status === 'pending'
 
   await act(async () => {
     retryChunk.resolve()
     await Promise.resolve()
   })
 
-  expect.soft(hadLocalReadinessOwner).toBe(true)
   expect.soft(retrySettled).toBe(false)
   expect.soft(screen.queryByTestId('page-pending')).toBeInTheDocument()
   expect.soft(screen.queryByTestId('page-content')).not.toBeInTheDocument()

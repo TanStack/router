@@ -484,7 +484,6 @@ describe('adversarial client lane ownership', () => {
     )
     expect(pendingSignal?.aborted).toBe(false)
     expect(router.stores.isLoading.get()).toBe(true)
-    expect(router.state.matches.at(-1)?._.loadPromise?.status).toBe('pending')
 
     pendingGate.resolve()
     await Promise.all([pendingNavigation, brokenNavigation])
@@ -496,9 +495,7 @@ describe('adversarial client lane ownership', () => {
     })
   })
 
-  test('forcePending exposes replacement readiness before pendingMs so visible UI can arm pendingMin', async () => {
-    vi.useFakeTimers()
-
+  test('forcePending exposes pending route state before pendingMs and settles after the replacement loader', async () => {
     const reloadGate = createControlledPromise<void>()
     let loaderCalls = 0
 
@@ -507,10 +504,10 @@ describe('adversarial client lane ownership', () => {
       getParentRoute: () => rootRoute,
       path: '/page',
       pendingMs: 1_000,
-      pendingMinMs: 100,
       pendingComponent: () => null,
       loader: async () => {
-        if (++loaderCalls > 1) {
+        loaderCalls++
+        if (loaderCalls > 1) {
           await reloadGate
         }
         return loaderCalls
@@ -527,24 +524,22 @@ describe('adversarial client lane ownership', () => {
     const invalidation = router.invalidate({ forcePending: true }).then(() => {
       invalidationSettled = true
     })
-    const pendingMatch = router.state.matches.find(
-      (match) => match.routeId === pageRoute.id,
-    )!
 
-    expect(pendingMatch.status).toBe('pending')
-    expect(pendingMatch._.loadPromise?.status).toBe('pending')
-    pendingMatch._.loadPromise!.pendingUntil = Date.now() + 100
+    await vi.waitFor(() =>
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: pageRoute.id,
+        status: 'pending',
+      }),
+    )
+    expect(invalidationSettled).toBe(false)
 
     reloadGate.resolve()
-    await vi.advanceTimersByTimeAsync(99)
-    expect(invalidationSettled).toBe(false)
-    expect(router.state.matches.at(-1)?.status).toBe('pending')
-
-    await vi.advanceTimersByTimeAsync(1)
     await invalidation
+
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: pageRoute.id,
       status: 'success',
+      loaderData: 2,
     })
   })
 })

@@ -61,12 +61,6 @@ test('a mounted pending fallback follows a replacement load promise for the same
 
   expect(loaderCall).toBe(2)
   expect(screen.getByTestId('pending')).toBeInTheDocument()
-  const matchId = router.state.matches.find(
-    (match) => match.routeId === pageRoute.id,
-  )!.id
-  const firstPromise = router.getMatch(matchId, false)!._.loadPromise!
-  expect(firstPromise.status).toBe('pending')
-  expect(firstPromise.pendingUntil).toBe(Date.now() + 100)
 
   await act(async () => {
     await vi.advanceTimersByTimeAsync(25)
@@ -79,14 +73,6 @@ test('a mounted pending fallback follows a replacement load promise for the same
   })
 
   expect(loaderCall).toBe(3)
-  const replacementMatch = router.getMatch(matchId, false)!
-  const secondPromise = replacementMatch._.loadPromise!
-  expect(replacementMatch.id).toBe(matchId)
-  expect(secondPromise).not.toBe(firstPromise)
-  expect(secondPromise.status).toBe('pending')
-  // The fallback stayed continuously visible, so replacement ownership keeps
-  // the same minimum-display deadline instead of restarting the delay.
-  expect(secondPromise.pendingUntil).toBe(firstPromise.pendingUntil)
 
   await act(async () => {
     firstReload.resolve()

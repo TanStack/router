@@ -46,7 +46,6 @@ test('onRendered describes the navigation from the previously rendered location'
   expect(event.pathChanged).toBe(true)
   expect(event.hrefChanged).toBe(true)
 
-  const previousKey = event.toLocation.state.__TSR_key
   await router.navigate({
     to: '/next',
     state: { sameHrefState: true } as any,
@@ -54,8 +53,8 @@ test('onRendered describes the navigation from the previously rendered location'
   await waitFor(() => expect(onRendered).toHaveBeenCalledTimes(2))
 
   const stateEvent = onRendered.mock.calls[1]![0]
-  expect(stateEvent.fromLocation?.state.__TSR_key).toBe(previousKey)
-  expect(stateEvent.toLocation.state.__TSR_key).not.toBe(previousKey)
+  expect((stateEvent.fromLocation?.state as any).sameHrefState).toBeUndefined()
+  expect((stateEvent.toLocation.state as any).sameHrefState).toBe(true)
   expect(stateEvent.fromLocation?.href).toBe('/next')
   expect(stateEvent.toLocation.href).toBe('/next')
   expect(stateEvent.hrefChanged).toBe(false)

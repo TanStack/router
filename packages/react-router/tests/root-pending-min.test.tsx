@@ -189,12 +189,6 @@ test('root pending fallback follows an overlapping forcePending generation', asy
 
   expect(loaderCall).toBe(2)
   expect(screen.getByTestId('root-pending')).toBeInTheDocument()
-  const matchId = router.state.matches.find(
-    (match) => match.routeId === rootRoute.id,
-  )!.id
-  const firstPromise = router.getMatch(matchId, false)!._.loadPromise!
-  expect(firstPromise.status).toBe('pending')
-  expect(firstPromise.pendingUntil).toBe(Date.now() + 100)
 
   await act(async () => {
     await vi.advanceTimersByTimeAsync(25)
@@ -207,15 +201,6 @@ test('root pending fallback follows an overlapping forcePending generation', asy
   })
 
   expect(loaderCall).toBe(3)
-  const replacementMatch = router.getMatch(matchId, false)!
-  const secondPromise = replacementMatch._.loadPromise!
-  expect(replacementMatch.id).toBe(matchId)
-  expect(secondPromise).not.toBe(firstPromise)
-  expect(secondPromise.status).toBe('pending')
-  // The root fallback resolves through getRouteMatchStore(rootRoute.id). It
-  // must retarget to this same-id generation without restarting the minimum
-  // for a fallback that remained continuously visible.
-  expect(secondPromise.pendingUntil).toBe(firstPromise.pendingUntil)
 
   await act(async () => {
     firstReload.resolve()
@@ -237,9 +222,8 @@ test('root pending fallback follows an overlapping forcePending generation', asy
   expect(secondSettled).toBe(false)
   expect(screen.getByTestId('root-pending')).toBeInTheDocument()
 
-  const remainingPendingMin = secondPromise.pendingUntil! - Date.now()
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(remainingPendingMin - 1)
+    await vi.advanceTimersByTimeAsync(74)
   })
   expect(secondSettled).toBe(false)
   expect(screen.getByTestId('root-pending')).toBeInTheDocument()

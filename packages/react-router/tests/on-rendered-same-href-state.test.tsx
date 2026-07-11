@@ -31,8 +31,6 @@ test('onRendered fires for a same-href navigation with a new history key', async
 
   const onRendered = vi.fn()
   const unsubscribe = router.subscribe('onRendered', onRendered)
-  const previousLocation = router.stores.resolvedLocation.get()!
-
   await act(() =>
     router.navigate({
       to: '/',
@@ -42,12 +40,8 @@ test('onRendered fires for a same-href navigation with a new history key', async
   await waitFor(() => expect(onRendered).toHaveBeenCalledTimes(1))
 
   const event = onRendered.mock.calls[0]![0]
-  expect(event.fromLocation?.state.__TSR_key).toBe(
-    previousLocation.state.__TSR_key,
-  )
-  expect(event.toLocation.state.__TSR_key).not.toBe(
-    previousLocation.state.__TSR_key,
-  )
+  expect(event.fromLocation?.state.sameHrefState).toBeUndefined()
+  expect(event.toLocation.state.sameHrefState).toBe(true)
   expect(event.fromLocation?.href).toBe('/')
   expect(event.toLocation.href).toBe('/')
   expect(event.hrefChanged).toBe(false)

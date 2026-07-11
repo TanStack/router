@@ -1,5 +1,5 @@
-import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
-import { afterEach, expect, test } from 'vitest'
+import { cleanup, render, screen } from '@solidjs/testing-library'
+import { afterEach, expect, test, vi } from 'vitest'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
   Outlet,
@@ -13,6 +13,7 @@ import {
 const testCleanups: Array<() => void | Promise<void>> = []
 
 afterEach(async () => {
+  vi.useRealTimers()
   while (testCleanups.length) {
     await testCleanups.pop()!()
   }
@@ -47,6 +48,7 @@ test('a mounted child pending fallback follows a replacement load promise for th
   render(() => <RouterProvider router={router} />)
   expect(await screen.findByText('Generation 1')).toBeInTheDocument()
 
+  vi.useFakeTimers()
   const firstInvalidation = router.invalidate({ forcePending: true })
   const invalidations = [firstInvalidation]
   testCleanups.push(async () => {
@@ -54,27 +56,30 @@ test('a mounted child pending fallback follows a replacement load promise for th
     secondReload.resolve()
     await Promise.allSettled(invalidations)
   })
-  expect(await screen.findByTestId('pending')).toBeInTheDocument()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(screen.getByTestId('pending')).toBeInTheDocument()
 
-  const matchId = router.state.matches.find(
-    (match) => match.routeId === pageRoute.id,
-  )!.id
-  const firstPromise = router.getMatch(matchId, false)!._.loadPromise!
-  expect(firstPromise.pendingUntil).toBeTypeOf('number')
+  await vi.advanceTimersByTimeAsync(25)
+  let secondSettled = false
+  const secondInvalidation = router
+    .invalidate({ forcePending: true })
+    .then(() => {
+      secondSettled = true
+    })
+  invalidations.push(secondInvalidation)
 
-  await new Promise((resolve) => setTimeout(resolve, 25))
-  invalidations.push(router.invalidate({ forcePending: true }))
+  firstReload.resolve()
+  secondReload.resolve()
+  await Promise.resolve()
 
-  let secondPromise = router.getMatch(matchId, false)!._.loadPromise!
-  await waitFor(() => {
-    secondPromise = router.getMatch(matchId, false)!._.loadPromise!
-    expect(secondPromise).not.toBe(firstPromise)
-    expect(secondPromise.status).toBe('pending')
-    expect(secondPromise.pendingUntil).toBeTypeOf('number')
-  })
-  // One continuously visible fallback owns one minimum-display deadline,
-  // even when internal loader ownership changes underneath it.
-  expect(secondPromise.pendingUntil).toBe(firstPromise.pendingUntil)
+  await vi.advanceTimersByTimeAsync(74)
+  expect(secondSettled).toBe(false)
+  expect(screen.getByTestId('pending')).toBeInTheDocument()
+
+  await vi.advanceTimersByTimeAsync(1)
+  await Promise.all(invalidations)
+  expect(screen.getByText('Generation 3')).toBeInTheDocument()
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
 })
 
 test('the root pending fallback follows a replacement load promise for the same match', async () => {
@@ -102,6 +107,7 @@ test('the root pending fallback follows a replacement load promise for the same 
   render(() => <RouterProvider router={router} />)
   expect(await screen.findByText('Generation 1')).toBeInTheDocument()
 
+  vi.useFakeTimers()
   const firstInvalidation = router.invalidate({ forcePending: true })
   const invalidations = [firstInvalidation]
   testCleanups.push(async () => {
@@ -109,25 +115,30 @@ test('the root pending fallback follows a replacement load promise for the same 
     secondReload.resolve()
     await Promise.allSettled(invalidations)
   })
-  expect(await screen.findByTestId('root-pending')).toBeInTheDocument()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(screen.getByTestId('root-pending')).toBeInTheDocument()
 
-  const matchId = router.state.matches.find(
-    (match) => match.routeId === rootRoute.id,
-  )!.id
-  const firstPromise = router.getMatch(matchId, false)!._.loadPromise!
-  await waitFor(() => expect(firstPromise.pendingUntil).toBeTypeOf('number'))
+  await vi.advanceTimersByTimeAsync(25)
+  let secondSettled = false
+  const secondInvalidation = router
+    .invalidate({ forcePending: true })
+    .then(() => {
+      secondSettled = true
+    })
+  invalidations.push(secondInvalidation)
 
-  await new Promise((resolve) => setTimeout(resolve, 25))
-  invalidations.push(router.invalidate({ forcePending: true }))
+  firstReload.resolve()
+  secondReload.resolve()
+  await Promise.resolve()
 
-  let secondPromise = router.getMatch(matchId, false)!._.loadPromise!
-  await waitFor(() => {
-    secondPromise = router.getMatch(matchId, false)!._.loadPromise!
-    expect(secondPromise).not.toBe(firstPromise)
-    expect(secondPromise.status).toBe('pending')
-    expect(secondPromise.pendingUntil).toBeTypeOf('number')
-  })
-  expect(secondPromise.pendingUntil).toBe(firstPromise.pendingUntil)
+  await vi.advanceTimersByTimeAsync(74)
+  expect(secondSettled).toBe(false)
+  expect(screen.getByTestId('root-pending')).toBeInTheDocument()
+
+  await vi.advanceTimersByTimeAsync(1)
+  await Promise.all(invalidations)
+  expect(screen.getByText('Generation 3')).toBeInTheDocument()
+  expect(screen.queryByTestId('root-pending')).not.toBeInTheDocument()
 })
 
 test('forcePending honors pendingMinMs when the reload settles before pendingMs', async () => {

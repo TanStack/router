@@ -139,7 +139,6 @@ describe('hydrating a server-capped boundary lane', () => {
             i: match.id,
             u: match.updatedAt,
             s: match.status,
-            b: match.__beforeLoadContext,
             l: match.loaderData,
             e: match.error,
             ssr: match.ssr,

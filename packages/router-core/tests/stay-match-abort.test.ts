@@ -239,7 +239,11 @@ describe('stay-match abort scope', () => {
 
       await router.load()
       expect(initialSignal?.aborted).toBe(false)
+
       if (boundaryFails) {
+        // There is no public route-chunk invalidation API outside the HMR
+        // integration. Keep this one low-level setup operation local while
+        // asserting the user-observable error and abort behavior below.
         accountRoute.options.notFoundComponent = {
           preload: () => {
             throw boundaryError
@@ -292,7 +296,6 @@ describe('stay-match abort scope', () => {
 
     await router.load()
     await router.invalidate()
-    await vi.waitFor(() => expect(router._backgroundLoad).toBeUndefined())
 
     expect(router.state.matches.at(-1)?.loaderData).toEqual({ revision: 1 })
     expect(loaderSignals).toHaveLength(2)

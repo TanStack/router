@@ -1,5 +1,5 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/vue'
-import { afterEach, expect, test } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/vue'
+import { afterEach, expect, test, vi } from 'vitest'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
   RouterProvider,
@@ -11,6 +11,7 @@ import {
 const testCleanups: Array<() => void | Promise<void>> = []
 
 afterEach(async () => {
+  vi.useRealTimers()
   while (testCleanups.length) {
     await testCleanups.pop()!()
   }
@@ -42,6 +43,7 @@ test('a continuously visible fallback keeps its deadline across replacement load
   render(<RouterProvider router={router} />)
   expect(await screen.findByText('Content')).toBeInTheDocument()
 
+  vi.useFakeTimers()
   const firstInvalidation = router.invalidate({ forcePending: true })
   const invalidations = [firstInvalidation]
   testCleanups.push(async () => {
@@ -49,19 +51,28 @@ test('a continuously visible fallback keeps its deadline across replacement load
     secondReload.resolve()
     await Promise.allSettled(invalidations)
   })
-  expect(await screen.findByTestId('pending')).toBeInTheDocument()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(screen.getByTestId('pending')).toBeInTheDocument()
 
-  const firstPromise = router.state.matches[0]!._.loadPromise!
-  await waitFor(() => expect(firstPromise.pendingUntil).toBeTypeOf('number'))
+  await vi.advanceTimersByTimeAsync(25)
+  let secondSettled = false
+  const secondInvalidation = router
+    .invalidate({ forcePending: true })
+    .then(() => {
+      secondSettled = true
+    })
+  invalidations.push(secondInvalidation)
 
-  await new Promise((resolve) => setTimeout(resolve, 25))
-  invalidations.push(router.invalidate({ forcePending: true }))
+  firstReload.resolve()
+  secondReload.resolve()
+  await Promise.resolve()
 
-  let secondPromise = router.state.matches[0]!._.loadPromise!
-  await waitFor(() => {
-    secondPromise = router.state.matches[0]!._.loadPromise!
-    expect(secondPromise).not.toBe(firstPromise)
-    expect(secondPromise.pendingUntil).toBeTypeOf('number')
-  })
-  expect(secondPromise.pendingUntil).toBe(firstPromise.pendingUntil)
+  await vi.advanceTimersByTimeAsync(74)
+  expect(secondSettled).toBe(false)
+  expect(screen.getByTestId('pending')).toBeInTheDocument()
+
+  await vi.advanceTimersByTimeAsync(1)
+  await Promise.all(invalidations)
+  expect(screen.getByText('Content')).toBeInTheDocument()
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
 })

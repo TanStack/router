@@ -8,6 +8,7 @@ import {
   trimPathRight,
 } from '@tanstack/router-core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createMemoryHistory } from '../../history/src'
 import { getHandleRouteUpdateCode } from '../src/core/hmr'
 import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
 
@@ -25,71 +26,18 @@ const getStoreConfig: GetStoreConfig = () => ({
   batch: (fn) => fn(),
 })
 
-const getHandleRouteUpdate = () => {
+const getGeneratedHandleRouteUpdate = () => {
   return new Function(`return ${getHandleRouteUpdateCode([])}`)() as (
     routeId: string,
     newRoute: AnyRoute,
   ) => void
 }
 
-function createTestHistory(initialEntry = '/') {
-  let index = 0
-  let location = {
-    href: initialEntry,
-    pathname: initialEntry,
-    search: '',
-    hash: '',
-    state: { __TSR_index: 0 },
-  }
-  const subscribers = new Set<(event: any) => void>()
-
-  const update = (href: string, state: any, action: 'PUSH' | 'REPLACE') => {
-    if (action === 'PUSH') {
-      index++
-    }
-    location = {
-      href,
-      pathname: href,
-      search: '',
-      hash: '',
-      state: { ...state, __TSR_index: index },
-    }
-    for (const subscriber of subscribers) {
-      subscriber({ location, action: { type: action } })
-    }
-  }
-
-  return {
-    get location() {
-      return location
-    },
-    get length() {
-      return index + 1
-    },
-    subscribers,
-    subscribe: (subscriber: (event: any) => void) => {
-      subscribers.add(subscriber)
-      return () => subscribers.delete(subscriber)
-    },
-    push: (href: string, state: any) => update(href, state, 'PUSH'),
-    replace: (href: string, state: any) => update(href, state, 'REPLACE'),
-    go: () => {},
-    back: () => {},
-    forward: () => {},
-    canGoBack: () => false,
-    createHref: (href: string) => href,
-    block: () => () => {},
-    flush: () => {},
-    destroy: () => {},
-    notify: () => {},
-  }
-}
-
 function createTestRouter(routeTree: AnyRoute) {
   return new RouterCore(
     {
       routeTree,
-      history: createTestHistory() as any,
+      history: createMemoryHistory(),
       isServer: true,
     },
     getStoreConfig,
@@ -104,7 +52,7 @@ function createClientTestRouter(
   return new RouterCore(
     {
       routeTree,
-      history: createTestHistory(initialEntry),
+      history: createMemoryHistory({ initialEntries: [initialEntry] }),
       context,
       isServer: false,
       origin: 'http://localhost',
@@ -113,15 +61,24 @@ function createClientTestRouter(
   )
 }
 
-function withWindowRouter(router: RouterCore<any, any, any, any, any>) {
+function runHandleRouteUpdate(
+  router: RouterCore<any, any, any, any, any>,
+  routeId: string,
+  newRoute: AnyRoute,
+) {
   const previousWindow = (globalThis as any).window
-  ;(globalThis as any).window = { __TSR_ROUTER__: router }
+  ;(globalThis as any).window = {
+    ...previousWindow,
+    __TSR_ROUTER__: router,
+  }
 
-  return () => {
-    if (previousWindow) {
-      ;(globalThis as any).window = previousWindow
-    } else {
+  try {
+    getGeneratedHandleRouteUpdate()(routeId, newRoute)
+  } finally {
+    if (previousWindow === undefined) {
       delete (globalThis as any).window
+    } else {
+      ;(globalThis as any).window = previousWindow
     }
   }
 }
@@ -158,8 +115,8 @@ describe('handleRouteUpdate', () => {
 
     const oldLoad = router.loadRouteChunk(itemRoute)!
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(
+    runHandleRouteUpdate(
+      router,
       itemRoute.id,
       new BaseRoute({ component: NewComponent } as any),
     )
@@ -204,8 +161,8 @@ describe('handleRouteUpdate', () => {
 
     const oldLoad = router.loadRouteChunk(itemRoute)!
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(
+    runHandleRouteUpdate(
+      router,
       itemRoute.id,
       new BaseRoute({ component: HotComponent } as any),
     )
@@ -255,8 +212,7 @@ describe('handleRouteUpdate', () => {
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(pathlessRoute.id, new BaseRoute({} as any))
+    runHandleRouteUpdate(router, pathlessRoute.id, new BaseRoute({} as any))
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
     expect(router.routesByPath[key]?.id).toBe(
@@ -282,8 +238,7 @@ describe('handleRouteUpdate', () => {
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(parentRoute.id, new BaseRoute({} as any))
+    runHandleRouteUpdate(router, parentRoute.id, new BaseRoute({} as any))
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
     expect(router.routesByPath[key]?.id).toBe(
@@ -307,8 +262,8 @@ describe('handleRouteUpdate', () => {
 
     expect(router.getMatchedRoutes('/items/abc').foundRoute?.id).toBeUndefined()
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(
+    runHandleRouteUpdate(
+      router,
       itemRoute.id,
       new BaseRoute({
         params: {
@@ -345,8 +300,8 @@ describe('handleRouteUpdate', () => {
       parserVersion: 'old',
     })
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(
+    runHandleRouteUpdate(
+      router,
       itemRoute.id,
       new BaseRoute({
         params: {
@@ -377,8 +332,7 @@ describe('handleRouteUpdate', () => {
 
     expect((newRoute as any).to).toBeUndefined()
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(itemRoute.id, newRoute)
+    runHandleRouteUpdate(router, itemRoute.id, newRoute)
 
     expect(newRoute.id).toBe(itemRoute.id)
     expect(newRoute.path).toBe(itemRoute.path)
@@ -421,8 +375,8 @@ describe('handleRouteUpdate', () => {
       // only needs to ensure the now-incompatible cache entry is discarded.
       expect(cachedMatch.abortController.signal.aborted).toBe(true)
 
-      testCleanups.push(withWindowRouter(router))
-      getHandleRouteUpdate()(
+      runHandleRouteUpdate(
+        router,
         hotRoute.id,
         new BaseRoute(
           (removedOption === 'loader' ? { beforeLoad } : { loader }) as any,
@@ -448,17 +402,14 @@ describe('handleRouteUpdate', () => {
     })
 
     await router.load()
-    const rootMatch = router.stores.matches.get()[0]!
-    const rootStore = router.stores.matchStores.get(rootMatch.id)!
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(
+    runHandleRouteUpdate(
+      router,
       rootRoute.id,
       new BaseRootRoute({ context: rootRouteContext } as any),
     )
 
-    expect(rootStore.get().__beforeLoadContext).toBeUndefined()
-    expect(rootStore.get().context).toEqual({
+    expect(router.stores.matches.get()[0]!.context).toEqual({
       routerContext: true,
       rootRouteContext: true,
     })
@@ -506,12 +457,11 @@ describe('handleRouteUpdate', () => {
       })
     })
 
-    testCleanups.push(withWindowRouter(router))
     testCleanups.push(async () => {
       pendingLoader.resolve('pending data')
       await pendingLoad
     })
-    getHandleRouteUpdate()(childRoute.id, new BaseRoute({} as any))
+    runHandleRouteUpdate(router, childRoute.id, new BaseRoute({} as any))
 
     // HMR clears the removed child context in both live generations before
     // its invalidation commits. Each rebuild must use its own parent lane;
@@ -548,8 +498,8 @@ describe('handleRouteUpdate', () => {
       source: 'old',
     })
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(
+    runHandleRouteUpdate(
+      router,
       rootRoute.id,
       new BaseRootRoute({
         context: () => ({ source: 'new' }),
@@ -585,8 +535,8 @@ describe('handleRouteUpdate', () => {
       derived: 'child-old',
     })
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(
+    runHandleRouteUpdate(
+      router,
       rootRoute.id,
       new BaseRootRoute({
         context: () => ({ source: 'new' }),
@@ -627,8 +577,7 @@ describe('handleRouteUpdate', () => {
       styles: [{ children: '.hot {}' }],
     })
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(hotRoute.id, new BaseRoute({} as any))
+    runHandleRouteUpdate(router, hotRoute.id, new BaseRoute({} as any))
     await router.latestLoadPromise
 
     const match = router.stores.matches.get()[1]!
@@ -668,8 +617,7 @@ describe('handleRouteUpdate', () => {
     const rootId = router.stores.matches.get()[0]!.id
     expect(router.stores.pendingMatches.get()[0]!.id).toBe(rootId)
 
-    testCleanups.push(withWindowRouter(router))
-    getHandleRouteUpdate()(rootRoute.id, new BaseRootRoute({} as any))
+    runHandleRouteUpdate(router, rootRoute.id, new BaseRootRoute({} as any))
 
     expect(router.stores.matchStores.get(rootId)!.get().meta).toBeUndefined()
     expect(router.stores.matchStores.get(rootId)!.get().scripts).toBeUndefined()

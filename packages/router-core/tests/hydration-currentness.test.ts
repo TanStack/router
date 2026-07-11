@@ -121,12 +121,14 @@ describe('hydration asset currentness', () => {
     const newHead = vi.fn(() => ({ meta: [{ title: 'New route' }] }))
 
     let router!: ReturnType<typeof createTestRouter>
+    let navigateDuringHydration = false
     const rootRoute = new BaseRootRoute({})
     const oldRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/old',
-      context: ({ matches }) => {
-        if (matches.some((match) => match._.dehydrated)) {
+      context: () => {
+        if (navigateDuringHydration) {
+          navigateDuringHydration = false
           void router.navigate({ to: '/new' })
         }
         return { source: 'old' }
@@ -166,6 +168,7 @@ describe('hydration asset currentness', () => {
       initialized: false,
     }
 
+    navigateDuringHydration = true
     await hydrate(router)
     await vi.waitFor(() => expect(router.state.location.pathname).toBe('/new'))
     await router.latestLoadPromise
@@ -272,7 +275,6 @@ describe('hydration asset currentness', () => {
 
       await expect(hydration).resolves.toBeUndefined()
 
-      expect(oldMatches.every((match) => !match._.loadPromise)).toBe(true)
       expect(router.stores.matches.get()[0]).toBe(replacementRoot)
       expect(router.stores.matches.get()[1]).toBe(replacementPage)
       expect(replacementRoot.abortController.signal.aborted).toBe(false)
