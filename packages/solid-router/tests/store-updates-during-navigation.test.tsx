@@ -122,6 +122,8 @@ function resolveAfter(ms: number, value: any) {
   return new Promise<void>((resolve) => setTimeout(() => resolve(value), ms))
 }
 
+// A normal navigation deliberately exposes the loaded `resolvedLocation`
+// before the later rendered/idle edge, so those are two observable updates.
 describe("Store doesn't update *too many* times during navigation", () => {
   test('async loader, async beforeLoad, pendingMs', async () => {
     const params = setup({
@@ -188,7 +190,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(3)
+    expect(updates).toBe(4)
   })
 
   test('not found in beforeLoad', async () => {
@@ -203,7 +205,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(3)
+    expect(updates).toBe(4)
   })
 
   test('hover preload, then navigate, w/ async loaders', async () => {
@@ -229,7 +231,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(3)
+    expect(updates).toBe(4)
   })
 
   test('navigate, w/ preloaded & async loaders', async () => {
@@ -245,7 +247,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(3)
+    expect(updates).toBe(4)
   })
 
   test('navigate, w/ preloaded & sync loaders', async () => {
@@ -261,7 +263,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(3)
+    expect(updates).toBe(4)
   })
 
   test('navigate, w/ previous navigation & async loader', async () => {
@@ -277,7 +279,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(3)
+    expect(updates).toBe(4)
   })
 
   test('preload a preloaded route w/ async loader', async () => {

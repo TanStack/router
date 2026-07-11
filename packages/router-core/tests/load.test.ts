@@ -1063,13 +1063,13 @@ describe('beforeLoad skip or exec', () => {
     },
   )
 
-  test('exec if resolved preload (success)', async () => {
+  test('resolved beforeLoad-only preload stays transient and executes again on navigation', async () => {
     const beforeLoad = vi.fn()
     const router = setup({ beforeLoad })
-    await router.preloadRoute({ to: '/foo' })
-    expect(router.stores.cachedMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
+    const preloaded = await router.preloadRoute({ to: '/foo' })
+
+    expect(preloaded?.some((match) => match.id === '/foo/foo')).toBe(true)
+    expect(router.stores.cachedMatches.get()).toEqual([])
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
@@ -6388,11 +6388,7 @@ describe('stale loader reload triggers', () => {
     await router.load()
 
     expect(loader).toHaveBeenCalledTimes(2)
-    expect(head).not.toHaveBeenCalled()
-
-    await vi.waitFor(() =>
-      expect(getMatchById(router, '/foo/foo')?.status).toBe('notFound'),
-    )
+    expect(getMatchById(router, '/foo/foo')?.status).toBe('notFound')
     expect(head).toHaveBeenCalledTimes(1)
     expect(getMatchById(router, '/foo/foo')?.meta).toEqual([
       { title: 'not-found' },
@@ -7014,7 +7010,9 @@ describe('stale loader reload triggers', () => {
   test('soft background AbortError preserves data and updatedAt and clears fetching', async () => {
     let rejectStaleReload!: (error: unknown) => void
     let loaderCalls = 0
-    const loader = vi.fn(() => {
+    const loaderSignals: Array<AbortSignal> = []
+    const loader = vi.fn<LoaderFn>(({ abortController }) => {
+      loaderSignals.push(abortController.signal)
       loaderCalls += 1
       if (loaderCalls === 1) {
         return { value: 'old' }
@@ -7067,6 +7065,7 @@ describe('stale loader reload triggers', () => {
     expect(currentMatch.updatedAt).toBe(initialUpdatedAt)
     expect(getTitle(currentMatch)).toBe('old')
     expect(head).toHaveBeenCalledTimes(1)
+    expect(loaderSignals[0]?.aborted).toBe(false)
   })
 
   test('pending preload error leaves no cache entry', async () => {

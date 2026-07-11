@@ -68,5 +68,10 @@ describe('issue #4476 - navigation adopting an in-flight preload does not abort 
     )
     expect(committed?.status).toBe('success')
     expect(committed?.loaderData).toBe('adopted')
+
+    // Adoption transfers loader-data lifetime ownership to the active match.
+    // The shared request remains alive while rendered, then aborts on unload.
+    await router.navigate({ to: '/' })
+    expect(capturedSignal?.aborted).toBe(true)
   })
 })

@@ -32,7 +32,6 @@ export type StoreConfig = {
   createMutableStore: MutableStoreFactory
   createReadonlyStore: ReadonlyStoreFactory
   batch: RouterBatchFn
-  init?: (stores: RouterStores<AnyRoute>) => void
 }
 
 type MatchStore = RouterWritableStore<AnyRouteMatch> & {
@@ -83,7 +82,6 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   pendingMatches: ReadableStore<Array<AnyRouteMatch>>
   cachedMatches: ReadableStore<Array<AnyRouteMatch>>
   firstId: ReadableStore<string | undefined>
-  hasPending: ReadableStore<boolean>
   matchRouteDeps: ReadableStore<{
     locationHref: string
     resolvedLocationHref: string | undefined
@@ -114,7 +112,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   initialLocation: ParsedLocation<FullSearchSchema<TRouteTree>>,
   config: StoreConfig,
 ): RouterStores<TRouteTree> {
-  const { createMutableStore, createReadonlyStore, batch, init } = config
+  const { createMutableStore, createReadonlyStore, batch } = config
 
   // non reactive utilities
   const matchStores = new Map<string, MatchStore>()
@@ -144,12 +142,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     readPoolMatches(cachedMatchStores, cachedIds.get()),
   )
   const firstId = createReadonlyStore(() => matchesId.get()[0])
-  const hasPending = createReadonlyStore(() =>
-    matchesId.get().some((matchId) => {
-      const store = matchStores.get(matchId)
-      return store?.get().status === 'pending'
-    }),
-  )
   const matchRouteDeps = createReadonlyStore(() => ({
     locationHref: location.get().href,
     resolvedLocationHref: resolvedLocation.get()?.href,
@@ -218,7 +210,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     pendingMatches,
     cachedMatches,
     firstId,
-    hasPending,
     matchRouteDeps,
 
     // non-reactive state
@@ -237,8 +228,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     setPending,
     setCached,
   } as RouterStores<TRouteTree>
-
-  init?.(store as unknown as RouterStores<AnyRoute>)
 
   // setters to update non-reactive utilities in sync with the reactive stores
   function setMatches(nextMatches: Array<AnyRouteMatch>) {

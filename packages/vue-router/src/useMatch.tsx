@@ -111,6 +111,7 @@ export function useMatch<
   }
 
   // Set up reactive match value based on lookup strategy.
+  const nearestRouteId = Vue.inject(routeIdContext)
   let match: Readonly<Vue.Ref<any>>
 
   if (opts.from) {
@@ -122,7 +123,6 @@ export function useMatch<
     // matchId case: use routeId from context for stable store lookup.
     // The routeId is provided by the nearest Match component and doesn't
     // change for the component's lifetime, so the store is stable.
-    const nearestRouteId = Vue.inject(routeIdContext)
     if (nearestRouteId) {
       match = useStore(
         router.stores.getRouteMatchStore(nearestRouteId),
@@ -134,9 +134,28 @@ export function useMatch<
     }
   }
 
+  const status =
+    opts.from && opts.from !== nearestRouteId
+      ? useStore(router.stores.status, (value) => value)
+      : undefined
+
+  let previous: any
+  let hadMatch = false
   const result = Vue.computed(() => {
     const selectedMatch = match.value
     if (selectedMatch === undefined) {
+      // An injected nearest match or explicit self-match can disappear while
+      // its component waits for Vue to unmount it. Cross-route observers only
+      // retain while the replacement navigation is pending.
+      if (
+        hadMatch &&
+        (!opts.from ||
+          opts.from === nearestRouteId ||
+          status!.value === 'pending')
+      ) {
+        return previous
+      }
+      hadMatch = false
       if (opts.shouldThrow ?? true) {
         if (process.env.NODE_ENV !== 'production') {
           throw new Error(
@@ -150,7 +169,9 @@ export function useMatch<
       return undefined
     }
 
-    return opts.select ? opts.select(selectedMatch) : selectedMatch
+    hadMatch = true
+    previous = opts.select ? opts.select(selectedMatch) : selectedMatch
+    return previous
   })
 
   // Keep eager throw behavior for setups that call useMatch for side effects only.

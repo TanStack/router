@@ -61,14 +61,31 @@ export function loadRouteChunk(
 ) {
   if (!route._lazyLoaded && !route._lazyPromise) {
     if (route.lazyFn) {
+      let lazyGeneration: number | undefined
+      if (process.env.NODE_ENV !== 'production') {
+        lazyGeneration = (route._lazyGeneration ?? 0) + 1
+        route._lazyGeneration = lazyGeneration
+      }
       try {
-        route._lazyPromise = route.lazyFn().then((lazyRoute) => {
-          // explicitly don't copy over the lazy route's id
-          const { id: _id, ...options } = lazyRoute.options
-          Object.assign(route.options, options)
-          route._lazyLoaded = true
-          route._lazyPromise = undefined // gc promise, we won't need it anymore
-        })
+        const lazyPromise = (route._lazyPromise = route
+          .lazyFn()
+          .then((lazyRoute) => {
+            // HMR can retire an in-flight lazy generation by clearing the
+            // route-level promise. A late result from that generation must not
+            // overwrite the new route options or mark the replacement loaded.
+            if (
+              process.env.NODE_ENV !== 'production' &&
+              (route._lazyGeneration !== lazyGeneration ||
+                route._lazyPromise !== lazyPromise)
+            ) {
+              return
+            }
+            // explicitly don't copy over the lazy route's id
+            const { id: _id, ...options } = lazyRoute.options
+            Object.assign(route.options, options)
+            route._lazyLoaded = true
+            route._lazyPromise = undefined // gc promise, we won't need it anymore
+          }))
       } catch (error) {
         route._lazyPromise = Promise.reject(error)
       }
@@ -109,18 +126,33 @@ export function loadRouteChunk(
       const componentsPromise = preloads && Promise.all(preloads)
 
       if (componentsPromise) {
-        route._componentsPromise = componentsPromise.then(
-          () => {
-            route._componentsLoaded = true
-            route._componentsPromise = undefined // gc promise, we won't need it anymore
-          },
-          (error) => {
-            // Clear so a later pass can retry the failed component types;
-            // successful types stay marked done in the per-type cache.
-            route._componentsPromise = undefined
-            throw error
-          },
-        )
+        const trackedPromise = (route._componentsPromise =
+          componentsPromise.then(
+            () => {
+              // HMR can replace the route-level preload generation while its
+              // old component promises are still settling. Only the generation
+              // still registered on the route may publish completion.
+              if (
+                process.env.NODE_ENV !== 'production' &&
+                route._componentsPromise !== trackedPromise
+              ) {
+                return
+              }
+              route._componentsLoaded = true
+              route._componentsPromise = undefined // gc promise, we won't need it anymore
+            },
+            (error) => {
+              // Clear so a later pass can retry the failed component types;
+              // successful types stay marked done in the per-type cache.
+              if (
+                process.env.NODE_ENV === 'production' ||
+                route._componentsPromise === trackedPromise
+              ) {
+                route._componentsPromise = undefined
+              }
+              throw error
+            },
+          ))
       } else {
         route._componentsLoaded = true
       }
@@ -128,8 +160,27 @@ export function loadRouteChunk(
     return route._componentsPromise
   }
 
-  return route._lazyPromise
-    ? route._lazyPromise.then(runAfterLazy)
+  const lazyPromise = route._lazyPromise
+  const lazyGeneration =
+    process.env.NODE_ENV !== 'production'
+      ? route._lazyGeneration
+      : undefined
+  return lazyPromise
+    ? lazyPromise.then(() => {
+        // A retired lazy generation may still resolve after HMR installed a
+        // replacement promise. Do not let its caller start component work
+        // from the stale route options. If the replacement already finished,
+        // runAfterLazy only joins or observes that current component work.
+        if (
+          (process.env.NODE_ENV === 'production' ||
+            route._lazyGeneration === lazyGeneration) &&
+          route._lazyLoaded &&
+          !route._lazyPromise
+        ) {
+          return runAfterLazy()
+        }
+        return undefined
+      })
     : runAfterLazy()
 }
 

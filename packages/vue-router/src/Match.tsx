@@ -69,7 +69,6 @@ export const Match = Vue.defineComponent({
 
       return {
         matchId: match.id,
-        routeId,
         loadedAt: loadedAt.value,
         ssr: match.ssr,
         _displayPending: match._displayPending,
@@ -77,7 +76,7 @@ export const Match = Vue.defineComponent({
     })
 
     const route = Vue.computed(() =>
-      matchData.value ? router.routesById[matchData.value.routeId] : null,
+      matchData.value ? router.routesById[routeId] : null,
     )
 
     const PendingComponent = Vue.computed(
@@ -107,14 +106,9 @@ export const Match = Vue.defineComponent({
         : route.value?.options?.notFoundComponent,
     )
 
-    const hasShellComponent = Vue.computed(() => {
-      if (!route.value?.isRoot) return false
-      return !!(route.value.options as RootRouteOptions).shellComponent
-    })
-
     const ShellComponent = Vue.computed(() =>
-      hasShellComponent.value
-        ? ((route.value!.options as RootRouteOptions).shellComponent as any)
+      route.value?.isRoot
+        ? ((route.value.options as RootRouteOptions).shellComponent as any)
         : null,
     )
 
@@ -138,7 +132,7 @@ export const Match = Vue.defineComponent({
         resolvedNoSsr || !!matchData.value?._displayPending
 
       const renderMatchContent = (): VNode => {
-        const matchInner = () => Vue.h(MatchInner, { matchId: actualMatchId })
+        const matchInner = () => Vue.h(MatchInner)
 
         let content: VNode = shouldClientOnly
           ? Vue.h(
@@ -156,13 +150,13 @@ export const Match = Vue.defineComponent({
         if (routeNotFoundComponent.value) {
           content = Vue.h(CatchNotFound, {
             fallback: (error: any) => {
-              error.routeId ??= matchData.value?.routeId
+              error.routeId ??= routeId
 
               // If the current not found handler doesn't exist or it has a
               // route ID which doesn't match the current route, rethrow the error
               if (
                 !routeNotFoundComponent.value ||
-                (error.routeId && error.routeId !== matchData.value?.routeId) ||
+                (error.routeId && error.routeId !== routeId) ||
                 (!error.routeId && route.value && !route.value.isRoot)
               )
                 throw error
@@ -181,7 +175,7 @@ export const Match = Vue.defineComponent({
             onCatch: (error: Error) => {
               // Forward not found errors (we don't want to show the error component for these)
               if (isNotFound(error)) {
-                error.routeId ??= matchData.value?.routeId
+                error.routeId ??= routeId
                 throw error
               }
               if (process.env.NODE_ENV !== 'production') {
@@ -218,7 +212,7 @@ export const Match = Vue.defineComponent({
         return Vue.h(Vue.Fragment, null, withScrollRestoration)
       }
 
-      if (!hasShellComponent.value) {
+      if (!ShellComponent.value) {
         return renderMatchContent()
       }
 
@@ -256,24 +250,26 @@ const OnRendered = Vue.defineComponent({
     // remounts this keyed component, which would otherwise reset the tracker.
     Vue.watch(
       location,
-      () => {
+      (renderedLocationKey) => {
         const currentResolvedLocation = router.stores.resolvedLocation.get()
-        const previousResolvedLocation = (router as any)
-          .__tsrOnRenderedLocation as ParsedLocation | undefined
-        if (
-          currentResolvedLocation &&
-          (!previousResolvedLocation ||
-            previousResolvedLocation.href !== currentResolvedLocation.href)
-        ) {
-          router.emit({
-            type: 'onRendered',
-            ...getLocationChangeInfo(
-              router.stores.location.get(),
-              previousResolvedLocation ?? currentResolvedLocation,
-            ),
-          })
-        }
-        ;(router as any).__tsrOnRenderedLocation = currentResolvedLocation
+        void Vue.nextTick(() => {
+          const previousResolvedLocation = (router as any)
+            .__tsrOnRenderedLocation as ParsedLocation | undefined
+          if (
+            currentResolvedLocation &&
+            (!previousResolvedLocation ||
+              previousResolvedLocation.state.__TSR_key !== renderedLocationKey)
+          ) {
+            router.emit({
+              type: 'onRendered',
+              ...getLocationChangeInfo(
+                currentResolvedLocation,
+                previousResolvedLocation ?? currentResolvedLocation,
+              ),
+            })
+          }
+          ;(router as any).__tsrOnRenderedLocation = currentResolvedLocation
+        })
       },
       { immediate: true },
     )
@@ -284,13 +280,7 @@ const OnRendered = Vue.defineComponent({
 
 export const MatchInner = Vue.defineComponent({
   name: 'MatchInner',
-  props: {
-    matchId: {
-      type: String,
-      required: true,
-    },
-  },
-  setup(props) {
+  setup() {
     const router = useRouter()
 
     // Use routeId from context (provided by parent Match) — stable string.
@@ -367,7 +357,7 @@ export const MatchInner = Vue.defineComponent({
       if (match.value!.status === 'notFound') {
         // status 'notFound' is only ever committed paired with a NotFoundError
         // (getNotFoundBoundaryPatch), so match.error needs no re-check here.
-        return renderRouteNotFound(router, route.value!, match.value!.error)
+        return renderRouteNotFound(router, route.value, match.value!.error)
       }
 
       if (match.value!.status === 'error') {
@@ -469,19 +459,21 @@ export const Outlet = Vue.defineComponent({
       () => parentMatch.value?.globalNotFound ?? false,
     )
 
-    // Child match lookup: read the child matchId from the shared derived
-    // map (one reactive node for the whole tree), then grab match state
-    // directly from the pool.
-    const childMatchIdMap = useStore(
-      router.stores.childMatchIdByRouteId,
-      (v) => v,
-    )
+    const matchIds = useStore(router.stores.matchesId, (value) => value)
 
     const childMatchData = Vue.computed(() => {
-      const childId = childMatchIdMap.value[parentRouteId]
-      if (!childId) return null
+      const parentIndex = parentMatch.value?.index
+      if (parentIndex === undefined) {
+        return null
+      }
+      const childId = matchIds.value[parentIndex + 1]
+      if (!childId) {
+        return null
+      }
       const child = router.stores.matchStores.get(childId)?.get()
-      if (!child) return null
+      if (!child) {
+        return null
+      }
 
       return {
         id: child.id,
@@ -494,7 +486,7 @@ export const Outlet = Vue.defineComponent({
 
     return (): VNode | null => {
       if (parentGlobalNotFound.value) {
-        return renderRouteNotFound(router, route.value!, undefined)
+        return renderRouteNotFound(router, route.value, undefined)
       }
 
       if (!childMatchData.value) {

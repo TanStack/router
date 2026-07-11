@@ -39,6 +39,8 @@ export type InnerLoadContext = {
   background?: Array<number>
   /** Foreground load must commit even if same-href background reloads exist. */
   requiresCommit?: boolean
+  /** Private matches removed while reducing route failures. */
+  discardedMatches?: Array<AnyRouteMatch>
 }
 
 export type SerialFailure = [index: number, error: unknown]

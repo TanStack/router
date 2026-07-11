@@ -149,6 +149,14 @@ export interface RouteMatch<
     dehydrated?: boolean
     /** Internal loader error used by match loading. */
     error?: unknown
+    /** Controller owned by the loader data currently carried by this match. */
+    loaderAbortController?: AbortController
+    /** Client loader invocation order used to reject stale cache publication. */
+    loaderGeneration?: number
+    /** Development-only route HMR generation used to reject stale reuse. */
+    hmrGeneration?: number
+    /** This private preload lane produced the match's successful loader data. */
+    preloadLoaderSuccess?: boolean
   }
   loaderData?: TLoaderData
   /** Internal route context scratch value. */

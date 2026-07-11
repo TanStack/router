@@ -32,12 +32,9 @@ export function projectClientRouteAssets(
   preload?: boolean,
   isCurrent?: () => boolean,
   startIndex = 0,
+  clean = true,
 ): boolean | Promise<boolean> {
   for (let i = startIndex; i < matches.length; i++) {
-    if (isCurrent && !isCurrent()) {
-      return false
-    }
-
     const match = matches[i]!
     if (preload && !match.preload) {
       continue
@@ -46,6 +43,10 @@ export function projectClientRouteAssets(
     const routeOptions = router.routesById[match.routeId]!.options
     if (!(routeOptions.head || routeOptions.scripts)) {
       continue
+    }
+    // Skipped matches execute no user code; callers re-check before publish.
+    if (isCurrent && !isCurrent()) {
+      return false
     }
 
     try {
@@ -94,6 +95,7 @@ export function projectClientRouteAssets(
               preload,
               isCurrent,
               i + 1,
+              clean,
             )
             return rest
           },
@@ -109,14 +111,14 @@ export function projectClientRouteAssets(
               )
             }
 
-            const rest = projectClientRouteAssets(
+            return projectClientRouteAssets(
               router,
               matches,
               preload,
               isCurrent,
               i + 1,
+              false,
             )
-            return isPromise(rest) ? rest.then(() => false) : false
           },
         )
       }
@@ -131,18 +133,11 @@ export function projectClientRouteAssets(
         console.error(`Error executing head for route ${match.routeId}:`, error)
       }
 
-      // Keep projecting the rest of the lane, but force the overall result
-      // to false — same shape as the async rejection handler above.
-      const rest = projectClientRouteAssets(
-        router,
-        matches,
-        preload,
-        isCurrent,
-        i + 1,
-      )
-      return isPromise(rest) ? rest.then(() => false) : false
+      // Keep projecting the rest of the lane, but remember that this pass
+      // cannot publish atomically even if later hooks succeed.
+      clean = false
     }
   }
 
-  return true
+  return clean
 }

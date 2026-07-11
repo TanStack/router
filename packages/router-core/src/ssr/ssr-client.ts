@@ -126,12 +126,34 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         firstNonSsrMatch = match
       }
 
+      if (!dehydratedMatch) {
+        // The server trimmed this descendant below an error/notFound boundary.
+        // Its follow-up client load is capped by the dehydrated boundary, so
+        // loading its normal chunk now would be both unnecessary and unsafe.
+        return
+      }
+      if (match.status === 'error') {
+        return router.loadRouteChunk(route, 'errorComponent')
+      }
+      if (match.status === 'notFound' || match.globalNotFound) {
+        return router.loadRouteChunk(route, 'notFoundComponent')
+      }
       return router.loadRouteChunk(route)
     }),
   )
   const loadContext = { router, matches }
 
-  const isSpaMode = matches[matches.length - 1]!.id !== lastMatchId
+  const lastDehydratedMatch =
+    dehydratedRouter.matches[dehydratedRouter.matches.length - 1]
+  // A terminal boundary can intentionally cap the server lane above client
+  // matches that still exist for the URL. That is not SPA shell mode: the
+  // server already rendered the boundary, so hydration must keep it visible
+  // instead of replacing it with the shell pending fallback.
+  const isSpaMode =
+    matches[matches.length - 1]!.id !== lastMatchId &&
+    lastDehydratedMatch?.s !== 'error' &&
+    lastDehydratedMatch?.s !== 'notFound' &&
+    !lastDehydratedMatch?.g
 
   let displayMatch = isSpaMode ? matches[1] : firstNonSsrMatch
   let displayUntil = 0
@@ -169,6 +191,17 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   }
 
   router.stores.setMatches(matches)
+
+  // Hydration owns the exact match generations it published above. Href alone
+  // is insufficient: a same-href navigation can replace the lane and later
+  // clear latestLoadPromise before an old hydration hook resumes (ABA). Every
+  // lane contains root and every rematch gives it a fresh controller, so root
+  // is the constant-time generation token for the whole lane.
+  const hydrationMatch = matches[0]!
+  const isHydrationCurrent = () =>
+    router.stores.location.get() === location &&
+    router.getMatch(hydrationMatch.id, false)?.abortController ===
+      hydrationMatch.abortController
 
   const clearDisplayPending = () => {
     let isStillLoadingDisplayMatch = false
@@ -209,10 +242,32 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     return undefined
   }
 
-  const clearAndFailHydration = (err: unknown): never => {
+  const abandonHydration = (): void => {
     matches.forEach(settleMatchLoad)
-    clearDisplayPending()
-    throw err
+    if (displayMatch) {
+      displayMatch._displayPending = undefined
+    }
+  }
+
+  const handleHydrationError = (match: AnyRouteMatch, err: unknown): void => {
+    if (!isHydrationCurrent()) {
+      return
+    }
+    if (isNotFound(err)) {
+      match.error = { isNotFound: true }
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(
+          `NotFound error during hydration for routeId: ${match.routeId}`,
+          err,
+        )
+      }
+    } else {
+      match.error = err
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(`Error during hydration for route ${match.routeId}:`, err)
+      }
+      throw err
+    }
   }
 
   try {
@@ -220,61 +275,78 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     // pending is already published above, so wait here before reconstructing
     // hydration state from those route options.
     await routeChunkPromise
-  } catch (err) {
-    return clearAndFailHydration(err)
-  }
+    if (!isHydrationCurrent()) {
+      return abandonHydration()
+    }
 
-  // now that all necessary data is hydrated:
-  // 1) fully reconstruct the route context
-  // 2) execute `head()` and `scripts()` for each match
-  try {
+    // Reconstruct every match context before any asset hook runs. An ancestor
+    // head({ matches }) may inspect a descendant's hydrated beforeLoad context,
+    // just as it can during server and normal client asset projection.
+    const hydratedContexts = matches.map((match) => {
+      try {
+        if (!isHydrationCurrent()) {
+          return false
+        }
+        const route = routesById[match.routeId]!
+        route.options.ssr = match.ssr
+
+        // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
+        // so run it again and merge route context
+        if (route.options.context) {
+          match.__routeContext = route.options.context({
+            deps: match.loaderDeps,
+            params: match.params,
+            context:
+              matches[match.index - 1]?.context ?? router.options.context ?? {},
+            location,
+            navigate: (opts: any) =>
+              router.navigate({
+                ...opts,
+                _fromLocation: location,
+              }),
+            buildLocation: router.buildLocation,
+            cause: match.cause,
+            abortController: match.abortController,
+            preload: false,
+            matches,
+            routeId: route.id,
+          } as RouteContextOptions<any, any, any, any, any>)
+        }
+
+        if (!isHydrationCurrent()) {
+          return false
+        }
+
+        match.context = getMatchContext(
+          loadContext,
+          match.index,
+          match.__beforeLoadContext,
+        )
+        return true
+      } catch (err) {
+        handleHydrationError(match, err)
+        return false
+      }
+    })
+
     await Promise.all(
-      matches.map(async (match) => {
+      matches.map(async (match, index) => {
+        if (!hydratedContexts[index] || !isHydrationCurrent()) {
+          return
+        }
+        const route = routesById[match.routeId]!
+
+        // The server rendered no assets for ssr:false matches — including
+        // matches it intentionally omitted at an error/notFound boundary,
+        // which the dehydrated payload also marks ssr:false. Their
+        // head()/scripts() could only run with missing or stale loader
+        // data here; the follow-up client load projects assets for the
+        // lane it actually commits.
+        if (match.ssr === false) {
+          return
+        }
+
         try {
-          const route = routesById[match.routeId]!
-          route.options.ssr = match.ssr
-
-          // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
-          // so run it again and merge route context
-          if (route.options.context) {
-            match.__routeContext = route.options.context({
-              deps: match.loaderDeps,
-              params: match.params,
-              context:
-                matches[match.index - 1]?.context ??
-                router.options.context ??
-                {},
-              location,
-              navigate: (opts: any) =>
-                router.navigate({
-                  ...opts,
-                  _fromLocation: location,
-                }),
-              buildLocation: router.buildLocation,
-              cause: match.cause,
-              abortController: match.abortController,
-              preload: false,
-              matches,
-              routeId: route.id,
-            } as RouteContextOptions<any, any, any, any, any>)
-          }
-
-          match.context = getMatchContext(
-            loadContext,
-            match.index,
-            match.__beforeLoadContext,
-          )
-
-          // The server rendered no assets for ssr:false matches — including
-          // matches it intentionally omitted at an error/notFound boundary,
-          // which the dehydrated payload also marks ssr:false. Their
-          // head()/scripts() could only run with missing or stale loader
-          // data here; the follow-up client load projects assets for the
-          // lane it actually commits.
-          if (match.ssr === false) {
-            return
-          }
-
           const assetContext = {
             ssr: router.options.ssr,
             matches,
@@ -284,7 +356,15 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           }
           const headFnContent = await route.options.head?.(assetContext)
 
+          if (!isHydrationCurrent()) {
+            return
+          }
+
           const scripts = await route.options.scripts?.(assetContext)
+
+          if (!isHydrationCurrent()) {
+            return
+          }
 
           match.meta = headFnContent?.meta
           match.links = headFnContent?.links
@@ -292,29 +372,21 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           match.styles = headFnContent?.styles
           match.scripts = scripts
         } catch (err) {
-          if (isNotFound(err)) {
-            match.error = { isNotFound: true }
-            if (process.env.NODE_ENV !== 'production') {
-              console.error(
-                `NotFound error during hydration for routeId: ${match.routeId}`,
-                err,
-              )
-            }
-          } else {
-            match.error = err as any
-            if (process.env.NODE_ENV !== 'production') {
-              console.error(
-                `Error during hydration for route ${match.routeId}:`,
-                err,
-              )
-            }
-            throw err
-          }
+          handleHydrationError(match, err)
         }
       }),
     )
   } catch (err) {
-    return clearAndFailHydration(err)
+    if (!isHydrationCurrent()) {
+      return abandonHydration()
+    }
+    matches.forEach(settleMatchLoad)
+    clearDisplayPending()
+    throw err
+  }
+
+  if (!isHydrationCurrent()) {
+    return abandonHydration()
   }
 
   // all matches have data from the server and we are not in SPA mode so we don't need to kick of router.load()

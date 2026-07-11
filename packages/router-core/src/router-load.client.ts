@@ -7,6 +7,8 @@ import {
 } from './location-change'
 import { settleMatchLoad } from './load-matches'
 import {
+  abortDiscardedMatchControllers,
+  abortReplacedMatchControllers,
   clearBackgroundFetching,
   loadClientMatches,
   startBackgroundLoad,
@@ -32,15 +34,28 @@ const pushExitingMatch = (
   }
 }
 
+const discardPrivateMatches = (
+  router: AnyRouter,
+  matches: Array<AnyRouteMatch>,
+): void => {
+  for (const match of matches) {
+    settleMatchLoad(match)
+  }
+  abortDiscardedMatchControllers(router, matches)
+}
+
 const commitFinalMatches = (
   router: AnyRouter,
   baseMatches: Array<AnyRouteMatch>,
   nextMatches: Array<AnyRouteMatch>,
+  removedCachedMatches: Array<AnyRouteMatch>,
+  discardedMatches?: Array<AnyRouteMatch>,
 ): void => {
   const { stores } = router
+  const previousCachedMatches = stores.cachedMatches.get()
   router.batch(() => {
     const now = Date.now()
-    const cached = stores.cachedMatches.get().slice()
+    const cached = previousCachedMatches.slice()
 
     for (let i = 0; i < baseMatches.length; i++) {
       const match = baseMatches[i]!
@@ -77,6 +92,12 @@ const commitFinalMatches = (
     stores.loadedAt.set(now)
     stores.setCached(cached)
   })
+  router._lastFinalMatches = nextMatches
+  abortDiscardedMatchControllers(
+    router,
+    previousCachedMatches.concat(removedCachedMatches, discardedMatches ?? []),
+  )
+  abortReplacedMatchControllers(baseMatches, nextMatches)
 
   const matchCount = Math.max(baseMatches.length, nextMatches.length)
   for (let i = 0; i < matchCount; i++) {
@@ -114,14 +135,66 @@ export const loadClientRouter = async (
   const historyAction = opts?.action?.type
   const loadPromise = createControlledPromise<void>()
   const { stores } = router
-
-  router.latestLoadPromise = loadPromise
-
+  // Seed semantic ownership before this (or a reentrant) pass can publish a
+  // presentation-only pending lane. This also captures hydrated active state.
+  router._lastFinalMatches ??= stores.matches.get()
+  const previousLatestLoadPromise = router.latestLoadPromise
   const isCurrentLoad = () => router.latestLoadPromise === loadPromise
+  const settleAndDrain = async () => {
+    loadPromise.resolve()
+    let latest = router.latestLoadPromise
+    while (latest) {
+      await latest
+      latest = router.latestLoadPromise
+    }
+  }
   let startedBackgroundLoad = false
   let loadContext: InnerLoadContext | undefined
 
+  // Candidate matching executes fallible user code (loaderDeps/context), and
+  // context may navigate synchronously. Do not replace the current owner until
+  // preflight succeeds and proves that no reentrant load took ownership.
+  let next: typeof router.latestLocation
+  let pendingMatches: Array<AnyRouteMatch>
   try {
+    router.updateLatestLocation()
+    next = router.latestLocation
+    pendingMatches = router.matchRoutes(next, {
+      _isCurrent: () => router.latestLoadPromise === previousLatestLoadPromise,
+    })
+  } catch (err) {
+    if (router.latestLoadPromise === previousLatestLoadPromise) {
+      if (isRedirect(err)) {
+        router.navigate({
+          ...err.options,
+          replace: true,
+          ignoreBlocker: true,
+        })
+      } else {
+        Promise.reject(err)
+        if (!previousLatestLoadPromise) {
+          const commitLocationPromise = router.commitLocationPromise
+          router.commitLocationPromise = undefined
+          commitLocationPromise?.resolve()
+        }
+      }
+    }
+    await settleAndDrain()
+    return
+  }
+
+  if (router.latestLoadPromise !== previousLatestLoadPromise) {
+    discardPrivateMatches(router, pendingMatches)
+    await settleAndDrain()
+    return
+  }
+
+  router.latestLoadPromise = loadPromise
+
+  try {
+    // Rematching is synchronous but user-defined loaderDeps/context work can
+    // throw. Do not cancel the currently owned generations until a replacement
+    // lane exists; a failed navigation must leave their resources alive.
     const backgroundLoad = router._backgroundLoad
     if (backgroundLoad) {
       // A foreground navigation supersedes stale same-href background work.
@@ -132,27 +205,72 @@ export const loadClientRouter = async (
       clearBackgroundFetching(router)
     }
     router.cancelMatches()
-    router.updateLatestLocation()
-
-    const next = router.latestLocation
-    const pendingMatches = router.matchRoutes(next)
+    if (!isCurrentLoad()) {
+      discardPrivateMatches(router, pendingMatches)
+      await settleAndDrain()
+      return
+    }
+    // A successful preflight may have copied the old pending generation's
+    // readiness promise. Cancellation settles that owner; the replacement
+    // generation must create a fresh promise rather than reuse the resolved
+    // one. Preserve an existing presentation deadline for the same match: its
+    // fallback stayed visible while ownership changed, so this is still one
+    // minimum-display session.
+    for (const match of pendingMatches) {
+      const previousPromise = match._.loadPromise
+      if (previousPromise?.status !== 'pending') {
+        match._.loadPromise = undefined
+        if (match.status === 'pending' && previousPromise?.pendingUntil) {
+          match._.loadPromise = createControlledPromise<void>()
+          match._.loadPromise.pendingUntil = previousPromise.pendingUntil
+        }
+      }
+    }
     const sameHref =
       (stores.resolvedLocation.get() ?? stores.location.get()).href ===
       next.href
 
+    const previousCachedMatches = stores.cachedMatches.get()
     router.batch(() => {
+      for (const match of pendingMatches) {
+        const activeStore = stores.matchStores.get(match.id)
+        const activeMatch = activeStore?.get()
+        if (
+          // Only forcePending/same-location replacement can expose fallback UI
+          // before private pending publication. A cross-location shared root
+          // receives the private owner through normal pending publication.
+          // href intentionally ignores a state-only location key change.
+          stores.location.get().href === next.href &&
+          match.status === 'pending' &&
+          activeMatch?.status === 'pending'
+        ) {
+          // forcePending (and an overlapping same-match generation) can make
+          // the currently rendered match suspend before this private
+          // replacement is published. Connect only readiness ownership now —
+          // context/data stay private — so visible UI can arm pendingMin.
+          const promise = (match._.loadPromise ||= createControlledPromise())
+          activeStore!.set({
+            ...activeMatch,
+            _: {
+              ...activeMatch._,
+              loadPromise: promise,
+            },
+          })
+        }
+      }
       stores.status.set('pending')
       stores.isLoading.set(true)
       stores.location.set(next)
       stores.setPending(pendingMatches)
       stores.setCached(
-        stores.cachedMatches
-          .get()
-          .filter((match) => pendingMatches[match.index]?.id !== match.id),
+        previousCachedMatches.filter(
+          (match) => !stores.pendingMatchStores.has(match.id),
+        ),
       )
     })
+    abortDiscardedMatchControllers(router, previousCachedMatches)
 
-    const baseMatches = stores.matches.get()
+    const baseMatches = router._lastFinalMatches
     if (historyAction) {
       locationHistoryActions.set(next, historyAction)
     } else {
@@ -182,6 +300,7 @@ export const loadClientRouter = async (
         return
       }
 
+      const previousMatches = stores.matches.get()
       router.batch(() => {
         // Publication replaces the active lane before final commit, so
         // exiting success matches must be preserved in the cache here: if
@@ -189,10 +308,10 @@ export const loadClientRouter = async (
         // that would have cached them never runs, and their fresh data
         // would otherwise be lost from every pool.
         let cached: Array<AnyRouteMatch> | undefined
-        for (const match of stores.matches.get()) {
+        for (const match of previousMatches) {
           if (
             match.status === 'success' &&
-            !matches.some((m) => m.id === match.id)
+            matches[match.index]?.id !== match.id
           ) {
             pushExitingMatch(
               (cached ||= stores.cachedMatches.get().slice()),
@@ -208,6 +327,7 @@ export const loadClientRouter = async (
           stores.setPending([])
         }
       })
+      abortReplacedMatchControllers(previousMatches, matches)
     }
     loadContext = {
       router,
@@ -276,13 +396,43 @@ export const loadClientRouter = async (
           await assets
         }
         if (isCurrentLoad()) {
-          await router.startViewTransition(async () => {
-            if (isCurrentLoad()) {
+          let finalCommitPromise:
+            | ReturnType<typeof createControlledPromise<void>>
+            | undefined
+          const scheduleFinalCommit = () => {
+            if (!finalCommitPromise && isCurrentLoad()) {
+              const promise = (finalCommitPromise =
+                createControlledPromise<void>())
               router.startTransition(() => {
-                commitFinalMatches(router, baseMatches, pendingMatches)
+                try {
+                  if (isCurrentLoad()) {
+                    commitFinalMatches(
+                      router,
+                      baseMatches,
+                      pendingMatches,
+                      previousCachedMatches,
+                      loadContext!.discardedMatches,
+                    )
+                  }
+                } finally {
+                  promise.resolve()
+                }
               })
             }
-          })
+            return finalCommitPromise
+          }
+          try {
+            await router.startViewTransition(async () => scheduleFinalCommit())
+          } catch (error) {
+            // A view-transition implementation may reject before it invokes
+            // its update callback. Navigation ownership still has to commit;
+            // keep the rejection observable through the outer failure path.
+            // The shared promise prevents a rejection after the callback (or
+            // a late callback from a broken wrapper) from committing twice,
+            // and keeps ownership until a deferred framework transition runs.
+            await scheduleFinalCommit()
+            throw error
+          }
         }
       }
     }
@@ -293,6 +443,7 @@ export const loadClientRouter = async (
   } catch (err) {
     if (isCurrentLoad() && isRedirect(err)) {
       stores.setPending([])
+      discardPrivateMatches(router, pendingMatches)
       router.navigate({
         ...err.options,
         replace: true,
@@ -319,25 +470,19 @@ export const loadClientRouter = async (
   // Match components throw router.latestLoadPromise for stale pending
   // snapshots and rely on that ordering to avoid a suspense busy-loop on an
   // already-resolved load.
-  loadPromise.resolve()
-
   // A superseded or redirected load must not settle its public await before
   // the navigation chain does: callers of router.load()/invalidate() rely on
   // observing post-settlement state, and the preload borrow protocol uses the
   // foreground load promise as its "committed or gone" signal.
   //
   // Termination invariant: latestLoadPromise is only ever installed as a fresh
-  // promise by a newer pass (top of this function) or cleared to undefined by
-  // the owning pass in the same sync block that resolves it (above). So after
+  // promise by a successfully preflighted pass or cleared to undefined by the
+  // owning pass in the same sync block that resolves it (above). So after
   // `await latest`, latestLoadPromise is either undefined or a strictly newer
   // pass's promise — never `latest` (or this pass's loadPromise) again. Any
   // future writer that resolves latestLoadPromise without replacing/clearing
   // it would turn this loop into an infinite microtask spin.
-  let latest = router.latestLoadPromise
-  while (latest) {
-    await latest
-    latest = router.latestLoadPromise
-  }
+  await settleAndDrain()
 
   if (startedBackgroundLoad) {
     // Background stale reloads run after the foreground lane is done. If that

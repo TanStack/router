@@ -1,7 +1,7 @@
 import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { isRedirect } from './redirect'
-import { loadRouteChunk } from './route-chunks'
+import { loadRouteChunk, routeNeedsPreload } from './route-chunks'
 import { projectClientRouteAssets } from './route-assets.client'
 import {
   commitMatch,
@@ -25,6 +25,57 @@ import type { InnerLoadContext, SerialFailure } from './load-matches'
 
 const isRouteControl = (error: unknown) =>
   isRedirect(error) || isNotFound(error)
+
+let loaderGeneration = 0
+
+const abortUnretainedControllers = (
+  discarded: Array<AnyRouteMatch>,
+  retainedMatches: Array<Array<AnyRouteMatch>>,
+): void => {
+  const retained = new Set<AbortController>()
+  for (const matches of retainedMatches) {
+    for (const match of matches) {
+      retained.add(match.abortController)
+      if (match._.loaderAbortController) {
+        retained.add(match._.loaderAbortController)
+      }
+    }
+  }
+
+  for (const match of discarded) {
+    if (!retained.has(match.abortController)) {
+      match.abortController.abort()
+    }
+    const loaderController = match._.loaderAbortController
+    if (loaderController && !retained.has(loaderController)) {
+      loaderController.abort()
+    }
+  }
+}
+
+/** Abort pass and loader controllers that no longer belong to a published lane. */
+export const abortReplacedMatchControllers = (
+  previousMatches: Array<AnyRouteMatch>,
+  nextMatches: Array<AnyRouteMatch>,
+): void => {
+  abortUnretainedControllers(previousMatches, [nextMatches])
+}
+
+/** Abort discarded private/cache work unless another router lane retained it. */
+export const abortDiscardedMatchControllers = (
+  router: AnyRouter,
+  discarded: Array<AnyRouteMatch>,
+): void => {
+  const retained = [
+    router.stores.matches.get(),
+    router.stores.pendingMatches.get(),
+    router.stores.cachedMatches.get(),
+  ]
+  for (const lane of router._preloadLanes ?? []) {
+    retained.push(lane.matches)
+  }
+  abortUnretainedControllers(discarded, retained)
+}
 
 // Route work may only commit while it still owns the lane entry it is about to
 // mutate. Each client load pass stamps its matches with an AbortController:
@@ -56,7 +107,9 @@ const requireCurrentMatch = (
     match.abortController !== abortController ||
     abortController.signal.aborted ||
     (pendingLocation &&
-      pendingLocation.publicHref !== inner.location.publicHref)
+      pendingLocation.publicHref !== inner.location.publicHref &&
+      pendingLocation.publicHref !==
+        inner.router.stores.location.get().publicHref)
   ) {
     throw inner
   }
@@ -122,16 +175,16 @@ const joinPreloadedActiveMatch = async (
   // From here the preload lane uses the owner match read-only. It must not clone
   // or cache a borrowed active match as if the preload generated it itself.
   inner.matches[index] = match
-  const error = match._.error ?? match.error
 
-  if (isRouteControl(error)) {
-    // Borrowed active matches keep ownership of their route outcomes. Preloads
-    // only observe the active lane; they must not chase a redirect/notFound that
-    // the foreground navigation is already handling.
-    throw inner
-  }
-
-  if (match.status !== 'success') {
+  if (
+    match.status !== 'success' ||
+    match.isFetching !== false ||
+    match._.error
+  ) {
+    // A successful active snapshot with no local readiness promise but an
+    // active fetching marker is owned by a private background generation.
+    // Private match errors are redirects; other route outcomes already carry
+    // a non-success status. Conservatively abandon either owner shape.
     throw inner
   }
 
@@ -168,31 +221,42 @@ const adoptInFlightPreload = async (
       continue
     }
     const readDonor = () =>
-      lane.matches.find((m) => m.id === match.id && m.preload)
+      lane.matches.find(
+        (candidate) => candidate.id === match.id && candidate.preload,
+      )
     let donor = readDonor()
     if (!donor) {
       continue
     }
 
-    if (donor.status !== 'success') {
-      if (
-        donor.isFetching !== 'loader' ||
-        donor._.loadPromise?.status !== 'pending'
-      ) {
-        // Not joinable (e.g. still in its serial phase) — a later registered
-        // lane may hold the same match with its loader already in flight.
-        continue
-      }
-      commitMatch(inner, index, { isFetching: 'loader' })
-      // The preload pass settles every owned match's loadPromise in its
-      // finally, so this wait cannot hang even for aborted preloads.
-      await donor._.loadPromise
-      requireCurrentMatch(inner, index, passController)
-      donor = readDonor()
+    if (
+      donor.isFetching !== 'loader' ||
+      donor._.loadPromise?.status !== 'pending'
+    ) {
+      // Not joinable (e.g. still in its serial phase) — a later registered
+      // lane may hold the same match with its loader already in flight.
+      continue
     }
+    commitMatch(inner, index, { isFetching: 'loader' })
+    // Cancellation settles the adopter's own readiness without aborting the
+    // independent donor. Race both so a superseded router.load does not stay
+    // parked behind a donor preload that is still legitimately in flight.
+    await Promise.race([donor._.loadPromise, match._.loadPromise!])
+    requireCurrentMatch(inner, index, passController)
+    donor = readDonor()
 
-    if (donor?.status !== 'success') {
-      return undefined
+    if (donor?.status !== 'success' || !donor._.preloadLoaderSuccess) {
+      // This lane did not produce a successful loader generation (for
+      // example it redirected, failed, or retained old data after an abort).
+      // Keep scanning in case a later lane owns a joinable generation.
+      continue
+    }
+    const currentMatch = requireCurrentMatch(inner, index, passController)
+    currentMatch._.loaderAbortController =
+      donor._.loaderAbortController ?? donor.abortController
+    currentMatch._.loaderGeneration = donor._.loaderGeneration
+    if (inner.preload) {
+      currentMatch._.preloadLoaderSuccess = true
     }
     commitMatch(inner, index, { loaderData: donor.loaderData })
     return true
@@ -262,6 +326,8 @@ const finalizeRouteFailure = async (
     await pendingWait
     currentMatch = requireCurrentMatch(inner, index, abortController)
   }
+
+  currentMatch._.loaderAbortController = abortController
 
   if (!componentFailure) {
     if (isRedirect(error)) {
@@ -381,7 +447,8 @@ const handleClientBeforeLoad = (
   const existingMatch = inner.matches[index]!
 
   const { preload, routeId } = existingMatch
-  const routeOptions = inner.router.routesById[routeId]!.options
+  const route = inner.router.routesById[routeId]!
+  const routeOptions = route.options
   const abortController = existingMatch.abortController
   const pending = () => {
     commitMatch(inner, index, {
@@ -397,7 +464,13 @@ const handleClientBeforeLoad = (
       ? existingMatch.paramsError
       : existingMatch.searchError
   const beforeLoad = routeOptions.beforeLoad
-  if (beforeLoad || routeOptions.loader || serialError !== undefined) {
+  if (
+    beforeLoad ||
+    routeOptions.loader ||
+    route.lazyFn ||
+    routeNeedsPreload(route) ||
+    serialError !== undefined
+  ) {
     existingMatch._.loadPromise ||= createControlledPromise<void>()
   }
 
@@ -545,6 +618,7 @@ const loadClientRouteMatch = async (
   const loader = getLoader(loaderOption)
 
   let match = initialMatch
+  let loaderSucceeded = false
   const { preload } = match
 
   if (match._.dehydrated) {
@@ -655,6 +729,7 @@ const loadClientRouteMatch = async (
 
       if (!adopted) {
         // Kick off the loader!
+        const generation = loader && ++loaderGeneration
         const loaderResult = loader?.(
           getLoaderContext(inner, matchPromises, index, route),
         )
@@ -670,15 +745,18 @@ const loadClientRouteMatch = async (
             ? await loaderResult
             : loaderResult
 
-          requireCurrentMatch(inner, index, passController)
+          const currentMatch = requireCurrentMatch(inner, index, passController)
 
           if (isRouteControl(loaderData)) {
             throw loaderData
           }
 
+          currentMatch._.loaderAbortController = passController
+          currentMatch._.loaderGeneration = generation
           commitMatch(inner, index, {
             loaderData,
           })
+          loaderSucceeded = true
         }
       }
     } catch (error) {
@@ -741,6 +819,10 @@ const loadClientRouteMatch = async (
       requireCurrentMatch(inner, index, passController)
     }
 
+    if (loaderSucceeded && inner.preload) {
+      match._.preloadLoaderSuccess = true
+    }
+
     commitMatch(inner, index, {
       status: 'success',
       error: undefined,
@@ -788,6 +870,7 @@ export function startBackgroundLoad(
   })
 
   const matches = base.slice()
+  let discardedMatches: Array<AnyRouteMatch> | undefined
   let committed = false
   const cancelBatch = () => {
     token.controller.abort()
@@ -838,14 +921,22 @@ export function startBackgroundLoad(
     const failures: Array<unknown> = []
 
     for (const index of indices) {
+      const abortController = new AbortController()
+      token.controller.signal.addEventListener(
+        'abort',
+        () => abortController.abort(),
+        { once: true },
+      )
       let match = (matches[index] = {
         ...base[index]!,
-        abortController: token.controller,
+        abortController,
+        _: { ...base[index]!._ },
       })
 
       matchPromises[index] = (async (): Promise<AnyRouteMatch> => {
         const route = router.routesById[match.routeId]!
         const loader = getLoader(route.options.loader)!
+        const generation = ++loaderGeneration
 
         try {
           requireCurrent()
@@ -862,6 +953,8 @@ export function startBackgroundLoad(
             throw loaderData
           }
 
+          match._.loaderAbortController = abortController
+          match._.loaderGeneration = generation
           match = {
             ...match,
             loaderData,
@@ -879,6 +972,7 @@ export function startBackgroundLoad(
           // eslint-disable-next-line no-ex-assign
           error = normalizeRouteFailure(inner, index, error)
           requireCurrent()
+          match._.loaderAbortController = abortController
           throw error
         }
 
@@ -954,6 +1048,7 @@ export function startBackgroundLoad(
         isFetching: false,
         updatedAt: Date.now(),
       }
+      discardedMatches = matches.slice(index + 1)
       matches.length = index + 1
     } else if (notFoundError) {
       const index = getNotFoundBoundaryIndex(inner, notFoundError)
@@ -981,6 +1076,7 @@ export function startBackgroundLoad(
           updatedAt: Date.now(),
         }
       }
+      discardedMatches = matches.slice(index + 1)
       matches.length = index + 1
     }
 
@@ -997,13 +1093,20 @@ export function startBackgroundLoad(
     // loaderData under head output that still describes the previous data.
     // Keep the old lane; the fetching markers are cleared by the finalizer.
     if (assetsOk && isCurrentOrCancel()) {
+      const previousMatches = router.stores.matches.get()
       router.stores.setMatches(matches)
+      router._lastFinalMatches = matches
+      abortReplacedMatchControllers(previousMatches, matches)
+      if (discardedMatches) {
+        abortDiscardedMatchControllers(router, discardedMatches)
+      }
       committed = true
     }
   })().finally(() => {
     if (router._backgroundLoad === token) {
       router._backgroundLoad = undefined
       if (!committed) {
+        token.controller.abort()
         clearBackgroundFetching(router)
       }
     }
@@ -1035,9 +1138,18 @@ export async function loadClientMatches(
         // assets for descendants the server never rendered.
         if (
           (match.status === 'notFound' && isNotFound(match.error)) ||
-          match.status === 'error'
+          match.status === 'error' ||
+          (!i && match.globalNotFound)
         ) {
-          inner.serialFailure = [i, match.error]
+          inner.serialFailure = [
+            i,
+            !i && match.globalNotFound
+              ? ({
+                  isNotFound: true,
+                  routeId: match.routeId,
+                } as NotFoundError)
+              : match.error,
+          ]
           break
         }
         matchPromises[i] = loadClientRouteMatch(inner, matchPromises, i)
@@ -1110,7 +1222,42 @@ export async function loadClientMatches(
   }
 
   if (hasFatalError) {
-    // Non-route-control failures are fatal to this load call.
+    // Keep fatal machinery failures globally observable, but do not publish
+    // an ordinary pending match after its readiness promise was defensively
+    // settled. Do not enter the normal route-error lifecycle here: loading
+    // another user component after the machinery already failed could hang
+    // defensive settlement. Commit the shallowest unfinished route directly
+    // as the renderable fallback and trim descendants whose work never ran.
+    const fallbackIndex = inner.matches.findIndex(
+      (match) =>
+        match.status === 'pending' ||
+        match.isFetching !== false ||
+        match._.loadPromise?.status === 'pending',
+    )
+    if (fallbackIndex >= 0) {
+      const match = inner.matches[fallbackIndex]!
+      match._.loaderAbortController = match.abortController
+      inner.requiresCommit = true
+      inner.badIndex = Math.min(inner.badIndex ?? fallbackIndex, fallbackIndex)
+      commitMatch(inner, fallbackIndex, {
+        status: 'error',
+        error: fatalError,
+        isFetching: false,
+        updatedAt: Date.now(),
+        context: getMatchContext(
+          inner,
+          fallbackIndex,
+          match.__beforeLoadContext,
+        ),
+      })
+      finishMatchLoad(inner, fallbackIndex)
+      while (inner.matches.length > inner.badIndex + 1) {
+        const discarded = inner.matches.pop()!
+        settleMatchLoad(discarded)
+        ;(inner.discardedMatches ||= []).push(discarded)
+      }
+    }
+
     throw fatalError
   }
 
@@ -1123,19 +1270,26 @@ export async function loadClientMatches(
     // This can differ from the throwing route when routeId targets an ancestor
     // boundary (or when bubbling resolves to a parent/root boundary).
     const index = getNotFoundBoundaryIndex(inner, firstNotFound)
-    if (inner.preload?.includes(inner.matches[index]!.id)) {
-      return inner.matches
-    }
+    // A regular error already committed at an equal or shallower route owns
+    // the render boundary. A deeper concurrent notFound must not overwrite
+    // that error or keep descendants below it in the lane.
+    if (inner.badIndex === undefined || index < inner.badIndex) {
+      if (inner.preload?.includes(inner.matches[index]!.id)) {
+        return inner.matches
+      }
 
-    const patch = getNotFoundBoundaryPatch(inner, index, firstNotFound)
-    commitMatch(inner, index, patch)
-    finishMatchLoad(inner, index)
-    trimIndex = index
+      const patch = getNotFoundBoundaryPatch(inner, index, firstNotFound)
+      commitMatch(inner, index, patch)
+      finishMatchLoad(inner, index)
+      trimIndex = index
+    }
   }
 
   if (trimIndex !== undefined) {
     while (inner.matches.length > trimIndex + 1) {
-      settleMatchLoad(inner.matches.pop()!)
+      const discarded = inner.matches.pop()!
+      settleMatchLoad(discarded)
+      ;(inner.discardedMatches ||= []).push(discarded)
     }
   }
 

@@ -23,6 +23,7 @@ import type {
   AnyRouteMatch,
   ParsedLocation,
   RootRouteOptions,
+  RouterReadableStore,
 } from '@tanstack/router-core'
 
 type OutletMatchSelection = [
@@ -64,6 +65,24 @@ const getLoadPromise = (
   }
 
   return promise
+}
+
+export function PendingFallback({
+  matchStore,
+  pendingMinMs,
+  component: PendingComponent,
+}: {
+  matchStore: RouterReadableStore<AnyRouteMatch | undefined>
+  pendingMinMs: number | undefined
+  component: React.ComponentType
+}) {
+  const localPromise = useStore(matchStore, (match) =>
+    match?.status === 'pending' ? match._.loadPromise : undefined,
+  )
+  if (localPromise?.status === 'pending' && pendingMinMs) {
+    localPromise.pendingUntil ??= Date.now() + pendingMinMs
+  }
+  return <PendingComponent />
 }
 
 export const Match = React.memo(function MatchImpl({
@@ -140,7 +159,15 @@ function MatchView({
   const PendingComponent =
     route.options.pendingComponent ?? router.options.defaultPendingComponent
 
-  const pendingElement = PendingComponent ? <PendingComponent /> : null
+  const pendingElement = PendingComponent ? (
+    <PendingFallback
+      matchStore={router.stores.matchStores.get(matchId)!}
+      pendingMinMs={
+        route.options.pendingMinMs ?? router.options.defaultPendingMinMs
+      }
+      component={PendingComponent}
+    />
+  ) : null
 
   const routeErrorComponent =
     route.options.errorComponent ?? router.options.defaultErrorComponent
@@ -155,11 +182,9 @@ function MatchView({
 
   const resolvedNoSsr = match.ssr === false || match.ssr === 'data-only'
   const ResolvedSuspenseBoundary =
-    // If we're on the root route, allow forcefully wrapping in suspense
-    (!route.isRoot || route.options.wrapInSuspense || resolvedNoSsr) &&
     (route.options.wrapInSuspense ??
-      PendingComponent ??
-      ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
+    PendingComponent ??
+    ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
       ? React.Suspense
       : SafeFragment
 
@@ -251,11 +276,13 @@ function OnRendered() {
   // resolvedLocation has already been updated to the new location by
   // Transitioner, so we cannot use router.stores.resolvedLocation.get()
   // directly as the fromLocation.
-  // @ts-expect-error -- init to `undefined` but don't write `undefined` to shave bytes
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const prevResolvedLocationRef = React.useRef<
-    ParsedLocation<any> | undefined
-  >()
+  const renderedRef = React.useRef<
+    [router: typeof router, location?: ParsedLocation<any>]
+  >([router])
+  if (renderedRef.current[0] !== router) {
+    renderedRef.current = [router]
+  }
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const renderedLocationKey = useStore(
     router.stores.resolvedLocation,
@@ -265,22 +292,22 @@ function OnRendered() {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useLayoutEffect(() => {
     const currentResolvedLocation = router.stores.resolvedLocation.get()
-    const previousResolvedLocation = prevResolvedLocationRef.current
+    const previousResolvedLocation = renderedRef.current[1]
 
     if (
       currentResolvedLocation &&
       (!previousResolvedLocation ||
-        previousResolvedLocation.href !== currentResolvedLocation.href)
+        previousResolvedLocation.state.__TSR_key !== renderedLocationKey)
     ) {
       router.emit({
         type: 'onRendered',
         ...getLocationChangeInfo(
-          router.stores.location.get(),
+          currentResolvedLocation,
           previousResolvedLocation ?? currentResolvedLocation,
         ),
       })
     }
-    prevResolvedLocationRef.current = currentResolvedLocation
+    renderedRef.current[1] = currentResolvedLocation
   }, [renderedLocationKey, router])
 
   return null
@@ -395,16 +422,6 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }, [key, Comp])
 
   if (match.status === 'pending') {
-    const PendingComponent =
-      routeOptions.pendingComponent ?? router.options.defaultPendingComponent
-    const pendingMinMs = PendingComponent
-      ? (routeOptions.pendingMinMs ?? router.options.defaultPendingMinMs)
-      : undefined
-    const localPromise = match._.loadPromise
-    if (localPromise?.status === 'pending' && pendingMinMs) {
-      localPromise.pendingUntil ??= Date.now() + pendingMinMs
-    }
-
     throw getLoadPromise(router, match)
   }
 
@@ -477,7 +494,7 @@ export const Outlet = React.memo(function OutletImpl() {
   ) : null
 
   if (parentGlobalNotFound) {
-    return renderRouteNotFound(router, route!, undefined)
+    return renderRouteNotFound(router, route, undefined)
   }
 
   if (!childMatchId) {

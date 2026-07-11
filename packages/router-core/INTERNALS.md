@@ -74,6 +74,14 @@ runtime fields:
 - `_.dehydrated`: client hydration marker.
 - `_.error`: private redirect marker used by preload borrowing.
   notFound and regular error outcomes live on public match state.
+- `_.loaderAbortController`: controller whose signal belongs to the loader data
+  currently carried by the match. It can differ from `abortController` when a
+  match reuses or adopts another lane's loader generation.
+- `_.loaderGeneration`: monotonic client loader invocation order. Concurrent
+  preload asset projection may finish out of order; cache publication rejects
+  an older generation after a newer one already owns the same match id.
+- `_.preloadLoaderSuccess`: private provenance marker proving that a preload
+  lane produced or adopted a successful loader generation that it may cache.
 - `_displayPending`: hydration-only flag that asks frameworks to render pending
   UI for a hydration display match. The display match can be the SPA fallback or
   the first `ssr: false`/`data-only` match, so it is not always dehydrated.
@@ -189,6 +197,11 @@ preloads return without projecting assets or caching speculative matches.
 Top-level client navigation is current when
 `router.latestLoadPromise === loadPromise`.
 
+Preload location building and synchronous matching capture the current
+`latestLoadPromise` before either phase starts. If user search/params/context
+code starts a navigation, the speculative pass stops later matching callbacks
+and discards its partial lane before starting route work.
+
 Background work is current when:
 
 - `router._backgroundLoad === token`.
@@ -258,7 +271,7 @@ creates the initial lane.
 3. Validates search params; for new matches, extracts and validates strict path
    params.
 4. Computes loader deps and the match id.
-5. Reuses an existing match by id when possible.
+5. Reuses an existing match by id and lane index when possible.
 6. Creates a fresh `AbortController`.
 7. Sets `cause` to `preload`, `stay`, or `enter`.
 8. Runs route `context()` for new matches.
@@ -282,6 +295,28 @@ pending owners keep readiness ownership across rematching, a dehydrated match
 can legitimately hold a pending load promise, and dropping the marker would
 make the follow-up load re-run its server work. That copy is a new generation.
 The old match may still exist in an active, pending, or cached pool.
+While that marker is present, rematching also preserves the dehydrated
+`globalNotFound` outcome so a root boundary can be replayed before ordinary
+client matching is allowed to recompute the flag.
+
+The stored lane index is part of reuse eligibility even though it is not part
+of the public match id. The deprecated `notFoundRoute` can append the same
+route id below partial branches of different depths. Reusing that snapshot at
+a new index would also reuse route context derived from its old effective
+parent, so matching creates a fresh generation and reruns context, beforeLoad,
+and loader work instead.
+
+Development route HMR adds another reuse guard. Matches carry the live route's
+hot generation, and a generation mismatch forces a fresh match for that route
+and the remaining descendant suffix. Parsed params and route context are
+generation-derived; rebuilding only the edited parent would still leave child
+route context derived from its previous parent. This hot generation is separate
+from lazy-chunk invocation generations, which also advance during ordinary
+development loading and therefore cannot identify HMR by themselves.
+When HMR removes `beforeLoad`, the immediate compatibility clear rebuilds active
+and pending context against each match's own lane. Same-id generations can
+coexist in both pools, so looking up a parent with pending-first global priority
+would leak speculative parent context into the rendered active match.
 
 ## Client Top-Level Navigation Load
 
@@ -299,11 +334,12 @@ sequenceDiagram
 
   App->>Router: router.load(opts)
   Router->>Router: create loadPromise
+  Router->>Router: updateLatestLocation()
+  Router->>Router: matchRoutes(latestLocation)
+  Router->>Router: verify no reentrant load took ownership
   Router->>Router: latestLoadPromise = loadPromise
   Router->>Router: abort active background load if any
   Router->>Router: cancelMatches()
-  Router->>Router: updateLatestLocation()
-  Router->>Router: matchRoutes(latestLocation)
   Router->>Stores: status=pending, isLoading=true, location=next
   Router->>Stores: setPending(pendingMatches), evict overlapping cache
   Router->>Loader: loadClientMatches(loadContext)
@@ -328,11 +364,78 @@ sequenceDiagram
   end
 ```
 
+The final client commit is scheduled from inside the view-transition update
+callback. A custom/native wrapper can reject before invoking that callback; in
+that case the still-current navigation schedules the same final commit outside
+the failed wrapper and keeps the rejection globally observable. A callback
+that was already scheduled is never scheduled twice, including when the
+wrapper rejects after it ran or invokes it late.
+
 Core sets `status` to `pending` at the start. Normal final commits and
 background-only exits clear `isLoading`/pending; foreground redirects clear
 pending and start a replacement navigation, whose load later clears
-`isLoading`. Framework transitioners are responsible for later marking the
-router status idle and updating `resolvedLocation`.
+`isLoading`. When `isLoading` falls, framework transitioners publish the
+completed location through `resolvedLocation` before emitting `onLoad` and
+`onBeforeRouteMount`. This lets a lifecycle subscriber that synchronously
+starts another navigation observe the completed location as the new
+navigation's origin. The router remains `pending` until the framework has
+committed that completed navigation's render; only then does the transitioner
+emit `onResolved` and mark the router `idle`.
+
+Synchronous rematching happens before the router aborts the generations that
+currently own active, pending, or background work. `loaderDeps`, route context,
+and location parsing can throw while constructing a lane; until that succeeds,
+there is no replacement owner and the existing generation's abort signal must
+remain live. The candidate load also does not replace `latestLoadPromise` until
+matching finishes. If route context navigates synchronously, that nested load
+becomes current and the candidate stops matching before invoking later
+`validateSearch`, `loaderDeps`, loader-dependency serialization, param parsing,
+or route-context callbacks, then returns without publishing. After a successful
+preflight cancels the previous generation, any readiness promise copied from
+that generation is discarded if cancellation settled it; the new generation
+must create its own pending promise. When the same pending match keeps
+presenting one continuous fallback, the fresh promise inherits the old
+promise's `pendingUntil`: loader ownership changed, but the user-visible
+minimum-display session did not restart.
+
+Every owned active, pending, background, and final lane keeps
+`match.index === lane array position`. New matches receive the loop index, and
+reconstructed matches overwrite any copied index defensively. The deprecated
+`notFoundRoute` requires a fresh generation when the same id moves between
+depths, because its effective parent context changed. Failure/not-found
+reduction only truncates lane suffixes and therefore preserves the invariant.
+Hydration first rematches the full client URL and overlays dehydrated data by
+id, so a capped server lane also does not renumber the client lane.
+
+The cache is a flat pool, not a lane. A cached snapshot keeps the index of the
+lane that produced it; its offset inside `cachedMatches` is unrelated, and its
+stored index may differ from a later lane that reuses the same id. Cache
+reconciliation must therefore remove reused entries by match id (or pool
+membership), never by indexing a candidate lane with the cached snapshot's
+old index. Borrowed preload matches are another private, read-only exception:
+they retain the owner lane's index and are never published or cached as owned
+preload work.
+
+For framework lifecycle events, `isLoading` is the single page-pending level.
+Publishing pending UI during a foreground pass forces a final commit, so that
+pass cannot leave an active `status: 'pending'` match behind after
+`isLoading` falls. `invalidate()` can synchronously reset selected error,
+not-found, and `forcePending` matches before calling `load()`. The client load
+then either raises `isLoading` during the same call, or, if synchronous
+rematching throws first, `invalidate()` restores the previous terminal active
+lane before it returns. Transitioners emit both `onLoad` and
+`onBeforeRouteMount` when `isLoading` falls and do not need a second derived
+scan of active match statuses.
+
+When `forcePending` already made an active same-href, same-id match render
+pending UI, a successfully preflighted replacement connects its fresh
+match-local readiness promise to that active match immediately after canceling
+the old generation. Only readiness is shared; replacement context and data
+remain private. This lets the already-visible fallback arm `pendingMinMs` even
+when the reload finishes before its normal `pendingMs` publication timer.
+Cross-location navigations (including redirects through a shared root id)
+receive replacement readiness through normal pending publication rather than
+this early active-match bridge.
 
 A superseded or redirected load does not settle its public `router.load()`
 promise as soon as its own pass ends. After resolving its private
@@ -340,6 +443,11 @@ promise as soon as its own pass ends. After resolving its private
 navigation chain drains. Callers of `router.load()`/`router.invalidate()` rely
 on observing post-settlement state, and the preload borrow protocol uses the
 foreground load promise as its "committed or gone" signal.
+
+Router event subscribers are observers, not part of the commit transaction.
+`router.emit()` isolates each listener: a thrown listener is rethrown through a
+rejected promise for global observability, while later listeners and core or
+framework finalization continue.
 
 ### Background-only foreground pass
 
@@ -467,6 +575,13 @@ Core owns `pendingMs`. Framework match components own `pendingMinMs` by writing
 still-pending local load promise. Core later observes `pendingUntil` before
 committing success/error/notFound/redirect.
 
+`pendingMinMs` belongs to a continuous fallback visibility session, not to an
+internal loader generation. If an overlapping load replaces the readiness
+promise for the same still-pending match, the new promise inherits the existing
+absolute `pendingUntil` deadline. Restarting `now + pendingMinMs` for every
+generation would stack artificial delays across invalidations or redirect
+chains even though the fallback never left the screen.
+
 `pendingMs` publication normally goes through a timer on the load promise. One
 exception: when the effective `pendingMs` is `<= 0` and nothing is rendered yet
 (the active match store is empty, as on a bare initial load),
@@ -502,6 +617,8 @@ Important invariants:
 - Pending publication does not run lifecycle hooks.
 - Pending publication does not reconcile cache.
 - Pending publication does not consume the final view transition.
+- Lifecycle diffs remain anchored to the last final/background commit, not the
+  render-ready pending lane stored temporarily in active matches.
 - After pending UI, a renderable same-href outcome still needs a final commit.
   Redirect control flow waits any pending minimum and then navigates instead.
 
@@ -522,6 +639,10 @@ A regular route error commits on the failing match and marks `inner.badIndex`.
 Descendants after that match are removed after the promise reduction. Core does
 not select an ancestor error boundary for route loading errors; framework error
 boundaries handle render-time propagation later.
+
+When a deeper concurrent loader returns notFound, the already-committed
+shallower regular error remains the render boundary. The notFound must not
+overwrite that error or extend the lane below `inner.badIndex`.
 
 ### notFound
 
@@ -558,6 +679,12 @@ rejected `lazyFn` chunk is evicted from `route._lazyPromise` the same way, so
 the next load generation retries the import; awaiters of the evicted promise
 still own the rejection.
 
+Route chunk bookkeeping is generation-owned across HMR. A hot route update
+retires its route-level lazy/component promises and clears their loaded flags.
+Late completion from the retired generation must not overwrite current lazy
+options, mark current components loaded, clear a replacement promise, or start
+component retries on behalf of the stale caller.
+
 ```mermaid
 flowchart TD
   F["loader/beforeLoad/chunk throws"] --> N["normalizeRouteFailure"]
@@ -592,11 +719,11 @@ boundaries.
 | notFound                  | Descendants after the selected notFound boundary are popped.                                                                                                                                                                                                                                       | The chosen boundary is the renderable leaf for this outcome.                           |
 | Background error/notFound | The copied background lane is trimmed before atomic publication.                                                                                                                                                                                                                                   | Active state must not see partial stale data or stale head output.                     |
 | Final commit              | Replaced active matches are moved into cache if eligible.                                                                                                                                                                                                                                          | The new active lane owns rendering; old successful loader matches may be reused later. |
-| Preload finish            | Borrowed matches are not cached; owned successful preload matches may be cached.                                                                                                                                                                                                                   | A preload must not take ownership of active or pending foreground matches.             |
+| Preload finish            | Borrowed matches are not cached; owned successful loader generations may be cached. Loaderless matches remain transient.                                                                                                                                                                           | A preload must not take ownership of active or pending foreground matches.             |
 
-Lane shortening must settle load promises for removed matches. Otherwise
-Suspense/preload waiters can remain pending after the match is no longer
-reachable.
+Lane shortening must settle load promises and abort unretained controllers for
+removed matches. Otherwise Suspense/preload waiters can remain pending and
+deferred requests can remain live after the match is no longer reachable.
 
 ## Preloads and Match Borrowing
 
@@ -609,8 +736,9 @@ Preloading has two kinds of matches:
 
 - **Borrowed matches**: ids already present in the active or pending lanes.
   The preload observes these read-only and does not cache them as its own work.
-- **Owned preload matches**: `match.preload` entries that are not active or
-  pending when the successful preload is cached.
+- **Owned preload matches**: `match.preload` entries whose loader generation
+  completed successfully in this pass (or was adopted from another successful
+  preload) and that are not active or pending when the result is cached.
 
 ```mermaid
 sequenceDiagram
@@ -698,8 +826,9 @@ Adoption is deliberately narrow:
   itself be waiting on this navigation through the borrow protocol, and
   joining would deadlock the pair. Once the donor's loader started, its
   serial phase is over by construction and the preload settles
-  independently — the preload's finalizer settles every owned load promise,
-  so the adoption wait cannot hang.
+  independently. The adopter races donor readiness against its own readiness:
+  supersession settles the latter, then currentness fails through the normal
+  cancellation sentinel without aborting the independent donor preload.
 - Private lanes stay private: nothing enters `cachedMatches` before the
   preload finishes, and the preload's own cache write already skips ids that
   became active in the meantime.
@@ -746,6 +875,10 @@ Background work is token-owned:
 - Starting a new background load aborts the old token.
 - Starting a foreground load aborts any active background token and clears
   fetching markers.
+- The token owns batch currentness only. Every selected match gets its own
+  loader `AbortController`; aborting the batch token cascades to all of those
+  controllers. This lets failure/notFound trimming abort a discarded loader
+  generation without aborting successful data retained elsewhere in the batch.
 - A background token is current only while the active location href still
   matches and no foreground pending location exists.
 - Once a worker observes that the token is stale, cancellation is sticky: the
@@ -839,8 +972,11 @@ Client projection:
   `setMatches()`.
 - Foreground and background projection pass `isCurrent()` checks so stale lanes
   do not mutate or publish assets.
-- Preload projection filters to `match.preload` entries and relies on
-  owned-match cache checks instead of an `isCurrent()` callback.
+- Preload projection filters to `match.preload` entries and receives a
+  currentness callback for every borrowed active/pending match. Equivalent
+  replacements of passive routes (no loader/beforeLoad/context and unchanged
+  params/search/context) remain safe to borrow; other generation changes
+  abandon the speculative projection and cache write.
 - Handles `head()` and `scripts()`, not headers.
 - If ownership is lost after an async `head()` or `scripts()` was started, the
   projector observes the abandoned promise with `Promise.allSettled()` before
@@ -862,11 +998,11 @@ Server projection:
   behavior and are never dropped because a decorative `head()`/`scripts()`
   failed, and vice versa.
 - If any asset hook throws synchronously, projection commits the
-  sync-available values for the other kinds and abandons still-pending
-  decorative promises, observing them with `Promise.allSettled()` so they
-  cannot become unhandled — except a pending `headers()` promise, which is
-  always awaited (and committed on success) even after a sync decorative
-  throw, because headers are response behavior.
+  sync-available values for the other kinds and does not wait for pending
+  decorative promises. It observes their settlement so they cannot become
+  unhandled. A pending `headers()` promise is still awaited because headers are
+  response behavior; decorative work that happens to settle before those
+  headers may be committed opportunistically, but it never delays the response.
 - Async server projection uses `Promise.allSettled()` over `head()`,
   `scripts()`, and `headers()`; a rejected hook logs and commits `undefined`
   for that kind only, so one rejected asset hook does not leave another hook
@@ -877,13 +1013,18 @@ Hydration projection:
 - Is not the same function as normal client projection.
 - `ssr-client.ts` waits for route chunks first because lazy chunks can install
   route context, head, and scripts.
-- It reconstructs route context from dehydrated data where available, then
-  executes head and scripts for each match in the initial hydration lane —
-  except `ssr: false` matches. The server rendered no assets for those
+- It reconstructs route context for the entire hydration lane from dehydrated
+  data before executing any head or scripts hook, so an ancestor asset hook can
+  safely inspect descendant contexts through `matches`. Asset hooks still skip
+  `ssr: false` matches. The server rendered no assets for those
   (including matches it omitted below a server error/notFound boundary, which
   the dehydrated payload also marks `ssr: false`), and their hooks could only
   run with missing or stale loader data; the follow-up client load projects
   assets for the lane it actually commits.
+- It verifies the exact hydration lane generation before and after every
+  asynchronous boundary and after synchronous route context reconstruction.
+  A context hook can navigate immediately, so stale head/scripts must not run
+  even when supersession happens without an `await` inside the hook.
 - A `notFound()` thrown by hydration head/scripts records a notFound-shaped
   match error and continues. Other hydration asset/context errors reject,
   settle matches, and clear display pending.
@@ -917,6 +1058,23 @@ or its loader call becomes outdated. It skips active matches that are also in
 the pending pool so the same match is not canceled twice. Settling clears
 `loadPromise`, clears pending timeout, and resolves the promise if it is still
 pending.
+
+Published lane replacement reconciles both per-pass `abortController` values
+and `_.loaderAbortController` values. A controller is aborted only after no
+next active match retains it. Cache eviction and abandoned private preload work
+perform the broader equivalent check across active, pending, cached, and other
+registered preload lanes. Background batches use separate per-match loader
+controllers beneath their batch token, so a trimmed descendant is abortable
+even when a retained ancestor from the same batch stays live. Thus adopted data
+keeps its original loader signal alive, while clearCache/GC/discarded work
+aborts a loader generation once its last owner disappears. A soft background
+`AbortError` retains old loader data and therefore also retains that old data's
+controller.
+
+Foreground redirects and error/notFound/fatal lane trimming are discarded
+private work too. Redirect cleanup runs after removing the pending store;
+trimmed matches are retained on the load context until final publication (or
+preload cleanup), then passed through the same retained-controller scan.
 
 After foreground/background work detects ownership loss, it must not:
 
@@ -1027,7 +1185,14 @@ Server route failure handling:
 - Committed regular route errors use `status: 'error'` and later set status
   code 500.
 - Lane trimming mirrors client behavior, but without pending/currentness
-  machinery.
+  machinery. Controllers for trimmed descendants are aborted; retained match
+  controllers stay live for request-owned deferred data.
+- A redirect publishes no server lane, so every controller in its discarded
+  candidate lane is aborted before response metadata is returned.
+- Redirect resolution can itself fail before `loadServerMatches()` owns a lane
+  (for example, a route context can throw an unsafe redirect during matching).
+  The top-level server catch normalizes that resolver failure to the same 500
+  response path instead of letting it escape with stale success status.
 
 ## Hydration Handoff
 
@@ -1056,13 +1221,19 @@ Hydration flow:
     dehydrated markers, settle load promises, set `resolvedLocation`, and stop.
 12. Otherwise call normal `router.load()` to fill SPA or `ssr: false` holes.
 
+A shorter dehydrated lane is treated as SPA shell mode only when its last
+server match is not a terminal error/notFound/global-not-found boundary. Server
+loading intentionally trims descendants below those boundaries; hydration
+keeps the already-rendered boundary visible while the follow-up client load
+replays the same cap instead of replacing it with the shell pending fallback.
+
 That follow-up load replays dehydrated boundaries: when the serial pass in
 `loadClientMatches()` reaches a dehydrated match whose status is `notFound`
-(with a notFound error) or `error`, it treats that server-committed boundary
-as the pass's serial failure. The server intentionally omitted every match
-below the boundary, so replaying it caps the client lane the same way instead
-of loading, committing, and projecting assets for descendants the server never
-rendered.
+(with a notFound error) or `error`, or a success root match carrying
+`globalNotFound`, it treats that server-committed boundary as the pass's serial
+failure. The server intentionally omitted every match below the boundary, so
+replaying it caps the client lane the same way instead of loading, committing,
+and projecting assets for descendants the server never rendered.
 
 ```mermaid
 flowchart TD
@@ -1104,6 +1275,10 @@ Foreground client loader reduction:
 - Redirect throws immediately and wins.
 - notFound is remembered if no redirect wins.
 - The first unhandled non-route-control rejection is thrown.
+- Before that fatal rejection is rethrown, the shallowest unfinished match is
+  committed directly as an error fallback and descendants are settled/trimmed.
+  This defensive path does not start more user error-component work, which
+  could otherwise hang after the loading machinery itself has failed.
 - If no fatal rejection wins, notFound commits its boundary or root/global state
   and trims descendants.
 - If an error match was committed, descendants after `badIndex` are removed.
@@ -1120,11 +1295,16 @@ Server reduction:
 - Waits for all renderable-prefix promises.
 - Redirect wins.
 - Redirects throw before server asset projection.
+- Between regular errors and notFounds, the shallower render boundary wins;
+  an equal-depth regular error keeps ownership. This keeps the response status
+  aligned with the boundary the framework actually renders.
 - If no fatal rejection wins, notFound can commit its selected boundary.
 - Committed route errors trim to `badIndex`, project assets, and then throw the
   committed `errorMatch.error`.
 - Unhandled fatal rejections throw after asset projection, but may not have a
-  committed error match.
+  committed error match. The top-level server load records these as 500, and
+  the final committed-match scan cannot overwrite that fatal status with a
+  concurrent lane outcome.
 
 ## Why Lanes Are Private First
 
@@ -1153,7 +1333,8 @@ When changing match loading, check these invariants:
 
 - Does every async foreground/background continuation prove currentness before
   mutating or publishing?
-- If a lane can be shortened, are removed matches' load promises settled?
+- If a lane can be shortened, are removed matches' load promises settled and
+  unretained controllers aborted?
 - Does pending publication remain separate from final commit?
 - Does route asset projection see the final coherent lane for that path?
 - Does any client reload path that runs a loader write `loaderData`, including

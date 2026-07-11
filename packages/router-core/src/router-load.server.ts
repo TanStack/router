@@ -9,6 +9,7 @@ export const loadServerRouter = async (
   opts?: Parameters<LoadFn>[0],
 ): Promise<void> => {
   let matchedMatches: Array<AnyRouteMatch> | undefined
+  let caughtServerError = false
   try {
     const next = router.pendingBuiltLocation ?? router.latestLocation
     router.latestLocation = next
@@ -43,9 +44,19 @@ export const loadServerRouter = async (
     router.stores.loadedAt.set(Date.now())
     router.stores.setMatches(loadedMatches)
   } catch (err) {
-    let resolvedRedirect = isRedirect(err)
-      ? router.resolveRedirect(err)
-      : undefined
+    let caughtError = err
+    let resolvedRedirect: ReturnType<AnyRouter['resolveRedirect']> | undefined
+    try {
+      resolvedRedirect = isRedirect(err)
+        ? router.resolveRedirect(err)
+        : undefined
+    } catch (resolutionError) {
+      // Matching can throw an unresolved redirect before loadServerMatches
+      // owns a lane. Normalize a resolver failure through the fatal 500 path
+      // instead of escaping this catch with stale response status.
+      caughtError = resolutionError
+      resolvedRedirect = undefined
+    }
     if (resolvedRedirect) {
       const options = resolvedRedirect.options as any
       const statusCode =
@@ -68,13 +79,19 @@ export const loadServerRouter = async (
       router.stores.setMatches(matchedMatches)
     }
 
-    // Committed-match state owns the 404/500 derivation below; here only the
-    // outcomes it cannot see are recorded (redirect metadata, and a notFound
-    // that may not have a committed boundary match).
+    // Redirect/notFound metadata may not have a committed boundary match.
+    // Any other escaped failure establishes a 500 fallback even when match
+    // loading failed before it could commit a renderable error outcome.
     if (resolvedRedirect) {
       router.statusCode = (resolvedRedirect.options as any).statusCode
-    } else if (isNotFound(err)) {
+    } else if (isNotFound(caughtError)) {
       router.statusCode = 404
+    } else {
+      // Server load machinery can fail before a renderable error match exists
+      // (for example while resolving a redirect target). Never report that
+      // failure as a successful response.
+      router.statusCode = 500
+      caughtServerError = true
     }
     router.redirect = resolvedRedirect
   } finally {
@@ -91,7 +108,7 @@ export const loadServerRouter = async (
     : finalMatches.some((d) => d.status === 'error')
       ? 500
       : undefined
-  if (newStatusCode) {
+  if (newStatusCode && !caughtServerError) {
     router.statusCode = newStatusCode
   }
 }

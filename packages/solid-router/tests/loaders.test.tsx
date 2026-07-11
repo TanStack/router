@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -653,22 +659,23 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('3')
 
     const loaderData = await screen.findByTestId('index-loader-data')
-    expect(loaderData).toHaveTextContent('3')
+    // Re-entering a cached route renders its stale data while the default
+    // non-blocking reload runs. Wait for that background reload to publish.
+    await waitFor(() => expect(loaderData).toHaveTextContent('3'))
   }
 
   fireEvent.click(invalidateRouterButton)
 
   {
-    // Wait for router to invalidate and reload
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    // Same-location invalidation is also a non-blocking background reload.
+    const loaderData = await screen.findByTestId('index-loader-data')
+    await waitFor(() => expect(loaderData).toHaveTextContent('4'))
+
     const headerCounter = await screen.findByTestId('header-counter')
     expect(headerCounter).toHaveTextContent('4')
 
     const routeContext = await screen.findByTestId('index-route-context')
     expect(routeContext).toHaveTextContent('4')
-
-    const loaderData = await screen.findByTestId('index-loader-data')
-    expect(loaderData).toHaveTextContent('4')
   }
 
   fireEvent.click(idLink)
@@ -683,7 +690,7 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('5')
 
     const loaderData = await screen.findByTestId('id-loader-data')
-    expect(loaderData).toHaveTextContent('5')
+    await waitFor(() => expect(loaderData).toHaveTextContent('5'))
   }
 })
 
