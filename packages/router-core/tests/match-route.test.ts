@@ -52,6 +52,34 @@ describe('matchRoute', () => {
     ).toBe(false)
   })
 
+  it('does not match a lower-priority route', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/$postId',
+      params: {
+        parse: ({ postId }: { postId: string }) => ({ postId }),
+      },
+    })
+    const editRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/edit',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([postRoute, editRoute]),
+      history: createMemoryHistory({ initialEntries: ['/posts/edit'] }),
+    })
+
+    await router.load()
+
+    expect(
+      router.matchRoute({
+        to: '/posts/$postId',
+        params: { postId: 'edit' },
+      }),
+    ).toBe(false)
+  })
+
   it('does not match params rejected by the route parser', async () => {
     const router = createInvoiceRouter('/invoices/not-a-number')
 

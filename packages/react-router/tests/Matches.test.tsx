@@ -147,6 +147,17 @@ test('should show pendingComponent of root route', async () => {
 
 test('useMatchRoute matches typed params from routes with custom parse and stringify functions', async () => {
   const rootRoute = createRootRoute()
+
+  function InvoiceComponent() {
+    const matchRoute = useMatchRoute()
+    const match = matchRoute({
+      to: '/invoices/$invoiceId',
+      params: { invoiceId: 123 },
+    })
+
+    return <div data-testid="match">{JSON.stringify(match)}</div>
+  }
+
   const invoiceRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/invoices/$invoiceId',
@@ -158,15 +169,7 @@ test('useMatchRoute matches typed params from routes with custom parse and strin
         invoiceId: String(invoiceId),
       }),
     },
-    component: () => {
-      const matchRoute = useMatchRoute()
-      const match = matchRoute({
-        to: '/invoices/$invoiceId',
-        params: { invoiceId: 123 },
-      })
-
-      return <div data-testid="match">{JSON.stringify(match)}</div>
-    },
+    component: InvoiceComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([invoiceRoute]),

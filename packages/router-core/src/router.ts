@@ -2994,24 +2994,29 @@ export class RouterCore<
       return false
     }
 
-    const params = Object.assign(Object.create(null), match.rawParams)
     const destinationPath = trimPathRight(next.pathname)
     const destinationRoute = this.routesByPath[
       destinationPath as keyof typeof this.routesByPath
     ] as AnyRoute | undefined
     if (destinationRoute) {
+      const routeMatch = findRouteMatch(
+        baseLocation.pathname,
+        this.processedTree,
+        opts?.fuzzy ?? false,
+      )
+      if (
+        routeMatch &&
+        !routeMatch.branch.some((route) => route.id === destinationRoute.id)
+      ) {
+        return false
+      }
+    }
+
+    const params = Object.assign(Object.create(null), match.rawParams)
+    if (destinationRoute) {
       try {
         for (const matchedRoute of this.getRouteBranch(destinationRoute)) {
-          const parseParams =
-            matchedRoute.options.params?.parse ??
-            matchedRoute.options.parseParams
-          if (parseParams) {
-            const parsedParams = parseParams(params as Record<string, string>)
-            if (parsedParams === false) {
-              return false
-            }
-            Object.assign(params, parsedParams)
-          }
+          extractStrictParams(matchedRoute, params)
         }
       } catch {
         return false
