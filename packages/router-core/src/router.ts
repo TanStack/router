@@ -2985,8 +2985,8 @@ export class RouterCore<
     const destinationPath = trimPathRight(next.pathname)
     const requestedRoute = (this.routesByPath[
       destinationPath as keyof typeof this.routesByPath
-    ] ??
-      (destinationPath === '/' ? this.routesById[rootRouteId] : undefined)) as
+    ] ||
+      (destinationPath === '/' && this.routesById[rootRouteId])) as
       | AnyRoute
       | undefined
     if (!requestedRoute) {
@@ -3013,14 +3013,10 @@ export class RouterCore<
         ? {
             route: destinationRoute,
             rawParams: Object.create(null),
+            params: Object.create(null),
+            paramsError: false,
             branch: [destinationRoute],
-            matchData: [
-              {
-                rawParams: undefined,
-                pathnameEnd: 1,
-                caseSensitive: true,
-              },
-            ],
+            matchData: [[1, true, Object.create(null), false] as const],
           }
         : null)
 
@@ -3028,42 +3024,33 @@ export class RouterCore<
       return false
     }
 
-    const matchesDestination = opts?.fuzzy
-      ? match.branch.some((route) => route.id === destinationRoute.id)
-      : match.route.id === destinationRoute.id
-    if (!matchesDestination) {
-      return false
-    }
-
-    const destinationIndex = match.branch.findIndex(
-      (route) => route.id === destinationRoute.id,
+    const destinationIndex = match.branch.indexOf(
+      destinationRoute as TRouteTree,
     )
-    const destinationMatchData = match.matchData[destinationIndex]!
-    if (opts?.caseSensitive && !destinationMatchData.caseSensitive) {
+    if (
+      destinationIndex < 0 ||
+      (!opts?.fuzzy && match.route !== destinationRoute)
+    ) {
       return false
     }
 
-    const params = Object.create(null)
-    try {
-      for (const [routeIndex, matchedRoute] of this.getRouteBranch(
-        destinationRoute,
-      ).entries()) {
-        const { usedParams } = interpolatePath({
-          path: matchedRoute.path ?? '',
-          params: match.matchData[routeIndex]?.rawParams ?? {},
-          decoder: this.pathParamsDecoder,
-          server: this.isServer,
-        })
-        Object.assign(params, usedParams)
-        extractStrictParams(matchedRoute, params)
-      }
-    } catch {
+    const destinationMatchData = match.matchData[destinationIndex]!
+    if (opts?.caseSensitive && !destinationMatchData[1]) {
       return false
     }
+
+    const matchParams = opts?.fuzzy ? destinationMatchData[2] : match.params
+    const paramsError = opts?.fuzzy
+      ? destinationMatchData[3]
+      : match.paramsError
+    if (paramsError) {
+      return false
+    }
+    const params = Object.assign(Object.create(null), matchParams)
 
     if (opts?.fuzzy) {
       const matchedPathname = trimPathRight(
-        baseLocation.pathname.slice(0, destinationMatchData.pathnameEnd) || '/',
+        baseLocation.pathname.slice(0, destinationMatchData[0]) || '/',
       )
       const remainder = baseLocation.pathname.slice(matchedPathname.length)
       if (remainder) {
