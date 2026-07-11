@@ -18,7 +18,6 @@ import {
   buildRouteBranch,
   findFlatMatch,
   findRouteMatch,
-  findSingleMatch,
   processRouteMasks,
   processRouteTree,
 } from './new-process-route-tree'
@@ -26,6 +25,7 @@ import {
   cleanPath,
   compileDecodeCharMap,
   interpolatePath,
+  removeTrailingSlash,
   resolvePath,
   trimPath,
   trimPathRight,
@@ -1011,7 +1011,7 @@ export class RouterCore<
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
-  processedTree!: ProcessedTree<TRouteTree, any, any>
+  processedTree!: ProcessedTree<TRouteTree, any>
   resolvePathCache!: LRUCache<string, string>
   private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
   private lightweightCache = new WeakMap<
@@ -2982,44 +2982,99 @@ export class RouterCore<
       ? this.latestLocation
       : this.stores.resolvedLocation.get() || this.stores.location.get()
 
-    const match = findSingleMatch(
-      next.pathname,
-      opts?.caseSensitive ?? false,
-      opts?.fuzzy ?? false,
-      baseLocation.pathname,
-      this.processedTree,
-    )
+    const destinationPath = trimPathRight(next.pathname)
+    const requestedRoute = (this.routesByPath[
+      destinationPath as keyof typeof this.routesByPath
+    ] ??
+      (destinationPath === '/' ? this.routesById[rootRouteId] : undefined)) as
+      | AnyRoute
+      | undefined
+    if (!requestedRoute) {
+      return false
+    }
+
+    const parentRoute = requestedRoute.parentRoute
+    const destinationRoute: AnyRoute =
+      opts?.fuzzy &&
+      requestedRoute.path === '/' &&
+      parentRoute &&
+      trimPathRight(parentRoute.fullPath) ===
+        trimPathRight(requestedRoute.fullPath)
+        ? parentRoute
+        : requestedRoute
+
+    const pathname = opts?.fuzzy
+      ? baseLocation.pathname
+      : removeTrailingSlash(baseLocation.pathname, this.basepath)
+
+    const match =
+      findRouteMatch(pathname, this.processedTree, opts?.fuzzy ?? false) ??
+      (destinationRoute.id === rootRouteId && pathname === '/'
+        ? {
+            route: destinationRoute,
+            rawParams: Object.create(null),
+            branch: [destinationRoute],
+            matchData: [
+              {
+                rawParams: undefined,
+                pathnameEnd: 1,
+                caseSensitive: true,
+              },
+            ],
+          }
+        : null)
 
     if (!match) {
       return false
     }
 
-    const destinationPath = trimPathRight(next.pathname)
-    const destinationRoute = this.routesByPath[
-      destinationPath as keyof typeof this.routesByPath
-    ] as AnyRoute | undefined
-    if (destinationRoute) {
-      const routeMatch = findRouteMatch(
-        baseLocation.pathname,
-        this.processedTree,
-        opts?.fuzzy ?? false,
-      )
-      if (
-        routeMatch &&
-        !routeMatch.branch.some((route) => route.id === destinationRoute.id)
-      ) {
-        return false
-      }
+    const matchesDestination = opts?.fuzzy
+      ? match.branch.some((route) => route.id === destinationRoute.id)
+      : match.route.id === destinationRoute.id
+    if (!matchesDestination) {
+      return false
     }
 
-    const params = Object.assign(Object.create(null), match.rawParams)
-    if (destinationRoute) {
-      try {
-        for (const matchedRoute of this.getRouteBranch(destinationRoute)) {
-          extractStrictParams(matchedRoute, params)
+    const destinationIndex = match.branch.findIndex(
+      (route) => route.id === destinationRoute.id,
+    )
+    const destinationMatchData = match.matchData[destinationIndex]!
+    if (opts?.caseSensitive && !destinationMatchData.caseSensitive) {
+      return false
+    }
+
+    const params = Object.create(null)
+    try {
+      for (const [routeIndex, matchedRoute] of this.getRouteBranch(
+        destinationRoute,
+      ).entries()) {
+        const { usedParams } = interpolatePath({
+          path: matchedRoute.path ?? '',
+          params: match.matchData[routeIndex]?.rawParams ?? {},
+          decoder: this.pathParamsDecoder,
+          server: this.isServer,
+        })
+        Object.assign(params, usedParams)
+        extractStrictParams(matchedRoute, params)
+      }
+    } catch {
+      return false
+    }
+
+    if (opts?.fuzzy) {
+      const matchedPathname = trimPathRight(
+        baseLocation.pathname.slice(0, destinationMatchData.pathnameEnd) || '/',
+      )
+      const remainder = baseLocation.pathname.slice(matchedPathname.length)
+      if (remainder) {
+        try {
+          params['**'] =
+            remainder === '/'
+              ? remainder
+              : decodeURIComponent(remainder.replace(/^\/+/, ''))
+        } catch {
+          return false
         }
-      } catch {
-        return false
       }
     }
 
@@ -3136,7 +3191,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 }: {
   pathname: string
   routesById: Record<string, TRouteLike>
-  processedTree: ProcessedTree<any, any, any>
+  processedTree: ProcessedTree<any, any>
 }) {
   const routeParams: Record<string, string> = Object.create(null)
   const trimmedPath = trimPathRight(pathname)
