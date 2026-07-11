@@ -23,7 +23,6 @@ export {
   removeUnderscores,
   resetRegex,
   multiSortBy,
-  sortRouteNodes,
   writeIfDifferent,
   format,
   removeExt,
