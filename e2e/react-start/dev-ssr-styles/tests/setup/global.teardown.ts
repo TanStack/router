@@ -1,6 +1,6 @@
 import { e2eStopDummyServer } from '@tanstack/router-e2e-utils'
 import packageJson from '../../package.json' with { type: 'json' }
-import { ssrStylesMode, useNitro } from '../../env'
+import { ssrStylesMode, useNitro, viteBundledDev } from '../../env'
 
 function getPortKey() {
   let key = packageJson.name
@@ -9,6 +9,9 @@ function getPortKey() {
   }
   if (useNitro) {
     key += '-nitro'
+  }
+  if (viteBundledDev) {
+    key += '-bundled-dev'
   }
   return key
 }

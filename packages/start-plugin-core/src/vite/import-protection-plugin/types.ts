@@ -19,6 +19,7 @@ export interface PluginConfig {
   enabled: boolean
   root: string
   command: 'build' | 'serve'
+  bundledDev: boolean
   srcDirectory: string
   framework: CompileStartFrameworkOptions
   effectiveBehavior: ImportProtectionBehavior

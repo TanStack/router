@@ -118,6 +118,10 @@
               "to": "framework/react/guide/hydration-errors"
             },
             {
+              "label": "Deferred Hydration",
+              "to": "framework/react/guide/deferred-hydration"
+            },
+            {
               "label": "Selective SSR",
               "to": "framework/react/guide/selective-ssr"
             },
@@ -146,6 +150,10 @@
               "to": "framework/react/guide/cdn-asset-urls"
             },
             {
+              "label": "CSS Styling",
+              "to": "framework/react/guide/css-styling"
+            },
+            {
               "label": "Client Entry Point",
               "to": "framework/react/guide/client-entry-point"
             },
@@ -156,6 +164,10 @@
             {
               "label": "Authentication Overview",
               "to": "framework/react/guide/authentication-overview"
+            },
+            {
+              "label": "Authentication Server Primitives",
+              "to": "framework/react/guide/authentication-server-primitives"
             },
             {
               "label": "Authentication",
@@ -186,8 +198,8 @@
               "to": "framework/react/guide/seo"
             },
             {
-              "label": "LLM Optimization (LLMO)",
-              "to": "framework/react/guide/llmo"
+              "label": "Generative Engine Optimization (GEO)",
+              "to": "framework/react/guide/geo"
             }
           ]
         },
@@ -243,6 +255,10 @@
               "to": "framework/solid/guide/hydration-errors"
             },
             {
+              "label": "Deferred Hydration",
+              "to": "framework/solid/guide/deferred-hydration"
+            },
+            {
               "label": "Selective SSR",
               "to": "framework/solid/guide/selective-ssr"
             },
@@ -263,6 +279,10 @@
               "to": "framework/solid/guide/early-hints"
             },
             {
+              "label": "CSS Styling",
+              "to": "framework/solid/guide/css-styling"
+            },
+            {
               "label": "Client Entry Point",
               "to": "framework/solid/guide/client-entry-point"
             },
@@ -273,6 +293,10 @@
             {
               "label": "Authentication Overview",
               "to": "framework/solid/guide/authentication-overview"
+            },
+            {
+              "label": "Authentication Server Primitives",
+              "to": "framework/solid/guide/authentication-server-primitives"
             },
             {
               "label": "Authentication",
@@ -299,8 +323,8 @@
               "to": "framework/solid/guide/seo"
             },
             {
-              "label": "LLM Optimization (LLMO)",
-              "to": "framework/solid/guide/llmo"
+              "label": "Generative Engine Optimization (GEO)",
+              "to": "framework/solid/guide/geo"
             }
           ]
         }

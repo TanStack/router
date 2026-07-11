@@ -9,12 +9,8 @@ export type {
   TransformAssetsObjectShorthand,
   TransformAssetsCrossOriginConfig,
   TransformAssetResult,
-  TransformAssetUrls,
-  TransformAssetUrlsFn,
-  TransformAssetUrlsContext,
-  TransformAssetUrlsOptions,
-  AssetUrlType,
   TransformAssetKind,
+  CreateTransformAssetsContext,
 } from './transformAssetUrls'
 
 export {

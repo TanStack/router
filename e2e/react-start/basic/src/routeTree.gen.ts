@@ -14,6 +14,7 @@ import { Route as TypeOnlyReexportRouteImport } from './routes/type-only-reexpor
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as RawStreamRouteImport } from './routes/raw-stream'
+import { Route as PrimitiveBeforeloadErrorRouteImport } from './routes/primitive-beforeload-error'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as PlainTsTypeAssertionRouteImport } from './routes/plain-ts-type-assertion'
 import { Route as LinksRouteImport } from './routes/links'
@@ -104,6 +105,12 @@ const RawStreamRoute = RawStreamRouteImport.update({
   path: '/raw-stream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrimitiveBeforeloadErrorRoute =
+  PrimitiveBeforeloadErrorRouteImport.update({
+    id: '/primitive-beforeload-error',
+    path: '/primitive-beforeload-error',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
@@ -451,6 +458,7 @@ export interface FileRoutesByFullPath {
   '/links': typeof LinksRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
   '/posts': typeof PostsRouteWithChildren
+  '/primitive-beforeload-error': typeof PrimitiveBeforeloadErrorRoute
   '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
@@ -517,6 +525,7 @@ export interface FileRoutesByTo {
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
+  '/primitive-beforeload-error': typeof PrimitiveBeforeloadErrorRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
   '/type-only-reexport': typeof TypeOnlyReexportRoute
@@ -582,6 +591,7 @@ export interface FileRoutesById {
   '/links': typeof LinksRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
   '/posts': typeof PostsRouteWithChildren
+  '/primitive-beforeload-error': typeof PrimitiveBeforeloadErrorRoute
   '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
@@ -654,6 +664,7 @@ export interface FileRouteTypes {
     | '/links'
     | '/plain-ts-type-assertion'
     | '/posts'
+    | '/primitive-beforeload-error'
     | '/raw-stream'
     | '/scripts'
     | '/stream'
@@ -720,6 +731,7 @@ export interface FileRouteTypes {
     | '/inline-scripts'
     | '/links'
     | '/plain-ts-type-assertion'
+    | '/primitive-beforeload-error'
     | '/scripts'
     | '/stream'
     | '/type-only-reexport'
@@ -784,6 +796,7 @@ export interface FileRouteTypes {
     | '/links'
     | '/plain-ts-type-assertion'
     | '/posts'
+    | '/primitive-beforeload-error'
     | '/raw-stream'
     | '/scripts'
     | '/stream'
@@ -856,6 +869,7 @@ export interface RootRouteChildren {
   LinksRoute: typeof LinksRoute
   PlainTsTypeAssertionRoute: typeof PlainTsTypeAssertionRoute
   PostsRoute: typeof PostsRouteWithChildren
+  PrimitiveBeforeloadErrorRoute: typeof PrimitiveBeforeloadErrorRoute
   RawStreamRoute: typeof RawStreamRouteWithChildren
   ScriptsRoute: typeof ScriptsRoute
   StreamRoute: typeof StreamRoute
@@ -905,6 +919,13 @@ declare module '@tanstack/react-router' {
       path: '/raw-stream'
       fullPath: '/raw-stream'
       preLoaderRoute: typeof RawStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/primitive-beforeload-error': {
+      id: '/primitive-beforeload-error'
+      path: '/primitive-beforeload-error'
+      fullPath: '/primitive-beforeload-error'
+      preLoaderRoute: typeof PrimitiveBeforeloadErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts': {
@@ -1620,6 +1641,7 @@ const rootRouteChildren: RootRouteChildren = {
   LinksRoute: LinksRoute,
   PlainTsTypeAssertionRoute: PlainTsTypeAssertionRoute,
   PostsRoute: PostsRouteWithChildren,
+  PrimitiveBeforeloadErrorRoute: PrimitiveBeforeloadErrorRoute,
   RawStreamRoute: RawStreamRouteWithChildren,
   ScriptsRoute: ScriptsRoute,
   StreamRoute: StreamRoute,

@@ -21,7 +21,7 @@
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "srvx": "^0.11.9",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0"
+    "vite": "^8.0.14"
   },
   "nx": {
     "targets": {

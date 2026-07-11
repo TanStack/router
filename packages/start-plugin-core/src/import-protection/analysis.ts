@@ -12,10 +12,13 @@ type BoundaryEnv = 'client' | 'server'
 
 type ImportBindingInfo = {
   importedLocalNames: Set<string>
-  memberBindingToSource: Map<string, string>
 }
 
 type UsageCacheKey = `${BoundaryEnv | 'post'}::${string}`
+
+function mayContainImportOrExport(code: string): boolean {
+  return code.includes('import') || code.includes('export')
+}
 
 export type ImportAnalysis = {
   ast: ParseAstResult
@@ -28,12 +31,42 @@ export type ImportAnalysis = {
   usageByKey: Map<UsageCacheKey, UsagePos | null>
 }
 
-function makeTransientResult(code: string, filename?: string): TransformResult {
-  return {
+function makeTransientResult(
+  code: string,
+  filename?: string,
+  perf?: TransformResult['perf'],
+): TransformResult {
+  const result: TransformResult = {
     code,
     filename,
     map: undefined,
     originalCode: undefined,
+  }
+
+  if (perf) {
+    result.perf = perf
+  }
+
+  return result
+}
+
+function getOrParseAst(result: TransformResult): ParseAstResult {
+  if (result.parsedAst) {
+    result.perf?.count('analysis.parseAst.cached')
+    return result.parsedAst
+  }
+
+  const startedAt = result.perf ? performance.now() : 0
+  result.perf?.count('analysis.parseAst.calls')
+
+  try {
+    const ast = parseAst({ code: result.code, filename: result.filename })
+    result.parsedAst = ast
+    return ast
+  } finally {
+    if (result.perf) {
+      result.perf.time('analysis.parseAst', startedAt)
+    }
   }
 }
 
@@ -132,21 +165,18 @@ export function isValidExportName(name: string): boolean {
 }
 
 function buildImportAnalysis(result: TransformResult): ImportAnalysis {
-  const ast =
-    result.parsedAst ??
-    parseAst({ code: result.code, filename: result.filename })
-  result.parsedAst = ast
+  const ast = getOrParseAst(result)
 
   const importSourcesInOrder: Array<string> = []
   const importSpecifierLocationIndex = new Map<string, number>()
   const importBindingsBySource = new Map<string, ImportBindingInfo>()
+  const memberBindingSources = new Map<string, Set<string>>()
   const mockNamesBySource = new Map<string, Set<string>>()
   const namedExports = new Set<string>()
 
   const getBindingInfo = (source: string): ImportBindingInfo =>
     getOrCreate(importBindingsBySource, source, () => ({
       importedLocalNames: new Set<string>(),
-      memberBindingToSource: new Map<string, string>(),
     }))
 
   const addSpecifierLocation = (node: t.StringLiteral) => {
@@ -168,6 +198,12 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
     getOrCreate(mockNamesBySource, source, () => new Set<string>()).add(name)
   }
 
+  const addMemberBinding = (localName: string, source: string) => {
+    getOrCreate(memberBindingSources, localName, () => new Set<string>()).add(
+      source,
+    )
+  }
+
   const addNamedExport = (name: string) => {
     if (name !== 'default' && name.length > 0) {
       namedExports.add(name)
@@ -184,13 +220,13 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
         for (const specifier of node.specifiers) {
           if (t.isImportNamespaceSpecifier(specifier)) {
             bindingInfo.importedLocalNames.add(specifier.local.name)
-            bindingInfo.memberBindingToSource.set(specifier.local.name, source)
+            addMemberBinding(specifier.local.name, source)
             continue
           }
 
           if (t.isImportDefaultSpecifier(specifier)) {
             bindingInfo.importedLocalNames.add(specifier.local.name)
-            bindingInfo.memberBindingToSource.set(specifier.local.name, source)
+            addMemberBinding(specifier.local.name, source)
             continue
           }
 
@@ -257,16 +293,15 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
     ) {
       const object = node.object
       if (t.isIdentifier(object)) {
-        for (const [source, bindingInfo] of importBindingsBySource) {
-          if (!bindingInfo.memberBindingToSource.has(object.name)) {
-            continue
-          }
-
+        const sources = memberBindingSources.get(object.name)
+        if (sources) {
           const property = node.property
-          if (!node.computed && t.isIdentifier(property)) {
-            addMockName(source, property.name)
-          } else if (node.computed && t.isStringLiteral(property)) {
-            addMockName(source, property.value)
+          for (const source of sources) {
+            if (!node.computed && t.isIdentifier(property)) {
+              addMockName(source, property.name)
+            } else if (node.computed && t.isStringLiteral(property)) {
+              addMockName(source, property.value)
+            }
           }
         }
       }
@@ -325,14 +360,19 @@ export function getOrCreateImportAnalysis(
 export function getImportSourcesFromResult(
   result: TransformResult,
 ): Array<string> {
+  if (!mayContainImportOrExport(result.code)) {
+    return []
+  }
+
   return getOrCreateImportAnalysis(result).importSourcesInOrder
 }
 
 export function getImportSources(
   code: string,
   filename?: string,
+  perf?: TransformResult['perf'],
 ): Array<string> {
-  return getImportSourcesFromResult(makeTransientResult(code, filename))
+  return getImportSourcesFromResult(makeTransientResult(code, filename, perf))
 }
 
 export function getImportSpecifierLocationFromResult(
@@ -355,9 +395,10 @@ export function getMockExportNamesBySourceFromResult(
 export function getMockExportNamesBySource(
   code: string,
   filename?: string,
+  perf?: TransformResult['perf'],
 ): Map<string, Array<string>> {
   return getMockExportNamesBySourceFromResult(
-    makeTransientResult(code, filename),
+    makeTransientResult(code, filename, perf),
   )
 }
 
@@ -370,8 +411,9 @@ export function getNamedExportsFromResult(
 export function getNamedExports(
   code: string,
   filename?: string,
+  perf?: TransformResult['perf'],
 ): Array<string> {
-  return getNamedExportsFromResult(makeTransientResult(code, filename))
+  return getNamedExportsFromResult(makeTransientResult(code, filename, perf))
 }
 
 function isCompilerSafeBoundaryCall(

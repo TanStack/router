@@ -6,8 +6,9 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs as parseNodeArgs } from 'node:util'
+import vm from 'node:vm'
 import { brotliCompressSync, gzipSync } from 'node:zlib'
-import { execSync } from 'node:child_process'
+import { execFileSync, execSync } from 'node:child_process'
 
 import { build } from 'vite'
 
@@ -64,6 +65,13 @@ const SCENARIOS = [
     case: 'minimal',
   },
   {
+    id: 'react-start.deferred-hydration',
+    dir: 'react-start-deferred-hydration',
+    framework: 'react',
+    packageName: '@tanstack/react-start',
+    case: 'deferred-hydration',
+  },
+  {
     id: 'react-start.full',
     dir: 'react-start-full',
     framework: 'react',
@@ -78,6 +86,16 @@ const SCENARIOS = [
     framework: 'react',
     packageName: '@tanstack/react-start',
     case: 'minimal',
+  },
+  {
+    id: 'react-start.rsbuild.minimal-iife',
+    dir: 'react-start-minimal',
+    outDir: 'react-start-rsbuild-minimal-iife',
+    toolchain: 'rsbuild',
+    rsbuildClientOutput: 'iife',
+    framework: 'react',
+    packageName: '@tanstack/react-start',
+    case: 'minimal-iife',
   },
   {
     id: 'react-start.rsbuild.full',
@@ -96,10 +114,31 @@ const SCENARIOS = [
     case: 'minimal',
   },
   {
+    id: 'solid-start.deferred-hydration',
+    dir: 'solid-start-deferred-hydration',
+    framework: 'solid',
+    packageName: '@tanstack/solid-start',
+    case: 'deferred-hydration',
+  },
+  {
     id: 'solid-start.full',
     dir: 'solid-start-full',
     framework: 'solid',
     packageName: '@tanstack/solid-start',
+    case: 'full',
+  },
+  {
+    id: 'vue-start.minimal',
+    dir: 'vue-start-minimal',
+    framework: 'vue',
+    packageName: '@tanstack/vue-start',
+    case: 'minimal',
+  },
+  {
+    id: 'vue-start.full',
+    dir: 'vue-start-full',
+    framework: 'vue',
+    packageName: '@tanstack/vue-start',
     case: 'full',
   },
 ]
@@ -115,6 +154,10 @@ function parseArgs(argv) {
       'append-history': { type: 'string' },
       'results-dir': { type: 'string' },
       'dist-dir': { type: 'string' },
+      scenario: { type: 'string' },
+      analysis: { type: 'boolean' },
+      sourcemap: { type: 'boolean' },
+      'skip-package-builds': { type: 'boolean' },
     },
   })
 
@@ -124,7 +167,50 @@ function parseArgs(argv) {
     appendHistory: values['append-history'],
     resultsDir: values['results-dir'],
     distDir: values['dist-dir'],
+    scenario: values.scenario,
+    analysis: values.analysis === true,
+    sourcemap: values.sourcemap === true,
+    skipPackageBuilds: values['skip-package-builds'] === true,
   }
+}
+
+function filterScenarios(filter) {
+  if (!filter) {
+    return SCENARIOS
+  }
+
+  const requested = filter
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+  const scenarios = SCENARIOS.filter((scenario) => {
+    return requested.some(
+      (value) =>
+        value === scenario.id ||
+        value === scenario.dir ||
+        value === scenario.outDir ||
+        value === `${scenario.framework}-${scenario.case}`,
+    )
+  })
+
+  const missing = requested.filter(
+    (value) =>
+      !SCENARIOS.some(
+        (scenario) =>
+          value === scenario.id ||
+          value === scenario.dir ||
+          value === scenario.outDir ||
+          value === `${scenario.framework}-${scenario.case}`,
+      ),
+  )
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Unknown bundle-size scenario: ${missing.join(', ')}\nKnown scenarios: ${SCENARIOS.map((scenario) => scenario.id).join(', ')}`,
+    )
+  }
+
+  return scenarios
 }
 
 function toIsoDate(value) {
@@ -145,10 +231,9 @@ function parseMaybeDataJs(raw) {
   const trimmed = raw.trim()
 
   if (trimmed.startsWith('window.BENCHMARK_DATA')) {
-    const withoutPrefix = trimmed
-      .replace(/^window\.BENCHMARK_DATA\s*=\s*/, '')
-      .replace(/;\s*$/, '')
-    return JSON.parse(withoutPrefix)
+    const sandbox = { window: {} }
+    vm.runInNewContext(trimmed, sandbox, { timeout: 1000 })
+    return sandbox.window.BENCHMARK_DATA
   }
 
   return JSON.parse(trimmed)
@@ -217,24 +302,35 @@ function collectAllViteJsFiles(manifest) {
   return [...files].sort()
 }
 
-function bytesForFiles(baseDir, fileList) {
+function sizesForFiles(baseDir, fileList) {
   let rawBytes = 0
   let gzipBytes = 0
   let brotliBytes = 0
+  const files = []
 
   for (const relativeFile of fileList) {
     const fullPath = path.join(baseDir, relativeFile)
     const content = fs.readFileSync(fullPath)
+    const rawByteLength = content.byteLength
+    const gzipByteLength = gzipSync(content).byteLength
+    const brotliByteLength = brotliCompressSync(content).byteLength
 
-    rawBytes += content.byteLength
-    gzipBytes += gzipSync(content).byteLength
-    brotliBytes += brotliCompressSync(content).byteLength
+    rawBytes += rawByteLength
+    gzipBytes += gzipByteLength
+    brotliBytes += brotliByteLength
+    files.push({
+      file: relativeFile,
+      rawBytes: rawByteLength,
+      gzipBytes: gzipByteLength,
+      brotliBytes: brotliByteLength,
+    })
   }
 
   return {
     rawBytes,
     gzipBytes,
     brotliBytes,
+    files,
   }
 }
 
@@ -371,7 +467,75 @@ async function importFromRoot(root, specifier) {
   return import(pathToFileURL(requireFromRoot.resolve(specifier)).href)
 }
 
-async function buildViteScenario({ root, outDir }) {
+function getGitStatus() {
+  try {
+    return {
+      branch: execSync('git branch --show-current', {
+        encoding: 'utf8',
+      }).trim(),
+      dirty:
+        execSync('git status --porcelain', { encoding: 'utf8' }).trim().length >
+        0,
+    }
+  } catch {
+    return {
+      branch: '',
+      dirty: undefined,
+    }
+  }
+}
+
+function getPackageBuildProjects(scenarios) {
+  const projects = new Set()
+
+  for (const scenario of scenarios) {
+    projects.add(scenario.packageName)
+
+    if (scenario.packageName.endsWith('-router')) {
+      projects.add('@tanstack/router-plugin')
+    }
+  }
+
+  return [...projects].sort()
+}
+
+function buildRequiredPackages({ repoRoot, scenarios, skipPackageBuilds }) {
+  const projects = getPackageBuildProjects(scenarios)
+
+  if (skipPackageBuilds || projects.length === 0) {
+    return projects
+  }
+
+  process.stdout.write(
+    `Building package projects for bundle-size scenarios: ${projects.join(', ')}\n`,
+  )
+
+  const args = [
+    'nx',
+    'run-many',
+    '--target=build',
+    `--projects=${projects.join(',')}`,
+    '--outputStyle=stream',
+    '--skipRemoteCache',
+  ]
+
+  if (
+    process.env.NX_SKIP_NX_CACHE === 'true' ||
+    process.env.NX_DISABLE_NX_CACHE === 'true'
+  ) {
+    args.push('--skipNxCache')
+  }
+
+  execFileSync(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', args, {
+    cwd: repoRoot,
+    stdio: 'inherit',
+    env: process.env,
+  })
+
+  return projects
+}
+
+async function buildViteScenario({ root, outDir, sourcemap }) {
   const configFile = path.join(root, 'vite.config.ts')
 
   await build({
@@ -386,22 +550,28 @@ async function buildViteScenario({ root, outDir }) {
       emptyOutDir: true,
       target: 'es2022',
       minify: 'esbuild',
-      sourcemap: false,
+      sourcemap: sourcemap ? 'hidden' : false,
       reportCompressedSize: false,
       manifest: true,
     },
   })
 }
 
-async function buildRsbuildScenario({ root, outDir }) {
+async function buildRsbuildScenario({ root, outDir, scenario, sourcemap }) {
   const configFile = path.join(root, 'rsbuild.config.ts')
   const { createRsbuild, loadConfig } = await importFromRoot(
     root,
     '@rsbuild/core',
   )
   const previousOutDir = process.env.BUNDLE_SIZE_DIST_DIR
+  const previousClientOutput = process.env.BUNDLE_SIZE_RSB_CLIENT_OUTPUT
 
   process.env.BUNDLE_SIZE_DIST_DIR = outDir
+  if (scenario.rsbuildClientOutput) {
+    process.env.BUNDLE_SIZE_RSB_CLIENT_OUTPUT = scenario.rsbuildClientOutput
+  } else {
+    delete process.env.BUNDLE_SIZE_RSB_CLIENT_OUTPUT
+  }
 
   try {
     const { content } = await loadConfig({
@@ -412,7 +582,17 @@ async function buildRsbuildScenario({ root, outDir }) {
     const rsbuild = await createRsbuild({
       cwd: root,
       callerName: 'bundle-size-benchmark',
-      config: content,
+      config: sourcemap
+        ? {
+            ...content,
+            output: {
+              ...content.output,
+              sourceMap: {
+                js: 'source-map',
+              },
+            },
+          }
+        : content,
     })
     const result = await rsbuild.build()
     await result.close()
@@ -422,20 +602,25 @@ async function buildRsbuildScenario({ root, outDir }) {
     } else {
       process.env.BUNDLE_SIZE_DIST_DIR = previousOutDir
     }
+    if (previousClientOutput === undefined) {
+      delete process.env.BUNDLE_SIZE_RSB_CLIENT_OUTPUT
+    } else {
+      process.env.BUNDLE_SIZE_RSB_CLIENT_OUTPUT = previousClientOutput
+    }
   }
 }
 
-async function buildScenario({ root, outDir, scenario }) {
+async function buildScenario({ root, outDir, scenario, sourcemap }) {
   const previousCwd = process.cwd()
   process.chdir(root)
 
   try {
     if (scenario.toolchain === 'rsbuild') {
-      await buildRsbuildScenario({ root, outDir })
+      await buildRsbuildScenario({ root, outDir, scenario, sourcemap })
       return
     }
 
-    await buildViteScenario({ root, outDir })
+    await buildViteScenario({ root, outDir, sourcemap })
   } finally {
     process.chdir(previousCwd)
   }
@@ -506,6 +691,115 @@ function collectRsbuildAllJsFiles(manifest) {
   }
 
   return [...files].sort()
+}
+
+function decodeVlq(segment) {
+  const values = []
+  let value = 0
+  let shift = 0
+
+  for (const char of segment) {
+    let digit =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.indexOf(
+        char,
+      )
+
+    if (digit < 0) {
+      continue
+    }
+
+    const continuation = digit & 32
+    digit &= 31
+    value += digit << shift
+
+    if (continuation) {
+      shift += 5
+      continue
+    }
+
+    const negative = value & 1
+    value >>= 1
+    values.push(negative ? -value : value)
+    value = 0
+    shift = 0
+  }
+
+  return values
+}
+
+function estimateSourceBytesFromMap(mapPath, generatedPath) {
+  if (!fs.existsSync(mapPath)) {
+    return []
+  }
+
+  const map = readJson(mapPath)
+  const sources = map.sources || []
+  const sourceBytes = new Map()
+  let sourceIndex = 0
+  const generatedLines = fs.existsSync(generatedPath)
+    ? fs.readFileSync(generatedPath, 'utf8').split('\n')
+    : []
+  let lineIndex = 0
+
+  for (const line of String(map.mappings || '').split(';')) {
+    let generatedColumn = 0
+    let previousColumn = 0
+    let previousSource = -1
+    const segments = line.split(',').filter(Boolean)
+    const decodedSegments = []
+
+    for (const segment of segments) {
+      const values = decodeVlq(segment)
+      generatedColumn += values[0] || 0
+
+      if (values.length >= 4) {
+        sourceIndex += values[1] || 0
+        decodedSegments.push({ column: generatedColumn, sourceIndex })
+      }
+    }
+
+    for (const segment of decodedSegments) {
+      if (previousSource >= 0) {
+        const bytes = Math.max(0, segment.column - previousColumn)
+        sourceBytes.set(
+          sources[previousSource],
+          (sourceBytes.get(sources[previousSource]) || 0) + bytes,
+        )
+      }
+
+      previousColumn = segment.column
+      previousSource = segment.sourceIndex
+    }
+
+    if (previousSource >= 0) {
+      const bytes = Math.max(
+        1,
+        (generatedLines[lineIndex]?.length || previousColumn) - previousColumn,
+      )
+      sourceBytes.set(
+        sources[previousSource],
+        (sourceBytes.get(sources[previousSource]) || 0) + bytes,
+      )
+    }
+
+    lineIndex++
+  }
+
+  return [...sourceBytes]
+    .map(([source, estimatedBytes]) => ({ source, estimatedBytes }))
+    .sort((a, b) => b.estimatedBytes - a.estimatedBytes)
+}
+
+function sourceAttributionForFiles(baseDir, fileList) {
+  return fileList.map((file) => {
+    return {
+      file,
+      sources: estimateSourceBytesFromMap(
+        path.join(baseDir, `${file}.map`),
+        path.join(baseDir, file),
+      ),
+    }
+  })
 }
 
 async function resolveBundleFiles({ outDir, scenario }) {
@@ -618,42 +912,73 @@ async function main() {
     ? toIsoDate(args.measuredAt)
     : new Date().toISOString()
   const sha = getCurrentSha(args.sha)
+  const startedAt = Date.now()
+  const scenarios = filterScenarios(args.scenario)
+  const packageBuildProjects = buildRequiredPackages({
+    repoRoot,
+    scenarios,
+    skipPackageBuilds: args.skipPackageBuilds,
+  })
 
   await fsp.mkdir(resultsDir, { recursive: true })
   await fsp.mkdir(distDir, { recursive: true })
 
   const metrics = []
 
-  for (const scenario of SCENARIOS) {
+  for (const scenario of scenarios) {
     const root = path.join(scenariosRoot, scenario.dir)
     const outDir = path.join(distDir, scenario.outDir || scenario.dir)
 
-    await buildScenario({ root, outDir, scenario })
+    await buildScenario({
+      root,
+      outDir,
+      scenario,
+      sourcemap: args.sourcemap || args.analysis,
+    })
 
     const bundleInfo = await resolveBundleFiles({ outDir, scenario })
-    const sizes = bytesForFiles(bundleInfo.manifestOutDir, bundleInfo.jsFiles)
-    const initialSizes = bytesForFiles(
+    const sizes = sizesForFiles(bundleInfo.manifestOutDir, bundleInfo.jsFiles)
+    const initialSizes = sizesForFiles(
       bundleInfo.manifestOutDir,
       bundleInfo.initialJsFiles,
     )
-
-    metrics.push({
+    const initialFileSet = new Set(bundleInfo.initialJsFiles)
+    const files = sizes.files.map((file) => ({
+      ...file,
+      initial: initialFileSet.has(file.file),
+    }))
+    const metric = {
       id: scenario.id,
       scenarioDir: scenario.dir,
+      outDir: scenario.outDir || scenario.dir,
       toolchain: scenario.toolchain || 'vite',
       framework: scenario.framework,
       packageName: scenario.packageName,
       case: scenario.case,
       entryKey: bundleInfo.entryKey,
       manifestPath: path.relative(outDir, bundleInfo.manifestPath),
+      manifestOutDir: path.relative(repoRoot, bundleInfo.manifestOutDir),
       initialJsFiles: bundleInfo.initialJsFiles,
       jsFiles: bundleInfo.jsFiles,
+      files,
       initialRawBytes: initialSizes.rawBytes,
       initialGzipBytes: initialSizes.gzipBytes,
       initialBrotliBytes: initialSizes.brotliBytes,
-      ...sizes,
-    })
+      rawBytes: sizes.rawBytes,
+      gzipBytes: sizes.gzipBytes,
+      brotliBytes: sizes.brotliBytes,
+    }
+
+    if (args.analysis) {
+      metric.sources = sourceAttributionForFiles(
+        bundleInfo.manifestOutDir,
+        bundleInfo.jsFiles,
+      )
+    }
+
+    metrics.push(metric)
   }
+  const completedAt = Date.now()
 
   const current = {
     schemaVersion: 1,
@@ -661,6 +986,19 @@ async function main() {
     measuredAt: measuredAtIso,
     generatedAt: new Date().toISOString(),
     sha,
+    status: {
+      state: 'success',
+      command: `node ${path.relative(repoRoot, fileURLToPath(import.meta.url))}${args.scenario ? ` --scenario ${args.scenario}` : ''}${args.analysis ? ' --analysis' : ''}${args.sourcemap ? ' --sourcemap' : ''}${args.skipPackageBuilds ? ' --skip-package-builds' : ''}`,
+      scenarioFilter: args.scenario || null,
+      measuredScenarios: scenarios.map((scenario) => scenario.id),
+      packageBuildProjects,
+      skipPackageBuilds: args.skipPackageBuilds,
+      durationMs: completedAt - startedAt,
+      git: {
+        sha,
+        ...getGitStatus(),
+      },
+    },
     metrics,
   }
 

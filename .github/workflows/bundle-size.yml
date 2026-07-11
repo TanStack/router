@@ -33,14 +33,14 @@ jobs:
       current_json_b64: ${{ steps.capture.outputs.current_json_b64 }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@main
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
 
       - name: Measure Bundle Size
         run: pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache
@@ -62,7 +62,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -87,13 +87,18 @@ jobs:
           fi
 
       - name: Build PR Report
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
           node scripts/benchmarks/bundle-size/pr-report.mjs \
             --current benchmarks/bundle-size/results/current.json \
             --history benchmarks/bundle-size/results/history-data.js \
             --output benchmarks/bundle-size/results/pr-comment.md \
-            --base-sha "${{ github.event.pull_request.base.sha }}" \
-            --dashboard-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/benchmarks/bundle-size/"
+            --base-sha "$BASE_SHA" \
+            --dashboard-url "https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME}/benchmarks/bundle-size/"
+          cat benchmarks/bundle-size/results/pr-comment.md
 
       - name: Upsert Sticky PR Comment
         env:
@@ -111,17 +116,18 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@main
+        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
 
       - name: Measure Bundle Size
         run: pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache
       - name: Publish Benchmark Dashboard
-        uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b # v1.20.7
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
         with:
           tool: customSmallerIsBetter
           name: Bundle Size (gzip)

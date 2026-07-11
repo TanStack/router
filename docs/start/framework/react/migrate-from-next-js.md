@@ -52,23 +52,49 @@ rm postcss.config.* next.config.*
 
 ### 2. Install Required Dependencies
 
-TanStack Start leverages Tanstack Router, [Vite](https://vite.dev), and a vite deployment plugin e.g. [nitro](https://nitro.build/).
+TanStack Start leverages TanStack Router and supports [Vite](https://vite.dev) or [Rsbuild](https://rsbuild.dev/) as the build tool. The Vite setup below includes [Nitro](https://nitro.build/) as a deployment plugin.
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
 
 ```sh
 npm i @tanstack/react-router @tanstack/react-start nitro vite @vitejs/plugin-react
 ```
 
-For Tailwind CSS:
+# Rsbuild
+
+```sh
+npm i @tanstack/react-router @tanstack/react-start @rsbuild/core @rsbuild/plugin-react
+```
+
+<!-- ::end:tabs -->
+
+For Tailwind CSS, install the build tool integration you want to use:
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
 
 ```sh
 npm i -D @tailwindcss/vite tailwindcss
 ```
 
+# Rsbuild
+
+```sh
+npm i -D @tailwindcss/postcss tailwindcss
+```
+
+<!-- ::end:tabs -->
+
 ### 3. Update Project Configuration
 
 Now that you've installed the necessary dependencies, update your project configuration files to work with TanStack Start.
 
-- `package.json`
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
 
 ```json
 {
@@ -81,10 +107,25 @@ Now that you've installed the necessary dependencies, update your project config
 }
 ```
 
-- `vite.config.ts`
+# Rsbuild
 
-```ts
-// vite.config.ts
+```json
+{
+  "type": "module",
+  "scripts": {
+    "dev": "rsbuild dev",
+    "build": "rsbuild build"
+  }
+}
+```
+
+<!-- ::end:tabs -->
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
@@ -113,6 +154,40 @@ export default defineConfig({
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { pluginReact } from '@rsbuild/plugin-react'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  server: {
+    port: 3000,
+  },
+  plugins: [
+    pluginReact(),
+    tanstackStart({
+      srcDirectory: 'src', // This is the default
+      router: {
+        // Specifies the directory TanStack Router uses for your routes.
+        routesDirectory: 'app', // Defaults to "routes", relative to srcDirectory
+      },
+    }),
+  ],
+})
+```
+
+```js title="postcss.config.mjs"
+export default {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+}
+```
+
+<!-- ::end:tabs -->
 
 By default, `routesDirectory` is set to `routes`. To maintain consistency with Next.js App Router conventions, you can set it to `app` instead.
 

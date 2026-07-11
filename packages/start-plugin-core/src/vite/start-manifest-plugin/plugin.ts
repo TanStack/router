@@ -1,16 +1,23 @@
 import { joinURL } from 'ufo'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { rootRouteId } from '@tanstack/router-core'
-import { ENTRY_POINTS, START_ENVIRONMENT_NAMES } from '../../constants'
+import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../../constants'
 import {
   buildStartManifest,
   createManifestAssetResolvers,
-  normalizeViteClientBuild,
   serializeStartManifest,
 } from '../../start-manifest-plugin/manifestBuilder'
 import { createVirtualModule } from '../createVirtualModule'
+import { normalizeViteClientBuild } from './normalized-client-build'
 import type { GetConfigFn, NormalizedClientBuild } from '../../types'
 import type { PluginOption, Rollup } from 'vite'
+
+type StartManifestEnvironment = {
+  config: {
+    command: string
+    environments?: Record<string, { isBundled?: boolean } | undefined>
+  }
+}
 
 export function startManifestPlugin(opts: {
   getConfig: GetConfigFn
@@ -45,11 +52,10 @@ export function startManifestPlugin(opts: {
       enforce: 'pre',
       load() {
         const { resolvedStartConfig, startConfig } = opts.getConfig()
-        const clientEntry = joinURL(
-          resolvedStartConfig.basePaths.publicBase,
-          '@id',
-          ENTRY_POINTS.client,
-        )
+        const clientEntry = getDevClientEntry({
+          basePath: resolvedStartConfig.basePaths.publicBase,
+          bundledDev: isClientBundledDev(this.environment),
+        })
 
         if (this.environment.name !== START_ENVIRONMENT_NAMES.server) {
           return getEmptyStartManifestModule(clientEntry)
@@ -99,10 +105,10 @@ function getViteAdditionalRouteAssets(options: {
     )
   }
 
-  const { getStylesheetAsset } = createManifestAssetResolvers(options.basePath)
+  const { getStylesheetLink } = createManifestAssetResolvers(options.basePath)
 
   return {
-    [rootRouteId]: [getStylesheetAsset(options.cssCodeSplitDisabledFileName)],
+    [rootRouteId]: [getStylesheetLink(options.cssCodeSplitDisabledFileName)],
   }
 }
 
@@ -131,7 +137,27 @@ function getAssetFileNameByName(
 
 function getEmptyStartManifestModule(clientEntry: string) {
   return `export const tsrStartManifest = () => ({
-      routes: {},
-      clientEntry: '${clientEntry}',
+      routes: {
+        __root__: {
+          preloads: ['${clientEntry}'],
+          scripts: [{ attrs: { type: 'module', async: true, src: '${clientEntry}' } }],
+        },
+      },
     })`
+}
+
+function getDevClientEntry(opts: { basePath: string; bundledDev: boolean }) {
+  if (opts.bundledDev) {
+    return joinURL(opts.basePath, 'assets', 'index.js')
+  }
+
+  return joinURL(opts.basePath, '@id', DEV_CLIENT_ENTRY)
+}
+
+function isClientBundledDev(environment: StartManifestEnvironment) {
+  return (
+    environment.config.command === 'serve' &&
+    environment.config.environments?.[START_ENVIRONMENT_NAMES.client]
+      ?.isBundled === true
+  )
 }

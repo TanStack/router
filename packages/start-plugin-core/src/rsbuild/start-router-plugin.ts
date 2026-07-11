@@ -52,14 +52,14 @@ export function registerRouterPlugins(
           },
           plugins: [
             routesManifestPlugin(),
-            ...(opts.startPluginOpts?.prerender?.enabled === true
+            ...(opts.startPluginOpts.prerender?.enabled === true
               ? [prerenderRoutesPlugin()]
               : []),
           ],
         },
         routerPluginContext,
       )
-      utils.appendPlugins(generatorPlugin as any)
+      utils.appendPlugins(generatorPlugin)
     }
 
     if (
@@ -79,7 +79,7 @@ export function registerRouterPlugins(
         },
         routerPluginContext,
       )
-      utils.appendPlugins(splitterPlugin as any)
+      utils.appendPlugins(splitterPlugin)
     }
   })
 }

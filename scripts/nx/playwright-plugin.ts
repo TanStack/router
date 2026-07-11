@@ -111,12 +111,16 @@ type PlaywrightModeMetadata = {
   toolchain: PlaywrightToolchain
   mode: PlaywrightMode
   shards?: number
+  name?: string
+  env: Record<string, string>
 }
 
 type RawPlaywrightModeMetadata = {
   toolchain?: string
   mode?: string
   shards?: number
+  name?: string
+  env?: Record<string, string>
 }
 
 function validateModeMetadata(
@@ -161,10 +165,43 @@ function validateModeMetadata(
     }
   }
 
+  if (
+    modeMetadata.name !== undefined &&
+    !/^[a-z0-9][a-z0-9-]*$/.test(modeMetadata.name)
+  ) {
+    throw new Error(
+      `[Playwright Sharding Plugin] Invalid name for playwrightModes[${index}]: ` +
+        `${modeMetadata.name}. Expected lowercase letters, numbers, and dashes.`,
+    )
+  }
+
+  if (modeMetadata.env !== undefined) {
+    if (
+      typeof modeMetadata.env !== 'object' ||
+      Array.isArray(modeMetadata.env)
+    ) {
+      throw new Error(
+        `[Playwright Sharding Plugin] Invalid env for playwrightModes[${index}]: ` +
+          `Expected an object of string values.`,
+      )
+    }
+
+    for (const [key, value] of Object.entries(modeMetadata.env)) {
+      if (typeof value !== 'string') {
+        throw new Error(
+          `[Playwright Sharding Plugin] Invalid env value for playwrightModes[${index}].${key}: ` +
+            `Expected a string.`,
+        )
+      }
+    }
+  }
+
   return {
     toolchain: modeMetadata.toolchain as PlaywrightToolchain,
     mode: modeMetadata.mode as PlaywrightMode,
     shards: modeMetadata.shards,
+    name: modeMetadata.name,
+    env: modeMetadata.env ?? {},
   }
 }
 
@@ -186,19 +223,24 @@ function buildModeTargets(
 
   for (const [index, rawModeMetadata] of modes.entries()) {
     const modeMetadata = validateModeMetadata(rawModeMetadata, index)
-    const modeTargetName = `${CI_TARGET_NAME}--${modeMetadata.toolchain}-${modeMetadata.mode}`
-    const buildTargetName = `build:${modeMetadata.toolchain}:${modeMetadata.mode}`
+    const variantTargetSuffix = modeMetadata.name
+      ? `${MODE_TARGET_SEPARATOR}${modeMetadata.name}`
+      : ''
+    const variantPathSuffix = modeMetadata.name ? `-${modeMetadata.name}` : ''
+    const modeTargetName = `${CI_TARGET_NAME}--${modeMetadata.toolchain}-${modeMetadata.mode}${variantTargetSuffix}`
+    const buildTargetName = `build:${modeMetadata.toolchain}:${modeMetadata.mode}${modeMetadata.name ? `:${modeMetadata.name}` : ''}`
     const shardCount = modeMetadata.shards ?? 1
-    const distDir = `dist-${modeMetadata.toolchain}-${modeMetadata.mode}`
+    const distDir = `dist-${modeMetadata.toolchain}-${modeMetadata.mode}${variantPathSuffix}`
     const modeEnv = {
+      ...modeMetadata.env,
       MODE: modeMetadata.mode,
       TOOLCHAIN: modeMetadata.toolchain,
       E2E_TOOLCHAIN: modeMetadata.toolchain,
       E2E_DIST: distDir,
       E2E_DIST_DIR: distDir,
     }
-    const modePortKey = `${packageName}-${modeMetadata.toolchain}-${modeMetadata.mode}`
-    const modeDescription = `${modeMetadata.toolchain}/${modeMetadata.mode}`
+    const modePortKey = `${packageName}-${modeMetadata.toolchain}-${modeMetadata.mode}${variantPathSuffix}`
+    const modeDescription = `${modeMetadata.toolchain}/${modeMetadata.mode}${modeMetadata.name ? `/${modeMetadata.name}` : ''}`
     const modeShardTargets: Array<string> = []
 
     targets[buildTargetName] = {

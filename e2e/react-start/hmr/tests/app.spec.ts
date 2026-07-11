@@ -1,7 +1,11 @@
 import { expect } from '@playwright/test'
-import { test } from '@tanstack/router-e2e-utils'
-import { readFile, writeFile } from 'node:fs/promises'
+import {
+  createHmrFileEditor,
+  replaceAll,
+  test,
+} from '@tanstack/router-e2e-utils'
 import path from 'node:path'
+
 import type { Page } from '@playwright/test'
 
 const whitelistErrors = [
@@ -10,6 +14,7 @@ const whitelistErrors = [
 ]
 
 const hmrExpect = expect.configure({ timeout: 20_000 })
+const isViteBundledDev = process.env.E2E_VITE_BUNDLED_DEV === 'true'
 
 const routeFilePaths = {
   index: 'routes/index.tsx',
@@ -22,6 +27,8 @@ const routeFilePaths = {
   componentHmrNamedNosplit: 'routes/component-hmr-named-nosplit.tsx',
   componentHmrInlineErrorSplit: 'routes/component-hmr-inline-error-split.tsx',
   componentHmrNamedErrorSplit: 'routes/component-hmr-named-error-split.tsx',
+  aliasedRouteImportParentPanel: 'components/AliasedRouteImportParentPanel.tsx',
+  aliasedRouteImportChildPanel: 'components/AliasedRouteImportChildPanel.tsx',
   serverFnHmr: 'routes/server-fn-hmr.tsx',
   serverFnHmrFactory: 'hmr/server-fn-hmr-factory.ts',
 } as const
@@ -112,14 +119,6 @@ const routeFileRestoreChecks: Partial<
     testId: 'server-fn-hmr-marker',
     text: 'server-fn-hmr-baseline',
   },
-}
-
-// Capture original file contents once so beforeEach can restore them
-const originalContents: Partial<Record<RouteFileKey, string>> = {}
-const routeKeysPendingRestoreCheck = new Set<RouteFileKey>()
-
-function replaceAll(source: string, from: string, to: string) {
-  return source.split(from).join(to)
 }
 
 function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
@@ -227,6 +226,14 @@ function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
       'component-hmr-named-error-split-updated',
       'component-hmr-named-error-split-baseline',
     ],
+    aliasedRouteImportParentPanel: [
+      'aliased-parent-updated',
+      'aliased-parent-baseline',
+    ],
+    aliasedRouteImportChildPanel: [
+      'aliased-child-updated',
+      'aliased-child-baseline',
+    ],
   }
   const markerReplacement = markerReplacements[routeFileKey]
   if (markerReplacement) {
@@ -253,59 +260,14 @@ function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
   return next
 }
 
-async function captureOriginals() {
-  for (const [key, filePath] of Object.entries(routeFiles) as Array<
-    [RouteFileKey, string]
-  >) {
-    const current = await readFile(filePath, 'utf8')
-    const normalized = normalizeRouteSource(key, current)
-    if (normalized !== current) {
-      await writeFile(filePath, normalized)
-      routeKeysPendingRestoreCheck.add(key)
-    }
-    originalContents[key] = normalized
-  }
-}
-
-const capturePromise = captureOriginals()
-
-async function restoreRouteFiles(
-  forceRouteFileKeys: Iterable<RouteFileKey> = [],
-) {
-  const forceRestoreKeys = new Set(forceRouteFileKeys)
-  const restoredRouteKeys: Array<RouteFileKey> = []
-
-  for (const [key, filePath] of Object.entries(routeFiles) as Array<
-    [RouteFileKey, string]
-  >) {
-    const content = originalContents[key]
-    if (content === undefined) continue
-    const current = await readFile(filePath, 'utf8')
-    // Re-emit pending restores in case the watcher coalesced the previous
-    // restore write and the dev server is still serving stale route options.
-    if (current !== content || forceRestoreKeys.has(key)) {
-      await writeFile(filePath, content)
-      restoredRouteKeys.push(key)
-    }
-  }
-
-  return restoredRouteKeys
-}
-
-async function replaceRouteText(
-  routeFileKey: RouteFileKey,
-  from: string,
-  to: string,
-) {
-  const filePath = routeFiles[routeFileKey]
-  const source = await readFile(filePath, 'utf8')
-
-  if (!source.includes(from)) {
-    throw new Error(`Expected route file to include ${JSON.stringify(from)}`)
-  }
-
-  await writeFile(filePath, source.replace(from, to))
-}
+const routeFileEditor = createHmrFileEditor({
+  files: routeFiles,
+  normalizeSource: normalizeRouteSource,
+})
+const capturePromise = routeFileEditor.capturePromise
+const routeKeysPendingRestoreCheck = routeFileEditor.pendingRestoreKeys
+const restoreRouteFiles = routeFileEditor.restoreFiles
+const replaceRouteText = routeFileEditor.replaceText
 
 async function replaceRouteTextAndWait(
   page: Page,
@@ -314,7 +276,12 @@ async function replaceRouteTextAndWait(
   to: string,
   assertion: () => Promise<void>,
 ) {
-  await replaceRouteText(routeFileKey, from, to)
+  if (isViteBundledDev) {
+    // Rolldown may still be compiling a lazy route entry immediately after
+    // hydration. Avoid writing a follow-up edit while that compile is settling.
+    await page.waitForTimeout(500)
+  }
+  await routeFileEditor.replaceText(routeFileKey, from, to)
   await assertion()
 }
 
@@ -325,17 +292,10 @@ async function rewriteRouteFile(
   assertion: () => Promise<void>,
   options: { allowNoop?: boolean } = {},
 ) {
-  const filePath = routeFiles[routeFileKey]
-  const source = await readFile(filePath, 'utf8')
-  const updated = updater(source)
-
-  if (updated === source && !options.allowNoop) {
-    throw new Error(`Expected ${filePath} to change during rewrite`)
+  if (isViteBundledDev) {
+    await page.waitForTimeout(500)
   }
-
-  // Even a no-op write is useful for tests that need to force the dev server
-  // to reconcile a stale in-memory module with the current file contents.
-  await writeFile(filePath, updated)
+  await routeFileEditor.rewriteFile(routeFileKey, updater, options)
   await assertion()
 }
 
@@ -385,7 +345,7 @@ async function waitForServerRenderedText(
   url: string,
   text: string,
 ) {
-  const deadline = Date.now() + 20_000
+  const deadline = Date.now() + 60_000
   let lastError: unknown
 
   while (Date.now() < deadline) {
@@ -404,7 +364,7 @@ async function waitForServerRenderedText(
       lastError = error
     }
 
-    await page.waitForTimeout(150)
+    await page.waitForTimeout(100)
   }
 
   throw lastError
@@ -442,7 +402,7 @@ async function reloadPageAndWaitForText(
   testId: string,
   text: string,
 ) {
-  const deadline = Date.now() + 20_000
+  const deadline = Date.now() + 60_000
   let lastError: unknown
 
   while (Date.now() < deadline) {
@@ -501,7 +461,7 @@ async function waitForRestoredRouteFile(
         { timeout: 500 },
       )
       await restoreCheck.assert?.(page)
-      await page.waitForTimeout(500)
+      await page.waitForTimeout(100)
       await expect(page.getByTestId(restoreCheck.testId)).toHaveText(
         restoreCheck.text,
         { timeout: 1_000 },
@@ -510,7 +470,7 @@ async function waitForRestoredRouteFile(
       return
     } catch (error) {
       lastError = error
-      await page.waitForTimeout(150)
+      await page.waitForTimeout(100)
     }
   }
 
@@ -838,6 +798,69 @@ test.describe('react-start hmr', () => {
     await expect(page.getByTestId('child')).toHaveText('child')
   })
 
+  test('keeps aliased route import links working after component HMR', async ({
+    page,
+  }) => {
+    await page.goto('/aliased-route-imports/A')
+    await page.getByTestId('hydrated').waitFor({ state: 'visible' })
+
+    await expect(page.getByTestId('aliased-parent-marker')).toHaveText(
+      'aliased-parent-baseline',
+    )
+    await expect(page.getByTestId('aliased-show-child')).toHaveAttribute(
+      'href',
+      '/aliased-route-imports/A/child',
+    )
+
+    await replaceRouteTextAndWait(
+      page,
+      'aliasedRouteImportParentPanel',
+      'aliased-parent-baseline',
+      'aliased-parent-updated',
+      async () => {
+        await hmrExpect(page.getByTestId('aliased-parent-marker')).toHaveText(
+          'aliased-parent-updated',
+        )
+      },
+    )
+
+    await expect(page.getByTestId('aliased-show-child')).toHaveAttribute(
+      'href',
+      '/aliased-route-imports/A/child',
+    )
+    await page.getByTestId('aliased-show-child').click()
+    await expect(page).toHaveURL(/\/aliased-route-imports\/A\/child$/)
+
+    await page.goto('/aliased-route-imports/A/child')
+    await page.getByTestId('hydrated').waitFor({ state: 'visible' })
+    await expect(page.getByTestId('aliased-child-marker')).toHaveText(
+      'aliased-child-baseline',
+    )
+    await expect(page.getByTestId('aliased-back-parent')).toHaveAttribute(
+      'href',
+      '/aliased-route-imports/A',
+    )
+
+    await replaceRouteTextAndWait(
+      page,
+      'aliasedRouteImportChildPanel',
+      'aliased-child-baseline',
+      'aliased-child-updated',
+      async () => {
+        await hmrExpect(page.getByTestId('aliased-child-marker')).toHaveText(
+          'aliased-child-updated',
+        )
+      },
+    )
+
+    await expect(page.getByTestId('aliased-back-parent')).toHaveAttribute(
+      'href',
+      '/aliased-route-imports/A',
+    )
+    await page.getByTestId('aliased-back-parent').click()
+    await expect(page).toHaveURL(/\/aliased-route-imports\/A$/)
+  })
+
   test('clears stale beforeLoad context when beforeLoad is removed', async ({
     page,
   }) => {
@@ -1145,6 +1168,7 @@ test.describe('react-start hmr', () => {
       "createServerOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-baseline'",
       "createClientOnlyFn\nexport const serverFnHmrMarker = 'server-fn-hmr-client-only'",
     )
+
     await reloadPageAndWaitForText(
       page,
       '/server-fn-hmr',

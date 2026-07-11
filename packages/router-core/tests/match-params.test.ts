@@ -12,6 +12,7 @@ type TestRoute = {
   options?: {
     params?: {
       parse?: (params: Record<string, string>) => unknown
+      priority?: number
     }
   }
   children?: Array<TestRoute>
@@ -266,6 +267,7 @@ describe('params.parse route selection', () => {
             options: {
               params: {
                 parse: (params) => params,
+                priority: 999,
               },
             },
           },
@@ -303,6 +305,138 @@ describe('params.parse route selection', () => {
       )
       expect(findRouteMatch('/one/two/wrong', processedTree)?.route.id).toBe(
         '/$x/$y/$z',
+      )
+    })
+
+    it('params.priority breaks ties between params.parse routes', () => {
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/$a',
+            fullPath: '/$a',
+            path: '$a',
+            options: {
+              params: {
+                parse: (params) => params,
+                priority: -1,
+              },
+            },
+          },
+          {
+            id: '/$z',
+            fullPath: '/$z',
+            path: '$z',
+            options: {
+              params: {
+                parse: (params) => params,
+                priority: 1,
+              },
+            },
+          },
+        ]),
+      )
+
+      expect(findRouteMatch('/123', processedTree)?.route.id).toBe('/$z')
+    })
+
+    it('treats missing params.priority as 0', () => {
+      const priorityOneParse = vi.fn(() => false)
+      const defaultPriorityParse = vi.fn((params: Record<string, string>) => {
+        return params
+      })
+      const priorityNegativeOneParse = vi.fn(
+        (params: Record<string, string>) => {
+          return params
+        },
+      )
+
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/$default',
+            fullPath: '/$default',
+            path: '$default',
+            options: {
+              params: {
+                parse: defaultPriorityParse,
+              },
+            },
+          },
+          {
+            id: '/$low',
+            fullPath: '/$low',
+            path: '$low',
+            options: {
+              params: {
+                parse: priorityNegativeOneParse,
+                priority: -1,
+              },
+            },
+          },
+          {
+            id: '/$high',
+            fullPath: '/$high',
+            path: '$high',
+            options: {
+              params: {
+                parse: priorityOneParse,
+                priority: 1,
+              },
+            },
+          },
+        ]),
+      )
+
+      expect(findRouteMatch('/123', processedTree)?.route.id).toBe('/$default')
+      expect(priorityOneParse).toHaveBeenCalledWith({ high: '123' })
+      expect(defaultPriorityParse).toHaveBeenCalledWith({ default: '123' })
+      expect(priorityNegativeOneParse).toHaveBeenCalledWith({ low: '123' })
+      expect(priorityOneParse.mock.invocationCallOrder[0]!).toBeLessThan(
+        defaultPriorityParse.mock.invocationCallOrder[0]!,
+      )
+      expect(defaultPriorityParse.mock.invocationCallOrder[0]!).toBeLessThan(
+        priorityNegativeOneParse.mock.invocationCallOrder[0]!,
+      )
+    })
+
+    it('falls through to the next params.parse route by params.priority', () => {
+      const lowerPriorityParse = vi.fn((params: Record<string, string>) => {
+        return params
+      })
+      const higherPriorityParse = vi.fn(() => false)
+
+      const { processedTree } = processRouteTree(
+        root([
+          {
+            id: '/$number',
+            fullPath: '/$number',
+            path: '$number',
+            options: {
+              params: {
+                parse: lowerPriorityParse,
+                priority: 1,
+              },
+            },
+          },
+          {
+            id: '/$uuid',
+            fullPath: '/$uuid',
+            path: '$uuid',
+            options: {
+              params: {
+                parse: higherPriorityParse,
+                priority: 10,
+              },
+            },
+          },
+        ]),
+      )
+
+      expect(findRouteMatch('/42', processedTree)?.route.id).toBe('/$number')
+      expect(higherPriorityParse).toHaveBeenCalledWith({ uuid: '42' })
+      expect(lowerPriorityParse).toHaveBeenCalledWith({ number: '42' })
+      expect(higherPriorityParse.mock.invocationCallOrder[0]!).toBeLessThan(
+        lowerPriorityParse.mock.invocationCallOrder[0]!,
       )
     })
 

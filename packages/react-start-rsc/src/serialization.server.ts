@@ -9,6 +9,8 @@ import {
 import {
   RENDERABLE_RSC,
   RSC_SLOT_USAGES_STREAM,
+  SERVER_COMPONENT_CSS_HREFS,
+  SERVER_COMPONENT_JS_PRELOADS,
   SERVER_COMPONENT_STREAM,
   isServerComponent,
 } from './ServerComponentTypes'
@@ -30,11 +32,12 @@ import type { RscDecodeResult, RscSsrHandler } from './rscSsrHandler'
 // Modules with 'use client' may be transformed to client references in the
 // SSR environment when RSC is enabled, preventing the side effect from running.
 
-// AsyncLocalStorage for decode-scoped CSS collector.
-// Each decode() runs in its own async context with its own collector.
-// The onClientReference callback reads from this to write CSS hrefs.
-const decodeCollectorStorage = new AsyncLocalStorage<Set<string>>()
-const jsCollectorStorage = new AsyncLocalStorage<Set<string>>()
+// AsyncLocalStorage for decode-scoped proxy asset collectors.
+// Client-reference deps stay on the decoded RSC proxy so unused streams don't
+// emit global request assets. CSS marker links are collected for all adapters
+// because the decoded envelope is unwrapped before SSR render.
+const proxyCssCollectorStorage = new AsyncLocalStorage<Set<string>>()
+const proxyJsCollectorStorage = new AsyncLocalStorage<Set<string>>()
 
 setOnClientReference(
   ({
@@ -44,48 +47,69 @@ setOnClientReference(
     deps: { js: Array<string>; css: Array<string> }
     runtime?: 'rsbuild'
   }) => {
-    const ctx = getStartContext({ throwIfNotFound: false })
-
-    const cssCollector = decodeCollectorStorage.getStore()
+    const cssCollector = proxyCssCollectorStorage.getStore()
     if (cssCollector) {
       for (const href of deps.css) {
         cssCollector.add(href)
       }
     }
 
-    const jsCollector = jsCollectorStorage.getStore()
+    const jsCollector = proxyJsCollectorStorage.getStore()
     if (jsCollector) {
       for (const href of deps.js) {
         jsCollector.add(href)
       }
     }
 
-    if (!ctx || runtime === 'rsbuild') return
-
-    if (!ctx.requestAssets) ctx.requestAssets = []
-    const seenHrefs = new Set<string>()
-    for (const asset of ctx.requestAssets) {
-      if (asset.tag === 'link' && asset.attrs?.href) {
-        seenHrefs.add(asset.attrs.href as string)
-      }
+    if (runtime === 'rsbuild' || cssCollector || jsCollector) {
+      return
     }
 
+    const ctx = getStartContext({ throwIfNotFound: false })
+
+    // Non-Rsbuild adapters emit decoded client-reference assets through the
+    // request manifest.
+    if (!ctx || (!deps.js.length && !deps.css.length)) {
+      return
+    }
+
+    if (!ctx.requestAssets) ctx.requestAssets = {}
+    const seenHrefs = new Set<string>()
+    for (const preload of ctx.requestAssets.preloads ?? []) {
+      seenHrefs.add(typeof preload === 'string' ? preload : preload.href)
+    }
+    for (const stylesheet of ctx.requestAssets.css ?? []) {
+      seenHrefs.add(
+        typeof stylesheet === 'string' ? stylesheet : stylesheet.href,
+      )
+    }
+
+    let nextPreloads: typeof ctx.requestAssets.preloads | undefined
     for (const href of deps.js) {
       if (seenHrefs.has(href)) continue
       seenHrefs.add(href)
-      ctx.requestAssets.push({
-        tag: 'link',
-        attrs: { rel: 'modulepreload', href },
-      })
+      if (!nextPreloads) {
+        nextPreloads = ctx.requestAssets.preloads
+          ? ctx.requestAssets.preloads.slice()
+          : []
+      }
+      nextPreloads.push(href)
+    }
+    if (nextPreloads) {
+      ctx.requestAssets.preloads = nextPreloads
     }
 
+    let nextCss: typeof ctx.requestAssets.css | undefined
     for (const href of deps.css) {
       if (seenHrefs.has(href)) continue
       seenHrefs.add(href)
-      ctx.requestAssets.push({
-        tag: 'link',
-        attrs: { rel: 'preload', href, as: 'style' },
-      })
+      if (!nextCss) {
+        nextCss = ctx.requestAssets.css ? ctx.requestAssets.css.slice() : []
+      }
+      nextCss.push(href)
+    }
+    if (nextCss) {
+      ctx.requestAssets.css = nextCss
     }
   },
 )
@@ -97,20 +121,20 @@ const ssrHandler: RscSsrHandler = {
     // Create a collector for this decode operation.
     // Run the decode in an AsyncLocalStorage context so the onClientReference
     // callback can write to this specific collector even with parallel decodes.
-    const cssCollector = new Set<string>()
-    const jsCollector = new Set<string>()
+    const proxyCssCollector = new Set<string>()
+    const proxyJsCollector = new Set<string>()
 
-    return decodeCollectorStorage.run(cssCollector, async () => {
-      return jsCollectorStorage.run(jsCollector, async () => {
+    return proxyCssCollectorStorage.run(proxyCssCollector, async () => {
+      return proxyJsCollectorStorage.run(proxyJsCollector, async () => {
         const decodedTree = await ssrDecode(readableStream)
         await awaitLazyElements(decodedTree, (href) => {
-          cssCollector.add(href)
+          proxyCssCollector.add(href)
         })
 
         return {
           tree: unwrapRscCssEnvelope(decodedTree),
-          cssHrefs: cssCollector.size > 0 ? cssCollector : undefined,
-          jsPreloads: jsCollector.size > 0 ? jsCollector : undefined,
+          cssHrefs: proxyCssCollector.size > 0 ? proxyCssCollector : undefined,
+          jsPreloads: proxyJsCollector.size > 0 ? proxyJsCollector : undefined,
         }
       })
     })
@@ -168,6 +192,16 @@ const adapter = createSerializationAdapter({
     const stream = component[SERVER_COMPONENT_STREAM]!.createReplayStream()
 
     const kind = isRenderableRsc(component) ? 'renderable' : 'composite'
+    const jsPreloads = component[SERVER_COMPONENT_JS_PRELOADS]
+    const cssHrefs = component[SERVER_COMPONENT_CSS_HREFS]
+    // `cssHrefs` can also come from loadCss() marker links. Client-reference
+    // collection fills `jsPreloads`, so that gates per-stream serialization.
+    const serializedAssetDeps = jsPreloads?.size
+      ? {
+          ...(cssHrefs?.size ? { cssHrefs: Array.from(cssHrefs) } : {}),
+          jsPreloads: Array.from(jsPreloads),
+        }
+      : {}
 
     const slotUsagesStream =
       kind === 'composite' &&
@@ -182,6 +216,7 @@ const adapter = createSerializationAdapter({
       kind,
       stream: new RawStream(stream, { hint: 'text' }),
       slotUsagesStream,
+      ...serializedAssetDeps,
     }
   },
   fromSerializable: (): never => {

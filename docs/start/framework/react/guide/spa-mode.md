@@ -38,8 +38,11 @@ After enabling the SPA mode, running a Start build will have an additional prere
 
 To configure SPA mode, there are a few options you can add to your Start plugin's options:
 
-```tsx
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 export default defineConfig({
   plugins: [
     tanstackStart({
@@ -50,6 +53,22 @@ export default defineConfig({
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      spa: {
+        enabled: true,
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
 
 ## Use Necessary Redirects
 
@@ -90,8 +109,11 @@ The default pathname used to generate the SPA shell is `/`. We call this the **s
 > [!NOTE]
 > It's recommended to keep the default value of `/` as the shell mask path.
 
-```tsx
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 export default defineConfig({
   plugins: [
     tanstackStart({
@@ -102,6 +124,22 @@ export default defineConfig({
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      spa: {
+        maskPath: '/app',
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
 
 ## Prerendering Options
 
@@ -117,8 +155,11 @@ This means that by default, the shell will not be crawled for links to follow fo
 
 You can always override these options by providing your own prerender options:
 
-```tsx
-// vite.config.ts
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 export default defineConfig({
   plugins: [
     tanstackStart({
@@ -133,6 +174,26 @@ export default defineConfig({
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      spa: {
+        prerender: {
+          outputPath: '/custom-shell',
+          crawlLinks: true,
+          retryCount: 3,
+        },
+      },
+    }),
+  ],
+})
+```
+
+<!-- ::end:tabs -->
 
 ## Customized rendering in SPA mode
 

@@ -104,21 +104,19 @@ function __report(action, accessPath) {
 `
     : ''
 
-  const diagGetTraps = hasDiag
-    ? `
+  const primitiveGetTraps = `
       if (prop === Symbol.toPrimitive) {
         return () => {
-          __report('toPrimitive', name);
+          ${hasDiag ? `__report('toPrimitive', name);` : ''}
           return '[import-protection mock]';
         };
       }
       if (prop === 'toString' || prop === 'valueOf' || prop === 'toJSON') {
         return () => {
-          __report(String(prop), name);
+          ${hasDiag ? `__report(String(prop), name);` : ''}
           return '[import-protection mock]';
         };
       }`
-    : ''
 
   const applyBody = hasDiag
     ? `__report('call', name + '()');
@@ -151,7 +149,7 @@ function ${fnName}(name) {
       if (prop === 'caller') return null;
       if (prop === 'then') return (f) => Promise.resolve(f(proxy));
       if (prop === 'catch') return () => Promise.resolve(proxy);
-      if (prop === 'finally') return (f) => { f(); return Promise.resolve(proxy); };${diagGetTraps}
+      if (prop === 'finally') return (f) => { f(); return Promise.resolve(proxy); };${primitiveGetTraps}
       if (typeof prop === 'symbol') return undefined;
       if (!(prop in children)) {
         children[prop] = ${fnName}(name + '.' + prop);

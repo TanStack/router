@@ -1,5 +1,328 @@
 # @tanstack/solid-start
 
+## 1.168.27
+
+### Patch Changes
+
+- Updated dependencies [[`ba52d2b`](https://github.com/TanStack/router/commit/ba52d2b8f9e95d6becd1be14c020b35f3231e02c)]:
+  - @tanstack/start-client-core@1.170.13
+  - @tanstack/solid-router@1.170.17
+  - @tanstack/solid-start-client@1.168.15
+  - @tanstack/solid-start-server@1.167.21
+  - @tanstack/start-plugin-core@1.171.19
+  - @tanstack/start-server-core@1.169.16
+
+## 1.168.26
+
+### Patch Changes
+
+- Updated dependencies [[`96eca43`](https://github.com/TanStack/router/commit/96eca43ab8ee21917a8075521bef6dcf15fc7a43), [`41e7a24`](https://github.com/TanStack/router/commit/41e7a24f693b0f58c2bef89a2b8c4d084acbd531), [`e499164`](https://github.com/TanStack/router/commit/e499164c722841271af4aa2215483476bdb94c94)]:
+  - @tanstack/start-server-core@1.169.15
+  - @tanstack/solid-router@1.170.16
+  - @tanstack/start-plugin-core@1.171.18
+  - @tanstack/solid-start-server@1.167.20
+  - @tanstack/solid-start-client@1.168.14
+
+## 1.168.25
+
+### Patch Changes
+
+- [#7566](https://github.com/TanStack/router/pull/7566) [`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825) - Add `validator()` as the canonical server function and middleware validator method. Deprecate `inputValidator()` and emit compiler warnings for remaining uses.
+
+- Updated dependencies [[`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825)]:
+  - @tanstack/start-client-core@1.170.12
+  - @tanstack/start-plugin-core@1.171.17
+  - @tanstack/solid-start-client@1.168.13
+  - @tanstack/start-server-core@1.169.14
+  - @tanstack/solid-start-server@1.167.19
+
+## 1.168.24
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.170.15
+  - @tanstack/solid-start-client@1.168.12
+  - @tanstack/solid-start-server@1.167.18
+  - @tanstack/start-client-core@1.170.11
+  - @tanstack/start-plugin-core@1.171.16
+  - @tanstack/start-server-core@1.169.13
+
+## 1.168.23
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.170.14
+  - @tanstack/solid-start-client@1.168.11
+  - @tanstack/solid-start-server@1.167.17
+  - @tanstack/start-client-core@1.170.10
+  - @tanstack/start-plugin-core@1.171.15
+  - @tanstack/start-server-core@1.169.12
+
+## 1.168.22
+
+### Patch Changes
+
+- Updated dependencies [[`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01)]:
+  - @tanstack/solid-router@1.170.13
+  - @tanstack/solid-start-client@1.168.10
+  - @tanstack/solid-start-server@1.167.16
+  - @tanstack/start-client-core@1.170.9
+  - @tanstack/start-plugin-core@1.171.14
+  - @tanstack/start-server-core@1.169.11
+
+## 1.168.21
+
+### Patch Changes
+
+- Updated dependencies [[`301f6ba`](https://github.com/TanStack/router/commit/301f6ba4599386edd6fb3b8423938c48eedb501f)]:
+  - @tanstack/start-plugin-core@1.171.13
+  - @tanstack/solid-router@1.170.12
+  - @tanstack/solid-start-client@1.168.9
+  - @tanstack/solid-start-server@1.167.15
+  - @tanstack/start-client-core@1.170.8
+  - @tanstack/start-server-core@1.169.10
+
+## 1.168.20
+
+### Patch Changes
+
+- Updated dependencies [[`8091918`](https://github.com/TanStack/router/commit/80919186cbdd0deb948b46fe328881a14a08f414)]:
+  - @tanstack/start-plugin-core@1.171.12
+
+## 1.168.19
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.170.11
+  - @tanstack/solid-start-client@1.168.8
+  - @tanstack/solid-start-server@1.167.14
+  - @tanstack/start-client-core@1.170.7
+  - @tanstack/start-plugin-core@1.171.11
+  - @tanstack/start-server-core@1.169.9
+
+## 1.168.18
+
+### Patch Changes
+
+- [#7509](https://github.com/TanStack/router/pull/7509) [`9cb7a00`](https://github.com/TanStack/router/commit/9cb7a003e6e5fa3706711870c7b10a5266356e3b) - feat(rsbuild): add RSC support
+
+- Updated dependencies [[`9cb7a00`](https://github.com/TanStack/router/commit/9cb7a003e6e5fa3706711870c7b10a5266356e3b)]:
+  - @tanstack/start-plugin-core@1.171.10
+  - @tanstack/start-server-core@1.169.8
+  - @tanstack/solid-start-server@1.167.13
+
+## 1.168.17
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.170.10
+  - @tanstack/solid-start-client@1.168.7
+  - @tanstack/solid-start-server@1.167.12
+  - @tanstack/start-client-core@1.170.6
+  - @tanstack/start-plugin-core@1.171.9
+  - @tanstack/start-server-core@1.169.7
+
+## 1.168.16
+
+### Patch Changes
+
+- Updated dependencies [[`d1997b6`](https://github.com/TanStack/router/commit/d1997b66d7c24c1d64772bb8bab5caf9c6d9cc48)]:
+  - @tanstack/start-server-core@1.169.6
+  - @tanstack/solid-router@1.170.9
+  - @tanstack/solid-start-server@1.167.11
+  - @tanstack/start-plugin-core@1.171.8
+  - @tanstack/solid-start-client@1.168.6
+  - @tanstack/start-client-core@1.170.5
+
+## 1.168.15
+
+### Patch Changes
+
+- Updated dependencies [[`9c09bca`](https://github.com/TanStack/router/commit/9c09bca59e9613e9a6fd9b7149b0737898e705d6)]:
+  - @tanstack/start-plugin-core@1.171.7
+  - @tanstack/start-server-core@1.169.5
+  - @tanstack/solid-start-server@1.167.10
+
+## 1.168.14
+
+### Patch Changes
+
+- [#7492](https://github.com/TanStack/router/pull/7492) [`71fb329`](https://github.com/TanStack/router/commit/71fb3297e93a126e1bcfd9eeb0626cc4b8df8dd8) - Avoid pulling the client hydration entry into root `@tanstack/react-start` and `@tanstack/solid-start` imports by re-exporting `Hydrate` from framework client Hydrate-only subpaths.
+
+- Updated dependencies [[`71fb329`](https://github.com/TanStack/router/commit/71fb3297e93a126e1bcfd9eeb0626cc4b8df8dd8)]:
+  - @tanstack/solid-start-client@1.168.5
+
+## 1.168.13
+
+### Patch Changes
+
+- Fix serialization adapter module resolution in TanStack Start. Vite dev now uses clean runtime-specific virtual module IDs instead of browser requests containing encoded null-byte virtual IDs, which avoids reverse proxy failures. When no serialization adapters are configured, Vite and Rsbuild now resolve `#tanstack-start-plugin-adapters` through the package empty-adapter fallback. ([#7484](https://github.com/TanStack/router/pull/7484))
+
+- Publish matching TanStack Start dev server packages so fresh installs do not pair a Start plugin that no longer provides `tanstack-start-injected-head-scripts:v` with an older Start server runtime that still imports it. ([#7487](https://github.com/TanStack/router/pull/7487))
+
+- Updated dependencies [[`a82cec6`](https://github.com/TanStack/router/commit/a82cec69474c366b36efdb3f43c4efe8311c485a), [`d8be4f8`](https://github.com/TanStack/router/commit/d8be4f8adf912128c96b7f83e9a6c49fb24b5eed)]:
+  - @tanstack/start-plugin-core@1.171.6
+  - @tanstack/start-client-core@1.170.4
+  - @tanstack/start-server-core@1.169.4
+  - @tanstack/solid-start-client@1.168.4
+  - @tanstack/solid-start-server@1.167.9
+
+## 1.168.12
+
+### Patch Changes
+
+- Add Vite bundled dev mode support for TanStack Start. Start now recognizes Vite's `experimental.bundledDev` opt-in, uses the bundled dev client entry in the dev manifest, keeps server requests pointed at the latest client build output, and preserves import-protection behavior for bundled client dev. ([#7482](https://github.com/TanStack/router/pull/7482))
+
+- Updated dependencies [[`90adda9`](https://github.com/TanStack/router/commit/90adda91aab7212cbcdb6159176b39d9ed01b827)]:
+  - @tanstack/start-plugin-core@1.171.5
+
+## 1.168.11
+
+### Patch Changes
+
+- Add support for Rsbuild client output formats, including module output by default and IIFE output for classic script environments. ([#7477](https://github.com/TanStack/router/pull/7477))
+
+  Client entry scripts and preloads are now represented as root route manifest assets, script preloads follow the manifest script format, and script asset cross-origin configuration uses the `script` key. The `transformAssets` script callback context now exposes only `kind: 'script'` and `url`, keeping script format handling internal to manifest rendering.
+
+- Fix Rsbuild server function metadata replay when Rspack restores modules from its persistent cache. ([#7477](https://github.com/TanStack/router/pull/7477))
+
+  Server function metadata is now stored on Rspack module build info and replayed from cached modules before resolver modules are rebuilt, preventing warm restarts from losing server function registrations.
+
+- Updated dependencies [[`51a97a1`](https://github.com/TanStack/router/commit/51a97a167fb3ef1b8ca70fbb63db635158f43509), [`51a97a1`](https://github.com/TanStack/router/commit/51a97a167fb3ef1b8ca70fbb63db635158f43509)]:
+  - @tanstack/solid-router@1.170.8
+  - @tanstack/start-plugin-core@1.171.4
+  - @tanstack/start-server-core@1.169.3
+  - @tanstack/solid-start-client@1.168.3
+  - @tanstack/solid-start-server@1.167.8
+  - @tanstack/start-client-core@1.170.3
+
+## 1.168.10
+
+### Patch Changes
+
+- Explicitly re-export public API names from `@tanstack/start-client-core` (`createServerFn`, `createMiddleware`, `createStart`, `createCsrfMiddleware`, `createIsomorphicFn`, `createClientOnlyFn`, `createServerOnlyFn`) alongside the existing `export *`. The explicit named re-exports are registered at link time (via Vite SSR's `defineExport` at `fileStartIndex`), so the namespace has these getters before any import body runs — survives the cold-start SSR cycle through user middleware where `export *` would otherwise produce a partial facade (`createMiddleware is not a function`). Workaround for vitejs/vite#22491 / #22493. ([#7466](https://github.com/TanStack/router/pull/7466))
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.170.7
+  - @tanstack/solid-start-client@1.168.2
+  - @tanstack/solid-start-server@1.167.7
+  - @tanstack/start-client-core@1.170.2
+  - @tanstack/start-plugin-core@1.171.3
+  - @tanstack/start-server-core@1.169.2
+
+## 1.168.9
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-plugin-core@1.171.2
+
+## 1.168.8
+
+### Patch Changes
+
+- Updated dependencies [[`0300f87`](https://github.com/TanStack/router/commit/0300f87ec5a7f878ffbe0b181acf84cba9139960)]:
+  - @tanstack/solid-router@1.170.6
+  - @tanstack/solid-start-client@1.168.1
+  - @tanstack/solid-start-server@1.167.6
+  - @tanstack/start-client-core@1.170.1
+  - @tanstack/start-plugin-core@1.171.1
+  - @tanstack/start-server-core@1.169.1
+
+## 1.168.7
+
+### Patch Changes
+
+- Updated dependencies [[`5fa9e55`](https://github.com/TanStack/router/commit/5fa9e555f3a2edb5e45586623e6bcbfa7f7c7a6b)]:
+  - @tanstack/solid-start-client@1.168.0
+  - @tanstack/start-client-core@1.170.0
+  - @tanstack/start-plugin-core@1.171.0
+  - @tanstack/start-server-core@1.169.0
+  - @tanstack/solid-start-server@1.167.5
+  - @tanstack/solid-router@1.170.5
+
+## 1.168.6
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.170.4
+  - @tanstack/solid-start-client@1.167.4
+  - @tanstack/solid-start-server@1.167.4
+  - @tanstack/start-client-core@1.169.4
+  - @tanstack/start-plugin-core@1.170.6
+  - @tanstack/start-server-core@1.168.4
+
+## 1.168.5
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-plugin-core@1.170.5
+
+## 1.168.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.170.3
+  - @tanstack/solid-start-client@1.167.3
+  - @tanstack/solid-start-server@1.167.3
+  - @tanstack/start-client-core@1.169.3
+  - @tanstack/start-plugin-core@1.170.4
+  - @tanstack/start-server-core@1.168.3
+
+## 1.168.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/solid-router@1.170.2
+  - @tanstack/solid-start-client@1.167.2
+  - @tanstack/solid-start-server@1.167.2
+  - @tanstack/start-client-core@1.169.2
+  - @tanstack/start-plugin-core@1.170.3
+  - @tanstack/start-server-core@1.168.2
+
+## 1.168.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-plugin-core@1.170.2
+
+## 1.168.1
+
+### Patch Changes
+
+- Updated dependencies [[`2387a2e`](https://github.com/TanStack/router/commit/2387a2eea0683004cc400b9f71bed5944eb60110)]:
+  - @tanstack/start-plugin-core@1.170.1
+  - @tanstack/start-server-core@1.168.1
+  - @tanstack/solid-router@1.170.1
+  - @tanstack/solid-start-client@1.167.1
+  - @tanstack/solid-start-server@1.167.1
+  - @tanstack/start-client-core@1.169.1
+
+## 1.168.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- Updated dependencies [[`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14), [`5ae2ae5`](https://github.com/TanStack/router/commit/5ae2ae5e0f8ce32e02667a482ea9be52a6150240)]:
+  - @tanstack/solid-router@1.170.0
+  - @tanstack/solid-start-client@1.167.0
+  - @tanstack/solid-start-server@1.167.0
+  - @tanstack/start-client-core@1.169.0
+  - @tanstack/start-plugin-core@1.170.0
+  - @tanstack/start-server-core@1.168.0
+
 ## 1.167.62
 
 ### Patch Changes

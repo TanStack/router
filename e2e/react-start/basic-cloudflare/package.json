@@ -9,7 +9,7 @@
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "cf-typegen": "wrangler types",
-    "postinstall": "npm run cf-typegen",
+    "postinstall": "WRANGLER_LOG=warn npm run --silent cf-typegen",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
@@ -30,7 +30,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
-    "vite": "^8.0.0",
+    "vite": "^8.0.14",
     "wrangler": "^4.74.0"
   }
 }

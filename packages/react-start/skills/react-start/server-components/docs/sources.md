@@ -34,6 +34,6 @@ Validated on 2026-04-13.
 ## Notes on drift observed during validation
 
 - Current RSC docs and blog use `renderServerComponent`, `createCompositeComponent`, `CompositeComponent`, and low-level Flight APIs from `@tanstack/react-start/rsc`.
-- Current Server Functions docs use `.inputValidator(...)`.
+- Current Server Functions docs use `.validator(...)`.
 - Some current RSC docs snippets still show older `.validator(...)`.
 - Older official repo examples may still show `renderRsc` and older config shapes. Prefer the current docs above.

@@ -59,10 +59,13 @@ ts-perf
 /examples/*/*/package-lock.json
 
 .netlify
+.vercel
 
 nx-cloud.env
 .nx/cache
 .nx/workspace-data
+.nx/polygraph
+.nx/self-healing
 
 gpt/db.json
 
@@ -87,3 +90,6 @@ vite.config.ts.timestamp_*
 
 # eslint-plugin-start perf fixtures
 /e2e/eslint-plugin-start/src/perf/generated
+
+# local memory flame profiles
+benchmarks/memory/**/.profiles/

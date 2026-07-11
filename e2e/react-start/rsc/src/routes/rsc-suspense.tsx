@@ -93,7 +93,7 @@ async function AsyncMetric({ label, delay }: { label: string; delay: number }) {
 }
 
 const getSuspenseServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { delay?: number }) => data)
+  .validator((data: { delay?: number }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
     const delay = data.delay ?? 100
