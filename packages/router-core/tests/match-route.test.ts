@@ -141,9 +141,7 @@ describe('matchRoute', () => {
       path: '/projects/$projectId',
       params: {
         parse: (params: { projectId: string }) => {
-          if (
-            typeof (params as Record<string, unknown>).orgId !== 'number'
-          ) {
+          if (typeof (params as Record<string, unknown>).orgId !== 'number') {
             return false
           }
           return { projectId: Number(params.projectId) }
@@ -151,9 +149,7 @@ describe('matchRoute', () => {
       },
     })
     const router = createTestRouter({
-      routeTree: rootRoute.addChildren([
-        orgRoute.addChildren([projectRoute]),
-      ]),
+      routeTree: rootRoute.addChildren([orgRoute.addChildren([projectRoute])]),
       history: createMemoryHistory({
         initialEntries: ['/orgs/42/projects/7'],
       }),
@@ -250,5 +246,4 @@ describe('matchRoute', () => {
       }),
     ).toEqual({ invoiceId: 123 })
   })
-
 })
