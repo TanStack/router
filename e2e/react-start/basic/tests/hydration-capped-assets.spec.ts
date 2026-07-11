@@ -42,10 +42,8 @@ test.describe('SSR hydration capped route assets', () => {
     await expect(
       page.locator('meta[name="capped-assets-child-head"]'),
     ).toHaveCount(0)
-    expect(
-      await page.evaluate(() =>
-        Boolean((window as any).__CAPPED_ASSETS_CHILD_SCRIPT),
-      ),
-    ).toBe(false)
+    await expect(
+      page.locator('html[data-capped-assets-child-script]'),
+    ).toHaveCount(0)
   })
 })

@@ -14,9 +14,7 @@ export const Route = createFileRoute('/hydration-capped-assets/child')({
   }),
   scripts: ({ loaderData }) => [
     {
-      children: `window.__CAPPED_ASSETS_CHILD_SCRIPT = ${JSON.stringify(
-        loaderData?.title ?? 'missing-loader-data',
-      )}`,
+      children: `document.documentElement.setAttribute('data-capped-assets-child-script', ${JSON.stringify(loaderData?.title ?? 'missing-loader-data')})`,
     },
   ],
   component: () => (

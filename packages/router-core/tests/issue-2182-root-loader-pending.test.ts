@@ -45,6 +45,10 @@ describe('issue #2182: root loader pending UI on initial page visit', () => {
 
     const load = router.load()
     load.catch(() => {})
+    let loadSettled = false
+    void load.finally(() => {
+      loadSettled = true
+    })
 
     // Let the loader start; before pendingMs nothing is published.
     await vi.advanceTimersByTimeAsync(999)
@@ -60,11 +64,12 @@ describe('issue #2182: root loader pending UI on initial page visit', () => {
     expect(rootMatch).toBeDefined()
     expect(rootMatch?.status).toBe('pending')
     expect(rootMatch?.isFetching).toBe('loader')
-    expect(rootMatch?._.loadPromise?.status).toBe('pending')
+    expect(loadSettled).toBe(false)
 
     // Resolving the loader completes the final commit with loader data.
     loaderGate.resolve({ user: 'flo' })
     await load
+    expect(loadSettled).toBe(true)
 
     const settledRoot = router.state.matches.find(
       (match) => match.routeId === rootRouteId,

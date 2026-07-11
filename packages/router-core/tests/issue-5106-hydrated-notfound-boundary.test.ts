@@ -47,9 +47,18 @@ describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
       component: () => 'Post',
       notFoundComponent: () => 'Post not found',
     })
+    const safeLoader = vi.fn(() => 'safe-data')
+    const safeRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/safe',
+      loader: safeLoader,
+    })
 
     const router = createTestRouter({
-      routeTree: rootRoute.addChildren([postsRoute.addChildren([postRoute])]),
+      routeTree: rootRoute.addChildren([
+        postsRoute.addChildren([postRoute]),
+        safeRoute,
+      ]),
       history,
       isServer: false,
     })
@@ -112,16 +121,24 @@ describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
     expect(postsLoader).not.toHaveBeenCalled()
     expect(postLoader).not.toHaveBeenCalled()
 
-    // Every match settled: an unsettled loadPromise here is the #5106 freeze -
-    // the framework Match suspends on it and the parent never hydrates.
-    for (const match of stateMatches) {
-      expect(match._.dehydrated).toBeUndefined()
-      expect(match._.loadPromise).toBeUndefined()
-    }
-
     // Hydration finished without needing a follow-up router.load().
     expect(router.stores.resolvedLocation.get()).toBeDefined()
     expect(router.stores.isLoading.get()).toBe(false)
+
+    // Prove the hydrated lane did not freeze the router by leaving it able to
+    // complete an ordinary client navigation. This observes the consequence
+    // that matters without reading hydration/readiness bookkeeping.
+    await router.navigate({ to: '/safe' })
+    expect(router.state.location.pathname).toBe('/safe')
+    expect(router.state.isLoading).toBe(false)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: safeRoute.id,
+      status: 'success',
+      loaderData: 'safe-data',
+    })
+    expect(safeLoader).toHaveBeenCalledTimes(1)
+    expect(postsLoader).not.toHaveBeenCalled()
+    expect(postLoader).not.toHaveBeenCalled()
   })
 
   it('ancestor boundary replays the dehydrated notFound in the follow-up load instead of loading the omitted child', async () => {
@@ -147,9 +164,18 @@ describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
       loader: postLoader,
       component: () => 'Post',
     })
+    const safeLoader = vi.fn(() => 'safe-data')
+    const safeRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/safe',
+      loader: safeLoader,
+    })
 
     const router = createTestRouter({
-      routeTree: rootRoute.addChildren([postsRoute.addChildren([postRoute])]),
+      routeTree: rootRoute.addChildren([
+        postsRoute.addChildren([postRoute]),
+        safeRoute,
+      ]),
       history,
       isServer: false,
     })
@@ -210,11 +236,17 @@ describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
     expect(postLoader).not.toHaveBeenCalled()
     expect(postsLoader).not.toHaveBeenCalled()
 
-    // The committed lane is fully settled - nothing left for React to
-    // suspend on (the #5106 freeze).
-    for (const match of stateMatches) {
-      expect(match._.dehydrated).toBeUndefined()
-      expect(match._.loadPromise).toBeUndefined()
-    }
+    // The replayed boundary must not strand subsequent client work.
+    await router.navigate({ to: '/safe' })
+    expect(router.state.location.pathname).toBe('/safe')
+    expect(router.state.isLoading).toBe(false)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: safeRoute.id,
+      status: 'success',
+      loaderData: 'safe-data',
+    })
+    expect(safeLoader).toHaveBeenCalledTimes(1)
+    expect(postLoader).not.toHaveBeenCalled()
+    expect(postsLoader).not.toHaveBeenCalled()
   })
 })

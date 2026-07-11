@@ -52,18 +52,16 @@ describe('loadRouteChunk lazy chunk rejection (PR #6645 port)', () => {
       await new Promise((resolve) => setTimeout(resolve, 20))
       expect(unhandledRejection).not.toHaveBeenCalled()
 
-      // The failed chunk is evicted, not poisoned forever.
-      expect((fooRoute as any)._lazyPromise).toBeUndefined()
-      expect((fooRoute as any)._lazyLoaded).toBeFalsy()
-      expect((fooRoute as any)._componentsLoaded).toBeFalsy()
-
       // A later pass retries the import and succeeds.
       await router.loadRouteChunk(fooRoute as any)
       expect(lazyCalls).toBe(2)
-      expect((fooRoute as any)._lazyLoaded).toBe(true)
-      expect((fooRoute as any)._componentsLoaded).toBe(true)
       expect(fooRoute.options.component).toBe(fooComponent)
       expect(unhandledRejection).not.toHaveBeenCalled()
+
+      // The successful retry is cached, so an additional consumer does not
+      // invoke the lazy importer again.
+      await router.loadRouteChunk(fooRoute as any)
+      expect(lazyCalls).toBe(2)
     } finally {
       process.off('unhandledRejection', unhandledRejection)
     }

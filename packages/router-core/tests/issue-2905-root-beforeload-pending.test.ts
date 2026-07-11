@@ -44,6 +44,10 @@ describe('issue #2905: root beforeLoad pending UI on initial load', () => {
 
     const load = router.load()
     load.catch(() => {})
+    let loadSettled = false
+    void load.finally(() => {
+      loadSettled = true
+    })
 
     // Before the default pendingMs (1000ms) elapses, nothing is published.
     await vi.advanceTimersByTimeAsync(999)
@@ -57,11 +61,12 @@ describe('issue #2905: root beforeLoad pending UI on initial load', () => {
     )
     expect(rootMatch).toBeDefined()
     expect(rootMatch?.status).toBe('pending')
-    expect(rootMatch?._.loadPromise?.status).toBe('pending')
+    expect(loadSettled).toBe(false)
 
     // Publication is presentation only: the load must still settle normally.
     beforeLoadGate.resolve({ auth: 'ok' })
     await load
+    expect(loadSettled).toBe(true)
 
     const settledRoot = router.state.matches.find(
       (match) => match.routeId === rootRouteId,

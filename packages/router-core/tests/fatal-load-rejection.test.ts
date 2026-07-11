@@ -40,9 +40,15 @@ describe('fatal load rejection', () => {
           })
         },
       })
+      const safeLoader = vi.fn(() => 'safe data')
+      const safeRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/safe',
+        loader: safeLoader,
+      })
 
       const router = createTestRouter({
-        routeTree: rootRoute.addChildren([badRoute]),
+        routeTree: rootRoute.addChildren([badRoute, safeRoute]),
         history: createMemoryHistory({ initialEntries: ['/bad'] }),
       })
 
@@ -52,11 +58,23 @@ describe('fatal load rejection', () => {
       await new Promise((resolve) => setTimeout(resolve, 0))
       expect(unhandledRejection).toHaveBeenCalledWith(boom, expect.anything())
 
-      // No committed match may keep a pending loadPromise (hung Suspense).
-      expect(router.state.matches.length).toBeGreaterThan(0)
-      for (const match of router.state.matches) {
-        expect(match._.loadPromise?.status ?? 'settled').not.toBe('pending')
-      }
+      // A fatal machinery failure is not a route-level error that can be
+      // rendered by the matched route. Once router.load() has returned, the
+      // public lane must be settled and the router must remain usable.
+      expect(router.state.isLoading).toBe(false)
+
+      // A dangling readiness owner would strand framework consumers on the
+      // failed lane. Prove liveness through a normal follow-up navigation
+      // instead of inspecting match-owned promise bookkeeping.
+      await router.navigate({ to: '/safe' })
+      expect(router.state.location.pathname).toBe('/safe')
+      expect(router.state.isLoading).toBe(false)
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: safeRoute.id,
+        status: 'success',
+        loaderData: 'safe data',
+      })
+      expect(safeLoader).toHaveBeenCalledTimes(1)
     } finally {
       process.off('unhandledRejection', unhandledRejection)
     }
