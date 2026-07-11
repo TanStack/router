@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -7,6 +7,10 @@ import {
   notFound,
 } from '../src'
 import { createTestRouter } from './routerTestUtils'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 /**
  * A settled success stay-match must keep its abortController un-aborted
@@ -265,38 +269,34 @@ describe('stay-match abort scope', () => {
     let loaderCalls = 0
     const loaderSignals: Array<AbortSignal> = []
 
-    try {
-      const rootRoute = new BaseRootRoute({})
-      const accountRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/account',
-        staleTime: Infinity,
-        loader: ({ abortController }: { abortController: AbortController }) => {
-          loaderSignals.push(abortController.signal)
-          return { revision: ++loaderCalls }
-        },
-        head: ({ loaderData }) => {
-          if (loaderData?.revision === 2) {
-            throw new Error('fresh head failed')
-          }
-          return { meta: [{ title: 'account' }] }
-        },
-      })
-      const router = createTestRouter({
-        routeTree: rootRoute.addChildren([accountRoute]),
-        history: createMemoryHistory({ initialEntries: ['/account'] }),
-      })
+    const rootRoute = new BaseRootRoute({})
+    const accountRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/account',
+      staleTime: Infinity,
+      loader: ({ abortController }: { abortController: AbortController }) => {
+        loaderSignals.push(abortController.signal)
+        return { revision: ++loaderCalls }
+      },
+      head: ({ loaderData }) => {
+        if (loaderData?.revision === 2) {
+          throw new Error('fresh head failed')
+        }
+        return { meta: [{ title: 'account' }] }
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([accountRoute]),
+      history: createMemoryHistory({ initialEntries: ['/account'] }),
+    })
 
-      await router.load()
-      await router.invalidate()
-      await vi.waitFor(() => expect(router._backgroundLoad).toBeUndefined())
+    await router.load()
+    await router.invalidate()
+    await vi.waitFor(() => expect(router._backgroundLoad).toBeUndefined())
 
-      expect(router.state.matches.at(-1)?.loaderData).toEqual({ revision: 1 })
-      expect(loaderSignals).toHaveLength(2)
-      expect(loaderSignals[0]?.aborted).toBe(false)
-      expect(loaderSignals[1]?.aborted).toBe(true)
-    } finally {
-      consoleError.mockRestore()
-    }
+    expect(router.state.matches.at(-1)?.loaderData).toEqual({ revision: 1 })
+    expect(loaderSignals).toHaveLength(2)
+    expect(loaderSignals[0]?.aborted).toBe(false)
+    expect(loaderSignals[1]?.aborted).toBe(true)
   })
 })

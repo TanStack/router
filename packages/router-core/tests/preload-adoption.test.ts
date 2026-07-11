@@ -1,7 +1,11 @@
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 /**
  * Preload adoption edge cases. The happy path (navigation adopts an
@@ -18,78 +22,74 @@ describe('preload adoption', () => {
     vi.useFakeTimers()
     vi.setSystemTime(0)
 
-    try {
-      const revalidationGate = createControlledPromise<{
-        notifications: Array<string>
-      }>()
-      let loaderCalls = 0
+    const revalidationGate = createControlledPromise<{
+      notifications: Array<string>
+    }>()
+    let loaderCalls = 0
 
-      const rootRoute = new BaseRootRoute({})
-      const indexRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/',
-      })
-      const notificationsRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/notifications',
-        staleTime: 0,
-        preloadStaleTime: 0,
-        gcTime: 60_000,
-        loader: {
-          staleReloadMode: 'blocking',
-          handler: () => {
-            loaderCalls++
-            if (loaderCalls === 1) {
-              return { notifications: ['old'] }
-            }
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const notificationsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/notifications',
+      staleTime: 0,
+      preloadStaleTime: 0,
+      gcTime: 60_000,
+      loader: {
+        staleReloadMode: 'blocking',
+        handler: () => {
+          loaderCalls++
+          if (loaderCalls === 1) {
+            return { notifications: ['old'] }
+          }
 
-            return revalidationGate
-          },
+          return revalidationGate
         },
-      })
+      },
+    })
 
-      const router = createTestRouter({
-        routeTree: rootRoute.addChildren([indexRoute, notificationsRoute]),
-        history: createMemoryHistory({ initialEntries: ['/'] }),
-      })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, notificationsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
 
-      await router.load()
-      await router.preloadRoute({ to: '/notifications' } as any)
+    await router.load()
+    await router.preloadRoute({ to: '/notifications' } as any)
 
-      expect(loaderCalls).toBe(1)
+    expect(loaderCalls).toBe(1)
 
-      // The cached successful preload is now stale. A second hover starts a
-      // genuine revalidation while the user clicks the link.
-      await vi.advanceTimersByTimeAsync(1)
-      const revalidation = router.preloadRoute({
-        to: '/notifications',
-      } as any)
-      await vi.waitFor(() => expect(loaderCalls).toBe(2))
+    // The cached successful preload is now stale. A second hover starts a
+    // genuine revalidation while the user clicks the link.
+    await vi.advanceTimersByTimeAsync(1)
+    const revalidation = router.preloadRoute({
+      to: '/notifications',
+    } as any)
+    await vi.waitFor(() => expect(loaderCalls).toBe(2))
 
-      let navigationSettled = false
-      const navigation = router.navigate({ to: '/notifications' }).then(() => {
-        navigationSettled = true
-      })
-      await Promise.resolve()
+    let navigationSettled = false
+    const navigation = router.navigate({ to: '/notifications' }).then(() => {
+      navigationSettled = true
+    })
+    await Promise.resolve()
 
-      // The navigation may share the revalidation, but it must not treat the
-      // stale cached snapshot as the completed result while fresh work runs.
-      expect(navigationSettled).toBe(false)
+    // The navigation may share the revalidation, but it must not treat the
+    // stale cached snapshot as the completed result while fresh work runs.
+    expect(navigationSettled).toBe(false)
 
-      revalidationGate.resolve({ notifications: ['fresh'] })
-      await Promise.all([revalidation, navigation])
+    revalidationGate.resolve({ notifications: ['fresh'] })
+    await Promise.all([revalidation, navigation])
 
-      // A fix may either share the fresh revalidation or run a navigation
-      // loader of its own; correctness only requires publishing fresh data.
-      expect(loaderCalls).toBeGreaterThanOrEqual(2)
-      expect(
-        router.state.matches.find(
-          (match) => match.routeId === notificationsRoute.id,
-        )?.loaderData,
-      ).toEqual({ notifications: ['fresh'] })
-    } finally {
-      vi.useRealTimers()
-    }
+    // A fix may either share the fresh revalidation or run a navigation
+    // loader of its own; correctness only requires publishing fresh data.
+    expect(loaderCalls).toBeGreaterThanOrEqual(2)
+    expect(
+      router.state.matches.find(
+        (match) => match.routeId === notificationsRoute.id,
+      )?.loaderData,
+    ).toEqual({ notifications: ['fresh'] })
   })
 
   test('navigating during the preload serial phase does not deadlock (adoption declined)', async () => {

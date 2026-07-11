@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -8,6 +8,15 @@ import {
   redirect,
 } from '../src'
 import { createTestRouter } from './routerTestUtils'
+
+const testCleanups: Array<() => void | Promise<void>> = []
+
+afterEach(async () => {
+  while (testCleanups.length) {
+    await testCleanups.pop()!()
+  }
+  vi.useRealTimers()
+})
 
 function abortAwareGate(signal: AbortSignal): Promise<void> {
   return new Promise((_resolve, reject) => {
@@ -31,46 +40,45 @@ describe('adversarial client lane ownership', () => {
       const laterListener = vi.fn()
       const unhandledRejection = vi.fn()
       process.on('unhandledRejection', unhandledRejection)
-
-      try {
-        const rootRoute = new BaseRootRoute({})
-        const indexRoute = new BaseRoute({
-          getParentRoute: () => rootRoute,
-          path: '/',
-        })
-        const targetRoute = new BaseRoute({
-          getParentRoute: () => rootRoute,
-          path: '/target',
-          loader: () => 'target data',
-        })
-        const router = createTestRouter({
-          routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
-          history: createMemoryHistory({ initialEntries: ['/'] }),
-        })
-
-        await router.load()
-        router.subscribe(eventType, () => {
-          throw listenerError
-        })
-        router.subscribe(eventType, laterListener)
-
-        await router.navigate({ to: '/target' })
-        await new Promise((resolve) => setTimeout(resolve, 0))
-
-        expect(laterListener).toHaveBeenCalledTimes(1)
-        expect(router.state.location.pathname).toBe('/target')
-        expect(router.state.matches.at(-1)).toMatchObject({
-          routeId: targetRoute.id,
-          status: 'success',
-        })
-        expect(router.stores.isLoading.get()).toBe(false)
-        expect(unhandledRejection).toHaveBeenCalledWith(
-          listenerError,
-          expect.anything(),
-        )
-      } finally {
+      testCleanups.push(() => {
         process.off('unhandledRejection', unhandledRejection)
-      }
+      })
+
+      const rootRoute = new BaseRootRoute({})
+      const indexRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+      })
+      const targetRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/target',
+        loader: () => 'target data',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+
+      await router.load()
+      router.subscribe(eventType, () => {
+        throw listenerError
+      })
+      router.subscribe(eventType, laterListener)
+
+      await router.navigate({ to: '/target' })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(laterListener).toHaveBeenCalledTimes(1)
+      expect(router.state.location.pathname).toBe('/target')
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: targetRoute.id,
+        status: 'success',
+      })
+      expect(router.stores.isLoading.get()).toBe(false)
+      expect(unhandledRejection).toHaveBeenCalledWith(
+        listenerError,
+        expect.anything(),
+      )
     },
   )
 
@@ -376,173 +384,167 @@ describe('adversarial client lane ownership', () => {
     const contextError = new Error('context failed after starting work')
     const unhandledRejection = vi.fn()
     process.on('unhandledRejection', unhandledRejection)
-
-    try {
-      let contextSignal: AbortSignal | undefined
-      let contextWorkAborted = false
-
-      const rootRoute = new BaseRootRoute({})
-      const brokenRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/broken',
-        context: ({ abortController }) => {
-          contextSignal = abortController.signal
-          abortController.signal.addEventListener(
-            'abort',
-            () => {
-              contextWorkAborted = true
-            },
-            { once: true },
-          )
-          throw contextError
-        },
-      })
-      const router = createTestRouter({
-        routeTree: rootRoute.addChildren([brokenRoute]),
-        history: createMemoryHistory({ initialEntries: ['/broken'] }),
-      })
-
-      await router.load()
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      expect(unhandledRejection).toHaveBeenCalledWith(
-        contextError,
-        expect.anything(),
-      )
-      expect(contextSignal?.aborted).toBe(true)
-      expect(contextWorkAborted).toBe(true)
-      expect(router.stores.isLoading.get()).toBe(false)
-    } finally {
+    testCleanups.push(() => {
       process.off('unhandledRejection', unhandledRejection)
-    }
+    })
+
+    let contextSignal: AbortSignal | undefined
+    let contextWorkAborted = false
+
+    const rootRoute = new BaseRootRoute({})
+    const brokenRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/broken',
+      context: ({ abortController }) => {
+        contextSignal = abortController.signal
+        abortController.signal.addEventListener(
+          'abort',
+          () => {
+            contextWorkAborted = true
+          },
+          { once: true },
+        )
+        throw contextError
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([brokenRoute]),
+      history: createMemoryHistory({ initialEntries: ['/broken'] }),
+    })
+
+    await router.load()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(unhandledRejection).toHaveBeenCalledWith(
+      contextError,
+      expect.anything(),
+    )
+    expect(contextSignal?.aborted).toBe(true)
+    expect(contextWorkAborted).toBe(true)
+    expect(router.stores.isLoading.get()).toBe(false)
   })
 
   test('a failed preflight cannot abort and strand the pending lane it attempted to supersede', async () => {
     const unhandledRejection = vi.fn()
     process.on('unhandledRejection', unhandledRejection)
+    testCleanups.push(() => {
+      process.off('unhandledRejection', unhandledRejection)
+    })
 
-    try {
-      const preflightError = new Error('next loaderDeps failed')
-      const pendingGate = createControlledPromise<void>()
-      let pendingSignal: AbortSignal | undefined
+    const preflightError = new Error('next loaderDeps failed')
+    const pendingGate = createControlledPromise<void>()
+    let pendingSignal: AbortSignal | undefined
 
-      const rootRoute = new BaseRootRoute({})
-      const aRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/a',
-      })
-      const pendingRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/pending',
-        pendingMs: 0,
-        pendingComponent: () => null,
-        loader: ({ abortController }) => {
-          pendingSignal = abortController.signal
-          return Promise.race([
-            pendingGate,
-            abortAwareGate(abortController.signal),
-          ])
-        },
-      })
-      const brokenRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/broken',
-        loaderDeps: (): Record<string, never> => {
-          throw preflightError
-        },
-        loader: () => 'never runs',
-      })
-      const router = createTestRouter({
-        routeTree: rootRoute.addChildren([aRoute, pendingRoute, brokenRoute]),
-        history: createMemoryHistory({ initialEntries: ['/a'] }),
-      })
+    const rootRoute = new BaseRootRoute({})
+    const aRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/a',
+    })
+    const pendingRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/pending',
+      pendingMs: 0,
+      pendingComponent: () => null,
+      loader: ({ abortController }) => {
+        pendingSignal = abortController.signal
+        return Promise.race([
+          pendingGate,
+          abortAwareGate(abortController.signal),
+        ])
+      },
+    })
+    const brokenRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/broken',
+      loaderDeps: (): Record<string, never> => {
+        throw preflightError
+      },
+      loader: () => 'never runs',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([aRoute, pendingRoute, brokenRoute]),
+      history: createMemoryHistory({ initialEntries: ['/a'] }),
+    })
 
-      await router.load()
-      const pendingNavigation = router.navigate({ to: '/pending' })
-      await vi.waitFor(() =>
-        expect(router.state.matches.at(-1)).toMatchObject({
-          routeId: pendingRoute.id,
-          status: 'pending',
-        }),
-      )
-
-      const brokenNavigation = router.navigate({ to: '/broken' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      expect(unhandledRejection).toHaveBeenCalledWith(
-        preflightError,
-        expect.anything(),
-      )
-      expect(pendingSignal?.aborted).toBe(false)
-      expect(router.stores.isLoading.get()).toBe(true)
-      expect(router.state.matches.at(-1)?._.loadPromise?.status).toBe('pending')
-
-      pendingGate.resolve()
-      await Promise.all([pendingNavigation, brokenNavigation])
-
-      expect(router.stores.isLoading.get()).toBe(false)
+    await router.load()
+    const pendingNavigation = router.navigate({ to: '/pending' })
+    await vi.waitFor(() =>
       expect(router.state.matches.at(-1)).toMatchObject({
         routeId: pendingRoute.id,
-        status: 'success',
-      })
-    } finally {
-      process.off('unhandledRejection', unhandledRejection)
-    }
+        status: 'pending',
+      }),
+    )
+
+    const brokenNavigation = router.navigate({ to: '/broken' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(unhandledRejection).toHaveBeenCalledWith(
+      preflightError,
+      expect.anything(),
+    )
+    expect(pendingSignal?.aborted).toBe(false)
+    expect(router.stores.isLoading.get()).toBe(true)
+    expect(router.state.matches.at(-1)?._.loadPromise?.status).toBe('pending')
+
+    pendingGate.resolve()
+    await Promise.all([pendingNavigation, brokenNavigation])
+
+    expect(router.stores.isLoading.get()).toBe(false)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: pendingRoute.id,
+      status: 'success',
+    })
   })
 
   test('forcePending exposes replacement readiness before pendingMs so visible UI can arm pendingMin', async () => {
     vi.useFakeTimers()
 
-    try {
-      const reloadGate = createControlledPromise<void>()
-      let loaderCalls = 0
+    const reloadGate = createControlledPromise<void>()
+    let loaderCalls = 0
 
-      const rootRoute = new BaseRootRoute({})
-      const pageRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/page',
-        pendingMs: 1_000,
-        pendingMinMs: 100,
-        pendingComponent: () => null,
-        loader: async () => {
-          if (++loaderCalls > 1) {
-            await reloadGate
-          }
-          return loaderCalls
-        },
-      })
-      const router = createTestRouter({
-        routeTree: rootRoute.addChildren([pageRoute]),
-        history: createMemoryHistory({ initialEntries: ['/page'] }),
-      })
+    const rootRoute = new BaseRootRoute({})
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+      pendingMs: 1_000,
+      pendingMinMs: 100,
+      pendingComponent: () => null,
+      loader: async () => {
+        if (++loaderCalls > 1) {
+          await reloadGate
+        }
+        return loaderCalls
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([pageRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+    })
 
-      await router.load()
+    await router.load()
 
-      let invalidationSettled = false
-      const invalidation = router.invalidate({ forcePending: true }).then(() => {
-        invalidationSettled = true
-      })
-      const pendingMatch = router.state.matches.find(
-        (match) => match.routeId === pageRoute.id,
-      )!
+    let invalidationSettled = false
+    const invalidation = router.invalidate({ forcePending: true }).then(() => {
+      invalidationSettled = true
+    })
+    const pendingMatch = router.state.matches.find(
+      (match) => match.routeId === pageRoute.id,
+    )!
 
-      expect(pendingMatch.status).toBe('pending')
-      expect(pendingMatch._.loadPromise?.status).toBe('pending')
-      pendingMatch._.loadPromise!.pendingUntil = Date.now() + 100
+    expect(pendingMatch.status).toBe('pending')
+    expect(pendingMatch._.loadPromise?.status).toBe('pending')
+    pendingMatch._.loadPromise!.pendingUntil = Date.now() + 100
 
-      reloadGate.resolve()
-      await vi.advanceTimersByTimeAsync(99)
-      expect(invalidationSettled).toBe(false)
-      expect(router.state.matches.at(-1)?.status).toBe('pending')
+    reloadGate.resolve()
+    await vi.advanceTimersByTimeAsync(99)
+    expect(invalidationSettled).toBe(false)
+    expect(router.state.matches.at(-1)?.status).toBe('pending')
 
-      await vi.advanceTimersByTimeAsync(1)
-      await invalidation
-      expect(router.state.matches.at(-1)).toMatchObject({
-        routeId: pageRoute.id,
-        status: 'success',
-      })
-    } finally {
-      vi.useRealTimers()
-    }
+    await vi.advanceTimersByTimeAsync(1)
+    await invalidation
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: pageRoute.id,
+      status: 'success',
+    })
   })
 })

@@ -14,7 +14,12 @@ import {
   createRouter,
 } from '../src'
 
-afterEach(() => {
+const testCleanups: Array<() => void | Promise<void>> = []
+
+afterEach(async () => {
+  while (testCleanups.length) {
+    await testCleanups.pop()!()
+  }
   cleanup()
   vi.useRealTimers()
   delete window.$_TSR
@@ -63,9 +68,7 @@ test('root pending fallback remains visible through pendingMinMs', async () => {
 
 test('hydrated routers show the root pending fallback through pendingMinMs on a later reload', async () => {
   const reloadGate = createControlledPromise<void>()
-  const rootLoader = vi.fn(() =>
-    reloadGate.then(() => ({ generation: 2 })),
-  )
+  const rootLoader = vi.fn(() => reloadGate.then(() => ({ generation: 2 })))
   const rootRoute = createRootRoute({
     pendingMs: 0,
     pendingMinMs: 100,
@@ -286,25 +289,24 @@ test('the root suspense boundary stays stable across hydration', async () => {
   document.body.appendChild(container)
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
   const root = hydrateRoot(container, <RouterProvider router={router} />)
-
-  try {
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    expect(container).toHaveTextContent('preserved')
-    // One initializer belongs to the server render and one to client
-    // hydration. The stable boundary must preserve that hydrated client
-    // instance instead of creating a third one.
-    expect(initializers).toHaveBeenCalledTimes(2)
-    expect(mounts).toHaveBeenCalledTimes(1)
-    expect(unmounts).not.toHaveBeenCalled()
-    expect(consoleError).not.toHaveBeenCalled()
-  } finally {
-    await act(async () => root.unmount())
+  testCleanups.push(async () => {
+    await act(() => root.unmount())
     consoleError.mockRestore()
     container.remove()
-  }
+  })
+
+  await act(async () => {
+    await Promise.resolve()
+  })
+
+  expect(container).toHaveTextContent('preserved')
+  // One initializer belongs to the server render and one to client
+  // hydration. The stable boundary must preserve that hydrated client
+  // instance instead of creating a third one.
+  expect(initializers).toHaveBeenCalledTimes(2)
+  expect(mounts).toHaveBeenCalledTimes(1)
+  expect(unmounts).not.toHaveBeenCalled()
+  expect(consoleError).not.toHaveBeenCalled()
 })
 
 test('the root pending boundary contains a route component that suspends during server rendering', async () => {

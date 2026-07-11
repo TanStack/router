@@ -22,7 +22,12 @@ declare global {
   }
 }
 
-afterEach(() => {
+const testCleanups: Array<() => void | Promise<void>> = []
+
+afterEach(async () => {
+  while (testCleanups.length) {
+    await testCleanups.pop()!()
+  }
   vi.restoreAllMocks()
   window.$_TSR = undefined
   document.body.innerHTML = ''
@@ -165,28 +170,27 @@ describe('hydrating a server-capped boundary lane', () => {
         container,
         <RouterProvider router={clientRouter} />,
       )
-
-      try {
-        await act(async () => {
-          await Promise.resolve()
-        })
-
-        // A shorter dehydrated lane means SPA mode only for an actual shell.
-        // Here it is shorter because the server already rendered a terminal
-        // boundary, so hydration must not replace that boundary with pending UI.
-        expect(container).toHaveTextContent(
-          outcome === 'notFound' ? 'Boundary not found' : 'Boundary error',
-        )
-        expect(container).not.toHaveTextContent('Boundary pending')
-        expect(consoleError.mock.calls.flat().join(' ')).not.toMatch(
-          /hydration|did not match/i,
-        )
-        expect(childLoader).not.toHaveBeenCalled()
-      } finally {
+      testCleanups.push(async () => {
         replayAssets.resolve({})
         await clientRouter.latestLoadPromise
-        await act(async () => root.unmount())
-      }
+        await act(() => root.unmount())
+      })
+
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      // A shorter dehydrated lane means SPA mode only for an actual shell.
+      // Here it is shorter because the server already rendered a terminal
+      // boundary, so hydration must not replace that boundary with pending UI.
+      expect(container).toHaveTextContent(
+        outcome === 'notFound' ? 'Boundary not found' : 'Boundary error',
+      )
+      expect(container).not.toHaveTextContent('Boundary pending')
+      expect(consoleError.mock.calls.flat().join(' ')).not.toMatch(
+        /hydration|did not match/i,
+      )
+      expect(childLoader).not.toHaveBeenCalled()
     },
   )
 })

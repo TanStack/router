@@ -20,7 +20,12 @@ declare global {
   }
 }
 
-afterEach(() => {
+const testCleanups: Array<() => void | Promise<void>> = []
+
+afterEach(async () => {
+  while (testCleanups.length) {
+    await testCleanups.pop()!()
+  }
   vi.restoreAllMocks()
   window.$_TSR = undefined
   document.body.innerHTML = ''
@@ -157,22 +162,21 @@ describe('hydrating a server-capped boundary lane', () => {
           setup: () => () => <RouterProvider router={clientRouter} />,
         }),
       )
-
-      try {
-        clientApp.mount(container)
-        await Vue.nextTick()
-
-        expect(container).toHaveTextContent(expectedBoundary)
-        expect(container).not.toHaveTextContent('Boundary pending')
-        expect(
-          [consoleError.mock.calls, consoleWarn.mock.calls].flat(2).join(' '),
-        ).not.toMatch(/hydration|mismatch/i)
-        expect(childLoader).not.toHaveBeenCalled()
-      } finally {
+      testCleanups.push(async () => {
         clientApp.unmount()
         replayAssets.resolve({})
         await clientRouter.latestLoadPromise
-      }
+      })
+
+      clientApp.mount(container)
+      await Vue.nextTick()
+
+      expect(container).toHaveTextContent(expectedBoundary)
+      expect(container).not.toHaveTextContent('Boundary pending')
+      expect(
+        [consoleError.mock.calls, consoleWarn.mock.calls].flat(2).join(' '),
+      ).not.toMatch(/hydration|mismatch/i)
+      expect(childLoader).not.toHaveBeenCalled()
     },
   )
 })

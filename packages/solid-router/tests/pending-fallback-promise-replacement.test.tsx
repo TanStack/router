@@ -10,7 +10,12 @@ import {
   createRouter,
 } from '../src'
 
-afterEach(() => {
+const testCleanups: Array<() => void | Promise<void>> = []
+
+afterEach(async () => {
+  while (testCleanups.length) {
+    await testCleanups.pop()!()
+  }
   cleanup()
 })
 
@@ -43,36 +48,33 @@ test('a mounted child pending fallback follows a replacement load promise for th
   expect(await screen.findByText('Generation 1')).toBeInTheDocument()
 
   const firstInvalidation = router.invalidate({ forcePending: true })
-  let secondInvalidation: Promise<void> | undefined
-  try {
-    expect(await screen.findByTestId('pending')).toBeInTheDocument()
-
-    const matchId = router.state.matches.find(
-      (match) => match.routeId === pageRoute.id,
-    )!.id
-    const firstPromise = router.getMatch(matchId, false)!._.loadPromise!
-    expect(firstPromise.pendingUntil).toBeTypeOf('number')
-
-    await new Promise((resolve) => setTimeout(resolve, 25))
-    secondInvalidation = router.invalidate({ forcePending: true })
-
-    let secondPromise = router.getMatch(matchId, false)!._.loadPromise!
-    await waitFor(() => {
-      secondPromise = router.getMatch(matchId, false)!._.loadPromise!
-      expect(secondPromise).not.toBe(firstPromise)
-      expect(secondPromise.status).toBe('pending')
-      expect(secondPromise.pendingUntil).toBeTypeOf('number')
-    })
-    // One continuously visible fallback owns one minimum-display deadline,
-    // even when internal loader ownership changes underneath it.
-    expect(secondPromise.pendingUntil).toBe(firstPromise.pendingUntil)
-  } finally {
+  const invalidations = [firstInvalidation]
+  testCleanups.push(async () => {
     firstReload.resolve()
     secondReload.resolve()
-    await Promise.allSettled(
-      [firstInvalidation, secondInvalidation].filter(Boolean),
-    )
-  }
+    await Promise.allSettled(invalidations)
+  })
+  expect(await screen.findByTestId('pending')).toBeInTheDocument()
+
+  const matchId = router.state.matches.find(
+    (match) => match.routeId === pageRoute.id,
+  )!.id
+  const firstPromise = router.getMatch(matchId, false)!._.loadPromise!
+  expect(firstPromise.pendingUntil).toBeTypeOf('number')
+
+  await new Promise((resolve) => setTimeout(resolve, 25))
+  invalidations.push(router.invalidate({ forcePending: true }))
+
+  let secondPromise = router.getMatch(matchId, false)!._.loadPromise!
+  await waitFor(() => {
+    secondPromise = router.getMatch(matchId, false)!._.loadPromise!
+    expect(secondPromise).not.toBe(firstPromise)
+    expect(secondPromise.status).toBe('pending')
+    expect(secondPromise.pendingUntil).toBeTypeOf('number')
+  })
+  // One continuously visible fallback owns one minimum-display deadline,
+  // even when internal loader ownership changes underneath it.
+  expect(secondPromise.pendingUntil).toBe(firstPromise.pendingUntil)
 })
 
 test('the root pending fallback follows a replacement load promise for the same match', async () => {
@@ -101,34 +103,31 @@ test('the root pending fallback follows a replacement load promise for the same 
   expect(await screen.findByText('Generation 1')).toBeInTheDocument()
 
   const firstInvalidation = router.invalidate({ forcePending: true })
-  let secondInvalidation: Promise<void> | undefined
-  try {
-    expect(await screen.findByTestId('root-pending')).toBeInTheDocument()
-
-    const matchId = router.state.matches.find(
-      (match) => match.routeId === rootRoute.id,
-    )!.id
-    const firstPromise = router.getMatch(matchId, false)!._.loadPromise!
-    await waitFor(() => expect(firstPromise.pendingUntil).toBeTypeOf('number'))
-
-    await new Promise((resolve) => setTimeout(resolve, 25))
-    secondInvalidation = router.invalidate({ forcePending: true })
-
-    let secondPromise = router.getMatch(matchId, false)!._.loadPromise!
-    await waitFor(() => {
-      secondPromise = router.getMatch(matchId, false)!._.loadPromise!
-      expect(secondPromise).not.toBe(firstPromise)
-      expect(secondPromise.status).toBe('pending')
-      expect(secondPromise.pendingUntil).toBeTypeOf('number')
-    })
-    expect(secondPromise.pendingUntil).toBe(firstPromise.pendingUntil)
-  } finally {
+  const invalidations = [firstInvalidation]
+  testCleanups.push(async () => {
     firstReload.resolve()
     secondReload.resolve()
-    await Promise.allSettled(
-      [firstInvalidation, secondInvalidation].filter(Boolean),
-    )
-  }
+    await Promise.allSettled(invalidations)
+  })
+  expect(await screen.findByTestId('root-pending')).toBeInTheDocument()
+
+  const matchId = router.state.matches.find(
+    (match) => match.routeId === rootRoute.id,
+  )!.id
+  const firstPromise = router.getMatch(matchId, false)!._.loadPromise!
+  await waitFor(() => expect(firstPromise.pendingUntil).toBeTypeOf('number'))
+
+  await new Promise((resolve) => setTimeout(resolve, 25))
+  invalidations.push(router.invalidate({ forcePending: true }))
+
+  let secondPromise = router.getMatch(matchId, false)!._.loadPromise!
+  await waitFor(() => {
+    secondPromise = router.getMatch(matchId, false)!._.loadPromise!
+    expect(secondPromise).not.toBe(firstPromise)
+    expect(secondPromise.status).toBe('pending')
+    expect(secondPromise.pendingUntil).toBeTypeOf('number')
+  })
+  expect(secondPromise.pendingUntil).toBe(firstPromise.pendingUntil)
 })
 
 test('forcePending honors pendingMinMs when the reload settles before pendingMs', async () => {

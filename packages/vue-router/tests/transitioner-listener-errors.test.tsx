@@ -9,7 +9,12 @@ import {
   createRouter,
 } from '../src'
 
-afterEach(() => {
+const testCleanups: Array<() => void | Promise<void>> = []
+
+afterEach(async () => {
+  while (testCleanups.length) {
+    await testCleanups.pop()!()
+  }
   cleanup()
 })
 
@@ -19,6 +24,9 @@ test('a throwing load-event listener cannot interrupt route hooks or later navig
   const listenerError = new Error('onLoad listener failed')
   const unhandledRejection = vi.fn()
   process.on('unhandledRejection', unhandledRejection)
+  testCleanups.push(() => {
+    process.off('unhandledRejection', unhandledRejection)
+  })
 
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
   const indexRoute = createRoute({
@@ -43,33 +51,29 @@ test('a throwing load-event listener cannot interrupt route hooks or later navig
     history: createMemoryHistory({ initialEntries: ['/'] }),
   })
 
-  try {
-    render(<RouterProvider router={router} />)
-    expect(await screen.findByText('Index route')).toBeTruthy()
-    await waitFor(() => expect(router.state.status).toBe('idle'))
+  render(<RouterProvider router={router} />)
+  expect(await screen.findByText('Index route')).toBeTruthy()
+  await waitFor(() => expect(router.state.status).toBe('idle'))
 
-    const unsubscribe = router.subscribe('onLoad', (event) => {
-      if (event.toLocation.pathname === '/first') {
-        throw listenerError
-      }
-    })
+  const unsubscribe = router.subscribe('onLoad', (event) => {
+    if (event.toLocation.pathname === '/first') {
+      throw listenerError
+    }
+  })
 
-    await router.navigate({ to: '/first' })
-    expect(await screen.findByText('First route')).toBeTruthy()
-    expect(firstOnEnter).toHaveBeenCalledTimes(1)
+  await router.navigate({ to: '/first' })
+  expect(await screen.findByText('First route')).toBeTruthy()
+  expect(firstOnEnter).toHaveBeenCalledTimes(1)
 
-    unsubscribe()
-    await router.navigate({ to: '/second' })
-    expect(await screen.findByText('Second route')).toBeTruthy()
-    expect(secondOnEnter).toHaveBeenCalledTimes(1)
-    await waitFor(() => expect(router.state.status).toBe('idle'))
+  unsubscribe()
+  await router.navigate({ to: '/second' })
+  expect(await screen.findByText('Second route')).toBeTruthy()
+  expect(secondOnEnter).toHaveBeenCalledTimes(1)
+  await waitFor(() => expect(router.state.status).toBe('idle'))
 
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(unhandledRejection).toHaveBeenCalledWith(
-      listenerError,
-      expect.anything(),
-    )
-  } finally {
-    process.off('unhandledRejection', unhandledRejection)
-  }
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(unhandledRejection).toHaveBeenCalledWith(
+    listenerError,
+    expect.anything(),
+  )
 })

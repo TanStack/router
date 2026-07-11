@@ -7,9 +7,17 @@ import {
   createNonReactiveReadonlyStore,
   trimPathRight,
 } from '@tanstack/router-core'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getHandleRouteUpdateCode } from '../src/core/hmr'
 import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
+
+const testCleanups: Array<() => void | Promise<void>> = []
+
+afterEach(async () => {
+  while (testCleanups.length) {
+    await testCleanups.pop()!()
+  }
+})
 
 const getStoreConfig: GetStoreConfig = () => ({
   createMutableStore: createNonReactiveMutableStore,
@@ -150,15 +158,11 @@ describe('handleRouteUpdate', () => {
 
     const oldLoad = router.loadRouteChunk(itemRoute)!
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(
-        itemRoute.id,
-        new BaseRoute({ component: NewComponent } as any),
-      )
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(
+      itemRoute.id,
+      new BaseRoute({ component: NewComponent } as any),
+    )
 
     const newLoad = router.loadRouteChunk(itemRoute)!
     expect(newPreload).toHaveBeenCalledTimes(1)
@@ -200,15 +204,11 @@ describe('handleRouteUpdate', () => {
 
     const oldLoad = router.loadRouteChunk(itemRoute)!
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(
-        itemRoute.id,
-        new BaseRoute({ component: HotComponent } as any),
-      )
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(
+      itemRoute.id,
+      new BaseRoute({ component: HotComponent } as any),
+    )
 
     const newLoad = router.loadRouteChunk(itemRoute)!
 
@@ -255,12 +255,8 @@ describe('handleRouteUpdate', () => {
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(pathlessRoute.id, new BaseRoute({} as any))
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(pathlessRoute.id, new BaseRoute({} as any))
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
     expect(router.routesByPath[key]?.id).toBe(
@@ -286,12 +282,8 @@ describe('handleRouteUpdate', () => {
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(parentRoute.id, new BaseRoute({} as any))
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(parentRoute.id, new BaseRoute({} as any))
 
     expect(router.routesByPath[key]?.id).toBe(indexRoute.id)
     expect(router.routesByPath[key]?.id).toBe(
@@ -315,19 +307,15 @@ describe('handleRouteUpdate', () => {
 
     expect(router.getMatchedRoutes('/items/abc').foundRoute?.id).toBeUndefined()
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(
-        itemRoute.id,
-        new BaseRoute({
-          params: {
-            parse: ({ itemId }: { itemId: string }) => ({ itemId }),
-          },
-        } as any),
-      )
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(
+      itemRoute.id,
+      new BaseRoute({
+        params: {
+          parse: ({ itemId }: { itemId: string }) => ({ itemId }),
+        },
+      } as any),
+    )
 
     expect(router.getMatchedRoutes('/items/abc').foundRoute?.id).toBe(
       itemRoute.id,
@@ -357,23 +345,19 @@ describe('handleRouteUpdate', () => {
       parserVersion: 'old',
     })
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(
-        itemRoute.id,
-        new BaseRoute({
-          params: {
-            parse: ({ itemId }: { itemId: string }) => ({
-              itemId,
-              parserVersion: 'new',
-            }),
-          },
-        } as any),
-      )
-      await router.latestLoadPromise
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(
+      itemRoute.id,
+      new BaseRoute({
+        params: {
+          parse: ({ itemId }: { itemId: string }) => ({
+            itemId,
+            parserVersion: 'new',
+          }),
+        },
+      } as any),
+    )
+    await router.latestLoadPromise
 
     expect(router.stores.matches.get()[1]!.params).toMatchObject({
       itemId: 'abc',
@@ -393,12 +377,8 @@ describe('handleRouteUpdate', () => {
 
     expect((newRoute as any).to).toBeUndefined()
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(itemRoute.id, newRoute)
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(itemRoute.id, newRoute)
 
     expect(newRoute.id).toBe(itemRoute.id)
     expect(newRoute.path).toBe(itemRoute.path)
@@ -441,17 +421,13 @@ describe('handleRouteUpdate', () => {
       // only needs to ensure the now-incompatible cache entry is discarded.
       expect(cachedMatch.abortController.signal.aborted).toBe(true)
 
-      const restoreWindow = withWindowRouter(router)
-      try {
-        getHandleRouteUpdate()(
-          hotRoute.id,
-          new BaseRoute(
-            (removedOption === 'loader' ? { beforeLoad } : { loader }) as any,
-          ),
-        )
-      } finally {
-        restoreWindow()
-      }
+      testCleanups.push(withWindowRouter(router))
+      getHandleRouteUpdate()(
+        hotRoute.id,
+        new BaseRoute(
+          (removedOption === 'loader' ? { beforeLoad } : { loader }) as any,
+        ),
+      )
 
       expect(
         router.stores.cachedMatches
@@ -475,15 +451,11 @@ describe('handleRouteUpdate', () => {
     const rootMatch = router.stores.matches.get()[0]!
     const rootStore = router.stores.matchStores.get(rootMatch.id)!
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(
-        rootRoute.id,
-        new BaseRootRoute({ context: rootRouteContext } as any),
-      )
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(
+      rootRoute.id,
+      new BaseRootRoute({ context: rootRouteContext } as any),
+    )
 
     expect(rootStore.get().__beforeLoadContext).toBeUndefined()
     expect(rootStore.get().context).toEqual({
@@ -534,34 +506,32 @@ describe('handleRouteUpdate', () => {
       })
     })
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(childRoute.id, new BaseRoute({} as any))
-
-      // HMR clears the removed child context in both live generations before
-      // its invalidation commits. Each rebuild must use its own parent lane;
-      // pending context is not allowed to leak into rendered active state.
-      expect(
-        router.stores.matchStores.get(childId)!.get().context,
-      ).toMatchObject({
-        rootMode: 'active',
-      })
-      expect(
-        router.stores.matchStores.get(childId)!.get().context,
-      ).not.toHaveProperty('childBeforeLoad')
-      expect(
-        router.stores.pendingMatchStores.get(childId)!.get().context,
-      ).toMatchObject({
-        rootMode: 'pending',
-      })
-      expect(
-        router.stores.pendingMatchStores.get(childId)!.get().context,
-      ).not.toHaveProperty('childBeforeLoad')
-    } finally {
+    testCleanups.push(withWindowRouter(router))
+    testCleanups.push(async () => {
       pendingLoader.resolve('pending data')
       await pendingLoad
-      restoreWindow()
-    }
+    })
+    getHandleRouteUpdate()(childRoute.id, new BaseRoute({} as any))
+
+    // HMR clears the removed child context in both live generations before
+    // its invalidation commits. Each rebuild must use its own parent lane;
+    // pending context is not allowed to leak into rendered active state.
+    expect(router.stores.matchStores.get(childId)!.get().context).toMatchObject(
+      {
+        rootMode: 'active',
+      },
+    )
+    expect(
+      router.stores.matchStores.get(childId)!.get().context,
+    ).not.toHaveProperty('childBeforeLoad')
+    expect(
+      router.stores.pendingMatchStores.get(childId)!.get().context,
+    ).toMatchObject({
+      rootMode: 'pending',
+    })
+    expect(
+      router.stores.pendingMatchStores.get(childId)!.get().context,
+    ).not.toHaveProperty('childBeforeLoad')
   })
 
   it('recomputes route context when the context option changes', async () => {
@@ -578,18 +548,14 @@ describe('handleRouteUpdate', () => {
       source: 'old',
     })
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(
-        rootRoute.id,
-        new BaseRootRoute({
-          context: () => ({ source: 'new' }),
-        } as any),
-      )
-      await router.latestLoadPromise
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(
+      rootRoute.id,
+      new BaseRootRoute({
+        context: () => ({ source: 'new' }),
+      } as any),
+    )
+    await router.latestLoadPromise
 
     expect(router.stores.matches.get()[0]!.context).toEqual({
       routerContext: true,
@@ -619,18 +585,14 @@ describe('handleRouteUpdate', () => {
       derived: 'child-old',
     })
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(
-        rootRoute.id,
-        new BaseRootRoute({
-          context: () => ({ source: 'new' }),
-        } as any),
-      )
-      await router.latestLoadPromise
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(
+      rootRoute.id,
+      new BaseRootRoute({
+        context: () => ({ source: 'new' }),
+      } as any),
+    )
+    await router.latestLoadPromise
 
     expect(router.stores.matches.get()[1]!.context).toMatchObject({
       source: 'new',
@@ -665,13 +627,9 @@ describe('handleRouteUpdate', () => {
       styles: [{ children: '.hot {}' }],
     })
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(hotRoute.id, new BaseRoute({} as any))
-      await router.latestLoadPromise
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(hotRoute.id, new BaseRoute({} as any))
+    await router.latestLoadPromise
 
     const match = router.stores.matches.get()[1]!
     expect(match.meta).toBeUndefined()
@@ -710,12 +668,8 @@ describe('handleRouteUpdate', () => {
     const rootId = router.stores.matches.get()[0]!.id
     expect(router.stores.pendingMatches.get()[0]!.id).toBe(rootId)
 
-    const restoreWindow = withWindowRouter(router)
-    try {
-      getHandleRouteUpdate()(rootRoute.id, new BaseRootRoute({} as any))
-    } finally {
-      restoreWindow()
-    }
+    testCleanups.push(withWindowRouter(router))
+    getHandleRouteUpdate()(rootRoute.id, new BaseRootRoute({} as any))
 
     expect(router.stores.matchStores.get(rootId)!.get().meta).toBeUndefined()
     expect(router.stores.matchStores.get(rootId)!.get().scripts).toBeUndefined()
