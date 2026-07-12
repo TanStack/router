@@ -1,7 +1,10 @@
 import * as t from '@babel/types'
 import babel from '@babel/core'
 import { hasKeys } from '@tanstack/router-core'
-import { getVariableDeclaratorForExpressionPath } from '@tanstack/router-utils'
+import {
+  getVariableDeclaratorForExpressionPath,
+  unwrapExpression,
+} from '@tanstack/router-utils'
 import path from 'pathe'
 import { cleanId, codeFrameError, stripMethodCall } from './utils'
 import type {
@@ -150,20 +153,65 @@ function extractManualServerFnId(
   }
 
   const [optionsArg] = createServerFnCall.arguments
-  if (!optionsArg || !t.isObjectExpression(optionsArg)) {
+  if (!optionsArg) {
+    return undefined
+  }
+
+  const unwrappedOptionsArg = t.isExpression(optionsArg)
+    ? unwrapExpression(optionsArg)
+    : optionsArg
+
+  if (t.isIdentifier(unwrappedOptionsArg)) {
+    const binding = candidatePath.scope.getBinding(unwrappedOptionsArg.name)
+    const bindingInit = binding?.path.isVariableDeclarator()
+      ? binding.path.node.init
+      : undefined
+    const unwrappedBindingInit =
+      bindingInit && t.isExpression(bindingInit)
+        ? unwrapExpression(bindingInit)
+        : undefined
+
+    if (
+      binding?.constant &&
+      unwrappedBindingInit &&
+      t.isObjectExpression(unwrappedBindingInit) &&
+      unwrappedBindingInit.properties.some(
+        (prop) =>
+          (t.isObjectProperty(prop) || t.isObjectMethod(prop)) &&
+          resolveObjectMemberKey(candidatePath, prop) === 'id',
+      )
+    ) {
+      throw codeFrameError(
+        code,
+        unwrappedOptionsArg.loc!,
+        'createServerFn({ id }) must declare the manual id inline.',
+      )
+    }
+  }
+
+  if (!t.isObjectExpression(unwrappedOptionsArg)) {
     return undefined
   }
 
   let manualFunctionId: string | undefined
 
-  for (const prop of optionsArg.properties) {
+  for (const prop of unwrappedOptionsArg.properties) {
     if (!t.isObjectProperty(prop)) {
+      if (
+        t.isObjectMethod(prop) &&
+        resolveObjectMemberKey(candidatePath, prop) === 'id'
+      ) {
+        throw codeFrameError(
+          code,
+          prop.loc!,
+          'createServerFn({ id }) must use a static string literal or a constant string binding.',
+        )
+      }
       continue
     }
 
+    const keyValue = resolveObjectMemberKey(candidatePath, prop)
     if (prop.computed) {
-      const keyValue = resolveStaticString(candidatePath, prop.key)
-
       if (keyValue === 'id') {
         throw codeFrameError(
           code,
@@ -175,11 +223,7 @@ function extractManualServerFnId(
       continue
     }
 
-    const isIdKey =
-      (t.isIdentifier(prop.key) && prop.key.name === 'id') ||
-      (t.isStringLiteral(prop.key) && prop.key.value === 'id')
-
-    if (!isIdKey) {
+    if (keyValue !== 'id') {
       continue
     }
 
@@ -207,6 +251,14 @@ function extractManualServerFnId(
           code,
           prop.value.loc!,
           'createServerFn({ id }) must use a URL-safe id: [a-zA-Z0-9_-]+',
+        )
+      }
+
+      if (idValue in Object.prototype) {
+        throw codeFrameError(
+          code,
+          prop.value.loc!,
+          `createServerFn({ id }) must not use the reserved id: ${idValue}`,
         )
       }
 
@@ -250,36 +302,68 @@ function resolveStaticString(
   candidatePath: babel.NodePath<t.CallExpression>,
   value: t.Expression | t.PrivateName,
 ): string | undefined {
-  if (t.isStringLiteral(value)) {
-    return value.value
+  const unwrappedValue = t.isExpression(value) ? unwrapExpression(value) : value
+
+  if (t.isStringLiteral(unwrappedValue)) {
+    return unwrappedValue.value
   }
 
-  if (t.isTemplateLiteral(value) && value.expressions.length === 0) {
-    return value.quasis[0]?.value.cooked ?? undefined
+  if (
+    t.isTemplateLiteral(unwrappedValue) &&
+    unwrappedValue.expressions.length === 0
+  ) {
+    return unwrappedValue.quasis[0]?.value.cooked ?? undefined
   }
 
-  if (!t.isIdentifier(value)) {
+  if (!t.isIdentifier(unwrappedValue)) {
     return undefined
   }
 
-  const binding = candidatePath.scope.getBinding(value.name)
+  const binding = candidatePath.scope.getBinding(unwrappedValue.name)
   const bindingPath = binding?.path
   const bindingInit =
     bindingPath && bindingPath.isVariableDeclarator()
       ? bindingPath.node.init
       : undefined
+  const unwrappedBindingInit =
+    bindingInit && t.isExpression(bindingInit)
+      ? unwrapExpression(bindingInit)
+      : bindingInit
 
-  if (binding?.constant && bindingInit && t.isStringLiteral(bindingInit)) {
-    return bindingInit.value
+  if (
+    binding?.constant &&
+    unwrappedBindingInit &&
+    t.isStringLiteral(unwrappedBindingInit)
+  ) {
+    return unwrappedBindingInit.value
   }
 
   if (
     binding?.constant &&
-    bindingInit &&
-    t.isTemplateLiteral(bindingInit) &&
-    bindingInit.expressions.length === 0
+    unwrappedBindingInit &&
+    t.isTemplateLiteral(unwrappedBindingInit) &&
+    unwrappedBindingInit.expressions.length === 0
   ) {
-    return bindingInit.quasis[0]?.value.cooked ?? undefined
+    return unwrappedBindingInit.quasis[0]?.value.cooked ?? undefined
+  }
+
+  return undefined
+}
+
+function resolveObjectMemberKey(
+  candidatePath: babel.NodePath<t.CallExpression>,
+  prop: t.ObjectMethod | t.ObjectProperty,
+): string | undefined {
+  if (prop.computed) {
+    return resolveStaticString(candidatePath, prop.key)
+  }
+
+  if (t.isIdentifier(prop.key)) {
+    return prop.key.name
+  }
+
+  if (t.isStringLiteral(prop.key)) {
+    return prop.key.value
   }
 
   return undefined

@@ -288,6 +288,43 @@ describe('createServerFn compiles correctly', async () => {
     )
   })
 
+  test('should reject the reserved manual id __proto__', async () => {
+    await expect(
+      compile({
+        code: `
+          import { createServerFn } from '@tanstack/react-start'
+
+          export const getUser = createServerFn({ id: '__proto__' })
+            .handler(async () => ({ id: '123' }))
+        `,
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+      }),
+    ).rejects.toThrow(
+      'createServerFn({ id }) must not use the reserved id: __proto__',
+    )
+  })
+
+  test('should reject a manual id hidden in an options binding', async () => {
+    await expect(
+      compile({
+        code: `
+          import { createServerFn } from '@tanstack/react-start'
+
+          const options = { method: 'GET', id: 'get-user' } as const
+          export const getUser = createServerFn(options)
+            .handler(async () => ({ id: '123' }))
+        `,
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+      }),
+    ).rejects.toThrow(
+      'createServerFn({ id }) must declare the manual id inline.',
+    )
+  })
+
   // TODO remove upon stable
   test('should warn for deprecated inputValidator method', async () => {
     const warn = vi.fn()

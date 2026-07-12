@@ -183,6 +183,8 @@ Manual IDs must follow these rules:
    - String literal is allowed.
    - Constant string binding is allowed.
    - Computed ID keys are not supported.
+   - The `id` property must be declared directly in the inline options object.
+4. IDs inherited from `Object.prototype`, such as `__proto__` and `constructor`, are reserved.
 
 ```tsx
 // ✅ literal string ID
