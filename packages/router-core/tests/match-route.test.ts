@@ -355,9 +355,11 @@ describe('matchRoute', () => {
   })
 
   it('passes a reused child param name to the child parser', async () => {
-    const childParse = vi.fn(({ id }: { id: string }) => ({
-      id: `child:${id}`,
-    }))
+    const childParserParams: Array<{ id: string }> = []
+    const childParse = vi.fn(({ id }: { id: string }) => {
+      childParserParams.push({ id })
+      return { id: `child:${id}` }
+    })
     const rootRoute = new BaseRootRoute({})
     const orgRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -386,7 +388,7 @@ describe('matchRoute', () => {
         params: { id: 'child:two' },
       }),
     ).toEqual({ id: 'child:two' })
-    expect(childParse).toHaveBeenCalledWith({ id: 'two' })
+    expect(childParserParams).toContainEqual({ id: 'two' })
   })
 
   it('returns false for a malformed fuzzy remainder', async () => {
@@ -437,6 +439,28 @@ describe('matchRoute', () => {
     expect(router.matchRoute({ to: '/dashboard' }, { fuzzy: true })).toEqual({
       '**': 'details',
     })
+  })
+
+  it('exactly matches an index route that shares its layout path', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const dashboardRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/dashboard',
+    })
+    const dashboardIndexRoute = new BaseRoute({
+      getParentRoute: () => dashboardRoute,
+      path: '/',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        dashboardRoute.addChildren([dashboardIndexRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/dashboard'] }),
+    })
+
+    await router.load()
+
+    expect(router.matchRoute({ to: '/dashboard' })).toEqual({})
   })
 
   it('respects the caseSensitive matching option', async () => {

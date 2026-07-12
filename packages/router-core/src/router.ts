@@ -739,11 +739,7 @@ export type GetMatchRoutesFn = (pathname: string) => {
   matchedRoutes: ReadonlyArray<AnyRoute>
   /** exhaustive params, still in their string form */
   routeParams: Record<string, string>
-  routeMatchData?: ReadonlyArray<{
-    rawParams?: Record<string, string>
-    pathnameEnd: number
-    caseSensitive: boolean
-  }>
+  routeMatchData?: ReadonlyArray<Record<string, string> | undefined>
   foundRoute: AnyRoute | undefined
   parseError?: unknown
 }
@@ -1456,6 +1452,7 @@ export class RouterCore<
       routeParams: rawRouteParams,
     } = matchedRoutesResult
     const routeParams: Record<string, unknown> = Object.create(null)
+    const rawParams: Record<string, string> = Object.create(null)
     let { matchedRoutes } = matchedRoutesResult
     let isGlobalNotFound = false
 
@@ -1550,16 +1547,18 @@ export class RouterCore<
 
       const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
 
+      Object.assign(rawParams, routeMatchData?.[index])
+
       const { interpolatedPath } = interpolatePath({
         path: route.fullPath,
-        params: rawRouteParams,
+        params: rawParams,
         decoder: this.pathParamsDecoder,
         server: this.isServer,
       })
       const strictParamsForRoute = Object.assign(
         Object.create(null),
         routeParams,
-        routeMatchData?.[index]?.rawParams,
+        routeMatchData?.[index],
       )
 
       // Waste not, want not. If we already have a match for this route,
@@ -2998,48 +2997,23 @@ export class RouterCore<
       : this.stores.resolvedLocation.get() || this.stores.location.get()
 
     const destinationPath = trimPathRight(next.pathname)
-    const requestedRoute = (this.routesByPath[
-      destinationPath as keyof typeof this.routesByPath
-    ] ??
-      (destinationPath === '/' ? this.routesById[rootRouteId] : undefined)) as
-      | AnyRoute
-      | undefined
-    if (!requestedRoute) {
-      return false
-    }
-
-    const parentRoute = requestedRoute.parentRoute
-    const destinationRoute: AnyRoute =
-      opts?.fuzzy &&
-      requestedRoute.path === '/' &&
-      parentRoute &&
-      trimPathRight(parentRoute.fullPath) ===
-        trimPathRight(requestedRoute.fullPath)
-        ? parentRoute
-        : requestedRoute
-
-    const pathname = opts?.fuzzy
-      ? baseLocation.pathname
-      : removeTrailingSlash(baseLocation.pathname, this.basepath)
-
-    const storedMatches = pending
+    let routeMatches = pending
       ? this.stores.pendingMatches.get()
       : this.stores.matches.get()
-    const routeMatches = storedMatches.length
-      ? storedMatches
-      : this.matchRoutes(baseLocation)
-    const destinationIndex = routeMatches.findIndex(
-      (match) => match.routeId === destinationRoute.id,
-    )
-    if (
-      destinationIndex === -1 ||
-      (!opts?.fuzzy && last(routeMatches)?.routeId !== destinationRoute.id)
-    ) {
-      return false
+    if (!routeMatches.length) {
+      routeMatches = this.matchRoutes(baseLocation)
     }
-
-    const destinationMatch = routeMatches[destinationIndex]!
-    if (destinationMatch.paramsError) {
+    const destinationMatch = opts?.fuzzy
+      ? routeMatches.find(
+          (match) => trimPathRight(match.fullPath) === destinationPath,
+        )
+      : last(routeMatches)
+    if (
+      !destinationMatch ||
+      (!opts?.fuzzy &&
+        trimPathRight(destinationMatch.fullPath) !== destinationPath) ||
+      destinationMatch.paramsError
+    ) {
       return false
     }
 
@@ -3048,61 +3022,31 @@ export class RouterCore<
       destinationMatch._strictParams,
     )
 
-    if (opts?.caseSensitive || opts?.fuzzy) {
-      const structuralMatch = findRouteMatch(
-        pathname,
-        this.processedTree,
-        opts?.fuzzy ?? false,
+    try {
+      const currentPathname = trimPathRight(decodeURI(baseLocation.pathname))
+      const matchedPathname = trimPathRight(
+        decodeURI(destinationMatch.pathname),
       )
-      if (!structuralMatch) {
-        return false
-      }
-
-      const structuralDestinationIndex = structuralMatch.branch.findIndex(
-        (route) => route.id === destinationRoute.id,
-      )
-      if (
-        structuralDestinationIndex === -1 ||
-        (opts?.caseSensitive &&
-          !structuralMatch.matchData[structuralDestinationIndex]!.caseSensitive)
-      ) {
+      if (opts?.caseSensitive && !currentPathname.startsWith(matchedPathname)) {
         return false
       }
 
       if (opts?.fuzzy) {
-        const matchedPathname = trimPathRight(
-          baseLocation.pathname.slice(
-            0,
-            structuralMatch.matchData[structuralDestinationIndex]!.pathnameEnd,
-          ) || '/',
-        )
-        const remainder = baseLocation.pathname.slice(matchedPathname.length)
+        const remainder = currentPathname.slice(matchedPathname.length)
         if (remainder) {
-          try {
-            params['**'] =
-              remainder === '/'
-                ? remainder
-                : decodeURIComponent(remainder.replace(/^\/+/, ''))
-          } catch {
-            return false
-          }
+          params['**'] = decodeURIComponent(remainder.replace(/^\/+/, ''))
         }
       }
+    } catch {
+      return false
     }
 
-    if (location.params) {
-      if (!deepEqual(params, location.params, { partial: true })) {
-        return false
-      }
-    }
-
-    if (opts?.includeSearch ?? true) {
-      return deepEqual(baseLocation.search, next.search, { partial: true })
-        ? params
-        : false
-    }
-
-    return params
+    return (!location.params ||
+      deepEqual(params, location.params, { partial: true })) &&
+      (!(opts?.includeSearch ?? true) ||
+        deepEqual(baseLocation.search, next.search, { partial: true }))
+      ? params
+      : false
   }
 
   ssr?: {
@@ -3210,17 +3154,13 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 
   let foundRoute: TRouteLike | undefined = undefined
   let routeMatchData:
-    | ReadonlyArray<{
-        rawParams?: Record<string, string>
-        pathnameEnd: number
-        caseSensitive: boolean
-      }>
+    | ReadonlyArray<Record<string, string> | undefined>
     | undefined
   const match = findRouteMatch<TRouteLike>(trimmedPath, processedTree, true)
   if (match) {
     foundRoute = match.route
     Object.assign(routeParams, match.rawParams) // Copy params, because they're cached
-    routeMatchData = match.matchData
+    routeMatchData = match.routeParams
   }
 
   const matchedRoutes = match?.branch || [routesById[rootRouteId]!]
