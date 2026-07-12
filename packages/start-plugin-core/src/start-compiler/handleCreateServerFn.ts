@@ -154,6 +154,8 @@ function extractManualServerFnId(
     return undefined
   }
 
+  let manualFunctionId: string | undefined
+
   for (const prop of optionsArg.properties) {
     if (!t.isObjectProperty(prop)) {
       continue
@@ -181,6 +183,14 @@ function extractManualServerFnId(
       continue
     }
 
+    if (manualFunctionId !== undefined) {
+      throw codeFrameError(
+        code,
+        prop.loc!,
+        'createServerFn options must not define more than one manual id.',
+      )
+    }
+
     if (!t.isExpression(prop.value) && !t.isPrivateName(prop.value)) {
       throw codeFrameError(
         code,
@@ -200,7 +210,8 @@ function extractManualServerFnId(
         )
       }
 
-      return idValue
+      manualFunctionId = idValue
+      continue
     }
 
     throw codeFrameError(
@@ -210,7 +221,7 @@ function extractManualServerFnId(
     )
   }
 
-  return undefined
+  return manualFunctionId
 }
 
 function getCreateServerFnCallExpression(

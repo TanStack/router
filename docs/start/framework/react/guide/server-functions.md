@@ -209,7 +209,9 @@ Automatic IDs are the default and work for most apps. Provide a manual `id` only
 
 Switching between automatic and manual IDs does not change how you call a server function. The call signature, arguments, and return value stay the same, but the server function lookup ID and request URL change to use the manual ID.
 
-Manual IDs are exact reservations. If a generated or custom `generateFunctionId` value collides with a manual ID, the generated value is suffixed instead. If two manual IDs collide, compilation fails.
+Manual IDs are exact reservations. Compilation fails if two manual IDs collide or if a generated or custom `generateFunctionId` value exactly matches a manual ID. Generated IDs are still suffixed when they collide with other generated IDs.
+
+In development, TanStack Start uses an encoded module identifier so the dev server can locate the server function module directly. The manual ID becomes the production lookup ID; it does not replace that development-only identifier.
 
 ### Security Caveats
 

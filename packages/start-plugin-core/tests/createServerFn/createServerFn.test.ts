@@ -268,6 +268,26 @@ describe('createServerFn compiles correctly', async () => {
     )
   })
 
+  test('should reject duplicate manual id properties', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+
+      export const getUser = createServerFn({ id: 'get-user', 'id': 'get-other-user' })
+        .handler(async () => ({ id: '123' }))
+    `
+
+    await expect(
+      compile({
+        code,
+        env: 'client',
+        isProviderFile: false,
+        mode: 'build',
+      }),
+    ).rejects.toThrow(
+      'createServerFn options must not define more than one manual id.',
+    )
+  })
+
   // TODO remove upon stable
   test('should warn for deprecated inputValidator method', async () => {
     const warn = vi.fn()
@@ -882,7 +902,7 @@ describe('createServerFn compiles correctly', async () => {
     expect(result!.code).not.toContain('createSsrRpc("constant_id_1")')
   })
 
-  test('dedupes generated IDs around reserved manual IDs', async () => {
+  test('rejects a generated ID that collides with a manual ID', async () => {
     const compiler = new StartCompiler({
       env: 'server',
       ...getDefaultTestOptions('server'),
@@ -909,16 +929,17 @@ describe('createServerFn compiles correctly', async () => {
       id: '/test/src/manual.tsx',
     })
 
-    const generatedResult = await compiler.compile({
-      code: `
-        import { createServerFn } from '@tanstack/react-start'
-        export const getUser = createServerFn().handler(async () => 'generated')
-      `,
-      id: '/test/src/generated.tsx',
-    })
-
     expect(manualResult!.code).toContain('createSsrRpc("get-user")')
-    expect(generatedResult!.code).toContain('createSsrRpc("get-user_1")')
+
+    await expect(
+      compiler.compile({
+        code: `
+          import { createServerFn } from '@tanstack/react-start'
+          export const getUser = createServerFn().handler(async () => 'generated')
+        `,
+        id: '/test/src/generated.tsx',
+      }),
+    ).rejects.toThrow('Duplicate server function id: get-user')
   })
 
   test.each([

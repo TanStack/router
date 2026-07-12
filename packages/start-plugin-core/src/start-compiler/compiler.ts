@@ -515,7 +515,6 @@ export class StartCompiler {
     string,
     Map<string, ExportResolution | null>
   >()
-  private reservedManualFunctionIds = new Set<string>()
   private reservedManualFunctionIdOwners = new Map<string, string>()
   private reservedManualFunctionIdsByFilename = new Map<string, Set<string>>()
   // Fast lookup for direct imports from known libraries (e.g., '@tanstack/react-start')
@@ -647,11 +646,14 @@ export class StartCompiler {
         functionId = crypto.createHash('sha256').update(entryId).digest('hex')
       }
       const isCanonicalKnownMatch = knownFn?.functionId === functionId
-      // Deduplicate generated/custom IDs so manual reservations stay exact
-      // without making the older generateFunctionId hook a breaking change.
+      if (this.reservedManualFunctionIdOwners.has(functionId)) {
+        throw new Error(`Duplicate server function id: ${functionId}`)
+      }
+
+      // Deduplicate generated/custom IDs without making the older
+      // generateFunctionId hook a breaking change.
       if (
         this.functionIds.has(functionId) ||
-        this.reservedManualFunctionIds.has(functionId) ||
         (!isCanonicalKnownMatch && knownFunctionIds.has(functionId))
       ) {
         let deduplicatedId
@@ -660,7 +662,7 @@ export class StartCompiler {
           deduplicatedId = `${functionId}_${++iteration}`
         } while (
           this.functionIds.has(deduplicatedId) ||
-          this.reservedManualFunctionIds.has(deduplicatedId) ||
+          this.reservedManualFunctionIdOwners.has(deduplicatedId) ||
           knownFunctionIds.has(deduplicatedId)
         )
         functionId = deduplicatedId
@@ -701,7 +703,6 @@ export class StartCompiler {
 
     if (!existingOwner) {
       this.reservedManualFunctionIdOwners.set(opts.functionId, entryId)
-      this.reservedManualFunctionIds.add(opts.functionId)
 
       let reservedIds = this.reservedManualFunctionIdsByFilename.get(
         opts.filename,
@@ -976,7 +977,6 @@ export class StartCompiler {
     }
 
     for (const functionId of reservedIds) {
-      this.reservedManualFunctionIds.delete(functionId)
       this.reservedManualFunctionIdOwners.delete(functionId)
     }
     this.reservedManualFunctionIdsByFilename.delete(relativeFilename)
