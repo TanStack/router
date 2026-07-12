@@ -350,31 +350,34 @@ describe('matchRoute', () => {
   it.each([
     ['%25', '%'],
     ['%2520', '%20'],
-  ])('decodes the fuzzy remainder %s exactly once', async (encoded, decoded) => {
-    const rootRoute = new BaseRootRoute({})
-    const postsRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/posts',
-    })
-    const childRoute = new BaseRoute({
-      getParentRoute: () => postsRoute,
-      path: '/$value',
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([
-        postsRoute.addChildren([childRoute]),
-      ]),
-      history: createMemoryHistory({
-        initialEntries: [`/posts/${encoded}`],
-      }),
-    })
+  ])(
+    'decodes the fuzzy remainder %s exactly once',
+    async (encoded, decoded) => {
+      const rootRoute = new BaseRootRoute({})
+      const postsRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+      })
+      const childRoute = new BaseRoute({
+        getParentRoute: () => postsRoute,
+        path: '/$value',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([
+          postsRoute.addChildren([childRoute]),
+        ]),
+        history: createMemoryHistory({
+          initialEntries: [`/posts/${encoded}`],
+        }),
+      })
 
-    await router.load()
+      await router.load()
 
-    expect(router.matchRoute({ to: '/posts' }, { fuzzy: true })).toEqual({
-      '**': decoded,
-    })
-  })
+      expect(router.matchRoute({ to: '/posts' }, { fuzzy: true })).toEqual({
+        '**': decoded,
+      })
+    },
+  )
 
   it('keeps ancestor params when a descendant reuses the param name', async () => {
     const rootRoute = new BaseRootRoute({})
