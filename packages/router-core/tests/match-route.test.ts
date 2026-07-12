@@ -93,7 +93,7 @@ describe('matchRoute', () => {
     ).toBe(false)
   })
 
-  it('returns parsed params on repeated calls', async () => {
+  it('returns cached parsed params without re-running the parser', async () => {
     const parse = vi.fn(({ invoiceId }: { invoiceId: string }) => ({
       invoiceId: Number(invoiceId),
     }))
@@ -123,7 +123,7 @@ describe('matchRoute', () => {
         params: { invoiceId: 123 },
       }),
     ).toEqual({ invoiceId: 123 })
-    expect(parse).toHaveBeenCalledWith({ invoiceId: '123' })
+    expect(parse).not.toHaveBeenCalled()
   })
 
   it('does not throw parser errors while checking a match', async () => {
