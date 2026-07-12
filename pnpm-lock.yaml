@@ -13330,6 +13330,9 @@ importers:
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
+      '@tanstack/start-client-core':
+        specifier: workspace:*
+        version: link:../start-client-core
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core

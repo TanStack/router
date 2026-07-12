@@ -93,6 +93,7 @@
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-plugin": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
+    "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
     "exsolve": "^1.0.7",
     "lightningcss": "^1.32.0",

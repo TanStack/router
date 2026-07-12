@@ -80,8 +80,8 @@ describe('postBuildWithRsbuild', () => {
       await handler.close()
     })
 
-    vi.doMock('../src/prerender', async () => {
-      const actual = await vi.importActual<any>('../src/prerender')
+    vi.doMock('../../src/prerender', async () => {
+      const actual = await vi.importActual<any>('../../src/prerender')
       return {
         ...actual,
         prerender: prerenderSpy,
@@ -104,7 +104,8 @@ describe('postBuildWithRsbuild', () => {
       'globalThis.__ROUTE_OPTIONS_LOADED = true',
     )
 
-    const { postBuildWithRsbuild } = await import('../src/rsbuild/post-build')
+    const { postBuildWithRsbuild } =
+      await import('../../src/rsbuild/post-build')
 
     try {
       await postBuildWithRsbuild({
@@ -138,8 +139,8 @@ describe('postBuildWithRsbuild', () => {
     )
     const prerenderSpy = vi.fn()
 
-    vi.doMock('../src/prerender', async () => {
-      const actual = await vi.importActual<any>('../src/prerender')
+    vi.doMock('../../src/prerender', async () => {
+      const actual = await vi.importActual<any>('../../src/prerender')
       return {
         ...actual,
         prerender: prerenderSpy,
@@ -152,7 +153,8 @@ describe('postBuildWithRsbuild', () => {
       'globalThis.__ROUTE_OPTIONS_LOADED = true',
     )
 
-    const { postBuildWithRsbuild } = await import('../src/rsbuild/post-build')
+    const { postBuildWithRsbuild } =
+      await import('../../src/rsbuild/post-build')
 
     try {
       await expect(

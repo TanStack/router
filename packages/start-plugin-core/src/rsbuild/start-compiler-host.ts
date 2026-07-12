@@ -17,6 +17,7 @@ import {
   SERVER_FN_BUILD_INFO_CONTEXT_KEY,
   SERVER_FN_BUILD_INFO_FIELD,
 } from './start-compiler-metadata'
+import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 import type {
   ServerFnBuildInfo,

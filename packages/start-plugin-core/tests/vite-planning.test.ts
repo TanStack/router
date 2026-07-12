@@ -17,6 +17,7 @@ describe('Vite planning', () => {
 
     const plan = createViteConfigPlan({
       viteConfig: {},
+      command: 'build',
       framework: 'react',
       entryAliases,
       clientOutputDirectory: '/app/dist/client',
