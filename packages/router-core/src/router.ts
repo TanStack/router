@@ -1555,12 +1555,6 @@ export class RouterCore<
         decoder: this.pathParamsDecoder,
         server: this.isServer,
       })
-      const strictParamsForRoute = Object.assign(
-        Object.create(null),
-        routeParams,
-        routeMatchData?.[index],
-      )
-
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
       // around between navigation actions that only change leaf routes.
@@ -1579,7 +1573,13 @@ export class RouterCore<
 
       const previousMatch = previousActiveMatchesByRouteId.get(route.id)
 
-      const strictParams = existingMatch?._strictParams ?? strictParamsForRoute
+      const strictParams =
+        existingMatch?._strictParams ??
+        Object.assign(
+          Object.create(null),
+          routeParams,
+          routeMatchData?.[index],
+        )
 
       let paramsError: unknown = undefined
 
@@ -2997,20 +2997,21 @@ export class RouterCore<
       : this.stores.resolvedLocation.get() || this.stores.location.get()
 
     const destinationPath = trimPathRight(next.pathname)
+    const fuzzy = opts?.fuzzy
     let routeMatches = pending
       ? this.stores.pendingMatches.get()
       : this.stores.matches.get()
     if (!routeMatches.length) {
       routeMatches = this.matchRoutes(baseLocation)
     }
-    const destinationMatch = opts?.fuzzy
+    const destinationMatch = fuzzy
       ? routeMatches.find(
           (match) => trimPathRight(match.fullPath) === destinationPath,
         )
       : last(routeMatches)
     if (
       !destinationMatch ||
-      (!opts?.fuzzy &&
+      (!fuzzy &&
         trimPathRight(destinationMatch.fullPath) !== destinationPath) ||
       destinationMatch.paramsError
     ) {
@@ -3031,7 +3032,7 @@ export class RouterCore<
         return false
       }
 
-      if (opts?.fuzzy) {
+      if (fuzzy) {
         const remainder = currentPathname.slice(matchedPathname.length)
         if (remainder) {
           params['**'] = decodeURIComponent(remainder.replace(/^\/+/, ''))

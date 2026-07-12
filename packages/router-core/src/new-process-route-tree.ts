@@ -880,106 +880,101 @@ function extractParams<T extends RouteLike>(
   let pathIndex = leaf.extract?.path ?? 0
   /** which fullPath segment we're currently processing */
   let segmentCount = leaf.extract?.segment ?? 0
-  const recordRouteParams = () => {
-    while (routeBranch && routeIndex < routeBranch.length) {
-      const route = routeBranch[routeIndex]!
-      const routePath = route.fullPath ?? route.from
-      const routeSegment =
-        routePath === '/' ? 0 : routePath.split('/').length - 1
-      if (routeSegment > segmentCount) {
-        break
-      }
-      routeParams!.push(routeRawParams)
-      routeRawParams = undefined
-      routeIndex++
-    }
-  }
   for (
     ;
     nodeIndex < list.length;
     partIndex++, nodeIndex++, pathIndex++, segmentCount++
   ) {
     const node = list[nodeIndex]!
-    // index nodes are terminating nodes, nothing to extract, just leave
-    if (node.kind === SEGMENT_TYPE_INDEX) {
-      recordRouteParams()
-      break
-    }
-    // pathless nodes do not consume a path segment
-    if (node.kind === SEGMENT_TYPE_PATHLESS) {
+    const done = node.kind === SEGMENT_TYPE_INDEX
+    if (done) {
+      // index nodes are terminating nodes and have nothing to extract
+    } else if (node.kind === SEGMENT_TYPE_PATHLESS) {
+      // pathless nodes do not consume a path segment
       segmentCount--
       partIndex--
       pathIndex--
-      recordRouteParams()
-      continue
-    }
-    const part = parts[partIndex]
-    const currentPathIndex = pathIndex
-    if (part) pathIndex += part.length
-    nodeParts ??= leaf.node.fullPath.split('/')
-    const nodePart = nodeParts[segmentCount]!
-    if (node.kind === SEGMENT_TYPE_PARAM) {
-      const preLength = node.prefix?.length ?? 0
-      // we can't rely on the presence of prefix/suffix to know whether it's curly-braced or not, because `/{$param}/` is valid, but has no prefix/suffix
-      const isCurlyBraced = nodePart.charCodeAt(preLength) === 123 // '{'
-      // param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
-      if (isCurlyBraced) {
-        const sufLength = node.suffix?.length ?? 0
-        const name = nodePart.substring(
-          preLength + 2,
-          nodePart.length - sufLength - 1,
-        )
-        const value = part!.substring(preLength, part!.length - sufLength)
-        const decodedValue = decodeURIComponent(value)
-        rawParams[name] = decodedValue
-        ;(routeRawParams ??= Object.create(null))[name] = decodedValue
-      } else {
-        const name = nodePart.substring(1)
-        const decodedValue = decodeURIComponent(part!)
-        rawParams[name] = decodedValue
-        ;(routeRawParams ??= Object.create(null))[name] = decodedValue
-      }
-    } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
-      if (leaf.skipped & (1 << nodeIndex)) {
-        recordRouteParams()
+    } else {
+      const part = parts[partIndex]
+      const currentPathIndex = pathIndex
+      if (part) pathIndex += part.length
+      nodeParts ??= leaf.node.fullPath.split('/')
+      const nodePart = nodeParts[segmentCount]!
+      if (node.kind === SEGMENT_TYPE_PARAM) {
+        const preLength = node.prefix?.length ?? 0
+        // we can't rely on the presence of prefix/suffix to know whether it's curly-braced or not, because `/{$param}/` is valid, but has no prefix/suffix
+        const isCurlyBraced = nodePart.charCodeAt(preLength) === 123 // '{'
+        // param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
+        if (isCurlyBraced) {
+          const sufLength = node.suffix?.length ?? 0
+          const name = nodePart.substring(
+            preLength + 2,
+            nodePart.length - sufLength - 1,
+          )
+          const value = part!.substring(preLength, part!.length - sufLength)
+          const decodedValue = decodeURIComponent(value)
+          rawParams[name] = decodedValue
+          ;(routeRawParams ??= Object.create(null))[name] = decodedValue
+        } else {
+          const name = nodePart.substring(1)
+          const decodedValue = decodeURIComponent(part!)
+          rawParams[name] = decodedValue
+          ;(routeRawParams ??= Object.create(null))[name] = decodedValue
+        }
+      } else if (
+        node.kind === SEGMENT_TYPE_OPTIONAL_PARAM &&
+        leaf.skipped & (1 << nodeIndex)
+      ) {
         partIndex-- // stay on the same part
         pathIndex = currentPathIndex - 1 // undo pathIndex advancement; -1 to account for loop increment
-        continue
+      } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
+        const preLength = node.prefix?.length ?? 0
+        const sufLength = node.suffix?.length ?? 0
+        const name = nodePart.substring(
+          preLength + 3,
+          nodePart.length - sufLength - 1,
+        )
+        const value =
+          node.suffix || node.prefix
+            ? part!.substring(preLength, part!.length - sufLength)
+            : part
+        if (value) {
+          const decodedValue = decodeURIComponent(value)
+          rawParams[name] = decodedValue
+          ;(routeRawParams ??= Object.create(null))[name] = decodedValue
+        }
+      } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
+        const preLength = node.prefix?.length ?? 0
+        const sufLength = node.suffix?.length ?? 0
+        const value = path.substring(
+          currentPathIndex + preLength,
+          path.length - sufLength,
+        )
+        const splat = decodeURIComponent(value)
+        // TODO: Deprecate *
+        rawParams['*'] = splat
+        rawParams._splat = splat
+        const wildcardParams = (routeRawParams ??= Object.create(null))
+        wildcardParams['*'] = splat
+        wildcardParams._splat = splat
       }
-      const preLength = node.prefix?.length ?? 0
-      const sufLength = node.suffix?.length ?? 0
-      const name = nodePart.substring(
-        preLength + 3,
-        nodePart.length - sufLength - 1,
-      )
-      const value =
-        node.suffix || node.prefix
-          ? part!.substring(preLength, part!.length - sufLength)
-          : part
-      if (value) {
-        const decodedValue = decodeURIComponent(value)
-        rawParams[name] = decodedValue
-        ;(routeRawParams ??= Object.create(null))[name] = decodedValue
+    }
+
+    while (routeBranch && routeIndex < routeBranch.length) {
+      const route = routeBranch[routeIndex]!
+      if (
+        route.fullPath !== '/' &&
+        route.fullPath!.split('/').length - 1 > segmentCount
+      ) {
+        break
       }
-    } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
-      const n = node
-      const preLength = n.prefix?.length ?? 0
-      const sufLength = n.suffix?.length ?? 0
-      const value = path.substring(
-        currentPathIndex + preLength,
-        path.length - sufLength,
-      )
-      const splat = decodeURIComponent(value)
-      // TODO: Deprecate *
-      rawParams['*'] = splat
-      rawParams._splat = splat
-      const wildcardParams = (routeRawParams ??= Object.create(null))
-      wildcardParams['*'] = splat
-      wildcardParams._splat = splat
-      recordRouteParams()
+      routeParams!.push(routeRawParams)
+      routeRawParams = undefined
+      routeIndex++
+    }
+    if (done || node.kind === SEGMENT_TYPE_WILDCARD) {
       break
     }
-    recordRouteParams()
   }
   leaf.extract = {
     part: partIndex,
@@ -1347,7 +1342,6 @@ function validateParseParams<T extends RouteLike>(
   frame: MatchStackFrame<T>,
 ) {
   let params: Record<string, unknown>
-  frame.extract = frame.extract ? { ...frame.extract } : undefined
 
   try {
     params = extractParams(path, parts, frame)
