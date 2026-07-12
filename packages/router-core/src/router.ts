@@ -1575,11 +1575,7 @@ export class RouterCore<
 
       const strictParams =
         existingMatch?._strictParams ??
-        Object.assign(
-          Object.create(null),
-          routeParams,
-          routeMatchData?.[index],
-        )
+        Object.assign(Object.create(null), routeParams, routeMatchData?.[index])
 
       let paramsError: unknown = undefined
 
