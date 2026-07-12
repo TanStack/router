@@ -2997,6 +2997,9 @@ export class RouterCore<
     let routeMatches = pending
       ? this.stores.pendingMatches.get()
       : this.stores.matches.get()
+    if (!routeMatches.length && !opts?.pending) {
+      routeMatches = this.stores.matches.get()
+    }
     if (!routeMatches.length) {
       routeMatches = this.matchRoutes(baseLocation)
     }
@@ -3020,7 +3023,7 @@ export class RouterCore<
     )
 
     try {
-      const currentPathname = trimPathRight(decodeURI(baseLocation.pathname))
+      const currentPathname = trimPathRight(baseLocation.pathname)
       const matchedPathname = trimPathRight(
         decodeURI(destinationMatch.pathname),
       )
