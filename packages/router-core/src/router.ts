@@ -25,7 +25,6 @@ import {
   cleanPath,
   compileDecodeCharMap,
   interpolatePath,
-  removeTrailingSlash,
   resolvePath,
   trimPath,
   trimPathRight,
