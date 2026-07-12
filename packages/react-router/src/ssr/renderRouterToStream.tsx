@@ -76,7 +76,7 @@ export const renderRouterToStream = async ({
     return createSsrStreamResponse(
       router,
       new Response(responseStream as any, {
-        status: router.stores.statusCode.get(),
+        status: router.statusCode,
         headers: responseHeaders,
       }),
     )
@@ -199,7 +199,7 @@ export const renderRouterToStream = async ({
     return createSsrStreamResponse(
       router,
       new Response(responseStream as any, {
-        status: router.stores.statusCode.get(),
+        status: router.statusCode,
         headers: responseHeaders,
       }),
     )

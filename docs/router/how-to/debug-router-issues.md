@@ -326,7 +326,6 @@ function DataLoadingDebug() {
 
   console.log('Route status:', {
     isLoading: location.isLoading,
-    isTransitioning: location.isTransitioning,
   })
 
   return null

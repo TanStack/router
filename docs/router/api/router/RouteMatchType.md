@@ -11,7 +11,7 @@ interface RouteMatch {
   routeId: string
   pathname: string
   params: Route['allParams']
-  status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
+  status: 'pending' | 'success' | 'error' | 'notFound'
   isFetching: false | 'beforeLoad' | 'loader'
   showPending: boolean
   error: unknown

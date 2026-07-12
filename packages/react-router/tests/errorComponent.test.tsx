@@ -338,7 +338,7 @@ test('SSR errorComponent receives primitive errors thrown from beforeLoad', asyn
 
   await router.load()
 
-  expect(router.state.statusCode).toBe(500)
+  expect(router.statusCode).toBe(500)
   const html = ReactDOMServer.renderToString(<RouterProvider router={router} />)
   expect(html).toContain('Error:')
   expect(html).toContain('primitive error thrown')

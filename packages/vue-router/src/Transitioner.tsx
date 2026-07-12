@@ -46,45 +46,28 @@ export function useTransitionerSetup() {
 
   // Implement startTransition similar to React/Solid
   // Vue doesn't have a native useTransition like React 18, so we simulate it
-  // We also update the router state's isTransitioning flag so useMatch can check it
-  router.startTransition = (fn: () => void | Promise<void>) => {
+  router.startTransition = (fn: () => void) => {
     isTransitioning.value = true
-    // Also update the router state so useMatch knows we're transitioning
     try {
-      router.stores.isTransitioning.set(true)
-    } catch {
-      // Ignore errors if component is unmounted
-    }
-
-    // Helper to end the transition
-    const endTransition = () => {
+      fn()
+    } finally {
       // Use nextTick to ensure Vue has processed all reactive updates
-      Vue.nextTick(() => {
+      void Vue.nextTick(() => {
         try {
           isTransitioning.value = false
-          router.stores.isTransitioning.set(false)
         } catch {
           // Ignore errors if component is unmounted
         }
       })
     }
-
-    // Execute the function synchronously
-    // The function internally may call startViewTransition which schedules async work
-    // via document.startViewTransition, but we don't need to wait for it here
-    // because Vue's reactivity will trigger re-renders when state changes
-    fn()
-
-    // End the transition on next tick to allow Vue to process reactive updates
-    endTransition()
   }
 
   // Vue updates DOM asynchronously (next tick). The View Transitions API expects the
   // update callback promise to resolve only after the DOM has been updated.
   // Wrap the router-core implementation to await a Vue flush before resolving.
-  const originalStartViewTransition:
-    | undefined
-    | ((fn: () => Promise<void>) => void) =
+  const originalStartViewTransition: (
+    fn: () => Promise<void>,
+  ) => Promise<void> =
     (router as any).__tsrOriginalStartViewTransition ??
     router.startViewTransition
 
@@ -200,6 +183,12 @@ export function useTransitionerSetup() {
             router.stores.resolvedLocation.get(),
           ),
         })
+        if (router.stores.status.get() === 'pending') {
+          batch(() => {
+            router.stores.status.set('idle')
+            router.stores.resolvedLocation.set(router.stores.location.get())
+          })
+        }
       }
     } catch {
       // Ignore errors if component is unmounted

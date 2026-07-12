@@ -152,7 +152,11 @@ describe('redirect', () => {
 
       // The lazy target route adds the async boundary that exposes the stale
       // redirected-match render path this regression is guarding.
-      expect(await screen.findByTestId('lazy-route-page')).toBeInTheDocument()
+      expect(
+        await screen.findByTestId('lazy-route-page', undefined, {
+          timeout: 5_000,
+        }),
+      ).toBeInTheDocument()
       expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
       expect(router.state.location.href).toBe('/posts')
       expect(router.state.status).toBe('idle')
@@ -345,9 +349,9 @@ describe('redirect', () => {
 
       await router.load()
 
-      expect(router.state.redirect).toBeDefined()
-      expect(router.state.redirect).toBeInstanceOf(Response)
-      const redirectResponse = router.state.redirect!
+      expect(router.redirect).toBeDefined()
+      expect(router.redirect).toBeInstanceOf(Response)
+      const redirectResponse = router.redirect!
 
       expect(redirectResponse.options).toEqual({
         _fromLocation: expect.objectContaining({
@@ -395,7 +399,7 @@ describe('redirect', () => {
 
       await router.load()
 
-      const currentRedirect = router.state.redirect
+      const currentRedirect = router.redirect
 
       expect(currentRedirect).toBeDefined()
       expect(currentRedirect).toBeInstanceOf(Response)

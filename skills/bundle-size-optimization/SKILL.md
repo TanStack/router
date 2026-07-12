@@ -113,6 +113,13 @@ Useful patterns: remove prod-only strings, remove unused exports, flatten wrappe
 
 Rolldown removes code only when unused and side-effect-free. Property reads may trigger getters; storage/global access can observe or throw.
 
+### `isServer` DCE
+
+- `@tanstack/router-core/isServer` is conditionally exported: browser/client builds use `client.ts` (`isServer = false`), server builds use `server.ts` (`isServer = process.env.NODE_ENV === 'test' ? undefined : true`), and development/test builds use `development.ts` (`isServer = undefined`). The `undefined` value intentionally lets code fall back to `router.isServer` in tests and development.
+- Do not assume `const onServer = isServer ?? this.isServer` will treeshake client-only code. In production browser bundles it can become a local `const onServer = false`, while guarded branches like `onServer && redirect.headers.set(...)` or `else if (onServer)` may still remain in emitted JS.
+- Prefer inlining `isServer ?? this.isServer` at the server-only branch site instead of assigning it to a local alias. The inline form preserves test/development fallback and gives the browser build a better chance to fold the branch away.
+- When a server-only branch should disappear from client bundles, inspect emitted JS in `benchmarks/bundle-size/dist/<scenarioDir>/assets/*.js` to confirm it actually disappeared.
+
 | Annotation                                | Valid                                                                       | Unsafe                                                                             |
 | ----------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `/* @__PURE__ */ call()`                  | immediately before a call/new expression whose unused result can be dropped | declarations, property reads, setup, storage, DOM/history/listener code            |

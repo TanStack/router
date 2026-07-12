@@ -1,11 +1,9 @@
 import { createLRUCache } from './lru-cache'
 import { arraysEqual, functionalUpdate } from './utils'
-
 import type { AnyRoute } from './route'
 import type { RouterState } from './router'
 import type { FullSearchSchema } from './routeInfo'
 import type { ParsedLocation } from './location'
-import type { AnyRedirect } from './redirect'
 import type { AnyRouteMatch } from './Matches'
 
 export interface RouterReadableStore<TValue> {
@@ -73,13 +71,10 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   status: RouterWritableStore<RouterState<TRouteTree>['status']>
   loadedAt: RouterWritableStore<number>
   isLoading: RouterWritableStore<boolean>
-  isTransitioning: RouterWritableStore<boolean>
   location: RouterWritableStore<ParsedLocation<FullSearchSchema<TRouteTree>>>
   resolvedLocation: RouterWritableStore<
     ParsedLocation<FullSearchSchema<TRouteTree>> | undefined
   >
-  statusCode: RouterWritableStore<number>
-  redirect: RouterWritableStore<AnyRedirect | undefined>
   matchesId: RouterWritableStore<Array<string>>
   pendingIds: RouterWritableStore<Array<string>>
   /** @internal */
@@ -116,7 +111,7 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
 }
 
 export function createRouterStores<TRouteTree extends AnyRoute>(
-  initialState: RouterState<TRouteTree>,
+  initialState: RouterState<TRouteTree> & { loadedAt: number },
   config: StoreConfig,
 ): RouterStores<TRouteTree> {
   const { createMutableStore, createReadonlyStore, batch, init } = config
@@ -130,11 +125,8 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   const status = createMutableStore(initialState.status)
   const loadedAt = createMutableStore(initialState.loadedAt)
   const isLoading = createMutableStore(initialState.isLoading)
-  const isTransitioning = createMutableStore(initialState.isTransitioning)
   const location = createMutableStore(initialState.location)
   const resolvedLocation = createMutableStore(initialState.resolvedLocation)
-  const statusCode = createMutableStore(initialState.statusCode)
-  const redirect = createMutableStore(initialState.redirect)
   const matchesId = createMutableStore<Array<string>>([])
   const pendingIds = createMutableStore<Array<string>>([])
   const cachedIds = createMutableStore<Array<string>>([])
@@ -165,14 +157,10 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   // compatibility "big" state store
   const __store = createReadonlyStore(() => ({
     status: status.get(),
-    loadedAt: loadedAt.get(),
     isLoading: isLoading.get(),
-    isTransitioning: isTransitioning.get(),
     matches: matches.get(),
     location: location.get(),
     resolvedLocation: resolvedLocation.get(),
-    statusCode: statusCode.get(),
-    redirect: redirect.get(),
   }))
 
   // Per-routeId computed store cache.
@@ -217,11 +205,8 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     status,
     loadedAt,
     isLoading,
-    isTransitioning,
     location,
     resolvedLocation,
-    statusCode,
-    redirect,
     matchesId,
     pendingIds,
     cachedIds,
@@ -249,11 +234,11 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     setMatches,
     setPending,
     setCached,
-  }
+  } as RouterStores<TRouteTree>
 
   // initialize the active matches
   setMatches(initialState.matches as Array<AnyRouteMatch>)
-  init?.(store)
+  init?.(store as unknown as RouterStores<AnyRoute>)
 
   // setters to update non-reactive utilities in sync with the reactive stores
   function setMatches(nextMatches: Array<AnyRouteMatch>) {

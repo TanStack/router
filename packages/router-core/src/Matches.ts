@@ -11,6 +11,11 @@ import type {
 import type { AnyRouter, RegisteredRouter, SSROption } from './router'
 import type { Constrain, ControlledPromise } from './utils'
 
+type MatchLoadPromise = ControlledPromise<void> & {
+  pendingTimeout?: ReturnType<typeof setTimeout>
+  pendingUntil?: number
+}
+
 export type AnyMatchAndValue = { match: any; value: any }
 
 export type FindValueByIndex<
@@ -131,35 +136,28 @@ export interface RouteMatch<
   pathname: string
   params: TAllParams
   _strictParams: TAllParams
-  status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
+  status: 'pending' | 'success' | 'error' | 'notFound'
   isFetching: false | 'beforeLoad' | 'loader'
   error: unknown
   paramsError: unknown
   searchError: unknown
   updatedAt: number
-  _nonReactive: {
-    /** @internal */
-    beforeLoadPromise?: ControlledPromise<void>
-    /** @internal */
-    loaderPromise?: ControlledPromise<void>
-    /** @internal */
-    pendingTimeout?: ReturnType<typeof setTimeout>
-    loadPromise?: ControlledPromise<void>
-    displayPendingPromise?: Promise<void>
-    minPendingPromise?: ControlledPromise<void>
+  /** Internal non-reactive match lifecycle bucket. */
+  _: {
+    loadPromise?: MatchLoadPromise
+    /** Internal: true while this match is using SSR-hydrated data. */
     dehydrated?: boolean
-    /** @internal */
+    /** Internal loader error used by match loading. */
     error?: unknown
   }
   loaderData?: TLoaderData
-  /** @internal */
+  /** Internal route context scratch value. */
   __routeContext?: Record<string, unknown>
-  /** @internal */
+  /** Internal beforeLoad context scratch value. */
   __beforeLoadContext?: Record<string, unknown>
   context: TAllContext
   search: TFullSearchSchema
   _strictSearch: TFullSearchSchema
-  fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
   loaderDeps: TLoaderDeps
@@ -170,7 +168,6 @@ export interface RouteMatch<
   staticData: StaticDataRouteOption
   /** This attribute is not reactive */
   ssr?: SSROption
-  _forcePending?: boolean
   _displayPending?: boolean
 }
 

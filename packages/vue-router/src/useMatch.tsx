@@ -144,11 +144,6 @@ export function useMatch<
   const hasPendingRouteMatch = opts.from
     ? useStore(router.stores.pendingRouteIds, (ids) => ids)
     : undefined
-  const isTransitioning = useStore(
-    router.stores.isTransitioning,
-    (value) => value,
-    { equal: Object.is },
-  )
 
   const result = Vue.computed(() => {
     const selectedMatch = match.value
@@ -156,11 +151,7 @@ export function useMatch<
       const hasPendingMatch = opts.from
         ? Boolean(hasPendingRouteMatch?.value[opts.from!])
         : hasPendingNearestMatch.value
-      if (
-        !hasPendingMatch &&
-        !isTransitioning.value &&
-        (opts.shouldThrow ?? true)
-      ) {
+      if (!hasPendingMatch && (opts.shouldThrow ?? true)) {
         if (process.env.NODE_ENV !== 'production') {
           throw new Error(
             `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,

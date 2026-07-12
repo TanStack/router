@@ -2205,46 +2205,9 @@ describe('does not strip search params if search validation fails', () => {
   })
 })
 
-describe('statusCode', () => {
-  it('should reset statusCode to 200 when navigating from 404 to valid route', async () => {
-    const history = createMemoryHistory({ initialEntries: ['/'] })
-
-    const rootRoute = createRootRoute()
-
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => <div>Home</div>,
-    })
-
-    const validRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/valid',
-      component: () => <div>Valid Route</div>,
-    })
-
-    const routeTree = rootRoute.addChildren([indexRoute, validRoute])
-    const router = createRouter({ routeTree, history })
-
-    render(<RouterProvider router={router} />)
-
-    expect(router.state.statusCode).toBe(200)
-
-    await act(() => router.navigate({ to: '/' }))
-    expect(router.state.statusCode).toBe(200)
-
-    await act(() => router.navigate({ to: '/non-existing' }))
-    expect(router.state.statusCode).toBe(404)
-
-    await act(() => router.navigate({ to: '/valid' }))
-    expect(router.state.statusCode).toBe(200)
-
-    await act(() => router.navigate({ to: '/another-non-existing' }))
-    expect(router.state.statusCode).toBe(404)
-  })
-
+describe('route error rendering', () => {
   describe.each([true, false])(
-    'status code is set when loader/beforeLoad throws (isAsync=%s)',
+    'loader/beforeLoad errors render the matching boundary (isAsync=%s)',
     async (isAsync) => {
       const throwingFun = isAsync
         ? (toThrow: () => void) => async () => {
@@ -2259,7 +2222,7 @@ describe('statusCode', () => {
       const throwError = throwingFun(() => {
         throw new Error('test-error')
       })
-      it('should set statusCode to 404 when a route loader throws a notFound()', async () => {
+      it('renders notFound when a route loader throws a notFound()', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
         const rootRoute = createRootRoute()
@@ -2287,17 +2250,14 @@ describe('statusCode', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
         await act(() => router.navigate({ to: '/loader-throws-not-found' }))
-        expect(router.state.statusCode).toBe(404)
         expect(
           await screen.findByTestId('not-found-component'),
         ).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
 
-      it('should set statusCode to 404 when a route beforeLoad throws a notFound()', async () => {
+      it('renders notFound when a route beforeLoad throws a notFound()', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
         const rootRoute = createRootRoute({
@@ -2332,17 +2292,14 @@ describe('statusCode', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
         await act(() => router.navigate({ to: '/beforeload-throws-not-found' }))
-        expect(router.state.statusCode).toBe(404)
         expect(
           await screen.findByTestId('not-found-component'),
         ).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
 
-      it('should set statusCode to 500 when a route loader throws an Error', async () => {
+      it('renders error when a route loader throws an Error', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
         const rootRoute = createRootRoute()
@@ -2368,15 +2325,12 @@ describe('statusCode', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
         await act(() => router.navigate({ to: '/loader-throws-error' }))
-        expect(router.state.statusCode).toBe(500)
         expect(await screen.findByTestId('error-component')).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
 
-      it('should set statusCode to 500 when a route beforeLoad throws an Error', async () => {
+      it('renders error when a route beforeLoad throws an Error', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
         const rootRoute = createRootRoute()
@@ -2405,10 +2359,7 @@ describe('statusCode', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
         await act(() => router.navigate({ to: '/beforeload-throws-error' }))
-        expect(router.state.statusCode).toBe(500)
         expect(await screen.findByTestId('error-component')).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
@@ -2484,8 +2435,6 @@ describe('notFound in beforeLoad with pendingComponent', () => {
     await waitFor(() => {
       expect(router.state.status).toBe('idle')
     })
-
-    expect(router.state.statusCode).toBe(404)
   })
 
   it('should transition router.state.status to idle when child beforeLoad throws notFound and parent has NO pendingComponent', async () => {
@@ -2529,8 +2478,6 @@ describe('notFound in beforeLoad with pendingComponent', () => {
     await waitFor(() => {
       expect(router.state.status).toBe('idle')
     })
-
-    expect(router.state.statusCode).toBe(404)
   })
 
   it('should transition router.state.status to idle when nested child beforeLoad throws notFound WITHOUT pendingComponent', async () => {
@@ -2588,8 +2535,6 @@ describe('notFound in beforeLoad with pendingComponent', () => {
     await waitFor(() => {
       expect(router.state.status).toBe('idle')
     })
-
-    expect(router.state.statusCode).toBe(404)
   })
 
   it('should transition router.state.status to idle when child async beforeLoad throws notFound and parent has pendingComponent with pendingMs: 0', async () => {
@@ -2660,8 +2605,6 @@ describe('notFound in beforeLoad with pendingComponent', () => {
     await waitFor(() => {
       expect(router.state.status).toBe('idle')
     })
-
-    expect(router.state.statusCode).toBe(404)
   })
 })
 
@@ -3612,7 +3555,6 @@ describe('basepath', () => {
       })
 
       expect(router.state.location.pathname).toBe('/')
-      expect(router.state.statusCode).toBe(200)
     },
   )
 

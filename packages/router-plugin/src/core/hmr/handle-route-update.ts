@@ -124,9 +124,8 @@ function handleRouteUpdate(
     // match from the store (via ...existingMatch spread) and the stale
     // loaderData / __beforeLoadContext survives the reload cycle.
     //
-    // We must update the store directly (not via router.updateMatch) because
-    // updateMatch wraps in startTransition which may defer the state update,
-    // and we need the clear to be visible before invalidate reads the store.
+    // We update the store directly so the clear is visible before invalidate
+    // reads the store and rematches the route.
     if (removedKeys.has('loader') || removedKeys.has('beforeLoad')) {
       const matchIds = [
         activeMatch?.id,

@@ -84,7 +84,7 @@ function getRequestHeaders(opts: { router: AnyRouter }): Headers {
   }
 
   // Handle Redirects
-  const redirect = opts.router.stores.redirect.get()
+  const redirect = opts.router.redirect
   if (redirect) {
     matchHeaders.push(redirect.headers)
   }

@@ -2796,6 +2796,422 @@ describe('useRouteContext in the component', () => {
     expect(content).toBeInTheDocument()
   })
 
+  test('context value from beforeLoad is propagated to a sub-route while its loader reloads in the background', async () => {
+    let sawUndefinedContext = false
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home page</div>,
+    })
+    const contextPropagationRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/context-propagation',
+      beforeLoad: () => ({ number: 42 }),
+      component: () => <Outlet />,
+    })
+    const contextPropagationIndexRoute = createRoute({
+      getParentRoute: () => contextPropagationRoute,
+      path: '/',
+      staleTime: 0,
+      loader: async () => {
+        await sleep(WAIT_TIME)
+      },
+      component: () => {
+        const { number } = contextPropagationIndexRoute.useRouteContext()
+        sawUndefinedContext ||= number === undefined
+
+        return (
+          <div>
+            number = {String(number)}, saw undefined ={' '}
+            {String(sawUndefinedContext)}
+          </div>
+        )
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([
+      homeRoute,
+      contextPropagationRoute.addChildren([contextPropagationIndexRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/context-propagation' }))
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    await act(() => router.navigate({ to: '/' }))
+
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+
+    act(() => router.history.back())
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    // let the background reload settle, the context must survive the
+    // loader's success update
+    await act(() => sleep(WAIT_TIME + 50))
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+  })
+
+  test('context value from beforeLoad is propagated to a sub-route when it is re-entered while its loader is still reloading in the background', async () => {
+    let sawUndefinedContext = false
+    const loaderTime = WAIT_TIME * 3
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home page</div>,
+    })
+    const reloadInFlightRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/reload-in-flight',
+      beforeLoad: () => ({ number: 42 }),
+      component: () => <Outlet />,
+    })
+    const reloadInFlightIndexRoute = createRoute({
+      getParentRoute: () => reloadInFlightRoute,
+      path: '/',
+      staleTime: 0,
+      loader: async () => {
+        await sleep(loaderTime)
+      },
+      component: () => {
+        const { number } = reloadInFlightIndexRoute.useRouteContext()
+        sawUndefinedContext ||= number === undefined
+
+        return (
+          <div>
+            number = {String(number)}, saw undefined ={' '}
+            {String(sawUndefinedContext)}
+          </div>
+        )
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([
+      homeRoute,
+      reloadInFlightRoute.addChildren([reloadInFlightIndexRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/reload-in-flight' }))
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    // re-entering the route starts a background reload of the sub-route
+    await act(() => router.navigate({ to: '/' }))
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    act(() => router.history.back())
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    // re-enter once more while that background reload is still in flight
+    await act(() => router.navigate({ to: '/' }))
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    act(() => router.history.back())
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    // let the in-flight reload settle, the context must survive its completion
+    await act(() => sleep(loaderTime + 50))
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+  })
+
+  test('context value from beforeLoad is kept when the background reload of a sub-route is aborted', async () => {
+    let sawUndefinedContext = false
+    let loaderRuns = 0
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home page</div>,
+    })
+    const reloadAbortRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/reload-abort',
+      beforeLoad: () => ({ number: 42 }),
+      component: () => <Outlet />,
+    })
+    const reloadAbortIndexRoute = createRoute({
+      getParentRoute: () => reloadAbortRoute,
+      path: '/',
+      staleTime: 0,
+      loader: async () => {
+        loaderRuns++
+        await sleep(WAIT_TIME)
+        if (loaderRuns > 1) {
+          const error = new Error('aborted')
+          error.name = 'AbortError'
+          throw error
+        }
+      },
+      component: () => {
+        const { number } = reloadAbortIndexRoute.useRouteContext()
+        sawUndefinedContext ||= number === undefined
+
+        return (
+          <div>
+            number = {String(number)}, saw undefined ={' '}
+            {String(sawUndefinedContext)}
+          </div>
+        )
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([
+      homeRoute,
+      reloadAbortRoute.addChildren([reloadAbortIndexRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/reload-abort' }))
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    // re-entering the route starts a background reload which gets aborted
+    await act(() => router.navigate({ to: '/' }))
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    act(() => router.history.back())
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    // let the aborted reload settle, the context must survive the abort
+    await act(() => sleep(WAIT_TIME + 50))
+
+    expect(
+      await screen.findByText('number = 42, saw undefined = false'),
+    ).toBeInTheDocument()
+  })
+
+  test("context value from beforeLoad is available in a sub-route's errorComponent when its background reload fails", async () => {
+    let loaderRuns = 0
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home page</div>,
+    })
+    const reloadErrorRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/reload-error',
+      beforeLoad: () => ({ number: 42 }),
+      component: () => <Outlet />,
+    })
+    const reloadErrorIndexRoute = createRoute({
+      getParentRoute: () => reloadErrorRoute,
+      path: '/',
+      staleTime: 0,
+      loader: async () => {
+        loaderRuns++
+        await sleep(WAIT_TIME)
+        if (loaderRuns > 1) {
+          throw new Error('loader failed')
+        }
+      },
+      component: () => {
+        const { number } = reloadErrorIndexRoute.useRouteContext()
+
+        return <div>number = {String(number)}</div>
+      },
+      errorComponent: () => {
+        const { number } = reloadErrorIndexRoute.useRouteContext()
+
+        return <div>error number = {String(number)}</div>
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([
+      homeRoute,
+      reloadErrorRoute.addChildren([reloadErrorIndexRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/reload-error' }))
+
+    expect(await screen.findByText('number = 42')).toBeInTheDocument()
+
+    // re-entering the route starts a background reload which fails
+    await act(() => router.navigate({ to: '/' }))
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    act(() => router.history.back())
+
+    expect(await screen.findByText('number = 42')).toBeInTheDocument()
+
+    // once the failed reload settles, the errorComponent must still see
+    // the context value provided by the parent's beforeLoad
+    await act(() => sleep(WAIT_TIME + 50))
+
+    expect(await screen.findByText('error number = 42')).toBeInTheDocument()
+  })
+
+  test("context value from beforeLoad is available in a sub-route's errorComponent when the sub-route's beforeLoad throws", async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home page</div>,
+    })
+    const beforeLoadErrorRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/before-load-error',
+      beforeLoad: () => ({ number: 42 }),
+      component: () => <Outlet />,
+    })
+    const beforeLoadErrorIndexRoute = createRoute({
+      getParentRoute: () => beforeLoadErrorRoute,
+      path: '/',
+      beforeLoad: () => {
+        throw new Error('beforeLoad failed')
+      },
+      component: () => <div>never rendered</div>,
+      errorComponent: () => {
+        const { number } = beforeLoadErrorIndexRoute.useRouteContext()
+
+        return <div>error number = {String(number)}</div>
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([
+      homeRoute,
+      beforeLoadErrorRoute.addChildren([beforeLoadErrorIndexRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/before-load-error' }))
+
+    expect(await screen.findByText('error number = 42')).toBeInTheDocument()
+  })
+
+  test('updated context value from beforeLoad is committed atomically with a blocking reload of the sub-route', async () => {
+    let sawUndefinedContext = false
+    let beforeLoadRuns = 0
+    let loaderRuns = 0
+    let releaseLoader!: () => void
+    const loaderGate = new Promise<void>((resolve) => {
+      releaseLoader = resolve
+    })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home page</div>,
+    })
+    const blockingReloadRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/blocking-reload',
+      beforeLoad: () => ({ number: ++beforeLoadRuns }),
+      component: () => <Outlet />,
+    })
+    const blockingReloadIndexRoute = createRoute({
+      getParentRoute: () => blockingReloadRoute,
+      path: '/',
+      loader: async () => {
+        loaderRuns++
+        if (loaderRuns > 1) {
+          await loaderGate
+        }
+      },
+      component: () => {
+        const { number } = blockingReloadIndexRoute.useRouteContext()
+        sawUndefinedContext ||= number === undefined
+
+        return (
+          <div>
+            number = {String(number)}, saw undefined ={' '}
+            {String(sawUndefinedContext)}
+          </div>
+        )
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([
+      homeRoute,
+      blockingReloadRoute.addChildren([blockingReloadIndexRoute]),
+    ])
+    const router = createRouter({
+      routeTree,
+      history,
+      defaultStaleReloadMode: 'blocking',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/blocking-reload' }))
+
+    expect(
+      await screen.findByText('number = 1, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    // invalidating re-runs beforeLoad and blocks on the gated loader
+    act(() => {
+      void router.invalidate()
+    })
+
+    // while the blocking reload is in flight, the visible UI must keep the
+    // old, consistent pass: updates of the in-progress pass stay isolated
+    // in the pending match pool until the whole pass commits
+    await act(() => sleep(25))
+    expect(
+      screen.getByText('number = 1, saw undefined = false'),
+    ).toBeInTheDocument()
+
+    // releasing the loader commits the pass: the updated context must become
+    // visible together with the reload result
+    act(() => releaseLoader())
+
+    expect(
+      await screen.findByText('number = 2, saw undefined = false'),
+    ).toBeInTheDocument()
+  })
+
   // Check if context that is updated at the root, is the same in the root route
   test('modified route context, present in the root route', async () => {
     const rootRoute = createRootRoute({

@@ -1372,8 +1372,10 @@ describe('Link', () => {
     expect(window.location.pathname).toBe('/posts')
     expect(window.location.search).toBe('?page=2&filter=inactive')
 
-    expect(updatedPage).toHaveTextContent('Page: 2')
-    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    await waitFor(() => {
+      expect(updatedPage).toHaveTextContent('Page: 2')
+      expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    })
   })
 
   test('when navigation to . from /posts while updating search from / and using base path', async () => {
@@ -1493,8 +1495,10 @@ describe('Link', () => {
 
     const updatedPage = await screen.findByTestId('current-page')
     const updatedFilter = await screen.findByTestId('current-filter')
-    expect(updatedPage).toHaveTextContent('Page: 2')
-    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    await waitFor(() => {
+      expect(updatedPage).toHaveTextContent('Page: 2')
+      expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    })
   })
 
   test('when navigating to /posts with invalid search', async () => {
@@ -4153,6 +4157,7 @@ describe('Link', () => {
     const router = createRouter({
       routeTree,
       defaultPreload: 'intent',
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -4454,6 +4459,7 @@ describe('Link', () => {
     const router = createRouter({
       routeTree,
       defaultPreload: 'intent',
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -4557,6 +4563,7 @@ describe('Link', () => {
     const router = createRouter({
       routeTree,
       defaultPreload: 'intent',
+      history,
     })
 
     render(<RouterProvider router={router} />)

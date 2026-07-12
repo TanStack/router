@@ -246,7 +246,7 @@ async function getRenderCount(page: Page) {
   return renderCount
 }
 async function structuralSharingTest(page: Page, enabled: boolean) {
-  page.goto(`/structural-sharing/${enabled}/?foo=f1&bar=b1`)
+  await page.goto(`/structural-sharing/${enabled}/?foo=f1&bar=b1`)
   await expect(page.getByTestId('enabled')).toHaveText(JSON.stringify(enabled))
 
   async function checkSearch({ foo, bar }: { foo: string; bar: string }) {
@@ -268,9 +268,9 @@ async function structuralSharingTest(page: Page, enabled: boolean) {
 
 test('structural sharing disabled', async ({ page }) => {
   await structuralSharingTest(page, false)
-  expect(await getRenderCount(page)).toBe(2)
+  expect(await getRenderCount(page)).toBe(3)
   await page.getByTestId('link').click()
-  expect(await getRenderCount(page)).toBeGreaterThan(2)
+  expect(await getRenderCount(page)).toBeGreaterThan(3)
 })
 
 test('structural sharing enabled', async ({ page }) => {

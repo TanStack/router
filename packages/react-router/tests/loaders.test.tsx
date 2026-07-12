@@ -647,7 +647,7 @@ test('reproducer #4546', async () => {
   }
 })
 
-test('clears pendingTimeout when match resolves', async () => {
+test('does not show pending fallback when match resolves before pendingMs', async () => {
   const defaultPendingComponentOnMountMock = vi.fn()
   const nestedPendingComponentOnMountMock = vi.fn()
   const fooPendingComponentOnMountMock = vi.fn()
@@ -751,10 +751,37 @@ test('throw abortError from loader upon initial load with basepath', async () =>
 
   render(<RouterProvider router={router} />)
 
-  const indexElement = await screen.findByText('Index route content')
-  expect(indexElement).toBeInTheDocument()
-  expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
+  const errorElement = await screen.findByTestId('index-error')
+  expect(errorElement).toBeInTheDocument()
+  expect(screen.queryByText('Index route content')).not.toBeInTheDocument()
   expect(window.location.pathname.startsWith('/app')).toBe(true)
+})
+
+test('aborted loader does not render the route component with undefined loaderData', async () => {
+  const rootRoute = createRootRoute({})
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: async (): Promise<{ value: string }> => {
+      return Promise.reject(new DOMException('Aborted', 'AbortError'))
+    },
+    component: () => {
+      const data = indexRoute.useLoaderData()
+      return <div data-testid="index-content">value: {data.value}</div>
+    },
+    errorComponent: () => (
+      <div data-testid="index-error">indexErrorComponent</div>
+    ),
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({ routeTree, history })
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByTestId('index-error')).toBeInTheDocument()
+  expect(screen.queryByTestId('index-content')).not.toBeInTheDocument()
 })
 
 test('cancelMatches after pending timeout', async () => {

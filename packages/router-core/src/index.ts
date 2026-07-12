@@ -236,15 +236,14 @@ export type {
 } from './stores'
 export {
   defaultSerializeError,
-  getLocationChangeInfo,
   RouterCore,
   lazyFn,
   SearchParamError,
   PathParamError,
-  getInitialRouterState,
   getMatchedRoutes,
   trailingSlashOptions,
 } from './router'
+export { getLocationChangeInfo } from './location-change'
 
 export type {
   ViewTransitionOptions,

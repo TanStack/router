@@ -39,7 +39,7 @@ describe('errorComponent (server)', () => {
       <RouterProvider router={router} />
     ))
 
-    expect(router.state.statusCode).toBe(500)
+    expect(router.statusCode).toBe(500)
     expect(html).toContain('data-testid="error-component"')
     expect(html).toContain('loader boom')
     expect(html).not.toContain('Index route')

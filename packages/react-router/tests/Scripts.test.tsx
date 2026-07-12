@@ -508,6 +508,82 @@ describe('ssr HeadContent', () => {
     ).toHaveLength(1)
   })
 
+  test('removes stale child title when parent beforeLoad throws', async () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/parent/child?fail=false'],
+    })
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            {createPortal(<HeadContent />, document.head)}
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      validateSearch: (search: Record<string, unknown>) => ({
+        fail: search.fail === true || search.fail === 'true',
+      }),
+      beforeLoad: ({ search }) => {
+        if (search.fail) {
+          throw new Error('Parent beforeLoad failed')
+        }
+      },
+      head: ({ match }) => ({
+        meta: [
+          {
+            title: match.error ? 'Parent error title' : 'Parent success title',
+          },
+        ],
+      }),
+      errorComponent: () => <div>Parent error boundary</div>,
+      component: () => <Outlet />,
+    })
+
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      head: () => ({
+        meta: [{ title: 'Child success title' }],
+      }),
+      component: () => <div>Child success</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    })
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    expect(await screen.findByText('Child success')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(document.title).toBe('Child success title')
+    })
+
+    await act(() =>
+      router.navigate({
+        to: '/parent/child',
+        search: { fail: true },
+      } as never),
+    )
+
+    expect(await screen.findByText('Parent error boundary')).toBeInTheDocument()
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      parentRoute.id,
+    ])
+    await waitFor(() => {
+      expect(document.title).toBe('Parent error title')
+    })
+  })
+
   test('applies assetCrossOrigin to manifest stylesheets and preloads', async () => {
     const history = createTestBrowserHistory()
     const stylesheetHref = '/asset-cross-origin.css'
