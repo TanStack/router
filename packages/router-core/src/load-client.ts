@@ -1461,7 +1461,7 @@ export async function preloadClientRoute(
   const base = semanticMatches(clientRouter)
   const plannedCache = router.stores.cachedMatches.get()
   const controller = new AbortController()
-  let matches: Array<AnyRouteMatch>
+  let matches: Array<AnyRouteMatch> | undefined
   try {
     matches = router.matchRoutes(location, {
       throwOnError: true,
@@ -1542,6 +1542,12 @@ export async function preloadClientRoute(
     ])
     return matches
   } catch (cause) {
+    if (!matches) {
+      if (controller.signal.aborted) {
+        return
+      }
+      throw cause
+    }
     controller.abort()
     if (clientRouter._tx !== owner) {
       return
@@ -1559,9 +1565,7 @@ export async function preloadClientRoute(
     if (!isNotFound(cause)) {
       console.error(cause)
     }
-    if (matches!) {
-      discardMatchResources(router, matches)
-    }
+    discardMatchResources(router, matches)
     return
   }
 }
