@@ -10,6 +10,7 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "verbatimModuleSyntax": false,
     "target": "ES2022",
     "allowJs": true,
     "forceConsistentCasingInFileNames": true,
