@@ -124,17 +124,9 @@ export function multiSortBy<T>(
 }
 
 /**
- * Sorts route nodes into the deterministic order used when generating the route
- * tree. Precedence: root (`__root`) first, then by slash-separated segment
- * count, then index segments before non-index, and finally — the tiebreaker —
- * by `routePath`.
- *
- * The `routePath` tiebreaker is load-bearing: `routePath` is unique per node, so
- * it gives the comparator a total order. Without it (e.g. comparing whole route
- * nodes), any nodes tying on every earlier key are left in an engine- and
- * input-order-dependent order by `Array.prototype.sort`, which makes the
- * generated route tree churn non-deterministically across machines and Node
- * versions.
+ * Sorts route nodes by root, path depth, index status, and finally `routePath`.
+ * The `routePath` comparison keeps the output consistent when the earlier
+ * values are the same.
  */
 export function sortRouteNodes(
   routeNodes: Array<RouteNode>,
