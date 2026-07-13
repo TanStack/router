@@ -23,7 +23,7 @@
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.11",
+    "@rsbuild/core": "^2.1.2",
     "@rsbuild/plugin-babel": "^1.1.2",
     "@rsbuild/plugin-solid": "^1.1.1",
     "@tanstack/router-e2e-utils": "workspace:^",
